@@ -1,0 +1,15 @@
+# Smackdown URL Router
+RewriteEngine On
+RewriteBase /
+
+# 1. Don't touch real files or folders
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# 2. Specific Page Routing
+RewriteRule ^archive$ archive.php [L,QSA]
+RewriteRule ^rss$ rss.php [L,QSA]
+RewriteRule ^feed$ rss.php [L,QSA]
+
+# 3. Route everything else to index.php
+RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]

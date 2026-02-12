@@ -1,0 +1,162 @@
+<?php
+/**
+ * SnapSmack - Archive Browser
+ * Version: PRO-4.9 - Final Hardened
+ * MASTER DIRECTIVE: Full file return. Standardized junctions & scope safety.
+ */
+
+// 1. Error Reporting (Safety Valve)
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// 2. Bootstrap Environment
+require_once __DIR__ . '/core/db.php';
+require_once __DIR__ . '/core/parser.php';
+
+// INITIALIZE SCOPE (Prevents Skin/Footer Crashes)
+$settings = [];
+$site_name = 'ISWA.CA';
+$active_skin = 'smackdown';
+
+try {
+    $snapsmack = new SnapSmack($pdo);
+
+    // Fetch Global Settings
+    $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+    
+    // THE PENCIL: Define BASE_URL (Force Trailing Slash)
+    if (!defined('BASE_URL')) {
+        $db_url = $settings['site_url'] ?? 'https://iswa.ca/';
+        define('BASE_URL', rtrim($db_url, '/') . '/'); 
+    }
+
+    $active_skin = $settings['active_skin'] ?? 'smackdown';
+    $site_name = $settings['site_name'] ?? $site_name;
+
+    // 4. Filter Logic (GET params)
+    $cat_filter   = isset($_GET['cat']) ? (int)$_GET['cat'] : null;
+    $album_filter = isset($_GET['album']) ? (int)$_GET['album'] : null;
+
+    // 5. Build Query
+    $sql = "SELECT i.* FROM snap_images i ";
+    $where_clauses = ["i.img_status = 'published'", "i.img_date <= NOW()"];
+    $params = [];
+
+    if ($cat_filter) {
+        $sql .= "INNER JOIN snap_image_cat_map c ON i.id = c.image_id ";
+        $where_clauses[] = "c.cat_id = ?";
+        $params[] = $cat_filter;
+    } elseif ($album_filter) {
+        $sql .= "INNER JOIN snap_image_album_map a ON i.id = a.image_id ";
+        $where_clauses[] = "a.album_id = ?";
+        $params[] = $album_filter;
+    }
+
+    $sql .= " WHERE " . implode(" AND ", $where_clauses);
+    $sql .= " ORDER BY i.img_date DESC, i.id DESC";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $images = $stmt->fetchAll();
+
+    // 6. Fetch Meta for Dropdowns
+    $all_cats   = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
+    $all_albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
+
+} catch (Exception $e) {
+    die("<div style='background:#300;color:#f99;padding:20px;border:1px solid red;font-family:monospace;'><h3>ARCHIVE_TRANSMISSION_ERROR</h3>" . $e->getMessage() . "</div>");
+}
+
+$page_title = "Archive";
+$skin_path  = 'skins/' . $active_skin;
+
+if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
+    include __DIR__ . '/' . $skin_path . '/meta.php';
+}
+?>
+
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/hotkey-engine.css">
+
+<body class="archive-page">
+    <div id="page-wrapper">
+        
+        <?php 
+        $header_file = __DIR__ . '/' . $skin_path . '/header.php';
+        include (file_exists($header_file)) ? $header_file : __DIR__ . '/core/header.php';
+        ?>
+
+        <div id="infobox">
+            <div class="nav-links">
+                <div class="center">
+                    <a href="archive.php" class="<?php echo !$cat_filter && !$album_filter ? 'active' : 'inactive'; ?>">
+                        [ SHOW ALL ]
+                    </a>
+                    <span class="sep">/</span>
+
+                    <div class="filter-group">
+                        <label class="dim">REGISTRY:</label>
+                        <select onchange="location = this.value;">
+                            <option value="archive.php">-- ALL CATEGORIES --</option>
+                            <?php foreach($all_cats as $c): ?>
+                                <option value="?cat=<?php echo $c['id']; ?>" <?php echo $cat_filter == $c['id'] ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($c['cat_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <span class="sep">|</span>
+
+                    <div class="filter-group">
+                        <label class="dim">ALBUMS:</label>
+                        <select onchange="location = this.value;">
+                            <option value="archive.php">-- ALL ALBUMS --</option>
+                            <?php foreach($all_albums as $a): ?>
+                                <option value="?album=<?php echo $a['id']; ?>" <?php echo $album_filter == $a['id'] ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($a['album_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="scroll-stage">
+            <div id="browse-grid" style="--grid-cols: <?php echo htmlspecialchars($settings['browse_cols'] ?? 4); ?>; --thumb-width: <?php echo htmlspecialchars($settings['thumb_size'] ?? 200); ?>px;">
+                <?php if ($images): ?>
+                    <?php foreach ($images as $img): ?>
+                        <div class="thumb-container">
+                            <?php 
+                                // Clean Slugs for Navigation
+                                $link = BASE_URL . htmlspecialchars($img['img_slug']);
+                                
+                                // Path Logic: Matches smack-post.php v15.2
+                                $full_img_path = ltrim($img['img_file'], '/');
+                                $filename = basename($full_img_path);
+                                $folder = str_replace($filename, '', $full_img_path);
+                                
+                                // Force the thumbnail path with a reliable junction
+                                $thumb_url = BASE_URL . $folder . 'thumbs/t_' . $filename;
+                            ?>
+                            <a href="<?php echo $link; ?>" class="thumb-link" title="<?php echo htmlspecialchars($img['img_title']); ?>">
+                                <img src="<?php echo $thumb_url; ?>" alt="<?php echo htmlspecialchars($img['img_title']); ?>" loading="lazy">
+                            </a>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="empty-sector-msg">NO SIGNALS RECORDED IN THIS SECTOR.</div>
+                <?php endif; ?>
+            </div>
+
+            <?php 
+            $footer_file = __DIR__ . '/' . $skin_path . '/footer.php';
+            if (file_exists($footer_file)) include $footer_file; 
+            ?>
+        </div>
+    </div>
+
+    <div id="hud" class="hud-msg"></div>
+    <script src="<?php echo BASE_URL; ?>assets/js/hotkey-engine.js"></script>
+</body>
+</html>

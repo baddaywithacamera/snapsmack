@@ -1,0 +1,86 @@
+<?php
+/**
+ * SnapSmack - Sidebar Navigation
+ * Version: 6.6 - NavGroup Consolidation
+ * -------------------------------------------------------------------------
+ * - FIXED: Top 8 items consolidated into "EDITOR CONTROLS" NavGroup.
+ * - FIXED: Removed all <hr> lines in favor of consistent .nav-group styling.
+ * - RETAINED: Active-state highlighting using $current_page.
+ * - RETAINED: © 2026 Sean McCormick branding.
+ * -------------------------------------------------------------------------
+ */
+
+$current_page = basename($_SERVER['PHP_SELF']); 
+?>
+
+<div class="sidebar">
+    <div class="sidebar-top">
+        <h2>SnapSmack</h2>
+        <ul>
+            <li class="nav-group">
+                <strong>Editor Controls</strong>
+                <ul class="sub-nav">
+                    <li class="<?php echo ($current_page == 'smack-admin.php') ? 'active' : ''; ?>">
+                        <a href="smack-admin.php">Dashboard</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-post.php') ? 'active' : ''; ?>">
+                        <a href="smack-post.php">New Post</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-manage.php' || $current_page == 'smack-edit.php') ? 'active' : ''; ?>">
+                        <a href="smack-manage.php">Manage Archive</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-cats.php') ? 'active' : ''; ?>">
+                        <a href="smack-cats.php">Categories</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-albums.php') ? 'active' : ''; ?>">
+                        <a href="smack-albums.php">Albums</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-pages.php') ? 'active' : ''; ?>">
+                        <a href="smack-pages.php">Static Pages</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-media.php') ? 'active' : ''; ?>">
+                        <a href="smack-media.php">Media Library</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-comments.php') ? 'active' : ''; ?>">
+                        <a href="smack-comments.php">Transmissions</a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="nav-group">
+                <strong>Appearance</strong>
+                <ul class="sub-nav">
+                    <li class="<?php echo ($current_page == 'smack-appearance.php') ? 'active' : ''; ?>">
+                        <a href="smack-appearance.php">Appearance</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-css.php') ? 'active' : ''; ?>">
+                        <a href="smack-css.php">CSS Overrides</a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="nav-group">
+                <strong>System</strong>
+                <ul class="sub-nav">
+                    <li class="<?php echo ($current_page == 'smack-config.php') ? 'active' : ''; ?>">
+                        <a href="smack-config.php">Configuration</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-users.php') ? 'active' : ''; ?>">
+                        <a href="smack-users.php">User Manager</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-maintenance.php') ? 'active' : ''; ?>">
+                        <a href="smack-maintenance.php">Maintenance</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-backup.php') ? 'active' : ''; ?>">
+                        <a href="smack-backup.php">Backup & Recovery</a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <div class="sidebar-bottom">
+        <a href="logout.php" class="logout">Logout</a>
+        <div class="credits-admin">© 2026 Sean McCormick</div>
+    </div>
+</div>

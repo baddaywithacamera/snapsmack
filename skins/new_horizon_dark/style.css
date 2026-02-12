@@ -1,0 +1,853 @@
+/* ==========================================================================
+    !!! CRITICAL STYLE ENFORCEMENT - DO NOT MODIFY !!!
+    ========================================================================== 
+    
+    1. COLOR PALETTE:
+        - Page/Header Background: #000000 (Pure Black)
+        - Content Drawer (#footer): #131313 (Deep Grey)
+        - Footer Strip (#system-footer): #393939 (Mid-Grey Strip)
+        - Copyright Text:                 #cccccc (Light Grey)
+        - Dividing Line:                  #666666 (Medium Grey border between content/footer)
+
+    2. FRAMING LOGIC:
+        - Frame Color:                 #666666
+        - Space (Middle):              #000000
+        - INDEX (Post):      5px Inner / 15px Space / 1px Outside
+        - ARCHIVE (Thumb): 3px Inner / 10px Space / 1px Outside
+        - STATIC (Hero):    3px Inner / 10px Space / 1px Outside
+
+    3. FOOTER & SIGNATURE VISIBILITY:
+        - The #footer and #system-footer MUST be hidden (display: none) by default.
+        - They ONLY appear when the user expands the Info or Comment drawer.
+        - EXCEPTION: Static pages (.static-transmission) and Archives (.archive-page)
+          may display them by default via the OVERRIDES section at the bottom.
+
+    ========================================================================== */
+
+/* Smackdown Skin - Horizon Revival Mod */
+
+/* ==========================================================================
+    GLOBAL STYLES
+    ========================================================================= */
+
+html {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: #000000;
+    color: #cccccc;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    overflow: hidden; 
+}
+
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: #000000;
+    color: #cccccc;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    overflow-y: auto; 
+}
+
+/* ==========================================================================
+    LAYOUT STRUCTURE (SNAPPING ENGINE)
+    ========================================================================= */
+
+#page-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+#scroll-stage {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    scroll-behavior: smooth;
+    align-items: stretch;
+    min-height: 0;
+}
+
+/* ==========================================================================
+    HEADER (FIXED HEIGHT LOCK)
+    ========================================================================= */
+
+#header {
+    background: #000000;
+    height: 80px; /* FIXED: Absolute baseline */
+    padding: 0;   
+    flex-shrink: 0;
+    z-index: 20;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+#header .inside {
+    width: 100%;
+    max-width: 95%;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center; 
+    padding: 0 40px; 
+}
+
+.site-title-text {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #ffffff;
+    margin: 0;
+    line-height: 1; 
+    display: block;
+}
+
+.site-logo {
+    height: 50px;
+    width: auto;
+    display: block;
+}
+
+.nav-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.nav-menu a {
+    color: #aaaaaa;
+    text-decoration: none;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: color 0.2s ease;
+}
+
+.nav-menu a:hover, .nav-menu a.active {
+    color: #ffffff;
+}
+
+.nav-menu .sep {
+    padding: 0 15px;
+    color: #444444;
+    font-size: 0.9rem;
+    cursor: default;
+}
+
+/* ==========================================================================
+    PHOTOBOX & IMAGE (OPTICAL LIFT ENGINE)
+    ========================================================================= */
+
+#photobox {
+    background: #000000;
+    width: 100%;
+    /* 1. Calculate Full Available Void: 100vh - 80px (Header) - 60px (Infobox) */
+    height: calc(100vh - 140px); 
+    display: flex;
+    justify-content: center;
+    align-items: center; 
+    /* 2. OPTICAL LIFT: 50px bottom padding moves the center point UP by 25px */
+    padding: 0 0 50px 0 !important; 
+    margin: 0 !important;
+    box-sizing: border-box;
+    overflow: hidden;
+    flex-grow: 1;
+    flex-shrink: 0 !important; 
+}
+
+.main-photo {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0; 
+    box-sizing: border-box;
+}
+
+.zoomable::after {
+    content: none !important;
+}
+
+/* THE INDEX FRAME: Sized to respect the new padded center */
+img.post-image {
+    max-width: calc(100% - 60px); 
+    max-height: calc(100% - 60px);
+    width: auto;
+    height: auto;
+    box-sizing: border-box;
+    border: 5px solid #666666; 
+    box-shadow: 
+        0 0 0 15px #000000, 
+        0 0 0 16px #666666; 
+    cursor: zoom-in !important;
+    outline: none !important; 
+}
+
+/* ==========================================================================
+    INFOBOX (FIXED HEIGHT LOCK)
+    ========================================================================= */
+
+#infobox {
+    background: #222222; 
+    border-top: 1px solid #333333;
+    border-bottom: 1px solid #000000;
+    height: 60px; /* FIXED: Absolute baseline */
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    position: relative;
+    z-index: 10;
+    flex-grow: 0 !important;
+    flex-shrink: 0 !important;
+}
+
+.nav-links {
+    display: inline-flex;
+    align-items: center;
+    gap: 40px;
+    font-family: 'Inter', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.nav-links .left,
+.nav-links .center,
+.nav-links .right {
+    display: inline-flex;
+    align-items: center;
+    gap: 40px;
+    margin: 0;
+}
+
+.nav-links a {
+    color: #aaaaaa;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 6px 0;
+    display: inline-block;
+}
+
+.nav-links a:hover {
+    color: #ffffff;
+}
+
+.nav-links .sep {
+    color: #444444;
+    font-size: 0.9rem;
+}
+
+.dim {
+    color: #333333;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+/* ==========================================================================
+    POST CONTENT DRAWER (UNIFIED ALIGNMENT)
+    ========================================================================= */
+
+#footer {
+    background: #131313; 
+    border-top: 1px solid #333333; 
+    padding: 52px 0 0 0; /* REDUCED 35% from 80px */
+    text-align: left;
+    display: none; 
+    width: 100%;
+    flex-grow: 0 !important;
+    flex-shrink: 0 !important;
+}
+
+.photo-title-footer, 
+.description, 
+.meta,
+.comment-form,
+#pane-comments {
+    max-width: 850px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 20px;
+    padding-right: 20px;
+    box-sizing: border-box;
+}
+
+.photo-title-footer {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 2rem;
+    margin: 0 auto 40px auto;
+    font-weight: 700;
+}
+
+.description {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    line-height: 1.6;
+    font-size: 1.2rem;
+    color: #bbbbbb;
+    margin-bottom: 40px;
+}
+
+/* ==========================================================================
+    THE SIGNATURE (SYSTEM FOOTER STRIP)
+    ========================================================================= */
+
+#system-footer {
+    background: #393939 !important; 
+    padding: 32px 0 !important; /* REDUCED 35% from 50px */
+    text-align: center !important;
+    width: 100% !important;
+    border-top: 1px solid #666666 !important;
+    margin-top: auto;
+    display: none; 
+}
+
+#footer[style*="display: block"] ~ #system-footer,
+#footer[style*="display:block"] ~ #system-footer {
+    display: block !important;
+}
+
+#system-footer .inside {
+    max-width: 95% !important; 
+    margin: 0 auto;
+}
+
+#system-footer p, #sig-text {
+    color: #cccccc !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.7rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1.5px !important; 
+    margin: 0 !important;
+}
+
+/* ==========================================================================
+    TECHNICAL SPECIFICATIONS (TYPEWRITER LOOK)
+    ========================================================================= */
+
+.meta {
+    border-top: 1px solid #333333;
+    padding-top: 40px;
+    margin-top: 40px;
+    text-align: center;
+    padding-bottom: 60px;
+}
+
+.meta-header {
+    margin-bottom: 25px;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 4px;
+    font-size: 1.1rem; 
+    color: #888888; 
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.meta-header.no-signals {
+    color: #eeeeee !important; 
+}
+
+.exif-table {
+    margin: 0 auto;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    text-align: left;
+    width: auto;
+}
+
+.exif-label {
+    padding-right: 40px;
+    padding-bottom: 12px;
+    color: #555555;
+    font-weight: 900;
+    text-transform: uppercase;
+    font-family: sans-serif;
+    width: 160px; 
+    vertical-align: top;
+}
+
+.exif-value {
+    padding-bottom: 12px;
+    color: #aaaaaa;
+    font-family: 'Courier New', Courier, monospace !important; 
+    font-size: 1.1em;
+    letter-spacing: 0.5px;
+}
+
+/* ==========================================================================
+    COMMENTS (FORM LAYOUT FIX)
+    ========================================================================= */
+
+.comment-form {
+    border-top: 1px solid #222222;
+    padding-top: 40px;
+    margin-top: 40px;
+    padding-bottom: 80px;
+}
+
+.form-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.comment-form input,
+.comment-form textarea {
+    background: #000000;
+    color: #cccccc;
+    border: 1px solid #333333;
+    padding: 15px;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.95rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.form-row input {
+    flex: 1;
+}
+
+.comment-form textarea {
+    height: 150px;
+    resize: vertical;
+}
+
+.comment-form button {
+    margin-top: 20px;
+    background: #222222;
+    color: #888888;
+    border: 1px solid #333333;
+    padding: 12px 30px;
+    cursor: pointer;
+    font-family: sans-serif;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 1px;
+    float: right;
+}
+
+/* ==========================================================================
+    ARCHIVE GRID
+   ========================================================================= */
+
+#browse-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 4), 1fr);
+    gap: var(--grid-gap, 100px); 
+    max-width: 95%;
+    margin: 80px auto;
+    padding: 0 60px;
+    flex: 1 0 auto;
+}
+
+.thumb-container {
+    margin: 0 auto;
+    background: #000000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.thumb-link {
+    display: inline-block;
+    /* ARCHIVE FRAME (3 / 10 / 1) */
+    border: 3px solid #666666;
+    box-shadow: 
+        0 0 0 10px #000000, 
+        0 0 0 11px #666666;
+}
+
+.thumb-link img {
+    max-width: var(--thumb-width, 400px);
+    height: auto;
+    display: block;
+    transition: opacity 0.3s ease;
+}
+
+.thumb-link img:hover {
+    opacity: 0.7;
+}
+
+/* ==========================================================================
+    STATIC PAGE OVERRIDES (Symmetry Enforcement)
+    ========================================================================= */
+
+.static-transmission #scroll-stage {
+    display: block !important;
+    text-align: center !important;
+}
+
+.static-transmission #footer,
+.static-transmission #system-footer,
+.archive-page #footer,
+.archive-page #system-footer {
+    display: block !important;
+    width: 100% !important;
+    visibility: visible !important;
+    position: relative; 
+    z-index: 100;
+}
+
+.static-transmission #footer { background: #131313 !important; }
+.static-transmission #system-footer { background: #393939 !important; border-top: 1px solid #666666 !important; }
+
+/* THE LANE: Centered 850px container with 20px padding for symmetry */
+.static-content {
+    max-width: 850px !important;
+    margin: 40px auto 0 auto !important;
+    padding-left: 20px;
+    padding-right: 20px;
+    box-sizing: border-box;
+    background: #000000;
+    text-align: left;
+    overflow-x: hidden; 
+}
+
+.static-content::after { 
+    content: ""; 
+    display: table; 
+    clear: both; 
+}
+
+/* THE TITLE: 24px Optical Snap to align with framed content below */
+.static-page-title {
+    width: 100% !important;
+    max-width: 850px !important;
+    margin: 0 0 40px 0 !important; 
+    padding-left: 24px !important; /* 20px baseline + 4px frame compensation */
+    padding-right: 20px !important;
+    text-align: left !important;
+    display: block !important;
+    box-sizing: border-box !important;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+/* THE BIO IMAGE: 17px Top (Baseline Snap) and 10px Left (Lane Shift) */
+.static-transmission .description .align-left {
+    float: left !important;                    
+    margin: 17px 50px 25px 10px !important; 
+    border: 3px solid #666666 !important;
+    box-shadow: 
+        0 0 0 10px #000000, 
+        0 0 0 11px #666666 !important;
+    max-width: 40% !important;
+    height: auto !important;
+    display: block !important;
+}
+
+/* Reset Hero Header vertical air */
+.static-transmission #photobox.page-hero {
+    display: block !important; 
+    min-height: auto !important;
+    padding: 0 !important; 
+    width: auto !important;
+    float: left !important; 
+    background: transparent !important;
+    margin: 0 !important;
+}
+
+/* Kill paragraph top interference to ensure baseline snap */
+.static-transmission .description p:first-of-type {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+/* Kill the manager's ghost break */
+.static-transmission .description img + br {
+    display: none !important;
+}
+
+/* ==========================================================================
+    DASHBOARD & INLINE ASSETS (PARSED SHORTCODES)
+    ========================================================================= */
+
+.inline-asset, .snapsmack-asset {
+    display: block;
+    height: auto;
+    box-sizing: border-box;
+    /* INDEX FRAME: 5px Inner / 15px Space / 1px Outside */
+    border: 5px solid #666666 !important;
+    box-shadow: 
+        0 0 0 15px #000000, 
+        0 0 0 16px #666666 !important;
+    /* PADDING UNDER: 60px space before the next paragraph */
+    margin-top: 20px;
+    margin-bottom: 60px !important; 
+}
+
+/* ENFORCING THE LANE: 850px container minus the 42px of total frame depth */
+.asset-full   { width: calc(100% - 42px) !important; margin-left: auto; margin-right: auto; }
+.asset-medium { width: 50%; min-width: 300px; }
+.asset-small  { width: 25%; min-width: 150px; }
+
+/* Default Public Alignment Fallbacks */
+.align-left { 
+    float: left !important; 
+    margin: 17px 50px 25px 10px !important; 
+}
+
+.align-right { 
+    float: right !important; 
+    margin: 5px 10px 25px 50px !important; 
+}
+
+.align-center { 
+    float: none !important; 
+    margin-left: auto !important; 
+    margin-right: auto !important; 
+}
+
+/* ENFORCED: Clearfix for all description blocks */
+.description::after { content: ""; display: table; clear: both; }
+
+/* ==========================================================================
+    FORM & DASHBOARD UI (FULL RESTORATION)
+    ========================================================================= */
+
+#smack-form input[type="text"], 
+#smack-form select, 
+#smack-form-edit input[type="text"], 
+#smack-form-edit select,
+.input-control-row {
+    height: 42px; 
+    box-sizing: border-box;
+}
+
+.input-control-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #000;
+    border: 1px solid #333;
+    padding: 0 10px;
+}
+
+.input-control-row input[type="text"] {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    flex: 1;
+}
+
+.built-in-label {
+    font-size: 0.7rem;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding-left: 10px;
+    border-left: 1px solid #222; 
+    color: #666;
+    height: 100%;
+    cursor: pointer;
+}
+
+.built-in-label input[type="checkbox"] {
+    margin-right: 6px;
+}
+
+/* Dropdown styling */
+.custom-multiselect {
+    position: relative;
+    width: 100%;
+}
+
+.select-box {
+    background: #000;
+    border: 1px solid #333;
+    color: #ccc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10px;
+    cursor: pointer;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: #111;
+    border: 1px solid #333;
+    z-index: 100;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.dropdown-search-wrapper {
+    padding: 5px;
+    border-bottom: 1px solid #222;
+}
+
+.dropdown-search-wrapper input {
+    width: 100%;
+    background: #000;
+    border: 1px solid #333;
+    color: #fff;
+    padding: 5px;
+}
+
+.multi-cat-item {
+    padding: 8px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    color: #aaa;
+}
+
+.multi-cat-item:hover {
+    background: #222;
+    color: #fff;
+}
+
+.multi-cat-item input {
+    margin-right: 10px;
+}
+
+/* ==========================================================================
+    ARCHIVE CONTROLS
+    ========================================================================= */
+
+#infobox .center {
+    display: flex;
+    gap: 40px; 
+    align-items: center;
+    justify-content: center;
+}
+
+#infobox .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+}
+
+#infobox label.dim {
+    margin-right: 8px;
+    font-size: 0.7rem;
+}
+
+#infobox select {
+    background: #000000;
+    color: #cccccc;
+    border: 1px solid #333333;
+    padding: 5px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+#infobox select:focus {
+    outline: none;
+    border-color: #666666;
+}
+
+#infobox a.active {
+    color: #ffffff;
+    font-size: 0.75rem;
+}
+
+#infobox a.inactive {
+    color: #555555;
+    font-size: 0.75rem;
+}
+
+.empty-sector-msg {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 100px;
+    color: #444444;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 2px;
+}
+
+/* ==========================================================================
+    NOTICE & ERROR STATES
+    ========================================================================= */
+
+.hud-msg {
+    position: fixed;
+    top: -120px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.95);
+    color: #39FF14;
+    border: 1px solid #39FF14;
+    padding: 20px 40px;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    z-index: 10000;
+    transition: top 0.6s cubic-bezier(.2,.9,.2,1);
+}
+
+.hud-msg.show {
+    top: 40px;
+}
+
+.sql-error-notice {
+    background: #200; 
+    color: #f99; 
+    padding: 20px; 
+    font-family: monospace; 
+    border: 1px solid red;
+}
+
+.empty-gallery-msg, .not-found-msg {
+    color: #eee; 
+    text-align: center; 
+    padding: 100px 50px;
+}
+
+/* ==========================================================================
+    REVISED FOOTER SPACING & LINKS
+   ========================================================================= */
+
+#system-footer .sep {
+    display: inline-block;
+    margin: 0 12px; 
+    color: #666;
+}
+
+.footer-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.footer-link:hover {
+    color: #ffffff;
+}
+
+.rss-tag {
+    font-weight: normal;
+    letter-spacing: 1px;
+}
+
+.reverse-email {
+    unicode-bidi: bidi-override;
+    direction: rtl;
+}

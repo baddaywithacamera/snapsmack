@@ -1,0 +1,83 @@
+/**
+ * SnapSmack - Global Public Assets
+ * Version: 1.2 - Theme-Independent Logic
+ * Handles shortcode parsing [img:ID|size|align]
+ */
+
+/* 1. GLOBAL ASSET CONTAINER
+   -------------------------------------------------------------------------
+   Applied to every image injected via shortcode. */
+.snapsmack-asset {
+    display: block;
+    height: auto;
+    max-width: 100%;
+    margin-top: 25px;
+    margin-bottom: 25px;
+}
+
+/* 2. SIZE OVERRIDES
+   -------------------------------------------------------------------------
+   !important is used to ensure these override theme-specific image rules. */
+
+/* Small: 300px width */
+.asset-small {
+    width: 300px !important;
+}
+
+/* Medium: 600px width */
+.asset-medium {
+    width: 600px !important;
+}
+
+/* Full: 100% width */
+.asset-full {
+    width: 100% !important;
+}
+
+/* 3. ALIGNMENT LOGIC
+   ------------------------------------------------------------------------- */
+
+/* Left: Text wraps around the right */
+.align-left {
+    float: left;
+    margin-right: 25px;
+    margin-bottom: 15px;
+}
+
+/* Right: Text wraps around the left */
+.align-right {
+    float: right;
+    margin-left: 25px;
+    margin-bottom: 15px;
+}
+
+/* Center: No wrapping, centered in container */
+.align-center {
+    float: none;
+    margin-left: auto;
+    margin-right: auto;
+    clear: both;
+}
+
+/* 4. CLEARFIX
+   -------------------------------------------------------------------------
+   Prevents floated images from overlapping following sections. 
+   Targeting standard SnapSmack content containers. */
+.description::after, 
+.static-content::after, 
+.post-content::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+/* 5. SCRAPER PROTECTION
+   ------------------------------------------------------------------------- 
+   Applied to the reversed email string injected via core/footer.php.
+   Thwarts automated harvesters by presenting gibberish in the source code
+   while displaying it correctly for the human eye. */
+.reverse-email {
+    display: inline-block;
+    unicode-bidi: bidi-override;
+    direction: rtl;
+}
