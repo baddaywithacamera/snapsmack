@@ -1,7 +1,7 @@
 <?php
 /**
  * SnapSmack - Public Transmission Listener
- * Version: 2.5 - Debugged & Test-Safe
+ * Version: 2.6 - Double-Lock Security Build
  */
 
 // Keep error reporting active for now while we dial this in
@@ -36,14 +36,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
+        // --- START DOUBLE-LOCK SECURITY CHECK ---
+        
+        // A. Fetch Global Setting
+        $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+        $global_on = (($settings['global_comments_enabled'] ?? '1') == '1');
+
+        // B. Fetch Post-Specific Setting
+        $lockStmt = $pdo->prepare("SELECT allow_comments, img_slug FROM snap_images WHERE id = ?");
+        $lockStmt->execute([$img_id]);
+        $img_data = $lockStmt->fetch(PDO::FETCH_ASSOC);
+        
+        $post_on = (($img_data['allow_comments'] ?? '1') == '1');
+        $slug = $img_data['img_slug'] ?? '';
+
+        // C. The Interceptor
+        if (!$global_on || !$post_on) {
+            header("HTTP/1.1 403 Forbidden");
+            die("SIGNAL REJECTED: Comments are disabled for this frequency.");
+        }
+        
+        // --- END DOUBLE-LOCK SECURITY CHECK ---
+
         // 3. Akismet Spam Check 
-        // We run it, but we won't KILL the script if it flags your gibberish.
         if (function_exists('is_spam')) {
             if (is_spam($author, $email, $text, $pdo)) {
-                // To re-enable strict blocking later, uncomment the die() line below.
+                // Currently set to silent flag; uncomment die to block.
                 // die("SIGNAL REJECTED: Akismet flagged this as spam.");
-                
-                // For now, we just let it through to your 'Incoming' queue.
             }
         }
 
@@ -51,13 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("INSERT INTO snap_comments (img_id, comment_author, comment_email, comment_text, comment_ip) VALUES (?, ?, ?, ?, ?)");
         $stmt->execute([$img_id, $author, $email, $text, $ip]);
 
-        // 5. Get Slug for the Redirect
-        $slugStmt = $pdo->prepare("SELECT img_slug FROM snap_images WHERE id = ?");
-        $slugStmt->execute([$img_id]);
-        $slug = $slugStmt->fetchColumn();
-
         // 6. Return home
-        // We use the slug in the URL structure your frontend expects
         $target = "/index.php" . ($slug ? "/" . $slug : "");
         header("Location: " . $target . "?status=received");
         exit;

@@ -1,7 +1,7 @@
 <?php
 /**
  * SnapSmack - Standard Navigation Bar
- * Version: 1.2 - Browse Link Purged
+ * Version: 1.3 - Kill-Switch Aware
  */
 ?>
 <div class="nav-links">
@@ -25,8 +25,11 @@
 
     <span class="center">
         <a href="#" id="show-details">INFO</a>
-        <span class="sep">|</span>
-        <a href="#" id="show-comments">COMMENTS (<?php echo count($comments); ?>)</a>
+        
+        <?php if (($settings['global_comments_enabled'] ?? '1') == '1'): ?>
+            <span class="sep">|</span>
+            <a href="#" id="show-comments">COMMENTS (<?php echo count($comments); ?>)</a>
+        <?php endif; ?>
     </span>
 
     <span class="sep">|</span>

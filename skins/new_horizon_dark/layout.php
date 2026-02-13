@@ -1,12 +1,19 @@
 <?php
 /**
  * SnapSmack - Layout Controller
- * Version: 3.2 - Kill-Switch Integration
+ * Version: 3.4 - Double-Lock Integration
  */
 require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
 
-// Check if comments are enabled globally
-$comments_active = (($settings['global_comments_enabled'] ?? '1') == '1');
+// --- DOUBLE-LOCK SECURITY CHECK ---
+// 1. Check Global Engine Switch
+$global_on = (($settings['global_comments_enabled'] ?? '1') == '1');
+
+// 2. Check Post-Specific Switch (from snap_images table)
+$post_on = (($img['allow_comments'] ?? '1') == '1');
+
+// 3. Final Permission: Both must be TRUE
+$comments_active = ($global_on && $post_on);
 ?>
 
 <div id="scroll-stage">
@@ -22,20 +29,17 @@ $comments_active = (($settings['global_comments_enabled'] ?? '1') == '1');
     </div>
 
     <div id="infobox">
-        <?php include dirname(__DIR__, 2) . '/core/navigation_bar.php'; ?>
-        
-        <?php if ($comments_active): ?>
-            <span class="sep">|</span><a href="#" id="toggle-comments">COMMENTS (<?php echo count($comments); ?>)</a>
-        <?php endif; ?>
+        <?php 
+        /* The navigation bar handles its own Comment link/pipe logic internally */
+        include dirname(__DIR__, 2) . '/core/navigation_bar.php'; 
+        ?>
     </div>
 
     <div id="footer">
         <div id="pane-info" class="footer-pane">
             <h2 class="photo-title-footer"><?php echo htmlspecialchars($img['img_title']); ?></h2>
             <div class="description">
-                <?php 
-                echo $snapsmack->parseContent($img['img_description'] ?? '');
-                ?>
+                <?php echo $snapsmack->parseContent($img['img_description'] ?? ''); ?>
             </div>
             
             <div class="meta">
@@ -43,14 +47,9 @@ $comments_active = (($settings['global_comments_enabled'] ?? '1') == '1');
                 <table class="exif-table">
                     <?php 
                     $labels = [
-                        'Model' => 'Model', 
-                        'lens' => 'Lens', 
-                        'FNumber' => 'Aperture', 
-                        'ExposureTime' => 'Shutter', 
-                        'ISOSpeedRatings' => 'ISO', 
-                        'FocalLength' => 'Focal', 
-                        'film' => 'Film', 
-                        'flash' => 'Flash'
+                        'Model' => 'Model', 'lens' => 'Lens', 'FNumber' => 'Aperture', 
+                        'ExposureTime' => 'Shutter', 'ISOSpeedRatings' => 'ISO', 
+                        'FocalLength' => 'Focal', 'film' => 'Film', 'flash' => 'Flash'
                     ];
                     foreach($labels as $key => $label): ?>
                         <?php if(!empty($exif_data[$key]) && $exif_data[$key] !== 'N/A'): ?>
@@ -67,14 +66,19 @@ $comments_active = (($settings['global_comments_enabled'] ?? '1') == '1');
         <?php if ($comments_active): ?>
             <div id="pane-comments" class="footer-pane" style="display:none;">
                 <div class="meta-header" style="margin-bottom: 40px; text-align:center;">TRANSMISSIONS</div>
+                
                 <?php if ($comments): ?>
                     <table class="exif-table" style="width:100%; margin-bottom:40px;">
                         <?php foreach($comments as $c): ?>
                             <tr>
-                                <td class="exif-label" style="vertical-align:top; width:120px;"><?php echo htmlspecialchars($c['comment_author']); ?></td>
+                                <td class="exif-label" style="vertical-align:top; width:120px;">
+                                    <?php echo htmlspecialchars($c['comment_author']); ?>
+                                </td>
                                 <td class="exif-value">
                                     <?php echo nl2br(htmlspecialchars($c['comment_text'])); ?>
-                                    <div style="font-size:0.7rem; color:#444; margin-top:5px;">[<?php echo date('Y-m-d', strtotime($c['comment_date'])); ?>]</div>
+                                    <div style="font-size:0.7rem; color:#444; margin-top:5px;">
+                                        [<?php echo date('Y-m-d', strtotime($c['comment_date'])); ?>]
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
