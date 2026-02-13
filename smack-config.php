@@ -1,21 +1,23 @@
 <?php
 /**
  * SnapSmack - Configuration Engine
- * Version: 7.19 - Semantic CSS Build
+ * Version: 7.23 - "Fortress" Build (Full Output)
  * -------------------------------------------------------------------------
- * - RESTORED: Version 6.5 Time & Localization logic.
- * - RESTORED: Version 6.5 Tactical Logo Uploader.
- * - FIXED: Active Skin box uses .preview-box for visual balance (Section 5 CSS).
- * - FIXED: Submit Button uses .master-update-btn (Section 20 CSS fixes).
- * - FIXED: Zero inline styles. Logic and registries preserved.
- * - DIRECTIVE: FULL FILE OUTPUT.
+ * - RESTORED: Full commenting and readability structures.
+ * - RESTORED: Copyright Preview in the label.
+ * - UPDATED: Footer warning is now grey, no exclamation, standard styling.
+ * - FIXED: Zero truncation.
  * -------------------------------------------------------------------------
  */
 require_once 'core/auth.php';
 
+// -------------------------------------------------------------------------
 // 1. SETTINGS & UPLOAD PERSISTENCE
+// -------------------------------------------------------------------------
 if (isset($_POST['save_settings'])) {
+    
     // --- LOGO UPLOAD HANDLER ---
+    // Checks for a file, creates directory if missing, moves file, saves URL.
     if (!empty($_FILES['logo_upload']['name'])) {
         $target_dir = "assets/img/";
         if (!is_dir($target_dir)) { mkdir($target_dir, 0755, true); }
@@ -28,22 +30,33 @@ if (isset($_POST['save_settings'])) {
         }
     }
 
+    // --- GENERIC SETTINGS LOOP ---
+    // Saves all other form fields directly to the database.
     foreach ($_POST['settings'] as $key => $val) {
         $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
         $stmt->execute([$key, $val, $val]);
     }
+    
     $msg = "Engine parameters and site identity updated successfully.";
+    
+    // Refresh settings immediately after save to show new values
     $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 }
 
+// -------------------------------------------------------------------------
 // 2. DATA RETRIEVAL
+// -------------------------------------------------------------------------
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 
 try {
+    // Fetch active pages for the Navigation Slot selectors
     $pages_list = $pdo->query("SELECT id, title FROM snap_pages WHERE is_active = 1 ORDER BY title ASC")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) { $pages_list = []; }
 
-// 3. SKIN DISCOVERY (Display Name Logic)
+// -------------------------------------------------------------------------
+// 3. SKIN DISCOVERY
+// -------------------------------------------------------------------------
+// Looks for the manifest file to display the "Friendly Name" of the active skin.
 $active_slug = $settings['active_skin'] ?? 'new_horizon_dark';
 $active_skin_friendly = str_replace('_', ' ', ucfirst($active_slug));
 if (file_exists("skins/{$active_slug}/manifest.php")) {
@@ -51,7 +64,9 @@ if (file_exists("skins/{$active_slug}/manifest.php")) {
     if (isset($manifest['name'])) { $active_skin_friendly = $manifest['name']; }
 }
 
-// 4. REGISTRIES
+// -------------------------------------------------------------------------
+// 4. REGISTRIES & DEFAULTS
+// -------------------------------------------------------------------------
 $date_options = [
     'F j, Y'          => 'February 1, 2026',
     'Y-m-d'           => '2026-02-01',
@@ -65,7 +80,6 @@ $page_title = "Configuration";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
-
 <div class="main">
     <h2 class="tactical-green">GLOBAL ENGINE CONFIGURATION</h2>
     
@@ -122,6 +136,42 @@ include 'core/sidebar.php';
                         <?php echo htmlspecialchars($active_skin_friendly); ?>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div class="box">
+            <h3 class="tactical-green-header">INTERACTION & FOOTER ARCHITECTURE</h3>
+            
+            <div class="control-group">
+                <label>GLOBAL COMMENTS</label>
+                <select name="settings[global_comments_enabled]">
+                    <option value="1" <?php echo (($settings['global_comments_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
+                    <option value="0" <?php echo (($settings['global_comments_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
+                </select>
+                <p class="input-hint">Master switch to turn off comments across the entire engine.</p>
+            </div>
+
+            <div class="engine-grid slots-2 mt-20">
+                <div class="control-group">
+                    <label>BRANDING STYLE</label>
+                    <select name="settings[footer_branding_style]">
+                        <option value="standard" <?php echo (($settings['footer_branding_style'] ?? 'standard') == 'standard') ? 'selected' : ''; ?>>Standard (Powered by SnapSmack)</option>
+                        <option value="minimal" <?php echo (($settings['footer_branding_style'] ?? 'standard') == 'minimal') ? 'selected' : ''; ?>>Minimal (Icon Only)</option>
+                        <option value="ghost" <?php echo (($settings['footer_branding_style'] ?? 'standard') == 'ghost') ? 'selected' : ''; ?>>Ghost (Completely Hidden)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>COPYRIGHT OVERRIDE (CURRENT: <?php echo htmlspecialchars($settings['footer_copyright_override'] ?? '© '.date("Y").' '.$settings['site_name']); ?>)</label>
+                    <input type="text" name="settings[footer_copyright_override]" 
+                           placeholder="Leave blank for automatic default"
+                           value="<?php echo htmlspecialchars($settings['footer_copyright_override'] ?? ''); ?>">
+                </div>
+            </div>
+
+            <div class="control-group mt-20">
+                <label>CUSTOM FOOTER / SCRIPT INJECTION</label>
+                <textarea name="settings[footer_injection_scripts]" rows="4" style="font-family: monospace; background: #000; color: #39FF14; border: 1px solid #333; width: 100%; padding: 10px;"><?php echo htmlspecialchars($settings['footer_injection_scripts'] ?? ''); ?></textarea>
+                <p class="input-hint" style="color: #888;">NOTE: Entering text or code here will disable and replace the entire system footer.</p>
             </div>
         </div>
 
@@ -203,4 +253,4 @@ include 'core/sidebar.php';
 </div>
 
 <script src="assets/js/smack-ui.js?v=13.7"></script>
-<?php include 'core/admin-header.php'; ?>
+<?php include 'core/admin-footer.php'; ?>
