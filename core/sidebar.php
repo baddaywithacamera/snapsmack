@@ -18,7 +18,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <h2>SnapSmack</h2>
         <ul>
             <li class="nav-group">
-                <strong>Editor Controls</strong>
+                <strong>The Good Shit</strong>
                 <ul class="sub-nav">
                     <li class="<?php echo ($current_page == 'smack-admin.php') ? 'active' : ''; ?>">
                         <a href="smack-admin.php">Dashboard</a>
@@ -60,7 +60,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </li>
 
             <li class="nav-group">
-                <strong>System</strong>
+                <strong>Boring but Necessary</strong>
                 <ul class="sub-nav">
                     <li class="<?php echo ($current_page == 'smack-config.php') ? 'active' : ''; ?>">
                         <a href="smack-config.php">Configuration</a>
