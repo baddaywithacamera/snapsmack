@@ -1,18 +1,18 @@
 <?php
 /**
  * SnapSmack - Layout Controller
- * Version: 3.4 - Double-Lock Integration
+ * Version: 3.5 - Stability Build (Full Output)
+ * -------------------------------------------------------------------------
+ * - FIXED: Kept #pane-comments container in DOM to prevent JS errors.
+ * - FIXED: Double-lock logic (Global + Post) intact.
+ * - DIRECTIVE: NO TRUNCATION.
+ * -------------------------------------------------------------------------
  */
 require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
 
 // --- DOUBLE-LOCK SECURITY CHECK ---
-// 1. Check Global Engine Switch
 $global_on = (($settings['global_comments_enabled'] ?? '1') == '1');
-
-// 2. Check Post-Specific Switch (from snap_images table)
-$post_on = (($img['allow_comments'] ?? '1') == '1');
-
-// 3. Final Permission: Both must be TRUE
+$post_on   = (($img['allow_comments'] ?? '1') == '1');
 $comments_active = ($global_on && $post_on);
 ?>
 
@@ -30,7 +30,7 @@ $comments_active = ($global_on && $post_on);
 
     <div id="infobox">
         <?php 
-        /* The navigation bar handles its own Comment link/pipe logic internally */
+        /* Navigation bar handles its own internal comment link/pipe logic */
         include dirname(__DIR__, 2) . '/core/navigation_bar.php'; 
         ?>
     </div>
@@ -63,8 +63,9 @@ $comments_active = ($global_on && $post_on);
             </div>
         </div>
 
-        <?php if ($comments_active): ?>
-            <div id="pane-comments" class="footer-pane" style="display:none;">
+        <div id="pane-comments" class="footer-pane" style="display:none;">
+            <?php if ($comments_active): ?>
+                
                 <div class="meta-header" style="margin-bottom: 40px; text-align:center;">TRANSMISSIONS</div>
                 
                 <?php if ($comments): ?>
@@ -96,8 +97,9 @@ $comments_active = ($global_on && $post_on);
                     <textarea name="comment_text" placeholder="MESSAGE..." required></textarea>
                     <button type="submit">TRANSMIT</button>
                 </form>
-            </div>
-        <?php endif; ?>
+
+            <?php endif; ?>
+        </div>
     </div>
 
     <?php include('footer.php'); ?>
