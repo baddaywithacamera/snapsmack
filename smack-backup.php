@@ -1,8 +1,13 @@
 <?php
 /**
  * SnapSmack - System Backup & Recovery
- * Version: 4.0 - Balanced Architecture
- * MASTER DIRECTIVE: Full file return. No truncation. No inline CSS.
+ * Version: 4.5 - Schema & Layout Patch
+ * -------------------------------------------------------------------------
+ * - ADDED: Schema-Only Export (Structure without data).
+ * - FIXED: Layout reorganized into 3-block top row and 2-block asset row.
+ * - MASTER DIRECTIVE: Full file return. No truncation. No inline CSS.
+ * - COLORS: Teal, Purple, Gold for logic; Blue, Orange for assets.
+ * -------------------------------------------------------------------------
  */
 
 require_once 'core/auth.php';
@@ -11,27 +16,33 @@ $msg = "";
 $timestamp = date('Y-m-d_His');
 
 // --- 1. DATABASE BACKUP & RECOVERY LOGIC ---
-if (isset($_GET['action']) && ($_GET['action'] === 'db' || $_GET['action'] === 'users')) {
+if (isset($_GET['action']) && ($_GET['action'] === 'db' || $_GET['action'] === 'users' || $_GET['action'] === 'schema')) {
     $type = $_GET['action'];
-    $filename = ($type === 'users') ? 'snapsmack_RECOVERY_users_' . $timestamp . '.sql' : 'snapsmack_full_db_' . $timestamp . '.sql';
     
+    // Set headers and define filenames
     header('Content-Type: application/octet-stream');
-    header('Content-Disposition: attachment; filename=' . $filename);
     
-    // Define table sets
     if ($type === 'users') {
+        $filename = 'snapsmack_RECOVERY_users_' . $timestamp . '.sql';
         $tables = ['snap_users'];
         echo "-- SnapSmack EMERGENCY ACCESS RECOVERY\n";
         echo "-- Purpose: Restore administrative access credentials.\n";
+    } elseif ($type === 'schema') {
+        $filename = 'snapsmack_SCHEMA_ONLY_' . $timestamp . '.sql';
+        $tables = ['snap_users', 'snap_images', 'snap_categories', 'snap_image_cat_map', 'snap_settings', 'snap_comments', 'snap_pages', 'snap_assets'];
+        echo "-- SnapSmack ENGINE SCHEMA ONLY\n";
+        echo "-- Purpose: Clone system architecture without existing content.\n";
     } else {
+        $filename = 'snapsmack_full_db_' . $timestamp . '.sql';
         $tables = ['snap_users', 'snap_images', 'snap_categories', 'snap_image_cat_map', 'snap_settings', 'snap_comments', 'snap_pages', 'snap_assets'];
         echo "-- SnapSmack Full Database Dump\n";
     }
-    
+
+    header('Content-Disposition: attachment; filename=' . $filename);
     echo "-- Generated: " . date('Y-m-d H:i:s') . "\n\n";
 
     foreach ($tables as $table) {
-        // 1. Structure
+        // 1. Structure (Always Exported)
         echo "DROP TABLE IF EXISTS `$table`;\n";
         try {
             $create_stmt = $pdo->query("SHOW CREATE TABLE `$table`")->fetch(PDO::FETCH_ASSOC);
@@ -40,22 +51,24 @@ if (isset($_GET['action']) && ($_GET['action'] === 'db' || $_GET['action'] === '
             continue; // Skip if table doesn't exist
         }
 
-        // 2. Data
-        $query = "SELECT * FROM `$table`";
-        $rows = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);
-        
-        if ($rows) {
-            $columns = array_map(function($k){ return "`$k`"; }, array_keys($rows[0]));
-            echo "INSERT INTO `$table` (" . implode(', ', $columns) . ") VALUES \n";
+        // 2. Data (Skipped for 'schema' type)
+        if ($type !== 'schema') {
+            $query = "SELECT * FROM `$table`";
+            $rows = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);
             
-            $count = count($rows);
-            foreach ($rows as $i => $row) {
-                $vals = array_map(function($v) use ($pdo) { 
-                    return $v === null ? 'NULL' : $pdo->quote($v); 
-                }, array_values($row));
+            if ($rows) {
+                $columns = array_map(function($k){ return "`$k`"; }, array_keys($rows[0]));
+                echo "INSERT INTO `$table` (" . implode(', ', $columns) . ") VALUES \n";
                 
-                echo "(" . implode(', ', $vals) . ")";
-                echo ($i === $count - 1) ? ";\n\n" : ",\n";
+                $count = count($rows);
+                foreach ($rows as $i => $row) {
+                    $vals = array_map(function($v) use ($pdo) { 
+                        return $v === null ? 'NULL' : $pdo->quote($v); 
+                    }, array_values($row));
+                    
+                    echo "(" . implode(', ', $vals) . ")";
+                    echo ($i === $count - 1) ? ";\n\n" : ",\n";
+                }
             }
         }
     }
@@ -108,15 +121,23 @@ include 'core/sidebar.php';
             <p class="maint-desc">
                 Exports system architecture, settings, and content. This SQL file is formatted for direct import via phpMyAdmin or the SnapSmack CLI.
             </p>
-            <button onclick="runBackup(this, 'db')" class="btn-green">GET FULL SQL DUMP</button>
+            <button onclick="runBackup(this, 'db')" class="btn-teal">GET FULL SQL DUMP</button>
         </div>
 
         <div class="box">
             <h3>Emergency Access (The Keys)</h3>
             <p class="maint-desc">
-                Extracts only the user table and Bcrypt password hashes. Essential for regaining entry to the system if a database becomes corrupted.
+                Extracts only the user table and hashes. Essential for regaining entry to the system if a database becomes corrupted.
             </p>
-            <button onclick="runBackup(this, 'users')" class="btn-green">GET RECOVERY SQL</button>
+            <button onclick="runBackup(this, 'users')" class="btn-purple">GET RECOVERY SQL</button>
+        </div>
+
+        <div class="box">
+            <h3>Engine Schema (The DNA)</h3>
+            <p class="maint-desc">
+                Exports the structure and table architecture without any content or user data. Perfect for Git commits or cloning to new domains.
+            </p>
+            <button onclick="runBackup(this, 'schema')" class="btn-green">GET SCHEMA ONLY</button>
         </div>
 
     </div>

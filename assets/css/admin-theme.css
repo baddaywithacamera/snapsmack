@@ -1,6 +1,11 @@
 /**
  * SnapSmack - Admin Interface Theme
- * Version: 15.3 - Verified Layout & Deduplication
+ * Version: 15.4 - Backup Patch & Tactical Colors
+ * -------------------------------------------------------------------------
+ * - ADDED: .btn-teal, .btn-purple, .btn-gold for the Backup Engine.
+ * - FIXED: Color contrast for tactical button states.
+ * - RETAINED: Full structural integrity and layout deduplication.
+ * -------------------------------------------------------------------------
  */
 
 /* 1. RESET & GLOBAL BASE    
@@ -129,7 +134,7 @@ html, body {
     font-weight: 600;
 }
 
-.sidebar-bottom { padding-top: 20px; border-top: 1px solid #1a1a1a; }
+.sidebar-bottom { padding-top: 20px; border-top: 0px solid #1a1a1a; }
 
 .sidebar .logout {
     color: #ff3e3e;
@@ -409,7 +414,7 @@ textarea {
 
 /* 8. BUTTONS & ACTIONS    
    ------------------------------------------------------------------------- */
-button, .btn-smack, .btn-clear, .action-authorize, .action-delete, .action-edit, .action-swap, .btn-green, .btn-blue, .btn-orange, .maint-btn, .master-update-btn {
+button, .btn-smack, .btn-clear, .action-authorize, .action-delete, .action-edit, .action-swap, .btn-green, .btn-blue, .btn-orange, .maint-btn, .master-update-btn, .btn-teal, .btn-purple, .btn-gold {
     height: 52px;
     display: inline-flex;
     align-items: center;
@@ -427,16 +432,21 @@ button, .btn-smack, .btn-clear, .action-authorize, .action-delete, .action-edit,
     border: none;
 }
 
-.maint-btn, #submit-btn, .master-update-btn, .btn-green, .btn-blue, .btn-orange { width: 100% !important; }
+.maint-btn, #submit-btn, .master-update-btn, .btn-green, .btn-blue, .btn-orange, .btn-teal, .btn-purple, .btn-gold { width: 100% !important; }
 
 button, .btn-smack, .btn-green, .master-update-btn { background: #39FF14 !important; color: #000 !important; }
 .btn-blue { background: #007bff !important; color: #fff !important; }
 .btn-orange { background: #e67e22 !important; color: #fff !important; }
 
-button:hover, .btn-smack:hover, .btn-green:hover, .btn-blue:hover, .btn-orange:hover, .maint-btn:hover { 
+/* NEW TACTICAL RECOVERY COLORS */
+.btn-teal { background: #00afaf !important; color: #000 !important; }
+.btn-purple { background: #8e44ad !important; color: #fff !important; }
+.btn-gold { background: #f39c12 !important; color: #000 !important; }
+
+button:hover, .btn-smack:hover, .btn-green:hover, .btn-blue:hover, .btn-orange:hover, .maint-btn:hover, .btn-teal:hover, .btn-purple:hover, .btn-gold:hover { 
     filter: brightness(1.2); 
     transform: translateY(-1px); 
-    box-shadow: 0 0 15px rgba(57, 255, 20, 0.2); 
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1); 
 }
 
 #submit-btn { width: 100%; margin-top: 30px; background: #39FF14 !important; color: #000 !important; }
@@ -688,7 +698,7 @@ input[type="range"]::-webkit-slider-thumb {
 .footer-left {
     color: #888;
     font-family: 'Courier Prime', 'Courier New', monospace;
-    font-size: 0.7rem;
+    font-size: 0.8rem;
     letter-spacing: 0.5px;
     text-transform: uppercase;
     max-width: 65%;
