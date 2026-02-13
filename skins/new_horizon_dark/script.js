@@ -10,7 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const paneInfo = document.getElementById('pane-info');
     const paneComm = document.getElementById('pane-comments');
 
-    if (footer && btnInfo && btnComm) {
+    // DECOUPLED CHECK: We only need the footer and at least ONE button to exist.
+    if (footer && (btnInfo || btnComm)) {
         footer.style.display = 'none';
         footer.style.overflow = 'hidden';
         footer.style.maxHeight = '0';
@@ -22,8 +23,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e) e.preventDefault();
             if (animating) return;
 
+            // SAFETY: If the requested pane doesn't exist in the DOM, abort.
+            if (target === 'comments' && !paneComm) return;
+            if (target === 'info' && !paneInfo) return;
+
             const isClosed = footer.style.display === 'none';
-            const activePane = paneInfo.style.display === 'none' ? 'comments' : 'info';
+            const activePane = (paneInfo && paneInfo.style.display !== 'none') ? 'info' : 'comments';
 
             // 1. If footer is open and user clicks the SAME button, close it.
             if (!isClosed && target === activePane) {
@@ -32,12 +37,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 2. Switch the content panes immediately
-            if (target === 'comments') {
-                paneInfo.style.display = 'none';
+            if (target === 'comments' && paneComm) {
+                if (paneInfo) paneInfo.style.display = 'none';
                 paneComm.style.display = 'block';
-            } else {
+            } else if (target === 'info' && paneInfo) {
                 paneInfo.style.display = 'block';
-                paneComm.style.display = 'none';
+                if (paneComm) paneComm.style.display = 'none';
             }
 
             // 3. Open or Recalculate Height
@@ -89,10 +94,11 @@ document.addEventListener('DOMContentLoaded', () => {
             footer.addEventListener('transitionend', onCloseEnd);
         };
 
-        btnInfo.addEventListener('click', (e) => handleToggle('info', e));
-        btnComm.addEventListener('click', (e) => handleToggle('comments', e));
+        // Attach listeners only if the buttons actually exist
+        if (btnInfo) btnInfo.addEventListener('click', (e) => handleToggle('info', e));
+        if (btnComm) btnComm.addEventListener('click', (e) => handleToggle('comments', e));
 
-        // EXPOSE handleToggle globally so we can open the comments pane programmatically
+        // EXPOSE handleToggle globally
         window.smackdown = { toggleFooter: handleToggle };
     }
 
@@ -180,28 +186,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     
     if (urlParams.get('status') === 'received') {
-        // 1. Create the notification element
         const hud = document.createElement('div');
         hud.className = 'hud-msg';
         hud.innerText = 'TRANSMISSION RECEIVED // AWAITING AUTHORIZATION';
         document.body.appendChild(hud);
 
-        // 2. Trigger animation
         setTimeout(() => hud.classList.add('show'), 100);
 
-        // 3. Open the comments pane automatically so they see where it goes
-        if (window.smackdown) {
+        // Only auto-open if comments are actually enabled
+        if (window.smackdown && btnComm) {
             setTimeout(() => {
                 window.smackdown.toggleFooter('comments');
             }, 600);
         }
 
-        // 4. Cleanup
         setTimeout(() => {
             hud.classList.remove('show');
             setTimeout(() => hud.remove(), 600);
-            
-            // Wipe the URL status so it doesn't re-trigger on refresh
             window.history.replaceState({}, document.title, window.location.pathname);
         }, 5000);
     }
