@@ -1,7 +1,7 @@
 <?php
 /**
  * SnapSmack - Manage Archive
- * Version: 4.1 - Universal Integration & Mission Awareness
+ * Version: 4.2 - Transmission & Kill-Switch Aware
  * MASTER DIRECTIVE: Full file return. 
  */
 require_once 'core/auth.php';
@@ -21,6 +21,7 @@ if (isset($_GET['delete'])) {
     $pdo->prepare("DELETE FROM snap_images WHERE id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_image_album_map WHERE image_id = ?")->execute([$id]);
+    $pdo->prepare("DELETE FROM snap_comments WHERE img_id = ?")->execute([$id]);
 
     header("Location: smack-manage.php?msg=deleted");
     exit;
@@ -82,7 +83,8 @@ $sql = "SELECT i.*,
         (SELECT GROUP_CONCAT(a.album_name ORDER BY a.album_name ASC SEPARATOR ', ') 
          FROM snap_albums a 
          JOIN snap_image_album_map am ON a.id = am.album_id 
-         WHERE am.image_id = i.id) as album_list
+         WHERE am.image_id = i.id) as album_list,
+        (SELECT COUNT(*) FROM snap_comments WHERE img_id = i.id) as comment_count
         FROM snap_images i
         $where_sql
         ORDER BY i.img_date DESC
@@ -106,12 +108,10 @@ include 'core/sidebar.php';
 
     <div class="box">
         <form method="GET" class="meta-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr auto; align-items: end; gap: 15px;">
-            
             <div class="lens-input-wrapper">
                 <label>Technical Search</label>
                 <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" placeholder="Keywords...">
             </div>
-            
             <div class="lens-input-wrapper">
                 <label>Status</label>
                 <select name="status">
@@ -121,7 +121,6 @@ include 'core/sidebar.php';
                     <option value="draft" <?php if($status_filter == 'draft') echo 'selected'; ?>>Drafts</option>
                 </select>
             </div>
-
             <div class="lens-input-wrapper">
                 <label>Registry (Cat)</label>
                 <select name="cat_id">
@@ -133,7 +132,6 @@ include 'core/sidebar.php';
                     <?php endforeach; ?>
                 </select>
             </div>
-
             <div class="lens-input-wrapper">
                 <label>Mission (Album)</label>
                 <select name="album_id">
@@ -145,7 +143,6 @@ include 'core/sidebar.php';
                     <?php endforeach; ?>
                 </select>
             </div>
-
             <div class="filter-actions" style="display:flex; gap:10px;">
                 <button type="submit">FILTER</button>
                 <a href="smack-manage.php" class="btn-clear" style="display:inline-flex; align-items:center; justify-content:center; text-decoration:none; padding: 0 20px; height: 52px; border-radius: 4px;">RESET</a>
@@ -157,11 +154,11 @@ include 'core/sidebar.php';
         <?php if (empty($post_list)): ?>
             <p class="dim" style="text-align:center; padding:40px;">No archive entries match these criteria.</p>
         <?php else: ?>
-
             <?php foreach ($post_list as $p): ?>
                 <?php 
                     $is_draft = ($p['img_status'] === 'draft');
                     $is_scheduled = ($p['img_status'] === 'published' && strtotime($p['img_date']) > time());
+                    $is_muted = (($p['allow_comments'] ?? 1) == 0);
                     
                     $badge_style = "";
                     $badge_text = "";
@@ -178,15 +175,18 @@ include 'core/sidebar.php';
                     }
                 ?>
                 <div class="recent-item" style="<?php echo $item_border; ?>">
-                    
                     <div class="item-details">
-                        <img src="<?php echo $p['img_file']; ?>" alt="Thumb" class="archive-thumb">
-                        
+                        <img src="/<?php echo ltrim($p['img_file'], '/'); ?>" alt="Thumb" class="archive-thumb">
                         <div class="item-text">
                             <strong class="item-title">
                                 <?php if ($badge_text): ?>
                                     <span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 3px; vertical-align: middle; margin-right: 8px; font-weight: 900; <?php echo $badge_style; ?>">
                                         <?php echo $badge_text; ?>
+                                    </span>
+                                <?php endif; ?>
+                                <?php if ($is_muted): ?>
+                                    <span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 3px; vertical-align: middle; margin-right: 8px; font-weight: 900; background: #ff3333; color: #fff;" title="Comments Disabled">
+                                        MUTED
                                     </span>
                                 <?php endif; ?>
                                 <?php echo htmlspecialchars($p['img_title']); ?>
@@ -202,6 +202,9 @@ include 'core/sidebar.php';
                                 <span style="color:#00E5FF; margin-left:10px;">
                                     [ MISSION: <?php echo htmlspecialchars($p['album_list'] ?: 'NONE'); ?> ]
                                 </span>
+                                <span style="color:#ffaa00; margin-left:10px; font-weight: bold;">
+                                    [ TRANS: <?php echo (int)$p['comment_count']; ?> ]
+                                </span>
                             </span>
                         </div>
                     </div>
@@ -211,7 +214,6 @@ include 'core/sidebar.php';
                         <a href="smack-swap.php?id=<?php echo $p['id']; ?>" class="action-swap">SWAP</a>
                         <a href="?delete=<?php echo $p['id']; ?>" class="action-delete" onclick="return confirm('PERMANENTLY PURGE this file?');">DELETE</a>
                     </div>
-
                 </div>
             <?php endforeach; ?>
 
@@ -225,7 +227,6 @@ include 'core/sidebar.php';
                     <?php endfor; ?>
                 </div>
             <?php endif; ?>
-
         <?php endif; ?>
     </div>
 </div>

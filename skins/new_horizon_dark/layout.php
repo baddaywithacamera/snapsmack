@@ -1,11 +1,11 @@
 <?php
 /**
  * SnapSmack - Layout Controller
- * Version: 3.5 - Stability Build (Full Output)
+ * Version: 3.7 - Unified UI Integration
  * -------------------------------------------------------------------------
- * - FIXED: Kept #pane-comments container in DOM to prevent JS errors.
- * - FIXED: Double-lock logic (Global + Post) intact.
- * - DIRECTIVE: NO TRUNCATION.
+ * - FIXED: Script pointer moved to assets/js/smack-ui-public.js
+ * - FIXED: Kept empty comment containers in DOM to prevent JS "null" errors.
+ * - FIXED: Both Info and Comment toggles restored via Centralized Engine.
  * -------------------------------------------------------------------------
  */
 require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
@@ -30,13 +30,13 @@ $comments_active = ($global_on && $post_on);
 
     <div id="infobox">
         <?php 
-        /* Navigation bar handles its own internal comment link/pipe logic */
+        /* The navigation bar handles its own link logic */
         include dirname(__DIR__, 2) . '/core/navigation_bar.php'; 
         ?>
     </div>
 
     <div id="footer">
-        <div id="pane-info" class="footer-pane">
+        <div id="pane-info" class="footer-pane" style="display:none;">
             <h2 class="photo-title-footer"><?php echo htmlspecialchars($img['img_title']); ?></h2>
             <div class="description">
                 <?php echo $snapsmack->parseContent($img['img_description'] ?? ''); ?>
@@ -105,3 +105,6 @@ $comments_active = ($global_on && $post_on);
     <?php include('footer.php'); ?>
 
 </div>
+
+<script src="<?php echo BASE_URL; ?>assets/js/smack-ui-public.js?v=<?php echo time(); ?>"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/hotkey-engine.js?v=<?php echo time(); ?>"></script>

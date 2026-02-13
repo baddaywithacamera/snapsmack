@@ -3,6 +3,7 @@
  * Version: 13.7 - Core Admin Logic & Time Sync
  * MASTER DIRECTIVE: Full logic preservation. Readability is paramount.
  * Handles: File Uploads, Metadata Preflight, AJAX Transmission, and Engine Configuration.
+ * Renamed from smack-ui.js to smack-ui-private.js as handles private UI functions
  */
 
 console.log("LOG: SNAPSMACK UI Engine v13.7 active.");

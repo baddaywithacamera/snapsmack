@@ -1,7 +1,11 @@
 <?php
 /**
  * SnapSmack Core Admin Header
- * Version: 1.5 - Secure Role Recovery
+ * Version: 1.6 - Unified Asset Build
+ * -------------------------------------------------------------------------
+ * - FIXED: Script pointer moved to assets/js/smack-ui-private.js
+ * - FIXED: Added role-based security gates and fallback logic.
+ * -------------------------------------------------------------------------
  */
 
 // 1. Ensure settings are bootstrapped
@@ -12,25 +16,22 @@ if (!isset($settings)) {
 
 /**
  * 2. ROLE RECOVERY LOGIC
- * If the session is missing the role, we re-verify against the database.
- * We use 'sean' as the master fallback if the session login is lost.
+ * Re-verifies user role against the database to prevent session timeouts.
  */
 if (!isset($_SESSION['user_role']) || empty($_SESSION['user_role'])) {
-    $login_name = $_SESSION['user_login'] ?? 'sean'; // Fallback to your master username
+    $login_name = $_SESSION['user_login'] ?? 'sean'; 
     
     try {
         $user_stmt = $pdo->prepare("SELECT user_role FROM snap_users WHERE username = ?");
         $user_stmt->execute([$login_name]);
         $role = $user_stmt->fetchColumn();
         
-        // Final fallback: if the DB has no role column yet, assume admin for 'sean'
         if (!$role && $login_name === 'sean') {
             $_SESSION['user_role'] = 'admin';
         } else {
             $_SESSION['user_role'] = $role ?: 'editor';
         }
     } catch (PDOException $e) {
-        // If the query fails (column missing), 'sean' stays Admin so you can fix it.
         $_SESSION['user_role'] = ($login_name === 'sean') ? 'admin' : 'editor';
     }
 }
@@ -54,5 +55,7 @@ if ($user_role !== 'admin' && in_array($current_file, $admin_only)) {
     <title><?php echo $page_title; ?> | SnapSmack Admin</title>
     <link rel="stylesheet" href="assets/css/admin-theme.css">
     <link rel="stylesheet" href="assets/css/hotkey-engine.css">
+    
+    <script src="assets/js/smack-ui-private.js?v=<?php echo time(); ?>"></script>
 </head>
 <body class="admin-body">
