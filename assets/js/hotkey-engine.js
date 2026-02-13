@@ -1,12 +1,12 @@
 /**
  * SnapSmack - Hotkey Engine
- * Version: 3.0 - Mobile Aware Persistence
+ * Version: 3.1 - Kill-Switch Aware
  * MASTER DIRECTIVE: Full file return. Logic only. Uses hotkey-engine.css.
+ * - FIXED: Shortcut [2] now respects the global/post comment kill-switch.
  * - FIXED: Input protection prevents hotkey interference during typing.
  * - FIXED: Wall collision check ensures no conflict with 3D Wall logic.
  * - FIXED: Spacebar scroll protection (only navigates at bottom of page).
  * - FIXED: Persistence check prevents help toast from showing every time.
- * - FIXED: Mobile Silence ensures F1 prompt never shows on touch devices.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -59,6 +59,7 @@ document.addEventListener('keydown', function(e) {
         }
     }
 
+    // [MODIFIED] Shortcut 2: Only fire if the button exists (is enabled)
     if (e.key === '2') {
         const commBtn = document.getElementById('show-comments');
         if (commBtn) {
@@ -126,6 +127,10 @@ function createHelpModal() {
     const bgColor = style.backgroundColor;
     const textColor = style.color;
     
+    // Logic check: If comments are disabled, we hide the [2] hint from the help menu
+    const commentsEnabled = document.getElementById('show-comments') !== null;
+    const commentHint = commentsEnabled ? '<strong>[ 2 ]</strong> <span>Toggle Comments</span>' : '';
+
     const modal = document.createElement('div');
     modal.id = 'snap-help-modal';
     modal.style.backgroundColor = bgColor;
@@ -139,7 +144,7 @@ function createHelpModal() {
             <strong>RIGHT</strong> <span>Next Image</span>
             <strong>SPACE</strong> <span>Next Image</span>
             <strong>[ 1 ]</strong> <span>Toggle Info</span>
-            <strong>[ 2 ]</strong> <span>Toggle Comments</span>
+            ${commentHint}
             <strong>F1</strong> <span>Menu</span>
             <strong>ESC</strong> <span>Close</span>
         </div>
