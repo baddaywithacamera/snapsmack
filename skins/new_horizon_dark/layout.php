@@ -1,9 +1,12 @@
 <?php
 /**
  * SnapSmack - Layout Controller
- * Version: 3.1 - Core Logic & Navigation Standard
+ * Version: 3.2 - Kill-Switch Integration
  */
 require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
+
+// Check if comments are enabled globally
+$comments_active = (($settings['global_comments_enabled'] ?? '1') == '1');
 ?>
 
 <div id="scroll-stage">
@@ -20,6 +23,10 @@ require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
 
     <div id="infobox">
         <?php include dirname(__DIR__, 2) . '/core/navigation_bar.php'; ?>
+        
+        <?php if ($comments_active): ?>
+            <span class="sep">|</span><a href="#" id="toggle-comments">COMMENTS (<?php echo count($comments); ?>)</a>
+        <?php endif; ?>
     </div>
 
     <div id="footer">
@@ -57,34 +64,36 @@ require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
             </div>
         </div>
 
-        <div id="pane-comments" class="footer-pane" style="display:none;">
-            <div class="meta-header" style="margin-bottom: 40px; text-align:center;">TRANSMISSIONS</div>
-            <?php if ($comments): ?>
-                <table class="exif-table" style="width:100%; margin-bottom:40px;">
-                    <?php foreach($comments as $c): ?>
-                        <tr>
-                            <td class="exif-label" style="vertical-align:top; width:120px;"><?php echo htmlspecialchars($c['comment_author']); ?></td>
-                            <td class="exif-value">
-                                <?php echo nl2br(htmlspecialchars($c['comment_text'])); ?>
-                                <div style="font-size:0.7rem; color:#444; margin-top:5px;">[<?php echo date('Y-m-d', strtotime($c['comment_date'])); ?>]</div>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </table>
-            <?php else: ?>
-                <div class="description" style="text-align:center; color:#444;">NO SIGNALS RECORDED.</div>
-            <?php endif; ?>
+        <?php if ($comments_active): ?>
+            <div id="pane-comments" class="footer-pane" style="display:none;">
+                <div class="meta-header" style="margin-bottom: 40px; text-align:center;">TRANSMISSIONS</div>
+                <?php if ($comments): ?>
+                    <table class="exif-table" style="width:100%; margin-bottom:40px;">
+                        <?php foreach($comments as $c): ?>
+                            <tr>
+                                <td class="exif-label" style="vertical-align:top; width:120px;"><?php echo htmlspecialchars($c['comment_author']); ?></td>
+                                <td class="exif-value">
+                                    <?php echo nl2br(htmlspecialchars($c['comment_text'])); ?>
+                                    <div style="font-size:0.7rem; color:#444; margin-top:5px;">[<?php echo date('Y-m-d', strtotime($c['comment_date'])); ?>]</div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </table>
+                <?php else: ?>
+                    <div class="description" style="text-align:center; color:#444;">NO SIGNALS RECORDED.</div>
+                <?php endif; ?>
 
-            <form action="<?php echo BASE_URL; ?>process-comment.php" method="POST" class="comment-form">
-                <input type="hidden" name="img_id" value="<?php echo $img['id']; ?>">
-                <div class="form-row">
-                    <input type="text" name="author" placeholder="CALLSIGN" required>
-                    <input type="email" name="email" placeholder="EMAIL" required>
-                </div>
-                <textarea name="comment_text" placeholder="MESSAGE..." required></textarea>
-                <button type="submit">TRANSMIT</button>
-            </form>
-        </div>
+                <form action="<?php echo BASE_URL; ?>process-comment.php" method="POST" class="comment-form">
+                    <input type="hidden" name="img_id" value="<?php echo $img['id']; ?>">
+                    <div class="form-row">
+                        <input type="text" name="author" placeholder="CALLSIGN" required>
+                        <input type="email" name="email" placeholder="EMAIL" required>
+                    </div>
+                    <textarea name="comment_text" placeholder="MESSAGE..." required></textarea>
+                    <button type="submit">TRANSMIT</button>
+                </form>
+            </div>
+        <?php endif; ?>
     </div>
 
     <?php include('footer.php'); ?>
