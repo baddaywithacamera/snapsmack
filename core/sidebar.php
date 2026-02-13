@@ -48,7 +48,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </li>
 
             <li class="nav-group">
-                <strong>Appearance</strong>
+                <strong>Pimp Your Ride</strong>
                 <ul class="sub-nav">
                     <li class="<?php echo ($current_page == 'smack-appearance.php') ? 'active' : ''; ?>">
                         <a href="smack-appearance.php">Appearance</a>
