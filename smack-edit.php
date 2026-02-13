@@ -1,7 +1,7 @@
 <?php
 /**
  * SnapSmack - Edit Metadata
- * Version: 3.6 - Orientation Logic Refined
+ * Version: 3.7 - Kill-Switch Implementation
  * MASTER DIRECTIVE: Full file return. All logic preserved.
  */
 require_once 'core/auth.php';
@@ -19,6 +19,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $status = $_POST['img_status'] ?? 'published';
     $orientation = (int)($_POST['img_orientation'] ?? 0);
     $custom_date = $_POST['img_date'] ?? date('Y-m-d H:i:s');
+    
+    // NEW: Capture the Transmission Control value
+    $allow_comments = (int)($_POST['allow_comments'] ?? 1);
+
     $selected_cats = $_POST['cat_ids'] ?? [];
     $selected_albums = $_POST['album_ids'] ?? [];
     
@@ -36,9 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
     $exif_json = json_encode($updated_exif);
 
-    // SQL UPDATE now includes img_orientation
-    $stmt = $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_film = ?, img_exif = ?, img_status = ?, img_date = ?, img_orientation = ? WHERE id = ?");
-    $stmt->execute([$title, $desc, $film_val, $exif_json, $status, $custom_date, $orientation, $id]);
+    // SQL UPDATE now includes img_orientation AND allow_comments
+    $stmt = $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_film = ?, img_exif = ?, img_status = ?, img_date = ?, img_orientation = ?, allow_comments = ? WHERE id = ?");
+    $stmt->execute([$title, $desc, $film_val, $exif_json, $status, $custom_date, $orientation, $allow_comments, $id]);
 
     $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
     foreach ($selected_cats as $cid) {
@@ -154,10 +158,15 @@ include 'core/sidebar.php';
                     </select>
 
                     <label>Internal Timestamp</label>
-                    <input type="datetime-local" name="img_date" value="<?php echo date('Y-m-d\TH:i', strtotime($post['img_date'])); ?>" class="full-width-select mb-5">
-                    <p class="field-hint">Adjust date for archive position.</p>
+                    <input type="datetime-local" name="img_date" value="<?php echo date('Y-m-d\TH:i', strtotime($post['img_date'])); ?>" class="full-width-select mb-25">
 
-                    <label class="mt-40">Reference Signal</label>
+                    <label>Allow Public Transmissions?</label>
+                    <select name="allow_comments" class="full-width-select mb-40">
+                        <option value="1" <?php echo ($post['allow_comments'] == 1) ? 'selected' : ''; ?>>Oh hell yes!</option>
+                        <option value="0" <?php echo ($post['allow_comments'] == 0) ? 'selected' : ''; ?>>Nope nope nope!</option>
+                    </select>
+
+                    <label>Reference Signal</label>
                     <div class="preview-frame">
                         <img src="<?php echo $post['img_file']; ?>" class="swap-preview">
                     </div>

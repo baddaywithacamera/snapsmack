@@ -1,8 +1,13 @@
 <?php
 /**
  * SnapSmack - Standard Navigation Bar
- * Version: 1.3 - Kill-Switch Aware
+ * Version: 1.4 - Double-Lock Integration
  */
+
+// LOGIC: Ensure we respect both the Global Setting AND the Post Setting
+$global_on = (($settings['global_comments_enabled'] ?? '1') == '1');
+$post_on   = (($img['allow_comments'] ?? '1') == '1');
+$show_comments = ($global_on && $post_on);
 ?>
 <div class="nav-links">
     <span class="left">
@@ -26,7 +31,7 @@
     <span class="center">
         <a href="#" id="show-details">INFO</a>
         
-        <?php if (($settings['global_comments_enabled'] ?? '1') == '1'): ?>
+        <?php if ($show_comments): ?>
             <span class="sep">|</span>
             <a href="#" id="show-comments">COMMENTS (<?php echo count($comments); ?>)</a>
         <?php endif; ?>

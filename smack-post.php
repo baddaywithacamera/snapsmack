@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - New Post (Smack Engine)
- * Version: 15.4 - Clean Architecture (Styles Moved to CSS)
+ * Version: 15.6 - Dropdown Transmission Control
  * MASTER DIRECTIVE: Full file return. 
  */
 
@@ -27,6 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image_file'])) {
         $status = $_POST['img_status'] ?? 'published';
         $orientation = (int)($_POST['img_orientation'] ?? 0); 
         $publish_date = !empty($_POST['custom_date']) ? $_POST['custom_date'] : date('Y-m-d H:i:s');
+
+        // NEW: Capture Dropdown Flavor Logic
+        $allow_comments = (int)($_POST['allow_comments'] ?? 1);
 
         $camera_manual    = $_POST['camera_model'] ?? '';
         $lens_manual      = $_POST['lens_info'] ?? '';
@@ -127,9 +130,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image_file'])) {
             // --- 7. DATABASE RECORDING ---
             try {
                 $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $title)));
-                $sql = "INSERT INTO snap_images (img_title, img_film, img_slug, img_description, img_date, img_file, img_exif, img_width, img_height, img_status, img_orientation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                $sql = "INSERT INTO snap_images (img_title, img_film, img_slug, img_description, img_date, img_file, img_exif, img_width, img_height, img_status, img_orientation, allow_comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt = $pdo->prepare($sql);
-                $stmt->execute([$title, $film_manual, $slug, $desc, $publish_date, $db_save_path, json_encode($final_exif), $orig_w, $orig_h, $status, $orientation]);
+                $stmt->execute([$title, $film_manual, $slug, $desc, $publish_date, $db_save_path, json_encode($final_exif), $orig_w, $orig_h, $status, $orientation, $allow_comments]);
                 
                 $new_id = $pdo->lastInsertId();
 
@@ -223,7 +226,7 @@ include 'core/sidebar.php';
                     </div>
 
                     <label>Missions (Albums)</label>
-                    <div class="custom-multiselect">
+                    <div class="custom-multiselect mb-25">
                         <div class="select-box" onclick="toggleDropdown('album-items')">
                             <span id="album-label">Select...</span>
                             <span class="arrow">▼</span>
@@ -240,6 +243,12 @@ include 'core/sidebar.php';
                             </div>
                         </div>
                     </div>
+
+                    <label>Allow Public Transmissions?</label>
+                    <select name="allow_comments" class="full-width-select">
+                        <option value="1" selected>Oh hell yes!</option>
+                        <option value="0">Nope nope nope!</option>
+                    </select>
                 </div>
             </div>
 

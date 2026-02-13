@@ -1,12 +1,17 @@
 <?php
 /**
  * SnapSmack - Transmission Control (Admin)
- * Version: 1.9 - Admin Theme Integrated
+ * Version: 2.1 - Sanitized Kill-Switch Build
  * MASTER DIRECTIVE: Full file return. No logic condensation.
  */
 require_once 'core/auth.php';
 
-// 1. Handle Actions (Approve / Delete)
+// 1. Fetch Global Settings for Status Bar
+$settings = [];
+$s_rows = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+$global_comments_active = (($s_rows['global_comments_enabled'] ?? '1') == '1');
+
+// 2. Handle Actions (Approve / Delete)
 if (isset($_GET['action']) && isset($_GET['id'])) {
     $id = (int)$_GET['id'];
     if ($_GET['action'] == 'approve') {
@@ -18,7 +23,7 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     }
 }
 
-// 2. Logic for Search & Pagination
+// 3. Logic for Search & Pagination
 $view_mode = $_GET['view'] ?? 'pending';
 $search = trim($_GET['s'] ?? '');
 $search_query = $search ? " AND (c.comment_author LIKE ? OR c.comment_text LIKE ? OR c.comment_email LIKE ?)" : "";
@@ -36,7 +41,8 @@ $stmt_count->execute($params);
 $total_records = $stmt_count->fetchColumn();
 $total_pages = ceil($total_records / $per_page);
 
-$sql = "SELECT c.*, i.img_title, i.img_file 
+// Fetching comments + image data + the allow_comments status of that image
+$sql = "SELECT c.*, i.img_title, i.img_file, i.allow_comments as post_comments_active
         FROM snap_comments c 
         LEFT JOIN snap_images i ON c.img_id = i.id 
         WHERE c.is_approved = " . ($view_mode == 'live' ? '1' : '0') . $search_query . " 
@@ -51,7 +57,14 @@ include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <h2>TRANSMISSION CONTROL</h2>
+    <div class="header-flex" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>TRANSMISSION CONTROL</h2>
+        
+        <div class="system-status-pill <?php echo $global_comments_active ? 'status-online' : 'status-offline'; ?>">
+            GLOBAL SYSTEM: <?php echo $global_comments_active ? 'ONLINE' : 'OFFLINE (SHUTDOWN)'; ?>
+        </div>
+    </div>
+
     <div class="transmission-header">
         <form method="GET" class="transmission-search-group">
             <input type="hidden" name="view" value="<?php echo $view_mode; ?>">
@@ -75,9 +88,21 @@ include 'core/sidebar.php';
                         <div class="item-details">
                             <img src="/<?php echo htmlspecialchars($c['img_file']); ?>" class="archive-thumb">
                             <div class="item-text">
-                                <div class="signal-sender"><?php echo htmlspecialchars($c['comment_author']); ?> <span>[<?php echo htmlspecialchars($c['comment_email']); ?>]</span></div>
+                                <div class="signal-sender">
+                                    <?php echo htmlspecialchars($c['comment_author']); ?> 
+                                    <span>[<?php echo htmlspecialchars($c['comment_email']); ?>]</span>
+                                </div>
                                 <div class="signal-body"><?php echo nl2br(htmlspecialchars($c['comment_text'])); ?></div>
-                                <div class="signal-meta">ON: <?php echo htmlspecialchars($c['img_title']); ?> | IP: <?php echo htmlspecialchars($c['comment_ip'] ?? '0.0.0.0'); ?> | <?php echo $c['comment_date']; ?></div>
+                                <div class="signal-meta">
+                                    ON: <?php echo htmlspecialchars($c['img_title'] ?? 'UNKNOWN SOURCE'); ?> 
+                                    
+                                    <?php if (isset($c['post_comments_active']) && $c['post_comments_active'] == 0): ?>
+                                        <span class="muted-tag" style="color: #ff3333; font-weight: bold; margin-left: 5px;">[FREQUENCY MUTED]</span>
+                                    <?php endif; ?>
+                                    
+                                    | IP: <?php echo htmlspecialchars($c['comment_ip'] ?? '0.0.0.0'); ?> 
+                                    | <?php echo $c['comment_date']; ?>
+                                </div>
                                 <div class="item-actions">
                                     <?php if ($view_mode == 'pending'): ?>
                                         <a href="?action=approve&id=<?php echo $c['id']; ?>&view=<?php echo $view_mode; ?>&s=<?php echo urlencode($search); ?>&p=<?php echo $page; ?>" class="action-authorize">AUTHORIZE</a>
@@ -89,6 +114,7 @@ include 'core/sidebar.php';
                     </div>
                 <?php endforeach; ?>
             </div>
+            
             <?php if ($total_pages > 1): ?>
                 <div class="pagination">
                     <?php for ($i = 1; $i <= $total_pages; $i++): ?>
@@ -101,5 +127,11 @@ include 'core/sidebar.php';
         <?php endif; ?>
     </div>
 </div>
+
+<style>
+.system-status-pill { padding: 5px 15px; border-radius: 20px; font-size: 11px; font-weight: bold; font-family: 'Inter', sans-serif; }
+.status-online { background: rgba(0, 255, 0, 0.1); color: #00ff00; border: 1px solid #00ff00; }
+.status-offline { background: rgba(255, 0, 0, 0.1); color: #ff3333; border: 1px solid #ff3333; }
+</style>
 
 <?php include 'core/admin-footer.php'; ?>
