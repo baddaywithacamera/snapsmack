@@ -1,0 +1,259 @@
+/*
+ * Theme Name: Midnight Lime
+ * Description: High-contrast tactical interface, if Kermit the Frog was ex-military. This is SNAPSMACK's default admin theme. Deal with it (or choose something different if you're a pussy).
+ */
+
+:root {
+    /* Color Palette */
+    --neon-green: #39FF14;
+    --neon-red: #ff3e3e;
+    --neon-gold: #FFD700;
+    
+    /* Backgrounds */
+    --bg-dark: #111;
+    --bg-darker: #0d0d0d;
+    --bg-panel: #1a1a1a;
+    --bg-input: #222;
+    
+    /* Borders */
+    --border-dim: #222;
+    --border-mid: #333;
+    
+    /* Text */
+    --text-main: #ccc;
+    --text-dim: #777;
+    --text-dark: #000;
+}
+
+body {
+    background: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* --- SIDEBAR SKIN --- */
+.sidebar {
+    background: var(--bg-darker);
+    border-right: 1px solid var(--bg-panel);
+}
+
+.sidebar h2 {
+    color: var(--neon-green);
+    border-bottom: 2px solid var(--bg-panel);
+}
+
+.sidebar li { border-bottom: 1px solid var(--bg-panel); }
+.sidebar a { color: var(--text-dim); }
+.sidebar a:hover, .sidebar li.active a { color: var(--neon-green); }
+.sidebar li.nav-divider { border-top: 1px solid var(--bg-panel); }
+.sidebar li.nav-external-link a { color: var(--neon-green); }
+
+/* Sub-nav specific */
+.sidebar li.nav-group strong { color: #444; }
+.sidebar ul.sub-nav { border-left: 1px solid var(--bg-panel); }
+.sidebar ul.sub-nav li { border-bottom: 1px solid #111; }
+.sidebar ul.sub-nav li.active a { color: var(--neon-green); }
+.sidebar .logout { color: var(--neon-red); }
+.credits-admin { color: #444; }
+
+/* --- MAIN CONTENT SKIN --- */
+h2, h3, .section-header {
+    color: var(--neon-green);
+    border-bottom-color: var(--bg-panel);
+}
+
+.box {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-dim);
+}
+
+.maint-desc { color: #bbb; }
+.post-col-right { border-left: 1px solid var(--border-mid); }
+
+/* --- FORM ELEMENTS SKIN --- */
+label { color: #666; }
+
+input, select, textarea, .file-upload-wrapper, .select-box, .preview-box {
+    background: var(--bg-input);
+    border: 1px solid var(--border-mid);
+    color: #fff !important;
+}
+
+/* Built-in checkboxes (e.g. N/A for film) */
+.built-in-label {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-mid);
+    color: #888 !important;
+}
+
+.built-in-label input[type="checkbox"] {
+    background: #444 !important;
+    border: 1px solid #555;
+}
+
+.built-in-label input[type="checkbox"]:checked {
+    background: var(--neon-green) !important;
+    border-color: var(--neon-green);
+}
+.built-in-label input[type="checkbox"]:checked::after {
+    border-color: #000; 
+}
+
+/* --- BUTTONS & ACTIONS --- */
+button, .btn-smack, .btn-green, .master-update-btn {
+    background: var(--neon-green) !important;
+    color: var(--text-dark) !important;
+}
+
+.btn-blue { background: #007bff !important; color: #fff !important; }
+.btn-orange { background: #e67e22 !important; color: #fff !important; }
+
+/* Tactical Recovery Colors */
+.btn-teal { background: #00afaf !important; color: #000 !important; }
+.btn-purple { background: #8e44ad !important; color: #fff !important; }
+.btn-gold { background: #f39c12 !important; color: #000 !important; }
+
+/* Secondary Actions */
+.btn-clear { 
+    background: var(--bg-input); 
+    color: #666; 
+    border: 1px solid var(--border-mid); 
+}
+.btn-clear:hover, .btn-clear.active { 
+    background: var(--border-mid); 
+    color: #fff; 
+    border-color: var(--neon-green); 
+}
+
+/* Action Links (Edit/Swap/Delete) */
+.action-authorize, .action-edit, .action-swap { 
+    border-color: var(--neon-green) !important; 
+    color: var(--neon-green); 
+}
+.action-authorize:hover, .action-edit:hover, .action-swap:hover { 
+    background: var(--neon-green); 
+    color: #000; 
+}
+
+.action-delete { border-color: #421 !important; color: var(--neon-red); }
+.action-delete:hover { background: #421; color: #ff6666; }
+
+button:hover, .btn-smack:hover, .btn-green:hover, .btn-blue:hover, 
+.btn-orange:hover, .maint-btn:hover, .btn-teal:hover, .btn-purple:hover, .btn-gold:hover { 
+    filter: brightness(1.2); 
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1); 
+}
+
+/* --- LIST ITEMS & TABLES --- */
+.recent-item { border-bottom: 1px solid var(--border-dim); }
+.recent-item:hover { background: #111; } /* Subtle hover effect */
+.item-text strong { color: #eee; }
+.item-text .dim { color: #555; }
+.archive-thumb { background: #111; border: 1px solid var(--border-mid); }
+
+/* --- STATS & DASHBOARD --- */
+.stat-val { color: var(--neon-green); }
+.stat-label { color: #666; }
+.highlight-green { color: var(--neon-green) !important; }
+
+/* Tactical Overrides */
+.btn-backup { background: #444 !important; color: #fff !important; }
+.btn-settings { background: #222 !important; color: #888 !important; }
+.btn-live { background: #000 !important; color: var(--neon-green) !important; border: 1px solid var(--neon-green) !important; }
+
+.stat-row .label { color: #555; }
+.stat-row .value { color: #ccc; }
+
+/* --- PAGINATION --- */
+.pagination a { 
+    background: var(--bg-panel); 
+    color: #777; 
+    border: 1px solid var(--border-mid); 
+}
+.pagination a.active { 
+    background: var(--neon-green); 
+    color: #000; 
+    border-color: var(--neon-green); 
+}
+
+/* --- UPLOAD & MESSAGES --- */
+.progress-bar { background: var(--neon-green); }
+.file-custom-btn { background: var(--border-mid); color: #eee; border-right: 1px solid #444; }
+.file-name-display { color: #666; }
+.msg { color: var(--neon-green); border: 1px solid var(--neon-green); background: #111; }
+
+/* --- DROPDOWNS --- */
+.select-box { background: var(--bg-input); border: 1px solid var(--border-mid); color: #fff; }
+.select-box .arrow { color: #666; }
+.dropdown-content { background: var(--bg-panel); border: 1px solid var(--border-mid); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.dropdown-search-wrapper { background: #111; border-bottom: 1px solid var(--border-dim); }
+.dropdown-search-wrapper input { background: #000 !important; border-color: var(--border-mid) !important; }
+
+.multi-cat-item:hover { background: var(--bg-input); color: var(--neon-green); }
+
+/* --- MEDIA LIBRARY --- */
+.asset-card { background: var(--bg-darker); border: 1px solid var(--border-dim); }
+.asset-thumb-wrapper { background: #000; border-bottom: 1px solid var(--bg-panel); }
+.asset-info .preview-box { background: #111; color: #888; }
+
+/* --- APPEARANCE CONTROLLER --- */
+.skin-meta-wrap { background: var(--bg-panel); }
+.skin-active-name { color: var(--neon-green); }
+.v-tag { color: #444; }
+.skin-desc-text { color: #888; }
+.skin-author-line { color: #555; }
+.support-link { color: #777; border-bottom: 1px solid var(--border-dim); }
+.support-link:hover { color: var(--neon-green); border-color: var(--neon-green); }
+
+.skin-selector-wrap { background: #151515; border-left: 1px solid var(--border-dim); }
+.inline-skin-form label { color: var(--neon-green); }
+.inline-skin-form select { background: #000; border: 1px solid var(--border-mid); }
+.inline-skin-form .hint { color: #444; }
+
+/* --- FOOTER SKIN --- */
+#admin-universal-footer {
+    background: var(--bg-darker);
+    border-top: 1px solid var(--bg-panel);
+    box-shadow: 0 -10px 20px rgba(0,0,0,0.5);
+}
+
+.footer-left { color: #888; }
+.footer-left a { color: #aaa; border-bottom: 1px solid var(--border-mid); }
+.footer-left a:hover { color: var(--neon-green); border-color: var(--neon-green); }
+.footer-right { color: #aaa; }
+
+/* --- LOGIN PAGE --- */
+.login-body { background: #000; }
+.login-box { 
+    background: var(--bg-darker); 
+    border: 1px solid var(--bg-panel); 
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8); 
+}
+.login-box h1 { color: var(--neon-green); }
+
+/* --- INSPECTOR / PREFLIGHT / SWAP --- */
+.swap-preview { border: 1px solid var(--border-mid); }
+.preview-frame { background: #000; border: 1px solid var(--border-dim); }
+.swap-note { color: #bbb; }
+
+.transmission-header { border-bottom: 2px solid var(--bg-panel); }
+.signal-body { color: #ccc; background: #111; border: 1px solid var(--border-mid); }
+.signal-meta { color: #666; }
+.signal-sender { color: var(--neon-green); }
+.signal-sender span { color: #444; }
+
+/* --- COLOR PICKER & RANGE --- */
+.color-picker-container { background: var(--bg-input); border: 1px solid var(--border-mid); }
+input[type="color"]::-webkit-color-swatch { border: 1px solid #444; }
+.hex-display { color: #aaa; }
+
+input[type="range"]::-webkit-slider-runnable-track { background: var(--border-mid); }
+input[type="range"]::-webkit-slider-thumb { 
+    background: var(--neon-green); 
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.4); 
+}
+.tactical-checkbox { color: var(--neon-green); }
+.hint { color: #555; }
+.active-val { color: var(--neon-green); }
+.field-hint { color: #666; }
+.read-only-display { background: var(--bg-darker); border: 1px solid var(--border-mid); color: var(--neon-green); }
