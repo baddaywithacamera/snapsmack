@@ -1,12 +1,10 @@
 <?php
 /**
  * SnapSmack - Sidebar Navigation
- * Version: 6.6 - NavGroup Consolidation
+ * Version: 7.0 - Theme & Skin Split Integration
  * -------------------------------------------------------------------------
- * - FIXED: Top 8 items consolidated into "EDITOR CONTROLS" NavGroup.
- * - FIXED: Removed all <hr> lines in favor of consistent .nav-group styling.
- * - RETAINED: Active-state highlighting using $current_page.
- * - RETAINED: © 2026 Sean McCormick branding.
+ * - UPDATED: "Pimp Your Ride" links split to smack-pimpitup and smack-skin.
+ * - RETAINED: Active-state highlighting and Sean's excellent labels.
  * -------------------------------------------------------------------------
  */
 
@@ -50,17 +48,20 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <li class="nav-group">
                 <strong>Pimp Your Ride</strong>
                 <ul class="sub-nav">
-                    <li class="<?php echo ($current_page == 'smack-appearance.php') ? 'active' : ''; ?>">
-                        <a href="smack-appearance.php">Appearance</a>
+                    <li class="<?php echo ($current_page == 'smack-pimpitup.php') ? 'active' : ''; ?>">
+                        <a href="smack-pimpitup.php">Site Vibe</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-skin.php') ? 'active' : ''; ?>">
+                        <a href="smack-skin.php">Smooth Your Skin</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-css.php') ? 'active' : ''; ?>">
-                        <a href="smack-css.php">CSS Overrides</a>
+                        <a href="smack-css.php">Smack Your CSS Up!</a>
                     </li>
                 </ul>
             </li>
 
             <li class="nav-group">
-                <strong>Boring but Necessary</strong>
+                <strong>Boring Ass Stuff</strong>
                 <ul class="sub-nav">
                     <li class="<?php echo ($current_page == 'smack-config.php') ? 'active' : ''; ?>">
                         <a href="smack-config.php">Configuration</a>
