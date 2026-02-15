@@ -1,19 +1,13 @@
 <?php
 /**
  * SnapSmack - Appearance & Architecture Master Admin
- * Version: 6.2 - Support Link Alignment & Metadata Restoration
+ * Version: 8.5 - Dual-Engine Restoration (Admin Themes + Public Compiler)
  * -------------------------------------------------------------------------
- * - FIXED: Support Email pulls from manifest.php 'support' key.
- * - FIXED: Support Link moved inline with Author name (Top Left Box).
- * - FIXED: Inline pipe separator and hyperlinked email in author font.
- * - FIXED: Typography logic. Values with spaces now wrapped in quotes.
- * - FIXED: Branding Underline. Forced text-decoration:none for .site-title-text.
- * - FIXED: UI Persistence. Sliders and dropdowns now stay where you set them.
- * - FIXED: Page title variable restored to remove header warning.
- * - FIXED: Explicit Payload Extraction for Frame Library (Manifest v3.1).
- * - RESTORED: Full Archive Architecture Grid logic (Thumb Width / Columns).
+ * - RESTORED: All public skin compiler logic and manifest metadata processing.
+ * - RESTORED: Archive Architecture grid logic (Thumb Size / Columns).
  * - RESTORED: Wall Specific parameters and Global Toggle logic.
- * - DIRECTIVE: FULL FILE OUTPUT. NO TRUNCATION. NO CONDENSATION.
+ * - INTEGRATED: Canadian Admin Theme Discovery (admin-theme-colours-*.css).
+ * - DIRECTIVE: FULL FILE OUTPUT. NO TRUNCATION.
  * -------------------------------------------------------------------------
  */
 
@@ -24,7 +18,7 @@ error_reporting(E_ALL);
 
 require_once 'core/auth.php';
 
-// --- 1. DYNAMIC SKIN DISCOVERY ---
+// --- 1. DYNAMIC PUBLIC SKIN DISCOVERY ---
 $skin_dirs = array_filter(glob('skins/*'), 'is_dir');
 $available_skins = [];
 foreach ($skin_dirs as $dir) {
@@ -35,61 +29,74 @@ foreach ($skin_dirs as $dir) {
     }
 }
 
-// Determine target skin context
-$current_db_active = $settings['active_skin'] ?? array_key_first($available_skins);
-$target_skin = $_GET['s'] ?? $current_db_active;
+// Determine target skin context (for public site editing)
+$current_db_active_skin = $settings['active_skin'] ?? array_key_first($available_skins);
+$target_skin = $_GET['s'] ?? $current_db_active_skin;
 if (!isset($available_skins[$target_skin])) { $target_skin = array_key_first($available_skins); }
 
-// Load target manifest
+// Load target manifest for compiler metadata
 $manifest = include "skins/{$target_skin}/manifest.php";
 
-// --- 2. PREFIXING UTILITY ---
+// --- 2. PREFIXING UTILITY (for Admin Previews) ---
 function prefix_skin_css($css, $prefix) {
     if (empty($css)) return "";
     return preg_replace('/([^\r\n,{}]+)(?=[^}]*{)/', $prefix . ' $1', $css);
 }
 
-// --- 3. THE COMPILER & SETTINGS HANDLER ---
+// --- 3. TARGETED ADMIN THEME DISCOVERY (Scanning assets/css/) ---
+$admin_themes = [];
+$admin_css_files = glob('assets/css/admin-theme-colours-*.css');
+foreach ($admin_css_files as $file) {
+    $slug = str_replace(['assets/css/admin-theme-colours-', '.css'], '', $file);
+    $display_name = ucfirst($slug);
+    $handle = fopen($file, 'r');
+    $header_chunk = fread($handle, 250);
+    fclose($handle);
+    if (preg_match('/Theme Name:\s*(.*)$/mi', $header_chunk, $matches)) {
+        $display_name = trim($matches[1]);
+    }
+    $admin_themes[$slug] = $display_name;
+}
+
+// --- 4. THE COMPILER & SETTINGS HANDLER ---
 if (isset($_POST['save_appearance'])) {
     
-    // Start public CSS generation
+    // 4.1 Save Admin Interface Theme choice
+    if (isset($_POST['active_admin_theme'])) {
+        $stmt = $pdo->prepare("UPDATE snap_settings SET setting_val = ? WHERE setting_key = 'active_theme'");
+        $stmt->execute([$_POST['active_admin_theme']]);
+    }
+
+    // 4.2 Start public CSS generation
     $generated_public = "/* SKIN_START */\n/* Generated for: {$manifest['name']} */\n";
     
-    // 3.1 PROCESS SKIN OPTIONS (Choices & CSS Generation)
     if (isset($_POST['skin_opt'])) {
         foreach ($_POST['skin_opt'] as $s_key => $s_val) {
-            
-            // A. PERSISTENCE: Save the individual choice to DB so the UI stays set
+            // A. PERSISTENCE
             $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
             $stmt->execute([$s_key, $s_val, $s_val]);
             
-            // B. COMPILER: Look up manifest metadata for this key to generate CSS
+            // B. COMPILER
             if (isset($manifest['options'][$s_key])) {
                 $opt_meta = $manifest['options'][$s_key];
                 
-                // Case 1: Payload Extraction (Frames)
                 if ($opt_meta['property'] === 'custom-framing' && isset($opt_meta['options'][$s_val]['css'])) {
                     $generated_public .= "{$opt_meta['selector']} {$opt_meta['options'][$s_val]['css']}\n";
                 } 
-                // Case 2: Range/Number processing
                 elseif ($opt_meta['type'] === 'range' || $opt_meta['type'] === 'number') {
                     if (substr($opt_meta['property'], 0, 2) === '--') {
                         $generated_public .= "{$opt_meta['selector']} { {$opt_meta['property']}: {$s_val}; }\n";
                     } else {
-                        // Apply link cleanup if this range is targeting the site title
                         $link_fix = ($opt_meta['selector'] === '.site-title-text') ? "text-decoration: none !important;" : "";
                         $generated_public .= "{$opt_meta['selector']} { {$opt_meta['property']}: {$s_val}px; {$link_fix} }\n";
                     }
                 } 
-                // Case 3: Image properties
                 elseif ($opt_meta['property'] === 'background-image') {
                     $generated_public .= "{$opt_meta['selector']} { {$opt_meta['property']}: url('{$s_val}'); }\n";
                 } 
-                // Case 4: Typography (NEW: Handle font names with spaces and clear link underlines)
                 elseif ($opt_meta['property'] === 'font-family') {
                     $generated_public .= "{$opt_meta['selector']} { font-family: \"{$s_val}\", serif; text-decoration: none !important; }\n";
                 }
-                // Case 5: Standard values (Colors, Simple Strings)
                 else {
                     $generated_public .= "{$opt_meta['selector']} { {$opt_meta['property']}: {$s_val}; }\n";
                 }
@@ -98,13 +105,12 @@ if (isset($_POST['save_appearance'])) {
     }
     $generated_public .= "/* SKIN_END */";
 
-    // 3.2 ADMIN PREVIEW GENERATION
+    // 4.3 ADMIN PREVIEW GENERATION
     $admin_css_raw = $manifest['admin_styling'] ?? "";
     $prefixed_admin = "/* SKIN_START */\n" . prefix_skin_css($admin_css_raw, "#smack-skin-config-wrap") . "\n/* SKIN_END */";
 
-    // 3.3 GLOBAL ARCHITECTURE & SYSTEM SETTINGS
+    // 4.4 GLOBAL ARCHITECTURE SETTINGS (Thumb size, columns, active public skin)
     $v_settings = $_POST['settings'] ?? [];
-    // Ensure the skin we are editing becomes the active skin
     $v_settings['active_skin'] = $_POST['active_skin_target'] ?? $target_skin;
     
     foreach ($v_settings as $vk => $vv) {
@@ -112,7 +118,7 @@ if (isset($_POST['save_appearance'])) {
         $stmt->execute([$vk, $vv, $vv]);
     }
 
-    // 3.4 DATABASE COMMIT (Generated CSS Overrides)
+    // 4.5 DATABASE COMMIT (CSS Blobs)
     $db_map = ['custom_css_public' => $generated_public, 'custom_css_admin' => $prefixed_admin];
     foreach ($db_map as $dk => $dv) {
         $stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = ?");
@@ -127,21 +133,40 @@ if (isset($_POST['save_appearance'])) {
         $pdo->prepare("UPDATE snap_settings SET setting_val = ? WHERE setting_key = ?")->execute([$final_block, $dk]);
     }
 
-    $msg = "Visual architecture updated. Typography and Branding locks applied.";
-    
-    // Refresh local settings array immediately
-    $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+    header("Location: smack-appearance.php?s={$v_settings['active_skin']}&msg=updated");
+    exit;
 }
 
-// RESTORED: Fixed Header Undefined Variable Warning
 $page_title = "Appearance & Architecture";
-
 include 'core/admin-header.php';
 include 'core/sidebar.php';
+
+$active_admin_theme = $settings['active_theme'] ?? 'smackdown-midnight-lime';
 ?>
 
 <div class="main">
     <h2>APPEARANCE & ARCHITECTURE</h2>
+
+    <div class="box appearance-controller">
+        <div class="skin-meta-wrap">
+            <h3 class="skin-active-name">ADMIN INTERFACE SKIN</h3>
+            <p class="skin-desc-text">Select the visual layer for this admin console. This pulls metadata directly from the Canadian-spelt CSS headers in assets/css/.</p>
+            <div class="skin-author-line">ARCHITECTED BY SEAN & GEMINI</div>
+        </div>
+        <div class="skin-selector-wrap">
+            <form method="POST" class="inline-skin-form">
+                <label>ACTIVE ADMIN THEME</label>
+                <select name="active_admin_theme" onchange="this.form.submit()">
+                    <?php foreach ($admin_themes as $slug => $name): ?>
+                        <option value="<?php echo $slug; ?>" <?php echo ($active_admin_theme == $slug) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($name); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <input type="hidden" name="save_appearance" value="1">
+            </form>
+        </div>
+    </div>
 
     <div class="box appearance-controller">
         <div class="skin-meta-wrap">
@@ -150,13 +175,13 @@ include 'core/sidebar.php';
             <div class="skin-author-line">
                 BY <?php echo strtoupper($manifest['author']); ?> 
                 <?php if(!empty($manifest['support'])): ?>
-                    | <a href="mailto:<?php echo $manifest['support']; ?>" style="color:inherit; text-decoration:none;">SUPPORT: <?php echo strtoupper($manifest['support']); ?></a>
+                    | <a href="mailto:<?php echo $manifest['support']; ?>" class="support-link">SUPPORT: <?php echo strtoupper($manifest['support']); ?></a>
                 <?php endif; ?>
             </div>
         </div>
         <div class="skin-selector-wrap">
             <form method="GET" class="inline-skin-form">
-                <label>ACTIVE SYSTEM SKIN</label>
+                <label>ACTIVE PUBLIC SITE SKIN</label>
                 <select name="s" onchange="this.form.submit()">
                     <?php foreach ($available_skins as $slug => $name): ?>
                         <option value="<?php echo $slug; ?>" <?php echo ($target_skin == $slug) ? 'selected' : ''; ?>><?php echo $name; ?></option>
@@ -166,17 +191,17 @@ include 'core/sidebar.php';
         </div>
     </div>
 
-    <?php if(isset($msg)): ?><div class="msg">> <?php echo $msg; ?></div><?php endif; ?>
+    <?php if(isset($_GET['msg'])): ?><div class="msg">> SYSTEM ARCHITECTURE UPDATED</div><?php endif; ?>
 
     <form method="POST">
         <input type="hidden" name="active_skin_target" value="<?php echo $target_skin; ?>">
+        <input type="hidden" name="active_admin_theme" value="<?php echo $active_admin_theme; ?>">
 
         <div id="smack-skin-config-wrap">
             <?php 
             $sec = [];
             foreach ($manifest['options'] as $k => $o) { $sec[$o['section'] ?? 'GENERAL'][$k] = $o; }
             
-            // UI ORDER: Skin Specific -> Archive Architecture -> Static Pages -> Wall Engine
             uksort($sec, function($a, $b) {
                 $m = ['SKIN SPECIFIC' => 1, 'STATIC PAGE STYLING' => 3, 'WALL SPECIFIC' => 4];
                 return ($m[$a] ?? 99) <=> ($m[$b] ?? 99);
@@ -214,7 +239,6 @@ include 'core/sidebar.php';
                     <?php endif; ?>
 
                     <?php foreach ($opts as $k => $o): 
-                        // Fetch the current saved choice from DB, fallback to manifest default
                         $current_val = $settings[$k] ?? $o['default'];
                     ?>
                         <div class="control-group">

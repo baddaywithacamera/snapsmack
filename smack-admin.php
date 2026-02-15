@@ -1,7 +1,7 @@
 <?php
 /**
  * SnapSmack - Master Dashboard
- * Version: 2.1 - Session & Role Logic Integrated
+ * Version: 2.2 - External CSS Refactor
  */
 
 ini_set('display_errors', 1);
@@ -10,7 +10,7 @@ error_reporting(E_ALL);
 
 require_once 'core/auth.php';
 
-// --- LOGOUT HANDLER (The Fix) ---
+// --- LOGOUT HANDLER ---
 if (isset($_GET['logout'])) {
     session_destroy();
     header("Location: login.php");
@@ -51,7 +51,6 @@ if ($latest_img) {
 
 $page_title = "SYSTEM DASHBOARD";
 
-// --- CORE LAYOUT ---
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
@@ -60,7 +59,7 @@ include 'core/sidebar.php';
     <h2>SYSTEM DASHBOARD</h2>
 
     <?php if (isset($_GET['err']) && $_GET['err'] == 'unauthorized'): ?>
-        <div class="alert alert-error" style="margin-bottom: 25px;">> ACCESS DENIED: Administrator privileges required for that section.</div>
+        <div class="alert alert-error">> ACCESS DENIED: Administrator privileges required for that section.</div>
     <?php endif; ?>
 
     <div class="dash-grid">
@@ -77,14 +76,16 @@ include 'core/sidebar.php';
         <div class="box">
             <h3>LATEST SMACK</h3>
             <?php if ($latest_img): ?>
-                <div class="item-details" style="display: flex; gap: 20px; align-items: center;">
+                <div class="item-details">
                     <img src="<?php echo $display_thumb; ?>" 
-                         style="width: 150px; height: 150px; object-fit: cover; border: 1px solid #333; background: #000;"
+                         class="archive-thumb latest-item-thumb"
                          onerror="this.src='<?php echo $latest_img['img_file']; ?>';">
                     <div class="item-text">
-                        <strong style="display: block; margin-bottom: 5px; font-size: 1.1rem; color: #0f0;"><?php echo htmlspecialchars($latest_img['img_title']); ?></strong>
-                        <span class="dim" style="display: block; font-size: 0.85rem; margin-bottom: 15px;"><?php echo date('M j, Y', strtotime($latest_img['img_date'])); ?></span>
-                        <a href="smack-edit.php?id=<?php echo $latest_img['id']; ?>" class="action-edit" style="color: #fff; background: #444; padding: 5px 10px; text-decoration: none; font-size: 0.75rem; border-radius: 3px;">[ EDIT ENTRY ]</a>
+                        <strong class="highlight-green"><?php echo htmlspecialchars($latest_img['img_title']); ?></strong>
+                        <span class="dim"><?php echo date('M j, Y', strtotime($latest_img['img_date'])); ?></span>
+                        <div class="mt-20">
+                            <a href="smack-edit.php?id=<?php echo $latest_img['id']; ?>" class="action-edit">[ EDIT ENTRY ]</a>
+                        </div>
                     </div>
                 </div>
             <?php else: ?>
@@ -97,17 +98,17 @@ include 'core/sidebar.php';
         <div class="box">
             <h3>LIBRARY & TRANSMISSIONS</h3>
             <div class="console-rows">
-                <label style="font-size: 0.65rem; color: #555; letter-spacing: 1px; font-weight: bold;">PHOTOGRAPHY</label>
+                <label>PHOTOGRAPHY</label>
                 <div class="stat-row"><span class="label">PUBLISHED: </span><span class="value"><?php echo $count_pub; ?></span></div>
                 <div class="stat-row"><span class="label">PENDING: </span><span class="value"><?php echo $count_pending; ?></span></div>
                 <div class="stat-row"><span class="label">DRAFTS: </span><span class="value"><?php echo $count_drafts; ?></span></div>
                 
-                <label style="font-size: 0.65rem; color: #555; letter-spacing: 1px; display: block; margin-top: 15px; font-weight: bold;">SIGNALS (COMMENTS)</label>
+                <label class="mt-30">SIGNALS (COMMENTS)</label>
                 <div class="stat-row"><span class="label">INCOMING: </span><span class="value highlight-green"><?php echo $pending_count; ?></span></div>
                 <div class="stat-row"><span class="label">BROADCASTING: </span><span class="value"><?php echo $live_count; ?></span></div>
                 
-                <div style="margin-top: 15px;">
-                    <a href="smack-comments.php" style="text-decoration: none;"><button style="width: 100%; font-size: 0.7rem; height: 30px; line-height: 1;">MANAGE SIGNALS</button></a>
+                <div class="mt-30">
+                    <a href="smack-comments.php"><button class="btn-smack">MANAGE SIGNALS</button></a>
                 </div>
             </div>
         </div>
@@ -115,29 +116,30 @@ include 'core/sidebar.php';
         <div class="box">
             <h3>ENVIRONMENT</h3>
             <label>Server Software</label>
-            <div class="signal-body" style="font-family: monospace; color: #888; margin-bottom: 10px; font-size: 0.85rem;"><?php echo $_SERVER['SERVER_SOFTWARE']; ?></div>
+            <div class="signal-body font-mono"><?php echo $_SERVER['SERVER_SOFTWARE']; ?></div>
             
-            <label>PHP Version</label>
-            <div class="signal-body" style="font-family: monospace; color: #888; margin-bottom: 10px; font-size: 0.85rem;"><?php echo phpversion(); ?></div>
+            <label class="mt-20">PHP Version</label>
+            <div class="signal-body font-mono"><?php echo phpversion(); ?></div>
 
-            <label>Memory Limit</label>
-            <div class="signal-body" style="font-family: monospace; color: #888; font-size: 0.85rem;"><?php echo ini_get('memory_limit'); ?></div>
+            <label class="mt-20">Memory Limit</label>
+            <div class="signal-body font-mono"><?php echo ini_get('memory_limit'); ?></div>
         </div>
 
         <div class="box">
             <h3>SYSTEM VITALS</h3>
             <label>Load Average</label>
-            <div class="signal-body" style="margin-bottom: 10px;">
-                <span style="color: #0f0; font-family: monospace;"><?php echo $load[0]; ?></span> 
-                <span style="color: #444; font-family: monospace;">/ <?php echo $load[1]; ?> / <?php echo $load[2]; ?></span>
+            <div class="signal-body font-mono">
+                <span class="highlight-green"><?php echo $load[0]; ?></span> 
+                <span class="dim">/ <?php echo $load[1]; ?> / <?php echo $load[2]; ?></span>
             </div>
 
-            <label>Disk Usage (<?php echo $disk_used_pct; ?>%)</label>
-            <div class="signal-body" style="font-size: 0.85rem; color: #888; font-family: monospace;">
+            <label class="mt-20">Disk Usage (<?php echo $disk_used_pct; ?>%)</label>
+            <div class="signal-body font-mono">
                 <?php echo formatBytes($disk_total - $disk_free); ?> <span class="dim">of</span> <?php echo formatBytes($disk_total); ?>
             </div>
-            <div class="progress-container" style="background: #1a1a1a; height: 6px; margin-top: 10px; border: 1px solid #333;">
-                <div class="progress-bar" style="background: #28a745; height: 100%; width: <?php echo $disk_used_pct; ?>%;"></div>
+            
+            <div class="progress-container show">
+                <div class="progress-bar" style="width: <?php echo $disk_used_pct; ?>%;"></div>
             </div>
         </div>
     </div>

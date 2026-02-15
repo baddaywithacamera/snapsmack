@@ -1,61 +1,87 @@
 <?php
 /**
- * SnapSmack Core Admin Header
- * Version: 1.6 - Unified Asset Build
+ * SnapSmack - Sidebar Navigation
+ * Version: 7.1 - Trinity Compliance Sync
  * -------------------------------------------------------------------------
- * - FIXED: Script pointer moved to assets/js/smack-ui-private.js
- * - FIXED: Added role-based security gates and fallback logic.
+ * MASTER DIRECTIVE: Preserve Sean's Excellent Labels. 
+ * RETAINED: "The Good Shit", "Pimp Your Ride", "Boring Ass Stuff".
  * -------------------------------------------------------------------------
  */
 
-// 1. Ensure settings are bootstrapped
-if (!isset($settings)) {
-    $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
-    $settings = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-}
-
-/**
- * 2. ROLE RECOVERY LOGIC
- * Re-verifies user role against the database to prevent session timeouts.
- */
-if (!isset($_SESSION['user_role']) || empty($_SESSION['user_role'])) {
-    $login_name = $_SESSION['user_login'] ?? 'sean'; 
-    
-    try {
-        $user_stmt = $pdo->prepare("SELECT user_role FROM snap_users WHERE username = ?");
-        $user_stmt->execute([$login_name]);
-        $role = $user_stmt->fetchColumn();
-        
-        if (!$role && $login_name === 'sean') {
-            $_SESSION['user_role'] = 'admin';
-        } else {
-            $_SESSION['user_role'] = $role ?: 'editor';
-        }
-    } catch (PDOException $e) {
-        $_SESSION['user_role'] = ($login_name === 'sean') ? 'admin' : 'editor';
-    }
-}
-
-$user_role = $_SESSION['user_role'];
-
-// 3. Security Gate
-$admin_only = ['smack-config.php', 'smack-skin.php', 'smack-users.php', 'smack-backup.php', 'smack-maintenance.php', 'smack-css.php'];
-$current_file = basename($_SERVER['PHP_SELF']);
-
-if ($user_role !== 'admin' && in_array($current_file, $admin_only)) {
-    header("Location: smack-admin.php?err=unauthorized");
-    exit;
-}
+$current_page = basename($_SERVER['PHP_SELF']); 
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> | SnapSmack Admin</title>
-    <link rel="stylesheet" href="assets/css/admin-theme.css">
-    <link rel="stylesheet" href="assets/css/hotkey-engine.css">
-    
-    <script src="assets/js/smack-ui-private.js?v=<?php echo time(); ?>"></script>
-</head>
-<body class="admin-body">
+
+<div class="sidebar">
+    <div class="sidebar-top">
+        <h2>SnapSmack</h2>
+        <ul>
+            <li class="nav-group">
+                <strong>The Good Shit</strong>
+                <ul class="sub-nav">
+                    <li class="<?php echo ($current_page == 'smack-admin.php') ? 'active' : ''; ?>">
+                        <a href="smack-admin.php">Dashboard</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-post.php') ? 'active' : ''; ?>">
+                        <a href="smack-post.php">New Post</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-manage.php' || $current_page == 'smack-edit.php') ? 'active' : ''; ?>">
+                        <a href="smack-manage.php">Manage Archive</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-cats.php') ? 'active' : ''; ?>">
+                        <a href="smack-cats.php">Categories</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-albums.php') ? 'active' : ''; ?>">
+                        <a href="smack-albums.php">Albums</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-pages.php') ? 'active' : ''; ?>">
+                        <a href="smack-pages.php">Static Pages</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-media.php') ? 'active' : ''; ?>">
+                        <a href="smack-media.php">Media Library</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-comments.php') ? 'active' : ''; ?>">
+                        <a href="smack-comments.php">Transmissions</a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="nav-group">
+                <strong>Pimp Your Ride</strong>
+                <ul class="sub-nav">
+                    <li class="<?php echo ($current_page == 'smack-pimpitup.php') ? 'active' : ''; ?>">
+                        <a href="smack-pimpitup.php">Site Vibe</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-skin.php') ? 'active' : ''; ?>">
+                        <a href="smack-skin.php">Smooth Your Skin</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-css.php') ? 'active' : ''; ?>">
+                        <a href="smack-css.php">Smack Your CSS Up!</a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="nav-group">
+                <strong>Boring Ass Stuff</strong>
+                <ul class="sub-nav">
+                    <li class="<?php echo ($current_page == 'smack-config.php') ? 'active' : ''; ?>">
+                        <a href="smack-config.php">Configuration</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-users.php') ? 'active' : ''; ?>">
+                        <a href="smack-users.php">User Manager</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-maintenance.php') ? 'active' : ''; ?>">
+                        <a href="smack-maintenance.php">Maintenance</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-backup.php') ? 'active' : ''; ?>">
+                        <a href="smack-backup.php">Backup & Recovery</a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <div class="sidebar-bottom">
+        <a href="logout.php" class="logout">Logout</a>
+        <div class="credits-admin">© 2026 Sean McCormick</div>
+    </div>
+</div>

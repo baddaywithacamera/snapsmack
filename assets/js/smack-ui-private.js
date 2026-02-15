@@ -1,54 +1,38 @@
 /**
  * SNAPSMACK - UI Engine
- * Version: 13.7 - Core Admin Logic & Time Sync
- * MASTER DIRECTIVE: Full logic preservation. Readability is paramount.
+ * Version: 13.8 - Modular Variable Sync
+ * MASTER DIRECTIVE: Full logic preservation. 
  * Handles: File Uploads, Metadata Preflight, AJAX Transmission, and Engine Configuration.
- * Renamed from smack-ui.js to smack-ui-private.js as handles private UI functions
  */
 
-console.log("LOG: SNAPSMACK UI Engine v13.7 active.");
+console.log("LOG: SNAPSMACK UI Engine v13.8 active.");
 
 // --- 0. DYNAMIC REGISTRY FUNCTIONS ---
-// Handles the multi-select dropdowns for Categories and Albums.
 
-/**
- * TOGGLE DROPDOWN
- * Opens/Closes specific registries while ensuring others stay shut.
- */
 window.toggleDropdown = function (id) {
     const el = document.getElementById(id);
     if (!el) return;
     const isOpen = el.style.display === 'block';
     
-    // Close all other dropdowns to prevent UI overlap
     document.querySelectorAll('.dropdown-content').forEach(d => d.style.display = 'none');
     
-    // Toggle the target
     el.style.display = isOpen ? 'none' : 'block';
 };
 
-/**
- * UPDATE LABEL
- * Changes the button text (e.g., "3 SELECTED") based on checkbox state.
- */
 window.updateLabel = function (type) {
     const checkboxes = document.querySelectorAll(`input[name="${type}_ids[]"]:checked`);
     const label = document.getElementById(`${type}-label`);
     if (label) {
         if (checkboxes.length > 0) {
             label.innerText = checkboxes.length + " SELECTED";
-            label.style.color = "#39FF14"; // Tactical Green
+            label.style.color = "var(--neon-green)";
         } else {
             label.innerText = "SELECT " + (type === 'cat' ? 'CATEGORIES' : 'ALBUMS') + "...";
-            label.style.color = "#eee";
+            label.style.color = "var(--text-main)";
         }
     }
 };
 
-/**
- * FILTER REGISTRY
- * Live search filter for finding tags inside the dropdowns.
- */
 window.filterRegistry = function (input, containerId) {
     const filter = input.value.toUpperCase();
     const container = document.getElementById(containerId);
@@ -61,11 +45,7 @@ window.filterRegistry = function (input, containerId) {
     }
 };
 
-// --- 1. CONFIGURATION HELPERS (NEW SECTION) ---
-// Handles live previews for the Settings Dashboard (Clock, Sliders, Colors).
-
 function initConfigListeners() {
-    // 1. Timezone & Clock Preview Logic
     const clockElement = document.getElementById('local-clock');
     const tzSelect = document.getElementById('timezone-select');
     const fmtSelect = document.getElementById('format-select');
@@ -86,14 +66,12 @@ function initConfigListeners() {
             }
         };
         
-        // Update every second + on change
         setInterval(updateClock, 1000);
         tzSelect.addEventListener('change', updateClock);
         fmtSelect.addEventListener('change', updateClock);
-        updateClock(); // Immediate run to clear "Syncing..."
+        updateClock();
     }
 
-    // 2. Range Slider (Row) Visual Update
     const rowSlider = document.getElementById('row-slider');
     const rowDisplay = document.getElementById('row-display');
     if (rowSlider && rowDisplay) {
@@ -102,7 +80,6 @@ function initConfigListeners() {
         });
     }
 
-    // 3. Color Hex Visual Update
     const colorPicker = document.getElementById('color-picker');
     const hexDisplay = document.getElementById('hex-display');
     if (colorPicker && hexDisplay) {
@@ -112,13 +89,9 @@ function initConfigListeners() {
     }
 }
 
-// --- 2. DOM READY LOGIC (MASTER INIT) ---
 document.addEventListener("DOMContentLoaded", function () {
-    
-    // A. Initialize Configuration Listeners
     initConfigListeners();
 
-    // B. File Upload Logic
     const fileInput = document.getElementById("file-input");
     const customBtn = document.querySelector(".file-custom-btn");
     const fileNameText = document.getElementById("file-name-text");
@@ -133,19 +106,16 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!this.files || !this.files[0]) return;
             const file = this.files[0];
 
-            // Update UI Filename
             if (fileNameText) {
                 fileNameText.textContent = file.name;
-                fileNameText.style.color = "#39FF14";
+                fileNameText.style.color = "var(--neon-green)";
             }
 
-            // Auto-titling (Sanitize filename)
             const nameOnly = file.name.split(".").slice(0, -1).join(".");
             if (titleInput) {
                 titleInput.value = nameOnly.replace(/[_-]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
             }
 
-            // METADATA PREFLIGHT (Extract EXIF)
             const formData = new FormData();
             formData.append("image_file", file);
             fetch("smack-preflight.php", { method: "POST", body: formData })
@@ -165,7 +135,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // C. Hardware Overrides (Lens/Film Checks)
     document.addEventListener("change", function (e) {
         if (e.target.id === "fixed-lens-check") {
             const input = document.getElementById("meta-lens");
@@ -181,7 +150,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // D. AJAX Smack Engine (Form Submission)
     const form = document.getElementById("smack-form");
     if (form) {
         form.onsubmit = function (e) {
@@ -213,8 +181,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 });
 
-// --- 3. GLOBAL CLICK HANDLER ---
-// Closes dropdowns when clicking outside
 window.onclick = function(event) {
     if (!event.target.closest('.custom-multiselect')) {
         document.querySelectorAll('.dropdown-content').forEach(d => d.style.display = 'none');
