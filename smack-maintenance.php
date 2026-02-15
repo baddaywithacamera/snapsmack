@@ -1,8 +1,7 @@
 <?php
 /**
  * SnapSmack - System Maintenance
- * Version: 2.8 - Clean Template Build
- * MASTER DIRECTIVE: Full file return. 
+ * Version: 3.1 - Logic & Trinity Integration
  */
 require_once 'core/auth.php';
 
@@ -89,53 +88,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$page_title = "Maintenance";
+$page_title = "SYSTEM MAINTENANCE";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <h2>System Maintenance</h2>
+    <h2>SYSTEM MAINTENANCE</h2>
 
     <?php foreach($log as $entry): ?>
         <div class="msg">> <?php echo $entry; ?></div>
     <?php endforeach; ?>
 
     <div class="dash-grid">
-        
         <div class="box">
-            <h3>Registry Sync</h3>
-            <p class="maint-desc">
-                Fixes category count mismatches by purging "ghost" data from deleted images.
-            </p>
+            <h3>REGISTRY SYNC</h3>
+            <p class="skin-desc-text">Fixes category count mismatches by purging "ghost" data from deleted images.</p>
+            <br>
             <form method="POST">
                 <input type="hidden" name="action" value="sync_cats">
-                <button type="submit" class="maint-btn btn-blue">SYNC REGISTRY</button>
+                <button type="submit" class="btn-secondary btn-block">SYNC REGISTRY</button>
             </form>
         </div>
 
         <div class="box">
-            <h3>DB Optimization</h3>
-            <p class="maint-desc">
-                Defragments tables and recreates indexes. This significantly boosts dashboard load speed.
-            </p>
+            <h3>DB OPTIMIZATION</h3>
+            <p class="skin-desc-text">Defragments tables and recreates indexes. Boosts dashboard and site transmission speeds.</p>
+            <br>
             <form method="POST">
                 <input type="hidden" name="action" value="optimize">
-                <button type="submit" class="maint-btn btn-green">OPTIMIZE TABLES</button>
+                <button type="submit" class="btn-smack btn-block">OPTIMIZE TABLES</button>
             </form>
         </div>
 
         <div class="box">
-            <h3>Asset Purge</h3>
-            <p class="maint-desc">
-                Generates Wall Thumbs and <strong>deletes</strong> all files not found in the database registry.
-            </p>
+            <h3>ASSET PURGE</h3>
+            <p class="skin-desc-text">Generates Wall Thumbs and <strong>terminates</strong> all files not found in the database registry.</p>
+            <br>
             <form method="POST">
                 <input type="hidden" name="action" value="sync_assets">
-                <button type="submit" class="maint-btn btn-orange">SYNC & PRUNE ASSETS</button>
+                <button type="submit" class="btn-danger btn-block">SYNC & PRUNE ASSETS</button>
             </form>
         </div>
-
     </div>
 </div>
 

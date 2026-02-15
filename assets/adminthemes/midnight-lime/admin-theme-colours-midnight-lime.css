@@ -1,19 +1,27 @@
-/*
- * Theme Name: Midnight Lime
- * Version: 2.2 - Pure Decorative Restoration
- * DESCRIPTION: Colors, Borders, and Fonts ONLY. No spacing. No sizing.
+/* * SNAPSMACK: MIDNIGHT LIME THEME
+ * Version: 3.3 - PURE PAINT
+ * -------------------------------------------------------------------------
+ * NO FONTS. NO STRUCTURE. NO DIMENSIONS.
  */
 
 :root {
+    /* --- THE GLOW --- */
     --neon-green: #39FF14;
     --neon-red: #ff3e3e;
     --neon-gold: #FFD700;
+    --security-purple: #8e44ad;
+    
+    /* --- DARK OPS --- */
     --bg-dark: #111;
     --bg-darker: #0d0d0d;
     --bg-panel: #1a1a1a;
     --bg-input: #222;
+    
+    /* --- BORDER GLOW --- */
     --border-dim: #222;
     --border-mid: #333;
+    
+    /* --- THE TEXT --- */
     --text-main: #ccc;
     --text-dim: #777;
     --text-dark: #000;
@@ -22,24 +30,22 @@
 body {
     background: var(--bg-dark);
     color: var(--text-main);
-    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
-/* --- SIDEBAR DECORATION --- */
+/* --- SIDEBAR PAINT --- */
 .sidebar {
     background: var(--bg-darker);
     border-right: 1px solid var(--bg-panel);
 }
+
 .sidebar h2 {
     color: var(--neon-green);
-    border-bottom-color: var(--bg-panel);
-    border-bottom-style: solid;
+    border-bottom: 2px solid var(--bg-panel);
 }
+
 .sidebar li { border-bottom: 1px solid var(--bg-panel); }
-.sidebar a { color: var(--text-dim); text-decoration: none; }
+.sidebar a { color: var(--text-dim); }
 .sidebar a:hover, .sidebar li.active a { color: var(--neon-green); }
-.sidebar li.nav-divider { border-top: 1px solid var(--bg-panel); }
-.sidebar li.nav-external-link a { color: var(--neon-green); }
 
 .sidebar li.nav-group strong { color: #444; }
 .sidebar ul.sub-nav { border-left: 1px solid var(--bg-panel); }
@@ -47,86 +53,59 @@ body {
 .sidebar .logout { color: var(--neon-red); }
 .credits-admin { color: #333; }
 
-/* --- MAIN CONTENT DECORATION --- */
+/* --- CONTENT PAINT --- */
 h2, h3, .section-header {
     color: var(--neon-green);
-    border-bottom-color: var(--bg-panel);
-    border-bottom-style: solid;
+    border-bottom: 1px solid var(--bg-panel);
 }
+
 .box {
     background: var(--bg-panel);
     border: 1px solid var(--border-dim);
 }
 
-/* Tactical Data Display Fonts */
-.read-only-display {
+.read-only-display, .mono {
     background: #000; 
     border: 1px solid var(--border-mid);
     color: var(--neon-green);
-    font-family: 'Courier New', 'Cascadia Code', monospace;
 }
 
 label, .stat-row .label { color: #666; }
-.stat-val { color: var(--neon-green); font-family: 'Courier New', monospace; }
-.stat-row .value { color: #eee; font-family: 'Courier New', monospace; }
+.stat-val { color: var(--neon-green); }
+.stat-row .value { color: #eee; }
 
-/* --- INPUTS & FORMS --- */
-input, select, textarea, .file-upload-wrapper, .select-box, .preview-box {
+/* --- BUTTON PAINT (THE UNIFORM) --- */
+.btn-smack { background: var(--neon-green); color: var(--text-dark); }
+.btn-secondary { background: #444; color: #fff; }
+.btn-ghost { background: #000; color: var(--neon-green); border: 1px solid var(--neon-green); }
+.btn-danger { background: transparent; color: var(--neon-red); border: 1px solid var(--neon-red); }
+.btn-security { background: var(--security-purple); color: #fff; }
+
+/* --- INTERACTIVES --- */
+button:hover, .btn-smack:hover { 
+    filter: brightness(1.2); 
+    box-shadow: 0 0 12px rgba(57, 255, 20, 0.3); 
+}
+.btn-danger:hover { background: rgba(255, 62, 62, 0.1); }
+
+/* --- INPUT PAINT --- */
+input, select, textarea, .file-upload-wrapper, .select-box {
     background: var(--bg-input);
     border: 1px solid var(--border-mid);
     color: #fff !important;
 }
-.built-in-label {
-    background: var(--bg-panel);
-    border: 1px solid var(--border-mid);
-    color: #888 !important;
-}
-.built-in-label input[type="checkbox"] {
-    background: #444 !important;
-    border: 1px solid #555;
-}
-.built-in-label input[type="checkbox"]:checked {
-    background: var(--neon-green) !important;
-    border-color: var(--neon-green);
-}
 
-/* --- BUTTONS & ACTIONS --- */
-button, .btn-smack, .btn-green {
-    background: var(--neon-green) !important;
-    color: var(--text-dark) !important;
-    border: none;
-}
-.btn-backup { background: #444 !important; color: #fff !important; }
-.btn-settings { background: #222 !important; color: #888 !important; }
-.btn-live { 
-    background: #000 !important; 
-    color: var(--neon-green) !important; 
-    border: 1px solid var(--neon-green) !important; 
-}
+.built-in-label { background: var(--bg-panel); border: 1px solid var(--border-mid); color: #888 !important; }
+.built-in-label input[type="checkbox"]:checked { background: var(--neon-green) !important; border-color: var(--neon-green); }
 
-/* Interactivity (Paint-based) */
-button:hover, .btn-smack:hover, .btn-green:hover { 
-    filter: brightness(1.2); 
-    box-shadow: 0 0 15px rgba(57, 255, 20, 0.2); 
-}
+/* --- ALERT PAINT --- */
+.msg, .alert-success { color: var(--neon-green); border: 1px solid var(--neon-green); background: rgba(57, 255, 20, 0.05); }
+.alert-error { color: var(--neon-red); border: 1px solid var(--neon-red); background: rgba(255, 62, 62, 0.05); }
 
-/* --- MESSAGES & PROGRESS --- */
-.msg { 
-    color: var(--neon-green); 
-    border: 1px solid var(--neon-green); 
-    background: rgba(57, 255, 20, 0.05); 
-}
 .progress-bar-wrap { background: #000; border: 1px solid var(--border-mid); }
-.progress-fill { 
-    background: var(--neon-green); 
-    box-shadow: 0 0 12px rgba(57, 255, 20, 0.6); 
-}
+.progress-fill { background: var(--neon-green); box-shadow: 0 0 10px rgba(57, 255, 20, 0.5); }
 
-/* --- FOOTER --- */
-#admin-universal-footer {
-    background: var(--bg-darker);
-    border-top: 1px solid var(--bg-panel);
-}
-.footer-left { color: #555; }
+/* --- FOOTER PAINT --- */
+#admin-universal-footer { background: var(--bg-darker); border-top: 1px solid var(--bg-panel); }
+.footer-left, .footer-right { color: #555; }
 .footer-left a { color: #777; border-bottom: 1px solid #333; }
-.footer-right { color: #555; }

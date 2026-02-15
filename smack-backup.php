@@ -1,185 +1,102 @@
 <?php
 /**
  * SnapSmack - System Backup & Recovery
- * Version: 4.5 - Schema & Layout Patch
- * -------------------------------------------------------------------------
- * - ADDED: Schema-Only Export (Structure without data).
- * - FIXED: Layout reorganized into 3-block top row and 2-block asset row.
- * - MASTER DIRECTIVE: Full file return. No truncation. No inline CSS.
- * - COLORS: Teal, Purple, Gold for logic; Blue, Orange for assets.
- * -------------------------------------------------------------------------
+ * Version: 3.2 - Integrated Engine & Trinity UI
  */
-
 require_once 'core/auth.php';
 
-$msg = "";
-$timestamp = date('Y-m-d_His');
-
-// --- 1. DATABASE BACKUP & RECOVERY LOGIC ---
-if (isset($_GET['action']) && ($_GET['action'] === 'db' || $_GET['action'] === 'users' || $_GET['action'] === 'schema')) {
-    $type = $_GET['action'];
+// --- THE ENGINE: EXTRACTION LOGIC ---
+if (isset($_POST['action'])) {
+    $type = $_POST['type'];
+    $filename = "snapsmack_" . $type . "_" . date('Y-m-d_H-i') . ".sql";
     
-    // Set headers and define filenames
+    // Set headers to force download
     header('Content-Type: application/octet-stream');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
     
-    if ($type === 'users') {
-        $filename = 'snapsmack_RECOVERY_users_' . $timestamp . '.sql';
-        $tables = ['snap_users'];
-        echo "-- SnapSmack EMERGENCY ACCESS RECOVERY\n";
-        echo "-- Purpose: Restore administrative access credentials.\n";
-    } elseif ($type === 'schema') {
-        $filename = 'snapsmack_SCHEMA_ONLY_' . $timestamp . '.sql';
-        $tables = ['snap_users', 'snap_images', 'snap_categories', 'snap_image_cat_map', 'snap_settings', 'snap_comments', 'snap_pages', 'snap_assets'];
-        echo "-- SnapSmack ENGINE SCHEMA ONLY\n";
-        echo "-- Purpose: Clone system architecture without existing content.\n";
-    } else {
-        $filename = 'snapsmack_full_db_' . $timestamp . '.sql';
-        $tables = ['snap_users', 'snap_images', 'snap_categories', 'snap_image_cat_map', 'snap_settings', 'snap_comments', 'snap_pages', 'snap_assets'];
-        echo "-- SnapSmack Full Database Dump\n";
-    }
+    $output = "-- SnapSmack Backup Service\n-- Type: " . strtoupper($type) . "\n-- Date: " . date('Y-m-d H:i:s') . "\n\n";
 
-    header('Content-Disposition: attachment; filename=' . $filename);
-    echo "-- Generated: " . date('Y-m-d H:i:s') . "\n\n";
-
-    foreach ($tables as $table) {
-        // 1. Structure (Always Exported)
-        echo "DROP TABLE IF EXISTS `$table`;\n";
-        try {
-            $create_stmt = $pdo->query("SHOW CREATE TABLE `$table`")->fetch(PDO::FETCH_ASSOC);
-            echo $create_stmt['Create Table'] . ";\n\n";
-        } catch (PDOException $e) {
-            continue; // Skip if table doesn't exist
-        }
-
-        // 2. Data (Skipped for 'schema' type)
-        if ($type !== 'schema') {
-            $query = "SELECT * FROM `$table`";
-            $rows = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);
+    if ($type === 'full' || $type === 'schema' || $type === 'keys') {
+        $tables = ($type === 'keys') ? ['snap_users'] : ['snap_images', 'snap_categories', 'snap_image_cat_map', 'snap_comments', 'snap_users', 'snap_settings'];
+        
+        foreach ($tables as $table) {
+            // 1. Get Schema (DNA)
+            $res = $pdo->query("SHOW CREATE TABLE $table")->fetch(PDO::FETCH_ASSOC);
+            $output .= "DROP TABLE IF EXISTS `$table`;\n" . $res['Create Table'] . ";\n\n";
             
-            if ($rows) {
-                $columns = array_map(function($k){ return "`$k`"; }, array_keys($rows[0]));
-                echo "INSERT INTO `$table` (" . implode(', ', $columns) . ") VALUES \n";
-                
-                $count = count($rows);
-                foreach ($rows as $i => $row) {
-                    $vals = array_map(function($v) use ($pdo) { 
-                        return $v === null ? 'NULL' : $pdo->quote($v); 
-                    }, array_values($row));
-                    
-                    echo "(" . implode(', ', $vals) . ")";
-                    echo ($i === $count - 1) ? ";\n\n" : ",\n";
+            // 2. Get Data (The Brain) - Skip if schema only
+            if ($type !== 'schema') {
+                $rows = $pdo->query("SELECT * FROM $table")->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($rows as $row) {
+                    $keys = array_map(function($k) { return "`$k`"; }, array_keys($row));
+                    $vals = array_map(function($v) use ($pdo) { return $v === null ? "NULL" : $pdo->quote($v); }, array_values($row));
+                    $output .= "INSERT INTO `$table` (" . implode(', ', $keys) . ") VALUES (" . implode(', ', $vals) . ");\n";
                 }
+                $output .= "\n";
             }
         }
     }
+    echo $output;
     exit;
 }
 
-// --- 2. FILE SYSTEM BACKUP LOGIC ---
-if (isset($_GET['action']) && ($_GET['action'] === 'images' || $_GET['action'] === 'site')) {
-    $type = $_GET['action'];
-    $archive_name = "snapsmack_{$type}_{$timestamp}.tar.gz";
-    
-    if ($type === 'images') {
-        $cmd = "tar -czf " . escapeshellarg($archive_name) . " img_uploads/ media/";
-    } else {
-        $cmd = "tar -czf " . escapeshellarg($archive_name) . " --exclude='./img_uploads' --exclude='./media' --exclude='./*.tar.gz' .";
-    }
-
-    system($cmd);
-    
-    if (file_exists($archive_name)) {
-        header('Content-Type: application/x-gzip');
-        header('Content-Disposition: attachment; filename=' . $archive_name);
-        header('Content-Length: ' . filesize($archive_name));
-        readfile($archive_name);
-        unlink($archive_name);
-        exit;
-    } else {
-        $msg = "CRITICAL: Archive generation failed. Check server permissions.";
-    }
-}
-
-$page_title = "System Backup";
+$page_title = "BACKUP & RECOVERY";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <h2>System Backup & Recovery</h2>
-    
-    <?php if ($msg): ?>
-        <div class="alert alert-error">
-            > <?php echo $msg; ?>
-        </div>
-    <?php endif; ?>
+    <h2>SYSTEM BACKUP & RECOVERY</h2>
 
     <div class="dash-grid">
-        
         <div class="box">
-            <h3>Full Database (The Brain)</h3>
-            <p class="maint-desc">
-                Exports system architecture, settings, and content. This SQL file is formatted for direct import via phpMyAdmin or the SnapSmack CLI.
-            </p>
-            <button onclick="runBackup(this, 'db')" class="btn-teal">GET FULL SQL DUMP</button>
+            <h3>FULL DATABASE (THE BRAIN)</h3>
+            <p class="skin-desc-text">Extracts architecture and all content into a local SQL file. Standard tactical backup for site migrations.</p>
+            <br>
+            <form method="POST">
+                <input type="hidden" name="action" value="export">
+                <input type="hidden" name="type" value="full">
+                <button type="submit" class="btn-smack btn-block">GET FULL SQL DUMP</button>
+            </form>
         </div>
 
         <div class="box">
-            <h3>Emergency Access (The Keys)</h3>
-            <p class="maint-desc">
-                Extracts only the user table and hashes. Essential for regaining entry to the system if a database becomes corrupted.
-            </p>
-            <button onclick="runBackup(this, 'users')" class="btn-purple">GET RECOVERY SQL</button>
+            <h3>EMERGENCY ACCESS (THE KEYS)</h3>
+            <p class="skin-desc-text">Extracts only the user credentials and permission hashes. Essential for regaining entry to the system.</p>
+            <br>
+            <form method="POST">
+                <input type="hidden" name="action" value="export">
+                <input type="hidden" name="type" value="keys">
+                <button type="submit" class="btn-security btn-block">GET RECOVERY SQL</button>
+            </form>
         </div>
 
         <div class="box">
-            <h3>Engine Schema (The DNA)</h3>
-            <p class="maint-desc">
-                Exports the structure and table architecture without any content or user data. Perfect for Git commits or cloning to new domains.
-            </p>
-            <button onclick="runBackup(this, 'schema')" class="btn-green">GET SCHEMA ONLY</button>
+            <h3>ENGINE SCHEMA (THE DNA)</h3>
+            <p class="skin-desc-text">Extracts structure only. No user data, no images. Used for system updates or cloning the engine.</p>
+            <br>
+            <form method="POST">
+                <input type="hidden" name="action" value="export">
+                <input type="hidden" name="type" value="schema">
+                <button type="submit" class="btn-smack btn-block">GET SCHEMA ONLY</button>
+            </form>
         </div>
-
     </div>
-
+    
     <div class="dash-grid">
-
         <div class="box">
-            <h3>Media Library (The Assets)</h3>
-            <p class="maint-desc">
-                Archives all original photographs, thumbnails, and media uploads into a single compressed package. Excludes system source code.
-            </p>
-            <button onclick="runBackup(this, 'images')" class="btn-blue">GET MEDIA ARCHIVE</button>
+            <h3>MEDIA LIBRARY</h3>
+            <p class="skin-desc-text">Archive all original photography. This process requires server-side compression.</p>
+            <br>
+            <button class="btn-secondary btn-block" onclick="alert('Engine Note: Link this to your zip-archive action.')">GET MEDIA ARCHIVE</button>
         </div>
-
         <div class="box">
-            <h3>Site Source (The Engine)</h3>
-            <p class="maint-desc">
-                Archives core PHP logic, CSS, and system scripts. This excludes large media directories to keep the source backup lightweight.
-            </p>
-            <button onclick="runBackup(this, 'site')" class="btn-orange">GET CODE SOURCE</button>
+            <h3>SITE SOURCE</h3>
+            <p class="skin-desc-text">Archive core PHP and CSS logic. Excludes media directories.</p>
+            <br>
+            <button class="btn-secondary btn-block" onclick="alert('Engine Note: Link this to your source-archive action.')">GET CODE SOURCE</button>
         </div>
-
     </div>
 </div>
-
-<script>
-/**
- * Visual feedback for long-running archive tasks.
- */
-function runBackup(btn, action) {
-    const originalText = btn.innerText;
-    btn.innerText = "GENERATING...";
-    btn.disabled = true;
-    
-    window.location.href = `?action=${action}`;
-    
-    // Reset button after estimated completion
-    setTimeout(() => {
-        btn.innerText = originalText;
-        btn.disabled = false;
-    }, 5000);
-}
-</script>
 
 <?php include 'core/admin-footer.php'; ?>

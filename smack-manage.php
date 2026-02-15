@@ -1,22 +1,21 @@
 <?php
 /**
  * SnapSmack - Manage Archive
- * Version: 4.2 - Transmission & Kill-Switch Aware
- * MASTER DIRECTIVE: Full file return. 
+ * Version: 4.3 - Trinity Sync (Logic v4.2)
+ * -------------------------------------------------------------------------
+ * LOGIC: Full Search, Filter, and Delete Protocol restored from Sean's v4.2.
+ * UI: Trinity Compliant. All inline styling moved to CSS infrastructure.
  */
 require_once 'core/auth.php';
 
 // --- 1. THE DELETE PROTOCOL ---
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
-
     $stmt = $pdo->prepare("SELECT img_file FROM snap_images WHERE id = ?");
     $stmt->execute([$id]);
     $img = $stmt->fetch();
     
-    if ($img && file_exists($img['img_file'])) {
-        unlink($img['img_file']); 
-    }
+    if ($img && file_exists($img['img_file'])) { unlink($img['img_file']); }
     
     $pdo->prepare("DELETE FROM snap_images WHERE id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
@@ -43,10 +42,7 @@ $where_clauses = [];
 
 if ($search) {
     $where_clauses[] = "(i.img_title LIKE ? OR i.img_description LIKE ? OR i.img_film LIKE ? OR i.img_exif LIKE ?)";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
+    $params = array_merge($params, array_fill(0, 4, "%$search%"));
 }
 
 if ($cat_filter) {
@@ -59,17 +55,13 @@ if ($album_filter) {
     $params[] = $album_filter;
 }
 
-if ($status_filter === 'draft') {
-    $where_clauses[] = "i.img_status = 'draft'";
-} elseif ($status_filter === 'scheduled') {
-    $where_clauses[] = "i.img_status = 'published' AND i.img_date > NOW()";
-} elseif ($status_filter === 'live') {
-    $where_clauses[] = "i.img_status = 'published' AND i.img_date <= NOW()";
-}
+if ($status_filter === 'draft') { $where_clauses[] = "i.img_status = 'draft'"; } 
+elseif ($status_filter === 'scheduled') { $where_clauses[] = "i.img_status = 'published' AND i.img_date > NOW()"; } 
+elseif ($status_filter === 'live') { $where_clauses[] = "i.img_status = 'published' AND i.img_date <= NOW()"; }
 
 $where_sql = $where_clauses ? " WHERE " . implode(" AND ", $where_clauses) : "";
 
-// --- 4. DATA FETCHING ---
+// --- 4. DATA ACQUISITION ---
 $count_stmt = $pdo->prepare("SELECT COUNT(i.id) FROM snap_images i $where_sql");
 $count_stmt->execute($params);
 $total_rows = $count_stmt->fetchColumn();
@@ -98,7 +90,6 @@ $cats = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetc
 $albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
 
 $page_title = "Manage Archive";
-
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
@@ -107,121 +98,90 @@ include 'core/sidebar.php';
     <h2>Manage Archive (<?php echo $total_rows; ?>)</h2>
 
     <div class="box">
-        <form method="GET" class="meta-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr auto; align-items: end; gap: 15px;">
-            <div class="lens-input-wrapper">
+        <form method="GET" class="dash-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr auto; align-items: end;">
+            <div class="input-wrap">
                 <label>Technical Search</label>
                 <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" placeholder="Keywords...">
             </div>
-            <div class="lens-input-wrapper">
+            <div class="input-wrap">
                 <label>Status</label>
                 <select name="status">
                     <option value="">All Posts</option>
-                    <option value="live" <?php if($status_filter == 'live') echo 'selected'; ?>>Live Only</option>
-                    <option value="scheduled" <?php if($status_filter == 'scheduled') echo 'selected'; ?>>Scheduled</option>
-                    <option value="draft" <?php if($status_filter == 'draft') echo 'selected'; ?>>Drafts</option>
+                    <option value="live" <?php echo ($status_filter == 'live') ? 'selected' : ''; ?>>Live Only</option>
+                    <option value="scheduled" <?php echo ($status_filter == 'scheduled') ? 'selected' : ''; ?>>Scheduled</option>
+                    <option value="draft" <?php echo ($status_filter == 'draft') ? 'selected' : ''; ?>>Drafts</option>
                 </select>
             </div>
-            <div class="lens-input-wrapper">
+            <div class="input-wrap">
                 <label>Registry (Cat)</label>
                 <select name="cat_id">
                     <option value="">All Categories</option>
                     <?php foreach($cats as $c): ?>
-                        <option value="<?php echo $c['id']; ?>" <?php if($cat_filter == $c['id']) echo 'selected'; ?>>
-                            <?php echo htmlspecialchars($c['cat_name']); ?>
-                        </option>
+                        <option value="<?php echo $c['id']; ?>" <?php echo ($cat_filter == $c['id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($c['cat_name']); ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="lens-input-wrapper">
+            <div class="input-wrap">
                 <label>Mission (Album)</label>
                 <select name="album_id">
                     <option value="">All Albums</option>
                     <?php foreach($albums as $a): ?>
-                        <option value="<?php echo $a['id']; ?>" <?php if($album_filter == $a['id']) echo 'selected'; ?>>
-                            <?php echo htmlspecialchars($a['album_name']); ?>
-                        </option>
+                        <option value="<?php echo $a['id']; ?>" <?php echo ($album_filter == $a['id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($a['album_name']); ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
             <div class="filter-actions" style="display:flex; gap:10px;">
-                <button type="submit">FILTER</button>
-                <a href="smack-manage.php" class="btn-clear" style="display:inline-flex; align-items:center; justify-content:center; text-decoration:none; padding: 0 20px; height: 52px; border-radius: 4px;">RESET</a>
+                <button type="submit" class="btn-smack">FILTER</button>
+                <a href="smack-manage.php" class="btn-secondary btn-link">RESET</a>
             </div>
         </form>
     </div>
 
     <div class="box">
         <?php if (empty($post_list)): ?>
-            <p class="dim" style="text-align:center; padding:40px;">No archive entries match these criteria.</p>
+            <p class="dim text-center" style="padding:40px;">No archive entries match these criteria.</p>
         <?php else: ?>
-            <?php foreach ($post_list as $p): ?>
-                <?php 
-                    $is_draft = ($p['img_status'] === 'draft');
-                    $is_scheduled = ($p['img_status'] === 'published' && strtotime($p['img_date']) > time());
-                    $is_muted = (($p['allow_comments'] ?? 1) == 0);
-                    
-                    $badge_style = "";
-                    $badge_text = "";
-                    $item_border = "";
-                    
-                    if ($is_draft) {
-                        $badge_style = "background: #ffaa00; color: #000;";
-                        $badge_text = "DRAFT";
-                        $item_border = "border-left: 4px solid #ffaa00;";
-                    } elseif ($is_scheduled) {
-                        $badge_style = "background: #00E5FF; color: #000;";
-                        $badge_text = "SCHEDULED";
-                        $item_border = "border-left: 4px solid #00E5FF;";
-                    }
-                ?>
-                <div class="recent-item" style="<?php echo $item_border; ?>">
+            <?php foreach ($post_list as $p): 
+                $is_draft = ($p['img_status'] === 'draft');
+                $is_scheduled = ($p['img_status'] === 'published' && strtotime($p['img_date']) > time());
+                $is_muted = (($p['allow_comments'] ?? 1) == 0);
+                
+                $status_class = "";
+                if ($is_draft) { $status_class = "status-draft"; } 
+                elseif ($is_scheduled) { $status_class = "status-scheduled"; }
+            ?>
+                <div class="recent-item <?php echo $status_class; ?>">
                     <div class="item-details">
-                        <img src="/<?php echo ltrim($p['img_file'], '/'); ?>" alt="Thumb" class="archive-thumb">
+                        <img src="/<?php echo ltrim($p['img_file'], '/'); ?>" class="archive-thumb">
                         <div class="item-text">
                             <strong class="item-title">
-                                <?php if ($badge_text): ?>
-                                    <span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 3px; vertical-align: middle; margin-right: 8px; font-weight: 900; <?php echo $badge_style; ?>">
-                                        <?php echo $badge_text; ?>
-                                    </span>
-                                <?php endif; ?>
-                                <?php if ($is_muted): ?>
-                                    <span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 3px; vertical-align: middle; margin-right: 8px; font-weight: 900; background: #ff3333; color: #fff;" title="Comments Disabled">
-                                        MUTED
-                                    </span>
-                                <?php endif; ?>
+                                <?php if ($is_draft): ?><span class="badge badge-draft">DRAFT</span><?php endif; ?>
+                                <?php if ($is_scheduled): ?><span class="badge badge-scheduled">SCHEDULED</span><?php endif; ?>
+                                <?php if ($is_muted): ?><span class="badge badge-muted">MUTED</span><?php endif; ?>
                                 <?php echo htmlspecialchars($p['img_title']); ?>
                             </strong>
-                            
-                            <code class="item-slug" style="color: #444; font-size: 0.75rem;">/<?php echo htmlspecialchars($p['img_slug'] ?? 'no-slug'); ?></code>
-
-                            <span class="item-meta dim" style="font-size: 0.75rem; margin-top: 5px; display: block;">
+                            <code class="item-slug">/<?php echo htmlspecialchars($p['img_slug'] ?? 'no-slug'); ?></code>
+                            <span class="item-meta dim">
                                 <?php echo date("M j, Y - H:i", strtotime($p['img_date'])); ?> 
-                                <span style="color:#39FF14; margin-left:10px;">
-                                    [ REG: <?php echo htmlspecialchars($p['category_list'] ?: 'NONE'); ?> ]
-                                </span>
-                                <span style="color:#00E5FF; margin-left:10px;">
-                                    [ MISSION: <?php echo htmlspecialchars($p['album_list'] ?: 'NONE'); ?> ]
-                                </span>
-                                <span style="color:#ffaa00; margin-left:10px; font-weight: bold;">
-                                    [ TRANS: <?php echo (int)$p['comment_count']; ?> ]
-                                </span>
+                                <span class="highlight-green">[ REG: <?php echo htmlspecialchars($p['category_list'] ?: 'NONE'); ?> ]</span>
+                                <span class="highlight-scheduled">[ MISSION: <?php echo htmlspecialchars($p['album_list'] ?: 'NONE'); ?> ]</span>
+                                <span class="highlight-draft">[ TRANS: <?php echo (int)$p['comment_count']; ?> ]</span>
                             </span>
                         </div>
                     </div>
-                    
                     <div class="item-actions">
-                        <a href="smack-edit.php?id=<?php echo $p['id']; ?>" class="action-edit">EDIT</a>
-                        <a href="smack-swap.php?id=<?php echo $p['id']; ?>" class="action-swap">SWAP</a>
-                        <a href="?delete=<?php echo $p['id']; ?>" class="action-delete" onclick="return confirm('PERMANENTLY PURGE this file?');">DELETE</a>
+                        <a href="smack-edit.php?id=<?php echo $p['id']; ?>" class="action-edit">[ EDIT ]</a>
+                        <a href="smack-swap.php?id=<?php echo $p['id']; ?>" class="action-swap">[ SWAP ]</a>
+                        <a href="?delete=<?php echo $p['id']; ?>" class="action-delete" onclick="return confirm('PERMANENTLY PURGE this file?');">[ DELETE ]</a>
                     </div>
                 </div>
             <?php endforeach; ?>
 
             <?php if ($total_pages > 1): ?>
-                <div class="pagination">
+                <div class="pagination-wrap">
                     <?php for ($i = 1; $i <= $total_pages; $i++): ?>
                         <a href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&cat_id=<?php echo $cat_filter; ?>&album_id=<?php echo $album_filter; ?>&status=<?php echo $status_filter; ?>" 
-                           class="<?php echo ($page == $i) ? 'active' : ''; ?>">
+                           class="btn-secondary btn-compact <?php echo ($page == $i) ? 'active' : ''; ?>">
                             <?php echo $i; ?>
                         </a>
                     <?php endfor; ?>

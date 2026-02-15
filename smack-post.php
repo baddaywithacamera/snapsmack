@@ -1,8 +1,7 @@
 <?php
 /**
  * SNAPSMACK - New Post (Smack Engine)
- * Version: 15.6 - Dropdown Transmission Control
- * MASTER DIRECTIVE: Full file return. 
+ * Version: 15.7 - Trinity Standardized
  */
 
 require_once 'core/auth.php';
@@ -28,7 +27,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image_file'])) {
         $orientation = (int)($_POST['img_orientation'] ?? 0); 
         $publish_date = !empty($_POST['custom_date']) ? $_POST['custom_date'] : date('Y-m-d H:i:s');
 
-        // NEW: Capture Dropdown Flavor Logic
         $allow_comments = (int)($_POST['allow_comments'] ?? 1);
 
         $camera_manual    = $_POST['camera_model'] ?? '';
@@ -164,49 +162,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image_file'])) {
 $cats = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
 $albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
 
+$page_title = "NEW POST";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <h2>New Post</h2>
-    <div class="box">
-        <form id="smack-form" method="POST" enctype="multipart/form-data">
-            <div class="post-layout-grid">
-                <div class="post-col-left">
-                    <label>Select Photo</label>
+    <h2>NEW POST</h2>
+    
+    <form id="smack-form" method="POST" enctype="multipart/form-data">
+        <div class="post-layout-grid">
+            
+            <div class="post-col-left">
+                <div class="box">
+                    <label>SELECT PHOTO</label>
                     <div class="file-upload-wrapper">
-                        <div class="file-custom-btn">Choose File</div>
+                        <div class="file-custom-btn">CHOOSE FILE</div>
                         <div class="file-name-display" id="file-name-text">No file selected...</div>
                         <input type="file" name="image_file" id="file-input" required>
                     </div>
 
-                    <label>Image Title</label>
-                    <input type="text" name="title" id="title-input" required>
+                    <label>IMAGE TITLE</label>
+                    <input type="text" name="title" id="title-input" required placeholder="E.G. MIDNIGHT VIBES">
 
-                    <label>Description</label>
+                    <label>DESCRIPTION</label>
                     <textarea name="desc" placeholder="Tell the story..."></textarea>
                 </div>
+            </div>
 
-                <div class="post-col-right">
-                    <label>Publication Status</label>
-                    <select name="img_status" class="full-width-select mb-25">
-                        <option value="published" selected>Published (Visible)</option>
-                        <option value="draft">Draft (Hidden)</option>
+            <div class="post-col-right">
+                <div class="box">
+                    <label>PUBLICATION STATUS</label>
+                    <select name="img_status" class="mb-25">
+                        <option value="published" selected>PUBLISHED (VISIBLE)</option>
+                        <option value="draft">DRAFT (HIDDEN)</option>
                     </select>
 
-                    <label>Manual Orientation (Mobile Override)</label>
-                    <select name="img_orientation" class="full-width-select mb-25">
-                        <option value="0" selected>Landscape (Default)</option>
-                        <option value="1">Portrait (Vertical Priority)</option>
-                        <option value="2">Square (Standard View)</option>
+                    <label>MANUAL ORIENTATION</label>
+                    <select name="img_orientation" class="mb-25">
+                        <option value="0" selected>LANDSCAPE (DEFAULT)</option>
+                        <option value="1">PORTRAIT (VERTICAL)</option>
+                        <option value="2">SQUARE (STANDARD)</option>
                     </select>
 
-                    <label>Scheduled Date (Optional)</label>
-                    <input type="datetime-local" name="custom_date" class="full-width-select mb-5">
-                    <p class="field-hint mb-25">Leave empty to publish now.</p>
+                    <label>SCHEDULED DATE (OPTIONAL)</label>
+                    <input type="datetime-local" name="custom_date" class="mb-5">
+                    <p class="field-hint mb-25">Leave empty for instant broadcast.</p>
 
-                    <label>Registry (Categories)</label>
+                    <label>REGISTRY (CATEGORIES)</label>
                     <div class="custom-multiselect mb-25">
                         <div class="select-box" onclick="toggleDropdown('cat-items')">
                             <span id="cat-label">Select...</span>
@@ -225,7 +228,7 @@ include 'core/sidebar.php';
                         </div>
                     </div>
 
-                    <label>Missions (Albums)</label>
+                    <label>MISSIONS (ALBUMS)</label>
                     <div class="custom-multiselect mb-25">
                         <div class="select-box" onclick="toggleDropdown('album-items')">
                             <span id="album-label">Select...</span>
@@ -244,50 +247,48 @@ include 'core/sidebar.php';
                         </div>
                     </div>
 
-                    <label>Allow Public Transmissions?</label>
-                    <select name="allow_comments" class="full-width-select">
-                        <option value="1" selected>Oh hell yes!</option>
-                        <option value="0">Nope nope nope!</option>
+                    <label>PUBLIC TRANSMISSIONS</label>
+                    <select name="allow_comments">
+                        <option value="1" selected>OH HELL YES!</option>
+                        <option value="0">NOPE NOPE NOPE!</option>
                     </select>
                 </div>
             </div>
+        </div>
 
-            <hr class="section-divider">
-
-            <label>Technical Specifications</label>
-            <div class="meta-grid">
-                <div class="lens-input-wrapper"><label>Camera Model</label><input type="text" name="camera_model" id="meta-camera"></div>
-                <div class="lens-input-wrapper">
-                    <label>Lens Info</label>
-                    <div class="input-control-row">
-                        <input type="text" name="lens_info" id="meta-lens">
-                        <label class="built-in-label"><input type="checkbox" id="fixed-lens-check"> Built-in</label>
+        <div class="box">
+            <h3>TECHNICAL SPECIFICATIONS</h3>
+            <div class="dash-grid" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="input-wrap"><label>CAMERA MODEL</label><input type="text" name="camera_model"></div>
+                <div class="input-wrap"><label>LENS INFO</label><input type="text" name="lens_info"></div>
+                <div class="input-wrap"><label>FOCAL LENGTH</label><input type="text" name="focal_length"></div>
+                <div class="input-wrap">
+                    <label>FILM STOCK</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="text" name="film_stock" style="flex: 1;">
+                        <label class="built-in-label"><input type="checkbox" name="film_na"> N/A</label>
                     </div>
                 </div>
-                <div class="lens-input-wrapper"><label>Focal Length</label><input type="text" name="focal_length" id="meta-focal"></div>
-                <div class="lens-input-wrapper">
-                    <label>Film Stock</label>
-                    <div class="input-control-row">
-                        <input type="text" name="film_stock" id="meta-film">
-                        <label class="built-in-label"><input type="checkbox" name="film_na" id="film-na-check"> N/A</label>
-                    </div>
-                </div>
-                <div class="lens-input-wrapper"><label>ISO</label><input type="text" name="iso_speed" id="meta-iso"></div>
-                <div class="lens-input-wrapper"><label>Aperture</label><input type="text" name="aperture" id="meta-aperture"></div>
-                <div class="lens-input-wrapper"><label>Shutter Speed</label><input type="text" name="shutter_speed" id="meta-shutter"></div>
-                <div class="lens-input-wrapper">
-                    <label>Flash Fired</label>
-                    <select name="flash_fire" id="meta-flash">
+                <div class="input-wrap"><label>ISO</label><input type="text" name="iso_speed"></div>
+                <div class="input-wrap"><label>APERTURE</label><input type="text" name="aperture"></div>
+                <div class="input-wrap"><label>SHUTTER SPEED</label><input type="text" name="shutter_speed"></div>
+                <div class="input-wrap">
+                    <label>FLASH FIRED</label>
+                    <select name="flash_fire">
                         <option value="No">No</option>
                         <option value="Yes">Yes</option>
                     </select>
                 </div>
             </div>
 
-            <div class="progress-container" id="progress-container"><div class="progress-bar" id="progress-bar"></div></div>
-            <button type="submit" id="submit-btn">SMACK THAT #$%& UP!!</button>
-        </form>
-    </div>
+            <div class="progress-bar-wrap" id="progress-container" style="display:none;">
+                <div class="progress-fill" id="progress-bar"></div>
+            </div>
+            
+            <br>
+            <button type="submit" id="submit-btn" class="btn-smack btn-block">SMACK THAT #$%& UP!!</button>
+        </div>
+    </form>
 </div>
 
 <script src="assets/js/smack-ui.js?v=<?php echo time(); ?>"></script>

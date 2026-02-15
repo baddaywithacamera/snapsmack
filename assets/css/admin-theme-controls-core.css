@@ -1,106 +1,141 @@
 /* * SNAPSMACK: ADMIN CONTROLS & UTILITIES
- * The "Toolbox" - Global Helpers, Typography Resets, and Functional States.
- * Handles how things WORK, not just how they look.
+ * Version: 3.6 - Functional Mechanics
+ * DESCRIPTION: Handles HOW things work (Clicks, Hovers, Toggles).
  */
 
-/* 1. RESET & BASE */
-html, body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    font-size: 16px; 
-}
-
-/* 2. TYPOGRAPHY HELPERS */
+/* --- 1. TYPOGRAPHY MECHANICS --- */
 .text-center { text-align: center; }
-.uppercase { text-transform: uppercase; }
-.font-mono { font-family: 'Courier New', monospace; }
+.text-right { text-align: right; }
+.uppercase { text-transform: uppercase; letter-spacing: 1px; }
+.bold { font-weight: 700; }
+.dim { opacity: 0.6; }
 
-/* 3. SPACING UTILITIES */
-.mt-20 { margin-top: 20px; }
-.mb-20 { margin-bottom: 20px; }
-.mt-30 { margin-top: 30px; }
-.mb-25 { margin-bottom: 25px; }
-.mb-5  { margin-bottom: 5px; }
-.mt-40 { margin-top: 40px; }
-.flex-1 { flex: 1; }
-
-/* Force flush bottoms for boxes that stack with buttons */
-.box-flush-bottom { 
-    margin-bottom: 0 !important;
-    border-bottom: none;
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-}
-
-/* 4. VISUAL HELPERS */
-.section-divider { 
-    border: 0; 
-    border-top: 1px solid #333; /* Fallback color */
-    margin: 40px 0; 
-}
-
-.full-width-select { width: 100% !important; }
-
-/* 5. ALERTS & NOTIFICATIONS */
-.alert {
-    padding: 15px;
-    margin-bottom: 25px;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    font-weight: 600;
+/* --- 2. THE UNIFORM (BUTTON MECHANICS) --- */
+button, .btn-smack, .btn-ghost, .btn-danger, .btn-secondary, .btn-security, .btn-block {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 20px;
+    font-size: 13px;
+    font-weight: 800;
     text-transform: uppercase;
+    letter-spacing: 1.5px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    box-sizing: border-box;
+    line-height: 1;
+    border: none; /* Reset default borders */
 }
 
-/* Base functional colors (Theme can override these) */
-.alert-success { background: rgba(57, 255, 20, 0.1); border: 1px solid #39FF14; color: #39FF14; }
-.alert-error { background: rgba(255, 62, 62, 0.1); border: 1px solid #ff3e3e; color: #ff3e3e; }
+/* GROUND TRUTH HEIGHT: 52px */
+button, .btn-smack, .btn-secondary, .btn-security, .btn-block {
+    height: 52px; 
+}
 
-/* 6. PROGRESS BAR LOGIC */
-.progress-container {
-    display: none;
+/* COMPACT ACTIONS (Table Buttons) */
+.btn-compact, .btn-ghost, .btn-danger {
+    height: 38px;
+    padding: 0 15px;
+    font-size: 11px;
+}
+
+.btn-block { width: 100%; }
+
+/* --- 3. TOGGLE SWITCH MECHANICS --- */
+.toggle-group {
+    display: flex;
     width: 100%;
-    height: 12px;
     border-radius: 4px;
-    margin-top: 20px;
     overflow: hidden;
 }
-.progress-bar {
-    width: 0%;
-    height: 100%;
-    transition: width 0.1s ease;
+
+.btn-toggle {
+    flex: 1;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: background 0.2s;
 }
 
-/* 7. DROPDOWN UTILITIES */
-.dropdown-content {
-    display: none;
-    position: absolute;
-    top: 56px;
-    left: 0;
-    width: 100%;
-    z-index: 1000;
-    border-radius: 4px;
-}
-.dropdown-content.show { display: block; }
-.dropdown-list { max-height: 250px; overflow-y: auto; }
-
-/* Scrollbar styling for dropdowns */
-.dropdown-list::-webkit-scrollbar { width: 6px; }
-.dropdown-list::-webkit-scrollbar-track { background: transparent; }
-.dropdown-list::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-
-/* 8. FILE INPUT WRAPPER */
+/* --- 4. FORM CONTROL MECHANICS --- */
+/* The "Invisible Trigger" Hack */
 .file-upload-wrapper {
     position: relative;
     overflow: hidden;
     cursor: pointer;
+    display: flex; /* Ensures internal alignment */
+    align-items: center;
 }
+
 .file-upload-wrapper input[type="file"] {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
-    opacity: 0;
+    opacity: 0; /* THE HACK */
     cursor: pointer;
+    z-index: 10;
+}
+
+/* Range Slider Logic */
+input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    background: transparent;
+}
+
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 18px;
+    width: 18px;
+    border-radius: 50%;
+    cursor: pointer;
+    margin-top: -8px; 
+}
+
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 2px;
+    cursor: pointer;
+}
+
+/* --- 5. DROPDOWN & ALERTS --- */
+.dropdown-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.dropdown-content.show { display: block; }
+
+.alert {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    margin-bottom: 25px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.msg {
+    padding: 15px;
+    margin-bottom: 25px;
+    border-radius: 4px;
+    font-weight: bold;
 }
