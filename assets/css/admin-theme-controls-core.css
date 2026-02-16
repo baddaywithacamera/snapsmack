@@ -1,141 +1,251 @@
-/* * SNAPSMACK: ADMIN CONTROLS & UTILITIES
- * Version: 3.6 - Functional Mechanics
- * DESCRIPTION: Handles HOW things work (Clicks, Hovers, Toggles).
+/* * SNAPSMACK CONTROLS - v5.11
+ * Functional Mechanics and Interaction Logic (Restored from v15.4 Master)
  */
 
-/* --- 1. TYPOGRAPHY MECHANICS --- */
-.text-center { text-align: center; }
-.text-right { text-align: right; }
-.uppercase { text-transform: uppercase; letter-spacing: 1px; }
-.bold { font-weight: 700; }
-.dim { opacity: 0.6; }
-
-/* --- 2. THE UNIFORM (BUTTON MECHANICS) --- */
-button, .btn-smack, .btn-ghost, .btn-danger, .btn-secondary, .btn-security, .btn-block {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 20px;
-    font-size: 13px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    border-radius: 4px;
-    cursor: pointer;
+/* 2. SIDEBAR NAVIGATION */
+.sidebar a {
     transition: all 0.2s ease;
-    text-decoration: none;
-    box-sizing: border-box;
-    line-height: 1;
-    border: none; /* Reset default borders */
 }
 
-/* GROUND TRUTH HEIGHT: 52px */
-button, .btn-smack, .btn-secondary, .btn-security, .btn-block {
-    height: 52px; 
+/* 5. FORM ELEMENTS */
+input, select, textarea, .preview-box, .select-box {
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-/* COMPACT ACTIONS (Table Buttons) */
-.btn-compact, .btn-ghost, .btn-danger {
-    height: 38px;
-    padding: 0 15px;
-    font-size: 11px;
+/* Tactical Glow on Focus */
+input:focus, textarea:focus, select:focus {
+    box-shadow: 0 0 8px rgba(57, 255, 20, 0.2);
 }
 
-.btn-block { width: 100%; }
-
-/* --- 3. TOGGLE SWITCH MECHANICS --- */
-.toggle-group {
-    display: flex;
-    width: 100%;
-    border-radius: 4px;
-    overflow: hidden;
+/* 5.1 MANUAL METADATA GRID & CHECKBOX LOGIC */
+.built-in-label {
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
 }
 
-.btn-toggle {
-    flex: 1;
-    height: 48px;
+.built-in-label input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
-    text-transform: uppercase;
-    font-size: 12px;
-    letter-spacing: 1px;
-    cursor: pointer;
-    transition: background 0.2s;
+    transition: background-color 0.2s, border-color 0.2s;
 }
 
-/* --- 4. FORM CONTROL MECHANICS --- */
-/* The "Invisible Trigger" Hack */
+/* The Tactical Checkmark Restoration */
+.built-in-label input[type="checkbox"]:checked::after {
+    content: '';
+    width: 8px;
+    height: 4px;
+    border-left: 2px solid #000;
+    border-bottom: 2px solid #000;
+    transform: rotate(-45deg);
+}
+
+/* 6. PREVIEW CONSTRAINTS (Restored Interaction) */
+.swap-preview {
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.control-pane button {
+    cursor: pointer;
+}
+
+/* 7. TRANSMISSIONS LOG (Restored Interaction) */
+.signal-body {
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.signal-body:hover {
+    border-color: #555;
+}
+
+.transmission-nav-group button {
+    cursor: pointer;
+}
+
+/* 8. BUTTONS & ACTIONS */
+button, .btn-smack, .btn-clear, .action-authorize, .action-delete, .action-edit, 
+.action-swap, .btn-green, .btn-blue, .btn-orange, .maint-btn, .master-update-btn,
+.btn-teal, .btn-purple, .btn-gold {
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Interaction States: The Glow and Lift */
+button:hover, .btn-smack:hover, .btn-green:hover, .btn-blue:hover, 
+.btn-orange:hover, .maint-btn:hover, .btn-teal:hover, .btn-purple:hover, .btn-gold:hover {
+    filter: brightness(1.2);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+button:active, .btn-smack:active {
+    transform: translateY(1px);
+    filter: brightness(0.9);
+}
+
+.action-authorize, .action-delete, .action-edit, .action-swap {
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+/* 9. ITEM LAYOUTS (Restored Interaction) */
+.recent-item {
+    transition: background-color 0.2s ease;
+}
+
+.recent-item:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.item-text strong {
+    transition: color 0.2s;
+}
+
+/* 11. PAGINATION */
+.pagination a { 
+    transition: all 0.2s ease; 
+}
+
+.pagination a:hover {
+    transform: translateY(-1px);
+}
+
+/* 12. UPLOAD & PROGRESS */
+.progress-bar { 
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+}
+
 .file-upload-wrapper {
-    position: relative;
-    overflow: hidden;
     cursor: pointer;
-    display: flex; /* Ensures internal alignment */
-    align-items: center;
+    overflow: hidden;
+    transition: border-color 0.2s;
 }
 
-.file-upload-wrapper input[type="file"] {
+.file-custom-btn {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.file-name-display { 
+    pointer-events: none; 
+}
+
+/* COVER FIX: Full-area interaction for hidden inputs */
+#logo-input, #file-input {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
-    opacity: 0; /* THE HACK */
+    opacity: 0 !important;
     cursor: pointer;
-    z-index: 10;
+    z-index: 2;
 }
 
-/* Range Slider Logic */
-input[type=range] {
+/* 13. MULTISELECT DROPDOWN */
+.custom-multiselect { 
+    user-select: none; 
+    z-index: 100; 
+}
+
+.select-box { 
+    cursor: pointer; 
+    transition: border-color 0.2s;
+}
+
+.dropdown-content { 
+    display: none; 
+    transition: opacity 0.2s ease;
+}
+
+.dropdown-content.show { 
+    display: block; 
+}
+
+.multi-cat-item { 
+    transition: background 0.1s; 
+    cursor: pointer; 
+}
+
+.multi-cat-item input { 
+    cursor: pointer; 
+}
+
+/* 14. MEDIA LIBRARY GALLERY */
+.asset-info .preview-box { 
+    cursor: pointer; 
+    transition: color 0.2s;
+}
+
+.asset-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.asset-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+/* 15. RANGE SLIDER MECHANICS (Wall Engine) */
+input[type="color"] {
     -webkit-appearance: none;
-    width: 100%;
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+
+input[type="color"]:active {
+    transform: scale(0.95);
+}
+
+input[type="range"] {
+    -webkit-appearance: none;
     background: transparent;
+    cursor: pointer;
 }
 
-input[type=range]::-webkit-slider-thumb {
+/* Tactical Slider Thumb Feedback */
+input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    height: 18px;
-    width: 18px;
+    height: 20px;
+    width: 20px;
     border-radius: 50%;
-    cursor: pointer;
     margin-top: -8px; 
+    transition: box-shadow 0.2s, transform 0.1s;
 }
 
-input[type=range]::-webkit-slider-runnable-track {
-    width: 100%;
-    height: 2px;
+input[type="range"]:active::-webkit-slider-thumb {
+    transform: scale(1.15);
+}
+
+.tactical-checkbox {
     cursor: pointer;
+    transition: color 0.2s;
 }
 
-/* --- 5. DROPDOWN & ALERTS --- */
-.dropdown-content {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    width: 100%;
-    z-index: 1000;
-    max-height: 300px;
-    overflow-y: auto;
+/* MASTER SUBMIT BUTTON */
+.master-update-btn {
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
 }
 
-.dropdown-content.show { display: block; }
-
-.alert {
-    display: flex;
-    align-items: center;
-    padding: 15px 20px;
-    margin-bottom: 25px;
-    border-radius: 4px;
-    font-weight: 700;
-    font-size: 12px;
-    text-transform: uppercase;
+.master-update-btn:active {
+    transform: translateY(1px);
 }
 
-.msg {
-    padding: 15px;
-    margin-bottom: 25px;
-    border-radius: 4px;
-    font-weight: bold;
+/* 16. UNIVERSAL ADMIN FOOTER */
+.footer-left a {
+    transition: all 0.2s ease;
+}
+
+/* 19. APPEARANCE CONTROLLER (Restored Interaction) */
+.support-link {
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.skin-meta-wrap {
+    transition: background-color 0.3s ease;
 }

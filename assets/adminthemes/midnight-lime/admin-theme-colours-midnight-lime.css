@@ -1,111 +1,420 @@
-/* * SNAPSMACK: MIDNIGHT LIME THEME
- * Version: 3.3 - PURE PAINT
- * -------------------------------------------------------------------------
- * NO FONTS. NO STRUCTURE. NO DIMENSIONS.
+/* * SNAPSMACK COLOURS - v4.7
+ * Pure Paint and Visual Glow (Mapped from v15.4 Master)
+ * MASTER DIRECTIVE: Full file return. No line pruning.
  */
 
-:root {
-    /* --- THE GLOW --- */
-    --neon-green: #39FF14;
-    --neon-red: #ff3e3e;
-    --neon-gold: #FFD700;
-    --security-purple: #8e44ad;
-    
-    /* --- DARK OPS --- */
-    --bg-dark: #111;
-    --bg-darker: #0d0d0d;
-    --bg-panel: #1a1a1a;
-    --bg-input: #222;
-    
-    /* --- BORDER GLOW --- */
-    --border-dim: #222;
-    --border-mid: #333;
-    
-    /* --- THE TEXT --- */
-    --text-main: #ccc;
-    --text-dim: #777;
-    --text-dark: #000;
+/* 1. RESET & GLOBAL BASE */
+html, body { 
+    background-color: #0d0d0d; 
+    color: #ccc; 
+    color-scheme: dark; /* CRITICAL: Forces browser native tools to dark mode */
 }
 
-body {
-    background: var(--bg-dark);
-    color: var(--text-main);
+/* 2. SIDEBAR NAVIGATION */
+.sidebar { 
+    background-color: #0d0d0d; 
+    border-right: 1px solid #1a1a1a; 
 }
 
-/* --- SIDEBAR PAINT --- */
-.sidebar {
-    background: var(--bg-darker);
-    border-right: 1px solid var(--bg-panel);
+.sidebar h2 { 
+    color: #39FF14; 
+    border-bottom: 2px solid #1a1a1a; 
 }
 
-.sidebar h2 {
-    color: var(--neon-green);
-    border-bottom: 2px solid var(--bg-panel);
+.sidebar li { 
+    border-bottom: 1px solid #1a1a1a; 
 }
 
-.sidebar li { border-bottom: 1px solid var(--bg-panel); }
-.sidebar a { color: var(--text-dim); }
-.sidebar a:hover, .sidebar li.active a { color: var(--neon-green); }
-
-.sidebar li.nav-group strong { color: #444; }
-.sidebar ul.sub-nav { border-left: 1px solid var(--bg-panel); }
-.sidebar ul.sub-nav li { border-bottom: 1px solid #111; }
-.sidebar .logout { color: var(--neon-red); }
-.credits-admin { color: #333; }
-
-/* --- CONTENT PAINT --- */
-h2, h3, .section-header {
-    color: var(--neon-green);
-    border-bottom: 1px solid var(--bg-panel);
+/* Sidebar Link States (The Fix for Grey Links) */
+.sidebar a { 
+    color: #777; 
 }
 
-.box {
-    background: var(--bg-panel);
-    border: 1px solid var(--border-dim);
+.sidebar a:hover, 
+.sidebar li.active a { 
+    color: #39FF14; 
 }
 
-.read-only-display, .mono {
-    background: #000; 
-    border: 1px solid var(--border-mid);
-    color: var(--neon-green);
+.sidebar li.nav-group strong { 
+    color: #555; 
 }
 
-label, .stat-row .label { color: #666; }
-.stat-val { color: var(--neon-green); }
-.stat-row .value { color: #eee; }
-
-/* --- BUTTON PAINT (THE UNIFORM) --- */
-.btn-smack { background: var(--neon-green); color: var(--text-dark); }
-.btn-secondary { background: #444; color: #fff; }
-.btn-ghost { background: #000; color: var(--neon-green); border: 1px solid var(--neon-green); }
-.btn-danger { background: transparent; color: var(--neon-red); border: 1px solid var(--neon-red); }
-.btn-security { background: var(--security-purple); color: #fff; }
-
-/* --- INTERACTIVES --- */
-button:hover, .btn-smack:hover { 
-    filter: brightness(1.2); 
-    box-shadow: 0 0 12px rgba(57, 255, 20, 0.3); 
+.sidebar ul.sub-nav { 
+    border-left: 1px solid #1a1a1a; 
 }
-.btn-danger:hover { background: rgba(255, 62, 62, 0.1); }
 
-/* --- INPUT PAINT --- */
-input, select, textarea, .file-upload-wrapper, .select-box {
-    background: var(--bg-input);
-    border: 1px solid var(--border-mid);
+.sidebar-bottom { 
+    border-top: 1px solid #1a1a1a; 
+    background-color: #0d0d0d;
+}
+
+.sidebar .logout { 
+    color: #ff3e3e; 
+}
+
+.credits-admin { 
+    color: #444; 
+}
+
+/* 3. MAIN CONTENT & HEADERS */
+h2 { 
+    color: #39FF14; 
+    border-bottom: 2px solid #1a1a1a; 
+}
+
+/* 4. CONTENT BOXES */
+.box { 
+    background-color: #161616; 
+    border: 1px solid #1f1f1f; 
+}
+
+.box h3, .section-header { 
+    color: #39FF14; 
+    border-bottom: 1px solid #222; 
+}
+
+.maint-desc { 
+    color: #bbb; 
+}
+
+.post-col-right { 
+    border-left: 1px solid #1f1f1f; 
+}
+
+/* 5. FORM ELEMENTS */
+label { 
+    color: #555; 
+}
+
+input[type="text"], input[type="number"], input[type="email"], input[type="password"], 
+input[type="datetime-local"], input[type="date"], select, 
+.preview-box, .select-box, .read-only-display { 
+    background-color: #0a0a0a; 
+    border: 1px solid #1a1a1a; 
+    color: #eee !important; 
+}
+
+/* Specific Vitals Font (Courier New Restoration) */
+.read-only-display, .stat-row { 
+    font-family: 'Courier New', Courier, monospace; 
+}
+
+textarea { 
+    background-color: #0a0a0a; 
+    border: 1px solid #1a1a1a; 
+    color: #eee !important; 
+}
+
+/* 5.1 MANUAL METADATA GRID */
+.meta-grid { 
+    background-color: #0d0d0d; 
+    border: 1px solid #1a1a1a; 
+}
+
+.built-in-label { 
+    background-color: #111; 
+    border: 1px solid #1a1a1a; 
+    color: #777 !important; 
+}
+
+.built-in-label input[type="checkbox"] { 
+    background-color: #1f1f1f; 
+    border: 1px solid #333; 
+}
+
+.built-in-label input[type="checkbox"]:checked { 
+    background-color: #39FF14; 
+    border-color: #39FF14; 
+}
+
+/* 6. PREVIEW CONSTRAINTS */
+.preview-frame { 
+    background-color: #000; 
+    border: 1px solid #1a1a1a; 
+}
+
+.swap-note { 
+    color: #666; 
+}
+
+/* 7. TRANSMISSIONS LOG STYLING */
+.transmission-header { 
+    border-bottom: 2px solid #1a1a1a; 
+}
+
+.signal-body { 
+    color: #aaa; 
+    background-color: #0a0a0a; 
+    border: 1px solid #1a1a1a; 
+}
+
+.signal-meta { 
+    color: #444; 
+}
+
+.signal-sender { 
+    color: #39FF14; 
+}
+
+/* 8. BUTTONS & ACTIONS */
+button, .btn-smack, .btn-green, .master-update-btn { 
+    background-color: #39FF14; 
+    color: #000 !important; 
+}
+
+.btn-backup { background-color: #333; color: #ccc !important; }
+.btn-settings { background-color: #1a1a1a; color: #777 !important; }
+.btn-live { background-color: #000; color: #39FF14 !important; border: 1px solid #333; }
+
+.action-authorize, .action-edit, .action-swap { 
+    border: 1px solid #39FF14; 
+    color: #39FF14; 
+    background: transparent;
+}
+
+.action-delete { 
+    border: 1px solid #ff3e3e; 
+    color: #ff3e3e; 
+    background: transparent;
+}
+
+/* 9. ITEM LAYOUTS (Latest Smack Fonts) */
+.recent-item { 
+    border-bottom: 1px solid #1f1f1f; 
+}
+
+.archive-thumb { 
+    background-color: #000; 
+    border: 1px solid #1a1a1a; 
+}
+
+/* Latest Smack Title (Restored to White per Master) */
+.item-text strong { 
+    color: #eee; 
+}
+
+.item-text .dim { 
+    color: #555; 
+}
+
+/* 10. DASHBOARD GRID & STATS */
+.stat-val { 
+    color: #39FF14; 
+}
+
+.stat-label { 
+    color: #555; 
+}
+
+.stat-row .label { 
+    color: #444; 
+}
+
+.stat-row .value { 
+    color: #999; 
+}
+
+.highlight-green { 
+    color: #39FF14 !important; 
+}
+
+/* 11. PAGINATION */
+.pagination a { 
+    background-color: #111; 
+    color: #666; 
+    border: 1px solid #1a1a1a; 
+}
+
+.pagination a.active { 
+    background-color: #39FF14; 
+    color: #000; 
+    border-color: #39FF14; 
+}
+
+/* 12. UPLOAD & PROGRESS */
+.progress-container { 
+    background-color: #0a0a0a; 
+    border: 1px solid #1a1a1a; 
+}
+
+.progress-bar { 
+    background-color: #39FF14; 
+}
+
+.file-upload-wrapper { 
+    background-color: #0a0a0a; 
+    border: 1px solid #1a1a1a; 
+    margin-bottom: 5px !important; /* THE FIX: Clamped from default margin */
+}
+
+.file-custom-btn { 
+    background-color: #1a1a1a; 
+    color: #777; 
+    border-right: 1px solid #1a1a1a; 
+}
+
+.file-name-display { 
+    color: #444; 
+}
+
+/* 13. MULTISELECT DROPDOWN */
+.select-box { 
+    background-color: #0a0a0a; 
+    border: 1px solid #1a1a1a; 
+    color: #eee; 
+}
+
+.dropdown-content { 
+    background-color: #111; 
+    border: 1px solid #1a1a1a; 
+}
+
+.dropdown-search-wrapper { 
+    background-color: #0d0d0d; 
+    border-bottom: 1px solid #1a1a1a; 
+}
+
+.multi-cat-item:hover { 
+    background-color: #1a1a1a; 
+    color: #39FF14; 
+}
+
+/* 14. MEDIA LIBRARY GALLERY */
+.asset-card { 
+    background-color: #0d0d0d; 
+    border: 1px solid #1a1a1a; 
+}
+
+.asset-thumb-wrapper { 
+    background-color: #000; 
+    border-bottom: 1px solid #1a1a1a; 
+}
+
+.asset-info .preview-box { 
+    background-color: #0a0a0a; 
+    color: #666; 
+}
+
+/* 15. ENGINE CALIBRATION & RANGE SLIDERS */
+input[type="range"]::-webkit-slider-runnable-track { 
+    background-color: #1a1a1a; 
+}
+
+input[type="range"]::-webkit-slider-thumb { 
+    background-color: #39FF14; 
+}
+
+.tactical-checkbox { 
+    color: #39FF14; 
+}
+
+/* 16. UNIVERSAL ADMIN FOOTER */
+#admin-universal-footer { 
+    background-color: #0d0d0d; 
+    border-top: 1px solid #1a1a1a; 
+}
+
+.footer-left { 
+    color: #444; 
+}
+
+.footer-left a { 
+    color: #666; 
+    border-bottom: 1px solid #1a1a1a; 
+}
+
+.footer-left a:hover { 
+    color: #39FF14; 
+    border-color: #39FF14; 
+}
+
+.footer-right { 
+    color: #666; 
+}
+
+/* 17. LOGIN PAGE SPECIFIC */
+.login-box { 
+    background-color: #111; 
+    border: 1px solid #1a1a1a; 
+}
+
+.login-box h1 { 
+    color: #39FF14; 
+}
+
+/* 18. UTILITIES & ALERTS */
+.alert-success { 
+    background-color: rgba(57, 255, 20, 0.1); 
+    border: 1px solid #39FF14; 
+    color: #39FF14; 
+}
+
+.alert-error { 
+    background-color: rgba(255, 62, 62, 0.1); 
+    border: 1px solid #ff3e3e; 
+    color: #ff3e3e; 
+}
+
+/* 19. APPEARANCE CONTROLLER */
+.skin-meta-wrap { 
+    background-color: #111; 
+}
+
+.v-tag { 
+    color: #444; 
+}
+
+.skin-desc-text { 
+    color: #888; 
+}
+
+.support-link { 
+    color: #39FF14; 
+    border-bottom: 1px solid #39FF14; 
+}
+
+.skin-selector-wrap { 
+    background-color: #0d0d0d; 
+    border-left: 1px solid #1a1a1a; 
+}
+
+/* 20. TACTICAL OVERRIDES */
+.master-update-btn { 
+    background-color: #39FF14; 
+    color: #000; 
+}
+
+/* 21. BROWSER NATIVE CALENDAR OVERRIDES */
+input[type="datetime-local"] {
+    background-color: #000 !important; /* Forces the box to be pure black, overriding Section 5 */
+    accent-color: #39FF14 !important; /* Kills the light blue and forces Lime Green */
+    color-scheme: dark !important; /* Ensures the popup uses dark mode assets */
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+    padding: 5px;
+}
+
+/* Absolute black highlight boxes for inner segments */
+input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
+    background: #000 !important;
+    padding: 2px;
+}
+
+/* Pure white print for high-contrast segment text */
+input[type="datetime-local"]::-webkit-datetime-edit-text,
+input[type="datetime-local"]::-webkit-datetime-edit-month-field,
+input[type="datetime-local"]::-webkit-datetime-edit-day-field,
+input[type="datetime-local"]::-webkit-datetime-edit-year-field,
+input[type="datetime-local"]::-webkit-datetime-edit-hour-field,
+input[type="datetime-local"]::-webkit-datetime-edit-minute-field,
+input[type="datetime-local"]::-webkit-datetime-edit-ampm-field {
     color: #fff !important;
 }
 
-.built-in-label { background: var(--bg-panel); border: 1px solid var(--border-mid); color: #888 !important; }
-.built-in-label input[type="checkbox"]:checked { background: var(--neon-green) !important; border-color: var(--neon-green); }
-
-/* --- ALERT PAINT --- */
-.msg, .alert-success { color: var(--neon-green); border: 1px solid var(--neon-green); background: rgba(57, 255, 20, 0.05); }
-.alert-error { color: var(--neon-red); border: 1px solid var(--neon-red); background: rgba(255, 62, 62, 0.05); }
-
-.progress-bar-wrap { background: #000; border: 1px solid var(--border-mid); }
-.progress-fill { background: var(--neon-green); box-shadow: 0 0 10px rgba(57, 255, 20, 0.5); }
-
-/* --- FOOTER PAINT --- */
-#admin-universal-footer { background: var(--bg-darker); border-top: 1px solid var(--bg-panel); }
-.footer-left, .footer-right { color: #555; }
-.footer-left a { color: #777; border-bottom: 1px solid #333; }
+input[type="datetime-local"]:focus {
+    border-color: #39FF14 !important;
+    box-shadow: 0 0 8px rgba(57, 255, 20, 0.3);
+}

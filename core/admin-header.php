@@ -1,87 +1,46 @@
 <?php
 /**
- * SnapSmack - Sidebar Navigation
- * Version: 7.1 - Trinity Compliance Sync
- * -------------------------------------------------------------------------
- * MASTER DIRECTIVE: Preserve Sean's Excellent Labels. 
- * RETAINED: "The Good Shit", "Pimp Your Ride", "Boring Ass Stuff".
- * -------------------------------------------------------------------------
+ * SnapSmack Core Admin Header
+ * Version: 1.7 - Clean Trinity Loader
  */
 
-$current_page = basename($_SERVER['PHP_SELF']); 
+// 1. BOOTSTRAP SETTINGS
+if (!isset($settings)) {
+    $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
+    $settings = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+}
+
+// 2. THEME DISCOVERY (Data Only - No UI logic)
+$active_theme = $settings['active_theme'] ?? 'midnight-lime';
+$theme_base = "assets/adminthemes/{$active_theme}/";
+$manifest_path = $theme_base . "{$active_theme}-manifest.php";
+
+$colour_css_file = "admin-theme-colours-{$active_theme}.css"; // Default naming convention
+
+if (file_exists($manifest_path)) {
+    $m_data = include $manifest_path;
+    if (isset($m_data['css_file'])) {
+        $colour_css_file = $m_data['css_file'];
+    }
+}
+
+// Construct the full path to the active skin's color file
+// Per your file structure, colors live in the /css/ subfolder of the theme
+$active_skin_path = $theme_base . "css/" . $colour_css_file;
 ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo $page_title ?? 'Admin'; ?> | SnapSmack</title>
 
-<div class="sidebar">
-    <div class="sidebar-top">
-        <h2>SnapSmack</h2>
-        <ul>
-            <li class="nav-group">
-                <strong>The Good Shit</strong>
-                <ul class="sub-nav">
-                    <li class="<?php echo ($current_page == 'smack-admin.php') ? 'active' : ''; ?>">
-                        <a href="smack-admin.php">Dashboard</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-post.php') ? 'active' : ''; ?>">
-                        <a href="smack-post.php">New Post</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-manage.php' || $current_page == 'smack-edit.php') ? 'active' : ''; ?>">
-                        <a href="smack-manage.php">Manage Archive</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-cats.php') ? 'active' : ''; ?>">
-                        <a href="smack-cats.php">Categories</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-albums.php') ? 'active' : ''; ?>">
-                        <a href="smack-albums.php">Albums</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-pages.php') ? 'active' : ''; ?>">
-                        <a href="smack-pages.php">Static Pages</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-media.php') ? 'active' : ''; ?>">
-                        <a href="smack-media.php">Media Library</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-comments.php') ? 'active' : ''; ?>">
-                        <a href="smack-comments.php">Transmissions</a>
-                    </li>
-                </ul>
-            </li>
+    <link rel="stylesheet" href="assets/css/admin-theme-structures-core.css">
+    
+    <link rel="stylesheet" href="assets/css/admin-theme-controls-core.css">
+    
+    <link rel="stylesheet" href="<?php echo $active_skin_path; ?>">
 
-            <li class="nav-group">
-                <strong>Pimp Your Ride</strong>
-                <ul class="sub-nav">
-                    <li class="<?php echo ($current_page == 'smack-pimpitup.php') ? 'active' : ''; ?>">
-                        <a href="smack-pimpitup.php">Site Vibe</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-skin.php') ? 'active' : ''; ?>">
-                        <a href="smack-skin.php">Smooth Your Skin</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-css.php') ? 'active' : ''; ?>">
-                        <a href="smack-css.php">Smack Your CSS Up!</a>
-                    </li>
-                </ul>
-            </li>
-
-            <li class="nav-group">
-                <strong>Boring Ass Stuff</strong>
-                <ul class="sub-nav">
-                    <li class="<?php echo ($current_page == 'smack-config.php') ? 'active' : ''; ?>">
-                        <a href="smack-config.php">Configuration</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-users.php') ? 'active' : ''; ?>">
-                        <a href="smack-users.php">User Manager</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-maintenance.php') ? 'active' : ''; ?>">
-                        <a href="smack-maintenance.php">Maintenance</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-backup.php') ? 'active' : ''; ?>">
-                        <a href="smack-backup.php">Backup & Recovery</a>
-                    </li>
-                </ul>
-            </li>
-        </ul>
-    </div>
-
-    <div class="sidebar-bottom">
-        <a href="logout.php" class="logout">Logout</a>
-        <div class="credits-admin">© 2026 Sean McCormick</div>
-    </div>
-</div>
+    <link rel="stylesheet" href="assets/css/hotkey-engine.css">
+</head>
+<body class="admin-body">

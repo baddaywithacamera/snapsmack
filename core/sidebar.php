@@ -1,11 +1,7 @@
 <?php
 /**
  * SnapSmack - Sidebar Navigation
- * Version: 7.0 - Theme & Skin Split Integration
- * -------------------------------------------------------------------------
- * - UPDATED: "Pimp Your Ride" links split to smack-pimpitup and smack-skin.
- * - RETAINED: Active-state highlighting and Sean's excellent labels.
- * -------------------------------------------------------------------------
+ * Version: 7.1 - Trinity Structure Sync
  */
 
 $current_page = basename($_SERVER['PHP_SELF']); 
@@ -33,9 +29,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     <li class="<?php echo ($current_page == 'smack-albums.php') ? 'active' : ''; ?>">
                         <a href="smack-albums.php">Albums</a>
                     </li>
-                    <li class="<?php echo ($current_page == 'smack-pages.php') ? 'active' : ''; ?>">
-                        <a href="smack-pages.php">Static Pages</a>
-                    </li>
                     <li class="<?php echo ($current_page == 'smack-media.php') ? 'active' : ''; ?>">
                         <a href="smack-media.php">Media Library</a>
                     </li>
@@ -49,7 +42,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <strong>Pimp Your Ride</strong>
                 <ul class="sub-nav">
                     <li class="<?php echo ($current_page == 'smack-pimpitup.php') ? 'active' : ''; ?>">
-                        <a href="smack-pimpitup.php">Site Vibe</a>
+                        <a href="smack-pimpitup.php">The Full Pimp</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-skin.php') ? 'active' : ''; ?>">
                         <a href="smack-skin.php">Smooth Your Skin</a>
