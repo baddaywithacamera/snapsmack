@@ -1,7 +1,7 @@
 <?php
 /**
  * SnapSmack - Swap Image
- * Version: 3.8 - Layout Alignment & Orientation Logic
+ * Version: 3.9 - Precision Restore & Hint Alignment
  * MASTER DIRECTIVE: Full file return. All logic preserved.
  */
 require_once 'core/auth.php';
@@ -99,32 +99,32 @@ include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <header class="page-header">
+    <div class="section-header">
         <h2>SWAP IMAGE</h2>
-        <p class="sub-header">TARGET: <?php echo strtoupper(htmlspecialchars($img['img_title'])); ?></p>
-    </header>
+        <p class="field-hint">TARGET: <?php echo strtoupper(htmlspecialchars($img['img_title'])); ?></p>
+    </div>
 
     <div class="box">
         <form id="smack-form" method="POST" enctype="multipart/form-data">
             <div class="post-layout-grid">
                 
                 <div class="post-col-left">
-                    <label>Current Signal</label>
+                    <label>CURRENT SIGNAL</label>
                     <div class="preview-frame">
                         <img src="<?php echo $img['img_file']; ?>" class="swap-preview">
                     </div>
-                    <p class="field-hint">
+                    <p class="field-hint mt-20">
                         <strong>NOTE:</strong> Replacing this file will permanently delete the current asset and regenerate its thumbnail.
                     </p>
                 </div>
 
                 <div class="post-col-right">
-                    <label>Select Replacement File</label>
+                    <label>SELECT REPLACEMENT FILE</label>
                     <div class="file-upload-wrapper mb-25">
                         <input type="file" name="new_image" id="file-input" required class="full-width-select">
                     </div>
 
-                    <label>Orientation (Mobile Theme Override)</label>
+                    <label>ORIENTATION OVERRIDE</label>
                     <select name="img_orientation" class="full-width-select mb-25">
                         <option value="0" <?php echo ($img['img_orientation'] == 0) ? 'selected' : ''; ?>>Landscape</option>
                         <option value="1" <?php echo ($img['img_orientation'] == 1) ? 'selected' : ''; ?>>Portrait</option>
@@ -132,43 +132,39 @@ include 'core/sidebar.php';
                     </select>
 
                     <p class="field-hint">
-                        Metadata is re-harvested from the new file. Use the overrides below if the file lacks EXIF data.
+                        Metadata is re-harvested from the new file. Use overrides below if file lacks EXIF data.
                     </p>
                 </div>
             </div>
 
             <hr class="section-divider">
 
-            <label>Technical Overrides (Optional)</label>
+            <label>TECHNICAL OVERRIDES (OPTIONAL)</label>
             <div class="meta-grid">
                 <div class="lens-input-wrapper">
-                    <label>Camera Model</label>
-                    <input type="text" name="camera_model" placeholder="Leave blank to auto-detect">
+                    <label>CAMERA MODEL</label>
+                    <input type="text" name="camera_model" placeholder="Auto-detect if blank">
                 </div>
                 <div class="lens-input-wrapper">
-                    <label>Lens Info</label>
+                    <label>LENS INFO</label>
                     <div class="input-control-row">
                         <input type="text" name="lens_info" id="meta-lens">
-                        <label class="built-in-label">
-                            <input type="checkbox" name="fixed_lens" id="fixed-lens-check"> Built-in
-                        </label>
+                        <label class="built-in-label"><input type="checkbox" name="fixed_lens" id="fixed-lens-check"> Built-in</label>
                     </div>
                 </div>
-                <div class="lens-input-wrapper"><label>Focal Length</label><input type="text" name="focal_length"></div>
+                <div class="lens-input-wrapper"><label>FOCAL LENGTH</label><input type="text" name="focal_length"></div>
                 <div class="lens-input-wrapper">
-                    <label>Film Stock</label>
+                    <label>FILM STOCK</label>
                     <div class="input-control-row">
                         <input type="text" name="film_stock" id="meta-film">
-                        <label class="built-in-label">
-                            <input type="checkbox" name="film_na" id="film-na-check"> N/A
-                        </label>
+                        <label class="built-in-label"><input type="checkbox" name="film_na" id="film-na-check"> N/A</label>
                     </div>
                 </div>
                 <div><label>ISO</label><input type="text" name="iso_speed"></div>
-                <div><label>Aperture</label><input type="text" name="aperture"></div>
-                <div><label>Shutter</label><input type="text" name="shutter_speed"></div>
+                <div><label>APERTURE</label><input type="text" name="aperture"></div>
+                <div><label>SHUTTER SPEED</label><input type="text" name="shutter_speed"></div>
                 <div>
-                    <label>Flash</label>
+                    <label>FLASH FIRED</label>
                     <select name="flash_fire" class="full-width-select">
                         <option value="No">No</option>
                         <option value="Yes">Yes</option>
@@ -177,12 +173,11 @@ include 'core/sidebar.php';
             </div>
 
             <div class="form-actions mt-40">
-                <button type="submit" class="btn-smack">PERFORM SWAP</button>
-                <a href="smack-manage.php" class="btn-clear">CANCEL</a>
+                <button type="submit" class="master-update-btn">PERFORM SWAP</button>
             </div>
         </form>
     </div>
 </div>
 
-<script src="assets/js/smack-ui.js?v=<?php echo time(); ?>"></script>
+<script src="assets/js/smack-ui-private.js?v=<?php echo time(); ?>"></script>
 <?php include 'core/admin-footer.php'; ?>

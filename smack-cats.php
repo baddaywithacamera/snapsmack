@@ -1,7 +1,8 @@
 <?php
 /**
  * SnapSmack - Category Registry
- * Version: 3.2 - Logic v3.1 + Trinity Sync
+ * Version: 3.3 - Bracket Removal
+ * MASTER DIRECTIVE: Full file return. All logic preserved.
  */
 require_once 'core/auth.php';
 
@@ -83,7 +84,7 @@ include 'core/sidebar.php';
                                     <a href="?delete=<?php echo $c['id']; ?>" 
                                        class="action-delete" 
                                        onclick="return confirm('Archive this signal? This will unmap all photos from this category.');">
-                                        [ DELETE ]
+                                        DELETE
                                     </a>
                                 </td>
                             </tr>

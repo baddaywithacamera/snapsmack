@@ -1,8 +1,8 @@
 <?php
 /**
  * SnapSmack - Media Library
- * Version: 2.0 - Universal Admin Integration
- * MASTER DIRECTIVE: Full file return. No inline styling.
+ * Version: 2.2 - Density Restoration & Compact Grid
+ * MASTER DIRECTIVE: Full file return. Logic preserved.
  */
 require_once 'core/auth.php';
 
@@ -39,7 +39,7 @@ if (isset($_GET['delete'])) {
 }
 
 $assets = $pdo->query("SELECT * FROM snap_assets ORDER BY created_at DESC")->fetchAll();
-$page_title = "Media Library";
+$page_title = "MEDIA LIBRARY";
 
 include 'core/admin-header.php';
 include 'core/sidebar.php';
@@ -55,13 +55,11 @@ include 'core/sidebar.php';
             <div class="progress-bar" id="p-bar"></div>
         </div>
 
-        <div class="file-upload-wrapper" id="drop-zone">
+        <div class="file-upload-wrapper" id="drop-zone" onclick="document.getElementById('file-input').click()">
             <div class="file-custom-btn">CHOOSE FILE</div>
             <span id="file-name-display" class="file-name-display">No signal selected... or drag & drop here.</span>
-            <input type="file" id="file-input" accept="image/*">
+            <input type="file" id="file-input" accept="image/*" style="display:none">
         </div>
-        
-        <button type="button" id="upload-trigger" class="hidden">START UPLOAD</button>
     </div>
 
     <div class="box">
@@ -76,16 +74,16 @@ include 'core/sidebar.php';
                     <div class="asset-info">
                         <div class="asset-controls">
                             <div class="control-group">
-                                <label>Size</label>
-                                <select class="size-select" onchange="updateShortcode(<?php echo $a['id']; ?>)">
+                                <label class="compact-label">Size</label>
+                                <select class="compact-select size-select" onchange="updateShortcode(<?php echo $a['id']; ?>)">
                                     <option value="full">Full</option>
                                     <option value="medium">Medium</option>
                                     <option value="small">Small</option>
                                 </select>
                             </div>
                             <div class="control-group">
-                                <label>Align</label>
-                                <select class="align-select" onchange="updateShortcode(<?php echo $a['id']; ?>)">
+                                <label class="compact-label">Align</label>
+                                <select class="compact-select align-select" onchange="updateShortcode(<?php echo $a['id']; ?>)">
                                     <option value="center">Center</option>
                                     <option value="left">Left</option>
                                     <option value="right">Right</option>
@@ -93,13 +91,13 @@ include 'core/sidebar.php';
                             </div>
                         </div>
 
-                        <label>SHORTCODE (CLICK TO COPY)</label>
-                        <div class="preview-box shortcode-display" onclick="copyToClipboard(this)">
+                        <label class="compact-label mt-15">SHORTCODE</label>
+                        <div class="compact-preview shortcode-display" onclick="copyToClipboard(this)">
                             [img:<?php echo $a['id']; ?>|full|center]
                         </div>
                         
                         <div class="asset-actions">
-                            <a href="?delete=<?php echo $a['id']; ?>" class="action-delete" onclick="return confirm('Purge Asset?')">PURGE</a>
+                            <a href="?delete=<?php echo $a['id']; ?>" class="action-delete-link" onclick="return confirm('Purge Asset?')">PURGE</a>
                         </div>
                     </div>
                 </div>
@@ -114,22 +112,17 @@ const pContainer = document.getElementById('p-container');
 const pBar = document.getElementById('p-bar');
 const nameDisplay = document.getElementById('file-name-display');
 
-/**
- * Updates the shortcode text based on dropdown selections
- */
 function updateShortcode(id) {
     const card = document.getElementById('asset-' + id);
     const size = card.querySelector('.size-select').value;
     const align = card.querySelector('.align-select').value;
     const display = card.querySelector('.shortcode-display');
-    
     display.innerText = `[img:${id}|${size}|${align}]`;
 }
 
 fileInput.addEventListener('change', function() {
     if (this.files && this.files[0]) {
         nameDisplay.innerText = this.files[0].name;
-        nameDisplay.style.color = "#39FF14"; 
         uploadFile(this.files[0]);
     }
 });
@@ -166,11 +159,7 @@ function copyToClipboard(element) {
     navigator.clipboard.writeText(text).then(() => {
         const original = text;
         element.innerText = "COPIED";
-        element.style.color = "#39FF14"; 
-        setTimeout(() => { 
-            element.innerText = original; 
-            element.style.color = ""; 
-        }, 1000);
+        setTimeout(() => { element.innerText = original; }, 1000);
     });
 }
 </script>

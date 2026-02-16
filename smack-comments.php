@@ -1,13 +1,12 @@
 <?php
 /**
  * SnapSmack - Transmission Control (Admin)
- * Version: 2.1 - Sanitized Kill-Switch Build
- * MASTER DIRECTIVE: Full file return. No logic condensation.
+ * Version: 2.3 - Visual Restoration & Logic Sync
+ * MASTER DIRECTIVE: Old structure restored. New logic integrated. No inline CSS.
  */
 require_once 'core/auth.php';
 
 // 1. Fetch Global Settings for Status Bar
-$settings = [];
 $s_rows = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $global_comments_active = (($s_rows['global_comments_enabled'] ?? '1') == '1');
 
@@ -41,7 +40,7 @@ $stmt_count->execute($params);
 $total_records = $stmt_count->fetchColumn();
 $total_pages = ceil($total_records / $per_page);
 
-// Fetching comments + image data + the allow_comments status of that image
+// Fetching comments + image data + post-specific comment status
 $sql = "SELECT c.*, i.img_title, i.img_file, i.allow_comments as post_comments_active
         FROM snap_comments c 
         LEFT JOIN snap_images i ON c.img_id = i.id 
@@ -51,17 +50,16 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $comments = $stmt->fetchAll();
 
-$page_title = "Transmission Control";
+$page_title = "TRANSMISSION CONTROL";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <div class="header-flex" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div class="title-bar-flex">
         <h2>TRANSMISSION CONTROL</h2>
-        
-        <div class="system-status-pill <?php echo $global_comments_active ? 'status-online' : 'status-offline'; ?>">
-            GLOBAL SYSTEM: <?php echo $global_comments_active ? 'ONLINE' : 'OFFLINE (SHUTDOWN)'; ?>
+        <div class="status-pill <?php echo $global_comments_active ? 'status-online' : 'status-offline'; ?>">
+            GLOBAL SYSTEM: <?php echo $global_comments_active ? 'ONLINE' : 'OFFLINE'; ?>
         </div>
     </div>
 
@@ -69,8 +67,9 @@ include 'core/sidebar.php';
         <form method="GET" class="transmission-search-group">
             <input type="hidden" name="view" value="<?php echo $view_mode; ?>">
             <input type="text" name="s" placeholder="SCAN FREQUENCIES..." value="<?php echo htmlspecialchars($search); ?>">
-            <button type="submit">SCAN</button>
+            <button type="submit" class="btn-smack">SCAN</button>
         </form>
+        
         <div class="transmission-nav-group">
             <a href="?view=pending" class="btn-clear <?php if($view_mode == 'pending') echo 'active'; ?>">INCOMING (<?php echo $pending_count; ?>)</a>
             <a href="?view=live" class="btn-clear <?php if($view_mode == 'live') echo 'active'; ?>">BROADCASTING (<?php echo $live_count; ?>)</a>
@@ -81,6 +80,7 @@ include 'core/sidebar.php';
 
     <div class="box">
         <h3><?php echo ($view_mode == 'pending' ? 'AWAITING AUTHORIZATION' : 'LIVE TRANSMISSIONS'); ?></h3>
+        
         <?php if ($comments): ?>
             <div class="recent-list">
                 <?php foreach ($comments as $c): ?>
@@ -92,17 +92,20 @@ include 'core/sidebar.php';
                                     <?php echo htmlspecialchars($c['comment_author']); ?> 
                                     <span>[<?php echo htmlspecialchars($c['comment_email']); ?>]</span>
                                 </div>
+                                
                                 <div class="signal-body"><?php echo nl2br(htmlspecialchars($c['comment_text'])); ?></div>
+                                
                                 <div class="signal-meta">
                                     ON: <?php echo htmlspecialchars($c['img_title'] ?? 'UNKNOWN SOURCE'); ?> 
                                     
                                     <?php if (isset($c['post_comments_active']) && $c['post_comments_active'] == 0): ?>
-                                        <span class="muted-tag" style="color: #ff3333; font-weight: bold; margin-left: 5px;">[FREQUENCY MUTED]</span>
+                                        <span class="alert-text">[FREQUENCY MUTED]</span>
                                     <?php endif; ?>
                                     
                                     | IP: <?php echo htmlspecialchars($c['comment_ip'] ?? '0.0.0.0'); ?> 
                                     | <?php echo $c['comment_date']; ?>
                                 </div>
+                                
                                 <div class="item-actions">
                                     <?php if ($view_mode == 'pending'): ?>
                                         <a href="?action=approve&id=<?php echo $c['id']; ?>&view=<?php echo $view_mode; ?>&s=<?php echo urlencode($search); ?>&p=<?php echo $page; ?>" class="action-authorize">AUTHORIZE</a>
@@ -122,16 +125,11 @@ include 'core/sidebar.php';
                     <?php endfor; ?>
                 </div>
             <?php endif; ?>
+            
         <?php else: ?>
-            <div style="padding: 40px; text-align: center; color: #555;">NO SIGNALS DETECTED.</div>
+            <div class="read-only-display text-center" style="border:none;">NO SIGNALS DETECTED.</div>
         <?php endif; ?>
     </div>
 </div>
-
-<style>
-.system-status-pill { padding: 5px 15px; border-radius: 20px; font-size: 11px; font-weight: bold; font-family: 'Inter', sans-serif; }
-.status-online { background: rgba(0, 255, 0, 0.1); color: #00ff00; border: 1px solid #00ff00; }
-.status-offline { background: rgba(255, 0, 0, 0.1); color: #ff3333; border: 1px solid #ff3333; }
-</style>
 
 <?php include 'core/admin-footer.php'; ?>
