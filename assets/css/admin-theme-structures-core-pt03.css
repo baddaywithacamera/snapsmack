@@ -1,0 +1,335 @@
+/* * SNAPSMACK MASTER ARCHITECTURE INDEX
+ * ---------------------------------------------------------------------------
+ * 01: Reset & Global    | 06: Media Previews    | 11: Pagination        | 16: Admin Footer
+ * 02: Sidebar Nav       | 07: Transmissions     | 12: Upload/Progress   | 17: Login Specific
+ * 03: Main Content      | 08: Buttons/Actions   | 13: Multiselects      | 18: Alerts/Utils
+ * 04: Content Boxes     | 09: Item Layouts      | 14: Media Library     | 19: Appearance
+ * 05: Form Elements     | 10: Dash/Stats        | 15: Engine Mechanics  | 20: Overrides
+ * ---------------------------------------------------------------------------
+ * v16.77 - FULL FIDELITY MATCH (Item Geometry Restoration)
+ * SECTIONS 09 - 14 ONLY
+ * REMAINDER IN ADMIN-THEME-STRUCTURES-CORE-PT01.CSS (sections 01 to 05)
+ * REMAINDER IN ADMIN-THEME-STRUCTURES-CORE-PT02.CSS (sections 05.1 to 08)
+ * REMAINDER IN ADMIN-THEME-STRUCTURES-CORE-PT04.CSS (sections 15 to 20)
+ * * MASTER DIRECTIVE: Complete restoration. No truncation. 
+ * PROMOTED: Section 09 (.recent-item) Horizontal Flex Alignment.
+ * FIXED: Section 09 .archive-thumb locking geometry.
+ * FIXED: Section 10 Dashboard Stats horizontal rhythm.
+ */
+
+/* 09: ITEM LAYOUTS (Archive / Manage Unified) - LEGACY GRID RESTORED */
+.post-layout-grid { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 30px; 
+    width: 100%; 
+    align-items: stretch; 
+}
+
+.grid-50-50 { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 30px; 
+    width: 100%; 
+    align-items: stretch; 
+}
+
+.post-col-left { 
+    display: flex; 
+    flex-direction: column; 
+}
+
+.post-col-right {
+    border-left-width: 1px;
+    border-left-style: solid;
+    padding-left: 40px;
+}
+
+/* ARCHIVE LIST GEOMETRY (Restores Horizontal Layout) */
+.recent-item { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding-top: 15px;
+    padding-bottom: 15px;
+    padding-left: 0px;
+    padding-right: 0px;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+.recent-item:last-child { 
+    border-bottom-width: 0px;
+    border-bottom-style: none; 
+}
+
+.item-details { 
+    display: flex; 
+    align-items: center; 
+    gap: 20px; 
+    flex: 1; 
+}
+
+.archive-thumb { 
+    width: 80px; 
+    height: 80px; 
+    object-fit: cover; 
+    border-radius: 4px; 
+    border-width: 1px; 
+    border-style: solid; 
+    border-color: rgba(255, 255, 255, 0.1);
+    flex-shrink: 0; 
+}
+
+.item-text { 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: center; 
+    gap: 4px;
+    flex: 1;
+}
+
+.item-text strong { 
+    font-size: 1.05rem; 
+    margin: 0; 
+    line-height: 1.2; 
+    font-weight: 500; 
+}
+
+.item-meta { 
+    font-size: 0.75rem; 
+    color: rgba(255, 255, 255, 0.7); 
+    letter-spacing: 0.5px; 
+    text-transform: uppercase;
+}
+
+/* 10: DASH/STATS & FILTERS */
+.dash-grid { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr 1fr; 
+    gap: 30px; 
+}
+
+.grid-33 { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr 1fr; 
+    gap: 30px; 
+}
+
+.stat-group { 
+    display: flex; 
+    justify-content: space-around; 
+    text-align: center; 
+    padding: 10px 0; 
+}
+
+.stat-val { 
+    font-size: 2.5rem; 
+    font-weight: 900; 
+    line-height: 1; 
+}
+
+.stat-label { 
+    display: block; 
+    font-size: 0.75rem; 
+    text-transform: uppercase; 
+    font-weight: 600; 
+    margin-top: 5px; 
+}
+
+.quick-strike-grid { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 10px; 
+}
+
+.quick-strike-grid button { 
+    margin-top: 0; 
+    font-size: 0.7rem; 
+}
+
+.stat-row { 
+    display: flex; 
+    justify-content: space-between; 
+    margin-bottom: 8px; 
+    font-family: 'Courier Prime', 'Courier New', monospace; 
+}
+
+/* 11: PAGINATION */
+.pagination {
+    display: flex;
+    gap: 5px;
+    margin-top: 20px;
+    justify-content: center;
+}
+
+.pagination a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    padding: 0 15px;
+    border-width: 1px;
+    border-style: solid;
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 4px;
+}
+
+.pagination a.active { 
+    background: rgba(255, 255, 255, 0.1); 
+}
+
+/* 12: STANDARD 52px UPLOAD & PROGRESS */
+.file-upload-wrapper {
+    position: relative;
+    width: 100%;
+    height: 52px; 
+    border-width: 1px;
+    border-style: solid;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.file-custom-btn { 
+    height: 100%; 
+    display: inline-flex; 
+    align-items: center; 
+    padding: 0 25px; 
+    font-size: 0.8rem; 
+    font-weight: 700; 
+    text-transform: uppercase; 
+    border-right-width: 1px;
+    border-right-style: solid;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.file-name-display { 
+    padding-left: 20px; 
+    font-size: 0.9rem; 
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#file-input {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0; 
+    cursor: pointer;
+    z-index: 2;
+}
+
+.progress-container {
+    width: 100%;
+    height: 20px;
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    display: none; 
+}
+
+.progress-bar { 
+    height: 100%; 
+    width: 0%; 
+}
+
+/* 13: MULTISELECTS */
+.custom-multiselect { 
+    position: relative; 
+    width: 100%; 
+}
+
+.dropdown-content { 
+    position: absolute; 
+    top: 54px; 
+    left: 0; 
+    right: 0; 
+    border-width: 1px; 
+    border-style: solid; 
+    border-radius: 4px; 
+    max-height: 250px; 
+    overflow-y: auto; 
+    z-index: 5000; 
+}
+
+.dropdown-search-wrapper { 
+    padding: 10px; 
+    border-bottom-width: 1px; 
+    border-bottom-style: solid; 
+}
+
+.multi-cat-item { 
+    padding: 10px 15px; 
+    border-bottom-width: 1px; 
+    border-bottom-style: solid; 
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+    font-size: 0.9rem; 
+}
+
+/* 14: MEDIA LIBRARY */
+.asset-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
+    gap: 30px; 
+}
+
+.asset-card { 
+    border-width: 1px; 
+    border-style: solid; 
+    border-radius: 4px; 
+    overflow: hidden; 
+}
+
+.asset-thumb-wrapper { 
+    height: 150px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    border-bottom-width: 1px; 
+    border-bottom-style: solid; 
+}
+
+.asset-thumb-wrapper img { 
+    max-width: 100%; 
+    max-height: 100%; 
+    object-fit: contain; 
+}
+
+.asset-info { 
+    padding: 15px; 
+}
+
+.asset-actions { 
+    margin-top: 15px; 
+    display: flex; 
+    justify-content: flex-end; 
+    text-align: right;
+}
+
+.asset-actions .action-delete {
+    width: auto !important;
+    height: auto !important;
+    padding: 0 !important;
+    border: none !important;
+    background: none !important;
+    color: #cc0000 !important;
+    font-size: 0.7rem !important;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-block;
+}

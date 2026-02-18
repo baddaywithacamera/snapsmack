@@ -1,0 +1,270 @@
+/* * SNAPSMACK MASTER ARCHITECTURE INDEX
+ * ---------------------------------------------------------------------------
+ * 01: Reset & Global    | 06: Media Previews    | 11: Pagination        | 16: Admin Footer
+ * 02: Sidebar Nav       | 07: Transmissions     | 12: Upload/Progress   | 17: Login Specific
+ * 03: Main Content      | 08: Buttons/Actions   | 13: Multiselects      | 18: Alerts/Utils
+ * 04: Content Boxes     | 09: Item Layouts      | 14: Media Library     | 19: Appearance
+ * 05: Form Elements     | 10: Dash/Stats        | 15: Engine Mechanics  | 20: Overrides
+ * ---------------------------------------------------------------------------
+ * v16.76 - FULL FIDELITY MATCH (The Absolute "Leash-Off" Fix)
+ * SECTIONS 05.1 - 08 ONLY, 
+ * REMAINDER IN ADMIN-THEME-STRUCTURES-CORE-PT01.CSS (sections 01 to 05)
+ * REMAINDER IN ADMIN-THEME-STRUCTURES-CORE-PT03.CSS (sections 09 to 14)
+ * REMAINDER IN ADMIN-THEME-STRUCTURES-CORE-PT04.CSS (sections 15 to 20)
+ * * MASTER DIRECTIVE: Complete restoration. No truncation. 
+ * PROMOTED: Section 05.1 STANDARDIZED FILTER GRID (The "Manage" Bar).
+ * FIXED: Standardized button geometry for tactical right-alignment.
+ * FIXED: Syncs CSS selectors to smack-css.php v16.52.
+ */
+
+/* 5.1 MANUAL METADATA GRID */
+.meta-grid { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 15px; 
+}
+
+.meta-grid .lens-input-wrapper:nth-child(even) { 
+    padding-left: 20px !important; 
+}
+
+.input-control-row { 
+    display: flex; 
+    align-items: stretch; 
+    width: 100%; 
+}
+
+.input-control-row input[type="text"] { 
+    flex: 1; 
+    border-top-right-radius: 0; 
+    border-bottom-right-radius: 0; 
+}
+
+.built-in-label { 
+    flex-shrink: 0; 
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+    border-width: 1px; 
+    border-style: solid; 
+    border-left: none; 
+    padding: 0 15px; 
+    height: 52px !important; 
+    font-size: 0.7rem !important; 
+    font-weight: 700; 
+    text-transform: uppercase; 
+    white-space: nowrap; 
+    border-top-right-radius: 4px; 
+    border-bottom-right-radius: 4px; 
+    margin: 0 !important; 
+}
+
+/* 05.2: STANDARDIZED FILTER GRID (Horizontal Logic Restoration) */
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr) auto;
+    gap: 15px;
+    align-items: flex-end;
+    width: 100%;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.filter-actions button, 
+.filter-actions .btn-reset {
+    height: 52px;
+    margin-top: 0;
+}
+
+/* 06: MEDIA PREVIEWS */
+.preview-frame {
+    width: 100%; 
+    height: auto; 
+    max-height: 500px; 
+    overflow: hidden; 
+    display: flex; 
+    align-items: center;
+    justify-content: center; 
+    border-width: 1px; 
+    border-style: solid; 
+    border-radius: 4px; 
+    margin-bottom: 20px; 
+    box-sizing: border-box;
+}
+
+.swap-preview { 
+    max-width: 100%; 
+    max-height: 500px; 
+    width: auto; 
+    height: auto; 
+    object-fit: contain; 
+    display: block; 
+}
+
+/* 07: TRANSMISSIONS */
+.transmission-log-wrapper {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.signal-body {
+    padding: 20px;
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    min-height: 100px;
+}
+
+/* 08: BUTTONS & ACTIONS */
+.action-grid-dual { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 10px; 
+    width: 100%; 
+}
+
+button {
+    width: 100%; 
+    height: 52px; 
+    margin-top: 30px; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    padding: 0 30px; 
+    font-weight: 700; 
+    font-size: 0.85rem; 
+    text-transform: uppercase; 
+    letter-spacing: 1px; 
+    border-radius: 4px; 
+    border: none; 
+    text-decoration: none;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+.btn-smack {
+    width: 100%; 
+    height: 52px; 
+    margin-top: 30px; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    padding: 0 30px; 
+    font-weight: 700; 
+    font-size: 0.85rem; 
+    text-transform: uppercase; 
+    letter-spacing: 1px; 
+    border-radius: 4px; 
+    border: none; 
+    text-decoration: none;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+.master-update-btn {
+    width: 100%; 
+    height: 52px; 
+    margin-top: 30px; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    padding: 0 30px; 
+    font-weight: 700; 
+    font-size: 0.85rem; 
+    text-transform: uppercase; 
+    letter-spacing: 1px; 
+    border-radius: 4px; 
+    border: none; 
+    text-decoration: none;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+.btn-reset {
+    width: 100%; 
+    height: 52px; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    padding: 0 30px; 
+    font-weight: 700; 
+    font-size: 0.85rem; 
+    text-transform: uppercase; 
+    letter-spacing: 1px; 
+    border-radius: 4px; 
+    border: none; 
+    text-decoration: none;
+    box-sizing: border-box;
+    cursor: pointer;
+    background: #333; 
+    color: rgba(255,255,255,0.9);
+}
+
+.btn-smack-filter {
+    width: 100%; 
+    height: 52px; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    padding: 0 30px; 
+    font-weight: 700; 
+    font-size: 0.85rem; 
+    text-transform: uppercase; 
+    letter-spacing: 1px; 
+    border-radius: 4px; 
+    border: none; 
+    text-decoration: none;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+.action-edit {
+    width: auto; 
+    height: 32px; 
+    padding: 0 12px; 
+    font-size: 0.7rem; 
+    border-radius: 2px;
+    border-width: 1px; 
+    border-style: solid; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.action-swap {
+    width: auto; 
+    height: 32px; 
+    padding: 0 12px; 
+    font-size: 0.7rem; 
+    border-radius: 2px;
+    border-width: 1px; 
+    border-style: solid; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.action-delete {
+    width: auto; 
+    height: 32px; 
+    padding: 0 12px; 
+    font-size: 0.7rem; 
+    border-radius: 2px;
+    border-width: 1px; 
+    border-style: solid; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center;
+    text-decoration: none;
+    font-weight: 600;
+}
