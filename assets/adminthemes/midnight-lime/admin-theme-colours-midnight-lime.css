@@ -1,516 +1,318 @@
-/* * SNAPSMACK MASTER ARCHITECTURE INDEX
+/* * SNAPSMACK MASTER COLOUR INDEX (THE PAINT)
  * ---------------------------------------------------------------------------
- * 01: Reset & Global    | 06: Media Previews    | 11: Pagination        | 16: Admin Footer
- * 02: Sidebar Nav       | 07: Transmissions     | 12: Upload/Progress   | 17: Login Specific
- * 03: Main Content      | 08: Buttons/Actions   | 13: Multiselects      | 18: Alerts/Utils
- * 04: Content Boxes     | 09: Item Layouts      | 14: Media Library     | 19: Appearance
- * 05: Form Elements     | 10: Dash/Stats        | 15: Engine Mechanics  | 20: Overrides
+ * 01: Global Base       | 06: Form Elements     | 11: Pagination
+ * 02: Sidebar Nav       | 07: Transmissions     | 12: Progress/Uploads
+ * 03: Main Headers      | 08: Buttons/Actions   | 13: Login/Footer
+ * 04: Content Boxes     | 09: Item Lists        | 14: Appearance
+ * 05: Media Previews    | 10: Dash/Stats        | 15: Overrides
  * ---------------------------------------------------------------------------
- * v5.17 - RECOVERY PATCH INTEGRATED
- * MASTER DIRECTIVE: No Structure. No Controls. Hex Only.
+ * v2026.1 - MIDNIGHT LIME
+ * PALETTE: #0d0d0d (Bg), #39FF14 (Green), #ff3e3e (Red), #1a1a1a (Border)
  */
 
-/* 01: RESET & GLOBAL BASE */
-html, body { 
-    background-color: #0d0d0d; 
-    color: #ccc; 
-    color-scheme: dark; 
+/* 01: GLOBAL BASE */
+html, body {
+    background-color: #0d0d0d;
+    color: #ccc;
+    color-scheme: dark;
 }
 
 /* 02: SIDEBAR NAVIGATION */
-.sidebar { 
-    background-color: #0d0d0d; 
-    border-right-color: #1a1a1a; 
+.sidebar {
+    background-color: #0d0d0d;
+    border-right-color: #1a1a1a;
 }
 
-.sidebar h2 { 
-    color: #39FF14; 
-    border-bottom-color: #1a1a1a; 
+.sidebar h2 {
+    color: #39FF14;
+    border-bottom-color: #1a1a1a;
 }
 
-.sidebar li { 
-    border-bottom-color: #1a1a1a; 
+.sidebar li {
+    border-bottom-color: #1a1a1a;
 }
 
-.sidebar a { 
-    color: #777; 
+.sidebar a {
+    color: #777;
 }
 
-.sidebar a:hover, .sidebar li.active a { 
-    color: #39FF14; 
+.sidebar a:hover,
+.sidebar li.active a {
+    color: #39FF14;
+    background-color: #111;
 }
 
-.sidebar li.nav-group strong { 
-    color: #555; 
+.sidebar li.nav-group {
+    color: #555;
+    background-color: #050505;
 }
 
-.sidebar ul.sub-nav { 
-    border-left-color: #1a1a1a; 
+.sidebar ul.sub-nav {
+    border-left-color: #39FF14;
 }
 
-.sidebar-bottom { 
-    border-top-color: #1a1a1a; 
-    background-color: #0d0d0d; 
+.sidebar-bottom {
+    background-color: #0d0d0d;
+    border-top-color: #1a1a1a;
 }
 
-.sidebar .logout { 
-    color: #ff3e3e; 
+.credits-admin {
+    color: #444;
 }
 
-.credits-admin { 
-    color: #444; 
+/* 03: MAIN HEADERS */
+.header-row {
+    border-bottom-color: #1a1a1a;
 }
 
-/* 03: MAIN CONTENT & HEADERS */
-h2 { 
-    color: #39FF14; 
-    border-bottom-color: #1a1a1a; 
+h2 {
+    color: #39FF14;
 }
 
 /* 04: CONTENT BOXES */
-.box { 
-    background-color: #0a0a0a; 
-    border-color: #1a1a1a; 
+.box {
+    background-color: #0a0a0a;
+    border-color: #1a1a1a;
 }
 
-.box h3, .section-header { 
-    color: #39FF14; 
-    border-bottom-color: #222; 
+.box h3, .section-header {
+    color: #39FF14;
+    border-bottom-color: #222;
 }
 
-.maint-desc { 
-    color: #bbb; 
-}
-
-.post-col-right { 
-    border-left-color: #1f1f1f; 
+.post-col-right {
+    border-left-color: #1a1a1a;
 }
 
 /* 05: FORM ELEMENTS */
-label { 
-    color: #555; 
+label {
+    color: #777;
 }
 
-input[type="text"], input[type="number"], input[type="email"], input[type="password"], 
-input[type="datetime-local"], input[type="date"], select, .preview-box, .select-box, 
-.read-only-display, textarea { 
-    background-color: #050505 !important; 
-    border-color: #1a1a1a; 
-    color: #eee !important; 
+input[type="text"], input[type="number"], input[type="email"], input[type="password"],
+input[type="datetime-local"], input[type="date"], select, textarea,
+.preview-box, .select-box, .read-only-display {
+    background-color: #050505;
+    border-color: #1a1a1a;
+    color: #eee;
 }
 
 input:focus, textarea:focus, select:focus {
-    border-color: #39FF14 !important;
-    box-shadow: 0 0 12px rgba(57, 255, 20, 0.25) !important;
-    background-color: #000 !important;
-}
-
-/* Autofill Lock */
-input:-webkit-autofill,
-input:-webkit-autofill:hover, 
-input:-webkit-autofill:focus,
-textarea:-webkit-autofill,
-textarea:-webkit-autofill:hover,
-textarea:-webkit-autofill:focus,
-select:-webkit-autofill,
-select:-webkit-autofill:hover,
-select:-webkit-autofill:focus {
-    -webkit-box-shadow: 0 0 0px 1000px #050505 inset !important;
-    -webkit-text-fill-color: #eee !important;
-}
-
-/* Metadata Grid */
-.meta-grid { 
-    background-color: #0d0d0d; 
-    border-color: #1a1a1a; 
-}
-
-.built-in-label { 
-    background-color: #111; 
-    border-color: #1a1a1a; 
-    color: #777 !important; 
-}
-
-.built-in-label input[type="checkbox"] { 
-    background-color: #1f1f1f; 
-    border-color: #333; 
-}
-
-.built-in-label input[type="checkbox"]:checked { 
-    background-color: #39FF14; 
-    border-color: #39FF14; 
-}
-
-/* Native Calendar Overrides (Folded into Section 05) */
-input[type="datetime-local"] {
-    background-color: #000 !important;
-    accent-color: #39FF14 !important;
-    color-scheme: dark !important;
-}
-
-input[type="datetime-local"]::-webkit-calendar-picker-indicator { 
-    filter: invert(1); 
-}
-
-input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper { 
-    background: #000 !important; 
-}
-
-input[type="datetime-local"]::-webkit-datetime-edit-text,
-input[type="datetime-local"]::-webkit-datetime-edit-month-field,
-input[type="datetime-local"]::-webkit-datetime-edit-day-field,
-input[type="datetime-local"]::-webkit-datetime-edit-year-field,
-input[type="datetime-local"]::-webkit-datetime-edit-hour-field,
-input[type="datetime-local"]::-webkit-datetime-edit-minute-field,
-input[type="datetime-local"]::-webkit-datetime-edit-ampm-field { 
-    color: #fff !important; 
-}
-
-input[type="datetime-local"]:focus { 
-    border-color: #39FF14 !important; 
+    border-color: #39FF14;
+    background-color: #000;
+    box-shadow: 0 0 8px rgba(57, 255, 20, 0.2);
+    outline: none;
 }
 
 /* 06: MEDIA PREVIEWS */
-.preview-frame { 
-    background-color: #000; 
-    border-color: #1a1a1a; 
+.preview-frame {
+    background-color: #000;
+    border-color: #1a1a1a;
 }
 
-.swap-note { 
-    color: #666; 
+/* 07: TRANSMISSIONS (The Fixes) */
+.transmission-header {
+    /* Geometry handled in Master Geometry file */
 }
 
-/* 07: TRANSMISSIONS */
-.transmission-header { 
-    border-bottom-color: #1a1a1a; 
-}
-
-.signal-body { 
-    color: #aaa; 
-    background-color: #0a0a0a; 
-    border-color: #1a1a1a; 
-}
-
-.signal-meta { 
-    color: #444; 
-}
-
-.signal-sender { 
-    color: #39FF14; 
-}
-
-/* 08: BUTTONS & ACTIONS */
-button, .btn-smack, .btn-green, .master-update-btn { 
-    background-color: #39FF14; 
-    color: #000 !important; 
-}
-
-.btn-backup { 
-    background-color: #333; 
-    color: #ccc !important; 
-}
-
-.btn-settings { 
-    background-color: #1a1a1a; 
-    color: #777 !important; 
-}
-
-.btn-live { 
-    background-color: #000; 
-    color: #39FF14 !important; 
-    border-color: #333; 
-}
-
-.action-authorize, .action-edit, .action-swap { 
-    border-color: #39FF14; 
-    color: #39FF14; 
-}
-
-.action-delete { 
-    border-color: #ff3e3e; 
-    color: #ff3e3e; 
-}
-
-/* 09: ITEM LAYOUTS */
-.recent-item { 
-    border-bottom-color: #1f1f1f; 
-}
-
-.archive-thumb { 
-    background-color: #000; 
-    border-color: #1a1a1a; 
-}
-
-.item-text strong { 
-    color: #eee; 
-}
-
-.item-text .dim { 
-    color: #555; 
-}
-
-/* 10: DASH/STATS */
-.stat-val { 
-    color: #39FF14; 
-}
-
-.stat-label { 
-    color: #555; 
-}
-
-.stat-row .label { 
-    color: #444; 
-}
-
-.stat-row .value { 
-    color: #999; 
-}
-
-.highlight-green { 
-    color: #39FF14 !important; 
-}
-
-/* 11: PAGINATION */
-.pagination a { 
-    background-color: #111; 
-    color: #666; 
-    border-color: #1a1a1a; 
-}
-
-.pagination a.active { 
-    background-color: #39FF14; 
-    color: #000; 
-    border-color: #39FF14; 
-}
-
-/* 12: UPLOAD/PROGRESS */
-.progress-container { 
-    background-color: #0a0a0a; 
-    border-color: #1a1a1a; 
-}
-
-.progress-bar { 
-    background-color: #39FF14; 
-}
-
-.file-upload-wrapper { 
-    background-color: #0a0a0a; 
-    border-color: #1a1a1a; 
-}
-
-.file-custom-btn { 
-    background-color: #1a1a1a; 
-    color: #777; 
-    border-right-color: #1a1a1a; 
-}
-
-.file-name-display { 
-    color: #444; 
-}
-
-/* 13: MULTISELECTS */
-.select-box { 
-    background-color: #0a0a0a; 
-    border-color: #1a1a1a; 
-    color: #eee; 
-}
-
-.dropdown-content { 
-    background-color: #111; 
-    border-color: #1a1a1a; 
-}
-
-.dropdown-search-wrapper { 
-    background-color: #0d0d0d; 
-    border-bottom-color: #1a1a1a; 
-}
-
-.multi-cat-item:hover { 
-    background-color: #1a1a1a; 
-    color: #39FF14; 
-}
-
-/* 14: MEDIA LIBRARY */
-.asset-card { 
-    background-color: #0d0d0d; 
-    border-color: #1a1a1a; 
-}
-
-.asset-thumb-wrapper { 
-    background-color: #000; 
-    border-bottom-color: #1a1a1a; 
-}
-
-.asset-info .preview-box { 
-    background-color: #0a0a0a; 
-    color: #666; 
-}
-
-/* 15: ENGINE MECHANICS */
-input[type="range"]::-webkit-slider-runnable-track { 
-    background-color: #1a1a1a; 
-}
-
-input[type="range"]::-webkit-slider-thumb { 
-    background-color: #39FF14; 
-}
-
-.tactical-checkbox { 
-    color: #39FF14; 
-}
-
-/* 16: ADMIN FOOTER */
-#admin-universal-footer { 
-    background-color: #0d0d0d; 
-    border-top-color: #1a1a1a; 
-}
-
-.footer-left { 
-    color: #444; 
-}
-
-.footer-left a { 
-    color: #666; 
-    border-bottom-color: #1a1a1a; 
-}
-
-.footer-left a:hover { 
-    color: #39FF14; 
-    border-color: #39FF14; 
-}
-
-.footer-right { 
-    color: #666; 
-}
-
-/* 17: LOGIN SPECIFIC */
-.login-box { 
-    background-color: #111; 
-    border-color: #1a1a1a; 
-}
-
-.login-box h1 { 
-    color: #39FF14; 
-}
-
-/* 18: ALERTS & UTILS */
-.alert-success { 
-    background-color: rgba(57, 255, 20, 0.1); 
-    border-color: #39FF14; 
-    color: #39FF14; 
-}
-
-.alert-error { 
-    background-color: rgba(255, 62, 62, 0.1); 
-    border-color: #ff3e3e; 
-    color: #ff3e3e; 
-}
-
-/* 19: APPEARANCE */
-.skin-meta-wrap { 
-    background-color: #111; 
-}
-
-.v-tag { 
-    color: #444; 
-}
-
-.skin-desc-text { 
-    color: #888; 
-}
-
-.support-link { 
-    color: #39FF14; 
-    border-bottom-color: #39FF14; 
-}
-
-.skin-selector-wrap { 
-    background-color: #0d0d0d; 
-    border-left-color: #1a1a1a; 
-}
-
-/* 20: OVERRIDES */
-.master-update-btn { 
-    background-color: #39FF14; 
-    color: #000; 
-}
-
-/* ---------------------------------------------------------------------------
-   RECOVERY PATCH - ORPHANED ELEMENTS
-   (Elements formerly painted by Structure PT04. Now correctly placed here.)
-   --------------------------------------------------------------------------- */
-
-/* 1. Range Slider Thumb */
-input[type="range"]::-webkit-slider-thumb { 
-    background-color: #ffffff; 
-}
-
-input[type="range"]::-webkit-slider-runnable-track { 
-    background-color: #1a1a1a; 
-}
-
-/* 2. Asset Badges Text */
-.badge-tag { 
-    color: #000000 !important; 
-}
-
-.badge-draft { 
-    background-color: #FFAA00 !important; 
-}
-
-.badge-scheduled { 
-    background-color: #00E5FF !important; 
-}
-
-/* 3. Color Picker Border */
-input[type="color"]::-webkit-color-swatch { 
-    border-color: rgba(255, 255, 255, 0.1); 
-}
-
-/* 4. Alert Fallback (If not success/error) */
-.alert { 
-    color: #39FF14; 
-    border-color: #39FF14; 
-}
-
-/* 5. Meta Tags & Slug */
-.meta-reg { 
-    color: #39FF14 !important; 
-}
-
-.meta-mission { 
-    color: #00E5FF !important; 
-}
-
-.meta-trans { 
-    color: #FFAA00 !important; 
-}
-
-.slug-display { 
-    color: #444; 
-}
-
-/* TRANSMISSION CONTROL SKINNING */
+/* The Status Pill */
 .status-online {
-    background-color: var(--neon-green, #39FF14);
-    color: #111;
-    border-color: var(--neon-green, #39FF14);
+    color: #39FF14;
+    border-color: #39FF14;
+    background-color: rgba(57, 255, 20, 0.05);
 }
 
 .status-offline {
-    background-color: #ff3e3e;
-    color: #fff;
+    color: #ff3e3e;
+    border-color: #ff3e3e;
+    background-color: rgba(255, 62, 62, 0.05);
+}
+
+/* Sender Name */
+.signal-sender {
+    color: #39FF14;
+    font-weight: 700;
+}
+.signal-sender span.dim {
+    color: #555;
+}
+
+/* The Body Text */
+.signal-body {
+    color: #ccc;
+    background-color: #050505;
+    border: 1px solid #1a1a1a;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+/* Metadata Links (Killing the Blue) */
+.signal-meta {
+    color: #666;
+}
+.signal-meta a {
+    color: #777 !important;
+    border-bottom-color: transparent;
+}
+.signal-meta a:hover {
+    color: #39FF14 !important;
+    border-bottom-color: #39FF14;
+}
+.signal-meta .dim {
+    color: #444;
+}
+
+/* 08: BUTTONS & ACTIONS */
+.btn-smack, .master-update-btn {
+    background-color: #39FF14;
+    color: #000;
+}
+.btn-smack:hover, .master-update-btn:hover {
+    background-color: #32d911;
+}
+
+.btn-backup { /* Used for inactive toggles */
+    background-color: #1a1a1a;
+    color: #777;
+}
+.btn-backup:hover {
+    color: #39FF14;
+    border: 1px solid #39FF14;
+}
+
+.btn-settings {
+    background-color: #222;
+    color: #aaa;
+}
+
+/* Action Links */
+.action-authorize, .action-edit {
+    color: #39FF14;
+    border-color: #39FF14;
+}
+.action-authorize:hover {
+    background-color: #39FF14;
+    color: #000;
+}
+
+.action-delete {
+    color: #ff3e3e;
     border-color: #ff3e3e;
 }
-
-.signal-sender {
-    color: var(--neon-green, #39FF14);
+.action-delete:hover {
+    background-color: #ff3e3e;
+    color: #fff;
 }
 
-.signal-meta .highlight-title {
-    color: #ccc;
+/* 09: ITEM LAYOUTS */
+.recent-item {
+    border-bottom-color: #1a1a1a;
+}
+.archive-thumb {
+    border-color: #222;
+    background-color: #000;
+}
+.item-text strong {
+    color: #eee;
+}
+.item-text .dim {
+    color: #666;
 }
 
-.signal-meta .highlight-title:hover {
-    color: var(--neon-green, #39FF14);
+/* 10: DASH/STATS */
+.stat-box {
+    border-color: #1a1a1a;
+    background-color: #0d0d0d;
+}
+.stat-val {
+    color: #39FF14;
+}
+.stat-label {
+    color: #555;
+}
+
+/* 11: PAGINATION */
+.pagination a {
+    background-color: #0a0a0a;
+    border-color: #1a1a1a;
+    color: #666;
+}
+.pagination a.active {
+    background-color: #39FF14;
+    border-color: #39FF14;
+    color: #000;
+}
+.pagination a:hover {
+    border-color: #39FF14;
+    color: #39FF14;
+}
+
+/* 12: PROGRESS/UPLOADS */
+.progress-container {
+    background-color: #050505;
+    border-color: #1a1a1a;
+}
+.progress-bar {
+    background-color: #39FF14;
+}
+.file-upload-wrapper {
+    border-color: #1a1a1a;
+    background-color: #0a0a0a;
+}
+.file-custom-btn {
+    background-color: #1a1a1a;
+    color: #888;
+    border-right-color: #1a1a1a;
+}
+.file-name-display {
+    color: #555;
+}
+
+/* 13: LOGIN & FOOTER */
+.login-box {
+    background-color: #111;
+    border-color: #1a1a1a;
+}
+
+#admin-universal-footer {
+    background-color: #0d0d0d;
+    border-top-color: #1a1a1a;
+}
+.footer-left { color: #444; }
+.footer-right { color: #555; }
+
+/* 14: APPEARANCE */
+.appearance-controller {
+    border-color: #1a1a1a;
+}
+.skin-meta-wrap {
+    background-color: #111;
+}
+.skin-selector-wrap {
+    background-color: #0a0a0a;
+    border-left-color: #1a1a1a;
+}
+.theme-title-display { color: #eee; }
+.skin-desc-text { color: #666; }
+
+/* 15: ALERTS */
+.alert-success {
+    color: #39FF14;
+    border-color: #39FF14;
+    background-color: rgba(57, 255, 20, 0.1);
+}
+
+.alert-error {
+    color: #ff3e3e;
+    border-color: #ff3e3e;
+    background-color: rgba(255, 62, 62, 0.1);
+}
+
+/* 16: INPUT RANGE (Webkit) */
+input[type="range"]::-webkit-slider-runnable-track {
+    background-color: #1a1a1a;
+}
+input[type="range"]::-webkit-slider-thumb {
+    background-color: #39FF14;
 }
