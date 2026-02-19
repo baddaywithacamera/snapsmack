@@ -1,360 +1,465 @@
-/* * SNAPSMACK STRUCTURE - v5.22
- * Dimensions, Grids, and Layout Density (Restored from v15.4 Master)
+/* * SNAPSMACK MASTER ARCHITECTURE INDEX
+ * ---------------------------------------------------------------------------
+ * 01: Reset & Global    | 06: Media Previews    | 11: Pagination        | 16: Admin Footer
+ * 02: Sidebar Nav       | 07: Transmissions     | 12: Upload/Progress   | 17: Login Specific
+ * 03: Main Content      | 08: Buttons/Actions   | 13: Multiselects      | 18: Alerts/Utils
+ * 04: Content Boxes     | 09: Item Layouts      | 14: Media Library     | 19: Appearance
+ * 05: Form Elements     | 10: Dash/Stats        | 15: Engine Mechanics  | 20: Overrides
+ * ---------------------------------------------------------------------------
+ * v6.45 - FULL FIDELITY FUSION (The Final "Leash-Off" Fix)
+ * MASTER DIRECTIVE: Complete restoration. No truncation. 
+ * PROMOTED: Restored Legacy Section 09 (.post-layout-grid) with 30px gap and border-left.
+ * PROMOTED: Restored H2 Master Line logic as the global default.
  */
 
-/* 1. RESET & GLOBAL BASE */
+/* 01: RESET & GLOBAL BASE */
 html, body {
-    height: 100%;
-    margin: 0;
+    height: 100%; 
+    margin: 0; 
     padding: 0;
     font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
     font-size: 16px; 
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
 }
 
-/* 2. SIDEBAR NAVIGATION - 260px Fixed Lock */
+* {
+    box-sizing: border-box;
+}
+
+/* 02: SIDEBAR NAVIGATION - 260px Fixed Lock */
 .sidebar {
-    width: 260px;
-    height: 100vh;
-    position: fixed;
-    top: 0;
+    width: 260px; 
+    height: 100vh; 
+    position: fixed; 
+    top: 0; 
     left: 0;
     padding: 40px 25px 30px 25px; 
-    border-right-width: 1px;
+    border-right-width: 1px; 
     border-right-style: solid;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
+    display: flex; 
+    flex-direction: column; 
     z-index: 10001;
 }
 
-.sidebar-top { flex-grow: 1; }
+.sidebar-top { 
+    flex-grow: 1; 
+}
 
 .sidebar h2 {
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    font-size: 1.2rem;
+    text-transform: uppercase; 
+    letter-spacing: 2px; 
+    font-size: 1.2rem; 
     font-weight: 500;
-    margin-top: 0;      
-    margin-bottom: 30px;
-    padding-bottom: 15px;
-    line-height: 1.0;   
-    border-bottom-width: 2px;
+    margin: 0 0 30px 0; 
+    padding-bottom: 15px; 
+    line-height: 1.0; 
+    border-bottom-width: 2px; 
     border-bottom-style: solid;
 }
 
-.sidebar ul { list-style: none; padding: 0; margin: 0; }
-.sidebar li { margin-bottom: 12px; border-bottom-width: 1px; border-bottom-style: solid; padding-bottom: 12px; }
-
-.sidebar a {
-    text-decoration: none;
-    font-size: 1rem;
-    font-weight: 400;
-    display: block;
+.sidebar ul { 
+    list-style: none; 
+    padding: 0; 
+    margin: 0; 
 }
 
-.sidebar li.nav-divider {
-    border: 0;
-    border-top-width: 1px;
-    border-top-style: solid;
-    margin: 15px 0;
-    padding: 0;
+.sidebar li { 
+    margin-bottom: 12px; 
+    border-bottom-width: 1px; 
+    border-bottom-style: solid; 
+    padding-bottom: 12px; 
 }
 
-.sidebar li.nav-external-link {
-    margin-top: 20px;
-    border-bottom: none;
+.sidebar a { 
+    text-decoration: none; 
+    font-size: 0.85rem; 
+    font-weight: 400; 
+    letter-spacing: 1px; 
+    text-transform: uppercase; 
+    display: block; 
 }
 
-/* 2.1 NESTED SUB-NAVIGATION LOGIC */
-.sidebar li.nav-group {
-    margin-bottom: 25px;
-    border-bottom: none !important;
-    padding-bottom: 0 !important;
+.sidebar li.nav-divider { 
+    border: 0; 
+    border-top-width: 1px; 
+    border-top-style: solid; 
+    margin: 15px 0; 
+    padding: 0; 
 }
 
-.sidebar li.nav-group strong {
-    display: block;
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 15px;
-    padding-left: 2px;
-    font-weight: 800;
+.sidebar li.nav-external-link { 
+    margin-top: 20px; 
+    border-bottom: none; 
 }
 
-.sidebar ul.sub-nav {
-    padding-left: 15px;
-    border-left-width: 1px;
-    border-left-style: solid;
-    margin-left: 5px;
+/* 2.1 SUB-NAV LOGIC */
+.sidebar li.nav-group { 
+    margin-bottom: 25px; 
+    border-bottom: none; 
+    padding-bottom: 0; 
 }
 
-.sidebar ul.sub-nav li {
-    margin-bottom: 10px;
-    padding-bottom: 10px;
-    border-bottom-width: 1px;
-    border-bottom-style: solid;
+.sidebar li.nav-group strong { 
+    display: block; 
+    font-size: 0.65rem; 
+    text-transform: uppercase; 
+    letter-spacing: 2px; 
+    margin-bottom: 15px; 
+    padding-left: 2px; 
+    font-weight: 500; 
 }
 
-.sidebar ul.sub-nav li:last-child {
-    border-bottom: none;
+.sidebar ul.sub-nav { 
+    padding-left: 15px; 
+    border-left-width: 1px; 
+    border-left-style: solid; 
+    margin-left: 5px; 
+}
+
+.sidebar ul.sub-nav li { 
+    margin-bottom: 10px; 
+    padding-bottom: 10px; 
+    border-bottom-width: 1px; 
+    border-bottom-style: solid; 
+}
+
+.sidebar ul.sub-nav li:last-child { 
+    border-bottom: none; 
 }
 
 .sidebar ul.sub-nav a {
-    font-size: 0.9rem; 
+    font-weight: 400; 
+    font-size: 0.8rem;
 }
 
-.sidebar ul.sub-nav li.active a {
-    font-weight: 600;
+.sidebar-bottom { 
+    padding-top: 20px; 
+    border-top-width: 1px; 
+    border-top-style: solid; 
 }
 
-.sidebar-bottom { padding-top: 20px; border-top-width: 0; }
-
-.sidebar .logout {
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    text-decoration: none;
-    display: block;
+.sidebar .logout { 
+    font-weight: 500; 
+    text-transform: uppercase; 
+    font-size: 0.85rem; 
+    text-decoration: none; 
+    display: block; 
     margin-bottom: 5px; 
 }
 
-.credits-admin {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+.credits-admin { 
+    font-size: 0.7rem; 
+    text-transform: uppercase; 
+    letter-spacing: 1px; 
 }
 
-/* 3. MAIN CONTENT & HEADERS */
-.main {
-    margin-left: 260px;
-    padding: 40px 80px 140px 80px;
-    min-height: 100vh;
-    box-sizing: border-box;
+/* 03: MAIN CONTENT & HEADERS */
+.main { 
+    margin-left: 260px; 
+    padding: 40px 80px 140px 80px; 
+    min-height: 100vh; 
+    box-sizing: border-box; 
 }
 
-h2 {
-    text-transform: uppercase;
-    font-size: 1.2rem;
-    font-weight: 500;
+/* Restored .header-row padding but nuked double-border stacking */
+.header-row { 
+    border: none !important; 
+    margin: 0 !important; 
+    padding: 0 !important; 
+}
+
+h2, .section-header h2 {
+    text-transform: uppercase; 
+    font-size: 1.2rem; 
+    font-weight: 500; 
     letter-spacing: 1px;
-    margin-top: 0;      
-    margin-bottom: 30px;
-    padding-bottom: 15px;
-    line-height: 1.0;   
-    border-bottom-width: 2px;
+    margin: 0 0 30px 0; 
+    padding-bottom: 15px; 
+    line-height: 1.0; 
+    border-bottom-width: 2px; 
     border-bottom-style: solid;
 }
 
-/* 4. CONTENT BOXES - Corrected Padding & Spacing */
-.box {
-    border-width: 1px;
-    border-style: solid;
+/* 04: CONTENT BOXES */
+.box { 
+    border-width: 1px; 
+    border-style: solid; 
     padding: 30px; 
-    margin-bottom: 30px;
-    border-radius: 6px;
-    box-sizing: border-box;
+    margin-bottom: 30px; 
+    border-radius: 6px; 
+    box-sizing: border-box; 
 }
 
-.box h3, .section-header {
-    font-size: 1rem;
-    text-transform: uppercase;
-    font-weight: 500;
-    margin-top: 0;
-    margin-bottom: 25px;
-    border-bottom-width: 1px;
-    border-bottom-style: solid;
-    padding-bottom: 10px;
-    display: block;
+.box h2, .box h3 {
+    font-size: 1rem; 
+    text-transform: uppercase; 
+    font-weight: 500; 
+    margin: 0 0 25px 0;
+    border-bottom-width: 1px; 
+    border-bottom-style: solid; 
+    padding-bottom: 10px; 
+    display: block; 
     width: 100%;
 }
 
-/* THE SMACK GRID (Fixed to 1fr 1fr Balanced) */
-.post-layout-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 30px;
-    width: 100%;
-    margin-bottom: 0px; 
-    align-items: stretch; 
+.box-flush-bottom { 
+    margin-bottom: 0 !important; 
+    border-bottom: none; 
+    border-bottom-left-radius: 0; 
+    border-bottom-right-radius: 0; 
 }
 
-.post-col-left { display: flex; flex-direction: column; }
-.post-col-right { border-left-width: 1px; border-left-style: solid; padding-left: 40px; }
-
-/* 5. FORM ELEMENTS - 52px Standard */
-label {
-    display: block;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    margin-bottom: 12px;
+/* 05: FORM ELEMENTS - 52px Geometry */
+label { 
+    display: block; 
+    text-transform: uppercase; 
+    font-size: 0.75rem; 
+    font-weight: 600; 
+    letter-spacing: 0.5px; 
+    margin-bottom: 12px; 
 }
 
-input + label, textarea + label, select + label, 
-.multi-cat-box + label, .file-upload-wrapper + label,
-.custom-multiselect + label {
-    margin-top: 30px;
+input + label, 
+textarea + label, 
+select + label, 
+.file-upload-wrapper + label { 
+    margin-top: 30px; 
 }
 
-input[type="text"], input[type="number"], input[type="email"], input[type="password"], 
-input[type="datetime-local"], input[type="date"], select, 
-.preview-box, .select-box, .read-only-display {
-    width: 100%;
-    border-width: 1px;
-    border-style: solid;
-    padding: 0 15px;
-    height: 52px;
-    font-family: inherit;
-    font-size: 1rem !important; 
-    box-sizing: border-box;
-    font-weight: 300; 
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-}
-
-/* CALENDAR DARK MODE FIX */
-input[type="datetime-local"] {
-    color-scheme: dark !important;
-}
-
+input[type="text"], 
+input[type="number"], 
+input[type="email"], 
+input[type="password"], 
+input[type="datetime-local"], 
+input[type="date"], 
+select, 
+.preview-box, 
+.select-box, 
+.read-only-display, 
 textarea {
-    width: 100%;
-    border-width: 1px;
-    border-style: solid;
-    padding: 18px 15px; 
-    font-family: inherit;
-    font-size: 1rem !important; 
-    box-sizing: border-box;
-    font-weight: 300; 
-    border-radius: 4px;
-    line-height: 1.5;
-    resize: none; 
-}
-
-.post-col-left textarea { flex: 1; min-height: 250px; }
-
-/* 5.1 MANUAL METADATA GRID */
-.meta-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    padding: 30px;
-    border-width: 1px;
-    border-style: solid;
-    border-radius: 4px;
-}
-
-.lens-input-wrapper { display: flex; flex-direction: column; }
-.input-control-row { display: flex; align-items: stretch; width: 100%; }
-
-.input-control-row input[type="text"] {
-    flex: 1;
-    height: 52px !important; 
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-    border-width: 1px;
-    border-style: solid;
-}
-
-.built-in-label {
-    flex-shrink: 0;
-    display: flex;
+    width: 100%; 
+    border-width: 1px; 
+    border-style: solid; 
+    padding: 0 15px; 
+    height: 52px; 
+    font-family: inherit; 
+    font-size: 1rem; 
+    box-sizing: border-box; 
+    border-radius: 4px; 
+    display: flex; 
     align-items: center;
-    gap: 10px;
+}
+
+input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
     border-width: 1px;
     border-style: solid;
-    border-left: none;
-    padding: 0 15px;
-    height: 52px !important; 
-    font-size: 0.7rem !important;
-    font-weight: 700;
-    text-transform: uppercase;
-    white-space: nowrap;
-    border-top-right-radius: 4px;
-    border-bottom-right-radius: 4px;
-    margin: 0 !important;
-}
-
-.built-in-label input[type="checkbox"] {
-    width: 16px !important;
-    height: 16px !important;
-    border-width: 1px;
-    border-style: solid;
-    border-radius: 2px;
-    margin: 0 !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.meta-grid label { font-size: 0.7rem; margin-bottom: 8px; }
-
-/* 6. PREVIEW CONSTRAINTS - Restoration */
-.preview-frame {
-    width: 100%;
-    height: auto;
-    max-height: 500px; /* Clamps blowout in Edit/Swap */
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-width: 1px;
-    border-style: solid;
-    border-radius: 4px;
-    margin-bottom: 20px;
-    box-sizing: border-box;
-    background: #000;
-}
-
-.swap-preview {
-    max-width: 100%;
-    max-height: 500px;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-    display: block;
-}
-
-/* 8. BUTTONS & ACTIONS */
-button, .btn-smack, .btn-clear, .action-authorize, .action-delete, .action-edit, .action-swap, .btn-green, .btn-blue, .btn-orange, .maint-btn, .master-update-btn, .btn-teal, .btn-purple, .btn-gold {
-    height: 52px;
+    border-radius: 3px;
+    cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0 30px; 
-    font-weight: 700;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    margin: 0;
+    position: relative;
+    background: transparent;
+}
+
+input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 5px;
+    border: solid;
+    border-width: 0 0 2px 2px;
+    transform: rotate(-45deg);
+    top: 3px;
+    left: 3px;
+}
+
+.read-only-display, .stat-row { 
+    font-family: 'Courier New', Courier, monospace; 
+}
+
+textarea { 
+    padding: 18px 15px; 
+    line-height: 1.5; 
+    resize: none; 
+    height: auto; 
+    min-height: 150px; 
+}
+
+/* 5.1 MANUAL METADATA GRID */
+.meta-grid { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 15px; 
+}
+
+.lens-input-wrapper { display: flex; flex-direction: column; }
+
+.meta-grid .lens-input-wrapper:nth-child(even) {
+    padding-left: 20px !important;
+}
+
+.input-control-row { display: flex; align-items: stretch; width: 100%; }
+
+.input-control-row input[type="text"] { 
+    flex: 1; 
+    border-top-right-radius: 0; 
+    border-bottom-right-radius: 0; 
+}
+
+.built-in-label { 
+    flex-shrink: 0; 
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+    border-width: 1px; 
+    border-style: solid; 
+    border-left: none; 
+    padding: 0 15px; 
+    height: 52px !important; 
+    font-size: 0.7rem !important; 
+    font-weight: 700; 
+    text-transform: uppercase; 
+    white-space: nowrap; 
+    border-top-right-radius: 4px; 
+    border-bottom-right-radius: 4px; 
+    margin: 0 !important; 
+}
+
+.built-in-label input[type="checkbox"] { 
+    width: 16px !important; 
+    height: 16px !important; 
+    margin: 0 !important; 
+}
+
+/* 06: MEDIA PREVIEWS */
+.preview-frame {
+    width: 100%; 
+    height: auto; 
+    max-height: 500px; 
+    overflow: hidden; 
+    display: flex; 
+    align-items: center;
+    justify-content: center; 
+    border-width: 1px; 
+    border-style: solid; 
+    border-radius: 4px; 
+    margin-bottom: 20px; 
+    box-sizing: border-box;
+}
+
+.swap-preview { 
+    max-width: 100%; 
+    max-height: 500px; 
+    width: auto; 
+    height: auto; 
+    object-fit: contain; 
+    display: block; 
+}
+
+/* 07: TRANSMISSIONS */
+.transmission-log-wrapper {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.signal-body {
+    padding: 20px;
+    border-width: 1px;
+    border-style: solid;
     border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    min-height: 100px;
+}
+
+/* 08: BUTTONS & ACTIONS */
+.action-grid-dual {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+}
+
+button, 
+.btn-smack, 
+.master-update-btn,
+.btn-reset,
+.btn-smack-filter {
+    width: 100%; 
+    height: 52px; 
+    margin-top: 30px; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    padding: 0 30px; 
+    font-weight: 700; 
+    font-size: 0.85rem; 
+    text-transform: uppercase; 
+    letter-spacing: 1px; 
+    border-radius: 4px; 
+    border: none; 
     text-decoration: none;
     box-sizing: border-box;
-    border: none;
+    cursor: pointer;
 }
 
-.maint-btn, #submit-btn, .master-update-btn, .btn-green, .btn-blue, .btn-orange, .btn-teal, .btn-purple, .btn-gold { width: 100% !important; }
+.btn-reset, .btn-smack-filter { margin-top: 0; }
+.btn-reset { background: #333; color: rgba(255,255,255,0.9); }
 
-#submit-btn { width: 100%; margin-top: 30px; }
-
-.action-authorize, .action-delete, .action-edit, .action-swap { 
-    height: 32px !important; 
-    padding: 0 12px !important; 
-    font-size: 0.7rem !important;
+.action-edit, .action-swap, .action-delete {
+    width: auto; 
+    height: 32px; 
+    padding: 0 12px; 
+    font-size: 0.7rem; 
     border-radius: 2px;
-    border-width: 1px !important;
-    border-style: solid !important;
+    border-width: 1px; 
+    border-style: solid; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center;
+    text-decoration: none;
 }
 
-/* 9. ITEM LAYOUTS (Latest Smack & Archive Density) */
+/* 09: ITEM LAYOUTS (The Config Fix) - LEGACY GRID RESTORED */
+.post-layout-grid, .grid-50-50 { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 30px; /* Restored Legacy Spacing */
+    width: 100%; 
+    align-items: stretch; 
+}
+
+.post-col-left { 
+    display: flex; 
+    flex-direction: column; 
+}
+
+.post-col-left textarea { 
+    flex: 1; 
+}
+
+/* Restored Legacy Divider Line for Side-by-Side Calibration */
+.post-col-right {
+    border-left-width: 1px;
+    border-left-style: solid;
+    padding-left: 40px;
+}
+
 .recent-item { 
     display: flex; 
     justify-content: flex-start; 
-    align-items: center; 
-    padding: 10px 0; 
-    border-bottom-width: 0px; 
+    align-items: flex-start; 
+    padding: 15px 0; 
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
 }
 
 .recent-item:last-child { border-bottom: none; }
@@ -367,67 +472,115 @@ button, .btn-smack, .btn-clear, .action-authorize, .action-delete, .action-edit,
 }
 
 .archive-thumb { 
-    width: 80px; 
-    height: 80px; 
+    width: 120px; 
+    height: 120px; 
     object-fit: cover; 
     border-radius: 4px; 
     border-width: 1px; 
     border-style: solid; 
-    flex-shrink: 0;
+    flex-shrink: 0; 
 }
 
 .item-text { 
     display: flex; 
     flex-direction: column; 
     justify-content: flex-start; 
-    gap: 6px; 
+    min-height: 120px; 
+    gap: 8px;
     flex: 1; 
 }
 
 .item-text strong { 
     font-size: 1.05rem; 
     margin: 0; 
-    line-height: 1.2;
-    font-weight: 500;
+    line-height: 1.2; 
+    font-weight: 500; 
 }
 
-.item-text .dim { 
-    font-size: 0.7rem; 
-    margin: 0; 
+.item-meta { 
+    font-size: 0.75rem; 
+    color: rgba(255, 255, 255, 0.7); 
+    letter-spacing: 0.5px; 
     text-transform: uppercase;
 }
 
-/* 10. DASHBOARD GRID & STATS - Corrected Gap */
-.dash-grid { 
+.badge-tag {
+    font-size: 0.65rem;
+    opacity: 0.5;
+    margin-left: 5px;
+}
+
+.action-cell-flex {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-start;
+}
+
+/* 10: DASH/STATS & FILTERS */
+.dash-grid, .grid-33 { 
     display: grid; 
     grid-template-columns: 1fr 1fr 1fr; 
-    gap: 30px; 
+    gap: 15px; 
 }
-.stat-group { display: flex; justify-content: space-around; text-align: center; padding: 10px 0; }
-.stat-val { font-size: 2.5rem; font-weight: 900; line-height: 1; }
-.stat-label { display: block; font-size: 0.75rem; text-transform: uppercase; font-weight: 600; margin-top: 5px; }
 
-/* TACTICAL GRID RESTORATION */
+.stat-group { 
+    display: flex; 
+    justify-content: space-around; 
+    text-align: center; 
+    padding: 10px 0; 
+}
+
+.stat-val { font-size: 2.5rem; font-weight: 900; line-height: 1; }
+
+.stat-label { 
+    display: block; 
+    font-size: 0.75rem; 
+    text-transform: uppercase; 
+    font-weight: 600; 
+    margin-top: 5px; 
+}
+
 .quick-strike-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.quick-strike-grid button { width: 100%; height: 52px; font-size: 0.7rem; padding: 0 10px; }
+.quick-strike-grid button { margin-top: 0; font-size: 0.7rem; }
 
 .stat-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-family: monospace; }
 
-/* 12. UPLOAD & PROGRESS */
-.progress-container { display: none; width: 100%; height: 12px; border-radius: 4px; margin-top: 20px; margin-bottom: 0px; overflow: hidden; border-width: 1px; border-style: solid; }
-.progress-bar { width: 0%; height: 100%; }
+/* 11: PAGINATION */
+.pagination {
+    display: flex;
+    gap: 5px;
+    margin-top: 20px;
+    justify-content: center;
+}
 
+.pagination a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    padding: 0 15px;
+    border-width: 1px;
+    border-style: solid;
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 4px;
+}
+
+.pagination a.active { background: rgba(255, 255, 255, 0.1); }
+
+/* 12: STANDARD 52px UPLOAD & PROGRESS */
 .file-upload-wrapper {
     position: relative;
     width: 100%;
-    height: 52px;
+    height: 52px; 
     border-width: 1px;
     border-style: solid;
-    margin-bottom: 30px;
     display: flex;
     align-items: center;
     overflow: hidden;
     border-radius: 4px;
+    box-sizing: border-box;
 }
 
 .file-custom-btn { 
@@ -441,284 +594,81 @@ button, .btn-smack, .btn-clear, .action-authorize, .action-delete, .action-edit,
     border-right-width: 1px;
     border-right-style: solid;
     flex-shrink: 0;
-    margin: 0 !important;
+    cursor: pointer;
 }
 
-.file-name-display { padding-left: 20px; font-size: 0.9rem; }
-
-/* 13. MULTISELECT DROPDOWN */
-.custom-multiselect { position: relative; width: 100%; z-index: 100; margin-bottom: 0; }
-.select-box { display: flex; justify-content: space-between; align-items: center; border-width: 1px; border-style: solid; padding: 0 15px; height: 52px; border-radius: 4px; font-size: 1rem; font-weight: 300; width: 100%; box-sizing: border-box; }
-.select-box .arrow { font-size: 0.7rem; }
-.dropdown-content { display: none; position: absolute; top: 56px; left: 0; width: 100%; border-width: 1px; border-style: solid; z-index: 1000; border-radius: 4px; }
-
-/* Restoration Fix: Ensure show logic is robust */
-.dropdown-content.show { display: block !important; }
-
-.dropdown-search-wrapper { padding: 12px; border-bottom-width: 1px; border-bottom-style: solid; }
-.dropdown-search-wrapper input { height: 38px !important; font-size: 0.9rem !important; }
-.dropdown-list { max-height: 250px; overflow-y: auto; padding: 10px 0; }
-.multi-cat-item { display: flex; align-items: center; padding: 10px 15px; line-height: 1; }
-.multi-cat-item input { margin: 0 15px 0 0; width: 18px; height: 18px; transform: translateY(1px); }
-.cat-name-text { font-size: 1rem; font-weight: 400; letter-spacing: 0.5px; }
-
-/* 14. MEDIA LIBRARY GALLERY */
-.asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 30px; }
-.asset-card { border-width: 1px; border-style: solid; border-radius: 4px; overflow: hidden; }
-.asset-thumb-wrapper { height: 150px; display: flex; align-items: center; justify-content: center; border-bottom-width: 1px; border-bottom-style: solid; }
-.asset-thumb-wrapper img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.asset-info { padding: 15px; }
-.asset-info label { margin-bottom: 5px; margin-top: 0; text-align: center; }
-.asset-info .preview-box { font-family: monospace; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; text-align: center; }
-.asset-actions { margin-top: 15px; display: flex; justify-content: flex-end; }
-
-/* 15. ENGINE CALIBRATION & ARCHITECTURE GRID */
-.engine-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 25px;
-}
-
-.mt-30 { margin-top: 30px; }
-.mb-25 { margin-bottom: 25px; }
-.mb-5 { margin-bottom: 5px; }
-.mt-20 { margin-top: 20px; }
-.mt-40 { margin-top: 40px; }
-.flex-1 { flex: 1; }
-
-.color-picker-container {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    padding: 0 15px;
-    height: 52px;
-    border-radius: 4px;
-    border-width: 1px;
-    border-style: solid;
-}
-input[type="color"] {
-    -webkit-appearance: none;
-    border: none;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-}
-input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-input[type="color"]::-webkit-color-swatch {
-    border-width: 1px;
-    border-style: solid;
-    border-radius: 4px;
-}
-.hex-display { font-family: monospace; font-size: 0.9rem; }
-
-input[type="range"] {
-    -webkit-appearance: none;
-    width: 100%;
-    height: 52px;
-}
-input[type="range"]::-webkit-slider-runnable-track {
-    width: 100%;
-    height: 4px;
-    border-radius: 2px;
-}
-input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    height: 20px;
-    width: 20px;
-    border-radius: 50%;
-    margin-top: -8px; 
-}
-.tactical-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: 30px;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-/* MASTER SUBMIT BUTTON */
-.master-update-btn {
-    margin-top: 30px; 
-    width: 100%;
-    padding: 0 22px; 
-    height: 52px;
-    border: none;
-    font-weight: 900;
-    letter-spacing: 2.5px;
-    text-transform: uppercase;
-    border-radius: 4px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* 16. UNIVERSAL ADMIN FOOTER */
-#admin-universal-footer {
-    position: fixed;
-    bottom: 0;
-    left: 260px; 
-    right: 0;
-    border-top-width: 1px;
-    border-top-style: solid;
-    padding: 15px 80px; 
-    z-index: 10000;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    height: 60px;
-    box-sizing: border-box;
-}
-
-.footer-left {
-    font-family: 'Courier Prime', 'Courier New', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    max-width: 65%;
-}
-
-.footer-left a {
-    text-decoration: none;
-    border-bottom-width: 1px;
-    border-bottom-style: solid;
-}
-
-.footer-right {
-    font-family: 'Courier Prime', 'Courier New', monospace;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-align: right;
-    text-transform: uppercase;
-}
-
-/* 17. LOGIN PAGE SPECIFIC */
-.login-body {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.login-box {
-    width: 400px;
-    padding: 50px;
-    border-width: 1px;
-    border-style: solid;
-    border-radius: 8px;
-    text-align: center;
-}
-
-.login-box h1 {
-    letter-spacing: 4px;
-    margin-bottom: 40px;
-    font-weight: 900;
-}
-
-/* 18. UTILITIES & ALERTS */
-.alert {
-    padding: 15px;
-    margin-bottom: 25px;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-.section-divider { border: 0; border-top-width: 1px; border-top-style: solid; margin: 40px 0; }
-.full-width-select { width: 100% !important; }
-.text-center { text-align: center; }
-.text-right { text-align: right; }
-
-/* 19. APPEARANCE CONTROLLER (Structure) */
-.appearance-controller {
-    display: flex;
-    justify-content: space-between;
-    align-items: stretch;
-    padding: 0 !important;
-    gap: 0;
+.file-name-display { 
+    padding-left: 20px; 
+    font-size: 0.9rem; 
+    font-family: 'Courier New', monospace;
+    white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.skin-meta-wrap { flex: 1; padding: 40px; }
-.skin-active-name { margin: 0 0 5px 0; font-size: 1.1rem; letter-spacing: 1px; font-weight: 700; }
-.v-tag { font-size: 0.7rem; margin-left: 8px; }
-.skin-desc-text { font-style: italic; font-size: 0.95rem; margin: 5px 0 15px 0; line-height: 1.5; }
-.skin-author-line { font-size: 0.65rem; letter-spacing: 1.5px; text-transform: uppercase; }
-.support-link { text-decoration: none; border-bottom-width: 1px; border-bottom-style: solid; }
-
-.skin-selector-wrap {
-    flex: 1;
-    padding: 40px;
-    border-left-width: 1px;
-    border-left-style: solid;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+#file-input {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0; 
+    cursor: pointer;
+    z-index: 2;
 }
 
-.inline-skin-form label { display: block; font-size: 0.65rem; margin-bottom: 15px; letter-spacing: 2px; font-weight: 800; }
-.inline-skin-form select { margin: 0; width: 100%; border-width: 1px; border-style: solid; }
-.inline-skin-form .hint { margin-top: 15px; font-size: 0.65rem; line-height: 1.4; }
-
-/* 20. TACTICAL OVERRIDES */
-.read-only-display {
+.progress-container {
+    width: 100%;
+    height: 20px;
     border-width: 1px;
     border-style: solid;
-    padding: 0 15px;
-    height: 52px; 
-    display: flex;
-    align-items: center;
-    border-radius: 4px;
-    font-weight: 700;
-    font-size: 0.9rem;
-    box-sizing: border-box;
-    text-transform: uppercase;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    display: none; 
 }
 
-/* Registry Typography Restoration */
-.dim {
-    font-size: 0.7rem;
-    color: #666;
-    text-transform: uppercase;
-    display: block;
-    margin-top: 4px;
+.progress-bar { height: 100%; width: 0%; }
+
+/* 13: MULTISELECTS */
+.custom-multiselect { position: relative; width: 100%; }
+.dropdown-content { position: absolute; top: 54px; left: 0; right: 0; border-width: 1px; border-style: solid; border-radius: 4px; max-height: 250px; overflow-y: auto; z-index: 5000; }
+.dropdown-search-wrapper { padding: 10px; border-bottom-width: 1px; border-bottom-style: solid; }
+.multi-cat-item { padding: 10px 15px; border-bottom-width: 1px; border-bottom-style: solid; display: flex; align-items: center; gap: 10px; font-size: 0.9rem; }
+
+/* 14: MEDIA LIBRARY - CONSOLIDATED v6.45 */
+.asset-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
+    gap: 30px; 
 }
 
-/* Registry Table Architecture */
-.smack-table {
-    width: 100%;
-    border-collapse: collapse;
+.asset-card { 
+    border-width: 1px; 
+    border-style: solid; 
+    border-radius: 4px; 
+    overflow: hidden; 
 }
 
-/* Global Heading Realignment & Spacing Fix */
-.registry-table th {
-    text-align: left !important;
-    padding-bottom: 20px; /* Vertical breathing room */
+.asset-thumb-wrapper { 
+    height: 150px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    border-bottom-width: 1px; 
+    border-bottom-style: solid; 
 }
 
-.registry-table td {
-    padding: 15px 0;
-    vertical-align: top;
+.asset-thumb-wrapper img { 
+    max-width: 100%; 
+    max-height: 100%; 
+    object-fit: contain; 
 }
 
-/* Action Lock Side-by-Side */
-.action-cell-flex {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end; /* Flush right alignment */
+.asset-info { 
+    padding: 15px; 
 }
 
-.action-edit, .action-delete {
-    width: 80px; 
-    text-align: center;
-    flex-shrink: 0;
-}
-
-.main form .master-update-btn { margin-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; font-weight: 400; }
-.box-flush-bottom { margin-bottom: 0 !important; border-bottom: none; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-
-/* 21. MEDIA GALLERY COMPACT OVERRIDES */
 .asset-controls {
     display: flex;
     gap: 10px;
@@ -728,33 +678,37 @@ input[type="range"]::-webkit-slider-thumb {
     flex: 1;
 }
 
-/* Override global box/form spacing within media cards */
-.asset-grid .asset-card label {
+.asset-card label {
     font-size: 0.65rem !important;
     margin-bottom: 4px !important;
-    margin-top: 10px !important; /* Smaller gap for tighter grid */
+    margin-top: 10px !important; 
     letter-spacing: 0.5px;
     text-align: left;
 }
 
-.asset-grid .asset-card select {
-    height: 32px !important; /* Force smaller height override */
+.asset-card select {
+    height: 32px !important; 
     padding: 0 8px !important;
     font-size: 0.8rem !important;
     margin: 0 !important;
 }
 
-.asset-grid .asset-card .preview-box {
+.asset-card .preview-box {
     height: 32px !important;
     padding: 0 10px !important;
     font-size: 0.75rem !important;
     font-family: monospace;
     margin: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
 }
 
-/* Override Section 20 action-delete for Media PURGE link */
-.asset-actions {
-    margin-top: 15px;
+.asset-actions { 
+    margin-top: 15px; 
+    display: flex; 
+    justify-content: flex-end; 
     text-align: right;
 }
 
@@ -775,128 +729,210 @@ input[type="range"]::-webkit-slider-thumb {
     text-decoration: underline;
 }
 
-/* 22. TRANSMISSION STATUS INDICATORS */
-.status-online {
-    background: rgba(0, 255, 0, 0.05) !important;
-    color: #00ff00 !important;
-    border-color: #00ff00 !important;
+/* 15: ENGINE MECHANICS */
+input[type="range"] { 
+    width: 100%; 
+    height: 52px; 
+    border-radius: 5px; 
+    outline: none; 
+    -webkit-appearance: none; 
+    background: none;
 }
 
-.status-offline {
-    background: rgba(255, 0, 0, 0.05) !important;
-    color: #ff3333 !important;
-    border-color: #ff3333 !important;
+input[type="range"]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.1);
 }
 
-/* 23. TRANSMISSION LAYOUT RESTORATION */
-
-/* Title Bar Flex (H2 + Status) */
-.title-bar-flex {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom-width: 2px;
-    border-bottom-style: solid;
-    margin-bottom: 30px;
-    padding-bottom: 15px;
+input[type="range"]::-webkit-slider-thumb { 
+    -webkit-appearance: none; 
+    appearance: none; 
+    width: 20px; 
+    height: 20px; 
+    border-radius: 50%; 
+    background: #fff;
+    margin-top: -8px;
+    cursor: pointer;
 }
 
-.title-bar-flex h2 {
-    margin: 0;
-    border: none !important; /* Remove default H2 border to prevent double lines */
+input[type="color"] { 
+    -webkit-appearance: none;
+    border: none;
+    width: 32px;
+    height: 32px;
     padding: 0;
+    background: none;
 }
 
-.status-pill {
-    padding: 5px 15px;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+input[type="color"]::-webkit-color-swatch {
     border-width: 1px;
     border-style: solid;
+    border-radius: 4px;
 }
 
-/* Transmission Header (Search + Nav) */
-.transmission-header {
+.color-picker-container {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 40px;
-    gap: 30px;
-    border-bottom-width: 2px;
-    border-bottom-style: solid;
-    padding-bottom: 25px;
-}
-
-.transmission-search-group {
-    display: flex;
-    gap: 10px;
-    flex: 1;
-    max-width: 500px;
-}
-
-.transmission-nav-group {
-    display: flex;
     gap: 15px;
-    justify-content: flex-end;
-}
-
-/* Fix for Active design visibility */
-.transmission-nav-group .btn-clear.active {
-    border-color: #39FF14 !important;
-    color: #fff !important;
-    background: #333 !important;
-}
-
-/* Restoring the Console Look for Comments */
-.signal-body {
-    font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
-    background: #111;
-    padding: 15px;
+    padding: 0 15px;
+    height: 52px;
+    border-radius: 4px;
     border-width: 1px;
     border-style: solid;
-    border-color: #333;
-    margin: 8px 0;
-    line-height: 1.5;
-    color: #ccc;
 }
 
-.signal-sender {
-    font-size: 0.85rem;
-    color: #39FF14; /* Matrix Green */
-    font-weight: 700;
+.hex-display {
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    font-size: 0.9rem;
     text-transform: uppercase;
 }
 
-.signal-sender span {
-    color: #666;
-    font-weight: 400;
-    margin-left: 10px;
+/* 16: ADMIN FOOTER */
+#admin-universal-footer { 
+    position: fixed; 
+    bottom: 0; 
+    left: 260px; 
+    right: 0; 
+    border-top-width: 1px; 
+    border-top-style: solid; 
+    padding: 15px 80px; 
+    z-index: 10000; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    height: 60px; 
+    box-sizing: border-box; 
 }
 
-.signal-meta {
-    font-size: 0.65rem;
-    color: #555;
+.footer-left { 
+    font-family: 'Courier Prime', 'Courier New', monospace; 
+    font-size: 0.7rem; 
+    letter-spacing: 0.5px; 
+    text-transform: uppercase; 
+    max-width: 65%; 
+}
+
+.footer-left a { 
+    text-decoration: none; 
+    border-bottom-width: 1px; 
+    border-bottom-style: solid; 
+}
+
+.footer-right { 
+    font-family: 'Courier Prime', 'Courier New', monospace; 
+    font-size: 0.75rem; 
+    font-weight: 700; 
+    letter-spacing: 1px; 
+    text-align: right; 
+    text-transform: uppercase; 
+}
+
+/* 17: LOGIN SPECIFIC */
+.login-container { 
+    width: 100%; 
+    height: 100vh; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+}
+
+.login-box { 
+    width: 400px; 
+    padding: 40px; 
+    border-width: 1px; 
+    border-style: solid; 
+    border-radius: 6px; 
+    text-align: center; 
+}
+
+.login-box h1 { 
+    margin-bottom: 30px; 
+    font-size: 1.5rem; 
+    text-transform: uppercase; 
+    letter-spacing: 2px; 
+}
+
+/* 18: ALERTS & UTILS */
+.alert { 
+    padding: 15px; 
+    margin-bottom: 25px; 
+    border-radius: 4px; 
+    font-size: 0.85rem; 
+    font-weight: 600; 
+    text-transform: uppercase; 
+    border-width: 1px; 
+    border-style: solid; 
+}
+
+.section-divider { 
+    border: 0; 
+    border-top-width: 1px; 
+    border-top-style: solid; 
+    margin: 40px 0; 
+}
+
+.mt-30 { margin-top: 30px; } 
+.mb-25 { margin-bottom: 25px; } 
+.mb-5 { margin-bottom: 5px; } 
+.mt-20 { margin-top: 20px; } 
+.mt-40 { margin-top: 40px; } 
+.flex-1 { flex: 1; }
+.dim { opacity: 0.6; }
+
+/* 19: APPEARANCE CONTROLLER (Full Integration) */
+.appearance-controller { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: stretch; 
+    padding: 0 !important; 
+    gap: 0; 
+    overflow: hidden; 
+}
+
+.skin-meta-wrap { flex: 1; padding: 40px; }
+.skin-active-name { margin: 0 0 5px 0; font-size: 1.1rem; letter-spacing: 1px; font-weight: 700; }
+.skin-desc-text { font-style: italic; font-size: 0.95rem; margin: 5px 0 15px 0; line-height: 1.5; }
+
+.skin-selector-wrap { 
+    flex: 1; 
+    padding: 40px; 
+    border-left-width: 1px; 
+    border-left-style: solid; 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: center; 
+}
+
+/* 20: PRETTY TABLES (Registry & Tables) */
+.smack-table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    margin-top: 10px;
+}
+
+.registry-table th { 
+    text-align: left !important; 
     text-transform: uppercase;
+    font-size: 0.7rem;
     letter-spacing: 1px;
-    margin-bottom: 10px;
+    padding-bottom: 20px; 
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    opacity: 0.6;
 }
 
-.alert-text {
-    color: #ff3333;
-    font-weight: bold;
-    margin-left: 8px;
+.registry-table td { 
+    padding: 20px 0; 
+    vertical-align: middle; 
+    border-bottom-width: 1px; 
+    border-bottom-style: solid; 
 }
 
-/* Responsive Adjustments */
-@media (max-width: 1100px) {
-    #admin-universal-footer { left: 0; padding: 15px 20px; }
-    .footer-left { font-size: 0.6rem; }
-    .appearance-controller { flex-direction: column; }
-    .skin-selector-wrap { border-left: none; border-top-width: 1px; border-top-style: solid; }
-    .main { margin-left: 0; padding: 20px; }
-    .sidebar { display: none; }
+.registry-table tr:last-child td {
+    border-bottom: none;
 }
+
+/* FINAL FOOTER PADDING LOCK */
+body { padding-bottom: 100px; }

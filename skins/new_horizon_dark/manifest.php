@@ -250,7 +250,13 @@ return [
        Injects custom layout rules specifically for this skin's control tab.
        ------------------------------------------------------------------------- */
     'admin_styling' => "
-        .metadata-selector-row { display: flex; justify-content: space-between; align-items: center; margin-top: -15px; margin-bottom: 50px; }
+        .metadata-selector-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-top: -15px; 
+            margin-bottom: 50px; 
+        }
         .skin-switcher-form { display: flex; align-items: center; gap: 10px; }
         .skin-switcher-form label { margin: 0 !important; }
         .control-group-flex { display: flex; align-items: center; gap: 20px; }

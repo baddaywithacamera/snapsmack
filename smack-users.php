@@ -1,7 +1,8 @@
 <?php
 /**
  * SnapSmack - User Manager
- * Version: 1.1 - Edit & Role Integration
+ * Version: 6.0 - V6 Core Standardized
+ * MASTER DIRECTIVE: Full file return. Standardized layout.
  */
 require_once 'core/auth.php';
 
@@ -13,7 +14,6 @@ if (isset($_POST['add_user'])) {
     $raw_pass = $_POST['password'];
 
     if (!empty($new_user) && !empty($raw_pass)) {
-        // Using Bcrypt with cost 12 for security consistency
         $hashed_pass = password_hash($raw_pass, PASSWORD_BCRYPT, ['cost' => 12]);
         
         $stmt = $pdo->prepare("INSERT INTO snap_users (username, email, password_hash, user_role) VALUES (?, ?, ?, ?)");
@@ -29,7 +29,6 @@ if (isset($_POST['add_user'])) {
 // --- 2. ACTION: DELETE USER ---
 if (isset($_GET['delete'])) {
     $uid = (int)$_GET['delete'];
-    // Avoid self-deletion logic
     if (isset($_SESSION['user_login'])) {
         $stmt = $pdo->prepare("SELECT username FROM snap_users WHERE id = ?");
         $stmt->execute([$uid]);
@@ -54,7 +53,9 @@ include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <h2>USER MANAGEMENT</h2>
+    <div class="header-row">
+        <h2>USER MANAGEMENT</h2>
+    </div>
 
     <?php if(isset($msg)): ?><div class="msg">> <?php echo $msg; ?></div><?php endif; ?>
     <?php if(isset($err)): ?><div class="alert alert-error">> <?php echo $err; ?></div><?php endif; ?>
@@ -62,28 +63,20 @@ include 'core/sidebar.php';
     <div class="box">
         <h3>ADD NEW SYSTEM USER</h3>
         <form method="POST">
-            <div class="control-group">
-                <label>USERNAME</label>
-                <input type="text" name="username" required autocomplete="off">
-            </div>
+            <label>USERNAME</label>
+            <input type="text" name="username" required autocomplete="off">
 
-            <div class="control-group">
-                <label>EMAIL ADDRESS</label>
-                <input type="email" name="email" required autocomplete="off">
-            </div>
+            <label>EMAIL ADDRESS</label>
+            <input type="email" name="email" required autocomplete="off">
 
-            <div class="control-group">
-                <label>SYSTEM ROLE</label>
-                <select name="user_role">
-                    <option value="editor">Editor (Content Only)</option>
-                    <option value="admin">Administrator (Full Access)</option>
-                </select>
-            </div>
+            <label>SYSTEM ROLE</label>
+            <select name="user_role">
+                <option value="editor">Editor (Content Only)</option>
+                <option value="admin">Administrator (Full Access)</option>
+            </select>
             
-            <div class="control-group">
-                <label>PASSWORD</label>
-                <input type="password" name="password" required>
-            </div>
+            <label>PASSWORD</label>
+            <input type="password" name="password" required>
 
             <button type="submit" name="add_user" class="master-update-btn">CREATE USER ACCESS</button>
         </form>
@@ -100,7 +93,7 @@ include 'core/sidebar.php';
                     </div>
                 </div>
                 
-                <div class="item-actions">
+                <div class="action-cell-flex">
                     <a href="smack-edit-user.php?id=<?php echo $u['id']; ?>" class="action-edit">EDIT</a>
 
                     <?php if($u['username'] !== $_SESSION['user_login']): ?>
@@ -108,7 +101,7 @@ include 'core/sidebar.php';
                            class="action-delete" 
                            onclick="return confirm('Confirm permanent deletion of this user?')">DELETE</a>
                     <?php else: ?>
-                        <span class="dim" style="font-size: 0.7rem;">(CURRENT SESSION)</span>
+                        <span class="dim" style="font-size: 0.6rem; letter-spacing: 0.5px;">(ACTIVE SESSION)</span>
                     <?php endif; ?>
                 </div>
             </div>

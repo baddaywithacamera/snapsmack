@@ -1,14 +1,18 @@
 <?php
 /**
  * SNAPSMACK - New Post (Smack Engine)
- * Version: 16.6 - TRINITY SYNCHRONIZED
- * MASTER DIRECTIVE: Full component return. No line pruning.
+ * Version: 17.1 - UNIVERSAL ACTION ROW SYNC
+ * -------------------------------------------------------------------------
+ * - FIXED: Wrapped button in .form-action-row to kill pt02 margin drift.
+ * - FIXED: Removed inline flex from the container box to allow pt01/pt02 
+ * to govern the layout naturally.
+ * -------------------------------------------------------------------------
  */
 
 require_once 'core/auth.php';
 require_once 'core/fix-exif.php';
 
-// --- 1. SETTINGS & TIMEZONE ---
+// 1. SETTINGS & TIMEZONE
 $settings = [];
 $s_rows = $pdo->query("SELECT * FROM snap_settings")->fetchAll();
 foreach ($s_rows as $row) { 
@@ -16,7 +20,7 @@ foreach ($s_rows as $row) {
 }
 date_default_timezone_set($settings['timezone'] ?? 'America/Edmonton');
 
-// --- 2. THE SMACK ENGINE (POST PROCESSING) ---
+// 2. THE SMACK ENGINE (POST PROCESSING)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image_file'])) {
     if ($_FILES['image_file']['error'] === UPLOAD_ERR_OK) {
         
@@ -33,9 +37,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image_file'])) {
 
         $allow_comments = (int)($_POST['allow_comments'] ?? 1);
 
+        // MANUAL METADATA OVERRIDES
         $camera_manual    = $_POST['camera_model'] ?? '';
         $lens_manual      = $_POST['lens_info'] ?? '';
-        $focal_manual      = $_POST['focal_length'] ?? '';
+        $focal_manual     = $_POST['focal_length'] ?? '';
         $film_manual      = $_POST['film_stock'] ?? '';
         if (isset($_POST['film_na'])) { $film_manual = 'N/A'; }
 
@@ -48,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image_file'])) {
         $selected_albums = $_POST['album_ids'] ?? []; 
         $mime = mime_content_type($tmp);
 
-        // --- 3. IMAGE PREP & CROP MATH ---
+        // 3. IMAGE PREP & CROP MATH
         list($orig_w, $orig_h) = getimagesize($tmp);
         $thumb_size = 400; 
         $crop_size = min($orig_w, $orig_h);
@@ -57,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image_file'])) {
         $wall_h = 500;
         $wall_w = round($orig_w * ($wall_h / $orig_h));
 
-        // --- 4. EXIF HARVESTING ---
+        // 4. EXIF HARVESTING
         $raw_harvest = [];
         if ($mime === 'image/jpeg' && function_exists('exif_read_data')) {
             $raw_exif = @exif_read_data($tmp);
@@ -79,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image_file'])) {
         $final_exif['film'] = $film_manual;
         $final_exif['flash'] = $flash_manual;
 
-        // --- 5. IMAGE RESOURCE CREATION ---
+        // 5. IMAGE RESOURCE CREATION
         if ($mime == 'image/jpeg') { $src = @imagecreatefromjpeg($tmp); } 
         elseif ($mime == 'image/png') { $src = @imagecreatefrompng($tmp); } 
         elseif ($mime == 'image/webp') { $src = @imagecreatefromwebp($tmp); } 
@@ -94,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image_file'])) {
         imagecopyresampled($t_dst, $src, 0, 0, $cx, $cy, $thumb_size, $thumb_size, $crop_size, $crop_size);
         imagecopyresampled($w_dst, $src, 0, 0, 0, 0, $wall_w, $wall_h, $orig_w, $orig_h);
 
-        // --- 6. FILE SYSTEM STORAGE ---
+        // 6. FILE SYSTEM STORAGE
         $rel_dir = 'img_uploads/' . date('Y/m');
         $full_dir = __DIR__ . '/' . $rel_dir;
         $thumb_dir = $full_dir . '/thumbs';
@@ -106,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image_file'])) {
         $db_save_path = $rel_dir . '/' . $base_fn . $ext;
         $save_to = $full_dir . '/' . $base_fn . $ext;
         $save_thumb = $thumb_dir . '/t_' . $base_fn . $ext;
-        $save_wall  = $thumb_dir . '/wall_' . $base_fn . $ext;
+        $save_wall   = $thumb_dir . '/wall_' . $base_fn . $ext;
 
         if (move_uploaded_file($tmp, $save_to)) {
             if ($mime == 'image/png') { imagepng($t_dst, $save_thumb, 8); imagepng($w_dst, $save_wall, 8); } 
@@ -114,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image_file'])) {
             else { imagejpeg($t_dst, $save_thumb, 75); imagejpeg($w_dst, $save_wall, 80); }
             imagedestroy($src); imagedestroy($t_dst); imagedestroy($w_dst);
 
-            // --- 7. DATABASE RECORDING ---
+            // 7. DATABASE RECORDING
             try {
                 $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $title)));
                 $sql = "INSERT INTO snap_images (img_title, img_film, img_slug, img_description, img_date, img_file, img_exif, img_width, img_height, img_status, img_orientation, allow_comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -144,96 +149,120 @@ include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <h2>NEW POST</h2>
+    <div class="header-row">
+        <h2>NEW POST</h2>
+    </div>
     
     <form id="smack-form" method="POST" enctype="multipart/form-data">
+        
         <div class="box">
             <div class="post-layout-grid">
                 
                 <div class="post-col-left">
-                    <label>SELECT PHOTO</label>
-                    <div class="file-upload-wrapper">
-                        <div class="file-custom-btn">CHOOSE FILE</div>
-                        <div class="file-name-display" id="file-name-text">No file selected...</div>
-                        <input type="file" name="image_file" id="file-input" required>
+                    <div class="lens-input-wrapper">
+                        <label>SELECT PHOTO</label>
+                        <div class="file-upload-wrapper">
+                            <div class="file-custom-btn">CHOOSE FILE</div>
+                            <div class="file-name-display" id="file-name-text">No file selected...</div>
+                            <input type="file" name="image_file" id="file-input" required>
+                        </div>
                     </div>
 
-                    <label>IMAGE TITLE</label>
-                    <input type="text" name="title" id="title-input" required placeholder="E.G. MIDNIGHT VIBES">
+                    <div class="lens-input-wrapper">
+                        <label>IMAGE TITLE</label>
+                        <input type="text" name="title" id="title-input" required placeholder="E.G. MIDNIGHT VIBES">
+                    </div>
 
-                    <label>DESCRIPTION</label>
-                    <textarea name="desc" placeholder="Tell the story..."></textarea>
+                    <div class="lens-input-wrapper" style="margin-top: 30px;">
+                        <label>DESCRIPTION</label>
+                        <textarea name="desc" placeholder="Tell the story..." rows="10"></textarea>
+                    </div>
                 </div>
 
                 <div class="post-col-right">
-                    <label>PUBLICATION STATUS</label>
-                    <select name="img_status" class="mb-25">
-                        <option value="published" selected>PUBLISHED (VISIBLE)</option>
-                        <option value="draft">DRAFT (HIDDEN)</option>
-                    </select>
+                    <div class="lens-input-wrapper">
+                        <label>PUBLICATION STATUS</label>
+                        <select name="img_status">
+                            <option value="published" selected>PUBLISHED (VISIBLE)</option>
+                            <option value="draft">DRAFT (HIDDEN)</option>
+                        </select>
+                    </div>
 
-                    <label>MANUAL ORIENTATION</label>
-                    <select name="img_orientation" class="mb-25">
-                        <option value="0" selected>LANDSCAPE (DEFAULT)</option>
-                        <option value="1">PORTRAIT (VERTICAL)</option>
-                        <option value="2">SQUARE (STANDARD)</option>
-                    </select>
+                    <div class="lens-input-wrapper">
+                        <label>MANUAL ORIENTATION</label>
+                        <select name="img_orientation">
+                            <option value="0" selected>LANDSCAPE (DEFAULT)</option>
+                            <option value="1">PORTRAIT (VERTICAL)</option>
+                            <option value="2">SQUARE (STANDARD)</option>
+                        </select>
+                    </div>
 
-                    <label>SCHEDULED DATE (OPTIONAL)</label>
-                    <input type="datetime-local" name="custom_date" class="mb-5" onclick="this.showPicker()">
-                    <p class="field-hint mb-25">Leave empty for instant broadcast.</p>
+                    <div class="lens-input-wrapper">
+                        <label>SCHEDULED DATE (OPTIONAL)</label>
+                        <input type="datetime-local" name="custom_date" onclick="this.showPicker()">
+                        <p class="dim" style="margin-top: 5px;">Leave empty for instant broadcast.</p>
+                    </div>
 
-                    <label>REGISTRY (CATEGORIES)</label>
-                    <div class="custom-multiselect mb-25">
-                        <div class="select-box" onclick="toggleDropdown('cat-items')">
-                            <span id="cat-label">Select Categories...</span>
-                            <span class="arrow">▼</span>
-                        </div>
-                        <div class="dropdown-content" id="cat-items">
-                            <div class="dropdown-search-wrapper"><input type="text" placeholder="Filter..." onkeyup="filterRegistry(this, 'cat-list-box')"></div>
-                            <div class="dropdown-list" id="cat-list-box">
-                                <?php foreach($cats as $c): ?>
-                                    <label class="multi-cat-item">
-                                        <input type="checkbox" name="cat_ids[]" value="<?php echo $c['id']; ?>" onchange="updateLabel('cat')">
-                                        <span class="cat-name-text"><?php echo htmlspecialchars($c['cat_name']); ?></span>
-                                    </label>
-                                <?php endforeach; ?>
+                    <div class="lens-input-wrapper" style="margin-top: 25px;">
+                        <label>REGISTRY (CATEGORIES)</label>
+                        <div class="custom-multiselect">
+                            <div class="select-box" onclick="toggleDropdown('cat-items')">
+                                <span id="cat-label">Select Categories...</span>
+                                <span class="arrow">▼</span>
+                            </div>
+                            <div class="dropdown-content" id="cat-items">
+                                <div class="dropdown-search-wrapper"><input type="text" placeholder="Filter..." onkeyup="filterRegistry(this, 'cat-list-box')"></div>
+                                <div class="dropdown-list" id="cat-list-box">
+                                    <?php foreach($cats as $c): ?>
+                                        <label class="multi-cat-item">
+                                            <input type="checkbox" name="cat_ids[]" value="<?php echo $c['id']; ?>" onchange="updateLabel('cat')">
+                                            <span class="cat-name-text"><?php echo htmlspecialchars($c['cat_name']); ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <label>MISSIONS (ALBUMS)</label>
-                    <div class="custom-multiselect mb-25">
-                        <div class="select-box" onclick="toggleDropdown('album-items')">
-                            <span id="album-label">Select Albums...</span>
-                            <span class="arrow">▼</span>
-                        </div>
-                        <div class="dropdown-content" id="album-items">
-                            <div class="dropdown-search-wrapper"><input type="text" placeholder="Filter..." onkeyup="filterRegistry(this, 'album-list-box')"></div>
-                            <div class="dropdown-list" id="album-list-box">
-                                <?php foreach($albums as $a): ?>
-                                    <label class="multi-cat-item">
-                                        <input type="checkbox" name="album_ids[]" value="<?php echo $a['id']; ?>" onchange="updateLabel('album')">
-                                        <span class="cat-name-text"><?php echo htmlspecialchars($a['album_name']); ?></span>
-                                    </label>
-                                <?php endforeach; ?>
+                    <div class="lens-input-wrapper" style="margin-top: 30px;">
+                        <label>MISSIONS (ALBUMS)</label>
+                        <div class="custom-multiselect">
+                            <div class="select-box" onclick="toggleDropdown('album-items')">
+                                <span id="album-label">Select Albums...</span>
+                                <span class="arrow">▼</span>
+                            </div>
+                            <div class="dropdown-content" id="album-items">
+                                <div class="dropdown-search-wrapper"><input type="text" placeholder="Filter..." onkeyup="filterRegistry(this, 'album-list-box')"></div>
+                                <div class="dropdown-list" id="album-list-box">
+                                    <?php foreach($albums as $a): ?>
+                                        <label class="multi-cat-item">
+                                            <input type="checkbox" name="album_ids[]" value="<?php echo $a['id']; ?>" onchange="updateLabel('album')">
+                                            <span class="cat-name-text"><?php echo htmlspecialchars($a['album_name']); ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <label>PUBLIC TRANSMISSIONS</label>
-                    <select name="allow_comments">
-                        <option value="1" selected>OH HELL YES!</option>
-                        <option value="0">NOPE NOPE NOPE!</option>
-                    </select>
+                    <div class="lens-input-wrapper" style="margin-top: 30px;">
+                        <label>PUBLIC TRANSMISSIONS</label>
+                        <select name="allow_comments">
+                            <option value="1" selected>OH HELL YES!</option>
+                            <option value="0">NOPE NOPE NOPE!</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="box">
-            <label>TECHNICAL SPECIFICATIONS</label>
+            <h3>TECHNICAL SPECIFICATIONS</h3>
             <div class="meta-grid">
-                <div class="lens-input-wrapper"><label>CAMERA MODEL</label><input type="text" name="camera_model" id="meta-camera"></div>
+                <div class="lens-input-wrapper">
+                    <label>CAMERA MODEL</label>
+                    <input type="text" name="camera_model" id="meta-camera">
+                </div>
                 <div class="lens-input-wrapper">
                     <label>LENS INFO</label>
                     <div class="input-control-row">
@@ -241,7 +270,10 @@ include 'core/sidebar.php';
                         <label class="built-in-label"><input type="checkbox" id="fixed-lens-check"> BUILT-IN</label>
                     </div>
                 </div>
-                <div class="lens-input-wrapper"><label>FOCAL LENGTH</label><input type="text" name="focal_length" id="meta-focal"></div>
+                <div class="lens-input-wrapper">
+                    <label>FOCAL LENGTH</label>
+                    <input type="text" name="focal_length" id="meta-focal">
+                </div>
                 <div class="lens-input-wrapper">
                     <label>FILM STOCK</label>
                     <div class="input-control-row">
@@ -249,9 +281,18 @@ include 'core/sidebar.php';
                         <label class="built-in-label"><input type="checkbox" name="film_na" id="film-na-check"> N/A</label>
                     </div>
                 </div>
-                <div class="lens-input-wrapper"><label>ISO</label><input type="text" name="iso_speed" id="meta-iso"></div>
-                <div class="lens-input-wrapper"><label>APERTURE</label><input type="text" name="aperture" id="meta-aperture"></div>
-                <div class="lens-input-wrapper"><label>SHUTTER SPEED</label><input type="text" name="shutter_speed" id="meta-shutter"></div>
+                <div class="lens-input-wrapper">
+                    <label>ISO</label>
+                    <input type="text" name="iso_speed" id="meta-iso">
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>APERTURE</label>
+                    <input type="text" name="aperture" id="meta-aperture">
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>SHUTTER SPEED</label>
+                    <input type="text" name="shutter_speed" id="meta-shutter">
+                </div>
                 <div class="lens-input-wrapper">
                     <label>FLASH FIRED</label>
                     <select name="flash_fire" id="meta-flash">
@@ -261,11 +302,16 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
-            <div class="progress-container mt-20" id="progress-container"><div class="progress-bar" id="progress-bar"></div></div>
-            <button type="submit" id="submit-btn" class="master-update-btn mt-30">SMACK THAT #$%& UP!!</button>
+            <div class="progress-container mt-20" id="progress-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+        </div>
+
+        <div class="form-action-row">
+            <button type="submit" id="submit-btn" class="master-update-btn">SMACK THAT #$%& UP!!</button>
         </div>
     </form>
 </div>
 
 <script src="assets/js/smack-ui-private.js?v=<?php echo time(); ?>"></script>
-<?php include 'core/admin-header.php'; ?>
+<?php include 'core/admin-footer.php'; ?>

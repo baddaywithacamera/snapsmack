@@ -1,8 +1,13 @@
 <?php
 /**
  * SnapSmack - Swap Image
- * Version: 3.9 - Precision Restore & Hint Alignment
- * MASTER DIRECTIVE: Full file return. All logic preserved.
+ * Version: 4.3 - ZERO STYLE BASELINE
+ * -------------------------------------------------------------------------
+ * - PURGED: All inline styles and hardcoded colors.
+ * - PURGED: Horizontal divider removed entirely.
+ * - PURGED: Cancel button removed.
+ * - SYNCED: Locked into .form-action-row for standardized 30px spacing.
+ * -------------------------------------------------------------------------
  */
 require_once 'core/auth.php';
 require_once 'core/fix-exif.php';
@@ -31,7 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['new_image'])) {
         $flash_manual    = $_POST['flash_fire'] ?? 'No';
         $orientation     = (int)($_POST['img_orientation'] ?? 0);
 
-        // Delete old assets
         if (file_exists($img['img_file'])) { unlink($img['img_file']); }
         $old_thumb = str_replace('img_uploads/', 'img_uploads/thumbs/t_', $img['img_file']);
         if (file_exists($old_thumb)) { unlink($old_thumb); }
@@ -93,90 +97,107 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['new_image'])) {
     }
 }
 
-$page_title = "Swap Image";
+$page_title = "SWAP IMAGE";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <div class="section-header">
+    <div class="header-row">
         <h2>SWAP IMAGE</h2>
-        <p class="field-hint">TARGET: <?php echo strtoupper(htmlspecialchars($img['img_title'])); ?></p>
     </div>
 
-    <div class="box">
-        <form id="smack-form" method="POST" enctype="multipart/form-data">
+    <form id="smack-form" method="POST" enctype="multipart/form-data">
+        <div class="box">
             <div class="post-layout-grid">
                 
                 <div class="post-col-left">
-                    <label>CURRENT SIGNAL</label>
-                    <div class="preview-frame">
-                        <img src="<?php echo $img['img_file']; ?>" class="swap-preview">
+                    <div class="lens-input-wrapper">
+                        <label>CURRENT SIGNAL</label>
+                        <div class="preview-frame">
+                            <img src="<?php echo $img['img_file']; ?>" class="swap-preview">
+                        </div>
+                        <p class="dim" style="margin-top:15px;">
+                            <strong>NOTE:</strong> Replacement is permanent. Current asset and thumbnail will be purged.
+                        </p>
                     </div>
-                    <p class="field-hint mt-20">
-                        <strong>NOTE:</strong> Replacing this file will permanently delete the current asset and regenerate its thumbnail.
-                    </p>
                 </div>
 
-                <div class="post-col-right">
-                    <label>SELECT REPLACEMENT FILE</label>
-                    <div class="file-upload-wrapper mb-25">
-                        <input type="file" name="new_image" id="file-input" required class="full-width-select">
+                <div class="flex-1">
+                    <div class="lens-input-wrapper">
+                        <label>REPLACEMENT ASSET</label>
+                        <div class="file-upload-wrapper">
+                            <div class="file-custom-btn">CHOOSE FILE</div>
+                            <div class="file-name-display" id="file-name-text">Waiting for input...</div>
+                            <input type="file" name="new_image" id="file-input" required>
+                        </div>
                     </div>
 
-                    <label>ORIENTATION OVERRIDE</label>
-                    <select name="img_orientation" class="full-width-select mb-25">
-                        <option value="0" <?php echo ($img['img_orientation'] == 0) ? 'selected' : ''; ?>>Landscape</option>
-                        <option value="1" <?php echo ($img['img_orientation'] == 1) ? 'selected' : ''; ?>>Portrait</option>
-                        <option value="2" <?php echo ($img['img_orientation'] == 2) ? 'selected' : ''; ?>>Square</option>
-                    </select>
-
-                    <p class="field-hint">
-                        Metadata is re-harvested from the new file. Use overrides below if file lacks EXIF data.
-                    </p>
+                    <div class="lens-input-wrapper">
+                        <label>ORIENTATION OVERRIDE</label>
+                        <select name="img_orientation">
+                            <option value="0" <?php echo ($img['img_orientation'] == 0) ? 'selected' : ''; ?>>LANDSCAPE</option>
+                            <option value="1" <?php echo ($img['img_orientation'] == 1) ? 'selected' : ''; ?>>PORTRAIT</option>
+                            <option value="2" <?php echo ($img['img_orientation'] == 2) ? 'selected' : ''; ?>>SQUARE</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
-            <hr class="section-divider">
-
-            <label>TECHNICAL OVERRIDES (OPTIONAL)</label>
+            <h3>TECHNICAL OVERRIDES (OPTIONAL)</h3>
             <div class="meta-grid">
                 <div class="lens-input-wrapper">
                     <label>CAMERA MODEL</label>
-                    <input type="text" name="camera_model" placeholder="Auto-detect if blank">
+                    <input type="text" name="camera_model" placeholder="Auto-harvest if blank">
                 </div>
                 <div class="lens-input-wrapper">
                     <label>LENS INFO</label>
                     <div class="input-control-row">
                         <input type="text" name="lens_info" id="meta-lens">
-                        <label class="built-in-label"><input type="checkbox" name="fixed_lens" id="fixed-lens-check"> Built-in</label>
+                        <label class="built-in-label">
+                            <input type="checkbox" name="fixed_lens" id="fixed-lens-check"> BUILT-IN
+                        </label>
                     </div>
                 </div>
-                <div class="lens-input-wrapper"><label>FOCAL LENGTH</label><input type="text" name="focal_length"></div>
+                <div class="lens-input-wrapper">
+                    <label>FOCAL LENGTH</label>
+                    <input type="text" name="focal_length">
+                </div>
                 <div class="lens-input-wrapper">
                     <label>FILM STOCK</label>
                     <div class="input-control-row">
                         <input type="text" name="film_stock" id="meta-film">
-                        <label class="built-in-label"><input type="checkbox" name="film_na" id="film-na-check"> N/A</label>
+                        <label class="built-in-label">
+                            <input type="checkbox" name="film_na" id="film-na-check"> N/A
+                        </label>
                     </div>
                 </div>
-                <div><label>ISO</label><input type="text" name="iso_speed"></div>
-                <div><label>APERTURE</label><input type="text" name="aperture"></div>
-                <div><label>SHUTTER SPEED</label><input type="text" name="shutter_speed"></div>
-                <div>
+                <div class="lens-input-wrapper">
+                    <label>ISO</label>
+                    <input type="text" name="iso_speed">
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>APERTURE</label>
+                    <input type="text" name="aperture">
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>SHUTTER SPEED</label>
+                    <input type="text" name="shutter_speed">
+                </div>
+                <div class="lens-input-wrapper">
                     <label>FLASH FIRED</label>
-                    <select name="flash_fire" class="full-width-select">
+                    <select name="flash_fire">
                         <option value="No">No</option>
                         <option value="Yes">Yes</option>
                     </select>
                 </div>
             </div>
+        </div>
 
-            <div class="form-actions mt-40">
-                <button type="submit" class="master-update-btn">PERFORM SWAP</button>
-            </div>
-        </form>
-    </div>
+        <div class="form-action-row">
+            <button type="submit" class="master-update-btn">PERFORM SWAP</button>
+        </div>
+    </form>
 </div>
 
 <script src="assets/js/smack-ui-private.js?v=<?php echo time(); ?>"></script>

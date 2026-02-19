@@ -1,7 +1,7 @@
 <?php
 /**
  * SnapSmack - Edit User
- * Version: 1.0 - Schema Synced
+ * Version: 1.2 - Triptych Authorized (Geometry + Read-Only Lock)
  */
 require_once 'core/auth.php';
 
@@ -15,17 +15,15 @@ $user = $stmt->fetch();
 
 if (!$user) { die("User not found."); }
 
-// 2. Handle Update
+// 2. Handle Update (Surgical: Username is excluded)
 if (isset($_POST['update_user'])) {
     $email = trim($_POST['email']);
     $role  = $_POST['user_role'];
     $pass  = trim($_POST['password']);
 
-    // Update basic info
     $sql = "UPDATE snap_users SET email = ?, user_role = ? WHERE id = ?";
     $params = [$email, $role, $uid];
     
-    // If password field is not empty, hash and update it
     if (!empty($pass)) {
         $sql = "UPDATE snap_users SET email = ?, user_role = ?, password_hash = ? WHERE id = ?";
         $params = [$email, $role, password_hash($pass, PASSWORD_BCRYPT, ['cost' => 12]), $uid];
@@ -34,7 +32,7 @@ if (isset($_POST['update_user'])) {
     $pdo->prepare($sql)->execute($params);
     $msg = "User updated successfully.";
     
-    // Refresh local data
+    // Refresh
     $stmt->execute([$uid]);
     $user = $stmt->fetch();
 }
@@ -45,32 +43,32 @@ include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <h2>EDIT USER: <?php echo strtoupper($user['username']); ?></h2>
+    <div class="header-row">
+        <h2>EDIT USER: <?php echo strtoupper($user['username']); ?></h2>
+    </div>
 
-    <?php if(isset($msg)): ?><div class="msg">> <?php echo $msg; ?></div><?php endif; ?>
+    <?php if(isset($msg)): ?>
+        <div class="alert alert-success"><?php echo $msg; ?></div>
+    <?php endif; ?>
 
     <div class="box">
         <form method="POST">
-            <div class="control-group">
-                <label>EMAIL ADDRESS</label>
-                <input type="email" name="email" value="<?php echo $user['email']; ?>" required>
-            </div>
+            <label>USERNAME (IMMUTABLE)</label>
+            <div class="read-only-display"><?php echo $user['username']; ?></div>
 
-            <div class="control-group">
-                <label>SYSTEM ROLE</label>
-                <select name="user_role">
-                    <option value="admin" <?php echo ($user['user_role'] == 'admin') ? 'selected' : ''; ?>>Administrator</option>
-                    <option value="editor" <?php echo ($user['user_role'] == 'editor') ? 'selected' : ''; ?>>Editor</option>
-                </select>
-            </div>
+            <label>EMAIL ADDRESS</label>
+            <input type="email" name="email" value="<?php echo $user['email']; ?>" required>
 
-            <div class="control-group">
-                <label>RESET PASSWORD (Leave blank to keep current)</label>
-                <input type="password" name="password" placeholder="••••••••">
-            </div>
+            <label>SYSTEM ROLE</label>
+            <select name="user_role">
+                <option value="admin" <?php echo ($user['user_role'] == 'admin') ? 'selected' : ''; ?>>Administrator</option>
+                <option value="editor" <?php echo ($user['user_role'] == 'editor') ? 'selected' : ''; ?>>Editor</option>
+            </select>
+
+            <label>RESET PASSWORD (LEAVE BLANK TO RETAIN CURRENT)</label>
+            <input type="password" name="password" placeholder="••••••••">
 
             <button type="submit" name="update_user" class="master-update-btn">SAVE CHANGES</button>
-            <a href="smack-users.php" class="btn-clear" style="display:inline-flex; margin-top:10px; text-decoration:none;">CANCEL</a>
         </form>
     </div>
 </div>

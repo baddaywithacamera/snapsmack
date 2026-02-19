@@ -1,5 +1,14 @@
-/* * SNAPSMACK CONTROLS - v5.11
- * Functional Mechanics and Interaction Logic (Restored from v15.4 Master)
+/* * SNAPSMACK MASTER ARCHITECTURE INDEX
+ * ---------------------------------------------------------------------------
+ * 01: Reset & Global    | 06: Media Previews    | 11: Pagination        | 16: Admin Footer
+ * 02: Sidebar Nav       | 07: Transmissions     | 12: Upload/Progress   | 17: Login Specific
+ * 03: Main Content      | 08: Buttons/Actions   | 13: Multiselects      | 18: Alerts/Utils
+ * 04: Content Boxes     | 09: Item Layouts      | 14: Media Library     | 19: Appearance
+ * 05: Form Elements     | 10: Dash/Stats        | 15: Engine Mechanics  | 20: Overrides
+ * ---------------------------------------------------------------------------
+ * v5.13 - Functional Mechanics and Interaction Logic (Triptych Sync)
+ * MASTER DIRECTIVE: No Hex Codes. No Paint. Logic Only.
+ * FIX: Added Immutable/Read-Only Interaction Logic.
  */
 
 /* 2. SIDEBAR NAVIGATION */
@@ -13,9 +22,21 @@ input, select, textarea, .preview-box, .select-box {
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-/* Tactical Glow on Focus */
+/* Tactical Glow on Focus (Logic Only - Color in Theme) */
 input:focus, textarea:focus, select:focus {
-    box-shadow: 0 0 8px rgba(57, 255, 20, 0.2);
+    /* box-shadow defined in theme colours */
+}
+
+/* Immutable / Read-Only Logic (Synced with Structure v6.12) */
+.read-only-display {
+    cursor: default;
+    user-select: all; /* Allows copying of data like Usernames */
+    pointer-events: auto;
+}
+
+input[readonly], textarea[readonly] {
+    cursor: not-allowed;
+    pointer-events: none;
 }
 
 /* 5.1 MANUAL METADATA GRID & CHECKBOX LOGIC */
@@ -34,14 +55,12 @@ input:focus, textarea:focus, select:focus {
     transition: background-color 0.2s, border-color 0.2s;
 }
 
-/* The Tactical Checkmark Restoration */
+/* The Tactical Checkmark (Geometry moved to Structure, Color to Theme) */
 .built-in-label input[type="checkbox"]:checked::after {
     content: '';
-    width: 8px;
-    height: 4px;
-    border-left: 2px solid #000;
-    border-bottom: 2px solid #000;
     transform: rotate(-45deg);
+    border-left-style: solid;
+    border-bottom-style: solid;
 }
 
 /* 6. PREVIEW CONSTRAINTS (Restored Interaction) */
@@ -59,10 +78,6 @@ input:focus, textarea:focus, select:focus {
     transition: border-color 0.2s, background-color 0.2s;
 }
 
-.signal-body:hover {
-    border-color: #555;
-}
-
 .transmission-nav-group button {
     cursor: pointer;
 }
@@ -75,12 +90,11 @@ button, .btn-smack, .btn-clear, .action-authorize, .action-delete, .action-edit,
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Interaction States: The Glow and Lift */
+/* Interaction States: The Lift */
 button:hover, .btn-smack:hover, .btn-green:hover, .btn-blue:hover, 
 .btn-orange:hover, .maint-btn:hover, .btn-teal:hover, .btn-purple:hover, .btn-gold:hover {
     filter: brightness(1.2);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 button:active, .btn-smack:active {
@@ -95,10 +109,6 @@ button:active, .btn-smack:active {
 /* 9. ITEM LAYOUTS (Restored Interaction) */
 .recent-item {
     transition: background-color 0.2s ease;
-}
-
-.recent-item:hover {
-    background-color: rgba(255, 255, 255, 0.02);
 }
 
 .item-text strong {
@@ -187,7 +197,6 @@ button:active, .btn-smack:active {
 
 .asset-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
 
 /* 15. RANGE SLIDER MECHANICS (Wall Engine) */
@@ -207,13 +216,9 @@ input[type="range"] {
     cursor: pointer;
 }
 
-/* Tactical Slider Thumb Feedback */
+/* Tactical Slider Thumb Feedback (Geometry moved to Structure) */
 input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    height: 20px;
-    width: 20px;
-    border-radius: 50%;
-    margin-top: -8px; 
     transition: box-shadow 0.2s, transform 0.1s;
 }
 
