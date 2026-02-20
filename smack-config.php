@@ -124,8 +124,8 @@ include 'core/sidebar.php';
 
         <div class="box">
             <h3>NAVIGATION SLOT ASSIGNMENTS</h3>
-            <div class="post-layout-grid">
-                <div class="post-col-left">
+            <div class="grid-25">
+                <div>
                     <label>PRIMARY NAVIGATION (SLOT 1)</label>
                     <select name="settings[nav_slot_1]">
                         <option value="0">EMPTY</option>
@@ -133,7 +133,8 @@ include 'core/sidebar.php';
                             <option value="<?php echo $p['id']; ?>" <?php echo (($settings['nav_slot_1'] ?? 0) == $p['id']) ? 'selected' : ''; ?>><?php echo strtoupper(htmlspecialchars($p['title'])); ?></option>
                         <?php endforeach; ?>
                     </select>
-
+                </div>
+                <div>
                     <label>SECONDARY NAVIGATION (SLOT 2)</label>
                     <select name="settings[nav_slot_2]">
                         <option value="0">EMPTY</option>
@@ -142,7 +143,7 @@ include 'core/sidebar.php';
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="post-col-right">
+                <div>
                     <label>AUXILIARY NAVIGATION (SLOT 3)</label>
                     <select name="settings[nav_slot_3]">
                         <option value="0">EMPTY</option>
@@ -150,7 +151,8 @@ include 'core/sidebar.php';
                             <option value="<?php echo $p['id']; ?>" <?php echo (($settings['nav_slot_3'] ?? 0) == $p['id']) ? 'selected' : ''; ?>><?php echo strtoupper(htmlspecialchars($p['title'])); ?></option>
                         <?php endforeach; ?>
                     </select>
-
+                </div>
+                <div>
                     <label>SYSTEM NAVIGATION (SLOT 4)</label>
                     <select name="settings[nav_slot_4]">
                         <option value="0">EMPTY</option>
@@ -190,8 +192,8 @@ include 'core/sidebar.php';
 
         <div class="box box-flush-bottom">
             <h3>TIME & LOCALIZATION</h3>
-            <div class="post-layout-grid">
-                <div class="post-col-left">
+            <div class="grid-33">
+                <div>
                     <label>TIMEZONE</label>
                     <select name="settings[timezone]" id="timezone-select">
                         <?php
@@ -204,7 +206,7 @@ include 'core/sidebar.php';
                         ?>
                     </select>
                 </div>
-                <div class="post-col-right">
+                <div>
                     <label>DATE DISPLAY FORMAT</label>
                     <select name="settings[date_format]" id="format-select">
                         <?php
@@ -215,6 +217,10 @@ include 'core/sidebar.php';
                         }
                         ?>
                     </select>
+                </div>
+                <div>
+                    <label>SYSTEM CLOCK PREVIEW</label>
+                    <div class="read-only-display" id="local-clock"></div>
                 </div>
             </div>
         </div>

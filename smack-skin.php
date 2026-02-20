@@ -42,8 +42,20 @@ if (isset($_POST['save_skin_settings'])) {
     $generated_public = "/* SKIN_START */\n";
     foreach ($manifest['options'] as $key => $meta) {
         $val = (isset($all_settings[$key]) && $all_settings[$key] !== '') ? $all_settings[$key] : $meta['default'];
-        $css_val = ($meta['type'] === 'range' || $meta['type'] === 'number') ? ((substr($meta['property'], 0, 2) === '--') ? $val : $val . "px") : $val;
-        $generated_public .= "{$meta['selector']} { {$meta['property']}: {$css_val}; }\n";
+
+        if ($meta['property'] === 'custom-framing' && isset($meta['options'][$val]['css'])) {
+            $generated_public .= "{$meta['selector']} {$meta['options'][$val]['css']}\n";
+        } elseif ($meta['type'] === 'range' || $meta['type'] === 'number') {
+            if (substr($meta['property'], 0, 2) === '--') {
+                $generated_public .= "{$meta['selector']} { {$meta['property']}: {$val}; }\n";
+            } else {
+                $generated_public .= "{$meta['selector']} { {$meta['property']}: {$val}px; }\n";
+            }
+        } elseif ($meta['property'] === 'font-family') {
+            $generated_public .= "{$meta['selector']} { font-family: \"{$val}\", serif; text-decoration: none !important; }\n";
+        } else {
+            $generated_public .= "{$meta['selector']} { {$meta['property']}: {$val}; }\n";
+        }
     }
     $generated_public .= "/* SKIN_END */";
 
@@ -58,7 +70,7 @@ if (isset($_POST['save_skin_settings'])) {
     exit;
 }
 
-$page_title = "SKIN ADMIN";
+$page_title = "Skin Admin";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
@@ -92,7 +104,7 @@ include 'core/sidebar.php';
         </div>
     </div>
 
-    <?php if(isset($_GET['msg'])): ?><div class="alert">> SKIN ARCHITECTURE CALIBRATED</div><?php endif; ?>
+    <?php if(isset($_GET['msg'])): ?><div class="alert alert-success">> SKIN ARCHITECTURE CALIBRATED</div><?php endif; ?>
 
     <form method="POST">
         <input type="hidden" name="active_skin_target" value="<?php echo $target_skin; ?>">

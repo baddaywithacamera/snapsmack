@@ -98,13 +98,13 @@ $post_list = $posts->fetchAll();
 $cats = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
 $albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
 
-$page_title = "MANAGE ARCHIVE";
+$page_title = "Manage Archive";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <div class="header-row">
+    <div class="header-row header-row--ruled">
         <h2>MANAGE ARCHIVE (<?php echo $total_rows; ?>)</h2>
     </div>
 

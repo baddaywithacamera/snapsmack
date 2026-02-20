@@ -52,13 +52,13 @@ if (isset($_GET['edit'])) {
 
 $albums = $pdo->query("SELECT a.*, COUNT(m.image_id) as img_count FROM snap_albums a LEFT JOIN snap_image_album_map m ON a.id = m.album_id GROUP BY a.id ORDER BY a.album_name ASC")->fetchAll();
 
-$page_title = "MISSION REGISTRY";
+$page_title = "Mission registry";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <div class="header-row">
+    <div class="header-row header-row--ruled">
         <h2>MISSION REGISTRY (ALBUMS)</h2>
     </div>
 

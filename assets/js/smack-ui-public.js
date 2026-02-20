@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (target === 'info' && !paneInfo) return;
 
             const isClosed = footer.style.display === 'none';
-            const activePane = (paneInfo && paneInfo.style.display !== 'none') ? 'info' : 'comments';
+            const activePane = (paneInfo && paneInfo.style.display !== 'none') ? 'info' : (paneComm && paneComm.style.display !== 'none') ? 'comments' : null;
 
             if (!isClosed && target === activePane) {
                 closeFooter();
@@ -40,6 +40,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 paneInfo.style.display = 'block';
                 if (paneComm) paneComm.style.display = 'none';
             }
+
+            footer.offsetHeight; // Force reflow so scrollHeight is accurate before animation
 
             if (isClosed) openFooter();
             else {

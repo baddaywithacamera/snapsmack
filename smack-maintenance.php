@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$page_title = "SYSTEM MAINTENANCE";
+$page_title = "System Maintenance";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
@@ -107,7 +107,7 @@ include 'core/sidebar.php';
             <br>
             <form method="POST">
                 <input type="hidden" name="action" value="sync_cats">
-                <button type="submit" class="btn-secondary btn-block">SYNC REGISTRY</button>
+                <button type="submit" class="btn-smack btn-block">SYNC REGISTRY</button>
             </form>
         </div>
 
@@ -127,7 +127,7 @@ include 'core/sidebar.php';
             <br>
             <form method="POST">
                 <input type="hidden" name="action" value="sync_assets">
-                <button type="submit" class="btn-danger btn-block">SYNC & PRUNE ASSETS</button>
+                <button type="submit" class="btn-smack btn-block">SYNC & PRUNE ASSETS</button>
             </form>
         </div>
     </div>

@@ -40,7 +40,7 @@ if (isset($_POST['action'])) {
     exit;
 }
 
-$page_title = "BACKUP & RECOVERY";
+$page_title = "Backup & Recovery";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
@@ -49,33 +49,30 @@ include 'core/sidebar.php';
     <h2>SYSTEM BACKUP & RECOVERY</h2>
 
     <div class="dash-grid">
-        <div class="box">
+        <div class="box" style="display:flex; flex-direction:column;">
             <h3>FULL DATABASE (THE BRAIN)</h3>
             <p class="skin-desc-text">Extracts architecture and all content into a local SQL file. Standard tactical backup for site migrations.</p>
-            <br>
-            <form method="POST">
+            <form method="POST" style="margin-top:auto;">
                 <input type="hidden" name="action" value="export">
                 <input type="hidden" name="type" value="full">
                 <button type="submit" class="btn-smack btn-block">GET FULL SQL DUMP</button>
             </form>
         </div>
 
-        <div class="box">
+        <div class="box" style="display:flex; flex-direction:column;">
             <h3>EMERGENCY ACCESS (THE KEYS)</h3>
             <p class="skin-desc-text">Extracts only the user credentials and permission hashes. Essential for regaining entry to the system.</p>
-            <br>
-            <form method="POST">
+            <form method="POST" style="margin-top:auto;">
                 <input type="hidden" name="action" value="export">
                 <input type="hidden" name="type" value="keys">
-                <button type="submit" class="btn-security btn-block">GET RECOVERY SQL</button>
+                <button type="submit" class="btn-smack btn-block">GET RECOVERY SQL</button>
             </form>
         </div>
 
-        <div class="box">
+        <div class="box" style="display:flex; flex-direction:column;">
             <h3>ENGINE SCHEMA (THE DNA)</h3>
             <p class="skin-desc-text">Extracts structure only. No user data, no images. Used for system updates or cloning the engine.</p>
-            <br>
-            <form method="POST">
+            <form method="POST" style="margin-top:auto;">
                 <input type="hidden" name="action" value="export">
                 <input type="hidden" name="type" value="schema">
                 <button type="submit" class="btn-smack btn-block">GET SCHEMA ONLY</button>
@@ -83,18 +80,20 @@ include 'core/sidebar.php';
         </div>
     </div>
     
-    <div class="dash-grid">
-        <div class="box">
+    <div class="dash-grid" style="margin-top:30px;">
+        <div class="box" style="display:flex; flex-direction:column;">
             <h3>MEDIA LIBRARY</h3>
             <p class="skin-desc-text">Archive all original photography. This process requires server-side compression.</p>
-            <br>
-            <button class="btn-secondary btn-block" onclick="alert('Engine Note: Link this to your zip-archive action.')">GET MEDIA ARCHIVE</button>
+            <form method="POST" style="margin-top:auto;">
+                <button type="button" class="btn-smack btn-block" onclick="alert('Engine Note: Link this to your zip-archive action.')">GET MEDIA ARCHIVE</button>
+            </form>
         </div>
-        <div class="box">
+        <div class="box" style="display:flex; flex-direction:column;">
             <h3>SITE SOURCE</h3>
             <p class="skin-desc-text">Archive core PHP and CSS logic. Excludes media directories.</p>
-            <br>
-            <button class="btn-secondary btn-block" onclick="alert('Engine Note: Link this to your source-archive action.')">GET CODE SOURCE</button>
+            <form method="POST" style="margin-top:auto;">
+                <button type="button" class="btn-smack btn-block" onclick="alert('Engine Note: Link this to your source-archive action.')">GET CODE SOURCE</button>
+            </form>
         </div>
     </div>
 </div>

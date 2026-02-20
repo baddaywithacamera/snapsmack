@@ -106,5 +106,4 @@ $comments_active = ($global_on && $post_on);
 
 </div>
 
-<script src="<?php echo BASE_URL; ?>assets/js/smack-ui-public.js?v=<?php echo time(); ?>"></script>
 <script src="<?php echo BASE_URL; ?>assets/js/hotkey-engine.js?v=<?php echo time(); ?>"></script>

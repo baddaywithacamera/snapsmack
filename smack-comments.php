@@ -50,7 +50,7 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $comments = $stmt->fetchAll();
 
-$page_title = "TRANSMISSION CONTROL";
+$page_title = "Transmission control";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>

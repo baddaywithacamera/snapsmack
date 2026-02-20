@@ -1,131 +1,106 @@
 <?php
 /**
- * SnapSmack - Category Registry
- * Version: 16.30 - Universal Action Row Sync + Divider Purge
+ * SNAPSMACK - Style Override Manager
+ * Version: 16.55 - Zero Inline Styles
+ * -------------------------------------------------------------------------
+ * - All styles live in geometry + colours CSS files (section 26 / 17).
+ * - Uses .header-row--ruled for the underlined header with actions.
+ * - Uses .css-tab / .css-tab-active for view switcher buttons.
+ * - Uses .css-preview-block for read-only skin CSS display.
+ * - Uses .css-override-textarea for the manual editor.
+ * -------------------------------------------------------------------------
  */
+
 require_once 'core/auth.php';
 
-$msg = "";
-$edit_mode = false;
-$edit_data = [];
+// --- 1. TARGET ROUTING ---
+$target = $_GET['v'] ?? 'public';
+$db_key = ($target === 'admin') ? 'custom_css_admin' : 'custom_css_public';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name = trim($_POST['cat_name']);
-    $desc = trim($_POST['cat_description']);
-    if (isset($_POST['new_cat']) && !empty($name)) {
-        $stmt = $pdo->prepare("INSERT INTO snap_categories (cat_name, cat_description) VALUES (?, ?)");
-        $stmt->execute([$name, $desc]);
-        header("Location: smack-cats.php?msg=REGISTRY+INITIALIZED");
+// --- 2. SAVE LOGIC ---
+if (isset($_POST['save_overrides'])) {
+
+    $manual_content        = $_POST['manual_overrides'];
+    $protected_skin_content = $_POST['skin_css_buffer'];
+
+    $final_blob = trim($protected_skin_content . "\n\n" . $manual_content);
+
+    $check = $pdo->prepare("SELECT COUNT(*) FROM snap_settings WHERE setting_key = ?");
+    $check->execute([$db_key]);
+
+    if ($check->fetchColumn() > 0) {
+        $stmt = $pdo->prepare("UPDATE snap_settings SET setting_val = ? WHERE setting_key = ?");
+    } else {
+        $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_val, setting_key) VALUES (?, ?)");
+    }
+
+    if ($stmt->execute([$final_blob, $db_key])) {
+        header("Location: smack-css.php?v=" . $target . "&msg=CALIBRATED");
         exit;
     }
-    if (isset($_POST['update_cat']) && !empty($name)) {
-        $id = (int)$_POST['cat_id'];
-        $stmt = $pdo->prepare("UPDATE snap_categories SET cat_name = ?, cat_description = ? WHERE id = ?");
-        $stmt->execute([$name, $desc, $id]);
-        header("Location: smack-cats.php?msg=REGISTRY+MODIFIED");
-        exit;
-    }
 }
 
-if (isset($_GET['delete'])) {
-    $id = (int)$_GET['delete'];
-    $pdo->prepare("DELETE FROM snap_image_cat_map WHERE cat_id = ?")->execute([$id]);
-    $pdo->prepare("DELETE FROM snap_categories WHERE id = ?")->execute([$id]);
-    header("Location: smack-cats.php?msg=PURGED");
-    exit;
+// --- 3. READ & SPLIT LOGIC ---
+$stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = ?");
+$stmt->execute([$db_key]);
+$raw_data = $stmt->fetchColumn() ?: "";
+
+$pattern = '/\/\* SKIN_START \*\/.*?\/\* SKIN_END \*\//s';
+$skin_block = "";
+$user_block  = $raw_data;
+
+if (preg_match($pattern, $raw_data, $matches)) {
+    $skin_block = $matches[0];
+    $user_block = trim(str_replace($skin_block, '', $raw_data));
 }
 
-if (isset($_GET['edit'])) {
-    $id = (int)$_GET['edit'];
-    $stmt = $pdo->prepare("SELECT * FROM snap_categories WHERE id = ?");
-    $stmt->execute([$id]);
-    $edit_data = $stmt->fetch();
-    if ($edit_data) { $edit_mode = true; }
-}
-
-$cats = $pdo->query("SELECT c.*, COUNT(m.image_id) as img_count FROM snap_categories c LEFT JOIN snap_image_cat_map m ON c.id = m.cat_id GROUP BY c.id ORDER BY c.cat_name ASC")->fetchAll();
-
-$page_title = "CATEGORY REGISTRY";
+$page_title = "STYLE OVERRIDES";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <div class="header-row">
-        <h2>CATEGORY REGISTRY</h2>
+
+    <div class="header-row header-row--ruled">
+        <h2>STYLE OVERRIDES: <?php echo strtoupper($target); ?></h2>
+        <div class="header-actions">
+            <a href="smack-css.php?v=public" class="css-tab <?php echo ($target === 'public') ? 'css-tab-active' : ''; ?>">PUBLIC SITE</a>
+            <a href="smack-css.php?v=admin"  class="css-tab <?php echo ($target === 'admin')  ? 'css-tab-active' : ''; ?>">ADMIN PANEL</a>
+        </div>
     </div>
 
     <?php if (isset($_GET['msg'])): ?>
-        <div class="alert alert-success">> <?php echo htmlspecialchars($_GET['msg']); ?></div>
+        <div class="alert">> ARCHITECTURE CALIBRATED</div>
     <?php endif; ?>
-    
+
     <form method="POST">
-        <div class="post-layout-grid">
-            <div class="post-col-left">
-                <div class="box">
-                    <h3><?php echo $edit_mode ? "MODIFY IDENTITY" : "INITIALIZE CATEGORY"; ?></h3>
-                    
-                    <input type="hidden" name="<?php echo $edit_mode ? 'update_cat' : 'new_cat'; ?>" value="1">
-                    <?php if ($edit_mode): ?>
-                        <input type="hidden" name="cat_id" value="<?php echo $edit_data['id']; ?>">
-                    <?php endif; ?>
-                    
-                    <div class="lens-input-wrapper">
-                        <label>CATEGORY NAME</label>
-                        <input type="text" name="cat_name" value="<?php echo $edit_mode ? htmlspecialchars($edit_data['cat_name']) : ''; ?>" placeholder="E.G. NOIR, STREET" required autofocus>
-                    </div>
-                    
-                    <div class="lens-input-wrapper">
-                        <label>MISSION STATEMENT (DESCRIPTION)</label>
-                        <textarea name="cat_description" placeholder="Technical or artistic intent..." rows="8"><?php echo $edit_mode ? htmlspecialchars($edit_data['cat_description'] ?? '') : ''; ?></textarea>
-                    </div>
 
-                    <?php if ($edit_mode): ?>
-                        <div class="lens-input-wrapper" style="margin-top: 20px;">
-                            <a href="smack-cats.php" class="btn-reset" style="display:block; text-align:center; text-decoration:none; padding:15px; border-radius:4px;">CANCEL EDIT</a>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
+        <?php if ($skin_block): ?>
+        <div class="box">
+            <p class="css-readonly-label">GENERATED BY SKIN ADMIN (READ ONLY)</p>
+            <pre class="css-preview-block"><?php echo htmlspecialchars($skin_block); ?></pre>
+            <input type="hidden" name="skin_css_buffer" value="<?php echo htmlspecialchars($skin_block); ?>">
+        </div>
+        <?php else: ?>
+            <input type="hidden" name="skin_css_buffer" value="">
+        <?php endif; ?>
 
-            <div class="flex-1">
-                <div class="box">
-                    <h3>ACTIVE REGISTRY</h3>
-                    
-                    <?php if (empty($cats)): ?>
-                        <p class="dim" style="padding:20px;">No categories registered.</p>
-                    <?php else: ?>
-                        <?php foreach ($cats as $c): ?>
-                            <div class="recent-item">
-                                <div class="item-details">
-                                    <div class="item-text">
-                                        <strong>
-                                            <?php echo htmlspecialchars($c['cat_name']); ?>
-                                        </strong>
-                                        <code class="slug-display">SIGNALS: <?php echo (int)$c['img_count']; ?></code>
-                                        <div class="item-meta">
-                                            <?php echo !empty($c['cat_description']) ? htmlspecialchars($c['cat_description']) : "NO MISSION STATEMENT RECORDED."; ?>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="item-actions">
-                                    <a href="?edit=<?php echo $c['id']; ?>" class="action-edit">EDIT</a>
-                                    <a href="?delete=<?php echo $c['id']; ?>" class="action-delete" onclick="return confirm('PURGE IDENTITY?')">DELETE</a>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
+        <div class="box">
+            <div class="lens-input-wrapper">
+                <label>MANUAL OVERRIDES</label>
+                <p class="dim">/* These styles are injected after the main stylesheet. Safe to edit. */</p>
+                <textarea name="manual_overrides" class="css-override-textarea" spellcheck="false"><?php echo htmlspecialchars($user_block); ?></textarea>
             </div>
         </div>
 
         <div class="form-action-row">
-            <button type="submit" class="master-update-btn">
-                <?php echo $edit_mode ? "UPDATE REGISTRY" : "ADD TO REGISTRY"; ?>
+            <button type="submit" name="save_overrides" class="master-update-btn">
+                SAVE <?php echo strtoupper($target); ?> OVERRIDES
             </button>
         </div>
+
     </form>
+
 </div>
 
 <?php include 'core/admin-footer.php'; ?>

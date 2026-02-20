@@ -61,7 +61,7 @@ if ($latest_img) {
     $display_thumb = $path_parts['dirname'] . '/thumbs/t_' . $path_parts['basename'];
 }
 
-$page_title = "SYSTEM DASHBOARD";
+$page_title = "System Dashboard";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
@@ -91,7 +91,7 @@ include 'core/sidebar.php';
                         <div class="item-text">
                             <strong><?php echo htmlspecialchars($latest_img['img_title']); ?></strong>
                             <span class="dim"><?php echo date('M j, Y', strtotime($latest_img['img_date'])); ?></span>
-                            <div class="item-actions mt-15">
+                            <div class="item-actions mt-15" style="justify-content: flex-start;">
                                 <a href="smack-edit.php?id=<?php echo $latest_img['id']; ?>" class="action-edit">EDIT ENTRY</a>
                             </div>
                         </div>
