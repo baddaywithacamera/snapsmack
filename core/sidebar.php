@@ -42,7 +42,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <strong>Pimp Your Ride</strong>
                 <ul class="sub-nav">
                     <li class="<?php echo ($current_page == 'smack-pimpitup.php') ? 'active' : ''; ?>">
-                        <a href="smack-pimpitup.php">The Full Pimp</a>
+                        <a href="smack-pimpitup.php">Global Vibe</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-skin.php') ? 'active' : ''; ?>">
                         <a href="smack-skin.php">Smooth Your Skin</a>

@@ -1,0 +1,473 @@
+/* * SNAPSMACK MASTER COLOUR INDEX (THE PAINT)
+ * ---------------------------------------------------------------------------
+ * 01: Global Base       | 06: Form Elements     | 11: Pagination
+ * 02: Sidebar Nav       | 07: Transmissions     | 12: Progress/Uploads
+ * 03: Main Headers      | 08: Buttons/Actions   | 13: Login/Footer
+ * 04: Content Boxes     | 09: Item Lists        | 14: Appearance
+ * 05: Media Previews    | 10: Dash/Stats        | 15: Overrides
+ * ---------------------------------------------------------------------------
+ * v2026.1 - DAPPER DAN
+ * PALETTE: #0D0D0D (Bg), #EAB308 (Yellow), #630D0D (Red), #222222 (Border)
+ */
+
+/* 01: GLOBAL BASE */
+html, body {
+    background-color: #0D0D0D;
+    color: #F5F5DC;
+    color-scheme: dark;
+}
+
+/* 02: SIDEBAR NAVIGATION */
+.sidebar {
+    background-color: #0D0D0D;
+    border-right-color: #630D0D;
+}
+
+.sidebar h2 {
+    color: #EAB308;
+    border-bottom-color: #630D0D;
+}
+
+.sidebar li {
+    border-bottom-color: #222222;
+}
+
+.sidebar a {
+    color: #888888;
+}
+
+.sidebar a:hover,
+.sidebar li.active a {
+    color: #EAB308;
+    text-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
+}
+
+.sidebar li.active {
+    border-left: none;
+}
+
+.sidebar li.nav-group {
+    color: #555555;
+    background-color: #0D0D0D;
+}
+
+.sidebar ul.sub-nav {
+    border-left-color: #EAB308;
+}
+
+.sidebar-bottom {
+    background-color: #0D0D0D;
+    border-top: none;
+}
+
+.sidebar .logout {
+    color: #630D0D;
+    font-weight: 700;
+}
+
+.sidebar .logout:hover {
+    color: #8B0000;
+}
+
+.credits-admin {
+    color: #555555;
+}
+
+/* 03: MAIN HEADERS */
+.header-row {
+    border-bottom-color: #630D0D;
+}
+
+h2 {
+    color: #EAB308;
+    border-bottom-color: #630D0D;
+}
+
+/* 04: CONTENT BOXES */
+.box {
+    background-color: #141414;
+    border-color: #222222;
+}
+
+.box h3, .section-header {
+    color: #EAB308;
+    border-bottom-color: #630D0D;
+}
+
+.post-col-right {
+    border-left-color: #222222;
+}
+
+/* 05: FORM ELEMENTS */
+label {
+    color: #888888;
+}
+
+input[type="text"], input[type="number"], input[type="email"], input[type="password"],
+input[type="datetime-local"], input[type="date"], select, textarea,
+.preview-box, .select-box {
+    background-color: #050505;
+    border-color: #222222;
+    color: #F5F5DC;
+}
+
+/* Read-only display fields get a lighter border for the inset look */
+.read-only-display {
+    background-color: #050505;
+    border-color: #333333;
+    color: #F5F5DC;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: #EAB308;
+    background-color: #000000;
+    box-shadow: 0 0 8px rgba(234, 179, 8, 0.2);
+    outline: none;
+}
+
+/* 06: MEDIA PREVIEWS */
+.preview-frame {
+    background-color: #000000;
+    border-color: #222222;
+}
+
+/* 07: TRANSMISSIONS (The Fixes) */
+.transmission-header {
+    /* Geometry handled in Master Geometry file */
+}
+
+/* The Status Pill */
+.status-online {
+    color: #EAB308;
+    border-color: #EAB308;
+    background-color: rgba(234, 179, 8, 0.05);
+}
+
+.status-offline {
+    color: #630D0D;
+    border-color: #630D0D;
+    background-color: rgba(99, 13, 13, 0.05);
+}
+
+/* Sender Name */
+.signal-sender {
+    color: #AAAAAA;
+    font-weight: 600;
+}
+.signal-sender span,
+.signal-sender span.dim {
+    color: #666666;
+    font-weight: 400;
+}
+
+/* The Body Text */
+.signal-body {
+    color: #F5F5DC;
+    background-color: #050505;
+    border: 1px solid #222222;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+/* Metadata Links (Killing the Blue) */
+.signal-meta {
+    color: #777777;
+}
+.signal-meta a {
+    color: #888888 !important;
+    border-bottom-color: transparent;
+}
+.signal-meta a:hover {
+    color: #EAB308 !important;
+    border-bottom-color: #EAB308;
+}
+.signal-meta .dim {
+    color: #555555;
+}
+
+/* 08: BUTTONS & ACTIONS */
+
+/* Yellow buttons (New Post, Live Site) — go grey on hover */
+.btn-smack, .master-update-btn {
+    background-color: #EAB308;
+    color: #000000;
+}
+.btn-smack:hover, .master-update-btn:hover {
+    background-color: #222222;
+    color: #F5F5DC;
+    box-shadow: 0 0 16px rgba(234, 179, 8, 0.4);
+}
+
+/* Grey buttons (Backup, Settings) — go yellow on hover */
+.btn-smack.btn-backup,
+.btn-smack.btn-settings {
+    background-color: #222222;
+    color: #AAAAAA;
+}
+.btn-smack.btn-backup:hover,
+.btn-smack.btn-settings:hover {
+    background-color: #EAB308;
+    color: #000000;
+    box-shadow: 0 0 16px rgba(234, 179, 8, 0.4);
+}
+
+/* Live Site stays red/oxblood */
+.btn-smack.btn-live {
+    background-color: #630D0D;
+    color: #F5F5DC;
+}
+.btn-smack.btn-live:hover {
+    background-color: #222222;
+    color: #F5F5DC;
+    box-shadow: 0 0 16px rgba(99, 13, 13, 0.5);
+}
+
+/* All other buttons — universal yellow glow on hover */
+button:hover {
+    box-shadow: 0 0 16px rgba(234, 179, 8, 0.3);
+}
+
+/* INCOMING / BROADCASTING nav buttons — persistent colour definition */
+.btn-clear {
+    background-color: transparent;
+    color: #888888;
+    border-color: #333333;
+}
+.btn-clear:hover {
+    background-color: #222222;
+    color: #F5F5DC;
+    border-color: #444444;
+}
+.btn-clear.active {
+    background-color: #222222;
+    color: #EAB308;
+    border-color: #EAB308;
+    box-shadow: 0 0 10px rgba(234, 179, 8, 0.25);
+}
+
+/* Action Links */
+.action-authorize, .action-edit {
+    color: #EAB308;
+    border-color: #EAB308;
+}
+.action-authorize:hover {
+    background-color: #EAB308;
+    color: #000000;
+}
+
+.action-delete {
+    color: #630D0D;
+    border-color: #630D0D;
+}
+.action-delete:hover {
+    background-color: #630D0D;
+    color: #FFFFFF;
+}
+
+/* 09: ITEM LAYOUTS */
+.recent-item {
+    border-bottom-color: #222222;
+}
+.archive-thumb {
+    border-color: #333333;
+    background-color: #000000;
+}
+.item-text strong {
+    color: #F5F5DC;
+}
+.item-text .dim {
+    color: #777777;
+}
+
+/* 10: DASH/STATS */
+.stat-box {
+    border-color: #222222;
+    background-color: #0D0D0D;
+}
+.stat-val {
+    color: #EAB308;
+}
+.stat-label {
+    color: #888888;
+}
+.stat-row {
+    border-bottom-color: #222222;
+}
+.stat-row .label { color: #888888; }
+.stat-row .value { color: #CCCCCC; }
+.highlight-green { color: #EAB308; }
+
+/* 11: PAGINATION */
+.pagination a {
+    background-color: #0A0A0A;
+    border-color: #222222;
+    color: #777777;
+}
+.pagination a.active {
+    background-color: #EAB308;
+    border-color: #EAB308;
+    color: #000000;
+}
+.pagination a:hover {
+    border-color: #EAB308;
+    color: #EAB308;
+}
+
+/* 12: PROGRESS/UPLOADS */
+.progress-container {
+    background-color: #050505;
+    border-color: #222222;
+}
+.progress-bar {
+    background-color: #EAB308;
+}
+.file-upload-wrapper {
+    border-color: #222222;
+    background-color: #0A0A0A;
+}
+.file-custom-btn {
+    background-color: #222222;
+    color: #BBBBBB;
+    border-right-color: #333333;
+}
+.file-custom-btn:hover {
+    background-color: #333333;
+    color: #FFFFFF;
+}
+.file-name-display {
+    color: #777777;
+}
+
+/* Inline checkbox labels (Built-in, N/A) — match input border treatment */
+.built-in-label {
+    background-color: #141414;
+    border-color: #222222;
+    color: #888888;
+}
+.built-in-label:hover {
+    border-color: #EAB308;
+    color: #F5F5DC;
+}
+input[type="checkbox"] {
+    border-color: #333333;
+    background-color: #050505;
+}
+input[type="checkbox"]:checked {
+    background-color: #EAB308;
+    border-color: #EAB308;
+}
+input[type="checkbox"]:checked::after {
+    border-color: #000000;
+}
+
+/* 13: LOGIN & FOOTER */
+.login-box {
+    background-color: #141414;
+    border-color: #222222;
+}
+
+#admin-universal-footer {
+    background-color: #0D0D0D;
+    border-top-color: #630D0D;
+}
+.footer-left { color: #555555; font-size: 1rem; }
+.footer-left a { color: #777777; border-bottom-color: #333333; }
+.footer-left a:hover { color: #EAB308; border-bottom-color: #EAB308; }
+.footer-right { color: #555555; font-size: 1rem; }
+
+/* 14: APPEARANCE */
+.appearance-controller {
+    border-color: #222222;
+}
+.skin-meta-wrap {
+    background-color: #111111;
+}
+.skin-selector-wrap {
+    background-color: #0A0A0A;
+    border-left-color: #222222;
+}
+.theme-title-display { color: #EAB308; }
+.skin-desc-text { color: #777777; }
+
+/* Filter + Reset buttons */
+.btn-smack-filter {
+    background-color: #EAB308;
+    color: #000000;
+}
+.btn-smack-filter:hover {
+    background-color: #222222;
+    color: #F5F5DC;
+    box-shadow: 0 0 16px rgba(234, 179, 8, 0.4);
+}
+.btn-reset {
+    background-color: transparent;
+    color: #777777;
+    border: 1px solid #222222;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 4px;
+}
+.btn-reset:hover {
+    border-color: #630D0D;
+    color: #630D0D;
+}
+
+.alert-success {
+    color: #EAB308;
+    border-color: #EAB308;
+    background-color: rgba(234, 179, 8, 0.1);
+}
+
+.alert-error {
+    color: #630D0D;
+    border-color: #630D0D;
+    background-color: rgba(99, 13, 13, 0.1);
+}
+
+/* 16: INPUT RANGE (Webkit) */
+input[type="range"]::-webkit-slider-runnable-track {
+    background-color: #222222;
+}
+input[type="range"]::-webkit-slider-thumb {
+    background-color: #EAB308;
+}
+/* Asset cards (Media Library) */
+.asset-card {
+    border-color: #222222;
+    background-color: #141414;
+}
+.asset-thumb-wrapper {
+    border-bottom-color: #222222;
+    background-color: #0A0A0A;
+}
+
+/* 17: CSS OVERRIDE PAGE (smack-css.php) */
+.css-tab {
+    color: #777777;
+    border-color: #222222;
+}
+
+.css-tab:hover {
+    color: #EAB308;
+    border-color: #EAB308;
+}
+
+.css-tab-active {
+    color: #EAB308;
+    border-color: #EAB308;
+    text-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
+    box-shadow: 0 0 8px rgba(234, 179, 8, 0.15);
+}
+
+.css-preview-block {
+    border-color: #222222;
+    background-color: #0D0D0D;
+}

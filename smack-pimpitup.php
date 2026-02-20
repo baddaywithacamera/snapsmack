@@ -1,11 +1,11 @@
 <?php
 /**
  * SnapSmack - Global Appearance Settings
- * Version: 16.43 - Universal Action Row Integration
+ * Version: 16.46 - Direct DB State Recovery
  * -------------------------------------------------------------------------
- * - FIXED: Wrapped button in .form-action-row to kill pt02 margin drift.
- * - FIXED: Robust null checks for $settings keys to prevent 500 errors.
- * - SYNCED: Alert classes for neon green theme pull.
+ * - FIXED: Bypassed $settings array for active_theme to guarantee state recovery.
+ * - FIXED: Dropped strict type checking in dropdown to prevent UI desync.
+ * - MAPPED: All appearance logic consolidated to smack-pimpitup.php.
  * -------------------------------------------------------------------------
  */
 
@@ -15,6 +15,10 @@ require_once 'core/auth.php';
 // 1. DATA DISCOVERY
 // -------------------------------------------------------------------------
 
+// Direct DB queries to bypass any potential $settings cache/array misses
+$active_skin_db = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'active_skin'")->fetchColumn();
+$active_theme_db = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'active_theme'")->fetchColumn();
+
 // --- PUBLIC SKIN DISCOVERY ---
 $skin_dirs = array_filter(glob('skins/*'), 'is_dir');
 $available_skins = [];
@@ -22,13 +26,18 @@ foreach ($skin_dirs as $dir) {
     $slug = basename($dir);
     if (file_exists($dir . '/manifest.php')) {
         $temp_manifest = include $dir . '/manifest.php';
-        $available_skins[$slug] = $temp_manifest['name'] ?? ucfirst($slug);
+        if (is_array($temp_manifest)) {
+            $available_skins[$slug] = $temp_manifest['name'] ?? ucfirst($slug);
+        }
     }
 }
 
-// Set active manifest reference
-$current_db_active = (isset($settings['active_skin'])) ? $settings['active_skin'] : array_key_first($available_skins);
-$manifest = include "skins/{$current_db_active}/manifest.php";
+// Set active manifest reference safely
+$current_db_active = $active_skin_db ?: array_key_first($available_skins);
+$manifest = [];
+if ($current_db_active && file_exists("skins/{$current_db_active}/manifest.php")) {
+    $manifest = include "skins/{$current_db_active}/manifest.php";
+}
 
 // --- ADMIN THEME DISCOVERY ---
 $admin_themes = [];
@@ -36,12 +45,28 @@ $theme_dirs = array_filter(glob('assets/adminthemes/*'), 'is_dir');
 foreach ($theme_dirs as $dir) {
     $slug = basename($dir);
     $manifest_path = "{$dir}/{$slug}-manifest.php";
+    $meta = [];
+    
     if (file_exists($manifest_path)) {
-        $admin_themes[$slug] = include $manifest_path;
+        $meta = include $manifest_path;
     }
+    
+    // Robust fallback if manifest is missing, blank, or broken
+    if (!is_array($meta)) {
+        $meta = [
+            'name' => strtoupper(str_replace('-', ' ', $slug)),
+            'version' => '1.0',
+            'description' => 'No valid manifest found. Fallback engaged.',
+            'author' => 'System'
+        ];
+    }
+    $admin_themes[$slug] = $meta;
 }
 
-$active_admin_slug = (isset($settings['active_theme'])) ? $settings['active_theme'] : 'midnight-lime';
+// Determine active admin theme safely
+$db_admin_theme = $active_theme_db ? trim($active_theme_db) : 'midnight-lime';
+$active_admin_slug = array_key_exists($db_admin_theme, $admin_themes) ? $db_admin_theme : 'midnight-lime';
+
 $current_admin_meta = $admin_themes[$active_admin_slug] ?? [
     'name' => $active_admin_slug, 
     'description' => 'Admin theme manifest missing.', 
@@ -50,17 +75,9 @@ $current_admin_meta = $admin_themes[$active_admin_slug] ?? [
 ];
 
 // -------------------------------------------------------------------------
-// 2. HELPERS & COMPILER LOGIC
+// 2. COMPILER LOGIC
 // -------------------------------------------------------------------------
 
-function prefix_skin_css($css, $prefix) {
-    if (empty($css)) return "";
-    return preg_replace('/([^\\r\\n,{}]+)(?=[^}]*{)/', $prefix . ' $1', $css);
-}
-
-// -------------------------------------------------------------------------
-// 3. GLOBAL SETTINGS HANDLER
-// -------------------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_global_appearance'])) {
     
     // Update Admin Theme Choice
@@ -70,14 +87,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_global_appearanc
     }
 
     // Update Archive Logic (Numeric Settings)
-    $v_settings = $_POST['settings'] ?? [];
-    foreach ($v_settings as $vk => $vv) {
-        $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
-        $stmt->execute([$vk, $vv, $vv]);
+    if (isset($_POST['settings']) && is_array($_POST['settings'])) {
+        foreach ($_POST['settings'] as $vk => $vv) {
+            $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
+            $stmt->execute([$vk, $vv, $vv]);
+        }
     }
 
     // Update Specific Skin Options
-    if (isset($_POST['skin_opt'])) {
+    if (isset($_POST['skin_opt']) && is_array($_POST['skin_opt'])) {
         foreach ($_POST['skin_opt'] as $s_key => $s_val) {
             $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
             $stmt->execute([$s_key, $s_val, $s_val]);
@@ -88,10 +106,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_global_appearanc
     
     // --- GENERATE PUBLIC CSS ---
     $generated_public = "/* SKIN_START */\n";
-    foreach ($manifest['options'] as $key => $meta) {
-        $val = (isset($all_settings[$key]) && $all_settings[$key] !== '') ? $all_settings[$key] : $meta['default'];
-        $css_val = ($meta['type'] === 'range' || $meta['type'] === 'number') ? ((substr($meta['property'], 0, 2) === '--') ? $val : $val . "px") : $val;
-        $generated_public .= "{$meta['selector']} { {$meta['property']}: {$css_val}; }\n";
+    if (isset($manifest['options']) && is_array($manifest['options'])) {
+        foreach ($manifest['options'] as $key => $meta) {
+            $val = (isset($all_settings[$key]) && $all_settings[$key] !== '') ? $all_settings[$key] : ($meta['default'] ?? '');
+            
+            if (isset($meta['type']) && ($meta['type'] === 'range' || $meta['type'] === 'number')) {
+                $css_val = (isset($meta['property']) && substr($meta['property'], 0, 2) === '--') ? $val : $val . "px";
+            } else {
+                $css_val = $val;
+            }
+            
+            if (isset($meta['selector']) && isset($meta['property'])) {
+                $generated_public .= "{$meta['selector']} { {$meta['property']}: {$css_val}; }\n";
+            }
+        }
     }
     $generated_public .= "/* SKIN_END */";
 
@@ -101,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_global_appearanc
     exit;
 }
 
-$page_title = "THE FULL PIMP";
+$page_title = "Global Vibe";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
@@ -121,7 +149,7 @@ include 'core/sidebar.php';
             <div class="dim">
                 BY <?php echo strtoupper(htmlspecialchars($current_admin_meta['author'])); ?> 
                 <?php if(!empty($current_admin_meta['support'])): ?>
-                    | <a href="mailto:<?php echo htmlspecialchars($current_admin_meta['support']); ?>" style="color: #00ff00; text-decoration: none;">SUPPORT</a>
+                    | <a href="mailto:<?php echo htmlspecialchars($current_admin_meta['support']); ?>" style="color: #247AA2; text-decoration: none;">SUPPORT</a>
                 <?php endif; ?>
             </div>
         </div>
@@ -130,7 +158,7 @@ include 'core/sidebar.php';
                 <label>CORE ADMIN THEME</label>
                 <select name="active_admin_theme" onchange="this.form.submit()">
                     <?php foreach ($admin_themes as $slug => $meta): ?>
-                        <option value="<?php echo $slug; ?>" <?php echo ($active_admin_slug == $slug) ? 'selected' : ''; ?>>
+                        <option value="<?php echo htmlspecialchars($slug); ?>" <?php echo ($active_admin_slug == $slug) ? 'selected' : ''; ?>>
                             <?php echo strtoupper(htmlspecialchars($meta['name'])); ?>
                         </option>
                     <?php endforeach; ?>
@@ -168,13 +196,16 @@ include 'core/sidebar.php';
 
             <?php 
             $grouped_opts = [];
-            foreach ($manifest['options'] as $k => $o) { 
-                if ($o['section'] === 'STATIC PAGE STYLING' || $o['section'] === 'WALL SPECIFIC') {
-                    $grouped_opts[] = ['key' => $k, 'meta' => $o]; 
+            if (isset($manifest['options']) && is_array($manifest['options'])) {
+                foreach ($manifest['options'] as $k => $o) { 
+                    if (isset($o['section']) && ($o['section'] === 'STATIC PAGE STYLING' || $o['section'] === 'WALL SPECIFIC')) {
+                        $grouped_opts[] = ['key' => $k, 'meta' => $o]; 
+                    }
                 }
             }
+            
+            if (!empty($grouped_opts)):
             ?>
-
             <div class="box">
                 <h3>SKIN-SPECIFIC CALIBRATION</h3>
                 <div class="post-layout-grid">
@@ -183,22 +214,22 @@ include 'core/sidebar.php';
                         $half = ceil(count($grouped_opts) / 2);
                         for ($i = 0; $i < $half; $i++): 
                             $k = $grouped_opts[$i]['key']; $o = $grouped_opts[$i]['meta']; 
-                            $val = (isset($settings[$k]) && $settings[$k] !== '') ? $settings[$k] : $o['default'];
+                            $val = (isset($settings[$k]) && $settings[$k] !== '') ? $settings[$k] : ($o['default'] ?? '');
                         ?>
                             <div class="lens-input-wrapper">
-                                <label><?php echo strtoupper($o['label']); ?></label>
-                                <?php if ($o['type'] === 'color'): ?>
+                                <label><?php echo strtoupper(htmlspecialchars($o['label'] ?? $k)); ?></label>
+                                <?php if (isset($o['type']) && $o['type'] === 'color'): ?>
                                     <div class="color-picker-container">
-                                        <input type="color" name="skin_opt[<?php echo $k; ?>]" value="<?php echo htmlspecialchars($val); ?>">
+                                        <input type="color" name="skin_opt[<?php echo htmlspecialchars($k); ?>]" value="<?php echo htmlspecialchars($val); ?>">
                                         <span class="hex-display"><?php echo strtoupper(htmlspecialchars($val)); ?></span>
                                     </div>
-                                <?php elseif ($o['type'] === 'range'): ?>
+                                <?php elseif (isset($o['type']) && $o['type'] === 'range'): ?>
                                     <div class="range-wrapper">
-                                        <input type="range" name="skin_opt[<?php echo $k; ?>]" min="<?php echo $o['min']; ?>" max="<?php echo $o['max']; ?>" value="<?php echo htmlspecialchars($val); ?>" oninput="this.nextElementSibling.innerText = this.value + 'PX'">
+                                        <input type="range" name="skin_opt[<?php echo htmlspecialchars($k); ?>]" min="<?php echo htmlspecialchars($o['min'] ?? 0); ?>" max="<?php echo htmlspecialchars($o['max'] ?? 100); ?>" value="<?php echo htmlspecialchars($val); ?>" oninput="this.nextElementSibling.innerText = this.value + 'PX'">
                                         <span class="active-val"><?php echo strtoupper(htmlspecialchars($val)); ?>PX</span>
                                     </div>
                                 <?php else: ?>
-                                    <input type="text" name="skin_opt[<?php echo $k; ?>]" value="<?php echo htmlspecialchars($val); ?>">
+                                    <input type="text" name="skin_opt[<?php echo htmlspecialchars($k); ?>]" value="<?php echo htmlspecialchars($val); ?>">
                                 <?php endif; ?>
                             </div>
                         <?php endfor; ?>
@@ -208,28 +239,29 @@ include 'core/sidebar.php';
                         <?php 
                         for ($i = $half; $i < count($grouped_opts); $i++): 
                             $k = $grouped_opts[$i]['key']; $o = $grouped_opts[$i]['meta']; 
-                            $val = (isset($settings[$k]) && $settings[$k] !== '') ? $settings[$k] : $o['default'];
+                            $val = (isset($settings[$k]) && $settings[$k] !== '') ? $settings[$k] : ($o['default'] ?? '');
                         ?>
                             <div class="lens-input-wrapper">
-                                <label><?php echo strtoupper($o['label']); ?></label>
-                                <?php if ($o['type'] === 'color'): ?>
+                                <label><?php echo strtoupper(htmlspecialchars($o['label'] ?? $k)); ?></label>
+                                <?php if (isset($o['type']) && $o['type'] === 'color'): ?>
                                     <div class="color-picker-container">
-                                        <input type="color" name="skin_opt[<?php echo $k; ?>]" value="<?php echo htmlspecialchars($val); ?>">
+                                        <input type="color" name="skin_opt[<?php echo htmlspecialchars($k); ?>]" value="<?php echo htmlspecialchars($val); ?>">
                                         <span class="hex-display"><?php echo strtoupper(htmlspecialchars($val)); ?></span>
                                     </div>
-                                <?php elseif ($o['type'] === 'range'): ?>
+                                <?php elseif (isset($o['type']) && $o['type'] === 'range'): ?>
                                     <div class="range-wrapper">
-                                        <input type="range" name="skin_opt[<?php echo $k; ?>]" min="<?php echo $o['min']; ?>" max="<?php echo $o['max']; ?>" value="<?php echo htmlspecialchars($val); ?>" oninput="this.nextElementSibling.innerText = this.value + 'PX'">
+                                        <input type="range" name="skin_opt[<?php echo htmlspecialchars($k); ?>]" min="<?php echo htmlspecialchars($o['min'] ?? 0); ?>" max="<?php echo htmlspecialchars($o['max'] ?? 100); ?>" value="<?php echo htmlspecialchars($val); ?>" oninput="this.nextElementSibling.innerText = this.value + 'PX'">
                                         <span class="active-val"><?php echo strtoupper(htmlspecialchars($val)); ?>PX</span>
                                     </div>
                                 <?php else: ?>
-                                    <input type="text" name="skin_opt[<?php echo $k; ?>]" value="<?php echo htmlspecialchars($val); ?>">
+                                    <input type="text" name="skin_opt[<?php echo htmlspecialchars($k); ?>]" value="<?php echo htmlspecialchars($val); ?>">
                                 <?php endif; ?>
                             </div>
                         <?php endfor; ?>
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
         </div>
 
         <div class="form-action-row">

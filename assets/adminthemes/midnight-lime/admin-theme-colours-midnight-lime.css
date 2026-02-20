@@ -152,11 +152,13 @@ input:focus, textarea:focus, select:focus {
 
 /* Sender Name */
 .signal-sender {
-    color: #39FF14;
-    font-weight: 700;
+    color: #888;
+    font-weight: 600;
 }
+.signal-sender span,
 .signal-sender span.dim {
     color: #555;
+    font-weight: 400;
 }
 
 /* The Body Text */
@@ -225,6 +227,24 @@ input:focus, textarea:focus, select:focus {
 /* All other buttons (Manage Signals etc) — universal green glow on hover */
 button:hover {
     box-shadow: 0 0 16px rgba(57, 255, 20, 0.4);
+}
+
+/* INCOMING / BROADCASTING nav buttons — persistent colour definition */
+.btn-clear {
+    background-color: transparent;
+    color: #777;
+    border-color: #333;
+}
+.btn-clear:hover {
+    background-color: #2a2a2a;
+    color: #ccc;
+    border-color: #555;
+}
+.btn-clear.active {
+    background-color: #2a2a2a;
+    color: #39FF14;
+    border-color: #39FF14;
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.25);
 }
 
 /* Action Links */
@@ -428,27 +448,4 @@ input[type="range"]::-webkit-slider-thumb {
 .asset-thumb-wrapper {
     border-bottom-color: #2a2a2a;
     background-color: #0a0a0a;
-}
-
-/* 17: CSS OVERRIDE PAGE (smack-css.php) */
-.css-tab {
-    color: #777;
-    border-color: #2a2a2a;
-}
-
-.css-tab:hover {
-    color: #39FF14;
-    border-color: #39FF14;
-}
-
-.css-tab-active {
-    color: #39FF14;
-    border-color: #39FF14;
-    text-shadow: 0 0 8px rgba(57, 255, 20, 0.5);
-    box-shadow: 0 0 8px rgba(57, 255, 20, 0.15);
-}
-
-.css-preview-block {
-    border-color: #2a2a2a;
-    background-color: #0d0d0d;
 }

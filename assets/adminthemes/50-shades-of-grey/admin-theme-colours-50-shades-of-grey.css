@@ -1,0 +1,472 @@
+/* * SNAPSMACK MASTER COLOUR INDEX (THE PAINT)
+ * ---------------------------------------------------------------------------
+ * 01: Global Base       | 06: Form Elements     | 11: Pagination
+ * 02: Sidebar Nav       | 07: Transmissions     | 12: Progress/Uploads
+ * 03: Main Headers      | 08: Buttons/Actions   | 13: Login/Footer
+ * 04: Content Boxes     | 09: Item Lists        | 14: Appearance
+ * 05: Media Previews    | 10: Dash/Stats        | 15: Overrides
+ * ---------------------------------------------------------------------------
+ * v2026.1 - GREYMATTER (NOAH GREY TRIBUTE)
+ * PALETTE: #F0F0F0 (Bg), #666666 (Grey), #333333 (Charcoal), #CCCCCC (Border)
+ */
+
+/* 01: GLOBAL BASE */
+html, body {
+    background-color: #F0F0F0;
+    color: #333333;
+    color-scheme: light;
+}
+
+/* 02: SIDEBAR NAVIGATION */
+.sidebar {
+    background-color: #F0F0F0;
+    border-right-color: #CCCCCC;
+}
+
+.sidebar h2 {
+    color: #666666;
+    border-bottom-color: #CCCCCC;
+}
+
+.sidebar li {
+    border-bottom-color: #CCCCCC;
+}
+
+.sidebar a {
+    color: #666666;
+}
+
+.sidebar a:hover,
+.sidebar li.active a {
+    color: #000000;
+    text-shadow: 0 0 8px rgba(102, 102, 102, 0.3);
+}
+
+.sidebar li.active {
+    border-left: none;
+}
+
+.sidebar li.nav-group {
+    color: #888888;
+    background-color: #F0F0F0;
+}
+
+.sidebar ul.sub-nav {
+    border-left-color: #666666;
+}
+
+.sidebar-bottom {
+    background-color: #F0F0F0;
+    border-top: none;
+}
+
+.sidebar .logout {
+    color: #999999;
+    font-weight: 700;
+}
+
+.sidebar .logout:hover {
+    color: #666666;
+}
+
+.credits-admin {
+    color: #888888;
+}
+
+/* 03: MAIN HEADERS */
+.header-row {
+    border-bottom-color: #CCCCCC;
+}
+
+h2 {
+    color: #000000;
+    border-bottom-color: #CCCCCC;
+}
+
+/* 04: CONTENT BOXES */
+.box {
+    background-color: #FFFFFF;
+    border-color: #CCCCCC;
+}
+
+.box h3, .section-header {
+    color: #666666;
+    border-bottom-color: #CCCCCC;
+}
+
+.post-col-right {
+    border-left-color: #CCCCCC;
+}
+
+/* 05: FORM ELEMENTS */
+label {
+    color: #666666;
+}
+
+input[type="text"], input[type="number"], input[type="email"], input[type="password"],
+input[type="datetime-local"], input[type="date"], select, textarea,
+.preview-box, .select-box {
+    background-color: #FFFFFF;
+    border-color: #DDDDDD;
+    color: #333333;
+}
+
+/* Read-only display fields get a lighter border for the inset look */
+.read-only-display {
+    background-color: #FFFFFF;
+    border-color: #BBBBBB;
+    color: #333333;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: #666666;
+    background-color: #FFFFFF;
+    box-shadow: 0 0 8px rgba(102, 102, 102, 0.2);
+    outline: none;
+}
+
+/* 06: MEDIA PREVIEWS */
+.preview-frame {
+    background-color: #FFFFFF;
+    border-color: #DDDDDD;
+}
+
+/* 07: TRANSMISSIONS (The Fixes) */
+.transmission-header {
+    /* Geometry handled in Master Geometry file */
+}
+
+/* The Status Pill */
+.status-online {
+    color: #666666;
+    border-color: #666666;
+    background-color: rgba(102, 102, 102, 0.05);
+}
+
+.status-offline {
+    color: #999999;
+    border-color: #999999;
+    background-color: rgba(153, 153, 153, 0.05);
+}
+
+/* Sender Name */
+.signal-sender {
+    color: #666666;
+    font-weight: 700;
+}
+.signal-sender span.dim {
+    color: #888888;
+}
+
+/* The Body Text */
+.signal-body {
+    color: #333333;
+    background-color: #FFFFFF;
+    border: 1px solid #DDDDDD;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+/* Metadata Links (Killing the Blue) */
+.signal-meta {
+    color: #888888;
+}
+.signal-meta a {
+    color: #666666 !important;
+    border-bottom-color: transparent;
+}
+.signal-meta a:hover {
+    color: #000000 !important;
+    border-bottom-color: #000000;
+}
+.signal-meta .dim {
+    color: #BBBBBB;
+}
+
+/* 08: BUTTONS & ACTIONS */
+
+/* Green buttons (New Post, Live Site) — go grey on hover */
+.btn-smack, .master-update-btn {
+    background-color: #666666;
+    color: #FFFFFF;
+}
+.btn-smack:hover, .master-update-btn:hover {
+    background-color: #CCCCCC;
+    color: #000000;
+    box-shadow: 0 0 16px rgba(102, 102, 102, 0.5);
+}
+
+/* Grey buttons (Backup, Settings) — go green on hover */
+.btn-smack.btn-backup,
+.btn-smack.btn-settings {
+    background-color: #CCCCCC;
+    color: #666666;
+}
+.btn-smack.btn-backup:hover,
+.btn-smack.btn-settings:hover {
+    background-color: #666666;
+    color: #FFFFFF;
+    box-shadow: 0 0 16px rgba(102, 102, 102, 0.5);
+}
+
+/* Live Site stays green, same hover treatment as other green buttons */
+.btn-smack.btn-live {
+    background-color: #666666;
+    color: #FFFFFF;
+}
+.btn-smack.btn-live:hover {
+    background-color: #CCCCCC;
+    color: #000000;
+    box-shadow: 0 0 16px rgba(102, 102, 102, 0.5);
+}
+
+/* All other buttons (Manage Signals etc) — universal green glow on hover */
+button:hover {
+    box-shadow: 0 0 16px rgba(102, 102, 102, 0.4);
+}
+
+/* INCOMING / BROADCASTING nav buttons — persistent colour definition */
+.btn-clear {
+    background-color: transparent;
+    color: #888888;
+    border-color: #CCCCCC;
+}
+.btn-clear:hover {
+    background-color: #F0F0F0;
+    color: #333333;
+    border-color: #666666;
+}
+.btn-clear.active {
+    background-color: #EEEEEE;
+    color: #000000;
+    border-color: #000000;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Action Links */
+.action-authorize, .action-edit {
+    color: #666666;
+    border-color: #666666;
+}
+.action-authorize:hover {
+    background-color: #666666;
+    color: #FFFFFF;
+}
+
+.action-delete {
+    color: #999999;
+    border-color: #999999;
+}
+.action-delete:hover {
+    background-color: #999999;
+    color: #FFFFFF;
+}
+
+/* 09: ITEM LAYOUTS */
+.recent-item {
+    border-bottom-color: #DDDDDD;
+}
+.archive-thumb {
+    border-color: #EEEEEE;
+    background-color: #FFFFFF;
+}
+.item-text strong {
+    color: #000000;
+}
+.item-text .dim {
+    color: #888888;
+}
+
+/* 10: DASH/STATS */
+.stat-box {
+    border-color: #DDDDDD;
+    background-color: #F0F0F0;
+}
+.stat-val {
+    color: #666666;
+}
+.stat-label {
+    color: #888888;
+}
+.stat-row {
+    border-bottom-color: #DDDDDD;
+}
+.stat-row .label { color: #888888; }
+.stat-row .value { color: #333333; }
+.highlight-green { color: #666666; }
+
+/* 11: PAGINATION */
+.pagination a {
+    background-color: #FFFFFF;
+    border-color: #DDDDDD;
+    color: #888888;
+}
+.pagination a.active {
+    background-color: #666666;
+    border-color: #666666;
+    color: #FFFFFF;
+}
+.pagination a:hover {
+    border-color: #666666;
+    color: #666666;
+}
+
+/* 12: PROGRESS/UPLOADS */
+.progress-container {
+    background-color: #FFFFFF;
+    border-color: #DDDDDD;
+}
+.progress-bar {
+    background-color: #666666;
+}
+.file-upload-wrapper {
+    border-color: #DDDDDD;
+    background-color: #FFFFFF;
+}
+.file-custom-btn {
+    background-color: #CCCCCC;
+    color: #666666;
+    border-right-color: #DDDDDD;
+}
+.file-custom-btn:hover {
+    background-color: #BBBBBB;
+    color: #333333;
+}
+.file-name-display {
+    color: #888888;
+}
+
+/* Inline checkbox labels (Built-in, N/A) — match input border treatment */
+.built-in-label {
+    background-color: #DDDDDD;
+    border-color: #CCCCCC;
+    color: #666666;
+}
+.built-in-label:hover {
+    border-color: #666666;
+    color: #333333;
+}
+input[type="checkbox"] {
+    border-color: #BBBBBB;
+    background-color: #FFFFFF;
+}
+input[type="checkbox"]:checked {
+    background-color: #666666;
+    border-color: #666666;
+}
+input[type="checkbox"]:checked::after {
+    border-color: #FFFFFF;
+}
+
+/* 13: LOGIN & FOOTER */
+.login-box {
+    background-color: #FFFFFF;
+    border-color: #CCCCCC;
+}
+
+#admin-universal-footer {
+    background-color: #F0F0F0;
+    border-top-color: #CCCCCC;
+}
+.footer-left { color: #888888; font-size: 1rem; }
+.footer-left a { color: #666666; border-bottom-color: #BBBBBB; }
+.footer-left a:hover { color: #666666; border-bottom-color: #666666; }
+.footer-right { color: #888888; font-size: 1rem; }
+
+/* 14: APPEARANCE */
+.appearance-controller {
+    border-color: #DDDDDD;
+}
+.skin-meta-wrap {
+    background-color: #EEEEEE;
+}
+.skin-selector-wrap {
+    background-color: #FFFFFF;
+    border-left-color: #DDDDDD;
+}
+.theme-title-display { color: #000000; }
+.skin-desc-text { color: #888888; }
+
+/* Filter + Reset buttons */
+.btn-smack-filter {
+    background-color: #666666;
+    color: #FFFFFF;
+}
+.btn-smack-filter:hover {
+    background-color: #CCCCCC;
+    color: #000000;
+    box-shadow: 0 0 16px rgba(102, 102, 102, 0.5);
+}
+.btn-reset {
+    background-color: transparent;
+    color: #888888;
+    border: 1px solid #CCCCCC;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 4px;
+}
+.btn-reset:hover {
+    border-color: #999999;
+    color: #999999;
+}
+
+
+.alert-success {
+    color: #666666;
+    border-color: #666666;
+    background-color: rgba(102, 102, 102, 0.1);
+}
+
+.alert-error {
+    color: #999999;
+    border-color: #999999;
+    background-color: rgba(153, 153, 153, 0.1);
+}
+
+/* 16: INPUT RANGE (Webkit) */
+input[type="range"]::-webkit-slider-runnable-track {
+    background-color: #DDDDDD;
+}
+input[type="range"]::-webkit-slider-thumb {
+    background-color: #666666;
+}
+/* Asset cards (Media Library) */
+.asset-card {
+    border-color: #CCCCCC;
+    background-color: #FFFFFF;
+}
+.asset-thumb-wrapper {
+    border-bottom-color: #CCCCCC;
+    background-color: #F0F0F0;
+}
+
+/* 17: CSS OVERRIDE PAGE (smack-css.php) */
+.css-tab {
+    color: #777;
+    border-color: #CCCCCC;
+}
+
+.css-tab:hover {
+    color: #666666;
+    border-color: #666666;
+}
+
+.css-tab-active {
+    color: #666666;
+    border-color: #666666;
+    text-shadow: 0 0 8px rgba(102, 102, 102, 0.5);
+    box-shadow: 0 0 8px rgba(102, 102, 102, 0.15);
+}
+
+.css-preview-block {
+    border-color: #CCCCCC;
+    background-color: #F0F0F0;
+}

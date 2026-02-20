@@ -1,0 +1,14 @@
+<?php
+/**
+ * SnapSmack Admin Theme Manifest - Show Some Pride
+ */
+
+return [
+    'name'        => 'Show Some Pride',
+    'version'     => '1.0',
+    'author'      => 'Sean McCormick',
+    'support'     => 'sean@baddaywithacamera.ca',
+    'default'     => '0',
+    'css_file'    => 'admin-theme-colours-show-some-pride.css', // The direct link the header needs
+    'description' => "Come out, come out, wherever you are! Standing with our LGBTQ+ friends.",
+];
