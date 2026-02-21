@@ -32,6 +32,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     <li class="<?php echo ($current_page == 'smack-media.php') ? 'active' : ''; ?>">
                         <a href="smack-media.php">Media Library</a>
                     </li>
+					<li class="<?php echo ($current_page == 'smack-blogroll.php') ? 'active' : ''; ?>">
+                        <a href="smack-blogroll.php">Blogroll</a>
+                    </li>
                     <li class="<?php echo ($current_page == 'smack-comments.php') ? 'active' : ''; ?>">
                         <a href="smack-comments.php">Transmissions</a>
                     </li>

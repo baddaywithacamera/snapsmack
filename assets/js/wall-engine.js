@@ -78,7 +78,7 @@ function initWall() {
 function createHelpUI() {
     const toast = document.createElement('div');
     toast.id = 'help-toast';
-    toast.innerText = "PRESS F1 FOR HELP";
+    toast.innerText = "PRESS H FOR HELP";
     toast.style.cssText = "position: fixed; bottom: 20px; left: 20px; color: var(--wall-text); background: var(--wall-bg); padding: 10px 20px; border: 1px solid var(--wall-text); font-family: 'Courier Prime', monospace; font-size: 12px; z-index: 9999999; pointer-events: none; opacity: 0; transition: opacity 1s; box-shadow: 0 5px 15px rgba(0,0,0,0.5);";
     document.body.appendChild(toast);
 
@@ -96,7 +96,7 @@ function createHelpUI() {
             <li><strong>HOME / END</strong> : Jump Start / End</li>
             <li><strong>1</strong> : Toggle Floating Titles</li>
             <li><strong>PG UP / DN</strong> : Zoom Wall In/Out</li>
-            <li><strong>F1 / ESC</strong> : Help / Close</li>
+            <li><strong>H / ESC</strong> : Help / Close</li>
         </ul>
         <div style="margin-top: 20px; font-size: 0.7rem; opacity: 0.7;">SnapSmack Alpha v0.5</div>
     `;
@@ -200,7 +200,7 @@ window.addEventListener('keydown', (e) => {
     const isModalOpen = (modal && modal.style.display === 'block');
     const isZoomed = zoomLayer.classList.contains('active');
 
-    if (e.key === 'F1') {
+    if (e.key === 'h' || e.key === 'H') {
         e.preventDefault();
         if (modal) modal.style.display = isModalOpen ? 'none' : 'block';
     }

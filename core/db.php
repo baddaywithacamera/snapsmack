@@ -10,7 +10,7 @@
 $host    = 'localhost';
 $db      = 'squir871_iswa';
 $user    = 'squir871_iswaadmin';
-$pass    = 'Pickle40!!#'; 
+$pass    = 'XXXXXXXX'; 
 $charset = 'utf8mb4';
 
 // 2. CONNECTION STRING & SECURITY FLAGS

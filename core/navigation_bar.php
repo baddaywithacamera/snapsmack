@@ -46,6 +46,8 @@ $show_comments = ($global_on && $post_on);
             <span class="dim">NEXT</span>
         <?php endif; ?>
 
+        <span class="sep">|</span>
+
         <?php if (!empty($last_slug) && (BASE_URL . ($img['img_slug'] ?? '') !== $last_slug)): ?>
             <a href="<?php echo $last_slug; ?>" title="Jump to Latest Entry">LAST »</a>
         <?php else: ?>
