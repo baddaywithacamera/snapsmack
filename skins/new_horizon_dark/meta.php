@@ -1,55 +1,69 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <?php 
-    /**
-     * SnapSmack Skin - Meta Loader
-     * Version: 2.2 - Dynamic Inventory Integration
-     * -------------------------------------------------------------------------
-     * - ADDED: Dynamic Google Font Loader.
-     * - FIXED: Pulls specific fonts from core/manifest-inventory.php based on 
-     * active settings to optimize performance.
-     * - RETAINED: Core Meta inclusion and architectural integrity.
-     * -------------------------------------------------------------------------
-     */
-    include(dirname(__DIR__, 2) . '/core/meta.php'); 
+<?php
+/**
+ * SnapSmack Core Meta
+ * Version: 1.2.0 - RSS Integration
+ * MASTER DIRECTIVE: Handle logic for SEO, CSS variables, and global headers.
+ */
 
-    // 1. PULL INVENTORY TO MAP FRIENDLY NAMES TO SLUGS
-    $font_inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
+// 1. PREPARE CSS VARIABLES (The Bridge)
+$grid_gap = $settings['browse_gap'] ?? '100';
+if (is_numeric($grid_gap)) {
+    $grid_gap .= 'px';
+}
 
-    // 2. AGGREGATE ACTIVE CHOICES FROM DB SETTINGS
-    $active_choices = array_unique([
-        $settings['header_font_family'] ?? 'Playfair Display',
-        $settings['static_heading_font'] ?? 'Inter',
-        $settings['static_body_font'] ?? 'Inter',
-        $settings['wall_font_ref'] ?? 'Playfair Display'
-    ]);
+// 2. PREPARE TITLES & SEO LOGIC
+$current_script = basename($_SERVER['SCRIPT_NAME']);
+$is_home = in_array($current_script, ['index.php', 'archive.php']) && empty($_GET['slug']) && empty($requested_slug);
 
-    // 3. BUILD THE DYNAMIC GOOGLE FONT URL
-    $font_query = [];
-    foreach ($active_choices as $font) {
-        // Ensure the font actually exists in our inventory before trying to load it
-        if (isset($font_inventory[$font])) {
-            $font_query[] = 'family=' . str_replace(' ', '+', $font) . ':wght@300;400;700;900';
-        }
+$site_name = htmlspecialchars($settings['site_name'] ?? 'ISWA.CA');
+$tagline = !empty($settings['site_tagline']) ? " | " . htmlspecialchars($settings['site_tagline']) : "";
+
+// Build the Title String
+if (!empty($page_title) && !$is_home) { 
+    $display_title = htmlspecialchars($page_title) . " | " . $site_name; 
+} else {
+    $display_title = $site_name . $tagline;
+}
+
+// 3. PREPARE SOCIAL META (Open Graph)
+$og_title = $display_title;
+$og_image = "";
+if (!empty($page['image_asset'])) {
+    $og_image = BASE_URL . ltrim($page['image_asset'], '/');
+} elseif (!empty($settings['header_logo_url'])) {
+    $og_image = BASE_URL . ltrim($settings['header_logo_url'], '/');
+}
+
+// 4. CANONICAL URL
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+$canonical_url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+?>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><?php echo $display_title; ?></title>
+
+<link rel="canonical" href="<?php echo $canonical_url; ?>">
+<link rel="alternate" type="application/rss+xml" title="<?php echo $site_name; ?> RSS Feed" href="<?php echo BASE_URL; ?>rss.php" />
+
+<meta property="og:site_name" content="<?php echo $site_name; ?>">
+<meta property="og:title" content="<?php echo $og_title; ?>">
+<meta property="og:type" content="website">
+<meta property="og:url" content="<?php echo $canonical_url; ?>">
+<?php if (!empty($og_image)): ?>
+<meta property="og:image" content="<?php echo $og_image; ?>">
+<?php endif; ?>
+
+<style id="snapsmack-core-vars">
+    :root {
+        --grid-gap: <?php echo $grid_gap; ?>;
     }
-    
-    // Default fallback if query is somehow empty
-    $google_url = !empty($font_query) 
-        ? "https://fonts.googleapis.com/css2?" . implode('&', $font_query) . "&display=swap"
-        : "https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap";
-    ?>
+</style>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="<?php echo $google_url; ?>" rel="stylesheet">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css">
 
-    <link rel="stylesheet" href="<?php echo BASE_URL; ?>skins/<?php echo $active_skin; ?>/style.css?v=<?php echo time(); ?>">
-    <script src="<?php echo BASE_URL; ?>skins/<?php echo $active_skin; ?>/script.js" defer></script>
-
-    <?php if (!empty($settings['custom_css_public'])): ?>
-        <style id="snapsmack-custom-overrides">
-            <?php echo $settings['custom_css_public']; ?>
-        </style>
-    <?php endif; ?>
-</head>
+<?php if (!empty($settings['custom_css_public'])): ?>
+<style id="snapsmack-dynamic-css">
+<?php echo $settings['custom_css_public']; ?>
+</style>
+<?php endif; ?>

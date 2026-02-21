@@ -6,40 +6,41 @@
  * 04: Content Boxes     | 09: Item Lists        | 14: Appearance
  * 05: Media Previews    | 10: Dash/Stats        | 15: Overrides
  * ---------------------------------------------------------------------------
- * v2026.1 - CERULEAN INK
- * PALETTE: #007BA7 (Cerulean), #1A242F (Navy Box), #061121 (Ink Input), #FFFFFF (Sidebar)
+ * v2026.1 - CERULEAN INK (CYAN POP EDITION)
+ * PALETTE: #081220 (Unified Bg), #1A242F (Navy Box), #00FFFF (Cyan Pop)
  */
 
 /* 01: GLOBAL BASE */
 html, body {
-    background-color: #007BA7;
+    background-color: #081220;
     color: #F8F9FA;
     color-scheme: dark;
 }
 
 /* 02: SIDEBAR NAVIGATION */
 .sidebar {
-    background-color: #FFFFFF;
-    border-right-color: #002366;
+    background-color: #081220;
+    border-right-color: #1A242F;
 }
 
 .sidebar h2 {
-    color: #002366;
-    border-bottom-color: #007BA7;
+    color: #00FFFF;
+    border-bottom-color: #1A242F;
 }
 
 .sidebar li {
-    border-bottom-color: #F0F0F0;
+    border-bottom-color: rgba(255, 255, 255, 0.05);
 }
 
 .sidebar a {
-    color: #002366;
+    color: #F8F9FA;
 }
 
 .sidebar a:hover,
 .sidebar li.active a {
-    color: #007BA7;
-    text-shadow: none;
+    color: #00FFFF;
+    background-color: transparent;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
 }
 
 .sidebar li.active {
@@ -47,16 +48,16 @@ html, body {
 }
 
 .sidebar li.nav-group {
-    color: #888888;
-    background-color: #F8F9FA;
+    color: rgba(255, 255, 255, 0.4);
+    background-color: #111B28;
 }
 
 .sidebar ul.sub-nav {
-    border-left-color: #007BA7;
+    border-left-color: #00FFFF;
 }
 
 .sidebar-bottom {
-    background-color: #FFFFFF;
+    background-color: #081220;
     border-top: none;
 }
 
@@ -66,21 +67,21 @@ html, body {
 }
 
 .sidebar .logout:hover {
-    color: #D32F2F;
+    color: #FFFFFF;
 }
 
 .credits-admin {
-    color: #AAAAAA;
+    color: rgba(255, 255, 255, 0.3);
 }
 
 /* 03: MAIN HEADERS */
 .header-row {
-    border-bottom-color: #002366;
+    border-bottom-color: #1A242F;
 }
 
 h2 {
-    color: #FFFFFF;
-    border-bottom-color: #002366;
+    color: #00FFFF;
+    border-bottom-color: #1A242F;
 }
 
 /* 04: CONTENT BOXES */
@@ -90,7 +91,7 @@ h2 {
 }
 
 .box h3, .section-header {
-    color: #007BA7;
+    color: #00FFFF;
     border-bottom-color: #002366;
 }
 
@@ -120,9 +121,9 @@ input[type="datetime-local"], input[type="date"], select, textarea,
 }
 
 input:focus, textarea:focus, select:focus {
-    border-color: #FFFFFF;
+    border-color: #00FFFF;
     background-color: #061121;
-    box-shadow: 0 0 10px rgba(0, 123, 167, 0.6);
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
     outline: none;
 }
 
@@ -139,9 +140,9 @@ input:focus, textarea:focus, select:focus {
 
 /* The Status Pill */
 .status-online {
-    color: #007BA7;
-    border-color: #007BA7;
-    background-color: rgba(0, 123, 167, 0.1);
+    color: #00FFFF;
+    border-color: #00FFFF;
+    background-color: rgba(0, 255, 255, 0.1);
 }
 
 .status-offline {
@@ -152,7 +153,7 @@ input:focus, textarea:focus, select:focus {
 
 /* Sender Name */
 .signal-sender {
-    color: #007BA7;
+    color: #00FFFF;
     font-weight: 600;
 }
 .signal-sender span,
@@ -165,7 +166,7 @@ input:focus, textarea:focus, select:focus {
 .signal-body {
     color: #F8F9FA;
     background-color: #061121;
-    border: 1px solid #002366;
+    border: 1px solid #1A242F;
     padding: 15px;
     border-radius: 4px;
     margin: 10px 0;
@@ -180,8 +181,8 @@ input:focus, textarea:focus, select:focus {
     border-bottom-color: transparent;
 }
 .signal-meta a:hover {
-    color: #007BA7 !important;
-    border-bottom-color: #007BA7;
+    color: #00FFFF !important;
+    border-bottom-color: #00FFFF;
 }
 .signal-meta .dim {
     color: #555555;
@@ -189,72 +190,71 @@ input:focus, textarea:focus, select:focus {
 
 /* 08: BUTTONS & ACTIONS */
 
-/* Cerulean buttons — go navy on hover */
+/* Cyan primary buttons — go navy on hover */
 .btn-smack, .master-update-btn {
-    background-color: #007BA7;
-    color: #FFFFFF;
+    background-color: #00FFFF;
+    color: #061121;
 }
 .btn-smack:hover, .master-update-btn:hover {
-    background-color: #002366;
-    color: #FFFFFF;
-    box-shadow: 0 0 16px rgba(0, 123, 167, 0.4);
+    background-color: #FFFFFF;
+    color: #061121;
+    box-shadow: 0 0 16px rgba(0, 255, 255, 0.4);
 }
 
-/* Grey buttons (Backup, Settings) — go cerulean on hover */
+/* Grey buttons (Backup, Settings) — go cyan on hover */
 .btn-smack.btn-backup,
 .btn-smack.btn-settings {
     background-color: #002366;
-    color: #007BA7;
+    color: #00FFFF;
 }
 .btn-smack.btn-backup:hover,
 .btn-smack.btn-settings:hover {
-    background-color: #007BA7;
-    color: #FFFFFF;
-    box-shadow: 0 0 16px rgba(0, 123, 167, 0.4);
+    background-color: #00FFFF;
+    color: #061121;
+    box-shadow: 0 0 16px rgba(0, 255, 255, 0.4);
 }
 
-/* Live Site stays Cerulean */
+/* Live Site stays themed */
 .btn-smack.btn-live {
     background-color: #007BA7;
     color: #FFFFFF;
 }
 .btn-smack.btn-live:hover {
-    background-color: #002366;
-    color: #FFFFFF;
-    box-shadow: 0 0 16px rgba(0, 123, 167, 0.4);
+    background-color: #00FFFF;
+    color: #061121;
 }
 
 /* All other buttons universal glow */
 button:hover {
-    box-shadow: 0 0 16px rgba(0, 123, 167, 0.3);
+    box-shadow: 0 0 16px rgba(0, 255, 255, 0.3);
 }
 
 /* INCOMING / BROADCASTING nav buttons */
 .btn-clear {
     background-color: transparent;
     color: #AAAAAA;
-    border-color: #002366;
+    border-color: #1A242F;
 }
 .btn-clear:hover {
-    background-color: #002366;
+    background-color: #1A242F;
     color: #FFFFFF;
-    border-color: #007BA7;
+    border-color: #00FFFF;
 }
 .btn-clear.active {
-    background-color: #002366;
-    color: #007BA7;
-    border-color: #007BA7;
-    box-shadow: 0 0 10px rgba(0, 123, 167, 0.25);
+    background-color: #1A242F;
+    color: #00FFFF;
+    border-color: #00FFFF;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.25);
 }
 
 /* Action Links */
 .action-authorize, .action-edit {
-    color: #007BA7;
-    border-color: #007BA7;
+    color: #00FFFF;
+    border-color: #1A242F;
 }
-.action-authorize:hover {
-    background-color: #007BA7;
-    color: #FFFFFF;
+.action-authorize:hover, .action-edit:hover {
+    background-color: #00FFFF;
+    color: #061121;
 }
 
 .action-delete {
@@ -268,10 +268,10 @@ button:hover {
 
 /* 09: ITEM LAYOUTS */
 .recent-item {
-    border-bottom-color: #002366;
+    border-bottom-color: #1A242F;
 }
 .archive-thumb {
-    border-color: #002366;
+    border-color: #1A242F;
     background-color: #050A14;
 }
 .item-text strong {
@@ -283,58 +283,58 @@ button:hover {
 
 /* 10: DASH/STATS */
 .stat-box {
-    border-color: #002366;
-    background-color: #1A242F;
+    border-color: #1A242F;
+    background-color: #111B28;
 }
 .stat-val {
-    color: #007BA7;
+    color: #00FFFF;
 }
 .stat-label {
     color: #AAAAAA;
 }
 .stat-row {
-    border-bottom-color: #002366;
+    border-bottom-color: #1A242F;
 }
 .stat-row .label { color: #AAAAAA; }
 .stat-row .value { color: #FFFFFF; }
-.highlight-green { color: #007BA7 !important; }
+.highlight-green { color: #00FFFF !important; }
 
 /* 11: PAGINATION */
 .pagination a {
     background-color: #061121;
-    border-color: #002366;
+    border-color: #1A242F;
     color: #AAAAAA;
 }
 .pagination a.active {
-    background-color: #007BA7;
-    border-color: #007BA7;
-    color: #FFFFFF;
+    background-color: #00FFFF;
+    border-color: #00FFFF;
+    color: #061121;
 }
 .pagination a:hover {
-    border-color: #007BA7;
-    color: #007BA7;
+    border-color: #00FFFF;
+    color: #00FFFF;
 }
 
 /* 12: PROGRESS/UPLOADS */
 .progress-container {
     background-color: #050A14;
-    border-color: #002366;
+    border-color: #1A242F;
 }
 .progress-bar {
-    background-color: #007BA7;
+    background-color: #00FFFF;
 }
 .file-upload-wrapper {
-    border-color: #002366;
+    border-color: #1A242F;
     background-color: #061121;
 }
 .file-custom-btn {
     background-color: #1A242F;
     color: #CCCCCC;
-    border-right-color: #002366;
+    border-right-color: #1A242F;
 }
 .file-custom-btn:hover {
-    background-color: #002366;
-    color: #FFFFFF;
+    background-color: #00FFFF;
+    color: #061121;
 }
 .file-name-display {
     color: #888888;
@@ -347,64 +347,63 @@ button:hover {
     color: #CCCCCC;
 }
 .built-in-label:hover {
-    border-color: #007BA7;
+    border-color: #00FFFF;
     color: #FFFFFF;
 }
 input[type="checkbox"] {
-    border-color: #007BA7;
+    border-color: #00FFFF;
     background-color: #061121;
 }
 input[type="checkbox"]:checked {
-    background-color: #007BA7;
-    border-color: #007BA7;
+    background-color: #00FFFF;
+    border-color: #00FFFF;
 }
 input[type="checkbox"]:checked::after {
-    border-color: #FFFFFF;
+    border-color: #061121;
 }
 
 /* 13: LOGIN & FOOTER */
 .login-box {
     background-color: #1A242F;
-    border-color: #002366;
+    border-color: #1A242F;
 }
 
 #admin-universal-footer {
-    background-color: #007BA7;
-    border-top-color: #002366;
+    background-color: #081220;
+    border-top-color: #1A242F;
 }
-.footer-left { color: #002366; font-size: 1rem; }
-.footer-left a { color: #002366; border-bottom-color: #002366; }
-.footer-left a:hover { color: #FFFFFF; border-bottom-color: #FFFFFF; }
-.footer-right { color: #002366; font-size: 1rem; }
+.footer-left { color: #007BA7; font-size: 1rem; }
+.footer-left a { color: #007BA7; border-bottom-color: #1A242F; }
+.footer-left a:hover { color: #00FFFF; border-bottom-color: #00FFFF; }
+.footer-right { color: #007BA7; font-size: 1rem; }
 
 /* 14: APPEARANCE */
 .appearance-controller {
-    border-color: #002366;
+    border-color: #1A242F;
 }
 .skin-meta-wrap {
     background-color: #1A242F;
 }
 .skin-selector-wrap {
     background-color: #061121;
-    border-left-color: #002366;
+    border-left-color: #1A242F;
 }
-.theme-title-display { color: #007BA7 !important; }
+.theme-title-display { color: #00FFFF !important; }
 .skin-desc-text { color: #AAAAAA; }
 
 /* Filter + Reset buttons */
 .btn-smack-filter {
-    background-color: #007BA7;
-    color: #FFFFFF;
+    background-color: #00FFFF;
+    color: #061121;
 }
 .btn-smack-filter:hover {
-    background-color: #002366;
-    color: #FFFFFF;
-    box-shadow: 0 0 16px rgba(0, 123, 167, 0.4);
+    background-color: #FFFFFF;
+    color: #061121;
 }
 .btn-reset {
     background-color: transparent;
     color: #CCCCCC;
-    border: 1px solid #002366;
+    border: 1px solid #1A242F;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
@@ -420,55 +419,42 @@ input[type="checkbox"]:checked::after {
     color: #FF4B2B;
 }
 
-
-.alert-success {
-    color: #007BA7;
-    border-color: #007BA7;
-    background-color: rgba(0, 123, 167, 0.1);
-}
-
-.alert-error {
-    color: #FF4B2B;
-    border-color: #FF4B2B;
-    background-color: rgba(255, 75, 43, 0.1);
-}
-
 /* 16: INPUT RANGE (Webkit) */
 input[type="range"]::-webkit-slider-runnable-track {
-    background-color: #002366;
+    background-color: #1A242F;
 }
 input[type="range"]::-webkit-slider-thumb {
-    background-color: #007BA7;
+    background-color: #00FFFF;
 }
 /* Asset cards (Media Library) */
 .asset-card {
-    border-color: #002366;
+    border-color: #1A242F;
     background-color: #1A242F;
 }
 .asset-thumb-wrapper {
-    border-bottom-color: #002366;
-    background-color: #061121;
+    border-bottom-color: #1A242F;
+    background-color: #050A14;
 }
 
 /* 17: CSS OVERRIDE PAGE (smack-css.php) */
 .css-tab {
     color: #AAAAAA;
-    border-color: #002366;
+    border-color: #1A242F;
 }
 
 .css-tab:hover {
-    color: #007BA7;
-    border-color: #007BA7;
+    color: #00FFFF;
+    border-color: #00FFFF;
 }
 
 .css-tab-active {
-    color: #007BA7;
-    border-color: #007BA7;
-    text-shadow: 0 0 8px rgba(0, 123, 167, 0.4);
-    box-shadow: 0 0 8px rgba(0, 123, 167, 0.15);
+    color: #00FFFF;
+    border-color: #00FFFF;
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
+    box-shadow: 0 0 8px rgba(0, 255, 255, 0.15);
 }
 
 .css-preview-block {
-    border-color: #002366;
-    background-color: #1A242F;
+    border-color: #1A242F;
+    background-color: #061121;
 }

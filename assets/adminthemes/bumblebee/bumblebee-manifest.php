@@ -5,7 +5,7 @@
 
 return [
     'name'        => 'Bumblebee',
-    'version'     => '1.0',
+    'version'     => '1.1',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'default'     => '0',

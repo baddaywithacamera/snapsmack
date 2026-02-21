@@ -6,26 +6,26 @@
  * 04: Content Boxes     | 09: Item Lists        | 14: Appearance
  * 05: Media Previews    | 10: Dash/Stats        | 15: Overrides
  * ---------------------------------------------------------------------------
- * v2026.1 - BUMBLEBEE (INDUSTRIAL GUNMETAL)
- * PALETTE: #0A0A0A (Bg), #FFCC00 (Yellow), #111111 (Box), #1A1A1A (Gunmetal Input)
+ * v2026.1 - BLACK PEARL (PIRATE KING)
+ * PALETTE: #050505 (Bg), #1A1A1A (Gunmetal), #FFFFFF (Ghost White), #333333 (Coal)
  */
 
 /* 01: GLOBAL BASE */
 html, body {
-    background-color: #0A0A0A;
-    color: #EEEEEE;
+    background-color: #050505;
+    color: #AAAAAA;
     color-scheme: dark;
 }
 
 /* 02: SIDEBAR NAVIGATION */
 .sidebar {
-    background-color: #0A0A0A;
+    background-color: #050505;
     border-right-color: #1A1A1A;
 }
 
 .sidebar h2 {
-    color: #FFCC00;
-    border-bottom-color: #FFCC00;
+    color: #FFFFFF;
+    border-bottom-color: #333333;
 }
 
 .sidebar li {
@@ -33,14 +33,13 @@ html, body {
 }
 
 .sidebar a {
-    color: #888888;
+    color: #666666;
 }
 
 .sidebar a:hover,
 .sidebar li.active a {
-    color: #FFCC00;
-    background-color: transparent;
-    text-shadow: 0 0 10px rgba(255, 204, 0, 0.4);
+    color: #FFFFFF;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
 }
 
 .sidebar li.active {
@@ -53,21 +52,21 @@ html, body {
 }
 
 .sidebar ul.sub-nav {
-    border-left-color: #FFCC00;
+    border-left-color: #FFFFFF;
 }
 
 .sidebar-bottom {
-    background-color: #0A0A0A;
+    background-color: #050505;
     border-top: none;
 }
 
 .sidebar .logout {
-    color: #FFCC00;
+    color: #AA0000;
     font-weight: 700;
 }
 
 .sidebar .logout:hover {
-    color: #FFFFFF;
+    color: #FF0000;
 }
 
 .credits-admin {
@@ -80,20 +79,20 @@ html, body {
 }
 
 h2 {
-    color: #FFCC00;
+    color: #FFFFFF;
     border-bottom-color: #1A1A1A;
 }
 
 /* 04: CONTENT BOXES */
 .box {
-    background-color: #111111;
+    background-color: #0D0D0D;
     border-color: #1A1A1A;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
 }
 
 .box h3, .section-header {
-    color: #FFCC00;
-    border-bottom-color: #1A1A1A;
+    color: #FFFFFF;
+    border-bottom-color: #333333;
 }
 
 .post-col-right {
@@ -102,29 +101,29 @@ h2 {
 
 /* 05: FORM ELEMENTS */
 label {
-    color: #888888;
+    color: #666666;
 }
 
 input[type="text"], input[type="number"], input[type="email"], input[type="password"],
 input[type="datetime-local"], input[type="date"], select, textarea,
 .preview-box, .select-box {
     background-color: #1A1A1A;
-    border-color: #FFCC00;
+    border-color: #333333;
     color: #FFFFFF;
 }
 
-/* Read-only display fields get a darker inset look */
+/* Read-only display fields get a darker coal look */
 .read-only-display {
-    background-color: #0D0D0D;
+    background-color: #0A0A0A;
     border-color: #1A1A1A;
-    color: #FFCC00;
+    color: #888888;
     box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
 }
 
 input:focus, textarea:focus, select:focus {
     border-color: #FFFFFF;
-    background-color: #222222;
-    box-shadow: 0 0 12px rgba(255, 204, 0, 0.4);
+    background-color: #1A1A1A;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
     outline: none;
 }
 
@@ -141,39 +140,37 @@ input:focus, textarea:focus, select:focus {
 
 /* The Status Pill */
 .status-online {
-    color: #000000;
-    border-color: #FFCC00;
-    background-color: #FFCC00;
+    color: #FFFFFF;
+    border-color: #FFFFFF;
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 .status-offline {
-    color: #FFFFFF;
-    border-color: #444444;
-    background-color: #1A1A1A;
+    color: #666666;
+    border-color: #333333;
+    background-color: #000000;
 }
 
 /* Sender Name */
 .signal-sender {
-    color: #FFCC00;
-    font-weight: 600;
+    color: #FFFFFF;
+    font-weight: 700;
 }
-.signal-sender span,
 .signal-sender span.dim {
     color: #666666;
-    font-weight: 400;
 }
 
 /* The Body Text */
 .signal-body {
-    color: #FFFFFF;
-    background-color: #1A1A1A;
-    border: 1px solid #FFCC00;
+    color: #AAAAAA;
+    background-color: #0D0D0D;
+    border: 1px solid #1A1A1A;
     padding: 15px;
     border-radius: 4px;
     margin: 10px 0;
 }
 
-/* Metadata Links (Killing the Blue) */
+/* Metadata Links (Ghostly White) */
 .signal-meta {
     color: #444444;
 }
@@ -182,8 +179,8 @@ input:focus, textarea:focus, select:focus {
     border-bottom-color: transparent;
 }
 .signal-meta a:hover {
-    color: #FFCC00 !important;
-    border-bottom-color: #FFCC00;
+    color: #FFFFFF !important;
+    border-bottom-color: #FFFFFF;
 }
 .signal-meta .dim {
     color: #333333;
@@ -191,79 +188,78 @@ input:focus, textarea:focus, select:focus {
 
 /* 08: BUTTONS & ACTIONS */
 
-/* Yellow buttons — go white on hover */
+/* Gunmetal primary buttons — flip to white on hover */
 .btn-smack, .master-update-btn {
-    background-color: #FFCC00;
-    color: #000000;
+    background-color: #333333;
+    color: #FFFFFF;
 }
 .btn-smack:hover, .master-update-btn:hover {
     background-color: #FFFFFF;
     color: #000000;
-    box-shadow: 0 0 20px rgba(255, 204, 0, 0.5);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
 }
 
-/* Darker buttons (Backup, Settings) */
+/* Coal buttons (Backup, Settings) */
 .btn-smack.btn-backup,
 .btn-smack.btn-settings {
     background-color: #1A1A1A;
-    color: #FFCC00;
-    border: 1px solid #FFCC00;
+    color: #666666;
 }
 .btn-smack.btn-backup:hover,
 .btn-smack.btn-settings:hover {
-    background-color: #FFCC00;
-    color: #000000;
+    background-color: #333333;
+    color: #FFFFFF;
 }
 
-/* Live Site stays themed Black/Yellow */
+/* Live Site stays themed white/black */
 .btn-smack.btn-live {
-    background-color: #FFCC00;
-    color: #000000;
-}
-.btn-smack.btn-live:hover {
     background-color: #FFFFFF;
     color: #000000;
 }
+.btn-smack.btn-live:hover {
+    background-color: #AAAAAA;
+    color: #000000;
+}
 
-/* All other buttons universal yellow glow */
+/* All other buttons universal white glow */
 button:hover {
-    box-shadow: 0 0 16px rgba(255, 204, 0, 0.3);
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.3);
 }
 
 /* INCOMING / BROADCASTING nav buttons */
 .btn-clear {
     background-color: transparent;
-    color: #888888;
+    color: #666666;
     border-color: #1A1A1A;
 }
 .btn-clear:hover {
-    background-color: #111111;
-    color: #FFCC00;
-    border-color: #FFCC00;
+    background-color: #0D0D0D;
+    color: #FFFFFF;
+    border-color: #FFFFFF;
 }
 .btn-clear.active {
-    background-color: #111111;
-    color: #FFCC00;
-    border-color: #FFCC00;
-    box-shadow: 0 0 10px rgba(255, 204, 0, 0.25);
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+    border-color: #FFFFFF;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
 }
 
 /* Action Links */
 .action-authorize, .action-edit {
-    color: #FFCC00;
-    border-color: #FFCC00;
+    color: #AAAAAA;
+    border-color: #1A1A1A;
 }
 .action-authorize:hover, .action-edit:hover {
-    background-color: #FFCC00;
+    background-color: #FFFFFF;
     color: #000000;
 }
 
 .action-delete {
-    color: #FF4444;
-    border-color: #FF4444;
+    color: #AA0000;
+    border-color: #333333;
 }
 .action-delete:hover {
-    background-color: #FF4444;
+    background-color: #AA0000;
     color: #FFFFFF;
 }
 
@@ -276,7 +272,7 @@ button:hover {
     background-color: #000000;
 }
 .item-text strong {
-    color: #EEEEEE;
+    color: #FFFFFF;
 }
 .item-text .dim {
     color: #444444;
@@ -285,10 +281,10 @@ button:hover {
 /* 10: DASH/STATS */
 .stat-box {
     border-color: #1A1A1A;
-    background-color: #111111;
+    background-color: #050505;
 }
 .stat-val {
-    color: #FFCC00;
+    color: #FFFFFF;
 }
 .stat-label {
     color: #666666;
@@ -296,24 +292,24 @@ button:hover {
 .stat-row {
     border-bottom-color: #1A1A1A;
 }
-.stat-row .label { color: #666666; }
+.stat-row .label { color: #444444; }
 .stat-row .value { color: #FFFFFF; }
-.highlight-green { color: #FFCC00 !important; }
+.highlight-green { color: #FFFFFF !important; }
 
 /* 11: PAGINATION */
 .pagination a {
-    background-color: #111111;
+    background-color: #0D0D0D;
     border-color: #1A1A1A;
-    color: #888888;
+    color: #666666;
 }
 .pagination a.active {
-    background-color: #FFCC00;
-    border-color: #FFCC00;
+    background-color: #FFFFFF;
+    border-color: #FFFFFF;
     color: #000000;
 }
 .pagination a:hover {
-    border-color: #FFCC00;
-    color: #FFCC00;
+    border-color: #FFFFFF;
+    color: #FFFFFF;
 }
 
 /* 12: PROGRESS/UPLOADS */
@@ -322,42 +318,42 @@ button:hover {
     border-color: #1A1A1A;
 }
 .progress-bar {
-    background-color: #FFCC00;
+    background-color: #FFFFFF;
 }
 .file-upload-wrapper {
-    border-color: #FFCC00;
-    background-color: #1A1A1A;
+    border-color: #1A1A1A;
+    background-color: #0D0D0D;
 }
 .file-custom-btn {
-    background-color: #000000;
-    color: #FFCC00;
-    border-right-color: #FFCC00;
+    background-color: #333333;
+    color: #FFFFFF;
+    border-right-color: #1A1A1A;
 }
 .file-custom-btn:hover {
-    background-color: #FFCC00;
+    background-color: #FFFFFF;
     color: #000000;
 }
 .file-name-display {
-    color: #888888;
+    color: #666666;
 }
 
 /* Inline checkbox labels (Built-in, N/A) — match input border treatment */
 .built-in-label {
     background-color: #1A1A1A;
-    border-color: #FFCC00;
-    color: #FFCC00;
+    border-color: #333333;
+    color: #888888;
 }
 .built-in-label:hover {
     border-color: #FFFFFF;
     color: #FFFFFF;
 }
 input[type="checkbox"] {
-    border-color: #FFCC00;
-    background-color: #000000;
+    border-color: #333333;
+    background-color: #050505;
 }
 input[type="checkbox"]:checked {
-    background-color: #FFCC00;
-    border-color: #FFCC00;
+    background-color: #FFFFFF;
+    border-color: #FFFFFF;
 }
 input[type="checkbox"]:checked::after {
     border-color: #000000;
@@ -365,16 +361,16 @@ input[type="checkbox"]:checked::after {
 
 /* 13: LOGIN & FOOTER */
 .login-box {
-    background-color: #111111;
+    background-color: #0D0D0D;
     border-color: #1A1A1A;
 }
 
 #admin-universal-footer {
-    background-color: #0A0A0A;
+    background-color: #050505;
     border-top-color: #1A1A1A;
 }
 .footer-left { color: #333333; font-size: 1rem; }
-.footer-left a { color: #FFCC00; border-bottom-color: #FFCC00; }
+.footer-left a { color: #666666; border-bottom-color: #1A1A1A; }
 .footer-left a:hover { color: #FFFFFF; border-bottom-color: #FFFFFF; }
 .footer-right { color: #333333; font-size: 1rem; }
 
@@ -383,27 +379,28 @@ input[type="checkbox"]:checked::after {
     border-color: #1A1A1A;
 }
 .skin-meta-wrap {
-    background-color: #111111;
+    background-color: #0D0D0D;
 }
 .skin-selector-wrap {
-    background-color: #0A0A0A;
+    background-color: #050505;
     border-left-color: #1A1A1A;
 }
-.theme-title-display { color: #FFCC00 !important; }
+.theme-title-display { color: #FFFFFF !important; }
 .skin-desc-text { color: #666666; }
 
 /* Filter + Reset buttons */
 .btn-smack-filter {
-    background-color: #FFCC00;
-    color: #000000;
+    background-color: #333333;
+    color: #FFFFFF;
 }
 .btn-smack-filter:hover {
     background-color: #FFFFFF;
     color: #000000;
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.4);
 }
 .btn-reset {
     background-color: transparent;
-    color: #666666;
+    color: #444444;
     border: 1px solid #1A1A1A;
     text-decoration: none;
     display: inline-flex;
@@ -416,21 +413,8 @@ input[type="checkbox"]:checked::after {
     border-radius: 4px;
 }
 .btn-reset:hover {
-    border-color: #FF4444;
-    color: #FF4444;
-}
-
-
-.alert-success {
-    color: #000000;
-    border-color: #FFCC00;
-    background-color: #FFCC00;
-}
-
-.alert-error {
-    color: #FFFFFF;
-    border-color: #FF4444;
-    background-color: #FF4444;
+    border-color: #AA0000;
+    color: #AA0000;
 }
 
 /* 16: INPUT RANGE (Webkit) */
@@ -438,37 +422,29 @@ input[type="range"]::-webkit-slider-runnable-track {
     background-color: #1A1A1A;
 }
 input[type="range"]::-webkit-slider-thumb {
-    background-color: #FFCC00;
-}
-/* Asset cards (Media Library) */
-.asset-card {
-    border-color: #1A1A1A;
-    background-color: #111111;
-}
-.asset-thumb-wrapper {
-    border-bottom-color: #1A1A1A;
-    background-color: #000000;
+    background-color: #FFFFFF;
 }
 
 /* 17: CSS OVERRIDE PAGE (smack-css.php) */
 .css-tab {
-    color: #666666;
+    color: #444;
     border-color: #1A1A1A;
 }
 
 .css-tab:hover {
-    color: #FFCC00;
-    border-color: #FFCC00;
+    color: #FFFFFF;
+    border-color: #FFFFFF;
 }
 
 .css-tab-active {
-    color: #FFCC00;
-    border-color: #FFCC00;
-    text-shadow: 0 0 8px rgba(255, 204, 0, 0.4);
-    box-shadow: 0 0 8px rgba(255, 204, 0, 0.15);
+    color: #FFFFFF;
+    border-color: #FFFFFF;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
 }
 
 .css-preview-block {
     border-color: #1A1A1A;
-    background-color: #0A0A0A;
+    background-color: #000000;
+    color: #FFFFFF; /* Fresh code glint */
 }

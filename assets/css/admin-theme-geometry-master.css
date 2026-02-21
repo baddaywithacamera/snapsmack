@@ -1058,6 +1058,15 @@ input[type="range"]:active::-webkit-slider-thumb {
 /* =============================================================================
  * 17: LOGIN
  * ============================================================================= */
+.login-body {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .login-container {
     width: 100%;
     height: 100vh;
@@ -1080,6 +1089,46 @@ input[type="range"]:active::-webkit-slider-thumb {
     font-size: 1.5rem;
     text-transform: uppercase;
     letter-spacing: 2px;
+}
+
+.login-box .control-group {
+    text-align: left;
+    margin-bottom: 20px;
+}
+
+.login-box .control-group label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.login-box .control-group input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.login-box .master-update-btn {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.back-link {
+    display: block;
+    margin-top: 25px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-decoration: none;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.back-link:hover {
+    opacity: 1;
 }
 
 /* =============================================================================
