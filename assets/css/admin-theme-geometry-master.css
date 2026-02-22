@@ -275,6 +275,17 @@ h2 {
     margin-bottom: 0;
 }
 
+/* control-group: alias for lens-input-wrapper — used on login and user forms */
+.control-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+}
+
+.control-group:last-of-type {
+    margin-bottom: 0;
+}
+
 label {
     display: block;
     text-transform: uppercase;
@@ -1058,15 +1069,6 @@ input[type="range"]:active::-webkit-slider-thumb {
 /* =============================================================================
  * 17: LOGIN
  * ============================================================================= */
-.login-body {
-    margin: 0;
-    padding: 0;
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
 .login-container {
     width: 100%;
     height: 100vh;

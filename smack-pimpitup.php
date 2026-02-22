@@ -1,11 +1,11 @@
 <?php
 /**
  * SnapSmack - Global Appearance Settings
- * Version: 16.46 - Direct DB State Recovery
+ * Version: 16.47 - Per-User Theme Persistence
  * -------------------------------------------------------------------------
- * - FIXED: Bypassed $settings array for active_theme to guarantee state recovery.
- * - FIXED: Dropped strict type checking in dropdown to prevent UI desync.
- * - MAPPED: All appearance logic consolidated to smack-pimpitup.php.
+ * - FIXED: Admin theme choice now saved to snap_users.preferred_skin for
+ *   the logged-in user, and $_SESSION['user_theme'] updated immediately.
+ * - PRESERVED: All 16.46 robustness fixes and null checks intact.
  * -------------------------------------------------------------------------
  */
 
@@ -63,8 +63,9 @@ foreach ($theme_dirs as $dir) {
     $admin_themes[$slug] = $meta;
 }
 
-// Determine active admin theme safely
-$db_admin_theme = $active_theme_db ? trim($active_theme_db) : 'midnight-lime';
+// Determine active admin theme — prefer user's session theme over global DB value
+$session_theme  = $_SESSION['user_theme'] ?? null;
+$db_admin_theme = $session_theme ?: ($active_theme_db ? trim($active_theme_db) : 'midnight-lime');
 $active_admin_slug = array_key_exists($db_admin_theme, $admin_themes) ? $db_admin_theme : 'midnight-lime';
 
 $current_admin_meta = $admin_themes[$active_admin_slug] ?? [
@@ -80,10 +81,20 @@ $current_admin_meta = $admin_themes[$active_admin_slug] ?? [
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_global_appearance'])) {
     
-    // Update Admin Theme Choice
+    // Update Admin Theme Choice — save globally AND per-user
     if (isset($_POST['active_admin_theme'])) {
+        $chosen_theme = $_POST['active_admin_theme'];
+
+        // Global fallback (used for login screen and users without a preference)
         $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_theme', ?) ON DUPLICATE KEY UPDATE setting_val = ?");
-        $stmt->execute([$_POST['active_admin_theme'], $_POST['active_admin_theme']]);
+        $stmt->execute([$chosen_theme, $chosen_theme]);
+
+        // Per-user preference
+        $stmt = $pdo->prepare("UPDATE snap_users SET preferred_skin = ? WHERE username = ?");
+        $stmt->execute([$chosen_theme, $_SESSION['user_login']]);
+
+        // Keep the session in sync so the change is visible immediately
+        $_SESSION['user_theme'] = $chosen_theme;
     }
 
     // Update Archive Logic (Numeric Settings)

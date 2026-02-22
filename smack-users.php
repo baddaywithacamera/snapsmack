@@ -63,20 +63,28 @@ include 'core/sidebar.php';
     <div class="box">
         <h3>ADD NEW SYSTEM USER</h3>
         <form method="POST">
-            <label>USERNAME</label>
-            <input type="text" name="username" required autocomplete="off">
+            <div class="control-group">
+                <label>USERNAME</label>
+                <input type="text" name="username" required autocomplete="off">
+            </div>
 
-            <label>EMAIL ADDRESS</label>
-            <input type="email" name="email" required autocomplete="off">
+            <div class="control-group">
+                <label>EMAIL ADDRESS</label>
+                <input type="email" name="email" required autocomplete="off">
+            </div>
 
-            <label>SYSTEM ROLE</label>
-            <select name="user_role">
-                <option value="editor">Editor (Content Only)</option>
-                <option value="admin">Administrator (Full Access)</option>
-            </select>
-            
-            <label>PASSWORD</label>
-            <input type="password" name="password" required>
+            <div class="control-group">
+                <label>SYSTEM ROLE</label>
+                <select name="user_role">
+                    <option value="editor">Editor (Content Only)</option>
+                    <option value="admin">Administrator (Full Access)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>PASSWORD</label>
+                <input type="password" name="password" required>
+            </div>
 
             <button type="submit" name="add_user" class="master-update-btn">CREATE USER ACCESS</button>
         </form>
