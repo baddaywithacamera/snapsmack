@@ -1551,3 +1551,29 @@ input[type="range"]:active::-webkit-slider-thumb {
 .box--exif-specs {
     margin-top: 20px;
 }
+
+/* =============================================================================
+ * 26: TABBED PAGE HEADERS
+ * Title left with ruled line stopping at 50% (left column edge).
+ * Buttons absolutely positioned top right. No line under buttons.
+ * ============================================================================= */
+.page-header-split {
+    position: relative;
+    margin-bottom: 30px;
+}
+
+.page-header-split h2 {
+    width: calc(50% - 15px);
+}
+
+.page-header-split .page-header-tabs {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    gap: 10px;
+}
+
+.no-border {
+    border: none !important;
+}
