@@ -1,0 +1,452 @@
+/* * SNAPSMACK MASTER COLOUR INDEX (THE PAINT)
+ * ---------------------------------------------------------------------------
+ * 01: Global Base       | 06: Form Elements     | 11: Pagination
+ * 02: Sidebar Nav       | 07: Transmissions     | 12: Progress/Uploads
+ * 03: Main Headers      | 08: Buttons/Actions   | 13: Login/Footer
+ * 04: Content Boxes     | 09: Item Lists        | 14: Appearance
+ * 05: Media Previews    | 10: Dash/Stats        | 15: Overrides
+ * ---------------------------------------------------------------------------
+ * v2026.1 - PEACH MELBA (LIGHT THEME)
+ * PALETTE: #fff5f0 (Bg), #ff825c (Peach Bright), #32998a (Teal Accent), #fcd5c5 (Border)
+ */
+
+/* 01: GLOBAL BASE */
+html, body {
+    background-color: #fff5f0;
+    color: #4a362d;
+    color-scheme: light;
+}
+
+/* 02: SIDEBAR NAVIGATION */
+.sidebar {
+    background-color: #fff5f0;
+    border-right-color: #fcd5c5;
+}
+
+.sidebar h2 {
+    color: #ff825c;
+    border-bottom-color: #fcd5c5;
+}
+
+.sidebar li {
+    border-bottom-color: #fcd5c5;
+}
+
+.sidebar a {
+    color: #8a6c5f;
+}
+
+.sidebar a:hover,
+.sidebar li.active a {
+    color: #ff825c;
+    text-shadow: 0 0 8px rgba(255, 130, 92, 0.3);
+}
+
+.sidebar li.active {
+    border-left: none;
+}
+
+.sidebar li.nav-group {
+    color: #b89f95;
+    background-color: #fff5f0;
+}
+
+.sidebar ul.sub-nav {
+    border-left-color: #ff825c;
+}
+
+.sidebar-bottom {
+    background-color: #fff5f0;
+    border-top: none;
+}
+
+.sidebar .logout {
+    color: #d9534f;
+    font-weight: 700;
+}
+
+.sidebar .logout:hover {
+    color: #c9302c;
+}
+
+.credits-admin {
+    color: #b89f95;
+}
+
+/* 03: MAIN HEADERS */
+.header-row {
+    border-bottom-color: #fcd5c5;
+}
+
+h2 {
+    color: #ff825c;
+    border-bottom-color: #fcd5c5;
+}
+
+/* 04: CONTENT BOXES */
+.box {
+    background-color: #ffefe8;
+    border-color: #fcd5c5;
+}
+
+.box h3, .section-header {
+    color: #ff825c;
+    border-bottom-color: #fcd5c5;
+}
+
+.post-col-right {
+    border-left-color: #fcd5c5;
+}
+
+/* 05: FORM ELEMENTS */
+label {
+    color: #8a6c5f;
+}
+
+input[type="text"], input[type="number"], input[type="email"], input[type="password"],
+input[type="datetime-local"], input[type="date"], select, textarea,
+.preview-box, .select-box {
+    background-color: #ffffff;
+    border-color: #f0bca5;
+    color: #4a362d;
+}
+
+/* Read-only display fields get a lighter border for the inset look */
+.read-only-display {
+    background-color: #ffffff;
+    border-color: #fcd5c5;
+    color: #4a362d;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: #ff825c;
+    background-color: #ffffff;
+    box-shadow: 0 0 8px rgba(255, 130, 92, 0.2);
+    outline: none;
+}
+
+/* 06: MEDIA PREVIEWS */
+.preview-frame {
+    background-color: #ffffff;
+    border-color: #fcd5c5;
+}
+
+/* 07: TRANSMISSIONS (The Fixes) */
+.transmission-header {
+    /* Geometry handled in Master Geometry file */
+}
+
+/* The Status Pill */
+.status-online {
+    color: #32998a;
+    border-color: #32998a;
+    background-color: rgba(50, 153, 138, 0.1);
+}
+
+/* Offline simulated via dimming */
+.status-offline {
+    color: #8a6c5f;
+    border-color: #8a6c5f;
+    background-color: rgba(138, 108, 95, 0.1);
+}
+
+/* Sender Name */
+.signal-sender {
+    color: #4a362d;
+    font-weight: 600;
+}
+.signal-sender span,
+.signal-sender span.dim {
+    color: #8a6c5f;
+    font-weight: 400;
+}
+
+/* The Body Text */
+.signal-body {
+    color: #4a362d;
+    background-color: #ffffff;
+    border: 1px solid #fcd5c5;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+/* Metadata Links */
+.signal-meta {
+    color: #8a6c5f;
+}
+.signal-meta a {
+    color: #e66a45 !important;
+    border-bottom-color: transparent;
+}
+.signal-meta a:hover {
+    color: #ff825c !important;
+    border-bottom-color: #ff825c;
+}
+.signal-meta .dim {
+    color: #b89f95;
+}
+
+/* 08: BUTTONS & ACTIONS */
+
+/* Bright peach buttons (New Post) — go deeper on hover */
+.btn-smack, .master-update-btn {
+    background-color: #ff825c;
+    color: #ffffff;
+}
+.btn-smack:hover, .master-update-btn:hover {
+    background-color: #e66a45;
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(255, 130, 92, 0.4);
+}
+
+/* Dim buttons (Backup, Settings) — go peach on hover */
+.btn-smack.btn-backup,
+.btn-smack.btn-settings {
+    background-color: #fcd5c5;
+    color: #4a362d;
+}
+.btn-smack.btn-backup:hover,
+.btn-smack.btn-settings:hover {
+    background-color: #ff825c;
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(255, 130, 92, 0.4);
+}
+
+/* Live Site utilizes the complimentary Teal accent */
+.btn-smack.btn-live {
+    background-color: #32998a;
+    color: #ffffff;
+}
+.btn-smack.btn-live:hover {
+    background-color: #257368;
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(50, 153, 138, 0.4);
+}
+
+/* All other buttons */
+button:hover {
+    box-shadow: 0 0 16px rgba(255, 130, 92, 0.3);
+}
+
+/* INCOMING / BROADCASTING nav buttons */
+.btn-clear {
+    background-color: transparent;
+    color: #8a6c5f;
+    border-color: #f0bca5;
+}
+.btn-clear:hover {
+    background-color: #ffefe8;
+    color: #4a362d;
+    border-color: #8a6c5f;
+}
+.btn-clear.active {
+    background-color: #ffefe8;
+    color: #ff825c;
+    border-color: #ff825c;
+    box-shadow: 0 0 10px rgba(255, 130, 92, 0.2);
+}
+
+/* Action Links */
+.action-authorize, .action-edit {
+    color: #32998a;
+    border-color: #32998a;
+}
+.action-authorize:hover {
+    background-color: #32998a;
+    color: #ffffff;
+}
+
+/* Delete action */
+.action-delete {
+    color: #d9534f;
+    border-color: #d9534f;
+}
+.action-delete:hover {
+    background-color: #d9534f;
+    color: #ffffff;
+}
+
+/* 09: ITEM LAYOUTS */
+.recent-item {
+    border-bottom-color: #fcd5c5;
+}
+.archive-thumb {
+    border-color: #fcd5c5;
+    background-color: #ffffff;
+}
+.item-text strong {
+    color: #4a362d;
+}
+.item-text .dim {
+    color: #8a6c5f;
+}
+
+/* 10: DASH/STATS */
+.stat-box {
+    border-color: #fcd5c5;
+    background-color: #ffffff;
+}
+.stat-val {
+    color: #ff825c;
+}
+.stat-label {
+    color: #8a6c5f;
+}
+.stat-row {
+    border-bottom-color: #fcd5c5;
+}
+.stat-row .label { color: #8a6c5f; }
+.stat-row .value { color: #4a362d; }
+.highlight-green { color: #32998a; }
+
+/* 11: PAGINATION */
+.pagination a {
+    background-color: #ffffff;
+    border-color: #fcd5c5;
+    color: #8a6c5f;
+}
+.pagination a.active {
+    background-color: #ff825c;
+    border-color: #ff825c;
+    color: #ffffff;
+}
+.pagination a:hover {
+    border-color: #ff825c;
+    color: #ff825c;
+}
+
+/* 12: PROGRESS/UPLOADS */
+.progress-container {
+    background-color: #ffffff;
+    border-color: #fcd5c5;
+}
+.progress-bar {
+    background-color: #32998a;
+}
+.file-upload-wrapper {
+    border-color: #fcd5c5;
+    background-color: #ffffff;
+}
+.file-custom-btn {
+    background-color: #ffefe8;
+    color: #4a362d;
+    border-right-color: #f0bca5;
+}
+.file-custom-btn:hover {
+    background-color: #f0bca5;
+    color: #4a362d;
+}
+.file-name-display {
+    color: #8a6c5f;
+}
+
+/* Inline checkbox labels */
+.built-in-label {
+    background-color: #ffefe8;
+    border-color: #fcd5c5;
+    color: #8a6c5f;
+}
+.built-in-label:hover {
+    border-color: #ff825c;
+    color: #4a362d;
+}
+input[type="checkbox"] {
+    border-color: #f0bca5;
+    background-color: #ffffff;
+}
+input[type="checkbox"]:checked {
+    background-color: #ff825c;
+    border-color: #ff825c;
+}
+input[type="checkbox"]:checked::after {
+    border-color: #ffffff;
+}
+
+/* 13: LOGIN & FOOTER */
+.login-box {
+    background-color: #ffefe8;
+    border-color: #fcd5c5;
+}
+
+#admin-universal-footer {
+    background-color: #fff5f0;
+    border-top-color: #fcd5c5;
+}
+.footer-left { color: #8a6c5f; font-size: 1rem; }
+.footer-left a { color: #4a362d; border-bottom-color: #f0bca5; }
+.footer-left a:hover { color: #ff825c; border-bottom-color: #ff825c; }
+.footer-right { color: #8a6c5f; font-size: 1rem; }
+
+/* 14: APPEARANCE */
+.appearance-controller {
+    border-color: #fcd5c5;
+}
+.skin-meta-wrap {
+    background-color: #ffffff;
+}
+.skin-selector-wrap {
+    background-color: #fff5f0;
+    border-left-color: #fcd5c5;
+}
+.theme-title-display { color: #ff825c; }
+.skin-desc-text { color: #8a6c5f; }
+
+/* Filter + Reset buttons */
+.btn-smack-filter {
+    background-color: #ff825c;
+    color: #ffffff;
+}
+.btn-smack-filter:hover {
+    background-color: #e66a45;
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(255, 130, 92, 0.4);
+}
+.btn-reset {
+    background-color: transparent;
+    color: #8a6c5f;
+    border: 1px solid #fcd5c5;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 4px;
+}
+.btn-reset:hover {
+    border-color: #d9534f;
+    color: #d9534f;
+}
+
+.alert-success {
+    color: #32998a;
+    border-color: #32998a;
+    background-color: rgba(50, 153, 138, 0.1);
+}
+
+.alert-error {
+    color: #d9534f;
+    border-color: #d9534f;
+    background-color: rgba(217, 83, 79, 0.1);
+}
+
+/* 16: INPUT RANGE (Webkit) */
+input[type="range"]::-webkit-slider-runnable-track {
+    background-color: #fcd5c5;
+}
+input[type="range"]::-webkit-slider-thumb {
+    background-color: #ff825c;
+}
+/* Asset cards (Media Library) */
+.asset-card {
+    border-color: #fcd5c5;
+    background-color: #ffefe8;
+}
+.asset-thumb-wrapper {
+    border-bottom-color: #fcd5c5;
+    background-color: #ffffff;
+}

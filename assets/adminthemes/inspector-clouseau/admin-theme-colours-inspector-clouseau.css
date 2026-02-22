@@ -1,0 +1,453 @@
+/* * SNAPSMACK MASTER COLOUR INDEX (THE PAINT)
+ * ---------------------------------------------------------------------------
+ * 01: Global Base       | 06: Form Elements     | 11: Pagination
+ * 02: Sidebar Nav       | 07: Transmissions     | 12: Progress/Uploads
+ * 03: Main Headers      | 08: Buttons/Actions   | 13: Login/Footer
+ * 04: Content Boxes     | 09: Item Lists        | 14: Appearance
+ * 05: Media Previews    | 10: Dash/Stats        | 15: Overrides
+ * ---------------------------------------------------------------------------
+ * v2026.1 - INSPECTOR CLOUSEAU (LIGHT THEME)
+ * PALETTE: #fdf0f6 (Bg), #e83e8c (Hot Pink), #3b6991 (Dusty Navy), #f0c8dc (Border)
+ */
+
+/* 01: GLOBAL BASE */
+html, body {
+    background-color: #fdf0f6;
+    color: #4a303d;
+    color-scheme: light;
+}
+
+/* 02: SIDEBAR NAVIGATION */
+.sidebar {
+    background-color: #fdf0f6;
+    border-right-color: #f0c8dc;
+}
+
+.sidebar h2 {
+    color: #e83e8c;
+    border-bottom-color: #f0c8dc;
+}
+
+.sidebar li {
+    border-bottom-color: #f0c8dc;
+}
+
+.sidebar a {
+    color: #8f6b7d;
+}
+
+.sidebar a:hover,
+.sidebar li.active a {
+    color: #e83e8c;
+    text-shadow: 0 0 8px rgba(232, 62, 140, 0.3);
+}
+
+.sidebar li.active {
+    border-left: none;
+}
+
+.sidebar li.nav-group {
+    color: #b598a6;
+    background-color: #fdf0f6;
+}
+
+.sidebar ul.sub-nav {
+    border-left-color: #e83e8c;
+}
+
+.sidebar-bottom {
+    background-color: #fdf0f6;
+    border-top: none;
+}
+
+.sidebar .logout {
+    color: #d9534f;
+    font-weight: 700;
+}
+
+.sidebar .logout:hover {
+    color: #c9302c;
+}
+
+.credits-admin {
+    color: #b598a6;
+}
+
+/* 03: MAIN HEADERS */
+.header-row {
+    border-bottom-color: #f0c8dc;
+}
+
+h2 {
+    color: #e83e8c;
+    border-bottom-color: #f0c8dc;
+}
+
+/* 04: CONTENT BOXES */
+.box {
+    background-color: #fae3ef;
+    border-color: #f0c8dc;
+}
+
+.box h3, .section-header {
+    color: #e83e8c;
+    border-bottom-color: #f0c8dc;
+}
+
+.post-col-right {
+    border-left-color: #f0c8dc;
+}
+
+/* 05: FORM ELEMENTS */
+label {
+    color: #8f6b7d;
+}
+
+input[type="text"], input[type="number"], input[type="email"], input[type="password"],
+input[type="datetime-local"], input[type="date"], select, textarea,
+.preview-box, .select-box {
+    background-color: #ffffff;
+    border-color: #e6b3cc;
+    color: #4a303d;
+}
+
+/* Read-only display fields get a lighter border for the inset look */
+.read-only-display {
+    background-color: #ffffff;
+    border-color: #f0c8dc;
+    color: #4a303d;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: #e83e8c;
+    background-color: #ffffff;
+    box-shadow: 0 0 8px rgba(232, 62, 140, 0.2);
+    outline: none;
+}
+
+/* 06: MEDIA PREVIEWS */
+.preview-frame {
+    background-color: #ffffff;
+    border-color: #f0c8dc;
+}
+
+/* 07: TRANSMISSIONS (The Fixes) */
+.transmission-header {
+    /* Geometry handled in Master Geometry file */
+}
+
+/* The Status Pill */
+.status-online {
+    color: #3b6991;
+    border-color: #3b6991;
+    background-color: rgba(59, 105, 145, 0.1);
+}
+
+/* Offline simulated via dimming */
+.status-offline {
+    color: #8f6b7d;
+    border-color: #8f6b7d;
+    background-color: rgba(143, 107, 125, 0.1);
+}
+
+/* Sender Name */
+.signal-sender {
+    color: #4a303d;
+    font-weight: 600;
+}
+.signal-sender span,
+.signal-sender span.dim {
+    color: #8f6b7d;
+    font-weight: 400;
+}
+
+/* The Body Text */
+.signal-body {
+    color: #4a303d;
+    background-color: #ffffff;
+    border: 1px solid #f0c8dc;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+/* Metadata Links */
+.signal-meta {
+    color: #8f6b7d;
+}
+.signal-meta a {
+    color: #c22970 !important;
+    border-bottom-color: transparent;
+}
+.signal-meta a:hover {
+    color: #e83e8c !important;
+    border-bottom-color: #e83e8c;
+}
+.signal-meta .dim {
+    color: #b598a6;
+}
+
+/* 08: BUTTONS & ACTIONS */
+
+/* Bright pink buttons (New Post) — go deeper on hover */
+.btn-smack, .master-update-btn {
+    background-color: #e83e8c;
+    color: #ffffff;
+}
+.btn-smack:hover, .master-update-btn:hover {
+    background-color: #c22970;
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(232, 62, 140, 0.4);
+}
+
+/* Dim buttons (Backup, Settings) — go pink on hover */
+.btn-smack.btn-backup,
+.btn-smack.btn-settings {
+    background-color: #f0c8dc;
+    color: #4a303d;
+}
+.btn-smack.btn-backup:hover,
+.btn-smack.btn-settings:hover {
+    background-color: #e83e8c;
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(232, 62, 140, 0.4);
+}
+
+/* Live Site utilizes the Dusty Navy accent */
+.btn-smack.btn-live {
+    background-color: #3b6991;
+    color: #ffffff;
+}
+.btn-smack.btn-live:hover {
+    background-color: #2a4c69;
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(59, 105, 145, 0.4);
+}
+
+/* All other buttons */
+button:hover {
+    box-shadow: 0 0 16px rgba(232, 62, 140, 0.3);
+}
+
+/* INCOMING / BROADCASTING nav buttons */
+.btn-clear {
+    background-color: transparent;
+    color: #8f6b7d;
+    border-color: #e6b3cc;
+}
+.btn-clear:hover {
+    background-color: #fae3ef;
+    color: #4a303d;
+    border-color: #8f6b7d;
+}
+.btn-clear.active {
+    background-color: #fae3ef;
+    color: #e83e8c;
+    border-color: #e83e8c;
+    box-shadow: 0 0 10px rgba(232, 62, 140, 0.2);
+}
+
+/* Action Links */
+.action-authorize, .action-edit {
+    color: #3b6991;
+    border-color: #3b6991;
+}
+.action-authorize:hover {
+    background-color: #3b6991;
+    color: #ffffff;
+}
+
+/* Delete action */
+.action-delete {
+    color: #d9534f;
+    border-color: #d9534f;
+}
+.action-delete:hover {
+    background-color: #d9534f;
+    color: #ffffff;
+}
+
+/* 09: ITEM LAYOUTS */
+.recent-item {
+    border-bottom-color: #f0c8dc;
+}
+.archive-thumb {
+    border-color: #f0c8dc;
+    background-color: #ffffff;
+}
+.item-text strong {
+    color: #4a303d;
+}
+.item-text .dim {
+    color: #8f6b7d;
+}
+
+/* 10: DASH/STATS */
+.stat-box {
+    border-color: #f0c8dc;
+    background-color: #ffffff;
+}
+.stat-val {
+    color: #e83e8c;
+}
+.stat-label {
+    color: #8f6b7d;
+}
+.stat-row {
+    border-bottom-color: #f0c8dc;
+}
+.stat-row .label { color: #8f6b7d; }
+.stat-row .value { color: #4a303d; }
+.highlight-green { color: #3b6991; }
+
+/* 11: PAGINATION */
+.pagination a {
+    background-color: #ffffff;
+    border-color: #f0c8dc;
+    color: #8f6b7d;
+}
+.pagination a.active {
+    background-color: #e83e8c;
+    border-color: #e83e8c;
+    color: #ffffff;
+}
+.pagination a:hover {
+    border-color: #e83e8c;
+    color: #e83e8c;
+}
+
+/* 12: PROGRESS/UPLOADS */
+.progress-container {
+    background-color: #ffffff;
+    border-color: #f0c8dc;
+}
+.progress-bar {
+    background-color: #3b6991;
+}
+.file-upload-wrapper {
+    border-color: #f0c8dc;
+    background-color: #ffffff;
+}
+.file-custom-btn {
+    background-color: #fae3ef;
+    color: #4a303d;
+    border-right-color: #e6b3cc;
+}
+.file-custom-btn:hover {
+    background-color: #e6b3cc;
+    color: #4a303d;
+}
+.file-name-display {
+    color: #8f6b7d;
+}
+
+/* Inline checkbox labels */
+.built-in-label {
+    background-color: #fae3ef;
+    border-color: #f0c8dc;
+    color: #8f6b7d;
+}
+.built-in-label:hover {
+    border-color: #e83e8c;
+    color: #4a303d;
+}
+input[type="checkbox"] {
+    border-color: #e6b3cc;
+    background-color: #ffffff;
+}
+input[type="checkbox"]:checked {
+    background-color: #e83e8c;
+    border-color: #e83e8c;
+}
+input[type="checkbox"]:checked::after {
+    border-color: #ffffff;
+}
+
+/* 13: LOGIN & FOOTER */
+.login-box {
+    background-color: #fae3ef;
+    border-color: #f0c8dc;
+}
+
+#admin-universal-footer {
+    background-color: #fdf0f6;
+    border-top-color: #f0c8dc;
+}
+.footer-left { color: #8f6b7d; font-size: 1rem; }
+.footer-left a { color: #4a303d; border-bottom-color: #e6b3cc; }
+.footer-left a:hover { color: #e83e8c; border-bottom-color: #e83e8c; }
+.footer-right { color: #8f6b7d; font-size: 1rem; }
+
+/* 14: APPEARANCE */
+.appearance-controller {
+    border-color: #f0c8dc;
+}
+.skin-meta-wrap {
+    background-color: #ffffff;
+}
+.skin-selector-wrap {
+    background-color: #fdf0f6;
+    border-left-color: #f0c8dc;
+}
+.theme-title-display { color: #e83e8c; }
+.skin-desc-text { color: #8f6b7d; }
+
+/* Filter + Reset buttons */
+.btn-smack-filter {
+    background-color: #e83e8c;
+    color: #ffffff;
+}
+.btn-smack-filter:hover {
+    background-color: #c22970;
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(232, 62, 140, 0.4);
+}
+.btn-reset {
+    background-color: transparent;
+    color: #8f6b7d;
+    border: 1px solid #f0c8dc;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 4px;
+}
+.btn-reset:hover {
+    border-color: #d9534f;
+    color: #d9534f;
+}
+
+.alert-success {
+    color: #3b6991;
+    border-color: #3b6991;
+    background-color: rgba(59, 105, 145, 0.1);
+}
+
+.alert-error {
+    color: #d9534f;
+    border-color: #d9534f;
+    background-color: rgba(217, 83, 79, 0.1);
+}
+
+/* 16: INPUT RANGE (Webkit) */
+input[type="range"]::-webkit-slider-runnable-track {
+    background-color: #f0c8dc;
+}
+input[type="range"]::-webkit-slider-thumb {
+    background-color: #e83e8c;
+}
+
+/* Asset cards (Media Library) */
+.asset-card {
+    border-color: #f0c8dc;
+    background-color: #fae3ef;
+}
+.asset-thumb-wrapper {
+    border-bottom-color: #f0c8dc;
+    background-color: #ffffff;
+}

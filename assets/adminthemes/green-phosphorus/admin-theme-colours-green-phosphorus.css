@@ -1,0 +1,452 @@
+/* * SNAPSMACK MASTER COLOUR INDEX (THE PAINT)
+ * ---------------------------------------------------------------------------
+ * 01: Global Base       | 06: Form Elements     | 11: Pagination
+ * 02: Sidebar Nav       | 07: Transmissions     | 12: Progress/Uploads
+ * 03: Main Headers      | 08: Buttons/Actions   | 13: Login/Footer
+ * 04: Content Boxes     | 09: Item Lists        | 14: Appearance
+ * 05: Media Previews    | 10: Dash/Stats        | 15: Overrides
+ * ---------------------------------------------------------------------------
+ * v2026.1 - GREEN PHOSPHORUS (MONOCHROME)
+ * PALETTE: #050505 (Bg), #33ff00 (Green Bright), #1a8000 (Green Dim), #0a3300 (Border)
+ */
+
+/* 01: GLOBAL BASE */
+html, body {
+    background-color: #050505;
+    color: #29cc00;
+    color-scheme: dark;
+}
+
+/* 02: SIDEBAR NAVIGATION */
+.sidebar {
+    background-color: #050505;
+    border-right-color: #0a3300;
+}
+
+.sidebar h2 {
+    color: #33ff00;
+    border-bottom-color: #0a3300;
+}
+
+.sidebar li {
+    border-bottom-color: #0a3300;
+}
+
+.sidebar a {
+    color: #1a8000;
+}
+
+.sidebar a:hover,
+.sidebar li.active a {
+    color: #33ff00;
+    text-shadow: 0 0 8px rgba(51, 255, 0, 0.5);
+}
+
+.sidebar li.active {
+    border-left: none;
+}
+
+.sidebar li.nav-group {
+    color: #146600;
+    background-color: #050505;
+}
+
+.sidebar ul.sub-nav {
+    border-left-color: #33ff00;
+}
+
+.sidebar-bottom {
+    background-color: #050505;
+    border-top: none;
+}
+
+.sidebar .logout {
+    color: #24b300;
+    font-weight: 700;
+}
+
+.sidebar .logout:hover {
+    color: #33ff00;
+}
+
+.credits-admin {
+    color: #146600;
+}
+
+/* 03: MAIN HEADERS */
+.header-row {
+    border-bottom-color: #0a3300;
+}
+
+h2 {
+    color: #33ff00;
+    border-bottom-color: #0a3300;
+}
+
+/* 04: CONTENT BOXES */
+.box {
+    background-color: #0d0d0d;
+    border-color: #0a3300;
+}
+
+.box h3, .section-header {
+    color: #33ff00;
+    border-bottom-color: #0a3300;
+}
+
+.post-col-right {
+    border-left-color: #0a3300;
+}
+
+/* 05: FORM ELEMENTS */
+label {
+    color: #1a8000;
+}
+
+input[type="text"], input[type="number"], input[type="email"], input[type="password"],
+input[type="datetime-local"], input[type="date"], select, textarea,
+.preview-box, .select-box {
+    background-color: #000000;
+    border-color: #0f4d00;
+    color: #33ff00;
+}
+
+/* Read-only display fields get a lighter border for the inset look */
+.read-only-display {
+    background-color: #000000;
+    border-color: #0a3300;
+    color: #29cc00;
+    box-shadow: inset 0 1px 3px rgba(51,255,0,0.1);
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: #33ff00;
+    background-color: #000;
+    box-shadow: 0 0 8px rgba(51, 255, 0, 0.2);
+    outline: none;
+}
+
+/* 06: MEDIA PREVIEWS */
+.preview-frame {
+    background-color: #000;
+    border-color: #0a3300;
+}
+
+/* 07: TRANSMISSIONS (The Fixes) */
+.transmission-header {
+    /* Geometry handled in Master Geometry file */
+}
+
+/* The Status Pill */
+.status-online {
+    color: #33ff00;
+    border-color: #33ff00;
+    background-color: rgba(51, 255, 0, 0.05);
+}
+
+/* Offline simulated via dimming instead of red */
+.status-offline {
+    color: #1a8000;
+    border-color: #1a8000;
+    background-color: rgba(26, 128, 0, 0.05);
+}
+
+/* Sender Name */
+.signal-sender {
+    color: #29cc00;
+    font-weight: 600;
+}
+.signal-sender span,
+.signal-sender span.dim {
+    color: #1a8000;
+    font-weight: 400;
+}
+
+/* The Body Text */
+.signal-body {
+    color: #29cc00;
+    background-color: #000000;
+    border: 1px solid #0a3300;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+/* Metadata Links */
+.signal-meta {
+    color: #1a8000;
+}
+.signal-meta a {
+    color: #1f9900 !important;
+    border-bottom-color: transparent;
+}
+.signal-meta a:hover {
+    color: #33ff00 !important;
+    border-bottom-color: #33ff00;
+}
+.signal-meta .dim {
+    color: #146600;
+}
+
+/* 08: BUTTONS & ACTIONS */
+
+/* Bright green buttons (New Post, Live Site) — go dim on hover */
+.btn-smack, .master-update-btn {
+    background-color: #33ff00;
+    color: #000;
+}
+.btn-smack:hover, .master-update-btn:hover {
+    background-color: #0a3300;
+    color: #33ff00;
+    box-shadow: 0 0 16px rgba(51, 255, 0, 0.5);
+}
+
+/* Dim buttons (Backup, Settings) — go bright green on hover */
+.btn-smack.btn-backup,
+.btn-smack.btn-settings {
+    background-color: #0a3300;
+    color: #29cc00;
+}
+.btn-smack.btn-backup:hover,
+.btn-smack.btn-settings:hover {
+    background-color: #33ff00;
+    color: #000;
+    box-shadow: 0 0 16px rgba(51, 255, 0, 0.5);
+}
+
+/* Live Site stays bright, same hover treatment */
+.btn-smack.btn-live {
+    background-color: #33ff00;
+    color: #000;
+}
+.btn-smack.btn-live:hover {
+    background-color: #0a3300;
+    color: #33ff00;
+    box-shadow: 0 0 16px rgba(51, 255, 0, 0.5);
+}
+
+/* All other buttons */
+button:hover {
+    box-shadow: 0 0 16px rgba(51, 255, 0, 0.4);
+}
+
+/* INCOMING / BROADCASTING nav buttons */
+.btn-clear {
+    background-color: transparent;
+    color: #1a8000;
+    border-color: #0f4d00;
+}
+.btn-clear:hover {
+    background-color: #0a3300;
+    color: #29cc00;
+    border-color: #1a8000;
+}
+.btn-clear.active {
+    background-color: #0a3300;
+    color: #33ff00;
+    border-color: #33ff00;
+    box-shadow: 0 0 10px rgba(51, 255, 0, 0.25);
+}
+
+/* Action Links */
+.action-authorize, .action-edit {
+    color: #33ff00;
+    border-color: #33ff00;
+}
+.action-authorize:hover {
+    background-color: #33ff00;
+    color: #000;
+}
+
+/* Delete action scaled down via luminosity rather than color */
+.action-delete {
+    color: #24b300;
+    border-color: #24b300;
+}
+.action-delete:hover {
+    background-color: #24b300;
+    color: #000;
+}
+
+/* 09: ITEM LAYOUTS */
+.recent-item {
+    border-bottom-color: #0a3300;
+}
+.archive-thumb {
+    border-color: #0a3300;
+    background-color: #000;
+}
+.item-text strong {
+    color: #33ff00;
+}
+.item-text .dim {
+    color: #1a8000;
+}
+
+/* 10: DASH/STATS */
+.stat-box {
+    border-color: #0a3300;
+    background-color: #050505;
+}
+.stat-val {
+    color: #33ff00;
+}
+.stat-label {
+    color: #1a8000;
+}
+.stat-row {
+    border-bottom-color: #0a3300;
+}
+.stat-row .label { color: #1a8000; }
+.stat-row .value { color: #29cc00; }
+.highlight-green { color: #33ff00; }
+
+/* 11: PAGINATION */
+.pagination a {
+    background-color: #000000;
+    border-color: #0a3300;
+    color: #1a8000;
+}
+.pagination a.active {
+    background-color: #33ff00;
+    border-color: #33ff00;
+    color: #000;
+}
+.pagination a:hover {
+    border-color: #33ff00;
+    color: #33ff00;
+}
+
+/* 12: PROGRESS/UPLOADS */
+.progress-container {
+    background-color: #000000;
+    border-color: #0a3300;
+}
+.progress-bar {
+    background-color: #33ff00;
+}
+.file-upload-wrapper {
+    border-color: #0a3300;
+    background-color: #050505;
+}
+.file-custom-btn {
+    background-color: #0a3300;
+    color: #29cc00;
+    border-right-color: #0f4d00;
+}
+.file-custom-btn:hover {
+    background-color: #0f4d00;
+    color: #33ff00;
+}
+.file-name-display {
+    color: #1a8000;
+}
+
+/* Inline checkbox labels */
+.built-in-label {
+    background-color: #0d0d0d;
+    border-color: #0a3300;
+    color: #1a8000;
+}
+.built-in-label:hover {
+    border-color: #33ff00;
+    color: #29cc00;
+}
+input[type="checkbox"] {
+    border-color: #0f4d00;
+    background-color: #000000;
+}
+input[type="checkbox"]:checked {
+    background-color: #33ff00;
+    border-color: #33ff00;
+}
+input[type="checkbox"]:checked::after {
+    border-color: #000;
+}
+
+/* 13: LOGIN & FOOTER */
+.login-box {
+    background-color: #0d0d0d;
+    border-color: #0a3300;
+}
+
+#admin-universal-footer {
+    background-color: #050505;
+    border-top-color: #0a3300;
+}
+.footer-left { color: #146600; font-size: 1rem; }
+.footer-left a { color: #1a8000; border-bottom-color: #0f4d00; }
+.footer-left a:hover { color: #33ff00; border-bottom-color: #33ff00; }
+.footer-right { color: #146600; font-size: 1rem; }
+
+/* 14: APPEARANCE */
+.appearance-controller {
+    border-color: #0a3300;
+}
+.skin-meta-wrap {
+    background-color: #000000;
+}
+.skin-selector-wrap {
+    background-color: #050505;
+    border-left-color: #0a3300;
+}
+.theme-title-display { color: #33ff00; }
+.skin-desc-text { color: #1a8000; }
+
+/* Filter + Reset buttons */
+.btn-smack-filter {
+    background-color: #33ff00;
+    color: #000;
+}
+.btn-smack-filter:hover {
+    background-color: #0a3300;
+    color: #33ff00;
+    box-shadow: 0 0 16px rgba(51, 255, 0, 0.5);
+}
+.btn-reset {
+    background-color: transparent;
+    color: #1a8000;
+    border: 1px solid #0a3300;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 4px;
+}
+.btn-reset:hover {
+    border-color: #24b300;
+    color: #24b300;
+}
+
+.alert-success {
+    color: #33ff00;
+    border-color: #33ff00;
+    background-color: rgba(51, 255, 0, 0.1);
+}
+
+.alert-error {
+    color: #24b300;
+    border-color: #24b300;
+    background-color: rgba(26, 128, 0, 0.1);
+}
+
+/* 16: INPUT RANGE (Webkit) */
+input[type="range"]::-webkit-slider-runnable-track {
+    background-color: #0a3300;
+}
+input[type="range"]::-webkit-slider-thumb {
+    background-color: #33ff00;
+}
+/* Asset cards (Media Library) */
+.asset-card {
+    border-color: #0a3300;
+    background-color: #0d0d0d;
+}
+.asset-thumb-wrapper {
+    border-bottom-color: #0a3300;
+    background-color: #000000;
+}
