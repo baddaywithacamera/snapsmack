@@ -1,0 +1,133 @@
+<?php
+/**
+ * SnapSmack - Public Blogroll
+ * Version: 1.0 - Initial Build
+ * -------------------------------------------------------------------------
+ * - Queries snap_blogroll directly (not snap_pages).
+ * - Renders as static-transmission — inherits static page CSS foundation.
+ * - Groups peers by category, sorted alphabetically within each group.
+ * - Layout controlled via manifest BLOGROLL section options.
+ * - Modelled on page.php pattern: same bootstrap, skin detection, structure.
+ * -------------------------------------------------------------------------
+ */
+
+// 1. Error Reporting (Safety Valve)
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// 2. Bootstrap
+require_once __DIR__ . '/core/db.php';
+
+// INITIALIZE SCOPE
+$settings    = [];
+$site_name   = 'SNAPSMACK';
+$active_skin = 'smackdown';
+
+try {
+    $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    if (!defined('BASE_URL')) {
+        $db_url = $settings['site_url'] ?? '/';
+        define('BASE_URL', rtrim($db_url, '/') . '/');
+    }
+
+    $active_skin = $settings['active_skin'] ?? 'smackdown';
+    $site_name   = $settings['site_name'] ?? $site_name;
+
+    // GUARD: Redirect if blogroll is disabled
+    if (($settings['blogroll_enabled'] ?? '1') == '0') {
+        header("Location: " . (defined('BASE_URL') ? BASE_URL : '/'));
+        exit;
+    }
+
+    $peers = $pdo->query(
+        "SELECT b.*, c.cat_name 
+         FROM snap_blogroll b
+         LEFT JOIN snap_blogroll_cats c ON b.cat_id = c.id
+         ORDER BY c.cat_name ASC, b.peer_name ASC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (Exception $e) {
+    die("<div style='background:#300;color:#f99;padding:20px;border:1px solid red;font-family:monospace;'><h3>BLOGROLL_TRANSMISSION_ERROR</h3>" . $e->getMessage() . "</div>");
+}
+
+$skin_path = 'skins/' . $active_skin;
+
+if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
+    include __DIR__ . '/' . $skin_path . '/meta.php';
+}
+?>
+
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/hotkey-engine.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css?v=<?php echo time(); ?>">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>skins/<?php echo $active_skin; ?>/style.css?v=<?php echo time(); ?>">
+
+<body class="static-transmission is-blogroll">
+    <div id="page-wrapper">
+        <div id="scroll-stage">
+
+            <?php
+            $header_file = __DIR__ . '/' . $skin_path . '/header.php';
+            if (file_exists($header_file)) {
+                include $header_file;
+            } else {
+                include __DIR__ . '/core/header.php';
+            }
+            ?>
+
+            <div class="blogroll-canvas">
+                <h1 class="static-page-title">THE NETWORK</h1>
+
+                <?php if (empty($peers)): ?>
+                    <p class="dim">The network is currently offline. No peers found.</p>
+
+                <?php else:
+                    // Group peers by category
+                    $grouped = [];
+                    foreach ($peers as $p) {
+                        $cat = $p['cat_name'] ?: 'UNCATEGORIZED';
+                        $grouped[$cat][] = $p;
+                    }
+
+                    foreach ($grouped as $cat_name => $cat_peers):
+                ?>
+                    <div class="blogroll-category-block">
+                        <h2 class="blogroll-category-heading"><?php echo htmlspecialchars(strtoupper($cat_name)); ?></h2>
+                        <div class="blogroll-grid">
+                            <?php foreach ($cat_peers as $p): ?>
+                                <div class="blogroll-peer">
+                                    <div class="blogroll-peer-name">
+                                        <a href="<?php echo htmlspecialchars($p['peer_url']); ?>" target="_blank" rel="noopener noreferrer">
+                                            <?php echo htmlspecialchars($p['peer_name']); ?>
+                                        </a>
+                                    </div>
+                                    <p class="blogroll-peer-desc"><?php echo htmlspecialchars($p['peer_desc']); ?></p>
+                                    <span class="blogroll-peer-url dim"><?php echo htmlspecialchars($p['peer_url']); ?></span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+
+                <?php endforeach;
+                endif; ?>
+
+            </div><!-- /.blogroll-canvas -->
+
+            <?php
+            $footer_file = __DIR__ . '/' . $skin_path . '/footer.php';
+            if (file_exists($footer_file)) {
+                include $footer_file;
+            }
+            ?>
+
+        </div><!-- /#scroll-stage -->
+    </div><!-- /#page-wrapper -->
+
+    <?php
+    $scripts_file = __DIR__ . '/' . $skin_path . '/footer-scripts.php';
+    if (file_exists($scripts_file)) {
+        include $scripts_file;
+    }
+    ?>
+</body>
+</html>

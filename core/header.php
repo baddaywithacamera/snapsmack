@@ -1,10 +1,11 @@
 <?php
 /**
  * SnapSmack Core Header
- * Version: 6.0 - Persistence Integrated
- * MASTER DIRECTIVE: Full file return. 
- * - FIXED: Integrated sessionStorage check for F1 Help Toast.
- * - FIXED: Navigation order (HOME | ARCHIVE | GALLERY | DYNAMIC PAGES).
+ * Version: 6.1 - Blogroll Nav Link Added
+ * -------------------------------------------------------------------------
+ * - ADDED: BLOGROLL link to hardcoded nav.
+ * - Navigation order: HOME | ARCHIVE VIEW | GALLERY VIEW | BLOGROLL | DYNAMIC PAGES
+ * -------------------------------------------------------------------------
  */
 
 // 1. BOOTSTRAP ENVIRONMENT
@@ -59,6 +60,11 @@ if (sessionStorage.getItem('snapsmack_help_seen')) {
         <span class="sep">|</span>
 
         <a href="<?php echo BASE_URL; ?>gallery-wall.php">GALLERY VIEW</a>
+
+        <?php if (($settings['blogroll_enabled'] ?? '1') == '1'): ?>
+            <span class="sep">|</span>
+            <a href="<?php echo BASE_URL; ?>blogroll.php">BLOGROLL</a>
+        <?php endif; ?>
 
         <?php if (!empty($dynamic_pages)): ?>
             <span class="sep">|</span>

@@ -1,11 +1,10 @@
 <?php
 /**
  * SnapSmack - Global Appearance Settings
- * Version: 16.47 - Per-User Theme Persistence
+ * Version: 16.48 - Session Variable Consistency Fix
  * -------------------------------------------------------------------------
- * - FIXED: Admin theme choice now saved to snap_users.preferred_skin for
- *   the logged-in user, and $_SESSION['user_theme'] updated immediately.
- * - PRESERVED: All 16.46 robustness fixes and null checks intact.
+ * - FIXED: $_SESSION['user_theme'] replaced with $_SESSION['user_preferred_skin']
+ *   throughout for consistency with auth.php v1.8 and admin-header.php.
  * -------------------------------------------------------------------------
  */
 
@@ -15,11 +14,9 @@ require_once 'core/auth.php';
 // 1. DATA DISCOVERY
 // -------------------------------------------------------------------------
 
-// Direct DB queries to bypass any potential $settings cache/array misses
 $active_skin_db = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'active_skin'")->fetchColumn();
 $active_theme_db = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'active_theme'")->fetchColumn();
 
-// --- PUBLIC SKIN DISCOVERY ---
 $skin_dirs = array_filter(glob('skins/*'), 'is_dir');
 $available_skins = [];
 foreach ($skin_dirs as $dir) {
@@ -32,26 +29,21 @@ foreach ($skin_dirs as $dir) {
     }
 }
 
-// Set active manifest reference safely
 $current_db_active = $active_skin_db ?: array_key_first($available_skins);
 $manifest = [];
 if ($current_db_active && file_exists("skins/{$current_db_active}/manifest.php")) {
     $manifest = include "skins/{$current_db_active}/manifest.php";
 }
 
-// --- ADMIN THEME DISCOVERY ---
 $admin_themes = [];
 $theme_dirs = array_filter(glob('assets/adminthemes/*'), 'is_dir');
 foreach ($theme_dirs as $dir) {
     $slug = basename($dir);
     $manifest_path = "{$dir}/{$slug}-manifest.php";
     $meta = [];
-    
     if (file_exists($manifest_path)) {
         $meta = include $manifest_path;
     }
-    
-    // Robust fallback if manifest is missing, blank, or broken
     if (!is_array($meta)) {
         $meta = [
             'name' => strtoupper(str_replace('-', ' ', $slug)),
@@ -63,15 +55,14 @@ foreach ($theme_dirs as $dir) {
     $admin_themes[$slug] = $meta;
 }
 
-// Determine active admin theme — prefer user's session theme over global DB value
-$session_theme  = $_SESSION['user_theme'] ?? null;
-$db_admin_theme = $session_theme ?: ($active_theme_db ? trim($active_theme_db) : 'midnight-lime');
+$session_theme     = $_SESSION['user_preferred_skin'] ?? null;
+$db_admin_theme    = $session_theme ?: ($active_theme_db ? trim($active_theme_db) : 'midnight-lime');
 $active_admin_slug = array_key_exists($db_admin_theme, $admin_themes) ? $db_admin_theme : 'midnight-lime';
 
 $current_admin_meta = $admin_themes[$active_admin_slug] ?? [
-    'name' => $active_admin_slug, 
-    'description' => 'Admin theme manifest missing.', 
-    'version' => '1.0', 
+    'name' => $active_admin_slug,
+    'description' => 'Admin theme manifest missing.',
+    'version' => '1.0',
     'author' => 'System'
 ];
 
@@ -80,24 +71,19 @@ $current_admin_meta = $admin_themes[$active_admin_slug] ?? [
 // -------------------------------------------------------------------------
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_global_appearance'])) {
-    
-    // Update Admin Theme Choice — save globally AND per-user
+
     if (isset($_POST['active_admin_theme'])) {
         $chosen_theme = $_POST['active_admin_theme'];
 
-        // Global fallback (used for login screen and users without a preference)
         $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_theme', ?) ON DUPLICATE KEY UPDATE setting_val = ?");
         $stmt->execute([$chosen_theme, $chosen_theme]);
 
-        // Per-user preference
         $stmt = $pdo->prepare("UPDATE snap_users SET preferred_skin = ? WHERE username = ?");
         $stmt->execute([$chosen_theme, $_SESSION['user_login']]);
 
-        // Keep the session in sync so the change is visible immediately
-        $_SESSION['user_theme'] = $chosen_theme;
+        $_SESSION['user_preferred_skin'] = $chosen_theme;
     }
 
-    // Update Archive Logic (Numeric Settings)
     if (isset($_POST['settings']) && is_array($_POST['settings'])) {
         foreach ($_POST['settings'] as $vk => $vv) {
             $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
@@ -105,28 +91,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_global_appearanc
         }
     }
 
-    // Update Specific Skin Options
     if (isset($_POST['skin_opt']) && is_array($_POST['skin_opt'])) {
         foreach ($_POST['skin_opt'] as $s_key => $s_val) {
             $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
             $stmt->execute([$s_key, $s_val, $s_val]);
         }
     }
-    
+
     $all_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
-    
-    // --- GENERATE PUBLIC CSS ---
+
     $generated_public = "/* SKIN_START */\n";
     if (isset($manifest['options']) && is_array($manifest['options'])) {
         foreach ($manifest['options'] as $key => $meta) {
             $val = (isset($all_settings[$key]) && $all_settings[$key] !== '') ? $all_settings[$key] : ($meta['default'] ?? '');
-            
             if (isset($meta['type']) && ($meta['type'] === 'range' || $meta['type'] === 'number')) {
                 $css_val = (isset($meta['property']) && substr($meta['property'], 0, 2) === '--') ? $val : $val . "px";
             } else {
                 $css_val = $val;
             }
-            
             if (isset($meta['selector']) && isset($meta['property'])) {
                 $generated_public .= "{$meta['selector']} { {$meta['property']}: {$css_val}; }\n";
             }
@@ -183,7 +165,7 @@ include 'core/sidebar.php';
 
     <form method="POST">
         <div id="smack-skin-config-wrap">
-            
+
             <div class="box">
                 <h3>ARCHIVE GRID ARCHITECTURE</h3>
                 <div class="dash-grid">
@@ -205,26 +187,25 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
-            <?php 
+            <?php
             $grouped_opts = [];
             if (isset($manifest['options']) && is_array($manifest['options'])) {
-                foreach ($manifest['options'] as $k => $o) { 
+                foreach ($manifest['options'] as $k => $o) {
                     if (isset($o['section']) && ($o['section'] === 'STATIC PAGE STYLING' || $o['section'] === 'WALL SPECIFIC')) {
-                        $grouped_opts[] = ['key' => $k, 'meta' => $o]; 
+                        $grouped_opts[] = ['key' => $k, 'meta' => $o];
                     }
                 }
             }
-            
             if (!empty($grouped_opts)):
             ?>
             <div class="box">
                 <h3>SKIN-SPECIFIC CALIBRATION</h3>
                 <div class="post-layout-grid">
                     <div class="post-col-left">
-                        <?php 
+                        <?php
                         $half = ceil(count($grouped_opts) / 2);
-                        for ($i = 0; $i < $half; $i++): 
-                            $k = $grouped_opts[$i]['key']; $o = $grouped_opts[$i]['meta']; 
+                        for ($i = 0; $i < $half; $i++):
+                            $k = $grouped_opts[$i]['key']; $o = $grouped_opts[$i]['meta'];
                             $val = (isset($settings[$k]) && $settings[$k] !== '') ? $settings[$k] : ($o['default'] ?? '');
                         ?>
                             <div class="lens-input-wrapper">
@@ -245,11 +226,10 @@ include 'core/sidebar.php';
                             </div>
                         <?php endfor; ?>
                     </div>
-
                     <div class="post-col-right">
-                        <?php 
-                        for ($i = $half; $i < count($grouped_opts); $i++): 
-                            $k = $grouped_opts[$i]['key']; $o = $grouped_opts[$i]['meta']; 
+                        <?php
+                        for ($i = $half; $i < count($grouped_opts); $i++):
+                            $k = $grouped_opts[$i]['key']; $o = $grouped_opts[$i]['meta'];
                             $val = (isset($settings[$k]) && $settings[$k] !== '') ? $settings[$k] : ($o['default'] ?? '');
                         ?>
                             <div class="lens-input-wrapper">

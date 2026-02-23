@@ -6,8 +6,8 @@
  * 04: Content Boxes     | 09: Item Lists        | 14: Appearance
  * 05: Media Previews    | 10: Dash/Stats        | 15: Overrides
  * ---------------------------------------------------------------------------
- * v2026.1 - CERULEAN INK (CYAN POP EDITION)
- * PALETTE: #081220 (Unified Bg), #1A242F (Navy Box), #00FFFF (Cyan Pop)
+ * v2026.1 - CARIBBEAN BLUE (FIXED SIDEBAR + VISIBILITY PATCH)
+ * PALETTE: #081220 (Bg), #1A242F (Navy Box), #00FFFF (Cyan Pop)
  */
 
 /* 01: GLOBAL BASE */
@@ -39,17 +39,18 @@ html, body {
 .sidebar a:hover,
 .sidebar li.active a {
     color: #00FFFF;
-    background-color: transparent;
+    background-color: transparent !important;
     text-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
 }
 
 .sidebar li.active {
     border-left: none;
+    background-color: transparent !important;
 }
 
 .sidebar li.nav-group {
     color: rgba(255, 255, 255, 0.4);
-    background-color: #111B28;
+    background-color: transparent !important;
 }
 
 .sidebar ul.sub-nav {
@@ -133,7 +134,7 @@ input:focus, textarea:focus, select:focus {
     border-color: #002366;
 }
 
-/* 07: TRANSMISSIONS (The Fixes) */
+/* 07: TRANSMISSIONS */
 .transmission-header {
     /* Geometry handled in Master Geometry file */
 }
@@ -172,7 +173,7 @@ input:focus, textarea:focus, select:focus {
     margin: 10px 0;
 }
 
-/* Metadata Links (Killing the Blue) */
+/* Metadata Links */
 .signal-meta {
     color: #888888;
 }
@@ -214,7 +215,7 @@ input:focus, textarea:focus, select:focus {
     box-shadow: 0 0 16px rgba(0, 255, 255, 0.4);
 }
 
-/* Live Site stays themed */
+/* Live Site utilizes the accent pop */
 .btn-smack.btn-live {
     background-color: #007BA7;
     color: #FFFFFF;
@@ -224,7 +225,7 @@ input:focus, textarea:focus, select:focus {
     color: #061121;
 }
 
-/* All other buttons universal glow */
+/* All other buttons */
 button:hover {
     box-shadow: 0 0 16px rgba(0, 255, 255, 0.3);
 }
@@ -257,6 +258,7 @@ button:hover {
     color: #061121;
 }
 
+/* Delete action */
 .action-delete {
     color: #FF4B2B;
     border-color: #FF4B2B;
@@ -324,30 +326,32 @@ button:hover {
     background-color: #00FFFF;
 }
 .file-upload-wrapper {
-    border-color: #1A242F;
+    border-color: #007BA7;
     background-color: #061121;
 }
 .file-custom-btn {
-    background-color: #1A242F;
-    color: #CCCCCC;
-    border-right-color: #1A242F;
+    background-color: #007BA7;
+    color: #FFFFFF;
+    border-right-color: #00FFFF;
 }
 .file-custom-btn:hover {
     background-color: #00FFFF;
     color: #061121;
 }
 .file-name-display {
-    color: #888888;
+    color: #00FFFF;
+    font-weight: 600;
 }
 
-/* Inline checkbox labels (Built-in, N/A) — match input border treatment */
+/* Inline checkbox labels */
 .built-in-label {
-    background-color: #1A242F;
-    border-color: #002366;
-    color: #CCCCCC;
+    background-color: #0D1B2A;
+    border-color: #007BA7;
+    color: #00FFFF;
 }
 .built-in-label:hover {
     border-color: #00FFFF;
+    background-color: #1A242F;
     color: #FFFFFF;
 }
 input[type="checkbox"] {
@@ -419,13 +423,34 @@ input[type="checkbox"]:checked::after {
     color: #FF4B2B;
 }
 
+/* Alert Boxes (Restored) */
+.alert-success {
+    color: #00FFFF;
+    border-color: #00FFFF;
+    background-color: rgba(0, 255, 255, 0.1);
+}
+
+.alert-error {
+    color: #FF4B2B;
+    border-color: #FF4B2B;
+    background-color: rgba(255, 75, 43, 0.1);
+}
+
 /* 16: INPUT RANGE (Webkit) */
 input[type="range"]::-webkit-slider-runnable-track {
-    background-color: #1A242F;
+    background-color: #061121;
+    border: 1px solid #007BA7;
+    border-radius: 10px;
+    height: 8px;
 }
 input[type="range"]::-webkit-slider-thumb {
     background-color: #00FFFF;
+    border: 2px solid #FFFFFF;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    cursor: pointer;
+    margin-top: -6px;
 }
+
 /* Asset cards (Media Library) */
 .asset-card {
     border-color: #1A242F;

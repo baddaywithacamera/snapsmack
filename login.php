@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($user && password_verify($pass_input, $user['password_hash'])) {
         $_SESSION['user_login'] = $user['username'];
         $_SESSION['user_role']  = $user['user_role'] ?: 'editor';
-        $_SESSION['user_theme'] = $user['preferred_skin'] ?: null;
+        $_SESSION['user_preferred_skin'] = $user['preferred_skin'] ?: null;
 
         header("Location: smack-admin.php");
         exit;

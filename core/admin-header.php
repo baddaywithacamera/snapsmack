@@ -18,7 +18,17 @@ if (!isset($settings)) {
     $settings = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 }
 
-$active_theme = $_SESSION['user_theme'] ?? $settings['active_theme'] ?? 'midnight-lime';
+// Cron capability detection — available to all admin pages via this header
+$cron_supported  = false;
+$php_cli_path    = '';
+if (function_exists('exec')) {
+    exec('crontab -l 2>&1', $ct_out, $ct_code);
+    $cron_supported = ($ct_code === 0);
+    $php_cli_path   = trim(exec('which php 2>&1'));
+    if (strpos($php_cli_path, '/') !== 0) $php_cli_path = '';
+}
+
+$active_theme = $_SESSION['user_preferred_skin'] ?? $settings['active_theme'] ?? 'midnight-lime';
 $theme_base = "assets/adminthemes/{$active_theme}/";
 $manifest_path = $theme_base . "{$active_theme}-manifest.php";
 

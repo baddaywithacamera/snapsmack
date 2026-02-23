@@ -63,6 +63,7 @@ body {
 #scroll-stage {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     scroll-behavior: smooth;
@@ -171,7 +172,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 0; 
+    padding: 30px; /* Room for box-shadow frame — must match or exceed shadow spread */
     box-sizing: border-box;
 }
 
@@ -179,10 +180,10 @@ body {
     content: none !important;
 }
 
-/* THE INDEX FRAME: Sized to respect the new padded center */
+/* THE INDEX FRAME */
 img.post-image {
-    max-width: calc(100% - 60px); 
-    max-height: calc(100% - 60px);
+    max-width: 100%; 
+    max-height: 100%;
     width: auto;
     height: auto;
     box-sizing: border-box;
@@ -850,4 +851,95 @@ img.post-image {
 .reverse-email {
     unicode-bidi: bidi-override;
     direction: rtl;
+}
+
+/* ==========================================================================
+    BLOGROLL (PUBLIC NETWORK LISTING)
+    Controlled by manifest BLOGROLL section options.
+    .blogroll-canvas is independent of .static-content so width is 
+    separately tunable via the manifest max-width slider.
+    ========================================================================== */
+
+/* Outer canvas — width controlled by manifest blogroll_max_width */
+.blogroll-canvas {
+    max-width: 900px;
+    margin: 40px auto 0 auto;
+    padding: 0 20px;
+    box-sizing: border-box;
+    text-align: left;
+}
+
+/* Category block — wraps heading + grid for each category */
+.blogroll-category-block {
+    margin-bottom: 60px;
+}
+
+/* Category heading */
+.blogroll-category-heading {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #666666;
+    margin: 0 0 20px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #222222;
+}
+
+/* Grid — columns controlled by manifest blogroll_columns select,
+   gap controlled by manifest blogroll_col_gap slider */
+.blogroll-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 60px;
+}
+
+/* Individual peer entry */
+.blogroll-peer {
+    padding-bottom: 24px;
+    border-bottom: 1px solid #1a1a1a;
+}
+
+.blogroll-peer:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* Peer name / link */
+.blogroll-peer-name {
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.blogroll-peer-name a {
+    color: #cccccc;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.blogroll-peer-name a:hover {
+    color: #ffffff;
+}
+
+/* Editorial description — display toggled by manifest blogroll_show_desc */
+.blogroll-peer-desc {
+    display: block;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-size: 0.9rem;
+    color: #888888;
+    line-height: 1.6;
+    margin: 4px 0 8px 0;
+    padding: 0;
+}
+
+/* URL — display toggled by manifest blogroll_show_url */
+.blogroll-peer-url {
+    display: block;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+    color: #444444;
 }

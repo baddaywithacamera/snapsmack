@@ -1,25 +1,33 @@
 <?php
 /**
- * SNAPSMACK Skin Manifest: New Horizon Dark
- * Version: 4.1 - Structural Baseline
+ * SnapSmack Skin Manifest: New Horizon Dark
+ * Version: 3.5 - Global Inventory Integration
  * -------------------------------------------------------------------------
- * HOUSEKEEPING:
- * - Standardized Header: Removed legacy session/versioning notes.
- * - System Inventory: Pulls tactical typography from core.
- * - ADDED: Canvas Layout Controls (Width, Gutter Padding, Header Flip).
+ * - ADDED: Dynamic Font Pull from core/manifest-inventory.php.
+ * - RESTORED: All structural and descriptive comments from Version 3.4.
+ * - FIXED: Header Typography selector targets '.logo-area a' for underline control.
+ * - FIXED: Header Font Size targets '.site-title-text' for precise scaling.
+ * - RETAINED: Master Height Locks (Optical Lift, Header, Infobox).
+ * - RETAINED: Static Page & Wall Engine Typography settings.
+ * - DIRECTIVE: FULL FILE OUTPUT. NO TRUNCATION. NO LOGIC STRIPPING.
  * -------------------------------------------------------------------------
  */
 
-// PULL SYSTEM FONT INVENTORY FROM CORE
+// PULL GLOBAL FONT INVENTORY FROM CORE
+// This ensures every skin on the system uses the same high-end tactical library.
 $fonts = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
 
 return [
     'name'          => 'New Horizon Dark',
-    'version'       => '4.1',
+    'version'       => '3.5',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
-    'description'   => 'High-contrast dark mode with archival framing and tactical layout controls.',
+    'description'   => 'A reimagining of the classic Horizon theme for the original Pixelpost by Jay-C.',
     
+    /* -------------------------------------------------------------------------
+       ENGINE FEATURES
+       Defines what core SnapSmack modules this skin supports.
+       ------------------------------------------------------------------------- */
     'features' => [
         'supports_wall' => true, 
     ],
@@ -27,83 +35,13 @@ return [
     'options' => [
         
         /* ---------------------------------------------------------------------
-           SECTION 1: CANVAS LAYOUT (Width, Padding, Orientation)
+           SECTION 1: SKIN SPECIFIC (Framing, Branding & Height Locks)
+           These controls affect the unique visual character of the Horizon skin.
            --------------------------------------------------------------------- */
         
-        'main_canvas_width' => [
-            'section'  => 'CANVAS LAYOUT',
-            'type'     => 'range',
-            'label'    => 'Main Canvas Width',
-            'default'  => '1280',
-            'min'      => '800',
-            'max'      => '1920',
-            'selector' => '#header .inside, #system-footer .inside, #browse-grid',
-            'property' => 'max-width'
-        ],
-
-        'gutter_padding' => [
-            'section'  => 'CANVAS LAYOUT',
-            'type'     => 'range',
-            'label'    => 'Outer Gutter Padding',
-            'default'  => '40',
-            'min'      => '0',
-            'max'      => '150',
-            'selector' => '#header .inside, #browse-grid',
-            'property' => 'padding-left, padding-right'
-        ],
-
-        'header_layout_flip' => [
-            'section'  => 'CANVAS LAYOUT',
-            'type'     => 'select',
-            'label'    => 'Header Orientation (The Flip)',
-            'default'  => 'row',
-            'options'  => [
-                'row'         => 'Title Left / Nav Right',
-                'row-reverse' => 'Nav Left / Title Right'
-            ],
-            'selector' => '#header .inside',
-            'property' => 'flex-direction'
-        ],
-
-        /* ---------------------------------------------------------------------
-           SECTION 2: VERTICAL LOCKS & FRAMING
-           --------------------------------------------------------------------- */
-           
-        'header_height' => [
-            'section'  => 'VERTICAL LOCKS',
-            'type'     => 'range',
-            'label'    => 'Header Height Lock',
-            'default'  => '80',
-            'min'      => '40',
-            'max'      => '150',
-            'selector' => '#header',
-            'property' => 'height'
-        ],
-
-        'infobox_height' => [
-            'section'  => 'VERTICAL LOCKS',
-            'type'     => 'range',
-            'label'    => 'Infobox/Nav Height',
-            'default'  => '60',
-            'min'      => '40',
-            'max'      => '120',
-            'selector' => '#infobox',
-            'property' => 'height'
-        ],
-
-        'optical_lift' => [
-            'section'  => 'VERTICAL LOCKS',
-            'type'     => 'range',
-            'label'    => 'Optical Vertical Lift',
-            'default'  => '50',
-            'min'      => '0',
-            'max'      => '150',
-            'selector' => '#photobox',
-            'property' => 'padding-bottom'
-        ],
-
+        // Main Image Framing logic using unique CSS payloads
         'image_frame_style' => [
-            'section'  => 'VERTICAL LOCKS',
+            'section'  => 'SKIN SPECIFIC',
             'type'     => 'select',
             'label'    => 'Main Image Frame Style',
             'default'  => 'revival_double',
@@ -133,8 +71,10 @@ return [
             ]
         ],
 
+        // Header Branding Font - Targets the Link tag to kill underlines
+        // DYNAMICALLY POPULATED FROM CORE INVENTORY
         'header_font_family' => [
-            'section'  => 'VERTICAL LOCKS',
+            'section'  => 'SKIN SPECIFIC',
             'type'     => 'select',
             'label'    => 'Header Typography (Text Logo)',
             'default'  => 'Playfair Display',
@@ -143,10 +83,11 @@ return [
             'property' => 'font-family'
         ],
 
+        // Header Branding Size - Targets the Text wrapper for scaling
         'header_font_size' => [
-            'section'  => 'VERTICAL LOCKS',
+            'section'  => 'SKIN SPECIFIC',
             'type'     => 'range',
-            'label'    => 'Header Font Size',
+            'label'    => 'Header Font Size (px)',
             'default'  => '50',
             'min'      => '40',
             'max'      => '100',
@@ -154,10 +95,48 @@ return [
             'property' => 'font-size'
         ],
 
+        // Vertical spacing control for the main photo box
+        'optical_lift' => [
+            'section'  => 'SKIN SPECIFIC',
+            'type'     => 'range',
+            'label'    => 'Optical Vertical Lift (px)',
+            'default'  => '50',
+            'min'      => '0',
+            'max'      => '150',
+            'selector' => '#photobox',
+            'property' => 'padding-bottom'
+        ],
+
+        // Global Height Lock for the Header container
+        'header_height' => [
+            'section'  => 'SKIN SPECIFIC',
+            'type'     => 'range',
+            'label'    => 'Header Height Lock (px)',
+            'default'  => '80',
+            'min'      => '40',
+            'max'      => '150',
+            'selector' => '#header',
+            'property' => 'height'
+        ],
+
+        // Global Height Lock for the Footer/Infobox container
+        'infobox_height' => [
+            'section'  => 'SKIN SPECIFIC',
+            'type'     => 'range',
+            'label'    => 'Infobox Height Lock (px)',
+            'default'  => '50',
+            'min'      => '30',
+            'max'      => '100',
+            'selector' => '#infobox',
+            'property' => 'height'
+        ],
+
         /* ---------------------------------------------------------------------
-           SECTION 3: STATIC PAGE STYLING
+           SECTION 2: STATIC PAGE STYLING (Typography & Spacing)
+           Controls the look of About, Contact, and Dynamic Page content.
            --------------------------------------------------------------------- */
 
+        // Dynamic Pull from Core Inventory
         'static_heading_font' => [
             'section'  => 'STATIC PAGE STYLING',
             'type'     => 'select',
@@ -168,6 +147,7 @@ return [
             'property' => 'font-family'
         ],
 
+        // Dynamic Pull from Core Inventory
         'static_body_font' => [
             'section'  => 'STATIC PAGE STYLING',
             'type'     => 'select',
@@ -181,7 +161,7 @@ return [
         'static_section_spacing' => [
             'section'  => 'STATIC PAGE STYLING',
             'type'     => 'range',
-            'label'    => 'Vertical Section Spacing',
+            'label'    => 'Vertical Section Spacing (px)',
             'default'  => '40',
             'min'      => '10',
             'max'      => '120',
@@ -190,7 +170,8 @@ return [
         ],
 
         /* ---------------------------------------------------------------------
-           SECTION 4: WALL SPECIFIC (3D Engine Physics & Visuals)
+           SECTION 3: WALL SPECIFIC (3D Engine Physics & Visuals)
+           Controls the movement and lighting behaviors of the 3D Gallery Wall.
            --------------------------------------------------------------------- */
 
         'wall_friction' => [
@@ -225,6 +206,7 @@ return [
             'property' => 'filter'
         ],
 
+        // Dynamic Pull from Core Inventory
         'wall_font_ref' => [
             'section'  => 'WALL SPECIFIC',
             'type'     => 'select',
@@ -260,11 +242,79 @@ return [
             'default'  => '#000000',
             'selector' => '.wall-item img',
             'property' => '--glow-color'
-        ]
+        ],
+
+        /* ---------------------------------------------------------------------
+           SECTION 4: BLOGROLL (Layout, Columns & Display Toggles)
+           Controls the public blogroll page layout and peer entry display.
+           --------------------------------------------------------------------- */
+
+        'blogroll_columns' => [
+            'section'  => 'BLOGROLL',
+            'type'     => 'select',
+            'label'    => 'Column Layout',
+            'default'  => '1',
+            'selector' => '.blogroll-grid',
+            'property' => 'custom-cols',
+            'options'  => [
+                '1' => [ 'label' => '1 Column (Single / Reading)', 'css' => '{ grid-template-columns: 1fr; }' ],
+                '2' => [ 'label' => '2 Columns',                   'css' => '{ grid-template-columns: repeat(2, 1fr); }' ],
+                '3' => [ 'label' => '3 Columns',                   'css' => '{ grid-template-columns: repeat(3, 1fr); }' ],
+            ]
+        ],
+
+        'blogroll_max_width' => [
+            'section'  => 'BLOGROLL',
+            'type'     => 'range',
+            'label'    => 'Content Max Width (px)',
+            'default'  => '900',
+            'min'      => '600',
+            'max'      => '1400',
+            'selector' => '.blogroll-canvas',
+            'property' => 'max-width'
+        ],
+
+        'blogroll_col_gap' => [
+            'section'  => 'BLOGROLL',
+            'type'     => 'range',
+            'label'    => 'Column Gutter (px)',
+            'default'  => '60',
+            'min'      => '20',
+            'max'      => '120',
+            'selector' => '.blogroll-grid',
+            'property' => 'gap'
+        ],
+
+        'blogroll_show_desc' => [
+            'section'  => 'BLOGROLL',
+            'type'     => 'select',
+            'label'    => 'Show Peer Description',
+            'default'  => 'block',
+            'selector' => '.blogroll-peer-desc',
+            'property' => 'display',
+            'options'  => [
+                'block' => 'Yes — Show Description',
+                'none'  => 'No — Hide Description',
+            ]
+        ],
+
+        'blogroll_show_url' => [
+            'section'  => 'BLOGROLL',
+            'type'     => 'select',
+            'label'    => 'Show Peer URL',
+            'default'  => 'block',
+            'selector' => '.blogroll-peer-url',
+            'property' => 'display',
+            'options'  => [
+                'block' => 'Yes — Show URL',
+                'none'  => 'No — Hide URL',
+            ]
+        ],
     ],
 
     /* -------------------------------------------------------------------------
        ADMIN INTERFACE STYLING
+       Injects custom layout rules specifically for this skin's control tab.
        ------------------------------------------------------------------------- */
     'admin_styling' => "
         .metadata-selector-row { 
