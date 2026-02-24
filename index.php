@@ -89,7 +89,6 @@ $page_title = $img['img_title'] ?? 'Home';
 include __DIR__ . '/' . $skin_path . '/meta.php'; 
 ?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>skins/<?php echo $active_skin; ?>/style.css?v=<?php echo time(); ?>">
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/hotkey-engine.css">
 <body class="is-photo-page">
 <div id="page-wrapper">
     <?php 
@@ -109,7 +108,5 @@ include __DIR__ . '/' . $skin_path . '/meta.php';
         lastUrl: "<?php echo (string)$last_slug; ?>"
     };
 </script>
-<script src="<?php echo BASE_URL; ?>assets/js/smack-ui-public.js?v=<?php echo time(); ?>"></script>
-<script src="<?php echo BASE_URL; ?>assets/js/hotkey-engine.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

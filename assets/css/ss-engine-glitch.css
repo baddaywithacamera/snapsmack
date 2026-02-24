@@ -1,0 +1,86 @@
+/**
+ * SNAPSMACK - Chaos Engine Styles
+ * Version: 2026.1 - Full 4-Effect Suite
+ * Last changed: 2026-02-23
+ * -------------------------------------------------------------------------
+ * Provides CSS animations for all 4 malfunction types fired by ss-engine-glitch.js:
+ * glitch-pop (.logo-area), glitch-static (.post-image),
+ * glitch-jitter (.photo-title-footer), glitch-reboot (body)
+ * -------------------------------------------------------------------------
+ */
+
+/* ==========================================================================
+   1. GLITCH-POP — Logo area: quick chromatic aberration flash
+   ========================================================================== */
+
+.glitch-pop {
+    animation: glitch-pop 1.5s steps(3) forwards;
+}
+
+@keyframes glitch-pop {
+    0%   { filter: none; transform: translate(0, 0); }
+    15%  { filter: hue-rotate(90deg) saturate(3); transform: translate(-3px, 0); }
+    30%  { filter: hue-rotate(-90deg) saturate(5) brightness(1.5); transform: translate(3px, 1px); }
+    45%  { filter: hue-rotate(180deg) saturate(2); transform: translate(-2px, -1px); }
+    60%  { filter: brightness(3) contrast(2); transform: translate(2px, 0); }
+    75%  { filter: hue-rotate(-45deg) saturate(4); transform: translate(0, 0); }
+    100% { filter: none; transform: translate(0, 0); }
+}
+
+/* ==========================================================================
+   2. GLITCH-STATIC — Post image: VHS static / signal noise
+   ========================================================================== */
+
+.glitch-static {
+    animation: glitch-static 1.5s steps(5) forwards;
+    position: relative;
+}
+
+@keyframes glitch-static {
+    0%   { filter: none; clip-path: none; transform: translate(0, 0); }
+    10%  { filter: contrast(2) brightness(1.5); transform: translate(var(--glitch-intensity, 10px), 0); clip-path: inset(10% 0 80% 0); }
+    20%  { filter: saturate(0) brightness(2); transform: translate(calc(var(--glitch-intensity, 10px) * -1), 2px); clip-path: inset(60% 0 10% 0); }
+    30%  { filter: hue-rotate(180deg) contrast(3); transform: translate(0, 0); clip-path: none; }
+    40%  { filter: brightness(0.3); transform: translate(calc(var(--glitch-intensity, 10px) * 0.5), -2px); clip-path: inset(30% 0 50% 0); }
+    55%  { filter: brightness(2) saturate(0); transform: translate(0, 0); clip-path: none; }
+    70%  { filter: hue-rotate(-90deg); transform: translate(calc(var(--glitch-intensity, 10px) * -0.3), 1px); }
+    100% { filter: none; clip-path: none; transform: translate(0, 0); }
+}
+
+/* ==========================================================================
+   3. GLITCH-JITTER — Title/caption: positional jitter
+   ========================================================================== */
+
+.glitch-jitter {
+    animation: glitch-jitter 1.5s steps(6) forwards;
+}
+
+@keyframes glitch-jitter {
+    0%   { transform: translate(0, 0) skew(0deg); filter: none; }
+    10%  { transform: translate(-4px, 1px) skew(-1deg); filter: brightness(1.5); }
+    20%  { transform: translate(4px, -2px) skew(1.5deg); filter: brightness(0.8); }
+    30%  { transform: translate(-2px, 2px) skew(-0.5deg); filter: none; }
+    40%  { transform: translate(3px, 0) skew(1deg); filter: brightness(1.3) contrast(1.5); }
+    55%  { transform: translate(-3px, -1px) skew(-1deg); filter: none; }
+    70%  { transform: translate(2px, 1px) skew(0.5deg); filter: brightness(0.9); }
+    85%  { transform: translate(-1px, 0) skew(0deg); filter: none; }
+    100% { transform: translate(0, 0) skew(0deg); filter: none; }
+}
+
+/* ==========================================================================
+   4. GLITCH-REBOOT — Body: full monitor power failure
+   ========================================================================== */
+
+.glitch-reboot {
+    animation: monitor-reboot 2s steps(4) forwards;
+    pointer-events: none;
+}
+
+@keyframes monitor-reboot {
+    0%   { opacity: 1; filter: brightness(1) blur(0px); }
+    10%  { opacity: 0.1; filter: brightness(5) blur(2px); }
+    20%  { opacity: 0.5; filter: brightness(1) blur(0px); }
+    30%  { opacity: 0; filter: brightness(10); }
+    40%  { opacity: 0.8; filter: contrast(200%); }
+    100% { opacity: 1; filter: brightness(1) blur(0px); }
+}

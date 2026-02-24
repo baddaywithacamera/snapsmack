@@ -75,8 +75,6 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
 }
 ?>
 
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/hotkey-engine.css">
-
 <body class="archive-page">
     <div id="page-wrapper">
         
@@ -157,6 +155,6 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
     </div>
 
     <div id="hud" class="hud-msg"></div>
-    <script src="<?php echo BASE_URL; ?>assets/js/hotkey-engine.js"></script>
+    <?php if (!empty($settings['footer_injection_scripts'])): echo $settings['footer_injection_scripts']; endif; ?>
 </body>
 </html>

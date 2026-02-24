@@ -21,7 +21,5 @@
     </div>
 </footer>
 
-<script src="assets/js/hotkey-engine.js"></script>
-
 </body>
 </html>

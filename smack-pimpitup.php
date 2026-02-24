@@ -4,7 +4,7 @@
  * Version: 16.48 - Session Variable Consistency Fix
  * -------------------------------------------------------------------------
  * - FIXED: $_SESSION['user_theme'] replaced with $_SESSION['user_preferred_skin']
- *   throughout for consistency with auth.php v1.8 and admin-header.php.
+ * throughout for consistency with auth.php v1.8 and admin-header.php.
  * -------------------------------------------------------------------------
  */
 

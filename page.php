@@ -60,7 +60,6 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
 }
 ?>
 
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/hotkey-engine.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css?v=<?php echo time(); ?>">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>skins/<?php echo $active_skin; ?>/style.css?v=<?php echo time(); ?>">
 

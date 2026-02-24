@@ -1,12 +1,14 @@
 /**
  * SnapSmack - Hotkey Engine
- * Version: 3.1 - Kill-Switch Aware
- * MASTER DIRECTIVE: Full file return. Logic only. Uses hotkey-engine.css.
- * - FIXED: Shortcut [2] now respects the global/post comment kill-switch.
+ * Version: 3.1 - Kill-Switch Aware (Library Edition)
+ * MASTER DIRECTIVE: Full file return. Logic only.
+ * -------------------------------------------------------------------------
+ * - FIXED: Shortcut [2] respects global/post comment kill-switch.
  * - FIXED: Input protection prevents hotkey interference during typing.
  * - FIXED: Wall collision check ensures no conflict with 3D Wall logic.
- * - FIXED: Spacebar scroll protection (only navigates at bottom of page).
- * - FIXED: Persistence check prevents help toast from showing every time.
+ * - FIXED: Spacebar scroll protection (navigates only at bottom of page).
+ * - FIXED: Persistence check prevents help toast from recurring.
+ * -------------------------------------------------------------------------
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -58,9 +60,9 @@ document.addEventListener('keydown', function(e) {
         }
     }
 
-    // 4. SHORTCUTS (1 & 2) — use smackdown bridge if available, fall back to .click()
+    // 4. SHORTCUTS (1 & 2) — Use smackdown bridge or fall back to .click()
     if (e.key === '1') {
-        if (window.smackdown) {
+        if (window.smackdown && window.smackdown.toggleFooter) {
             window.smackdown.toggleFooter('info', null);
             scrollToFooter();
         } else {
@@ -72,7 +74,7 @@ document.addEventListener('keydown', function(e) {
     if (e.key === '2') {
         const commBtn = document.getElementById('show-comments');
         if (!commBtn) return;
-        if (window.smackdown) {
+        if (window.smackdown && window.smackdown.toggleFooter) {
             window.smackdown.toggleFooter('comments', null);
             scrollToFooter();
         } else {
@@ -103,7 +105,7 @@ function createHelpToast() {
     
     const toast = document.createElement('div');
     toast.id = 'snap-help-toast';
-    toast.innerText = "PRESS F1 FOR HELP";
+    toast.innerText = "PRESS H FOR HELP";
     
     toast.style.cssText = `
         position: fixed; bottom: 20px; left: 20px; 
@@ -187,6 +189,13 @@ function closeAllOverlays() {
     const modal = document.getElementById('snap-help-modal');
     if (modal) modal.style.display = 'none';
 
-    const activeOverlays = document.querySelectorAll('.footer-pane.active, .drawer.open');
-    activeOverlays.forEach(el => el.classList.remove('active', 'open'));
+    // Bridge call to footer if it's open
+    if (window.smackdown && window.smackdown.closeFooter) {
+        window.smackdown.closeFooter();
+    }
+    
+    // Bridge call to lightbox if it's open
+    if (window.smackdown && window.smackdown.closeLightbox) {
+        window.smackdown.closeLightbox();
+    }
 }
