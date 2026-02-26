@@ -1,0 +1,58 @@
+/* ==========================================================================
+   SNAPSMACK - LOGO GLITCH ENGINE STYLES (v1.0)
+   ========================================================================== */
+
+.snapsmack-logo {
+    position: relative;
+    display: inline-block;
+    overflow: hidden;
+    cursor: default;
+    user-select: none;
+    letter-spacing: 0.05em;
+}
+
+.snapsmack-logo.logo-glitch--blackcasper {
+    font-family: 'BlackCasper', sans-serif !important;
+    animation: logo-blackcasper 0.08s steps(2) forwards;
+    filter: brightness(1.5) contrast(2);
+}
+@keyframes logo-blackcasper {
+    0%   { transform: skewX(20deg) scaleY(1.05) translateX(3px); }
+    50%  { transform: skewX(-15deg) scaleY(0.95) translateX(-3px); }
+    100% { transform: skewX(0) scaleY(1) translateX(0); }
+}
+
+.snapsmack-logo.logo-glitch--courier {
+    font-family: 'Courier New', Courier, monospace !important;
+    letter-spacing: -0.02em;
+    filter: brightness(0.7) saturate(0);
+    animation: logo-courier 0.18s steps(3) forwards;
+}
+@keyframes logo-courier {
+    0%   { opacity: 0.6; }
+    40%  { opacity: 1; }
+    70%  { opacity: 0.8; }
+    100% { opacity: 1; }
+}
+
+.snapsmack-logo.logo-glitch--invert #logo-split-overlay {
+    background: #000 !important;
+}
+
+.snapsmack-logo.logo-glitch--slice {
+    animation: logo-slice 0.1s steps(2) forwards;
+}
+@keyframes logo-slice {
+    0%   { clip-path: polygon(0 0, 100% 0, 100% 35%, 0 35%); transform: translateX(6px); filter: brightness(1.8); }
+    50%  { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); transform: translateX(-4px); }
+    100% { clip-path: none; transform: translateX(0); filter: none; }
+}
+
+.snapsmack-logo.logo-glitch--blowout {
+    animation: logo-blowout 0.06s steps(2) forwards;
+}
+@keyframes logo-blowout {
+    0%   { filter: brightness(10) saturate(0); transform: scale(1.02); }
+    60%  { filter: brightness(3); transform: scale(1.01); }
+    100% { filter: none; transform: scale(1); }
+}

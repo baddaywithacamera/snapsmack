@@ -1,0 +1,172 @@
+/* ==========================================================================
+    !!! CRITICAL STYLE ENFORCEMENT - KIOSK SPEC !!!
+    ========================================================================== 
+    1. COLOR PALETTE:
+        - Backgrounds: #000000 (Pure Black)
+        - Text/Accents: #FFFFFF (Pure White)
+        - Highlights/Glitches: #FF0000 (Executive Red)
+    2. FRAMING:
+        - 5px Inner White / 15px Space Black / 1px Outside Red
+    3. TYPOGRAPHY:
+        - Headers: Impact
+        - Body: Arial, Helvetica, sans-serif
+    ========================================================================== */
+
+:root {
+    --kiosk-black: #000000;
+    --kiosk-white: #FFFFFF;
+    --kiosk-red: #FF0000;
+    --kiosk-body-font: Arial, Helvetica, sans-serif;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: var(--kiosk-black);
+    color: var(--kiosk-white);
+    font-family: var(--kiosk-body-font);
+    overflow: hidden; 
+}
+
+/* OVERRIDES FOR STATIC/ARCHIVE PAGES */
+body.archive-page, body.static-transmission {
+    overflow-y: auto;
+}
+
+/* ==========================================================================
+    LAYOUT STRUCTURE & GRID
+    ========================================================================= */
+
+#kiosk-grid {
+    display: grid;
+    grid-template-rows: 25vh 50vh 25vh;
+    height: 100vh;
+    width: 100vw;
+}
+
+#kiosk-header {
+    background: var(--kiosk-red);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-bottom: 2px solid var(--kiosk-white);
+}
+
+.snapsmack-logo {
+    font-family: 'Impact', sans-serif;
+    font-size: 18vh;
+    line-height: 25vh;
+    margin: 0;
+    text-transform: uppercase;
+    background: linear-gradient(to right, #FFF 0%, #FFF 48%, #000 48%, #000 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(4px 4px 0px rgba(0,0,0,0.8));
+}
+
+#hero-stage {
+    background: var(--kiosk-black);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+#kiosk-hud {
+    background: var(--kiosk-black);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-top: 2px solid var(--kiosk-white);
+}
+
+#kiosk-navigation .nav-links {
+    display: flex;
+    gap: 5vw;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+#kiosk-navigation a {
+    font-family: 'Stalinist One', cursive;
+    font-size: 4vh;
+    color: var(--kiosk-white);
+    text-decoration: none;
+    text-transform: uppercase;
+}
+
+#kiosk-navigation a:hover {
+    color: var(--kiosk-red);
+    text-shadow: 2px 2px 0px var(--kiosk-white);
+}
+
+/* ==========================================================================
+    FRAMING (INDEX & THUMBS)
+    ========================================================================= */
+
+img.post-image, .thumb-link {
+    border: 5px solid var(--kiosk-white);
+    box-shadow: 
+        0 0 0 15px var(--kiosk-black), 
+        0 0 0 16px var(--kiosk-red);
+}
+
+/* ==========================================================================
+    STATIC CONTENT & BLOGROLL
+    ========================================================================= */
+
+.static-content, .blogroll-canvas {
+    max-width: 850px;
+    margin: 40px auto;
+    padding: 0 20px;
+    background: var(--kiosk-black);
+    color: var(--kiosk-white);
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.static-page-title, .photo-title-footer {
+    font-family: 'Impact', sans-serif;
+    color: var(--kiosk-red);
+    text-transform: uppercase;
+    font-size: 3rem;
+    letter-spacing: 2px;
+    margin-bottom: 30px;
+    text-shadow: 2px 2px 0px var(--kiosk-white);
+}
+
+.description p {
+    margin-bottom: 20px;
+}
+
+.blogroll-category-heading {
+    font-family: 'Impact', sans-serif;
+    font-size: 1.5rem;
+    color: var(--kiosk-red);
+    border-bottom: 2px solid var(--kiosk-white);
+    padding-bottom: 5px;
+    margin-bottom: 20px;
+}
+
+.blogroll-peer-name a {
+    font-family: 'Impact', sans-serif;
+    font-size: 1.2rem;
+    color: var(--kiosk-white);
+    text-transform: uppercase;
+}
+
+.blogroll-peer-name a:hover {
+    color: var(--kiosk-red);
+}
+
+.blogroll-peer-desc {
+    font-family: var(--kiosk-body-font);
+    color: var(--kiosk-white);
+}
+
+.blogroll-peer-url {
+    font-family: 'Courier New', monospace;
+    color: var(--kiosk-red);
+}

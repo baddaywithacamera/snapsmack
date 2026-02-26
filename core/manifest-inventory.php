@@ -10,6 +10,21 @@
  */
 
 return [
+    /* --- LOCAL FONT LIBRARY ---
+       Fonts hosted in assets/fonts/ on this server.
+       These are output as @font-face blocks in meta.php for every public page.
+       Add new local fonts here — they become available everywhere automatically.
+    */
+    'local_fonts' => [
+        'BlackCasper' => [
+            'label'  => 'BlackCasper (Physical Damage)',
+            'file'   => 'assets/fonts/blackcasper.regular.ttf',
+            'format' => 'truetype',
+            'weight' => 'normal',
+            'style'  => 'normal',
+        ],
+    ],
+
     /* --- TYPOGRAPHY LIBRARY --- */
     'fonts' => [
         'Inter'              => 'Inter (Clean Modern Sans)',
@@ -41,7 +56,8 @@ return [
         'Inconsolata'        => 'Inconsolata (Slab Mono)',
         'Rubik'              => 'Rubik (Friendly Rounded)',
         'Quicksand'          => 'Quicksand (Light/Airy)',
-        'Kanit'              => 'Kanit (Thai-Inspired Industrial)'
+        'Kanit'              => 'Kanit (Thai-Inspired Industrial)',
+        'Stalinist One'      => 'Stalinist One (Soviet Propaganda)'
     ],
 
     /* --- JAVASCRIPT ENGINE LIBRARY --- */
@@ -102,6 +118,38 @@ return [
             'path'         => 'assets/js/ss-engine-comms.js',
             'css'          => 'assets/css/ss-engine-comms.css',
             'has_settings' => false
+        ],
+        'smack-logo' => [
+            'label'        => 'Logo Glitch Engine',
+            'path'         => 'assets/js/ss-engine-logo.js',
+            'css'          => 'assets/css/ss-engine-logo.css',
+            'has_settings' => true,
+            'controls'     => [
+                'logo_glitch_enabled' => ['type' => 'select', 'label' => 'Logo Glitch', 'default' => '1', 'options' => ['1' => 'Enabled', '0' => 'Disabled']],
+                'logo_frequency'      => ['type' => 'select', 'label' => 'Frequency', 'default' => 'normal', 'options' => ['low' => 'Low', 'normal' => 'Normal', 'high' => 'High', 'chaos' => 'Chaos']],
+                'logo_split_position' => ['type' => 'range',  'label' => 'Colour Split Position (%)', 'default' => '50', 'min' => '10', 'max' => '90'],
+                'logo_split_drift'    => ['type' => 'select', 'label' => 'Split Drift on Hit', 'default' => '1', 'options' => ['1' => 'Enabled', '0' => 'Disabled']],
+                'logo_font_blackcasper' => ['type' => 'select', 'label' => 'BlackCasper Hits', 'default' => '1', 'options' => ['1' => 'Enabled', '0' => 'Disabled']],
+                'logo_font_courier'   => ['type' => 'select', 'label' => 'Courier Intrusion Hits', 'default' => '1', 'options' => ['1' => 'Enabled', '0' => 'Disabled']],
+            ]
+        ],
+        'smack-pimpotron' => [
+            'label'        => 'Pimpotron Sequencer',
+            'path'         => 'assets/js/ss-engine-pimpotron.js',
+            'css'          => 'assets/css/ss-engine-pimpotron.css',
+            'has_settings' => true,
+            'controls'     => [
+                'pimpotron_slideshow_id' => [
+                    'type'    => 'number',
+                    'label'   => 'Slideshow ID',
+                    'default' => '1'
+                ],
+                'pimpotron_stage_id' => [
+                    'type'    => 'text',
+                    'label'   => 'Stage Element ID',
+                    'default' => 'pimpotron-sequencer'
+                ]
+            ]
         ]
     ]
 ];

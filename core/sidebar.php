@@ -1,10 +1,24 @@
 <?php
 /**
  * SnapSmack - Sidebar Navigation
- * Version: 7.1 - Trinity Structure Sync
+ * Version: 7.2 - Global Vibe Rename + Pimpotron Conditional
+ * -------------------------------------------------------------------------
+ * - RENAMED: smack-pimpitup.php → smack-globalvibe.php
+ * - ADDED: Pimpotron link appears conditionally if skin manifest declares it
+ * -------------------------------------------------------------------------
  */
 
-$current_page = basename($_SERVER['PHP_SELF']); 
+$current_page = basename($_SERVER['PHP_SELF']);
+
+// Detect if active skin has Pimpotron declared in its manifest
+$_sidebar_pimpotron = false;
+if (!empty($settings['active_skin'])) {
+    $_sidebar_manifest_path = "skins/{$settings['active_skin']}/manifest.php";
+    if (file_exists($_sidebar_manifest_path)) {
+        $_sidebar_manifest = include $_sidebar_manifest_path;
+        $_sidebar_pimpotron = !empty($_sidebar_manifest['engines']['pimpotron']);
+    }
+}
 ?>
 
 <div class="sidebar">
@@ -32,9 +46,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     <li class="<?php echo ($current_page == 'smack-media.php') ? 'active' : ''; ?>">
                         <a href="smack-media.php">Media Library</a>
                     </li>
-					<li class="<?php echo ($current_page == 'smack-blogroll.php') ? 'active' : ''; ?>">
-                        <a href="smack-blogroll.php">Blogroll</a>
-                    </li>
                     <li class="<?php echo ($current_page == 'smack-comments.php') ? 'active' : ''; ?>">
                         <a href="smack-comments.php">Transmissions</a>
                     </li>
@@ -44,12 +55,17 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <li class="nav-group">
                 <strong>Pimp Your Ride</strong>
                 <ul class="sub-nav">
-                    <li class="<?php echo ($current_page == 'smack-pimpitup.php') ? 'active' : ''; ?>">
-                        <a href="smack-pimpitup.php">Global Vibe</a>
+                    <li class="<?php echo ($current_page == 'smack-globalvibe.php') ? 'active' : ''; ?>">
+                        <a href="smack-globalvibe.php">Global Vibe</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-skin.php') ? 'active' : ''; ?>">
                         <a href="smack-skin.php">Smooth Your Skin</a>
                     </li>
+                    <?php if ($_sidebar_pimpotron): ?>
+                    <li class="<?php echo ($current_page == 'smack-pimpotron.php') ? 'active' : ''; ?>">
+                        <a href="smack-pimpotron.php">Pimpotron</a>
+                    </li>
+                    <?php endif; ?>
                     <li class="<?php echo ($current_page == 'smack-css.php') ? 'active' : ''; ?>">
                         <a href="smack-css.php">Smack Your CSS Up!</a>
                     </li>
@@ -78,6 +94,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
     <div class="sidebar-bottom">
         <a href="logout.php" class="logout">Logout</a>
-        <div class="credits-admin">© 2026 Sean McCormick</div>
+        <div class="credits-admin">&copy; 2026 Sean McCormick</div>
     </div>
 </div>

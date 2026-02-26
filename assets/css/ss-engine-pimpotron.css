@@ -1,0 +1,123 @@
+/* ==========================================================================
+   SNAPSMACK - PIMPOTRON ENGINE STYLES (v3.0)
+   ========================================================================== */
+
+.snapsmack-logo.smack {
+    font-family: 'BlackCasper', sans-serif !important;
+    animation: smack-font-glitch 0.1s steps(2) forwards;
+    filter: drop-shadow(5px 5px 0px rgba(255,255,255,0.8));
+}
+.snapsmack-logo.smack--subtle {
+    animation-duration: 0.08s;
+    filter: drop-shadow(2px 2px 0px rgba(255,255,255,0.3));
+}
+.snapsmack-logo.smack--violent {
+    animation-duration: 0.18s;
+    animation-name: smack-font-glitch--violent;
+    filter: drop-shadow(8px 8px 0px rgba(255,255,255,1)) brightness(2);
+}
+@keyframes smack-font-glitch {
+    0%   { transform: skewX(15deg) scale(1.05); }
+    50%  { transform: skewX(-15deg) scale(0.95); }
+    100% { transform: skewX(0deg) scale(1); }
+}
+@keyframes smack-font-glitch--violent {
+    0%   { transform: skewX(25deg) scale(1.1) translateX(4px); }
+    33%  { transform: skewX(-20deg) scale(0.9) translateX(-4px); }
+    66%  { transform: skewX(10deg) scale(1.05); }
+    100% { transform: skewX(0deg) scale(1) translateX(0); }
+}
+#pimpotron-sequencer {
+    width: 100%; height: 100%;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    background-color: #000;
+}
+.pimpotron-bg-image {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    animation: img-smack-in 0.1s steps(2) forwards;
+    transition: filter 0.05s steps(2), transform 0.05s steps(2);
+}
+@keyframes img-smack-in {
+    0%   { opacity: 0; filter: brightness(2); }
+    100% { opacity: 1; filter: brightness(1); }
+}
+.pimpotron-active-video {
+    max-height: 90%; max-width: 90%;
+    object-fit: contain;
+    border: 5px solid #666;
+    box-shadow: 0 0 0 15px #000, 0 0 0 16px #666;
+    animation: img-smack-in 0.1s steps(2) forwards;
+}
+.pimpotron-matrix-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: block;
+}
+#pimpotron-sequencer.smack-active::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 999;
+    animation: stage-flash--normal 0.15s steps(2) forwards;
+}
+#pimpotron-sequencer.smack-active--subtle::before  { animation: stage-flash--subtle  0.08s steps(2) forwards; }
+#pimpotron-sequencer.smack-active--normal::before  { animation: stage-flash--normal  0.15s steps(2) forwards; }
+#pimpotron-sequencer.smack-active--violent::before { animation: stage-flash--violent 0.18s steps(3) forwards; }
+@keyframes stage-flash--subtle {
+    0%   { background-color: rgba(255,255,255,0.25); opacity: 1; }
+    100% { background-color: transparent; opacity: 0; }
+}
+@keyframes stage-flash--normal {
+    0%   { background-color: #FFF; opacity: 1; }
+    50%  { background-color: #F00; opacity: 0.5; }
+    100% { background-color: #FFF; opacity: 0; }
+}
+@keyframes stage-flash--violent {
+    0%   { background-color: #FFF; opacity: 1;   mix-blend-mode: difference; }
+    33%  { background-color: #F00; opacity: 0.9; mix-blend-mode: difference; }
+    66%  { background-color: #FFF; opacity: 0.5; mix-blend-mode: normal; }
+    100% { background-color: #FFF; opacity: 0; }
+}
+.pimpotron-hud {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-family: 'Stalinist One', cursive;
+    font-size: 6vh;
+    text-transform: uppercase;
+    line-height: 1;
+    text-shadow: 3px 3px 0px #000, -1px -1px 0px #000;
+    pointer-events: none;
+    z-index: 100;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25em;
+}
+.smack-word {
+    transition: opacity 0.05s steps(2);
+    display: inline-block;
+}
+.smack-word.glitch-reveal {
+    animation: word-glitch-in 0.2s steps(2) forwards;
+}
+@keyframes word-glitch-in {
+    0%   { transform: translateX(3px)  translateY(-2px); filter: blur(1px); }
+    50%  { transform: translateX(-3px) translateY(2px);  filter: blur(0); }
+    100% { transform: translateX(0)    translateY(0);    filter: none; }
+}
+.error-glitch {
+    font-family: 'Stalinist One', cursive;
+    font-size: 4vh; color: #F00;
+    text-shadow: 2px 2px 0 #000;
+    animation: smack-font-glitch--violent 0.3s steps(2) infinite;
+}

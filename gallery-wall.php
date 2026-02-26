@@ -76,7 +76,6 @@ try {
 <head>
     <meta charset="UTF-8">
     <title>Gallery View | <?php echo htmlspecialchars($settings['site_name'] ?? 'SnapSmack'); ?></title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Cinzel:wght@400;700&family=Cormorant+Garamond:wght@400;700&family=Montserrat:wght@300;400;700&family=Lato:wght@300;400&family=Courier+Prime&display=swap">
     <link rel="stylesheet" href="assets/css/wall-engine.css">
     <style>
         :root {
