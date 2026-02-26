@@ -1,34 +1,30 @@
 <?php
 /**
- * SnapSmack - RSS Feed Fetcher
- * Version: 1.0
- * -------------------------------------------------------------------------
- * Registered and managed via the System Dashboard cron panel.
- * Runs hourly via cron. Fetches RSS feeds for all blogroll peers that have
- * a feed URL, stores the last updated date back to snap_blogroll.
- * -------------------------------------------------------------------------
- * DO NOT call this file from a browser directly in production.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - RSS feed synchronization utility.
+ * Automated background task that fetches latest update dates for blogroll peers.
+ * Designed to run via system cron (CLI) to keep the "Network" status current.
+ * Git Version Official Alpha 0.5
  */
 
-// CLI-only guard
+// Access control: Restrict execution to the Command Line Interface (CLI) only.
 if (php_sapi_name() !== 'cli') {
     http_response_code(403);
     exit('CLI only.');
 }
 
-// Bootstrap
+// --- BOOTSTRAP ENVIRONMENT ---
 define('SNAPSMACK_CRON', true);
 $base = dirname(__FILE__);
 require_once $base . '/core/db.php';
 
+// Helper for standardized terminal logging with timestamps.
 $log = function(string $msg) {
     echo '[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EOL;
 };
 
 $log('RSS fetch started.');
 
-// Fetch all peers with a feed URL
+// Identify all blogroll entries that have an associated RSS/Atom feed URL.
 $peers = $pdo->query("
     SELECT id, peer_name, peer_rss 
     FROM snap_blogroll 
@@ -42,6 +38,7 @@ if (empty($peers)) {
 
 $log('Found ' . count($peers) . ' peers with RSS feeds.');
 
+// Prepare the update statement for recording fetch results.
 $update_stmt = $pdo->prepare("
     UPDATE snap_blogroll 
     SET rss_last_fetched = NOW(), rss_last_updated = ? 
@@ -52,7 +49,8 @@ foreach ($peers as $peer) {
     $log("Fetching: {$peer['peer_name']} — {$peer['peer_rss']}");
 
     try {
-        // Fetch the feed with a 10 second timeout
+        // --- REQUEST CONFIGURATION ---
+        // Configures a 10-second timeout and ignores SSL errors to handle varied peer server setups.
         $ctx = stream_context_create([
             'http' => [
                 'timeout'     => 10,
@@ -72,7 +70,8 @@ foreach ($peers as $peer) {
             continue;
         }
 
-        // Suppress XML parse errors
+        // --- XML PARSING ---
+        // Suppress internal XML errors to handle malformed feeds gracefully.
         libxml_use_internal_errors(true);
         $xml = simplexml_load_string($xml_raw);
         libxml_clear_errors();
@@ -82,23 +81,24 @@ foreach ($peers as $peer) {
             continue;
         }
 
-        // Try RSS 2.0 first, then Atom
         $last_updated = null;
 
-        // RSS 2.0 — grab pubDate of first item
+        // --- RSS 2.0 DETECTION ---
+        // Attempt to find the publication date of the most recent item.
         if (isset($xml->channel->item[0]->pubDate)) {
             $raw_date = (string)$xml->channel->item[0]->pubDate;
             $ts = strtotime($raw_date);
             if ($ts) $last_updated = date('Y-m-d H:i:s', $ts);
         }
 
-        // RSS 2.0 — fallback to lastBuildDate
+        // Fallback: Use the last general build date of the feed itself.
         if (!$last_updated && isset($xml->channel->lastBuildDate)) {
             $ts = strtotime((string)$xml->channel->lastBuildDate);
             if ($ts) $last_updated = date('Y-m-d H:i:s', $ts);
         }
 
-        // Atom — grab updated of first entry
+        // --- ATOM DETECTION ---
+        // If RSS check failed, attempt to parse as an Atom feed.
         if (!$last_updated) {
             $namespaces = $xml->getNamespaces(true);
             if (isset($xml->entry[0])) {
@@ -106,14 +106,3 @@ foreach ($peers as $peer) {
                 if ($ts) $last_updated = date('Y-m-d H:i:s', $ts);
             }
         }
-
-        $update_stmt->execute([$last_updated, $peer['id']]);
-        $log("  OK: Last updated = " . ($last_updated ?? 'unknown'));
-
-    } catch (Exception $e) {
-        $log("  ERROR: " . $e->getMessage());
-    }
-}
-
-$log('RSS fetch complete.');
-exit(0);

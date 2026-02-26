@@ -1,17 +1,9 @@
 <?php
 /**
- * SnapSmack - Global Appearance Settings
- * Version: 17.0 - Renamed to smack-globalvibe.php
- * -------------------------------------------------------------------------
- * - RENAMED: smack-pimpitup.php → smack-globalvibe.php
- * - FIXED: POST redirect updated to smack-globalvibe.php
- * - FIXED: $_SESSION['user_preferred_skin'] (from v16.49)
- * - RESTORED: Global Branding / Masthead Mode / Logo Upload (from v16.49)
- * - ADDED: Pimpotron engine detection from skin manifest
- * - ADDED: Wall Engine Link renders as DISABLED BY SKIN when Pimpotron active
- * - MERGED: Robust null checks and array guards throughout
- * - DIRECTIVE: FULL FILE OUTPUT. NO TRUNCATION. NO CONDENSATION.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Global appearance settings.
+ * Manages admin themes, public skin options, and global branding assets.
+ * Dynamically parses skin manifests and compiles custom CSS overrides.
+ * Git Version Official Alpha 0.5
  */
 
 require_once 'core/auth.php';
@@ -164,7 +156,6 @@ include 'core/sidebar.php';
 <div class="main">
     <h2>GLOBAL APPEARANCE SETTINGS</h2>
 
-    <!-- ADMIN THEME SELECTOR -->
     <div class="box appearance-controller">
         <div class="skin-meta-wrap">
             <div class="theme-title-display">
@@ -203,7 +194,6 @@ include 'core/sidebar.php';
     <form method="POST" enctype="multipart/form-data">
         <div id="smack-skin-config-wrap">
 
-            <!-- GLOBAL BRANDING -->
             <div class="box">
                 <h3>GLOBAL BRANDING (MASTHEAD)</h3>
                 <div class="dash-grid">
@@ -228,7 +218,6 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
-            <!-- ARCHIVE GRID -->
             <div class="box">
                 <h3>ARCHIVE GRID ARCHITECTURE</h3>
                 <div class="dash-grid">
@@ -244,11 +233,9 @@ include 'core/sidebar.php';
                         <label>WALL ENGINE LINK</label>
 
                         <?php if ($pimpotron_active): ?>
-                            <!-- Pimpotron owns the hero stage — wall is incompatible -->
                             <select disabled style="opacity: 0.4; cursor: not-allowed;">
                                 <option>DISABLED BY SKIN</option>
                             </select>
-                            <!-- Force value to 0 so it saves correctly even though dropdown is dead -->
                             <input type="hidden" name="settings[show_wall_link]" value="0">
                             <p class="dim" style="margin-top: 6px; font-size: 0.75em;">
                                 PIMPOTRON IS ACTIVE &mdash; WALL ENGINE IS INCOMPATIBLE WITH THIS SKIN.
@@ -263,7 +250,6 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
-            <!-- SKIN-SPECIFIC CALIBRATION (Static Page Styling + Wall Specific from manifest) -->
             <?php
             $grouped_opts = [];
             if (isset($manifest['options']) && is_array($manifest['options'])) {

@@ -1,27 +1,28 @@
 <?php
 /**
- * SnapSmack - Manage Archive
- * Version: 16.67 - Logic Streamlined
- * -------------------------------------------------------------------------
- * - REMOVED: Top "New Transmission" button.
- * - FIXED: Filter and Reset buttons now aligned to the right of the grid.
- * - CLEAN: Zero inline styling.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Manage Archive.
+ * Primary library dashboard. Handles complex filtering, searching, 
+ * and paginated display of all registered transmissions.
+ * Executes the complete delete protocol for data and asset removal.
+ * Git Version Official Alpha 0.5
  */
 
 require_once 'core/auth.php';
 
 // --- 1. THE DELETE PROTOCOL ---
+// Completely purges a post, its primary media file, and all relational data.
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
     $stmt = $pdo->prepare("SELECT img_file FROM snap_images WHERE id = ?");
     $stmt->execute([$id]);
     $img = $stmt->fetch();
     
+    // Remove the primary physical file from the server.
     if ($img && file_exists($img['img_file'])) { 
         unlink($img['img_file']); 
     }
     
+    // Cascading removal of DB records.
     $pdo->prepare("DELETE FROM snap_images WHERE id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_image_album_map WHERE image_id = ?")->execute([$id]);
@@ -45,6 +46,7 @@ $offset = ($page - 1) * $per_page;
 $params = [];
 $where_clauses = [];
 
+// Build dynamic WHERE clauses based on active filters.
 if ($search) {
     $where_clauses[] = "(i.img_title LIKE ? OR i.img_description LIKE ? OR i.img_film LIKE ? OR i.img_exif LIKE ?)";
     $params = array_merge($params, array_fill(0, 4, "%$search%"));
@@ -71,11 +73,13 @@ if ($status_filter === 'draft') {
 $where_sql = $where_clauses ? " WHERE " . implode(" AND ", $where_clauses) : "";
 
 // --- 4. DATA ACQUISITION ---
+// Calculate total records for pagination limits.
 $count_stmt = $pdo->prepare("SELECT COUNT(i.id) FROM snap_images i $where_sql");
 $count_stmt->execute($params);
 $total_rows = $count_stmt->fetchColumn();
 $total_pages = ceil($total_rows / $per_page);
 
+// Fetch the current page of posts, injecting taxonomy lists and comment counts via subqueries.
 $sql = "SELECT i.*, 
         (SELECT GROUP_CONCAT(c.cat_name ORDER BY c.cat_name ASC SEPARATOR ', ') 
          FROM snap_categories c 
@@ -95,6 +99,7 @@ $posts = $pdo->prepare($sql);
 $posts->execute($params);
 $post_list = $posts->fetchAll();
 
+// Load full taxonomy lists for the filter dropdowns.
 $cats = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
 $albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
 
@@ -161,6 +166,7 @@ include 'core/sidebar.php';
             <p class="dim text-center empty-notice">No archive entries match these criteria.</p>
         <?php else: ?>
             <?php foreach ($post_list as $p): 
+                // Determine display badges based on status and timestamp.
                 $is_draft = ($p['img_status'] === 'draft');
                 $is_scheduled = ($p['img_status'] === 'published' && strtotime($p['img_date']) > time());
             ?>

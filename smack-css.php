@@ -1,33 +1,31 @@
 <?php
 /**
- * SNAPSMACK - Style Override Manager
- * Version: 16.55 - Zero Inline Styles
- * -------------------------------------------------------------------------
- * - All styles live in geometry + colours CSS files (section 26 / 17).
- * - Uses .header-row--ruled for the underlined header with actions.
- * - Uses .css-tab / .css-tab-active for view switcher buttons.
- * - Uses .css-preview-block for read-only skin CSS display.
- * - Uses .css-override-textarea for the manual editor.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Style override manager.
+ * Orchestrates custom CSS injections for public and administrative interfaces.
+ * Utilizes a dual-block storage system to protect core skin styles from manual edits.
+ * Git Version Official Alpha 0.5
  */
 
 require_once 'core/auth.php';
 
 // --- 1. TARGET ROUTING ---
+// Identify if the context is the public frontend or the administrative dashboard.
 $target = $_GET['v'] ?? 'public';
 $db_key = ($target === 'admin') ? 'custom_css_admin' : 'custom_css_public';
 
 // --- 2. SAVE LOGIC ---
 if (isset($_POST['save_overrides'])) {
 
-    $manual_content        = $_POST['manual_overrides'];
+    $manual_content         = $_POST['manual_overrides'];
     $protected_skin_content = $_POST['skin_css_buffer'];
 
+    // Concatenate the read-only skin block with the user's manual overrides.
     $final_blob = trim($protected_skin_content . "\n\n" . $manual_content);
 
     $check = $pdo->prepare("SELECT COUNT(*) FROM snap_settings WHERE setting_key = ?");
     $check->execute([$db_key]);
 
+    // Perform an upsert (update or insert) based on existing key presence.
     if ($check->fetchColumn() > 0) {
         $stmt = $pdo->prepare("UPDATE snap_settings SET setting_val = ? WHERE setting_key = ?");
     } else {
@@ -41,6 +39,7 @@ if (isset($_POST['save_overrides'])) {
 }
 
 // --- 3. READ & SPLIT LOGIC ---
+// Retrieves the raw CSS and parses out the protected skin block using regex.
 $stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = ?");
 $stmt->execute([$db_key]);
 $raw_data = $stmt->fetchColumn() ?: "";

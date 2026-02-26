@@ -1,29 +1,19 @@
 <?php
 /**
- * SnapSmack - Pimpotron Payload API
- * Version: 1.1 - Schema v1.1 sync
- * -------------------------------------------------------------------------
- * - Serves the JSON manifest consumed by ss-engine-pimpotron.js
- * - Resolves slide-level glitch inheritance from parent slideshow
- * - Builds image URLs from snap_images.img_file (native) or external_image_url
- * - Enforces: active slides only, sort_order ASC, max 10
- * - ADDED: rain_speed, rain_density, rain_color_hex (matrix slides)
- * - ADDED: image_glitch_enabled (image slides)
- * - ADDED: slideshow_font in global block
- * -------------------------------------------------------------------------
- * Endpoint: /api/pimpotron-payload.php?slideshow_id=1
- *           /api/pimpotron-payload.php?slideshow_slug=default
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Pimpotron payload API.
+ * Serves the JSON manifest consumed by the frontend slideshow engine.
+ * Resolves glitch inheritance and asset URLs for native/external media.
+ * Git Version Official Alpha 0.5
  */
 
-// Hard JSON output — no HTML ever leaves this file
+// Force JSON output and prevent browser caching.
 header('Content-Type: application/json');
 header('Cache-Control: no-store');
 
-// Locate db.php — /api/ is one level below root; db.php lives in /core/ at root
+// Bootstrap database connection relative to the API directory.
 require_once dirname(__DIR__) . '/core/db.php';
 
-// Build BASE_URL from snap_settings (same pattern as rss.php)
+// Construct the absolute BASE_URL for asset serving from global settings.
 $_settings_stm = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
 $_settings     = $_settings_stm->fetchAll(PDO::FETCH_KEY_PAIR);
 $BASE_URL      = rtrim($_settings['site_url'] ?? '', '/') . '/';
@@ -32,6 +22,7 @@ $BASE_URL      = rtrim($_settings['site_url'] ?? '', '/') . '/';
 // 1. RESOLVE WHICH SLIDESHOW WAS REQUESTED
 // --------------------------------------------------------------------------
 
+// Identify the target slideshow via ID or unique slug.
 $slideshow_id   = isset($_GET['slideshow_id'])   ? (int)$_GET['slideshow_id']            : null;
 $slideshow_slug = isset($_GET['slideshow_slug'])  ? trim($_GET['slideshow_slug'])          : null;
 
@@ -45,6 +36,7 @@ if (!$slideshow_id && !$slideshow_slug) {
 // 2. FETCH THE PARENT SLIDESHOW
 // --------------------------------------------------------------------------
 
+// Verify the slideshow exists and is currently active.
 try {
     if ($slideshow_id) {
         $stm = $pdo->prepare("SELECT * FROM snap_pimpotron_slideshows WHERE id = ? AND is_active = 1 LIMIT 1");
@@ -72,6 +64,7 @@ try {
 // 3. FETCH SLIDES (JOIN snap_images for native media)
 // --------------------------------------------------------------------------
 
+// Retrieves slide metadata and joins with snap_images for native file paths.
 try {
     $stm = $pdo->prepare("
         SELECT
@@ -129,14 +122,14 @@ $slides = [];
 
 foreach ($raw_slides as $s) {
 
-    // -- Glitch inheritance (COALESCE pattern in PHP) --
+    // Inherit glitch settings from the parent slideshow if slide-level values are null.
     $glitch_frequency    = $s['glitch_frequency']   ?? $show['glitch_frequency'];
     $glitch_intensity    = $s['glitch_intensity']    ?? $show['glitch_intensity'];
     $stage_shift_enabled = ($s['stage_shift_enabled'] !== null)
                             ? (bool)$s['stage_shift_enabled']
                             : (bool)$show['stage_shift_enabled'];
 
-    // -- Resolve image URL --
+    // Resolve the primary asset URL (Native vs. External).
     $image_url = null;
     if ($s['slide_type'] === 'image') {
         if (!empty($s['native_img_file'])) {
@@ -147,7 +140,7 @@ foreach ($raw_slides as $s) {
         }
     }
 
-    // -- Resolve display duration --
+    // Resolve display timing based on slide override or global default.
     $duration_ms = $s['display_duration_ms'] ?? $show['default_speed_ms'];
 
     $slides[] = [

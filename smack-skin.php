@@ -1,22 +1,19 @@
 <?php
 /**
- * SNAPSMACK - Skin Admin
- * Version: 2026.3 - Engine Handshake Integration
- * Last changed: 2026-02-23
- * -------------------------------------------------------------------------
- * - ENGINE HANDSHAKE: Reads skin manifest 'require_scripts' key, cross-references
- *   manifest-inventory.php, builds footer_injection_scripts in DB.
- * - ENGINE CONTROLS: Surfaces has_settings engine controls in UI.
- * - DEPRECATED: hotkey-engine.js/css no longer referenced. ss-engine-comms replaces it.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Skin Admin.
+ * Orchestrates the engine handshake by resolving skin dependencies against the global inventory.
+ * Compiles dynamic CSS for public skins and manages engine-level feature toggles.
+ * Git Version Official Alpha 0.5
  */
 
 require_once 'core/auth.php';
 
 // --- 1. LOAD GLOBAL INVENTORY ---
+// Pulls the master list of available scripts and engines.
 $global_inventory = (function() { return include 'core/manifest-inventory.php'; })();
 
 // --- 2. PUBLIC SKIN DISCOVERY ---
+// Scans the skins directory for valid manifests to populate the selector.
 $skin_dirs       = array_filter(glob('skins/*'), 'is_dir');
 $available_skins = [];
 foreach ($skin_dirs as $dir) {
@@ -33,10 +30,9 @@ if (!isset($available_skins[$target_skin])) $target_skin = array_key_first($avai
 $manifest = include "skins/{$target_skin}/manifest.php";
 
 // --- 3. ENGINE RESOLUTION ---
-// Which engines does this skin want? Pull from manifest 'require_scripts' key.
+// Identify which engines the selected skin requires based on its manifest.
 $required_engines = $manifest['require_scripts'] ?? [];
 
-// Build the resolved engine list from inventory
 $resolved_engines = [];
 foreach ($required_engines as $engine_key) {
     if (isset($global_inventory['scripts'][$engine_key])) {
@@ -47,7 +43,7 @@ foreach ($required_engines as $engine_key) {
 // --- 4. SAVE HANDLER ---
 if (isset($_POST['save_skin_settings'])) {
 
-    // 4a. Save all skin + engine control values
+    // 4a. Persistence: Save individual skin and engine control values.
     if (isset($_POST['skin_opt'])) {
         foreach ($_POST['skin_opt'] as $s_key => $s_val) {
             $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
@@ -59,17 +55,17 @@ if (isset($_POST['save_skin_settings'])) {
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
         ->execute([$active_skin, $active_skin]);
 
-    // 4b. Reload all settings fresh for CSS compilation
+    // 4b. Refresh local settings cache for CSS compilation.
     $all_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 
-    // 4c. Compile public CSS (skin options + engine CSS vars)
+    // 4c. Public CSS Compilation.
     $generated_public = "/* SKIN_START */\n";
 
+    // Map manifest options to CSS properties or custom payloads.
     foreach ($manifest['options'] as $key => $meta) {
         $val = ($all_settings[$key] ?? '') !== '' ? $all_settings[$key] : $meta['default'];
 
         if ($meta['type'] === 'select' && isset($meta['options'][$val]['css'])) {
-            // Custom CSS payload option (e.g. image_frame_style)
             $generated_public .= "{$meta['selector']} {$meta['options'][$val]['css']}\n";
         } elseif ($meta['property'] === 'font-family') {
             $generated_public .= "{$meta['selector']} { font-family: \"{$val}\", sans-serif; }\n";
@@ -81,14 +77,13 @@ if (isset($_POST['save_skin_settings'])) {
         }
     }
 
-    // Engine-specific CSS vars
+    // Process Engine-specific CSS variables (e.g. Glitch Engine).
     foreach ($resolved_engines as $engine_key => $engine) {
         if (!empty($engine['controls'])) {
             $generated_public .= "/* ENGINE: {$engine_key} */\n";
             foreach ($engine['controls'] as $ctrl_key => $ctrl) {
                 $val  = ($all_settings[$ctrl_key] ?? '') !== '' ? $all_settings[$ctrl_key] : ($ctrl['default'] ?? '');
-                $unit = (isset($ctrl['type']) && $ctrl['type'] === 'range') ? 'px' : '';
-                // Special case: glitch engine targets .post-image with CSS vars
+                
                 if ($engine_key === 'smack-glitch') {
                     if ($ctrl_key === 'glitch_enabled') {
                         $generated_public .= ".post-image { --glitch-enabled: {$val}; }\n";
@@ -104,7 +99,7 @@ if (isset($_POST['save_skin_settings'])) {
 
     $generated_public .= "/* SKIN_END */";
 
-    // Regex-replace only the SKIN block in the existing CSS blob
+    // Surgical Update: Replace only the SKIN block within the public CSS blob.
     $existing_blob  = $all_settings['custom_css_public'] ?? '';
     $skin_pattern   = '/\/\* SKIN_START \*\/.*?\/\* SKIN_END \*\//s';
     $final_public   = preg_match($skin_pattern, $existing_blob)
@@ -114,15 +109,13 @@ if (isset($_POST['save_skin_settings'])) {
     $pdo->prepare("REPLACE INTO snap_settings (setting_key, setting_val) VALUES ('custom_css_public', ?)")
         ->execute([$final_public]);
 
-    // 4d. ENGINE HANDSHAKE — build footer_injection_scripts from resolved engines
-    $v        = time(); // cache bust
+    // 4d. ENGINE HANDSHAKE: Build the script injection block.
+    $v         = time(); 
     $injection = '';
     foreach ($resolved_engines as $engine_key => $engine) {
-        // Inject CSS link if the engine has one
         if (!empty($engine['css'])) {
             $injection .= '<link rel="stylesheet" href="' . BASE_URL . $engine['css'] . '?v=' . $v . '">' . "\n";
         }
-        // Inject the JS
         if (!empty($engine['path'])) {
             $injection .= '<script src="' . BASE_URL . $engine['path'] . '?v=' . $v . '"></script>' . "\n";
         }
@@ -131,7 +124,7 @@ if (isset($_POST['save_skin_settings'])) {
     $pdo->prepare("REPLACE INTO snap_settings (setting_key, setting_val) VALUES ('footer_injection_scripts', ?)")
         ->execute([$injection]);
 
-    // 4e. Admin CSS (from manifest admin_styling if present)
+    // 4e. Admin Styling: Injected from manifest if defined.
     if (isset($manifest['admin_styling'])) {
         $generated_admin = "/* SKIN_START */\n" . trim($manifest['admin_styling']) . "\n/* SKIN_END */";
         $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('custom_css_admin', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
@@ -148,7 +141,9 @@ include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <h2>SKIN ADMIN</h2>
+    <div class="header-row">
+        <h2>SKIN ADMIN</h2>
+    </div>
 
     <div class="box appearance-controller">
         <div class="skin-meta-wrap">
@@ -179,7 +174,7 @@ include 'core/sidebar.php';
     </div>
 
     <?php if (isset($_GET['msg'])): ?>
-        <div class="alert">> SKIN ARCHITECTURE CALIBRATED</div>
+        <div class="alert alert-success">> SKIN ARCHITECTURE CALIBRATED</div>
     <?php endif; ?>
 
     <form method="POST">
@@ -188,7 +183,7 @@ include 'core/sidebar.php';
         <div id="smack-skin-config-wrap">
 
             <?php
-            // --- SKIN OPTIONS (grouped by section) ---
+            // --- SKIN OPTIONS: Grouped by manifest sections ---
             $sec = [];
             foreach ($manifest['options'] as $k => $o) {
                 $sec[$o['section'] ?? 'GENERAL'][] = ['key' => $k, 'meta' => $o];
@@ -236,8 +231,7 @@ include 'core/sidebar.php';
             <?php endforeach; ?>
 
             <?php
-            // --- ENGINE CONTROLS ---
-            // Collect all controls from checked-out engines that have settings
+            // --- ENGINE CONTROLS: Global protocols surfaced by required engines ---
             $engine_controls = [];
             foreach ($resolved_engines as $engine_key => $engine) {
                 if (!empty($engine['has_settings']) && !empty($engine['controls'])) {
@@ -286,7 +280,7 @@ include 'core/sidebar.php';
             </div>
             <?php endif; ?>
 
-        </div><!-- #smack-skin-config-wrap -->
+        </div>
 
         <div class="form-action-row">
             <button type="submit" name="save_skin_settings" class="master-update-btn">SAVE SKIN SPECIFIC CALIBRATION</button>

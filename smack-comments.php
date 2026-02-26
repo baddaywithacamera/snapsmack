@@ -1,16 +1,20 @@
 <?php
 /**
- * SnapSmack - Transmission Control (Admin)
- * Version: 2.3 - Visual Restoration & Logic Sync
- * MASTER DIRECTIVE: Old structure restored. New logic integrated. No inline CSS.
+ * SNAPSMACK - Comment moderation dashboard.
+ * Manages incoming visitor transmissions, including approval and deletion.
+ * Provides search, pagination, and real-time status of the comment engine.
+ * Git Version Official Alpha 0.5
  */
+
 require_once 'core/auth.php';
 
-// 1. Fetch Global Settings for Status Bar
+// --- 1. SYSTEM STATUS ---
+// Fetch global settings to determine if the comment engine is active sitewide.
 $s_rows = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $global_comments_active = (($s_rows['global_comments_enabled'] ?? '1') == '1');
 
-// 2. Handle Actions (Approve / Delete)
+// --- 2. ACTION HANDLER ---
+// Processes administrative commands for authorizing or purging specific comments.
 if (isset($_GET['action']) && isset($_GET['id'])) {
     $id = (int)$_GET['id'];
     if ($_GET['action'] == 'approve') {
@@ -22,25 +26,29 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     }
 }
 
-// 3. Logic for Search & Pagination
+// --- 3. SEARCH & PAGINATION LOGIC ---
 $view_mode = $_GET['view'] ?? 'pending';
 $search = trim($_GET['s'] ?? '');
 $search_query = $search ? " AND (c.comment_author LIKE ? OR c.comment_text LIKE ? OR c.comment_email LIKE ?)" : "";
 $params = $search ? ["%$search%", "%$search%", "%$search%"] : [];
+
 $per_page = 20;
 $page = isset($_GET['p']) ? (int)$_GET['p'] : 1;
 $offset = ($page - 1) * $per_page;
 
+// Retrieve summary counts for the interface tabs.
 $pending_count = $pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 0")->fetchColumn();
 $live_count = $pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 1")->fetchColumn();
 
+// Calculate total records for the current view and search filter.
 $count_sql = "SELECT COUNT(*) FROM snap_comments c WHERE is_approved = " . ($view_mode == 'live' ? '1' : '0') . $search_query;
 $stmt_count = $pdo->prepare($count_sql);
 $stmt_count->execute($params);
 $total_records = $stmt_count->fetchColumn();
 $total_pages = ceil($total_records / $per_page);
 
-// Fetching comments + image data + post-specific comment status
+// --- 4. DATA FETCH ---
+// Retrieves comments joined with their parent image metadata for context.
 $sql = "SELECT c.*, i.img_title, i.img_file, i.allow_comments as post_comments_active
         FROM snap_comments c 
         LEFT JOIN snap_images i ON c.img_id = i.id 

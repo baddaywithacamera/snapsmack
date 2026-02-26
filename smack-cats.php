@@ -1,33 +1,31 @@
 <?php
 /**
- * SNAPSMACK - Style Override Manager
- * Version: 16.55 - Zero Inline Styles
- * -------------------------------------------------------------------------
- * - All styles live in geometry + colours CSS files (section 26 / 17).
- * - Uses .header-row--ruled for the underlined header with actions.
- * - Uses .css-tab / .css-tab-active for view switcher buttons.
- * - Uses .css-preview-block for read-only skin CSS display.
- * - Uses .css-override-textarea for the manual editor.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Style override manager.
+ * Manages custom CSS for the public site and administrative panel.
+ * Separates protected skin-generated CSS from user-defined manual overrides.
+ * Git Version Official Alpha 0.5
  */
 
 require_once 'core/auth.php';
 
 // --- 1. TARGET ROUTING ---
+// Determine if we are editing styles for the public frontend or the admin dashboard.
 $target = $_GET['v'] ?? 'public';
 $db_key = ($target === 'admin') ? 'custom_css_admin' : 'custom_css_public';
 
 // --- 2. SAVE LOGIC ---
 if (isset($_POST['save_overrides'])) {
 
-    $manual_content        = $_POST['manual_overrides'];
+    $manual_content         = $_POST['manual_overrides'];
     $protected_skin_content = $_POST['skin_css_buffer'];
 
+    // Combine the read-only skin block and the new user overrides into a single database entry.
     $final_blob = trim($protected_skin_content . "\n\n" . $manual_content);
 
     $check = $pdo->prepare("SELECT COUNT(*) FROM snap_settings WHERE setting_key = ?");
     $check->execute([$db_key]);
 
+    // Update existing record or insert new record if the key doesn't exist.
     if ($check->fetchColumn() > 0) {
         $stmt = $pdo->prepare("UPDATE snap_settings SET setting_val = ? WHERE setting_key = ?");
     } else {
@@ -35,16 +33,19 @@ if (isset($_POST['save_overrides'])) {
     }
 
     if ($stmt->execute([$final_blob, $db_key])) {
+        // Redirect back to the viewer with a success message.
         header("Location: smack-css.php?v=" . $target . "&msg=CALIBRATED");
         exit;
     }
 }
 
 // --- 3. READ & SPLIT LOGIC ---
+// Retrieves the raw CSS blob and splits it into two parts: the skin block and user overrides.
 $stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = ?");
 $stmt->execute([$db_key]);
 $raw_data = $stmt->fetchColumn() ?: "";
 
+// Use regex to isolate the protected block between specific comment tags.
 $pattern = '/\/\* SKIN_START \*\/.*?\/\* SKIN_END \*\//s';
 $skin_block = "";
 $user_block  = $raw_data;

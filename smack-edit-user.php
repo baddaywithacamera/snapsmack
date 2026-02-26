@@ -1,30 +1,42 @@
 <?php
 /**
- * SnapSmack - Edit User
- * Version: 1.2 - Triptych Authorized (Geometry + Read-Only Lock)
+ * SNAPSMACK - User metadata editor.
+ * Manages email, role assignments, and password resets for existing accounts.
+ * Enforces immutable usernames to protect database relationship integrity.
+ * Git Version Official Alpha 0.5
  */
+
 require_once 'core/auth.php';
 
+// --- 1. VALIDATION ---
+// Ensure a target user ID is provided before proceeding.
 $uid = $_GET['id'] ?? null;
-if (!$uid) { header("Location: smack-users.php"); exit; }
+if (!$uid) { 
+    header("Location: smack-users.php"); 
+    exit; 
+}
 
-// 1. Fetch current user data
+// Fetch the current record for form population.
 $stmt = $pdo->prepare("SELECT * FROM snap_users WHERE id = ?");
 $stmt->execute([$uid]);
 $user = $stmt->fetch();
 
-if (!$user) { die("User not found."); }
+if (!$user) { 
+    die("User not found."); 
+}
 
-// 2. Handle Update (Surgical: Username is excluded)
+// --- 2. UPDATE HANDLER ---
 if (isset($_POST['update_user'])) {
     $email = trim($_POST['email']);
     $role  = $_POST['user_role'];
     $pass  = trim($_POST['password']);
 
+    // Surgical Update: Construct the query based on whether a password reset was requested.
     $sql = "UPDATE snap_users SET email = ?, user_role = ? WHERE id = ?";
     $params = [$email, $role, $uid];
     
     if (!empty($pass)) {
+        // Only trigger password rehashing if the input is not empty.
         $sql = "UPDATE snap_users SET email = ?, user_role = ?, password_hash = ? WHERE id = ?";
         $params = [$email, $role, password_hash($pass, PASSWORD_BCRYPT, ['cost' => 12]), $uid];
     }
@@ -32,7 +44,7 @@ if (isset($_POST['update_user'])) {
     $pdo->prepare($sql)->execute($params);
     $msg = "User updated successfully.";
     
-    // Refresh
+    // Refresh the local user object to reflect the new changes in the UI.
     $stmt->execute([$uid]);
     $user = $stmt->fetch();
 }

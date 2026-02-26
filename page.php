@@ -1,22 +1,21 @@
 <?php
 /**
- * SnapSmack - Static Page Engine
- * Version: PRO-6.2 - Layout Restoration
- * MASTER DIRECTIVE: Full file return. Standardized junctions & scope safety.
- * - FIXED: Body class restored to 'static-transmission' to engage style.css rules.
- * - FIXED: Header moved INSIDE #scroll-stage so it scrolls with content.
- * - FIXED: CSS Cache Buster on style.css to force updates.
+ * SNAPSMACK - Static page engine.
+ * Renders database-driven content for static pages using the current skin.
+ * Supports hero assets, dynamic content parsing, and layout consistency.
+ * Git Version Official Alpha 0.5
  */
 
-// 1. Error Reporting (Safety Valve)
+// Basic error reporting for development and debugging.
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-// 2. Bootstrap Environment
+// Load core environment and content parsing dependencies.
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/parser.php';
 
-// INITIALIZE SCOPE
+// --- INITIALIZE SCOPE ---
+// Setup default variables to prevent errors if settings are missing.
 $settings = [];
 $site_name = 'ISWA.CA';
 $active_skin = 'smackdown';
@@ -25,10 +24,10 @@ $slug = isset($_GET['slug']) ? $_GET['slug'] : 'about';
 try {
     $snapsmack = new SnapSmack($pdo);
 
-    // Fetch Global Settings
+    // Fetch global site configuration.
     $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
     
-    // THE PENCIL: Define BASE_URL (Source of Truth from DB)
+    // Define the base URL for the site, ensuring a consistent trailing slash.
     if (!defined('BASE_URL')) {
         $db_url = $settings['site_url'] ?? 'https://iswa.ca/';
         define('BASE_URL', rtrim($db_url, '/') . '/'); 
@@ -37,24 +36,27 @@ try {
     $active_skin = $settings['active_skin'] ?? 'smackdown';
     $site_name = $settings['site_name'] ?? $site_name;
 
-    // 3. Fetch Specific Page Data
+    // --- PAGE DATA FETCH ---
+    // Retrieve the specific page content based on the provided slug.
     $page_stmt = $pdo->prepare("SELECT * FROM snap_pages WHERE slug = ? AND is_active = 1 LIMIT 1");
     $page_stmt->execute([$slug]);
     $page_data = $page_stmt->fetch();
 
     if (!$page_data) {
-        // Safe redirect to archive if slug is non-existent
+        // Redirect to the archive browser if the requested page is missing or disabled.
         header("Location: " . BASE_URL . "archive.php");
         exit;
     }
 
 } catch (Exception $e) {
+    // Fail-safe error display for database or core initialization issues.
     die("<div style='background:#300;color:#f99;padding:20px;border:1px solid red;font-family:monospace;'><h3>PAGE_TRANSMISSION_ERROR</h3>" . $e->getMessage() . "</div>");
 }
 
 $page_title = htmlspecialchars($page_data['title']);
 $skin_path  = 'skins/' . $active_skin;
 
+// Include the skin-specific metadata template.
 if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
     include __DIR__ . '/' . $skin_path . '/meta.php';
 }
@@ -69,7 +71,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
         <div id="scroll-stage">
             
             <?php 
-            // FIXED: Header moved INSIDE scroll-stage so it scrolls with the page
+            // Header is included inside the scroll stage to allow natural page scrolling.
             $header_file = __DIR__ . '/' . $skin_path . '/header.php';
             if (file_exists($header_file)) {
                 include $header_file;
@@ -93,10 +95,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
                 
                 <div class="description">
                     <?php 
-                    /**
-                     * THE RENDER LOGIC
-                     * If content is missing here, check the Database 'content' column.
-                     */
+                    // Content Rendering: Processes raw content through the SnapSmack parser.
                     if (!empty($page_data['content'])) {
                         echo $snapsmack->parseContent($page_data['content']); 
                     } else {
@@ -107,7 +106,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
             </div> 
 
             <?php 
-            // FOOTER JUNCTION (Inside scroll-stage)
+            // Footer inclusion inside the scroll stage.
             $footer_file = __DIR__ . '/' . $skin_path . '/footer.php';
             if (file_exists($footer_file)) {
                 include $footer_file; 
@@ -117,6 +116,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
     </div>
 
     <?php 
+    // Load skin-specific footer scripts.
     $scripts_file = __DIR__ . '/' . $skin_path . '/footer-scripts.php';
     if (file_exists($scripts_file)) {
         include $scripts_file;

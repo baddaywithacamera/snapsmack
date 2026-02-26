@@ -1,17 +1,15 @@
 <?php
 /**
- * SnapSmack - Style Override Manager
- * Version: 18.3 - FINAL FIDELITY RESTORATION
- * MASTER DIRECTIVE: Entire File. Back.
- * FIXED: Inline styling forced with !important to bypass theme color inheritance.
- * FIXED: Read-only area locked to Dark Grey (#777) on transparent background.
- * FIXED: Manual area locked to Black (#000) background for terminal look.
- * FIXED: Button padding and spacing locked to smack-post.php pattern.
+ * SNAPSMACK - Style override manager.
+ * Orchestrates custom CSS injections for public and administrative interfaces.
+ * Uses forced inline styling to maintain a terminal-themed editor interface.
+ * Git Version Official Alpha 0.5
  */
 
 require_once 'core/auth.php';
 
 // --- 1. TARGET ROUTING ---
+// Determine whether the user is modifying public frontend or admin dashboard styles.
 $target = $_GET['v'] ?? 'public'; 
 $db_key = ($target === 'admin') ? 'custom_css_admin' : 'custom_css_public';
 
@@ -19,11 +17,14 @@ $db_key = ($target === 'admin') ? 'custom_css_admin' : 'custom_css_public';
 if (isset($_POST['save_overrides'])) {
     $manual_content = $_POST['manual_overrides'];
     $protected_skin_content = $_POST['skin_css_buffer']; 
+    
+    // Combine the read-only skin block with the user-defined overrides.
     $final_blob = trim($protected_skin_content . "\n\n" . $manual_content);
     
     $check = $pdo->prepare("SELECT COUNT(*) FROM snap_settings WHERE setting_key = ?");
     $check->execute([$db_key]);
     
+    // Perform an upsert to save the combined CSS blob.
     if ($check->fetchColumn() > 0) {
         $stmt = $pdo->prepare("UPDATE snap_settings SET setting_val = ? WHERE setting_key = ?");
     } else {
@@ -31,12 +32,14 @@ if (isset($_POST['save_overrides'])) {
     }
 
     if ($stmt->execute([$final_blob, $db_key])) {
+        // Redirect back to the manager view.
         header("Location: smack-css.php?v=" . $target . "&msg=CALIBRATED");
         exit;
     }
 }
 
 // --- 3. READ & SPLIT LOGIC ---
+// Retrieves raw data and isolates the skin-generated block via comment tags.
 $stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = ?");
 $stmt->execute([$db_key]);
 $raw_data = $stmt->fetchColumn() ?: "";

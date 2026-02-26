@@ -1,12 +1,15 @@
 <?php
 /**
- * SnapSmack - User Manager
- * Version: 6.0 - V6 Core Standardized
- * MASTER DIRECTIVE: Full file return. Standardized layout.
+ * SNAPSMACK - User Manager.
+ * Orchestrates administrative access control and account lifecycle.
+ * Enforces security protocols and prevents self-termination of active sessions.
+ * Git Version Official Alpha 0.5
  */
+
 require_once 'core/auth.php';
 
 // --- 1. ACTION: ADD NEW USER ---
+// Processes the registration of new system operators.
 if (isset($_POST['add_user'])) {
     $new_user = trim($_POST['username']);
     $new_email = trim($_POST['email']);
@@ -27,6 +30,7 @@ if (isset($_POST['add_user'])) {
 }
 
 // --- 2. ACTION: DELETE USER ---
+// Removes user access while preventing the deletion of the active logged-in account.
 if (isset($_GET['delete'])) {
     $uid = (int)$_GET['delete'];
     if (isset($_SESSION['user_login'])) {
@@ -44,7 +48,8 @@ if (isset($_GET['delete'])) {
     }
 }
 
-// --- 3. DATA FETCH ---
+// --- 3. DATA ACQUISITION ---
+// Fetch all registered accounts for management review.
 $users = $pdo->query("SELECT id, username, email, user_role FROM snap_users ORDER BY username ASC")->fetchAll();
 
 $page_title = "User Manager";
@@ -57,8 +62,13 @@ include 'core/sidebar.php';
         <h2>USER MANAGEMENT</h2>
     </div>
 
-    <?php if(isset($msg)): ?><div class="msg">> <?php echo $msg; ?></div><?php endif; ?>
-    <?php if(isset($err)): ?><div class="alert alert-error">> <?php echo $err; ?></div><?php endif; ?>
+    <?php if(isset($msg)): ?>
+        <div class="msg">> <?php echo $msg; ?></div>
+    <?php endif; ?>
+    
+    <?php if(isset($err)): ?>
+        <div class="alert alert-error">> <?php echo $err; ?></div>
+    <?php endif; ?>
 
     <div class="box">
         <h3>ADD NEW SYSTEM USER</h3>

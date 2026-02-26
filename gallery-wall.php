@@ -1,22 +1,23 @@
 <?php
 /**
- * SnapSmack - Archive Wall
- * Version: 14.7 - Hotkey Sync
- * MASTER DIRECTIVE: Full file return. 
- * - Fixed: Changed 'show_titles' logic to use visibility so hotkey '1' can override it.
- * - Fixed: Removed redundant CSS already handled in wall-engine.css.
- * - Kept: Signature word-span title logic and physics config.
+ * SNAPSMACK - Gallery wall rendering.
+ * Generates a dynamic, physics-based horizontal scrolling image wall.
+ * Handles real-time layout math for row distribution and typography shadows.
+ * Git Version Official Alpha 0.5
  */
 
 require_once 'core/db.php'; 
 
-// 1. FETCH SETTINGS
+// --- SETTINGS LOAD ---
+// Fetch all site-wide configuration values to drive the wall physics and appearance.
 try {
     $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
     $settings = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-} catch (Exception $e) { $settings = []; }
+} catch (Exception $e) { 
+    $settings = []; 
+}
 
-// Fallbacks
+// Layout and Physics fallbacks
 $wall_rows       = isset($settings['wall_rows']) ? (int)$settings['wall_rows'] : 1;
 $wall_gap        = isset($settings['wall_gap']) ? (int)$settings['wall_gap'] : 120;
 $wall_friction   = $settings['wall_friction']   ?? 0.96;
@@ -25,13 +26,17 @@ $wall_theme      = $settings['wall_theme']      ?? '#000000';
 $pinch_power     = $settings['pinch_sensitivity'] ?? 30;
 $wall_limit      = $settings['wall_limit']      ?? 100;
 
-// --- MAX COUNT DISCOVERY ---
+// --- TOTAL IMAGE DISCOVERY ---
+// Used by the JS engine to determine when to stop requesting "Load More" signals.
 try {
     $count_stmt = $pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published' AND img_date <= NOW()");
     $total_images = (int)$count_stmt->fetchColumn();
-} catch (Exception $e) { $total_images = 0; }
+} catch (Exception $e) { 
+    $total_images = 0; 
+}
 
 // --- TYPOGRAPHY & SHADOW ENGINE ---
+// Maps friendly names to CSS font stacks and calculates shadow intensity levels.
 $font_map = [
     'Playfair Display'   => "'Playfair Display', serif",
     'Cinzel'             => "'Cinzel', serif",
@@ -41,8 +46,8 @@ $font_map = [
     'Courier Prime'      => "'Courier Prime', monospace"
 ];
 
-$font_ref = $settings['wall_font_ref'] ?? 'Playfair Display';
-$font_css = $font_map[$font_ref] ?? $font_map['Playfair Display'];
+$font_ref  = $settings['wall_font_ref'] ?? 'Playfair Display';
+$font_css  = $font_map[$font_ref] ?? $font_map['Playfair Display'];
 $text_color = $settings['wall_text_color'] ?? '#808080';
 $shad_color = $settings['wall_shadow_color'] ?? '#000000';
 $intensity  = $settings['wall_shadow_intensity'] ?? 'heavy';
@@ -54,13 +59,14 @@ switch ($intensity) {
     default:      $shadow_css = "0 0 10px $shad_color, 0 0 20px $shad_color, 0 4px 8px $shad_color"; break;
 }
 
-// 4. Layout Math
+// --- LAYOUT GEOMETRY MATH ---
+// Calculates the exact height of image rows based on the viewport and user-defined gap sizes.
 $rows_to_render = max(1, min(4, $wall_rows));
 $vh_share = 100 / $rows_to_render; 
 $gap_adjust = ($wall_gap * ($rows_to_render + 1)) / $rows_to_render;
 $tile_style_string = "height: calc({$vh_share}vh - {$gap_adjust}px) !important;";
 
-// 5. FETCH IMAGES
+// --- IMAGE DATA FETCH ---
 try {
     $stmt = $pdo->prepare("SELECT id, img_title, img_file FROM snap_images 
                            WHERE img_status = 'published' 
@@ -69,7 +75,9 @@ try {
     $stmt->bindValue(':limit', (int)$wall_limit, PDO::PARAM_INT);
     $stmt->execute();
     $images = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) { $images = []; }
+} catch (PDOException $e) { 
+    $images = []; 
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -78,6 +86,7 @@ try {
     <title>Gallery View | <?php echo htmlspecialchars($settings['site_name'] ?? 'SnapSmack'); ?></title>
     <link rel="stylesheet" href="assets/css/wall-engine.css">
     <style>
+        /* CSS Variable Injection: Passes PHP settings directly to the stylesheet engine. */
         :root {
             --wall-bg: <?php echo htmlspecialchars($wall_theme); ?>;
             --wall-gap: <?php echo $wall_gap; ?>px;
@@ -86,7 +95,7 @@ try {
             --wall-shadow-string: <?php echo $shadow_css; ?>;
         }
 
-        /* Essential layout overrides for the 'Strips' view */
+        /* Logic-based layout overrides for the dynamic strip view. */
         .wall-canvas { 
             display: flex; 
             flex-direction: column; 
@@ -102,7 +111,7 @@ try {
         }
 
         .tile-meta {
-            /* Hotkey '1' toggles visibility. We use this instead of display:none */
+            /* Hotkey '1' toggles visibility. We use visibility instead of display:none to prevent layout jitter. */
             visibility: <?php echo (($settings['show_titles'] ?? '1') == '1') ? 'visible' : 'hidden'; ?>;
             position: absolute;
             bottom: -60px;
@@ -127,6 +136,7 @@ try {
 </head>
 <body>
 <script>
+    /* JS CONFIG BRIDGE: Passes physics and data constraints to wall-engine.js */
     window.WALL_CONFIG = {
         friction: <?php echo (float)$wall_friction; ?>,
         dragWeight: <?php echo (float)$wall_dragweight; ?>,
@@ -135,13 +145,16 @@ try {
         initialLimit: <?php echo (int)$wall_limit; ?>
     };
 </script>
+
 <div class="wall-viewport">
     <div class="wall-canvas" id="wall-canvas">
         <?php foreach ($images as $img): ?>
             <div class="wall-tile" style="<?php echo $tile_style_string; ?>" onclick="zoomImage(this)" data-full="<?php echo htmlspecialchars($img['img_file']); ?>">
                 <img src="<?php echo htmlspecialchars($img['img_file']); ?>" alt="Smack" loading="lazy">
+                
                 <div class="tile-meta">
                     <?php 
+                        // Word-Span Processing: Wraps each word of the title in a span for specialized typography control.
                         $words = explode(' ', htmlspecialchars($img['img_title']));
                         foreach ($words as $word) {
                             if(!empty($word)) echo "<span>" . ucfirst(strtolower($word)) . "</span> ";
@@ -150,9 +163,11 @@ try {
                 </div>
             </div>
         <?php endforeach; ?>
+        
         <div id="wall-sentinel" style="width: 1px; height: 1px; pointer-events: none;"></div>
     </div>
 </div>
+
 <div id="zoom-layer"></div>
 <script src="assets/js/wall-engine.js"></script>
 </body>

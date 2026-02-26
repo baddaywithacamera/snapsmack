@@ -1,31 +1,28 @@
 <?php
 /**
- * SnapSmack - Public Blogroll
- * Version: 1.0 - Initial Build
- * -------------------------------------------------------------------------
- * - Queries snap_blogroll directly (not snap_pages).
- * - Renders as static-transmission — inherits static page CSS foundation.
- * - Groups peers by category, sorted alphabetically within each group.
- * - Layout controlled via manifest BLOGROLL section options.
- * - Modelled on page.php pattern: same bootstrap, skin detection, structure.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Public blogroll.
+ * Renders a categorized list of external peer links.
+ * Inherits static page styling and supports skin-specific headers and footers.
+ * Git Version Official Alpha 0.5
  */
 
-// 1. Error Reporting (Safety Valve)
+// Basic error reporting for development and debugging.
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-// 2. Bootstrap
+// Load core database connection.
 require_once __DIR__ . '/core/db.php';
 
-// INITIALIZE SCOPE
+// Initialize default environment variables to prevent crashes if settings are missing.
 $settings    = [];
 $site_name   = 'SNAPSMACK';
 $active_skin = 'smackdown';
 
 try {
+    // Load global site settings.
     $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 
+    // Define the base URL, ensuring a consistent trailing slash for asset loading.
     if (!defined('BASE_URL')) {
         $db_url = $settings['site_url'] ?? '/';
         define('BASE_URL', rtrim($db_url, '/') . '/');
@@ -34,12 +31,14 @@ try {
     $active_skin = $settings['active_skin'] ?? 'smackdown';
     $site_name   = $settings['site_name'] ?? $site_name;
 
-    // GUARD: Redirect if blogroll is disabled
+    // --- ACCESS CONTROL ---
+    // Redirect to home if the blogroll feature has been toggled off in settings.
     if (($settings['blogroll_enabled'] ?? '1') == '0') {
         header("Location: " . (defined('BASE_URL') ? BASE_URL : '/'));
         exit;
     }
 
+    // Fetch all peer links, joining with their respective categories for grouping.
     $peers = $pdo->query(
         "SELECT b.*, c.cat_name 
          FROM snap_blogroll b
@@ -48,11 +47,13 @@ try {
     )->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (Exception $e) {
+    // Fail-safe error display for database or connection issues.
     die("<div style='background:#300;color:#f99;padding:20px;border:1px solid red;font-family:monospace;'><h3>BLOGROLL_TRANSMISSION_ERROR</h3>" . $e->getMessage() . "</div>");
 }
 
 $skin_path = 'skins/' . $active_skin;
 
+// Include the skin's meta template if available.
 if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
     include __DIR__ . '/' . $skin_path . '/meta.php';
 }
@@ -67,6 +68,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
         <div id="scroll-stage">
 
             <?php
+            // Load the header from the active skin or fall back to the core default.
             $header_file = __DIR__ . '/' . $skin_path . '/header.php';
             if (file_exists($header_file)) {
                 include $header_file;
@@ -82,13 +84,15 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
                     <p class="dim">The network is currently offline. No peers found.</p>
 
                 <?php else:
-                    // Group peers by category
+                    // --- DATA GROUPING ---
+                    // Organize peer data into an associative array keyed by category name.
                     $grouped = [];
                     foreach ($peers as $p) {
                         $cat = $p['cat_name'] ?: 'UNCATEGORIZED';
                         $grouped[$cat][] = $p;
                     }
 
+                    // Iterate through each category block.
                     foreach ($grouped as $cat_name => $cat_peers):
                 ?>
                     <div class="blogroll-category-block">
@@ -111,19 +115,16 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
                 <?php endforeach;
                 endif; ?>
 
-            </div><!-- /.blogroll-canvas -->
-
-            <?php
+            </div><?php
+            // Load the skin's footer if present.
             $footer_file = __DIR__ . '/' . $skin_path . '/footer.php';
             if (file_exists($footer_file)) {
                 include $footer_file;
             }
             ?>
 
-        </div><!-- /#scroll-stage -->
-    </div><!-- /#page-wrapper -->
-
-    <?php
+        </div></div><?php
+    // Load the skin-specific JavaScript inclusions.
     $scripts_file = __DIR__ . '/' . $skin_path . '/footer-scripts.php';
     if (file_exists($scripts_file)) {
         include $scripts_file;

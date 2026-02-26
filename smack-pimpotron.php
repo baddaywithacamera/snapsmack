@@ -1,16 +1,9 @@
 <?php
 /**
- * SnapSmack - Pimpotron Slideshow Manager
- * Version: 1.0
- * -------------------------------------------------------------------------
- * - Manage slideshows and slides for the Pimpotron engine.
- * - Slideshow level: name, slug, default speed, glitch defaults, font lock.
- * - Slide level: type, content, overlay text, animation, glitch overrides.
- * - Slide types: image | text | video | matrix
- * - Max 10 slides per slideshow enforced.
- * - Font locked at slideshow level — no per-slide override.
- * - Stage shift is a master control — no per-slide override.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Pimpotron slideshow manager.
+ * Orchestrates the creation and configuration of slideshows for the frontend engine.
+ * Manages master glitch/shift settings and individual slide configurations (up to 10 max).
+ * Git Version Official Alpha 0.5
  */
 
 require_once 'core/auth.php';
@@ -160,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         'rain_color_hex'        => !empty($_POST['rain_color_hex'])   ? $_POST['rain_color_hex']     : null,
         'image_glitch_enabled'  => isset($_POST['image_glitch_enabled']) ? 1 : 0,
         'overlay_text'          => trim($_POST['overlay_text']        ?? '') ?: null,
-        'text_animation_type'   => $_POST['text_animation_type']     ?? 'staccato',
+        'text_animation_type'   => $_POST['text_animation_type']      ?? 'staccato',
         'word_delay_ms'         => (int)($_POST['word_delay_ms']      ?? 200),
         'font_color_hex'        => $_POST['font_color_hex']           ?? '#FFFFFF',
         'pos_x_pct'             => (int)($_POST['pos_x_pct']          ?? 50),
@@ -261,9 +254,6 @@ include 'core/sidebar.php';
         <div class="alert alert-error">> MAXIMUM 10 SLIDES PER SLIDESHOW. DELETE ONE FIRST.</div>
     <?php endif; ?>
 
-    <!-- =====================================================================
-         SLIDESHOW SELECTOR + CREATE
-         ===================================================================== -->
     <div class="box">
         <h3>SLIDESHOWS</h3>
         <div class="dash-grid">
@@ -293,9 +283,6 @@ include 'core/sidebar.php';
 
     <?php if ($active_slideshow): ?>
 
-    <!-- =====================================================================
-         SLIDESHOW MASTER SETTINGS
-         ===================================================================== -->
     <form method="POST">
         <input type="hidden" name="action" value="save_slideshow">
         <div class="box">
@@ -370,9 +357,6 @@ include 'core/sidebar.php';
         <input type="hidden" name="action" value="delete_slideshow">
     </form>
 
-    <!-- =====================================================================
-         SLIDE LIST
-         ===================================================================== -->
     <div class="box">
         <h3>SLIDES (<?php echo count($slides); ?>/10)</h3>
 
@@ -433,9 +417,6 @@ include 'core/sidebar.php';
         <?php endif; ?>
     </div>
 
-    <!-- =====================================================================
-         SLIDE EDITOR
-         ===================================================================== -->
     <div class="box" id="slide-editor">
         <h3><?php echo $editing_slide ? 'EDIT SLIDE #'.$editing_slide['id'] : 'ADD NEW SLIDE'; ?></h3>
 
@@ -445,7 +426,6 @@ include 'core/sidebar.php';
 
             <div class="dash-grid">
 
-                <!-- SLIDE TYPE -->
                 <div class="lens-input-wrapper">
                     <label>SLIDE TYPE</label>
                     <select name="slide_type" id="slide-type-select" onchange="pimpShowFields(this.value)">
@@ -455,13 +435,11 @@ include 'core/sidebar.php';
                     </select>
                 </div>
 
-                <!-- SORT ORDER -->
                 <div class="lens-input-wrapper">
                     <label>SORT ORDER</label>
                     <input type="number" name="sort_order" value="<?php echo $editing_slide['sort_order'] ?? count($slides); ?>" min="0" max="9">
                 </div>
 
-                <!-- DURATION OVERRIDE -->
                 <div class="lens-input-wrapper">
                     <label>DURATION OVERRIDE (MS, BLANK = INHERIT)</label>
                     <input type="number" name="display_duration_ms" value="<?php echo $editing_slide['display_duration_ms'] ?? ''; ?>" min="500" max="60000" step="500" placeholder="<?php echo $active_slideshow['default_speed_ms']; ?>">
@@ -469,7 +447,6 @@ include 'core/sidebar.php';
 
             </div>
 
-            <!-- IMAGE FIELDS -->
             <div class="pimp-field-group" id="fields-image">
                 <h4>IMAGE SOURCE</h4>
                 <div class="dash-grid">
@@ -499,7 +476,6 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
-            <!-- VIDEO FIELDS -->
             <div class="pimp-field-group" id="fields-video">
                 <h4>VIDEO SOURCE</h4>
                 <div class="dash-grid">
@@ -531,7 +507,6 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
-            <!-- MATRIX FIELDS -->
             <div class="pimp-field-group" id="fields-matrix">
                 <h4>MATRIX RAIN CONFIG</h4>
                 <div class="dash-grid">
@@ -560,7 +535,6 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
-            <!-- TEXT ONLY BG -->
             <div class="pimp-field-group" id="fields-text">
                 <h4>TEXT SLIDE BACKGROUND</h4>
                 <div class="dash-grid">
@@ -574,7 +548,6 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
-            <!-- OVERLAY TEXT (all types) -->
             <div class="box" style="margin-top:20px;">
                 <h4>OVERLAY TEXT</h4>
                 <div class="dash-grid">
@@ -612,7 +585,6 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
-            <!-- PER-SLIDE GLITCH OVERRIDES -->
             <div class="box" style="margin-top:20px;">
                 <h4>GLITCH OVERRIDES <span class="dim" style="font-size:0.75em;">(BLANK = INHERIT FROM SLIDESHOW)</span></h4>
                 <div class="dash-grid">

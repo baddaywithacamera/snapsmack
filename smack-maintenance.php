@@ -1,15 +1,21 @@
 <?php
 /**
- * SnapSmack - System Maintenance
- * Version: 3.1 - Logic & Trinity Integration
+ * SNAPSMACK - System maintenance.
+ * Performs database optimizations, taxonomy cleanup, and asset synchronization.
+ * Clears orphaned mappings and defragments core tables to maintain performance.
+ * Git Version Official Alpha 0.5
  */
+
 require_once 'core/auth.php';
 
 $log = [];
 
+// --- ACTION HANDLERS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'];
 
+    // 1. REGISTRY SYNC
+    // Removes ghost entries in the mapping table for images that have been deleted.
     if ($action === 'sync_cats') {
         $stmt = $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id NOT IN (SELECT id FROM snap_images)");
         $stmt->execute();
@@ -17,11 +23,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $log[] = "SUCCESS: Purged $deleted orphaned category mappings.";
     }
 
+    // 2. DB OPTIMIZATION
+    // Forces MySQL to defragment and optimize core operational tables.
     if ($action === 'optimize') {
         $pdo->query("OPTIMIZE TABLE snap_images, snap_categories, snap_image_cat_map");
         $log[] = "SUCCESS: Database tables optimized and defragmented.";
     }
 
+    // 3. ASSET PURGE
+    // Regenerates missing thumbnails and deletes physical files not found in the DB.
     if ($action === 'sync_assets') {
         set_time_limit(600);
         ini_set('memory_limit', '512M');
@@ -38,12 +48,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $registered_paths[] = realpath($file);
             $path_info = pathinfo($file);
             
+            // Expected thumbnail locations.
             $sq_thumb = $path_info['dirname'] . '/thumbs/t_' . $path_info['basename'];
             $wall_thumb = $path_info['dirname'] . '/thumbs/wall_' . $path_info['basename'];
             
             if (file_exists($sq_thumb)) $registered_paths[] = realpath($sq_thumb);
             if (file_exists($wall_thumb)) $registered_paths[] = realpath($wall_thumb);
 
+            // Rebuild gallery wall thumbs if missing.
             if (!file_exists($wall_thumb)) {
                 list($orig_w, $orig_h) = getimagesize($file);
                 $wall_h = 500;
@@ -70,6 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        // Scan upload directory and delete unregistered files.
         if (is_dir('img_uploads')) {
             $upload_dir = new RecursiveDirectoryIterator('img_uploads');
             $iterator = new RecursiveIteratorIterator($upload_dir);

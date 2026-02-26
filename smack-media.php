@@ -1,15 +1,21 @@
 <?php
 /**
- * SnapSmack - Media Library
- * Version: 2.2 - Density Restoration & Compact Grid
- * MASTER DIRECTIVE: Full file return. Logic preserved.
+ * SNAPSMACK - Media library and asset manager.
+ * Manages the injection and retrieval of global assets.
+ * Provides a compact grid for asset review and dynamic shortcode generation.
+ * Git Version Official Alpha 0.5
  */
+
 require_once 'core/auth.php';
 
+// Define the transmission target for media assets.
 $target_dir = "media_assets/";
-if (!is_dir($target_dir)) mkdir($target_dir, 0755, true);
+if (!is_dir($target_dir)) {
+    mkdir($target_dir, 0755, true);
+}
 
-// 1. AJAX Signal Handling
+// --- 1. AJAX SIGNAL HANDLING ---
+// Process asynchronous file uploads from the drop zone.
 if (isset($_FILES['file'])) {
     $file_ext = pathinfo($_FILES["file"]["name"], PATHINFO_EXTENSION);
     $file_name = time() . '_' . uniqid() . '.' . $file_ext;
@@ -26,27 +32,36 @@ if (isset($_FILES['file'])) {
     exit;
 }
 
-// 2. Delete Logic
+// --- 2. DELETE LOGIC ---
+// Purge asset from the server and the database registry.
 if (isset($_GET['delete'])) {
     $stmt = $pdo->prepare("SELECT asset_path FROM snap_assets WHERE id = ?");
     $stmt->execute([$_GET['delete']]);
     $path = $stmt->fetchColumn();
-    if ($path && file_exists($path)) unlink($path);
+    
+    if ($path && file_exists($path)) {
+        unlink($path);
+    }
+    
     $stmt = $pdo->prepare("DELETE FROM snap_assets WHERE id = ?");
     $stmt->execute([$_GET['delete']]);
+    
     header("Location: smack-media.php");
     exit;
 }
 
+// Retrieve all registered assets ordered by discovery date.
 $assets = $pdo->query("SELECT * FROM snap_assets ORDER BY created_at DESC")->fetchAll();
-$page_title = "MEDIA LIBRARY";
+$page_title = "Media Library";
 
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <h2>MEDIA LIBRARY</h2>
+    <div class="header-row header-row--ruled">
+        <h2>MEDIA LIBRARY</h2>
+    </div>
 
     <div class="box">
         <h3>INJECT GLOBAL ASSET</h3>
@@ -112,6 +127,9 @@ const pContainer = document.getElementById('p-container');
 const pBar = document.getElementById('p-bar');
 const nameDisplay = document.getElementById('file-name-display');
 
+/**
+ * Updates the shortcode string in the UI based on dropdown values.
+ */
 function updateShortcode(id) {
     const card = document.getElementById('asset-' + id);
     const size = card.querySelector('.size-select').value;
@@ -127,6 +145,9 @@ fileInput.addEventListener('change', function() {
     }
 });
 
+/**
+ * Executes AJAX upload and monitors progress.
+ */
 function uploadFile(file) {
     pContainer.style.display = 'block';
     const formData = new FormData();
@@ -154,6 +175,9 @@ function uploadFile(file) {
     xhr.send(formData);
 }
 
+/**
+ * Utility to copy shortcode text to system clipboard.
+ */
 function copyToClipboard(element) {
     const text = element.innerText.trim();
     navigator.clipboard.writeText(text).then(() => {

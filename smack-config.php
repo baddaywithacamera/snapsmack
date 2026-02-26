@@ -1,162 +1,249 @@
 <?php
 /**
- * SNAPSMACK - Network Manager
- * Version: 2.0 - Schema Alignment
- * -------------------------------------------------------------------------
- * - FIXED: Category is now a FK (cat_id) joining snap_blogroll_cats.
- * - FIXED: All redirects corrected to smack-blogroll.php.
- * - FIXED: List view joins cat_name for display and grouping.
- * - FIXED: Form uses dropdown of existing categories, not free-text input.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Global engine configuration.
+ * Primary interface for site identity, navigation mapping, and localization.
+ * Handles branding assets and server-side image processing parameters.
+ * Git Version Official Alpha 0.5
  */
 
 require_once 'core/auth.php';
 
-// --- 1. FETCH CATEGORIES (needed for form dropdown and list grouping) ---
-$categories = $pdo->query("SELECT * FROM snap_blogroll_cats ORDER BY cat_name ASC")->fetchAll(PDO::FETCH_ASSOC);
-
-// --- 2. PERSISTENCE HANDLER ---
-if (isset($_POST['save_peer'])) {
-    $id     = $_POST['peer_id'] ?? null;
-    $name   = trim($_POST['peer_name']);
-    $url    = trim($_POST['peer_url']);
-    $cat_id = (int)$_POST['cat_id'];
-    $rss    = trim($_POST['peer_rss']);
-    $desc   = trim($_POST['peer_desc']);
-
-    if ($id) {
-        $stmt = $pdo->prepare("UPDATE snap_blogroll SET peer_name=?, peer_url=?, cat_id=?, peer_rss=?, peer_desc=? WHERE id=?");
-        $stmt->execute([$name, $url, $cat_id, $rss, $desc, $id]);
-        $msg = "updated";
-    } else {
-        $stmt = $pdo->prepare("INSERT INTO snap_blogroll (peer_name, peer_url, cat_id, peer_rss, peer_desc) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$name, $url, $cat_id, $rss, $desc]);
-        $msg = "added";
+// --- PERSISTENCE HANDLER ---
+// Processes configuration updates, including file uploads for site branding.
+if (isset($_POST['save_settings'])) {
+    // Handle logo asset upload if a new file is provided.
+    if (!empty($_FILES['logo_upload']['name'])) {
+        $target_dir = "assets/img/";
+        if (!is_dir($target_dir)) { 
+            mkdir($target_dir, 0755, true); 
+        }
+        $ext = strtolower(pathinfo($_FILES['logo_upload']['name'], PATHINFO_EXTENSION));
+        $target_file = $target_dir . "logo." . $ext;
+        
+        if (move_uploaded_file($_FILES['logo_upload']['tmp_name'], $target_file)) {
+            $_POST['settings']['header_logo_url'] = "/" . $target_file;
+        }
     }
-    header("Location: smack-blogroll.php?msg=" . $msg);
-    exit;
+
+    // Save or update each setting key in the database.
+    foreach ($_POST['settings'] as $key => $val) {
+        $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
+        $stmt->execute([$key, $val, $val]);
+    }
+    $msg = "Engine parameters updated successfully.";
 }
 
-// --- 3. REMOVAL HANDLER ---
-if (isset($_GET['delete'])) {
-    $pdo->prepare("DELETE FROM snap_blogroll WHERE id=?")->execute([$_GET['delete']]);
-    header("Location: smack-blogroll.php?msg=deleted");
-    exit;
+// Reload settings from the database to ensure the form reflects the current state.
+$settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// Retrieve active pages to populate the navigation slot selectors.
+try {
+    $pages_list = $pdo->query("SELECT id, title FROM snap_pages WHERE is_active = 1 ORDER BY title ASC")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) { 
+    $pages_list = []; 
 }
 
-// --- 4. DATA ACQUISITION ---
-$peers = $pdo->query(
-    "SELECT b.*, c.cat_name 
-     FROM snap_blogroll b
-     LEFT JOIN snap_blogroll_cats c ON b.cat_id = c.id
-     ORDER BY c.cat_name ASC, b.peer_name ASC"
-)->fetchAll(PDO::FETCH_ASSOC);
-
-$edit_peer = null;
-if (isset($_GET['edit'])) {
-    $stmt = $pdo->prepare("SELECT * FROM snap_blogroll WHERE id=?");
-    $stmt->execute([$_GET['edit']]);
-    $edit_peer = $stmt->fetch(PDO::FETCH_ASSOC);
+// Resolve the friendly name of the active skin for UI display.
+$active_slug = $settings['active_skin'] ?? 'new_horizon_dark';
+$active_skin_friendly = str_replace('_', ' ', ucfirst($active_slug));
+if (file_exists("skins/{$active_slug}/manifest.php")) {
+    $manifest = include "skins/{$active_slug}/manifest.php";
+    if (isset($manifest['name'])) { 
+        $active_skin_friendly = $manifest['name']; 
+    }
 }
 
-$page_title = "Blogroll";
+$date_options = [
+    'F j, Y'          => 'February 1, 2026',
+    'Y-m-d'           => '2026-02-01',
+    'd/m/Y'           => '01/02/2026',
+    'm.d.y'           => '02.01.26',
+    'jS F Y'          => '1st February 2026',
+    'D, M j, Y'       => 'Sun, Feb 1, 2026'
+];
+
+$page_title = "Configuration";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <div class="header-row">
-        <h2>BLOGROLL</h2>
-    </div>
-
-    <?php if (isset($_GET['msg'])): ?>
-        <div class="alert alert-success">> THANKS FOR SHOWING SOME LINKY LOVE - YOU ROCK!</div>
+    <h2>GLOBAL ENGINE CONFIGURATION</h2>
+    
+    <?php if(isset($msg)): ?>
+        <div class="alert">> <?php echo $msg; ?></div>
     <?php endif; ?>
 
-    <div class="post-layout-grid">
-        <div class="post-col-left">
-            <div class="box">
-                <h3><?php echo $edit_peer ? 'EDIT ENDORSEMENT' : 'ADD INDEPENDENT PEER'; ?></h3>
-                <form method="POST">
-                    <?php if ($edit_peer): ?>
-                        <input type="hidden" name="peer_id" value="<?php echo $edit_peer['id']; ?>">
-                    <?php endif; ?>
+    <form method="POST" id="config-form" enctype="multipart/form-data">
+        
+        <div class="box">
+            <h3>SITE IDENTITY & BRANDING</h3>
+            <div class="post-layout-grid">
+                <div class="post-col-left">
+                    <label>BLOG NAME</label>
+                    <input type="text" name="settings[site_name]" value="<?php echo htmlspecialchars($settings['site_name'] ?? ''); ?>">
+                    
+                    <label>TAGLINE</label>
+                    <input type="text" name="settings[site_tagline]" value="<?php echo htmlspecialchars($settings['site_tagline'] ?? ''); ?>">
 
-                    <div class="lens-input-wrapper">
-                        <label>Site / Photographer Name</label>
-                        <input type="text" name="peer_name" required value="<?php echo htmlspecialchars($edit_peer['peer_name'] ?? ''); ?>">
-                    </div>
+                    <label>BASE SITE URL</label>
+                    <input type="text" name="settings[site_url]" value="<?php echo htmlspecialchars($settings['site_url'] ?? 'https://iswa.ca/'); ?>">
+                </div>
 
-                    <div class="lens-input-wrapper">
-                        <label>Direct URL</label>
-                        <input type="url" name="peer_url" required value="<?php echo htmlspecialchars($edit_peer['peer_url'] ?? ''); ?>">
-                    </div>
+                <div class="post-col-right">
+                    <label>HEADER MODE</label>
+                    <select name="settings[header_type]">
+                        <option value="text" <?php echo (($settings['header_type'] ?? 'text') == 'text') ? 'selected' : ''; ?>>TEXT MODE</option>
+                        <option value="image" <?php echo (($settings['header_type'] ?? 'text') == 'image') ? 'selected' : ''; ?>>IMAGE MODE (LOGO)</option>
+                    </select>
 
-                    <div class="lens-input-wrapper">
-                        <label>Category</label>
-                        <select name="cat_id">
-                            <option value="0">-- UNCATEGORIZED --</option>
-                            <?php foreach ($categories as $cat): ?>
-                                <option value="<?php echo $cat['id']; ?>" <?php echo (($edit_peer['cat_id'] ?? 0) == $cat['id']) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars(strtoupper($cat['cat_name'])); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                    <label>ACTIVE SKIN</label>
+                    <div class="read-only-display">
+                        <?php echo strtoupper(htmlspecialchars($active_skin_friendly)); ?>
                     </div>
-
-                    <div class="lens-input-wrapper">
-                        <label>RSS Feed URL (Optional)</label>
-                        <input type="url" name="peer_rss" value="<?php echo htmlspecialchars($edit_peer['peer_rss'] ?? ''); ?>" placeholder="Used for tactical polling">
-                    </div>
-
-                    <div class="lens-input-wrapper lens-input-wrapper--grow">
-                        <label>Editorial Description</label>
-                        <textarea name="peer_desc"><?php echo htmlspecialchars($edit_peer['peer_desc'] ?? ''); ?></textarea>
-                    </div>
-
-                    <div class="form-action-row">
-                        <button type="submit" name="save_peer" class="master-update-btn">
-                            <?php echo $edit_peer ? 'UPDATE PEER' : 'COMMIT TO NETWORK'; ?>
-                        </button>
-                    </div>
-                </form>
-                <?php if ($edit_peer): ?>
-                    <a href="smack-blogroll.php" class="back-link">&larr; ABORT EDIT</a>
-                <?php endif; ?>
+                </div>
             </div>
         </div>
 
-        <div class="post-col-right">
-            <div class="box box-flush-bottom">
-                <h3>THE NETWORK</h3>
+        <div class="box">
+            <h3>ARCHITECTURE & INTERACTION</h3>
+            <div class="dash-grid">
+                <div class="lens-input-wrapper">
+                    <label>GLOBAL COMMENTS</label>
+                    <select name="settings[global_comments_enabled]">
+                        <option value="1" <?php echo (($settings['global_comments_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
+                        <option value="0" <?php echo (($settings['global_comments_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
+                    </select>
+                    <span class="dim">MASTER OVERRIDE FOR ALL POSTS.</span>
+                </div>
 
-                <?php if (!$peers): ?>
-                    <div class="empty-notice dim">No links found. The network is offline.</div>
-                <?php else: ?>
-                    <?php
-                    $current_cat = null;
-                    foreach ($peers as $p):
-                        if ($current_cat !== $p['cat_name']) {
-                            $current_cat = $p['cat_name'];
-                            echo '<div class="section-divider"></div>';
-                            echo '<h4 class="dim" style="text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">' . htmlspecialchars($current_cat ?: 'UNCATEGORIZED') . '</h4>';
-                        }
-                    ?>
-                        <div class="recent-item">
-                            <div class="item-text">
-                                <strong><?php echo htmlspecialchars($p['peer_name']); ?></strong>
-                                <span class="dim item-meta"><?php echo htmlspecialchars($p['peer_url']); ?></span>
-                            </div>
-                            <div class="item-actions">
-                                <a href="?edit=<?php echo $p['id']; ?>" class="action-edit">EDIT</a>
-                                <a href="?delete=<?php echo $p['id']; ?>" class="action-delete" onclick="return confirm('Remove peer?');">DEL</a>
-                            </div>
+                <div class="lens-input-wrapper">
+                    <label>BRANDING STYLE</label>
+                    <select name="settings[footer_branding_style]">
+                        <option value="standard" <?php echo (($settings['footer_branding_style'] ?? 'standard') == 'standard') ? 'selected' : ''; ?>>STANDARD</option>
+                        <option value="minimal" <?php echo (($settings['footer_branding_style'] ?? 'standard') == 'minimal') ? 'selected' : ''; ?>>MINIMAL</option>
+                        <option value="ghost" <?php echo (($settings['footer_branding_style'] ?? 'standard') == 'ghost') ? 'selected' : ''; ?>>GHOST</option>
+                    </select>
+                    <span class="dim">FOOTER LOGO VISIBILITY.</span>
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>COPYRIGHT OVERRIDE</label>
+                    <input type="text" name="settings[footer_copyright_override]" placeholder="Default" value="<?php echo htmlspecialchars($settings['footer_copyright_override'] ?? ''); ?>">
+                    <span class="dim">LEAVE BLANK FOR AUTOMATIC.</span>
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>PUBLIC BLOGROLL</label>
+                    <select name="settings[blogroll_enabled]">
+                        <option value="1" <?php echo (($settings['blogroll_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
+                        <option value="0" <?php echo (($settings['blogroll_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED</option>
+                    </select>
+                    <span class="dim">CONTROLS NAV LINK AND PUBLIC PAGE ACCESS.</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="box">
+            <h3>NAVIGATION SLOT ASSIGNMENTS</h3>
+            <div class="post-layout-grid">
+                <div class="post-col-left">
+                    <label>PRIMARY NAVIGATION (SLOT 1)</label>
+                    <select name="settings[nav_slot_1]">
+                        <option value="0">EMPTY</option>
+                        <?php foreach($pages_list as $p): ?>
+                            <option value="<?php echo $p['id']; ?>" <?php echo (($settings['nav_slot_1'] ?? 0) == $p['id']) ? 'selected' : ''; ?>><?php echo strtoupper(htmlspecialchars($p['title'])); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <label>SECONDARY NAVIGATION (SLOT 2)</label>
+                    <select name="settings[nav_slot_2]">
+                        <option value="0">EMPTY</option>
+                        <?php foreach($pages_list as $p): ?>
+                            <option value="<?php echo $p['id']; ?>" <?php echo (($settings['nav_slot_2'] ?? 0) == $p['id']) ? 'selected' : ''; ?>><?php echo strtoupper(htmlspecialchars($p['title'])); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="post-col-right">
+                    <label>AUXILIARY NAVIGATION (SLOT 3)</label>
+                    <select name="settings[nav_slot_3]">
+                        <option value="0">EMPTY</option>
+                        <?php foreach($pages_list as $p): ?>
+                            <option value="<?php echo $p['id']; ?>" <?php echo (($settings['nav_slot_3'] ?? 0) == $p['id']) ? 'selected' : ''; ?>><?php echo strtoupper(htmlspecialchars($p['title'])); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <label>SYSTEM NAVIGATION (SLOT 4)</label>
+                    <select name="settings[nav_slot_4]">
+                        <option value="0">EMPTY</option>
+                        <?php foreach($pages_list as $p): ?>
+                            <option value="<?php echo $p['id']; ?>" <?php echo (($settings['nav_slot_4'] ?? 0) == $p['id']) ? 'selected' : ''; ?>><?php echo strtoupper(htmlspecialchars($p['title'])); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="box">
+            <h3>IMAGE ENGINE (SERVER-SIDE PROCESSING)</h3>
+            <div class="post-layout-grid">
+                <div class="post-col-left">
+                    <label>LANDSCAPE MAX WIDTH (PX)</label>
+                    <input type="number" name="settings[max_width_landscape]" value="<?php echo htmlspecialchars($settings['max_width_landscape'] ?? 2500); ?>">
+                    
+                    <label>PORTRAIT MAX HEIGHT (PX)</label>
+                    <input type="number" name="settings[max_height_portrait]" value="<?php echo htmlspecialchars($settings['max_height_portrait'] ?? 1850); ?>">
+                </div>
+                <div class="post-col-right">
+                    <label>JPEG COMPRESSION (1-100)</label>
+                    <input type="number" name="settings[jpeg_quality]" value="<?php echo htmlspecialchars($settings['jpeg_quality'] ?? 85); ?>">
+
+                    <label>HEADER LOGO ASSET</label>
+                    <div class="file-upload-wrapper" onclick="document.getElementById('logo-input').click()">
+                        <div class="file-custom-btn">UPLOAD</div>
+                        <div class="file-name-display" id="logo-name">
+                            <?php echo !empty($settings['header_logo_url']) ? "CURRENT" : "SELECT FILE"; ?>
                         </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
+                        <input type="file" name="logo_upload" id="logo-input" accept="image/*" style="display:none;" onchange="document.getElementById('logo-name').innerText = this.files[0].name;">
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
+
+        <div class="box box-flush-bottom">
+            <h3>TIME & LOCALIZATION</h3>
+            <div class="post-layout-grid">
+                <div class="post-col-left">
+                    <label>TIMEZONE</label>
+                    <select name="settings[timezone]" id="timezone-select">
+                        <?php
+                        $timezones = DateTimeZone::listIdentifiers();
+                        $current_tz = $settings['timezone'] ?? 'America/Edmonton';
+                        foreach ($timezones as $tz) {
+                            $selected = ($current_tz == $tz) ? 'selected' : '';
+                            echo "<option value='" . htmlspecialchars($tz) . "' $selected>" . strtoupper(htmlspecialchars($tz)) . "</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+                <div class="post-col-right">
+                    <label>DATE DISPLAY FORMAT</label>
+                    <select name="settings[date_format]" id="format-select">
+                        <?php
+                        $current_format = $settings['date_format'] ?? 'F j, Y';
+                        foreach ($date_options as $code => $example) {
+                            $selected = ($current_format == $code) ? 'selected' : '';
+                            echo "<option value='$code' $selected>" . strtoupper($example) . "</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" name="save_settings" class="master-update-btn">SAVE GLOBAL ENGINE CONFIGURATION</button>
+
+    </form>
 </div>
 
 <?php include 'core/admin-footer.php'; ?>

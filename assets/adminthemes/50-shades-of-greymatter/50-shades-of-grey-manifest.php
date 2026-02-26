@@ -1,6 +1,7 @@
 <?php
 /**
- * SnapSmack Admin Theme Manifest - 50 Shades of Grey
+ * SnapSmack Admin Theme Manifest - 50 Shades of Greymatter
+ * Git Version Official Alpha 0.5
  */
 
 return [
