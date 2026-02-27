@@ -1,8 +1,9 @@
 <?php
 /**
  * SnapSmack Core Meta
- * Version: 1.2.0 - RSS Integration
+ * Version: 1.3.0 - Local Font Inventory Integration
  * MASTER DIRECTIVE: Handle logic for SEO, CSS variables, and global headers.
+ * ADDED: @font-face output loop from manifest-inventory local_fonts block.
  */
 
 // 1. PREPARE CSS VARIABLES (The Bridge)
@@ -62,8 +63,23 @@ $canonical_url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css">
 
-<?php if (!empty($settings['custom_css_public'])): ?>
-<style id="snapsmack-dynamic-css">
-<?php echo $settings['custom_css_public']; ?>
+<?php
+// OUTPUT @font-face FOR ALL LOCAL FONTS IN INVENTORY
+// Any font added to manifest-inventory.php local_fonts is automatically
+// declared here for every public page. No per-skin or per-template work needed.
+$_inventory    = include(dirname(__DIR__) . '/core/manifest-inventory.php');
+$_local_fonts  = $_inventory['local_fonts'] ?? [];
+if (!empty($_local_fonts)):
+?>
+<style id="snapsmack-local-fonts">
+<?php foreach ($_local_fonts as $family => $meta): ?>
+@font-face {
+    font-family: '<?php echo htmlspecialchars($family); ?>';
+    src: url('<?php echo BASE_URL . htmlspecialchars($meta['file']); ?>') format('<?php echo htmlspecialchars($meta['format']); ?>');
+    font-weight: <?php echo htmlspecialchars($meta['weight'] ?? 'normal'); ?>;
+    font-style: <?php echo htmlspecialchars($meta['style'] ?? 'normal'); ?>;
+    font-display: swap;
+}
+<?php endforeach; ?>
 </style>
 <?php endif; ?>

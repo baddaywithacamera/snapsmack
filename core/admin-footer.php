@@ -1,9 +1,11 @@
 <?php
 /**
  * SnapSmack - Universal Admin Footer
- * Version: 8.0 - Thomas the Bear Integration
+ * Version: 7.0 - Clean Geometry Build
  * -------------------------------------------------------------------------
- * - ADDED: Thomas the Bear engine (Ctrl+Shift+Y easter egg)
+ * - REMOVED: v6-refactor-console (The Leash)
+ * - REMOVED: Inline style blocks
+ * - FIXED: Clean structural exit
  * -------------------------------------------------------------------------
  */
 ?>
@@ -18,12 +20,6 @@
         SNAPSMACK ALPHA V0.5 &copy; <?php echo date("Y"); ?>
     </div>
 </footer>
-
-<script src="assets/js/ss-engine-hotkey.js"></script>
-
-<!-- THOMAS THE BEAR — Global admin easter egg (Ctrl+Shift+Y) -->
-<link rel="stylesheet" href="assets/css/ss-engine-thomas.css">
-<script src="assets/js/ss-engine-thomas.js"></script>
 
 </body>
 </html>
