@@ -1,0 +1,14 @@
+/* Fifty Shades of Grey — LIGHT variant */
+:root {
+    --bg-primary:    #f2f2f2;
+    --bg-secondary:  #ffffff;
+    --bg-chrome:     #e8e8e8;
+    --border:        #d0d0d0;
+    --text-primary:  #212121;
+    --text-secondary:#666666;
+    --text-dim:      #aaaaaa;
+    --accent:        #555555;
+    --accent-hover:  #212121;
+    --accent-dim:    #888888;
+    --input-bg:      #e8e8e8;
+}

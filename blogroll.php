@@ -54,8 +54,8 @@ try {
 $skin_path = 'skins/' . $active_skin;
 
 // Include the skin's meta template if available.
-if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
-    include __DIR__ . '/' . $skin_path . '/meta.php';
+if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
+    include __DIR__ . '/' . $skin_path . '/skin-meta.php';
 }
 ?>
 
@@ -69,7 +69,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
 
             <?php
             // Load the header from the active skin or fall back to the core default.
-            $header_file = __DIR__ . '/' . $skin_path . '/header.php';
+            $header_file = __DIR__ . '/' . $skin_path . '/skin-header.php';
             if (file_exists($header_file)) {
                 include $header_file;
             } else {
@@ -117,7 +117,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
 
             </div><?php
             // Load the skin's footer if present.
-            $footer_file = __DIR__ . '/' . $skin_path . '/footer.php';
+            $footer_file = __DIR__ . '/' . $skin_path . '/skin-footer.php';
             if (file_exists($footer_file)) {
                 include $footer_file;
             }
@@ -125,7 +125,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
 
         </div></div><?php
     // Load the skin-specific JavaScript inclusions.
-    $scripts_file = __DIR__ . '/' . $skin_path . '/footer-scripts.php';
+    $scripts_file = __DIR__ . '/' . $skin_path . '/skin-footer-scripts.php';
     if (file_exists($scripts_file)) {
         include $scripts_file;
     }

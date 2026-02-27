@@ -1,11 +1,9 @@
 <?php
 /**
- * SnapSmack - Layout Controller
- * Version: 3.7 - Unified UI Integration
+ * Fifty Shades of Grey — Layout Controller
+ * Version: 2.0
  * -------------------------------------------------------------------------
- * - FIXED: Script pointer moved to assets/js/smack-ui-public.js
- * - FIXED: Kept empty comment containers in DOM to prevent JS "null" errors.
- * - FIXED: Both Info and Comment toggles restored via Centralized Engine.
+ * NHD structure. fsog- selectors. No exif strip. No title bar above nav.
  * -------------------------------------------------------------------------
  */
 require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
@@ -20,19 +18,17 @@ $comments_active = ($global_on && $post_on);
 
     <?php include('skin-header.php'); ?>
 
-    <div id="photobox">
-        <div class="main-photo">
+    <div id="fsog-photobox">
+        <div class="fsog-photo-wrap">
             <img src="<?php echo BASE_URL . ltrim($img['img_file'], '/'); ?>" 
                  alt="<?php echo htmlspecialchars($img['img_title']); ?>" 
-                 class="post-image">
+                 class="fsog-image post-image"
+                 id="main-image">
         </div>
     </div>
 
     <div id="infobox">
-        <?php 
-        /* The navigation bar handles its own link logic */
-        include dirname(__DIR__, 2) . '/core/navigation_bar.php'; 
-        ?>
+        <?php include dirname(__DIR__, 2) . '/core/navigation_bar.php'; ?>
     </div>
 
     <div id="footer">

@@ -1,0 +1,462 @@
+/* * SNAPSMACK MASTER COLOUR INDEX (THE PAINT)
+ * ---------------------------------------------------------------------------
+ * 01: Global Base       | 06: Form Elements     | 11: Pagination
+ * 02: Sidebar Nav       | 07: Transmissions     | 12: Progress/Uploads
+ * 03: Main Headers      | 08: Buttons/Actions   | 13: Login/Footer
+ * 04: Content Boxes     | 09: Item Lists        | 14: Appearance
+ * 05: Media Previews    | 10: Dash/Stats        | 15: Overrides
+ * ---------------------------------------------------------------------------
+ * v2026.1 - PICASA
+ * PALETTE: #1e1e1e (Bg), #00b4b4 (Teal), #e05555 (Red), #383838 (Border)
+ */
+
+/* 01: GLOBAL BASE */
+html, body {
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+    color-scheme: dark;
+}
+
+/* 02: SIDEBAR NAVIGATION */
+.sidebar {
+    background-color: #1a1a1a;
+    border-right-color: #2e2e2e;
+}
+
+.sidebar h2 {
+    color: #00b4b4;
+    border-bottom-color: #2e2e2e;
+}
+
+.sidebar li {
+    border-bottom-color: #2e2e2e;
+}
+
+.sidebar a {
+    color: #999999;
+}
+
+.sidebar a:hover,
+.sidebar li.active a {
+    color: #00b4b4;
+    text-shadow: none;
+}
+
+.sidebar li.active {
+    border-left: none;
+}
+
+.sidebar li.nav-group {
+    color: #666666;
+    background-color: transparent;
+}
+
+.sidebar ul.sub-nav {
+    border-left-color: #00b4b4;
+}
+
+.sidebar-bottom {
+    background-color: #1a1a1a;
+    border-top: none;
+}
+
+.sidebar .logout {
+    color: #e05555;
+    font-weight: 700;
+}
+
+.sidebar .logout:hover {
+    color: #ff6666;
+}
+
+.credits-admin {
+    color: #555555;
+}
+
+/* 03: MAIN HEADERS */
+.header-row {
+    border-bottom-color: #383838;
+}
+
+h2 {
+    color: #00b4b4;
+    border-bottom-color: #383838;
+}
+
+/* 04: CONTENT BOXES */
+.box {
+    background-color: #2b2b2b;
+    border-color: #383838;
+}
+
+.box h3, .section-header {
+    color: #00b4b4;
+    border-bottom-color: #383838;
+}
+
+.post-col-right {
+    border-left-color: #383838;
+}
+
+/* 05: FORM ELEMENTS */
+label {
+    color: #999999;
+}
+
+input[type="text"], input[type="number"], input[type="email"], input[type="password"],
+input[type="datetime-local"], input[type="date"], select, textarea,
+.preview-box, .select-box {
+    background-color: #1e1e1e;
+    border-color: #383838;
+    color: #e0e0e0;
+}
+
+.read-only-display {
+    background-color: #242424;
+    border-color: #333333;
+    color: #999999;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: #00b4b4;
+    background-color: #242424;
+    box-shadow: 0 0 5px rgba(0, 180, 180, 0.3);
+    outline: none;
+}
+
+/* 06: MEDIA PREVIEWS */
+.preview-frame {
+    background-color: #242424;
+    border-color: #383838;
+}
+
+/* 07: TRANSMISSIONS (The Fixes) */
+.transmission-header {
+    /* Geometry handled in Master Geometry file */
+}
+
+.status-online {
+    color: #00d4d4;
+    border-color: #007a7a;
+    background-color: rgba(0, 180, 180, 0.15);
+}
+
+.status-offline {
+    color: #e05555;
+    border-color: #8b3333;
+    background-color: rgba(224, 85, 85, 0.15);
+}
+
+.signal-sender {
+    color: #00b4b4;
+    font-weight: 600;
+}
+.signal-sender span,
+.signal-sender span.dim {
+    color: #666666;
+    font-weight: 400;
+}
+
+.signal-body {
+    color: #cccccc;
+    background-color: #242424;
+    border: 1px solid #383838;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+.signal-meta {
+    color: #666666;
+}
+.signal-meta a {
+    color: #999999 !important;
+    border-bottom-color: transparent;
+}
+.signal-meta a:hover {
+    color: #00b4b4 !important;
+    border-bottom-color: #00b4b4;
+}
+.signal-meta .dim {
+    color: #555555;
+}
+
+/* 08: BUTTONS & ACTIONS */
+
+.btn-smack, .master-update-btn {
+    background-color: #00b4b4;
+    color: #1e1e1e;
+}
+.btn-smack:hover, .master-update-btn:hover {
+    background-color: #00d4d4;
+    color: #1e1e1e;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.btn-smack.btn-backup,
+.btn-smack.btn-settings {
+    background-color: #383838;
+    color: #999999;
+}
+.btn-smack.btn-backup:hover,
+.btn-smack.btn-settings:hover {
+    background-color: #00b4b4;
+    color: #1e1e1e;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.btn-smack.btn-live {
+    background-color: #00b4b4;
+    color: #1e1e1e;
+}
+.btn-smack.btn-live:hover {
+    background-color: #00d4d4;
+    color: #1e1e1e;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+button:hover {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.btn-clear {
+    background-color: transparent;
+    color: #999999;
+    border-color: #383838;
+}
+.btn-clear:hover {
+    background-color: #2b2b2b;
+    color: #e0e0e0;
+    border-color: #555555;
+}
+.btn-clear.active {
+    background-color: #2b2b2b;
+    color: #00b4b4;
+    border-color: #00b4b4;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.action-authorize, .action-edit {
+    color: #00b4b4;
+    border-color: #00b4b4;
+}
+.action-authorize:hover {
+    background-color: #00b4b4;
+    color: #1e1e1e;
+}
+
+.action-delete {
+    color: #e05555;
+    border-color: #e05555;
+}
+.action-delete:hover {
+    background-color: #e05555;
+    color: #ffffff;
+}
+
+/* 09: ITEM LAYOUTS */
+.recent-item {
+    border-bottom-color: #383838;
+}
+.archive-thumb {
+    border-color: #383838;
+    background-color: #242424;
+}
+.item-text strong {
+    color: #e0e0e0;
+}
+.item-text .dim {
+    color: #666666;
+}
+
+/* 10: DASH/STATS */
+.stat-box {
+    border-color: #383838;
+    background-color: #242424;
+}
+.stat-val {
+    color: #00b4b4;
+}
+.stat-label {
+    color: #999999;
+}
+.stat-row {
+    border-bottom-color: #383838;
+}
+.stat-row .label { color: #999999; }
+.stat-row .value { color: #e0e0e0; }
+.highlight-green { color: #00b4b4; }
+
+/* 11: PAGINATION */
+.pagination a {
+    background-color: #2b2b2b;
+    border-color: #383838;
+    color: #999999;
+}
+.pagination a.active {
+    background-color: #00b4b4;
+    border-color: #00b4b4;
+    color: #1e1e1e;
+}
+.pagination a:hover {
+    border-color: #00b4b4;
+    color: #00b4b4;
+}
+
+/* 12: PROGRESS/UPLOADS */
+.progress-container {
+    background-color: #383838;
+    border-color: #2e2e2e;
+}
+.progress-bar {
+    background-color: #00b4b4;
+}
+.file-upload-wrapper {
+    border-color: #383838;
+    background-color: #2b2b2b;
+}
+.file-custom-btn {
+    background-color: #242424;
+    color: #999999;
+    border-right-color: #383838;
+}
+.file-custom-btn:hover {
+    background-color: #383838;
+    color: #e0e0e0;
+}
+.file-name-display {
+    color: #666666;
+}
+
+.built-in-label {
+    background-color: #242424;
+    border-color: #383838;
+    color: #999999;
+}
+.built-in-label:hover {
+    border-color: #00b4b4;
+    color: #e0e0e0;
+}
+input[type="checkbox"] {
+    border-color: #383838;
+    background-color: #1e1e1e;
+}
+input[type="checkbox"]:checked {
+    background-color: #00b4b4;
+    border-color: #00b4b4;
+}
+input[type="checkbox"]:checked::after {
+    border-color: #1e1e1e;
+}
+
+/* 13: LOGIN & FOOTER */
+.login-box {
+    background-color: #2b2b2b;
+    border-color: #383838;
+}
+
+#admin-universal-footer {
+    background-color: #1a1a1a;
+    border-top-color: #2e2e2e;
+}
+.footer-left { color: #555555; font-size: 1rem; }
+.footer-left a { color: #999999; border-bottom-color: #383838; }
+.footer-left a:hover { color: #00b4b4; border-bottom-color: #00b4b4; }
+.footer-right { color: #555555; font-size: 1rem; }
+
+/* 14: APPEARANCE */
+.appearance-controller {
+    border-color: #383838;
+}
+.skin-meta-wrap {
+    background-color: #242424;
+}
+.skin-selector-wrap {
+    background-color: #2b2b2b;
+    border-left-color: #383838;
+}
+.theme-title-display { color: #00b4b4; }
+.skin-desc-text { color: #888888; }
+
+/* Filter + Reset buttons */
+.btn-smack-filter {
+    background-color: #00b4b4;
+    color: #1e1e1e;
+}
+.btn-smack-filter:hover {
+    background-color: #00d4d4;
+    color: #1e1e1e;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.btn-reset {
+    background-color: transparent;
+    color: #666666;
+    border: 1px solid #383838;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 4px;
+}
+.btn-reset:hover {
+    border-color: #e05555;
+    color: #e05555;
+}
+
+.alert-success {
+    color: #00d4d4;
+    border-color: #007a7a;
+    background-color: rgba(0, 180, 180, 0.12);
+}
+
+.alert-error {
+    color: #e05555;
+    border-color: #8b3333;
+    background-color: rgba(224, 85, 85, 0.12);
+}
+
+/* 16: INPUT RANGE (Webkit) */
+input[type="range"]::-webkit-slider-runnable-track {
+    background-color: #383838;
+}
+input[type="range"]::-webkit-slider-thumb {
+    background-color: #00b4b4;
+}
+
+/* Asset cards (Media Library) */
+.asset-card {
+    border-color: #383838;
+    background-color: #2b2b2b;
+}
+.asset-thumb-wrapper {
+    border-bottom-color: #383838;
+    background-color: #242424;
+}
+
+/* 17: CSS OVERRIDE PAGE (smack-css.php) */
+.css-tab {
+    color: #666666;
+    border-color: #383838;
+}
+
+.css-tab:hover {
+    color: #00b4b4;
+    border-color: #00b4b4;
+}
+
+.css-tab-active {
+    color: #00b4b4;
+    border-color: #00b4b4;
+    text-shadow: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.css-preview-block {
+    border-color: #383838;
+    background-color: #2b2b2b;
+}

@@ -12,8 +12,9 @@ require_once 'core/auth.php';
 // 1. DATA DISCOVERY
 // -------------------------------------------------------------------------
 
-$active_skin_db  = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'active_skin'")->fetchColumn();
-$active_theme_db = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'active_theme'")->fetchColumn();
+$active_skin_db    = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'active_skin'")->fetchColumn();
+$active_theme_db   = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'active_theme'")->fetchColumn();
+$active_variant_db = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'active_skin_variant'")->fetchColumn() ?: '';
 
 // --- PUBLIC SKIN DISCOVERY ---
 $skin_dirs       = array_filter(glob('skins/*'), 'is_dir');
@@ -94,6 +95,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_global_appearanc
     if (isset($_POST['settings']) && is_array($_POST['settings'])) {
         $v_settings = $_POST['settings'];
 
+        // --- VARIANT SAVE ---
+        // active_skin_variant arrives in settings[] directly.
+        // If the skin has no variants, the field won't be in POST — safe to ignore.
+
         // --- LOGO UPLOAD ---
         if (!empty($_FILES['site_logo_file']['name'])) {
             $upload_dir = 'assets/img/';
@@ -156,6 +161,7 @@ include 'core/sidebar.php';
 <div class="main">
     <h2>GLOBAL APPEARANCE SETTINGS</h2>
 
+    <!-- ADMIN THEME SELECTOR -->
     <div class="box appearance-controller">
         <div class="skin-meta-wrap">
             <div class="theme-title-display">
@@ -194,6 +200,7 @@ include 'core/sidebar.php';
     <form method="POST" enctype="multipart/form-data">
         <div id="smack-skin-config-wrap">
 
+            <!-- GLOBAL BRANDING -->
             <div class="box">
                 <h3>GLOBAL BRANDING (MASTHEAD)</h3>
                 <div class="dash-grid">
@@ -218,6 +225,7 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
+            <!-- ARCHIVE GRID -->
             <div class="box">
                 <h3>ARCHIVE GRID ARCHITECTURE</h3>
                 <div class="dash-grid">
@@ -233,9 +241,11 @@ include 'core/sidebar.php';
                         <label>WALL ENGINE LINK</label>
 
                         <?php if ($pimpotron_active): ?>
+                            <!-- Pimpotron owns the hero stage — wall is incompatible -->
                             <select disabled style="opacity: 0.4; cursor: not-allowed;">
                                 <option>DISABLED BY SKIN</option>
                             </select>
+                            <!-- Force value to 0 so it saves correctly even though dropdown is dead -->
                             <input type="hidden" name="settings[show_wall_link]" value="0">
                             <p class="dim" style="margin-top: 6px; font-size: 0.75em;">
                                 PIMPOTRON IS ACTIVE &mdash; WALL ENGINE IS INCOMPATIBLE WITH THIS SKIN.
@@ -250,6 +260,36 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
+            <!-- COLOUR VARIANT (only shown when active skin declares variants[]) -->
+            <?php if (!empty($manifest['variants']) && is_array($manifest['variants'])): ?>
+            <?php
+                $skin_variants      = $manifest['variants'];
+                $skin_default_var   = $manifest['default_variant'] ?? array_key_first($skin_variants);
+                $current_variant    = ($active_variant_db !== '' && array_key_exists($active_variant_db, $skin_variants))
+                                      ? $active_variant_db
+                                      : $skin_default_var;
+            ?>
+            <div class="box">
+                <h3>COLOUR VARIANT</h3>
+                <div class="dash-grid">
+                    <div class="lens-input-wrapper">
+                        <label>SKIN PALETTE</label>
+                        <select name="settings[active_skin_variant]">
+                            <?php foreach ($skin_variants as $v_slug => $v_label): ?>
+                                <option value="<?php echo htmlspecialchars($v_slug); ?>" <?php echo ($current_variant === $v_slug) ? 'selected' : ''; ?>>
+                                    <?php echo strtoupper(htmlspecialchars($v_label)); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="dim" style="margin-top: 6px; font-size: 0.75em;">
+                            COLOUR PALETTE FOR THE ACTIVE SKIN. GEOMETRY AND LAYOUT ARE UNCHANGED.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- SKIN-SPECIFIC CALIBRATION (Static Page Styling + Wall Specific from manifest) -->
             <?php
             $grouped_opts = [];
             if (isset($manifest['options']) && is_array($manifest['options'])) {

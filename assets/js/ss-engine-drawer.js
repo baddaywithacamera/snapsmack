@@ -1,3 +1,9 @@
+/**
+ * SnapSmack - Drawer & Footer Toggle Engine
+ * Version: 2.0 - Renamed ss-engine-drawer.js (was script.js)
+ * Handles: Dual-pane footer toggle (Info/Comments), inline lightbox, HUD notifications.
+ */
+
 document.addEventListener('DOMContentLoaded', () => {
 
     /* ---------------------------------------------------------

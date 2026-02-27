@@ -52,5 +52,6 @@ $active_skin_path = $theme_base . $colour_css_file;
 
     <link rel="stylesheet" href="assets/css/admin-theme-geometry-master.css">
     <link rel="stylesheet" href="<?php echo $active_skin_path; ?>">
+    <link rel="stylesheet" href="assets/css/ss-engine-hotkey.css">
 </head>
 <body class="admin-body">

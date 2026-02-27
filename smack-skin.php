@@ -8,6 +8,9 @@
 
 require_once 'core/auth.php';
 
+// --- 0. LOAD GLOBAL SETTINGS ---
+$settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+
 // --- 1. LOAD GLOBAL INVENTORY ---
 // Pulls the master list of available scripts and engines.
 $global_inventory = (function() { return include 'core/manifest-inventory.php'; })();

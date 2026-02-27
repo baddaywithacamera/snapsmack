@@ -1,0 +1,14 @@
+/* Fifty Shades of Grey — DARK variant */
+:root {
+    --bg-primary:    #1e1e1e;
+    --bg-secondary:  #2b2b2b;
+    --bg-chrome:     #242424;
+    --border:        #383838;
+    --text-primary:  #e8e8e8;
+    --text-secondary:#999999;
+    --text-dim:      #555555;
+    --accent:        #b0b0b0;
+    --accent-hover:  #e0e0e0;
+    --accent-dim:    #707070;
+    --input-bg:      #222222;
+}
