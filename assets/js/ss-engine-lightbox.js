@@ -1,8 +1,11 @@
 /**
  * SnapSmack Engine: Lightbox
- * Version: 2.1 - Library Handshake Edition
+ * Version: 2.2 - Double-Load Guard
  * MASTER DIRECTIVE: Full file return. Logic only.
  */
+if (!window._ssLightboxLoaded) {
+window._ssLightboxLoaded = true;
+
 document.addEventListener('DOMContentLoaded', () => {
     const photo = document.querySelector('.post-image');
     if (!photo) return;
@@ -60,3 +63,5 @@ document.addEventListener('DOMContentLoaded', () => {
         window.smackdown.closeLightbox = removeOverlay;
     });
 });
+
+} // end double-load guard

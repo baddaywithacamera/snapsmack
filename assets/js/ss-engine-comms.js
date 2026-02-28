@@ -1,14 +1,7 @@
 /**
  * SnapSmack - Hotkey Engine
- * Version: 3.1 - Kill-Switch Aware (Library Edition)
+ * Version: 3.3 - X Key Added, Unified Close
  * MASTER DIRECTIVE: Full file return. Logic only.
- * -------------------------------------------------------------------------
- * - FIXED: Shortcut [2] respects global/post comment kill-switch.
- * - FIXED: Input protection prevents hotkey interference during typing.
- * - FIXED: Wall collision check ensures no conflict with 3D Wall logic.
- * - FIXED: Spacebar scroll protection (navigates only at bottom of page).
- * - FIXED: Persistence check prevents help toast from recurring.
- * -------------------------------------------------------------------------
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -18,24 +11,23 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.addEventListener('keydown', function(e) {
-    // 0. PROTECTION: Stop if user is typing or if we are on the 3D Wall
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (document.getElementById('wall-canvas')) return;
 
-    // 1. HELP SYSTEM (H key)
+    // HELP
     if (e.key === 'h' || e.key === 'H') {
         e.preventDefault();
         toggleHelpModal();
         return;
     }
 
-    // 2. ESCAPE (Master Close)
-    if (e.key === 'Escape') {
+    // CLOSE — X or Escape
+    if (e.key === 'x' || e.key === 'X' || e.key === 'Escape') {
         closeAllOverlays();
         return;
     }
 
-    // 3. NAVIGATION (Arrows & Space)
+    // NAVIGATION
     if (window.SNAP_DATA) {
         if (e.key === 'ArrowLeft' && window.SNAP_DATA.prevUrl) {
             window.location.href = window.SNAP_DATA.prevUrl;
@@ -49,18 +41,14 @@ document.addEventListener('keydown', function(e) {
             e.preventDefault();
             const isAtBottom = (window.innerHeight + window.scrollY) >= document.body.offsetHeight - 5;
 
-            // On the latest post (no next), space browses back through the archive
-            if (!window.SNAP_DATA.nextUrl && window.SNAP_DATA.prevUrl) {
+            // Space goes backward through archive (newest to oldest)
+            if (window.SNAP_DATA.prevUrl) {
                 window.location.href = window.SNAP_DATA.prevUrl;
-
-            // Otherwise space advances forward, but only when scrolled to bottom
-            } else if (window.SNAP_DATA.nextUrl && isAtBottom) {
-                window.location.href = window.SNAP_DATA.nextUrl;
             }
         }
     }
 
-    // 4. SHORTCUTS (1 & 2) — Use smackdown bridge or fall back to .click()
+    // SHORTCUTS
     if (e.key === '1') {
         if (window.smackdown && window.smackdown.toggleFooter) {
             window.smackdown.toggleFooter('info', null);
@@ -92,11 +80,8 @@ function scrollToFooter() {
 }
 
 function createHelpToast() {
-    // 1. SILENCE ON MOBILE: Detect touch-primary or small screens
     const isMobile = window.innerWidth <= 768 || window.matchMedia("(pointer: coarse)").matches;
     if (isMobile) return;
-
-    // 2. PERSISTENCE: Check if already acknowledged or flagged by header
     if (localStorage.getItem('snapsmack_help_seen') === 'true' || window.HIDE_SNAP_HELP) return;
 
     const style = window.getComputedStyle(document.body);
@@ -119,7 +104,6 @@ function createHelpToast() {
     document.body.appendChild(toast);
     setTimeout(() => toast.style.opacity = '1', 500);
     
-    // Hide and Mark as Seen so it never bugs them again
     setTimeout(() => {
         toast.style.opacity = '0';
         localStorage.setItem('snapsmack_help_seen', 'true');
@@ -143,11 +127,9 @@ function createHelpModal() {
     const bgColor = style.backgroundColor;
     const textColor = style.color;
     
-    // Logic check: If comments are disabled, we hide the [2] hint from the help menu
     const commentsEnabled = document.getElementById('show-comments') !== null;
     const commentHint = commentsEnabled ? '<strong>[ 2 ]</strong> <span>Toggle Comments</span>' : '';
 
-    // Backdrop
     const backdrop = document.createElement('div');
     backdrop.id = 'snap-help-modal';
     backdrop.style.cssText = `
@@ -156,7 +138,6 @@ function createHelpModal() {
         justify-content: center; z-index: 99999;
     `;
 
-    // Panel
     const panel = document.createElement('div');
     panel.style.cssText = `
         background: ${bgColor}; color: ${textColor}; border: 1px solid ${textColor};
@@ -174,14 +155,14 @@ function createHelpModal() {
             <strong>[ 1 ]</strong> <span>Toggle Info</span>
             ${commentHint}
             <strong>[ H ]</strong> <span>This Menu</span>
-            <strong>ESC</strong> <span>Close</span>
+            <strong>[ X ]</strong> <span>Close</span>
         </div>
-        <div style="margin-top: 20px; font-size: 10px; opacity: 0.6; text-align:center;">PRESS ESC TO CLOSE</div>
+        <div style="margin-top: 20px; font-size: 10px; opacity: 0.6; text-align:center;">PRESS X OR CLICK OUTSIDE TO CLOSE</div>
     `;
 
     backdrop.appendChild(panel);
     backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.style.display = 'none'; });
-    backdrop.style.display = 'none'; // Start hidden
+    backdrop.style.display = 'none';
     document.body.appendChild(backdrop);
 }
 
@@ -189,12 +170,10 @@ function closeAllOverlays() {
     const modal = document.getElementById('snap-help-modal');
     if (modal) modal.style.display = 'none';
 
-    // Bridge call to footer if it's open
     if (window.smackdown && window.smackdown.closeFooter) {
         window.smackdown.closeFooter();
     }
     
-    // Bridge call to lightbox if it's open
     if (window.smackdown && window.smackdown.closeLightbox) {
         window.smackdown.closeLightbox();
     }

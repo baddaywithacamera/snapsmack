@@ -1,7 +1,7 @@
 <?php
 /**
- * SnapSmack Skin Footer: Fifty Shades of Grey
- * Version: 2.0
+ * SNAPSMACK Skin Footer: New Horizon Dark
+ * Version: 5.0 - Self-Contained Handshake
  * -------------------------------------------------------------------------
  * 1. Handshake: Cross-references manifest require_scripts with inventory.
  * 2. Calls core/footer.php for the visual footer bar.

@@ -18,7 +18,7 @@ $comments_active = ($global_on && $post_on);
 
 <div id="scroll-stage">
 
-    <?php include('header.php'); ?>
+    <?php include('skin-header.php'); ?>
 
     <div id="photobox">
         <div class="main-photo">
@@ -102,6 +102,6 @@ $comments_active = ($global_on && $post_on);
         </div>
     </div>
 
-    <?php include('footer.php'); ?>
+    <?php include('skin-footer.php'); ?>
 
 </div>

@@ -1,20 +1,19 @@
 <?php
 /**
- * SNAPSMACK - Archive browser.
- * Provides a filtered or global view of all published images.
- * Supports filtering by category or album via URL parameters.
- * Git Version Official Alpha 0.5
+ * SnapSmack - Archive Browser
+ * Version: PRO-4.9 - Final Hardened
+ * MASTER DIRECTIVE: Full file return. Standardized junctions & scope safety.
  */
 
-// Basic error reporting for development and debugging.
+// 1. Error Reporting (Safety Valve)
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-// Load core dependencies.
+// 2. Bootstrap Environment
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/parser.php';
 
-// Initialize default environment variables to prevent crashes if settings are missing.
+// INITIALIZE SCOPE (Prevents Skin/Footer Crashes)
 $settings = [];
 $site_name = 'ISWA.CA';
 $active_skin = 'smackdown';
@@ -22,10 +21,10 @@ $active_skin = 'smackdown';
 try {
     $snapsmack = new SnapSmack($pdo);
 
-    // Load global site settings from the database.
+    // Fetch Global Settings
     $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
     
-    // Define the base URL for the site, ensuring a consistent trailing slash.
+    // THE PENCIL: Define BASE_URL (Force Trailing Slash)
     if (!defined('BASE_URL')) {
         $db_url = $settings['site_url'] ?? 'https://iswa.ca/';
         define('BASE_URL', rtrim($db_url, '/') . '/'); 
@@ -34,12 +33,11 @@ try {
     $active_skin = $settings['active_skin'] ?? 'smackdown';
     $site_name = $settings['site_name'] ?? $site_name;
 
-    // Capture category or album filters from the URL.
+    // 4. Filter Logic (GET params)
     $cat_filter   = isset($_GET['cat']) ? (int)$_GET['cat'] : null;
     $album_filter = isset($_GET['album']) ? (int)$_GET['album'] : null;
 
-    // --- DATA QUERY CONSTRUCTION ---
-    // Builds the SQL query dynamically based on whether the user is filtering by category or album.
+    // 5. Build Query
     $sql = "SELECT i.* FROM snap_images i ";
     $where_clauses = ["i.img_status = 'published'", "i.img_date <= NOW()"];
     $params = [];
@@ -61,21 +59,19 @@ try {
     $stmt->execute($params);
     $images = $stmt->fetchAll();
 
-    // Fetch lists for the filter dropdown menus.
+    // 6. Fetch Meta for Dropdowns
     $all_cats   = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
     $all_albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
 
 } catch (Exception $e) {
-    // Basic fail-safe if the database or core fails to initialize.
     die("<div style='background:#300;color:#f99;padding:20px;border:1px solid red;font-family:monospace;'><h3>ARCHIVE_TRANSMISSION_ERROR</h3>" . $e->getMessage() . "</div>");
 }
 
 $page_title = "Archive";
 $skin_path  = 'skins/' . $active_skin;
 
-// Include the skin's meta template if it exists.
-if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
-    include __DIR__ . '/' . $skin_path . '/meta.php';
+if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
+    include __DIR__ . '/' . $skin_path . '/skin-meta.php';
 }
 ?>
 
@@ -83,8 +79,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
     <div id="page-wrapper">
         
         <?php 
-        // Load the header from the active skin, or fall back to the core header.
-        $header_file = __DIR__ . '/' . $skin_path . '/header.php';
+        $header_file = __DIR__ . '/' . $skin_path . '/skin-header.php';
         include (file_exists($header_file)) ? $header_file : __DIR__ . '/core/header.php';
         ?>
 
@@ -131,15 +126,15 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
                     <?php foreach ($images as $img): ?>
                         <div class="thumb-container">
                             <?php 
-                                // Construct the permanent link to the post using its slug.
+                                // Clean Slugs for Navigation
                                 $link = BASE_URL . htmlspecialchars($img['img_slug']);
                                 
-                                // Determine the path to the thumbnail.
-                                // Logic assumes thumbnails are stored in a 'thumbs' subfolder within the image directory.
+                                // Path Logic: Matches smack-post.php v15.2
                                 $full_img_path = ltrim($img['img_file'], '/');
                                 $filename = basename($full_img_path);
                                 $folder = str_replace($filename, '', $full_img_path);
                                 
+                                // Force the thumbnail path with a reliable junction
                                 $thumb_url = BASE_URL . $folder . 'thumbs/t_' . $filename;
                             ?>
                             <a href="<?php echo $link; ?>" class="thumb-link" title="<?php echo htmlspecialchars($img['img_title']); ?>">
@@ -153,20 +148,12 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/meta.php')) {
             </div>
 
             <?php 
-            // Load the skin's footer if present.
-            $footer_file = __DIR__ . '/' . $skin_path . '/footer.php';
+            $footer_file = __DIR__ . '/' . $skin_path . '/skin-footer.php';
             if (file_exists($footer_file)) include $footer_file; 
             ?>
         </div>
     </div>
 
-    <div id="hud" class="hud-msg"></div>
-
-    <?php 
-    // Inject any user-defined tracking or analytics scripts from the database.
-    if (!empty($settings['footer_injection_scripts'])): 
-        echo $settings['footer_injection_scripts']; 
-    endif; 
-    ?>
+    <?php include __DIR__ . '/core/footer-scripts.php'; ?>
 </body>
 </html>

@@ -33,7 +33,6 @@ return [
     'require_scripts' => [
         'smack-footer',
         'smack-lightbox',
-        'smack-keyboard',
         'smack-glitch'
     ],
 
