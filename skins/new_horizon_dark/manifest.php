@@ -51,7 +51,7 @@ return [
             'default'  => '1280',
             'min'      => '800',
             'max'      => '1920',
-            'selector' => '#header .inside, #system-footer .inside, #browse-grid',
+            'selector' => '#header .inside, #system-footer .inside, #browse-grid, #justified-grid',
             'property' => 'max-width'
         ],
 
@@ -101,8 +101,8 @@ return [
             'default'  => '280',
             'min'      => '150',
             'max'      => '500',
-            'selector' => '#browse-grid',
-            'property' => '--justified-row-h'
+            'selector' => '#justified-grid',
+            'property' => '--justified-row-height'
         ],
 
         /* ---------------------------------------------------------------------

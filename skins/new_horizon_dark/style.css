@@ -453,6 +453,7 @@ img.post-image {
     ARCHIVE GRID
    ========================================================================= */
 
+/* --- GRID A: Square & Cropped (CSS Grid layout) --- */
 #browse-grid {
     max-width: 95%;
     margin: 80px auto;
@@ -460,7 +461,18 @@ img.post-image {
     flex: 1 0 auto;
 }
 
-.thumb-container {
+/* --- GRID B: Justified (Own ID — ZERO shared selectors with Grid A) --- */
+#justified-grid {
+    display: block;
+    max-width: 95%;
+    margin: 40px auto;
+    padding: 0;
+    box-sizing: border-box;
+    flex: 1 0 auto;
+}
+
+.square-grid .thumb-container,
+.cropped-grid .thumb-container {
     margin: 0 auto;
     background: #000000;
     display: flex;
@@ -469,8 +481,9 @@ img.post-image {
     box-sizing: border-box;
 }
 
-/* ARCHIVE FRAME */
-.thumb-link {
+/* ARCHIVE FRAME — scoped to Grid A only */
+.square-grid .thumb-link,
+.cropped-grid .thumb-link {
     display: inline-block;
     border: 3px solid #666666;
     box-shadow: none;
@@ -503,14 +516,24 @@ img.post-image {
     display: block;
 }
 
-.thumb-link img {
+.square-grid .thumb-link img,
+.cropped-grid .thumb-link img {
     max-width: var(--thumb-width, 400px);
     height: auto;
     display: block;
     transition: opacity 0.3s ease;
 }
 
-.thumb-link img:hover {
+.square-grid .thumb-link img:hover,
+.cropped-grid .thumb-link img:hover {
+    opacity: 0.7;
+}
+
+/* --- Justified item hover (separate chain, own container) --- */
+#justified-grid .justified-item img {
+    transition: opacity 0.3s ease;
+}
+#justified-grid .justified-item:hover img {
     opacity: 0.7;
 }
 

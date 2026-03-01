@@ -76,13 +76,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         }
 
         $exif_json = json_encode([
-            'camera'   => strtoupper($camera),
-            'lens'     => $lens,
-            'focal'    => $focal,
-            'iso'      => $iso,
-            'aperture' => $aperture,
-            'shutter'  => $shutter,
-            'flash'    => $flash
+            'camera'   => !empty($_POST['camera_model'])  ? strtoupper(trim($_POST['camera_model']))  : strtoupper($camera),
+            'lens'     => !empty($_POST['lens_info'])      ? trim($_POST['lens_info'])                 : $lens,
+            'focal'    => !empty($_POST['focal_length'])   ? trim($_POST['focal_length'])              : $focal,
+            'iso'      => !empty($_POST['iso_speed'])      ? trim($_POST['iso_speed'])                 : $iso,
+            'aperture' => !empty($_POST['aperture'])       ? trim($_POST['aperture'])                  : $aperture,
+            'shutter'  => !empty($_POST['shutter_speed'])  ? trim($_POST['shutter_speed'])             : $shutter,
+            'flash'    => !empty($_POST['flash_fire'])     ? $_POST['flash_fire']                      : $flash
         ]);
 
         // --- THUMBNAIL GENERATION ENGINE ---
@@ -330,6 +330,63 @@ include 'core/sidebar.php';
             </div>
         </div>
 
+        <div class="box">
+            <h3>TECHNICAL SPECIFICATIONS (EXIF OVERRIDES)</h3>
+            <p class="dim" style="margin: -5px 0 15px 0; font-size: 0.75em;">JPEG EXIF is auto-extracted on upload. Manual entries below override auto-detected values. Leave blank to use auto-detected data.</p>
+            
+            <div class="meta-grid">
+                <div class="lens-input-wrapper">
+                    <label>CAMERA MODEL</label>
+                    <input type="text" name="camera_model" placeholder="Auto-detected from EXIF...">
+                </div>
+                
+                <div class="lens-input-wrapper">
+                    <label>LENS INFO</label>
+                    <div class="input-control-row" style="display:flex; gap:10px; align-items:center;">
+                        <input type="text" name="lens_info" id="meta-lens" placeholder="Auto-detected from EXIF..." style="flex-grow:1;">
+                        <label class="built-in-label" style="margin:0; white-space:nowrap;"><input type="checkbox" id="fixed-lens-check"> Built-in</label>
+                    </div>
+                </div>
+                
+                <div class="lens-input-wrapper">
+                    <label>FOCAL LENGTH</label>
+                    <input type="text" name="focal_length" placeholder="Auto-detected from EXIF...">
+                </div>
+                
+                <div class="lens-input-wrapper">
+                    <label>FILM STOCK</label>
+                    <div class="input-control-row" style="display:flex; gap:10px; align-items:center;">
+                        <input type="text" name="film_stock" id="meta-film" placeholder="e.g. Kodak Portra 400" style="flex-grow:1;">
+                        <label class="built-in-label" style="margin:0; white-space:nowrap;"><input type="checkbox" name="film_na" id="film-na-check"> N/A</label>
+                    </div>
+                </div>
+                
+                <div class="lens-input-wrapper">
+                    <label>ISO</label>
+                    <input type="text" name="iso_speed" placeholder="Auto-detected from EXIF...">
+                </div>
+                
+                <div class="lens-input-wrapper">
+                    <label>APERTURE</label>
+                    <input type="text" name="aperture" placeholder="Auto-detected from EXIF...">
+                </div>
+                
+                <div class="lens-input-wrapper">
+                    <label>SHUTTER SPEED</label>
+                    <input type="text" name="shutter_speed" placeholder="Auto-detected from EXIF...">
+                </div>
+                
+                <div class="lens-input-wrapper">
+                    <label>FLASH FIRED</label>
+                    <select name="flash_fire" class="full-width-select">
+                        <option value="">Auto-detect</option>
+                        <option value="No">No</option>
+                        <option value="Yes">Yes</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
         <div class="form-action-row">
             <button type="submit" class="master-update-btn">COMMIT TRANSMISSION</button>
         </div>
@@ -337,5 +394,5 @@ include 'core/sidebar.php';
     </form>
 </div>
 
-<script src="assets/js/smack-ui-private.js?v=<?php echo time(); ?>"></script>
+<script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
 <?php include 'core/admin-footer.php'; ?>

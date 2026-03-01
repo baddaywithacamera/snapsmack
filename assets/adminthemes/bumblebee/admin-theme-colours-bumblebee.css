@@ -113,6 +113,33 @@ input[type="datetime-local"], input[type="date"], select, textarea,
     color: #FFFFFF;
 }
 
+/* Custom multiselect dropdown colours */
+.dropdown-content {
+    background-color: #111111;
+    border-color: #FFCC00;
+    box-shadow: 0 4px 12px rgba(255, 204, 0, 0.15);
+}
+
+.dropdown-search-wrapper {
+    border-bottom-color: #333333;
+}
+
+.dropdown-search-wrapper input {
+    background-color: #1A1A1A;
+    border-color: #444444;
+    color: #FFFFFF;
+}
+
+.multi-cat-item {
+    border-bottom-color: #222222;
+    color: #EEEEEE;
+}
+
+.multi-cat-item:hover {
+    background-color: #222222;
+    color: #FFCC00;
+}
+
 /* Read-only display fields get a darker inset look */
 .read-only-display {
     background-color: #0D0D0D;
@@ -259,11 +286,11 @@ button:hover {
 }
 
 .action-delete {
-    color: #FF4444;
-    border-color: #FF4444;
+    color: #997A00;
+    border-color: #997A00;
 }
 .action-delete:hover {
-    background-color: #FF4444;
+    background-color: #997A00;
     color: #FFFFFF;
 }
 
@@ -416,8 +443,8 @@ input[type="checkbox"]:checked::after {
     border-radius: 4px;
 }
 .btn-reset:hover {
-    border-color: #FF4444;
-    color: #FF4444;
+    border-color: #997A00;
+    color: #997A00;
 }
 
 
@@ -429,8 +456,8 @@ input[type="checkbox"]:checked::after {
 
 .alert-error {
     color: #FFFFFF;
-    border-color: #FF4444;
-    background-color: #FF4444;
+    border-color: #997A00;
+    background-color: #997A00;
 }
 
 /* 16: INPUT RANGE (Webkit) */

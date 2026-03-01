@@ -270,7 +270,7 @@ include 'core/sidebar.php';
     </form>
 </div>
 
-<script src="assets/js/smack-ui-private.js?v=<?php echo time(); ?>"></script>
+<script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
 <script>
     window.addEventListener('DOMContentLoaded', () => {
         if(typeof updateLabel === "function") { 

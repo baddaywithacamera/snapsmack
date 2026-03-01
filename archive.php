@@ -44,6 +44,27 @@ try {
         $archive_layout = 'square';
     }
 
+    // --- THUMB SIZE RESOLUTION ---
+    // Abstract 5-step scale → layout-specific pixel values.
+    // Cropped values are ~25% larger than square so visual weight matches.
+    // Justified ignores this (uses flex-grow + row height instead).
+    $thumb_size_map = [
+        'square' => ['xs' => 120, 's' => 150, 'm' => 200, 'l' => 250, 'xl' => 300],
+        'cropped' => ['xs' => 150, 's' => 190, 'm' => 250, 'l' => 310, 'xl' => 375],
+    ];
+    $thumb_step = $settings['thumb_size'] ?? 'm';
+    // Backwards compat: if old pixel value, map to closest step
+    if (is_numeric($thumb_step)) {
+        $px = (int)$thumb_step;
+        if ($px <= 130) $thumb_step = 'xs';
+        elseif ($px <= 170) $thumb_step = 's';
+        elseif ($px <= 230) $thumb_step = 'm';
+        elseif ($px <= 290) $thumb_step = 'l';
+        else $thumb_step = 'xl';
+    }
+    if (!in_array($thumb_step, ['xs', 's', 'm', 'l', 'xl'])) $thumb_step = 'm';
+    $thumb_px = $thumb_size_map[$archive_layout][$thumb_step] ?? $thumb_size_map['square']['m'];
+
     // Justified row target height (skin-configurable, default 280)
     $justified_row_height = (int)($settings['justified_row_height'] ?? 280);
 
@@ -139,18 +160,25 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             <?php if ($archive_layout === 'masonry'): ?>
             <!-- ============================================================
                  JUSTIFIED LAYOUT — Flickr-style row-fill, full aspect ratio
-                 Images scale to fill rows at a target height, no gaps.
+                 PHP groups images into rows using a reference width for
+                 row-break decisions. Actual sizing is 100% CSS flexbox —
+                 each item gets flex-grow equal to its aspect ratio so the
+                 browser fills the row perfectly at any container width.
                  ============================================================ -->
             <?php
-                // Target row height — configurable via skin settings
+                // Target row height — used for row-break math only
                 $target_row_h = (int)($settings['justified_row_height'] ?? 280);
-                $container_w  = (int)($settings['main_canvas_width'] ?? 1280);
-                $gap          = 4; // px gap between images
+                $gap          = (int)($settings['justified_gap'] ?? 4);
+
+                // Reference width for row-break decisions.
+                // This doesn't set the rendered width — CSS handles that.
+                // We use main_canvas_width as an approximation; flex handles the rest.
+                $ref_w = (int)($settings['main_canvas_width'] ?? 1280);
             ?>
-            <div id="browse-grid" class="justified-grid" style="--justified-gap: <?php echo $gap; ?>px;">
+            <div id="justified-grid" style="--justified-gap: <?php echo $gap; ?>px; --justified-row-height: <?php echo $target_row_h; ?>px;">
                 <?php if ($images): ?>
                     <?php
-                    // Build rows: accumulate images until the row is full
+                    // Build rows: accumulate images until estimated row is full
                     $rows = [];
                     $current_row = [];
                     $current_row_width = 0;
@@ -161,51 +189,39 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                         if ($ih <= 0) $ih = 400;
                         if ($iw <= 0) $iw = 400;
 
-                        // Scale image to target row height
-                        $scaled_w = round($iw * ($target_row_h / $ih));
-                        $img['_scaled_w'] = $scaled_w;
                         $img['_aspect'] = $iw / $ih;
+                        $scaled_w = round($img['_aspect'] * $target_row_h);
 
                         $current_row[] = $img;
                         $current_row_width += $scaled_w + $gap;
 
-                        // If this row exceeds the container, commit it
-                        if ($current_row_width - $gap >= $container_w) {
-                            $rows[] = $current_row;
+                        if ($current_row_width - $gap >= $ref_w) {
+                            $rows[] = ['images' => $current_row, 'full' => true];
                             $current_row = [];
                             $current_row_width = 0;
                         }
                     }
-                    // Last partial row
+                    // Last partial row — marked so CSS doesn't over-stretch it
                     if (!empty($current_row)) {
-                        $rows[] = $current_row;
+                        $rows[] = ['images' => $current_row, 'full' => false];
                     }
                     ?>
-                    <?php foreach ($rows as $row_idx => $row):
-                        // Calculate the actual row height to justify-fill the container
-                        $total_aspect = 0;
-                        foreach ($row as $img) {
-                            $total_aspect += $img['_aspect'];
-                        }
-                        $gaps_total = $gap * (count($row) - 1);
-                        $row_height = round(($container_w - $gaps_total) / $total_aspect);
-
-                        // For the last row, don't stretch if only 1-2 images
-                        $is_last = ($row_idx === count($rows) - 1);
-                        if ($is_last && count($row) <= 2 && $row_height > $target_row_h * 1.3) {
-                            $row_height = $target_row_h;
-                        }
+                    <?php foreach ($rows as $row_data):
+                        $row = $row_data['images'];
+                        $is_full = $row_data['full'];
+                        $row_class = 'justified-row' . (!$is_full ? ' justified-row-last' : '');
                     ?>
-                        <div class="justified-row" style="height: <?php echo $row_height; ?>px;">
+                        <div class="<?php echo $row_class; ?>">
                             <?php foreach ($row as $img): 
                                 $link = BASE_URL . htmlspecialchars($img['img_slug']);
                                 $full_img_path = ltrim($img['img_file'], '/');
                                 $filename = basename($full_img_path);
                                 $folder = str_replace($filename, '', $full_img_path);
                                 $thumb_url = BASE_URL . $folder . 'thumbs/a_' . $filename;
-                                $img_w = round($img['_aspect'] * $row_height);
+                                // Aspect ratio * 100 for flex-grow (avoids sub-1 decimals)
+                                $flex_grow = round($img['_aspect'] * 100);
                             ?>
-                                <a href="<?php echo $link; ?>" class="justified-item" title="<?php echo htmlspecialchars($img['img_title']); ?>" style="width: <?php echo $img_w; ?>px; height: <?php echo $row_height; ?>px;">
+                                <a href="<?php echo $link; ?>" class="justified-item" title="<?php echo htmlspecialchars($img['img_title']); ?>" style="flex-grow: <?php echo $flex_grow; ?>; aspect-ratio: <?php echo round($img['_aspect'], 4); ?>;">
                                     <img src="<?php echo $thumb_url; ?>" alt="<?php echo htmlspecialchars($img['img_title']); ?>" loading="lazy">
                                 </a>
                             <?php endforeach; ?>
@@ -220,7 +236,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             <!-- ============================================================
                  CROPPED LAYOUT — Max 3:2 / 2:3 aspect, center-cropped
                  ============================================================ -->
-            <div id="browse-grid" class="cropped-grid" style="--grid-cols: <?php echo htmlspecialchars($settings['browse_cols'] ?? 4); ?>; --thumb-width: <?php echo htmlspecialchars($settings['thumb_size'] ?? 200); ?>px;">
+            <div id="browse-grid" class="cropped-grid" style="--grid-cols: <?php echo htmlspecialchars($settings['browse_cols'] ?? 4); ?>; --thumb-width: <?php echo $thumb_px; ?>px;">
                 <?php if ($images): ?>
                     <?php foreach ($images as $img): ?>
                         <div class="thumb-container cropped-item">
@@ -254,7 +270,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             <!-- ============================================================
                  SQUARE LAYOUT — Classic 1:1 center-cropped grid (default)
                  ============================================================ -->
-            <div id="browse-grid" class="square-grid" style="--grid-cols: <?php echo htmlspecialchars($settings['browse_cols'] ?? 4); ?>; --thumb-width: <?php echo htmlspecialchars($settings['thumb_size'] ?? 200); ?>px;">
+            <div id="browse-grid" class="square-grid" style="--grid-cols: <?php echo htmlspecialchars($settings['browse_cols'] ?? 4); ?>; --thumb-width: <?php echo $thumb_px; ?>px;">
                 <?php if ($images): ?>
                     <?php foreach ($images as $img): ?>
                         <div class="thumb-container">

@@ -61,12 +61,12 @@ html, body {
 }
 
 .sidebar .logout {
-    color: #990000;
+    color: #0D260D;
     font-weight: 700;
 }
 
 .sidebar .logout:hover {
-    color: #FF0000;
+    color: #006400;
 }
 
 .credits-admin {
@@ -111,6 +111,33 @@ input[type="datetime-local"], input[type="date"], select, textarea,
     color: #A8E6A8;
 }
 
+/* Custom multiselect dropdown colours */
+.dropdown-content {
+    background-color: #020802;
+    border-color: #0D260D;
+    box-shadow: 0 4px 12px rgba(0, 200, 83, 0.1);
+}
+
+.dropdown-search-wrapper {
+    border-bottom-color: #061406;
+}
+
+.dropdown-search-wrapper input {
+    background-color: #010401;
+    border-color: #0D260D;
+    color: #A8E6A8;
+}
+
+.multi-cat-item {
+    border-bottom-color: #040F04;
+    color: #008E3A;
+}
+
+.multi-cat-item:hover {
+    background-color: #061406;
+    color: #00C853;
+}
+
 /* Read-only display fields get a lighter border for the inset look */
 .read-only-display {
     background-color: #010401;
@@ -145,8 +172,8 @@ input:focus, textarea:focus, select:focus {
 }
 
 .status-offline {
-    color: #990000;
-    border-color: #990000;
+    color: #0D260D;
+    border-color: #0D260D;
     background-color: rgba(153, 0, 0, 0.05);
 }
 
@@ -258,11 +285,11 @@ button:hover {
 }
 
 .action-delete {
-    color: #990000;
-    border-color: #990000;
+    color: #0D260D;
+    border-color: #0D260D;
 }
 .action-delete:hover {
-    background-color: #990000;
+    background-color: #0D260D;
     color: #FFFFFF;
 }
 
@@ -416,8 +443,8 @@ input[type="checkbox"]:checked::after {
     border-radius: 4px;
 }
 .btn-reset:hover {
-    border-color: #990000;
-    color: #990000;
+    border-color: #0D260D;
+    color: #0D260D;
 }
 
 
@@ -428,8 +455,8 @@ input[type="checkbox"]:checked::after {
 }
 
 .alert-error {
-    color: #990000;
-    border-color: #990000;
+    color: #0D260D;
+    border-color: #0D260D;
     background-color: rgba(153, 0, 0, 0.1);
 }
 

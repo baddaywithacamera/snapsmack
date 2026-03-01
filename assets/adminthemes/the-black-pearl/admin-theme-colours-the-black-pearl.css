@@ -61,12 +61,12 @@ html, body {
 }
 
 .sidebar .logout {
-    color: #AA0000;
+    color: #333333;
     font-weight: 700;
 }
 
 .sidebar .logout:hover {
-    color: #FF0000;
+    color: #444444;
 }
 
 .credits-admin {
@@ -109,6 +109,32 @@ input[type="datetime-local"], input[type="date"], select, textarea,
 .preview-box, .select-box {
     background-color: #1A1A1A;
     border-color: #333333;
+    color: #FFFFFF;
+}
+/* Custom multiselect dropdown colours */
+.dropdown-content {
+    background-color: #111111;
+    border-color: #333333;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
+}
+
+.dropdown-search-wrapper {
+    border-bottom-color: #1A1A1A;
+}
+
+.dropdown-search-wrapper input {
+    background-color: #0D0D0D;
+    border-color: #333333;
+    color: #FFFFFF;
+}
+
+.multi-cat-item {
+    border-bottom-color: #1A1A1A;
+    color: #888888;
+}
+
+.multi-cat-item:hover {
+    background-color: #1A1A1A;
     color: #FFFFFF;
 }
 
@@ -255,11 +281,11 @@ button:hover {
 }
 
 .action-delete {
-    color: #AA0000;
+    color: #333333;
     border-color: #333333;
 }
 .action-delete:hover {
-    background-color: #AA0000;
+    background-color: #333333;
     color: #FFFFFF;
 }
 
@@ -413,8 +439,8 @@ input[type="checkbox"]:checked::after {
     border-radius: 4px;
 }
 .btn-reset:hover {
-    border-color: #AA0000;
-    color: #AA0000;
+    border-color: #333333;
+    color: #333333;
 }
 
 /* 16: INPUT RANGE (Webkit) */

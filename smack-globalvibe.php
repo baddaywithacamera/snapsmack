@@ -238,8 +238,32 @@ include 'core/sidebar.php';
                     </div>
 
                     <div class="lens-input-wrapper">
-                        <label>THUMBNAIL SIZE (PX)</label>
-                        <input type="number" name="settings[thumb_size]" value="<?php echo htmlspecialchars($settings['thumb_size'] ?? 400); ?>">
+                        <label>THUMBNAIL SIZE</label>
+                        <select name="settings[thumb_size]">
+                            <?php
+                            $size_steps = [
+                                'xs' => 'XS — Extra Small',
+                                's'  => 'S — Small',
+                                'm'  => 'M — Medium',
+                                'l'  => 'L — Large',
+                                'xl' => 'XL — Extra Large',
+                            ];
+                            $current_size = $settings['thumb_size'] ?? 'm';
+                            // Backwards compat: if old pixel value is stored, map to closest step
+                            if (is_numeric($current_size)) {
+                                $px = (int)$current_size;
+                                if ($px <= 130) $current_size = 'xs';
+                                elseif ($px <= 170) $current_size = 's';
+                                elseif ($px <= 230) $current_size = 'm';
+                                elseif ($px <= 290) $current_size = 'l';
+                                else $current_size = 'xl';
+                            }
+                            foreach ($size_steps as $key => $label): ?>
+                                <option value="<?php echo $key; ?>" <?php echo ($current_size === $key) ? 'selected' : ''; ?>>
+                                    <?php echo $label; ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="lens-input-wrapper">
                         <label>BROWSE COLUMNS</label>

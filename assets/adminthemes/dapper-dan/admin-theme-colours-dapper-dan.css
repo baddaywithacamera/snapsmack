@@ -111,6 +111,33 @@ input[type="datetime-local"], input[type="date"], select, textarea,
     color: #F5F5DC;
 }
 
+/* Custom multiselect dropdown colours */
+.dropdown-content {
+    background-color: #0A0A0A;
+    border-color: #222222;
+    box-shadow: 0 4px 12px rgba(234, 179, 8, 0.1);
+}
+
+.dropdown-search-wrapper {
+    border-bottom-color: #222222;
+}
+
+.dropdown-search-wrapper input {
+    background-color: #050505;
+    border-color: #333333;
+    color: #F5F5DC;
+}
+
+.multi-cat-item {
+    border-bottom-color: #111111;
+    color: #BBBBBB;
+}
+
+.multi-cat-item:hover {
+    background-color: #141414;
+    color: #EAB308;
+}
+
 /* Read-only display fields get a lighter border for the inset look */
 .read-only-display {
     background-color: #050505;
