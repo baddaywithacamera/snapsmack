@@ -1,13 +1,14 @@
 <?php
 /**
  * SnapSmack Skin Manifest: New Horizon Dark
- * Version: 5.1 - Glitch Engine Integration
+ * Version: 5.4 - Archive Grid Controls & Justified Support
  * -------------------------------------------------------------------------
- * - RESTORED: Section 1 Canvas Layout (Width, Gutter, Flip) from v4.1.
- * - RETAINED: Section 5 Blogroll logic from v3.5.
- * - FIXED: Typography pull updated to target the 'fonts' sub-key.
- * - ADDED: 'require_scripts' array to request JS engines from core.
- * - ADDED: smack-glitch to handshake.
+ * - ADDED: archive_layouts feature flag (square, cropped, masonry)
+ * - ADDED: Section 2a Archive Grid controls (columns, justified row height)
+ * - ADDED: Archive Thumbnail Frame picker (border-only, no shadow)
+ * - FIXED: Hero frame selector no longer targets .thumb-link
+ * - RETAINED: All v5.3 hero frame options unchanged
+ * - RETAINED: All v5.3 typography, wall, blogroll options unchanged
  * - DIRECTIVE: FULL FILE OUTPUT. NO TRUNCATION.
  * -------------------------------------------------------------------------
  */
@@ -18,7 +19,7 @@ $fonts = $inventory['fonts'] ?? [];
 
 return [
     'name'          => 'New Horizon Dark',
-    'version'       => '5.1',
+    'version'       => '5.4',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'High-contrast dark mode with archival framing, tactical layout controls, and full JS library support.',
@@ -32,6 +33,7 @@ return [
     'require_scripts' => [
         'smack-footer', 
         'smack-lightbox', 
+        'smack-keyboard',
         'smack-justified-lib',
         'smack-justified'
     ],
@@ -117,23 +119,23 @@ return [
             'options'  => [
                 'revival_double' => [
                     'label' => 'Revival Double Line (Grey/Black/Grey)',
-                    'css'   => '{ border: 5px solid #666666 !important; box-shadow: none !important; }'
+                    'css'   => '{ border: 5px solid #666666 !important; box-shadow: 0 0 0 15px #000000, 0 0 0 16px #666666 !important; }'
                 ],
                 'classic_white'  => [
                     'label' => 'Classic Horizon (Thick White)',
-                    'css'   => '{ border: 20px solid #ffffff !important; box-shadow: none !important; }'
+                    'css'   => '{ border: 20px solid #ffffff !important; box-shadow: 0 0 0 1px #333333 !important; }'
                 ],
                 'gallery_mat'    => [
                     'label' => 'Gallery Multi-Mat (White / Med-Grey / White)',
-                    'css'   => '{ border: 3px solid #ffffff !important; box-shadow: none !important; }'
+                    'css'   => '{ border: 3px solid #ffffff !important; box-shadow: 0 0 0 15px #666666, 0 0 0 16px #ffffff !important; }'
                 ],
                 'minimal_bevel'  => [
-                    'label' => 'Minimal Bevel (Thin White)',
-                    'css'   => '{ border: 1px solid #ffffff !important; box-shadow: none !important; }'
+                    'label' => 'Minimal Bevel (Thin White / Black / White)',
+                    'css'   => '{ border: 1px solid #ffffff !important; box-shadow: 0 0 0 8px #000000, 0 0 0 9px #ffffff !important; }'
                 ],
                 'obsidian'       => [
-                    'label' => 'Obsidian (Dark Grey)',
-                    'css'   => '{ border: 1px solid #333333 !important; box-shadow: none !important; }'
+                    'label' => 'Obsidian (Dark Grey / Black / Dark Grey)',
+                    'css'   => '{ border: 1px solid #333333 !important; box-shadow: 0 0 0 20px #111111, 0 0 0 21px #333333 !important; }'
                 ]
             ]
         ],
@@ -228,11 +230,11 @@ return [
         ],
 
         /* ---------------------------------------------------------------------
-           SECTION 4: STATIC PAGE STYLING
+           SECTION 4: CONTENT & TYPOGRAPHY (Static Pages & Post Info)
            --------------------------------------------------------------------- */
 
         'static_heading_font' => [
-            'section'  => 'STATIC PAGE STYLING',
+            'section'  => 'CONTENT & TYPOGRAPHY',
             'type'     => 'select',
             'label'    => 'Heading Typography',
             'default'  => 'Helvetica Neue',
@@ -242,7 +244,7 @@ return [
         ],
 
         'static_body_font' => [
-            'section'  => 'STATIC PAGE STYLING',
+            'section'  => 'CONTENT & TYPOGRAPHY',
             'type'     => 'select',
             'label'    => 'Body Typography',
             'default'  => 'Georgia',
@@ -251,14 +253,60 @@ return [
             'property' => 'font-family'
         ],
 
+        'content_line_height' => [
+            'section'  => 'CONTENT & TYPOGRAPHY',
+            'type'     => 'range',
+            'label'    => 'Leading (Line Spacing)',
+            'default'  => '1.6',
+            'min'      => '1',
+            'max'      => '3',
+            'step'     => '0.1',
+            'selector' => ':root',
+            'property' => '--content-lh'
+        ],
+
+        'content_letter_spacing' => [
+            'section'  => 'CONTENT & TYPOGRAPHY',
+            'type'     => 'range',
+            'label'    => 'Tracking (Letter Spacing)',
+            'default'  => '0',
+            'min'      => '-2',
+            'max'      => '10',
+            'selector' => '.static-content, .description',
+            'property' => 'letter-spacing'
+        ],
+
+        'dropcap_style' => [
+            'section'  => 'CONTENT & TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'First Letter Dropcap',
+            'default'  => 'none',
+            'selector' => '.static-content p:not(:empty):not(:has(h1,h2,h3)):first-of-type::first-letter, .description p:not(:empty):not(:has(h1,h2,h3)):first-of-type::first-letter',
+            'property' => 'custom-framing',
+            'options'  => [
+                'none' => [
+                    'label' => 'None',
+                    'css'   => '{ float: none; font-size: inherit; margin: 0; padding: 0; line-height: inherit; }'
+                ],
+                'simple' => [
+                    'label' => 'Simple Bold (Large)',
+                    'css'   => '{ float: left; font-size: 3.5em; line-height: 0.8; padding-top: 4px; padding-right: 8px; font-weight: bold; }'
+                ],
+                'tactical' => [
+                    'label' => 'Tactical Block (White on Grey)',
+                    'css'   => '{ float: left; font-size: 2.2em; line-height: 1; margin: 4px 10px 0 0; padding: 10px 15px; background: #333; color: #fff; font-family: monospace; }'
+                ]
+            ]
+        ],
+
         'static_section_spacing' => [
-            'section'  => 'STATIC PAGE STYLING',
+            'section'  => 'CONTENT & TYPOGRAPHY',
             'type'     => 'range',
             'label'    => 'Vertical Section Spacing (px)',
             'default'  => '40',
             'min'      => '10',
             'max'      => '120',
-            'selector' => '.static-content',
+            'selector' => '.static-content, #pane-info',
             'property' => 'margin-top'
         ],
 

@@ -173,6 +173,16 @@
     position: relative;
     width: 100%;
 }
+.justified-row {
+    display: flex;
+    gap: var(--justified-gap, 4px);
+    margin-bottom: var(--justified-gap, 4px);
+}
+.justified-item {
+    display: block;
+    flex-shrink: 0;
+    overflow: hidden;
+}
 .justified-item img {
     width: 100%;
     height: 100%;
@@ -180,10 +190,12 @@
     display: block;
 }
 
-/* --- Frame reset: prevent skin image_frame_style from bleeding into justified grid --- */
+/* --- Frame reset: prevent ANY border/shadow from bleeding into justified grid --- */
 .justified-item,
 .justified-item a,
-.justified-item img {
+.justified-item img,
+.justified-grid .thumb-link,
+.justified-grid .thumb-link img {
     border: none !important;
     box-shadow: none !important;
 }
