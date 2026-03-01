@@ -1,6 +1,6 @@
 -- SnapSmack Backup Service
 -- Type: SCHEMA
--- Date: 2026-02-24 05:37:51
+-- Date: 2026-03-01 19:13:04
 
 DROP TABLE IF EXISTS `snap_images`;
 CREATE TABLE `snap_images` (
@@ -12,11 +12,14 @@ CREATE TABLE `snap_images` (
   `img_date` datetime NOT NULL,
   `img_file` varchar(255) NOT NULL,
   `img_exif` text,
+  `img_download_url` varchar(500) DEFAULT NULL,
+  `img_download_count` int unsigned NOT NULL DEFAULT '0',
   `img_width` int DEFAULT '0',
   `img_height` int DEFAULT '0',
   `img_status` enum('published','draft') DEFAULT 'published',
   `img_orientation` int DEFAULT '0',
   `allow_comments` tinyint(1) DEFAULT '1',
+  `allow_download` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -68,4 +71,32 @@ CREATE TABLE `snap_settings` (
   `setting_val` text,
   PRIMARY KEY (`setting_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+DROP TABLE IF EXISTS `snap_pages`;
+CREATE TABLE `snap_pages` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `slug` varchar(100) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `content` longtext,
+  `image_asset` varchar(255) DEFAULT '',
+  `is_active` tinyint(1) DEFAULT '1',
+  `menu_order` int DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `slug` (`slug`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+DROP TABLE IF EXISTS `snap_blogroll`;
+CREATE TABLE `snap_blogroll` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `peer_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `peer_url` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cat_id` int DEFAULT NULL,
+  `peer_rss` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `peer_desc` text COLLATE utf8mb4_unicode_ci,
+  `sort_order` int NOT NULL DEFAULT '0',
+  `rss_last_fetched` datetime DEFAULT NULL,
+  `rss_last_updated` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
