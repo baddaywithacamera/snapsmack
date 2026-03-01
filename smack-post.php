@@ -2,7 +2,12 @@
 /**
  * SNAPSMACK - Mission entry portal.
  * Handles primary asset uploads, automated Spec/EXIF extraction, 
- * and multi-tier thumbnail generation (Wall and Archive).
+ * and multi-tier thumbnail generation (Square + Aspect-Preserved).
+ * 
+ * Thumb outputs:
+ *   t_  — 400x400 center-cropped square (archive square grid)
+ *   a_  — 400px on the long side, native aspect (archive cropped & masonry)
+ *
  * Git Version Official Alpha 0.5
  */
 
@@ -90,25 +95,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         elseif ($mime == 'image/webp') { $src = imagecreatefromwebp($target_path); }
 
         if ($src) {
-            // 1. Square Archive Thumbnail (300x300)
-            $sq_size = 300;
+            $thumb_dir = $upload_dir . 'thumbs/';
+
+            // =============================================================
+            // 1. SQUARE THUMBNAIL (t_ prefix) — 400x400 center-cropped
+            // =============================================================
+            $sq_size = 400;
             $sq_thumb = imagecreatetruecolor($sq_size, $sq_size);
             $min_dim = min($orig_w, $orig_h);
             $off_x = ($orig_w - $min_dim) / 2;
             $off_y = ($orig_h - $min_dim) / 2;
+
+            if ($mime == 'image/png' || $mime == 'image/webp') {
+                imagealphablending($sq_thumb, false);
+                imagesavealpha($sq_thumb, true);
+            }
+
             imagecopyresampled($sq_thumb, $src, 0, 0, $off_x, $off_y, $sq_size, $sq_size, $min_dim, $min_dim);
-            imagejpeg($sq_thumb, $upload_dir . 'thumbs/t_' . $new_file_name, 85);
+            
+            if ($mime === 'image/jpeg') {
+                imagejpeg($sq_thumb, $thumb_dir . 't_' . $new_file_name, 82);
+            } elseif ($mime === 'image/png') {
+                imagepng($sq_thumb, $thumb_dir . 't_' . $new_file_name, 8);
+            } else {
+                imagewebp($sq_thumb, $thumb_dir . 't_' . $new_file_name, 78);
+            }
             imagedestroy($sq_thumb);
 
-            // 2. Gallery Wall Thumbnail (Variable Width, 500px Height)
-            $wall_h = 500;
-            $wall_w = round($orig_w * ($wall_h / $orig_h));
-            $wall_thumb = imagecreatetruecolor($wall_w, $wall_h);
-            imagecopyresampled($wall_thumb, $src, 0, 0, 0, 0, $wall_w, $wall_h, $orig_w, $orig_h);
-            imagejpeg($wall_thumb, $upload_dir . 'thumbs/wall_' . $new_file_name, 85);
-            imagedestroy($wall_thumb);
+            // =============================================================
+            // 2. ASPECT-PRESERVED THUMBNAIL (a_ prefix) — 400px long side
+            // =============================================================
+            $aspect_long = 400;
+
+            if ($orig_w >= $orig_h) {
+                $a_w = $aspect_long;
+                $a_h = round($orig_h * ($aspect_long / $orig_w));
+            } else {
+                $a_h = $aspect_long;
+                $a_w = round($orig_w * ($aspect_long / $orig_h));
+            }
+
+            // Don't upscale tiny images
+            if ($orig_w < $aspect_long && $orig_h < $aspect_long) {
+                $a_w = $orig_w;
+                $a_h = $orig_h;
+            }
+
+            $a_thumb = imagecreatetruecolor($a_w, $a_h);
+
+            if ($mime == 'image/png' || $mime == 'image/webp') {
+                imagealphablending($a_thumb, false);
+                imagesavealpha($a_thumb, true);
+            }
+
+            imagecopyresampled($a_thumb, $src, 0, 0, 0, 0, $a_w, $a_h, $orig_w, $orig_h);
+
+            if ($mime === 'image/jpeg') {
+                imagejpeg($a_thumb, $thumb_dir . 'a_' . $new_file_name, 82);
+            } elseif ($mime === 'image/png') {
+                imagepng($a_thumb, $thumb_dir . 'a_' . $new_file_name, 8);
+            } else {
+                imagewebp($a_thumb, $thumb_dir . 'a_' . $new_file_name, 78);
+            }
+            imagedestroy($a_thumb);
             
             imagedestroy($src);
+        }
+
+        // --- AUTO-DETECT ORIENTATION ---
+        // Set img_orientation based on actual image dimensions
+        $auto_orientation = 0; // landscape
+        if ($orig_w == $orig_h) {
+            $auto_orientation = 2; // square
+        } elseif ($orig_h > $orig_w) {
+            $auto_orientation = 1; // portrait
         }
 
         // --- DATABASE PERSISTENCE ---
@@ -122,8 +182,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 img_exif, 
                 img_status, 
                 img_date, 
+                img_orientation,
                 allow_comments
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         
         $stmt->execute([
@@ -135,6 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             $exif_json, 
             $status, 
             $custom_date, 
+            $auto_orientation,
             $allow_comments
         ]);
         

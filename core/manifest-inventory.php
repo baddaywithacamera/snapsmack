@@ -509,5 +509,16 @@ return [
             'css'          => 'assets/css/ss-engine-thomas.css',
             'has_settings' => false
         ],
+        'smack-justified-lib' => [
+            'label'        => 'fjGallery Library (Flickr Justified Layout)',
+            'path'         => 'assets/js/fjGallery.min.js',
+            'css'          => 'assets/css/fjGallery.css',
+            'has_settings' => false
+        ],
+        'smack-justified' => [
+            'label'        => 'Justified Grid Engine',
+            'path'         => 'assets/js/ss-engine-justified.js',
+            'has_settings' => false
+        ],
     ]
 ];

@@ -1,14 +1,16 @@
 <?php
 /**
- * SnapSmack - Archive Wall
- * Version: 14.7 - Hotkey Sync
- * MASTER DIRECTIVE: Full file return. 
- * - Fixed: Changed 'show_titles' logic to use visibility so hotkey '1' can override it.
- * - Fixed: Removed redundant CSS already handled in wall-engine.css.
- * - Kept: Signature word-span title logic and physics config.
+ * SnapSmack - Gallery Wall
+ * Version: 15.0 - Skin Integration
+ * -------------------------------------------------------------------------
+ * Desktop-only 3D wall experience. Integrates with skin system for
+ * typography, colours, and shadow settings via manifest options.
+ * Redirects to archive if: skin doesn't support wall, admin disabled it,
+ * or user is on a mobile device (JS gate).
+ * -------------------------------------------------------------------------
  */
 
-require_once 'core/db.php'; 
+require_once 'core/db.php';
 
 // 1. FETCH SETTINGS
 try {
@@ -16,51 +18,71 @@ try {
     $settings = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 } catch (Exception $e) { $settings = []; }
 
-// Fallbacks
-$wall_rows       = isset($settings['wall_rows']) ? (int)$settings['wall_rows'] : 1;
-$wall_gap        = isset($settings['wall_gap']) ? (int)$settings['wall_gap'] : 120;
-$wall_friction   = $settings['wall_friction']   ?? 0.96;
-$wall_dragweight = $settings['wall_dragweight'] ?? 2.5;
-$wall_theme      = $settings['wall_theme']      ?? '#000000';
-$pinch_power     = $settings['pinch_sensitivity'] ?? 30;
-$wall_limit      = $settings['wall_limit']      ?? 100;
+// 2. DEFINE BASE_URL (normally set by core/auth.php or skin headers, but
+//    gallery-wall is standalone so we bootstrap it here before any includes)
+if (!defined('BASE_URL')) {
+    $db_defined_url = $settings['site_url'] ?? '/';
+    $final_base = rtrim($db_defined_url, '/') . '/';
+    define('BASE_URL', $final_base);
+}
 
-// --- MAX COUNT DISCOVERY ---
-try {
-    $count_stmt = $pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published' AND img_date <= NOW()");
-    $total_images = (int)$count_stmt->fetchColumn();
-} catch (Exception $e) { $total_images = 0; }
+// 3. SKIN MANIFEST — Check wall support
+$active_skin = $settings['active_skin'] ?? '';
+$manifest = [];
+if ($active_skin && file_exists("skins/{$active_skin}/manifest.php")) {
+    $manifest = include "skins/{$active_skin}/manifest.php";
+}
 
-// --- TYPOGRAPHY & SHADOW ENGINE ---
-$font_map = [
-    'Playfair Display'   => "'Playfair Display', serif",
-    'Cinzel'             => "'Cinzel', serif",
-    'Cormorant Garamond' => "'Cormorant Garamond', serif",
-    'Montserrat'         => "'Montserrat', sans-serif",
-    'Lato'               => "'Lato', sans-serif",
-    'Courier Prime'      => "'Courier Prime', monospace"
-];
+$supports_wall = !empty($manifest['features']['supports_wall']);
+$wall_enabled  = ($settings['show_wall_link'] ?? '1') === '1';
 
-$font_ref = $settings['wall_font_ref'] ?? 'Playfair Display';
-$font_css = $font_map[$font_ref] ?? $font_map['Playfair Display'];
-$text_color = $settings['wall_text_color'] ?? '#808080';
-$shad_color = $settings['wall_shadow_color'] ?? '#000000';
-$intensity  = $settings['wall_shadow_intensity'] ?? 'heavy';
+// Gate: Redirect if skin doesn't support wall or admin disabled it
+if (!$supports_wall || !$wall_enabled) {
+    header("Location: archive.php");
+    exit;
+}
+
+// 4. PULL FONT INVENTORY (replaces hardcoded font map)
+$inventory = include 'core/manifest-inventory.php';
+$fonts     = $inventory['fonts'] ?? [];
+
+// 5. WALL SETTINGS (from skin manifest options, saved via smack-skin.php)
+$wall_friction   = (float)($settings['wall_friction']   ?? 0.96);
+$wall_dragweight = (float)($settings['wall_dragweight'] ?? 2.5);
+$wall_theme      = $settings['wall_theme']              ?? '#000000';
+$pinch_power     = (int)($settings['pinch_sensitivity'] ?? 30);
+$wall_limit      = (int)($settings['wall_limit']        ?? 100);
+$wall_rows       = max(1, min(4, (int)($settings['wall_rows'] ?? 1)));
+$wall_gap        = (int)($settings['wall_gap']          ?? 120);
+
+// Typography
+$font_ref   = $settings['wall_font_ref']   ?? 'Playfair Display';
+$font_css   = "'{$font_ref}', sans-serif";
+
+// Shadow engine
+$shad_color = $settings['wall_shadow_color']     ?? '#000000';
+$intensity  = $settings['wall_shadow_intensity']  ?? 'heavy';
 
 switch ($intensity) {
     case 'none':  $shadow_css = 'none'; break;
-    case 'light': $shadow_css = "0 1px 3px $shad_color"; break;
+    case 'light': $shadow_css = "0 1px 3px {$shad_color}"; break;
     case 'heavy':
-    default:      $shadow_css = "0 0 10px $shad_color, 0 0 20px $shad_color, 0 4px 8px $shad_color"; break;
+    default:      $shadow_css = "0 0 10px {$shad_color}, 0 0 20px {$shad_color}, 0 4px 8px {$shad_color}"; break;
 }
 
-// 4. Layout Math
-$rows_to_render = max(1, min(4, $wall_rows));
-$vh_share = 100 / $rows_to_render; 
-$gap_adjust = ($wall_gap * ($rows_to_render + 1)) / $rows_to_render;
-$tile_style_string = "height: calc({$vh_share}vh - {$gap_adjust}px) !important;";
+$text_color = $settings['wall_text_color'] ?? '#808080';
 
-// 5. FETCH IMAGES
+// 6. LAYOUT MATH
+$vh_share   = 100 / $wall_rows;
+$gap_adjust = ($wall_gap * ($wall_rows + 1)) / $wall_rows;
+$tile_style = "height: calc({$vh_share}vh - {$gap_adjust}px) !important;";
+
+// 7. IMAGE COUNT & FETCH
+try {
+    $count_stmt   = $pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published' AND img_date <= NOW()");
+    $total_images = (int)$count_stmt->fetchColumn();
+} catch (Exception $e) { $total_images = 0; }
+
 try {
     $stmt = $pdo->prepare("SELECT id, img_title, img_file FROM snap_images 
                            WHERE img_status = 'published' 
@@ -74,10 +96,15 @@ try {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Gallery View | <?php echo htmlspecialchars($settings['site_name'] ?? 'SnapSmack'); ?></title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Cinzel:wght@400;700&family=Cormorant+Garamond:wght@400;700&family=Montserrat:wght@300;400;700&family=Lato:wght@300;400&family=Courier+Prime&display=swap">
-    <link rel="stylesheet" href="assets/css/ss-engine-wall.css">
+    <?php
+    // Core meta: SEO, dynamic CSS blob (SKIN_START/SKIN_END), public-facing.css
+    include 'core/meta.php';
+    ?>
+
+    <title>Gallery Wall | <?php echo htmlspecialchars($settings['site_name'] ?? 'SnapSmack'); ?></title>
+
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-wall.css?v=<?php echo time(); ?>">
+
     <style>
         :root {
             --wall-bg: <?php echo htmlspecialchars($wall_theme); ?>;
@@ -87,7 +114,7 @@ try {
             --wall-shadow-string: <?php echo $shadow_css; ?>;
         }
 
-        /* Essential layout overrides for the 'Strips' view */
+        /* Strip layout overrides */
         .wall-canvas { 
             display: flex; 
             flex-direction: column; 
@@ -96,14 +123,13 @@ try {
             height: 100vh; 
             padding-left: var(--wall-gap); 
         }
-        
+
         .wall-tile { 
             margin-right: var(--wall-gap); 
             margin-bottom: var(--wall-gap); 
         }
 
         .tile-meta {
-            /* Hotkey '1' toggles visibility. We use this instead of display:none */
             visibility: <?php echo (($settings['show_titles'] ?? '1') == '1') ? 'visible' : 'hidden'; ?>;
             position: absolute;
             bottom: -60px;
@@ -125,27 +151,36 @@ try {
             opacity: 1; 
         }
     </style>
+
+    <script>
+    // MOBILE GATE: Redirect touch/small-screen users to archive
+    if (window.innerWidth < 768 || ('ontouchstart' in window && window.innerWidth < 1024)) {
+        window.location.replace('archive.php');
+    }
+    </script>
 </head>
-<body>
+<body class="is-wall">
+
 <script>
     window.WALL_CONFIG = {
-        friction: <?php echo (float)$wall_friction; ?>,
-        dragWeight: <?php echo (float)$wall_dragweight; ?>,
-        pinchPower: <?php echo (int)$pinch_power; ?>,
+        friction: <?php echo $wall_friction; ?>,
+        dragWeight: <?php echo $wall_dragweight; ?>,
+        pinchPower: <?php echo $pinch_power; ?>,
         totalImages: <?php echo $total_images; ?>,
-        initialLimit: <?php echo (int)$wall_limit; ?>
+        initialLimit: <?php echo $wall_limit; ?>
     };
 </script>
+
 <div class="wall-viewport">
     <div class="wall-canvas" id="wall-canvas">
         <?php foreach ($images as $img): ?>
-            <div class="wall-tile" style="<?php echo $tile_style_string; ?>" onclick="zoomImage(this)" data-full="<?php echo htmlspecialchars($img['img_file']); ?>">
+            <div class="wall-tile" style="<?php echo $tile_style; ?>" onclick="zoomImage(this)" data-full="<?php echo htmlspecialchars($img['img_file']); ?>">
                 <img src="<?php echo htmlspecialchars($img['img_file']); ?>" alt="Smack" loading="lazy">
                 <div class="tile-meta">
                     <?php 
                         $words = explode(' ', htmlspecialchars($img['img_title']));
                         foreach ($words as $word) {
-                            if(!empty($word)) echo "<span>" . ucfirst(strtolower($word)) . "</span> ";
+                            if (!empty($word)) echo "<span>" . ucfirst(strtolower($word)) . "</span> ";
                         }
                     ?>
                 </div>
@@ -154,8 +189,9 @@ try {
         <div id="wall-sentinel" style="width: 1px; height: 1px; pointer-events: none;"></div>
     </div>
 </div>
+
 <div id="zoom-layer"></div>
-<script src="assets/js/ss-engine-wall.js"></script>
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-wall.js?v=<?php echo time(); ?>"></script>
 <?php include __DIR__ . '/core/footer-scripts.php'; ?>
 </body>
 </html>

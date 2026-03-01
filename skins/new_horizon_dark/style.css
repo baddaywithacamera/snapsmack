@@ -108,6 +108,11 @@ body {
     display: block;
 }
 
+.logo-area a {
+    text-decoration: none;
+    color: #ffffff;
+}
+
 .site-logo {
     height: 50px;
     width: auto;
@@ -172,7 +177,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 30px; /* Room for box-shadow frame — must match or exceed shadow spread */
+    padding: 40px; /* Room for box-shadow frame — must exceed largest shadow spread (21px for Obsidian) */
     box-sizing: border-box;
 }
 
@@ -188,9 +193,7 @@ img.post-image {
     height: auto;
     box-sizing: border-box;
     border: 5px solid #666666; 
-    box-shadow: 
-        0 0 0 15px #000000, 
-        0 0 0 16px #666666; 
+    box-shadow: none;
     cursor: zoom-in !important;
     outline: none !important; 
 }
@@ -325,6 +328,11 @@ img.post-image {
 #system-footer .inside {
     max-width: 95% !important; 
     margin: 0 auto;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #cccccc;
 }
 
 #system-footer p, #sig-text {
@@ -446,9 +454,6 @@ img.post-image {
    ========================================================================= */
 
 #browse-grid {
-    display: grid;
-    grid-template-columns: repeat(var(--grid-cols, 4), 1fr);
-    gap: var(--grid-gap, 100px); 
     max-width: 95%;
     margin: 80px auto;
     padding: 0 60px;
@@ -464,13 +469,38 @@ img.post-image {
     box-sizing: border-box;
 }
 
+/* ARCHIVE FRAME */
 .thumb-link {
     display: inline-block;
-    /* ARCHIVE FRAME (3 / 10 / 1) */
     border: 3px solid #666666;
-    box-shadow: 
-        0 0 0 10px #000000, 
-        0 0 0 11px #666666;
+    box-shadow: none;
+    box-sizing: border-box;
+}
+
+/* Square grid: thumb-link fills the 1:1 cell */
+.square-grid .thumb-link {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+.square-grid .thumb-link img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Cropped grid: thumb-link fills cell, portraits/squares scoped by public-facing.css */
+.cropped-grid .thumb-link {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+}
+.cropped-grid .thumb-link img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
 .thumb-link img {
@@ -548,9 +578,7 @@ img.post-image {
     float: left !important;                    
     margin: 17px 50px 25px 10px !important; 
     border: 3px solid #666666 !important;
-    box-shadow: 
-        0 0 0 10px #000000, 
-        0 0 0 11px #666666 !important;
+    box-shadow: none !important;
     max-width: 40% !important;
     height: auto !important;
     display: block !important;
@@ -586,11 +614,8 @@ img.post-image {
     display: block;
     height: auto;
     box-sizing: border-box;
-    /* INDEX FRAME: 5px Inner / 15px Space / 1px Outside */
     border: 5px solid #666666 !important;
-    box-shadow: 
-        0 0 0 15px #000000, 
-        0 0 0 16px #666666 !important;
+    box-shadow: none !important;
     /* PADDING UNDER: 60px space before the next paragraph */
     margin-top: 20px;
     margin-bottom: 60px !important; 

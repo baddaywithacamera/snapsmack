@@ -3,6 +3,11 @@
  * SNAPSMACK - System maintenance.
  * Performs database optimizations, taxonomy cleanup, and asset synchronization.
  * Clears orphaned mappings and defragments core tables to maintain performance.
+ * 
+ * Asset sync now generates:
+ *   t_  — 400x400 center-cropped square
+ *   a_  — 400px on the long side, aspect preserved
+ *
  * Git Version Official Alpha 0.5
  */
 
@@ -30,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $log[] = "SUCCESS: Database tables optimized and defragmented.";
     }
 
-    // 3. ASSET PURGE
+    // 3. ASSET SYNC
     // Regenerates missing thumbnails and deletes physical files not found in the DB.
     if ($action === 'sync_assets') {
         set_time_limit(600);
@@ -38,7 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $images = $pdo->query("SELECT id, img_title, img_file FROM snap_images")->fetchAll(PDO::FETCH_ASSOC);
         $registered_paths = [];
-        $fixed_thumbs = 0;
+        $fixed_square = 0;
+        $fixed_aspect = 0;
         $purged_orphans = 0;
 
         foreach ($images as $img) {
@@ -47,37 +53,87 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $registered_paths[] = realpath($file);
             $path_info = pathinfo($file);
+            $thumb_dir = $path_info['dirname'] . '/thumbs';
             
-            // Expected thumbnail locations.
-            $sq_thumb = $path_info['dirname'] . '/thumbs/t_' . $path_info['basename'];
-            $wall_thumb = $path_info['dirname'] . '/thumbs/wall_' . $path_info['basename'];
+            // Ensure thumbs directory exists
+            if (!is_dir($thumb_dir)) {
+                mkdir($thumb_dir, 0755, true);
+            }
             
+            // Expected thumbnail locations
+            $sq_thumb = $thumb_dir . '/t_' . $path_info['basename'];
+            $aspect_thumb = $thumb_dir . '/a_' . $path_info['basename'];
+            
+            // Register existing thumbs as valid
             if (file_exists($sq_thumb)) $registered_paths[] = realpath($sq_thumb);
-            if (file_exists($wall_thumb)) $registered_paths[] = realpath($wall_thumb);
+            if (file_exists($aspect_thumb)) $registered_paths[] = realpath($aspect_thumb);
 
-            // Rebuild gallery wall thumbs if missing.
-            if (!file_exists($wall_thumb)) {
+            // Rebuild missing thumbnails
+            $need_square = !file_exists($sq_thumb);
+            $need_aspect = !file_exists($aspect_thumb);
+
+            if ($need_square || $need_aspect) {
                 list($orig_w, $orig_h) = getimagesize($file);
-                $wall_h = 500;
-                $wall_w = round($orig_w * ($wall_h / $orig_h));
                 $mime = mime_content_type($file);
+                $src = null;
 
                 if ($mime == 'image/jpeg') { $src = @imagecreatefromjpeg($file); } 
                 elseif ($mime == 'image/png') { $src = @imagecreatefrompng($file); } 
-                elseif ($mime == 'image/webp') { $src = @imagecreatefromwebp($file); } 
+                elseif ($mime == 'image/webp') { $src = @imagecreatefromwebp($file); }
 
-                if (isset($src)) {
-                    $w_dst = imagecreatetruecolor($wall_w, $wall_h);
-                    if ($mime != 'image/jpeg') { imagealphablending($w_dst, false); imagesavealpha($w_dst, true); }
-                    imagecopyresampled($w_dst, $src, 0, 0, 0, 0, $wall_w, $wall_h, $orig_w, $orig_h);
-                    
-                    if ($mime == 'image/png') imagepng($w_dst, $wall_thumb, 8);
-                    elseif ($mime == 'image/webp') imagewebp($w_dst, $wall_thumb, 60);
-                    else imagejpeg($w_dst, $wall_thumb, 80);
-                    
-                    imagedestroy($src); imagedestroy($w_dst);
-                    $registered_paths[] = realpath($wall_thumb);
-                    $fixed_thumbs++;
+                if ($src) {
+                    // --- SQUARE THUMB (t_) — 400x400 center-cropped ---
+                    if ($need_square) {
+                        $sq_size = 400;
+                        $min_dim = min($orig_w, $orig_h);
+                        $off_x = ($orig_w - $min_dim) / 2;
+                        $off_y = ($orig_h - $min_dim) / 2;
+
+                        $sq_dst = imagecreatetruecolor($sq_size, $sq_size);
+                        if ($mime != 'image/jpeg') { imagealphablending($sq_dst, false); imagesavealpha($sq_dst, true); }
+                        imagecopyresampled($sq_dst, $src, 0, 0, $off_x, $off_y, $sq_size, $sq_size, $min_dim, $min_dim);
+
+                        if ($mime == 'image/png') imagepng($sq_dst, $sq_thumb, 8);
+                        elseif ($mime == 'image/webp') imagewebp($sq_dst, $sq_thumb, 78);
+                        else imagejpeg($sq_dst, $sq_thumb, 82);
+
+                        imagedestroy($sq_dst);
+                        $registered_paths[] = realpath($sq_thumb);
+                        $fixed_square++;
+                    }
+
+                    // --- ASPECT THUMB (a_) — 400px on the long side ---
+                    if ($need_aspect) {
+                        $aspect_long = 400;
+
+                        if ($orig_w >= $orig_h) {
+                            $a_w = $aspect_long;
+                            $a_h = round($orig_h * ($aspect_long / $orig_w));
+                        } else {
+                            $a_h = $aspect_long;
+                            $a_w = round($orig_w * ($aspect_long / $orig_h));
+                        }
+
+                        // Don't upscale tiny images
+                        if ($orig_w < $aspect_long && $orig_h < $aspect_long) {
+                            $a_w = $orig_w;
+                            $a_h = $orig_h;
+                        }
+
+                        $a_dst = imagecreatetruecolor($a_w, $a_h);
+                        if ($mime != 'image/jpeg') { imagealphablending($a_dst, false); imagesavealpha($a_dst, true); }
+                        imagecopyresampled($a_dst, $src, 0, 0, 0, 0, $a_w, $a_h, $orig_w, $orig_h);
+
+                        if ($mime == 'image/png') imagepng($a_dst, $aspect_thumb, 8);
+                        elseif ($mime == 'image/webp') imagewebp($a_dst, $aspect_thumb, 78);
+                        else imagejpeg($a_dst, $aspect_thumb, 82);
+
+                        imagedestroy($a_dst);
+                        $registered_paths[] = realpath($aspect_thumb);
+                        $fixed_aspect++;
+                    }
+
+                    imagedestroy($src);
                 }
             }
         }
@@ -97,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
-        $log[] = "SUCCESS: Generated $fixed_thumbs wall thumbs and purged $purged_orphans orphan files.";
+        $log[] = "SUCCESS: Generated $fixed_square square thumbs + $fixed_aspect aspect thumbs. Purged $purged_orphans orphan files.";
     }
 }
 
@@ -110,7 +166,7 @@ include 'core/sidebar.php';
     <h2>SYSTEM MAINTENANCE</h2>
 
     <?php foreach($log as $entry): ?>
-        <div class="msg">> <?php echo $entry; ?></div>
+        <div class="alert alert-success">> <?php echo $entry; ?></div>
     <?php endforeach; ?>
 
     <div class="dash-grid">
@@ -135,8 +191,8 @@ include 'core/sidebar.php';
         </div>
 
         <div class="box">
-            <h3>ASSET PURGE</h3>
-            <p class="skin-desc-text">Generates Wall Thumbs and <strong>terminates</strong> all files not found in the database registry.</p>
+            <h3>ASSET SYNC</h3>
+            <p class="skin-desc-text">Rebuilds missing square (t_) and aspect (a_) thumbnails. <strong>Terminates</strong> all files not found in the database registry.</p>
             <br>
             <form method="POST">
                 <input type="hidden" name="action" value="sync_assets">

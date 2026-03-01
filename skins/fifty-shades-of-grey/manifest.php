@@ -18,7 +18,8 @@ return [
     'description'   => 'Pure greyscale photography skin. Three monochrome variants with zero colour accents.',
 
     'features' => [
-        'supports_wall' => true,
+        'supports_wall'   => true,
+        'archive_layouts' => ['square', 'cropped', 'masonry'],
     ],
 
     // VARIANT SYSTEM
@@ -33,7 +34,9 @@ return [
     'require_scripts' => [
         'smack-footer',
         'smack-lightbox',
-        'smack-glitch'
+        'smack-glitch',
+        'smack-justified-lib',
+        'smack-justified'
     ],
 
     'options' => [
@@ -75,7 +78,31 @@ return [
             'property' => 'flex-direction'
         ],
 
-        /* SECTION 2: VERTICAL LOCKS */
+        /* SECTION 2: ARCHIVE GRID */
+
+        'browse_cols' => [
+            'section'  => 'ARCHIVE GRID',
+            'type'     => 'range',
+            'label'    => 'Grid Columns (Square & Cropped)',
+            'default'  => '4',
+            'min'      => '2',
+            'max'      => '8',
+            'selector' => '#browse-grid',
+            'property' => '--grid-cols'
+        ],
+
+        'justified_row_height' => [
+            'section'  => 'ARCHIVE GRID',
+            'type'     => 'range',
+            'label'    => 'Justified Row Height (px)',
+            'default'  => '280',
+            'min'      => '150',
+            'max'      => '500',
+            'selector' => '#browse-grid',
+            'property' => '--justified-row-h'
+        ],
+
+        /* SECTION 3: VERTICAL LOCKS */
 
         'image_frame_style' => [
             'section'  => 'VERTICAL LOCKS',
@@ -158,7 +185,7 @@ return [
             'property' => 'height'
         ],
 
-        /* SECTION 3: STATIC PAGE STYLING */
+        /* SECTION 4: STATIC PAGE STYLING */
 
         'static_heading_font' => [
             'section'  => 'STATIC PAGE STYLING',
@@ -191,7 +218,7 @@ return [
             'property' => 'margin-top'
         ],
 
-        /* SECTION 4: WALL SPECIFIC */
+        /* SECTION 5: WALL SPECIFIC */
 
         'wall_friction' => [
             'section'  => 'WALL SPECIFIC',
@@ -262,7 +289,7 @@ return [
             'property' => '--glow-color'
         ],
 
-        /* SECTION 5: BLOGROLL */
+        /* SECTION 6: BLOGROLL */
 
         'blogroll_columns' => [
             'section'  => 'BLOGROLL',

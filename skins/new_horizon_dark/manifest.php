@@ -24,14 +24,16 @@ return [
     'description'   => 'High-contrast dark mode with archival framing, tactical layout controls, and full JS library support.',
     
     'features' => [
-        'supports_wall' => true, 
+        'supports_wall'   => true,
+        'archive_layouts' => ['square', 'cropped', 'masonry'],
     ],
 
     // THE HANDSHAKE: Request specific engines from the core inventory
     'require_scripts' => [
         'smack-footer', 
         'smack-lightbox', 
-        'smack-glitch'
+        'smack-justified-lib',
+        'smack-justified'
     ],
 
     'options' => [
@@ -76,7 +78,33 @@ return [
         ],
 
         /* ---------------------------------------------------------------------
-           SECTION 2: VERTICAL LOCKS & FRAMING
+           SECTION 2: ARCHIVE GRID
+           --------------------------------------------------------------------- */
+
+        'browse_cols' => [
+            'section'  => 'ARCHIVE GRID',
+            'type'     => 'range',
+            'label'    => 'Grid Columns (Square & Cropped)',
+            'default'  => '4',
+            'min'      => '2',
+            'max'      => '8',
+            'selector' => '#browse-grid',
+            'property' => '--grid-cols'
+        ],
+
+        'justified_row_height' => [
+            'section'  => 'ARCHIVE GRID',
+            'type'     => 'range',
+            'label'    => 'Justified Row Height (px)',
+            'default'  => '280',
+            'min'      => '150',
+            'max'      => '500',
+            'selector' => '#browse-grid',
+            'property' => '--justified-row-h'
+        ],
+
+        /* ---------------------------------------------------------------------
+           SECTION 3: VERTICAL LOCKS & FRAMING
            --------------------------------------------------------------------- */
            
         'image_frame_style' => [
@@ -84,28 +112,63 @@ return [
             'type'     => 'select',
             'label'    => 'Main Image Frame Style',
             'default'  => 'revival_double',
-            'selector' => 'img.post-image, .thumb-link, .inline-asset, .static-transmission .description .align-left',
+            'selector' => 'img.post-image, .inline-asset, .static-transmission .description .align-left',
             'property' => 'custom-framing',
             'options'  => [
                 'revival_double' => [
                     'label' => 'Revival Double Line (Grey/Black/Grey)',
-                    'css'   => '{ border: 5px solid #666666 !important; box-shadow: 0 0 0 15px #000000, 0 0 0 16px #666666 !important; }'
+                    'css'   => '{ border: 5px solid #666666 !important; box-shadow: none !important; }'
                 ],
                 'classic_white'  => [
                     'label' => 'Classic Horizon (Thick White)',
-                    'css'   => '{ border: 20px solid #ffffff !important; box-shadow: 0 0 0 1px #333333 !important; }'
+                    'css'   => '{ border: 20px solid #ffffff !important; box-shadow: none !important; }'
                 ],
                 'gallery_mat'    => [
                     'label' => 'Gallery Multi-Mat (White / Med-Grey / White)',
-                    'css'   => '{ border: 3px solid #ffffff !important; box-shadow: 0 0 0 15px #666666, 0 0 0 16px #ffffff !important; }'
+                    'css'   => '{ border: 3px solid #ffffff !important; box-shadow: none !important; }'
                 ],
                 'minimal_bevel'  => [
-                    'label' => 'Minimal Bevel (Thin White / Black / White)',
-                    'css'   => '{ border: 1px solid #ffffff !important; box-shadow: 0 0 0 8px #000000, 0 0 0 9px #ffffff !important; }'
+                    'label' => 'Minimal Bevel (Thin White)',
+                    'css'   => '{ border: 1px solid #ffffff !important; box-shadow: none !important; }'
                 ],
                 'obsidian'       => [
-                    'label' => 'Obsidian (Dark Grey / Black / Dark Grey)',
-                    'css'   => '{ border: 1px solid #333333 !important; box-shadow: 0 0 0 20px #111111, 0 0 0 21px #333333 !important; }'
+                    'label' => 'Obsidian (Dark Grey)',
+                    'css'   => '{ border: 1px solid #333333 !important; box-shadow: none !important; }'
+                ]
+            ]
+        ],
+
+        'archive_frame_style' => [
+            'section'  => 'VERTICAL LOCKS',
+            'type'     => 'select',
+            'label'    => 'Archive Thumbnail Frame',
+            'default'  => 'thin_grey',
+            'selector' => '.square-grid .thumb-link, .cropped-grid .thumb-link',
+            'property' => 'custom-framing',
+            'options'  => [
+                'thin_grey' => [
+                    'label' => 'Thin Grey (1px)',
+                    'css'   => '{ border: 1px solid #666666 !important; box-shadow: none !important; }'
+                ],
+                'thin_white' => [
+                    'label' => 'Thin White (1px)',
+                    'css'   => '{ border: 1px solid #ffffff !important; box-shadow: none !important; }'
+                ],
+                'thin_dark' => [
+                    'label' => 'Thin Dark (1px)',
+                    'css'   => '{ border: 1px solid #333333 !important; box-shadow: none !important; }'
+                ],
+                'medium_grey' => [
+                    'label' => 'Medium Grey (3px)',
+                    'css'   => '{ border: 3px solid #666666 !important; box-shadow: none !important; }'
+                ],
+                'medium_white' => [
+                    'label' => 'Medium White (3px)',
+                    'css'   => '{ border: 3px solid #ffffff !important; box-shadow: none !important; }'
+                ],
+                'none' => [
+                    'label' => 'No Border',
+                    'css'   => '{ border: none !important; box-shadow: none !important; }'
                 ]
             ]
         ],
@@ -165,7 +228,7 @@ return [
         ],
 
         /* ---------------------------------------------------------------------
-           SECTION 3: STATIC PAGE STYLING
+           SECTION 4: STATIC PAGE STYLING
            --------------------------------------------------------------------- */
 
         'static_heading_font' => [
@@ -200,7 +263,7 @@ return [
         ],
 
         /* ---------------------------------------------------------------------
-           SECTION 4: WALL SPECIFIC (3D Engine Physics & Visuals)
+           SECTION 5: WALL SPECIFIC (3D Engine Physics & Visuals)
            --------------------------------------------------------------------- */
 
         'wall_friction' => [
@@ -273,7 +336,7 @@ return [
         ],
 
         /* ---------------------------------------------------------------------
-           SECTION 5: BLOGROLL (Layout, Columns & Display Toggles)
+           SECTION 6: BLOGROLL (Layout, Columns & Display Toggles)
            --------------------------------------------------------------------- */
 
         'blogroll_columns' => [

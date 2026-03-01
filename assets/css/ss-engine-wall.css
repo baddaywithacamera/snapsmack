@@ -1,10 +1,11 @@
 
 /**
  * SnapSmack - Wall Engine CSS 
- * Version: 12.3 - Hotkey Fix
+ * Version: 12.4 - Drag Select Fix
  * MASTER DIRECTIVE: Full file return. 
  * - STATUS: Clean baseline v12.2. 
  * - FIXED: Added .meta-forced for hotkey title toggling.
+ * - FIXED: Kill drag-select highlighting during wall pan.
  * - REMOVED: Abandoned shutter and grey-fade logic.
  */
 
@@ -33,6 +34,10 @@ body, html {
     justify-content: center;
     position: relative;
     touch-action: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 .wall-canvas {
@@ -77,7 +82,8 @@ body, html {
     height: auto;
     display: block;
     box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-    pointer-events: none; 
+    pointer-events: none;
+    -webkit-user-drag: none;
 }
 
 .tile-meta {

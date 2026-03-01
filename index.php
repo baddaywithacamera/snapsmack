@@ -88,7 +88,6 @@ $page_title = $img['img_title'] ?? 'Home';
 
 include __DIR__ . '/' . $skin_path . '/skin-meta.php'; 
 ?>
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>skins/<?php echo $active_skin; ?>/style.css?v=<?php echo time(); ?>">
 <body class="is-photo-page">
 <div id="page-wrapper">
     <?php 

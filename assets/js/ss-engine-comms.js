@@ -1,6 +1,6 @@
 /**
  * SnapSmack - Hotkey Engine
- * Version: 3.3 - X Key Added, Unified Close
+ * Version: 3.4 - F1 Help, ESC Close
  * MASTER DIRECTIVE: Full file return. Logic only.
  */
 
@@ -15,14 +15,14 @@ document.addEventListener('keydown', function(e) {
     if (document.getElementById('wall-canvas')) return;
 
     // HELP
-    if (e.key === 'h' || e.key === 'H') {
+    if (e.key === 'F1') {
         e.preventDefault();
         toggleHelpModal();
         return;
     }
 
-    // CLOSE — X or Escape
-    if (e.key === 'x' || e.key === 'X' || e.key === 'Escape') {
+    // CLOSE — Escape
+    if (e.key === 'Escape') {
         closeAllOverlays();
         return;
     }
@@ -90,7 +90,7 @@ function createHelpToast() {
     
     const toast = document.createElement('div');
     toast.id = 'snap-help-toast';
-    toast.innerText = "PRESS H FOR HELP";
+    toast.innerText = "PRESS F1 FOR HELP";
     
     toast.style.cssText = `
         position: fixed; bottom: 20px; left: 20px; 
@@ -154,10 +154,10 @@ function createHelpModal() {
             <strong>SPACE</strong> <span>Next / Prev Image</span>
             <strong>[ 1 ]</strong> <span>Toggle Info</span>
             ${commentHint}
-            <strong>[ H ]</strong> <span>This Menu</span>
-            <strong>[ X ]</strong> <span>Close</span>
+            <strong>[ F1 ]</strong> <span>This Menu</span>
+            <strong>[ ESC ]</strong> <span>Close</span>
         </div>
-        <div style="margin-top: 20px; font-size: 10px; opacity: 0.6; text-align:center;">PRESS X OR CLICK OUTSIDE TO CLOSE</div>
+        <div style="margin-top: 20px; font-size: 10px; opacity: 0.6; text-align:center;">PRESS ESC OR CLICK OUTSIDE TO CLOSE</div>
     `;
 
     backdrop.appendChild(panel);

@@ -51,6 +51,12 @@ if (isset($_POST['save_skin_settings'])) {
         }
     }
 
+    // 4a-ii. Variant persistence (skin palette, if manifest declares variants).
+    if (isset($_POST['active_skin_variant'])) {
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin_variant', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
+            ->execute([$_POST['active_skin_variant'], $_POST['active_skin_variant']]);
+    }
+
     $active_skin = $_POST['active_skin_target'] ?? $target_skin;
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
         ->execute([$active_skin, $active_skin]);
@@ -181,6 +187,29 @@ include 'core/sidebar.php';
         <input type="hidden" name="active_skin_target" value="<?php echo $target_skin; ?>">
 
         <div id="smack-skin-config-wrap">
+
+            <?php
+            // --- COLOUR VARIANT: Only if manifest declares variants ---
+            if (!empty($manifest['variants'])):
+                $current_variant = $settings['active_skin_variant'] ?? ($manifest['default_variant'] ?? array_key_first($manifest['variants']));
+            ?>
+            <div class="box">
+                <h3>COLOUR VARIANT</h3>
+                <div class="dash-grid">
+                    <div class="lens-input-wrapper">
+                        <label>SKIN PALETTE</label>
+                        <select name="active_skin_variant">
+                            <?php foreach ($manifest['variants'] as $v_key => $v_label): ?>
+                                <option value="<?php echo htmlspecialchars($v_key); ?>" <?php echo ($current_variant === $v_key) ? 'selected' : ''; ?>>
+                                    <?php echo strtoupper(htmlspecialchars($v_label)); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="dim" style="margin-top: 6px; font-size: 0.75em;">COLOUR PALETTE FOR THE ACTIVE SKIN. GEOMETRY AND LAYOUT ARE UNCHANGED.</p>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <?php
             // --- SKIN OPTIONS: Grouped by manifest sections ---

@@ -1,8 +1,8 @@
 <?php
 /**
  * SNAPSMACK - Global appearance settings.
- * Manages admin themes, public skin options, and global branding assets.
- * Dynamically parses skin manifests and compiles custom CSS overrides.
+ * Manages admin themes and global branding assets (masthead, archive grid).
+ * Per-skin options and CSS compilation live in smack-skin.php.
  * Git Version Official Alpha 0.5
  */
 
@@ -113,33 +113,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_global_appearanc
         }
     }
 
-    // C. Handle Dynamic Skin Options
-    if (isset($_POST['skin_opt']) && is_array($_POST['skin_opt'])) {
-        foreach ($_POST['skin_opt'] as $s_key => $s_val) {
-            $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
-            $stmt->execute([$s_key, $s_val, $s_val]);
-        }
-    }
-
-    // D. Recompile Public CSS
-    $all_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
-
-    $generated_public = "/* SKIN_START */\n";
-    if (isset($manifest['options']) && is_array($manifest['options'])) {
-        foreach ($manifest['options'] as $key => $meta) {
-            $val     = (isset($all_settings[$key]) && $all_settings[$key] !== '') ? $all_settings[$key] : ($meta['default'] ?? '');
-            $css_val = (isset($meta['type']) && ($meta['type'] === 'range' || $meta['type'] === 'number'))
-                        ? ((isset($meta['property']) && substr($meta['property'], 0, 2) === '--') ? $val : $val . "px")
-                        : $val;
-            if (isset($meta['selector']) && isset($meta['property'])) {
-                $generated_public .= "{$meta['selector']} { {$meta['property']}: {$css_val}; }\n";
-            }
-        }
-    }
-    $generated_public .= "/* SKIN_END */";
-
-    $pdo->prepare("UPDATE snap_settings SET setting_val = ? WHERE setting_key = 'custom_css_public'")->execute([$generated_public]);
-
     header("Location: smack-globalvibe.php?msg=CALIBRATED");
     exit;
 }
@@ -221,6 +194,49 @@ include 'core/sidebar.php';
             <div class="box">
                 <h3>ARCHIVE GRID ARCHITECTURE</h3>
                 <div class="dash-grid">
+
+                    <?php
+                    // --- ARCHIVE LAYOUT MODE (Gated by Skin Manifest) ---
+                    $all_layouts = [
+                        'square'    => 'Square Grid (1:1 Cropped)',
+                        'cropped'   => 'Cropped Grid (Max 3:2 Aspect)',
+                        'masonry'   => 'Justified (Flickr-Style Row Fill)',
+                    ];
+                    $supported_layouts = $manifest['features']['archive_layouts'] ?? ['square'];
+                    $current_layout    = $settings['archive_layout'] ?? 'square';
+
+                    // If current layout isn't supported by this skin, force to first supported
+                    if (!in_array($current_layout, $supported_layouts)) {
+                        $current_layout = $supported_layouts[0];
+                    }
+
+                    $layout_locked = (count($supported_layouts) === 1);
+                    ?>
+
+                    <div class="lens-input-wrapper">
+                        <label>ARCHIVE DISPLAY MODE</label>
+
+                        <?php if ($layout_locked): ?>
+                            <select disabled style="opacity: 0.4; cursor: not-allowed;">
+                                <option><?php echo strtoupper($all_layouts[$supported_layouts[0]]); ?></option>
+                            </select>
+                            <input type="hidden" name="settings[archive_layout]" value="<?php echo htmlspecialchars($supported_layouts[0]); ?>">
+                            <p class="dim" style="margin-top: 6px; font-size: 0.75em;">
+                                ACTIVE SKIN ONLY SUPPORTS THIS LAYOUT MODE.
+                            </p>
+                        <?php else: ?>
+                            <select name="settings[archive_layout]">
+                                <?php foreach ($supported_layouts as $layout_key): ?>
+                                    <?php if (isset($all_layouts[$layout_key])): ?>
+                                        <option value="<?php echo htmlspecialchars($layout_key); ?>" <?php echo ($current_layout === $layout_key) ? 'selected' : ''; ?>>
+                                            <?php echo strtoupper($all_layouts[$layout_key]); ?>
+                                        </option>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php endif; ?>
+                    </div>
+
                     <div class="lens-input-wrapper">
                         <label>THUMBNAIL SIZE (PX)</label>
                         <input type="number" name="settings[thumb_size]" value="<?php echo htmlspecialchars($settings['thumb_size'] ?? 400); ?>">
@@ -232,13 +248,22 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper">
                         <label>WALL ENGINE LINK</label>
 
-                        <?php if ($pimpotron_active): ?>
+                        <?php
+                        $supports_wall    = !empty($manifest['features']['supports_wall']);
+                        $wall_unavailable = $pimpotron_active || !$supports_wall;
+                        ?>
+
+                        <?php if ($wall_unavailable): ?>
                             <select disabled style="opacity: 0.4; cursor: not-allowed;">
                                 <option>DISABLED BY SKIN</option>
                             </select>
                             <input type="hidden" name="settings[show_wall_link]" value="0">
                             <p class="dim" style="margin-top: 6px; font-size: 0.75em;">
-                                PIMPOTRON IS ACTIVE &mdash; WALL ENGINE IS INCOMPATIBLE WITH THIS SKIN.
+                                <?php if ($pimpotron_active): ?>
+                                    PIMPOTRON IS ACTIVE &mdash; WALL ENGINE IS INCOMPATIBLE WITH THIS SKIN.
+                                <?php else: ?>
+                                    ACTIVE SKIN DOES NOT SUPPORT THE GALLERY WALL.
+                                <?php endif; ?>
                             </p>
                         <?php else: ?>
                             <select name="settings[show_wall_link]">
@@ -250,103 +275,6 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
-            <?php
-            $grouped_opts = [];
-            if (isset($manifest['options']) && is_array($manifest['options'])) {
-                foreach ($manifest['options'] as $k => $o) {
-                    if (isset($o['section']) && ($o['section'] === 'STATIC PAGE STYLING' || $o['section'] === 'WALL SPECIFIC')) {
-                        $grouped_opts[] = ['key' => $k, 'meta' => $o];
-                    }
-                }
-            }
-            if (!empty($grouped_opts)):
-            ?>
-            <div class="box">
-                <h3>SKIN-SPECIFIC CALIBRATION</h3>
-                <div class="post-layout-grid">
-                    <div class="post-col-left">
-                        <?php
-                        $half = ceil(count($grouped_opts) / 2);
-                        for ($i = 0; $i < $half; $i++):
-                            $k   = $grouped_opts[$i]['key'];
-                            $o   = $grouped_opts[$i]['meta'];
-                            $val = (isset($settings[$k]) && $settings[$k] !== '') ? $settings[$k] : ($o['default'] ?? '');
-                        ?>
-                            <div class="lens-input-wrapper">
-                                <label><?php echo strtoupper(htmlspecialchars($o['label'] ?? $k)); ?></label>
-                                <?php if (isset($o['type']) && $o['type'] === 'color'): ?>
-                                    <div class="color-picker-container">
-                                        <input type="color" name="skin_opt[<?php echo htmlspecialchars($k); ?>]" value="<?php echo htmlspecialchars($val); ?>">
-                                        <span class="hex-display"><?php echo strtoupper(htmlspecialchars($val)); ?></span>
-                                    </div>
-                                <?php elseif (isset($o['type']) && $o['type'] === 'range'): ?>
-                                    <div class="range-wrapper">
-                                        <input type="range"
-                                               name="skin_opt[<?php echo htmlspecialchars($k); ?>]"
-                                               min="<?php echo htmlspecialchars($o['min'] ?? 0); ?>"
-                                               max="<?php echo htmlspecialchars($o['max'] ?? 100); ?>"
-                                               value="<?php echo htmlspecialchars($val); ?>"
-                                               oninput="this.nextElementSibling.innerText = this.value + 'PX'">
-                                        <span class="active-val"><?php echo strtoupper(htmlspecialchars($val)); ?>PX</span>
-                                    </div>
-                                <?php elseif (isset($o['type']) && $o['type'] === 'select' && isset($o['options'])): ?>
-                                    <select name="skin_opt[<?php echo htmlspecialchars($k); ?>]">
-                                        <?php foreach ($o['options'] as $ov => $ol): ?>
-                                            <?php $label = is_array($ol) ? ($ol['label'] ?? $ov) : $ol; ?>
-                                            <option value="<?php echo htmlspecialchars($ov); ?>" <?php echo ($val == $ov) ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($label); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                <?php else: ?>
-                                    <input type="text" name="skin_opt[<?php echo htmlspecialchars($k); ?>]" value="<?php echo htmlspecialchars($val); ?>">
-                                <?php endif; ?>
-                            </div>
-                        <?php endfor; ?>
-                    </div>
-
-                    <div class="post-col-right">
-                        <?php
-                        for ($i = $half; $i < count($grouped_opts); $i++):
-                            $k   = $grouped_opts[$i]['key'];
-                            $o   = $grouped_opts[$i]['meta'];
-                            $val = (isset($settings[$k]) && $settings[$k] !== '') ? $settings[$k] : ($o['default'] ?? '');
-                        ?>
-                            <div class="lens-input-wrapper">
-                                <label><?php echo strtoupper(htmlspecialchars($o['label'] ?? $k)); ?></label>
-                                <?php if (isset($o['type']) && $o['type'] === 'color'): ?>
-                                    <div class="color-picker-container">
-                                        <input type="color" name="skin_opt[<?php echo htmlspecialchars($k); ?>]" value="<?php echo htmlspecialchars($val); ?>">
-                                        <span class="hex-display"><?php echo strtoupper(htmlspecialchars($val)); ?></span>
-                                    </div>
-                                <?php elseif (isset($o['type']) && $o['type'] === 'range'): ?>
-                                    <div class="range-wrapper">
-                                        <input type="range"
-                                               name="skin_opt[<?php echo htmlspecialchars($k); ?>]"
-                                               min="<?php echo htmlspecialchars($o['min'] ?? 0); ?>"
-                                               max="<?php echo htmlspecialchars($o['max'] ?? 100); ?>"
-                                               value="<?php echo htmlspecialchars($val); ?>"
-                                               oninput="this.nextElementSibling.innerText = this.value + 'PX'">
-                                        <span class="active-val"><?php echo strtoupper(htmlspecialchars($val)); ?>PX</span>
-                                    </div>
-                                <?php elseif (isset($o['type']) && $o['type'] === 'select' && isset($o['options'])): ?>
-                                    <select name="skin_opt[<?php echo htmlspecialchars($k); ?>]">
-                                        <?php foreach ($o['options'] as $ov => $ol): ?>
-                                            <?php $label = is_array($ol) ? ($ol['label'] ?? $ov) : $ol; ?>
-                                            <option value="<?php echo htmlspecialchars($ov); ?>" <?php echo ($val == $ov) ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($label); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                <?php else: ?>
-                                    <input type="text" name="skin_opt[<?php echo htmlspecialchars($k); ?>]" value="<?php echo htmlspecialchars($val); ?>">
-                                <?php endif; ?>
-                            </div>
-                        <?php endfor; ?>
-                    </div>
-                </div>
-            </div>
-            <?php endif; ?>
 
         </div>
 
