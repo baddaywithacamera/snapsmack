@@ -1,9 +1,10 @@
 <?php
 /**
  * Fifty Shades of Grey — Layout Controller
- * Version: 2.0
+ * Version: 2.1
  * -------------------------------------------------------------------------
  * NHD structure. fsog- selectors. No exif strip. No title bar above nav.
+ * v2.1: Download overlay v2 — no wrapper div, button as sibling.
  * -------------------------------------------------------------------------
  */
 require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
@@ -20,10 +21,12 @@ $comments_active = ($global_on && $post_on);
 
     <div id="fsog-photobox">
         <div class="fsog-photo-wrap">
+            <?php include dirname(__DIR__, 2) . '/core/download-overlay.php'; ?>
             <img src="<?php echo BASE_URL . ltrim($img['img_file'], '/'); ?>" 
                  alt="<?php echo htmlspecialchars($img['img_title']); ?>" 
                  class="fsog-image post-image"
                  id="main-image">
+            <?php echo $download_button; ?>
         </div>
     </div>
 

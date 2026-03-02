@@ -118,6 +118,15 @@ include 'core/sidebar.php';
                 </div>
 
                 <div class="lens-input-wrapper">
+                    <label>GLOBAL DOWNLOADS</label>
+                    <select name="settings[global_downloads_enabled]">
+                        <option value="1" <?php echo (($settings['global_downloads_enabled'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
+                        <option value="0" <?php echo (($settings['global_downloads_enabled'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
+                    </select>
+                    <span class="dim">MASTER OVERRIDE. PER-POST TOGGLE ALSO REQUIRED.</span>
+                </div>
+
+                <div class="lens-input-wrapper">
                     <label>BRANDING STYLE</label>
                     <select name="settings[footer_branding_style]">
                         <option value="standard" <?php echo (($settings['footer_branding_style'] ?? 'standard') == 'standard') ? 'selected' : ''; ?>>STANDARD</option>
@@ -212,8 +221,8 @@ include 'core/sidebar.php';
 
         <div class="box box-flush-bottom">
             <h3>TIME & LOCALIZATION</h3>
-            <div class="post-layout-grid">
-                <div class="post-col-left">
+            <div class="dash-grid">
+                <div class="lens-input-wrapper">
                     <label>TIMEZONE</label>
                     <select name="settings[timezone]" id="timezone-select">
                         <?php
@@ -226,7 +235,7 @@ include 'core/sidebar.php';
                         ?>
                     </select>
                 </div>
-                <div class="post-col-right">
+                <div class="lens-input-wrapper">
                     <label>DATE DISPLAY FORMAT</label>
                     <select name="settings[date_format]" id="format-select">
                         <?php
@@ -238,6 +247,10 @@ include 'core/sidebar.php';
                         ?>
                     </select>
                 </div>
+                <div class="lens-input-wrapper">
+                    <label>LIVE PREVIEW</label>
+                    <div id="local-clock" class="read-only-display" style="padding: 8px 12px; font-size: 0.95rem; letter-spacing: 0.5px;">SYNCING...</div>
+                </div>
             </div>
         </div>
 
@@ -246,4 +259,5 @@ include 'core/sidebar.php';
     </form>
 </div>
 
+<script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
 <?php include 'core/admin-footer.php'; ?>

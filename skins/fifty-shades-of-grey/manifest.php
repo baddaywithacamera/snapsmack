@@ -1,9 +1,10 @@
 <?php
 /**
  * SnapSmack Skin Manifest: Fifty Shades of Grey
- * Version: 2.0
+ * Version: 2.1
  * -------------------------------------------------------------------------
  * NHD structure. fsog- selectors. Grey palette. No colour.
+ * v2.1: Glitch removed. Hero/archive frame split. Border defaults.
  * -------------------------------------------------------------------------
  */
 
@@ -12,7 +13,7 @@ $fonts = $inventory['fonts'] ?? [];
 
 return [
     'name'          => 'Fifty Shades of Grey',
-    'version'       => '2.0',
+    'version'       => '2.1',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Pure greyscale photography skin. Three monochrome variants with zero colour accents.',
@@ -30,11 +31,10 @@ return [
     ],
     'default_variant' => 'dark',
 
-    // THE HANDSHAKE
+    // THE HANDSHAKE — NO GLITCH
     'require_scripts' => [
         'smack-footer',
         'smack-lightbox',
-        'smack-glitch',
         'smack-justified-lib',
         'smack-justified'
     ],
@@ -107,22 +107,53 @@ return [
         'image_frame_style' => [
             'section'  => 'VERTICAL LOCKS',
             'type'     => 'select',
-            'label'    => 'Main Image Frame Style',
-            'default'  => 'shadow_soft',
-            'selector' => '.fsog-image, .thumb-link, .inline-asset, .static-transmission .description .align-left',
+            'label'    => 'Hero Image Frame',
+            'default'  => 'border_thin',
+            'selector' => 'img.post-image, img.fsog-image, .inline-asset, .static-transmission .description .align-left',
             'property' => 'custom-framing',
             'options'  => [
+                'border_thin' => [
+                    'label' => 'Thin Grey Border (1px)',
+                    'css'   => '{ border: 1px solid #555555 !important; box-shadow: none !important; }'
+                ],
+                'border_medium' => [
+                    'label' => 'Medium Grey Border (3px)',
+                    'css'   => '{ border: 3px solid #555555 !important; box-shadow: none !important; }'
+                ],
+                'border_heavy' => [
+                    'label' => 'Heavy Grey Border (5px)',
+                    'css'   => '{ border: 5px solid #666666 !important; box-shadow: none !important; }'
+                ],
                 'shadow_soft' => [
-                    'label' => 'Soft Shadow (Default)',
+                    'label' => 'Soft Shadow',
                     'css'   => '{ border: none !important; box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 1px 6px rgba(0,0,0,0.2) !important; }'
                 ],
                 'shadow_heavy' => [
                     'label' => 'Heavy Shadow',
                     'css'   => '{ border: none !important; box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 2px 10px rgba(0,0,0,0.3) !important; }'
                 ],
+                'none' => [
+                    'label' => 'No Frame',
+                    'css'   => '{ border: none !important; box-shadow: none !important; }'
+                ]
+            ]
+        ],
+
+        'archive_frame_style' => [
+            'section'  => 'VERTICAL LOCKS',
+            'type'     => 'select',
+            'label'    => 'Archive Thumb Frame',
+            'default'  => 'border_thin',
+            'selector' => '.square-grid .thumb-link, .cropped-grid .thumb-link, .justified-item',
+            'property' => 'custom-framing',
+            'options'  => [
                 'border_thin' => [
-                    'label' => 'Thin Grey Border',
+                    'label' => 'Thin Grey Border (1px)',
                     'css'   => '{ border: 1px solid #555555 !important; box-shadow: none !important; }'
+                ],
+                'border_medium' => [
+                    'label' => 'Medium Grey Border (3px)',
+                    'css'   => '{ border: 3px solid #555555 !important; box-shadow: none !important; }'
                 ],
                 'none' => [
                     'label' => 'No Frame',

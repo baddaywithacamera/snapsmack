@@ -1,11 +1,12 @@
 <?php
 /**
  * SnapSmack - Layout Controller
- * Version: 3.7 - Unified UI Integration
+ * Version: 3.8 - Download Overlay Integration
  * -------------------------------------------------------------------------
  * - FIXED: Script pointer moved to assets/js/smack-ui-public.js
  * - FIXED: Kept empty comment containers in DOM to prevent JS "null" errors.
  * - FIXED: Both Info and Comment toggles restored via Centralized Engine.
+ * - ADDED: Download overlay on main photobox image.
  * -------------------------------------------------------------------------
  */
 require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
@@ -22,9 +23,13 @@ $comments_active = ($global_on && $post_on);
 
     <div id="photobox">
         <div class="main-photo">
+            <?php 
+            include dirname(__DIR__, 2) . '/core/download-overlay.php'; 
+            ?>
             <img src="<?php echo BASE_URL . ltrim($img['img_file'], '/'); ?>" 
                  alt="<?php echo htmlspecialchars($img['img_title']); ?>" 
                  class="post-image">
+            <?php echo $download_button; ?>
         </div>
     </div>
 

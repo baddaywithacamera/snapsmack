@@ -73,9 +73,15 @@ try {
     $album_filter = isset($_GET['album']) ? (int)$_GET['album'] : null;
 
     // 5. Build Query
+    // Use PHP timezone-aware datetime instead of MySQL NOW()
+    // to prevent timezone mismatch hiding recent posts
+    $tz = $settings['timezone'] ?? 'America/Edmonton';
+    date_default_timezone_set($tz);
+    $now_local = date('Y-m-d H:i:s');
+
     $sql = "SELECT i.* FROM snap_images i ";
-    $where_clauses = ["i.img_status = 'published'", "i.img_date <= NOW()"];
-    $params = [];
+    $where_clauses = ["i.img_status = 'published'", "i.img_date <= ?"];
+    $params = [$now_local];
 
     if ($cat_filter) {
         $sql .= "INNER JOIN snap_image_cat_map c ON i.id = c.image_id ";

@@ -104,13 +104,16 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // File upload display + EXIF preflight
-    const fileInput = document.getElementById("file-input") || document.getElementById("post-file-input");
+    const fileInput = document.getElementById("post-file-input") || document.getElementById("file-input");
     const customBtn = document.querySelector(".file-custom-btn");
-    const fileNameText = document.getElementById("file-name-text") || document.getElementById("post-file-name");
+    const fileNameText = document.getElementById("post-file-name") || document.getElementById("file-name-text");
     const titleInput = document.getElementById("title-input");
 
     if (customBtn && fileInput) {
-        customBtn.addEventListener("click", () => fileInput.click());
+        customBtn.addEventListener("click", function(e) {
+            e.stopPropagation();
+            fileInput.click();
+        });
     }
 
     if (fileInput) {
@@ -147,6 +150,50 @@ document.addEventListener("DOMContentLoaded", function () {
                 })
                 .catch(err => console.error("LOG: Preflight error", err));
         });
+    }
+
+    // AJAX form submission with progress bar
+    const form = document.getElementById("smack-form-post") || document.getElementById("smack-form");
+    if (form) {
+        form.onsubmit = function (e) {
+            e.preventDefault();
+
+            // Validate file selection (can't use required on hidden input)
+            const fileField = form.querySelector('input[type="file"][name="img_file"]');
+            if (fileField && (!fileField.files || !fileField.files.length)) {
+                alert("NO ASSET SELECTED — Select a file before committing.");
+                return;
+            }
+
+            const formData = new FormData(form);
+            const xhr = new XMLHttpRequest();
+            const pCont = document.getElementById("progress-container");
+            const pBar = document.getElementById("progress-bar");
+
+            if (pCont) pCont.style.display = "block";
+
+            xhr.upload.addEventListener("progress", e => {
+                if (e.lengthComputable && pBar) pBar.style.width = (e.loaded / e.total) * 100 + "%";
+            });
+
+            xhr.onload = function () {
+                if (xhr.status === 200 && xhr.responseText.trim() === "success") {
+                    window.location.href = "smack-manage.php?msg=success";
+                } else {
+                    alert("MISSION FAILURE: " + xhr.responseText);
+                    if (pCont) pCont.style.display = "none";
+                }
+            };
+
+            xhr.onerror = function () {
+                alert("MISSION FAILURE: Network error.");
+                if (pCont) pCont.style.display = "none";
+            };
+
+            xhr.open("POST", form.action || window.location.href, true);
+            xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+            xhr.send(formData);
+        };
     }
 
     // Checkbox toggles: Built-in lens, Film N/A

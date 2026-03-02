@@ -50,7 +50,11 @@ try {
     $img = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // 5. NAVIGATION (Clean Link Logic)
-    $where_live = "WHERE img_status = 'published' AND img_date <= NOW()";
+    // Use PHP timezone instead of MySQL NOW() to prevent timezone mismatch
+    $tz = $settings['timezone'] ?? 'America/Edmonton';
+    date_default_timezone_set($tz);
+    $now_local = date('Y-m-d H:i:s');
+    $where_live = "WHERE img_status = 'published' AND img_date <= '$now_local'";
     
     // First/Last logic
     $f_res = $pdo->query("SELECT img_slug FROM snap_images $where_live ORDER BY img_date ASC LIMIT 1")->fetchColumn();

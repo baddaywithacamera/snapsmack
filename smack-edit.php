@@ -31,6 +31,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $custom_date = !empty($raw_date) ? str_replace('T', ' ', $raw_date) : date('Y-m-d H:i:s');
 
     $allow_comments = (int)($_POST['allow_comments'] ?? 1);
+    $allow_download = (int)($_POST['allow_download'] ?? 1);
+    $download_url = trim($_POST['download_url'] ?? '');
     $selected_cats = $_POST['cat_ids'] ?? [];
     $selected_albums = $_POST['album_ids'] ?? [];
     
@@ -52,8 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
 
     // Primary record update.
-    $stmt = $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_film = ?, img_exif = ?, img_status = ?, img_date = ?, img_orientation = ?, allow_comments = ? WHERE id = ?");
-    $stmt->execute([$title, $desc, $film_val, json_encode($updated_exif), $status, $custom_date, $orientation, $allow_comments, $id]);
+    $stmt = $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_film = ?, img_exif = ?, img_status = ?, img_date = ?, img_orientation = ?, allow_comments = ?, allow_download = ?, download_url = ? WHERE id = ?");
+    $stmt->execute([$title, $desc, $film_val, json_encode($updated_exif), $status, $custom_date, $orientation, $allow_comments, $allow_download, $download_url, $id]);
 
     // Re-map categories (Purge and Re-populate pattern).
     $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
@@ -109,9 +111,9 @@ include 'core/sidebar.php';
     <form id="smack-form-edit" method="POST">
         
         <div class="box">
-            <div class="post-layout-grid" style="display: flex; align-items: stretch; gap: 30px;">
+            <div class="post-layout-grid">
                 
-                <div class="post-col-left" style="flex: 1; display: flex; flex-direction: column;">
+                <div class="post-col-left">
                     <div class="lens-input-wrapper">
                         <label>IMAGE TITLE</label>
                         <input type="text" name="title" value="<?php echo htmlspecialchars($post['img_title']); ?>" required>
@@ -162,13 +164,13 @@ include 'core/sidebar.php';
                         </div>
                     </div>
 
-                    <div class="lens-input-wrapper" style="margin-top: 30px; flex-grow: 1; display: flex; flex-direction: column;">
+                    <div class="lens-input-wrapper post-description-wrap">
                         <label>DESCRIPTION / STORY</label>
-                        <textarea name="desc" style="flex-grow: 1; height: 100%;"><?php echo htmlspecialchars($post['img_description']); ?></textarea>
+                        <textarea name="desc"><?php echo htmlspecialchars($post['img_description']); ?></textarea>
                     </div>
                 </div>
 
-                <div class="post-col-right" style="flex: 1;">
+                <div class="post-col-right">
                     <div class="lens-input-wrapper">
                         <label>PUBLICATION STATUS</label>
                         <select name="img_status" class="full-width-select">
@@ -202,9 +204,22 @@ include 'core/sidebar.php';
                     </div>
 
                     <div class="lens-input-wrapper">
+                        <label>ALLOW DOWNLOAD?</label>
+                        <select name="allow_download" class="full-width-select">
+                            <option value="1" <?php echo ($post['allow_download'] == 1) ? 'selected' : ''; ?>>ENABLED</option>
+                            <option value="0" <?php echo ($post['allow_download'] == 0) ? 'selected' : ''; ?>>DISABLED</option>
+                        </select>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>DOWNLOAD URL (EXTERNAL)</label>
+                        <input type="text" name="download_url" value="<?php echo htmlspecialchars($post['download_url'] ?? ''); ?>" placeholder="Google Drive, Dropbox, etc. Leave blank for local file.">
+                    </div>
+
+                    <div class="lens-input-wrapper">
                         <label>REFERENCE SIGNAL</label>
                         <div class="preview-frame">
-                            <img src="<?php echo $post['img_file']; ?>" class="swap-preview" style="max-width: 100%; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">
+                            <img src="<?php echo $post['img_file']; ?>" class="swap-preview">
                         </div>
                     </div>
                 </div>
@@ -222,9 +237,9 @@ include 'core/sidebar.php';
                 
                 <div class="lens-input-wrapper">
                     <label>LENS INFO</label>
-                    <div class="input-control-row" style="display:flex; gap:10px; align-items:center;">
-                        <input type="text" name="lens_info" id="meta-lens" value="<?php echo htmlspecialchars($exif['lens'] ?? ''); ?>" style="flex-grow:1;">
-                        <label class="built-in-label" style="margin:0; white-space:nowrap;"><input type="checkbox" id="fixed-lens-check" <?php echo (($exif['lens'] ?? '') === 'Built-in') ? 'checked' : ''; ?>> Built-in</label>
+                    <div class="input-control-row">
+                        <input type="text" name="lens_info" id="meta-lens" value="<?php echo htmlspecialchars($exif['lens'] ?? ''); ?>" >
+                        <label class="built-in-label" ><input type="checkbox" id="fixed-lens-check" <?php echo (($exif['lens'] ?? '') === 'Built-in') ? 'checked' : ''; ?>> Built-in</label>
                     </div>
                 </div>
                 
@@ -235,9 +250,9 @@ include 'core/sidebar.php';
                 
                 <div class="lens-input-wrapper">
                     <label>FILM STOCK</label>
-                    <div class="input-control-row" style="display:flex; gap:10px; align-items:center;">
-                        <input type="text" name="film_stock" id="meta-film" value="<?php echo htmlspecialchars($post['img_film'] ?? ''); ?>" style="flex-grow:1;">
-                        <label class="built-in-label" style="margin:0; white-space:nowrap;"><input type="checkbox" name="film_na" id="film-na-check" <?php echo (($post['img_film'] ?? '') === 'N/A') ? 'checked' : ''; ?>> N/A</label>
+                    <div class="input-control-row">
+                        <input type="text" name="film_stock" id="meta-film" value="<?php echo htmlspecialchars($post['img_film'] ?? ''); ?>" >
+                        <label class="built-in-label" ><input type="checkbox" name="film_na" id="film-na-check" <?php echo (($post['img_film'] ?? '') === 'N/A') ? 'checked' : ''; ?>> N/A</label>
                     </div>
                 </div>
                 
@@ -270,7 +285,7 @@ include 'core/sidebar.php';
     </form>
 </div>
 
-<script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
+<script src="assets/js/smack-ui-private.js?v=<?php echo time(); ?>"></script>
 <script>
     window.addEventListener('DOMContentLoaded', () => {
         if(typeof updateLabel === "function") { 

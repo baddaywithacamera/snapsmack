@@ -20,6 +20,7 @@
 
 <div id="hud" class="hud-msg"></div>
 
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-download-overlay.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-comms.css">
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-comms.js?v=<?php echo time(); ?>"></script>
 

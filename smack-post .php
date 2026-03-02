@@ -48,21 +48,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         $film_val = 'N/A'; 
     }
 
-    $rel_dir = 'img_uploads/' . date('Y') . '/' . date('m');
-    $full_dir = __DIR__ . '/' . $rel_dir;
-    $thumb_full = $full_dir . '/thumbs';
-    if (!is_dir($full_dir)) { 
-        mkdir($full_dir, 0755, true); 
+    $upload_dir = 'img_uploads/';
+    if (!is_dir($upload_dir)) { 
+        mkdir($upload_dir, 0755, true); 
     }
-    if (!is_dir($thumb_full)) { 
-        mkdir($thumb_full, 0755, true); 
+    if (!is_dir($upload_dir . 'thumbs/')) { 
+        mkdir($upload_dir . 'thumbs/', 0755, true); 
     }
 
     $file_ext = strtolower(pathinfo($_FILES['img_file']['name'], PATHINFO_EXTENSION));
     $slug = strtolower(preg_replace('/[^A-Za-z0-9-]+/', '-', $title)) . '-' . time();
     $new_file_name = $slug . '.' . $file_ext;
-    $target_path = $full_dir . '/' . $new_file_name;
-    $db_path = $rel_dir . '/' . $new_file_name;
+    $target_path = $upload_dir . $new_file_name;
 
     if (move_uploaded_file($_FILES['img_file']['tmp_name'], $target_path)) {
         
@@ -95,10 +92,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         ]);
 
         // --- IMAGE PROCESSING ENGINE ---
-        // 1. Resize original in-place if over config limits (no prefix change)
+        // 1. Display copy (d_ prefix) — resized per config if oversized, kept as-is if under
         // 2. Square thumbnail (t_ prefix) — 400x400 center-cropped
         // 3. Aspect thumbnail (a_ prefix) — 400px long side
-        // Full-res downloads served via external URL (Google Drive, etc.)
+        // Original upload is purged after processing. Full-res via external download URL.
         
         list($orig_w, $orig_h) = getimagesize($target_path);
         $mime = mime_content_type($target_path);
@@ -111,61 +108,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         elseif ($mime == 'image/png') { $src = imagecreatefrompng($target_path); }
         elseif ($mime == 'image/webp') { $src = imagecreatefromwebp($target_path); }
 
+        $display_path = $upload_dir . 'd_' . $new_file_name;
+
         if ($src) {
-            // =============================================================
-            // 0. EXIF ORIENTATION CORRECTION
-            //    GD strips EXIF rotation metadata on save. We must rotate
-            //    the pixel data to match what the camera intended BEFORE
-            //    any resize or thumb generation.
-            // =============================================================
-            $exif_orientation = 1;
-            if ($mime == 'image/jpeg' && function_exists('exif_read_data')) {
-                $exif_orient = @exif_read_data($target_path, 'IFD0');
-                if ($exif_orient !== false) {
-                    $exif_orientation = $exif_orient['Orientation'] ?? $exif_orient['orientation'] ?? 1;
-                }
-            }
-            
-            if ($exif_orientation == 3) {
-                $src = imagerotate($src, 180, 0);
-            } elseif ($exif_orientation == 6) {
-                $src = imagerotate($src, -90, 0);
-            } elseif ($exif_orientation == 8) {
-                $src = imagerotate($src, 90, 0);
-            }
-            
-            // Always re-read dimensions from the GD resource after potential rotation
-            $orig_w = imagesx($src);
-            $orig_h = imagesy($src);
-            
-            // ALWAYS re-save after GD load to bake in correct pixel orientation
-            // (even if no EXIF rotation — GD may have stripped metadata)
-            if ($mime === 'image/jpeg') { imagejpeg($src, $target_path, $jpeg_q); }
-            elseif ($mime === 'image/png') { imagepng($src, $target_path, 8); }
-            else { imagewebp($src, $target_path, $jpeg_q); }
-            
-            // Reload from the clean saved file
-            imagedestroy($src);
-            if ($mime == 'image/jpeg') { $src = imagecreatefromjpeg($target_path); }
-            elseif ($mime == 'image/png') { $src = imagecreatefrompng($target_path); }
-            else { $src = imagecreatefromwebp($target_path); }
-
-            $thumb_dir = $thumb_full . '/';
+            $thumb_dir = $upload_dir . 'thumbs/';
 
             // =============================================================
-            // 1. RESIZE IN-PLACE if over config limits
+            // 1. DISPLAY COPY (d_ prefix) — hero image for the photo page
             // =============================================================
             $needs_resize = false;
             $d_w = $orig_w;
             $d_h = $orig_h;
 
             if ($orig_w >= $orig_h) {
+                // Landscape or square — cap by width
                 if ($orig_w > $max_w) {
                     $d_w = $max_w;
                     $d_h = round($orig_h * ($max_w / $orig_w));
                     $needs_resize = true;
                 }
             } else {
+                // Portrait — cap by height
                 if ($orig_h > $max_h) {
                     $d_h = $max_h;
                     $d_w = round($orig_w * ($max_h / $orig_h));
@@ -181,23 +144,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 }
                 imagecopyresampled($d_img, $src, 0, 0, 0, 0, $d_w, $d_h, $orig_w, $orig_h);
 
-                // Overwrite original with resized version
-                if ($mime === 'image/jpeg') { imagejpeg($d_img, $target_path, $jpeg_q); }
-                elseif ($mime === 'image/png') { imagepng($d_img, $target_path, 8); }
-                else { imagewebp($d_img, $target_path, $jpeg_q); }
+                if ($mime === 'image/jpeg') { imagejpeg($d_img, $display_path, $jpeg_q); }
+                elseif ($mime === 'image/png') { imagepng($d_img, $display_path, 8); }
+                else { imagewebp($d_img, $display_path, $jpeg_q); }
                 imagedestroy($d_img);
-
-                // Reload source from resized file
-                imagedestroy($src);
-                if ($mime == 'image/jpeg') { $src = imagecreatefromjpeg($target_path); }
-                elseif ($mime == 'image/png') { $src = imagecreatefrompng($target_path); }
-                else { $src = imagecreatefromwebp($target_path); }
-
-                $orig_w = $d_w;
-                $orig_h = $d_h;
             } else {
-                // No resize needed — file already saved with correct orientation above
+                // Under limit — rename to d_ convention
+                copy($target_path, $display_path);
             }
+
+            // Purge the original upload — display copy is our hero now
+            if (file_exists($target_path)) {
+                unlink($target_path);
+            }
+
+            // Use display copy dimensions for orientation detection + thumbs
+            $orig_w = $d_w;
+            $orig_h = $d_h;
+
+            // Reload source from display copy for consistent downstream processing
+            $src_d = null;
+            if ($mime == 'image/jpeg') { $src_d = imagecreatefromjpeg($display_path); }
+            elseif ($mime == 'image/png') { $src_d = imagecreatefrompng($display_path); }
+            else { $src_d = imagecreatefromwebp($display_path); }
 
             // =============================================================
             // 2. SQUARE THUMBNAIL (t_ prefix) — 400x400 center-cropped
@@ -213,7 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 imagesavealpha($sq_thumb, true);
             }
 
-            imagecopyresampled($sq_thumb, $src, 0, 0, $off_x, $off_y, $sq_size, $sq_size, $min_dim, $min_dim);
+            imagecopyresampled($sq_thumb, $src_d, 0, 0, $off_x, $off_y, $sq_size, $sq_size, $min_dim, $min_dim);
             
             if ($mime === 'image/jpeg') { imagejpeg($sq_thumb, $thumb_dir . 't_' . $new_file_name, 82); }
             elseif ($mime === 'image/png') { imagepng($sq_thumb, $thumb_dir . 't_' . $new_file_name, 8); }
@@ -233,6 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 $a_w = round($orig_w * ($aspect_long / $orig_h));
             }
 
+            // Don't upscale tiny images
             if ($orig_w < $aspect_long && $orig_h < $aspect_long) {
                 $a_w = $orig_w;
                 $a_h = $orig_h;
@@ -245,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 imagesavealpha($a_thumb, true);
             }
 
-            imagecopyresampled($a_thumb, $src, 0, 0, 0, 0, $a_w, $a_h, $orig_w, $orig_h);
+            imagecopyresampled($a_thumb, $src_d, 0, 0, 0, 0, $a_w, $a_h, $orig_w, $orig_h);
 
             if ($mime === 'image/jpeg') { imagejpeg($a_thumb, $thumb_dir . 'a_' . $new_file_name, 82); }
             elseif ($mime === 'image/png') { imagepng($a_thumb, $thumb_dir . 'a_' . $new_file_name, 8); }
@@ -253,6 +223,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             imagedestroy($a_thumb);
             
             imagedestroy($src);
+            imagedestroy($src_d);
         }
 
         // --- ORIENTATION DETECTION ---
@@ -281,26 +252,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 img_status, 
                 img_date, 
                 img_orientation,
-                img_width,
-                img_height,
                 allow_comments,
                 allow_download,
                 download_url
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         
         $stmt->execute([
             $title, 
             $slug, 
-            $db_path, 
+            $display_path, 
             $desc, 
             $film_val, 
             $exif_json, 
             $status, 
             $custom_date, 
             $auto_orientation,
-            $orig_w,
-            $orig_h,
             $allow_comments,
             $allow_download,
             $download_url
@@ -397,9 +364,9 @@ include 'core/sidebar.php';
                         </div>
                     </div>
 
-                    <div class="lens-input-wrapper post-description-wrap">
+                    <div class="lens-input-wrapper mt-30">
                         <label>DESCRIPTION / STORY</label>
-                        <textarea name="desc" placeholder="Technical context or artistic narrative..."></textarea>
+                        <textarea name="desc" placeholder="Technical context or artistic narrative..." rows="12"></textarea>
                     </div>
                 </div>
 
@@ -464,7 +431,7 @@ include 'core/sidebar.php';
 
         <div class="box">
             <h3>TECHNICAL SPECIFICATIONS (EXIF OVERRIDES)</h3>
-            <p class="dim exif-hint">JPEG EXIF is auto-extracted on upload. Manual entries below override auto-detected values. Leave blank to use auto-detected data.</p>
+            <p class="dim" style="margin: -5px 0 15px 0; font-size: 0.75em;">JPEG EXIF is auto-extracted on upload. Manual entries below override auto-detected values. Leave blank to use auto-detected data.</p>
             
             <div class="meta-grid">
                 <div class="lens-input-wrapper">
@@ -474,9 +441,9 @@ include 'core/sidebar.php';
                 
                 <div class="lens-input-wrapper">
                     <label>LENS INFO</label>
-                    <div class="input-control-row">
-                        <input type="text" name="lens_info" id="meta-lens" placeholder="Auto-detected from EXIF...">
-                        <label class="built-in-label"><input type="checkbox" id="fixed-lens-check"> Built-in</label>
+                    <div class="input-control-row" style="display:flex; gap:10px; align-items:center;">
+                        <input type="text" name="lens_info" id="meta-lens" placeholder="Auto-detected from EXIF..." style="flex-grow:1;">
+                        <label class="built-in-label" style="margin:0; white-space:nowrap;"><input type="checkbox" id="fixed-lens-check"> Built-in</label>
                     </div>
                 </div>
                 
@@ -487,9 +454,9 @@ include 'core/sidebar.php';
                 
                 <div class="lens-input-wrapper">
                     <label>FILM STOCK</label>
-                    <div class="input-control-row">
-                        <input type="text" name="film_stock" id="meta-film" placeholder="e.g. Kodak Portra 400">
-                        <label class="built-in-label"><input type="checkbox" name="film_na" id="film-na-check"> N/A</label>
+                    <div class="input-control-row" style="display:flex; gap:10px; align-items:center;">
+                        <input type="text" name="film_stock" id="meta-film" placeholder="e.g. Kodak Portra 400" style="flex-grow:1;">
+                        <label class="built-in-label" style="margin:0; white-space:nowrap;"><input type="checkbox" name="film_na" id="film-na-check"> N/A</label>
                     </div>
                 </div>
                 

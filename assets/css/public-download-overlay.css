@@ -1,0 +1,90 @@
+/**
+ * SnapSmack Engine: Download Overlay
+ * Version: 3.0 - Fit-Content Wrapper
+ * -------------------------------------------------------------------------
+ * The wrapper uses width/height: fit-content to shrink-wrap the image.
+ * This keeps the wrapper exactly the size of the image so the download
+ * button positions at the image corner, not the container corner.
+ * -------------------------------------------------------------------------
+ */
+
+.snap-download-wrap {
+    position: relative;
+    width: fit-content;
+    height: fit-content;
+    max-width: 100%;
+    max-height: 100%;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* The download button — positioned at image bottom-right */
+.snap-download-btn {
+    position: fixed;
+    bottom: 80px;
+    right: 30px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+    transition: opacity 0.25s ease;
+    cursor: pointer;
+    text-decoration: none;
+    z-index: 100;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Full opacity on hover */
+.snap-download-btn:hover {
+    background-color: rgba(0, 0, 0, 0.9);
+    border-color: rgba(255, 255, 255, 0.7);
+    transform: scale(1.1);
+    transition: opacity 0.25s ease, transform 0.15s ease, background-color 0.15s ease;
+}
+
+/* Pure CSS download arrow icon */
+.snap-download-icon {
+    display: block;
+    width: 18px;
+    height: 18px;
+    position: relative;
+}
+
+/* Downward arrow shaft */
+.snap-download-icon::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 2px;
+    height: 12px;
+    background: #fff;
+    transform: translateX(-50%);
+}
+
+/* Arrowhead */
+.snap-download-icon::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 7px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: translateX(-50%) rotate(45deg);
+}
+
+/* Tray/base line under the arrow */
+.snap-download-icon span {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #fff;
+}
