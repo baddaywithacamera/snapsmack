@@ -1,10 +1,11 @@
 <?php
 /**
  * SnapSmack Skin Manifest: Fifty Shades of Grey
- * Version: 2.1
+ * Version: 2.2
  * -------------------------------------------------------------------------
  * NHD structure. fsog- selectors. Grey palette. No colour.
  * v2.1: Glitch removed. Hero/archive frame split. Border defaults.
+ * v2.2: Text-transform toggle, letter-spacing, TYPOGRAPHY section.
  * -------------------------------------------------------------------------
  */
 
@@ -13,7 +14,7 @@ $fonts = $inventory['fonts'] ?? [];
 
 return [
     'name'          => 'Fifty Shades of Grey',
-    'version'       => '2.1',
+    'version'       => '2.2',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Pure greyscale photography skin. Three monochrome variants with zero colour accents.',
@@ -41,7 +42,9 @@ return [
 
     'options' => [
 
-        /* SECTION 1: CANVAS LAYOUT */
+        /* ============================================================
+           SECTION 1: CANVAS LAYOUT
+           ============================================================ */
 
         'main_canvas_width' => [
             'section'  => 'CANVAS LAYOUT',
@@ -60,7 +63,7 @@ return [
             'label'    => 'Outer Gutter Padding',
             'default'  => '40',
             'min'      => '0',
-            'max'      => '150',
+            'max'      => '200',
             'selector' => '.fsog-header-inside, #browse-grid',
             'property' => 'padding-left, padding-right'
         ],
@@ -78,7 +81,9 @@ return [
             'property' => 'flex-direction'
         ],
 
-        /* SECTION 2: ARCHIVE GRID */
+        /* ============================================================
+           SECTION 2: ARCHIVE GRID
+           ============================================================ */
 
         'browse_cols' => [
             'section'  => 'ARCHIVE GRID',
@@ -102,7 +107,99 @@ return [
             'property' => '--justified-row-height'
         ],
 
-        /* SECTION 3: VERTICAL LOCKS */
+        /* ============================================================
+           SECTION 3: TYPOGRAPHY
+           ============================================================ */
+
+        'header_font_family' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'Header Font (Text Logo)',
+            'default'  => 'Raleway',
+            'options'  => $fonts,
+            'selector' => '.site-title-text, .logo-area a',
+            'property' => 'font-family'
+        ],
+
+        'header_font_size' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'range',
+            'label'    => 'Header Font Size (px)',
+            'default'  => '50',
+            'min'      => '12',
+            'max'      => '120',
+            'selector' => '.site-title-text',
+            'property' => 'font-size'
+        ],
+
+        'header_text_transform' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'Header Text Case',
+            'default'  => 'uppercase',
+            'options'  => [
+                'uppercase'  => 'UPPERCASE',
+                'lowercase'  => 'lowercase',
+                'capitalize' => 'Capitalize Each Word',
+                'none'       => 'As Entered (No Transform)',
+            ],
+            'selector' => '.site-title-text',
+            'property' => 'text-transform'
+        ],
+
+        'header_letter_spacing' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'range',
+            'label'    => 'Header Letter Spacing (px)',
+            'default'  => '3',
+            'min'      => '-2',
+            'max'      => '15',
+            'selector' => '.site-title-text',
+            'property' => 'letter-spacing'
+        ],
+
+        'header_font_weight' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'Header Font Weight',
+            'default'  => '400',
+            'options'  => [
+                '300' => 'Light (300)',
+                '400' => 'Regular (400)',
+                '500' => 'Medium (500)',
+                '600' => 'Semi-Bold (600)',
+                '700' => 'Bold (700)',
+                '900' => 'Black (900)',
+            ],
+            'selector' => '.site-title-text',
+            'property' => 'font-weight'
+        ],
+
+        /* STATIC PAGE FONTS */
+
+        'static_heading_font' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'Page Heading Font',
+            'default'  => 'Raleway',
+            'options'  => $fonts,
+            'selector' => '.static-page-title, .photo-title-footer',
+            'property' => 'font-family'
+        ],
+
+        'static_body_font' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'Body / Description Font',
+            'default'  => 'DM Sans',
+            'options'  => $fonts,
+            'selector' => '.static-content, .description',
+            'property' => 'font-family'
+        ],
+
+        /* ============================================================
+           SECTION 4: VERTICAL LOCKS
+           ============================================================ */
 
         'image_frame_style' => [
             'section'  => 'VERTICAL LOCKS',
@@ -162,27 +259,6 @@ return [
             ]
         ],
 
-        'header_font_family' => [
-            'section'  => 'VERTICAL LOCKS',
-            'type'     => 'select',
-            'label'    => 'Header Typography (Text Logo)',
-            'default'  => 'Raleway',
-            'options'  => $fonts,
-            'selector' => '.logo-area a',
-            'property' => 'font-family'
-        ],
-
-        'header_font_size' => [
-            'section'  => 'VERTICAL LOCKS',
-            'type'     => 'range',
-            'label'    => 'Header Font Size (px)',
-            'default'  => '50',
-            'min'      => '40',
-            'max'      => '100',
-            'selector' => '.site-title-text',
-            'property' => 'font-size'
-        ],
-
         'optical_lift' => [
             'section'  => 'VERTICAL LOCKS',
             'type'     => 'range',
@@ -216,32 +292,10 @@ return [
             'property' => 'height'
         ],
 
-        /* SECTION 4: STATIC PAGE STYLING */
-
-        'static_heading_font' => [
-            'section'  => 'STATIC PAGE STYLING',
-            'type'     => 'select',
-            'label'    => 'Heading Typography',
-            'default'  => 'Raleway',
-            'options'  => $fonts,
-            'selector' => '.static-page-title, .photo-title-footer',
-            'property' => 'font-family'
-        ],
-
-        'static_body_font' => [
-            'section'  => 'STATIC PAGE STYLING',
-            'type'     => 'select',
-            'label'    => 'Body Typography',
-            'default'  => 'DM Sans',
-            'options'  => $fonts,
-            'selector' => '.static-content, .description',
-            'property' => 'font-family'
-        ],
-
         'static_section_spacing' => [
-            'section'  => 'STATIC PAGE STYLING',
+            'section'  => 'VERTICAL LOCKS',
             'type'     => 'range',
-            'label'    => 'Vertical Section Spacing (px)',
+            'label'    => 'Static Page Top Spacing (px)',
             'default'  => '40',
             'min'      => '10',
             'max'      => '120',
@@ -249,7 +303,9 @@ return [
             'property' => 'margin-top'
         ],
 
-        /* SECTION 5: WALL SPECIFIC */
+        /* ============================================================
+           SECTION 5: WALL SPECIFIC
+           ============================================================ */
 
         'wall_friction' => [
             'section'  => 'WALL SPECIFIC',
@@ -320,7 +376,9 @@ return [
             'property' => '--glow-color'
         ],
 
-        /* SECTION 6: BLOGROLL */
+        /* ============================================================
+           SECTION 6: BLOGROLL
+           ============================================================ */
 
         'blogroll_columns' => [
             'section'  => 'BLOGROLL',
