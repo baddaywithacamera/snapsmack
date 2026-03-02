@@ -1,0 +1,9 @@
+TO DO LIST
+
+1. Fix the footer.
+2. Turn of EXIF option.
+3. Version all files to Alpha 0.7, need new headers (I was 95% done changing and you reverted them. J'accuse, Claude.)
+4. Create official GIT version, lock in.
+5. Build installer.
+6. Build updater.
+7. Build Rational Geo skin

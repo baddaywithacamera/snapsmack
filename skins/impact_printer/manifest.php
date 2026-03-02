@@ -58,7 +58,6 @@ return [
         'smack-footer',
         'smack-lightbox',
         'smack-keyboard',
-        'smack-ascii-borders',
     ],
 
     'options' => [
@@ -77,7 +76,7 @@ return [
             'default'  => '1100',
             'min'      => '700',
             'max'      => '1600',
-            'selector' => '.ip-header-inside, #system-footer .inside, .ip-photo-wrap, #browse-grid, .blogroll-canvas, .static-content, .static-page-title, .photo-title-footer, .description, .meta, .comment-form, #pane-comments',
+            'selector' => '.ip-header-inside, #system-footer .inside, .ip-photo-wrap, #browse-grid, .blogroll-canvas, .static-content, .static-page-title, .photo-title-footer, .description, .meta, .comment-form, #pane-comments, .nav-links',
             'property' => 'max-width'
         ],
 
@@ -127,15 +126,52 @@ return [
             'type'     => 'select',
             'label'    => 'Hero ASCII Border Style',
             'default'  => 'box',
-            'selector' => '.ip-ascii-frame',
-            'property' => 'data-border-style',
+            'selector' => '.ip-ascii-frame-inner',
+            'property' => 'custom-framing',
             'options'  => [
-                'box'    => 'ASCII Box     +----|----+',
-                'plus'   => 'ASCII Plus    + + + + + +',
-                'equals' => 'ASCII Equals  = = = = = =',
-                'slash'  => 'ASCII Slash   / / / / / /',
-                'none'   => 'No Frame (Raw Print)',
+                'box'    => [
+                    'label' => 'ASCII Box     +----|----+',
+                    'css'   => "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-box.svg') 12 repeat; }"
+                ],
+                'plus'   => [
+                    'label' => 'ASCII Plus    + + + + + +',
+                    'css'   => "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-plus.svg') 12 repeat; }"
+                ],
+                'equals' => [
+                    'label' => 'ASCII Equals  = = = = = =',
+                    'css'   => "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-equals.svg') 12 repeat; }"
+                ],
+                'slash'  => [
+                    'label' => 'ASCII Slash   / / / / / /',
+                    'css'   => "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-slash.svg') 12 repeat; }"
+                ],
+                'none'   => [
+                    'label' => 'No Frame (Raw Print)',
+                    'css'   => '{ border: none !important; }'
+                ],
             ]
+        ],
+
+        'image_frame_weight' => [
+            'section'  => 'PRINT HEAD',
+            'type'     => 'range',
+            'label'    => 'Border Weight (px)',
+            'default'  => '18',
+            'min'      => '8',
+            'max'      => '40',
+            'selector' => '.ip-ascii-frame-inner',
+            'property' => 'border-width'
+        ],
+
+        'image_frame_padding' => [
+            'section'  => 'PRINT HEAD',
+            'type'     => 'range',
+            'label'    => 'Border Padding (px)',
+            'default'  => '15',
+            'min'      => '0',
+            'max'      => '40',
+            'selector' => '.ip-ascii-frame-inner',
+            'property' => 'padding'
         ],
 
         'archive_frame_style' => [
@@ -271,10 +307,10 @@ return [
             'selector' => ':root',
             'property' => '--ip-ink-opacity',
             'options'  => [
-                'fresh'  => ['label' => 'Fresh Ribbon (Dark)', 'css' => '{ --ip-ink-opacity: 1.0; }'],
-                'normal' => ['label' => 'Normal Wear',         'css' => '{ --ip-ink-opacity: 0.82; }'],
-                'faded'  => ['label' => 'Faded Ribbon',        'css' => '{ --ip-ink-opacity: 0.65; }'],
-                'dying'  => ['label' => 'Nearly Dead',         'css' => '{ --ip-ink-opacity: 0.45; }'],
+                'fresh'  => ['label' => 'Fresh Ribbon (Heavy / Streaky)', 'css' => '{ --ip-ink-opacity: 1.0; --ip-ink-bleed: 0.4px 0 0 currentColor, -0.2px 0.3px 0 currentColor; --ip-ink-weight: 900; }'],
+                'normal' => ['label' => 'Normal Wear',                    'css' => '{ --ip-ink-opacity: 0.82; --ip-ink-bleed: 0.2px 0 0 currentColor; --ip-ink-weight: bold; }'],
+                'faded'  => ['label' => 'Faded Ribbon',                   'css' => '{ --ip-ink-opacity: 0.65; --ip-ink-bleed: none; --ip-ink-weight: normal; }'],
+                'dying'  => ['label' => 'Nearly Dead',                    'css' => '{ --ip-ink-opacity: 0.45; --ip-ink-bleed: none; --ip-ink-weight: normal; }'],
             ]
         ],
 

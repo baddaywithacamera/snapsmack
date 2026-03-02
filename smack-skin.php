@@ -8,6 +8,12 @@
 
 require_once 'core/auth.php';
 
+// --- SETTINGS BOOTSTRAP ---
+// Must load BEFORE skin discovery so active_skin is available.
+if (!isset($settings)) {
+    $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+}
+
 // --- 1. LOAD GLOBAL INVENTORY ---
 // Pulls the master list of available scripts and engines.
 $global_inventory = (function() { return include 'core/manifest-inventory.php'; })();
@@ -70,16 +76,49 @@ if (isset($_POST['save_skin_settings'])) {
     // Map manifest options to CSS properties or custom payloads.
     foreach ($manifest['options'] as $key => $meta) {
         $val = ($all_settings[$key] ?? '') !== '' ? $all_settings[$key] : $meta['default'];
+        $prop = $meta['property'] ?? '';
+
+        // Skip data-attributes — read by JS engines, not CSS
+        if (strpos($prop, 'data-') === 0) {
+            continue;
+        }
+
+        // Custom properties (custom-framing, custom-cols) — only emit the css block
+        if (strpos($prop, 'custom-') === 0) {
+            if ($meta['type'] === 'select' && isset($meta['options'][$val]['css'])) {
+                $generated_public .= "{$meta['selector']} {$meta['options'][$val]['css']}\n";
+            }
+            continue;
+        }
 
         if ($meta['type'] === 'select' && isset($meta['options'][$val]['css'])) {
             $generated_public .= "{$meta['selector']} {$meta['options'][$val]['css']}\n";
-        } elseif ($meta['property'] === 'font-family') {
-            $generated_public .= "{$meta['selector']} { font-family: \"{$val}\", sans-serif; }\n";
+        } elseif ($prop === 'font-family') {
+            // Smart fallback: monospace stack for DotMatrix/mono fonts, sans-serif for others
+            $fallback = 'sans-serif';
+            if (stripos($val, 'DotMatrix') !== false || stripos($val, 'Mono') !== false
+                || stripos($val, 'Courier') !== false || stripos($val, 'Tiny5') !== false
+                || stripos($val, 'Anonymous') !== false) {
+                $fallback = "'Courier New', monospace";
+            }
+            $generated_public .= "{$meta['selector']} { font-family: \"{$val}\", {$fallback}; }\n";
         } elseif ($meta['type'] === 'range' || $meta['type'] === 'number') {
-            $unit = (substr($meta['property'], 0, 2) === '--') ? '' : 'px';
-            $generated_public .= "{$meta['selector']} { {$meta['property']}: {$val}{$unit}; }\n";
+            $unit = (substr($prop, 0, 2) === '--') ? '' : 'px';
+            // Handle comma-separated properties (e.g. 'padding-left, padding-right')
+            $props = array_map('trim', explode(',', $prop));
+            $declarations = [];
+            foreach ($props as $p) {
+                $declarations[] = "{$p}: {$val}{$unit}";
+            }
+            $generated_public .= "{$meta['selector']} { " . implode('; ', $declarations) . "; }\n";
         } else {
-            $generated_public .= "{$meta['selector']} { {$meta['property']}: {$val}; }\n";
+            // Same split for generic properties
+            $props = array_map('trim', explode(',', $prop));
+            $declarations = [];
+            foreach ($props as $p) {
+                $declarations[] = "{$p}: {$val}";
+            }
+            $generated_public .= "{$meta['selector']} { " . implode('; ', $declarations) . "; }\n";
         }
     }
 
