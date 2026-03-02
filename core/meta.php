@@ -62,10 +62,82 @@ $canonical_url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css">
 
+<?php
+/**
+ * LOCAL FONT LOADER
+ * Reads local_fonts from manifest-inventory.php and outputs @font-face
+ * declarations so skins can use them. Only loads fonts that the active
+ * skin's manifest actually references (via font select options or CSS).
+ */
+$inventory_path = __DIR__ . '/manifest-inventory.php';
+$skin_manifest_path = dirname(__DIR__) . '/skins/' . ($active_skin ?? 'new_horizon_dark') . '/manifest.php';
+
+if (file_exists($inventory_path)) {
+    $inv = include $inventory_path;
+    $local_fonts = $inv['local_fonts'] ?? [];
+
+    if (!empty($local_fonts)) {
+        echo '<style id="snapsmack-local-fonts">' . "\n";
+        foreach ($local_fonts as $family => $font) {
+            $file_url = BASE_URL . ltrim($font['file'], '/');
+            $format   = $font['format'] ?? 'truetype';
+            $weight   = $font['weight'] ?? 'normal';
+            $style    = $font['style'] ?? 'normal';
+            echo "@font-face {\n";
+            echo "  font-family: '{$family}';\n";
+            echo "  src: url('{$file_url}') format('{$format}');\n";
+            echo "  font-weight: {$weight};\n";
+            echo "  font-style: {$style};\n";
+            echo "  font-display: swap;\n";
+            echo "}\n";
+        }
+        echo '</style>' . "\n";
+    }
+}
+?>
+
+<?php
+/**
+ * GOOGLE FONT LOADER
+ * Scans active skin settings for font-family values, cross-references
+ * against the inventory's Google font list, and outputs a single
+ * combined <link> tag for all fonts in use. Local fonts are already
+ * handled by the @font-face block above — this only fires for Google CDN fonts.
+ */
+if (file_exists($inventory_path) && file_exists($skin_manifest_path)) {
+    if (!isset($inv)) { $inv = include $inventory_path; }
+    $google_catalog = $inv['fonts'] ?? [];
+
+    if (!empty($google_catalog)) {
+        $skin_m = include $skin_manifest_path;
+        $google_needed = [];
+
+        // Walk manifest options looking for font-family selectors
+        foreach (($skin_m['options'] ?? []) as $opt_key => $opt_meta) {
+            if (($opt_meta['property'] ?? '') === 'font-family') {
+                $active_val = ($settings[$opt_key] ?? '') !== '' ? $settings[$opt_key] : ($opt_meta['default'] ?? '');
+                if ($active_val !== '' && isset($google_catalog[$active_val])) {
+                    $google_needed[$active_val] = true;
+                }
+            }
+        }
+
+        if (!empty($google_needed)) {
+            $families = [];
+            foreach (array_keys($google_needed) as $fam) {
+                $families[] = str_replace(' ', '+', $fam) . ':wght@400;700';
+            }
+            $gf_url = 'https://fonts.googleapis.com/css2?' . implode('&', array_map(fn($f) => "family={$f}", $families)) . '&display=swap';
+            echo '<link rel="stylesheet" href="' . htmlspecialchars($gf_url) . '">' . "\n";
+        }
+    }
+}
+?>
+
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>skins/<?php echo $active_skin ?? 'new_horizon_dark'; ?>/style.css?v=<?php echo time(); ?>">
+
 <?php if (!empty($settings['custom_css_public'])): ?>
 <style id="snapsmack-dynamic-css">
 <?php echo $settings['custom_css_public']; ?>
 </style>
 <?php endif; ?>
-
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>skins/<?php echo $active_skin ?? 'new_horizon_dark'; ?>/style.css?v=<?php echo time(); ?>">

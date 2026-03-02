@@ -78,16 +78,21 @@ $gap_adjust = ($wall_gap * ($wall_rows + 1)) / $wall_rows;
 $tile_style = "height: calc({$vh_share}vh - {$gap_adjust}px) !important;";
 
 // 7. IMAGE COUNT & FETCH
+// Uses PHP-generated timestamp (timezone set in core/db.php) instead of MySQL NOW().
+$now_local = date('Y-m-d H:i:s');
+
 try {
-    $count_stmt   = $pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published' AND img_date <= NOW()");
+    $count_stmt   = $pdo->prepare("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published' AND img_date <= ?");
+    $count_stmt->execute([$now_local]);
     $total_images = (int)$count_stmt->fetchColumn();
 } catch (Exception $e) { $total_images = 0; }
 
 try {
     $stmt = $pdo->prepare("SELECT id, img_title, img_file FROM snap_images 
                            WHERE img_status = 'published' 
-                           AND img_date <= NOW() 
+                           AND img_date <= :now_local 
                            ORDER BY img_date DESC LIMIT :limit");
+    $stmt->bindValue(':now_local', $now_local, PDO::PARAM_STR);
     $stmt->bindValue(':limit', (int)$wall_limit, PDO::PARAM_INT);
     $stmt->execute();
     $images = $stmt->fetchAll(PDO::FETCH_ASSOC);

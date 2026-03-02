@@ -33,12 +33,17 @@ $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
 $limit = 20; 
 
 // --- BATCH FETCH ---
+// Uses PHP-generated timestamp (timezone set in core/db.php) instead of
+// MySQL NOW() to guarantee consistent timezone handling across all queries.
+$now_local = date('Y-m-d H:i:s');
+
 try {
     $stmt = $pdo->prepare("SELECT id, img_title, img_file FROM snap_images 
                            WHERE img_status = 'published' 
-                           AND img_date <= NOW() 
+                           AND img_date <= :now_local 
                            ORDER BY img_date DESC LIMIT :limit OFFSET :offset");
     
+    $stmt->bindValue(':now_local', $now_local, PDO::PARAM_STR);
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();

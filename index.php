@@ -50,9 +50,7 @@ try {
     $img = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // 5. NAVIGATION (Clean Link Logic)
-    // Use PHP timezone instead of MySQL NOW() to prevent timezone mismatch
-    $tz = $settings['timezone'] ?? 'America/Edmonton';
-    date_default_timezone_set($tz);
+    // Timezone is set globally in core/db.php — no per-file override needed.
     $now_local = date('Y-m-d H:i:s');
     $where_live = "WHERE img_status = 'published' AND img_date <= '$now_local'";
     

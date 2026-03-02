@@ -31,7 +31,10 @@ echo '<?xml version="1.0" encoding="UTF-8" ?>';
 
     <?php
     // Retrieve the latest published images to populate the feed items. Limited to 20 to keep the XML payload light.
-    $stmt = $pdo->query("SELECT * FROM snap_images WHERE img_status = 'published' AND img_date <= NOW() ORDER BY img_date DESC LIMIT 20");
+    // Uses PHP-generated timestamp (timezone set in core/db.php) instead of MySQL NOW().
+    $now_local = date('Y-m-d H:i:s');
+    $stmt = $pdo->prepare("SELECT * FROM snap_images WHERE img_status = 'published' AND img_date <= ? ORDER BY img_date DESC LIMIT 20");
+    $stmt->execute([$now_local]);
     
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $item_link = $site_url . $row['img_slug'];

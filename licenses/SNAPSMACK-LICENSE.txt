@@ -1,0 +1,23 @@
+SNAPSMACK PUBLIC LICENSE
+
+Copyright (c) 2026 Sean McCormick (sean@baddaywithacamera.ca). 
+Includes original code by the aforementioned with code contributed by Google Gemini Pro and Claude Pro.
+
+1. USAGE
+This software is provided free of charge for both commercial and non-commercial use. 
+
+2. MODIFICATIONS AND REDISTRIBUTION
+You are permitted to fork and modify the code. However, any redistributed versions of this software, modified or otherwise, must be made available for free under these exact license terms.
+
+3. CONTRIBUTIONS
+The main branch of SNAPSMACK remains closed to direct public contributions. Suggestions, bug reports, or fixes should be submitted via email to the address listed above.
+
+4. THIRD-PARTY INVENTORY
+This software utilizes third-party components which are subject to their own respective licenses. Users must respect the terms for fjGallery (MIT), DotMatrix, Tiny5, and Blackcasper. Detailed information for these assets is located in the /licenses directory of the installation.
+
+5. DISCLAIMER
+This software is provided "as is," without warranty of any kind, express or implied. In no event shall the author be liable for any claim, damages, or other liability arising from the use of the software.
+
+---
+ETHICAL PROVENANCE SUMMARY
+Substantial portions of SNAPSMACK are "Vibe Coded." This software was built using Large Language Models (LLMs) trained on vast datasets of existing code. Because the ethical and legal provenance of AI training data remains a "fruit of the poisoned tree"—where the original sources were not always permissive or compensated — the author believes it is unethical to commercially gate or charge for the resulting output. This software must remain in the commons, free for all, as a matter of integrity.

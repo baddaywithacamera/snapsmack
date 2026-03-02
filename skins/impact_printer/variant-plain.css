@@ -1,0 +1,28 @@
+/* Impact Printer — PLAIN WHITE variant
+   Uses tractorfeedpapertexture_01.jpg as the full page background.
+   The texture already includes sprocket holes. No green bars. */
+
+:root {
+    /* Paper & ink */
+    --bg-primary:    #f0ede5;
+    --bg-secondary:  #e8e5dc;
+    --bg-chrome:     #dfdcd3;
+    --border:        #ccc8bc;
+
+    /* Ink colours */
+    --text-primary:  #2a2520;
+    --text-secondary:#5a5347;
+    --text-dim:      #8a8275;
+    --accent:        #3d3730;
+    --accent-hover:  #1a1510;
+    --accent-dim:    #7a7368;
+
+    /* Form inputs */
+    --input-bg:      #f5f2ea;
+
+}
+
+body {
+    background: url('textures/tractor-feed-paper-texture%2001.jpg') repeat-y center top;
+    background-size: 100% auto;
+}

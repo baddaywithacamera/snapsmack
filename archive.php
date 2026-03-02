@@ -73,10 +73,7 @@ try {
     $album_filter = isset($_GET['album']) ? (int)$_GET['album'] : null;
 
     // 5. Build Query
-    // Use PHP timezone-aware datetime instead of MySQL NOW()
-    // to prevent timezone mismatch hiding recent posts
-    $tz = $settings['timezone'] ?? 'America/Edmonton';
-    date_default_timezone_set($tz);
+    // Timezone is set globally in core/db.php — no per-file override needed.
     $now_local = date('Y-m-d H:i:s');
 
     $sql = "SELECT i.* FROM snap_images i ";

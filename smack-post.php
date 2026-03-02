@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
     $custom_date = !empty($raw_date) ? str_replace('T', ' ', $raw_date) : date('Y-m-d H:i:s');
 
     $allow_comments = (int)($_POST['allow_comments'] ?? 1);
-    $allow_download = (int)($_POST['allow_download'] ?? 1);
+    $allow_download = (int)($_POST['allow_download'] ?? 0);
     $download_url = trim($_POST['download_url'] ?? '');
     $selected_cats = $_POST['cat_ids'] ?? [];
     $selected_albums = $_POST['album_ids'] ?? [];
@@ -440,8 +440,8 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper">
                         <label>ALLOW DOWNLOAD?</label>
                         <select name="allow_download" class="full-width-select">
-                            <option value="1">ENABLED</option>
                             <option value="0">DISABLED</option>
+                            <option value="1">ENABLED</option>
                         </select>
                     </div>
 

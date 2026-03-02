@@ -1,7 +1,8 @@
 <?php
 /**
  * SnapSmack - Standard Navigation Bar
- * Version: 1.4 - Double-Lock Integration
+ * Version: 1.6 - Chevrons on Outside
+ * Order: « PREV | FIRST | INFO | COMMENTS | LAST | NEXT »
  */
 
 // LOGIC: Ensure we respect both the Global Setting AND the Post Setting
@@ -11,18 +12,18 @@ $show_comments = ($global_on && $post_on);
 ?>
 <div class="nav-links">
     <span class="left">
-        <?php if (!empty($first_slug) && (BASE_URL . ($img['img_slug'] ?? '') !== $first_slug)): ?>
-            <a href="<?php echo $first_slug; ?>" title="Jump to First Entry">« FIRST</a>
-            <span class="sep">|</span>
+        <?php if (!empty($prev_slug)): ?>
+            <a href="<?php echo $prev_slug; ?>" title="Previous Entry">« PREV</a>
         <?php else: ?>
-            <span class="dim">« FIRST</span>
-            <span class="sep">|</span>
+            <span class="dim">« PREV</span>
         <?php endif; ?>
 
-        <?php if (!empty($prev_slug)): ?>
-            <a href="<?php echo $prev_slug; ?>" title="Previous Entry">PREV</a>
+            <span class="sep">|</span>
+
+        <?php if (!empty($first_slug) && (BASE_URL . ($img['img_slug'] ?? '') !== $first_slug)): ?>
+            <a href="<?php echo $first_slug; ?>" title="Jump to First Entry">FIRST</a>
         <?php else: ?>
-            <span class="dim">PREV</span>
+            <span class="dim">FIRST</span>
         <?php endif; ?>
     </span>
 
@@ -40,18 +41,18 @@ $show_comments = ($global_on && $post_on);
     <span class="sep">|</span>
 
     <span class="right">
-        <?php if (!empty($next_slug)): ?>
-            <a href="<?php echo $next_slug; ?>" title="Next Entry">NEXT</a>
+        <?php if (!empty($last_slug) && (BASE_URL . ($img['img_slug'] ?? '') !== $last_slug)): ?>
+            <a href="<?php echo $last_slug; ?>" title="Jump to Latest Entry">LAST</a>
         <?php else: ?>
-            <span class="dim">NEXT</span>
+            <span class="dim">LAST</span>
         <?php endif; ?>
 
         <span class="sep">|</span>
 
-        <?php if (!empty($last_slug) && (BASE_URL . ($img['img_slug'] ?? '') !== $last_slug)): ?>
-            <a href="<?php echo $last_slug; ?>" title="Jump to Latest Entry">LAST »</a>
+        <?php if (!empty($next_slug)): ?>
+            <a href="<?php echo $next_slug; ?>" title="Next Entry">NEXT »</a>
         <?php else: ?>
-            <span class="dim">LAST »</span>
+            <span class="dim">NEXT »</span>
         <?php endif; ?>
     </span>
 </div>

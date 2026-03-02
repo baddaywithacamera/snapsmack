@@ -1,0 +1,30 @@
+/* Impact Printer — GREEN BAR variant
+   Uses tractorfeedpapertexture_02.png as the full page background.
+   The texture already includes sprocket holes and green bars. */
+
+:root {
+    /* Paper & ink */
+    --bg-primary:    #eceadf;
+    --bg-secondary:  #e4e2d7;
+    --bg-chrome:     #dbd9ce;
+    --border:        #c5c0b2;
+
+    /* Ink colours */
+    --text-primary:  #2a2520;
+    --text-secondary:#5a5347;
+    --text-dim:      #8a8275;
+    --accent:        #3d3730;
+    --accent-hover:  #1a1510;
+    --accent-dim:    #7a7368;
+
+    /* Form inputs */
+    --input-bg:      #f0eee3;
+
+}
+
+/* The paper texture IS the page background.
+   Scaled to cover viewport width. Sprocket holes are part of the image. */
+body {
+    background: url('textures/tractor-feed-paper-texture%2002.png') repeat-y center top;
+    background-size: 100% auto;
+}

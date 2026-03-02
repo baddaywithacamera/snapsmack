@@ -62,12 +62,18 @@ if ($album_filter) {
     $params[] = $album_filter;
 }
 
+// Timezone is set globally in core/db.php — use PHP-generated timestamp
+// instead of MySQL NOW() for consistent timezone handling.
+$now_local = date('Y-m-d H:i:s');
+
 if ($status_filter === 'draft') { 
     $where_clauses[] = "i.img_status = 'draft'"; 
 } elseif ($status_filter === 'scheduled') { 
-    $where_clauses[] = "i.img_status = 'published' AND i.img_date > NOW()"; 
+    $where_clauses[] = "i.img_status = 'published' AND i.img_date > ?";
+    $params[] = $now_local;
 } elseif ($status_filter === 'live') { 
-    $where_clauses[] = "i.img_status = 'published' AND i.img_date <= NOW()"; 
+    $where_clauses[] = "i.img_status = 'published' AND i.img_date <= ?";
+    $params[] = $now_local;
 }
 
 $where_sql = $where_clauses ? " WHERE " . implode(" AND ", $where_clauses) : "";

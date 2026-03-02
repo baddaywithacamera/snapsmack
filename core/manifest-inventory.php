@@ -40,6 +40,22 @@ return [
             'style'  => 'normal',
         ],
 
+        // ---- Tiny5 (Dot Matrix Headers) ---------------------------------
+        'Tiny5' => [
+            'label'  => 'Tiny5 (Bold / Dot Matrix Headers)',
+            'file'   => 'assets/fonts/Tiny5/tiny5.bold.ttf',
+            'format' => 'truetype',
+            'weight' => 'bold',
+            'style'  => 'normal',
+        ],
+        'Tiny5-Matrix' => [
+            'label'  => 'Tiny5 Matrix (Bold / Dot Matrix Display)',
+            'file'   => 'assets/fonts/Tiny5/tiny5.matrix-bold.ttf',
+            'format' => 'truetype',
+            'weight' => 'bold',
+            'style'  => 'normal',
+        ],
+
         // ---- DotMatrix Core ---------------------------------------------
         'DotMatrix' => [
             'label'  => 'DotMatrix (Regular)',
@@ -73,28 +89,28 @@ return [
         // ---- DotMatrix Condensed ----------------------------------------
         'DotMatrix-Condensed' => [
             'label'  => 'DotMatrix Condensed (Regular)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Condensed.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrix-CondensedRegular.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'normal',
         ],
         'DotMatrix-Condensed-Bold' => [
             'label'  => 'DotMatrix Condensed (Bold)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Condensed-Bold.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrix-CondensedBold.ttf',
             'format' => 'truetype',
             'weight' => 'bold',
             'style'  => 'normal',
         ],
         'DotMatrix-Condensed-Italic' => [
             'label'  => 'DotMatrix Condensed (Italic)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Condensed-Italic.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrix-CondensedItalic.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'italic',
         ],
         'DotMatrix-Condensed-BoldItalic' => [
             'label'  => 'DotMatrix Condensed (Bold Italic)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Condensed-BoldItalic.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrix-CondensedBoldItalic.ttf',
             'format' => 'truetype',
             'weight' => 'bold',
             'style'  => 'italic',
@@ -103,28 +119,28 @@ return [
         // ---- DotMatrix Expanded -----------------------------------------
         'DotMatrix-Expanded' => [
             'label'  => 'DotMatrix Expanded (Regular)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Expanded.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrix-ExpandedRegular.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'normal',
         ],
         'DotMatrix-Expanded-Bold' => [
             'label'  => 'DotMatrix Expanded (Bold)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Expanded-Bold.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrix-ExpandedBold.ttf',
             'format' => 'truetype',
             'weight' => 'bold',
             'style'  => 'normal',
         ],
         'DotMatrix-Expanded-Italic' => [
             'label'  => 'DotMatrix Expanded (Italic)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Expanded-Italic.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrix-ExpandedItalic.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'italic',
         ],
         'DotMatrix-Expanded-BoldItalic' => [
             'label'  => 'DotMatrix Expanded (Bold Italic)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Expanded-BoldItalic.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrix-ExpandedBoldItalic.ttf',
             'format' => 'truetype',
             'weight' => 'bold',
             'style'  => 'italic',
@@ -133,28 +149,28 @@ return [
         // ---- DotMatrix Quad ---------------------------------------------
         'DotMatrix-Quad' => [
             'label'  => 'DotMatrix Quad (Regular)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Quad.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrixQuad-Regular.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'normal',
         ],
         'DotMatrix-Quad-Bold' => [
             'label'  => 'DotMatrix Quad (Bold)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Quad-Bold.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrixQuad-Bold.ttf',
             'format' => 'truetype',
             'weight' => 'bold',
             'style'  => 'normal',
         ],
         'DotMatrix-Quad-Italic' => [
             'label'  => 'DotMatrix Quad (Italic)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Quad-Italic.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrixQuad-Italic.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'italic',
         ],
         'DotMatrix-Quad-BoldItalic' => [
             'label'  => 'DotMatrix Quad (Bold Italic)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Quad-BoldItalic.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrixQuad-BoldItalic.ttf',
             'format' => 'truetype',
             'weight' => 'bold',
             'style'  => 'italic',
@@ -163,28 +179,28 @@ return [
         // ---- DotMatrix Variable -----------------------------------------
         'DotMatrix-Var' => [
             'label'  => 'DotMatrix Var (Regular)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Var.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrixVar-Regular.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'normal',
         ],
         'DotMatrix-Var-Condensed' => [
             'label'  => 'DotMatrix Var (Condensed)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Var-Condensed.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrixVar-CondensedRegular.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'normal',
         ],
         'DotMatrix-Var-Expanded' => [
             'label'  => 'DotMatrix Var (Expanded)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Var-Expanded.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrixVar-ExpandedRegular.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'normal',
         ],
         'DotMatrix-Var-UltraCondensed' => [
             'label'  => 'DotMatrix Var (Ultra Condensed)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Var-UltraCondensed.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrixVar-UltraCondensedRegular.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'normal',
@@ -193,28 +209,28 @@ return [
         // ---- DotMatrix VarDuo -------------------------------------------
         'DotMatrix-VarDuo' => [
             'label'  => 'DotMatrix VarDuo (Regular)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-VarDuo.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrixVarDuo-Regular.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'normal',
         ],
         'DotMatrix-VarDuo-Condensed' => [
             'label'  => 'DotMatrix VarDuo (Condensed)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-VarDuo-Condensed.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrixVarDuo-CondensedRegular.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'normal',
         ],
         'DotMatrix-VarDuo-Expanded' => [
             'label'  => 'DotMatrix VarDuo (Expanded)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-VarDuo-Expanded.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrixVarDuo-ExpandedRegular.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'normal',
         ],
         'DotMatrix-VarDuo-UltraCondensed' => [
             'label'  => 'DotMatrix VarDuo (Ultra Condensed)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-VarDuo-UltraCondensed.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrixVarDuo-UltraCondensedRegular.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'normal',
@@ -223,28 +239,28 @@ return [
         // ---- DotMatrix Duo ----------------------------------------------
         'DotMatrix-Duo' => [
             'label'  => 'DotMatrix Duo (Regular)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Duo.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrixDuo-Regular.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'normal',
         ],
         'DotMatrix-Duo-Condensed' => [
             'label'  => 'DotMatrix Duo (Condensed)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Duo-Condensed.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrixDuo-CondensedRegular.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'normal',
         ],
         'DotMatrix-Duo-Expanded' => [
             'label'  => 'DotMatrix Duo (Expanded)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Duo-Expanded.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrixDuo-ExpandedRegular.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'normal',
         ],
         'DotMatrix-Duo-UltraCondensed' => [
             'label'  => 'DotMatrix Duo (Ultra Condensed)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrix-Duo-UltraCondensed.ttf',
+            'file'   => 'assets/fonts/DotMatrix/DotMatrixDuo-UltraCondensedRegular.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'normal',
@@ -266,7 +282,7 @@ return [
         // Best for: navigation, descriptions, body copy, metadata labels
         // ----------------------------------------------------------------
 
-        'DM Sans'               => 'DM Sans (Geometric — Picasa UI body)',
+        'DM Sans'               => 'DM Sans (Geometric / Clean UI body)',
         'Figtree'               => 'Figtree (Friendly Geometric — contemporary)',
         'Outfit'                => 'Outfit (Geometric / Professional)',
         'Plus Jakarta Sans'     => 'Plus Jakarta Sans (Soft Contemporary)',
@@ -292,7 +308,7 @@ return [
         // Best for: photo titles, site name, section headers
         // ----------------------------------------------------------------
 
-        'Raleway'               => 'Raleway (Elegant Display — Picasa titles)',
+        'Raleway'               => 'Raleway (Elegant Display / Thin-to-Heavy)',
         'Montserrat'            => 'Montserrat (Urban Geometric / Buenos Aires DNA)',
         'Oswald'                => 'Oswald (Condensed Gothic / Newspaper energy)',
         'Bebas Neue'            => 'Bebas Neue (Bold Industrial / All Caps only)',
@@ -374,7 +390,7 @@ return [
         // Best for: EXIF panels, photo metadata, code, industrial skins
         // ----------------------------------------------------------------
 
-        'DM Mono'               => 'DM Mono (EXIF / Data Display — Picasa metadata)',
+        'DM Mono'               => 'DM Mono (EXIF / Data Display / Monospace)',
         'JetBrains Mono'        => 'JetBrains Mono (Developer / Ligatures / Very legible)',
         'Source Code Pro'       => 'Source Code Pro (Adobe / Clean code)',
         'Roboto Mono'           => 'Roboto Mono (Material / Technical data)',
@@ -513,6 +529,11 @@ return [
             'label'        => 'fjGallery Library (Flickr Justified Layout)',
             'path'         => 'assets/js/fjGallery.min.js',
             'css'          => 'assets/css/fjGallery.css',
+            'has_settings' => false
+        ],
+        'smack-ascii-borders' => [
+            'label'        => 'ASCII Border Frame Engine',
+            'path'         => 'assets/js/ss-engine-ascii-borders.js',
             'has_settings' => false
         ],
         'smack-justified' => [

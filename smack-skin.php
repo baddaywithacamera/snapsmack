@@ -118,6 +118,30 @@ if (isset($_POST['save_skin_settings'])) {
     // 4d. ENGINE HANDSHAKE: Build the script injection block.
     $v         = time(); 
     $injection = '';
+
+    // 4d-i. Google Font CDN links for any active font-family selections
+    $google_catalog = $global_inventory['fonts'] ?? [];
+    if (!empty($google_catalog)) {
+        $google_needed = [];
+        foreach ($manifest['options'] as $opt_key => $opt_meta) {
+            if (($opt_meta['property'] ?? '') === 'font-family') {
+                $active_val = ($all_settings[$opt_key] ?? '') !== '' ? $all_settings[$opt_key] : ($opt_meta['default'] ?? '');
+                if ($active_val !== '' && isset($google_catalog[$active_val])) {
+                    $google_needed[$active_val] = true;
+                }
+            }
+        }
+        if (!empty($google_needed)) {
+            $families = [];
+            foreach (array_keys($google_needed) as $fam) {
+                $families[] = str_replace(' ', '+', $fam) . ':wght@400;700';
+            }
+            $gf_url = 'https://fonts.googleapis.com/css2?' . implode('&', array_map(fn($f) => "family={$f}", $families)) . '&display=swap';
+            $injection .= '<link rel="stylesheet" href="' . htmlspecialchars($gf_url) . '">' . "\n";
+        }
+    }
+
+    // 4d-ii. Engine script and CSS injection
     foreach ($resolved_engines as $engine_key => $engine) {
         if (!empty($engine['css'])) {
             $injection .= '<link rel="stylesheet" href="' . BASE_URL . $engine['css'] . '?v=' . $v . '">' . "\n";
