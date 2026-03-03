@@ -1,17 +1,13 @@
 <?php
 /**
- * SnapSmack - Layout Controller
- * Version: 3.8 - Download Overlay Integration
- * -------------------------------------------------------------------------
- * - FIXED: Script pointer moved to assets/js/smack-ui-public.js
- * - FIXED: Kept empty comment containers in DOM to prevent JS "null" errors.
- * - FIXED: Both Info and Comment toggles restored via Centralized Engine.
- * - ADDED: Download overlay on main photobox image.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Main layout template for the new_horizon_dark skin
+ * Alpha v0.6
+ *
+ * Renders the photo display, navigation, metadata, and comments sections.
  */
 require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
 
-// --- DOUBLE-LOCK SECURITY CHECK ---
+// Check if comments are enabled globally and for this specific post
 $global_on = (($settings['global_comments_enabled'] ?? '1') == '1');
 $post_on   = (($img['allow_comments'] ?? '1') == '1');
 $comments_active = ($global_on && $post_on);

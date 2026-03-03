@@ -1,14 +1,7 @@
-/* ==========================================================================
-   Impact Printer — Skin Stylesheet
-   Version: 1.0
-   ==========================================================================
-   Continuous-feed dot-matrix printer, circa 1983.
-   ip- prefix on all skin-specific selectors.
-   Background texture images provide paper + sprocket holes.
-   Content padding keeps text off the sprocket strips.
-   DotMatrix font family. ASCII art image borders via JS engine.
-   Faded ribbon ink simulation via --ip-ink-opacity.
-   ========================================================================== */
+/**
+ * SNAPSMACK - Stylesheet for the impact_printer skin
+ * Alpha v0.6
+ */
 
 /* ==========================================================================
    GLOBAL

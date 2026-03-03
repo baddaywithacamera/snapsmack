@@ -1,24 +1,23 @@
 <?php
 /**
  * SNAPSMACK - System Inventory
- * Version: 2026.2 - Expanded Font Library (DotMatrix + 90 Google Fonts)
- * Last changed: 2026-02-26
- * -------------------------------------------------------------------------
- * Single source of truth for all available system resources.
- * Skins "request" assets from this list via their individual manifest.php.
+ * Alpha v0.6
  *
- * LOCAL FONTS: Declared in local_fonts[]. Output as @font-face blocks
- *              automatically. Paths relative to site root.
- *              Skin manifests may declare allowed_fonts[] to restrict
- *              the font picker to a curated subset (e.g. impact-printer).
+ * Single source of truth for all available system resources: local fonts,
+ * Google Fonts, and JavaScript engines. Skins request assets from this list
+ * via their individual manifest.php.
  *
- * GOOGLE FONTS: Declared in fonts[]. Loaded on demand via Google CDN.
- *               Key   = exact Google Fonts family name (used in API URL).
- *               Value = friendly label shown in the font picker UI.
- *               Grouped by category for maintainability.
- *               NOTE: Inter and Roboto deliberately excluded — they are
+ * LOCAL FONTS: Hosted in assets/fonts/ on the server. Output automatically
+ *              as @font-face blocks. Skin manifests may declare allowed_fonts[]
+ *              to restrict the font picker to a curated subset.
+ *
+ * GOOGLE FONTS: Loaded on demand via Google CDN. Key = exact Google Fonts
+ *               family name (used in API URL). Value = friendly label shown
+ *               in the UI. Inter and Roboto deliberately excluded—they are
  *               everywhere and add nothing distinctive to a photoblog.
- * -------------------------------------------------------------------------
+ *
+ * SCRIPTS: JavaScript engines (lightbox, glitch, keyboard, etc.) that skins
+ *          can declare via require_scripts[].
  */
 
 return [

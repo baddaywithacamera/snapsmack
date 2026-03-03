@@ -1,27 +1,20 @@
 <?php
 /**
- * SnapSmack Skin Manifest: Impact Printer
- * Version: 2.0
- * -------------------------------------------------------------------------
- * Tractor-feed dot-matrix printer circa 1983.
- * Background images: actual tractor-feed paper textures with sprocket holes.
- * ASCII art image borders rendered via JS engine (ss-engine-ascii-borders).
+ * SNAPSMACK - Impact Printer Skin Manifest
+ * Alpha v0.6
  *
- * DISABLED FEATURES:
- *   - Gallery wall (not supported — skin lacks wall CSS)
- *   - Justified archive layout (square + cropped only)
- *   - Glitch engine (not checked out)
+ * Configuration for the Impact Printer skin: a retro dot-matrix printer
+ * aesthetic (1983 tractor-feed) with sprocket holes, ASCII art borders,
+ * and customizable paper stocks (green-bar ledger or plain white).
  *
- * FONT RESTRICTION: DotMatrix family + select monospace companions only.
- *   The picker is built from inventory local_fonts (DotMatrix-* / Tiny5)
- *   plus a handful of Google monospace fonts. Full Google library is NOT
- *   available — this is a dot-matrix printer, not a laser jet.
- * -------------------------------------------------------------------------
+ * Disabled features: gallery wall, justified archive layout, glitch engine.
+ * Font picker is restricted to DotMatrix family + select monospace fonts only.
  */
 
 $inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
 
-// Build restricted font picker — DotMatrix + Tiny5 local fonts ONLY
+// --- FONT PICKER RESTRICTION ---
+// Build a font picker limited to DotMatrix and Tiny5 local fonts only
 $dm_keys = array_filter(array_keys($inventory['local_fonts'] ?? []), function($k) {
     return strpos($k, 'DotMatrix') === 0 || strpos($k, 'Tiny5') === 0;
 });
@@ -42,18 +35,19 @@ return [
         'archive_layouts' => ['square', 'cropped'],
     ],
 
-    // VARIANT SYSTEM — paper stocks
+    // --- VARIANT SYSTEM ---
+    // Paper stock selection
     'variants' => [
         'greenbar'  => 'Green Bar Ledger Paper',
         'plain'     => 'Plain White Continuous',
     ],
     'default_variant' => 'greenbar',
 
-    // Restrict font picker to manifest fonts only
+    // Restrict font picker to dot-matrix fonts only
     'allowed_fonts' => array_keys($picker_fonts),
 
-    // THE HANDSHAKE — checked out from CMS library
-    // No glitch, no justified, no wall
+    // --- ENGINE DECLARATIONS ---
+    // Which JavaScript engines this skin requires
     'require_scripts' => [
         'smack-footer',
         'smack-lightbox',

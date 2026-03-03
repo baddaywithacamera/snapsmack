@@ -1,16 +1,16 @@
 <?php
 /**
- * SNAPSMACK - Pimpotron slideshow manager.
- * Orchestrates the creation and configuration of slideshows for the frontend engine.
- * Manages master glitch/shift settings and individual slide configurations (up to 10 max).
- * Git Version Official Alpha 0.5
+ * SNAPSMACK - Slideshow (Pimpotron) configuration
+ * Alpha v0.6
+ *
+ * Manages creation and editing of promotional slideshows.
+ * Configures global settings and individual slides with text and styling options.
  */
 
 require_once 'core/auth.php';
 
-// -------------------------------------------------------------------------
-// PULL FONT INVENTORY
-// -------------------------------------------------------------------------
+// --- ASSET INVENTORY ---
+// Loads available fonts and other assets for slideshow text styling.
 $inventory = include 'core/manifest-inventory.php';
 $fonts     = $inventory['fonts'] ?? [];
 

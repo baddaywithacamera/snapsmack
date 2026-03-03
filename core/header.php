@@ -1,27 +1,28 @@
 <?php
 /**
- * SnapSmack Core Header
- * Version: 6.2 - Wall Link Conditional
- * -------------------------------------------------------------------------
- * - ADDED: Gallery Wall link respects show_wall_link setting.
- * - ADDED: .wall-nav-item class for mobile CSS hide.
- * - Navigation order: HOME | ARCHIVE VIEW | GALLERY VIEW | BLOGROLL | DYNAMIC PAGES
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Public Navigation Header
+ * Alpha v0.6
+ *
+ * Renders the site logo and main navigation bar. Navigation items are: HOME,
+ * ARCHIVE VIEW, GALLERY VIEW (conditional), BLOGROLL (conditional), and any
+ * dynamic pages. Respects show_wall_link setting to hide gallery view on mobile.
  */
 
-// 1. BOOTSTRAP ENVIRONMENT
+// --- ENVIRONMENT BOOTSTRAP ---
 if (!defined('BASE_URL')) {
     $db_defined_url = $settings['site_url'] ?? '/';
     $final_base = rtrim($db_defined_url, '/') . '/';
     define('BASE_URL', $final_base);
 }
 
-// 2. SCOPE SAFETY
+// --- SCOPE VARIABLES ---
+// Ensure all config variables are defined to prevent undefined index errors
 $site_display_name = $site_name ?? 'SNAPSMACK';
 $header_type = $settings['header_type'] ?? 'text';
 $logo_path   = $settings['header_logo_url'] ?? '';
 
-// 3. DYNAMIC PAGE RETRIEVAL
+// --- DYNAMIC PAGE RETRIEVAL ---
+// Load all active pages from the database for menu insertion
 try {
     $pages_stmt = $pdo->query("SELECT title, slug FROM snap_pages WHERE is_active = 1 ORDER BY menu_order ASC");
     $dynamic_pages = $pages_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -32,8 +33,8 @@ try {
 
 <script>
 /**
- * Persistence Check: If the user has seen help this session, 
- * we set a global flag for hotkey-engine.js to respect.
+ * Session help persistence: if the user has already seen the help tutorial
+ * this session, set a flag so hotkey-engine.js can respect it.
  */
 if (sessionStorage.getItem('snapsmack_help_seen')) {
     window.HIDE_SNAP_HELP = true;
@@ -43,8 +44,8 @@ if (sessionStorage.getItem('snapsmack_help_seen')) {
 <div class="logo-area">
     <a href="<?php echo BASE_URL; ?>">
         <?php if ($header_type === 'image' && !empty($logo_path)): ?>
-            <img src="<?php echo BASE_URL . ltrim($logo_path, '/'); ?>" 
-                 alt="<?php echo htmlspecialchars($site_display_name); ?>" 
+            <img src="<?php echo BASE_URL . ltrim($logo_path, '/'); ?>"
+                 alt="<?php echo htmlspecialchars($site_display_name); ?>"
                  class="site-logo">
         <?php else: ?>
             <h1 class="site-title-text"><?php echo htmlspecialchars($site_display_name); ?></h1>
@@ -71,16 +72,16 @@ if (sessionStorage.getItem('snapsmack_help_seen')) {
 
         <?php if (!empty($dynamic_pages)): ?>
             <span class="sep">|</span>
-            <?php 
+            <?php
             $count = count($dynamic_pages);
-            foreach ($dynamic_pages as $index => $page): 
+            foreach ($dynamic_pages as $index => $page):
                 $p_title = strtoupper(htmlspecialchars($page['title']));
                 $p_url = BASE_URL . 'page.php?slug=' . htmlspecialchars($page['slug']);
                 echo '<a href="' . $p_url . '">' . $p_title . '</a>';
                 if ($index < $count - 1) {
                     echo '<span class="sep">|</span>';
                 }
-            endforeach; 
+            endforeach;
             ?>
         <?php endif; ?>
     </li>

@@ -1,15 +1,9 @@
 /**
- * SnapSmack Engine: Justified Grid
- * Version: 2.0 - fjGallery Edition
- * -------------------------------------------------------------------------
- * Wrapper for Flickr's fjGallery (flickr-justified-gallery).
- * Self-gating: does nothing if .justified-grid is not on the page.
- * Reads window.JUSTIFIED_CONFIG for targetHeight (set by archive.php).
+ * SNAPSMACK - Justified Grid Engine
+ * Alpha v0.6
  *
- * DEPENDENCY: fjGallery.min.js must load BEFORE this script.
- *             Register both in manifest-inventory.php and ensure
- *             fjGallery is listed first in require_scripts.
- * -------------------------------------------------------------------------
+ * Wrapper for fjGallery (Flickr's justified gallery library). Only initializes
+ * if .justified-grid element exists. Reads row height from window.JUSTIFIED_CONFIG.
  */
 
 (function() {
@@ -23,10 +17,12 @@
         return;
     }
 
+    // --- CONFIGURATION ---
     var config = window.JUSTIFIED_CONFIG || {};
     var targetH = config.targetHeight || 280;
     var gap = config.gap || 4;
 
+    // --- GALLERY INITIALIZATION ---
     var gallery = fjGallery(grid, {
         itemSelector: '.justified-item',
         imageSelector: 'img',
@@ -38,9 +34,8 @@
         resizeDebounce: 100
     });
 
-    // Fix: container may report 320px at script execution time
-    // if skin CSS hasn't finished laying out #scroll-stage yet.
-    // Force a recalculation after the browser has completed layout.
+    // --- LAYOUT STABILIZATION ---
+    // Trigger recalculation after CSS layout completes
     setTimeout(function() {
         fjGallery(grid, 'resize');
     }, 50);

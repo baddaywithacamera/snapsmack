@@ -1,7 +1,7 @@
 <?php
 /**
- * SnapSmack Admin Theme Manifest - Pixelpast
- * Version: 1.0
+ * SNAPSMACK - Configuration manifest for the Pixelpast admin theme
+ * Alpha v0.6
  */
 
 return [

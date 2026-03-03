@@ -1,9 +1,10 @@
 <?php
 /**
- * SNAPSMACK - Album management (Mission Registry).
- * Handles the creation, modification, and deletion of photo albums.
- * Manages the relationship between albums and images in the database.
- * Git Version Official Alpha 0.5
+ * SNAPSMACK - Album (mission) management
+ * Alpha v0.6
+ *
+ * Provides creation, editing, and deletion of photo album collections.
+ * Maintains associations between albums and their contained images.
  */
 
 require_once 'core/auth.php';
@@ -13,19 +14,20 @@ $edit_mode = false;
 $edit_data = [];
 
 // --- FORM SUBMISSION HANDLER ---
+// Processes creation and modification of album records.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = trim($_POST['album_name']);
     $desc = trim($_POST['album_description']);
-    
-    // Create a new album entry in the registry.
+
+    // Insert a new album.
     if (isset($_POST['new_album']) && !empty($name)) {
         $stmt = $pdo->prepare("INSERT INTO snap_albums (album_name, album_description) VALUES (?, ?)");
         $stmt->execute([$name, $desc]);
         header("Location: smack-albums.php?msg=MISSION+INITIALIZED");
         exit;
     }
-    
-    // Update an existing album's metadata.
+
+    // Update an existing album.
     if (isset($_POST['update_album']) && !empty($name)) {
         $id = (int)$_POST['album_id'];
         $stmt = $pdo->prepare("UPDATE snap_albums SET album_name = ?, album_description = ? WHERE id = ?");
@@ -36,16 +38,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // --- DELETION HANDLER ---
+// Removes an album and all its image associations.
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
-    // Remove image mappings first to ensure data integrity.
+    // Delete mappings first to preserve referential integrity.
     $pdo->prepare("DELETE FROM snap_image_album_map WHERE album_id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_albums WHERE id = ?")->execute([$id]);
     header("Location: smack-albums.php?msg=MISSION+PURGED");
     exit;
 }
 
-// --- EDIT MODE DETECTION ---
+// --- EDIT MODE ---
+// Loads the album record for editing if edit parameter is present.
 if (isset($_GET['edit'])) {
     $id = (int)$_GET['edit'];
     $stmt = $pdo->prepare("SELECT * FROM snap_albums WHERE id = ?");
@@ -54,7 +58,7 @@ if (isset($_GET['edit'])) {
     if ($edit_data) { $edit_mode = true; }
 }
 
-// Load all registered albums and calculate the count of associated images for each.
+// Load all albums with associated image counts.
 $albums = $pdo->query("SELECT a.*, COUNT(m.image_id) as img_count FROM snap_albums a LEFT JOIN snap_image_album_map m ON a.id = m.album_id GROUP BY a.id ORDER BY a.album_name ASC")->fetchAll();
 
 $page_title = "Mission registry";

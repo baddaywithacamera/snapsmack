@@ -1,13 +1,8 @@
-/* * SNAPSMACK MASTER COLOUR INDEX (THE PAINT)
- * ---------------------------------------------------------------------------
- * 01: Global Base       | 06: Form Elements     | 11: Pagination
- * 02: Sidebar Nav       | 07: Transmissions     | 12: Progress/Uploads
- * 03: Main Headers      | 08: Buttons/Actions   | 13: Login/Footer
- * 04: Content Boxes     | 09: Item Lists        | 14: Appearance
- * 05: Media Previews    | 10: Dash/Stats        | 15: Overrides
- * ---------------------------------------------------------------------------
- * v2026.1 - MINTY FRESH (LIGHT THEME)
- * PALETTE: #f2fbf7 (Bg), #3dcca6 (Mint Bright), #808080 (Pure Grey), #d1f0e4 (Border)
+/**
+ * SNAPSMACK - Minty Fresh admin theme colors
+ * Alpha v0.6
+ *
+ * Light theme with mint green accents. All color values for admin-theme-geometry-master.css.
  */
 
 /* 01: GLOBAL BASE */

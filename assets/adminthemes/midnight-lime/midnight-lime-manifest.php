@@ -1,6 +1,7 @@
 <?php
 /**
- * SnapSmack Admin Theme Manifest - Midnight Lime
+ * SNAPSMACK - Configuration manifest for the Midnight Lime admin theme
+ * Alpha v0.6
  */
 
 return [

@@ -1,11 +1,16 @@
 <?php
 /**
- * SnapSmack - Standard Navigation Bar
- * Version: 1.6 - Chevrons on Outside
- * Order: « PREV | FIRST | INFO | COMMENTS | LAST | NEXT »
+ * SNAPSMACK - Photo Navigation Bar
+ * Alpha v0.6
+ *
+ * Renders navigation controls for browsing between photos: Previous, First,
+ * Info, Comments, Last, Next. Respects both global and per-post comment
+ * settings. Chevrons appear on the outer edges for mobile responsiveness.
  */
 
-// LOGIC: Ensure we respect both the Global Setting AND the Post Setting
+// --- COMMENTS VISIBILITY LOGIC ---
+// Comments are shown only if both the global setting AND the individual post
+// setting are enabled
 $global_on = (($settings['global_comments_enabled'] ?? '1') == '1');
 $post_on   = (($img['allow_comments'] ?? '1') == '1');
 $show_comments = ($global_on && $post_on);
@@ -31,7 +36,7 @@ $show_comments = ($global_on && $post_on);
 
     <span class="center">
         <a href="#" id="show-details">INFO</a>
-        
+
         <?php if ($show_comments): ?>
             <span class="sep">|</span>
             <a href="#" id="show-comments">COMMENTS (<?php echo count($comments); ?>)</a>

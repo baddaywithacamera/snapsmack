@@ -1,13 +1,8 @@
-/* * SNAPSMACK MASTER COLOUR INDEX (THE PAINT)
- * ---------------------------------------------------------------------------
- * 01: Global Base       | 06: Form Elements     | 11: Pagination
- * 02: Sidebar Nav       | 07: Transmissions     | 12: Progress/Uploads
- * 03: Main Headers      | 08: Buttons/Actions   | 13: Login/Footer
- * 04: Content Boxes     | 09: Item Lists        | 14: Appearance
- * 05: Media Previews    | 10: Dash/Stats        | 15: Overrides
- * ---------------------------------------------------------------------------
- * v2026.1 - CARIBBEAN BLUE (FIXED SIDEBAR + VISIBILITY PATCH)
- * PALETTE: #081220 (Bg), #1A242F (Navy Box), #00FFFF (Cyan Pop)
+/**
+ * SNAPSMACK - Caribbean Blue admin theme colors
+ * Alpha v0.6
+ *
+ * Dark theme with cyan accents. All color values for admin-theme-geometry-master.css.
  */
 
 /* 01: GLOBAL BASE */

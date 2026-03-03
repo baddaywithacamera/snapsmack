@@ -1,18 +1,10 @@
 /**
- * SnapSmack - Logo Glitch Engine (v1.0)
- * -------------------------------------------------------------------------
- * Standalone idle glitch loop for .snapsmack-logo.
- * Completely independent of Pimpotron — runs alongside it, never conflicts.
- * Reads config from window.SNAP_LOGO_CONFIG injected by the skin.
- * -------------------------------------------------------------------------
- * WHAT IT DOES:
- * - Randomly twitches the logo at irregular intervals (not a loop)
- * - Three glitch types: font-swap (BlackCasper), intrusion (Courier New),
- *   inversion, horizontal slice, white blowout, stutter
- * - Colour split position drifts on violent hits
- * - Sometimes fires rapid-fire bursts, sometimes long silences
- * - Additive with Pimpotron .smack class — they coexist
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Logo Glitch Engine
+ * Alpha v0.6
+ *
+ * Idle animation loop for .snapsmack-logo. Applies random glitch effects at
+ * irregular intervals with configurable frequency. Completely independent of
+ * other engines; works alongside Pimpotron without conflicts.
  */
 
 class SnapSmackLogoEngine {
@@ -29,7 +21,7 @@ class SnapSmackLogoEngine {
         this.timer     = null;
         this.running   = false;
 
-        // Glitch repertoire
+        // Available glitch effects
         this.repertoire = [
             'font-blackcasper',
             'font-courier',
@@ -40,6 +32,7 @@ class SnapSmackLogoEngine {
         ];
     }
 
+    // --- INITIALIZATION ---
     init() {
         if (!this.config.enabled || !this.logo) return;
         this.running = true;
@@ -47,9 +40,8 @@ class SnapSmackLogoEngine {
         console.log('[LogoEngine] Initialised. Standing by to cause problems.');
     }
 
-    // -------------------------------------------------------------------------
-    // SCHEDULER: Irregular timing — the soul of the engine
-    // -------------------------------------------------------------------------
+    // --- SCHEDULER ---
+    // Irregular timing creates unpredictable glitch bursts
     _scheduleNext() {
         if (!this.running) return;
 
@@ -62,7 +54,7 @@ class SnapSmackLogoEngine {
 
         const [min, max] = intervals[this.config.frequency] ?? intervals.normal;
 
-        // Occasionally schedule a burst (3-5 rapid hits)
+        // Occasionally fire a rapid burst (3-5 hits)
         const doBurst = Math.random() < 0.15;
 
         if (doBurst) {
@@ -76,6 +68,8 @@ class SnapSmackLogoEngine {
         }
     }
 
+    // --- BURST SEQUENCE ---
+    // Fire 3-5 rapid glitches in succession
     _runBurst() {
         const hits  = 3 + Math.floor(Math.random() * 3); // 3-5 hits
         const gap   = 80 + Math.random() * 120;           // 80-200ms apart
@@ -95,15 +89,15 @@ class SnapSmackLogoEngine {
         shoot();
     }
 
-    // -------------------------------------------------------------------------
-    // FIRE: Pick a glitch type and execute it
-    // -------------------------------------------------------------------------
+    // --- FIRE AND EXECUTE ---
+    // Pick a glitch type from available repertoire and apply it
     _fire() {
         const available = this._filterRepertoire();
         const type      = available[Math.floor(Math.random() * available.length)];
         this._execute(type);
     }
 
+    // Filter effects based on font availability
     _filterRepertoire() {
         return this.repertoire.filter(t => {
             if (t === 'font-blackcasper') return this.config.fonts.includes('blackcasper');
@@ -112,9 +106,8 @@ class SnapSmackLogoEngine {
         });
     }
 
-    // -------------------------------------------------------------------------
-    // EXECUTE: Apply the glitch, clean it up
-    // -------------------------------------------------------------------------
+    // --- EFFECT EXECUTION ---
+    // Apply each glitch type and clean up after duration
     _execute(type) {
         switch (type) {
 
@@ -173,6 +166,7 @@ class SnapSmackLogoEngine {
         }
     }
 
+    // --- CLEANUP ---
     destroy() {
         this.running = false;
         clearTimeout(this.timer);
@@ -187,9 +181,7 @@ class SnapSmackLogoEngine {
     }
 }
 
-// =============================================================================
-// BOOT
-// =============================================================================
+// --- BOOT ---
 document.addEventListener('DOMContentLoaded', () => {
     const cfg = window.SNAP_LOGO_CONFIG ?? {};
     if (cfg.enabled === false) return;

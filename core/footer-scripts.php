@@ -1,20 +1,15 @@
 <?php
 /**
- * SnapSmack - Global Engine Loader
- * Version: 3.0 - Single Source of Truth
- * -------------------------------------------------------------------------
- * EVERY controller includes this file ONCE. It loads:
- *   - HUD container (toast notifications)
- *   - Comms engine (keyboard shortcuts: H, X, 1, 2, arrows, space)
- *   - Thomas the Bear (Ctrl+Shift+Y — for Noah Grey)
+ * SNAPSMACK - Global JavaScript Engine Loader
+ * Alpha v0.6
  *
- * RETIRED: ss-engine-hotkey.js (replaced by ss-engine-comms.js)
+ * Loads core JavaScript engines used on all public pages: the HUD (toast
+ * notifications), communications engine (keyboard shortcuts), and Thomas the
+ * Bear easter egg. Include this once per controller.
  *
- * NOTE: Drawer engine is loaded by skin-footer.php handshake (smack-footer)
- *       because it's only needed on photo pages with the info/comment drawer.
- * NOTE: Wall engine is loaded by gallery-wall.php directly (page-specific).
- * NOTE: Does NOT output </body></html> — the calling controller owns that.
- * -------------------------------------------------------------------------
+ * NOTE: The drawer engine is loaded by skin-footer.php (for info/comment
+ * drawer on photo pages). The wall engine is loaded directly by gallery-wall.php
+ * (page-specific). This file only outputs the shared global engines.
  */
 ?>
 

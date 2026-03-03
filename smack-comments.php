@@ -1,20 +1,21 @@
 <?php
 /**
- * SNAPSMACK - Comment moderation dashboard.
- * Manages incoming visitor transmissions, including approval and deletion.
- * Provides search, pagination, and real-time status of the comment engine.
- * Git Version Official Alpha 0.5
+ * SNAPSMACK - Comment moderation interface
+ * Alpha v0.6
+ *
+ * Manages review, approval, and deletion of visitor comments.
+ * Provides search and filtering for pending and approved comments.
  */
 
 require_once 'core/auth.php';
 
-// --- 1. SYSTEM STATUS ---
-// Fetch global settings to determine if the comment engine is active sitewide.
+// --- GLOBAL COMMENT SETTINGS ---
+// Determines if the comment system is enabled across the site.
 $s_rows = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $global_comments_active = (($s_rows['global_comments_enabled'] ?? '1') == '1');
 
-// --- 2. ACTION HANDLER ---
-// Processes administrative commands for authorizing or purging specific comments.
+// --- MODERATION ACTIONS ---
+// Processes approval or deletion of individual comments.
 if (isset($_GET['action']) && isset($_GET['id'])) {
     $id = (int)$_GET['id'];
     if ($_GET['action'] == 'approve') {
@@ -26,7 +27,8 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     }
 }
 
-// --- 3. SEARCH & PAGINATION LOGIC ---
+// --- SEARCH AND PAGINATION ---
+// Supports filtering comments by view mode (pending vs. live) and keyword search.
 $view_mode = $_GET['view'] ?? 'pending';
 $search = trim($_GET['s'] ?? '');
 $search_query = $search ? " AND (c.comment_author LIKE ? OR c.comment_text LIKE ? OR c.comment_email LIKE ?)" : "";
@@ -36,23 +38,23 @@ $per_page = 20;
 $page = isset($_GET['p']) ? (int)$_GET['p'] : 1;
 $offset = ($page - 1) * $per_page;
 
-// Retrieve summary counts for the interface tabs.
+// Load comment counts for UI tabs.
 $pending_count = $pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 0")->fetchColumn();
 $live_count = $pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 1")->fetchColumn();
 
-// Calculate total records for the current view and search filter.
+// Count total records matching current filters.
 $count_sql = "SELECT COUNT(*) FROM snap_comments c WHERE is_approved = " . ($view_mode == 'live' ? '1' : '0') . $search_query;
 $stmt_count = $pdo->prepare($count_sql);
 $stmt_count->execute($params);
 $total_records = $stmt_count->fetchColumn();
 $total_pages = ceil($total_records / $per_page);
 
-// --- 4. DATA FETCH ---
-// Retrieves comments joined with their parent image metadata for context.
+// --- DATA RETRIEVAL ---
+// Fetch comments with parent post metadata for display context.
 $sql = "SELECT c.*, i.img_title, i.img_file, i.allow_comments as post_comments_active
-        FROM snap_comments c 
-        LEFT JOIN snap_images i ON c.img_id = i.id 
-        WHERE c.is_approved = " . ($view_mode == 'live' ? '1' : '0') . $search_query . " 
+        FROM snap_comments c
+        LEFT JOIN snap_images i ON c.img_id = i.id
+        WHERE c.is_approved = " . ($view_mode == 'live' ? '1' : '0') . $search_query . "
         ORDER BY c.comment_date DESC LIMIT $per_page OFFSET $offset";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);

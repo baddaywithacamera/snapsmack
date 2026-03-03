@@ -1,20 +1,12 @@
 <?php
 /**
- * SnapSmack Skin Manifest: Kiosk
- * Version: 5.3 - Footer Font Controls
- * -------------------------------------------------------------------------
- * - RESTORED: Section 1 Canvas Layout (Width, Gutter, Flip) from v4.1.
- * - RETAINED: Section 5 Blogroll logic from v3.5.
- * - FIXED: Typography pull updated to target the 'fonts' sub-key.
- * - ADDED: 'require_scripts' array to request JS engines from core.
- * - ADDED: smack-glitch to handshake.
- * - ADDED: 'engines' block declaring Pimpotron active.
- * - v5.3: Footer font family + size controls.
- * - DIRECTIVE: FULL FILE OUTPUT. NO TRUNCATION.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Configuration manifest for the kiosk skin
+ * Alpha v0.6
+ *
+ * Defines layout options, pimpotron engine configuration, and customization controls.
  */
 
-// PULL GLOBAL SYSTEM INVENTORY
+// Load system inventory for available fonts and features
 $inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
 $fonts = $inventory['fonts'] ?? [];
 
@@ -29,11 +21,7 @@ return [
         'supports_wall' => true, 
     ],
 
-    /* -------------------------------------------------------------------------
-       ENGINES
-       Declares which SnapSmack feature engines are active in this skin.
-       - pimpotron: true → Enables Pimpotron sidebar link, disables Wall Engine.
-       ------------------------------------------------------------------------- */
+    // Feature engines enabled for this skin
     'engines' => [
         'pimpotron' => true,
     ],

@@ -1,12 +1,9 @@
 <?php
 /**
- * SnapSmack - Pimpotron Kiosk Layout
- * Version: 5.3 - Logo engine wired in
- * -------------------------------------------------------------------------
- * - Pimpotron JS + CSS load from assets/ (platform-level)
- * - Logo glitch engine loaded, config injected from settings
- * - window.PIMPOTRON_CONFIG and window.SNAP_LOGO_CONFIG both injected
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Main layout template for the kiosk skin
+ * Alpha v0.6
+ *
+ * Renders a kiosk display with pimpotron slideshow, logo glitch effects, and navigation.
  */
 require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
 ?>

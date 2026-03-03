@@ -1,7 +1,7 @@
 <?php
 /**
- * SnapSmack Admin Theme Manifest - Minty Fresh
- * Version: 1.0 - Light Mode Production
+ * SNAPSMACK - Configuration manifest for the Minty Fresh admin theme
+ * Alpha v0.6
  */
 
 return [

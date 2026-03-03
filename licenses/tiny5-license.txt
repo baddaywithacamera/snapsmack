@@ -1,5 +1,9 @@
 Copyright 2022-2024 The Tiny5 Project Authors (https://github.com/Gissio/font_tiny5)
 
+This license applies to the following files included in SnapSmack:
+- assets/fonts/Tiny5/tiny5.bold.ttf
+- assets/fonts/Tiny5/tiny5.matrix-bold.ttf
+
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
 https://scripts.sil.org/OFL

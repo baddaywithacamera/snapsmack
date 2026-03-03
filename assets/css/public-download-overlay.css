@@ -1,11 +1,8 @@
 /**
- * SnapSmack Engine: Download Overlay
- * Version: 3.0 - Fit-Content Wrapper
- * -------------------------------------------------------------------------
- * The wrapper uses width/height: fit-content to shrink-wrap the image.
- * This keeps the wrapper exactly the size of the image so the download
- * button positions at the image corner, not the container corner.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Download overlay with fixed button
+ * Alpha v0.6
+ *
+ * Provides a fixed download button overlaid on media content.
  */
 
 .snap-download-wrap {
@@ -18,7 +15,7 @@
     box-shadow: none !important;
 }
 
-/* The download button — positioned at image bottom-right */
+/* Download button positioned at fixed bottom-right */
 .snap-download-btn {
     position: fixed;
     bottom: 80px;

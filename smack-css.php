@@ -1,31 +1,33 @@
 <?php
 /**
- * SNAPSMACK - Style override manager.
- * Orchestrates custom CSS injections for public and administrative interfaces.
- * Utilizes a dual-block storage system to protect core skin styles from manual edits.
- * Git Version Official Alpha 0.5
+ * SNAPSMACK - Custom stylesheet override editor
+ * Alpha v0.6
+ *
+ * Manages CSS customizations for both the public site and admin panel.
+ * Preserves generated skin styles while allowing safe manual overrides.
  */
 
 require_once 'core/auth.php';
 
-// --- 1. TARGET ROUTING ---
-// Identify if the context is the public frontend or the administrative dashboard.
+// --- TARGET CONTEXT ---
+// Determines whether we're editing public or admin styles.
 $target = $_GET['v'] ?? 'public';
 $db_key = ($target === 'admin') ? 'custom_css_admin' : 'custom_css_public';
 
-// --- 2. SAVE LOGIC ---
+// --- FORM SUBMISSION HANDLER ---
+// Saves CSS changes by combining protected skin block with user overrides.
 if (isset($_POST['save_overrides'])) {
 
     $manual_content         = $_POST['manual_overrides'];
     $protected_skin_content = $_POST['skin_css_buffer'];
 
-    // Concatenate the read-only skin block with the user's manual overrides.
+    // Merge protected skin CSS with user-defined overrides.
     $final_blob = trim($protected_skin_content . "\n\n" . $manual_content);
 
     $check = $pdo->prepare("SELECT COUNT(*) FROM snap_settings WHERE setting_key = ?");
     $check->execute([$db_key]);
 
-    // Perform an upsert (update or insert) based on existing key presence.
+    // Insert or update based on whether the setting key already exists.
     if ($check->fetchColumn() > 0) {
         $stmt = $pdo->prepare("UPDATE snap_settings SET setting_val = ? WHERE setting_key = ?");
     } else {
@@ -38,12 +40,13 @@ if (isset($_POST['save_overrides'])) {
     }
 }
 
-// --- 3. READ & SPLIT LOGIC ---
-// Retrieves the raw CSS and parses out the protected skin block using regex.
+// --- CSS PARSING ---
+// Retrieves stored CSS and splits it into read-only skin block and editable user block.
 $stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = ?");
 $stmt->execute([$db_key]);
 $raw_data = $stmt->fetchColumn() ?: "";
 
+// Use regex to extract the protected skin block.
 $pattern = '/\/\* SKIN_START \*\/.*?\/\* SKIN_END \*\//s';
 $skin_block = "";
 $user_block  = $raw_data;

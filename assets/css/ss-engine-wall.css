@@ -1,12 +1,8 @@
-
 /**
- * SnapSmack - Wall Engine CSS 
- * Version: 12.4 - Drag Select Fix
- * MASTER DIRECTIVE: Full file return. 
- * - STATUS: Clean baseline v12.2. 
- * - FIXED: Added .meta-forced for hotkey title toggling.
- * - FIXED: Kill drag-select highlighting during wall pan.
- * - REMOVED: Abandoned shutter and grey-fade logic.
+ * SNAPSMACK - 3D wall gallery engine
+ * Alpha v0.6
+ *
+ * 3D perspective gallery with zoom and metadata display.
  */
 
 :root {

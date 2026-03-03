@@ -1,13 +1,15 @@
 <?php
 /**
- * Fifty Shades of Grey — Skin Meta
- * Version: 2.0
+ * SNAPSMACK - Meta tags for the fifty-shades-of-grey skin
+ * Alpha v0.6
+ *
+ * Includes core meta tags and loads the appropriate greyscale variant stylesheet.
  */
 
-// 1. INCLUDE CORE META
+// Include core meta tags for SEO and CSS
 include(dirname(__DIR__, 2) . '/core/meta.php');
 
-// 2. VARIANT LOADER
+// Load the appropriate variant stylesheet
 $allowed_variants = ['dark', 'medium', 'light'];
 $active_variant   = $settings['active_skin_variant'] ?? 'dark';
 if (!in_array($active_variant, $allowed_variants)) {

@@ -1,14 +1,8 @@
-/* * SNAPSMACK MASTER COLOUR INDEX (THE PAINT)
- * ---------------------------------------------------------------------------
- * 01: Global Base       | 06: Form Elements     | 11: Pagination
- * 02: Sidebar Nav       | 07: Transmissions     | 12: Progress/Uploads
- * 03: Main Headers      | 08: Buttons/Actions   | 13: Login/Footer
- * 04: Content Boxes     | 09: Item Lists        | 14: Appearance
- * 05: Media Previews    | 10: Dash/Stats        | 15: Overrides
- * ---------------------------------------------------------------------------
- * v2026.1 - GREYMATTER (NOAH GREY TRIBUTE)
- * PALETTE: #F0F0F0 (Bg), #666666 (Grey), #333333 (Charcoal), #CCCCCC (Border)
- * Git Version Official Alpha 0.5
+/**
+ * SNAPSMACK - 50 Shades of Greymatter admin theme colors
+ * Alpha v0.6
+ *
+ * Light theme with neutral greys. All color values for admin-theme-geometry-master.css.
  */
 
 /* 01: GLOBAL BASE */

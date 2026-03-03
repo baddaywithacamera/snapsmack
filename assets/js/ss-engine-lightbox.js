@@ -1,8 +1,11 @@
 /**
- * SnapSmack Engine: Lightbox
- * Version: 2.2 - Double-Load Guard
- * MASTER DIRECTIVE: Full file return. Logic only.
+ * SNAPSMACK - Lightbox Engine
+ * Alpha v0.6
+ *
+ * Full-screen image viewer with fade-in overlay. Click to open, click to close
+ * or press ESC. Guards against double-loading with internal flag.
  */
+
 if (!window._ssLightboxLoaded) {
 window._ssLightboxLoaded = true;
 
@@ -13,31 +16,35 @@ document.addEventListener('DOMContentLoaded', () => {
     photo.style.cursor = 'zoom-in';
     let activeOverlay = null;
 
-    // Pull settings from global config, default to 0.8 if not yet defined by admin
-    const opacitySetting = (window.SMACK_CONFIG && window.SMACK_CONFIG.lightbox && window.SMACK_CONFIG.lightbox.opacity) 
-        ? window.SMACK_CONFIG.lightbox.opacity 
+    // --- CONFIGURATION ---
+    // Pull opacity setting from global config, default to 0.8
+    const opacitySetting = (window.SMACK_CONFIG && window.SMACK_CONFIG.lightbox && window.SMACK_CONFIG.lightbox.opacity)
+        ? window.SMACK_CONFIG.lightbox.opacity
         : '0.8';
 
+    // --- OVERLAY REMOVAL ---
     const removeOverlay = () => {
         if (!activeOverlay) return;
         activeOverlay.style.opacity = '0';
-        setTimeout(() => { 
+        setTimeout(() => {
             if (activeOverlay && activeOverlay.parentNode) {
                 activeOverlay.parentNode.removeChild(activeOverlay);
             }
-            activeOverlay = null; 
+            activeOverlay = null;
         }, 180);
     };
 
+    // --- CLICK HANDLER ---
+    // Open lightbox on image click
     photo.addEventListener('click', () => {
         if (activeOverlay) return;
 
         const overlay = document.createElement('div');
         overlay.id = 'ss-lightbox-overlay';
         overlay.style.cssText = `
-            position:fixed; top:0; left:0; width:100vw; height:100vh; 
-            background:rgba(0,0,0,${opacitySetting}); 
-            display:flex; align-items:center; justify-content:center; 
+            position:fixed; top:0; left:0; width:100vw; height:100vh;
+            background:rgba(0,0,0,${opacitySetting});
+            display:flex; align-items:center; justify-content:center;
             z-index:9999; opacity:0; transition:opacity 0.18s ease-out; cursor:zoom-out;
         `;
 
@@ -49,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(overlay);
         activeOverlay = overlay;
 
-        // Force browser reflow to ensure the CSS transition fires
+        // Force reflow to trigger CSS transition
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 overlay.style.opacity = '1';
@@ -57,8 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         overlay.addEventListener('click', removeOverlay);
-        
-        // BRIDGE: Expose to Comms engine so the ESC key works
+
+        // Expose to hotkey engine so ESC key works
         window.smackdown = window.smackdown || {};
         window.smackdown.closeLightbox = removeOverlay;
     });

@@ -1,7 +1,7 @@
 <?php
 /**
- * SnapSmack Admin Theme Manifest - Peach Melba
- * Version: 1.0 - Light Mode Production
+ * SNAPSMACK - Configuration manifest for the Peach Melba admin theme
+ * Alpha v0.6
  */
 
 return [

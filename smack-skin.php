@@ -1,9 +1,10 @@
 <?php
 /**
- * SNAPSMACK - Skin Admin.
- * Orchestrates the engine handshake by resolving skin dependencies against the global inventory.
- * Compiles dynamic CSS for public skins and manages engine-level feature toggles.
- * Git Version Official Alpha 0.5
+ * SNAPSMACK - Skin and theme customization
+ * Alpha v0.6
+ *
+ * Configures active theme-specific options and CSS generation.
+ * Manages color schemes, fonts, and other skin-level customizations.
  */
 
 require_once 'core/auth.php';

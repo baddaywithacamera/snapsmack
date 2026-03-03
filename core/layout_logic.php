@@ -1,16 +1,22 @@
 <?php
 /**
- * SnapSmack - Core Layout Logic
- * Centralizes EXIF processing and Comment fetching for skins.
+ * SNAPSMACK - Photo Layout Support Logic
+ * Alpha v0.6
+ *
+ * Centralizes EXIF processing and comment fetching for skin layouts. Ensures
+ * that all skins have access to consistently formatted EXIF data and approved
+ * comments without duplicating this logic in each template.
  */
-// We use __DIR__ because fix-exif.php is in the same folder as this file.
+
+// --- EXIF PROCESSING ---
+// Include the EXIF helper which provides the get_smack_exif() function
 include_once __DIR__ . '/fix-exif.php';
 
-// 1. EXIF MAPPING
 $exif_data = [];
 if (!empty($img['img_exif'])) {
     $raw = json_decode($img['img_exif'], true);
     if (is_array($raw)) {
+        // Parse raw EXIF JSON into human-readable format
         $processed = get_smack_exif($raw);
         $exif_data = [
             'Model'           => $processed['model'] ?? '',
@@ -25,7 +31,8 @@ if (!empty($img['img_exif'])) {
     }
 }
 
-// 2. COMMENT FETCHING
+// --- COMMENT FETCHING ---
+// Retrieve all approved comments for this photo, ordered by date
 $comments = [];
 if (isset($img['id'])) {
     $stm_c = $pdo->prepare("SELECT * FROM snap_comments WHERE img_id = ? AND is_approved = 1 ORDER BY comment_date ASC");

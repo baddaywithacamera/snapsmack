@@ -1,12 +1,15 @@
 <?php
 /**
- * SNAPSMACK - RSS feed synchronization utility.
- * Automated background task that fetches latest update dates for blogroll peers.
- * Designed to run via system cron (CLI) to keep the "Network" status current.
- * Git Version Official Alpha 0.5
+ * SNAPSMACK - RSS feed synchronization utility
+ * Alpha v0.6
+ *
+ * Automated background task that fetches and records latest update dates for
+ * blogroll peers. Designed to run via system cron (CLI only) to keep network
+ * status current. Supports both RSS 2.0 and Atom feeds.
  */
 
-// Access control: Restrict execution to the Command Line Interface (CLI) only.
+// --- ACCESS CONTROL ---
+// Restrict execution to Command Line Interface only
 if (php_sapi_name() !== 'cli') {
     http_response_code(403);
     exit('CLI only.');
@@ -17,17 +20,18 @@ define('SNAPSMACK_CRON', true);
 $base = dirname(__FILE__);
 require_once $base . '/core/db.php';
 
-// Helper for standardized terminal logging with timestamps.
+// Standardized logging helper with timestamps
 $log = function(string $msg) {
     echo '[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EOL;
 };
 
 $log('RSS fetch started.');
 
-// Identify all blogroll entries that have an associated RSS/Atom feed URL.
+// --- PEER IDENTIFICATION ---
+// Load all blogroll entries that have associated RSS/Atom feed URLs
 $peers = $pdo->query("
-    SELECT id, peer_name, peer_rss 
-    FROM snap_blogroll 
+    SELECT id, peer_name, peer_rss
+    FROM snap_blogroll
     WHERE peer_rss IS NOT NULL AND peer_rss != ''
 ")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -38,19 +42,23 @@ if (empty($peers)) {
 
 $log('Found ' . count($peers) . ' peers with RSS feeds.');
 
-// Prepare the update statement for recording fetch results.
+// --- UPDATE STATEMENT PREPARATION ---
+// Prepares database statement for recording fetch results
 $update_stmt = $pdo->prepare("
-    UPDATE snap_blogroll 
-    SET rss_last_fetched = NOW(), rss_last_updated = ? 
+    UPDATE snap_blogroll
+    SET rss_last_fetched = NOW(), rss_last_updated = ?
     WHERE id = ?
 ");
 
+// --- FEED PROCESSING LOOP ---
+// Iterates through each peer and attempts to extract the latest update timestamp
 foreach ($peers as $peer) {
     $log("Fetching: {$peer['peer_name']} — {$peer['peer_rss']}");
 
     try {
-        // --- REQUEST CONFIGURATION ---
-        // Configures a 10-second timeout and ignores SSL errors to handle varied peer server setups.
+        // --- HTTP REQUEST SETUP ---
+        // Configures 10-second timeout and allows varied SSL configurations
+        // to handle different peer server setups
         $ctx = stream_context_create([
             'http' => [
                 'timeout'     => 10,
@@ -71,7 +79,7 @@ foreach ($peers as $peer) {
         }
 
         // --- XML PARSING ---
-        // Suppress internal XML errors to handle malformed feeds gracefully.
+        // Suppresses internal XML errors to handle malformed feeds gracefully
         libxml_use_internal_errors(true);
         $xml = simplexml_load_string($xml_raw);
         libxml_clear_errors();
@@ -84,21 +92,21 @@ foreach ($peers as $peer) {
         $last_updated = null;
 
         // --- RSS 2.0 DETECTION ---
-        // Attempt to find the publication date of the most recent item.
+        // Attempt to extract publication date of the most recent item
         if (isset($xml->channel->item[0]->pubDate)) {
             $raw_date = (string)$xml->channel->item[0]->pubDate;
             $ts = strtotime($raw_date);
             if ($ts) $last_updated = date('Y-m-d H:i:s', $ts);
         }
 
-        // Fallback: Use the last general build date of the feed itself.
+        // Fallback to channel-level build date if item date not found
         if (!$last_updated && isset($xml->channel->lastBuildDate)) {
             $ts = strtotime((string)$xml->channel->lastBuildDate);
             if ($ts) $last_updated = date('Y-m-d H:i:s', $ts);
         }
 
-        // --- ATOM DETECTION ---
-        // If RSS check failed, attempt to parse as an Atom feed.
+        // --- ATOM FEED DETECTION ---
+        // If RSS parsing failed, attempt to parse as an Atom feed
         if (!$last_updated) {
             $namespaces = $xml->getNamespaces(true);
             if (isset($xml->entry[0])) {
@@ -106,3 +114,20 @@ foreach ($peers as $peer) {
                 if ($ts) $last_updated = date('Y-m-d H:i:s', $ts);
             }
         }
+
+        // --- DATABASE UPDATE ---
+        // Record the fetch timestamp and latest update time if successful
+        if ($last_updated) {
+            $update_stmt->execute([$last_updated, $peer['id']]);
+            $log("  OK: Updated to {$last_updated}");
+        } else {
+            $log("  SKIP: No update date found in feed.");
+        }
+
+    } catch (Exception $e) {
+        $log("  ERROR: " . $e->getMessage());
+        continue;
+    }
+}
+
+$log('RSS fetch completed.');

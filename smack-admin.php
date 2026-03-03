@@ -1,15 +1,17 @@
 <?php
 /**
- * SNAPSMACK - Master administrative dashboard.
- * Provides system vitals, content statistics, and automated task management.
- * Handles admin theme discovery and RSS cron job registration.
- * Git Version Official Alpha 0.5
+ * SNAPSMACK - System dashboard and administrative hub
+ * Alpha v0.6
+ *
+ * Displays content statistics, system vitals, and provides centralized access
+ * to administrative tools. Manages cron job registration for RSS fetching.
  */
 
 require_once 'core/auth.php';
 
 // --- ADMIN THEME DISCOVERY ---
-// Scans the theme directory for manifests to populate the theme selector.
+// Loads available admin themes from the theme directory to allow users to customize
+// the admin panel interface.
 $admin_themes = [];
 $theme_dirs = array_filter(glob('assets/adminthemes/*'), 'is_dir');
 foreach ($theme_dirs as $dir) {
@@ -28,33 +30,31 @@ $current_admin_meta = $admin_themes[$active_admin_slug] ?? [
     'author' => 'Sean McCormick'
 ];
 
-// --- DATA ACQUISITION ---
-// Aggregate counts for published posts, pending schedules, and drafts.
+// --- CONTENT STATISTICS ---
+// Tallies published, scheduled, and draft posts to show content status at a glance.
 $count_pub     = $pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND img_date <= NOW()")->fetchColumn();
 $count_pending = $pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND img_date > NOW()")->fetchColumn();
 $count_drafts  = $pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status='draft'")->fetchColumn();
 
-// Aggregate comment moderation statistics.
+// Tallies pending and approved comments for the moderation queue.
 $pending_count = $pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 0")->fetchColumn();
 $live_count    = $pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 1")->fetchColumn();
 
-// Identify the most recent entry for the "Latest Smack" preview.
+// Fetches the most recent post for the dashboard preview.
 $latest_img = $pdo->query("SELECT * FROM snap_images ORDER BY img_date DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
 
-// --- ENVIRONMENT & VITALS LOGIC ---
-// Gather server-side metrics and resource usage.
+// --- SYSTEM ENVIRONMENT ---
+// Collects server metrics: PHP version, memory limits, CPU load, and disk usage.
 $server_soft = $_SERVER['SERVER_SOFTWARE'] ?? 'N/A';
 $php_ver     = phpversion();
 $mem_limit   = ini_get('memory_limit');
-$load        = sys_getloadavg() ?: [0,0,0]; 
+$load        = sys_getloadavg() ?: [0,0,0];
 $disk_free   = disk_free_space("/") ?: 0;
 $disk_total  = disk_total_space("/") ?: 1;
 $disk_used_pct = ($disk_total > 0) ? round((($disk_total - $disk_free) / $disk_total) * 100, 1) : 0;
 
 if (!function_exists('formatBytes')) {
-    /**
-     * Helper to convert raw bytes into human-readable strings.
-     */
+    // Converts raw byte counts to human-readable format (KB, MB, GB, etc.)
     function formatBytes($bytes, $precision = 2) {
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
         $bytes = max($bytes, 0);
@@ -65,7 +65,7 @@ if (!function_exists('formatBytes')) {
     }
 }
 
-// Resolve the thumbnail path for the latest image preview.
+// Builds the thumbnail path for the latest post preview image.
 $display_thumb = "";
 if ($latest_img) {
     $path_parts = pathinfo($latest_img['img_file']);
@@ -73,6 +73,7 @@ if ($latest_img) {
 }
 
 // --- BLOGROLL NETWORK STATS ---
+// Loads peer network statistics; disabled if the blogroll module is not available.
 $blogroll_enabled = true;
 try {
     $net_peers    = $pdo->query("SELECT COUNT(*) FROM snap_blogroll")->fetchColumn();
@@ -83,8 +84,9 @@ try {
     $blogroll_enabled = false;
 }
 
-// --- CRON MANAGEMENT ---
-// Handles the registration and removal of the RSS fetcher in the system crontab.
+// --- CRON JOB MANAGEMENT ---
+// Allows the user to register or remove the RSS fetcher from the system crontab.
+// The job runs hourly to automatically fetch updates from peer feeds.
 $cron_msg = '';
 if ($cron_supported && isset($_POST['cron_action'])) {
     $script_path = realpath(__DIR__ . '/cron-rss-fetch.php');
@@ -116,7 +118,7 @@ if ($cron_supported && isset($_POST['cron_action'])) {
     }
 }
 
-// Check current cron registration status for UI display.
+// Checks whether the RSS fetcher job is currently registered in the crontab.
 $rss_job_registered = false;
 if ($cron_supported) {
     exec('crontab -l 2>&1', $check_cron, $check_rc);

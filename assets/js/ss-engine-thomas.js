@@ -1,9 +1,9 @@
-/*
+/**
  * SNAPSMACK - Thomas the Bear Engine
- * Version: 2026.2
- * Trigger: Ctrl+Shift+Y (original Picasa easter egg key combination)
- * Clear: Click anywhere, X, or Escape
- * Tribute: For Noah Grey. We remember.
+ * Alpha v0.6
+ *
+ * Easter egg: Ctrl+Shift+Y spawns dancing bears on the page. Click, press X,
+ * or press ESC to clear them. Tribute to Noah Grey.
  */
 
 (function() {
@@ -12,6 +12,8 @@
     let dedicationShown = false;
     let bearsActive = false;
 
+    // --- BEAR REMOVAL ---
+    // Clear all bears with fade-out animation
     function clearAllBears() {
         const bears = document.querySelectorAll('.thomas-bear');
         if (bears.length === 0) return false;
@@ -25,6 +27,8 @@
         return true;
     }
 
+    // --- BEAR CONSTRUCTION ---
+    // Create a single bear at random position and size
     function buildBear() {
         const size = Math.floor(Math.random() * 120) + 80;
         const bear = document.createElement('div');
@@ -62,6 +66,8 @@
         bearsActive = true;
     }
 
+    // --- DEDICATION DISPLAY ---
+    // Show memorial message
     function showDedication() {
         let el = document.getElementById('thomas-dedication');
         if (!el) {
@@ -77,8 +83,9 @@
         }, 4000);
     }
 
-    // Ctrl+Shift+Y to spawn
+    // --- KEYBOARD CONTROL ---
     document.addEventListener('keydown', function(e) {
+        // Spawn bears with Ctrl+Shift+Y
         if (e.ctrlKey && e.shiftKey && (e.key === 'y' || e.key === 'Y')) {
             e.preventDefault();
             if (!dedicationShown) {
@@ -88,13 +95,13 @@
             buildBear();
         }
 
-        // X or Escape clears all bears
+        // Clear bears with X or ESC
         if (bearsActive && (e.key === 'x' || e.key === 'X' || e.key === 'Escape')) {
             clearAllBears();
         }
     });
 
-    // Click anywhere clears all bears
+    // --- CLICK TO CLEAR ---
     document.addEventListener('click', function() {
         if (bearsActive) {
             clearAllBears();

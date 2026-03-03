@@ -1,7 +1,7 @@
 <?php
 /**
- * SnapSmack Admin Theme Manifest - Green Phosphorus
- * Version: 1.0 - Full Monochrome Production
+ * SNAPSMACK - Configuration manifest for the Green Phosphorus admin theme
+ * Alpha v0.6
  */
 
 return [

@@ -1,23 +1,14 @@
 /**
- * SnapSmack - Pimpotron JS Engine (v3.0)
- * -------------------------------------------------------------------------
- * Slide types: image | text | video | matrix
- * Image slides: background fill + text overlay + per-slide image glitch
- * Matrix slides: MatrixRain class, destroy() on transition
- * Glitch system: frequency gate, intensity tiers, stage shift
- * Config-driven boot via window.PIMPOTRON_CONFIG
- * -------------------------------------------------------------------------
- * MODULAR DESIGN NOTE:
- * MatrixRain is a standalone class. It knows nothing about the sequencer.
- * The sequencer knows nothing about how rain works. It just calls
- * new MatrixRain(canvas, config) and rain.destroy().
- * This is intentional and we are very proud of it.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Pimpotron Engine
+ * Alpha v0.6
+ *
+ * Slide sequencer with support for image, text, video, and matrix slides.
+ * Modular design: MatrixRain class is independent of sequencer logic.
+ * Config-driven via window.PIMPOTRON_CONFIG.
  */
 
-// =============================================================================
-// CLASS: MatrixRain
-// =============================================================================
+// --- MATRIX RAIN ANIMATION ---
+// Standalone class for Matrix-style character rain effect
 
 class MatrixRain {
     constructor(canvas, config = {}) {
@@ -38,7 +29,6 @@ class MatrixRain {
                       'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&';
         this._resize = this._onResize.bind(this);
         window.addEventListener('resize', this._resize);
-        // Defer init until after browser has laid out the canvas
         requestAnimationFrame(() => this._init());
     }
 
@@ -101,9 +91,8 @@ class MatrixRain {
     }
 }
 
-// =============================================================================
-// CLASS: PimpotronEngine
-// =============================================================================
+// --- PIMPOTRON SEQUENCER ---
+// Main slide controller and renderer
 
 class PimpotronEngine {
     constructor(apiEndpoint, stageElementId) {
@@ -120,6 +109,7 @@ class PimpotronEngine {
         this.isReady      = false;
     }
 
+    // --- INITIALIZATION ---
     async init() {
         try {
             const response = await fetch(this.apiEndpoint);
@@ -136,6 +126,7 @@ class PimpotronEngine {
         }
     }
 
+    // --- ASSET PRELOADING ---
     async preloadAssets() {
         const promises = this.slides.map(slide => {
             if (slide.slide_type !== 'image' || !slide.image_url) return Promise.resolve();
@@ -149,6 +140,8 @@ class PimpotronEngine {
         console.log('[Pimpotron] Assets preloaded. Ready to smack.');
     }
 
+    // --- SEQUENCER LOOP ---
+    // Advance to next slide, render it, and schedule the next transition
     strike() {
         if (!this.isReady || this.slides.length === 0) return;
         clearTimeout(this.timer);
@@ -176,6 +169,8 @@ class PimpotronEngine {
         this.timer = setTimeout(() => this.strike(), duration);
     }
 
+    // --- RENDERING ---
+    // Build and display the current slide
     renderSlide(slide) {
         this.stage.style.backgroundColor = slide.bg_color_hex || '#000';
 
@@ -218,6 +213,8 @@ class PimpotronEngine {
         }
     }
 
+    // --- GLITCH LOGIC ---
+    // Determine whether to glitch based on frequency setting
     shouldGlitch(frequency) {
         switch (frequency) {
             case 'every_slide': return true;
@@ -228,6 +225,8 @@ class PimpotronEngine {
         }
     }
 
+    // --- GLITCH APPLICATION ---
+    // Apply glitch effects to logo, stage, image, and matrix
     triggerGlitch(intensity = 'normal', stageShift = false, slide = null) {
         const duration = intensity === 'subtle' ? 80 : intensity === 'violent' ? 180 : 100;
 
@@ -252,6 +251,7 @@ class PimpotronEngine {
         }
     }
 
+    // Apply filter and transform effects to background image
     triggerImageGlitch(intensity, duration) {
         const bg = this.stage.querySelector('.pimpotron-bg-image');
         if (!bg) return;
@@ -266,6 +266,7 @@ class PimpotronEngine {
         setTimeout(() => { bg.style.filter = 'none'; bg.style.transform = 'none'; }, duration);
     }
 
+    // Apply translation and scale distortion to entire stage
     applyStageShift(intensity) {
         const maxPx    = this.global.stage_shift_max_px || 8;
         const maxScale = this.global.stage_scale_max    || 1.015;
@@ -281,6 +282,7 @@ class PimpotronEngine {
         }, intensity === 'violent' ? 160 : 90);
     }
 
+    // --- TEXT ANIMATION PREP ---
     prepareText(text, animationType = 'staccato') {
         if (!text) return '';
         if (animationType === 'static') {
@@ -289,6 +291,7 @@ class PimpotronEngine {
         return text.split(' ').map(w => `<span class="smack-word" style="opacity:0;">${w}</span>`).join(' ');
     }
 
+    // Animate text reveal word-by-word
     animateText(slide) {
         const words    = this.stage.querySelectorAll('.smack-word');
         if (!words.length) return;
@@ -307,9 +310,7 @@ class PimpotronEngine {
     }
 }
 
-// =============================================================================
-// BOOT
-// =============================================================================
+// --- BOOT ---
 document.addEventListener('DOMContentLoaded', () => {
     const cfg      = window.PIMPOTRON_CONFIG ?? {};
     const endpoint = cfg.endpoint ?? '/api/pimpotron-payload.php?slideshow_id=1';

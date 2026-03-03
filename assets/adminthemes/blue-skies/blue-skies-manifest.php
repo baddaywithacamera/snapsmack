@@ -1,7 +1,7 @@
 <?php
 /**
- * SnapSmack Admin Theme Manifest - Blue Skies
- * Version: 1.0 - Light Mode Production
+ * SNAPSMACK - Configuration manifest for the Blue Skies admin theme
+ * Alpha v0.6
  */
 
 return [

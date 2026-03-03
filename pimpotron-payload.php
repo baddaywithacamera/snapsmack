@@ -1,28 +1,29 @@
 <?php
 /**
- * SNAPSMACK - Pimpotron payload API.
- * Serves the JSON manifest consumed by the frontend slideshow engine.
- * Resolves glitch inheritance and asset URLs for native/external media.
- * Git Version Official Alpha 0.5
+ * SNAPSMACK - Pimpotron slideshow JSON payload API
+ * Alpha v0.6
+ *
+ * Generates the JSON manifest consumed by the frontend slideshow engine.
+ * Resolves glitch inheritance from slideshow defaults and constructs asset URLs
+ * for both native and external media sources.
  */
 
-// Force JSON output and prevent browser caching.
+// --- API SETUP ---
+// Force JSON output and prevent browser caching
 header('Content-Type: application/json');
 header('Cache-Control: no-store');
 
-// Bootstrap database connection relative to the API directory.
+// Bootstrap database connection
 require_once dirname(__DIR__) . '/core/db.php';
 
-// Construct the absolute BASE_URL for asset serving from global settings.
+// --- BASE URL RESOLUTION ---
+// Constructs absolute BASE_URL from global settings for asset serving
 $_settings_stm = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
 $_settings     = $_settings_stm->fetchAll(PDO::FETCH_KEY_PAIR);
 $BASE_URL      = rtrim($_settings['site_url'] ?? '', '/') . '/';
 
-// --------------------------------------------------------------------------
-// 1. RESOLVE WHICH SLIDESHOW WAS REQUESTED
-// --------------------------------------------------------------------------
-
-// Identify the target slideshow via ID or unique slug.
+// --- SLIDESHOW IDENTIFICATION ---
+// Target slideshow by ID or unique slug
 $slideshow_id   = isset($_GET['slideshow_id'])   ? (int)$_GET['slideshow_id']            : null;
 $slideshow_slug = isset($_GET['slideshow_slug'])  ? trim($_GET['slideshow_slug'])          : null;
 
@@ -32,11 +33,8 @@ if (!$slideshow_id && !$slideshow_slug) {
     exit;
 }
 
-// --------------------------------------------------------------------------
-// 2. FETCH THE PARENT SLIDESHOW
-// --------------------------------------------------------------------------
-
-// Verify the slideshow exists and is currently active.
+// --- SLIDESHOW LOOKUP ---
+// Verify the slideshow exists and is currently active
 try {
     if ($slideshow_id) {
         $stm = $pdo->prepare("SELECT * FROM snap_pimpotron_slideshows WHERE id = ? AND is_active = 1 LIMIT 1");
@@ -60,11 +58,8 @@ try {
     exit;
 }
 
-// --------------------------------------------------------------------------
-// 3. FETCH SLIDES (JOIN snap_images for native media)
-// --------------------------------------------------------------------------
-
-// Retrieves slide metadata and joins with snap_images for native file paths.
+// --- SLIDE DATA FETCH ---
+// Retrieves slide metadata and joins with snap_images for native file paths
 try {
     $stm = $pdo->prepare("
         SELECT
@@ -88,13 +83,10 @@ try {
             sl.glitch_frequency,
             sl.glitch_intensity,
             sl.stage_shift_enabled,
-            -- Matrix rain config
             sl.rain_speed,
             sl.rain_density,
             sl.rain_color_hex,
-            -- Image glitch toggle
             sl.image_glitch_enabled,
-            -- Native image path from snap_images (NULL if not a native image)
             si.img_file AS native_img_file
         FROM snap_pimpotron_slides sl
         LEFT JOIN snap_images si ON sl.snap_image_id = si.id
@@ -112,35 +104,33 @@ try {
     exit;
 }
 
-// --------------------------------------------------------------------------
-// 4. BUILD THE PAYLOAD
-// Resolve inheritance: slide-level NULLs fall back to slideshow defaults.
-// Build final image_url from native path or external URL.
-// --------------------------------------------------------------------------
+// --- PAYLOAD CONSTRUCTION ---
+// Resolves inheritance: slide-level NULLs fall back to slideshow defaults.
+// Constructs image_url from native path or external URL.
 
 $slides = [];
 
 foreach ($raw_slides as $s) {
 
-    // Inherit glitch settings from the parent slideshow if slide-level values are null.
+    // Inherit glitch settings from parent slideshow if slide-level values are null
     $glitch_frequency    = $s['glitch_frequency']   ?? $show['glitch_frequency'];
     $glitch_intensity    = $s['glitch_intensity']    ?? $show['glitch_intensity'];
     $stage_shift_enabled = ($s['stage_shift_enabled'] !== null)
                             ? (bool)$s['stage_shift_enabled']
                             : (bool)$show['stage_shift_enabled'];
 
-    // Resolve the primary asset URL (Native vs. External).
+    // Resolve the primary asset URL: native image or external URL
     $image_url = null;
     if ($s['slide_type'] === 'image') {
         if (!empty($s['native_img_file'])) {
-            // Native: build full URL from BASE_URL + img_file (strip leading slash)
+            // Native: build full URL from BASE_URL + img_file
             $image_url = $BASE_URL . ltrim($s['native_img_file'], '/');
         } elseif (!empty($s['external_image_url'])) {
             $image_url = $s['external_image_url'];
         }
     }
 
-    // Resolve display timing based on slide override or global default.
+    // Resolve display timing from slide override or global default
     $duration_ms = $s['display_duration_ms'] ?? $show['default_speed_ms'];
 
     $slides[] = [
@@ -162,7 +152,7 @@ foreach ($raw_slides as $s) {
         'rain_density'        => $s['rain_density']   !== null ? (int)$s['rain_density']  : null,
         'rain_color_hex'      => $s['rain_color_hex'] ?? null,
 
-        // Text / HUD
+        // Text overlay
         'overlay_text'        => $s['overlay_text'],
         'text_animation_type' => $s['text_animation_type'],
         'word_delay_ms'       => (int)$s['word_delay_ms'],
@@ -180,10 +170,8 @@ foreach ($raw_slides as $s) {
     ];
 }
 
-// --------------------------------------------------------------------------
-// 5. ASSEMBLE FINAL MANIFEST AND FIRE
-// --------------------------------------------------------------------------
-
+// --- FINAL MANIFEST ---
+// Assemble metadata and slide array for frontend consumption
 $manifest = [
     'slideshow' => [
         'id'                 => (int)$show['id'],

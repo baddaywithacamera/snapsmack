@@ -1,50 +1,52 @@
 <?php
 /**
- * SNAPSMACK - User metadata editor.
- * Manages email, role assignments, and password resets for existing accounts.
- * Enforces immutable usernames to protect database relationship integrity.
- * Git Version Official Alpha 0.5
+ * SNAPSMACK - User account editor
+ * Alpha v0.6
+ *
+ * Allows modification of user email, role, and password.
+ * Usernames are immutable to preserve database integrity.
  */
 
 require_once 'core/auth.php';
 
-// --- 1. VALIDATION ---
-// Ensure a target user ID is provided before proceeding.
+// --- REQUEST VALIDATION ---
+// Requires a user ID parameter to load the correct record.
 $uid = $_GET['id'] ?? null;
-if (!$uid) { 
-    header("Location: smack-users.php"); 
-    exit; 
+if (!$uid) {
+    header("Location: smack-users.php");
+    exit;
 }
 
-// Fetch the current record for form population.
+// Load the user record for editing.
 $stmt = $pdo->prepare("SELECT * FROM snap_users WHERE id = ?");
 $stmt->execute([$uid]);
 $user = $stmt->fetch();
 
-if (!$user) { 
-    die("User not found."); 
+if (!$user) {
+    die("User not found.");
 }
 
-// --- 2. UPDATE HANDLER ---
+// --- FORM SUBMISSION HANDLER ---
+// Updates email, role, and optionally resets password.
 if (isset($_POST['update_user'])) {
     $email = trim($_POST['email']);
     $role  = $_POST['user_role'];
     $pass  = trim($_POST['password']);
 
-    // Surgical Update: Construct the query based on whether a password reset was requested.
+    // Conditionally update password only if a new one was provided.
     $sql = "UPDATE snap_users SET email = ?, user_role = ? WHERE id = ?";
     $params = [$email, $role, $uid];
-    
+
     if (!empty($pass)) {
-        // Only trigger password rehashing if the input is not empty.
+        // Hash password before storage.
         $sql = "UPDATE snap_users SET email = ?, user_role = ?, password_hash = ? WHERE id = ?";
         $params = [$email, $role, password_hash($pass, PASSWORD_BCRYPT, ['cost' => 12]), $uid];
     }
 
     $pdo->prepare($sql)->execute($params);
     $msg = "User updated successfully.";
-    
-    // Refresh the local user object to reflect the new changes in the UI.
+
+    // Refresh user data to display updates.
     $stmt->execute([$uid]);
     $user = $stmt->fetch();
 }

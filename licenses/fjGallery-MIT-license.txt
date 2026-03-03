@@ -1,7 +1,11 @@
 The MIT License (MIT)
 Copyright 2019 SmugMug, Inc.
 
-** for Flickr fjGallery* plugins and CSS files
+This license applies to the following files included in SnapSmack:
+- assets/js/fjGallery.js
+- assets/js/fjGallery.min.js
+- assets/js/fjGallery.esm.min.js
+- assets/css/fjGallery.css
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in

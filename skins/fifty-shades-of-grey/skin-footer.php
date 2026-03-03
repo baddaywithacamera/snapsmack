@@ -1,15 +1,12 @@
 <?php
 /**
- * SnapSmack Skin Footer: Fifty Shades of Grey
- * Version: 2.0
- * -------------------------------------------------------------------------
- * 1. Handshake: Cross-references manifest require_scripts with inventory.
- * 2. Calls core/footer.php for the visual footer bar.
- * NOTE: Thomas & Comms engine loaded globally via core/footer-scripts.php.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Footer for the fifty-shades-of-grey skin
+ * Alpha v0.6
+ *
+ * Injects skin-specific JavaScript libraries and closes the document.
  */
 
-// 1. HANDSHAKE — Load requested engines from inventory
+// Load requested engines from manifest
 $skin_manifest = include __DIR__ . '/manifest.php';
 $requested = $skin_manifest['require_scripts'] ?? [];
 
@@ -28,6 +25,6 @@ if (!empty($requested)) {
     }
 }
 
-// 2. CORE FOOTER (Visual bar only — copyright, email, branding)
+// Include core footer to close the document
 include_once(dirname(__DIR__, 2) . '/core/footer.php');
 ?>

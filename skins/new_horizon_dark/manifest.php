@@ -1,20 +1,12 @@
 <?php
 /**
- * SnapSmack Skin Manifest: New Horizon Dark
- * Version: 5.5 - Footer Font Controls
- * -------------------------------------------------------------------------
- * - ADDED: archive_layouts feature flag (square, cropped, masonry)
- * - ADDED: Section 2a Archive Grid controls (columns, justified row height)
- * - ADDED: Archive Thumbnail Frame picker (border-only, no shadow)
- * - FIXED: Hero frame selector no longer targets .thumb-link
- * - RETAINED: All v5.3 hero frame options unchanged
- * - RETAINED: All v5.3 typography, wall, blogroll options unchanged
- * - v5.5: Footer font family + size controls added to CONTENT & TYPOGRAPHY.
- * - DIRECTIVE: FULL FILE OUTPUT. NO TRUNCATION.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Configuration manifest for the new_horizon_dark skin
+ * Alpha v0.6
+ *
+ * Defines layout options, features, and customization controls.
  */
 
-// PULL GLOBAL SYSTEM INVENTORY
+// Load system inventory for available fonts and features
 $inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
 $fonts = $inventory['fonts'] ?? [];
 
@@ -30,7 +22,7 @@ return [
         'archive_layouts' => ['square', 'cropped', 'masonry'],
     ],
 
-    // THE HANDSHAKE: Request specific engines from the core inventory
+    // Load required JavaScript libraries and controllers
     'require_scripts' => [
         'smack-footer', 
         'smack-lightbox', 

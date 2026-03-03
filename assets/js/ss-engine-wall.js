@@ -1,12 +1,9 @@
 /**
- * SnapSmack - Wall Engine JS 
- * Version: 15.9 - F1 Help, ESC Close
- * MASTER DIRECTIVE: Full file return. No deletions.
- * - ADDED: Spacebar to move to the next image (next sibling).
- * - ADDED: '1' key to toggle image metadata visibility.
- * - ADDED: Home / End keys for rapid snap-to-start/end navigation.
- * - RETAINED: Infinite scroll, mobile gestures, and physics-driven tilt.
- * - STATUS: Alpha v0.5
+ * SNAPSMACK - Wall Engine
+ * Alpha v0.6
+ *
+ * 3D perspective wall gallery with physics-driven panning, touch gestures,
+ * infinite scroll, and zoomable image viewer. Keyboard and mouse controls.
  */
 
 const canvas = document.getElementById('wall-canvas');
@@ -15,41 +12,41 @@ let activeClone = null;
 let originTile = null;
 
 // --- CONFIGURATION HANDSHAKE ---
-const config = window.WALL_CONFIG || { 
-    friction: 0.90, 
-    dragWeight: 1.25, 
-    pinchPower: 20, 
-    totalImages: 0, 
-    initialLimit: 100 
+const config = window.WALL_CONFIG || {
+    friction: 0.90,
+    dragWeight: 1.25,
+    pinchPower: 20,
+    totalImages: 0,
+    initialLimit: 100
 };
 
-let friction = config.friction; 
-let dragWeight = config.dragWeight; 
+let friction = config.friction;
+let dragWeight = config.dragWeight;
 let pinchPower = config.pinchPower || 20;
 let isDragging = false;
-let lastX = 0; 
+let lastX = 0;
 let lastY = 0;
 
-// PHYSICS & GESTURE STATE
+// --- PHYSICS STATE ---
 let targetX = 0, currentX = 0;
 let targetY = 0, currentY = 0;
-let targetZ = -600, currentZ = -600; 
+let targetZ = -600, currentZ = -600;
 let currentTilt = 0;
 
-// VELOCITY VECTORS
+// --- VELOCITY ---
 let velocityX = 0;
 let velocityY = 0;
-let velocityZ = 0; 
+let velocityZ = 0;
 
-// PINCH & ZOOM STATE
+// --- ZOOM STATE ---
 let initialPinchDistance = 0;
-let initialZ = -600; 
+let initialZ = -600;
 let zoomStartY = 0;
 let isZoomDragging = false;
 let zoomBaseScale = 1;
 
 // --- INFINITE SCROLL STATE ---
-let offset = config.initialLimit || 100; 
+let offset = config.initialLimit || 100;
 let isLoading = false;
 let sentinel = null;
 let hasMore = (offset < config.totalImages);
@@ -58,23 +55,24 @@ let hasMore = (offset < config.totalImages);
 function initWall() {
     createHelpUI();
     setupInfiniteScroll();
-    
+
     setTimeout(() => {
         const tiles = document.querySelectorAll('.wall-tile');
         if (tiles.length > 0) {
             const midIndex = Math.floor((tiles.length - 1) / 2);
             const midTile = tiles[midIndex];
             const rect = midTile.getBoundingClientRect();
-            
+
             targetX = (window.innerWidth / 2) - (rect.left - currentX + rect.width / 2);
             targetY = (window.innerHeight / 2) - (rect.top - currentY + rect.height / 2);
-            
+
             currentX = targetX;
             currentY = targetY;
         }
     }, 300);
 }
 
+// --- HELP UI ---
 function createHelpUI() {
     const toast = document.createElement('div');
     toast.id = 'help-toast';
@@ -98,19 +96,19 @@ function createHelpUI() {
             <li><strong>PG UP / DN</strong> : Zoom Wall In/Out</li>
             <li><strong>F1 / ESC</strong> : Help / Close</li>
         </ul>
-        <div style="margin-top: 20px; font-size: 0.7rem; opacity: 0.7;">SnapSmack Alpha v0.5</div>
+        <div style="margin-top: 20px; font-size: 0.7rem; opacity: 0.7;">SnapSmack Alpha v0.6</div>
     `;
     document.body.appendChild(modal);
 }
 
-// --- INFINITE SCROLL LOGIC ---
+// --- INFINITE SCROLL ---
 function setupInfiniteScroll() {
     sentinel = document.getElementById('wall-sentinel');
     const observer = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting && !isLoading && hasMore && targetZ > -2500) {
             loadMoreTiles();
         }
-    }, { rootMargin: '800px' }); 
+    }, { rootMargin: '800px' });
 
     if (sentinel) observer.observe(sentinel);
 }
@@ -120,13 +118,13 @@ async function loadMoreTiles() {
     try {
         const response = await fetch(`load-more.php?offset=${offset}`);
         const html = await response.text();
-        
+
         if (html.trim().length > 0) {
             sentinel.insertAdjacentHTML('beforebegin', html);
-            offset += 20; 
+            offset += 20;
             hasMore = (offset < config.totalImages);
         } else {
-            hasMore = false; 
+            hasMore = false;
         }
     } catch (err) {
         console.error("Pagination fetch failed:", err);
@@ -135,6 +133,8 @@ async function loadMoreTiles() {
     }
 }
 
+// --- FOCUS TRACKING ---
+// Determine which tile is closest to viewport center
 function updateCenterFocus() {
     const tiles = document.querySelectorAll('.wall-tile');
     const vwC = window.innerWidth / 2;
@@ -162,30 +162,32 @@ function updateCenterFocus() {
     }
 }
 
+// --- LERP UTILITY ---
 function lerp(start, end, factor) { return start + (end - start) * factor; }
 
+// --- ANIMATION LOOP ---
 function animate() {
     if (!isDragging) {
         targetX += velocityX;
         targetY += velocityY;
         targetZ += velocityZ;
 
-        velocityX *= friction; 
+        velocityX *= friction;
         velocityY *= friction;
         velocityZ *= friction;
 
         if (Math.abs(velocityX) < 0.05) velocityX = 0;
         if (Math.abs(velocityY) < 0.05) velocityY = 0;
         if (Math.abs(velocityZ) < 0.05) velocityZ = 0;
-        
+
         targetZ = Math.max(-8000, Math.min(800, targetZ));
     }
 
-    currentX = lerp(currentX, targetX, 0.15); 
-    currentY = lerp(currentY, targetY, 0.15); 
+    currentX = lerp(currentX, targetX, 0.15);
+    currentY = lerp(currentY, targetY, 0.15);
     currentZ = lerp(currentZ, targetZ, 0.15);
-    
-    let tiltTarget = velocityX * 0.7; 
+
+    let tiltTarget = velocityX * 0.7;
     currentTilt = lerp(currentTilt, tiltTarget, 0.1);
     const cappedTilt = Math.max(-18, Math.min(18, currentTilt));
 
@@ -194,7 +196,7 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
-// --- EVENT LISTENERS ---
+// --- KEYBOARD EVENTS ---
 window.addEventListener('keydown', (e) => {
     const modal = document.getElementById('help-modal');
     const isModalOpen = (modal && modal.style.display === 'block');
@@ -214,14 +216,14 @@ window.addEventListener('keydown', (e) => {
         }
     }
 
-    // Toggle Floating Titles
+    // Toggle metadata visibility
     if (e.key === '1') {
         document.querySelectorAll('.tile-meta').forEach(el => {
             el.style.visibility = (el.style.visibility === 'hidden') ? 'visible' : 'hidden';
         });
     }
 
-    // Next Image Logic (Spacebar)
+    // Spacebar to advance to next image
     if (e.key === ' ') {
         e.preventDefault();
         const sibling = originTile ? originTile.nextElementSibling : document.querySelector('.wall-tile');
@@ -236,6 +238,7 @@ window.addEventListener('keydown', (e) => {
         }
     }
 
+    // Enter to zoom centered image
     if (e.key === 'Enter') {
         if (isZoomed) {
             closeZoom();
@@ -249,20 +252,21 @@ window.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowLeft') navigateGallery(-1);
         if (e.key === 'ArrowRight') navigateGallery(1);
     } else {
-        const pan = 27; const zoom = 45; 
-        if (e.key === 'ArrowLeft')  velocityX += pan; 
+        const pan = 27; const zoom = 45;
+        if (e.key === 'ArrowLeft')  velocityX += pan;
         if (e.key === 'ArrowRight') velocityX -= pan;
         if (e.key === 'ArrowUp')    velocityY += pan;
         if (e.key === 'ArrowDown')  velocityY -= pan;
         if (e.key === 'PageUp') { e.preventDefault(); velocityZ += zoom; }
         if (e.key === 'PageDown') { e.preventDefault(); velocityZ -= zoom; }
-        
-        // Rapid Snap Navigation
+
+        // Snap to wall boundaries
         if (e.key === 'Home') snapToTile('first');
         if (e.key === 'End') snapToTile('last');
     }
 });
 
+// Jump to first or last tile
 function snapToTile(pos) {
     const tiles = document.querySelectorAll('.wall-tile');
     if (tiles.length === 0) return;
@@ -273,10 +277,11 @@ function snapToTile(pos) {
     velocityX = 0; velocityY = 0;
 }
 
+// --- MOUSE GESTURES ---
 window.addEventListener('mousedown', (e) => {
     if(zoomLayer.classList.contains('active')) return;
-    isDragging = true; 
-    lastX = e.pageX; 
+    isDragging = true;
+    lastX = e.pageX;
     lastY = e.pageY;
     velocityX = 0; velocityY = 0; velocityZ = 0;
 });
@@ -292,12 +297,14 @@ window.addEventListener('mousemove', (e) => {
 
 window.addEventListener('mouseup', () => isDragging = false);
 
+// --- WHEEL ZOOM ---
 window.addEventListener('wheel', (e) => {
     if (zoomLayer.classList.contains('active')) return;
-    velocityZ -= e.deltaY * (pinchPower / 10); 
-    e.preventDefault(); 
+    velocityZ -= e.deltaY * (pinchPower / 10);
+    e.preventDefault();
 }, { passive: false });
 
+// --- TOUCH GESTURES ---
 function getDistance(t) { return Math.hypot(t[0].pageX - t[1].pageX, t[0].pageY - t[1].pageY); }
 
 window.addEventListener('touchstart', (e) => {
@@ -305,7 +312,7 @@ window.addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
         initialPinchDistance = getDistance(e.touches);
         initialZ = targetZ;
-        velocityZ = 0; 
+        velocityZ = 0;
     } else {
         isDragging = true;
         lastX = e.touches[0].pageX; lastY = e.touches[0].pageY;
@@ -316,20 +323,21 @@ window.addEventListener('touchstart', (e) => {
 window.addEventListener('touchmove', (e) => {
     if (e.touches.length === 2) {
         const d = getDistance(e.touches) - initialPinchDistance;
-        targetZ = Math.max(-8000, Math.min(800, initialZ + (d * pinchPower))); 
+        targetZ = Math.max(-8000, Math.min(800, initialZ + (d * pinchPower)));
     } else if (isDragging) {
         const dx = (e.touches[0].pageX - lastX) * dragWeight;
         const dy = (e.touches[0].pageY - lastY) * dragWeight;
         targetX += dx; targetY += dy;
         velocityX = dx; velocityY = dy;
         lastX = e.touches[0].pageX; lastY = e.touches[0].pageY;
-        if (Math.abs(velocityX) > 5) e.preventDefault(); 
+        if (Math.abs(velocityX) > 5) e.preventDefault();
     }
 }, { passive: false });
 
 window.addEventListener('touchend', () => isDragging = false);
 
-// --- ZOOM & GALLERY LOGIC ---
+// --- ZOOM AND GALLERY ---
+// Navigate between images in zoomed view
 function navigateGallery(direction) {
     if (!originTile) return;
     const sibling = direction === 1 ? originTile.nextElementSibling : originTile.previousElementSibling;
@@ -338,11 +346,12 @@ function navigateGallery(direction) {
             document.body.removeChild(activeClone);
             activeClone = null;
         }
-        zoomLayer.classList.remove('active'); 
+        zoomLayer.classList.remove('active');
         zoomImage(sibling);
     }
 }
 
+// Open image in fullscreen zoom
 function zoomImage(el) {
     originTile = el;
     const img = el.querySelector('img');
@@ -353,17 +362,17 @@ function zoomImage(el) {
     activeClone.className = "zoom-clone";
     activeClone.src = img.src;
     activeClone.style.cssText = `width:${rect.width}px; height:${rect.height}px; left:${rect.left}px; top:${rect.top}px;`;
-    
+
     document.body.appendChild(activeClone);
     zoomLayer.classList.add('active');
-    
+
     requestAnimationFrame(() => {
         const pad = window.innerWidth > 768 ? 0.95 : 1.0;
         zoomBaseScale = Math.min((window.innerWidth * pad) / rect.width, (window.innerHeight * pad) / rect.height);
         const cX = (window.innerWidth / 2) - rect.left - (rect.width / 2);
         const cY = (window.innerHeight / 2) - rect.top - (rect.height / 2);
         activeClone.style.transform = `translate(${cX}px, ${cY}px) scale(${zoomBaseScale})`;
-        
+
         const high = new Image();
         high.src = fullRes;
         high.onload = () => { if(activeClone) activeClone.src = fullRes; };
@@ -403,6 +412,7 @@ function zoomImage(el) {
     activeClone.onclick = (e) => { if(!isZoomDragging) closeZoom(); };
 }
 
+// Close zoomed view
 function closeZoom() {
     zoomLayer.classList.remove('active');
     if (!activeClone) return;

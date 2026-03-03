@@ -1,7 +1,7 @@
 <?php
 /**
- * SnapSmack Admin Theme Manifest - Inspector Clouseau
- * Version: 1.0 - Light Mode Production
+ * SNAPSMACK - Configuration manifest for the Inspector Clouseau admin theme
+ * Alpha v0.6
  */
 
 return [

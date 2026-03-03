@@ -1,7 +1,7 @@
 <?php
 /**
- * SnapSmack Admin Theme Manifest - Amber Phosphorus
- * Version: 1.2 - Full Monochrome Production
+ * SNAPSMACK - Configuration manifest for the Amber Phosphorus admin theme
+ * Alpha v0.6
  */
 
 return [

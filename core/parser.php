@@ -1,8 +1,11 @@
 <?php
 /**
- * SnapSmack Core Parser
- * Version: PRO-PENCIL 4.9.1 - Dual-Table Asset Routing
- * Logic: Hybrid routing for snap_images (photography) and snap_assets (media).
+ * SNAPSMACK - Content Parser and Asset Router
+ * Alpha v0.6
+ *
+ * Parses shortcodes in content and converts them to image markup. Supports
+ * both snap_assets (media library uploads) and snap_images (photography posts)
+ * with fallback logic. Handles thumbnail/wall variants automatically.
  */
 
 class SnapSmack {
@@ -14,30 +17,40 @@ class SnapSmack {
         $this->loadConfig();
     }
 
+    // --- CONFIGURATION LOADER ---
+    // Load site settings from the database into a config array.
+    // Fails silently if the table is unavailable.
     private function loadConfig() {
         try {
             $stmt = $this->pdo->query("SELECT setting_key, setting_val FROM snap_settings");
             $this->config = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-        } catch (PDOException $e) { 
-            $this->config = []; 
+        } catch (PDOException $e) {
+            $this->config = [];
         }
     }
 
+    // --- CONTENT PARSER ---
+    // Parse all [img:ID|size|align] shortcodes in the provided content.
+    // Returns HTML with <img> tags, or an empty string if the asset is not found.
     public function parseContent($content) {
         if (empty($content)) return "";
 
-        // Shortcode Engine: Handles [img:ID|size|align]
+        // Shortcode pattern: [img:ID] or [img:ID|size] or [img:ID|size|align]
+        // Size: small (thumbnail), wall (gallery wall), full (default)
+        // Align: left, center (default), right
         return preg_replace_callback('/\[img:\s*(\d+)(?:\s*\|\s*(small|wall|full))?(?:\s*\|\s*(left|center|right))?\s*\]/i', function($matches) {
             $id = $matches[1];
             $size = $matches[2] ?? 'full';
             $align = $matches[3] ?? 'center';
 
-            // 1. ATTEMPT MEDIA ASSETS FIRST (smack-media.php uploads)
+            // --- ASSET LOOKUP (PRIORITY 1) ---
+            // Try media assets first (smack-media.php uploads)
             $stmt = $this->pdo->prepare("SELECT asset_path as path, asset_name as name FROM snap_assets WHERE id = ? LIMIT 1");
             $stmt->execute([$id]);
             $asset = $stmt->fetch();
 
-            // 2. FALLBACK TO SNAP_IMAGES (Main Photography Posts)
+            // --- FALLBACK TO SNAP_IMAGES (PRIORITY 2) ---
+            // If not in snap_assets, look in snap_images (main photography posts)
             if (!$asset) {
                 $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name FROM snap_images WHERE id = ? LIMIT 1");
                 $stmt->execute([$id]);
@@ -46,12 +59,13 @@ class SnapSmack {
 
             if (!$asset) return "";
 
+            // Determine base URL from environment or config
             $base = defined('BASE_URL') ? BASE_URL : (rtrim($this->config['site_url'] ?? '/', '/') . '/');
             $raw_path = ltrim($asset['path'], '/');
 
-            // --- TRIPLE PATH LOGIC ---
-            // Only apply thumb/wall logic if the file is in an 'uploads' directory 
-            // and actually has a thumb. Otherwise, return the raw path.
+            // --- PATH RESOLUTION ---
+            // For uploads in the thumbs directory, apply size modifiers.
+            // Otherwise, return the raw path as-is.
             $filename = basename($raw_path);
             $folder = str_replace($filename, '', $raw_path);
 

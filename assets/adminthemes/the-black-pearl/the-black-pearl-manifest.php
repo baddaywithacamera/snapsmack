@@ -1,6 +1,7 @@
 <?php
 /**
- * SnapSmack Admin Theme Manifest - The Black Pearl
+ * SNAPSMACK - Configuration manifest for the The Black Pearl admin theme
+ * Alpha v0.6
  */
 
 return [

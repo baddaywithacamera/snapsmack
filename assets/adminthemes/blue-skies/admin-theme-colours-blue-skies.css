@@ -1,13 +1,8 @@
-/* * SNAPSMACK MASTER COLOUR INDEX (THE PAINT)
- * ---------------------------------------------------------------------------
- * 01: Global Base       | 06: Form Elements     | 11: Pagination
- * 02: Sidebar Nav       | 07: Transmissions     | 12: Progress/Uploads
- * 03: Main Headers      | 08: Buttons/Actions   | 13: Login/Footer
- * 04: Content Boxes     | 09: Item Lists        | 14: Appearance
- * 05: Media Previews    | 10: Dash/Stats        | 15: Overrides
- * ---------------------------------------------------------------------------
- * v2026.1 - BLUE SKIES (LIGHT THEME)
- * PALETTE: #f4f9fd (Bg), #3498db (Sky Blue), #5d6d7e (Storm Slate), #d6eaf8 (Border)
+/**
+ * SNAPSMACK - Blue Skies admin theme colors
+ * Alpha v0.6
+ *
+ * Light theme with sky blue accents. All color values for admin-theme-geometry-master.css.
  */
 
 /* 01: GLOBAL BASE */

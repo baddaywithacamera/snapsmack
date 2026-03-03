@@ -1,3 +1,6 @@
+This license applies to the following files included in SnapSmack:
+- assets/fonts/blackcasper.regular.ttf
+
 Thanks for downloading BlackCasper by AllencHIU cHIU
 
 Free for you to use anywhere, do whatever you want with it. I love to see my fonts being used, so e-mail me!

@@ -1,9 +1,10 @@
 <?php
 /**
- * SNAPSMACK - Asset & database sync utility.
+ * SNAPSMACK - Asset and database sync utility
+ * Alpha v0.6
+ *
  * Regenerates missing gallery wall thumbnails and prunes orphan files.
  * Ensures the physical file system matches the database registry.
- * Git Version Official Alpha 0.5
  */
 
 require_once 'core/auth.php';
@@ -13,7 +14,7 @@ set_time_limit(600);
 ini_set('memory_limit', '512M');
 
 $page_title = "System Sync";
-include 'core/admin-header.php'; 
+include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
@@ -36,12 +37,12 @@ include 'core/sidebar.php';
 
         foreach ($db_images as $img) {
             $file = $img['img_file'];
-            $registered_files[] = realpath($file); 
-            
+            $registered_files[] = realpath($file);
+
             $path_info = pathinfo($file);
             $wall_thumb = $path_info['dirname'] . '/thumbs/wall_' . $path_info['basename'];
             $sq_thumb = $path_info['dirname'] . '/thumbs/t_' . $path_info['basename'];
-            
+
             // Track existing thumbnails so they aren't marked as orphans in Step 2.
             if(file_exists($wall_thumb)) $registered_files[] = realpath($wall_thumb);
             if(file_exists($sq_thumb)) $registered_files[] = realpath($sq_thumb);
@@ -58,31 +59,31 @@ include 'core/sidebar.php';
                 $wall_h = 500;
                 $wall_w = round($orig_w * ($wall_h / $orig_h));
                 $mime = mime_content_type($file);
-                
-                if ($mime == 'image/jpeg') { $src = @imagecreatefromjpeg($file); } 
-                elseif ($mime == 'image/png') { $src = @imagecreatefrompng($file); } 
-                elseif ($mime == 'image/webp') { $src = @imagecreatefromwebp($file); } 
-                
+
+                if ($mime == 'image/jpeg') { $src = @imagecreatefromjpeg($file); }
+                elseif ($mime == 'image/png') { $src = @imagecreatefrompng($file); }
+                elseif ($mime == 'image/webp') { $src = @imagecreatefromwebp($file); }
+
                 if (isset($src)) {
                     $w_dst = imagecreatetruecolor($wall_w, $wall_h);
-                    
+
                     // Handle transparency for non-JPEG formats.
-                    if ($mime != 'image/jpeg') { 
-                        imagealphablending($w_dst, false); 
-                        imagesavealpha($w_dst, true); 
+                    if ($mime != 'image/jpeg') {
+                        imagealphablending($w_dst, false);
+                        imagesavealpha($w_dst, true);
                     }
-                    
+
                     imagecopyresampled($w_dst, $src, 0, 0, 0, 0, $wall_w, $wall_h, $orig_w, $orig_h);
-                    
+
                     // Save processed thumbnail based on original mime type.
-                    if ($mime == 'image/png') { imagepng($w_dst, $wall_thumb, 8); } 
-                    elseif ($mime == 'image/webp') { imagewebp($w_dst, $wall_thumb, 60); } 
+                    if ($mime == 'image/png') { imagepng($w_dst, $wall_thumb, 8); }
+                    elseif ($mime == 'image/webp') { imagewebp($w_dst, $wall_thumb, 60); }
                     else { imagejpeg($w_dst, $wall_thumb, 80); }
-                    
-                    imagedestroy($src); 
+
+                    imagedestroy($src);
                     imagedestroy($w_dst);
-                    
-                    $registered_files[] = realpath($wall_thumb); 
+
+                    $registered_files[] = realpath($wall_thumb);
                     echo "<div style='color:#39FF14;'>[FIXED] {$img['img_title']}</div>";
                     $fixed++;
                 }
@@ -90,13 +91,13 @@ include 'core/sidebar.php';
                 $skipped++;
             }
         }
-        echo "</div>"; 
+        echo "</div>";
 
         // --- STEP 2: ORPHAN PRUNING ---
         // Scan the upload directory for files that have no record in the database.
         echo "<h3>STEP 2: PRUNING ORPHAN FILES</h3>";
         echo "<div class='signal-body' style='max-height: 300px; overflow-y: auto;'>";
-        
+
         $upload_dir = new RecursiveDirectoryIterator('img_uploads');
         $iterator = new RecursiveIteratorIterator($upload_dir);
         $deleted_count = 0;
@@ -104,11 +105,11 @@ include 'core/sidebar.php';
         foreach ($iterator as $file_info) {
             if ($file_info->isFile()) {
                 $file_path = $file_info->getRealPath();
-                
+
                 // If the physical file isn't in our registered list, it is an orphan.
                 if (!in_array($file_path, $registered_files)) {
                     $ext = strtolower($file_info->getExtension());
-                    
+
                     // Only prune image formats to avoid deleting critical system files.
                     if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
                         if (unlink($file_path)) {
@@ -120,7 +121,7 @@ include 'core/sidebar.php';
             }
         }
         if($deleted_count === 0) echo "<div style='color:#666;'>No orphans found. System is clean.</div>";
-        echo "</div>"; 
+        echo "</div>";
         ?>
     </div>
 

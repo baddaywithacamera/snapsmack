@@ -1,6 +1,9 @@
-/* ==========================================================================
-   SNAPSMACK - LOGO GLITCH ENGINE STYLES (v1.0)
-   ========================================================================== */
+/**
+ * SNAPSMACK - Logo glitch and effect animations
+ * Alpha v0.6
+ *
+ * Dynamic text and logo transformations with glitch effects.
+ */
 
 .snapsmack-logo {
     position: relative;

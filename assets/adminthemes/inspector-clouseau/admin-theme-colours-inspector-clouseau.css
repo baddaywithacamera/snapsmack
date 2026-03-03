@@ -1,13 +1,8 @@
-/* * SNAPSMACK MASTER COLOUR INDEX (THE PAINT)
- * ---------------------------------------------------------------------------
- * 01: Global Base       | 06: Form Elements     | 11: Pagination
- * 02: Sidebar Nav       | 07: Transmissions     | 12: Progress/Uploads
- * 03: Main Headers      | 08: Buttons/Actions   | 13: Login/Footer
- * 04: Content Boxes     | 09: Item Lists        | 14: Appearance
- * 05: Media Previews    | 10: Dash/Stats        | 15: Overrides
- * ---------------------------------------------------------------------------
- * v2026.1 - INSPECTOR CLOUSEAU (LIGHT THEME)
- * PALETTE: #fdf0f6 (Bg), #e83e8c (Hot Pink), #3b6991 (Dusty Navy), #f0c8dc (Border)
+/**
+ * SNAPSMACK - Inspector Clouseau admin theme colors
+ * Alpha v0.6
+ *
+ * Light theme with hot pink accents. All color values for admin-theme-geometry-master.css.
  */
 
 /* 01: GLOBAL BASE */

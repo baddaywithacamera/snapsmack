@@ -1,23 +1,19 @@
 <?php
 /**
- * SnapSmack - Archive Browser
- * Version: PRO-5.0 - Multi-Layout Engine
- * Supports three display modes driven by skin manifest:
- *   - square:  400x400 center-cropped grid (t_ prefix)
- *   - cropped: max 3:2 / 2:3 aspect, center-cropped (a_ prefix)
- *   - masonry: full native aspect, Pinterest-style columns (a_ prefix)
- * MASTER DIRECTIVE: Full file return. Standardized junctions & scope safety.
+ * SNAPSMACK - Archive page with multiple layout modes
+ * Alpha v0.6
+ *
+ * Displays all published images with support for square, cropped, and
+ * masonry layouts. Handles category and album filtering via query parameters.
  */
 
-// 1. Error Reporting (Safety Valve)
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-// 2. Bootstrap Environment
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/parser.php';
 
-// INITIALIZE SCOPE (Prevents Skin/Footer Crashes)
+// --- INITIALIZATION ---
 $settings = [];
 $site_name = 'ISWA.CA';
 $active_skin = 'smackdown';
@@ -25,35 +21,36 @@ $active_skin = 'smackdown';
 try {
     $snapsmack = new SnapSmack($pdo);
 
-    // Fetch Global Settings
+    // --- SETTINGS LOADING ---
     $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
-    
-    // THE PENCIL: Define BASE_URL (Force Trailing Slash)
+
+    // Define BASE_URL from settings with trailing slash for consistent routing
     if (!defined('BASE_URL')) {
         $db_url = $settings['site_url'] ?? 'https://iswa.ca/';
-        define('BASE_URL', rtrim($db_url, '/') . '/'); 
+        define('BASE_URL', rtrim($db_url, '/') . '/');
     }
 
     $active_skin = $settings['active_skin'] ?? 'smackdown';
     $site_name = $settings['site_name'] ?? $site_name;
 
     // --- ARCHIVE LAYOUT MODE ---
-    // Resolved from skin manifest via settings. Falls back to 'square'.
+    // Determines visual presentation: square (1:1), cropped (max 3:2/2:3), or masonry (full aspect).
+    // Loaded from skin manifest via settings. Falls back to 'square' if invalid.
     $archive_layout = $settings['archive_layout'] ?? 'square';
     if (!in_array($archive_layout, ['square', 'cropped', 'masonry'])) {
         $archive_layout = 'square';
     }
 
-    // --- THUMB SIZE RESOLUTION ---
-    // Abstract 5-step scale → layout-specific pixel values.
-    // Cropped values are ~25% larger than square so visual weight matches.
-    // Justified ignores this (uses flex-grow + row height instead).
+    // --- THUMBNAIL SIZE RESOLUTION ---
+    // Maps abstract 5-step scale (xs, s, m, l, xl) to pixel values.
+    // Cropped values are ~25% larger than square to maintain visual weight.
+    // Backwards compatible with old numeric pixel values.
     $thumb_size_map = [
         'square' => ['xs' => 120, 's' => 150, 'm' => 200, 'l' => 250, 'xl' => 300],
         'cropped' => ['xs' => 150, 's' => 190, 'm' => 250, 'l' => 310, 'xl' => 375],
     ];
     $thumb_step = $settings['thumb_size'] ?? 'm';
-    // Backwards compat: if old pixel value, map to closest step
+    // Convert old pixel values to step names for backwards compatibility
     if (is_numeric($thumb_step)) {
         $px = (int)$thumb_step;
         if ($px <= 130) $thumb_step = 'xs';
@@ -65,15 +62,17 @@ try {
     if (!in_array($thumb_step, ['xs', 's', 'm', 'l', 'xl'])) $thumb_step = 'm';
     $thumb_px = $thumb_size_map[$archive_layout][$thumb_step] ?? $thumb_size_map['square']['m'];
 
-    // Justified row target height (skin-configurable, default 280)
+    // Justified row target height for masonry layout
     $justified_row_height = (int)($settings['justified_row_height'] ?? 280);
 
-    // 4. Filter Logic (GET params)
+    // --- FILTER PARAMETERS ---
+    // Extract category or album ID from query string
     $cat_filter   = isset($_GET['cat']) ? (int)$_GET['cat'] : null;
     $album_filter = isset($_GET['album']) ? (int)$_GET['album'] : null;
 
-    // 5. Build Query
-    // Timezone is set globally in core/db.php — no per-file override needed.
+    // --- DATABASE QUERY ---
+    // Timezone is configured globally in core/db.php.
+    // Filters by publication status and timestamp to respect scheduled posts.
     $now_local = date('Y-m-d H:i:s');
 
     $sql = "SELECT i.* FROM snap_images i ";
@@ -97,7 +96,8 @@ try {
     $stmt->execute($params);
     $images = $stmt->fetchAll();
 
-    // 6. Fetch Meta for Dropdowns
+    // --- METADATA FOR FILTERS ---
+    // Fetch all categories and albums for filter dropdowns
     $all_cats   = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
     $all_albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
 
@@ -115,8 +115,8 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
 
 <body class="archive-page archive-layout-<?php echo $archive_layout; ?>">
     <div id="page-wrapper">
-        
-        <?php 
+
+        <?php
         $header_file = __DIR__ . '/' . $skin_path . '/skin-header.php';
         include (file_exists($header_file)) ? $header_file : __DIR__ . '/core/header.php';
         ?>
@@ -161,27 +161,18 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
         <div id="scroll-stage">
 
             <?php if ($archive_layout === 'masonry'): ?>
-            <!-- ============================================================
-                 JUSTIFIED LAYOUT — Flickr-style row-fill, full aspect ratio
-                 PHP groups images into rows using a reference width for
-                 row-break decisions. Actual sizing is 100% CSS flexbox —
-                 each item gets flex-grow equal to its aspect ratio so the
-                 browser fills the row perfectly at any container width.
-                 ============================================================ -->
+            <!-- Justified layout — Flickr-style row-fill with full aspect ratios.
+                 PHP groups images into rows for semantics; CSS flexbox handles sizing.
+                 Each item's flex-grow equals its aspect ratio for perfect row alignment. -->
             <?php
-                // Target row height — used for row-break math only
                 $target_row_h = (int)($settings['justified_row_height'] ?? 280);
                 $gap          = (int)($settings['justified_gap'] ?? 4);
-
-                // Reference width for row-break decisions.
-                // This doesn't set the rendered width — CSS handles that.
-                // We use main_canvas_width as an approximation; flex handles the rest.
                 $ref_w = (int)($settings['main_canvas_width'] ?? 1280);
             ?>
             <div id="justified-grid" style="--justified-gap: <?php echo $gap; ?>px; --justified-row-height: <?php echo $target_row_h; ?>px;">
                 <?php if ($images): ?>
                     <?php
-                    // Build rows: accumulate images until estimated row is full
+                    // Build rows by accumulating images until estimated width reaches reference width
                     $rows = [];
                     $current_row = [];
                     $current_row_width = 0;
@@ -204,7 +195,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                             $current_row_width = 0;
                         }
                     }
-                    // Last partial row — marked so CSS doesn't over-stretch it
+                    // Last partial row is marked for CSS to avoid over-stretching
                     if (!empty($current_row)) {
                         $rows[] = ['images' => $current_row, 'full' => false];
                     }
@@ -215,13 +206,12 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                         $row_class = 'justified-row' . (!$is_full ? ' justified-row-last' : '');
                     ?>
                         <div class="<?php echo $row_class; ?>">
-                            <?php foreach ($row as $img): 
+                            <?php foreach ($row as $img):
                                 $link = BASE_URL . htmlspecialchars($img['img_slug']);
                                 $full_img_path = ltrim($img['img_file'], '/');
                                 $filename = basename($full_img_path);
                                 $folder = str_replace($filename, '', $full_img_path);
                                 $thumb_url = BASE_URL . $folder . 'thumbs/a_' . $filename;
-                                // Aspect ratio * 100 for flex-grow (avoids sub-1 decimals)
                                 $flex_grow = round($img['_aspect'] * 100);
                             ?>
                                 <a href="<?php echo $link; ?>" class="justified-item" title="<?php echo htmlspecialchars($img['img_title']); ?>" style="flex-grow: <?php echo $flex_grow; ?>; aspect-ratio: <?php echo round($img['_aspect'], 4); ?>;">
@@ -236,24 +226,21 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             </div>
 
             <?php elseif ($archive_layout === 'cropped'): ?>
-            <!-- ============================================================
-                 CROPPED LAYOUT — Max 3:2 / 2:3 aspect, center-cropped
-                 ============================================================ -->
+            <!-- Cropped layout — Center-cropped to max 3:2 or 2:3 aspect ratio -->
             <div id="browse-grid" class="cropped-grid" style="--grid-cols: <?php echo htmlspecialchars($settings['browse_cols'] ?? 4); ?>; --thumb-width: <?php echo $thumb_px; ?>px;">
                 <?php if ($images): ?>
                     <?php foreach ($images as $img): ?>
                         <div class="thumb-container cropped-item">
-                            <?php 
+                            <?php
                                 $link = BASE_URL . htmlspecialchars($img['img_slug']);
                                 $full_img_path = ltrim($img['img_file'], '/');
                                 $filename = basename($full_img_path);
                                 $folder = str_replace($filename, '', $full_img_path);
-                                
+
                                 // Cropped mode uses a_ (aspect-preserved) thumbnails
-                                // CSS handles the 3:2 max crop via object-fit
                                 $thumb_url = BASE_URL . $folder . 'thumbs/a_' . $filename;
 
-                                // Determine orientation class for aspect-ratio clamping
+                                // Orientation class constrains aspect ratio clamping via CSS
                                 $orientation = (int)($img['img_orientation'] ?? 0);
                                 $orient_class = 'orient-landscape';
                                 if ($orientation === 1) $orient_class = 'orient-portrait';
@@ -270,19 +257,17 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             </div>
 
             <?php else: ?>
-            <!-- ============================================================
-                 SQUARE LAYOUT — Classic 1:1 center-cropped grid (default)
-                 ============================================================ -->
+            <!-- Square layout — Classic 1:1 center-cropped grid (default) -->
             <div id="browse-grid" class="square-grid" style="--grid-cols: <?php echo htmlspecialchars($settings['browse_cols'] ?? 4); ?>; --thumb-width: <?php echo $thumb_px; ?>px;">
                 <?php if ($images): ?>
                     <?php foreach ($images as $img): ?>
                         <div class="thumb-container">
-                            <?php 
+                            <?php
                                 $link = BASE_URL . htmlspecialchars($img['img_slug']);
                                 $full_img_path = ltrim($img['img_file'], '/');
                                 $filename = basename($full_img_path);
                                 $folder = str_replace($filename, '', $full_img_path);
-                                
+
                                 // Square mode uses t_ (square-cropped) thumbnails
                                 $thumb_url = BASE_URL . $folder . 'thumbs/t_' . $filename;
                             ?>
@@ -297,9 +282,9 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             </div>
             <?php endif; ?>
 
-            <?php 
+            <?php
             $footer_file = __DIR__ . '/' . $skin_path . '/skin-footer.php';
-            if (file_exists($footer_file)) include $footer_file; 
+            if (file_exists($footer_file)) include $footer_file;
             ?>
         </div>
     </div>

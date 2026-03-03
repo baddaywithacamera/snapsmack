@@ -1,24 +1,27 @@
 <?php
 /**
- * SnapSmack Core Admin Header
- * Version: 7.0 - Geometry Master Integration
- * -------------------------------------------------------------------------
- * - REMOVED: Legacy cruft toggle and split structural pointers.
- * - FIXED: Single-point geometry master integration.
- * - SYNCED: Theme discovery logic preserved.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Admin Dashboard Header
+ * Alpha v0.6
+ *
+ * Outputs the HTML <head> and opening <body> tags for all admin pages.
+ * Resolves the active theme from the user's session preference, loads the
+ * appropriate theme CSS, and detects cron/PHP-CLI availability for scheduled
+ * tasks.
  */
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// --- LOAD SETTINGS ---
+// Fetch site settings from the database if not already in scope
 if (!isset($settings)) {
     $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
     $settings = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 }
 
-// Cron capability detection — available to all admin pages via this header
+// --- CRON CAPABILITY DETECTION ---
+// Check if the server supports cron and PHP CLI for scheduled task runner
 $cron_supported  = false;
 $php_cli_path    = '';
 if (function_exists('exec')) {
@@ -28,12 +31,17 @@ if (function_exists('exec')) {
     if (strpos($php_cli_path, '/') !== 0) $php_cli_path = '';
 }
 
+// --- THEME RESOLUTION ---
+// Use the user's session preference, fall back to the global setting,
+// then default to midnight-lime
 $active_theme = $_SESSION['user_preferred_skin'] ?? $settings['active_theme'] ?? 'midnight-lime';
 $theme_base = "assets/adminthemes/{$active_theme}/";
 $manifest_path = $theme_base . "{$active_theme}-manifest.php";
 
-$colour_css_file = "admin-theme-colours-{$active_theme}.css"; 
+$colour_css_file = "admin-theme-colours-{$active_theme}.css";
 
+// --- MANIFEST-DRIVEN CSS FILE ---
+// Allow theme manifests to override the default CSS filename
 if (file_exists($manifest_path)) {
     $m_data = include $manifest_path;
     if (isset($m_data['css_file'])) {

@@ -1,15 +1,16 @@
 <?php
 /**
- * SNAPSMACK - User Manager.
- * Orchestrates administrative access control and account lifecycle.
- * Enforces security protocols and prevents self-termination of active sessions.
- * Git Version Official Alpha 0.5
+ * SNAPSMACK - User account management
+ * Alpha v0.6
+ *
+ * Handles creation, editing, and deletion of administrator and editor accounts.
+ * Enforces password hashing and prevents self-deletion of the active user.
  */
 
 require_once 'core/auth.php';
 
-// --- 1. ACTION: ADD NEW USER ---
-// Processes the registration of new system operators.
+// --- USER CREATION ---
+// Registers a new system user with hashed password and assigned role.
 if (isset($_POST['add_user'])) {
     $new_user = trim($_POST['username']);
     $new_email = trim($_POST['email']);
@@ -18,7 +19,7 @@ if (isset($_POST['add_user'])) {
 
     if (!empty($new_user) && !empty($raw_pass)) {
         $hashed_pass = password_hash($raw_pass, PASSWORD_BCRYPT, ['cost' => 12]);
-        
+
         $stmt = $pdo->prepare("INSERT INTO snap_users (username, email, password_hash, user_role) VALUES (?, ?, ?, ?)");
         try {
             $stmt->execute([$new_user, $new_email, $hashed_pass, $new_role]);
@@ -29,15 +30,15 @@ if (isset($_POST['add_user'])) {
     }
 }
 
-// --- 2. ACTION: DELETE USER ---
-// Removes user access while preventing the deletion of the active logged-in account.
+// --- USER DELETION ---
+// Removes a user account with safeguard against deleting the logged-in user.
 if (isset($_GET['delete'])) {
     $uid = (int)$_GET['delete'];
     if (isset($_SESSION['user_login'])) {
         $stmt = $pdo->prepare("SELECT username FROM snap_users WHERE id = ?");
         $stmt->execute([$uid]);
         $target = $stmt->fetchColumn();
-        
+
         if ($target !== $_SESSION['user_login']) {
             $pdo->prepare("DELETE FROM snap_users WHERE id = ?")->execute([$uid]);
             header("Location: smack-users.php");
@@ -48,8 +49,8 @@ if (isset($_GET['delete'])) {
     }
 }
 
-// --- 3. DATA ACQUISITION ---
-// Fetch all registered accounts for management review.
+// --- DATA RETRIEVAL ---
+// Load all user accounts for display and management.
 $users = $pdo->query("SELECT id, username, email, user_role FROM snap_users ORDER BY username ASC")->fetchAll();
 
 $page_title = "User Manager";

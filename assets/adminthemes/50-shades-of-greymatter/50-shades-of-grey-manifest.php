@@ -1,7 +1,7 @@
 <?php
 /**
- * SnapSmack Admin Theme Manifest - 50 Shades of Greymatter
- * Git Version Official Alpha 0.5
+ * SNAPSMACK - Configuration manifest for the 50 Shades of Greymatter admin theme
+ * Alpha v0.6
  */
 
 return [

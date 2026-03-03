@@ -1,24 +1,22 @@
 /**
- * SnapSmack Engine: Admin UI
- * Version: 1.0 - Extracted from deprecated smack-ui-private.js
- * -------------------------------------------------------------------------
- * Admin-side UI functions: custom multiselect dropdowns, label updates,
- * registry filtering, file upload display, EXIF preflight, checkbox toggles,
- * and config panel listeners.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Admin UI Engine
+ * Alpha v0.6
+ *
+ * Handles admin-side interface: custom multiselect dropdowns, label management,
+ * registry filtering, file upload handling, EXIF preflight, and form submission.
  */
 
 console.log("LOG: SS-ENGINE-ADMIN-UI v1.0 active.");
 
-// --- 1. CUSTOM MULTISELECT DROPDOWNS ---
+// --- CUSTOM MULTISELECT DROPDOWNS ---
 
 window.toggleDropdown = function (id) {
     const el = document.getElementById(id);
     if (!el) return;
     const isOpen = el.style.display === 'block';
-    
+
     document.querySelectorAll('.dropdown-content').forEach(d => d.style.display = 'none');
-    
+
     el.style.display = isOpen ? 'none' : 'block';
 };
 
@@ -41,14 +39,14 @@ window.filterRegistry = function (input, containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
     const items = container.getElementsByClassName('multi-cat-item');
-    
+
     for (let i = 0; i < items.length; i++) {
         const text = items[i].querySelector('.cat-name-text').innerText.toUpperCase();
         items[i].style.display = text.indexOf(filter) > -1 ? "" : "none";
     }
 };
 
-// --- 2. CLOSE DROPDOWNS ON OUTSIDE CLICK ---
+// --- CLOSE DROPDOWNS ON OUTSIDE CLICK ---
 
 window.addEventListener('click', function(event) {
     if (!event.target.closest('.custom-multiselect')) {
@@ -56,11 +54,11 @@ window.addEventListener('click', function(event) {
     }
 });
 
-// --- 3. DOMCONTENTLOADED: FILE UPLOAD, PREFLIGHT, CHECKBOX TOGGLES ---
+// --- INITIALIZATION AND EVENT HANDLERS ---
 
 document.addEventListener("DOMContentLoaded", function () {
 
-    // Config panel listeners (clock, sliders, color pickers)
+    // Clock display with timezone and format selection
     const clockElement = document.getElementById('local-clock');
     const tzSelect = document.getElementById('timezone-select');
     const fmtSelect = document.getElementById('format-select');
@@ -76,17 +74,18 @@ document.addEventListener("DOMContentLoaded", function () {
                     hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
                 });
                 clockElement.textContent = `${selectedFormatExample} - ${timeFmt.format(now)}`;
-            } catch (e) { 
-                clockElement.textContent = "Sync Error"; 
+            } catch (e) {
+                clockElement.textContent = "Sync Error";
             }
         };
-        
+
         setInterval(updateClock, 1000);
         tzSelect.addEventListener('change', updateClock);
         fmtSelect.addEventListener('change', updateClock);
         updateClock();
     }
 
+    // Row count slider for grid layout
     const rowSlider = document.getElementById('row-slider');
     const rowDisplay = document.getElementById('row-display');
     if (rowSlider && rowDisplay) {
@@ -95,6 +94,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    // Color picker for display
     const colorPicker = document.getElementById('color-picker');
     const hexDisplay = document.getElementById('hex-display');
     if (colorPicker && hexDisplay) {
@@ -103,7 +103,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // File upload display + EXIF preflight
+    // File upload interaction and EXIF metadata extraction
     const fileInput = document.getElementById("post-file-input") || document.getElementById("file-input");
     const customBtn = document.querySelector(".file-custom-btn");
     const fileNameText = document.getElementById("post-file-name") || document.getElementById("file-name-text");
@@ -131,7 +131,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 titleInput.value = nameOnly.replace(/[_-]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
             }
 
-            // EXIF preflight — auto-fill metadata fields from uploaded image
+            // Extract EXIF metadata from uploaded image and populate form fields
             const formData = new FormData();
             formData.append("image_file", file);
             fetch("smack-preflight.php", { method: "POST", body: formData })
@@ -152,13 +152,13 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // AJAX form submission with progress bar
+    // Form submission with upload progress tracking
     const form = document.getElementById("smack-form-post") || document.getElementById("smack-form");
     if (form) {
         form.onsubmit = function (e) {
             e.preventDefault();
 
-            // Validate file selection (can't use required on hidden input)
+            // Ensure a file is selected before allowing submission
             const fileField = form.querySelector('input[type="file"][name="img_file"]');
             if (fileField && (!fileField.files || !fileField.files.length)) {
                 alert("NO ASSET SELECTED — Select a file before committing.");
@@ -196,7 +196,7 @@ document.addEventListener("DOMContentLoaded", function () {
         };
     }
 
-    // Checkbox toggles: Built-in lens, Film N/A
+    // Conditional field locking: "Built-in" lens and "N/A" film options
     document.addEventListener("change", function (e) {
         if (e.target.id === "fixed-lens-check") {
             const input = document.getElementById("meta-lens");

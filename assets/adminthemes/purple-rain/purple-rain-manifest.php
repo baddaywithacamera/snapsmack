@@ -1,6 +1,7 @@
 <?php
 /**
- * SnapSmack Admin Theme Manifest - Purple Rain
+ * SNAPSMACK - Configuration manifest for the Purple Rain admin theme
+ * Alpha v0.6
  */
 
 return [

@@ -1,5 +1,12 @@
 Copyright 2022-2024 The Tiny5 Project Authors (https://github.com/Gissio/font_tiny5)
 
+This license applies to all DotMatrix font files in SnapSmack:
+- assets/fonts/DotMatrix/ (64 TTF files)
+
+Note: The DotMatrix font is by the same author as Tiny5 (Gissio). The upstream
+OFL.txt ships with the Tiny5 copyright line. This file is unmodified from source.
+See: https://github.com/Gissio/font_DotMatrix
+
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
 https://scripts.sil.org/OFL

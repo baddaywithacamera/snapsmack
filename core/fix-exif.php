@@ -1,8 +1,11 @@
 <?php
 /**
- * Smack-EXIF Helper
- * Formats raw rational EXIF data into human-readable photography terms.
- * Version: 2.4 - Precision Rounding & Shutter Fix
+ * SNAPSMACK - EXIF Data Formatter
+ * Alpha v0.6
+ *
+ * Converts raw EXIF data (stored as JSON) into human-readable photography
+ * metadata. Handles rational number conversion for aperture, shutter speed,
+ * ISO, and focal length. Supports manual overrides for lens and film type.
  */
 
 function get_smack_exif($data) {
@@ -10,12 +13,12 @@ function get_smack_exif($data) {
 
     $formatted = [];
 
-    // 1. Camera Model
+    // --- CAMERA MODEL ---
     $val_model = ($data['Model'] ?? 'Unknown Camera');
     $formatted['camera'] = ($val_model === 'N/A' || empty($val_model)) ? 'Unknown Camera' : strtoupper($val_model);
 
-    // 2. Aperture (FNumber)
-    $formatted['aperture'] = 'f/0'; 
+    // --- APERTURE (F-NUMBER) ---
+    $formatted['aperture'] = 'f/0';
     if (isset($data['FNumber']) && $data['FNumber'] !== 'N/A') {
         $val = smack_evaluate_fraction($data['FNumber']);
         if ($val > 0) {
@@ -23,31 +26,31 @@ function get_smack_exif($data) {
         }
     }
 
-    // 3. Shutter Speed (ExposureTime) - THE S23 FIX
+    // --- SHUTTER SPEED (EXPOSURE TIME) ---
+    // Check ExposureTime first, then fall back to ShutterSpeedValue
     $formatted['shutter'] = 'N/A';
-    // Check ExposureTime first, then ShutterSpeedValue
     $raw_shutter = $data['ExposureTime'] ?? ($data['ShutterSpeedValue'] ?? 'N/A');
 
     if ($raw_shutter !== 'N/A') {
         $val = smack_evaluate_fraction($raw_shutter);
         if ($val > 0) {
             if ($val < 1) {
-                // Round to the nearest whole denominator for clean fractions
+                // For fast shutter speeds, display as fractions (e.g. 1/125)
                 $formatted['shutter'] = '1/' . round(1 / $val);
             } else {
-                // For long exposures, show the decimal seconds (e.g. 1.5s)
+                // For long exposures, show decimal seconds (e.g. 1.5s)
                 $formatted['shutter'] = round($val, 1) . 's';
             }
         }
     }
 
-    // 4. ISO
-    $formatted['iso'] = (isset($data['ISOSpeedRatings']) && $data['ISOSpeedRatings'] !== 'N/A') 
-                        ? $data['ISOSpeedRatings'] 
+    // --- ISO ---
+    $formatted['iso'] = (isset($data['ISOSpeedRatings']) && $data['ISOSpeedRatings'] !== 'N/A')
+                        ? $data['ISOSpeedRatings']
                         : 'N/A';
 
-    // 5. Focal Length
-    $formatted['focal'] = '0mm'; 
+    // --- FOCAL LENGTH ---
+    $formatted['focal'] = '0mm';
     if (isset($data['FocalLength']) && $data['FocalLength'] !== 'N/A') {
         $val = smack_evaluate_fraction($data['FocalLength']);
         if ($val > 0) {
@@ -55,15 +58,17 @@ function get_smack_exif($data) {
         }
     }
 
-    // 6. Flash
+    // --- FLASH ---
     $raw_flash = $data['Flash'] ?? ($data['flash_fire'] ?? 'No');
     if (is_numeric($raw_flash)) {
+        // EXIF standard: even numbers = no flash, odd numbers = flash fired
         $formatted['flash'] = ($raw_flash % 2 !== 0) ? 'Yes' : 'No';
     } else {
         $formatted['flash'] = (strtoupper($raw_flash) === 'YES') ? 'Yes' : 'No';
     }
 
-    // 7. Manual Overrides (Film/Lens)
+    // --- MANUAL OVERRIDES ---
+    // Lens and film type are not in standard EXIF, so allow manual entry
     $formatted['lens'] = $data['lens'] ?? '';
     $formatted['film'] = $data['film'] ?? '';
 
@@ -71,7 +76,8 @@ function get_smack_exif($data) {
 }
 
 /**
- * Safely converts string fractions or decimals into floats.
+ * Converts string fractions or decimals to floats.
+ * Handles formats like "1/125", "58333333/1000000000", or "0.5"
  */
 function smack_evaluate_fraction($fraction) {
     if (is_numeric($fraction)) return (float)$fraction;
@@ -88,7 +94,7 @@ function smack_evaluate_fraction($fraction) {
             }
         }
     }
-    
+
     // Fallback for decimals stored as strings
     return is_numeric($fraction) ? (float)$fraction : 0.0;
 }

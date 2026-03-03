@@ -1,34 +1,36 @@
 <?php
 /**
- * SNAPSMACK - Global engine configuration.
- * Primary interface for site identity, navigation mapping, and localization.
- * Handles branding assets and server-side image processing parameters.
- * Git Version Official Alpha 0.6
+ * SNAPSMACK - Global site configuration
+ * Alpha v0.6
+ *
+ * Manages site identity, branding, navigation, footer layout, and image processing parameters.
+ * Handles logo and favicon uploads, timezone settings, and feature toggles.
  */
 
 require_once 'core/auth.php';
 
-// --- PERSISTENCE HANDLER ---
+// --- FORM SUBMISSION HANDLER ---
+// Processes logo and favicon uploads, then saves all settings via upsert.
 if (isset($_POST['save_settings'])) {
-    // Handle logo asset upload.
+    // Handle logo file upload to assets directory.
     if (!empty($_FILES['logo_upload']['name'])) {
         $target_dir = "assets/img/";
-        if (!is_dir($target_dir)) { 
-            mkdir($target_dir, 0755, true); 
+        if (!is_dir($target_dir)) {
+            mkdir($target_dir, 0755, true);
         }
         $ext = strtolower(pathinfo($_FILES['logo_upload']['name'], PATHINFO_EXTENSION));
         $target_file = $target_dir . "logo." . $ext;
-        
+
         if (move_uploaded_file($_FILES['logo_upload']['tmp_name'], $target_file)) {
             $_POST['settings']['header_logo_url'] = "/" . $target_file;
         }
     }
 
-    // Handle favicon upload.
+    // Handle favicon upload with type validation.
     if (!empty($_FILES['favicon_upload']['name'])) {
         $target_dir = "assets/img/";
-        if (!is_dir($target_dir)) { 
-            mkdir($target_dir, 0755, true); 
+        if (!is_dir($target_dir)) {
+            mkdir($target_dir, 0755, true);
         }
         $fav_ext = strtolower(pathinfo($_FILES['favicon_upload']['name'], PATHINFO_EXTENSION));
         $allowed_fav = ['ico', 'png', 'svg'];
@@ -40,7 +42,7 @@ if (isset($_POST['save_settings'])) {
         }
     }
 
-    // Save or update each setting key.
+    // Persist all settings, inserting or updating as needed.
     foreach ($_POST['settings'] as $key => $val) {
         $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
         $stmt->execute([$key, $val, $val]);
@@ -48,26 +50,27 @@ if (isset($_POST['save_settings'])) {
     $msg = "Engine parameters updated successfully.";
 }
 
-// Reload settings.
+// Load all settings from database.
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 
-// Retrieve active pages for nav selectors.
+// Load available pages for navigation slot assignment.
 try {
     $pages_list = $pdo->query("SELECT id, title FROM snap_pages WHERE is_active = 1 ORDER BY title ASC")->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $e) { 
-    $pages_list = []; 
+} catch (Exception $e) {
+    $pages_list = [];
 }
 
-// Resolve active skin name.
+// Resolve active theme name from slug or manifest.
 $active_slug = $settings['active_skin'] ?? 'new_horizon_dark';
 $active_skin_friendly = str_replace('_', ' ', ucfirst($active_slug));
 if (file_exists("skins/{$active_slug}/manifest.php")) {
     $manifest = include "skins/{$active_slug}/manifest.php";
-    if (isset($manifest['name'])) { 
-        $active_skin_friendly = $manifest['name']; 
+    if (isset($manifest['name'])) {
+        $active_skin_friendly = $manifest['name'];
     }
 }
 
+// Date format options for display in the UI.
 $date_options = [
     'F j, Y'          => 'February 1, 2026',
     'Y-m-d'           => '2026-02-01',
@@ -77,7 +80,7 @@ $date_options = [
     'D, M j, Y'       => 'Sun, Feb 1, 2026'
 ];
 
-// Helper for footer slot toggle state.
+// Determines display state of footer slot (on, custom, off).
 function footer_slot_state($settings, $key, $default = 'on') {
     return $settings[$key] ?? $default;
 }
@@ -405,7 +408,7 @@ include 'core/sidebar.php';
 </div>
 
 <script>
-// Footer slot toggle — show/hide custom text fields.
+// Toggle visibility of custom footer text fields based on slot selection.
 document.querySelectorAll('.footer-slot-toggle').forEach(function(sel) {
     sel.addEventListener('change', function() {
         var targetId = 'field-' + this.getAttribute('data-target');

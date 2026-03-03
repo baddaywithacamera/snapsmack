@@ -1,6 +1,7 @@
-/* Impact Printer — GREEN BAR variant
-   Uses tractorfeedpapertexture_02.png as the full page background.
-   The texture already includes sprocket holes and green bars. */
+/**
+ * SNAPSMACK - Green bar variant for the impact_printer skin
+ * Alpha v0.6
+ */
 
 :root {
     /* Paper & ink */

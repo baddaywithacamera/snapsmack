@@ -1,32 +1,33 @@
 <?php
 /**
- * SNAPSMACK - Metadata editor.
- * Orchestrates updates for image metadata, EXIF overrides, and taxonomy mappings.
- * Synchronizes publication status and scheduling with standard SQL timestamps.
- * Git Version Official Alpha 0.5
+ * SNAPSMACK - Image metadata editor
+ * Alpha v0.6
+ *
+ * Allows modification of image titles, descriptions, EXIF metadata overrides,
+ * publication status, and category/album associations.
  */
 
 require_once 'core/auth.php';
 
-// --- 1. VALIDATION ---
-// Ensure a valid record ID is provided before proceeding.
+// --- REQUEST VALIDATION ---
+// Requires an image ID parameter to load the correct record.
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-if (!$id) { 
-    header("Location: smack-manage.php"); 
-    exit; 
+if (!$id) {
+    header("Location: smack-manage.php");
+    exit;
 }
 
 $msg = "";
 
-// --- 2. UPDATE HANDLER ---
+// --- FORM SUBMISSION HANDLER ---
+// Processes metadata updates and category/album reassignments.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = $_POST['title'];
     $desc = $_POST['desc'];
     $status = $_POST['img_status'] ?? 'published';
     $orientation = (int)($_POST['img_orientation'] ?? 0);
-    
-    // --- CALENDAR FIX ---
-    // Converts HTML5 datetime-local format ('T' separator) to standard SQL ' ' separator.
+
+    // HTML5 datetime-local inputs use 'T' as separator; convert to SQL format.
     $raw_date = $_POST['img_date'] ?? '';
     $custom_date = !empty($raw_date) ? str_replace('T', ' ', $raw_date) : date('Y-m-d H:i:s');
 
@@ -35,14 +36,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $download_url = trim($_POST['download_url'] ?? '');
     $selected_cats = $_POST['cat_ids'] ?? [];
     $selected_albums = $_POST['album_ids'] ?? [];
-    
-    // Handle conditional N/A for film stock.
+
+    // Film stock field supports explicit "N/A" via checkbox.
     $film_val = $_POST['film_stock'] ?? '';
-    if (isset($_POST['film_na'])) { 
-        $film_val = 'N/A'; 
+    if (isset($_POST['film_na'])) {
+        $film_val = 'N/A';
     }
 
-    // Compile Technical Specifications for JSON storage.
+    // Compile metadata into JSON for storage.
     $updated_exif = [
         'camera'   => strtoupper($_POST['camera_model'] ?? ''),
         'lens'     => $_POST['lens_info'] ?? '',
@@ -53,46 +54,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'flash'    => $_POST['flash_fire'] ?? 'No'
     ];
 
-    // Primary record update.
+    // Update the primary image record with all modified fields.
     $stmt = $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_film = ?, img_exif = ?, img_status = ?, img_date = ?, img_orientation = ?, allow_comments = ?, allow_download = ?, download_url = ? WHERE id = ?");
     $stmt->execute([$title, $desc, $film_val, json_encode($updated_exif), $status, $custom_date, $orientation, $allow_comments, $allow_download, $download_url, $id]);
 
-    // Re-map categories (Purge and Re-populate pattern).
+    // Delete and re-populate category mappings.
     $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
-    foreach ($selected_cats as $cid) { 
-        $pdo->prepare("INSERT INTO snap_image_cat_map (image_id, cat_id) VALUES (?, ?)")->execute([$id, (int)$cid]); 
+    foreach ($selected_cats as $cid) {
+        $pdo->prepare("INSERT INTO snap_image_cat_map (image_id, cat_id) VALUES (?, ?)")->execute([$id, (int)$cid]);
     }
 
-    // Re-map missions/albums.
+    // Delete and re-populate album mappings.
     $pdo->prepare("DELETE FROM snap_image_album_map WHERE image_id = ?")->execute([$id]);
-    foreach ($selected_albums as $aid) { 
-        $pdo->prepare("INSERT INTO snap_image_album_map (image_id, album_id) VALUES (?, ?)")->execute([$id, (int)$aid]); 
+    foreach ($selected_albums as $aid) {
+        $pdo->prepare("INSERT INTO snap_image_album_map (image_id, album_id) VALUES (?, ?)")->execute([$id, (int)$aid]);
     }
-    
+
     $msg = "Success: Mission parameters updated.";
 }
 
-// --- 3. DATA ACQUISITION ---
-// Fetch the current record for form population.
+// --- DATA RETRIEVAL ---
+// Load the image record and its associated metadata for editing.
 $stmt = $pdo->prepare("SELECT * FROM snap_images WHERE id = ?");
 $stmt->execute([$id]);
 $post = $stmt->fetch();
-if (!$post) { 
-    die("Post not found."); 
+if (!$post) {
+    die("Post not found.");
 }
 
 $exif = json_decode($post['img_exif'], true) ?? [];
 
-// Fetch existing taxonomy mappings.
+// Load the image's current category associations.
 $mapped_cats = $pdo->prepare("SELECT cat_id FROM snap_image_cat_map WHERE image_id = ?");
 $mapped_cats->execute([$id]);
 $mapped_cats = $mapped_cats->fetchAll(PDO::FETCH_COLUMN);
 
+// Load the image's current album associations.
 $mapped_albums = $pdo->prepare("SELECT album_id FROM snap_image_album_map WHERE image_id = ?");
 $mapped_albums->execute([$id]);
 $mapped_albums = $mapped_albums->fetchAll(PDO::FETCH_COLUMN);
 
-// Load registry lists for select interfaces.
+// Load all available categories and albums for the form selectors.
 $all_cats = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
 $all_albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
 

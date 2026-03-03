@@ -1,16 +1,17 @@
 <?php
 /**
- * SnapSmack - Sidebar Navigation
- * Version: 7.2 - Global Vibe Rename + Pimpotron Conditional
- * -------------------------------------------------------------------------
- * - RENAMED: smack-pimpitup.php → smack-globalvibe.php
- * - ADDED: Pimpotron link appears conditionally if skin manifest declares it
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Admin Sidebar Navigation
+ * Alpha v0.6
+ *
+ * Renders the admin dashboard sidebar with sections for content management,
+ * skin customization, and system configuration. The Pimpotron link appears
+ * conditionally based on the active skin's manifest declaration.
  */
 
 $current_page = basename($_SERVER['PHP_SELF']);
 
-// Detect if active skin has Pimpotron declared in its manifest
+// --- CONDITIONAL PIMPOTRON DETECTION ---
+// Check if the active skin declares support for the Pimpotron engine
 $_sidebar_pimpotron = false;
 if (!empty($settings['active_skin'])) {
     $_sidebar_manifest_path = "skins/{$settings['active_skin']}/manifest.php";

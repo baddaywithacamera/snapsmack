@@ -1,34 +1,16 @@
 /**
- * SnapSmack — ASCII Border Engine
- * Version: 2.0
- * -------------------------------------------------------------------------
- * Generates text-character borders around the hero image.
- * Measures the rendered image, calculates how many characters fit,
- * and builds border strings. Characters are never stretched.
+ * SNAPSMACK - ASCII Border Engine
+ * Alpha v0.6
  *
- * v2.0 changes:
- *   - Side borders use one-character-per-line stacking (no writing-mode)
- *   - Character measurement inherits the actual border font from CSS
- *   - Responds to window resize and lightbox close
- *
- * Four border styles (set via data-border-style on .ip-ascii-frame):
- *   box    — + corners, - horizontal, | vertical
- *   plus   — + on all edges, space-separated
- *   equals — = on all edges, space-separated
- *   slash  — / top+bottom (spaced), \ sides
- *
- * DOM structure expected:
- *   .ip-ascii-frame[data-border-style]
- *     span.ip-border-left
- *     .ip-ascii-frame-inner        (has ::before/::after for top/bottom)
- *       img.ip-image
- *     span.ip-border-right
- * -------------------------------------------------------------------------
+ * Generates text-character borders around images using configurable styles.
+ * Measures rendered dimensions and calculates character fit without stretching.
  */
 
 (function () {
     'use strict';
 
+    // --- CHARACTER MEASUREMENT ---
+    // Probe the font metrics to determine character width and height
     function probeCharSize(container) {
         var probe = document.createElement('span');
         probe.style.cssText =
@@ -43,28 +25,30 @@
         return { w: Math.max(w, 4), h: Math.max(h, 10) };
     }
 
+    // --- BORDER CHARACTER GENERATION ---
+    // Generate solid repeating character string
     function fill(ch, n) {
         var s = '';
         for (var i = 0; i < n; i++) s += ch;
         return s;
     }
 
+    // Generate space-separated character pattern (for plus, equals, slash styles)
     function fillSpaced(ch, n) {
         var parts = [];
         for (var i = 0; i < n; i++) parts.push(ch);
         return parts.join(' ');
     }
 
-    /**
-     * Build side border as newline-separated characters.
-     * Each character sits on its own line — no writing-mode needed.
-     */
+    // Generate newline-separated characters for vertical borders (one per line)
     function fillVertical(ch, n) {
         var lines = [];
         for (var i = 0; i < n; i++) lines.push(ch);
         return lines.join('\n');
     }
 
+    // --- BORDER STYLE ASSEMBLY ---
+    // Build all four borders based on selected style
     function buildBorders(style, hChars, vChars) {
         var top, bottom, left, right;
         switch (style) {
@@ -94,6 +78,8 @@
         return { top: top, bottom: bottom, left: left, right: right };
     }
 
+    // --- FRAME APPLICATION ---
+    // Apply borders to a single frame element
     function applyFrame(frame) {
         var inner   = frame.querySelector('.ip-ascii-frame-inner');
         var img     = frame.querySelector('img');
@@ -128,6 +114,8 @@
         if (rightEl) rightEl.textContent = borders.right;
     }
 
+    // --- PROCESSING PIPELINE ---
+    // Apply borders to all frames on the page
     function processAll() {
         var frames = document.querySelectorAll('.ip-ascii-frame');
         for (var i = 0; i < frames.length; i++) {
@@ -135,6 +123,7 @@
         }
     }
 
+    // --- INITIALIZATION ---
     function init() {
         processAll();
         var timer;

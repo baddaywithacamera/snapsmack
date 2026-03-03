@@ -1,6 +1,9 @@
-/* ==========================================================================
-   SNAPSMACK - PIMPOTRON ENGINE STYLES (v3.0)
-   ========================================================================== */
+/**
+ * SNAPSMACK - Pimpotron stage effects and animations
+ * Alpha v0.6
+ *
+ * Fullscreen media display with dynamic effects and text overlays.
+ */
 
 .snapsmack-logo.smack {
     font-family: 'BlackCasper', sans-serif !important;

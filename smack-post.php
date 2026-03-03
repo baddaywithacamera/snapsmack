@@ -1,38 +1,34 @@
 <?php
 /**
- * SNAPSMACK - Mission entry portal.
- * Handles primary asset uploads, automated Spec/EXIF extraction, 
- * and multi-tier thumbnail generation (Square + Aspect-Preserved).
- * 
- * Thumb outputs:
- *   t_  — 400x400 center-cropped square (archive square grid)
- *   a_  — 400px on the long side, native aspect (archive cropped & masonry)
+ * SNAPSMACK - Post upload and image processing
+ * Alpha v0.6
  *
- * Git Version Official Alpha 0.5
+ * Handles image uploads, automatic EXIF extraction and metadata handling,
+ * orientation correction, and thumbnail generation in multiple formats.
  */
 
 require_once 'core/auth.php';
 
-// Extend limits for high-resolution asset processing.
+// Extend limits for high-resolution image processing.
 set_time_limit(300);
 ini_set('memory_limit', '512M');
 
 $msg = "";
 
-// Load site settings for image engine config (max dimensions, JPEG quality).
+// Load site settings for image engine configuration.
 $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
 $settings = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-// --------------------------------------------------------------------------
-// 1. DATA INGESTION HANDLER
-// --------------------------------------------------------------------------
+// --- FORM SUBMISSION HANDLER ---
+// Processes file uploads, generates thumbnails, extracts EXIF data,
+// and stores the image record with metadata in the database.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
-    
+
     $title = trim($_POST['title'] ?? 'Untitled Transmission');
     $desc = trim($_POST['desc'] ?? '');
     $status = $_POST['img_status'] ?? 'published';
-    
-    // CALENDAR FIX: Convert HTML5 'T' separator to standard SQL space.
+
+    // HTML5 datetime-local inputs use 'T' separator; convert to SQL-compatible space.
     $raw_date = $_POST['img_date'] ?? '';
     $custom_date = !empty($raw_date) ? str_replace('T', ' ', $raw_date) : date('Y-m-d H:i:s');
 
@@ -41,21 +37,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
     $download_url = trim($_POST['download_url'] ?? '');
     $selected_cats = $_POST['cat_ids'] ?? [];
     $selected_albums = $_POST['album_ids'] ?? [];
-    
-    // Handle Film Stock N/A toggle.
+
+    // Film stock field supports explicit "N/A" via checkbox override.
     $film_val = $_POST['film_stock'] ?? '';
-    if (isset($_POST['film_na'])) { 
-        $film_val = 'N/A'; 
+    if (isset($_POST['film_na'])) {
+        $film_val = 'N/A';
     }
 
     $rel_dir = 'img_uploads/' . date('Y') . '/' . date('m');
     $full_dir = __DIR__ . '/' . $rel_dir;
     $thumb_full = $full_dir . '/thumbs';
-    if (!is_dir($full_dir)) { 
-        mkdir($full_dir, 0755, true); 
+    if (!is_dir($full_dir)) {
+        mkdir($full_dir, 0755, true);
     }
-    if (!is_dir($thumb_full)) { 
-        mkdir($thumb_full, 0755, true); 
+    if (!is_dir($thumb_full)) {
+        mkdir($thumb_full, 0755, true);
     }
 
     $file_ext = strtolower(pathinfo($_FILES['img_file']['name'], PATHINFO_EXTENSION));
@@ -65,8 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
     $db_path = $rel_dir . '/' . $new_file_name;
 
     if (move_uploaded_file($_FILES['img_file']['tmp_name'], $target_path)) {
-        
-        // --- TECHNICAL SPEC EXTRACTION (EXIF) ---
+
+        // --- EXIF METADATA EXTRACTION ---
+        // Reads camera and shot settings from JPEG EXIF data where available.
+        // User-provided values take precedence over auto-detected metadata.
         $camera = $lens = $focal = $iso = $aperture = $shutter = "";
         $flash = "No";
 
@@ -95,29 +93,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         ]);
 
         // --- IMAGE PROCESSING ENGINE ---
-        // 1. Resize original in-place if over config limits (no prefix change)
-        // 2. Square thumbnail (t_ prefix) — 400x400 center-cropped
-        // 3. Aspect thumbnail (a_ prefix) — 400px long side
-        // Full-res downloads served via external URL (Google Drive, etc.)
-        
+        // Multi-stage pipeline: orientation correction, conditional resizing,
+        // and thumbnail generation. Generates two thumbnail variants:
+        //   t_ = 400x400 center-cropped square
+        //   a_ = 400px long side, aspect-ratio preserved
+
         list($orig_w, $orig_h) = getimagesize($target_path);
         $mime = mime_content_type($target_path);
         $max_w = (int)($settings['max_width_landscape'] ?? 2500);
         $max_h = (int)($settings['max_height_portrait'] ?? 1850);
         $jpeg_q = (int)($settings['jpeg_quality'] ?? 85);
-        
+
         $src = null;
         if ($mime == 'image/jpeg') { $src = imagecreatefromjpeg($target_path); }
         elseif ($mime == 'image/png') { $src = imagecreatefrompng($target_path); }
         elseif ($mime == 'image/webp') { $src = imagecreatefromwebp($target_path); }
 
         if ($src) {
-            // =============================================================
-            // 0. EXIF ORIENTATION CORRECTION
-            //    GD strips EXIF rotation metadata on save. We must rotate
-            //    the pixel data to match what the camera intended BEFORE
-            //    any resize or thumb generation.
-            // =============================================================
+            // --- EXIF ORIENTATION CORRECTION ---
+            // GD library drops EXIF rotation on save. Detect and apply rotation
+            // before any resizing to ensure pixel data matches original orientation.
             $exif_orientation = 1;
             if ($mime == 'image/jpeg' && function_exists('exif_read_data')) {
                 $exif_orient = @exif_read_data($target_path, 'IFD0');
@@ -125,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                     $exif_orientation = $exif_orient['Orientation'] ?? $exif_orient['orientation'] ?? 1;
                 }
             }
-            
+
             if ($exif_orientation == 3) {
                 $src = imagerotate($src, 180, 0);
             } elseif ($exif_orientation == 6) {
@@ -133,18 +128,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             } elseif ($exif_orientation == 8) {
                 $src = imagerotate($src, 90, 0);
             }
-            
-            // Always re-read dimensions from the GD resource after potential rotation
+
+            // Recalculate dimensions after rotation.
             $orig_w = imagesx($src);
             $orig_h = imagesy($src);
-            
-            // ALWAYS re-save after GD load to bake in correct pixel orientation
-            // (even if no EXIF rotation — GD may have stripped metadata)
+
+            // Persist the corrected orientation by saving the GD resource.
             if ($mime === 'image/jpeg') { imagejpeg($src, $target_path, $jpeg_q); }
             elseif ($mime === 'image/png') { imagepng($src, $target_path, 8); }
             else { imagewebp($src, $target_path, $jpeg_q); }
-            
-            // Reload from the clean saved file
+
+            // Reload the corrected file.
             imagedestroy($src);
             if ($mime == 'image/jpeg') { $src = imagecreatefromjpeg($target_path); }
             elseif ($mime == 'image/png') { $src = imagecreatefrompng($target_path); }
@@ -152,9 +146,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
 
             $thumb_dir = $thumb_full . '/';
 
-            // =============================================================
-            // 1. RESIZE IN-PLACE if over config limits
-            // =============================================================
+            // --- CONDITIONAL RESIZE ---
+            // If the image exceeds config limits, scale it down while preserving aspect ratio.
             $needs_resize = false;
             $d_w = $orig_w;
             $d_h = $orig_h;
@@ -181,13 +174,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 }
                 imagecopyresampled($d_img, $src, 0, 0, 0, 0, $d_w, $d_h, $orig_w, $orig_h);
 
-                // Overwrite original with resized version
+                // Replace original with resized version.
                 if ($mime === 'image/jpeg') { imagejpeg($d_img, $target_path, $jpeg_q); }
                 elseif ($mime === 'image/png') { imagepng($d_img, $target_path, 8); }
                 else { imagewebp($d_img, $target_path, $jpeg_q); }
                 imagedestroy($d_img);
 
-                // Reload source from resized file
+                // Reload for thumbnail generation.
                 imagedestroy($src);
                 if ($mime == 'image/jpeg') { $src = imagecreatefromjpeg($target_path); }
                 elseif ($mime == 'image/png') { $src = imagecreatefrompng($target_path); }
@@ -195,13 +188,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
 
                 $orig_w = $d_w;
                 $orig_h = $d_h;
-            } else {
-                // No resize needed — file already saved with correct orientation above
             }
 
-            // =============================================================
-            // 2. SQUARE THUMBNAIL (t_ prefix) — 400x400 center-cropped
-            // =============================================================
+            // --- SQUARE THUMBNAIL (t_ prefix) ---
+            // 400x400 center-cropped square for grid display.
             $sq_size = 400;
             $sq_thumb = imagecreatetruecolor($sq_size, $sq_size);
             $min_dim = min($orig_w, $orig_h);
@@ -214,15 +204,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             }
 
             imagecopyresampled($sq_thumb, $src, 0, 0, $off_x, $off_y, $sq_size, $sq_size, $min_dim, $min_dim);
-            
+
             if ($mime === 'image/jpeg') { imagejpeg($sq_thumb, $thumb_dir . 't_' . $new_file_name, 82); }
             elseif ($mime === 'image/png') { imagepng($sq_thumb, $thumb_dir . 't_' . $new_file_name, 8); }
             else { imagewebp($sq_thumb, $thumb_dir . 't_' . $new_file_name, 78); }
             imagedestroy($sq_thumb);
 
-            // =============================================================
-            // 3. ASPECT-PRESERVED THUMBNAIL (a_ prefix) — 400px long side
-            // =============================================================
+            // --- ASPECT-PRESERVED THUMBNAIL (a_ prefix) ---
+            // 400px on the long side, native aspect ratio for masonry layouts.
             $aspect_long = 400;
 
             if ($orig_w >= $orig_h) {
@@ -251,12 +240,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             elseif ($mime === 'image/png') { imagepng($a_thumb, $thumb_dir . 'a_' . $new_file_name, 8); }
             else { imagewebp($a_thumb, $thumb_dir . 'a_' . $new_file_name, 78); }
             imagedestroy($a_thumb);
-            
+
             imagedestroy($src);
         }
 
         // --- ORIENTATION DETECTION ---
-        // Manual override takes precedence; auto-detect from display copy dimensions if 'auto'
+        // Classifies image as landscape, portrait, or square for archive display.
+        // User override takes precedence; otherwise auto-detect from final dimensions.
         $orient_override = $_POST['orientation_override'] ?? 'auto';
         if ($orient_override !== 'auto') {
             $auto_orientation = (int)$orient_override;
@@ -269,17 +259,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             }
         }
 
-        // --- DATABASE PERSISTENCE ---
+        // --- DATABASE RECORD CREATION ---
+        // Stores image metadata, dimensions, processing flags, and category/album mappings.
         $stmt = $pdo->prepare("
             INSERT INTO snap_images (
-                img_title, 
-                img_slug, 
-                img_file, 
-                img_description, 
-                img_film, 
-                img_exif, 
-                img_status, 
-                img_date, 
+                img_title,
+                img_slug,
+                img_file,
+                img_description,
+                img_film,
+                img_exif,
+                img_status,
+                img_date,
                 img_orientation,
                 img_width,
                 img_height,
@@ -288,16 +279,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 download_url
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        
+
         $stmt->execute([
-            $title, 
-            $slug, 
-            $db_path, 
-            $desc, 
-            $film_val, 
-            $exif_json, 
-            $status, 
-            $custom_date, 
+            $title,
+            $slug,
+            $db_path,
+            $desc,
+            $film_val,
+            $exif_json,
+            $status,
+            $custom_date,
             $auto_orientation,
             $orig_w,
             $orig_h,
@@ -305,15 +296,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             $allow_download,
             $download_url
         ]);
-        
+
         $new_img_id = $pdo->lastInsertId();
 
-        // Map Categories.
+        // Associate image with selected categories.
         foreach ($selected_cats as $cid) {
             $pdo->prepare("INSERT INTO snap_image_cat_map (image_id, cat_id) VALUES (?, ?)")->execute([$new_img_id, (int)$cid]);
         }
 
-        // Map Missions (Albums).
+        // Associate image with selected albums.
         foreach ($selected_albums as $aid) {
             $pdo->prepare("INSERT INTO snap_image_album_map (image_id, album_id) VALUES (?, ?)")->execute([$new_img_id, (int)$aid]);
         }
@@ -327,7 +318,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
     }
 }
 
-// Data discovery for UI selectors.
+// Load categories and albums for form selectors.
 $all_cats = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
 $all_albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
 

@@ -1,34 +1,35 @@
 <?php
 /**
- * SNAPSMACK - Thumbnail regeneration utility.
- * Version: 2.0 - Multi-Layout Thumb Engine
- * 
+ * SNAPSMACK - Thumbnail regeneration utility
+ * Alpha v0.6
+ *
  * Generates two thumbnail variants per image:
- *   t_  — 400x400 center-cropped square (for square grid layout)
- *   a_  — 400px on the long side, aspect preserved (for cropped & masonry layouts)
+ *   t_ — 400x400 center-cropped square (for square grid layout)
+ *   a_ — 400px on the long side, aspect preserved (for cropped & masonry layouts)
  *
- * The old wall_ prefix thumbnails are no longer generated.
- * The gallery wall loads full-resolution images directly.
- *
- * Git Version Official Alpha 0.5
+ * Requires authentication. Generates thumbnails in subdirectories per image folder.
  */
 
 require_once 'core/auth.php';
 
-// Access control: Ensure the user is authenticated before running intensive file operations.
+// --- ACCESS CONTROL ---
+// Ensure user is authenticated before running intensive file operations
 if (!isset($_SESSION['user_id'])) {
     die("Access Denied.");
 }
 
 // --- CONFIGURATION ---
-$square_size   = 400;  // Square thumb dimension (t_ prefix)
-$aspect_long   = 400;  // Long-side max for aspect-preserved thumb (a_ prefix)
+// Thumbnail dimension parameters
+$square_size   = 400;  // Square thumbnail dimension (t_ prefix)
+$aspect_long   = 400;  // Long-side max for aspect-preserved thumbnail (a_ prefix)
 
-// Retrieve all image file paths from the database registry.
+// --- IMAGE LOOKUP ---
+// Retrieve all image file paths from the database
 $stmt = $pdo->query("SELECT img_file FROM snap_images");
 $images = $stmt->fetchAll();
 
-// Basic UI output for the progress log.
+// --- PROGRESS UI ---
+// Basic HTML output for progress logging
 echo "<html><head><title>SnapSmack Backfill</title>";
 echo "<style>body{background:#1a1a1a;color:#ccc;font-family:monospace;padding:20px;} .success{color:#39FF14;} .info{color:#00bfff;} .warn{color:#ffaa00;}</style></head><body>";
 echo "<h2>MULTI-LAYOUT THUMBNAIL BACKFILL</h2>";
@@ -37,46 +38,47 @@ echo "<p class='info'>GENERATING: t_ (400x400 square) + a_ (400px long side, asp
 $processed = 0;
 $skipped = 0;
 
+// --- PROCESSING LOOP ---
+// Iterates through each image and generates both thumbnail variants
 foreach ($images as $img) {
     $file = $img['img_file'];
-    
-    // Verify the source file exists on the filesystem before attempting to process.
+
+    // Verify source file exists before processing
     if (!file_exists($file)) {
         echo "<span class='warn'>SKIPPING:</span> $file (Original missing)<br>";
         $skipped++;
         continue;
     }
 
-    // --- DIRECTORY & PATH PREPARATION ---
+    // --- PATH & DIRECTORY SETUP ---
+    // Ensures thumbs subdirectory exists for each image folder
     $path_info = pathinfo($file);
     $thumb_dir = $path_info['dirname'] . '/thumbs';
-    
-    // Ensure the 'thumbs' subdirectory exists for each image folder.
+
     if (!is_dir($thumb_dir)) {
         mkdir($thumb_dir, 0755, true);
     }
-    
-    // Define output paths
+
+    // Define output paths for both variants
     $square_path = $thumb_dir . '/t_' . $path_info['basename'];
     $aspect_path = $thumb_dir . '/a_' . $path_info['basename'];
 
-    // Retrieve source image metadata.
+    // --- SOURCE IMAGE SETUP ---
+    // Load image metadata and create resource based on file type
     list($w, $h) = getimagesize($file);
     $mime = mime_content_type($file);
 
-    // Initialize the source image resource based on file type.
     switch ($mime) {
         case 'image/jpeg': $src = imagecreatefromjpeg($file); break;
         case 'image/png':  $src = imagecreatefrompng($file);  break;
         case 'image/webp': $src = imagecreatefromwebp($file); break;
-        default: 
+        default:
             echo "<span class='warn'>ERROR:</span> Unsupported type for $file<br>";
             continue 2;
     }
 
-    // =====================================================================
-    // 1. SQUARE THUMBNAIL (t_ prefix) — 400x400 center-cropped
-    // =====================================================================
+    // --- SQUARE THUMBNAIL ---
+    // 400x400 center-cropped variant for square grid layout
     if ($w > $h) {
         $src_x = ($w - $h) / 2;
         $src_y = 0;
@@ -88,16 +90,16 @@ foreach ($images as $img) {
     }
 
     $t_dst = imagecreatetruecolor($square_size, $square_size);
-    
+
     if ($mime == 'image/png' || $mime == 'image/webp') {
         imagealphablending($t_dst, false);
         imagesavealpha($t_dst, true);
     }
 
     imagecopyresampled(
-        $t_dst, $src, 
-        0, 0, $src_x, $src_y, 
-        $square_size, $square_size, 
+        $t_dst, $src,
+        0, 0, $src_x, $src_y,
+        $square_size, $square_size,
         $src_w, $src_h
     );
 
@@ -110,9 +112,8 @@ foreach ($images as $img) {
     }
     imagedestroy($t_dst);
 
-    // =====================================================================
-    // 2. ASPECT-PRESERVED THUMBNAIL (a_ prefix) — 400px on the long side
-    // =====================================================================
+    // --- ASPECT-PRESERVED THUMBNAIL ---
+    // 400px on the long side, preserves aspect ratio for cropped and masonry layouts
     if ($w >= $h) {
         // Landscape or square: width is the long side
         $a_w = $aspect_long;
@@ -123,23 +124,23 @@ foreach ($images as $img) {
         $a_w = round($w * ($aspect_long / $h));
     }
 
-    // Don't upscale tiny images
+    // Don't upscale images smaller than the long-side target
     if ($w < $aspect_long && $h < $aspect_long) {
         $a_w = $w;
         $a_h = $h;
     }
 
     $a_dst = imagecreatetruecolor($a_w, $a_h);
-    
+
     if ($mime == 'image/png' || $mime == 'image/webp') {
         imagealphablending($a_dst, false);
         imagesavealpha($a_dst, true);
     }
 
     imagecopyresampled(
-        $a_dst, $src, 
-        0, 0, 0, 0, 
-        $a_w, $a_h, 
+        $a_dst, $src,
+        0, 0, 0, 0,
+        $a_w, $a_h,
         $w, $h
     );
 
@@ -152,16 +153,17 @@ foreach ($images as $img) {
     }
     imagedestroy($a_dst);
 
-    // Free source
+    // Free source image resource
     imagedestroy($src);
-    
+
     $processed++;
     echo "<span class='success'>PROCESSED:</span> t_ + a_ → " . $path_info['basename'] . "<br>";
-    
-    // Flush the output buffer for real-time progress monitoring.
-    flush(); 
+
+    // Flush buffer for real-time progress monitoring
+    flush();
 }
 
+// --- COMPLETION REPORT ---
 echo "<hr>";
 echo "<h3>BACKFILL COMPLETE.</h3>";
 echo "<p class='info'>Processed: {$processed} | Skipped: {$skipped}</p>";

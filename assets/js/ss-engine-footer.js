@@ -1,16 +1,19 @@
 /**
- * SnapSmack Engine: Footer Controller
- * Version: 2.0 - Library Edition
- * Handles the animated sliding Info, Comments, and Help panes.
+ * SNAPSMACK - Footer Controller
+ * Alpha v0.6
+ *
+ * Manages animated footer panes: info, comments, and help. Handles sliding
+ * animations and exposes control methods to other engines.
  */
+
 document.addEventListener('DOMContentLoaded', () => {
     const btnInfo = document.getElementById('show-details');
     const btnComm = document.getElementById('show-comments');
     const footer = document.getElementById('footer');
-    
+
     const paneInfo = document.getElementById('pane-info');
     const paneComm = document.getElementById('pane-comments');
-    const paneHelp = document.getElementById('pane-help'); // Added for the hotkey help menu
+    const paneHelp = document.getElementById('pane-help');
 
     if (footer) {
         footer.style.display = 'none';
@@ -19,24 +22,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let animating = false;
 
+        // --- TOGGLE HANDLER ---
+        // Determines which pane to show and manages open/close state
         const handleToggle = (target, e) => {
             if (e) e.preventDefault();
             if (animating) return;
 
-            // Safety checks
+            // Safety checks for pane existence
             if (target === 'comments' && !paneComm) return;
             if (target === 'info' && !paneInfo) return;
             if (target === 'help' && !paneHelp) return;
 
             const isClosed = footer.style.display === 'none';
-            
+
             // Determine what is currently open
             let activePane = null;
             if (paneInfo && paneInfo.style.display !== 'none') activePane = 'info';
             else if (paneComm && paneComm.style.display !== 'none') activePane = 'comments';
             else if (paneHelp && paneHelp.style.display !== 'none') activePane = 'help';
 
-            // If clicking the active pane, close the footer
+            // Clicking the active pane closes the footer
             if (!isClosed && target === activePane) {
                 closeFooter();
                 return;
@@ -61,10 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        // --- OPEN ANIMATION ---
         const openFooter = () => {
             animating = true;
             footer.style.display = 'block';
-            footer.offsetHeight; 
+            footer.offsetHeight;
             footer.style.maxHeight = footer.scrollHeight + 'px';
             footer.addEventListener('transitionend', function onOpen(ev) {
                 if (ev.propertyName === 'max-height') {
@@ -77,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
+        // --- CLOSE ANIMATION ---
         const closeFooter = () => {
             if (footer.style.display === 'none' || animating) return;
             animating = true;
@@ -93,11 +100,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
-        // Attach click listeners to the nav buttons if they exist
+        // Attach click listeners to navigation buttons
         if (btnInfo) btnInfo.addEventListener('click', (e) => handleToggle('info', e));
         if (btnComm) btnComm.addEventListener('click', (e) => handleToggle('comments', e));
 
-        // BRIDGE: Expose functions so the Comms/Hotkey engine can trigger them
+        // Expose control functions to other engines via global bridge
         window.smackdown = window.smackdown || {};
         window.smackdown.toggleFooter = handleToggle;
         window.smackdown.closeFooter = closeFooter;

@@ -1,23 +1,12 @@
-/* =============================================================================
- * SNAPSMACK ADMIN — MASTER GEOMETRY FILE
- * =============================================================================
- * 01: Reset & Global        | 09: Item Layouts          | 17: Login
- * 02: Sidebar Navigation    | 10: Dash & Stats          | 18: Alerts & Utils
- * 03: Main Content          | 11: Pagination            | 19: Appearance
- * 04: Content Boxes         | 12: Upload & Progress     | 20: Tables & Metadata
- * 05: Form Elements         | 13: Multiselects          | 21: Filter Architecture
- * 06: Media Previews        | 14: Media Library         | 22: Form Action Rows
- * 07: Transmissions         | 15: Engine Mechanics      | 23: Transmission Control
- * 08: Buttons & Actions     | 16: Admin Footer          | 24: Interactions
- * =============================================================================
- * MASTER DIRECTIVE: Pure Geometry. No hex codes. No paint. No duplicates.
- * All colours live in admin-theme-colours-{theme}.css only.
- * =============================================================================
+/**
+ * SNAPSMACK - Admin theme master geometry file
+ * Alpha v0.6
+ *
+ * Pure geometry and layout. No colors or styling beyond structure.
+ * All color values live exclusively in admin-theme-colours-{theme}.css files.
  */
 
-/* =============================================================================
- * 01: RESET & GLOBAL BASE
- * ============================================================================= */
+/* --- RESET & GLOBAL BASE --- */
 *, *::before, *::after {
     box-sizing: border-box;
 }
@@ -33,9 +22,7 @@ html, body {
     padding-bottom: 100px; /* Footer clearance lock */
 }
 
-/* =============================================================================
- * 02: SIDEBAR NAVIGATION
- * ============================================================================= */
+/* --- SIDEBAR NAVIGATION --- */
 .sidebar {
     width: 260px;
     height: 100vh;
@@ -90,7 +77,7 @@ html, body {
     transition: all 0.2s ease;
 }
 
-/* Sub-nav groups */
+/* Sub-nav groups for organized menu sections */
 .sidebar li.nav-group {
     margin-bottom: 25px;
     border-bottom: none;
@@ -162,16 +149,14 @@ html, body {
     opacity: 0.6;
 }
 
-/* =============================================================================
- * 03: MAIN CONTENT & PAGE HEADERS
- * ============================================================================= */
+/* --- MAIN CONTENT & PAGE HEADERS --- */
 .main {
     margin-left: 260px;
     padding: 40px 80px 140px 80px;
     min-height: 100vh;
 }
 
-/* Naked H2: page title with underline — the master title pattern */
+/* Page title with underline — the master title pattern */
 h2 {
     font-size: 1.2rem;
     font-weight: 500;
@@ -183,7 +168,7 @@ h2 {
     border-bottom-style: solid;
 }
 
-/* Header row: used when title and action buttons share a line */
+/* Header row when title and action buttons share a line */
 .header-row {
     display: flex;
     justify-content: space-between;
@@ -203,9 +188,7 @@ h2 {
     align-items: center;
 }
 
-/* =============================================================================
- * 04: CONTENT BOXES
- * ============================================================================= */
+/* --- CONTENT BOXES --- */
 .box {
     border-width: 1px;
     border-style: solid;
@@ -237,7 +220,7 @@ h2 {
     border-bottom-right-radius: 0;
 }
 
-/* Two-column grid: 50/50 split */
+/* Two-column grid for post editor layouts */
 .post-layout-grid,
 .grid-50-50 {
     display: grid;
@@ -299,9 +282,7 @@ h2 {
     font-size: 0.75em;
 }
 
-/* =============================================================================
- * 05: FORM ELEMENTS — 52px height standard
- * ============================================================================= */
+/* --- FORM ELEMENTS (52px HEIGHT STANDARD) --- */
 .lens-input-wrapper {
     display: flex;
     flex-direction: column;
@@ -375,7 +356,7 @@ textarea {
     font-family: 'Courier Prime', 'Courier New', monospace;
 }
 
-/* Focus interaction — colour/glow defined in theme file */
+/* Focus interaction — colours/glow defined in theme file */
 input,
 select,
 textarea,
@@ -397,7 +378,7 @@ textarea[readonly] {
     pointer-events: none;
 }
 
-/* Custom checkbox */
+/* Custom checkbox styling */
 input[type="checkbox"] {
     -webkit-appearance: none;
     appearance: none;
@@ -428,9 +409,7 @@ input[type="checkbox"]:checked::after {
     left: 3px;
 }
 
-/* =============================================================================
- * 05.1: METADATA GRID & INLINE LABEL CONTROLS
- * ============================================================================= */
+/* --- METADATA GRID & INLINE LABEL CONTROLS --- */
 .meta-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -480,9 +459,7 @@ input[type="checkbox"]:checked::after {
     margin: 0;
 }
 
-/* =============================================================================
- * 06: MEDIA PREVIEWS
- * ============================================================================= */
+/* --- MEDIA PREVIEWS --- */
 .preview-frame {
     width: 100%;
     height: auto;
@@ -514,9 +491,7 @@ input[type="checkbox"]:checked::after {
     transition: border-color 0.2s ease;
 }
 
-/* =============================================================================
- * 07: TRANSMISSIONS (Comments)
- * ============================================================================= */
+/* --- TRANSMISSIONS (COMMENTS) --- */
 .transmission-log-wrapper {
     width: 100%;
     margin-top: 20px;
@@ -534,11 +509,8 @@ input[type="checkbox"]:checked::after {
     transition: border-color 0.2s, background-color 0.2s;
 }
 
-/* =============================================================================
- * 08: BUTTONS & ACTIONS
- * All primary buttons: 52px tall, full-width, uppercase.
- * Colour always in theme file — never here.
- * ============================================================================= */
+/* --- BUTTONS & ACTIONS --- */
+/* Primary buttons: 52px tall, full-width, uppercase */
 button,
 .btn-smack,
 .master-update-btn,
@@ -568,7 +540,7 @@ button,
     margin-top: 0;
 }
 
-/* Hover lift */
+/* Hover state animation */
 button:hover,
 .btn-smack:hover,
 .master-update-btn:hover {
@@ -617,9 +589,7 @@ button:active,
     transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
 
-/* =============================================================================
- * 09: ITEM LAYOUTS (Archive lists, manage pages)
- * ============================================================================= */
+/* --- ITEM LAYOUTS (ARCHIVE LISTS, MANAGE PAGES) --- */
 .recent-item {
     display: flex;
     justify-content: space-between;
@@ -680,9 +650,7 @@ button:active,
     margin-top: 10px;
 }
 
-/* =============================================================================
- * 10: DASH & STATS
- * ============================================================================= */
+/* --- DASHBOARD & STATISTICS --- */
 .dash-grid,
 .grid-33 {
     display: grid;
@@ -738,9 +706,7 @@ button:active,
 .stat-row .label { opacity: 0.6; }
 .stat-row .value { font-weight: 700; }
 
-/* =============================================================================
- * 11: PAGINATION
- * ============================================================================= */
+/* --- PAGINATION --- */
 .pagination {
     display: flex;
     gap: 5px;
@@ -767,9 +733,7 @@ button:active,
     transform: translateY(-1px);
 }
 
-/* =============================================================================
- * 12: UPLOAD & PROGRESS
- * ============================================================================= */
+/* --- UPLOAD & PROGRESS BARS --- */
 .file-upload-wrapper {
     position: relative;
     width: 100%;
@@ -842,9 +806,7 @@ button:active,
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* =============================================================================
- * 13: MULTISELECTS
- * ============================================================================= */
+/* --- MULTISELECTS --- */
 .custom-multiselect {
     position: relative;
     width: 100%;
@@ -897,9 +859,7 @@ button:active,
     cursor: pointer;
 }
 
-/* =============================================================================
- * 14: MEDIA LIBRARY
- * ============================================================================= */
+/* --- MEDIA LIBRARY --- */
 .asset-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -978,9 +938,7 @@ button:active,
     justify-content: flex-end;
 }
 
-/* =============================================================================
- * 15: ENGINE MECHANICS (Pimp Engine — Sliders & Colour Pickers)
- * ============================================================================= */
+/* --- ENGINE MECHANICS (SLIDERS & COLOUR PICKERS) --- */
 .color-picker-container {
     display: flex;
     align-items: center;
@@ -1061,9 +1019,7 @@ input[type="range"]:active::-webkit-slider-thumb {
     text-align: right;
 }
 
-/* =============================================================================
- * 16: ADMIN FOOTER
- * ============================================================================= */
+/* --- ADMIN FOOTER --- */
 #admin-universal-footer {
     position: fixed;
     bottom: 0;
@@ -1103,9 +1059,7 @@ input[type="range"]:active::-webkit-slider-thumb {
     text-transform: uppercase;
 }
 
-/* =============================================================================
- * 17: LOGIN
- * ============================================================================= */
+/* --- LOGIN PAGE --- */
 .login-container {
     width: 100%;
     height: 100vh;
@@ -1170,9 +1124,7 @@ input[type="range"]:active::-webkit-slider-thumb {
     opacity: 1;
 }
 
-/* =============================================================================
- * 18: ALERTS & UTILITY CLASSES
- * ============================================================================= */
+/* --- ALERTS & UTILITY CLASSES --- */
 .alert {
     padding: 15px;
     margin-bottom: 25px;
@@ -1211,9 +1163,7 @@ input[type="range"]:active::-webkit-slider-thumb {
 /* Dim: muted secondary text */
 .dim { opacity: 0.6; }
 
-/* =============================================================================
- * 19: APPEARANCE CONTROLLER
- * ============================================================================= */
+/* --- APPEARANCE CONTROLLER --- */
 .appearance-controller {
     display: flex;
     justify-content: space-between;
@@ -1266,9 +1216,7 @@ input[type="range"]:active::-webkit-slider-thumb {
     transition: color 0.2s ease, border-color 0.2s ease;
 }
 
-/* =============================================================================
- * 20: TABLES & METADATA
- * ============================================================================= */
+/* --- TABLES & METADATA --- */
 .smack-table {
     width: 100%;
     border-collapse: collapse;
@@ -1324,9 +1272,7 @@ input[type="range"]:active::-webkit-slider-thumb {
     justify-content: flex-end;
 }
 
-/* =============================================================================
- * 21: FILTER ARCHITECTURE (Manage Archive & similar pages)
- * ============================================================================= */
+/* --- FILTER ARCHITECTURE (MANAGE ARCHIVE & SIMILAR PAGES) --- */
 .manage-filter-bar {
     display: flex;
     flex-direction: row;
@@ -1385,10 +1331,8 @@ input[type="range"]:active::-webkit-slider-thumb {
     white-space: nowrap;
 }
 
-/* =============================================================================
- * 22: FORM ACTION ROWS
- * The submit button always sits in a .form-action-row below content boxes.
- * ============================================================================= */
+/* --- FORM ACTION ROWS --- */
+/* The submit button always sits below content boxes */
 
 /* CSS Override page: header row with label left, tab buttons right */
 .css-box-header {
@@ -1456,6 +1400,7 @@ input[type="range"]:active::-webkit-slider-thumb {
     word-break: break-word;
     margin: 0;
 }
+
 .form-action-row {
     margin-top: 30px !important;
     width: 100%;
@@ -1474,9 +1419,7 @@ input[type="range"]:active::-webkit-slider-thumb {
     height: 52px;
 }
 
-/* =============================================================================
- * 23: TRANSMISSION CONTROL (Comments page layout)
- * ============================================================================= */
+/* --- TRANSMISSION CONTROL (COMMENTS PAGE LAYOUT) --- */
 .transmission-header {
     display: flex;
     justify-content: space-between;
@@ -1542,10 +1485,8 @@ input[type="range"]:active::-webkit-slider-thumb {
     text-decoration: none;
 }
 
-/* =============================================================================
- * 24: INTERACTION LAYER
- * Transitions and cursor states — no colours here.
- * ============================================================================= */
+/* --- INTERACTION LAYER --- */
+/* Transitions and cursor states */
 .recent-item     { transition: background-color 0.2s ease; }
 .asset-card      { transition: transform 0.2s, box-shadow 0.2s; }
 .pagination a    { transition: all 0.2s ease; }
@@ -1553,11 +1494,9 @@ input[type="range"]:active::-webkit-slider-thumb {
 .file-upload-wrapper { transition: border-color 0.2s; }
 .tactical-checkbox   { cursor: pointer; transition: color 0.2s; }
 
-/* =============================================================================
- * 25: POST PAGE SPECIFICS
- * ============================================================================= */
+/* --- POST PAGE SPECIFICS --- */
 
-/* header-row variant that keeps the h2 underline (used on smack-post.php) */
+/* header-row variant that keeps the h2 underline */
 .header-row--ruled {
     border-bottom-width: 2px;
     border-bottom-style: solid;
@@ -1584,16 +1523,15 @@ input[type="range"]:active::-webkit-slider-thumb {
     min-height: 120px;
 }
 
-/* Exif / technical specs box gets a visual gap from the main content box */
+/* Exif / technical specs box gets a visual gap from main content */
 .box--exif-specs {
     margin-top: 20px;
 }
 
-/* =============================================================================
- * 26: TABBED PAGE HEADERS
- * Title left with ruled line stopping at 50% (left column edge).
- * Buttons absolutely positioned top right. No line under buttons.
- * ============================================================================= */
+/* --- TABBED PAGE HEADERS --- */
+/* Title left with ruled line stopping at 50% (left column edge) */
+/* Buttons absolutely positioned top right. No line under buttons */
+
 .page-header-split {
     position: relative;
     margin-bottom: 30px;

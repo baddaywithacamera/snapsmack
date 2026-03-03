@@ -1,30 +1,7 @@
-/* ==========================================================================
-    !!! CRITICAL STYLE ENFORCEMENT - DO NOT MODIFY !!!
-    ========================================================================== 
-    
-    1. COLOR PALETTE:
-        - Page/Header Background: #000000 (Pure Black)
-        - Content Drawer (#footer): #131313 (Deep Grey)
-        - Footer Strip (#system-footer): #393939 (Mid-Grey Strip)
-        - Copyright Text:                 #cccccc (Light Grey)
-        - Dividing Line:                  #666666 (Medium Grey border between content/footer)
-
-    2. FRAMING LOGIC:
-        - Frame Color:                 #666666
-        - Space (Middle):              #000000
-        - INDEX (Post):      5px Inner / 15px Space / 1px Outside
-        - ARCHIVE (Thumb): 3px Inner / 10px Space / 1px Outside
-        - STATIC (Hero):    3px Inner / 10px Space / 1px Outside
-
-    3. FOOTER & SIGNATURE VISIBILITY:
-        - The #footer and #system-footer MUST be hidden (display: none) by default.
-        - They ONLY appear when the user expands the Info or Comment drawer.
-        - EXCEPTION: Static pages (.static-transmission) and Archives (.archive-page)
-          may display them by default via the OVERRIDES section at the bottom.
-
-    ========================================================================== */
-
-/* Smackdown Skin - Horizon Revival Mod */
+/**
+ * SNAPSMACK - Stylesheet for the new_horizon_dark skin
+ * Alpha v0.6
+ */
 
 /* ==========================================================================
     GLOBAL STYLES

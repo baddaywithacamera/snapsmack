@@ -1,6 +1,7 @@
 <?php
 /**
- * SnapSmack Admin Theme Manifest - Caribbean Blue
+ * SNAPSMACK - Configuration manifest for the Caribbean Blue admin theme
+ * Alpha v0.6
  */
 
 return [

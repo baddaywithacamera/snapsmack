@@ -1,3 +1,9 @@
+<?php
+/**
+ * SNAPSMACK - Skin header for the impact_printer skin
+ * Alpha v0.6
+ */
+?>
 <div id="ip-header">
     <div class="ip-header-inside">
         <?php include(dirname(__DIR__, 2) . '/core/header.php'); ?>

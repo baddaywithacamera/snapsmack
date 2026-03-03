@@ -1,23 +1,22 @@
 <?php
 /**
- * SnapSmack Core Meta
- * Version: 1.3.1 - CSS Load Order Fix
- * MASTER DIRECTIVE: Handle logic for SEO, CSS variables, and global headers.
+ * SNAPSMACK - SEO Meta Tags and CSS Variables
+ * Alpha v0.6
  *
- * v1.3.0: Added favicon link output from settings.
- *         Added $exif_display_enabled variable for skin layouts.
- * v1.3.1: FIXED — Skin style.css now loads BEFORE dynamic compiled CSS.
- *         Previously style.css loaded last, overriding all skin admin
- *         customizations (fonts, sizes, transforms, etc.).
+ * Generates canonical URLs, Open Graph tags, page titles, and favicon links.
+ * Sets up CSS custom properties for grid gaps. Handles the critical CSS load
+ * order: global resets → skin defaults → dynamic admin customizations.
  */
 
-// 1. PREPARE CSS VARIABLES (The Bridge)
+// --- CSS VARIABLES (GRID GAP) ---
+// Set --grid-gap as a CSS custom property for consistent spacing across skins
 $grid_gap = $settings['browse_gap'] ?? '100';
 if (is_numeric($grid_gap)) {
     $grid_gap .= 'px';
 }
 
-// 2. PREPARE TITLES & SEO LOGIC
+// --- PAGE TITLE AND SEO LOGIC ---
+// Determine if we're on the homepage, then build the page title
 $current_script = basename($_SERVER['SCRIPT_NAME']);
 $is_home = in_array($current_script, ['index.php', 'archive.php']) && empty($_GET['slug']) && empty($requested_slug);
 
@@ -25,13 +24,14 @@ $site_name = htmlspecialchars($settings['site_name'] ?? 'ISWA.CA');
 $tagline = !empty($settings['site_tagline']) ? " | " . htmlspecialchars($settings['site_tagline']) : "";
 
 // Build the Title String
-if (!empty($page_title) && !$is_home) { 
-    $display_title = htmlspecialchars($page_title) . " | " . $site_name; 
+if (!empty($page_title) && !$is_home) {
+    $display_title = htmlspecialchars($page_title) . " | " . $site_name;
 } else {
     $display_title = $site_name . $tagline;
 }
 
-// 3. PREPARE SOCIAL META (Open Graph)
+// --- OPEN GRAPH META TAGS ---
+// For social media sharing: use page image if available, fall back to logo
 $og_title = $display_title;
 $og_image = "";
 if (!empty($page['image_asset'])) {
@@ -40,11 +40,14 @@ if (!empty($page['image_asset'])) {
     $og_image = BASE_URL . ltrim($settings['header_logo_url'], '/');
 }
 
-// 4. CANONICAL URL
+// --- CANONICAL URL ---
+// Prevent duplicate content issues in search engines
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
 $canonical_url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 
-// 5. EXIF DISPLAY FLAG — available to all skin layouts
+// --- EXIF DISPLAY FLAG ---
+// Make this available to all skin layouts so they know whether to show
+// camera/lens metadata
 $exif_display_enabled = (($settings['exif_display_enabled'] ?? '1') == '1');
 ?>
 
@@ -56,7 +59,8 @@ $exif_display_enabled = (($settings['exif_display_enabled'] ?? '1') == '1');
 <link rel="alternate" type="application/rss+xml" title="<?php echo $site_name; ?> RSS Feed" href="<?php echo BASE_URL; ?>rss.php" />
 
 <?php
-// 6. FAVICON — supports .ico, .png, .svg
+// --- FAVICON SUPPORT ---
+// Support .ico, .png, and .svg favicons with appropriate MIME types
 if (!empty($settings['favicon_url'])):
     $fav_path = $settings['favicon_url'];
     $fav_ext  = strtolower(pathinfo($fav_path, PATHINFO_EXTENSION));
@@ -90,7 +94,7 @@ if (!empty($settings['favicon_url'])):
 /**
  * LOCAL FONT LOADER
  * Reads local_fonts from manifest-inventory.php and outputs @font-face
- * declarations so skins can use them.
+ * declarations so skins can use custom fonts.
  */
 $inventory_path = __DIR__ . '/manifest-inventory.php';
 $skin_manifest_path = dirname(__DIR__) . '/skins/' . ($active_skin ?? 'new_horizon_dark') . '/manifest.php';
@@ -121,15 +125,15 @@ if (file_exists($inventory_path)) {
 
 <?php
 /**
- * CSS LOAD ORDER (CRITICAL):
- *   1. public-facing.css    — global resets & shared layout
+ * CSS LOAD ORDER (CRITICAL FOR CUSTOMIZATIONS)
+ *   1. public-facing.css    — global resets and shared layout
  *   2. @font-face           — local font declarations
- *   3. style.css            — skin baseline styles (defaults)
+ *   3. style.css            — skin baseline styles (default appearance)
  *   4. dynamic compiled CSS — skin admin overrides (MUST WIN)
  *
- * The dynamic CSS must load LAST so that skin option panel
- * customizations (fonts, sizes, transforms, colors) override
- * the skin's hardcoded style.css defaults.
+ * The dynamic CSS must load LAST so user customizations from the skin option
+ * panel (fonts, sizes, colors, transforms) override the skin's hardcoded
+ * style.css defaults. This is why the order is critical.
  */
 ?>
 

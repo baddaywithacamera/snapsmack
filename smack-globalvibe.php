@@ -1,16 +1,16 @@
 <?php
 /**
- * SNAPSMACK - Global appearance settings.
- * Manages admin themes and global branding assets (masthead, archive grid).
- * Per-skin options and CSS compilation live in smack-skin.php.
- * Git Version Official Alpha 0.5
+ * SNAPSMACK - Global appearance and theme settings
+ * Alpha v0.6
+ *
+ * Manages public and admin theme selection, discovery, and activation.
+ * Per-theme customization and CSS overrides are handled in smack-skin.php.
  */
 
 require_once 'core/auth.php';
 
-// -------------------------------------------------------------------------
-// 1. DATA DISCOVERY
-// -------------------------------------------------------------------------
+// --- THEME DISCOVERY ---
+// Scans available skins and admin themes, populating selector dropdowns.
 
 $active_skin_db  = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'active_skin'")->fetchColumn();
 $active_theme_db = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'active_theme'")->fetchColumn();

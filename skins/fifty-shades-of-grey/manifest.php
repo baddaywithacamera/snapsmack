@@ -1,16 +1,9 @@
 <?php
 /**
- * SnapSmack Skin Manifest: Fifty Shades of Grey
- * Version: 2.4
- * -------------------------------------------------------------------------
- * NHD structure. fsog- selectors. Grey palette. No colour.
- * v2.1: Glitch removed. Hero/archive frame split. Border defaults.
- * v2.2: Text-transform toggle, letter-spacing, TYPOGRAPHY section.
- * v2.3: Photo-wrap container added to canvas/gutter selectors.
- *       Header font selector targets .site-title-text + .logo-area a.
- *       Gutter padding max bumped to 200px.
- * v2.4: Footer font family + size controls added to TYPOGRAPHY.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Configuration manifest for the fifty-shades-of-grey skin
+ * Alpha v0.6
+ *
+ * Defines layout options, features, and customization controls with three greyscale variants.
  */
 
 $inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
@@ -28,7 +21,7 @@ return [
         'archive_layouts' => ['square', 'cropped', 'masonry'],
     ],
 
-    // VARIANT SYSTEM
+    // Variant system for different greyscale themes
     'variants' => [
         'dark'   => 'Dark (Near Black)',
         'medium' => 'Medium (Mid Grey)',
@@ -36,7 +29,7 @@ return [
     ],
     'default_variant' => 'dark',
 
-    // THE HANDSHAKE — NO GLITCH
+    // Load required JavaScript libraries and controllers
     'require_scripts' => [
         'smack-footer',
         'smack-lightbox',

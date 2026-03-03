@@ -1,16 +1,7 @@
-/* ==========================================================================
-    !!! CRITICAL STYLE ENFORCEMENT - KIOSK SPEC !!!
-    ========================================================================== 
-    1. COLOR PALETTE:
-        - Backgrounds: #000000 (Pure Black)
-        - Text/Accents: #FFFFFF (Pure White)
-        - Highlights/Glitches: #FF0000 (Executive Red)
-    2. FRAMING:
-        - 5px Inner White / 15px Space Black / 1px Outside Red
-    3. TYPOGRAPHY:
-        - Headers: Impact
-        - Body: Arial, Helvetica, sans-serif
-    ========================================================================== */
+/**
+ * SNAPSMACK - Stylesheet for the kiosk skin
+ * Alpha v0.6
+ */
 
 :root {
     --kiosk-black: #000000;

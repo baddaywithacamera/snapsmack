@@ -1,6 +1,7 @@
 <?php
 /**
- * SnapSmack Admin Theme Manifest - Dapper Dan
+ * SNAPSMACK - Configuration manifest for the Dapper Dan admin theme
+ * Alpha v0.6
  */
 
 return [

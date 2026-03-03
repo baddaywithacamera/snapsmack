@@ -1,23 +1,18 @@
 <?php
 /**
- * Impact Printer — Layout Controller
- * Version: 1.0
- * -------------------------------------------------------------------------
- * ip- prefixed selectors. DotMatrix typography. ASCII border frame.
- * The .ip-ascii-frame wraps the image with data-border-style attribute.
- * The JS engine (ss-engine-ascii-borders.js) measures the image and
- * generates the correct number of characters for top/bottom/left/right.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Main layout template for the impact_printer skin
+ * Alpha v0.6
+ *
+ * Renders the photo display with ASCII frame borders, navigation, metadata, and comments sections.
  */
 require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
 
-// --- DOUBLE-LOCK SECURITY CHECK ---
+// Check if comments are enabled globally and for this specific post
 $global_on = (($settings['global_comments_enabled'] ?? '1') == '1');
 $post_on   = (($img['allow_comments'] ?? '1') == '1');
 $comments_active = ($global_on && $post_on);
 
-// --- ASCII BORDER STYLE ---
-// Read from settings (set via skin admin). Falls back to 'box'.
+// Determine the ASCII border style from settings
 $border_style = $settings['image_frame_style'] ?? 'box';
 ?>
 

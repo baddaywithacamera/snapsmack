@@ -1,12 +1,8 @@
 /**
- * SNAPSMACK - Chaos Engine Styles
- * Version: 2026.1 - Full 4-Effect Suite
- * Last changed: 2026-02-23
- * -------------------------------------------------------------------------
- * Provides CSS animations for all 4 malfunction types fired by ss-engine-glitch.js:
- * glitch-pop (.logo-area), glitch-static (.post-image),
- * glitch-jitter (.photo-title-footer), glitch-reboot (body)
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Glitch effect animations
+ * Alpha v0.6
+ *
+ * Visual distortion and glitch effects for chaotic moments.
  */
 
 /* ==========================================================================

@@ -1,8 +1,12 @@
 /**
- * SnapSmack - Hotkey Engine
- * Version: 3.4 - F1 Help, ESC Close
- * MASTER DIRECTIVE: Full file return. Logic only.
+ * SNAPSMACK - Hotkey Engine
+ * Alpha v0.6
+ *
+ * Keyboard navigation and shortcuts. F1 opens help menu, ESC closes overlays,
+ * arrow keys navigate gallery, number keys toggle info panes.
  */
+
+// --- HELP SYSTEM ---
 
 document.addEventListener('DOMContentLoaded', () => {
     if (window.SNAP_DATA) {
@@ -10,24 +14,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// --- KEYBOARD SHORTCUTS ---
+
 document.addEventListener('keydown', function(e) {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (document.getElementById('wall-canvas')) return;
 
-    // HELP
+    // Help menu
     if (e.key === 'F1') {
         e.preventDefault();
         toggleHelpModal();
         return;
     }
 
-    // CLOSE — Escape
+    // Close all overlays
     if (e.key === 'Escape') {
         closeAllOverlays();
         return;
     }
 
-    // NAVIGATION
+    // Gallery navigation with arrow keys
     if (window.SNAP_DATA) {
         if (e.key === 'ArrowLeft' && window.SNAP_DATA.prevUrl) {
             window.location.href = window.SNAP_DATA.prevUrl;
@@ -37,18 +43,18 @@ document.addEventListener('keydown', function(e) {
             window.location.href = window.SNAP_DATA.nextUrl;
         }
 
+        // Spacebar navigates backward through archive (newest to oldest)
         if (e.key === ' ') {
             e.preventDefault();
             const isAtBottom = (window.innerHeight + window.scrollY) >= document.body.offsetHeight - 5;
 
-            // Space goes backward through archive (newest to oldest)
             if (window.SNAP_DATA.prevUrl) {
                 window.location.href = window.SNAP_DATA.prevUrl;
             }
         }
     }
 
-    // SHORTCUTS
+    // Quick toggle shortcuts for info panes
     if (e.key === '1') {
         if (window.smackdown && window.smackdown.toggleFooter) {
             window.smackdown.toggleFooter('info', null);
@@ -72,6 +78,8 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
+// --- UTILITY FUNCTIONS ---
+
 function scrollToFooter() {
     const footer = document.getElementById('footer') || document.querySelector('footer');
     if (footer) {
@@ -79,36 +87,38 @@ function scrollToFooter() {
     }
 }
 
+// --- HELP UI ---
+
 function createHelpToast() {
     const isMobile = window.innerWidth <= 768 || window.matchMedia("(pointer: coarse)").matches;
     if (isMobile) return;
     if (localStorage.getItem('snapsmack_help_seen') === 'true' || window.HIDE_SNAP_HELP) return;
 
     const style = window.getComputedStyle(document.body);
-    const bgColor = style.backgroundColor; 
-    const textColor = style.color;        
-    
+    const bgColor = style.backgroundColor;
+    const textColor = style.color;
+
     const toast = document.createElement('div');
     toast.id = 'snap-help-toast';
     toast.innerText = "PRESS F1 FOR HELP";
-    
+
     toast.style.cssText = `
-        position: fixed; bottom: 20px; left: 20px; 
-        color: ${textColor}; background: ${bgColor}; 
-        padding: 10px 20px; border: 1px solid ${textColor}; 
-        font-family: 'Courier Prime', monospace; font-size: 12px; 
-        z-index: 9999999; pointer-events: none; opacity: 0; 
+        position: fixed; bottom: 20px; left: 20px;
+        color: ${textColor}; background: ${bgColor};
+        padding: 10px 20px; border: 1px solid ${textColor};
+        font-family: 'Courier Prime', monospace; font-size: 12px;
+        z-index: 9999999; pointer-events: none; opacity: 0;
         transition: opacity 1s; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
     `;
-    
+
     document.body.appendChild(toast);
     setTimeout(() => toast.style.opacity = '1', 500);
-    
+
     setTimeout(() => {
         toast.style.opacity = '0';
         localStorage.setItem('snapsmack_help_seen', 'true');
     }, 5000);
-    
+
     setTimeout(() => { if(toast.parentNode) toast.parentNode.removeChild(toast); }, 6000);
 }
 
@@ -126,7 +136,7 @@ function createHelpModal() {
     const style = window.getComputedStyle(document.body);
     const bgColor = style.backgroundColor;
     const textColor = style.color;
-    
+
     const commentsEnabled = document.getElementById('show-comments') !== null;
     const commentHint = commentsEnabled ? '<strong>[ 2 ]</strong> <span>Toggle Comments</span>' : '';
 
@@ -173,7 +183,7 @@ function closeAllOverlays() {
     if (window.smackdown && window.smackdown.closeFooter) {
         window.smackdown.closeFooter();
     }
-    
+
     if (window.smackdown && window.smackdown.closeLightbox) {
         window.smackdown.closeLightbox();
     }

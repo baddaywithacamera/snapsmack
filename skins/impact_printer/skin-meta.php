@@ -1,13 +1,15 @@
 <?php
 /**
- * Impact Printer — Skin Meta
- * Version: 1.0
+ * SNAPSMACK - Meta tags for the impact_printer skin
+ * Alpha v0.6
+ *
+ * Includes core meta tags and loads the appropriate paper texture variant stylesheet.
  */
 
-// 1. INCLUDE CORE META
+// Include core meta tags for SEO and CSS
 include(dirname(__DIR__, 2) . '/core/meta.php');
 
-// 2. VARIANT LOADER
+// Load the appropriate variant stylesheet
 $allowed_variants = ['greenbar', 'plain'];
 $active_variant   = $settings['active_skin_variant'] ?? 'greenbar';
 if (!in_array($active_variant, $allowed_variants)) {

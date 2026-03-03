@@ -1,13 +1,8 @@
-/* * SNAPSMACK MASTER COLOUR INDEX (THE PAINT)
- * ---------------------------------------------------------------------------
- * 01: Global Base       | 06: Form Elements     | 11: Pagination
- * 02: Sidebar Nav       | 07: Transmissions     | 12: Progress/Uploads
- * 03: Main Headers      | 08: Buttons/Actions   | 13: Login/Footer
- * 04: Content Boxes     | 09: Item Lists        | 14: Appearance
- * 05: Media Previews    | 10: Dash/Stats        | 15: Overrides
- * ---------------------------------------------------------------------------
- * v2026.1 - PICASA
- * PALETTE: #1e1e1e (Bg), #00b4b4 (Teal), #007a7a (Red), #383838 (Border)
+/**
+ * SNAPSMACK - Mi Casa Es Su Picasa admin theme colors
+ * Alpha v0.6
+ *
+ * Dark theme with teal accents. All color values for admin-theme-geometry-master.css.
  */
 
 /* 01: GLOBAL BASE */

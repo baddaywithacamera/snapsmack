@@ -1,15 +1,13 @@
 <?php
 /**
- * Fifty Shades of Grey — Layout Controller
- * Version: 2.1
- * -------------------------------------------------------------------------
- * NHD structure. fsog- selectors. No exif strip. No title bar above nav.
- * v2.1: Download overlay v2 — no wrapper div, button as sibling.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Main layout template for the fifty-shades-of-grey skin
+ * Alpha v0.6
+ *
+ * Renders the photo display, navigation, metadata, and comments sections.
  */
 require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
 
-// --- DOUBLE-LOCK SECURITY CHECK ---
+// Check if comments are enabled globally and for this specific post
 $global_on = (($settings['global_comments_enabled'] ?? '1') == '1');
 $post_on   = (($img['allow_comments'] ?? '1') == '1');
 $comments_active = ($global_on && $post_on);

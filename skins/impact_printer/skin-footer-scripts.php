@@ -1,9 +1,7 @@
 <?php
 /**
- * Impact Printer — Skin Footer Scripts
- * Version: 1.0
- * -------------------------------------------------------------------------
- * All global engines (Comms, Thomas, HUD) load via core/footer-scripts.php.
- * This file is a safe no-op retained for controller compatibility.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Footer scripts for the impact_printer skin
+ * Alpha v0.6
+ *
+ * Reserved for future use. Core scripts load globally.
  */

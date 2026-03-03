@@ -1,28 +1,28 @@
 <?php
 /**
- * SNAPSMACK - Manage Archive.
- * Primary library dashboard. Handles complex filtering, searching, 
- * and paginated display of all registered transmissions.
- * Executes the complete delete protocol for data and asset removal.
- * Git Version Official Alpha 0.5
+ * SNAPSMACK - Archive management dashboard
+ * Alpha v0.6
+ *
+ * Provides searchable listing of all posts with filtering by status, category, and album.
+ * Supports deletion of posts with cascading removal of associated data and files.
  */
 
 require_once 'core/auth.php';
 
-// --- 1. THE DELETE PROTOCOL ---
-// Completely purges a post, its primary media file, and all relational data.
+// --- DELETION HANDLER ---
+// Removes a post, its image files, and all associated database records.
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
     $stmt = $pdo->prepare("SELECT img_file FROM snap_images WHERE id = ?");
     $stmt->execute([$id]);
     $img = $stmt->fetch();
-    
-    // Remove the primary physical file from the server.
-    if ($img && file_exists($img['img_file'])) { 
-        unlink($img['img_file']); 
+
+    // Delete the primary image file from disk.
+    if ($img && file_exists($img['img_file'])) {
+        unlink($img['img_file']);
     }
-    
-    // Cascading removal of DB records.
+
+    // Remove database records in cascading order.
     $pdo->prepare("DELETE FROM snap_images WHERE id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_image_album_map WHERE image_id = ?")->execute([$id]);
@@ -32,13 +32,15 @@ if (isset($_GET['delete'])) {
     exit;
 }
 
-// --- 2. SEARCH & FILTER PREPARATION ---
+// --- FILTER PARAMETERS ---
+// Gather user-supplied search and filter criteria from query string.
 $search = $_GET['search'] ?? '';
 $cat_filter = $_GET['cat_id'] ?? '';
 $album_filter = $_GET['album_id'] ?? '';
 $status_filter = $_GET['status'] ?? '';
 
-// --- 3. PAGINATION MATH ---
+// --- PAGINATION ---
+// Calculate offset for paginated display of results.
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $per_page = 15;
 $offset = ($page - 1) * $per_page;
@@ -46,7 +48,7 @@ $offset = ($page - 1) * $per_page;
 $params = [];
 $where_clauses = [];
 
-// Build dynamic WHERE clauses based on active filters.
+// Build dynamic WHERE clauses from active filters.
 if ($search) {
     $where_clauses[] = "(i.img_title LIKE ? OR i.img_description LIKE ? OR i.img_film LIKE ? OR i.img_exif LIKE ?)";
     $params = array_merge($params, array_fill(0, 4, "%$search%"));
@@ -62,38 +64,37 @@ if ($album_filter) {
     $params[] = $album_filter;
 }
 
-// Timezone is set globally in core/db.php — use PHP-generated timestamp
-// instead of MySQL NOW() for consistent timezone handling.
+// Use local PHP timestamp for timezone consistency rather than MySQL NOW().
 $now_local = date('Y-m-d H:i:s');
 
-if ($status_filter === 'draft') { 
-    $where_clauses[] = "i.img_status = 'draft'"; 
-} elseif ($status_filter === 'scheduled') { 
+if ($status_filter === 'draft') {
+    $where_clauses[] = "i.img_status = 'draft'";
+} elseif ($status_filter === 'scheduled') {
     $where_clauses[] = "i.img_status = 'published' AND i.img_date > ?";
     $params[] = $now_local;
-} elseif ($status_filter === 'live') { 
+} elseif ($status_filter === 'live') {
     $where_clauses[] = "i.img_status = 'published' AND i.img_date <= ?";
     $params[] = $now_local;
 }
 
 $where_sql = $where_clauses ? " WHERE " . implode(" AND ", $where_clauses) : "";
 
-// --- 4. DATA ACQUISITION ---
-// Calculate total records for pagination limits.
+// --- DATA RETRIEVAL ---
+// Count total matching records to calculate pagination.
 $count_stmt = $pdo->prepare("SELECT COUNT(i.id) FROM snap_images i $where_sql");
 $count_stmt->execute($params);
 $total_rows = $count_stmt->fetchColumn();
 $total_pages = ceil($total_rows / $per_page);
 
-// Fetch the current page of posts, injecting taxonomy lists and comment counts via subqueries.
-$sql = "SELECT i.*, 
-        (SELECT GROUP_CONCAT(c.cat_name ORDER BY c.cat_name ASC SEPARATOR ', ') 
-         FROM snap_categories c 
-         JOIN snap_image_cat_map m ON c.id = m.cat_id 
+// Fetch the current page of posts with related category, album, and comment data.
+$sql = "SELECT i.*,
+        (SELECT GROUP_CONCAT(c.cat_name ORDER BY c.cat_name ASC SEPARATOR ', ')
+         FROM snap_categories c
+         JOIN snap_image_cat_map m ON c.id = m.cat_id
          WHERE m.image_id = i.id) as category_list,
-        (SELECT GROUP_CONCAT(a.album_name ORDER BY a.album_name ASC SEPARATOR ', ') 
-         FROM snap_albums a 
-         JOIN snap_image_album_map am ON a.id = am.album_id 
+        (SELECT GROUP_CONCAT(a.album_name ORDER BY a.album_name ASC SEPARATOR ', ')
+         FROM snap_albums a
+         JOIN snap_image_album_map am ON a.id = am.album_id
          WHERE am.image_id = i.id) as album_list,
         (SELECT COUNT(*) FROM snap_comments WHERE img_id = i.id) as comment_count
         FROM snap_images i
@@ -105,7 +106,7 @@ $posts = $pdo->prepare($sql);
 $posts->execute($params);
 $post_list = $posts->fetchAll();
 
-// Load full taxonomy lists for the filter dropdowns.
+// Load all categories and albums for filter dropdowns.
 $cats = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
 $albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
 

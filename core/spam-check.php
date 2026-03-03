@@ -1,20 +1,27 @@
 <?php
 /**
- * SnapSmack - Akismet Spam Filter
- * Version: 1.0
+ * SNAPSMACK - Akismet Spam Filter
+ * Alpha v0.6
+ *
+ * Checks incoming comments against the Akismet spam detection service.
+ * Requires an Akismet API key to be stored in the database settings.
+ * Returns false (no spam) if no key is configured.
  */
 
 function is_spam($author, $email, $body, $pdo) {
-    // 1. Fetch the key from the DB
+    // --- API KEY LOOKUP ---
+    // Fetch the Akismet key from the database settings
     $stmt = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'akismet_key'");
     $akismet_key = $stmt->fetchColumn();
 
-    // If no key is set, we fail 'safe' (let the comment through) 
-    // or you can change this to return true if you want total lockdown.
+    // If no key is set, fail open and allow the comment through.
+    // Change to 'return true' if you prefer lockdown mode (block by default).
     if (!$akismet_key) return false;
 
     $blog_url = 'https://baddaywithacamera.ca';
-    
+
+    // --- REQUEST PAYLOAD ---
+    // Build the query string with comment and request metadata
     $query = http_build_query([
         'blog' => $blog_url,
         'user_ip' => $_SERVER['REMOTE_ADDR'],
@@ -28,7 +35,9 @@ function is_spam($author, $email, $body, $pdo) {
 
     $host = "$akismet_key.rest.akismet.com";
     $path = "/1.1/comment-check";
-    
+
+    // --- HTTP REQUEST ---
+    // Construct a raw HTTP/1.0 POST request to the Akismet API
     $request = "POST $path HTTP/1.0\r\n";
     $request .= "Host: $host\r\n";
     $request .= "Content-Type: application/x-www-form-urlencoded\r\n";
@@ -42,10 +51,12 @@ function is_spam($author, $email, $body, $pdo) {
         fwrite($fs, $request);
         while (!feof($fs)) $response .= fgets($fs, 1160);
         fclose($fs);
-        
+
+        // --- RESPONSE PARSING ---
+        // Split headers from body and check the response
         $response = explode("\r\n\r\n", $response, 2);
-        // Akismet returns "true" if it is spam
+        // Akismet returns "true" in the body if the comment is spam
         return (trim($response[1] ?? '') == 'true');
     }
-    return false; 
+    return false;
 }

@@ -1,14 +1,10 @@
 <?php
 /**
- * SNAPSMACK - System maintenance.
+ * SNAPSMACK - System maintenance
+ * Alpha v0.6
+ *
  * Performs database optimizations, taxonomy cleanup, and asset synchronization.
  * Clears orphaned mappings and defragments core tables to maintain performance.
- * 
- * Asset sync now generates:
- *   t_  — 400x400 center-cropped square
- *   a_  — 400px on the long side, aspect preserved
- *
- * Git Version Official Alpha 0.5
  */
 
 require_once 'core/auth.php';
@@ -19,7 +15,7 @@ $log = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'];
 
-    // 1. REGISTRY SYNC
+    // REGISTRY SYNC
     // Removes ghost entries in the mapping table for images that have been deleted.
     if ($action === 'sync_cats') {
         $stmt = $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id NOT IN (SELECT id FROM snap_images)");
@@ -28,19 +24,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $log[] = "SUCCESS: Purged $deleted orphaned category mappings.";
     }
 
-    // 2. DB OPTIMIZATION
+    // DB OPTIMIZATION
     // Forces MySQL to defragment and optimize core operational tables.
     if ($action === 'optimize') {
         $pdo->query("OPTIMIZE TABLE snap_images, snap_categories, snap_image_cat_map");
         $log[] = "SUCCESS: Database tables optimized and defragmented.";
     }
 
-    // 3. ASSET SYNC
+    // ASSET SYNC
     // Regenerates missing thumbnails and deletes physical files not found in the DB.
     if ($action === 'sync_assets') {
         set_time_limit(600);
         ini_set('memory_limit', '512M');
-        
+
         $images = $pdo->query("SELECT id, img_title, img_file FROM snap_images")->fetchAll(PDO::FETCH_ASSOC);
         $registered_paths = [];
         $fixed_square = 0;
@@ -54,16 +50,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $registered_paths[] = realpath($file);
             $path_info = pathinfo($file);
             $thumb_dir = $path_info['dirname'] . '/thumbs';
-            
+
             // Ensure thumbs directory exists
             if (!is_dir($thumb_dir)) {
                 mkdir($thumb_dir, 0755, true);
             }
-            
+
             // Expected thumbnail locations
             $sq_thumb = $thumb_dir . '/t_' . $path_info['basename'];
             $aspect_thumb = $thumb_dir . '/a_' . $path_info['basename'];
-            
+
             // Register existing thumbs as valid
             if (file_exists($sq_thumb)) $registered_paths[] = realpath($sq_thumb);
             if (file_exists($aspect_thumb)) $registered_paths[] = realpath($aspect_thumb);
@@ -77,8 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mime = mime_content_type($file);
                 $src = null;
 
-                if ($mime == 'image/jpeg') { $src = @imagecreatefromjpeg($file); } 
-                elseif ($mime == 'image/png') { $src = @imagecreatefrompng($file); } 
+                if ($mime == 'image/jpeg') { $src = @imagecreatefromjpeg($file); }
+                elseif ($mime == 'image/png') { $src = @imagecreatefrompng($file); }
                 elseif ($mime == 'image/webp') { $src = @imagecreatefromwebp($file); }
 
                 if ($src) {

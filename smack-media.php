@@ -1,21 +1,22 @@
 <?php
 /**
- * SNAPSMACK - Media library and asset manager.
- * Manages the injection and retrieval of global assets.
- * Provides a compact grid for asset review and dynamic shortcode generation.
- * Git Version Official Alpha 0.5
+ * SNAPSMACK - Global media library and asset management
+ * Alpha v0.6
+ *
+ * Handles upload, storage, and retrieval of global media assets.
+ * Generates shortcodes for embedding assets in pages and posts.
  */
 
 require_once 'core/auth.php';
 
-// Define the transmission target for media assets.
+// Ensure media storage directory exists.
 $target_dir = "media_assets/";
 if (!is_dir($target_dir)) {
     mkdir($target_dir, 0755, true);
 }
 
-// --- 1. AJAX SIGNAL HANDLING ---
-// Process asynchronous file uploads from the drop zone.
+// --- AJAX FILE UPLOAD HANDLER ---
+// Processes asynchronous file uploads and returns JSON response.
 if (isset($_FILES['file'])) {
     $file_ext = pathinfo($_FILES["file"]["name"], PATHINFO_EXTENSION);
     $file_name = time() . '_' . uniqid() . '.' . $file_ext;
@@ -32,25 +33,25 @@ if (isset($_FILES['file'])) {
     exit;
 }
 
-// --- 2. DELETE LOGIC ---
-// Purge asset from the server and the database registry.
+// --- ASSET DELETION ---
+// Removes asset file from disk and deletes its database record.
 if (isset($_GET['delete'])) {
     $stmt = $pdo->prepare("SELECT asset_path FROM snap_assets WHERE id = ?");
     $stmt->execute([$_GET['delete']]);
     $path = $stmt->fetchColumn();
-    
+
     if ($path && file_exists($path)) {
         unlink($path);
     }
-    
+
     $stmt = $pdo->prepare("DELETE FROM snap_assets WHERE id = ?");
     $stmt->execute([$_GET['delete']]);
-    
+
     header("Location: smack-media.php");
     exit;
 }
 
-// Retrieve all registered assets ordered by discovery date.
+// Load all assets ordered by creation date.
 $assets = $pdo->query("SELECT * FROM snap_assets ORDER BY created_at DESC")->fetchAll();
 $page_title = "Media Library";
 

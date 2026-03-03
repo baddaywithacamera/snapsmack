@@ -1,21 +1,19 @@
 <?php
 /**
- * SNAPSMACK - Network Manager
- * Version: 2.0 - Schema Alignment
- * -------------------------------------------------------------------------
- * - FIXED: Category is now a FK (cat_id) joining snap_blogroll_cats.
- * - FIXED: All redirects corrected to smack-blogroll.php.
- * - FIXED: List view joins cat_name for display and grouping.
- * - FIXED: Form uses dropdown of existing categories, not free-text input.
- * -------------------------------------------------------------------------
+ * SNAPSMACK - Blogroll manager
+ * Alpha v0.6
+ *
+ * Manages network of independent peers and external photographers.
+ * Handles CRUD operations for blogroll entries with category organization.
  */
 
 require_once 'core/auth.php';
 
-// --- 1. FETCH CATEGORIES (needed for form dropdown and list grouping) ---
+// --- FETCH CATEGORIES ---
+// Load categories for dropdown menu and list grouping.
 $categories = $pdo->query("SELECT * FROM snap_blogroll_cats ORDER BY cat_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
-// --- 2. PERSISTENCE HANDLER ---
+// --- PERSISTENCE HANDLER ---
 if (isset($_POST['save_peer'])) {
     $id     = $_POST['peer_id'] ?? null;
     $name   = trim($_POST['peer_name']);
@@ -37,16 +35,16 @@ if (isset($_POST['save_peer'])) {
     exit;
 }
 
-// --- 3. REMOVAL HANDLER ---
+// --- REMOVAL HANDLER ---
 if (isset($_GET['delete'])) {
     $pdo->prepare("DELETE FROM snap_blogroll WHERE id=?")->execute([$_GET['delete']]);
     header("Location: smack-blogroll.php?msg=deleted");
     exit;
 }
 
-// --- 4. DATA ACQUISITION ---
+// --- DATA ACQUISITION ---
 $peers = $pdo->query(
-    "SELECT b.*, c.cat_name 
+    "SELECT b.*, c.cat_name
      FROM snap_blogroll b
      LEFT JOIN snap_blogroll_cats c ON b.cat_id = c.id
      ORDER BY c.cat_name ASC, b.peer_name ASC"
