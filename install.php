@@ -18,6 +18,17 @@ $installer_version_label = 'Alpha 0.7';
 // --- SESSION INIT ---
 session_start();
 
+// --- CODEBASE CHECK ---
+// The installer configures an existing codebase — it doesn't deploy one.
+// If key files are missing, redirect to setup.php (the bootstrap deployer).
+if (!file_exists(__DIR__ . '/core/parser.php') || !is_dir(__DIR__ . '/core')) {
+    if (file_exists(__DIR__ . '/setup.php')) {
+        header('Location: setup.php');
+        exit;
+    }
+    die('<!DOCTYPE html><html><head><meta charset="utf-8"><title>SnapSmack</title></head><body style="background:#111;color:#eee;font-family:monospace;padding:60px;text-align:center;"><h1>CODEBASE NOT FOUND</h1><p>The SnapSmack application files are missing. Upload the full codebase to this directory first, or use <code>setup.php</code> to deploy from GitHub.</p></body></html>');
+}
+
 // --- SAFETY LOCK ---
 // If SnapSmack is already installed, refuse to run.
 // We check by attempting a PDO connection using an existing db.php
