@@ -1,7 +1,7 @@
 <?php
 /**
  * SnapSmack Skin Manifest: New Horizon Dark
- * Version: 5.4 - Archive Grid Controls & Justified Support
+ * Version: 5.5 - Footer Font Controls
  * -------------------------------------------------------------------------
  * - ADDED: archive_layouts feature flag (square, cropped, masonry)
  * - ADDED: Section 2a Archive Grid controls (columns, justified row height)
@@ -9,6 +9,7 @@
  * - FIXED: Hero frame selector no longer targets .thumb-link
  * - RETAINED: All v5.3 hero frame options unchanged
  * - RETAINED: All v5.3 typography, wall, blogroll options unchanged
+ * - v5.5: Footer font family + size controls added to CONTENT & TYPOGRAPHY.
  * - DIRECTIVE: FULL FILE OUTPUT. NO TRUNCATION.
  * -------------------------------------------------------------------------
  */
@@ -19,7 +20,7 @@ $fonts = $inventory['fonts'] ?? [];
 
 return [
     'name'          => 'New Horizon Dark',
-    'version'       => '5.4',
+    'version'       => '5.5',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'High-contrast dark mode with archival framing, tactical layout controls, and full JS library support.',
@@ -308,6 +309,29 @@ return [
             'max'      => '120',
             'selector' => '.static-content, #pane-info',
             'property' => 'margin-top'
+        ],
+
+        /* FOOTER FONTS */
+
+        'footer_font_family' => [
+            'section'  => 'CONTENT & TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'Footer Font',
+            'default'  => 'Inter',
+            'options'  => $fonts,
+            'selector' => '#system-footer .inside, #system-footer p, #sig-text',
+            'property' => 'font-family'
+        ],
+
+        'footer_font_size' => [
+            'section'  => 'CONTENT & TYPOGRAPHY',
+            'type'     => 'range',
+            'label'    => 'Footer Font Size (px)',
+            'default'  => '11',
+            'min'      => '8',
+            'max'      => '18',
+            'selector' => '#system-footer p, #sig-text',
+            'property' => 'font-size'
         ],
 
         /* ---------------------------------------------------------------------

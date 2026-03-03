@@ -3,7 +3,7 @@
  * SNAPSMACK - Global engine configuration.
  * Primary interface for site identity, navigation mapping, and localization.
  * Handles branding assets and server-side image processing parameters.
- * Git Version Official Alpha 0.5
+ * Git Version Official Alpha 0.6
  */
 
 require_once 'core/auth.php';
@@ -61,6 +61,11 @@ $date_options = [
     'jS F Y'          => '1st February 2026',
     'D, M j, Y'       => 'Sun, Feb 1, 2026'
 ];
+
+// Helper for footer slot toggle state.
+function footer_slot_state($settings, $key, $default = 'on') {
+    return $settings[$key] ?? $default;
+}
 
 $page_title = "Configuration";
 include 'core/admin-header.php';
@@ -127,22 +132,6 @@ include 'core/sidebar.php';
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>BRANDING STYLE</label>
-                    <select name="settings[footer_branding_style]">
-                        <option value="standard" <?php echo (($settings['footer_branding_style'] ?? 'standard') == 'standard') ? 'selected' : ''; ?>>STANDARD</option>
-                        <option value="minimal" <?php echo (($settings['footer_branding_style'] ?? 'standard') == 'minimal') ? 'selected' : ''; ?>>MINIMAL</option>
-                        <option value="ghost" <?php echo (($settings['footer_branding_style'] ?? 'standard') == 'ghost') ? 'selected' : ''; ?>>GHOST</option>
-                    </select>
-                    <span class="dim">FOOTER LOGO VISIBILITY.</span>
-                </div>
-
-                <div class="lens-input-wrapper">
-                    <label>COPYRIGHT OVERRIDE</label>
-                    <input type="text" name="settings[footer_copyright_override]" placeholder="Default" value="<?php echo htmlspecialchars($settings['footer_copyright_override'] ?? ''); ?>">
-                    <span class="dim">LEAVE BLANK FOR AUTOMATIC.</span>
-                </div>
-
-                <div class="lens-input-wrapper">
                     <label>PUBLIC BLOGROLL</label>
                     <select name="settings[blogroll_enabled]">
                         <option value="1" <?php echo (($settings['blogroll_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
@@ -150,6 +139,81 @@ include 'core/sidebar.php';
                     </select>
                     <span class="dim">CONTROLS NAV LINK AND PUBLIC PAGE ACCESS.</span>
                 </div>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             FOOTER CONFIGURATION — Slot-Based Architecture
+             Replaces old footer_branding_style / footer_copyright_override.
+             ============================================================ -->
+        <div class="box">
+            <h3>FOOTER CONFIGURATION</h3>
+            <p class="dim">Configure which elements appear in the public site footer. Each slot can be ON (default content), CUSTOM (your text), or OFF. RSS cannot be disabled.</p>
+
+            <div class="dash-grid">
+
+                <?php
+                $footer_slots = [
+                    [
+                        'key'         => 'copyright',
+                        'label'       => 'COPYRIGHT',
+                        'hint'        => 'Default: &copy; {YEAR} {BLOG NAME}',
+                        'placeholder' => 'e.g. &copy; 2026 My Photo Blog',
+                        'default'     => 'on',
+                    ],
+                    [
+                        'key'         => 'email',
+                        'label'       => 'EMAIL',
+                        'hint'        => 'Default: reverse-encoded site email (spam protection).',
+                        'placeholder' => 'e.g. contact@example.com',
+                        'default'     => 'on',
+                    ],
+                    [
+                        'key'         => 'theme',
+                        'label'       => 'CURRENT THEME',
+                        'hint'        => 'Default: shows active skin name.',
+                        'placeholder' => 'e.g. Designed by Example Studio',
+                        'default'     => 'off',
+                    ],
+                    [
+                        'key'         => 'powered',
+                        'label'       => 'POWERED BY',
+                        'hint'        => 'Default: POWERED BY SNAPSMACK {VERSION}',
+                        'placeholder' => 'e.g. Built with love and caffeine',
+                        'default'     => 'on',
+                    ],
+                ];
+
+                foreach ($footer_slots as $slot):
+                    $state_key  = 'footer_slot_' . $slot['key'];
+                    $custom_key = 'footer_slot_' . $slot['key'] . '_custom';
+                    $state      = footer_slot_state($settings, $state_key, $slot['default']);
+                    $custom_val = $settings[$custom_key] ?? '';
+                ?>
+                <div class="lens-input-wrapper">
+                    <label><?php echo $slot['label']; ?> SLOT</label>
+                    <select name="settings[<?php echo $state_key; ?>]" class="footer-slot-toggle" data-target="<?php echo $custom_key; ?>">
+                        <option value="on"     <?php echo ($state === 'on')     ? 'selected' : ''; ?>>ON (DEFAULT)</option>
+                        <option value="custom" <?php echo ($state === 'custom') ? 'selected' : ''; ?>>CUSTOM TEXT</option>
+                        <option value="off"    <?php echo ($state === 'off')    ? 'selected' : ''; ?>>OFF</option>
+                    </select>
+                    <span class="dim"><?php echo $slot['hint']; ?></span>
+
+                    <div class="footer-custom-field" id="field-<?php echo $custom_key; ?>" style="<?php echo ($state === 'custom') ? '' : 'display:none;'; ?> margin-top: 8px;">
+                        <input type="text"
+                               name="settings[<?php echo $custom_key; ?>]"
+                               value="<?php echo htmlspecialchars($custom_val); ?>"
+                               placeholder="<?php echo $slot['placeholder']; ?>">
+                    </div>
+                </div>
+                <?php endforeach; ?>
+
+                <div class="lens-input-wrapper">
+                    <label>RSS SLOT</label>
+                    <div class="read-only-display">ALWAYS ON — CANNOT BE DISABLED</div>
+                    <span class="dim">Links to your site RSS feed.</span>
+                </div>
+
             </div>
         </div>
 
@@ -258,6 +322,19 @@ include 'core/sidebar.php';
 
     </form>
 </div>
+
+<script>
+// Footer slot toggle — show/hide custom text fields.
+document.querySelectorAll('.footer-slot-toggle').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+        var targetId = 'field-' + this.getAttribute('data-target');
+        var field = document.getElementById(targetId);
+        if (field) {
+            field.style.display = (this.value === 'custom') ? '' : 'none';
+        }
+    });
+});
+</script>
 
 <script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
 <?php include 'core/admin-footer.php'; ?>

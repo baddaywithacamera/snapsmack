@@ -1,7 +1,7 @@
 <?php
 /**
  * SnapSmack Skin Manifest: Fifty Shades of Grey
- * Version: 2.3
+ * Version: 2.4
  * -------------------------------------------------------------------------
  * NHD structure. fsog- selectors. Grey palette. No colour.
  * v2.1: Glitch removed. Hero/archive frame split. Border defaults.
@@ -9,6 +9,7 @@
  * v2.3: Photo-wrap container added to canvas/gutter selectors.
  *       Header font selector targets .site-title-text + .logo-area a.
  *       Gutter padding max bumped to 200px.
+ * v2.4: Footer font family + size controls added to TYPOGRAPHY.
  * -------------------------------------------------------------------------
  */
 
@@ -17,7 +18,7 @@ $fonts = $inventory['fonts'] ?? [];
 
 return [
     'name'          => 'Fifty Shades of Grey',
-    'version'       => '2.3',
+    'version'       => '2.4',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Pure greyscale photography skin. Three monochrome variants with zero colour accents.',
@@ -198,6 +199,29 @@ return [
             'options'  => $fonts,
             'selector' => '.static-content, .description',
             'property' => 'font-family'
+        ],
+
+        /* FOOTER FONTS */
+
+        'footer_font_family' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'Footer Font',
+            'default'  => 'Raleway',
+            'options'  => $fonts,
+            'selector' => '#system-footer .inside, #system-footer p, #sig-text',
+            'property' => 'font-family'
+        ],
+
+        'footer_font_size' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'range',
+            'label'    => 'Footer Font Size (px)',
+            'default'  => '11',
+            'min'      => '8',
+            'max'      => '18',
+            'selector' => '#system-footer p, #sig-text',
+            'property' => 'font-size'
         ],
 
         /* ============================================================

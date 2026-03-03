@@ -1,7 +1,7 @@
 <?php
 /**
  * SnapSmack Skin Manifest: Impact Printer
- * Version: 2.0
+ * Version: 2.1
  * -------------------------------------------------------------------------
  * Tractor-feed dot-matrix printer circa 1983.
  * Background images: actual tractor-feed paper textures with sprocket holes.
@@ -16,6 +16,8 @@
  *   The picker is built from inventory local_fonts (DotMatrix-* / Tiny5)
  *   plus a handful of Google monospace fonts. Full Google library is NOT
  *   available — this is a dot-matrix printer, not a laser jet.
+ *
+ * v2.1: Footer font family + size controls added to TYPOGRAPHY.
  * -------------------------------------------------------------------------
  */
 
@@ -32,7 +34,7 @@ foreach ($dm_keys as $k) {
 
 return [
     'name'          => 'Impact Printer',
-    'version'       => '2.0',
+    'version'       => '2.1',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Continuous-feed dot-matrix printer circa 1983. Tractor-feed paper textures, ASCII character borders, faded ribbon ink. Two paper stocks: green-bar ledger and plain white.',
@@ -256,6 +258,29 @@ return [
             'options'  => $picker_fonts,
             'selector' => '.static-page-title, .photo-title-footer',
             'property' => 'font-family'
+        ],
+
+        /* FOOTER FONTS */
+
+        'footer_font_family' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'Footer Font',
+            'default'  => 'DotMatrix',
+            'options'  => $picker_fonts,
+            'selector' => '#system-footer .inside, #system-footer p, #sig-text',
+            'property' => 'font-family'
+        ],
+
+        'footer_font_size' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'range',
+            'label'    => 'Footer Font Size (px)',
+            'default'  => '10',
+            'min'      => '8',
+            'max'      => '18',
+            'selector' => '#system-footer p, #sig-text',
+            'property' => 'font-size'
         ],
 
         /* ============================================================

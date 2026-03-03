@@ -4,13 +4,15 @@
  * Version: 1.2.2 - Pure Pipe (The Pencil)
  * MASTER DIRECTIVE: Full file return. 
  * Logic: Removed UI signatures. Pure Connection Logic only.
- */
+*/
+
+require_once __DIR__ . '/constants.php';
 
 // 1. HARDWARE CREDENTIALS
 $host    = 'localhost';
 $db      = 'squir871_iswa';
 $user    = 'squir871_iswaadmin';
-$pass    = 'Pickle14!!#'; 
+$pass    = '###'; 
 $charset = 'utf8mb4';
 
 // 2. CONNECTION STRING & SECURITY FLAGS

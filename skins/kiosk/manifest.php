@@ -1,7 +1,7 @@
 <?php
 /**
  * SnapSmack Skin Manifest: Kiosk
- * Version: 5.2 - Pimpotron Engine Declaration
+ * Version: 5.3 - Footer Font Controls
  * -------------------------------------------------------------------------
  * - RESTORED: Section 1 Canvas Layout (Width, Gutter, Flip) from v4.1.
  * - RETAINED: Section 5 Blogroll logic from v3.5.
@@ -9,6 +9,7 @@
  * - ADDED: 'require_scripts' array to request JS engines from core.
  * - ADDED: smack-glitch to handshake.
  * - ADDED: 'engines' block declaring Pimpotron active.
+ * - v5.3: Footer font family + size controls.
  * - DIRECTIVE: FULL FILE OUTPUT. NO TRUNCATION.
  * -------------------------------------------------------------------------
  */
@@ -210,6 +211,29 @@ return [
             'max'      => '120',
             'selector' => '.static-content',
             'property' => 'margin-top'
+        ],
+
+        /* FOOTER FONTS */
+
+        'footer_font_family' => [
+            'section'  => 'STATIC PAGE STYLING',
+            'type'     => 'select',
+            'label'    => 'Footer Font',
+            'default'  => 'Inter',
+            'options'  => $fonts,
+            'selector' => '#system-footer .inside, #system-footer p, #sig-text',
+            'property' => 'font-family'
+        ],
+
+        'footer_font_size' => [
+            'section'  => 'STATIC PAGE STYLING',
+            'type'     => 'range',
+            'label'    => 'Footer Font Size (px)',
+            'default'  => '11',
+            'min'      => '8',
+            'max'      => '18',
+            'selector' => '#system-footer p, #sig-text',
+            'property' => 'font-size'
         ],
 
         /* ---------------------------------------------------------------------
