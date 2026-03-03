@@ -156,8 +156,8 @@ input:focus, textarea:focus, select:focus {
     border-color: #1A1A1A;
 }
 
-/* 07: TRANSMISSIONS (The Fixes) */
-.transmission-header {
+/* 07: SIGNALS (The Fixes) */
+.signal-control-header {
     /* Geometry handled in Master Geometry file */
 }
 

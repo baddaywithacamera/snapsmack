@@ -60,27 +60,27 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $comments = $stmt->fetchAll();
 
-$page_title = "Transmission control";
+$page_title = "Signal Control";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
 <div class="main">
     <div class="title-bar-flex">
-        <h2>TRANSMISSION CONTROL</h2>
+        <h2>SIGNAL CONTROL</h2>
         <div class="status-pill <?php echo $global_comments_active ? 'status-online' : 'status-offline'; ?>">
             GLOBAL SYSTEM: <?php echo $global_comments_active ? 'ONLINE' : 'OFFLINE'; ?>
         </div>
     </div>
 
-    <div class="transmission-header">
-        <form method="GET" class="transmission-search-group">
+    <div class="signal-control-header">
+        <form method="GET" class="signal-search-group">
             <input type="hidden" name="view" value="<?php echo $view_mode; ?>">
             <input type="text" name="s" placeholder="SCAN FREQUENCIES..." value="<?php echo htmlspecialchars($search); ?>">
             <button type="submit" class="btn-smack">SCAN</button>
         </form>
         
-        <div class="transmission-nav-group">
+        <div class="signal-nav-group">
             <a href="?view=pending" class="btn-clear <?php if($view_mode == 'pending') echo 'active'; ?>">INCOMING (<?php echo $pending_count; ?>)</a>
             <a href="?view=live" class="btn-clear <?php if($view_mode == 'live') echo 'active'; ?>">BROADCASTING (<?php echo $live_count; ?>)</a>
         </div>
@@ -89,7 +89,7 @@ include 'core/sidebar.php';
     <?php if(isset($msg)) echo "<div class='msg'>> $msg</div>"; ?>
 
     <div class="box">
-        <h3><?php echo ($view_mode == 'pending' ? 'AWAITING AUTHORIZATION' : 'LIVE TRANSMISSIONS'); ?></h3>
+        <h3><?php echo ($view_mode == 'pending' ? 'AWAITING AUTHORIZATION' : 'LIVE SIGNALS'); ?></h3>
         
         <?php if ($comments): ?>
             <div class="recent-list">

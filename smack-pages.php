@@ -105,7 +105,7 @@ include 'core/sidebar.php';
 
     <form method="POST">
         <div class="box">
-            <h3><?php echo $edit_page ? 'MODIFY EXISTING SIGNAL' : 'CREATE STATIC TRANSMISSION'; ?></h3>
+            <h3><?php echo $edit_page ? 'MODIFY EXISTING TRANSMISSION' : 'CREATE STATIC TRANSMISSION'; ?></h3>
             <input type="hidden" name="page_id" value="<?php echo $edit_page['id'] ?? ''; ?>">
 
             <label>Title</label>
@@ -133,7 +133,7 @@ include 'core/sidebar.php';
     </form>
 
     <div class="box">
-        <h3>STORED SIGNALS</h3>
+        <h3>STORED TRANSMISSIONS</h3>
         <?php foreach ($pages as $p): ?>
             <div class="recent-item">
                 <div class="item-text">
@@ -144,7 +144,7 @@ include 'core/sidebar.php';
                 </div>
                 <div class="item-actions">
                     <a href="?edit=<?php echo $p['id']; ?>" class="action-edit">EDIT</a>
-                    <a href="?delete=<?php echo $p['id']; ?>" class="action-delete" onclick="return confirm('Purge this signal?')">DELETE</a>
+                    <a href="?delete=<?php echo $p['id']; ?>" class="action-delete" onclick="return confirm('Purge this transmission?')">DELETE</a>
                 </div>
             </div>
         <?php endforeach; ?>

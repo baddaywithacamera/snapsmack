@@ -1,0 +1,73 @@
+{
+    "registry_version": 1,
+    "generated": "2026-03-03T12:00:00Z",
+    "skins": {
+        "new_horizon_dark": {
+            "name": "New Horizon Dark",
+            "version": "5.5",
+            "status": "stable",
+            "author": "Sean McCormick",
+            "description": "High-contrast dark mode with archival framing, tactical layout controls, and full JS library support.",
+            "screenshot": "https://updates.snapsmack.ca/skins/new_horizon_dark/screenshot.png",
+            "download_url": "https://updates.snapsmack.ca/skins/new_horizon_dark/new_horizon_dark-5.5.zip",
+            "download_size": 245000,
+            "signature": "",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.7",
+            "features": {
+                "supports_wall": true,
+                "archive_layouts": ["square", "cropped", "masonry"]
+            }
+        },
+        "fifty-shades-of-grey": {
+            "name": "Fifty Shades of Grey",
+            "version": "2.4",
+            "status": "stable",
+            "author": "Sean McCormick",
+            "description": "Pure greyscale photography skin. Three monochrome variants with zero colour accents.",
+            "screenshot": "https://updates.snapsmack.ca/skins/fifty-shades-of-grey/screenshot.png",
+            "download_url": "https://updates.snapsmack.ca/skins/fifty-shades-of-grey/fifty-shades-of-grey-2.4.zip",
+            "download_size": 180000,
+            "signature": "",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.7",
+            "features": {
+                "supports_wall": true,
+                "archive_layouts": ["square", "cropped", "masonry"]
+            }
+        },
+        "impact_printer": {
+            "name": "Impact Printer",
+            "version": "2.1",
+            "status": "stable",
+            "author": "Sean McCormick",
+            "description": "Continuous-feed dot-matrix printer circa 1983. Tractor-feed paper textures, ASCII character borders, faded ribbon ink.",
+            "screenshot": "https://updates.snapsmack.ca/skins/impact_printer/screenshot.png",
+            "download_url": "https://updates.snapsmack.ca/skins/impact_printer/impact_printer-2.1.zip",
+            "download_size": 520000,
+            "signature": "",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.7",
+            "features": {
+                "supports_wall": false,
+                "archive_layouts": ["square", "cropped"]
+            }
+        },
+        "kiosk": {
+            "name": "Kiosk",
+            "version": "0.1",
+            "status": "development",
+            "author": "Sean McCormick",
+            "description": "Under construction. Experimental black, white, and red skin with Pimpotron engine integration.",
+            "screenshot": "https://updates.snapsmack.ca/skins/kiosk/screenshot.png",
+            "download_url": "",
+            "download_size": 0,
+            "signature": "",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.7",
+            "features": {
+                "supports_wall": true
+            }
+        }
+    }
+}

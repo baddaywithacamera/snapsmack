@@ -198,7 +198,7 @@ include 'core/sidebar.php';
                     </div>
 
                     <div class="lens-input-wrapper">
-                        <label>ALLOW PUBLIC TRANSMISSIONS?</label>
+                        <label>ALLOW PUBLIC SIGNALS?</label>
                         <select name="allow_comments" class="full-width-select">
                             <option value="1" <?php echo ($post['allow_comments'] == 1) ? 'selected' : ''; ?>>Oh hell yes!</option>
                             <option value="0" <?php echo ($post['allow_comments'] == 0) ? 'selected' : ''; ?>>Nope nope nope!</option>

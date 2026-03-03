@@ -118,7 +118,7 @@ include 'core/sidebar.php';
                                         <strong>
                                             <?php echo htmlspecialchars($a['album_name']); ?>
                                         </strong>
-                                        <code class="slug-display">SIGNALS: <?php echo (int)$a['img_count']; ?></code>
+                                        <code class="slug-display">TRANSMISSIONS: <?php echo (int)$a['img_count']; ?></code>
                                         <div class="item-meta">
                                             <?php echo !empty($a['album_description']) ? htmlspecialchars($a['album_description']) : "NO BRIEFING RECORDED."; ?>
                                         </div>

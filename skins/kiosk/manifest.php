@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the kiosk skin
- * Alpha v0.6
+ * Alpha v0.7
  *
  * Defines layout options, pimpotron engine configuration, and customization controls.
  */
@@ -16,6 +16,7 @@ return [
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'What is black and white and read all over? Blogs, motherfucker! Also this skin, except we mean red too. Well, both. Shut up.',
+    'status'        => 'development',
     
     'features' => [
         'supports_wall' => true, 

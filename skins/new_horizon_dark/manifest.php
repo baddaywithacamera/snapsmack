@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the new_horizon_dark skin
- * Alpha v0.6
+ * Alpha v0.7
  *
  * Defines layout options, features, and customization controls.
  */
@@ -16,6 +16,7 @@ return [
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'High-contrast dark mode with archival framing, tactical layout controls, and full JS library support.',
+    'status'        => 'stable',
     
     'features' => [
         'supports_wall'   => true,

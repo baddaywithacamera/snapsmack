@@ -1,18 +1,92 @@
 <?php
 /**
- * SNAPSMACK - Skin and theme customization
- * Alpha v0.6
+ * SNAPSMACK - Skin Administration & Gallery
+ * Alpha v0.7
  *
- * Configures active theme-specific options and CSS generation.
- * Manages color schemes, fonts, and other skin-level customizations.
+ * Two-tab interface for managing skins:
+ *
+ *   CUSTOMIZE — Configures active theme-specific options and CSS generation.
+ *               Manages color schemes, fonts, and other skin-level customizations.
+ *
+ *   GALLERY   — Browse the remote skin registry, install new skins, update
+ *               existing ones, or remove skins you no longer need. Skins with
+ *               "development" status are visible but cannot be installed.
  */
 
 require_once 'core/auth.php';
+require_once 'core/skin-registry.php';
 
 // --- SETTINGS BOOTSTRAP ---
 // Must load BEFORE skin discovery so active_skin is available.
 if (!isset($settings)) {
     $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+}
+
+// --- TAB ROUTING ---
+// Determine which tab is active: 'customize' (default) or 'gallery'
+$active_tab = $_GET['tab'] ?? 'customize';
+if (!in_array($active_tab, ['customize', 'gallery'])) $active_tab = 'customize';
+
+// --- GALLERY ACTION HANDLERS ---
+// Process install/remove requests before any output is sent.
+$gallery_msg = '';
+$gallery_err = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
+
+    // CSRF check: reuse session token
+    if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token'])
+        || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        $gallery_err = 'Invalid security token. Please reload the page.';
+    } else {
+        $action = $_POST['gallery_action'];
+        $slug   = $_POST['skin_slug'] ?? '';
+        $active = $settings['active_skin'] ?? '';
+
+        if ($action === 'install' || $action === 'update') {
+            $download_url = $_POST['download_url'] ?? '';
+            $signature    = $_POST['signature'] ?? '';
+            $public_key   = $settings['update_public_key'] ?? '';
+
+            if (empty($download_url)) {
+                $gallery_err = 'No download URL provided for this skin.';
+            } else {
+                $result = skin_registry_install($slug, $download_url, $signature, $public_key);
+                if ($result['success']) {
+                    skin_registry_clear_cache();
+                    $gallery_msg = $result['message'];
+                } else {
+                    $gallery_err = $result['message'];
+                }
+            }
+        } elseif ($action === 'remove') {
+            $result = skin_registry_remove($slug, $active);
+            if ($result['success']) {
+                skin_registry_clear_cache();
+                $gallery_msg = $result['message'];
+            } else {
+                $gallery_err = $result['message'];
+            }
+        }
+    }
+
+    // Redirect to avoid form resubmission
+    if (!empty($gallery_msg)) {
+        $_SESSION['gallery_flash'] = $gallery_msg;
+        header("Location: smack-skin.php?tab=gallery");
+        exit;
+    }
+}
+
+// Pick up flash messages from redirects
+if (isset($_SESSION['gallery_flash'])) {
+    $gallery_msg = $_SESSION['gallery_flash'];
+    unset($_SESSION['gallery_flash']);
+}
+
+// Generate CSRF token for gallery forms
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
 // --- 1. LOAD GLOBAL INVENTORY ---
@@ -47,7 +121,7 @@ foreach ($required_engines as $engine_key) {
     }
 }
 
-// --- 4. SAVE HANDLER ---
+// --- 4. SAVE HANDLER (Customize tab) ---
 if (isset($_POST['save_skin_settings'])) {
 
     // 4a. Persistence: Save individual skin and engine control values.
@@ -129,7 +203,7 @@ if (isset($_POST['save_skin_settings'])) {
             $generated_public .= "/* ENGINE: {$engine_key} */\n";
             foreach ($engine['controls'] as $ctrl_key => $ctrl) {
                 $val  = ($all_settings[$ctrl_key] ?? '') !== '' ? $all_settings[$ctrl_key] : ($ctrl['default'] ?? '');
-                
+
                 if ($engine_key === 'smack-glitch') {
                     if ($ctrl_key === 'glitch_enabled') {
                         $generated_public .= ".post-image { --glitch-enabled: {$val}; }\n";
@@ -156,7 +230,7 @@ if (isset($_POST['save_skin_settings'])) {
         ->execute([$final_public]);
 
     // 4d. ENGINE HANDSHAKE: Build the script injection block.
-    $v         = time(); 
+    $v         = time();
     $injection = '';
 
     // 4d-i. Google Font CDN links for any active font-family selections
@@ -210,27 +284,249 @@ include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
+<style>
+/* --- SKIN PAGE: TAB NAVIGATION --- */
+.skin-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 24px;
+    border-bottom: 1px solid #333;
+}
+.skin-tab {
+    padding: 10px 24px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #666;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+}
+.skin-tab:hover { color: #aaa; }
+.skin-tab.active {
+    color: #00ff00;
+    border-bottom-color: #00ff00;
+}
+
+/* --- GALLERY: Skin cards grid --- */
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+.skin-card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.skin-card-screenshot {
+    width: 100%;
+    height: 180px;
+    background: #111;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+.skin-card-screenshot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.skin-card-screenshot .no-preview {
+    color: #444;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+.skin-card-body {
+    padding: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+.skin-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+.skin-card-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #eee;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.skin-card-version {
+    font-size: 0.7rem;
+    color: #666;
+    font-family: monospace;
+}
+.skin-card-desc {
+    font-size: 0.8rem;
+    color: #888;
+    line-height: 1.5;
+    margin-bottom: 12px;
+    flex: 1;
+}
+.skin-card-meta {
+    font-size: 0.7rem;
+    color: #555;
+    margin-bottom: 12px;
+}
+.skin-card-features {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+.feature-tag {
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+}
+.feature-tag.wall    { background: #1a2a1a; color: #6f6; border: 1px solid #363; }
+.feature-tag.no-wall { background: #2a1a1a; color: #f66; border: 1px solid #633; }
+.feature-tag.layout  { background: #1a1a2a; color: #99f; border: 1px solid #336; }
+
+/* --- STATUS BADGES --- */
+.status-badge {
+    display: inline-block;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 3px;
+}
+.status-badge.stable     { background: #1a3a1a; color: #6f6; border: 1px solid #3a3; }
+.status-badge.beta       { background: #3a3a1a; color: #ff6; border: 1px solid #993; }
+.status-badge.development { background: #3a1a1a; color: #f66; border: 1px solid #933; }
+
+/* Installed badge */
+.installed-badge {
+    display: inline-block;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: #1a2a3a;
+    color: #6cf;
+    border: 1px solid #369;
+}
+.active-badge {
+    background: #1a3a1a;
+    color: #6f6;
+    border: 1px solid #3a3;
+}
+
+/* --- GALLERY BUTTONS --- */
+.skin-card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+}
+.skin-card-actions form { margin: 0; }
+.gallery-btn {
+    display: inline-block;
+    padding: 6px 14px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.gallery-btn:hover { opacity: 0.8; }
+.gallery-btn.install  { background: #00ff00; color: #000; }
+.gallery-btn.update   { background: #ffcc00; color: #000; }
+.gallery-btn.remove   { background: #333;    color: #f66; border: 1px solid #633; }
+.gallery-btn.disabled {
+    background: #222;
+    color: #555;
+    cursor: not-allowed;
+    border: 1px solid #333;
+}
+
+/* --- GALLERY ERROR/SUCCESS --- */
+.gallery-alert {
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    border-radius: 3px;
+    font-size: 0.8rem;
+}
+.gallery-alert.success { background: #1a3a1a; color: #6f6; border: 1px solid #3a3; }
+.gallery-alert.error   { background: #3a1a1a; color: #f66; border: 1px solid #933; }
+
+/* --- REGISTRY INFO --- */
+.registry-info {
+    font-size: 0.75rem;
+    color: #555;
+    margin-bottom: 16px;
+}
+.registry-info a { color: #00ff00; text-decoration: none; }
+</style>
+
 <div class="main">
     <div class="header-row">
         <h2>SKIN ADMIN</h2>
     </div>
 
+    <!-- ============================================================
+         TAB NAVIGATION
+         ============================================================ -->
+    <div class="skin-tabs">
+        <a href="smack-skin.php?tab=customize&s=<?php echo urlencode($target_skin); ?>"
+           class="skin-tab <?php echo ($active_tab === 'customize') ? 'active' : ''; ?>">
+            CUSTOMIZE
+        </a>
+        <a href="smack-skin.php?tab=gallery"
+           class="skin-tab <?php echo ($active_tab === 'gallery') ? 'active' : ''; ?>">
+            GALLERY
+        </a>
+    </div>
+
+<?php if ($active_tab === 'customize'): ?>
+    <!-- ============================================================
+         TAB 1: CUSTOMIZE (existing skin customization UI)
+         ============================================================ -->
+
     <div class="box appearance-controller">
         <div class="skin-meta-wrap">
             <div class="theme-title-display">
-                <?php echo strtoupper($manifest['name']); ?>
-                <span class="theme-version-tag">v<?php echo $manifest['version']; ?></span>
+                <?php echo strtoupper(htmlspecialchars($manifest['name'])); ?>
+                <span class="theme-version-tag">v<?php echo htmlspecialchars($manifest['version']); ?></span>
+                <?php if (!empty($manifest['status'])): ?>
+                    <span class="status-badge <?php echo htmlspecialchars($manifest['status']); ?>">
+                        <?php echo strtoupper(htmlspecialchars($manifest['status'])); ?>
+                    </span>
+                <?php endif; ?>
             </div>
-            <p class="skin-desc-text"><?php echo $manifest['description']; ?></p>
+            <p class="skin-desc-text"><?php echo htmlspecialchars($manifest['description']); ?></p>
             <div class="dim">
-                BY <?php echo strtoupper($manifest['author']); ?>
+                BY <?php echo strtoupper(htmlspecialchars($manifest['author'])); ?>
                 <?php if (!empty($manifest['support'])): ?>
-                    | <a href="mailto:<?php echo $manifest['support']; ?>" style="color: #00ff00; text-decoration: none;">SUPPORT</a>
+                    | <a href="mailto:<?php echo htmlspecialchars($manifest['support']); ?>" style="color: #00ff00; text-decoration: none;">SUPPORT</a>
                 <?php endif; ?>
             </div>
         </div>
         <div class="skin-selector-wrap">
             <form method="GET">
+                <input type="hidden" name="tab" value="customize">
                 <label>SKIN SELECTOR</label>
                 <select name="s" onchange="this.form.submit()">
                     <?php foreach ($available_skins as $slug => $name): ?>
@@ -379,6 +675,277 @@ include 'core/sidebar.php';
             <button type="submit" name="save_skin_settings" class="master-update-btn">SAVE SKIN SPECIFIC CALIBRATION</button>
         </div>
     </form>
+
+<?php elseif ($active_tab === 'gallery'): ?>
+    <!-- ============================================================
+         TAB 2: GALLERY (browse, install, update, remove skins)
+         ============================================================ -->
+
+    <?php if (!empty($gallery_msg)): ?>
+        <div class="gallery-alert success">> <?php echo htmlspecialchars($gallery_msg); ?></div>
+    <?php endif; ?>
+    <?php if (!empty($gallery_err)): ?>
+        <div class="gallery-alert error">> <?php echo htmlspecialchars($gallery_err); ?></div>
+    <?php endif; ?>
+
+    <?php
+    // Fetch registry and local skin data
+    $registry_url = $settings['skin_registry_url'] ?? SKIN_REGISTRY_DEFAULT_URL;
+    $registry     = skin_registry_fetch($registry_url);
+    $local_skins  = skin_registry_local();
+
+    if (isset($registry['error'])):
+    ?>
+        <div class="box">
+            <h3>SKIN REGISTRY</h3>
+            <div class="gallery-alert error">> <?php echo htmlspecialchars($registry['error']); ?></div>
+            <p class="dim" style="margin-top: 10px;">
+                REGISTRY URL: <span style="color: #888;"><?php echo htmlspecialchars($registry_url); ?></span>
+            </p>
+
+            <!-- Fallback: show locally installed skins only -->
+            <h3 style="margin-top: 24px;">INSTALLED SKINS</h3>
+            <div class="gallery-grid">
+                <?php foreach ($local_skins as $slug => $skin): ?>
+                    <div class="skin-card">
+                        <div class="skin-card-screenshot">
+                            <?php if (file_exists("skins/{$slug}/screenshot.png")): ?>
+                                <img src="skins/<?php echo htmlspecialchars($slug); ?>/screenshot.png" alt="<?php echo htmlspecialchars($skin['name']); ?>">
+                            <?php else: ?>
+                                <span class="no-preview">NO PREVIEW</span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="skin-card-body">
+                            <div class="skin-card-header">
+                                <span class="skin-card-name"><?php echo htmlspecialchars($skin['name']); ?></span>
+                                <span class="skin-card-version">v<?php echo htmlspecialchars($skin['version']); ?></span>
+                            </div>
+                            <div style="margin-bottom: 8px;">
+                                <span class="installed-badge <?php echo ($current_db_active === $slug) ? 'active-badge' : ''; ?>">
+                                    <?php echo ($current_db_active === $slug) ? 'ACTIVE' : 'INSTALLED'; ?>
+                                </span>
+                                <span class="status-badge <?php echo htmlspecialchars($skin['status']); ?>">
+                                    <?php echo strtoupper($skin['status']); ?>
+                                </span>
+                            </div>
+                            <div class="skin-card-desc"><?php echo htmlspecialchars($skin['description']); ?></div>
+                            <div class="skin-card-meta">BY <?php echo strtoupper(htmlspecialchars($skin['author'])); ?></div>
+                            <?php if ($current_db_active !== $slug): ?>
+                                <div class="skin-card-actions">
+                                    <form method="POST">
+                                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                        <input type="hidden" name="gallery_action" value="remove">
+                                        <input type="hidden" name="skin_slug" value="<?php echo htmlspecialchars($slug); ?>">
+                                        <button type="submit" class="gallery-btn remove"
+                                                onclick="return confirm('Remove skin \'<?php echo htmlspecialchars($skin['name']); ?>\'? This deletes the skin directory.');">
+                                            REMOVE
+                                        </button>
+                                    </form>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+    <?php else: ?>
+        <?php
+        // Registry loaded successfully — compare with local
+        $gallery_skins = skin_registry_compare($registry, $local_skins);
+        ?>
+        <div class="registry-info">
+            REGISTRY: <?php echo htmlspecialchars($registry_url); ?>
+            &nbsp;|&nbsp;
+            <?php echo count($gallery_skins); ?> SKIN<?php echo count($gallery_skins) !== 1 ? 'S' : ''; ?> AVAILABLE
+            &nbsp;|&nbsp;
+            <a href="smack-skin.php?tab=gallery&refresh=1">REFRESH</a>
+        </div>
+
+        <?php
+        // Handle manual cache refresh
+        if (isset($_GET['refresh'])) {
+            skin_registry_clear_cache();
+            header("Location: smack-skin.php?tab=gallery");
+            exit;
+        }
+        ?>
+
+        <div class="gallery-grid">
+            <?php foreach ($gallery_skins as $slug => $skin): ?>
+                <div class="skin-card">
+                    <!-- Screenshot -->
+                    <div class="skin-card-screenshot">
+                        <?php if (!empty($skin['screenshot'])): ?>
+                            <img src="<?php echo htmlspecialchars($skin['screenshot']); ?>"
+                                 alt="<?php echo htmlspecialchars($skin['name']); ?>"
+                                 loading="lazy"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            <span class="no-preview" style="display:none;">PREVIEW UNAVAILABLE</span>
+                        <?php elseif (file_exists("skins/{$slug}/screenshot.png")): ?>
+                            <img src="skins/<?php echo htmlspecialchars($slug); ?>/screenshot.png"
+                                 alt="<?php echo htmlspecialchars($skin['name']); ?>">
+                        <?php else: ?>
+                            <span class="no-preview">NO PREVIEW</span>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Body -->
+                    <div class="skin-card-body">
+                        <div class="skin-card-header">
+                            <span class="skin-card-name"><?php echo htmlspecialchars($skin['name'] ?? $slug); ?></span>
+                            <span class="skin-card-version">v<?php echo htmlspecialchars($skin['version'] ?? '?'); ?></span>
+                        </div>
+
+                        <!-- Status + Installed badges -->
+                        <div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
+                            <span class="status-badge <?php echo htmlspecialchars($skin['status'] ?? 'stable'); ?>">
+                                <?php echo strtoupper($skin['status'] ?? 'STABLE'); ?>
+                            </span>
+                            <?php if ($skin['installed']): ?>
+                                <span class="installed-badge <?php echo ($current_db_active === $slug) ? 'active-badge' : ''; ?>">
+                                    <?php echo ($current_db_active === $slug) ? 'ACTIVE' : 'INSTALLED'; ?>
+                                </span>
+                            <?php endif; ?>
+                            <?php if ($skin['update_available']): ?>
+                                <span class="status-badge beta">UPDATE: v<?php echo htmlspecialchars($skin['version']); ?></span>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="skin-card-desc"><?php echo htmlspecialchars($skin['description'] ?? ''); ?></div>
+
+                        <div class="skin-card-meta">
+                            BY <?php echo strtoupper(htmlspecialchars($skin['author'] ?? 'Unknown')); ?>
+                            <?php if (!empty($skin['download_size'])): ?>
+                                &nbsp;|&nbsp; <?php echo round($skin['download_size'] / 1024); ?>KB
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Feature tags -->
+                        <?php if (!empty($skin['features'])): ?>
+                            <div class="skin-card-features">
+                                <?php if (!empty($skin['features']['supports_wall'])): ?>
+                                    <span class="feature-tag wall">WALL</span>
+                                <?php else: ?>
+                                    <span class="feature-tag no-wall">NO WALL</span>
+                                <?php endif; ?>
+                                <?php foreach (($skin['features']['archive_layouts'] ?? []) as $layout): ?>
+                                    <span class="feature-tag layout"><?php echo strtoupper(htmlspecialchars($layout)); ?></span>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Action buttons -->
+                        <div class="skin-card-actions">
+                            <?php if ($skin['status'] === 'development'): ?>
+                                <!-- Development skins: visible but not installable -->
+                                <button class="gallery-btn disabled" disabled title="This skin is under development and cannot be installed yet.">
+                                    UNDER DEVELOPMENT
+                                </button>
+
+                            <?php elseif ($skin['update_available']): ?>
+                                <!-- Update available -->
+                                <form method="POST">
+                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                    <input type="hidden" name="gallery_action" value="update">
+                                    <input type="hidden" name="skin_slug" value="<?php echo htmlspecialchars($slug); ?>">
+                                    <input type="hidden" name="download_url" value="<?php echo htmlspecialchars($skin['download_url'] ?? ''); ?>">
+                                    <input type="hidden" name="signature" value="<?php echo htmlspecialchars($skin['signature'] ?? ''); ?>">
+                                    <button type="submit" class="gallery-btn update"
+                                            onclick="return confirm('Update \'<?php echo htmlspecialchars($skin['name']); ?>\' from v<?php echo htmlspecialchars($skin['local_version']); ?> to v<?php echo htmlspecialchars($skin['version']); ?>?');">
+                                        UPDATE TO v<?php echo strtoupper(htmlspecialchars($skin['version'])); ?>
+                                    </button>
+                                </form>
+
+                            <?php elseif (!$skin['installed']): ?>
+                                <!-- Not installed: offer install -->
+                                <?php if (!empty($skin['download_url'])): ?>
+                                    <form method="POST">
+                                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                        <input type="hidden" name="gallery_action" value="install">
+                                        <input type="hidden" name="skin_slug" value="<?php echo htmlspecialchars($slug); ?>">
+                                        <input type="hidden" name="download_url" value="<?php echo htmlspecialchars($skin['download_url']); ?>">
+                                        <input type="hidden" name="signature" value="<?php echo htmlspecialchars($skin['signature'] ?? ''); ?>">
+                                        <button type="submit" class="gallery-btn install">INSTALL</button>
+                                    </form>
+                                <?php else: ?>
+                                    <button class="gallery-btn disabled" disabled>NO DOWNLOAD</button>
+                                <?php endif; ?>
+
+                            <?php else: ?>
+                                <!-- Installed and up to date -->
+                                <span style="font-size: 0.7rem; color: #555; text-transform: uppercase; letter-spacing: 1px; padding: 6px 0;">
+                                    UP TO DATE
+                                </span>
+                            <?php endif; ?>
+
+                            <?php if ($skin['installed'] && $current_db_active !== $slug): ?>
+                                <form method="POST">
+                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                    <input type="hidden" name="gallery_action" value="remove">
+                                    <input type="hidden" name="skin_slug" value="<?php echo htmlspecialchars($slug); ?>">
+                                    <button type="submit" class="gallery-btn remove"
+                                            onclick="return confirm('Remove skin \'<?php echo htmlspecialchars($skin['name']); ?>\'? This deletes the entire skin directory.');">
+                                        REMOVE
+                                    </button>
+                                </form>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+
+            <?php
+            // Show locally installed skins that are NOT in the registry
+            // (custom/local-only skins)
+            foreach ($local_skins as $slug => $skin):
+                if (isset($gallery_skins[$slug])) continue;
+            ?>
+                <div class="skin-card">
+                    <div class="skin-card-screenshot">
+                        <?php if (file_exists("skins/{$slug}/screenshot.png")): ?>
+                            <img src="skins/<?php echo htmlspecialchars($slug); ?>/screenshot.png"
+                                 alt="<?php echo htmlspecialchars($skin['name']); ?>">
+                        <?php else: ?>
+                            <span class="no-preview">NO PREVIEW</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="skin-card-body">
+                        <div class="skin-card-header">
+                            <span class="skin-card-name"><?php echo htmlspecialchars($skin['name']); ?></span>
+                            <span class="skin-card-version">v<?php echo htmlspecialchars($skin['version']); ?></span>
+                        </div>
+                        <div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
+                            <span class="status-badge <?php echo htmlspecialchars($skin['status']); ?>">
+                                <?php echo strtoupper($skin['status']); ?>
+                            </span>
+                            <span class="installed-badge <?php echo ($current_db_active === $slug) ? 'active-badge' : ''; ?>">
+                                <?php echo ($current_db_active === $slug) ? 'ACTIVE' : 'INSTALLED'; ?>
+                            </span>
+                            <span style="font-size: 0.6rem; color: #666; letter-spacing: 1px; padding: 2px 8px;">LOCAL ONLY</span>
+                        </div>
+                        <div class="skin-card-desc"><?php echo htmlspecialchars($skin['description']); ?></div>
+                        <div class="skin-card-meta">BY <?php echo strtoupper(htmlspecialchars($skin['author'])); ?></div>
+                        <?php if ($current_db_active !== $slug): ?>
+                            <div class="skin-card-actions">
+                                <form method="POST">
+                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                    <input type="hidden" name="gallery_action" value="remove">
+                                    <input type="hidden" name="skin_slug" value="<?php echo htmlspecialchars($slug); ?>">
+                                    <button type="submit" class="gallery-btn remove"
+                                            onclick="return confirm('Remove skin \'<?php echo htmlspecialchars($skin['name']); ?>\'?');">
+                                        REMOVE
+                                    </button>
+                                </form>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+
+<?php endif; ?>
 </div>
 
 <?php include 'core/admin-footer.php'; ?>

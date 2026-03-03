@@ -221,7 +221,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <div class="empty-sector-msg">NO SIGNALS RECORDED IN THIS SECTOR.</div>
+                    <div class="empty-sector-msg">NO TRANSMISSIONS RECORDED IN THIS SECTOR.</div>
                 <?php endif; ?>
             </div>
 
@@ -252,7 +252,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <div class="empty-sector-msg">NO SIGNALS RECORDED IN THIS SECTOR.</div>
+                    <div class="empty-sector-msg">NO TRANSMISSIONS RECORDED IN THIS SECTOR.</div>
                 <?php endif; ?>
             </div>
 
@@ -277,7 +277,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <div class="empty-sector-msg">NO SIGNALS RECORDED IN THIS SECTOR.</div>
+                    <div class="empty-sector-msg">NO TRANSMISSIONS RECORDED IN THIS SECTOR.</div>
                 <?php endif; ?>
             </div>
             <?php endif; ?>

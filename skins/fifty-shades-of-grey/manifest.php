@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the fifty-shades-of-grey skin
- * Alpha v0.6
+ * Alpha v0.7
  *
  * Defines layout options, features, and customization controls with three greyscale variants.
  */
@@ -15,6 +15,7 @@ return [
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Pure greyscale photography skin. Three monochrome variants with zero colour accents.',
+    'status'        => 'stable',
 
     'features' => [
         'supports_wall'   => true,

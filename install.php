@@ -459,6 +459,8 @@ define(\'SNAPSMACK_TABLE_PREFIX\', \'' . $prefix . '\');
                 'nav_slot_4'                => '0',
                 'custom_css_public'         => '',
                 'custom_css_admin'          => '',
+                'footer_injection_scripts'  => '',
+                'skin_registry_url'         => 'https://updates.snapsmack.ca/skins/registry.json',
                 'installed_version'         => $installer_version,
                 'install_timestamp'         => date('Y-m-d H:i:s'),
             ];
@@ -494,9 +496,11 @@ define(\'SNAPSMACK_TABLE_PREFIX\', \'' . $prefix . '\');
     }
 
     // --- VERIFY DEFAULT SKIN ---
+    // Hard block: the public site will 404 without its default skin.
     $skin_warning = '';
     if (!is_dir(__DIR__ . '/skins/new_horizon_dark')) {
-        $skin_warning = 'Warning: The default skin (New Horizon Dark) was not found in skins/. The public site may not display correctly until a skin is installed.';
+        $errors[] = 'Default skin "New Horizon Dark" not found in skins/. The public site cannot load without it. Make sure the full SnapSmack codebase (including the skins/ directory) is uploaded before running the installer.';
+        $skin_warning = $errors[count($errors) - 1];
     }
 
     // --- SELF-DELETE ---

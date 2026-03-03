@@ -63,7 +63,7 @@ $comments_active = ($global_on && $post_on);
         <div id="pane-comments" class="footer-pane" style="display:none;">
             <?php if ($comments_active): ?>
                 
-                <div class="meta-header" style="margin-bottom: 40px; text-align:center;">TRANSMISSIONS</div>
+                <div class="meta-header" style="margin-bottom: 40px; text-align:center;">SIGNALS</div>
                 
                 <?php if ($comments): ?>
                     <table class="exif-table" style="width:100%; margin-bottom:40px;">

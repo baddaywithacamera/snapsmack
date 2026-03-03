@@ -421,7 +421,7 @@ include 'core/sidebar.php';
                     </div>
 
                     <div class="lens-input-wrapper">
-                        <label>ALLOW PUBLIC TRANSMISSIONS?</label>
+                        <label>ALLOW PUBLIC SIGNALS?</label>
                         <select name="allow_comments" class="full-width-select">
                             <option value="1">ENABLED</option>
                             <option value="0">DISABLED</option>

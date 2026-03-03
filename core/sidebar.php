@@ -48,7 +48,7 @@ if (!empty($settings['active_skin'])) {
                         <a href="smack-media.php">Media Library</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-comments.php') ? 'active' : ''; ?>">
-                        <a href="smack-comments.php">Transmissions</a>
+                        <a href="smack-comments.php">Signals</a>
                     </li>
                 </ul>
             </li>

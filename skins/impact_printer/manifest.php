@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the impact_printer skin
- * Alpha v0.6
+ * Alpha v0.7
  *
  * Defines layout options, features, dot-matrix typography, and customization controls.
  */
@@ -23,6 +23,7 @@ return [
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Continuous-feed dot-matrix printer circa 1983. Tractor-feed paper textures, ASCII character borders, faded ribbon ink. Two paper stocks: green-bar ledger and plain white.',
+    'status'        => 'stable',
 
     'features' => [
         'supports_wall'   => false,
