@@ -1,0 +1,258 @@
+/* ─────────────────────────────────────────────────────────────
+   SNAPSMACK — Formatting Toolbar Styles
+   Follows admin-theme-geometry-master conventions.
+   ───────────────────────────────────────────────────────────── */
+
+/* ─── TOOLBAR BAR ─────────────────────────────────────────── */
+
+.formatting-toolbar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 10px 0;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--lens-border, #333);
+}
+
+.toolbar-group {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding-right: 10px;
+    margin-right: 4px;
+    border-right: 1px solid var(--lens-border, #333);
+}
+
+.toolbar-group:last-child {
+    border-right: none;
+    padding-right: 0;
+    margin-right: 0;
+}
+
+.toolbar-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-secondary, #777);
+    margin-right: 4px;
+    white-space: nowrap;
+}
+
+.toolbar-btn {
+    padding: 6px 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-family: inherit;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border: 1px solid var(--text-main, #aaa);
+    background: transparent;
+    color: var(--text-main, #aaa);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    line-height: 1;
+    min-width: 32px;
+    text-align: center;
+}
+
+.toolbar-btn:hover {
+    background: var(--text-main, #aaa);
+    color: var(--bg-main, #111);
+}
+
+.toolbar-btn:active {
+    transform: scale(0.95);
+}
+
+.toolbar-btn.active {
+    background: var(--text-main, #aaa);
+    color: var(--bg-main, #111);
+}
+
+/* ─── IMAGE INSERTION DROPDOWN ────────────────────────────── */
+
+.toolbar-img-wrap {
+    position: relative;
+}
+
+.toolbar-img-panel {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 100;
+    margin-top: 6px;
+    padding: 12px;
+    background: var(--bg-main, #111);
+    border: 1px solid var(--lens-border, #333);
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    min-width: 360px;
+}
+
+.toolbar-img-panel label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary, #777);
+    display: block;
+    margin-bottom: 3px;
+}
+
+.toolbar-img-panel input,
+.toolbar-img-panel select {
+    padding: 5px 8px;
+    font-size: 0.8rem;
+    font-family: inherit;
+    background: transparent;
+    border: 1px solid var(--lens-border, #333);
+    color: var(--text-main, #aaa);
+    width: 100%;
+}
+
+.toolbar-img-field {
+    flex: 0 0 auto;
+}
+
+.toolbar-img-field.id-field { width: 70px; }
+.toolbar-img-field.size-field { width: 90px; }
+.toolbar-img-field.align-field { width: 90px; }
+
+.toolbar-img-panel .toolbar-btn {
+    margin-top: 0;
+    white-space: nowrap;
+}
+
+/* ─── EDITOR + PREVIEW LAYOUT ─────────────────────────────── */
+
+.editor-with-preview {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.editor-pane textarea {
+    width: 100%;
+    min-height: 320px;
+    resize: vertical;
+}
+
+.preview-pane {
+    border: 1px solid var(--lens-border, #333);
+    padding: 16px 20px;
+    background: var(--bg-secondary, #0a0a0a);
+    overflow-y: auto;
+    max-height: 500px;
+    min-height: 320px;
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--lens-border, #333);
+}
+
+.preview-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-secondary, #777);
+}
+
+.preview-refresh-btn {
+    padding: 4px 10px;
+    font-size: 0.65rem;
+    font-family: inherit;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border: 1px solid var(--text-secondary, #777);
+    background: transparent;
+    color: var(--text-secondary, #777);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.preview-refresh-btn:hover {
+    background: var(--text-secondary, #777);
+    color: var(--bg-main, #111);
+}
+
+/* Preview content styling — approximate public skin */
+#preview-panel {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1rem;
+    line-height: 1.65;
+    color: var(--text-main, #ccc);
+}
+
+#preview-panel p {
+    margin: 0 0 1em 0;
+}
+
+#preview-panel h2,
+#preview-panel h3 {
+    margin: 1.2em 0 0.5em 0;
+}
+
+#preview-panel blockquote {
+    border-left: 3px solid var(--text-secondary, #555);
+    padding-left: 16px;
+    margin: 1em 0;
+    font-style: italic;
+    opacity: 0.85;
+}
+
+#preview-panel img {
+    max-width: 100%;
+    height: auto;
+    margin: 8px 0;
+}
+
+#preview-panel a {
+    color: var(--accent, #70b0ff);
+    text-decoration: underline;
+}
+
+/* Column preview */
+#preview-panel .snapsmack-columns {
+    display: grid;
+    gap: 16px;
+    margin: 12px 0;
+}
+#preview-panel .snapsmack-columns.cols-2 { grid-template-columns: 1fr 1fr; }
+#preview-panel .snapsmack-columns.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+/* Dropcap preview */
+#preview-panel .dropcap {
+    float: left;
+    font-size: 3em;
+    line-height: 0.8;
+    padding-top: 4px;
+    padding-right: 8px;
+    font-weight: bold;
+}
+
+/* ─── RESPONSIVE ──────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+    .editor-with-preview {
+        grid-template-columns: 1fr;
+    }
+    .preview-pane {
+        max-height: 350px;
+    }
+}
+
+@media (max-width: 700px) {
+    .toolbar-label {
+        display: none;
+    }
+    .toolbar-img-panel {
+        min-width: 260px;
+    }
+}

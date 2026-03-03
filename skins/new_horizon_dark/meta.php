@@ -62,6 +62,7 @@ $canonical_url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 </style>
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/columns.css">
 
 <?php if (!empty($settings['custom_css_public'])): ?>
 <style id="snapsmack-dynamic-css">

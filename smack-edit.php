@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Image metadata editor
- * Alpha v0.6
+ * Alpha v0.7
  *
  * Allows modification of image titles, descriptions, EXIF metadata overrides,
  * publication status, and category/album associations.
@@ -168,7 +168,69 @@ include 'core/sidebar.php';
 
                     <div class="lens-input-wrapper post-description-wrap">
                         <label>DESCRIPTION / STORY</label>
-                        <textarea name="desc"><?php echo htmlspecialchars($post['img_description']); ?></textarea>
+
+                        <!-- Formatting Toolbar -->
+                        <div class="formatting-toolbar">
+                            <div class="toolbar-group">
+                                <span class="toolbar-label">Text</span>
+                                <button type="button" class="toolbar-btn" onclick="window.toolbar?.insertBold()" title="Bold"><strong>B</strong></button>
+                                <button type="button" class="toolbar-btn" onclick="window.toolbar?.insertItalic()" title="Italic"><em>I</em></button>
+                                <button type="button" class="toolbar-btn" onclick="window.toolbar?.insertLink()" title="Insert Link">LINK</button>
+                            </div>
+                            <div class="toolbar-group">
+                                <span class="toolbar-label">Block</span>
+                                <button type="button" class="toolbar-btn" onclick="window.toolbar?.insertH2()" title="Heading 2">H2</button>
+                                <button type="button" class="toolbar-btn" onclick="window.toolbar?.insertH3()" title="Heading 3">H3</button>
+                                <button type="button" class="toolbar-btn" onclick="window.toolbar?.insertBlockquote()" title="Blockquote">BQ</button>
+                            </div>
+                            <div class="toolbar-group">
+                                <span class="toolbar-label">Layout</span>
+                                <button type="button" class="toolbar-btn" onclick="window.toolbar?.insertColumns(2)" title="Two Columns">COL 2</button>
+                                <button type="button" class="toolbar-btn" onclick="window.toolbar?.insertColumns(3)" title="Three Columns">COL 3</button>
+                                <button type="button" class="toolbar-btn" onclick="window.toolbar?.insertDropcap()" title="Dropcap">DROP</button>
+                            </div>
+                            <div class="toolbar-group toolbar-img-wrap">
+                                <span class="toolbar-label">Media</span>
+                                <button type="button" class="toolbar-btn" onclick="window.toolbar?.toggleImagePanel()" title="Insert Image">IMG</button>
+                                <div id="toolbar-img-panel" class="toolbar-img-panel" style="display:none;">
+                                    <div class="toolbar-img-field id-field">
+                                        <label>ID</label>
+                                        <input type="number" id="toolbar-img-id" placeholder="123" min="1">
+                                    </div>
+                                    <div class="toolbar-img-field size-field">
+                                        <label>Size</label>
+                                        <select id="toolbar-img-size">
+                                            <option value="full">Full</option>
+                                            <option value="wall">Wall</option>
+                                            <option value="small">Small</option>
+                                        </select>
+                                    </div>
+                                    <div class="toolbar-img-field align-field">
+                                        <label>Align</label>
+                                        <select id="toolbar-img-align">
+                                            <option value="center">Center</option>
+                                            <option value="left">Left</option>
+                                            <option value="right">Right</option>
+                                        </select>
+                                    </div>
+                                    <button type="button" class="toolbar-btn" onclick="window.toolbar?.insertImageFromPanel()">INSERT</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Two-pane editor: textarea + live preview -->
+                        <div class="editor-with-preview">
+                            <div class="editor-pane">
+                                <textarea id="desc" name="desc"><?php echo htmlspecialchars($post['img_description']); ?></textarea>
+                            </div>
+                            <div class="preview-pane">
+                                <div class="preview-header">
+                                    <span class="preview-label">LIVE PREVIEW</span>
+                                    <button type="button" class="preview-refresh-btn" onclick="window.toolbar?.refreshPreview()">REFRESH</button>
+                                </div>
+                                <div id="preview-panel"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -287,7 +349,10 @@ include 'core/sidebar.php';
     </form>
 </div>
 
+<link rel="stylesheet" href="assets/css/formatting-toolbar.css?v=<?php echo time(); ?>">
+<link rel="stylesheet" href="assets/css/columns.css?v=<?php echo time(); ?>">
 <script src="assets/js/smack-ui-private.js?v=<?php echo time(); ?>"></script>
+<script src="assets/js/formatting-toolbar.js?v=<?php echo time(); ?>"></script>
 <script>
     window.addEventListener('DOMContentLoaded', () => {
         if(typeof updateLabel === "function") { 

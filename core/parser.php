@@ -1,11 +1,17 @@
 <?php
 /**
  * SNAPSMACK - Content Parser and Asset Router
- * Alpha v0.6
+ * Alpha v0.7
  *
- * Parses shortcodes in content and converts them to image markup. Supports
- * both snap_assets (media library uploads) and snap_images (photography posts)
- * with fallback logic. Handles thumbnail/wall variants automatically.
+ * Parses shortcodes in content and converts them to rich HTML.
+ *
+ * Supported shortcodes:
+ *   [img:ID|size|align]              — inline image from media library or posts
+ *   [columns=N] ... [col] ... [/columns] — multi-column grid layout
+ *   [dropcap]X[/dropcap]            — decorative first-letter dropcap
+ *
+ * Auto-paragraph: double newlines (\n\n) become <p> tags automatically.
+ * Single newlines within a paragraph become <br>.
  */
 
 class SnapSmack {
@@ -29,63 +35,221 @@ class SnapSmack {
         }
     }
 
-    // --- CONTENT PARSER ---
-    // Parse all [img:ID|size|align] shortcodes in the provided content.
-    // Returns HTML with <img> tags, or an empty string if the asset is not found.
+    // =========================================================================
+    //  PUBLIC API
+    // =========================================================================
+
+    /**
+     * Main content parser — runs the full pipeline on raw textarea content.
+     *
+     * Pipeline order:
+     *   1. Columns (extract and protect column blocks first)
+     *   2. Auto-paragraph (wrap plain text in <p> tags)
+     *   3. Dropcap shortcodes
+     *   4. Image shortcodes
+     */
     public function parseContent($content) {
         if (empty($content)) return "";
 
-        // Shortcode pattern: [img:ID] or [img:ID|size] or [img:ID|size|align]
-        // Size: small (thumbnail), wall (gallery wall), full (default)
-        // Align: left, center (default), right
-        return preg_replace_callback('/\[img:\s*(\d+)(?:\s*\|\s*(small|wall|full))?(?:\s*\|\s*(left|center|right))?\s*\]/i', function($matches) {
-            $id = $matches[1];
-            $size = $matches[2] ?? 'full';
-            $align = $matches[3] ?? 'center';
+        // --- PHASE 1: COLUMNS ---
+        // Extract column blocks before auto-paragraph so the [columns] wrapper
+        // doesn't get wrapped in <p> tags. Column INNER content gets its own
+        // auto-paragraph pass.
+        $content = $this->parseColumns($content);
 
-            // --- ASSET LOOKUP (PRIORITY 1) ---
-            // Try media assets first (smack-media.php uploads)
-            $stmt = $this->pdo->prepare("SELECT asset_path as path, asset_name as name FROM snap_assets WHERE id = ? LIMIT 1");
-            $stmt->execute([$id]);
-            $asset = $stmt->fetch();
+        // --- PHASE 2: AUTO-PARAGRAPH ---
+        // Convert double newlines to <p> tags for any remaining top-level text.
+        $content = $this->autoParagraph($content);
 
-            // --- FALLBACK TO SNAP_IMAGES (PRIORITY 2) ---
-            // If not in snap_assets, look in snap_images (main photography posts)
-            if (!$asset) {
-                $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name FROM snap_images WHERE id = ? LIMIT 1");
+        // --- PHASE 3: DROPCAP ---
+        $content = $this->parseDropcap($content);
+
+        // --- PHASE 4: IMAGE SHORTCODES ---
+        $content = $this->parseImages($content);
+
+        return $content;
+    }
+
+    // =========================================================================
+    //  AUTO-PARAGRAPH
+    // =========================================================================
+
+    /**
+     * Convert double-newline-separated text into <p> blocks.
+     *
+     * Rules:
+     *   - Double newline (\n\n) = new paragraph
+     *   - Single newline within a paragraph = <br>
+     *   - Content already wrapped in block-level HTML is left alone
+     *   - Shortcode blocks ([columns], etc.) are left alone
+     */
+    private function autoParagraph($content) {
+        // Protect existing block-level HTML and processed column blocks
+        // by splitting around them and only wrapping the text fragments.
+        $block_tags = 'h[1-6]|div|blockquote|ul|ol|li|table|thead|tbody|tr|td|th|figure|figcaption|pre|hr|form|section|article|aside|nav|header|footer|p';
+
+        // Split content into segments: block-level HTML vs. text
+        // This regex matches self-contained block elements (opening through closing)
+        // and also standalone <hr>, <br> etc.
+        $segments = preg_split(
+            '/(<(?:' . $block_tags . ')[\s>].*?<\/(?:' . $block_tags . ')>|<hr\s*\/?>)/si',
+            $content,
+            -1,
+            PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY
+        );
+
+        $output = '';
+        foreach ($segments as $segment) {
+            $trimmed = trim($segment);
+            if ($trimmed === '') continue;
+
+            // If this segment starts with a block-level tag, pass it through
+            if (preg_match('/^<(?:' . $block_tags . ')[\s>]/i', $trimmed)) {
+                $output .= $segment;
+                continue;
+            }
+
+            // If this segment is a processed column block (div.snapsmack-columns), pass through
+            if (str_starts_with($trimmed, '<div class="snapsmack-columns')) {
+                $output .= $segment;
+                continue;
+            }
+
+            // Otherwise, wrap text chunks in <p> tags
+            $paragraphs = preg_split('/\n\s*\n/', $trimmed);
+            foreach ($paragraphs as $para) {
+                $para = trim($para);
+                if ($para === '') continue;
+
+                // Convert single newlines to <br>
+                $para = nl2br($para, false);
+
+                $output .= '<p>' . $para . '</p>' . "\n";
+            }
+        }
+
+        return $output;
+    }
+
+    // =========================================================================
+    //  COLUMN SHORTCODE
+    // =========================================================================
+
+    /**
+     * Parse [columns=N] ... [col] ... [/columns] blocks.
+     *
+     * Content between [columns=N] and [/columns] is split on [col] markers.
+     * Each segment becomes a grid cell. The outer wrapper gets a CSS class
+     * for the requested column count (cols-2, cols-3, cols-4).
+     *
+     * Inner content of each column is run through autoParagraph + parseImages
+     * so images and text formatting work inside columns.
+     */
+    private function parseColumns($content) {
+        return preg_replace_callback(
+            '/\[columns=(\d+)\](.*?)\[\/columns\]/si',
+            function ($matches) {
+                $count = max(2, min(4, (int) $matches[1])); // clamp 2-4
+                $inner = trim($matches[2]);
+
+                // Split on [col] markers
+                $cells = preg_split('/\[col\]/i', $inner);
+
+                $html = '<div class="snapsmack-columns cols-' . $count . '">' . "\n";
+                foreach ($cells as $cell) {
+                    $cell_content = trim($cell);
+                    // Run inner content through paragraph + image parsing
+                    $cell_content = $this->autoParagraph($cell_content);
+                    $cell_content = $this->parseImages($cell_content);
+                    $html .= '  <div class="snapsmack-col">' . $cell_content . '</div>' . "\n";
+                }
+                $html .= '</div>';
+
+                return $html;
+            },
+            $content
+        );
+    }
+
+    // =========================================================================
+    //  DROPCAP SHORTCODE
+    // =========================================================================
+
+    /**
+     * Parse [dropcap]X[/dropcap] into a styled span.
+     *
+     * The .dropcap class is styled by the active skin's manifest (dropcap_style
+     * option with custom-framing property). If the manifest option is set to
+     * "none", the span renders as a normal inline character.
+     */
+    private function parseDropcap($content) {
+        return preg_replace(
+            '/\[dropcap\](.*?)\[\/dropcap\]/si',
+            '<span class="dropcap">$1</span>',
+            $content
+        );
+    }
+
+    // =========================================================================
+    //  IMAGE SHORTCODE
+    // =========================================================================
+
+    /**
+     * Parse [img:ID|size|align] shortcodes into <img> tags.
+     *
+     * Looks up the asset in snap_assets first, falls back to snap_images.
+     * Supports size variants (small/wall/full) and alignment (left/center/right).
+     */
+    private function parseImages($content) {
+        return preg_replace_callback(
+            '/\[img:\s*(\d+)(?:\s*\|\s*(small|wall|full))?(?:\s*\|\s*(left|center|right))?\s*\]/i',
+            function ($matches) {
+                $id    = $matches[1];
+                $size  = $matches[2] ?? 'full';
+                $align = $matches[3] ?? 'center';
+
+                // --- ASSET LOOKUP (PRIORITY 1) ---
+                // Try media assets first (smack-media.php uploads)
+                $stmt = $this->pdo->prepare("SELECT asset_path as path, asset_name as name FROM snap_assets WHERE id = ? LIMIT 1");
                 $stmt->execute([$id]);
                 $asset = $stmt->fetch();
-            }
 
-            if (!$asset) return "";
+                // --- FALLBACK TO SNAP_IMAGES (PRIORITY 2) ---
+                if (!$asset) {
+                    $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name FROM snap_images WHERE id = ? LIMIT 1");
+                    $stmt->execute([$id]);
+                    $asset = $stmt->fetch();
+                }
 
-            // Determine base URL from environment or config
-            $base = defined('BASE_URL') ? BASE_URL : (rtrim($this->config['site_url'] ?? '/', '/') . '/');
-            $raw_path = ltrim($asset['path'], '/');
+                if (!$asset) return "";
 
-            // --- PATH RESOLUTION ---
-            // For uploads in the thumbs directory, apply size modifiers.
-            // Otherwise, return the raw path as-is.
-            $filename = basename($raw_path);
-            $folder = str_replace($filename, '', $raw_path);
+                // Determine base URL from environment or config
+                $base     = defined('BASE_URL') ? BASE_URL : (rtrim($this->config['site_url'] ?? '/', '/') . '/');
+                $raw_path = ltrim($asset['path'], '/');
 
-            if ($size === 'small' && strpos($raw_path, 'uploads/') !== false) {
-                $final_path = $folder . 'thumbs/t_' . $filename;
-            } elseif ($size === 'wall' && strpos($raw_path, 'uploads/') !== false) {
-                $final_path = $folder . 'thumbs/wall_' . $filename;
-            } else {
-                $final_path = $raw_path;
-            }
+                // --- PATH RESOLUTION ---
+                $filename = basename($raw_path);
+                $folder   = str_replace($filename, '', $raw_path);
 
-            $full_src = $base . $final_path;
-            $classes = "snapsmack-asset asset-$size align-$align";
+                if ($size === 'small' && strpos($raw_path, 'uploads/') !== false) {
+                    $final_path = $folder . 'thumbs/t_' . $filename;
+                } elseif ($size === 'wall' && strpos($raw_path, 'uploads/') !== false) {
+                    $final_path = $folder . 'thumbs/wall_' . $filename;
+                } else {
+                    $final_path = $raw_path;
+                }
 
-            return sprintf(
-                '<img src="%s" class="%s" alt="%s" loading="lazy">',
-                $full_src,
-                $classes,
-                htmlspecialchars($asset['name'])
-            );
-        }, $content);
+                $full_src = $base . $final_path;
+                $classes  = "snapsmack-asset asset-$size align-$align";
+
+                return sprintf(
+                    '<img src="%s" class="%s" alt="%s" loading="lazy">',
+                    $full_src,
+                    $classes,
+                    htmlspecialchars($asset['name'])
+                );
+            },
+            $content
+        );
     }
 }

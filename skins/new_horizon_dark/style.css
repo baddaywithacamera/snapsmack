@@ -647,6 +647,13 @@ img.post-image {
 /* ENFORCED: Clearfix for all description blocks */
 .description::after { content: ""; display: table; clear: both; }
 
+/* ─── DROPCAP ─────────────────────────────────────────────── */
+/* Base rule — actual styling (float, size, colour) is driven  */
+/* by the manifest dropcap_style option via custom-framing.    */
+span.dropcap {
+    display: inline;
+}
+
 /* ==========================================================================
     FORM & DASHBOARD UI (FULL RESTORATION)
     ========================================================================= */

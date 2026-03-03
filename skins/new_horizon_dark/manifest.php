@@ -275,7 +275,7 @@ return [
             'type'     => 'select',
             'label'    => 'First Letter Dropcap',
             'default'  => 'none',
-            'selector' => '.static-content p:not(:empty):not(:has(h1,h2,h3)):first-of-type::first-letter, .description p:not(:empty):not(:has(h1,h2,h3)):first-of-type::first-letter',
+            'selector' => '.description p:first-of-type::first-letter, .static-content p:first-of-type::first-letter, span.dropcap',
             'property' => 'custom-framing',
             'options'  => [
                 'none' => [
