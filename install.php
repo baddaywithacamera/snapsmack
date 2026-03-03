@@ -299,11 +299,14 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
 // =====================================================================
 if ($step === 4 && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_user']) && empty($errors)) {
 
+    $site_name   = trim($_POST['site_name'] ?? '');
+    $site_tagline = trim($_POST['site_tagline'] ?? '');
     $admin_user  = trim($_POST['admin_user'] ?? '');
     $admin_email = trim($_POST['admin_email'] ?? '');
     $admin_pass  = $_POST['admin_pass'] ?? '';
     $admin_pass2 = $_POST['admin_pass2'] ?? '';
 
+    if (empty($site_name)) $errors[] = 'Site name is required.';
     if (empty($admin_user)) $errors[] = 'Username is required.';
     if (empty($admin_email) || !filter_var($admin_email, FILTER_VALIDATE_EMAIL)) $errors[] = 'A valid email is required.';
     if (strlen($admin_pass) < 12) $errors[] = 'Password must be at least 12 characters.';
@@ -324,6 +327,8 @@ if ($step === 4 && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_
             $stmt->execute([$admin_user, $admin_email, $hash]);
 
             $_SESSION['admin_created'] = true;
+            $_SESSION['site_name']    = $site_name;
+            $_SESSION['site_tagline'] = $site_tagline;
             $step = 5;
         } catch (PDOException $e) {
             $errors[] = 'Failed to create admin user: ' . htmlspecialchars($e->getMessage());
@@ -422,8 +427,8 @@ define(\'SNAPSMACK_TABLE_PREFIX\', \'' . $prefix . '\');
             ]);
 
             $defaults = [
-                'site_name'                 => 'My SnapSmack Site',
-                'site_tagline'              => '',
+                'site_name'                 => $_SESSION['site_name'] ?? 'My SnapSmack Site',
+                'site_tagline'              => $_SESSION['site_tagline'] ?? '',
                 'site_url'                  => '',
                 'active_skin'               => 'new_horizon_dark',
                 'active_skin_variant'       => '',
@@ -857,16 +862,24 @@ define(\'SNAPSMACK_TABLE_PREFIX\', \'' . $prefix . '\');
         <?php endforeach; ?>
         </ul>
 
-        <h2>Step 4 — Create Admin Account</h2>
+        <h2>Step 4 — Your Site &amp; Admin Account</h2>
 
         <form method="post">
             <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
             <input type="hidden" name="step" value="4">
 
-            <label for="admin_user">Username</label>
-            <input type="text" id="admin_user" name="admin_user" value="<?php echo htmlspecialchars($_POST['admin_user'] ?? ''); ?>" autofocus>
+            <label for="site_name">Site Name</label>
+            <input type="text" id="site_name" name="site_name" value="<?php echo htmlspecialchars($_POST['site_name'] ?? ''); ?>" autofocus>
+            <div class="hint">The name of your photo blog. Shown in the header and browser tab.</div>
 
-            <label for="admin_email">Email</label>
+            <label for="site_tagline">Tagline</label>
+            <input type="text" id="site_tagline" name="site_tagline" value="<?php echo htmlspecialchars($_POST['site_tagline'] ?? ''); ?>">
+            <div class="hint">Optional. A short description or subtitle.</div>
+
+            <label for="admin_user" style="margin-top:28px;padding-top:16px;border-top:1px solid #2a2a2a;">Admin Username</label>
+            <input type="text" id="admin_user" name="admin_user" value="<?php echo htmlspecialchars($_POST['admin_user'] ?? ''); ?>">
+
+            <label for="admin_email">Admin Email</label>
             <input type="email" id="admin_email" name="admin_email" value="<?php echo htmlspecialchars($_POST['admin_email'] ?? ''); ?>">
 
             <label for="admin_pass">Password</label>
@@ -876,7 +889,7 @@ define(\'SNAPSMACK_TABLE_PREFIX\', \'' . $prefix . '\');
             <label for="admin_pass2">Confirm Password</label>
             <input type="password" id="admin_pass2" name="admin_pass2">
 
-            <button type="submit">Create Admin &amp; Finish</button>
+            <button type="submit">Create Site &amp; Finish</button>
         </form>
 
     <?php endif; ?>
@@ -886,16 +899,24 @@ define(\'SNAPSMACK_TABLE_PREFIX\', \'' . $prefix . '\');
     <?php // STEP 4: Admin form re-display on validation error ?>
     <?php // ============================================================= ?>
     <?php if ($step === 4 && isset($_POST['admin_user'])): ?>
-        <h2>Step 4 — Create Admin Account</h2>
+        <h2>Step 4 — Your Site &amp; Admin Account</h2>
 
         <form method="post">
             <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
             <input type="hidden" name="step" value="4">
 
-            <label for="admin_user">Username</label>
-            <input type="text" id="admin_user" name="admin_user" value="<?php echo htmlspecialchars($_POST['admin_user'] ?? ''); ?>" autofocus>
+            <label for="site_name">Site Name</label>
+            <input type="text" id="site_name" name="site_name" value="<?php echo htmlspecialchars($_POST['site_name'] ?? ''); ?>" autofocus>
+            <div class="hint">The name of your photo blog. Shown in the header and browser tab.</div>
 
-            <label for="admin_email">Email</label>
+            <label for="site_tagline">Tagline</label>
+            <input type="text" id="site_tagline" name="site_tagline" value="<?php echo htmlspecialchars($_POST['site_tagline'] ?? ''); ?>">
+            <div class="hint">Optional. A short description or subtitle.</div>
+
+            <label for="admin_user" style="margin-top:28px;padding-top:16px;border-top:1px solid #2a2a2a;">Admin Username</label>
+            <input type="text" id="admin_user" name="admin_user" value="<?php echo htmlspecialchars($_POST['admin_user'] ?? ''); ?>">
+
+            <label for="admin_email">Admin Email</label>
             <input type="email" id="admin_email" name="admin_email" value="<?php echo htmlspecialchars($_POST['admin_email'] ?? ''); ?>">
 
             <label for="admin_pass">Password</label>
@@ -905,7 +926,7 @@ define(\'SNAPSMACK_TABLE_PREFIX\', \'' . $prefix . '\');
             <label for="admin_pass2">Confirm Password</label>
             <input type="password" id="admin_pass2" name="admin_pass2">
 
-            <button type="submit">Create Admin &amp; Finish</button>
+            <button type="submit">Create Site &amp; Finish</button>
         </form>
 
     <?php endif; ?>
