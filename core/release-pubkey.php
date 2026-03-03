@@ -32,4 +32,4 @@ define('SNAPSMACK_RELEASE_PUBKEY', '4b397509c45a995c2a5c098582a7a547892d6a7bc91b
 
 // Set to true once a real key is installed and all releases are being signed.
 // When false, signature verification is logged but not enforced.
-define('SNAPSMACK_SIGNING_ENFORCED', false);
+define('SNAPSMACK_SIGNING_ENFORCED', true);
