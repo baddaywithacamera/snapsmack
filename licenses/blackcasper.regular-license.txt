@@ -1,5 +1,5 @@
 This license applies to the following files included in SnapSmack:
-- assets/fonts/blackcasper.regular.ttf
+- assets/fonts/BlackCasper/blackcasper.regular.ttf
 
 Thanks for downloading BlackCasper by AllencHIU cHIU
 

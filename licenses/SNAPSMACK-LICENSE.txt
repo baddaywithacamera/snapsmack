@@ -13,7 +13,7 @@ You are permitted to fork and modify the code. However, any redistributed versio
 The main branch of SNAPSMACK remains closed to direct public contributions. Suggestions, bug reports, or fixes should be submitted via email to the address listed above.
 
 4. THIRD-PARTY INVENTORY
-This software utilizes third-party components which are subject to their own respective licenses. Users must respect the terms for fjGallery (MIT), DotMatrix, Tiny5, and Blackcasper. Detailed information for these assets is located in the /licenses directory of the installation.
+This software utilizes third-party components which are subject to their own respective licenses. Users must respect the terms for fjGallery (MIT), DotMatrix, Tiny5, Blackcasper, and FlottFlott (SIL OFL). Detailed information for these assets is located in the /licenses directory of the installation.
 
 5. DISCLAIMER
 This software is provided "as is," without warranty of any kind, express or implied. In no event shall the author be liable for any claim, damages, or other liability arising from the use of the software.

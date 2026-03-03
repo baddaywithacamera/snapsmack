@@ -33,7 +33,16 @@ return [
         // ---- BlackCasper ------------------------------------------------
         'BlackCasper' => [
             'label'  => 'BlackCasper (Physical Damage)',
-            'file'   => 'assets/fonts/blackcasper.regular.ttf',
+            'file'   => 'assets/fonts/BlackCasper/blackcasper.regular.ttf',
+            'format' => 'truetype',
+            'weight' => 'normal',
+            'style'  => 'normal',
+        ],
+
+        // ---- FlottFlott -------------------------------------------------
+        'FlottFlott' => [
+            'label'  => 'FlottFlott (Calligraphic Script)',
+            'file'   => 'assets/fonts/FlottFlott/flottflott.regular.ttf',
             'format' => 'truetype',
             'weight' => 'normal',
             'style'  => 'normal',
