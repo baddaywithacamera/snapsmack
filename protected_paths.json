@@ -1,0 +1,18 @@
+{
+    "_comment": "Paths listed here are NEVER overwritten by the updater. Relative to project root.",
+    "_format": "Each entry is a path relative to the SnapSmack root directory. Directories should end with /.",
+
+    "protected": [
+        "core/db.php",
+        "core/constants.php",
+        "core/release-pubkey.php",
+        "protected_paths.json",
+        "img_uploads/",
+        "media_assets/",
+        "assets/img/",
+        "backups/",
+        "skins/",
+        ".htaccess",
+        "robots.txt"
+    ]
+}

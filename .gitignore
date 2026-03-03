@@ -1,2 +1,17 @@
 # Live database credentials — never commit this
 core/db.php
+
+# Backups contain full source + database dumps — never commit
+backups/
+
+# Updater temp files
+/tmp/snapsmack_update/
+
+# User uploads (too large, site-specific)
+img_uploads/
+media_assets/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,13 +1,72 @@
 <?php
 /**
  * SNAPSMACK - System dashboard and administrative hub
- * Alpha v0.6
+ * Alpha v0.7
  *
  * Displays content statistics, system vitals, and provides centralized access
  * to administrative tools. Manages cron job registration for RSS fetching.
  */
 
 require_once 'core/auth.php';
+
+// --- UPDATE NOTIFICATION CHECK ---
+// Load cached update check result for dashboard notifications.
+// If no cached result exists OR cache is older than 24 hours, trigger a live
+// check (lightweight fallback when cron is not configured).
+$_update_notifications = null;
+$_update_total = 0;
+try {
+    $stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = 'update_check_result'");
+    $stmt->execute();
+    $_update_json = $stmt->fetchColumn();
+    if ($_update_json) {
+        $_update_notifications = json_decode($_update_json, true);
+        $_update_total = $_update_notifications['total_notifications'] ?? 0;
+    }
+
+    // Check cache age — trigger live check if stale (>24h) and updater is available
+    $stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = 'last_update_check'");
+    $stmt->execute();
+    $_last_check = $stmt->fetchColumn();
+    $_cache_stale = (!$_last_check || (time() - strtotime($_last_check)) > 86400);
+
+    if ($_cache_stale && file_exists('core/updater.php')) {
+        require_once 'core/updater.php';
+        $_release = updater_fetch_release_info();
+        $_skin_info = updater_check_skin_registry($pdo);
+        $_core_status = updater_check_status(SNAPSMACK_VERSION_SHORT ?? '0.0', $_release);
+
+        $_core_update = null;
+        if ($_core_status === 'update_available') {
+            $_core_update = [
+                'version'      => $_release['version'] ?? '',
+                'version_full' => $_release['version_full'] ?? '',
+            ];
+        }
+
+        $_update_notifications = [
+            'checked_at'          => date('c'),
+            'core_status'         => $_core_status,
+            'core_update'         => $_core_update,
+            'new_skins'           => $_skin_info['new_skins'],
+            'updated_skins'       => $_skin_info['updated_skins'],
+            'skin_notifications'  => $_skin_info['total_notifications'],
+            'total_notifications' => ($_core_update ? 1 : 0) + $_skin_info['total_notifications'],
+        ];
+        $_update_total = $_update_notifications['total_notifications'];
+
+        // Cache the result
+        $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('update_check_result', ?)
+                               ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)");
+        $stmt->execute([json_encode($_update_notifications, JSON_UNESCAPED_SLASHES)]);
+
+        $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('last_update_check', ?)
+                               ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)");
+        $stmt->execute([date('Y-m-d H:i:s')]);
+    }
+} catch (PDOException $e) {
+    // Silent — dashboard should never break because of update checks
+}
 
 // --- ADMIN THEME DISCOVERY ---
 // Loads available admin themes from the theme directory to allow users to customize
@@ -132,6 +191,25 @@ include 'core/sidebar.php';
 
 <div class="main">
     <h2>SYSTEM DASHBOARD</h2>
+
+    <?php if ($_update_total > 0): ?>
+    <div style="padding:12px 18px;margin-bottom:25px;border-radius:3px;border-left:4px solid #da4;background:rgba(221,170,68,0.08);display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:0.85rem;">
+            <?php
+            $_notices = [];
+            if (!empty($_update_notifications['core_update'])) {
+                $_notices[] = 'Core update available: v' . htmlspecialchars($_update_notifications['core_update']['version']);
+            }
+            $_new_count = count($_update_notifications['new_skins'] ?? []);
+            $_upd_count = count($_update_notifications['updated_skins'] ?? []);
+            if ($_new_count > 0) $_notices[] = "{$_new_count} new skin" . ($_new_count > 1 ? 's' : '') . " available";
+            if ($_upd_count > 0) $_notices[] = "{$_upd_count} skin update" . ($_upd_count > 1 ? 's' : '') . " available";
+            echo strtoupper(implode(' — ', $_notices));
+            ?>
+        </div>
+        <a href="smack-update.php" class="btn-smack" style="margin:0;white-space:nowrap;">VIEW UPDATES</a>
+    </div>
+    <?php endif; ?>
 
     <div class="post-layout-grid">
         <div class="box">

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Admin Sidebar Navigation
- * Alpha v0.6
+ * Alpha v0.7
  *
  * Renders the admin dashboard sidebar with sections for content management,
  * skin customization, and system configuration. The Pimpotron link appears
@@ -14,7 +14,8 @@ $current_page = basename($_SERVER['PHP_SELF']);
 // Check if the active skin declares support for the Pimpotron engine
 $_sidebar_pimpotron = false;
 if (!empty($settings['active_skin'])) {
-    $_sidebar_manifest_path = "skins/{$settings['active_skin']}/manifest.php";
+    $_sidebar_skin_slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $settings['active_skin']);
+    $_sidebar_manifest_path = "skins/{$_sidebar_skin_slug}/manifest.php";
     if (file_exists($_sidebar_manifest_path)) {
         $_sidebar_manifest = include $_sidebar_manifest_path;
         $_sidebar_pimpotron = !empty($_sidebar_manifest['engines']['pimpotron']);
@@ -87,6 +88,9 @@ if (!empty($settings['active_skin'])) {
                     </li>
                     <li class="<?php echo ($current_page == 'smack-backup.php') ? 'active' : ''; ?>">
                         <a href="smack-backup.php">Backup & Recovery</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-update.php') ? 'active' : ''; ?>">
+                        <a href="smack-update.php">System Updates</a>
                     </li>
                 </ul>
             </li>
