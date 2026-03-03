@@ -29,16 +29,22 @@ if (!file_exists(__DIR__ . '/core/parser.php') || !is_dir(__DIR__ . '/core')) {
     die('<!DOCTYPE html><html><head><meta charset="utf-8"><title>SnapSmack</title></head><body style="background:#111;color:#eee;font-family:monospace;padding:60px;text-align:center;"><h1>CODEBASE NOT FOUND</h1><p>The SnapSmack application files are missing. Upload the full codebase to this directory first, or use <code>setup.php</code> to deploy from GitHub.</p></body></html>');
 }
 
+// --- RECOVERY MODE DETECTION ---
+// Allow recovery mode to bypass the safety lock when ?mode=recovery is set.
+$recovery_mode = ($_GET['mode'] ?? $_POST['mode'] ?? '') === 'recovery';
+$has_existing_db = false;
+
 // --- SAFETY LOCK ---
-// If SnapSmack is already installed, refuse to run.
-// We check by attempting a PDO connection using an existing db.php
-// and looking for rows in snap_settings.
+// If SnapSmack is already installed, refuse to run (unless recovery mode).
 if (file_exists(__DIR__ . '/core/db.php')) {
     try {
         require_once __DIR__ . '/core/db.php';
         $check = $pdo->query("SELECT COUNT(*) FROM snap_settings")->fetchColumn();
         if ($check > 0) {
-            die('<!DOCTYPE html><html><head><meta charset="utf-8"><title>SnapSmack</title></head><body style="background:#111;color:#eee;font-family:monospace;padding:60px;text-align:center;"><h1>SNAPSMACK IS ALREADY INSTALLED</h1><p>Delete <code>install.php</code> from your server.</p></body></html>');
+            $has_existing_db = true;
+            if (!$recovery_mode) {
+                die('<!DOCTYPE html><html><head><meta charset="utf-8"><title>SnapSmack</title></head><body style="background:#111;color:#eee;font-family:monospace;padding:60px;text-align:center;"><h1>SNAPSMACK IS ALREADY INSTALLED</h1><p>Delete <code>install.php</code> from your server, or <a href="install.php?mode=recovery" style="color:#a0ff90;">enter recovery mode</a>.</p></body></html>');
+            }
         }
     } catch (Exception $e) {
         // db.php exists but connection fails or table missing — safe to continue
@@ -176,6 +182,9 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
                 `allow_comments` tinyint(1) DEFAULT '1',
                 `allow_download` tinyint(1) NOT NULL DEFAULT '1',
                 `download_url` varchar(512) NOT NULL DEFAULT '',
+                `img_thumb_square` varchar(255) DEFAULT NULL COMMENT 'Relative path to 400x400 square thumbnail (t_ prefix)',
+                `img_thumb_aspect` varchar(255) DEFAULT NULL COMMENT 'Relative path to aspect-ratio thumbnail (a_ prefix)',
+                `img_checksum` varchar(64) DEFAULT NULL COMMENT 'SHA-256 hash of main image file for recovery verification',
                 PRIMARY KEY (`id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
@@ -268,6 +277,16 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
                 `sort_order` int NOT NULL DEFAULT '0',
                 `rss_last_fetched` datetime DEFAULT NULL,
                 `rss_last_updated` datetime DEFAULT NULL,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- MEDIA ASSETS ---
+            "{$prefix}assets" => "CREATE TABLE IF NOT EXISTS `{$prefix}assets` (
+                `id` int NOT NULL AUTO_INCREMENT,
+                `asset_name` varchar(255) NOT NULL,
+                `asset_path` varchar(500) NOT NULL,
+                `asset_checksum` varchar(64) DEFAULT NULL COMMENT 'SHA-256 hash for recovery verification',
+                `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (`id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ];
@@ -596,6 +615,100 @@ HTACCESS;
     }
 }
 
+
+// =====================================================================
+// RECOVERY MODE STEP HANDLERS
+// =====================================================================
+
+// Recovery Step R2: SQL Dump Import
+if ($recovery_mode && $step === 'r2' && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
+
+    if ($has_existing_db) {
+        // Existing DB — skip import, go straight to file restoration
+        $_SESSION['recovery_db_ready'] = true;
+        $step = 'r3';
+    } else {
+        // Need DB credentials first
+        $db_host   = trim($_POST['db_host'] ?? 'localhost');
+        $db_name   = trim($_POST['db_name'] ?? '');
+        $db_user   = trim($_POST['db_user'] ?? '');
+        $db_pass   = $_POST['db_pass'] ?? '';
+
+        if (empty($db_name) || empty($db_user)) {
+            $errors[] = 'Database name and username are required.';
+            $step = 'r2';
+        } else {
+            try {
+                $dsn = "mysql:host={$db_host};dbname={$db_name};charset=utf8mb4";
+                $pdo = new PDO($dsn, $db_user, $db_pass, [
+                    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES   => false,
+                ]);
+
+                $_SESSION['db_host']   = $db_host;
+                $_SESSION['db_name']   = $db_name;
+                $_SESSION['db_user']   = $db_user;
+                $_SESSION['db_pass']   = $db_pass;
+
+                // Import the SQL dump
+                if (isset($_FILES['sql_dump']) && $_FILES['sql_dump']['error'] === UPLOAD_ERR_OK) {
+                    require_once __DIR__ . '/core/recovery-engine.php';
+                    $engine = new SnapSmackRecovery($pdo, __DIR__);
+                    $result = $engine->importSqlDump($_FILES['sql_dump']['tmp_name']);
+
+                    if (!empty($result['errors'])) {
+                        $errors = array_merge($errors, array_slice($result['errors'], 0, 10));
+                        $step = 'r2';
+                    } else {
+                        $_SESSION['recovery_db_ready'] = true;
+                        $_SESSION['recovery_imported'] = $result['imported'];
+
+                        // Generate db.php if it doesn't exist
+                        if (!file_exists(__DIR__ . '/core/db.php')) {
+                            $db_php = '<?php
+$host    = ' . var_export($db_host, true) . ';
+$db      = ' . var_export($db_name, true) . ';
+$user    = ' . var_export($db_user, true) . ';
+$pass    = ' . var_export($db_pass, true) . ';
+$charset = \'utf8mb4\';
+$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+$options = [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_EMULATE_PREPARES => false];
+try { $pdo = new PDO($dsn, $user, $pass, $options); } catch (\PDOException $e) { die("DATABASE_LINK_FAILURE"); }
+';
+                            @file_put_contents(__DIR__ . '/core/db.php', $db_php);
+                            @chmod(__DIR__ . '/core/db.php', 0640);
+                        }
+
+                        $step = 'r3';
+                    }
+                } else {
+                    $errors[] = 'Please upload a SQL dump file.';
+                    $step = 'r2';
+                }
+            } catch (PDOException $e) {
+                $errors[] = 'Database connection failed: ' . htmlspecialchars($e->getMessage());
+                $step = 'r2';
+            }
+        }
+    }
+}
+
+// Recovery Step R3 → R4: Execute file restoration
+if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
+    $image_mode = $_POST['image_mode'] ?? 'in_place';
+    if (!in_array($image_mode, ['in_place', 'flat'], true)) {
+        $image_mode = 'in_place';
+    }
+    $flat_path = trim($_POST['flat_path'] ?? '');
+
+    // Sanitize flat path — no directory traversal
+    $flat_path = str_replace(['..', "\0"], '', $flat_path);
+
+    $_SESSION['recovery_image_mode'] = $image_mode;
+    $_SESSION['recovery_flat_path']  = $flat_path;
+    $step = 'r4_exec';
+}
 
 // =====================================================================
 // HTML OUTPUT
@@ -1040,6 +1153,228 @@ HTACCESS;
 
             <a href="login.php">Log In</a>
         </div>
+    <?php endif; ?>
+
+
+    <?php // ============================================================= ?>
+    <?php // RECOVERY: Step R1 — Mode Selection ?>
+    <?php // ============================================================= ?>
+    <?php if ($recovery_mode && $step === 1): ?>
+        <h2>Recovery Mode</h2>
+        <div class="warn-box">
+            You are restoring an existing SnapSmack installation. This process will use your
+            database records to verify and relocate image files, regenerate missing thumbnails,
+            and compute integrity checksums.
+        </div>
+
+        <?php if ($has_existing_db): ?>
+            <div class="success-box">
+                Existing database connection found. Your data is intact — proceeding to file restoration.
+            </div>
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                <input type="hidden" name="step" value="r3">
+                <input type="hidden" name="mode" value="recovery">
+                <button type="submit">Continue to File Restoration</button>
+            </form>
+        <?php else: ?>
+            <p style="color:#888;margin-bottom:20px;">No existing database found. You'll need to provide credentials and a SQL dump file.</p>
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                <input type="hidden" name="step" value="r2">
+                <input type="hidden" name="mode" value="recovery">
+                <button type="submit">Begin Recovery</button>
+            </form>
+        <?php endif; ?>
+
+    <?php endif; ?>
+
+
+    <?php // ============================================================= ?>
+    <?php // RECOVERY: Step R2 — Database Credentials + SQL Import ?>
+    <?php // ============================================================= ?>
+    <?php if ($recovery_mode && $step === 'r2'): ?>
+        <h2>Recovery — Database &amp; SQL Import</h2>
+        <p style="color:#888;margin-bottom:20px;">Enter your database credentials and upload the SQL dump from your backup.</p>
+
+        <form method="post" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+            <input type="hidden" name="step" value="r2">
+            <input type="hidden" name="mode" value="recovery">
+
+            <label for="db_host">Database Host</label>
+            <input type="text" id="db_host" name="db_host" value="<?php echo htmlspecialchars($_POST['db_host'] ?? 'localhost'); ?>">
+
+            <label for="db_name">Database Name</label>
+            <input type="text" id="db_name" name="db_name" value="<?php echo htmlspecialchars($_POST['db_name'] ?? ''); ?>" autofocus>
+
+            <label for="db_user">Database Username</label>
+            <input type="text" id="db_user" name="db_user" value="<?php echo htmlspecialchars($_POST['db_user'] ?? ''); ?>">
+
+            <label for="db_pass">Database Password</label>
+            <input type="password" id="db_pass" name="db_pass">
+
+            <label for="sql_dump" style="margin-top:28px;padding-top:16px;border-top:1px solid #2a2a2a;">SQL Dump File</label>
+            <input type="file" id="sql_dump" name="sql_dump" accept=".sql" style="color:#ccc;">
+            <div class="hint">The .sql file from Backup &amp; Recovery → Full Database export.</div>
+
+            <button type="submit">Import &amp; Continue</button>
+        </form>
+
+    <?php endif; ?>
+
+
+    <?php // ============================================================= ?>
+    <?php // RECOVERY: Step R3 — Image Source Selection ?>
+    <?php // ============================================================= ?>
+    <?php if ($recovery_mode && $step === 'r3'): ?>
+        <h2>Recovery — Locate Image Files</h2>
+
+        <?php if (!empty($_SESSION['recovery_imported'])): ?>
+            <div class="success-box">SQL dump imported successfully (<?php echo $_SESSION['recovery_imported']; ?> statements executed).</div>
+        <?php endif; ?>
+
+        <?php
+        // Show a quick count of what's in the database
+        try {
+            $img_count = $pdo->query("SELECT COUNT(*) FROM snap_images")->fetchColumn();
+            $asset_count = 0;
+            try { $asset_count = $pdo->query("SELECT COUNT(*) FROM snap_assets")->fetchColumn(); } catch (Exception $e) {}
+        } catch (Exception $e) { $img_count = '?'; }
+        ?>
+        <p style="color:#888;margin-bottom:20px;">
+            Found <strong style="color:#a0ff90;"><?php echo $img_count; ?></strong> image records
+            <?php if ($asset_count > 0): ?> and <strong style="color:#a0ff90;"><?php echo $asset_count; ?></strong> media assets<?php endif; ?>
+            in the database.
+        </p>
+
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+            <input type="hidden" name="step" value="r4">
+            <input type="hidden" name="mode" value="recovery">
+
+            <label style="display:flex;align-items:flex-start;gap:10px;margin-top:20px;cursor:pointer;">
+                <input type="radio" name="image_mode" value="in_place" checked style="margin-top:4px;">
+                <div>
+                    <strong style="color:#eee;">Images are already in the correct directory structure</strong>
+                    <div class="hint">Files are in <code>img_uploads/YYYY/MM/</code> with thumbs in subdirectories. Just verify and regenerate missing thumbs.</div>
+                </div>
+            </label>
+
+            <label style="display:flex;align-items:flex-start;gap:10px;margin-top:20px;cursor:pointer;">
+                <input type="radio" name="image_mode" value="flat" style="margin-top:4px;">
+                <div>
+                    <strong style="color:#eee;">All images are in one flat folder</strong>
+                    <div class="hint">All image files were dumped into a single directory. The recovery engine will use the database paths to sort them into the correct <code>img_uploads/YYYY/MM/</code> structure.</div>
+                </div>
+            </label>
+
+            <label for="flat_path" style="margin-top:16px;">Flat folder path (relative to site root)</label>
+            <input type="text" id="flat_path" name="flat_path" placeholder="e.g. recovery/ or img_dumps/" value="">
+            <div class="hint">Only needed if you selected "flat folder" above.</div>
+
+            <button type="submit">Begin Restoration</button>
+        </form>
+
+    <?php endif; ?>
+
+
+    <?php // ============================================================= ?>
+    <?php // RECOVERY: Step R4 — Execute Restoration (streaming) ?>
+    <?php // ============================================================= ?>
+    <?php if ($recovery_mode && $step === 'r4_exec'): ?>
+        <?php
+        // Close the installer HTML wrapper and stream recovery progress directly
+        echo '</div></body></html>';
+
+        // Begin streaming output
+        header('Content-Type: text/html; charset=utf-8');
+        echo "<!DOCTYPE html><html><head><title>SnapSmack Recovery</title>";
+        echo "<style>body{background:#0e0e0e;color:#ccc;font-family:monospace;padding:30px;font-size:13px;line-height:1.7;}";
+        echo ".success{color:#39FF14;} .info{color:#00bfff;} .warn{color:#ffaa00;} .error{color:#ff6b6b;}";
+        echo "h2{color:#a0ff90;letter-spacing:2px;} h3{color:#eee;margin-top:24px;} hr{border-color:#333;margin:16px 0;}";
+        echo ".summary{background:#1a1a1a;border:1px solid #333;padding:14px;margin:10px 0;border-radius:4px;}";
+        echo "a{color:#a0ff90;}</style></head><body>";
+        echo "<h2>SNAPSMACK RECOVERY ENGINE</h2><hr>";
+        flush();
+
+        // Ensure we have a PDO connection
+        if (!isset($pdo)) {
+            if (file_exists(__DIR__ . '/core/db.php')) {
+                require_once __DIR__ . '/core/db.php';
+            } else {
+                echo "<span class='error'>ERROR:</span> No database connection available.<br>";
+                echo "</body></html>";
+                exit;
+            }
+        }
+
+        require_once __DIR__ . '/core/recovery-engine.php';
+        $engine = new SnapSmackRecovery($pdo, __DIR__);
+
+        $image_mode = $_SESSION['recovery_image_mode'] ?? 'in_place';
+        $flat_path  = $_SESSION['recovery_flat_path'] ?? '';
+        $flat_dir   = ($image_mode === 'flat' && !empty($flat_path)) ? __DIR__ . '/' . ltrim($flat_path, '/') : null;
+
+        // 1. Ensure directory structure
+        echo "<h3>PHASE 1: DIRECTORY STRUCTURE</h3>";
+        $engine->ensureDirectories();
+        echo "<span class='success'>OK:</span> Upload directories verified.<br>";
+        flush();
+
+        // 2. Restore image files
+        echo "<h3>PHASE 2: IMAGE FILES</h3>";
+        $img_result = $engine->restoreImages($flat_dir);
+        echo "<div class='summary'>";
+        echo "Restored: {$img_result['restored']} | Already in place: {$img_result['in_place']} | Missing: {$img_result['missing']}";
+        echo "</div>";
+        flush();
+
+        // 3. Regenerate thumbnails and compute checksums
+        echo "<h3>PHASE 3: THUMBNAILS &amp; CHECKSUMS</h3>";
+        $thumb_result = $engine->regenerateAndChecksum();
+        echo "<div class='summary'>";
+        echo "Regenerated: {$thumb_result['generated']} | Skipped: {$thumb_result['skipped']}";
+        if (!empty($thumb_result['errors'])) {
+            echo "<br>Errors: " . count($thumb_result['errors']);
+        }
+        echo "</div>";
+        flush();
+
+        // 4. Restore media assets
+        echo "<h3>PHASE 4: MEDIA ASSETS</h3>";
+        $asset_result = $engine->restoreMediaAssets($flat_dir);
+        echo "<div class='summary'>";
+        echo "Restored: {$asset_result['restored']} | In place: {$asset_result['in_place']} | Missing: {$asset_result['missing']}";
+        echo "</div>";
+        flush();
+
+        // 5. Restore branding
+        echo "<h3>PHASE 5: BRANDING</h3>";
+        $brand_result = $engine->restoreBranding($flat_dir);
+        echo "<div class='summary'>";
+        echo "Restored: {$brand_result['restored']} | In place: {$brand_result['in_place']} | Missing: {$brand_result['missing']}";
+        echo "</div>";
+        flush();
+
+        // Final summary
+        $total_restored = $img_result['restored'] + $asset_result['restored'] + $brand_result['restored'];
+        $total_missing  = $img_result['missing'] + $asset_result['missing'] + $brand_result['missing'];
+
+        echo "<hr><h2 style='margin-top:20px;'>RECOVERY COMPLETE</h2>";
+        echo "<div class='summary'>";
+        echo "<span class='success'>Files restored: {$total_restored}</span><br>";
+        echo "<span class='success'>Thumbnails regenerated: {$thumb_result['generated']}</span><br>";
+        if ($total_missing > 0) {
+            echo "<span class='warn'>Files still missing: {$total_missing}</span><br>";
+        }
+        echo "</div>";
+
+        echo "<p style='margin-top:20px;'><a href='login.php' style='display:inline-block;padding:12px 30px;background:#a0ff90;color:#0e0e0e;text-decoration:none;font-weight:700;text-transform:uppercase;letter-spacing:1px;border-radius:3px;'>Log In</a></p>";
+        echo "<p class='warn' style='margin-top:16px;'>Delete <code>install.php</code> from your server when you're done.</p>";
+        echo "</body></html>";
+        exit;
+        ?>
     <?php endif; ?>
 
 </div>

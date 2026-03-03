@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - System maintenance
- * Alpha v0.6
+ * Alpha v0.7
  *
  * Performs database optimizations, taxonomy cleanup, and asset synchronization.
  * Clears orphaned mappings and defragments core tables to maintain performance.
@@ -151,6 +151,166 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $log[] = "SUCCESS: Generated $fixed_square square thumbs + $fixed_aspect aspect thumbs. Purged $purged_orphans orphan files.";
     }
+
+    // HTACCESS REPAIR
+    // Checks root .htaccess and img_uploads/.htaccess, reports issues, repairs on demand.
+    if ($action === 'htaccess_check' || $action === 'htaccess_repair') {
+        $htaccess_path   = __DIR__ . '/.htaccess';
+        $uploads_htaccess = __DIR__ . '/img_uploads/.htaccess';
+        $htaccess_marker = '# SNAPSMACK-HTACCESS-RULES';
+        $issues = [];
+
+        // --- Diagnose root .htaccess ---
+        if (!file_exists($htaccess_path)) {
+            $issues[] = "Root .htaccess is <strong>missing entirely</strong>.";
+        } else {
+            $content = file_get_contents($htaccess_path);
+
+            if (strpos($content, $htaccess_marker) === false) {
+                $issues[] = "SnapSmack rules block is <strong>missing</strong> (marker not found).";
+            } else {
+                // Check individual critical sections
+                $checks = [
+                    'HTTPS redirect'    => 'RewriteCond %{HTTPS} !=on',
+                    'Clean URL router'  => 'RewriteRule ^([a-zA-Z0-9_-]+)$ index.php',
+                    'Security headers'  => 'X-Frame-Options',
+                    'Sensitive files'   => 'FilesMatch "(^\\.ht',
+                    'Core PHP blocking' => 'FilesMatch "^(db|auth|constants',
+                    'Directory listings' => 'Options -Indexes',
+                    'Asset caching'     => 'mod_expires.c',
+                    'GZIP compression'  => 'mod_deflate.c',
+                ];
+                foreach ($checks as $label => $needle) {
+                    if (strpos($content, $needle) === false) {
+                        $issues[] = "<strong>{$label}</strong> rule is missing or damaged.";
+                    }
+                }
+            }
+        }
+
+        // --- Diagnose img_uploads/.htaccess ---
+        if (!is_dir(__DIR__ . '/img_uploads')) {
+            // Not an issue — directory may not exist yet
+        } elseif (!file_exists($uploads_htaccess)) {
+            $issues[] = "Upload directory PHP execution block is <strong>missing</strong> (img_uploads/.htaccess).";
+        } else {
+            $upl_content = file_get_contents($uploads_htaccess);
+            if (strpos($upl_content, 'Deny from all') === false) {
+                $issues[] = "Upload directory .htaccess exists but <strong>PHP blocking rule is missing</strong>.";
+            }
+        }
+
+        // --- Report or Repair ---
+        if ($action === 'htaccess_check') {
+            if (empty($issues)) {
+                $log[] = "SUCCESS: All .htaccess rules verified — no issues detected.";
+            } else {
+                $log[] = "WARNING: Found " . count($issues) . " issue(s):<br>&nbsp;&nbsp;• " . implode("<br>&nbsp;&nbsp;• ", $issues)
+                       . "<br>Use <strong>REPAIR</strong> to fix.";
+            }
+        }
+
+        if ($action === 'htaccess_repair') {
+            $repaired = [];
+
+            // Rebuild root .htaccess SnapSmack block
+            $existing = file_exists($htaccess_path) ? file_get_contents($htaccess_path) : '';
+
+            // Strip old SnapSmack block if present (everything from marker to end-of-block)
+            if (strpos($existing, $htaccess_marker) !== false) {
+                // Remove from the first blank line before the marker block to end of our rules
+                $existing = preg_replace(
+                    '/\n*# ─+\n' . preg_quote($htaccess_marker, '/') . '.*$/s',
+                    '',
+                    $existing
+                );
+                $existing = rtrim($existing) . "\n";
+            }
+
+            $snapsmack_rules = <<<'HTACCESS'
+
+# ─────────────────────────────────────────────────────────────
+# SNAPSMACK-HTACCESS-RULES
+# Do not remove the marker above — the installer and repair
+# tool use it to detect whether these rules are present.
+# ─────────────────────────────────────────────────────────────
+
+# ─── FORCE HTTPS ─────────────────────────────────────────────
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
+# ─── PHP LIMITS ──────────────────────────────────────────────
+php_value upload_max_filesize 64M
+php_value post_max_size 64M
+php_value memory_limit 128M
+php_value max_execution_time 120
+
+# ─── CLEAN URL ROUTER ────────────────────────────────────────
+RewriteBase /
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+RewriteRule ^archive$ archive.php [L,QSA]
+RewriteRule ^rss$ rss.php [L,QSA]
+RewriteRule ^feed$ rss.php [L,QSA]
+
+RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
+
+# ─── SECURITY HEADERS ────────────────────────────────────────
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# ─── BLOCK SENSITIVE FILES ───────────────────────────────────
+<FilesMatch "(^\.ht|\.sql$|\.log$|\.bak$|\.inc$|\.sh$|\.env$)">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+<FilesMatch "^(db|auth|constants|release-pubkey|updater|skin-registry|manifest-inventory)\.php$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# ─── NO DIRECTORY LISTINGS ───────────────────────────────────
+Options -Indexes
+
+# ─── STATIC ASSET CACHING ───────────────────────────────────
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/gif "access plus 30 days"
+    ExpiresByType image/webp "access plus 30 days"
+    ExpiresByType text/css "access plus 7 days"
+    ExpiresByType application/javascript "access plus 7 days"
+    ExpiresByType font/ttf "access plus 30 days"
+    ExpiresByType font/woff2 "access plus 30 days"
+</IfModule>
+
+# ─── GZIP COMPRESSION ───────────────────────────────────────
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>
+HTACCESS;
+
+            @file_put_contents($htaccess_path, $existing . $snapsmack_rules, LOCK_EX);
+            $repaired[] = "Root .htaccess SnapSmack rules regenerated";
+
+            // Rebuild img_uploads/.htaccess
+            if (is_dir(__DIR__ . '/img_uploads')) {
+                $upload_block = "<FilesMatch \"\\.php$\">\n    Order Deny,Allow\n    Deny from all\n</FilesMatch>\n";
+                @file_put_contents($uploads_htaccess, $upload_block, LOCK_EX);
+                $repaired[] = "Upload directory PHP execution block restored";
+            }
+
+            $log[] = "SUCCESS: " . implode(". ", $repaired) . ".";
+        }
+    }
 }
 
 $page_title = "System Maintenance";
@@ -193,6 +353,28 @@ include 'core/sidebar.php';
             <form method="POST">
                 <input type="hidden" name="action" value="sync_assets">
                 <button type="submit" class="btn-smack btn-block">SYNC & PRUNE ASSETS</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="dash-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 30px;">
+        <div class="box">
+            <h3>HTACCESS CHECK</h3>
+            <p class="skin-desc-text">Verifies that root and upload directory .htaccess files contain all required SnapSmack rules — HTTPS, clean URLs, security headers, PHP blocking, caching, and compression.</p>
+            <br>
+            <form method="POST">
+                <input type="hidden" name="action" value="htaccess_check">
+                <button type="submit" class="btn-smack btn-block">RUN DIAGNOSTICS</button>
+            </form>
+        </div>
+
+        <div class="box">
+            <h3>HTACCESS REPAIR</h3>
+            <p class="skin-desc-text">Strips any damaged SnapSmack block and writes a clean copy of all rules. Preserves any non-SnapSmack rules added by your host. Also restores the upload directory PHP execution block.</p>
+            <br>
+            <form method="POST" onsubmit="return confirm('This will regenerate the SnapSmack .htaccess rules. Any manual edits inside the SnapSmack block will be replaced. Continue?')">
+                <input type="hidden" name="action" value="htaccess_repair">
+                <button type="submit" class="btn-smack btn-block">REPAIR HTACCESS</button>
             </form>
         </div>
     </div>

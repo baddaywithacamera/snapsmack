@@ -105,6 +105,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         $jpeg_q = (int)($settings['jpeg_quality'] ?? 85);
 
         $src = null;
+        $db_thumb_square = null;
+        $db_thumb_aspect = null;
+        $db_checksum     = null;
+
         if ($mime == 'image/jpeg') { $src = imagecreatefromjpeg($target_path); }
         elseif ($mime == 'image/png') { $src = imagecreatefrompng($target_path); }
         elseif ($mime == 'image/webp') { $src = imagecreatefromwebp($target_path); }
@@ -242,6 +246,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             imagedestroy($a_thumb);
 
             imagedestroy($src);
+
+            // --- RECOVERY METADATA ---
+            // Compute SHA-256 checksum and store relative thumb paths for disaster recovery.
+            $db_thumb_square = $rel_dir . '/thumbs/t_' . $new_file_name;
+            $db_thumb_aspect = $rel_dir . '/thumbs/a_' . $new_file_name;
+            $db_checksum     = hash_file('sha256', $target_path);
         }
 
         // --- ORIENTATION DETECTION ---
@@ -276,8 +286,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 img_height,
                 allow_comments,
                 allow_download,
-                download_url
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                download_url,
+                img_thumb_square,
+                img_thumb_aspect,
+                img_checksum
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -294,7 +307,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             $orig_h,
             $allow_comments,
             $allow_download,
-            $download_url
+            $download_url,
+            $db_thumb_square ?? null,
+            $db_thumb_aspect ?? null,
+            $db_checksum ?? null
         ]);
 
         $new_img_id = $pdo->lastInsertId();

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - System backup and recovery
- * Alpha v0.6
+ * Alpha v0.7
  *
  * Provides SQL database extractions, technical media manifests, and source archival.
  * Orchestrates PharData-based compression for source-only tactical backups.
@@ -20,7 +20,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'export') {
         header('Content-Disposition: attachment; filename="' . $filename . '"');
 
         $output = "-- SnapSmack Backup Service\n-- Type: " . strtoupper($type) . "\n-- Date: " . date('Y-m-d H:i:s') . "\n\n";
-        $tables = ($type === 'keys') ? ['snap_users'] : ['snap_images', 'snap_categories', 'snap_image_cat_map', 'snap_comments', 'snap_users', 'snap_settings', 'snap_pages', 'snap_blogroll'];
+        $tables = ($type === 'keys') ? ['snap_users'] : ['snap_images', 'snap_categories', 'snap_image_cat_map', 'snap_image_album_map', 'snap_albums', 'snap_comments', 'snap_users', 'snap_settings', 'snap_pages', 'snap_blogroll', 'snap_assets'];
 
         foreach ($tables as $table) {
             $res = $pdo->query("SHOW CREATE TABLE $table")->fetch(PDO::FETCH_ASSOC);
@@ -40,65 +40,10 @@ if (isset($_POST['action']) && $_POST['action'] === 'export') {
         exit;
     }
 
-    // MEDIA MANIFEST: Generates a physical file map with integrity hashes.
-    if ($type === 'media') {
-        $filename = "snapsmack_media_manifest_" . date('Y-m-d_H-i') . ".txt";
-        header('Content-Type: text/plain');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-
-        $rootPath = realpath(__DIR__);
-        $media_dirs = ['assets/img', 'media', 'uploads', 'img_uploads'];
-
-        echo "SNAPSMACK MEDIA MANIFEST & RECOVERY MAP\n";
-        echo "Generated: " . date('Y-m-d H:i:s') . "\n";
-        echo "--------------------------------------------------\n\n";
-        echo "SECTION 1: PHYSICAL FILE TREE (WITH SHA-256 HASH)\n\n";
-
-        $total_size = 0;
-        $file_count = 0;
-        foreach ($media_dirs as $dir) {
-            $dirPath = $rootPath . '/' . $dir;
-            if (!is_dir($dirPath)) continue;
-
-            echo "[DIR] /$dir\n";
-            $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dirPath, RecursiveDirectoryIterator::SKIP_DOTS));
-            foreach ($files as $file) {
-                if ($file->isDir()) continue;
-
-                $size = $file->getSize();
-                $total_size += $size;
-                $file_count++;
-
-                $filePath = $file->getRealPath();
-                $rel = str_replace($rootPath, '', $filePath);
-                $hash = hash_file('sha256', $filePath);
-
-                echo sprintf("  |- %-45s | %10s bytes | %s\n", $rel, number_format($size), $hash);
-            }
-        }
-        echo "\nTOTALS: $file_count files | " . number_format($total_size / 1048576, 2) . " MB\n\n";
-
-        echo "--------------------------------------------------\n";
-        echo "SECTION 2: SQL RECOVERY (snap_images)\n\n";
-
-        $rows = $pdo->query("SELECT * FROM snap_images")->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($rows as $row) {
-            $keys = array_map(function($k) { return "`$k`"; }, array_keys($row));
-            $vals = array_map(function($v) use ($pdo) { return $v === null ? "NULL" : $pdo->quote($v); }, array_values($row));
-            echo "INSERT INTO `snap_images` (" . implode(', ', $keys) . ") VALUES (" . implode(', ', $vals) . ");\n";
-        }
-
-        echo "\n--------------------------------------------------\n";
-        echo "SECTION 3: SQL RECOVERY (snap_image_cat_map)\n\n";
-
-        $rows_map = $pdo->query("SELECT * FROM snap_image_cat_map")->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($rows_map as $row) {
-            $keys = array_map(function($k) { return "`$k`"; }, array_keys($row));
-            $vals = array_map(function($v) use ($pdo) { return $v === null ? "NULL" : $pdo->quote($v); }, array_values($row));
-            echo "INSERT INTO `snap_image_cat_map` (" . implode(', ', $keys) . ") VALUES (" . implode(', ', $vals) . ");\n";
-        }
-        exit;
-    }
+    // MEDIA MANIFEST: Deprecated in v0.7. Recovery metadata (thumb paths + SHA-256
+    // checksums) is now stored directly in snap_images and snap_assets. The full SQL
+    // dump contains everything the old manifest provided. Use smack-verify.php for
+    // integrity checking instead of the old filesystem walk.
 
     // SOURCE ARCHIVE: Bundles logic and design files while excluding heavy media.
     if ($type === 'source') {
@@ -191,13 +136,9 @@ include 'core/sidebar.php';
 
     <div class="dash-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top:30px;">
         <div class="box" style="display:flex; flex-direction:column;">
-            <h3>MEDIA LIBRARY MANIFEST</h3>
-            <p class="skin-desc-text">Generates a structural text map of all media assets, including physical SHA-256 hashes and requisite SQL recovery code.</p>
-            <form method="POST" style="margin-top:auto;">
-                <input type="hidden" name="action" value="export">
-                <input type="hidden" name="type" value="media">
-                <button type="submit" class="btn-smack btn-block">GENERATE MANIFEST</button>
-            </form>
+            <h3>VERIFY INTEGRITY</h3>
+            <p class="skin-desc-text">Spot-checks that files referenced in the database still exist on disk and match their stored SHA-256 checksums. Lightweight — no full filesystem walk.</p>
+            <a href="smack-verify.php" class="btn-smack btn-block" style="margin-top:auto;text-align:center;text-decoration:none;">RUN VERIFICATION</a>
         </div>
 
         <div class="box" style="display:flex; flex-direction:column;">

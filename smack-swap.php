@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Image swap utility
- * Alpha v0.6
+ * Alpha v0.7
  *
  * Replaces physical assets for an existing record while maintaining data integrity.
  * Handles old asset purging, new thumbnail generation, and EXIF/specification updates.
@@ -44,10 +44,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['new_image'])) {
         if (file_exists($img['img_file'])) {
             unlink($img['img_file']);
         }
-        $old_thumb = str_replace('img_uploads/', 'img_uploads/thumbs/t_', $img['img_file']);
-        if (file_exists($old_thumb)) {
-            unlink($old_thumb);
-        }
+        $old_dir  = dirname($img['img_file']);
+        $old_base = basename($img['img_file']);
+        $old_thumb_sq = $old_dir . '/thumbs/t_' . $old_base;
+        $old_thumb_a  = $old_dir . '/thumbs/a_' . $old_base;
+        if (file_exists($old_thumb_sq)) { unlink($old_thumb_sq); }
+        if (file_exists($old_thumb_a))  { unlink($old_thumb_a); }
 
         // --- EXIF HARVESTING ---
         // Extract technical specs from the new asset if manual fields are left blank.
@@ -99,12 +101,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['new_image'])) {
             if ($mime == 'image/png') { imagepng($t_dst, $save_thumb, 8); }
             elseif ($mime == 'image/webp') { imagewebp($t_dst, $save_thumb, 60); }
             else { imagejpeg($t_dst, $save_thumb, 70); }
-            imagedestroy($src);
             imagedestroy($t_dst);
 
-            // Update the archive record with the new file path and resolved metadata.
-            $sql = "UPDATE snap_images SET img_file = ?, img_film = ?, img_exif = ?, img_width = ?, img_height = ?, img_orientation = ? WHERE id = ?";
-            $pdo->prepare($sql)->execute([$new_path, $film_manual, json_encode($final_exif), $orig_w, $orig_h, $orientation, $id]);
+            // --- ASPECT-PRESERVED THUMBNAIL (a_ prefix) ---
+            $aspect_long = 400;
+            if ($orig_w >= $orig_h) {
+                $a_w = $aspect_long;
+                $a_h = round($orig_h * ($aspect_long / $orig_w));
+            } else {
+                $a_h = $aspect_long;
+                $a_w = round($orig_w * ($aspect_long / $orig_h));
+            }
+            if ($orig_w < $aspect_long && $orig_h < $aspect_long) {
+                $a_w = $orig_w;
+                $a_h = $orig_h;
+            }
+
+            $a_dst = imagecreatetruecolor($a_w, $a_h);
+            if ($mime != 'image/jpeg') {
+                imagealphablending($a_dst, false);
+                imagesavealpha($a_dst, true);
+            }
+            imagecopyresampled($a_dst, $src, 0, 0, 0, 0, $a_w, $a_h, $orig_w, $orig_h);
+            $save_aspect = $thumb_path . '/a_' . $base_fn . $ext;
+
+            if ($mime == 'image/png') { imagepng($a_dst, $save_aspect, 8); }
+            elseif ($mime == 'image/webp') { imagewebp($a_dst, $save_aspect, 60); }
+            else { imagejpeg($a_dst, $save_aspect, 70); }
+            imagedestroy($a_dst);
+            imagedestroy($src);
+
+            // Compute SHA-256 checksum for recovery verification.
+            $file_checksum = hash_file('sha256', $new_path);
+
+            // Update the archive record with new file path, thumbs, checksum, and metadata.
+            $sql = "UPDATE snap_images SET img_file = ?, img_thumb_square = ?, img_thumb_aspect = ?, img_checksum = ?, img_film = ?, img_exif = ?, img_width = ?, img_height = ?, img_orientation = ? WHERE id = ?";
+            $pdo->prepare($sql)->execute([$new_path, $save_thumb, $save_aspect, $file_checksum, $film_manual, json_encode($final_exif), $orig_w, $orig_h, $orientation, $id]);
             header("Location: smack-manage.php?msg=swapped");
             exit;
         }

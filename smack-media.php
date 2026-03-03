@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Global media library and asset management
- * Alpha v0.6
+ * Alpha v0.7
  *
  * Handles upload, storage, and retrieval of global media assets.
  * Generates shortcodes for embedding assets in pages and posts.
@@ -23,8 +23,9 @@ if (isset($_FILES['file'])) {
     $target_file = $target_dir . $file_name;
 
     if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
-        $stmt = $pdo->prepare("INSERT INTO snap_assets (asset_name, asset_path) VALUES (?, ?)");
-        $stmt->execute([$_FILES["file"]["name"], $target_file]);
+        $asset_checksum = hash_file('sha256', $target_file);
+        $stmt = $pdo->prepare("INSERT INTO snap_assets (asset_name, asset_path, asset_checksum) VALUES (?, ?, ?)");
+        $stmt->execute([$_FILES["file"]["name"], $target_file, $asset_checksum]);
         echo json_encode(['status' => 'success']);
     } else {
         header('HTTP/1.1 500 Internal Server Error');

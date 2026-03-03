@@ -1,6 +1,6 @@
 -- SnapSmack Backup Service
 -- Type: SCHEMA
--- Date: 2026-03-03 11:10:29
+-- Date: 2026-03-03 23:11:24
 
 DROP TABLE IF EXISTS `snap_images`;
 CREATE TABLE `snap_images` (
@@ -21,6 +21,9 @@ CREATE TABLE `snap_images` (
   `allow_comments` tinyint(1) DEFAULT '1',
   `allow_download` tinyint(1) NOT NULL DEFAULT '1',
   `download_url` varchar(512) NOT NULL DEFAULT '',
+  `img_thumb_square` varchar(255) DEFAULT NULL COMMENT 'Relative path to 400x400 square thumbnail (t_ prefix)',
+  `img_thumb_aspect` varchar(255) DEFAULT NULL COMMENT 'Relative path to aspect-ratio thumbnail (a_ prefix)',
+  `img_checksum` varchar(64) DEFAULT NULL COMMENT 'SHA-256 hash of main image file for recovery verification',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
