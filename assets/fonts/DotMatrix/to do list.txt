@@ -2,8 +2,9 @@ TO DO LIST
 
 1. Fix the footer.
 2. Turn of EXIF option.
-3. Version all files to Alpha 0.6, need new headers (I was 95% done changing and you reverted them. J'accuse, Claude.)
-4. Create official GIT version, lock in.
-5. Build installer.
-6. Build updater.
-7. Build Rational Geo skin
+3. Add a FAVICON uploader option to smack-config.php
+4. Version all files to Alpha 0.6, need new headers (I was 95% done changing and you reverted them. J'accuse, Claude.)
+5. Create official GIT version, lock in.
+6. Build installer.
+7. Build updater.
+8. Build Rational Geo skin

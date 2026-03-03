@@ -1,11 +1,14 @@
 <?php
 /**
  * SnapSmack Skin Manifest: Fifty Shades of Grey
- * Version: 2.2
+ * Version: 2.3
  * -------------------------------------------------------------------------
  * NHD structure. fsog- selectors. Grey palette. No colour.
  * v2.1: Glitch removed. Hero/archive frame split. Border defaults.
  * v2.2: Text-transform toggle, letter-spacing, TYPOGRAPHY section.
+ * v2.3: Photo-wrap container added to canvas/gutter selectors.
+ *       Header font selector targets .site-title-text + .logo-area a.
+ *       Gutter padding max bumped to 200px.
  * -------------------------------------------------------------------------
  */
 
@@ -14,7 +17,7 @@ $fonts = $inventory['fonts'] ?? [];
 
 return [
     'name'          => 'Fifty Shades of Grey',
-    'version'       => '2.2',
+    'version'       => '2.3',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Pure greyscale photography skin. Three monochrome variants with zero colour accents.',
@@ -53,7 +56,7 @@ return [
             'default'  => '1280',
             'min'      => '800',
             'max'      => '1920',
-            'selector' => '.fsog-header-inside, #system-footer .inside, #browse-grid, #justified-grid',
+            'selector' => '.fsog-header-inside, .fsog-photo-wrap, #system-footer .inside, #browse-grid, #justified-grid',
             'property' => 'max-width'
         ],
 
@@ -64,7 +67,7 @@ return [
             'default'  => '40',
             'min'      => '0',
             'max'      => '200',
-            'selector' => '.fsog-header-inside, #browse-grid',
+            'selector' => '.fsog-header-inside, .fsog-photo-wrap, #browse-grid',
             'property' => 'padding-left, padding-right'
         ],
 
