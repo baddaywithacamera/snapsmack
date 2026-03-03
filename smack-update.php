@@ -21,6 +21,20 @@
 require_once 'core/auth.php';
 require_once 'core/updater.php';
 
+// --- EARLY CRON DETECTION ---
+// Must run before POST handlers that depend on $cron_supported.
+// admin-header.php also sets these, but it loads after the handlers.
+if (!isset($cron_supported)) {
+    $cron_supported = false;
+    $php_cli_path   = '';
+    if (function_exists('exec')) {
+        exec('crontab -l 2>&1', $_ct_out, $_ct_code);
+        $cron_supported = ($_ct_code === 0);
+        $php_cli_path   = trim(exec('which php 2>&1'));
+        if (strpos($php_cli_path, '/') !== 0) $php_cli_path = '';
+    }
+}
+
 // --- CSRF TOKEN ---
 if (empty($_SESSION['update_csrf'])) {
     $_SESSION['update_csrf'] = bin2hex(random_bytes(32));
@@ -228,6 +242,47 @@ if ($action === 'apply' && !empty($cached_result['core_update'])) {
     }
 
     $update_result = $steps;
+}
+
+// --- ACTION: CRON REGISTRATION ---
+if (($action === 'cron_register' || $action === 'cron_remove') && $cron_supported) {
+    $script_path = realpath(__DIR__ . '/cron-version-check.php');
+    $cron_line   = "0 */6 * * * {$php_cli_path} {$script_path} >> /dev/null 2>&1";
+    $tag         = '# snapsmack-version-check';
+    $full_entry  = "{$cron_line} {$tag}";
+
+    exec('crontab -l 2>&1', $current_cron, $rc);
+    $current_cron_str = ($rc === 0) ? implode("\n", $current_cron) : '';
+
+    if ($action === 'cron_register') {
+        if (strpos($current_cron_str, $tag) === false) {
+            $new_cron = trim($current_cron_str) . "\n" . $full_entry . "\n";
+            $tmp = tempnam(sys_get_temp_dir(), 'ssck');
+            file_put_contents($tmp, $new_cron);
+            exec("crontab {$tmp} 2>&1", $out, $ret);
+            unlink($tmp);
+            $flash_msg = ($ret === 0) ? 'VERSION CHECK JOB REGISTERED. RUNS EVERY 6 HOURS.' : 'FAILED TO REGISTER: ' . implode(' ', $out);
+            $flash_type = ($ret === 0) ? 'success' : 'error';
+        } else {
+            $flash_msg = 'JOB ALREADY REGISTERED.';
+            $flash_type = 'success';
+        }
+    } elseif ($action === 'cron_remove') {
+        $cleaned = preg_replace('/.*' . preg_quote($tag, '/') . '.*\n?/', '', $current_cron_str);
+        $tmp = tempnam(sys_get_temp_dir(), 'ssck');
+        file_put_contents($tmp, trim($cleaned) . "\n");
+        exec("crontab {$tmp} 2>&1", $out, $ret);
+        unlink($tmp);
+        $flash_msg = ($ret === 0) ? 'VERSION CHECK JOB REMOVED.' : 'FAILED TO REMOVE: ' . implode(' ', $out);
+        $flash_type = ($ret === 0) ? 'success' : 'error';
+    }
+}
+
+// Check if version check job is currently registered
+$version_job_registered = false;
+if ($cron_supported) {
+    exec('crontab -l 2>&1', $vc_cron, $vc_rc);
+    $version_job_registered = ($vc_rc === 0 && strpos(implode("\n", $vc_cron), '# snapsmack-version-check') !== false);
 }
 
 // --- ACTION: ROLLBACK ---
@@ -543,20 +598,29 @@ include 'core/sidebar.php';
     </div>
     <?php endif; ?>
 
-    <!-- CRON SETUP INFO -->
+    <!-- CRON SETUP -->
     <div class="box update-section">
         <h3>AUTOMATED CHECKS</h3>
-        <p style="font-size:0.85rem;opacity:0.7;margin-bottom:15px;">
-            Set up a cron job to check for updates automatically. The dashboard will display
-            notifications when new updates or skins are available.
-        </p>
-        <div class="cron-info">
-            # Check every 6 hours (recommended)<br>
-            0 */6 * * * <?php echo htmlspecialchars(PHP_BINARY ?: '/usr/bin/php'); ?> <?php echo htmlspecialchars(realpath(__DIR__) ?: __DIR__); ?>/cron-version-check.php >> /dev/null 2>&1
-        </div>
-        <p style="font-size:0.8rem;opacity:0.5;margin-top:10px;">
-            Without cron, the dashboard falls back to a 24-hour on-load check.
-        </p>
+        <?php if ($cron_supported): ?>
+            <label>VERSION CHECK JOB</label>
+            <div class="read-only-display"><?php echo $version_job_registered ? 'REGISTERED — RUNS EVERY 6 HOURS' : 'NOT REGISTERED'; ?></div>
+            <form method="POST" class="mt-25">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <div class="action-grid-dual">
+                    <button type="submit" name="action" value="cron_register" class="btn-smack" <?php echo $version_job_registered ? 'disabled' : ''; ?>>REGISTER VERSION CHECK</button>
+                    <button type="submit" name="action" value="cron_remove" class="btn-smack" <?php echo !$version_job_registered ? 'disabled' : ''; ?>>REMOVE VERSION CHECK</button>
+                </div>
+            </form>
+            <p style="font-size:0.8rem;opacity:0.5;margin-top:15px;">
+                Without cron, the dashboard falls back to a 24-hour on-load check.
+            </p>
+        <?php else: ?>
+            <label>CRON ENGINE</label>
+            <div class="read-only-display">NOT SUPPORTED ON THIS HOST</div>
+            <p style="font-size:0.8rem;opacity:0.5;margin-top:10px;">
+                The dashboard will fall back to checking every 24 hours on page load.
+            </p>
+        <?php endif; ?>
     </div>
 </div>
 

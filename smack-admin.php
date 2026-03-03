@@ -9,6 +9,20 @@
 
 require_once 'core/auth.php';
 
+// --- EARLY CRON DETECTION ---
+// Must run before any POST handlers that depend on $cron_supported.
+// admin-header.php also sets these, but it loads after the handlers.
+if (!isset($cron_supported)) {
+    $cron_supported = false;
+    $php_cli_path   = '';
+    if (function_exists('exec')) {
+        exec('crontab -l 2>&1', $_ct_out, $_ct_code);
+        $cron_supported = ($_ct_code === 0);
+        $php_cli_path   = trim(exec('which php 2>&1'));
+        if (strpos($php_cli_path, '/') !== 0) $php_cli_path = '';
+    }
+}
+
 // --- UPDATE NOTIFICATION CHECK ---
 // Load cached update check result for dashboard notifications.
 // If no cached result exists OR cache is older than 24 hours, trigger a live
