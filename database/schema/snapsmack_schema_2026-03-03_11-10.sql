@@ -1,6 +1,6 @@
 -- SnapSmack Backup Service
 -- Type: SCHEMA
--- Date: 2026-03-01 19:13:04
+-- Date: 2026-03-03 11:10:29
 
 DROP TABLE IF EXISTS `snap_images`;
 CREATE TABLE `snap_images` (
@@ -20,8 +20,9 @@ CREATE TABLE `snap_images` (
   `img_orientation` int DEFAULT '0',
   `allow_comments` tinyint(1) DEFAULT '1',
   `allow_download` tinyint(1) NOT NULL DEFAULT '1',
+  `download_url` varchar(512) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 DROP TABLE IF EXISTS `snap_categories`;
 CREATE TABLE `snap_categories` (
