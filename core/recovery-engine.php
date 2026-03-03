@@ -164,11 +164,16 @@ class SnapSmackRecovery {
         $generated = 0;
         $skipped   = 0;
         $errors    = [];
+        $batch_counter = 0;
+        $batch_size    = 25; // Throttle: pause after every N GD operations
 
         $images = $this->pdo->query("SELECT id, img_file FROM snap_images ORDER BY id")->fetchAll();
+        $total  = count($images);
         $update = $this->pdo->prepare("UPDATE snap_images SET img_thumb_square = ?, img_thumb_aspect = ?, img_checksum = ? WHERE id = ?");
 
-        foreach ($images as $img) {
+        $this->streamProgress("Processing {$total} images in batches of {$batch_size}...", 'info');
+
+        foreach ($images as $idx => $img) {
             $file = $this->baseDir . '/' . $img['img_file'];
 
             if (!file_exists($file)) {
@@ -245,7 +250,16 @@ class SnapSmackRecovery {
 
                 imagedestroy($src);
                 $generated++;
-                $this->streamProgress("REGENERATED: t_ + a_ → " . $pi['basename'], 'ok');
+                $batch_counter++;
+                $this->streamProgress("REGENERATED: t_ + a_ → " . $pi['basename'] . " [" . ($idx + 1) . "/{$total}]", 'ok');
+
+                // Throttle: let the server breathe after every batch
+                if ($batch_counter >= $batch_size) {
+                    $this->streamProgress("Cooling down (1s pause)...", 'info');
+                    flush();
+                    sleep(1);
+                    $batch_counter = 0;
+                }
             }
 
             // Compute checksum and update DB

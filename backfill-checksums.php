@@ -33,14 +33,20 @@ echo "<h3>PHASE 1: IMAGE RECORDS</h3>";
 
 $stmt = $pdo->query("SELECT id, img_file, img_thumb_square, img_thumb_aspect, img_checksum FROM snap_images");
 $images = $stmt->fetchAll();
+$total_images = count($images);
 
 $img_updated = 0;
 $img_skipped = 0;
 $img_missing = 0;
+$batch_counter = 0;
+$batch_size = 25; // Throttle: pause after every N hash computations
 
 $update_stmt = $pdo->prepare("UPDATE snap_images SET img_thumb_square = ?, img_thumb_aspect = ?, img_checksum = ? WHERE id = ?");
 
-foreach ($images as $img) {
+echo "<p class='info'>Processing {$total_images} images in batches of {$batch_size}...</p>";
+flush();
+
+foreach ($images as $idx => $img) {
     // Skip records that already have all three fields populated.
     if ($img['img_thumb_square'] !== null && $img['img_thumb_aspect'] !== null && $img['img_checksum'] !== null) {
         $img_skipped++;
@@ -76,9 +82,19 @@ foreach ($images as $img) {
     if ($db_a)  $status_parts[] = 'a_';
     $status_parts[] = 'sha256';
 
-    echo "<span class='success'>UPDATED:</span> " . htmlspecialchars($path_info['basename']) . " [" . implode(' + ', $status_parts) . "]<br>";
+    $progress = $idx + 1;
+    echo "<span class='success'>UPDATED:</span> " . htmlspecialchars($path_info['basename']) . " [" . implode(' + ', $status_parts) . "] ({$progress}/{$total_images})<br>";
     $img_updated++;
+    $batch_counter++;
     flush();
+
+    // Throttle: let the server breathe after every batch of hash computations
+    if ($batch_counter >= $batch_size) {
+        echo "<span class='info'>— cooling down (1s pause) —</span><br>";
+        flush();
+        sleep(1);
+        $batch_counter = 0;
+    }
 }
 
 echo "<hr>";
@@ -117,6 +133,7 @@ if (!empty($assets)) {
 
 if ($has_checksum_col && !empty($assets)) {
     $asset_update = $pdo->prepare("UPDATE snap_assets SET asset_checksum = ? WHERE id = ?");
+    $asset_batch = 0;
 
     foreach ($assets as $asset) {
         if ($asset['asset_checksum'] !== null) {
@@ -136,7 +153,15 @@ if ($has_checksum_col && !empty($assets)) {
 
         echo "<span class='success'>UPDATED:</span> " . htmlspecialchars(basename($asset['asset_path'])) . " [sha256]<br>";
         $asset_updated++;
+        $asset_batch++;
         flush();
+
+        if ($asset_batch >= $batch_size) {
+            echo "<span class='info'>— cooling down (1s pause) —</span><br>";
+            flush();
+            sleep(1);
+            $asset_batch = 0;
+        }
     }
 }
 

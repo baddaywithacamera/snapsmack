@@ -33,17 +33,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // ASSET SYNC
     // Regenerates missing thumbnails and deletes physical files not found in the DB.
+    // Batched at 25 images per run to avoid flattening shared hosting.
     if ($action === 'sync_assets') {
-        set_time_limit(600);
-        ini_set('memory_limit', '512M');
+        set_time_limit(120);
+        ini_set('memory_limit', '256M');
 
-        $images = $pdo->query("SELECT id, img_title, img_file FROM snap_images")->fetchAll(PDO::FETCH_ASSOC);
+        $batch_size = 25;
+        $offset = max(0, (int)($_POST['batch_offset'] ?? 0));
+
+        $total_images = (int)$pdo->query("SELECT COUNT(*) FROM snap_images")->fetchColumn();
+        $images = $pdo->prepare("SELECT id, img_title, img_file FROM snap_images ORDER BY id LIMIT ? OFFSET ?");
+        $images->bindValue(1, $batch_size, PDO::PARAM_INT);
+        $images->bindValue(2, $offset, PDO::PARAM_INT);
+        $images->execute();
+        $batch = $images->fetchAll(PDO::FETCH_ASSOC);
+
         $registered_paths = [];
         $fixed_square = 0;
         $fixed_aspect = 0;
-        $purged_orphans = 0;
 
-        foreach ($images as $img) {
+        foreach ($batch as $img) {
             $file = $img['img_file'];
             if (!file_exists($file)) continue;
 
@@ -134,22 +143,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Scan upload directory and delete unregistered files.
-        if (is_dir('img_uploads')) {
+        $next_offset = $offset + $batch_size;
+        $has_more = $next_offset < $total_images;
+        $batch_end = min($next_offset, $total_images);
+
+        // Only prune orphans on the final batch (needs full registered_paths from all images)
+        $purged_orphans = 0;
+        if (!$has_more && is_dir('img_uploads')) {
+            // Build full registered path list for orphan scan
+            $all_images = $pdo->query("SELECT img_file FROM snap_images")->fetchAll(PDO::FETCH_COLUMN);
+            $all_registered = [];
+            foreach ($all_images as $afile) {
+                if (!file_exists($afile)) continue;
+                $all_registered[] = realpath($afile);
+                $api = pathinfo($afile);
+                $atd = $api['dirname'] . '/thumbs';
+                $asq = $atd . '/t_' . $api['basename'];
+                $aas = $atd . '/a_' . $api['basename'];
+                if (file_exists($asq)) $all_registered[] = realpath($asq);
+                if (file_exists($aas)) $all_registered[] = realpath($aas);
+            }
+
             $upload_dir = new RecursiveDirectoryIterator('img_uploads');
             $iterator = new RecursiveIteratorIterator($upload_dir);
             foreach ($iterator as $file_info) {
                 if ($file_info->isFile()) {
                     $f_path = $file_info->getRealPath();
                     $ext = strtolower($file_info->getExtension());
-                    if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp']) && !in_array($f_path, $registered_paths)) {
+                    if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp']) && !in_array($f_path, $all_registered)) {
                         unlink($f_path);
                         $purged_orphans++;
                     }
                 }
             }
         }
-        $log[] = "SUCCESS: Generated $fixed_square square thumbs + $fixed_aspect aspect thumbs. Purged $purged_orphans orphan files.";
+
+        $msg = "BATCH {$offset}–{$batch_end} of {$total_images}: Generated {$fixed_square} square + {$fixed_aspect} aspect thumbs.";
+        if (!$has_more) {
+            $msg .= " Purged {$purged_orphans} orphan files. <strong>ALL DONE.</strong>";
+        } else {
+            $msg .= " <strong>" . ($total_images - $batch_end) . " images remaining.</strong>";
+        }
+        $log[] = "SUCCESS: " . $msg;
+
+        // Flag for the UI to show the continue button
+        $asset_sync_has_more = $has_more;
+        $asset_sync_next_offset = $next_offset;
     }
 
     // HTACCESS REPAIR
@@ -348,12 +387,21 @@ include 'core/sidebar.php';
 
         <div class="box">
             <h3>ASSET SYNC</h3>
-            <p class="skin-desc-text">Rebuilds missing square (t_) and aspect (a_) thumbnails. <strong>Terminates</strong> all files not found in the database registry.</p>
+            <p class="skin-desc-text">Rebuilds missing thumbnails in batches of 25 to avoid server overload. Orphan files are pruned on the final batch. Keep clicking <strong>CONTINUE</strong> until complete.</p>
             <br>
-            <form method="POST">
-                <input type="hidden" name="action" value="sync_assets">
-                <button type="submit" class="btn-smack btn-block">SYNC & PRUNE ASSETS</button>
-            </form>
+            <?php if (!empty($asset_sync_has_more)): ?>
+                <form method="POST">
+                    <input type="hidden" name="action" value="sync_assets">
+                    <input type="hidden" name="batch_offset" value="<?php echo $asset_sync_next_offset; ?>">
+                    <button type="submit" class="btn-smack btn-block" style="background:#ff4444;">CONTINUE SYNC (BATCH <?php echo $asset_sync_next_offset; ?>+)</button>
+                </form>
+            <?php else: ?>
+                <form method="POST">
+                    <input type="hidden" name="action" value="sync_assets">
+                    <input type="hidden" name="batch_offset" value="0">
+                    <button type="submit" class="btn-smack btn-block">SYNC & PRUNE ASSETS</button>
+                </form>
+            <?php endif; ?>
         </div>
     </div>
 
