@@ -9,9 +9,8 @@
 require_once 'core/auth.php';
 
 // --- PERSISTENCE HANDLER ---
-// Processes configuration updates, including file uploads for site branding.
 if (isset($_POST['save_settings'])) {
-    // Handle logo asset upload if a new file is provided.
+    // Handle logo asset upload.
     if (!empty($_FILES['logo_upload']['name'])) {
         $target_dir = "assets/img/";
         if (!is_dir($target_dir)) { 
@@ -25,7 +24,23 @@ if (isset($_POST['save_settings'])) {
         }
     }
 
-    // Save or update each setting key in the database.
+    // Handle favicon upload.
+    if (!empty($_FILES['favicon_upload']['name'])) {
+        $target_dir = "assets/img/";
+        if (!is_dir($target_dir)) { 
+            mkdir($target_dir, 0755, true); 
+        }
+        $fav_ext = strtolower(pathinfo($_FILES['favicon_upload']['name'], PATHINFO_EXTENSION));
+        $allowed_fav = ['ico', 'png', 'svg'];
+        if (in_array($fav_ext, $allowed_fav)) {
+            $fav_file = $target_dir . "favicon." . $fav_ext;
+            if (move_uploaded_file($_FILES['favicon_upload']['tmp_name'], $fav_file)) {
+                $_POST['settings']['favicon_url'] = "/" . $fav_file;
+            }
+        }
+    }
+
+    // Save or update each setting key.
     foreach ($_POST['settings'] as $key => $val) {
         $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
         $stmt->execute([$key, $val, $val]);
@@ -33,17 +48,17 @@ if (isset($_POST['save_settings'])) {
     $msg = "Engine parameters updated successfully.";
 }
 
-// Reload settings from the database to ensure the form reflects the current state.
+// Reload settings.
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 
-// Retrieve active pages to populate the navigation slot selectors.
+// Retrieve active pages for nav selectors.
 try {
     $pages_list = $pdo->query("SELECT id, title FROM snap_pages WHERE is_active = 1 ORDER BY title ASC")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) { 
     $pages_list = []; 
 }
 
-// Resolve the friendly name of the active skin for UI display.
+// Resolve active skin name.
 $active_slug = $settings['active_skin'] ?? 'new_horizon_dark';
 $active_skin_friendly = str_replace('_', ' ', ucfirst($active_slug));
 if (file_exists("skins/{$active_slug}/manifest.php")) {
@@ -81,6 +96,10 @@ include 'core/sidebar.php';
 
     <form method="POST" id="config-form" enctype="multipart/form-data">
         
+        <!-- ============================================================
+             SITE IDENTITY & BRANDING — post-layout-grid (2-col)
+             Left: 3 text fields. Right: 2 selectors + read-only.
+             ============================================================ -->
         <div class="box">
             <h3>SITE IDENTITY & BRANDING</h3>
             <div class="post-layout-grid">
@@ -110,113 +129,158 @@ include 'core/sidebar.php';
             </div>
         </div>
 
+        <!-- ============================================================
+             ARCHITECTURE & INTERACTION — post-layout-grid (2-col)
+             4 toggles: 2 per column. Clean 2x2.
+             ============================================================ -->
         <div class="box">
             <h3>ARCHITECTURE & INTERACTION</h3>
-            <div class="dash-grid">
-                <div class="lens-input-wrapper">
-                    <label>GLOBAL COMMENTS</label>
-                    <select name="settings[global_comments_enabled]">
-                        <option value="1" <?php echo (($settings['global_comments_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
-                        <option value="0" <?php echo (($settings['global_comments_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
-                    </select>
-                    <span class="dim">MASTER OVERRIDE FOR ALL POSTS.</span>
+            <div class="post-layout-grid">
+                <div class="post-col-left">
+                    <div class="lens-input-wrapper">
+                        <label>GLOBAL COMMENTS</label>
+                        <select name="settings[global_comments_enabled]">
+                            <option value="1" <?php echo (($settings['global_comments_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
+                            <option value="0" <?php echo (($settings['global_comments_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
+                        </select>
+                        <span class="dim">MASTER OVERRIDE FOR ALL POSTS.</span>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>EXIF / TECHNICAL SPECS</label>
+                        <select name="settings[exif_display_enabled]">
+                            <option value="1" <?php echo (($settings['exif_display_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>SHOW ON PUBLIC POSTS</option>
+                            <option value="0" <?php echo (($settings['exif_display_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>HIDDEN FROM PUBLIC</option>
+                        </select>
+                        <span class="dim">HIDES TECHNICAL SPECIFICATIONS PANEL. DATA IS STILL STORED.</span>
+                    </div>
                 </div>
 
-                <div class="lens-input-wrapper">
-                    <label>GLOBAL DOWNLOADS</label>
-                    <select name="settings[global_downloads_enabled]">
-                        <option value="1" <?php echo (($settings['global_downloads_enabled'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
-                        <option value="0" <?php echo (($settings['global_downloads_enabled'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
-                    </select>
-                    <span class="dim">MASTER OVERRIDE. PER-POST TOGGLE ALSO REQUIRED.</span>
-                </div>
+                <div class="post-col-right">
+                    <div class="lens-input-wrapper">
+                        <label>GLOBAL DOWNLOADS</label>
+                        <select name="settings[global_downloads_enabled]">
+                            <option value="1" <?php echo (($settings['global_downloads_enabled'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
+                            <option value="0" <?php echo (($settings['global_downloads_enabled'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
+                        </select>
+                        <span class="dim">MASTER OVERRIDE. PER-POST TOGGLE ALSO REQUIRED.</span>
+                    </div>
 
-                <div class="lens-input-wrapper">
-                    <label>PUBLIC BLOGROLL</label>
-                    <select name="settings[blogroll_enabled]">
-                        <option value="1" <?php echo (($settings['blogroll_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
-                        <option value="0" <?php echo (($settings['blogroll_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED</option>
-                    </select>
-                    <span class="dim">CONTROLS NAV LINK AND PUBLIC PAGE ACCESS.</span>
+                    <div class="lens-input-wrapper">
+                        <label>PUBLIC BLOGROLL</label>
+                        <select name="settings[blogroll_enabled]">
+                            <option value="1" <?php echo (($settings['blogroll_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
+                            <option value="0" <?php echo (($settings['blogroll_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED</option>
+                        </select>
+                        <span class="dim">CONTROLS NAV LINK AND PUBLIC PAGE ACCESS.</span>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- ============================================================
-             FOOTER CONFIGURATION — Slot-Based Architecture
-             Replaces old footer_branding_style / footer_copyright_override.
+             FOOTER CONFIGURATION — post-layout-grid (2-col)
+             5 slots: 3 left, 2 right. Each has conditional custom field.
              ============================================================ -->
         <div class="box">
             <h3>FOOTER CONFIGURATION</h3>
             <p class="dim">Configure which elements appear in the public site footer. Each slot can be ON (default content), CUSTOM (your text), or OFF. RSS cannot be disabled.</p>
 
-            <div class="dash-grid">
+            <?php
+            $footer_slots = [
+                [
+                    'key'         => 'copyright',
+                    'label'       => 'COPYRIGHT',
+                    'hint'        => 'Default: &copy; {YEAR} {BLOG NAME}',
+                    'placeholder' => 'e.g. &copy; 2026 My Photo Blog',
+                    'default'     => 'on',
+                ],
+                [
+                    'key'         => 'email',
+                    'label'       => 'EMAIL',
+                    'hint'        => 'Default: reverse-encoded site email (spam protection).',
+                    'placeholder' => 'e.g. contact@example.com',
+                    'default'     => 'on',
+                ],
+                [
+                    'key'         => 'theme',
+                    'label'       => 'CURRENT THEME',
+                    'hint'        => 'Default: shows active skin name.',
+                    'placeholder' => 'e.g. Designed by Example Studio',
+                    'default'     => 'off',
+                ],
+                [
+                    'key'         => 'powered',
+                    'label'       => 'POWERED BY',
+                    'hint'        => 'Default: POWERED BY SNAPSMACK {VERSION}',
+                    'placeholder' => 'e.g. Built with love and caffeine',
+                    'default'     => 'on',
+                ],
+            ];
+            ?>
 
-                <?php
-                $footer_slots = [
-                    [
-                        'key'         => 'copyright',
-                        'label'       => 'COPYRIGHT',
-                        'hint'        => 'Default: &copy; {YEAR} {BLOG NAME}',
-                        'placeholder' => 'e.g. &copy; 2026 My Photo Blog',
-                        'default'     => 'on',
-                    ],
-                    [
-                        'key'         => 'email',
-                        'label'       => 'EMAIL',
-                        'hint'        => 'Default: reverse-encoded site email (spam protection).',
-                        'placeholder' => 'e.g. contact@example.com',
-                        'default'     => 'on',
-                    ],
-                    [
-                        'key'         => 'theme',
-                        'label'       => 'CURRENT THEME',
-                        'hint'        => 'Default: shows active skin name.',
-                        'placeholder' => 'e.g. Designed by Example Studio',
-                        'default'     => 'off',
-                    ],
-                    [
-                        'key'         => 'powered',
-                        'label'       => 'POWERED BY',
-                        'hint'        => 'Default: POWERED BY SNAPSMACK {VERSION}',
-                        'placeholder' => 'e.g. Built with love and caffeine',
-                        'default'     => 'on',
-                    ],
-                ];
+            <div class="post-layout-grid">
+                <div class="post-col-left">
+                    <?php foreach (array_slice($footer_slots, 0, 2) as $slot):
+                        $state_key  = 'footer_slot_' . $slot['key'];
+                        $custom_key = 'footer_slot_' . $slot['key'] . '_custom';
+                        $state      = footer_slot_state($settings, $state_key, $slot['default']);
+                        $custom_val = $settings[$custom_key] ?? '';
+                    ?>
+                    <div class="lens-input-wrapper">
+                        <label><?php echo $slot['label']; ?> SLOT</label>
+                        <select name="settings[<?php echo $state_key; ?>]" class="footer-slot-toggle" data-target="<?php echo $custom_key; ?>">
+                            <option value="on"     <?php echo ($state === 'on')     ? 'selected' : ''; ?>>ON (DEFAULT)</option>
+                            <option value="custom" <?php echo ($state === 'custom') ? 'selected' : ''; ?>>CUSTOM TEXT</option>
+                            <option value="off"    <?php echo ($state === 'off')    ? 'selected' : ''; ?>>OFF</option>
+                        </select>
+                        <span class="dim"><?php echo $slot['hint']; ?></span>
+                        <div class="footer-custom-field" id="field-<?php echo $custom_key; ?>" style="<?php echo ($state === 'custom') ? '' : 'display:none;'; ?> margin-top: 8px;">
+                            <input type="text"
+                                   name="settings[<?php echo $custom_key; ?>]"
+                                   value="<?php echo htmlspecialchars($custom_val); ?>"
+                                   placeholder="<?php echo $slot['placeholder']; ?>">
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
 
-                foreach ($footer_slots as $slot):
-                    $state_key  = 'footer_slot_' . $slot['key'];
-                    $custom_key = 'footer_slot_' . $slot['key'] . '_custom';
-                    $state      = footer_slot_state($settings, $state_key, $slot['default']);
-                    $custom_val = $settings[$custom_key] ?? '';
-                ?>
-                <div class="lens-input-wrapper">
-                    <label><?php echo $slot['label']; ?> SLOT</label>
-                    <select name="settings[<?php echo $state_key; ?>]" class="footer-slot-toggle" data-target="<?php echo $custom_key; ?>">
-                        <option value="on"     <?php echo ($state === 'on')     ? 'selected' : ''; ?>>ON (DEFAULT)</option>
-                        <option value="custom" <?php echo ($state === 'custom') ? 'selected' : ''; ?>>CUSTOM TEXT</option>
-                        <option value="off"    <?php echo ($state === 'off')    ? 'selected' : ''; ?>>OFF</option>
-                    </select>
-                    <span class="dim"><?php echo $slot['hint']; ?></span>
-
-                    <div class="footer-custom-field" id="field-<?php echo $custom_key; ?>" style="<?php echo ($state === 'custom') ? '' : 'display:none;'; ?> margin-top: 8px;">
-                        <input type="text"
-                               name="settings[<?php echo $custom_key; ?>]"
-                               value="<?php echo htmlspecialchars($custom_val); ?>"
-                               placeholder="<?php echo $slot['placeholder']; ?>">
+                    <div class="lens-input-wrapper">
+                        <label>RSS SLOT</label>
+                        <div class="read-only-display">ALWAYS ON — CANNOT BE DISABLED</div>
+                        <span class="dim">Links to your site RSS feed.</span>
                     </div>
                 </div>
-                <?php endforeach; ?>
 
-                <div class="lens-input-wrapper">
-                    <label>RSS SLOT</label>
-                    <div class="read-only-display">ALWAYS ON — CANNOT BE DISABLED</div>
-                    <span class="dim">Links to your site RSS feed.</span>
+                <div class="post-col-right">
+                    <?php foreach (array_slice($footer_slots, 2, 2) as $slot):
+                        $state_key  = 'footer_slot_' . $slot['key'];
+                        $custom_key = 'footer_slot_' . $slot['key'] . '_custom';
+                        $state      = footer_slot_state($settings, $state_key, $slot['default']);
+                        $custom_val = $settings[$custom_key] ?? '';
+                    ?>
+                    <div class="lens-input-wrapper">
+                        <label><?php echo $slot['label']; ?> SLOT</label>
+                        <select name="settings[<?php echo $state_key; ?>]" class="footer-slot-toggle" data-target="<?php echo $custom_key; ?>">
+                            <option value="on"     <?php echo ($state === 'on')     ? 'selected' : ''; ?>>ON (DEFAULT)</option>
+                            <option value="custom" <?php echo ($state === 'custom') ? 'selected' : ''; ?>>CUSTOM TEXT</option>
+                            <option value="off"    <?php echo ($state === 'off')    ? 'selected' : ''; ?>>OFF</option>
+                        </select>
+                        <span class="dim"><?php echo $slot['hint']; ?></span>
+                        <div class="footer-custom-field" id="field-<?php echo $custom_key; ?>" style="<?php echo ($state === 'custom') ? '' : 'display:none;'; ?> margin-top: 8px;">
+                            <input type="text"
+                                   name="settings[<?php echo $custom_key; ?>]"
+                                   value="<?php echo htmlspecialchars($custom_val); ?>"
+                                   placeholder="<?php echo $slot['placeholder']; ?>">
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
                 </div>
-
             </div>
         </div>
 
+        <!-- ============================================================
+             NAVIGATION SLOT ASSIGNMENTS — post-layout-grid (2-col)
+             ============================================================ -->
         <div class="box">
             <h3>NAVIGATION SLOT ASSIGNMENTS</h3>
             <div class="post-layout-grid">
@@ -257,6 +321,10 @@ include 'core/sidebar.php';
             </div>
         </div>
 
+        <!-- ============================================================
+             IMAGE ENGINE — post-layout-grid (2-col)
+             Left: dimensions. Right: quality + uploads.
+             ============================================================ -->
         <div class="box">
             <h3>IMAGE ENGINE (SERVER-SIDE PROCESSING)</h3>
             <div class="post-layout-grid">
@@ -266,11 +334,11 @@ include 'core/sidebar.php';
                     
                     <label>PORTRAIT MAX HEIGHT (PX)</label>
                     <input type="number" name="settings[max_height_portrait]" value="<?php echo htmlspecialchars($settings['max_height_portrait'] ?? 1850); ?>">
-                </div>
-                <div class="post-col-right">
+
                     <label>JPEG COMPRESSION (1-100)</label>
                     <input type="number" name="settings[jpeg_quality]" value="<?php echo htmlspecialchars($settings['jpeg_quality'] ?? 85); ?>">
-
+                </div>
+                <div class="post-col-right">
                     <label>HEADER LOGO ASSET</label>
                     <div class="file-upload-wrapper" onclick="document.getElementById('logo-input').click()">
                         <div class="file-custom-btn">UPLOAD</div>
@@ -279,10 +347,23 @@ include 'core/sidebar.php';
                         </div>
                         <input type="file" name="logo_upload" id="logo-input" accept="image/*" style="display:none;" onchange="document.getElementById('logo-name').innerText = this.files[0].name;">
                     </div>
+
+                    <label>FAVICON</label>
+                    <div class="file-upload-wrapper" onclick="document.getElementById('favicon-input').click()">
+                        <div class="file-custom-btn">UPLOAD</div>
+                        <div class="file-name-display" id="favicon-name">
+                            <?php echo !empty($settings['favicon_url']) ? "CURRENT: " . basename($settings['favicon_url']) : "SELECT FILE (.ICO, .PNG, .SVG)"; ?>
+                        </div>
+                        <input type="file" name="favicon_upload" id="favicon-input" accept=".ico,.png,.svg,image/x-icon,image/png,image/svg+xml" style="display:none;" onchange="document.getElementById('favicon-name').innerText = this.files[0].name;">
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- ============================================================
+             TIME & LOCALIZATION — dash-grid (3-col)
+             Exactly 3 items. Perfect fit.
+             ============================================================ -->
         <div class="box box-flush-bottom">
             <h3>TIME & LOCALIZATION</h3>
             <div class="dash-grid">
