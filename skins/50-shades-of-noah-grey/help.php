@@ -1,17 +1,17 @@
 <?php
 /**
- * SNAPSMACK - Skin Help Topics: Fifty Shades of Grey
+ * SNAPSMACK - Skin Help Topics: 50 Shades of Noah Grey
  * Alpha v0.7
  */
 
 return [
 
     'skin-overview-grey' => [
-        'section'  => 'Active Skin: Fifty Shades of Grey',
+        'section'  => 'Active Skin: 50 Shades of Noah Grey',
         'title'    => 'Skin Overview',
         'icon'     => '&#x25CF;',
         'content'  => <<<'HTML'
-<h3>Fifty Shades of Grey — v2.4</h3>
+<h3>50 Shades of Noah Grey — v2.4</h3>
 <p>A pure greyscale photography skin with zero colour accents. Everything — backgrounds,
 borders, text, frames — exists on the grey spectrum. This skin is built for photographers
 who work primarily in black and white, or who want their colour work to be the only
@@ -45,7 +45,7 @@ HTML
     ],
 
     'skin-variants-grey' => [
-        'section'  => 'Active Skin: Fifty Shades of Grey',
+        'section'  => 'Active Skin: 50 Shades of Noah Grey',
         'title'    => 'Variants & Typography',
         'icon'     => '&#x25D1;',
         'content'  => <<<'HTML'

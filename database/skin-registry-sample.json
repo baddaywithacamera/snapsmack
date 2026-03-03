@@ -19,14 +19,14 @@
                 "archive_layouts": ["square", "cropped", "masonry"]
             }
         },
-        "fifty-shades-of-grey": {
-            "name": "Fifty Shades of Grey",
+        "50-shades-of-noah-grey": {
+            "name": "50 Shades of Noah Grey",
             "version": "2.4",
             "status": "stable",
             "author": "Sean McCormick",
             "description": "Pure greyscale photography skin. Three monochrome variants with zero colour accents.",
-            "screenshot": "https://updates.snapsmack.ca/skins/fifty-shades-of-grey/screenshot.png",
-            "download_url": "https://updates.snapsmack.ca/skins/fifty-shades-of-grey/fifty-shades-of-grey-2.4.zip",
+            "screenshot": "https://updates.snapsmack.ca/skins/50-shades-of-noah-grey/screenshot.png",
+            "download_url": "https://updates.snapsmack.ca/skins/50-shades-of-noah-grey/50-shades-of-noah-grey-2.4.zip",
             "download_size": 180000,
             "signature": "",
             "requires_php": "8.0",

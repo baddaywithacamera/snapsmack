@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Configuration manifest for the fifty-shades-of-grey skin
+ * SNAPSMACK - Configuration manifest for the 50-shades-of-noah-grey skin
  * Alpha v0.7
  *
  * Defines layout options, features, and customization controls with three greyscale variants.
@@ -10,7 +10,7 @@ $inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
 $fonts = $inventory['fonts'] ?? [];
 
 return [
-    'name'          => 'Fifty Shades of Grey',
+    'name'          => '50 Shades of Noah Grey',
     'version'       => '2.4',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',

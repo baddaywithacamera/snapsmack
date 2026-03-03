@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Footer for the fifty-shades-of-grey skin
+ * SNAPSMACK - Footer for the 50-shades-of-noah-grey skin
  * Alpha v0.6
  *
  * Injects skin-specific JavaScript libraries and closes the document.

@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Main layout template for the fifty-shades-of-grey skin
+ * SNAPSMACK - Main layout template for the 50-shades-of-noah-grey skin
  * Alpha v0.6
  *
  * Renders the photo display, navigation, metadata, and comments sections.

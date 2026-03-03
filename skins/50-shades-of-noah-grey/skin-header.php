@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Skin header for the fifty-shades-of-grey skin
+ * SNAPSMACK - Skin header for the 50-shades-of-noah-grey skin
  * Alpha v0.6
  */
 ?>
