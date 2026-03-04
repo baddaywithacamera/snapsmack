@@ -1,15 +1,16 @@
 <?php
 /**
  * SNAPSMACK - System backup and recovery
- * Alpha v0.7
+ * Alpha v0.8
  *
- * Provides SQL database extractions, technical media manifests, and source archival.
- * Orchestrates PharData-based compression for source-only tactical backups.
+ * Comprehensive backup & recovery system with Recovery Kit, Data Liberation exports,
+ * and integration with FTP remote backup capabilities.
+ * Preserves SQL database extractions, WordPress exports, portable JSON, and source archival.
  */
 
 require_once 'core/auth.php';
 
-// --- ENGINE: EXTRACTION LOGIC ---
+// --- EXPORT & RECOVERY HANDLERS ---
 if (isset($_POST['action']) && $_POST['action'] === 'export') {
     $type = $_POST['type'];
 
@@ -39,11 +40,6 @@ if (isset($_POST['action']) && $_POST['action'] === 'export') {
         echo $output;
         exit;
     }
-
-    // MEDIA MANIFEST: Deprecated in v0.7. Recovery metadata (thumb paths + SHA-256
-    // checksums) is now stored directly in snap_images and snap_assets. The full SQL
-    // dump contains everything the old manifest provided. Use smack-verify.php for
-    // integrity checking instead of the old filesystem walk.
 
     // SOURCE ARCHIVE: Bundles logic and design files while excluding heavy media.
     if ($type === 'source') {
@@ -93,7 +89,77 @@ if (isset($_POST['action']) && $_POST['action'] === 'export') {
             die("RECOVERY_ENGINE_CRITICAL: " . $e->getMessage());
         }
     }
+
+    // RECOVERY KIT EXPORT: Complete site backup with database, branding, media, and skin.
+    if ($type === 'recovery_kit') {
+        require_once 'core/export-engine.php';
+        try {
+            $exporter = new SnapSmackExport($pdo, __DIR__);
+            $kitPath = $exporter->exportRecoveryKit();
+
+            header('Content-Type: application/x-gzip');
+            header('Content-Disposition: attachment; filename="' . basename($kitPath) . '"');
+            header('Content-Length: ' . filesize($kitPath));
+            readfile($kitPath);
+            unlink($kitPath);
+            exit;
+        } catch (Exception $e) {
+            die("RECOVERY_KIT_ERROR: " . $e->getMessage());
+        }
+    }
+
+    // WORDPRESS WXR EXPORT: Standard WordPress eXtended RSS format.
+    if ($type === 'wxr') {
+        require_once 'core/export-engine.php';
+        try {
+            $exporter = new SnapSmackExport($pdo, __DIR__);
+            $wxrContent = $exporter->exportWordPressWXR();
+
+            $filename = "snapsmack_wordpress_" . date('Y-m-d_H-i') . ".xml";
+            header('Content-Type: application/xml');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            echo $wxrContent;
+            exit;
+        } catch (Exception $e) {
+            die("WXR_EXPORT_ERROR: " . $e->getMessage());
+        }
+    }
+
+    // PORTABLE JSON EXPORT: Platform-agnostic JSON with documented schema.
+    if ($type === 'json_export') {
+        require_once 'core/export-engine.php';
+        try {
+            $exporter = new SnapSmackExport($pdo, __DIR__);
+            $jsonContent = $exporter->exportPortableJSON();
+
+            $filename = "snapsmack_export_" . date('Y-m-d_H-i') . ".json";
+            header('Content-Type: application/json');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            echo $jsonContent;
+            exit;
+        } catch (Exception $e) {
+            die("JSON_EXPORT_ERROR: " . $e->getMessage());
+        }
+    }
 }
+
+// RECOVERY KIT IMPORT: Upload and restore from previous backup.
+if (isset($_POST['action']) && $_POST['action'] === 'import_recovery') {
+    if (!empty($_FILES['recovery_file']['tmp_name'])) {
+        require_once 'core/recovery-engine.php';
+        try {
+            $recovery = new SnapSmackRecovery($pdo, __DIR__);
+            $import_result = $recovery->importRecoveryKit($_FILES['recovery_file']['tmp_name']);
+            // Store result for display below
+            $import_message = $import_result;
+        } catch (Exception $e) {
+            $import_message = ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+}
+
+// Load FTP settings for last push information.
+$settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 
 $page_title = "Backup & Recovery";
 include 'core/admin-header.php';
@@ -103,6 +169,73 @@ include 'core/sidebar.php';
 <div class="main">
     <div class="header-row">
         <h2>SYSTEM BACKUP & RECOVERY</h2>
+    </div>
+
+    <!-- ============================================================
+         SECTION 1: BACKUP & RECOVERY (Recovery Kit + Import)
+         dash-grid-2 (2-column layout)
+         ============================================================ -->
+    <div class="box box-flush-bottom">
+        <h3>BACKUP & RECOVERY</h3>
+    </div>
+    <div class="dash-grid dash-grid-2">
+        <div class="box box-flex">
+            <h3>RECOVERY KIT (.TAR.GZ)</h3>
+            <p class="skin-desc-text">Complete site backup including database, branding assets, media library, and active skin. Everything needed to rebuild from scratch.</p>
+            <form method="POST">
+                <input type="hidden" name="action" value="export">
+                <input type="hidden" name="type" value="recovery_kit">
+                <button type="submit" class="btn-smack btn-block">DOWNLOAD RECOVERY KIT</button>
+            </form>
+        </div>
+
+        <div class="box box-flex">
+            <h3>IMPORT RECOVERY KIT</h3>
+            <p class="skin-desc-text">Upload a previously exported recovery kit to restore your site. Overwrites the database and restores all files.</p>
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="import_recovery">
+                <div class="file-upload-wrapper" onclick="document.getElementById('recovery-input').click()">
+                    <div class="file-custom-btn">SELECT FILE</div>
+                    <div class="file-name-display" id="recovery-name">SELECT .TAR.GZ FILE</div>
+                    <input type="file" name="recovery_file" id="recovery-input" accept=".tar.gz,.gz" class="file-input-hidden" onchange="document.getElementById('recovery-name').innerText = this.files[0].name;">
+                </div>
+                <button type="submit" class="btn-smack btn-block" onclick="return confirm('This will overwrite your database and files. Continue?');">IMPORT RECOVERY KIT</button>
+            </form>
+        </div>
+    </div>
+
+    <?php if (isset($import_message) && is_array($import_message)): ?>
+        <div class="box mt-30">
+            <?php if (empty($import_message['errors'])): ?>
+                <div class="alert">> RECOVERY KIT IMPORTED SUCCESSFULLY<br>
+                    SQL statements: <?php echo $import_message['sql_imported'] ?? 0; ?><br>
+                    Files restored: <?php echo $import_message['files_restored'] ?? 0; ?><br>
+                    Checksums verified: <?php echo $import_message['checksum_ok'] ?? 0; ?><br>
+                    <?php if (($import_message['checksum_fail'] ?? 0) > 0): ?>
+                        Checksum failures: <?php echo $import_message['checksum_fail']; ?><br>
+                    <?php endif; ?>
+                    <?php if (($import_message['missing'] ?? 0) > 0): ?>
+                        Missing files: <?php echo $import_message['missing']; ?><br>
+                    <?php endif; ?>
+                </div>
+            <?php else: ?>
+                <div class="alert">> RECOVERY KIT IMPORT COMPLETED WITH ERRORS<br>
+                    SQL statements: <?php echo $import_message['sql_imported'] ?? 0; ?><br>
+                    Files restored: <?php echo $import_message['files_restored'] ?? 0; ?><br>
+                    <?php foreach ($import_message['errors'] as $err): ?>
+                        ERROR: <?php echo htmlspecialchars($err); ?><br>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
+    <!-- ============================================================
+         SECTION 2: DATABASE (Existing SQL Dumps)
+         dash-grid (3-column layout)
+         ============================================================ -->
+    <div class="box box-flush-bottom mt-30">
+        <h3>DATABASE</h3>
     </div>
     <div class="dash-grid">
         <div class="box box-flex">
@@ -134,7 +267,42 @@ include 'core/sidebar.php';
         </div>
     </div>
 
-    <div class="dash-grid dash-grid-2 mt-30">
+    <!-- ============================================================
+         SECTION 3: DATA LIBERATION (WordPress WXR + JSON Export)
+         dash-grid-2 (2-column layout)
+         ============================================================ -->
+    <div class="box box-flush-bottom mt-30">
+        <h3>DATA LIBERATION</h3>
+    </div>
+    <div class="dash-grid dash-grid-2">
+        <div class="box box-flex">
+            <h3>WORDPRESS EXPORT (WXR)</h3>
+            <p class="skin-desc-text">Standard WordPress eXtended RSS format. Import directly into any WordPress site. Images, categories, comments, pages — everything transfers.</p>
+            <form method="POST">
+                <input type="hidden" name="action" value="export">
+                <input type="hidden" name="type" value="wxr">
+                <button type="submit" class="btn-smack btn-block">EXPORT WORDPRESS WXR</button>
+            </form>
+        </div>
+        <div class="box box-flex">
+            <h3>PORTABLE JSON</h3>
+            <p class="skin-desc-text">Platform-agnostic JSON export with documented schema. Use for migration to any CMS or as a clean data archive.</p>
+            <form method="POST">
+                <input type="hidden" name="action" value="export">
+                <input type="hidden" name="type" value="json_export">
+                <button type="submit" class="btn-smack btn-block">EXPORT JSON</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         SECTION 4: MAINTENANCE (Verify + Source Archive)
+         dash-grid-2 (2-column layout)
+         ============================================================ -->
+    <div class="box box-flush-bottom mt-30">
+        <h3>MAINTENANCE</h3>
+    </div>
+    <div class="dash-grid dash-grid-2">
         <div class="box box-flex">
             <h3>VERIFY INTEGRITY</h3>
             <p class="skin-desc-text">Spot-checks that files referenced in the database still exist on disk and match their stored SHA-256 checksums. Lightweight — no full filesystem walk.</p>
@@ -150,6 +318,24 @@ include 'core/sidebar.php';
                 <button type="submit" class="btn-smack btn-block">GET SOURCE CODE</button>
             </form>
         </div>
+    </div>
+
+    <!-- ============================================================
+         SECTION 5: FTP REMOTE BACKUP
+         Single box with link to FTP configuration
+         ============================================================ -->
+    <div class="box mt-30">
+        <h3>FTP REMOTE BACKUP</h3>
+        <p class="skin-desc-text">Push your recovery kit or image library to a remote FTP server. Configure credentials, test the connection, and push on demand.</p>
+        <a href="smack-ftp.php" class="btn-smack btn-block">CONFIGURE FTP BACKUP</a>
+        <?php if (!empty($settings['ftp_last_push'])): ?>
+            <p style="margin-top: 15px; font-size: 12px; color: #888;">
+                Last push: <?php echo htmlspecialchars($settings['ftp_last_push']); ?>
+                <?php if (!empty($settings['ftp_last_status'])): ?>
+                    — <?php echo htmlspecialchars($settings['ftp_last_status']); ?>
+                <?php endif; ?>
+            </p>
+        <?php endif; ?>
     </div>
 </div>
 

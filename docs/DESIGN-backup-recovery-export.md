@@ -343,15 +343,15 @@ wherever the previous session stopped.
 
 ## 6. CURRENT STATUS
 
-**As of commit `9c15c37` (March 4, 2026):**
+**All chunks complete (March 4, 2026):**
 
 - [x] Design document written (this file)
-- [ ] Chunk 1: Export Engine + Recovery Kit Export
-- [ ] Chunk 2: Recovery Kit Import
-- [ ] Chunk 3: Data Liberation Exports (WXR + JSON)
-- [ ] Chunk 4: FTP Engine
-- [ ] Chunk 5: FTP Configuration UI
-- [ ] Chunk 6: Backup Page Overhaul
-- [ ] Chunk 7: Migration & Wiring
+- [x] Chunk 1: Export Engine + Recovery Kit Export (`core/export-engine.php`)
+- [x] Chunk 2: Recovery Kit Import (`core/recovery-engine.php` — `importRecoveryKit()`)
+- [x] Chunk 3: Data Liberation Exports (WXR + JSON) — both in `core/export-engine.php`
+- [x] Chunk 4: FTP Engine (`core/ftp-engine.php`)
+- [x] Chunk 5: FTP Configuration UI (`smack-ftp.php`)
+- [x] Chunk 6: Backup Page Overhaul (`smack-backup.php`)
+- [x] Chunk 7: Migration & Wiring (`migrate-0.7-0.8.sql`, `sidebar.php`)
 
-Update this section as chunks are completed.
+**Remaining (deferred):** Tier 2 OAuth cloud push (Google Drive / OneDrive) — separate future task.

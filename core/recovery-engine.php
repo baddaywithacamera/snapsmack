@@ -414,6 +414,217 @@ class SnapSmackRecovery {
     }
 
     // =================================================================
+    // RECOVERY KIT IMPORT (eats our own dog food)
+    // =================================================================
+
+    /**
+     * Imports a SnapSmack Recovery Kit archive.
+     * Reads manifest.json, imports SQL, restores all files to their
+     * documented locations. Full round-trip with the export engine.
+     *
+     * @param string $archivePath  Path to .tar.gz file OR extracted directory
+     * @return array{sql_imported: int, files_restored: int, checksum_ok: int, checksum_fail: int, missing: int, errors: string[]}
+     */
+    public function importRecoveryKit(string $archivePath): array {
+        $result = [
+            'sql_imported'   => 0,
+            'files_restored' => 0,
+            'checksum_ok'    => 0,
+            'checksum_fail'  => 0,
+            'missing'        => 0,
+            'errors'         => [],
+        ];
+
+        // If it's a .tar.gz, extract it first
+        $extractDir = $archivePath;
+        $needsCleanup = false;
+
+        if (is_file($archivePath)) {
+            $extractDir = sys_get_temp_dir() . '/snapsmack_recovery_' . time();
+            if (!is_dir($extractDir)) {
+                mkdir($extractDir, 0755, true);
+            }
+
+            try {
+                $phar = new PharData($archivePath);
+                $phar->extractTo($extractDir, null, true);
+                $needsCleanup = true;
+                $this->streamProgress("Archive extracted to temp directory.", 'ok');
+            } catch (Exception $e) {
+                $result['errors'][] = 'Failed to extract archive: ' . $e->getMessage();
+                return $result;
+            }
+        }
+
+        // Find the manifest — it may be in a subdirectory (the archive prefix)
+        $manifestPath = $this->findFileInTree($extractDir, 'manifest.json');
+        if (!$manifestPath) {
+            $result['errors'][] = 'manifest.json not found in archive.';
+            return $result;
+        }
+
+        $kitRoot = dirname($manifestPath);
+        $manifest = json_decode(file_get_contents($manifestPath), true);
+        if (!$manifest || !isset($manifest['export_type'])) {
+            $result['errors'][] = 'Invalid or corrupt manifest.json.';
+            return $result;
+        }
+
+        $this->streamProgress("Recovery Kit: {$manifest['site_name']} — exported {$manifest['export_date']}", 'info');
+        $this->streamProgress("SnapSmack version: {$manifest['snapsmack_version']}", 'info');
+
+        // --- 1. IMPORT SQL DUMP ---
+        $sqlPath = $kitRoot . '/database.sql';
+        if (file_exists($sqlPath)) {
+            $this->streamProgress("Importing database...", 'info');
+            $sqlResult = $this->importSqlDump($sqlPath);
+            $result['sql_imported'] = $sqlResult['imported'];
+            if (!empty($sqlResult['errors'])) {
+                foreach ($sqlResult['errors'] as $err) {
+                    $result['errors'][] = "SQL: {$err}";
+                }
+            }
+            $this->streamProgress("SQL: {$sqlResult['imported']} statements imported.", 'ok');
+        } else {
+            $this->streamProgress("No database.sql found — skipping SQL import.", 'warn');
+        }
+
+        // --- 2. RESTORE FILES FROM MANIFEST ---
+        $files = $manifest['files'] ?? [];
+        foreach ($files as $manifestKey => $meta) {
+            // Skip the SQL dump — already handled
+            if ($manifestKey === 'database.sql') continue;
+
+            $restoreTo = $meta['restores_to'] ?? null;
+            if (!$restoreTo) continue;
+
+            $sourcePath = $kitRoot . '/' . $manifestKey;
+            $targetPath = $this->baseDir . '/' . $restoreTo;
+
+            if (!file_exists($sourcePath)) {
+                $result['missing']++;
+                $this->streamProgress("MISSING IN KIT: {$manifestKey}", 'warn');
+                continue;
+            }
+
+            // Create target directory
+            $targetDir = dirname($targetPath);
+            if (!is_dir($targetDir)) {
+                if (!@mkdir($targetDir, 0755, true)) {
+                    $result['errors'][] = "Cannot create directory: {$targetDir}";
+                    continue;
+                }
+            }
+
+            // Copy file
+            if (copy($sourcePath, $targetPath)) {
+                $result['files_restored']++;
+
+                // Verify checksum
+                $expectedChecksum = $meta['checksum'] ?? '';
+                if (str_starts_with($expectedChecksum, 'sha256:')) {
+                    $expected = substr($expectedChecksum, 7);
+                    $actual = hash_file('sha256', $targetPath);
+                    if ($actual === $expected) {
+                        $result['checksum_ok']++;
+                    } else {
+                        $result['checksum_fail']++;
+                        $this->streamProgress("CHECKSUM MISMATCH: {$restoreTo}", 'warn');
+                    }
+                }
+
+                $this->streamProgress("RESTORED: {$restoreTo}", 'ok');
+            } else {
+                $result['errors'][] = "Failed to copy: {$manifestKey} → {$restoreTo}";
+            }
+        }
+
+        // --- 3. ENSURE DIRECTORIES ---
+        $this->ensureDirectories();
+
+        // --- 4. CLEANUP ---
+        if ($needsCleanup) {
+            $this->recursiveDelete($extractDir);
+        }
+
+        $this->streamProgress("Recovery complete. Files: {$result['files_restored']} restored, "
+            . "{$result['checksum_ok']} verified, {$result['checksum_fail']} checksum failures, "
+            . "{$result['missing']} missing.", 'info');
+
+        return $result;
+    }
+
+    /**
+     * Validates a recovery kit manifest. Returns array of issues (empty = valid).
+     */
+    public function validateManifest(array $manifest): array {
+        $issues = [];
+
+        if (empty($manifest['export_type'])) {
+            $issues[] = 'Missing export_type field.';
+        } elseif ($manifest['export_type'] !== 'recovery-kit') {
+            $issues[] = "Unexpected export_type: {$manifest['export_type']}";
+        }
+
+        if (empty($manifest['export_date'])) {
+            $issues[] = 'Missing export_date field.';
+        }
+
+        if (empty($manifest['files'])) {
+            $issues[] = 'No files listed in manifest.';
+        }
+
+        if (!isset($manifest['files']['database.sql'])) {
+            $issues[] = 'No database.sql in file manifest (SQL dump missing).';
+        }
+
+        return $issues;
+    }
+
+    /**
+     * Searches a directory tree for a specific filename.
+     */
+    private function findFileInTree(string $dir, string $filename): ?string {
+        // Check current directory first
+        if (file_exists($dir . '/' . $filename)) {
+            return $dir . '/' . $filename;
+        }
+
+        // Check one level of subdirectories (archive prefix creates one level)
+        $entries = @scandir($dir);
+        if ($entries) {
+            foreach ($entries as $entry) {
+                if ($entry === '.' || $entry === '..') continue;
+                $path = $dir . '/' . $entry;
+                if (is_dir($path) && file_exists($path . '/' . $filename)) {
+                    return $path . '/' . $filename;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Recursively deletes a directory and its contents.
+     */
+    private function recursiveDelete(string $dir): void {
+        if (!is_dir($dir)) return;
+        $items = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($items as $item) {
+            if ($item->isDir()) {
+                @rmdir($item->getRealPath());
+            } else {
+                @unlink($item->getRealPath());
+            }
+        }
+        @rmdir($dir);
+    }
+
+    // =================================================================
     // HELPERS
     // =================================================================
 

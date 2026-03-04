@@ -138,7 +138,24 @@ VALUES
 
 
 -- ============================================================================
--- 7. VERSION STAMP
+-- 7. FTP BACKUP — default settings
+-- ============================================================================
+
+INSERT IGNORE INTO snap_settings (setting_key, setting_val)
+VALUES
+    ('ftp_host',       ''),
+    ('ftp_port',       '21'),
+    ('ftp_user',       ''),
+    ('ftp_pass',       ''),
+    ('ftp_remote_dir', '/'),
+    ('ftp_use_ssl',    '0'),
+    ('ftp_passive',    '1'),
+    ('ftp_last_push',  ''),
+    ('ftp_last_status','');
+
+
+-- ============================================================================
+-- 8. VERSION STAMP
 -- ============================================================================
 
 UPDATE snap_settings
