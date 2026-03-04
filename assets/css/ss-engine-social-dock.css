@@ -7,6 +7,11 @@
  * Side-mounted docks slide off-screen during scroll via JS toggle.
  */
 
+/* ─── CSS CUSTOM PROPERTIES (set via inline style from PHP) ────── */
+/* --dock-color:      icon colour (hex)                             */
+/* --dock-rgb:        icon colour as r,g,b for rgba()               */
+/* --dock-bg-opacity: dock background opacity 0-1                   */
+
 /* ─── BASE DOCK ────────────────────────────────────────────────── */
 
 .social-dock {
@@ -16,22 +21,22 @@
     gap: 4px;
     padding: 8px;
     border-radius: 10px;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, var(--dock-bg-opacity, 0.2));
     -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, calc(var(--dock-bg-opacity, 0.2) * 0.6));
+    box-shadow: 0 2px 12px rgba(0, 0, 0, calc(var(--dock-bg-opacity, 0.2) * 0.75));
 }
 
 /* Fallback for browsers without backdrop-filter */
 @supports not (backdrop-filter: blur(14px)) {
     .social-dock {
-        background: rgba(0, 0, 0, 0.55);
+        background: rgba(0, 0, 0, calc(var(--dock-bg-opacity, 0.2) + 0.35));
     }
 }
 
 
-/* ─── ICON LINKS ───────────────────────────────────────────────── */
+/* ─── ICON LINKS (outline style — default) ─────────────────────── */
 
 .dock-link {
     display: flex;
@@ -40,22 +45,48 @@
     width: 34px;
     height: 34px;
     border-radius: 50%;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--dock-color, #fff);
+    opacity: 0.75;
     text-decoration: none;
-    transition: transform 0.2s ease, color 0.2s ease, background 0.2s ease;
+    transition: transform 0.2s ease, opacity 0.2s ease, background 0.2s ease, color 0.2s ease;
     background: transparent;
 }
 
 .dock-link:hover {
     transform: scale(1.2);
-    color: #fff;
-    background: rgba(255, 255, 255, 0.12);
+    opacity: 1;
+    background: rgba(var(--dock-rgb, 255,255,255), 0.15);
 }
 
 .dock-link svg {
     width: 18px;
     height: 18px;
     flex-shrink: 0;
+}
+
+
+/* ─── SOLID STYLE — filled background, white icon ──────────────── */
+
+.dock-solid .dock-link {
+    background: rgba(var(--dock-rgb, 255,255,255), 0.2);
+    opacity: 0.85;
+}
+
+.dock-solid .dock-link:hover {
+    background: var(--dock-color, #fff);
+    color: rgba(0, 0, 0, 0.85);
+    opacity: 1;
+}
+
+
+/* ─── SQUARE SHAPE — rounded-corner squares instead of circles ─── */
+
+.dock-square .dock-link {
+    border-radius: 6px;
+}
+
+.dock-square {
+    border-radius: 8px;
 }
 
 

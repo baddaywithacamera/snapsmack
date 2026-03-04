@@ -25,6 +25,24 @@ if (isset($_POST['save_social_dock'])) {
     if (!in_array($position, $valid_positions)) $position = 'bottom-right';
     $stmt->execute(['social_dock_position', $position, $position]);
 
+    // Appearance settings
+    $appearance_keys = [
+        'social_dock_icon_color'  => '#ffffff',
+        'social_dock_opacity'     => '20',
+        'social_dock_icon_shape'  => 'round',
+        'social_dock_icon_style'  => 'outline',
+    ];
+    foreach ($appearance_keys as $akey => $default) {
+        $aval = trim($_POST[$akey] ?? $default);
+        // Validate icon_shape
+        if ($akey === 'social_dock_icon_shape' && !in_array($aval, ['round', 'square'])) $aval = 'round';
+        // Validate icon_style
+        if ($akey === 'social_dock_icon_style' && !in_array($aval, ['outline', 'solid'])) $aval = 'outline';
+        // Validate opacity (0-100)
+        if ($akey === 'social_dock_opacity') $aval = max(0, min(100, (int)$aval));
+        $stmt->execute([$akey, $aval, $aval]);
+    }
+
     // Platform URLs
     $platforms = [
         'social_dock_flickr', 'social_dock_smugmug', 'social_dock_instagram',
@@ -105,6 +123,47 @@ include 'core/sidebar.php';
                         <?php endforeach; ?>
                     </select>
                     <span class="dim" style="display: block; margin-top: 4px;">Side positions slide out of view while scrolling.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             APPEARANCE
+             ============================================================ -->
+        <div class="box">
+            <h3>APPEARANCE</h3>
+
+            <div class="post-layout-grid">
+                <div class="post-col-left">
+                    <label>ICON COLOR</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="color" name="social_dock_icon_color" value="<?php echo htmlspecialchars($settings['social_dock_icon_color'] ?? '#ffffff'); ?>" style="width: 50px; height: 34px; border: 1px solid #ccc; cursor: pointer;" oninput="this.nextElementSibling.value = this.value">
+                        <input type="text" value="<?php echo htmlspecialchars($settings['social_dock_icon_color'] ?? '#ffffff'); ?>" style="width: 100px; font-family: monospace;" onchange="this.previousElementSibling.value = this.value" oninput="this.previousElementSibling.value = this.value">
+                    </div>
+
+                    <label style="margin-top: 15px;">DOCK BACKGROUND OPACITY</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="range" name="social_dock_opacity" min="0" max="100" value="<?php echo htmlspecialchars($settings['social_dock_opacity'] ?? '20'); ?>" style="flex: 1;" oninput="this.nextElementSibling.textContent = this.value + '%'">
+                        <span style="min-width: 40px; font-family: monospace;"><?php echo htmlspecialchars($settings['social_dock_opacity'] ?? '20'); ?>%</span>
+                    </div>
+                    <span class="dim">0% = fully transparent (no backdrop), 100% = fully opaque dark glass.</span>
+                </div>
+
+                <div class="post-col-right">
+                    <label>ICON SHAPE</label>
+                    <?php $current_shape = $settings['social_dock_icon_shape'] ?? 'round'; ?>
+                    <select name="social_dock_icon_shape">
+                        <option value="round" <?php echo $current_shape === 'round' ? 'selected' : ''; ?>>Round</option>
+                        <option value="square" <?php echo $current_shape === 'square' ? 'selected' : ''; ?>>Square (rounded corners)</option>
+                    </select>
+
+                    <label style="margin-top: 15px;">ICON STYLE</label>
+                    <?php $current_style = $settings['social_dock_icon_style'] ?? 'outline'; ?>
+                    <select name="social_dock_icon_style">
+                        <option value="outline" <?php echo $current_style === 'outline' ? 'selected' : ''; ?>>Outline — transparent icons, solid on hover</option>
+                        <option value="solid" <?php echo $current_style === 'solid' ? 'selected' : ''; ?>>Solid — filled background with white symbol</option>
+                    </select>
+                    <span class="dim">Outline icons turn solid on hover. Solid icons brighten on hover.</span>
                 </div>
             </div>
         </div>

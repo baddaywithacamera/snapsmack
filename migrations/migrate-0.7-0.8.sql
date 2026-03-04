@@ -178,6 +178,10 @@ INSERT IGNORE INTO snap_settings (setting_key, setting_val)
 VALUES
     ('social_dock_enabled',    '0'),
     ('social_dock_position',   'bottom-right'),
+    ('social_dock_icon_color', '#ffffff'),
+    ('social_dock_opacity',    '20'),
+    ('social_dock_icon_shape', 'round'),
+    ('social_dock_icon_style', 'outline'),
     ('social_dock_flickr',     ''),
     ('social_dock_smugmug',    ''),
     ('social_dock_instagram',  ''),

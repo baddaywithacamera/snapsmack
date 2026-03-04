@@ -116,8 +116,26 @@ $_valid_positions = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'le
 if (!in_array($_dock_position, $_valid_positions)) {
     $_dock_position = 'bottom-right';
 }
+
+// Appearance settings → CSS custom properties
+$_dock_color   = $settings['social_dock_icon_color'] ?? '#ffffff';
+$_dock_opacity = max(0, min(100, (int)($settings['social_dock_opacity'] ?? 20)));
+$_dock_shape   = ($settings['social_dock_icon_shape'] ?? 'round') === 'square' ? 'square' : 'round';
+$_dock_style   = ($settings['social_dock_icon_style'] ?? 'outline') === 'solid' ? 'solid' : 'outline';
+
+// Convert hex colour to RGB for rgba() usage in CSS
+$_dock_rgb = '255,255,255';
+if (preg_match('/^#?([0-9a-f]{6})$/i', $_dock_color, $_m)) {
+    $_dock_rgb = hexdec(substr($_m[1], 0, 2)) . ',' . hexdec(substr($_m[1], 2, 2)) . ',' . hexdec(substr($_m[1], 4, 2));
+}
+
+$_dock_classes = 'social-dock dock-' . $_dock_position;
+if ($_dock_shape === 'square') $_dock_classes .= ' dock-square';
+if ($_dock_style === 'solid')  $_dock_classes .= ' dock-solid';
 ?>
-<div class="social-dock dock-<?php echo htmlspecialchars($_dock_position); ?>" data-dock-position="<?php echo htmlspecialchars($_dock_position); ?>">
+<div class="<?php echo htmlspecialchars($_dock_classes); ?>"
+     data-dock-position="<?php echo htmlspecialchars($_dock_position); ?>"
+     style="--dock-color: <?php echo htmlspecialchars($_dock_color); ?>; --dock-rgb: <?php echo $_dock_rgb; ?>; --dock-bg-opacity: <?php echo $_dock_opacity / 100; ?>;">
     <?php foreach ($_dock_links as $_link): ?>
         <a href="<?php echo htmlspecialchars($_link['url']); ?>" target="_blank" rel="noopener" title="<?php echo htmlspecialchars($_link['label']); ?>" class="dock-link">
             <?php echo $_link['svg']; ?>
