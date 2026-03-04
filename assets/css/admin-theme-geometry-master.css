@@ -197,6 +197,16 @@ h2 {
     border-radius: 6px;
 }
 
+/* Inside grids the gap handles spacing — kill the double margin */
+.dash-grid > .box,
+.dash-grid-2 > .box,
+.dash-grid-4 > .box,
+.post-layout-grid > .box,
+.grid-50-50 > .box,
+.grid-33 > .box {
+    margin-bottom: 0;
+}
+
 /* Box with flex layout — pushes last child (button/form) to bottom */
 .box-flex {
     display: flex;
@@ -1207,8 +1217,8 @@ input[type="range"]:active::-webkit-slider-thumb {
 /* Flex utility */
 .flex-1 { flex: 1; }
 
-/* Dim: muted secondary text */
-.dim { opacity: 0.6; }
+/* Dim: muted secondary text — 0.75 keeps readability on dark backgrounds */
+.dim { opacity: 0.75; }
 
 /* Left-aligned item actions (default is flex-end) */
 .item-actions-left { justify-content: flex-start; }

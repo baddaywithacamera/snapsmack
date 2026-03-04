@@ -7,20 +7,20 @@
 
 .formatting-toolbar {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     flex-wrap: wrap;
     align-items: center;
-    padding: 10px 0;
-    margin-bottom: 12px;
+    padding: 8px 0;
+    margin-bottom: 10px;
     border-bottom: 1px solid var(--lens-border, #333);
 }
 
 .toolbar-group {
-    display: flex;
-    gap: 4px;
+    display: inline-flex;
+    gap: 3px;
     align-items: center;
-    padding-right: 10px;
-    margin-right: 4px;
+    padding-right: 8px;
+    margin-right: 2px;
     border-right: 1px solid var(--lens-border, #333);
 }
 
@@ -28,6 +28,7 @@
     border-right: none;
     padding-right: 0;
     margin-right: 0;
+    margin-left: auto;
 }
 
 .toolbar-label {
