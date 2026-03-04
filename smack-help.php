@@ -1017,9 +1017,10 @@ if (!empty($settings['active_skin'])) {
 //  DETERMINE ACTIVE TOPIC
 // =========================================================================
 
-$active_topic = $_GET['topic'] ?? 'dashboard';
-if (!isset($help_topics[$active_topic])) {
-    $active_topic = 'dashboard';
+$active_topic = $_GET['topic'] ?? '_toc';
+$show_toc = ($active_topic === '_toc' || !isset($help_topics[$active_topic]));
+if ($show_toc) {
+    $active_topic = '_toc';
 }
 
 // Group topics by section for sidebar navigation
@@ -1027,7 +1028,192 @@ $sections = [];
 foreach ($help_topics as $slug => $topic) {
     $sections[$topic['section']][$slug] = $topic;
 }
+
+// Build search index — JSON blob of slug → title + section + plain text snippet
+$_search_index = [];
+foreach ($help_topics as $slug => $ht) {
+    $_search_index[$slug] = [
+        'title'   => $ht['title'],
+        'section' => $ht['section'],
+        'icon'    => $ht['icon'] ?? '',
+        'text'    => strtolower(strip_tags($ht['content'])),
+    ];
+}
 ?>
+
+<style>
+    /* ─── HELP BODY STYLES ──────────────────────────────────────────── */
+    .help-body h3 {
+        font-size: 1.15rem;
+        letter-spacing: 1px;
+        margin: 0 0 12px 0;
+        padding: 0;
+    }
+    .help-body h4 {
+        font-size: 0.85rem;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--text-secondary, #aaa);
+        margin: 24px 0 8px 0;
+        padding: 0;
+    }
+    .help-body p {
+        margin: 0 0 12px 0;
+    }
+    .help-body ul, .help-body ol {
+        margin: 0 0 16px 0;
+        padding-left: 24px;
+    }
+    .help-body li {
+        margin-bottom: 6px;
+    }
+    .help-body pre {
+        background: var(--bg-secondary, rgba(0,0,0,0.3));
+        border: 1px solid var(--lens-border, #333);
+        padding: 12px 16px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.82rem;
+        overflow-x: auto;
+        margin: 8px 0 16px 0;
+        letter-spacing: 0.5px;
+    }
+    .help-body code {
+        background: var(--bg-secondary, rgba(0,0,0,0.2));
+        padding: 2px 6px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.82rem;
+        border-radius: 2px;
+    }
+    .help-body strong {
+        color: var(--text-main, #eee);
+    }
+    .help-body em {
+        color: var(--text-secondary, #aaa);
+    }
+
+    /* ─── SEARCH BOX ─────────────────────────────────────────────────── */
+    .help-search {
+        padding: 8px 12px;
+        margin-bottom: 8px;
+    }
+    .help-search input {
+        width: 100%;
+        padding: 7px 10px;
+        border: 1px solid var(--lens-border, #444);
+        background: var(--bg-secondary, rgba(0,0,0,0.3));
+        color: var(--text-main, #eee);
+        font-size: 0.82rem;
+        letter-spacing: 0.5px;
+        border-radius: 3px;
+        outline: none;
+    }
+    .help-search input::placeholder {
+        color: var(--text-secondary, #888);
+    }
+    .help-search input:focus {
+        border-color: var(--accent, #6cf);
+    }
+    .help-nav-link.help-hidden {
+        display: none;
+    }
+    .help-nav-section.help-section-hidden {
+        display: none;
+    }
+
+    /* ─── SEARCH RESULTS PANEL ───────────────────────────────────────── */
+    .help-search-results {
+        display: none;
+        padding: 0 12px 12px;
+    }
+    .help-search-results.active {
+        display: block;
+    }
+    .help-search-result {
+        display: block;
+        padding: 8px 10px;
+        margin-bottom: 4px;
+        border-radius: 3px;
+        text-decoration: none;
+        color: var(--text-main, #eee);
+        font-size: 0.82rem;
+        border: 1px solid transparent;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .help-search-result:hover {
+        background: var(--bg-secondary, rgba(255,255,255,0.05));
+        border-color: var(--lens-border, #444);
+    }
+    .help-search-result-section {
+        font-size: 0.7rem;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--text-secondary, #888);
+        margin-top: 2px;
+    }
+    .help-search-result-snippet {
+        font-size: 0.75rem;
+        color: var(--text-secondary, #999);
+        margin-top: 3px;
+        line-height: 1.4;
+    }
+    .help-search-result-snippet mark {
+        background: rgba(102, 204, 255, 0.25);
+        color: var(--text-main, #eee);
+        padding: 0 2px;
+        border-radius: 2px;
+    }
+    .help-search-no-results {
+        padding: 12px 10px;
+        color: var(--text-secondary, #888);
+        font-size: 0.82rem;
+    }
+
+    /* ─── TABLE OF CONTENTS ──────────────────────────────────────────── */
+    .help-toc-section {
+        margin-bottom: 28px;
+    }
+    .help-toc-section-title {
+        font-size: 0.8rem;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--text-secondary, #aaa);
+        margin: 0 0 12px 0;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--lens-border, #333);
+    }
+    .help-toc-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    @media (max-width: 900px) {
+        .help-toc-grid { grid-template-columns: 1fr; }
+    }
+    .help-toc-card {
+        display: block;
+        padding: 12px 14px;
+        border: 1px solid var(--lens-border, #333);
+        border-radius: 4px;
+        text-decoration: none;
+        color: var(--text-main, #eee);
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .help-toc-card:hover {
+        background: var(--bg-secondary, rgba(255,255,255,0.04));
+        border-color: var(--accent, #6cf);
+    }
+    .help-toc-card-title {
+        font-size: 0.9rem;
+        font-weight: bold;
+        letter-spacing: 0.5px;
+    }
+    .help-toc-card-desc {
+        font-size: 0.78rem;
+        color: var(--text-secondary, #999);
+        margin-top: 4px;
+        line-height: 1.4;
+    }
+</style>
 
 <div class="help-layout">
 
@@ -1038,110 +1224,205 @@ foreach ($help_topics as $slug => $topic) {
             <p class="help-nav-subtitle">SnapSmack Documentation</p>
         </div>
 
-        <?php foreach ($sections as $section_name => $topics): ?>
-            <div class="help-nav-section">
-                <div class="help-nav-section-label"><?php echo htmlspecialchars($section_name); ?></div>
+        <!-- Search -->
+        <div class="help-search">
+            <input type="text" id="help-search-input" placeholder="Search docs..." autocomplete="off">
+        </div>
 
-                <?php foreach ($topics as $slug => $topic): ?>
-                    <a href="smack-help.php?topic=<?php echo urlencode($slug); ?>" class="help-nav-link<?php echo ($slug === $active_topic) ? ' active' : ''; ?>"><?php echo htmlspecialchars($topic['icon'] ?? ''); ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?></a>
-                <?php endforeach; ?>
-            </div>
-        <?php endforeach; ?>
+        <!-- Search results (shown when typing) -->
+        <div class="help-search-results" id="help-search-results"></div>
+
+        <!-- Normal nav (hidden when searching) -->
+        <div id="help-nav-sections">
+            <a href="smack-help.php" class="help-nav-link<?php echo $show_toc ? ' active' : ''; ?>" style="padding-left: 16px; font-weight: bold;">&#x2630;&ensp;Table of Contents</a>
+
+            <?php foreach ($sections as $section_name => $topics): ?>
+                <div class="help-nav-section" data-section="<?php echo htmlspecialchars($section_name); ?>">
+                    <div class="help-nav-section-label"><?php echo htmlspecialchars($section_name); ?></div>
+
+                    <?php foreach ($topics as $slug => $topic): ?>
+                        <a href="smack-help.php?topic=<?php echo urlencode($slug); ?>"
+                           class="help-nav-link<?php echo ($slug === $active_topic) ? ' active' : ''; ?>"
+                           data-slug="<?php echo htmlspecialchars($slug); ?>"
+                           data-title="<?php echo htmlspecialchars(strtolower($topic['title'])); ?>"><?php echo htmlspecialchars($topic['icon'] ?? ''); ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?></a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
     </div>
 
     <!-- Help Content Area -->
     <div class="help-content">
-        <?php
-        $topic = $help_topics[$active_topic];
-        ?>
 
-        <div class="help-topic-header">
-            <div class="help-topic-section">
-                <?php echo htmlspecialchars($topic['section']); ?>
+        <?php if ($show_toc): ?>
+            <!-- ═══ TABLE OF CONTENTS ═══ -->
+            <div class="help-topic-header">
+                <h1 class="help-topic-title">&#x2630;&ensp;Man Pages</h1>
             </div>
-            <h1 class="help-topic-title">
-                <?php echo $topic['icon'] ?? ''; ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?>
-            </h1>
-        </div>
 
-        <div class="help-body">
-            <style>
-                .help-body h3 {
-                    font-size: 1.15rem;
-                    letter-spacing: 1px;
-                    margin: 0 0 12px 0;
-                    padding: 0;
-                }
-                .help-body h4 {
-                    font-size: 0.85rem;
-                    letter-spacing: 1.5px;
-                    text-transform: uppercase;
-                    color: var(--text-secondary, #aaa);
-                    margin: 24px 0 8px 0;
-                    padding: 0;
-                }
-                .help-body p {
-                    margin: 0 0 12px 0;
-                }
-                .help-body ul, .help-body ol {
-                    margin: 0 0 16px 0;
-                    padding-left: 24px;
-                }
-                .help-body li {
-                    margin-bottom: 6px;
-                }
-                .help-body pre {
-                    background: var(--bg-secondary, rgba(0,0,0,0.3));
-                    border: 1px solid var(--lens-border, #333);
-                    padding: 12px 16px;
-                    font-family: 'Consolas', 'Monaco', monospace;
-                    font-size: 0.82rem;
-                    overflow-x: auto;
-                    margin: 8px 0 16px 0;
-                    letter-spacing: 0.5px;
-                }
-                .help-body code {
-                    background: var(--bg-secondary, rgba(0,0,0,0.2));
-                    padding: 2px 6px;
-                    font-family: 'Consolas', 'Monaco', monospace;
-                    font-size: 0.82rem;
-                    border-radius: 2px;
-                }
-                .help-body strong {
-                    color: var(--text-main, #eee);
-                }
-                .help-body em {
-                    color: var(--text-secondary, #aaa);
-                }
-            </style>
+            <div class="help-body">
+                <p>SnapSmack documentation covering every feature of the CMS. Click a topic below or use
+                the search box in the sidebar to find what you need.</p>
 
-            <?php echo $topic['content']; ?>
-        </div>
-
-        <!-- Topic Navigation -->
-        <div class="help-topic-nav">
-            <?php
-            $slugs = array_keys($help_topics);
-            $current_index = array_search($active_topic, $slugs);
-            $prev = ($current_index > 0) ? $slugs[$current_index - 1] : null;
-            $next = ($current_index < count($slugs) - 1) ? $slugs[$current_index + 1] : null;
-            ?>
-            <div>
-                <?php if ($prev): ?>
-                    <a href="smack-help.php?topic=<?php echo urlencode($prev); ?>">
-                        &larr; <?php echo htmlspecialchars($help_topics[$prev]['title']); ?>
-                    </a>
-                <?php endif; ?>
+                <?php foreach ($sections as $section_name => $topics): ?>
+                    <div class="help-toc-section">
+                        <h3 class="help-toc-section-title"><?php echo htmlspecialchars($section_name); ?></h3>
+                        <div class="help-toc-grid">
+                            <?php foreach ($topics as $slug => $topic): ?>
+                                <?php
+                                // Extract first sentence from content as description
+                                $_raw = strip_tags($topic['content']);
+                                $_raw = preg_replace('/\s+/', ' ', trim($_raw));
+                                // Skip the h3 title (first few words before the actual description)
+                                $_first_p = '';
+                                if (preg_match('/<p>(.*?)<\/p>/s', $topic['content'], $_pm)) {
+                                    $_first_p = strip_tags($_pm[1]);
+                                }
+                                if (empty($_first_p)) $_first_p = substr($_raw, 0, 120);
+                                if (strlen($_first_p) > 120) $_first_p = substr($_first_p, 0, 117) . '...';
+                                ?>
+                                <a href="smack-help.php?topic=<?php echo urlencode($slug); ?>" class="help-toc-card">
+                                    <div class="help-toc-card-title"><?php echo $topic['icon'] ?? ''; ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?></div>
+                                    <div class="help-toc-card-desc"><?php echo htmlspecialchars($_first_p); ?></div>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
             </div>
-            <div>
-                <?php if ($next): ?>
-                    <a href="smack-help.php?topic=<?php echo urlencode($next); ?>">
-                        <?php echo htmlspecialchars($help_topics[$next]['title']); ?> &rarr;
-                    </a>
-                <?php endif; ?>
+
+        <?php else: ?>
+            <!-- ═══ SINGLE TOPIC ═══ -->
+            <?php $topic = $help_topics[$active_topic]; ?>
+
+            <div class="help-topic-header">
+                <div class="help-topic-section">
+                    <?php echo htmlspecialchars($topic['section']); ?>
+                </div>
+                <h1 class="help-topic-title">
+                    <?php echo $topic['icon'] ?? ''; ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?>
+                </h1>
             </div>
-        </div>
+
+            <div class="help-body">
+                <?php echo $topic['content']; ?>
+            </div>
+
+            <!-- Topic Navigation -->
+            <div class="help-topic-nav">
+                <?php
+                $slugs = array_keys($help_topics);
+                $current_index = array_search($active_topic, $slugs);
+                $prev = ($current_index > 0) ? $slugs[$current_index - 1] : null;
+                $next = ($current_index < count($slugs) - 1) ? $slugs[$current_index + 1] : null;
+                ?>
+                <div>
+                    <?php if ($prev): ?>
+                        <a href="smack-help.php?topic=<?php echo urlencode($prev); ?>">
+                            &larr; <?php echo htmlspecialchars($help_topics[$prev]['title']); ?>
+                        </a>
+                    <?php endif; ?>
+                </div>
+                <div>
+                    <?php if ($next): ?>
+                        <a href="smack-help.php?topic=<?php echo urlencode($next); ?>">
+                            <?php echo htmlspecialchars($help_topics[$next]['title']); ?> &rarr;
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endif; ?>
     </div>
 </div>
+
+<!-- Search Engine -->
+<script>
+(function () {
+    'use strict';
+
+    var searchIndex = <?php echo json_encode($_search_index, JSON_UNESCAPED_UNICODE); ?>;
+    var input       = document.getElementById('help-search-input');
+    var resultsDiv  = document.getElementById('help-search-results');
+    var navSections = document.getElementById('help-nav-sections');
+
+    if (!input || !resultsDiv || !navSections) return;
+
+    input.addEventListener('input', function () {
+        var q = this.value.trim().toLowerCase();
+
+        if (q.length < 2) {
+            // Reset — show nav, hide results
+            resultsDiv.classList.remove('active');
+            navSections.style.display = '';
+            return;
+        }
+
+        // Hide nav, show results
+        navSections.style.display = 'none';
+        resultsDiv.classList.add('active');
+
+        var html = '';
+        var count = 0;
+        var terms = q.split(/\s+/);
+
+        for (var slug in searchIndex) {
+            var item = searchIndex[slug];
+            var haystack = (item.title + ' ' + item.section + ' ' + item.text).toLowerCase();
+
+            // All terms must match
+            var match = true;
+            for (var i = 0; i < terms.length; i++) {
+                if (haystack.indexOf(terms[i]) === -1) { match = false; break; }
+            }
+            if (!match) continue;
+
+            // Extract snippet around first term match in content
+            var snippet = '';
+            var textLower = item.text;
+            var pos = textLower.indexOf(terms[0]);
+            if (pos !== -1) {
+                var start = Math.max(0, pos - 40);
+                var end = Math.min(textLower.length, pos + 80);
+                snippet = (start > 0 ? '...' : '') + item.text.substring(start, end) + (end < textLower.length ? '...' : '');
+                // Highlight all terms in snippet
+                for (var j = 0; j < terms.length; j++) {
+                    var re = new RegExp('(' + terms[j].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                    snippet = snippet.replace(re, '<mark>$1</mark>');
+                }
+            }
+
+            html += '<a href="smack-help.php?topic=' + encodeURIComponent(slug) + '" class="help-search-result">';
+            html += '<div>' + (item.icon || '') + '&ensp;<strong>' + escapeHtml(item.title) + '</strong></div>';
+            html += '<div class="help-search-result-section">' + escapeHtml(item.section) + '</div>';
+            if (snippet) {
+                html += '<div class="help-search-result-snippet">' + snippet + '</div>';
+            }
+            html += '</a>';
+            count++;
+        }
+
+        if (count === 0) {
+            html = '<div class="help-search-no-results">No topics found for "' + escapeHtml(q) + '"</div>';
+        }
+
+        resultsDiv.innerHTML = html;
+    });
+
+    // Keyboard shortcut: / focuses search
+    document.addEventListener('keydown', function (e) {
+        if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            input.focus();
+            input.select();
+        }
+    });
+
+    function escapeHtml(str) {
+        var d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+})();
+</script>
 
 <?php include 'core/admin-footer.php'; ?>
