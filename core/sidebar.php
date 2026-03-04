@@ -71,6 +71,9 @@ if (!empty($settings['active_skin'])) {
                         <a href="smack-pimpotron.php">Pimpotron</a>
                     </li>
                     <?php endif; ?>
+                    <li class="<?php echo ($current_page == 'smack-social-dock.php') ? 'active' : ''; ?>">
+                        <a href="smack-social-dock.php">Social Dock</a>
+                    </li>
                     <li class="<?php echo ($current_page == 'smack-css.php') ? 'active' : ''; ?>">
                         <a href="smack-css.php">Smack Your CSS Up!</a>
                     </li>

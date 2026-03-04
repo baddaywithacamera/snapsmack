@@ -21,3 +21,7 @@
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-thomas.css">
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-thomas.js?v=<?php echo time(); ?>"></script>
+
+<?php include __DIR__ . '/social-dock.php'; ?>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-social-dock.css">
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-social-dock.js?v=<?php echo time(); ?>"></script>
