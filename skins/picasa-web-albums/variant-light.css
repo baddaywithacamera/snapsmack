@@ -1,0 +1,22 @@
+/**
+ * SNAPSMACK - Light variant for the picasa-web-albums skin
+ * v1.0
+ */
+:root {
+    --pwa-bg-page: #ffffff;
+    --pwa-bg-secondary: #f8f8f8;
+    --pwa-bg-header: #ffffff;
+    --pwa-bg-toolbar: #f1f1f1;
+    --pwa-bg-filmstrip: rgba(255, 255, 255, 0.95);
+    --pwa-border: #e5e5e5;
+    --pwa-border-light: #f0f0f0;
+    --pwa-text-primary: #333333;
+    --pwa-text-secondary: #666666;
+    --pwa-text-dim: #999999;
+    --pwa-accent: #4d90fe;
+    --pwa-accent-hover: #3b78e7;
+    --pwa-accent-bg: #f0f6ff;
+    --pwa-thumb-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    --pwa-thumb-shadow-hover: 0 4px 12px rgba(0,0,0,0.15);
+    --pwa-overlay-bg: rgba(255, 255, 255, 0.97);
+}

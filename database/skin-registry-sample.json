@@ -87,6 +87,24 @@
                 "archive_layouts": ["square"]
             }
         },
+        "picasa-web-albums": {
+            "name": "Picasa Web Albums",
+            "version": "1.0",
+            "status": "stable",
+            "author": "Sean McCormick",
+            "description": "Clean, white-space-rich gallery skin inspired by Google's Picasa Web Albums. Light and dark variants. Album grid landing, filmstrip viewer, slideshow mode.",
+            "screenshot": "https://updates.snapsmack.ca/skins/picasa-web-albums/screenshot.png",
+            "download_url": "https://updates.snapsmack.ca/skins/picasa-web-albums/picasa-web-albums-1.0.zip",
+            "download_size": 45000,
+            "signature": "",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.8",
+            "features": {
+                "supports_wall": false,
+                "supports_slider": true,
+                "archive_layouts": ["square"]
+            }
+        },
         "pocket-operator": {
             "name": "Pocket Rocket",
             "version": "1.0",
