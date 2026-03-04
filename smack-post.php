@@ -8,6 +8,7 @@
  */
 
 require_once 'core/auth.php';
+require_once 'core/palette-extract.php';
 
 // Extend limits for high-resolution image processing.
 set_time_limit(300);
@@ -108,6 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         $db_thumb_square = null;
         $db_thumb_aspect = null;
         $db_checksum     = null;
+        $display_options_json = null;
 
         if ($mime == 'image/jpeg') { $src = imagecreatefromjpeg($target_path); }
         elseif ($mime == 'image/png') { $src = imagecreatefrompng($target_path); }
@@ -252,6 +254,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             $db_thumb_square = $rel_dir . '/thumbs/t_' . $new_file_name;
             $db_thumb_aspect = $rel_dir . '/thumbs/a_' . $new_file_name;
             $db_checksum     = hash_file('sha256', $target_path);
+
+            // --- COLOUR PALETTE EXTRACTION ---
+            // Extract dominant colours from the image for Hip To Be Square frame customisation.
+            $palette = snapsmack_extract_palette($target_path, 5);
+            $display_options_json = !empty($palette) ? json_encode(['palette' => $palette]) : null;
         }
 
         // --- ORIENTATION DETECTION ---
@@ -289,8 +296,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 download_url,
                 img_thumb_square,
                 img_thumb_aspect,
-                img_checksum
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                img_checksum,
+                img_display_options
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -310,7 +318,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             $download_url,
             $db_thumb_square ?? null,
             $db_thumb_aspect ?? null,
-            $db_checksum ?? null
+            $db_checksum ?? null,
+            $display_options_json ?? null
         ]);
 
         $new_img_id = $pdo->lastInsertId();

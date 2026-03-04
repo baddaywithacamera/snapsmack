@@ -54,9 +54,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'flash'    => $_POST['flash_fire'] ?? 'No'
     ];
 
+    // --- FRAME & DISPLAY OPTIONS ---
+    // Merge user-submitted frame/mat/bevel settings into img_display_options JSON.
+    $disp_stmt = $pdo->prepare("SELECT img_display_options FROM snap_images WHERE id = ?");
+    $disp_stmt->execute([$id]);
+    $existing_display_raw = $disp_stmt->fetchColumn();
+    $existing_display = json_decode($existing_display_raw ?: '{}', true) ?: [];
+
+    if (isset($_POST['reset_frame_options'])) {
+        // Reset: keep palette but clear frame overrides.
+        $display_opts = [];
+        if (!empty($existing_display['palette'])) {
+            $display_opts['palette'] = $existing_display['palette'];
+        }
+    } else {
+        $display_opts = $existing_display;
+        if (isset($_POST['frame_color']) && $_POST['frame_color'] !== '') {
+            $display_opts['frame_color'] = $_POST['frame_color'];
+        }
+        if (isset($_POST['frame_width']) && $_POST['frame_width'] !== '') {
+            $display_opts['frame_width'] = (int)$_POST['frame_width'];
+        }
+        if (isset($_POST['mat_color']) && $_POST['mat_color'] !== '') {
+            $display_opts['mat_color'] = $_POST['mat_color'];
+        }
+        if (isset($_POST['mat_width']) && $_POST['mat_width'] !== '') {
+            $display_opts['mat_width'] = (int)$_POST['mat_width'];
+        }
+        if (isset($_POST['bevel_style'])) {
+            $display_opts['bevel_style'] = $_POST['bevel_style'];
+        }
+    }
+    $display_json = !empty($display_opts) ? json_encode($display_opts) : null;
+
     // Update the primary image record with all modified fields.
-    $stmt = $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_film = ?, img_exif = ?, img_status = ?, img_date = ?, img_orientation = ?, allow_comments = ?, allow_download = ?, download_url = ? WHERE id = ?");
-    $stmt->execute([$title, $desc, $film_val, json_encode($updated_exif), $status, $custom_date, $orientation, $allow_comments, $allow_download, $download_url, $id]);
+    $stmt = $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_film = ?, img_exif = ?, img_status = ?, img_date = ?, img_orientation = ?, allow_comments = ?, allow_download = ?, download_url = ?, img_display_options = ? WHERE id = ?");
+    $stmt->execute([$title, $desc, $film_val, json_encode($updated_exif), $status, $custom_date, $orientation, $allow_comments, $allow_download, $download_url, $display_json, $id]);
 
     // Delete and re-populate category mappings.
     $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
@@ -83,6 +116,8 @@ if (!$post) {
 }
 
 $exif = json_decode($post['img_exif'], true) ?? [];
+$display_opts = json_decode($post['img_display_options'] ?? '{}', true) ?: [];
+$palette = $display_opts['palette'] ?? [];
 
 // Load the image's current category associations.
 $mapped_cats = $pdo->prepare("SELECT cat_id FROM snap_image_cat_map WHERE image_id = ?");
@@ -245,6 +280,77 @@ include 'core/sidebar.php';
         </div>
 
         <div class="box">
+            <h3>FRAME & DISPLAY OPTIONS</h3>
+            <p class="dim exif-hint">Per-image picture frame customisation for gallery skins. Leave at defaults to use skin-wide settings.</p>
+
+            <div class="meta-grid">
+                <div class="lens-input-wrapper">
+                    <label>FRAME COLOUR</label>
+                    <div class="frame-color-row">
+                        <input type="color" name="frame_color" value="<?php echo htmlspecialchars($display_opts['frame_color'] ?? '#2c2017'); ?>" class="color-picker-input">
+                        <?php if (!empty($palette)): ?>
+                            <div class="palette-swatches" data-target="frame_color">
+                                <?php foreach ($palette as $hex): ?>
+                                    <span class="swatch" style="background:<?php echo htmlspecialchars($hex); ?>" data-color="<?php echo htmlspecialchars($hex); ?>" title="<?php echo htmlspecialchars($hex); ?>"></span>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>FRAME WIDTH <span class="range-val" id="frame-width-val"><?php echo (int)($display_opts['frame_width'] ?? 8); ?>px</span></label>
+                    <input type="range" name="frame_width" min="3" max="20" value="<?php echo (int)($display_opts['frame_width'] ?? 8); ?>" oninput="document.getElementById('frame-width-val').textContent=this.value+'px'">
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>MAT COLOUR</label>
+                    <div class="frame-color-row">
+                        <input type="color" name="mat_color" value="<?php echo htmlspecialchars($display_opts['mat_color'] ?? '#f5f0eb'); ?>" class="color-picker-input">
+                        <?php if (!empty($palette)): ?>
+                            <div class="palette-swatches" data-target="mat_color">
+                                <?php foreach ($palette as $hex): ?>
+                                    <span class="swatch" style="background:<?php echo htmlspecialchars($hex); ?>" data-color="<?php echo htmlspecialchars($hex); ?>" title="<?php echo htmlspecialchars($hex); ?>"></span>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>MAT WIDTH <span class="range-val" id="mat-width-val"><?php echo (int)($display_opts['mat_width'] ?? 24); ?>px</span></label>
+                    <input type="range" name="mat_width" min="8" max="60" value="<?php echo (int)($display_opts['mat_width'] ?? 24); ?>" oninput="document.getElementById('mat-width-val').textContent=this.value+'px'">
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>BEVEL STYLE</label>
+                    <select name="bevel_style" class="full-width-select">
+                        <option value="none" <?php echo ($display_opts['bevel_style'] ?? 'single') === 'none' ? 'selected' : ''; ?>>None</option>
+                        <option value="single" <?php echo ($display_opts['bevel_style'] ?? 'single') === 'single' ? 'selected' : ''; ?>>Single</option>
+                        <option value="double" <?php echo ($display_opts['bevel_style'] ?? 'single') === 'double' ? 'selected' : ''; ?>>Double</option>
+                    </select>
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>EXTRACTED PALETTE</label>
+                    <?php if (!empty($palette)): ?>
+                        <div class="palette-preview-row">
+                            <?php foreach ($palette as $hex): ?>
+                                <span class="palette-chip" style="background:<?php echo htmlspecialchars($hex); ?>" title="<?php echo htmlspecialchars($hex); ?> (click to copy)" onclick="navigator.clipboard.writeText('<?php echo htmlspecialchars($hex); ?>')"></span>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <p class="dim">No palette extracted. Run backfill or re-upload.</p>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="form-action-row" style="margin-top:10px;">
+                <button type="submit" name="reset_frame_options" value="1" class="btn-secondary" onclick="return confirm('Reset frame options to skin defaults?')">RESET TO DEFAULTS</button>
+            </div>
+        </div>
+
+        <div class="box">
             <h3>TECHNICAL SPECIFICATIONS (EXIF OVERRIDES)</h3>
             
             <div class="meta-grid">
@@ -303,6 +409,19 @@ include 'core/sidebar.php';
     </form>
 </div>
 
+<style>
+.frame-color-row { display: flex; align-items: center; gap: 8px; }
+.color-picker-input { width: 50px; height: 34px; border: 1px solid #333; padding: 2px; cursor: pointer; background: #111; }
+.palette-swatches { display: flex; gap: 4px; }
+.palette-swatches .swatch { width: 24px; height: 24px; border-radius: 3px; cursor: pointer; border: 1px solid #444; transition: transform 0.15s; }
+.palette-swatches .swatch:hover { transform: scale(1.2); border-color: #aaa; }
+.palette-preview-row { display: flex; gap: 6px; }
+.palette-chip { width: 36px; height: 36px; border-radius: 4px; cursor: pointer; border: 1px solid #444; transition: transform 0.15s; }
+.palette-chip:hover { transform: scale(1.15); border-color: #aaa; }
+.range-val { color: #888; font-size: 0.85em; margin-left: 6px; }
+.btn-secondary { background: #333; color: #aaa; border: 1px solid #555; padding: 6px 14px; cursor: pointer; font-size: 0.8em; text-transform: uppercase; }
+.btn-secondary:hover { background: #444; color: #fff; }
+</style>
 <script src="assets/js/smack-ui-private.js?v=<?php echo time(); ?>"></script>
 <script>
     window.addEventListener('DOMContentLoaded', () => {
@@ -313,4 +432,14 @@ include 'core/sidebar.php';
     });
 </script>
 <script src="assets/js/shortcode-toolbar.js"></script>
+<script>
+// Palette swatch click → set corresponding colour picker
+document.querySelectorAll('.palette-swatches .swatch').forEach(s => {
+    s.addEventListener('click', () => {
+        const target = s.closest('.palette-swatches').dataset.target;
+        const input = document.querySelector('input[name="' + target + '"]');
+        if (input) input.value = s.dataset.color;
+    });
+});
+</script>
 <?php include 'core/admin-footer.php'; ?>

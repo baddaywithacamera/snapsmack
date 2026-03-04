@@ -1,0 +1,1022 @@
+/* ============================================================================
+   Hip To Be Square - CSS Stylesheet
+   Gallery Wall Skin with Picture Frames
+   ============================================================================ */
+
+/* ============================================================================
+   CSS Custom Properties (defaults, can be overridden by admin panel)
+   ============================================================================ */
+
+:root {
+    --frame-color: #2c2017;
+    --frame-width: 8px;
+    --mat-color: #f5f0eb;
+    --mat-width: 24px;
+    --wall-bg: #f5f0eb;
+    --text-primary: #333333;
+    --text-secondary: #777777;
+    --accent-color: #b8965a;
+    --grid-cols: 4;
+}
+
+/* ============================================================================
+   Base Styles & Body
+   ============================================================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    height: 100%;
+}
+
+body {
+    background-color: var(--wall-bg);
+    background-image: url('assets/wall-smooth-plaster.jpg');
+    background-repeat: repeat;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--text-primary);
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* ============================================================================
+   Typography
+   ============================================================================ */
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 500;
+    margin-bottom: 0.5em;
+}
+
+h1 {
+    font-size: 24px;
+}
+
+h2 {
+    font-size: 20px;
+}
+
+h3 {
+    font-size: 18px;
+}
+
+p {
+    margin-bottom: 1em;
+}
+
+a {
+    color: var(--accent-color);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: #a0803f;
+    text-decoration: underline;
+}
+
+/* ============================================================================
+   Gallery Header
+   ============================================================================ */
+
+.htbs-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e5e5e5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 30px;
+    z-index: 100;
+    transition: box-shadow 0.3s ease;
+}
+
+.htbs-header.scrolled {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.htbs-header-logo {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--text-primary);
+}
+
+.htbs-header-nav {
+    display: flex;
+    gap: 30px;
+    align-items: center;
+}
+
+.htbs-header-nav a {
+    font-size: 13px;
+    color: var(--text-primary);
+    transition: color 0.2s ease;
+}
+
+.htbs-header-nav a:hover {
+    color: var(--accent-color);
+}
+
+.htbs-header-nav a.active {
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+/* ============================================================================
+   Picture Frame System
+   Core Visual Feature - Nested structure creates gallery frame effect
+   ============================================================================ */
+
+/* Frame Mount - spacing around frame on wall */
+.frame-mount {
+    display: inline-block;
+    padding: 20px;
+}
+
+/* Frame Border - outer frame with subtle wood grain effect */
+.frame-border {
+    background: var(--frame-color);
+    padding: var(--frame-width);
+    background-image: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.05) 0%,
+        transparent 50%,
+        rgba(0, 0, 0, 0.05) 100%
+    );
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.15),
+        inset 1px 1px 0 rgba(255, 255, 255, 0.1),
+        inset -1px -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* Frame Mat - matting layer with bevel effect */
+.frame-mat {
+    background: var(--mat-color);
+    padding: var(--mat-width);
+}
+
+/* Frame Bevel - creates angled-cut mat illusion */
+.frame-bevel {
+    box-shadow:
+        inset 2px 2px 4px rgba(0, 0, 0, 0.15),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.5);
+}
+
+/* Frame Image - contains the actual image */
+.frame-image {
+    position: relative;
+    overflow: hidden;
+    line-height: 0;
+    background: #ffffff;
+}
+
+.frame-image img {
+    display: block;
+    width: 100%;
+    height: auto;
+    transition: transform 0.3s ease;
+}
+
+.frame-image:hover img {
+    transform: scale(1.02);
+}
+
+/* ============================================================================
+   Plaque - nameplate below frame in single view
+   ============================================================================ */
+
+.plaque {
+    text-align: center;
+    margin-top: 20px;
+    padding: 12px 30px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid #ddd;
+    display: inline-block;
+    backdrop-filter: blur(4px);
+}
+
+.plaque-title {
+    font-family: Georgia, serif;
+    font-size: 16px;
+    color: var(--text-primary);
+    letter-spacing: 1px;
+    font-weight: 500;
+}
+
+.plaque-date {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+/* ============================================================================
+   Single Image View
+   ============================================================================ */
+
+.htbs-single {
+    padding-top: 80px;
+    padding-bottom: 120px; /* room for filmstrip */
+    min-height: 100vh;
+}
+
+.htbs-gallery-room {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    max-width: 90vw;
+    margin: 0 auto;
+    padding: 40px 0;
+}
+
+.htbs-gallery-room .frame-mount {
+    max-width: 70vh;
+}
+
+.htbs-gallery-room .frame-border {
+    max-height: 70vh;
+    overflow: hidden;
+}
+
+/* Navigation arrows for single view */
+.htbs-nav-arrow {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid #e5e5e5;
+    cursor: pointer;
+    z-index: 50;
+    transition: all 0.2s ease;
+    font-size: 20px;
+    color: var(--text-primary);
+}
+
+.htbs-nav-arrow:hover {
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    color: var(--accent-color);
+}
+
+.htbs-nav-arrow.prev {
+    left: 20px;
+}
+
+.htbs-nav-arrow.next {
+    right: 20px;
+}
+
+.htbs-nav-arrow:disabled,
+.htbs-nav-arrow.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.htbs-nav-arrow:disabled:hover,
+.htbs-nav-arrow.disabled:hover {
+    background: rgba(255, 255, 255, 0.5);
+    color: var(--text-primary);
+}
+
+/* ============================================================================
+   Slider Landing Page
+   ============================================================================ */
+
+.htbs-slider-landing {
+    padding-top: 60px;
+    height: calc(100vh - 60px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.htbs-slider-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.htbs-slider-wrapper {
+    width: 90%;
+    max-width: 1200px;
+}
+
+/* Slide content — center frames and plaques within each slide */
+.htbs-slide-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: inherit;
+}
+
+.htbs-slide-link:hover {
+    text-decoration: none;
+}
+
+.htbs-slide-link .frame-mount {
+    max-width: 100%;
+}
+
+.htbs-slide-link .frame-image img {
+    aspect-ratio: 1;
+    object-fit: cover;
+    max-height: 55vh;
+}
+
+.slider-slide {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+}
+
+/* Slider controls styling */
+.htbs-slider-control {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 10;
+}
+
+.htbs-slider-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.htbs-slider-dot.active {
+    background: var(--accent-color);
+    transform: scale(1.2);
+}
+
+/* ============================================================================
+   Archive Grid
+   ============================================================================ */
+
+.htbs-archive-grid {
+    padding-top: 60px;
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 4), 1fr);
+    gap: 30px;
+    padding: 30px;
+    max-width: 1400px;
+    margin: 0 auto;
+    min-height: 100vh;
+}
+
+.htbs-archive-item {
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.htbs-archive-item:hover {
+    transform: scale(1.02);
+}
+
+/* Thinner frames for archive thumbnails */
+.htbs-archive-item .frame-mount {
+    padding: 12px;
+}
+
+.htbs-archive-item .frame-border {
+    padding: 4px;
+}
+
+.htbs-archive-item .frame-mat {
+    padding: 8px;
+}
+
+/* Title overlay on archive items */
+.htbs-archive-title {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 10px 8px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #ffffff;
+    font-size: 12px;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    backdrop-filter: blur(2px);
+}
+
+.htbs-archive-item:hover .htbs-archive-title {
+    opacity: 1;
+}
+
+/* ============================================================================
+   Filmstrip
+   Horizontal scrollable strip of image thumbnails
+   ============================================================================ */
+
+.htbs-filmstrip {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.95);
+    border-top: 1px solid #e5e5e5;
+    backdrop-filter: blur(4px);
+    z-index: 80;
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: 100px;
+    padding: 10px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.htbs-filmstrip::-webkit-scrollbar {
+    height: 6px;
+}
+
+.htbs-filmstrip::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.htbs-filmstrip::-webkit-scrollbar-thumb {
+    background: #cccccc;
+    border-radius: 3px;
+}
+
+.htbs-filmstrip::-webkit-scrollbar-thumb:hover {
+    background: #999999;
+}
+
+.htbs-filmstrip-item {
+    flex-shrink: 0;
+    width: 70px;
+    height: 70px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.htbs-filmstrip-item.active {
+    border-color: var(--accent-color);
+    transform: scale(1.05);
+}
+
+.htbs-filmstrip-item:hover {
+    opacity: 0.8;
+}
+
+.htbs-filmstrip-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ============================================================================
+   Footer Styling
+   Clean, minimal, gallery aesthetic
+   ============================================================================ */
+
+.htbs-footer,
+footer {
+    background: #ffffff;
+    border-top: 1px solid #e5e5e5;
+    padding: 20px 30px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-top: 40px;
+}
+
+.htbs-footer a,
+footer a {
+    color: var(--accent-color);
+}
+
+.htbs-footer a:hover,
+footer a:hover {
+    color: #a0803f;
+}
+
+/* ============================================================================
+   Info & Details Section
+   EXIF data, comments, metadata display
+   ============================================================================ */
+
+#footer,
+#pane-info,
+#pane-comments {
+    background: #ffffff;
+    padding: 30px;
+    border-top: 1px solid #e5e5e5;
+}
+
+.htbs-info-section {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.htbs-info-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+/* EXIF Data Table */
+.htbs-exif-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.htbs-exif-table tr {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.htbs-exif-table tr:last-child {
+    border-bottom: none;
+}
+
+.htbs-exif-table td {
+    padding: 8px 0;
+}
+
+.htbs-exif-table td:first-child {
+    font-weight: 600;
+    color: var(--text-secondary);
+    width: 40%;
+    padding-right: 20px;
+}
+
+.htbs-exif-table td:last-child {
+    color: var(--text-primary);
+}
+
+/* Comment Form */
+.htbs-comment-form {
+    margin-top: 30px;
+    padding-top: 30px;
+    border-top: 1px solid #e5e5e5;
+}
+
+.htbs-comment-form-group {
+    margin-bottom: 20px;
+}
+
+.htbs-comment-form label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.htbs-comment-form input,
+.htbs-comment-form textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e5e5e5;
+    border-radius: 2px;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text-primary);
+    background: #f9f9f9;
+    transition: all 0.2s ease;
+}
+
+.htbs-comment-form input:focus,
+.htbs-comment-form textarea:focus {
+    outline: none;
+    background: #ffffff;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(184, 150, 90, 0.1);
+}
+
+.htbs-comment-form textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+.htbs-comment-form-button {
+    background: var(--accent-color);
+    color: #ffffff;
+    border: none;
+    padding: 10px 30px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 2px;
+}
+
+.htbs-comment-form-button:hover {
+    background: #a0803f;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.htbs-comment-form-button:active {
+    transform: scale(0.98);
+}
+
+/* Comment Display */
+.htbs-comment {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.htbs-comment:last-child {
+    border-bottom: none;
+}
+
+.htbs-comment-author {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.htbs-comment-date {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-left: 10px;
+}
+
+.htbs-comment-text {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+/* ============================================================================
+   Responsive Design
+   ============================================================================ */
+
+/* Tablets and smaller desktops */
+@media (max-width: 1024px) {
+    :root {
+        --grid-cols: 3;
+    }
+
+    .htbs-archive-grid {
+        gap: 24px;
+        padding: 20px;
+    }
+
+    .htbs-header {
+        padding: 0 20px;
+    }
+
+    .htbs-nav-arrow {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+
+    .htbs-nav-arrow.prev {
+        left: 10px;
+    }
+
+    .htbs-nav-arrow.next {
+        right: 10px;
+    }
+}
+
+/* Small tablets and large phones */
+@media (max-width: 768px) {
+    :root {
+        --grid-cols: 2;
+        --frame-width: 6px;
+        --mat-width: 16px;
+    }
+
+    body {
+        font-size: 12px;
+    }
+
+    .htbs-header {
+        height: 50px;
+        padding: 0 15px;
+    }
+
+    .htbs-header-logo {
+        font-size: 16px;
+    }
+
+    .htbs-header-nav {
+        gap: 20px;
+    }
+
+    .htbs-single {
+        padding-top: 50px;
+    }
+
+    .htbs-gallery-room .frame-mount {
+        max-width: 100%;
+        padding: 15px;
+    }
+
+    .htbs-gallery-room .frame-border {
+        max-height: 60vh;
+    }
+
+    .htbs-nav-arrow {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+
+    .htbs-nav-arrow.prev {
+        left: 5px;
+    }
+
+    .htbs-nav-arrow.next {
+        right: 5px;
+    }
+
+    .htbs-archive-grid {
+        gap: 18px;
+        padding: 15px;
+        padding-top: 50px;
+    }
+
+    .htbs-filmstrip {
+        height: 80px;
+        padding: 8px;
+    }
+
+    .htbs-filmstrip-item {
+        width: 60px;
+        height: 60px;
+    }
+
+    .plaque {
+        margin-top: 15px;
+        padding: 10px 20px;
+    }
+
+    .plaque-title {
+        font-size: 14px;
+    }
+
+    .plaque-date {
+        font-size: 10px;
+    }
+
+    #footer,
+    #pane-info,
+    #pane-comments {
+        padding: 20px 15px;
+    }
+}
+
+/* Phones */
+@media (max-width: 480px) {
+    :root {
+        --grid-cols: 1;
+        --frame-width: 4px;
+        --mat-width: 12px;
+    }
+
+    body {
+        font-size: 11px;
+    }
+
+    .htbs-header {
+        height: 45px;
+        padding: 0 12px;
+    }
+
+    .htbs-header-logo {
+        font-size: 14px;
+    }
+
+    .htbs-header-nav {
+        gap: 15px;
+        font-size: 11px;
+    }
+
+    .htbs-single {
+        padding-top: 45px;
+    }
+
+    .htbs-gallery-room .frame-mount {
+        padding: 10px;
+    }
+
+    .htbs-gallery-room .frame-border {
+        max-height: 50vh;
+    }
+
+    .htbs-nav-arrow {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+
+    .htbs-archive-grid {
+        gap: 12px;
+        padding: 10px;
+        padding-top: 45px;
+    }
+
+    .htbs-filmstrip {
+        height: 70px;
+        padding: 6px;
+        gap: 8px;
+    }
+
+    .htbs-filmstrip-item {
+        width: 50px;
+        height: 50px;
+    }
+
+    .plaque {
+        margin-top: 12px;
+        padding: 8px 15px;
+    }
+
+    .plaque-title {
+        font-size: 12px;
+    }
+
+    .plaque-date {
+        font-size: 9px;
+    }
+
+    #footer,
+    #pane-info,
+    #pane-comments {
+        padding: 15px 12px;
+    }
+
+    .htbs-info-section {
+        max-width: 100%;
+    }
+}
+
+/* ============================================================================
+   Utility Classes
+   ============================================================================ */
+
+.hidden {
+    display: none !important;
+}
+
+.invisible {
+    visibility: hidden;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-muted {
+    color: var(--text-secondary);
+}
+
+.mt-small {
+    margin-top: 10px;
+}
+
+.mt-medium {
+    margin-top: 20px;
+}
+
+.mt-large {
+    margin-top: 30px;
+}
+
+.mb-small {
+    margin-bottom: 10px;
+}
+
+.mb-medium {
+    margin-bottom: 20px;
+}
+
+.mb-large {
+    margin-bottom: 30px;
+}
+
+/* ============================================================================
+   Print Styles
+   ============================================================================ */
+
+@media print {
+    .htbs-header,
+    .htbs-nav-arrow,
+    .htbs-filmstrip,
+    footer,
+    #pane-info,
+    #pane-comments {
+        display: none !important;
+    }
+
+    body {
+        background: #ffffff;
+        padding: 20px;
+    }
+
+    .htbs-gallery-room {
+        max-width: 100%;
+    }
+
+    .frame-border {
+        box-shadow: none;
+    }
+}
+
+/* ============================================================================
+   Accessibility
+   ============================================================================ */
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+button:focus,
+a:focus,
+input:focus,
+textarea:focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+/* ============================================================================
+   Animation Keyframes
+   ============================================================================ */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease;
+}
+
+.slide-in-up {
+    animation: slideInUp 0.3s ease;
+}

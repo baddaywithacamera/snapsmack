@@ -1,0 +1,124 @@
+/**
+ * SnapSmack Gallery Slider Styles
+ * Minimal, clean styling for the SnapSlider component
+ */
+
+/* Main slider container */
+.ss-slider {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Slider track (holds all slides) */
+.slider-track {
+  display: flex;
+  transition: transform 800ms ease-in-out;
+  touch-action: pan-y;
+  will-change: transform;
+}
+
+/* Individual slide */
+.slider-slide {
+  flex: 0 0 auto;
+  width: calc(100% / var(--per-view, 1));
+  height: 100%;
+}
+
+/* Navigation arrows - base styles */
+.slider-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.3s ease, background-color 0.3s ease;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Arrow: left */
+.slider-arrow-left {
+  left: 15px;
+}
+
+/* Arrow: right */
+.slider-arrow-right {
+  right: 15px;
+}
+
+/* Arrow hover state (when hovering over arrow itself) */
+.slider-arrow:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Arrows visible on container hover */
+.ss-slider:hover .slider-arrow {
+  opacity: 0.7;
+}
+
+/* Chevron icon inside arrow (using CSS borders) */
+.slider-arrow span {
+  display: block;
+  width: 12px;
+  height: 12px;
+  position: relative;
+}
+
+/* Left chevron */
+.slider-arrow-left span::before {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid #fff;
+  border-right: 2px solid #fff;
+  transform: rotate(-135deg);
+  left: 2px;
+  top: 2px;
+}
+
+/* Right chevron */
+.slider-arrow-right span::before {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid #fff;
+  border-right: 2px solid #fff;
+  transform: rotate(45deg);
+  left: 2px;
+  top: 2px;
+}
+
+/* Accessibility: focus state */
+.slider-arrow:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 2px;
+}
+
+/* Responsive: disable arrows on very small screens if needed */
+@media (max-width: 480px) {
+  .slider-arrow {
+    width: 36px;
+    height: 36px;
+  }
+
+  .slider-arrow-left {
+    left: 10px;
+  }
+
+  .slider-arrow-right {
+    right: 10px;
+  }
+}

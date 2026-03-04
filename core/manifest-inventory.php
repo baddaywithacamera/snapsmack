@@ -549,5 +549,38 @@ return [
             'path'         => 'assets/js/ss-engine-justified.js',
             'has_settings' => false
         ],
+        'smack-slider' => [
+            'label'        => 'Gallery Slider Engine',
+            'path'         => 'assets/js/ss-engine-slider.js',
+            'css'          => 'assets/css/ss-engine-slider.css',
+            'has_settings' => true,
+            'controls'     => [
+                'slider_per_view' => [
+                    'type'    => 'select',
+                    'label'   => 'Images Per View',
+                    'default' => '2',
+                    'options' => ['1' => '1', '2' => '2', '3' => '3']
+                ],
+                'slider_speed' => [
+                    'type'    => 'range',
+                    'label'   => 'Transition Speed (ms)',
+                    'default' => '800',
+                    'min'     => '400',
+                    'max'     => '1500'
+                ],
+                'slider_auto_advance' => [
+                    'type'    => 'select',
+                    'label'   => 'Auto Advance',
+                    'default' => '0',
+                    'options' => ['0' => 'Disabled', '1' => 'Enabled']
+                ],
+                'slider_loop' => [
+                    'type'    => 'select',
+                    'label'   => 'Loop Slides',
+                    'default' => '1',
+                    'options' => ['1' => 'Enabled', '0' => 'Disabled']
+                ]
+            ]
+        ],
     ]
 ];

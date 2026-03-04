@@ -102,7 +102,13 @@ include __DIR__ . '/' . $skin_path . '/skin-meta.php';
 <div id="page-wrapper">
     <?php
     if ($img && file_exists(__DIR__ . '/' . $skin_path . '/layout.php')) {
-        include __DIR__ . '/' . $skin_path . '/layout.php';
+        // Skin landing page: if no explicit slug was requested and the skin provides
+        // a landing.php (e.g. a gallery slider), show that instead of the single image.
+        if (!$requested_slug && file_exists(__DIR__ . '/' . $skin_path . '/landing.php')) {
+            include __DIR__ . '/' . $skin_path . '/landing.php';
+        } else {
+            include __DIR__ . '/' . $skin_path . '/layout.php';
+        }
     } else {
         echo "<div class='not-found-msg' style='text-align:center; padding:100px; color:#fff;'><h1>404</h1>Transmission Lost.<br><small>Looking for: $skin_path</small></div>";
     }

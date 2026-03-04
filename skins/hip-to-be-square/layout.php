@@ -1,0 +1,159 @@
+<?php
+require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
+
+// Per-image frame overrides
+$display_opts = [];
+if (!empty($img['img_display_options'])) {
+    $display_opts = json_decode($img['img_display_options'], true) ?? [];
+}
+$frame_color = $display_opts['frame_color'] ?? null;
+$frame_width = $display_opts['frame_width'] ?? null;
+$mat_color = $display_opts['mat_color'] ?? null;
+$mat_width = $display_opts['mat_width'] ?? null;
+$bevel = $display_opts['bevel'] ?? null;
+
+// Build inline style overrides
+$frame_style = '';
+if ($frame_color) $frame_style .= "--frame-color:{$frame_color};";
+if ($frame_width) $frame_style .= "--frame-width:{$frame_width}px;";
+if ($mat_color) $frame_style .= "--mat-color:{$mat_color};";
+if ($mat_width) $frame_style .= "--mat-width:{$mat_width}px;";
+if ($bevel) $frame_style .= "--bevel-style:{$bevel};";
+
+$global_on = (($settings['global_comments_enabled'] ?? '1') == '1');
+$post_on = (($img['allow_comments'] ?? '1') == '1');
+$comments_active = ($global_on && $post_on);
+?>
+
+<div id="scroll-stage" class="htbs-single">
+
+    <?php include('skin-header.php'); ?>
+
+    <div class="htbs-gallery-room">
+        <div class="frame-mount"<?php echo $frame_style ? " style=\"{$frame_style}\"" : ''; ?>>
+            <div class="frame-border">
+                <div class="frame-mat">
+                    <div class="frame-bevel">
+                        <div class="frame-image">
+                            <?php include dirname(__DIR__, 2) . '/core/download-overlay.php'; ?>
+                            <img src="<?php echo BASE_URL . ltrim($img['img_file'], '/'); ?>"
+                                 alt="<?php echo htmlspecialchars($img['img_title']); ?>"
+                                 class="post-image">
+                            <?php echo $download_button; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plaque label -->
+        <div class="plaque">
+            <div class="plaque-title"><?php echo htmlspecialchars($img['img_title']); ?></div>
+            <div class="plaque-date"><?php echo date('F j, Y', strtotime($img['img_date'])); ?></div>
+        </div>
+    </div>
+
+    <div id="infobox">
+        <?php include dirname(__DIR__, 2) . '/core/navigation_bar.php'; ?>
+    </div>
+
+    <div id="footer">
+        <div id="pane-info" class="footer-pane">
+            <div class="description">
+                <?php echo $snapsmack->parseContent($img['img_description'] ?? ''); ?>
+            </div>
+
+            <?php if ($exif_display_enabled ?? true): ?>
+            <div class="meta">
+                <div class="meta-header">TECHNICAL SPECIFICATIONS</div>
+                <table class="exif-table">
+                    <?php
+                    $labels = [
+                        'Model' => 'Model', 'lens' => 'Lens', 'FNumber' => 'Aperture',
+                        'ExposureTime' => 'Shutter', 'ISOSpeedRatings' => 'ISO',
+                        'FocalLength' => 'Focal', 'film' => 'Film', 'flash' => 'Flash'
+                    ];
+                    foreach($labels as $key => $label): ?>
+                        <?php if(!empty($exif_data[$key]) && $exif_data[$key] !== 'N/A'): ?>
+                            <tr>
+                                <td class="exif-label"><?php echo $label; ?></td>
+                                <td class="exif-value"><?php echo htmlspecialchars($exif_data[$key]); ?></td>
+                            </tr>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                </table>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <div id="pane-comments" class="footer-pane">
+            <?php if ($comments_active): ?>
+                <div class="meta-header signals-header">SIGNALS</div>
+                <?php if ($comments): ?>
+                    <table class="exif-table signals-table">
+                        <?php foreach($comments as $c): ?>
+                            <tr>
+                                <td class="exif-label"><?php echo htmlspecialchars($c['comment_author']); ?></td>
+                                <td class="exif-value">
+                                    <?php echo nl2br(htmlspecialchars($c['comment_text'])); ?>
+                                    <div class="signal-date">[<?php echo date('Y-m-d', strtotime($c['comment_date'])); ?>]</div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </table>
+                <?php else: ?>
+                    <div class="description signals-empty">NO SIGNALS RECORDED.</div>
+                <?php endif; ?>
+
+                <form action="<?php echo BASE_URL; ?>process-comment.php" method="POST" class="comment-form">
+                    <input type="hidden" name="img_id" value="<?php echo $img['id']; ?>">
+                    <div class="form-row">
+                        <input type="text" name="author" placeholder="CALLSIGN" required>
+                        <input type="email" name="email" placeholder="EMAIL" required>
+                    </div>
+                    <textarea name="comment_text" placeholder="MESSAGE..." required></textarea>
+                    <button type="submit">TRANSMIT</button>
+                </form>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <?php
+    // --- FILMSTRIP ---
+    // Horizontal scrollable strip of square thumbnails at bottom of single view.
+    $show_filmstrip = ($settings['htbs_show_filmstrip'] ?? '1') === '1';
+    if ($show_filmstrip):
+        $now_local = date('Y-m-d H:i:s');
+        $film_stmt = $pdo->prepare("
+            SELECT id, img_slug, img_thumb_square, img_title
+            FROM snap_images
+            WHERE img_status = 'published' AND img_date <= ?
+            ORDER BY img_date DESC
+            LIMIT 50
+        ");
+        $film_stmt->execute([$now_local]);
+        $filmstrip_images = $film_stmt->fetchAll(PDO::FETCH_ASSOC);
+    ?>
+    <div class="htbs-filmstrip">
+        <?php foreach ($filmstrip_images as $fi):
+            $fi_link = BASE_URL . htmlspecialchars($fi['img_slug']);
+            $fi_thumb = !empty($fi['img_thumb_square']) ? BASE_URL . ltrim($fi['img_thumb_square'], '/') : '';
+            $is_active = ($fi['id'] == $img['id']) ? ' active' : '';
+        ?>
+            <a href="<?php echo $fi_link; ?>" class="htbs-filmstrip-item<?php echo $is_active; ?>" title="<?php echo htmlspecialchars($fi['img_title']); ?>">
+                <img src="<?php echo $fi_thumb; ?>" alt="<?php echo htmlspecialchars($fi['img_title']); ?>" loading="lazy">
+            </a>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+    <?php include('skin-footer.php'); ?>
+</div>
+
+<script>
+// Scroll active filmstrip item into view
+document.addEventListener('DOMContentLoaded', function() {
+    var active = document.querySelector('.htbs-filmstrip-item.active');
+    if (active) active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+});
+</script>

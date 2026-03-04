@@ -165,7 +165,14 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
 
         <div id="scroll-stage">
 
-            <?php if ($archive_layout === 'masonry'): ?>
+            <?php
+            // Skin-specific archive layout: if the active skin provides archive-layout.php,
+            // use that instead of the default grid rendering. $images, $settings, $all_cats,
+            // $all_albums, $cat_filter, and $album_filter are available to the template.
+            $skin_archive = __DIR__ . '/' . $skin_path . '/archive-layout.php';
+            if (file_exists($skin_archive)):
+                include $skin_archive;
+            elseif ($archive_layout === 'masonry'): ?>
             <!-- Justified layout — Flickr-style row-fill with full aspect ratios.
                  PHP groups images into rows for semantics; CSS flexbox handles sizing.
                  Each item's flex-grow equals its aspect ratio for perfect row alignment. -->
