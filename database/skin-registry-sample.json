@@ -105,6 +105,24 @@
                 "archive_layouts": ["square"]
             }
         },
+        "rational-geo": {
+            "name": "Rational Geo",
+            "version": "1.0",
+            "status": "stable",
+            "author": "Sean McCormick",
+            "description": "An homage to the world's best magazine. Editorial serif typography, the iconic yellow accent, light and dark variants.",
+            "screenshot": "https://updates.snapsmack.ca/skins/rational-geo/screenshot.png",
+            "download_url": "https://updates.snapsmack.ca/skins/rational-geo/rational-geo-1.0.zip",
+            "download_size": 55000,
+            "signature": "",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.8",
+            "features": {
+                "supports_wall": false,
+                "supports_slider": false,
+                "archive_layouts": ["cropped", "masonry"]
+            }
+        },
         "pocket-operator": {
             "name": "Pocket Rocket",
             "version": "1.0",

@@ -1,0 +1,29 @@
+/**
+ * SNAPSMACK - Light variant for Rational Geo
+ * v1.0
+ *
+ * Magazine interior pages feel: warm off-white paper, dark text,
+ * yellow accents for borders and pull elements.
+ */
+:root {
+    --rg-bg-page:       #f5f2ed;     /* warm off-white, like magazine paper */
+    --rg-bg-secondary:  #ebe7e0;     /* slightly darker paper */
+    --rg-bg-chrome:     #e0dcd5;     /* UI surfaces */
+    --rg-bg-drawer:     #ffffff;     /* info/comment drawers */
+    --rg-border:        #d0ccc5;     /* soft borders */
+    --rg-border-light:  #e5e1da;     /* subtle dividers */
+    --rg-text-primary:  #1a1a1a;     /* near-black body text */
+    --rg-text-secondary:#4a4a4a;     /* secondary text */
+    --rg-text-dim:      #8a8580;     /* captions, labels */
+    --rg-text-bright:   #000000;     /* headlines */
+    --rg-accent:        #FFCC00;     /* NatGeo yellow */
+    --rg-accent-dark:   #E6B800;     /* yellow hover */
+    --rg-accent-muted:  rgba(255, 204, 0, 0.15);  /* yellow tint backgrounds */
+    --rg-link:          #1a1a1a;     /* editorial: links match text */
+    --rg-link-hover:    #FFCC00;     /* links go yellow on hover */
+    --rg-input-bg:      #ffffff;     /* form fields */
+    --rg-overlay-bg:    rgba(245, 242, 237, 0.97);
+    --rg-map-opacity:   0.06;        /* subtle map background */
+    --rg-shadow:        0 2px 8px rgba(0,0,0,0.08);
+    --rg-shadow-hover:  0 4px 16px rgba(0,0,0,0.12);
+}

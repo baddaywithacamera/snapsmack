@@ -1,0 +1,29 @@
+/**
+ * SNAPSMACK - Dark variant for Rational Geo
+ * v1.0
+ *
+ * Cover shot drama: deep black page, yellow accents, white text.
+ * The dramatic NatGeo cover aesthetic.
+ */
+:root {
+    --rg-bg-page:       #0a0a0a;     /* deep black */
+    --rg-bg-secondary:  #151515;     /* slightly lifted */
+    --rg-bg-chrome:     #1a1a1a;     /* UI surfaces */
+    --rg-bg-drawer:     #111111;     /* info/comment drawers */
+    --rg-border:        #2a2a2a;     /* subtle borders */
+    --rg-border-light:  #1f1f1f;     /* very subtle dividers */
+    --rg-text-primary:  #e8e8e8;     /* light text */
+    --rg-text-secondary:#aaaaaa;     /* secondary */
+    --rg-text-dim:      #666666;     /* captions, labels */
+    --rg-text-bright:   #ffffff;     /* headlines */
+    --rg-accent:        #FFCC00;     /* NatGeo yellow */
+    --rg-accent-dark:   #FFD633;     /* yellow hover (lighter on dark bg) */
+    --rg-accent-muted:  rgba(255, 204, 0, 0.1);  /* yellow tint */
+    --rg-link:          #e8e8e8;     /* light links */
+    --rg-link-hover:    #FFCC00;     /* links go yellow on hover */
+    --rg-input-bg:      #1a1a1a;     /* form fields */
+    --rg-overlay-bg:    rgba(10, 10, 10, 0.97);
+    --rg-map-opacity:   0.04;        /* very subtle on dark */
+    --rg-shadow:        0 2px 8px rgba(0,0,0,0.3);
+    --rg-shadow-hover:  0 4px 16px rgba(0,0,0,0.5);
+}
