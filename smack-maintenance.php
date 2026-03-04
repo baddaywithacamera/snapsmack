@@ -405,7 +405,7 @@ include 'core/sidebar.php';
         </div>
     </div>
 
-    <div class="dash-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 30px;">
+    <div class="dash-grid dash-grid-2 mt-30">
         <div class="box">
             <h3>HTACCESS CHECK</h3>
             <p class="skin-desc-text">Verifies that root and upload directory .htaccess files contain all required SnapSmack rules — HTTPS, clean URLs, security headers, PHP blocking, caching, and compression.</p>

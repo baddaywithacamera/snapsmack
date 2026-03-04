@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Admin Dashboard Header
- * Alpha v0.6
+ * Alpha v0.7
  *
  * Outputs the HTML <head> and opening <body> tags for all admin pages.
  * Resolves the active theme from the user's session preference, loads the
@@ -62,3 +62,5 @@ $active_skin_path = $theme_base . $colour_css_file;
     <link rel="stylesheet" href="<?php echo $active_skin_path; ?>">
 </head>
 <body class="admin-body">
+<button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open');">&#9776;</button>
+<div class="sidebar-overlay" onclick="document.querySelector('.sidebar').classList.remove('open'); this.classList.remove('open');"></div>

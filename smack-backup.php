@@ -104,29 +104,29 @@ include 'core/sidebar.php';
     <div class="header-row">
         <h2>SYSTEM BACKUP & RECOVERY</h2>
     </div>
-    <div class="dash-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
-        <div class="box" style="display:flex; flex-direction:column;">
+    <div class="dash-grid">
+        <div class="box box-flex">
             <h3>FULL DATABASE (THE BRAIN)</h3>
             <p class="skin-desc-text">Extracts architecture and all content into a local SQL file. Standard tactical backup for site migrations.</p>
-            <form method="POST" style="margin-top:auto;">
+            <form method="POST">
                 <input type="hidden" name="action" value="export">
                 <input type="hidden" name="type" value="full">
                 <button type="submit" class="btn-smack btn-block">GET FULL SQL DUMP</button>
             </form>
         </div>
-        <div class="box" style="display:flex; flex-direction:column;">
+        <div class="box box-flex">
             <h3>EMERGENCY ACCESS (THE KEYS)</h3>
             <p class="skin-desc-text">Extracts only the user credentials and permission hashes. Essential for regaining entry to the system.</p>
-            <form method="POST" style="margin-top:auto;">
+            <form method="POST">
                 <input type="hidden" name="action" value="export">
                 <input type="hidden" name="type" value="keys">
                 <button type="submit" class="btn-smack btn-block">GET RECOVERY SQL</button>
             </form>
         </div>
-        <div class="box" style="display:flex; flex-direction:column;">
+        <div class="box box-flex">
             <h3>ENGINE SCHEMA (THE DNA)</h3>
             <p class="skin-desc-text">Extracts structure only. No user data, no images. Used for system updates or cloning the engine.</p>
-            <form method="POST" style="margin-top:auto;">
+            <form method="POST">
                 <input type="hidden" name="action" value="export">
                 <input type="hidden" name="type" value="schema">
                 <button type="submit" class="btn-smack btn-block">GET SCHEMA ONLY</button>
@@ -134,17 +134,17 @@ include 'core/sidebar.php';
         </div>
     </div>
 
-    <div class="dash-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top:30px;">
-        <div class="box" style="display:flex; flex-direction:column;">
+    <div class="dash-grid dash-grid-2 mt-30">
+        <div class="box box-flex">
             <h3>VERIFY INTEGRITY</h3>
             <p class="skin-desc-text">Spot-checks that files referenced in the database still exist on disk and match their stored SHA-256 checksums. Lightweight — no full filesystem walk.</p>
-            <a href="smack-verify.php" class="btn-smack btn-block" style="margin-top:auto;text-align:center;text-decoration:none;">RUN VERIFICATION</a>
+            <a href="smack-verify.php" class="btn-smack btn-block">RUN VERIFICATION</a>
         </div>
 
-        <div class="box" style="display:flex; flex-direction:column;">
+        <div class="box box-flex">
             <h3>SITE SOURCE (.TAR.GZ)</h3>
             <p class="skin-desc-text">Archives core PHP and CSS logic. Specifically excludes media directories to keep the footprint light.</p>
-            <form method="POST" style="margin-top:auto;">
+            <form method="POST">
                 <input type="hidden" name="action" value="export">
                 <input type="hidden" name="type" value="source">
                 <button type="submit" class="btn-smack btn-block">GET SOURCE CODE</button>

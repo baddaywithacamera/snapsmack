@@ -197,6 +197,18 @@ h2 {
     border-radius: 6px;
 }
 
+/* Box with flex layout — pushes last child (button/form) to bottom */
+.box-flex {
+    display: flex;
+    flex-direction: column;
+}
+
+.box-flex > form:last-child,
+.box-flex > a.btn-smack:last-child,
+.box-flex > a.btn-block:last-child {
+    margin-top: auto;
+}
+
 /* Box headings — override the naked h2 default */
 .box h2,
 .box h3,
@@ -293,11 +305,11 @@ h2 {
     margin-bottom: 0;
 }
 
-/* control-group: alias for lens-input-wrapper — used on login and user forms */
+/* control-group: alias for lens-input-wrapper — used on login, user forms, and asset cards */
 .control-group {
     display: flex;
     flex-direction: column;
-    margin-bottom: 20px;
+    margin-bottom: 30px;
 }
 
 .control-group:last-of-type {
@@ -540,6 +552,17 @@ button,
     margin-top: 0;
 }
 
+/* Button modifiers */
+.btn-mt-0 { margin-top: 0 !important; }
+.btn-block {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    text-decoration: none;
+}
+
 /* Hover state animation */
 button:hover,
 .btn-smack:hover,
@@ -657,6 +680,10 @@ button:active,
     grid-template-columns: 1fr 1fr 1fr;
     gap: 30px;
 }
+
+/* Grid column variants */
+.dash-grid-2 { grid-template-columns: 1fr 1fr; }
+.dash-grid-4 { grid-template-columns: repeat(4, 1fr); }
 
 .quick-strike-grid {
     display: grid;
@@ -1136,6 +1163,26 @@ input[type="range"]:active::-webkit-slider-thumb {
     border-style: solid;
 }
 
+/* Update notification banner (dashboard) */
+.alert-update {
+    padding: 12px 18px;
+    margin-bottom: 25px;
+    border-radius: 3px;
+    border-left-width: 4px;
+    border-left-style: solid;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+}
+
+.alert-update .btn-smack {
+    margin: 0;
+    white-space: nowrap;
+    width: auto;
+    flex-shrink: 0;
+}
+
 .section-divider {
     border: 0;
     border-top-width: 1px;
@@ -1162,6 +1209,12 @@ input[type="range"]:active::-webkit-slider-thumb {
 
 /* Dim: muted secondary text */
 .dim { opacity: 0.6; }
+
+/* Left-aligned item actions (default is flex-end) */
+.item-actions-left { justify-content: flex-start; }
+
+/* Small text utility */
+.text-sm { font-size: 0.8rem; }
 
 /* --- APPEARANCE CONTROLLER --- */
 .appearance-controller {
@@ -1551,4 +1604,183 @@ input[type="range"]:active::-webkit-slider-thumb {
 
 .no-border {
     border: none !important;
+}
+
+/* ─── SIDEBAR TOGGLE (hamburger) ────────────────────────────────── */
+.sidebar-toggle {
+    display: none;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 10002;
+    width: 40px;
+    height: 40px;
+    font-size: 1.4rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+}
+
+/* Sidebar overlay (click-to-close backdrop on mobile) */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 10000;
+}
+
+.sidebar-overlay.open {
+    display: block;
+}
+
+/* ─── RESPONSIVE: SMALL DESKTOP / LARGE TABLET (≤1200px) ──────── */
+@media (max-width: 1200px) {
+    .main {
+        padding: 40px 40px 140px 40px;
+    }
+
+    .dash-grid,
+    .grid-33 {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .post-layout-grid,
+    .grid-50-50 {
+        gap: 20px;
+    }
+
+    .post-col-right {
+        padding-left: 0;
+    }
+
+    #admin-universal-footer {
+        padding: 15px 40px;
+    }
+}
+
+/* ─── RESPONSIVE: TABLET PORTRAIT (≤1024px) ────────────────────── */
+@media (max-width: 1024px) {
+    .sidebar {
+        transform: translateX(-260px);
+        transition: transform 0.3s ease;
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    .sidebar-toggle {
+        display: flex;
+    }
+
+    .sidebar.open ~ .sidebar-overlay {
+        display: block;
+    }
+
+    .main {
+        margin-left: 0;
+        padding: 60px 25px 140px 25px;
+    }
+
+    #admin-universal-footer {
+        left: 0;
+        padding: 15px 25px;
+    }
+
+    .post-layout-grid,
+    .grid-50-50 {
+        grid-template-columns: 1fr;
+    }
+
+    .meta-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .manage-filter-bar {
+        flex-direction: column;
+    }
+
+    .filter-col-secondary {
+        flex-direction: column;
+    }
+
+    .filter-actions-group,
+    .filter-actions-row {
+        width: 100%;
+    }
+
+    .quick-strike-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .page-header-split {
+        flex-direction: column;
+    }
+
+    .page-header-split h2 {
+        width: 100%;
+    }
+
+    .page-header-split .page-header-tabs {
+        position: static;
+        margin-top: 15px;
+    }
+}
+
+/* ─── RESPONSIVE: PHONE (≤640px) ───────────────────────────────── */
+@media (max-width: 640px) {
+    .main {
+        padding: 60px 15px 140px 15px;
+    }
+
+    .dash-grid,
+    .grid-33,
+    .dash-grid-2 {
+        grid-template-columns: 1fr;
+    }
+
+    .asset-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .box {
+        padding: 20px;
+    }
+
+    .item-details {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .archive-thumb {
+        width: 100%;
+        height: auto;
+    }
+
+    .header-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .header-actions {
+        width: 100%;
+    }
+
+    .action-grid-dual {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-val {
+        font-size: 1.8rem;
+    }
 }

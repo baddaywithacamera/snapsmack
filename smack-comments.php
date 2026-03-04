@@ -66,10 +66,12 @@ include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <div class="title-bar-flex">
+    <div class="header-row">
         <h2>SIGNAL CONTROL</h2>
-        <div class="status-pill <?php echo $global_comments_active ? 'status-online' : 'status-offline'; ?>">
-            GLOBAL SYSTEM: <?php echo $global_comments_active ? 'ONLINE' : 'OFFLINE'; ?>
+        <div class="header-actions">
+            <div class="status-pill <?php echo $global_comments_active ? 'status-online' : 'status-offline'; ?>">
+                GLOBAL SYSTEM: <?php echo $global_comments_active ? 'ONLINE' : 'OFFLINE'; ?>
+            </div>
         </div>
     </div>
 

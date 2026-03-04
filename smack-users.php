@@ -74,17 +74,17 @@ include 'core/sidebar.php';
     <div class="box">
         <h3>ADD NEW SYSTEM USER</h3>
         <form method="POST">
-            <div class="control-group">
+            <div class="lens-input-wrapper">
                 <label>USERNAME</label>
                 <input type="text" name="username" required autocomplete="off">
             </div>
 
-            <div class="control-group">
+            <div class="lens-input-wrapper">
                 <label>EMAIL ADDRESS</label>
                 <input type="email" name="email" required autocomplete="off">
             </div>
 
-            <div class="control-group">
+            <div class="lens-input-wrapper">
                 <label>SYSTEM ROLE</label>
                 <select name="user_role">
                     <option value="editor">Editor (Content Only)</option>
@@ -92,7 +92,7 @@ include 'core/sidebar.php';
                 </select>
             </div>
 
-            <div class="control-group">
+            <div class="lens-input-wrapper">
                 <label>PASSWORD</label>
                 <input type="password" name="password" required>
             </div>

@@ -207,8 +207,8 @@ include 'core/sidebar.php';
     <h2>SYSTEM DASHBOARD</h2>
 
     <?php if ($_update_total > 0): ?>
-    <div style="padding:12px 18px;margin-bottom:25px;border-radius:3px;border-left:4px solid #da4;background:rgba(221,170,68,0.08);display:flex;justify-content:space-between;align-items:center;">
-        <div style="font-size:0.85rem;">
+    <div class="alert-update">
+        <div>
             <?php
             $_notices = [];
             if (!empty($_update_notifications['core_update'])) {
@@ -221,7 +221,7 @@ include 'core/sidebar.php';
             echo strtoupper(implode(' — ', $_notices));
             ?>
         </div>
-        <a href="smack-update.php" class="btn-smack" style="margin:0;white-space:nowrap;">VIEW UPDATES</a>
+        <a href="smack-update.php" class="btn-smack">VIEW UPDATES</a>
     </div>
     <?php endif; ?>
 
@@ -247,7 +247,7 @@ include 'core/sidebar.php';
                         <div class="item-text">
                             <strong><?php echo htmlspecialchars($latest_img['img_title']); ?></strong>
                             <span class="dim"><?php echo date('M j, Y', strtotime($latest_img['img_date'])); ?></span>
-                            <div class="item-actions mt-15" style="justify-content: flex-start;">
+                            <div class="item-actions mt-15 item-actions-left">
                                 <a href="smack-edit.php?id=<?php echo $latest_img['id']; ?>" class="action-edit">EDIT ENTRY</a>
                             </div>
                         </div>
@@ -291,7 +291,7 @@ include 'core/sidebar.php';
                 <div class="stat-row"><span class="label">LAST FETCH:</span><span class="value"><?php echo $net_fetched ? date('M j, Y g:ia', strtotime($net_fetched)) : 'NEVER'; ?></span></div>
                 <a href="smack-blogroll.php"><button class="btn-smack master-update-btn mt-25">MANAGE NETWORK</button></a>
             <?php else: ?>
-                <p class="dim mt-20" style="font-size:0.8rem;">BLOGROLL NOT INSTALLED.</p>
+                <p class="dim mt-20 text-sm">BLOGROLL NOT INSTALLED.</p>
             <?php endif; ?>
         </div>
     </div>
@@ -331,7 +331,7 @@ include 'core/sidebar.php';
             <?php else: ?>
                 <label>CRON ENGINE</label>
                 <div class="read-only-display">NOT SUPPORTED ON THIS HOST</div>
-                <p class="dim mt-20" style="font-size:0.8rem;">RSS last-updated features are unavailable. Cron access is required.</p>
+                <p class="dim mt-20 text-sm">RSS last-updated features are unavailable. Cron access is required.</p>
             <?php endif; ?>
         </div>
     </div>
