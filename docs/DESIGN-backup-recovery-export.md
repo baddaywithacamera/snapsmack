@@ -354,4 +354,8 @@ wherever the previous session stopped.
 - [x] Chunk 6: Backup Page Overhaul (`smack-backup.php`)
 - [x] Chunk 7: Migration & Wiring (`migrate-0.7-0.8.sql`, `sidebar.php`)
 
-**Remaining (deferred):** Tier 2 OAuth cloud push (Google Drive / OneDrive) — separate future task.
+**Tier 2 — OAuth Cloud Push (March 4, 2026):**
+
+- [x] Cloud Engine (`core/cloud-engine.php`) — OAuth flow + resumable/chunked uploads
+- [x] Cloud Backup UI (`smack-cloud.php`) — Credential config, authorization status, push streaming
+- [x] Integration wiring — backup page link, sidebar nav, migration SQL defaults

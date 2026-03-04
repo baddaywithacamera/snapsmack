@@ -95,6 +95,9 @@ if (!empty($settings['active_skin'])) {
                     <li class="<?php echo ($current_page == 'smack-ftp.php') ? 'active' : ''; ?>">
                         <a href="smack-ftp.php">FTP Backup</a>
                     </li>
+                    <li class="<?php echo ($current_page == 'smack-cloud.php') ? 'active' : ''; ?>">
+                        <a href="smack-cloud.php">Cloud Backup</a>
+                    </li>
                     <li class="<?php echo ($current_page == 'smack-update.php') ? 'active' : ''; ?>">
                         <a href="smack-update.php">System Updates</a>
                     </li>

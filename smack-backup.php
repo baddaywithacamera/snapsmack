@@ -337,6 +337,24 @@ include 'core/sidebar.php';
             </p>
         <?php endif; ?>
     </div>
+
+    <!-- ============================================================
+         SECTION 6: CLOUD REMOTE BACKUP
+         Single box with link to Cloud configuration
+         ============================================================ -->
+    <div class="box mt-30">
+        <h3>CLOUD REMOTE BACKUP</h3>
+        <p class="skin-desc-text">Push backups to Google Drive or OneDrive. Authorize in your browser — no credentials are stored beyond your session.</p>
+        <a href="smack-cloud.php" class="btn-smack btn-block">CONFIGURE CLOUD BACKUP</a>
+        <?php if (!empty($settings['cloud_last_push'])): ?>
+            <p style="margin-top: 15px; font-size: 12px; color: #888;">
+                Last push: <?php echo htmlspecialchars($settings['cloud_last_push']); ?>
+                <?php if (!empty($settings['cloud_last_status'])): ?>
+                    — <?php echo htmlspecialchars($settings['cloud_last_status']); ?>
+                <?php endif; ?>
+            </p>
+        <?php endif; ?>
+    </div>
 </div>
 
 <?php include 'core/admin-footer.php'; ?>
