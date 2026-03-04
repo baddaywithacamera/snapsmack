@@ -347,6 +347,82 @@ save skin settings. Write your overrides below it.</p>
 HTML
 ];
 
+$help_topics['social-dock'] = [
+    'section'  => 'Pimp Your Ride',
+    'title'    => 'Social Dock',
+    'icon'     => '&#x2764;',
+    'content'  => <<<'HTML'
+<h3>Social Profile Dock</h3>
+<p>A floating dock of social media profile links that appears on every public page.
+Visitors can click through to your profiles on Flickr, SmugMug, Instagram, YouTube,
+Bluesky, and 10 other platforms. No X/Twitter — by design.</p>
+
+<h4>Enabling the Dock</h4>
+<p>Toggle the dock on from <strong>Pimp Your Ride &rarr; Social Dock</strong>. Then enter
+your profile URLs for each platform you want to show. Platforms with empty URLs are
+automatically hidden.</p>
+
+<h4>Positioning</h4>
+<p>Eight placement options in two groups:</p>
+<ul>
+    <li><strong>Corners</strong> — Top Left, Top Right, Bottom Left, Bottom Right. Icons display
+    in a horizontal row.</li>
+    <li><strong>Side Edges</strong> — Left/Right Side, Top or Bottom. Icons stack vertically
+    and slide out of view during scrolling, then slide back when you stop.</li>
+</ul>
+
+<h4>Appearance</h4>
+<ul>
+    <li><strong>Light &amp; Dark Colors</strong> — set two icon colours. Light is for dark
+    backgrounds, dark is for light backgrounds. Choose which mode is active by default.</li>
+    <li><strong>Icon Shape</strong> — Round (circles) or Square (rounded corners).</li>
+    <li><strong>Icon Style</strong> — Outline (transparent, fills on hover) or Solid (filled
+    background with icon inside, brightens on hover).</li>
+    <li><strong>Drop Shadow</strong> — optional shadow behind each icon for better contrast
+    against busy photo backgrounds.</li>
+    <li><strong>Dock Opacity</strong> — how opaque the dock backdrop is (0% = fully transparent,
+    100% = solid dark glass).</li>
+</ul>
+
+<h4>Supported Platforms</h4>
+<p>Flickr, SmugMug, Instagram, Facebook, YouTube, 500px, Vero, Threads, Bluesky,
+LinkedIn, Pinterest, Tumblr, DeviantArt, Behance, and a generic Website link.</p>
+HTML
+];
+
+$help_topics['sticky-header'] = [
+    'section'  => 'Pimp Your Ride',
+    'title'    => 'Sticky Header',
+    'icon'     => '&#x2B06;',
+    'content'  => <<<'HTML'
+<h3>Sticky Header</h3>
+<p>The sticky header engine pins your site's navigation bar to the top of the screen
+when you scroll down. It uses a glass-morphism transparency effect to stay visible
+without blocking content.</p>
+
+<h4>How It Works</h4>
+<ol>
+    <li>You scroll past the header's natural position — it locks to the top.</li>
+    <li>After a brief pause, the header transitions to a transparent frosted-glass state.</li>
+    <li>Hover over the header — it snaps back to full opacity instantly.</li>
+    <li>Scroll back to the top — it returns to its normal position.</li>
+</ol>
+
+<h4>Settings</h4>
+<ul>
+    <li><strong>Background Opacity</strong> — how see-through the header is while in its
+    transparent state (0% = invisible, 100% = fully opaque).</li>
+    <li><strong>Backdrop Blur</strong> — the frosted-glass blur amount in pixels. Higher values
+    create a stronger glass effect.</li>
+</ul>
+
+<h4>Skin Compatibility</h4>
+<p>The engine auto-detects the header element in each skin. Skins that already have their
+own fixed header (like Pocket Operator) are automatically skipped — no conflicts. The
+sticky header is disabled on mobile screens (below 480px) where vertical space is limited.</p>
+HTML
+];
+
 // ── FORMATTING TOOLBAR ───────────────────────────────────────────────────
 
 $help_topics['formatting-toolbar'] = [
@@ -555,33 +631,111 @@ $help_topics['backup'] = [
     'title'    => 'Backup & Recovery',
     'icon'     => '&#x2B07;',
     'content'  => <<<'HTML'
-<h3>Backup System</h3>
-<p>SnapSmack can export your data in several formats for safekeeping.</p>
+<h3>Backup &amp; Recovery</h3>
+<p>The backup page is organised into four sections covering everything from quick exports
+to full disaster recovery.</p>
 
-<h4>Database Export</h4>
+<h4>Recovery Kit</h4>
 <ul>
-    <li><strong>Full SQL Dump</strong> — complete export of all tables with data.
-    This is the most important backup to have. You can restore from this using
-    phpMyAdmin or the MySQL command line.</li>
-    <li><strong>Schema Only</strong> — table structure without data. Useful for
-    creating a blank installation with the same schema.</li>
-    <li><strong>User Keys</strong> — exports the users table separately for safekeeping.</li>
+    <li><strong>Export Recovery Kit</strong> — generates a single encrypted ZIP file containing
+    your database dump, settings, user credentials, and metadata. This is the fastest way to
+    do a full restore. The ZIP is password-protected with AES-256 encryption.</li>
+    <li><strong>Import Recovery Kit</strong> — upload a previously exported recovery kit ZIP
+    to restore your site. This overwrites the database with the kit's contents.</li>
 </ul>
 
-<h4>Media Manifest</h4>
-<p>Generates a listing of all uploaded files with SHA-256 checksums. This lets you
-verify file integrity after restoring from a backup or migrating to a new server.</p>
+<h4>Database Dumps</h4>
+<ul>
+    <li><strong>Full SQL Dump</strong> — complete export of all tables with data.
+    The most important backup to have. Restore using phpMyAdmin or the MySQL CLI.</li>
+    <li><strong>User Credentials</strong> — exports the users table separately.</li>
+    <li><strong>Schema Only</strong> — table structure without data, for creating a blank
+    installation with the same schema.</li>
+</ul>
 
-<h4>Source Code Archive</h4>
-<p>Creates a compressed archive (tar.gz) of the SnapSmack codebase. This does not
-include uploaded images — back those up separately via FTP or your hosting panel's
-file manager.</p>
+<h4>Data Liberation &amp; Maintenance</h4>
+<ul>
+    <li><strong>WXR Export</strong> — WordPress-compatible XML export. Lets you migrate
+    content to WordPress or other CMS platforms that support WXR import.</li>
+    <li><strong>JSON Export</strong> — structured JSON export of all transmissions with
+    metadata. Useful for custom migrations or data analysis.</li>
+    <li><strong>Verify Integrity</strong> — scans all uploaded images against their database
+    records and SHA-256 checksums. Reports missing files, orphaned records, and hash
+    mismatches.</li>
+    <li><strong>Source Archive</strong> — downloads a compressed archive (tar.gz) of the
+    SnapSmack codebase (code only, no uploaded images).</li>
+</ul>
 
-<h4>Recommended Backup Strategy</h4>
-<p>Run a full SQL dump weekly (or before any update). Download it along with a copy of
-your <code>img_uploads/</code> directory. Store both off-server (Google Drive, Dropbox,
-external hard drive). The source code can always be re-downloaded from the SnapSmack
-repository.</p>
+<h4>Remote Push</h4>
+<p>Push backups to remote storage. See the <em>FTP Backup</em> and <em>Cloud Backup</em>
+help topics for details.</p>
+
+<h4>Recommended Strategy</h4>
+<p>Export a recovery kit weekly (or before any update). For off-site redundancy, configure
+either FTP or cloud push to automatically send the backup to a remote location. Keep at
+least one recovery kit stored off-server at all times.</p>
+HTML
+];
+
+$help_topics['ftp-backup'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'FTP Backup',
+    'icon'     => '&#x21C5;',
+    'content'  => <<<'HTML'
+<h3>FTP Backup</h3>
+<p>Push database dumps to a remote FTP/FTPS server for off-site storage.</p>
+
+<h4>Configuration</h4>
+<p>Enter your FTP server hostname, port, username, and password. The password is stored
+encrypted (AES-256-CBC) in the database — it is never stored in plaintext.</p>
+<ul>
+    <li><strong>Remote Path</strong> — the directory on the FTP server where backups will be
+    uploaded (e.g., <code>/backups/snapsmack/</code>).</li>
+    <li><strong>Mode</strong> — FTP (unencrypted) or FTPS (TLS-encrypted). FTPS is strongly
+    recommended.</li>
+    <li><strong>Passive Mode</strong> — enable if your server is behind a firewall that blocks
+    active FTP connections.</li>
+</ul>
+
+<h4>Testing</h4>
+<p>Use the Test Connection button to verify your credentials and remote path before pushing
+a real backup.</p>
+
+<h4>Pushing a Backup</h4>
+<p>Click "Push to FTP" on the Backup &amp; Recovery page. A fresh SQL dump is generated and
+uploaded to your remote path. The file is named with a timestamp for easy identification.</p>
+HTML
+];
+
+$help_topics['cloud-backup'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Cloud Backup',
+    'icon'     => '&#x2601;',
+    'content'  => <<<'HTML'
+<h3>Cloud Backup</h3>
+<p>Push database dumps to Google Drive or OneDrive using OAuth 2.0 authentication.</p>
+
+<h4>Linking a Provider</h4>
+<p>Click "Link" next to Google Drive or OneDrive. You will be redirected to the provider's
+consent screen to authorize SnapSmack. Once authorized, a refresh token is stored encrypted
+in your database — you do not need to re-authorize each session.</p>
+
+<h4>Provider Status</h4>
+<ul>
+    <li><strong>LINKED</strong> — refresh token stored, ready to push. The system will
+    automatically obtain a fresh access token when needed.</li>
+    <li><strong>ACTIVE</strong> — linked and a session access token is currently valid.</li>
+    <li><strong>NOT LINKED</strong> — no credentials stored, needs authorization.</li>
+</ul>
+
+<h4>Unlinking</h4>
+<p>Click "Unlink" to revoke access and delete the stored refresh token. You can re-link
+at any time by going through the OAuth flow again.</p>
+
+<h4>Pushing a Backup</h4>
+<p>Click "Push to Google Drive" or "Push to OneDrive" on the Backup &amp; Recovery page.
+A fresh SQL dump is generated and uploaded to the root of your cloud storage. The file is
+named with a timestamp.</p>
 HTML
 ];
 
