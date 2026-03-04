@@ -1,6 +1,6 @@
 -- SnapSmack Backup Service
 -- Type: SCHEMA
--- Date: 2026-03-03 23:11:24
+-- Date: 2026-03-04 18:55:22
 
 DROP TABLE IF EXISTS `snap_images`;
 CREATE TABLE `snap_images` (
@@ -24,6 +24,7 @@ CREATE TABLE `snap_images` (
   `img_thumb_square` varchar(255) DEFAULT NULL COMMENT 'Relative path to 400x400 square thumbnail (t_ prefix)',
   `img_thumb_aspect` varchar(255) DEFAULT NULL COMMENT 'Relative path to aspect-ratio thumbnail (a_ prefix)',
   `img_checksum` varchar(64) DEFAULT NULL COMMENT 'SHA-256 hash of main image file for recovery verification',
+  `img_display_options` text COMMENT 'JSON: per-image frame/mat/bevel overrides and extracted colour palette',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -42,6 +43,22 @@ CREATE TABLE `snap_image_cat_map` (
   `cat_id` int NOT NULL,
   PRIMARY KEY (`image_id`,`cat_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+DROP TABLE IF EXISTS `snap_image_album_map`;
+CREATE TABLE `snap_image_album_map` (
+  `image_id` int NOT NULL,
+  `album_id` int NOT NULL,
+  PRIMARY KEY (`image_id`,`album_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+DROP TABLE IF EXISTS `snap_albums`;
+CREATE TABLE `snap_albums` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `album_name` varchar(100) NOT NULL,
+  `album_slug` varchar(100) NOT NULL,
+  `album_desc` text,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 DROP TABLE IF EXISTS `snap_comments`;
 CREATE TABLE `snap_comments` (
@@ -103,4 +120,14 @@ CREATE TABLE `snap_blogroll` (
   `rss_last_updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `snap_assets`;
+CREATE TABLE `snap_assets` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `asset_name` varchar(255) NOT NULL,
+  `asset_path` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `asset_checksum` varchar(64) DEFAULT NULL COMMENT 'SHA-256 hash for recovery verification',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
