@@ -1,0 +1,546 @@
+/**
+ * SNAPSMACK - Stylesheet for the pocket-operator skin
+ * Alpha v0.7
+ *
+ * Mobile-first. Medium grey. 1px borders. No bullshit.
+ */
+
+/* ─── RESET & BASE ───────────────────────────────────────────── */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+}
+
+body {
+    background: #2a2a2a;
+    color: #ccc;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
+
+a {
+    color: #aaa;
+    text-decoration: none;
+}
+
+a:active {
+    color: #fff;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* ─── WRAPPER ────────────────────────────────────────────────── */
+.po-wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+/* ─── HAMBURGER HEADER ───────────────────────────────────────── */
+.po-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 48px;
+    background: #222;
+    border-bottom: 1px solid #444;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    z-index: 9000;
+}
+
+.po-header .site-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #999;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.po-header .site-title a {
+    color: inherit;
+}
+
+.po-header .site-logo {
+    max-height: 32px;
+    width: auto;
+}
+
+.po-burger {
+    width: 36px;
+    height: 36px;
+    background: none;
+    border: 1px solid #555;
+    border-radius: 3px;
+    color: #999;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.po-burger:active {
+    background: #333;
+    color: #fff;
+}
+
+/* ─── NAVIGATION DRAWER ─────────────────────────────────────── */
+.po-nav-drawer {
+    position: fixed;
+    top: 48px;
+    left: 0;
+    right: 0;
+    background: #1e1e1e;
+    border-bottom: 1px solid #444;
+    z-index: 8999;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.po-nav-drawer.open {
+    max-height: 400px;
+}
+
+.po-nav-drawer a {
+    display: block;
+    padding: 14px 16px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #888;
+    border-bottom: 1px solid #333;
+}
+
+.po-nav-drawer a:active {
+    background: #333;
+    color: #fff;
+}
+
+.po-nav-drawer a:last-child {
+    border-bottom: none;
+}
+
+/* ─── CONTENT BODY (below fixed header) ──────────────────────── */
+.po-body {
+    padding-top: 48px;
+}
+
+/* ─── FEED / DOOMSCROLL ──────────────────────────────────────── */
+.po-feed-item {
+    border-bottom: 1px solid #444;
+}
+
+.po-feed-item a {
+    display: block;
+}
+
+.po-feed-img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.po-feed-caption {
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.po-feed-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #999;
+}
+
+.po-feed-date {
+    font-size: 0.65rem;
+    color: #666;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+/* ─── SINGLE TRANSMISSION PAGE ───────────────────────────────── */
+.po-transmission {
+    padding-top: 48px;
+}
+
+.po-photo-wrap {
+    position: relative;
+    background: #1a1a1a;
+}
+
+.po-photo-wrap img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.po-title-bar {
+    padding: 12px;
+    border-bottom: 1px solid #444;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.po-title-bar h2 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #bbb;
+    margin: 0;
+}
+
+.po-title-date {
+    font-size: 0.65rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ─── NAVIGATION (prev/next) ────────────────────────────────── */
+.po-nav {
+    display: flex;
+    border-bottom: 1px solid #444;
+}
+
+.po-nav a {
+    flex: 1;
+    padding: 12px;
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #777;
+    border-right: 1px solid #444;
+}
+
+.po-nav a:last-child {
+    border-right: none;
+}
+
+.po-nav a:active {
+    background: #333;
+    color: #fff;
+}
+
+.po-nav a.disabled {
+    color: #444;
+    pointer-events: none;
+}
+
+/* ─── INFO DRAWER (swipes down from top) ─────────────────────── */
+.po-drawer-toggle {
+    display: flex;
+    border-bottom: 1px solid #444;
+}
+
+.po-drawer-btn {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #666;
+    background: none;
+    border: none;
+    border-right: 1px solid #444;
+    cursor: pointer;
+}
+
+.po-drawer-btn:last-child {
+    border-right: none;
+}
+
+.po-drawer-btn:active,
+.po-drawer-btn.active {
+    color: #ccc;
+    background: #333;
+}
+
+.po-info-drawer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+    background: #222;
+    border-bottom: 1px solid #444;
+}
+
+.po-info-drawer.open {
+    max-height: 2000px;
+}
+
+.po-info-content {
+    padding: 16px 12px;
+}
+
+.po-description {
+    font-size: 0.85rem;
+    line-height: 1.7;
+    color: #bbb;
+    margin-bottom: 20px;
+}
+
+.po-description p {
+    margin-bottom: 12px;
+}
+
+.po-description p:last-child {
+    margin-bottom: 0;
+}
+
+/* EXIF specs */
+.po-exif {
+    border-top: 1px solid #333;
+    padding-top: 16px;
+}
+
+.po-exif-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #666;
+    margin-bottom: 12px;
+}
+
+.po-exif-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 0.75rem;
+    border-bottom: 1px solid #2a2a2a;
+}
+
+.po-exif-label {
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.po-exif-value {
+    color: #aaa;
+    text-align: right;
+}
+
+/* ─── SIGNALS DRAWER (slides up from bottom) ─────────────────── */
+.po-signals-drawer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+    background: #222;
+    border-top: 1px solid #444;
+}
+
+.po-signals-drawer.open {
+    max-height: 3000px;
+}
+
+.po-signals-content {
+    padding: 16px 12px;
+}
+
+.po-signal {
+    padding: 12px 0;
+    border-bottom: 1px solid #333;
+}
+
+.po-signal:last-child {
+    border-bottom: none;
+}
+
+.po-signal-author {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #888;
+}
+
+.po-signal-text {
+    font-size: 0.85rem;
+    color: #bbb;
+    margin: 6px 0;
+    line-height: 1.6;
+}
+
+.po-signal-date {
+    font-size: 0.6rem;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.po-no-signals {
+    text-align: center;
+    color: #555;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 20px 0;
+}
+
+/* ─── COMMENT FORM ───────────────────────────────────────────── */
+.po-comment-form {
+    margin-top: 20px;
+    border-top: 1px solid #333;
+    padding-top: 16px;
+}
+
+.po-comment-form input,
+.po-comment-form textarea {
+    width: 100%;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    color: #ccc;
+    padding: 10px;
+    font-size: 0.8rem;
+    font-family: inherit;
+    margin-bottom: 8px;
+    border-radius: 0;
+    -webkit-appearance: none;
+}
+
+.po-comment-form input::placeholder,
+.po-comment-form textarea::placeholder {
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.7rem;
+}
+
+.po-comment-form textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.po-comment-form button {
+    width: 100%;
+    padding: 12px;
+    background: #444;
+    border: 1px solid #555;
+    color: #ccc;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    cursor: pointer;
+    border-radius: 0;
+    -webkit-appearance: none;
+}
+
+.po-comment-form button:active {
+    background: #555;
+    color: #fff;
+}
+
+/* ─── ARCHIVE FILTER BAR ─────────────────────────────────────── */
+.po-filter-bar {
+    padding: 10px 12px;
+    border-bottom: 1px solid #444;
+    display: flex;
+    gap: 8px;
+}
+
+.po-filter-bar select {
+    flex: 1;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    color: #999;
+    padding: 8px;
+    font-size: 0.7rem;
+    font-family: inherit;
+    text-transform: uppercase;
+    border-radius: 0;
+    -webkit-appearance: none;
+}
+
+/* ─── FOOTER ─────────────────────────────────────────────────── */
+.po-footer {
+    padding: 20px 12px;
+    text-align: center;
+    font-size: 0.6rem;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-top: 1px solid #444;
+}
+
+.po-footer a {
+    color: #666;
+}
+
+/* ─── DOWNLOAD OVERLAY (from core) ───────────────────────────── */
+.download-overlay {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+}
+
+.download-btn {
+    background: rgba(0,0,0,0.6);
+    border: 1px solid #555;
+    color: #999;
+    padding: 6px 10px;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+}
+
+/* ─── EMPTY STATE ────────────────────────────────────────────── */
+.po-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: #555;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+
+/* ─── PARSER CONTENT (columns, dropcaps, shortcode images) ──── */
+.snapsmack-columns {
+    display: block;
+}
+
+.snapsmack-columns .col {
+    margin-bottom: 16px;
+}
+
+.dropcap {
+    float: left;
+    font-size: 2.5em;
+    line-height: 0.8;
+    padding: 4px 8px 0 0;
+    color: #999;
+}

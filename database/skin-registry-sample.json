@@ -68,6 +68,23 @@
             "features": {
                 "supports_wall": true
             }
+        },
+        "pocket-operator": {
+            "name": "Pocket Operator",
+            "version": "1.0",
+            "status": "stable",
+            "author": "Sean McCormick",
+            "description": "Mobile-first skin for phone screens. Doomscroll feed, hamburger nav, swipe drawers. No gallery wall, no justified grid.",
+            "screenshot": "https://updates.snapsmack.ca/skins/pocket-operator/screenshot.png",
+            "download_url": "https://updates.snapsmack.ca/skins/pocket-operator/pocket-operator-1.0.zip",
+            "download_size": 28000,
+            "signature": "",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.7",
+            "features": {
+                "supports_wall": false,
+                "archive_layouts": ["square"]
+            }
         }
     }
 }
