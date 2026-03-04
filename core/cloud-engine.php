@@ -3,8 +3,10 @@
  * SNAPSMACK — Cloud Backup Engine
  * v0.8
  *
- * Session-only OAuth integration for Google Drive and OneDrive.
- * Access tokens live in $_SESSION only — never persisted to the database.
+ * OAuth integration for Google Drive and OneDrive.
+ * Refresh tokens stored encrypted (AES-256-CBC) in snap_settings so users
+ * only authorize once. Access tokens are obtained silently from the refresh
+ * token and cached in $_SESSION for the duration of the session.
  * Supports resumable upload (Google, 5MB chunks) and chunked upload
  * (OneDrive, 4MB chunks) for large recovery kit archives.
  *
@@ -55,11 +57,17 @@ class SnapSmackCloudOAuth {
             'response_type' => 'code',
             'scope'         => $ep['scope'],
             'state'         => $state,
-            'access_type'   => 'online', // Session-only, no refresh token
         ];
 
-        // OneDrive-specific: use 'response_mode=query'
+        // Google: request offline access for refresh token
+        if ($provider === self::GOOGLE) {
+            $params['access_type'] = 'offline';
+            $params['prompt']      = 'consent'; // Force consent to always get refresh token
+        }
+
+        // OneDrive: add offline_access scope + response_mode=query
         if ($provider === self::ONEDRIVE) {
+            $params['scope']         = $ep['scope'] . ' offline_access';
             $params['response_mode'] = 'query';
         }
 
@@ -67,10 +75,10 @@ class SnapSmackCloudOAuth {
     }
 
     /**
-     * Exchange an authorization code for an access token.
-     * Stores the token in $_SESSION['cloud_tokens'][$provider].
+     * Exchange an authorization code for access + refresh tokens.
+     * Access token cached in $_SESSION. Refresh token returned for DB storage.
      *
-     * @return array{success: bool, message: string}
+     * @return array{success: bool, message: string, refresh_token: string|null}
      */
     public static function exchangeAuthCode(
         string $provider,
@@ -80,7 +88,7 @@ class SnapSmackCloudOAuth {
         string $redirectUri
     ): array {
         $ep = self::ENDPOINTS[$provider] ?? null;
-        if (!$ep) return ['success' => false, 'message' => 'Unknown provider.'];
+        if (!$ep) return ['success' => false, 'message' => 'Unknown provider.', 'refresh_token' => null];
 
         $postFields = [
             'client_id'     => $clientId,
@@ -97,15 +105,15 @@ class SnapSmackCloudOAuth {
         if ($response['status'] !== 200) {
             $body = json_decode($response['body'], true);
             $error = $body['error_description'] ?? $body['error'] ?? 'Token exchange failed (HTTP ' . $response['status'] . ')';
-            return ['success' => false, 'message' => $error];
+            return ['success' => false, 'message' => $error, 'refresh_token' => null];
         }
 
         $tokenData = json_decode($response['body'], true);
         if (empty($tokenData['access_token'])) {
-            return ['success' => false, 'message' => 'No access token in response.'];
+            return ['success' => false, 'message' => 'No access token in response.', 'refresh_token' => null];
         }
 
-        // Store token in session
+        // Cache access token in session
         if (!isset($_SESSION['cloud_tokens'])) {
             $_SESSION['cloud_tokens'] = [];
         }
@@ -117,7 +125,103 @@ class SnapSmackCloudOAuth {
             'obtained_at'  => time(),
         ];
 
-        return ['success' => true, 'message' => 'Authorized successfully.'];
+        return [
+            'success'       => true,
+            'message'       => 'Authorized successfully.',
+            'refresh_token' => $tokenData['refresh_token'] ?? null,
+        ];
+    }
+
+    /**
+     * Use a stored refresh token to obtain a fresh access token.
+     * Caches the new access token in $_SESSION.
+     *
+     * @return array{success: bool, message: string}
+     */
+    public static function refreshAccessToken(
+        string $provider,
+        string $refreshToken,
+        string $clientId,
+        string $clientSecret
+    ): array {
+        $ep = self::ENDPOINTS[$provider] ?? null;
+        if (!$ep) return ['success' => false, 'message' => 'Unknown provider.'];
+
+        $postFields = [
+            'client_id'     => $clientId,
+            'client_secret' => $clientSecret,
+            'refresh_token' => $refreshToken,
+            'grant_type'    => 'refresh_token',
+        ];
+
+        // OneDrive needs the scope included in refresh requests
+        if ($provider === self::ONEDRIVE) {
+            $postFields['scope'] = $ep['scope'] . ' offline_access';
+        }
+
+        $response = self::curlPost($ep['token'], [
+            'Content-Type: application/x-www-form-urlencoded',
+        ], http_build_query($postFields));
+
+        if ($response['status'] !== 200) {
+            $body = json_decode($response['body'], true);
+            $error = $body['error_description'] ?? $body['error'] ?? 'Token refresh failed (HTTP ' . $response['status'] . ')';
+            return ['success' => false, 'message' => $error];
+        }
+
+        $tokenData = json_decode($response['body'], true);
+        if (empty($tokenData['access_token'])) {
+            return ['success' => false, 'message' => 'No access token in refresh response.'];
+        }
+
+        // Cache refreshed access token in session
+        if (!isset($_SESSION['cloud_tokens'])) {
+            $_SESSION['cloud_tokens'] = [];
+        }
+
+        $_SESSION['cloud_tokens'][$provider] = [
+            'access_token' => $tokenData['access_token'],
+            'token_type'   => $tokenData['token_type'] ?? 'Bearer',
+            'expires_in'   => $tokenData['expires_in'] ?? 3600,
+            'obtained_at'  => time(),
+        ];
+
+        return ['success' => true, 'message' => 'Token refreshed.'];
+    }
+
+    /**
+     * Ensure a valid access token exists — refresh from DB if needed.
+     * Call this before any API operation. Returns true if ready to go.
+     */
+    public static function ensureAccessToken(string $provider, array $settings, string $salt): bool {
+        // Already have a valid session token?
+        if (self::hasActiveToken($provider)) {
+            return true;
+        }
+
+        // Try to refresh from stored refresh token
+        $refreshTokenEnc = $settings["{$provider}_refresh_token"] ?? '';
+        if (empty($refreshTokenEnc)) {
+            return false;
+        }
+
+        require_once __DIR__ . '/ftp-engine.php';
+        $refreshToken = SnapSmackFTP::decryptPassword($refreshTokenEnc, $salt);
+        if (empty($refreshToken)) {
+            return false;
+        }
+
+        $creds = self::getStoredCredentials($provider, $settings, $salt);
+        $result = self::refreshAccessToken($provider, $refreshToken, $creds['client_id'], $creds['client_secret']);
+
+        return $result['success'];
+    }
+
+    /**
+     * Check if a provider has a stored refresh token (is "linked").
+     */
+    public static function isProviderLinked(string $provider, array $settings): bool {
+        return !empty($settings["{$provider}_refresh_token"]);
     }
 
     /**
@@ -155,10 +259,16 @@ class SnapSmackCloudOAuth {
     }
 
     /**
-     * Clear the token for a provider (disconnect).
+     * Clear tokens for a provider (disconnect).
+     * Pass PDO to also wipe the stored refresh token from the database.
      */
-    public static function clearToken(string $provider): void {
+    public static function clearToken(string $provider, ?PDO $pdo = null): void {
         unset($_SESSION['cloud_tokens'][$provider]);
+
+        if ($pdo) {
+            $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, '') ON DUPLICATE KEY UPDATE setting_val = ''");
+            $stmt->execute(["{$provider}_refresh_token"]);
+        }
     }
 
     /**

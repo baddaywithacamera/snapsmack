@@ -162,8 +162,10 @@ INSERT IGNORE INTO snap_settings (setting_key, setting_val)
 VALUES
     ('google_client_id',       ''),
     ('google_client_secret',   ''),
+    ('google_refresh_token',   ''),
     ('onedrive_client_id',     ''),
     ('onedrive_client_secret', ''),
+    ('onedrive_refresh_token', ''),
     ('cloud_last_push',        ''),
     ('cloud_last_status',      '');
 

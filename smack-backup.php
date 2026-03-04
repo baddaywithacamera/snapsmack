@@ -168,44 +168,11 @@ include 'core/sidebar.php';
 
 <div class="main">
     <div class="header-row">
-        <h2>SYSTEM BACKUP & RECOVERY</h2>
-    </div>
-
-    <!-- ============================================================
-         SECTION 1: BACKUP & RECOVERY (Recovery Kit + Import)
-         dash-grid-2 (2-column layout)
-         ============================================================ -->
-    <div class="box box-flush-bottom">
-        <h3>BACKUP & RECOVERY</h3>
-    </div>
-    <div class="dash-grid dash-grid-2">
-        <div class="box box-flex">
-            <h3>RECOVERY KIT (.TAR.GZ)</h3>
-            <p class="skin-desc-text">Complete site backup including database, branding assets, media library, and active skin. Everything needed to rebuild from scratch.</p>
-            <form method="POST">
-                <input type="hidden" name="action" value="export">
-                <input type="hidden" name="type" value="recovery_kit">
-                <button type="submit" class="btn-smack btn-block">DOWNLOAD RECOVERY KIT</button>
-            </form>
-        </div>
-
-        <div class="box box-flex">
-            <h3>IMPORT RECOVERY KIT</h3>
-            <p class="skin-desc-text">Upload a previously exported recovery kit to restore your site. Overwrites the database and restores all files.</p>
-            <form method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="action" value="import_recovery">
-                <div class="file-upload-wrapper" onclick="document.getElementById('recovery-input').click()">
-                    <div class="file-custom-btn">SELECT FILE</div>
-                    <div class="file-name-display" id="recovery-name">SELECT .TAR.GZ FILE</div>
-                    <input type="file" name="recovery_file" id="recovery-input" accept=".tar.gz,.gz" class="file-input-hidden" onchange="document.getElementById('recovery-name').innerText = this.files[0].name;">
-                </div>
-                <button type="submit" class="btn-smack btn-block" onclick="return confirm('This will overwrite your database and files. Continue?');">IMPORT RECOVERY KIT</button>
-            </form>
-        </div>
+        <h2>BACKUP & RECOVERY</h2>
     </div>
 
     <?php if (isset($import_message) && is_array($import_message)): ?>
-        <div class="box mt-30">
+        <div class="box">
             <?php if (empty($import_message['errors'])): ?>
                 <div class="alert">> RECOVERY KIT IMPORTED SUCCESSFULLY<br>
                     SQL statements: <?php echo $import_message['sql_imported'] ?? 0; ?><br>
@@ -231,129 +198,137 @@ include 'core/sidebar.php';
     <?php endif; ?>
 
     <!-- ============================================================
-         SECTION 2: DATABASE (Existing SQL Dumps)
-         dash-grid (3-column layout)
+         RECOVERY KIT — Export + Import in a single row
          ============================================================ -->
-    <div class="box box-flush-bottom mt-30">
-        <h3>DATABASE</h3>
-    </div>
-    <div class="dash-grid">
+    <div class="dash-grid dash-grid-2">
         <div class="box box-flex">
-            <h3>FULL DATABASE (THE BRAIN)</h3>
-            <p class="skin-desc-text">Extracts architecture and all content into a local SQL file. Standard tactical backup for site migrations.</p>
+            <h3>EXPORT RECOVERY KIT</h3>
+            <p class="skin-desc-text">Complete backup — database, media library, branding assets, active skin. Everything needed to rebuild from scratch.</p>
             <form method="POST">
                 <input type="hidden" name="action" value="export">
-                <input type="hidden" name="type" value="full">
-                <button type="submit" class="btn-smack btn-block">GET FULL SQL DUMP</button>
+                <input type="hidden" name="type" value="recovery_kit">
+                <button type="submit" class="btn-smack btn-block">DOWNLOAD RECOVERY KIT</button>
             </form>
         </div>
+
         <div class="box box-flex">
-            <h3>EMERGENCY ACCESS (THE KEYS)</h3>
-            <p class="skin-desc-text">Extracts only the user credentials and permission hashes. Essential for regaining entry to the system.</p>
-            <form method="POST">
-                <input type="hidden" name="action" value="export">
-                <input type="hidden" name="type" value="keys">
-                <button type="submit" class="btn-smack btn-block">GET RECOVERY SQL</button>
-            </form>
-        </div>
-        <div class="box box-flex">
-            <h3>ENGINE SCHEMA (THE DNA)</h3>
-            <p class="skin-desc-text">Extracts structure only. No user data, no images. Used for system updates or cloning the engine.</p>
-            <form method="POST">
-                <input type="hidden" name="action" value="export">
-                <input type="hidden" name="type" value="schema">
-                <button type="submit" class="btn-smack btn-block">GET SCHEMA ONLY</button>
+            <h3>IMPORT RECOVERY KIT</h3>
+            <p class="skin-desc-text">Upload a previously exported .tar.gz to restore your entire site. Overwrites the database and restores all files.</p>
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="import_recovery">
+                <div class="file-upload-wrapper" onclick="document.getElementById('recovery-input').click()">
+                    <div class="file-custom-btn">SELECT FILE</div>
+                    <div class="file-name-display" id="recovery-name">SELECT .TAR.GZ FILE</div>
+                    <input type="file" name="recovery_file" id="recovery-input" accept=".tar.gz,.gz" class="file-input-hidden" onchange="document.getElementById('recovery-name').innerText = this.files[0].name;">
+                </div>
+                <button type="submit" class="btn-smack btn-block" onclick="return confirm('This will overwrite your database and files. Continue?');">IMPORT RECOVERY KIT</button>
             </form>
         </div>
     </div>
 
     <!-- ============================================================
-         SECTION 3: DATA LIBERATION (WordPress WXR + JSON Export)
-         dash-grid-2 (2-column layout)
+         DATABASE DUMPS — 3-column grid, no section header box
          ============================================================ -->
-    <div class="box box-flush-bottom mt-30">
-        <h3>DATA LIBERATION</h3>
-    </div>
-    <div class="dash-grid dash-grid-2">
+    <div class="dash-grid mt-30">
         <div class="box box-flex">
-            <h3>WORDPRESS EXPORT (WXR)</h3>
-            <p class="skin-desc-text">Standard WordPress eXtended RSS format. Import directly into any WordPress site. Images, categories, comments, pages — everything transfers.</p>
+            <h3>FULL SQL DUMP</h3>
+            <p class="skin-desc-text">Complete database export — structure and all content. Standard backup for site migrations.</p>
+            <form method="POST">
+                <input type="hidden" name="action" value="export">
+                <input type="hidden" name="type" value="full">
+                <button type="submit" class="btn-smack btn-block">DOWNLOAD</button>
+            </form>
+        </div>
+        <div class="box box-flex">
+            <h3>USER CREDENTIALS</h3>
+            <p class="skin-desc-text">Exports user table only — logins and permission hashes. Essential for regaining entry to a fresh install.</p>
+            <form method="POST">
+                <input type="hidden" name="action" value="export">
+                <input type="hidden" name="type" value="keys">
+                <button type="submit" class="btn-smack btn-block">DOWNLOAD</button>
+            </form>
+        </div>
+        <div class="box box-flex">
+            <h3>SCHEMA ONLY</h3>
+            <p class="skin-desc-text">Table structure with no data. Used for system updates, cloning the engine, or debugging.</p>
+            <form method="POST">
+                <input type="hidden" name="action" value="export">
+                <input type="hidden" name="type" value="schema">
+                <button type="submit" class="btn-smack btn-block">DOWNLOAD</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         DATA LIBERATION + MAINTENANCE — 4-column grid
+         WXR, JSON, Verify Integrity, Source Archive
+         ============================================================ -->
+    <div class="dash-grid dash-grid-4 mt-30">
+        <div class="box box-flex">
+            <h3>WORDPRESS WXR</h3>
+            <p class="skin-desc-text">Standard WordPress eXtended RSS format. Import directly into any WordPress site.</p>
             <form method="POST">
                 <input type="hidden" name="action" value="export">
                 <input type="hidden" name="type" value="wxr">
-                <button type="submit" class="btn-smack btn-block">EXPORT WORDPRESS WXR</button>
+                <button type="submit" class="btn-smack btn-block">EXPORT</button>
             </form>
         </div>
         <div class="box box-flex">
             <h3>PORTABLE JSON</h3>
-            <p class="skin-desc-text">Platform-agnostic JSON export with documented schema. Use for migration to any CMS or as a clean data archive.</p>
+            <p class="skin-desc-text">Platform-agnostic export with documented schema. For migration to any CMS.</p>
             <form method="POST">
                 <input type="hidden" name="action" value="export">
                 <input type="hidden" name="type" value="json_export">
-                <button type="submit" class="btn-smack btn-block">EXPORT JSON</button>
+                <button type="submit" class="btn-smack btn-block">EXPORT</button>
             </form>
         </div>
-    </div>
-
-    <!-- ============================================================
-         SECTION 4: MAINTENANCE (Verify + Source Archive)
-         dash-grid-2 (2-column layout)
-         ============================================================ -->
-    <div class="box box-flush-bottom mt-30">
-        <h3>MAINTENANCE</h3>
-    </div>
-    <div class="dash-grid dash-grid-2">
         <div class="box box-flex">
             <h3>VERIFY INTEGRITY</h3>
-            <p class="skin-desc-text">Spot-checks that files referenced in the database still exist on disk and match their stored SHA-256 checksums. Lightweight — no full filesystem walk.</p>
-            <a href="smack-verify.php" class="btn-smack btn-block">RUN VERIFICATION</a>
+            <p class="skin-desc-text">Spot-checks files against stored SHA-256 checksums. Lightweight — no full filesystem walk.</p>
+            <a href="smack-verify.php" class="btn-smack btn-block">RUN CHECK</a>
         </div>
-
         <div class="box box-flex">
-            <h3>SITE SOURCE (.TAR.GZ)</h3>
-            <p class="skin-desc-text">Archives core PHP and CSS logic. Specifically excludes media directories to keep the footprint light.</p>
+            <h3>SOURCE ARCHIVE</h3>
+            <p class="skin-desc-text">PHP and CSS logic only — no media. Lightweight code-only snapshot for version control.</p>
             <form method="POST">
                 <input type="hidden" name="action" value="export">
                 <input type="hidden" name="type" value="source">
-                <button type="submit" class="btn-smack btn-block">GET SOURCE CODE</button>
+                <button type="submit" class="btn-smack btn-block">DOWNLOAD</button>
             </form>
         </div>
     </div>
 
     <!-- ============================================================
-         SECTION 5: FTP REMOTE BACKUP
-         Single box with link to FTP configuration
+         REMOTE PUSH — FTP + Cloud in one row
          ============================================================ -->
-    <div class="box mt-30">
-        <h3>FTP REMOTE BACKUP</h3>
-        <p class="skin-desc-text">Push your recovery kit or image library to a remote FTP server. Configure credentials, test the connection, and push on demand.</p>
-        <a href="smack-ftp.php" class="btn-smack btn-block">CONFIGURE FTP BACKUP</a>
-        <?php if (!empty($settings['ftp_last_push'])): ?>
-            <p style="margin-top: 15px; font-size: 12px; color: #888;">
-                Last push: <?php echo htmlspecialchars($settings['ftp_last_push']); ?>
-                <?php if (!empty($settings['ftp_last_status'])): ?>
-                    — <?php echo htmlspecialchars($settings['ftp_last_status']); ?>
-                <?php endif; ?>
-            </p>
-        <?php endif; ?>
-    </div>
+    <div class="dash-grid dash-grid-2 mt-30">
+        <div class="box box-flex">
+            <h3>FTP BACKUP</h3>
+            <p class="skin-desc-text">Push recovery kits or images to a remote FTP server. Configure credentials, test connection, and push on demand.</p>
+            <a href="smack-ftp.php" class="btn-smack btn-block">CONFIGURE FTP</a>
+            <?php if (!empty($settings['ftp_last_push'])): ?>
+                <p style="margin-top: 15px; font-size: 12px; color: #888;">
+                    Last: <?php echo htmlspecialchars($settings['ftp_last_push']); ?>
+                    <?php if (!empty($settings['ftp_last_status'])): ?>
+                        — <?php echo htmlspecialchars($settings['ftp_last_status']); ?>
+                    <?php endif; ?>
+                </p>
+            <?php endif; ?>
+        </div>
 
-    <!-- ============================================================
-         SECTION 6: CLOUD REMOTE BACKUP
-         Single box with link to Cloud configuration
-         ============================================================ -->
-    <div class="box mt-30">
-        <h3>CLOUD REMOTE BACKUP</h3>
-        <p class="skin-desc-text">Push backups to Google Drive or OneDrive. Authorize in your browser — no credentials are stored beyond your session.</p>
-        <a href="smack-cloud.php" class="btn-smack btn-block">CONFIGURE CLOUD BACKUP</a>
-        <?php if (!empty($settings['cloud_last_push'])): ?>
-            <p style="margin-top: 15px; font-size: 12px; color: #888;">
-                Last push: <?php echo htmlspecialchars($settings['cloud_last_push']); ?>
-                <?php if (!empty($settings['cloud_last_status'])): ?>
-                    — <?php echo htmlspecialchars($settings['cloud_last_status']); ?>
-                <?php endif; ?>
-            </p>
-        <?php endif; ?>
+        <div class="box box-flex">
+            <h3>CLOUD BACKUP</h3>
+            <p class="skin-desc-text">Push backups to Google Drive or OneDrive. Authorize once — refresh tokens are stored encrypted for persistent access.</p>
+            <a href="smack-cloud.php" class="btn-smack btn-block">CONFIGURE CLOUD</a>
+            <?php if (!empty($settings['cloud_last_push'])): ?>
+                <p style="margin-top: 15px; font-size: 12px; color: #888;">
+                    Last: <?php echo htmlspecialchars($settings['cloud_last_push']); ?>
+                    <?php if (!empty($settings['cloud_last_status'])): ?>
+                        — <?php echo htmlspecialchars($settings['cloud_last_status']); ?>
+                    <?php endif; ?>
+                </p>
+            <?php endif; ?>
+        </div>
     </div>
 </div>
 

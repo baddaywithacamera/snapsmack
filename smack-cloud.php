@@ -3,9 +3,9 @@
  * SNAPSMACK - Cloud Backup Configuration & Push
  * Alpha v0.8
  *
- * OAuth cloud push to Google Drive and OneDrive. Session-only tokens —
- * access tokens live in $_SESSION and die when the session ends.
- * Client ID/Secret stored encrypted in snap_settings (AES-256-CBC).
+ * OAuth cloud push to Google Drive and OneDrive. Refresh tokens stored
+ * encrypted (AES-256-CBC) in snap_settings — authorize once, push anytime.
+ * Access tokens obtained silently from refresh tokens and cached in $_SESSION.
  */
 
 require_once 'core/auth.php';
@@ -53,7 +53,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'oauth_callback') {
 
     if ($result['success']) {
         $label = ($provider === 'google') ? 'Google Drive' : 'OneDrive';
-        header("Location: smack-cloud.php?msg=" . urlencode("Connected to {$label} successfully.") . "&msg_type=success");
+
+        // Store encrypted refresh token in DB for persistent access
+        if (!empty($result['refresh_token'])) {
+            require_once 'core/ftp-engine.php';
+            $encRefresh = SnapSmackFTP::encryptPassword($result['refresh_token'], $salt);
+            $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
+            $stmt->execute(["{$provider}_refresh_token", $encRefresh, $encRefresh]);
+        }
+
+        header("Location: smack-cloud.php?msg=" . urlencode("Linked to {$label} successfully.") . "&msg_type=success");
     } else {
         header("Location: smack-cloud.php?msg=" . urlencode($result['message']) . "&msg_type=error");
     }
@@ -64,9 +73,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'oauth_callback') {
 if (isset($_GET['action']) && $_GET['action'] === 'disconnect') {
     $provider = $_GET['provider'] ?? '';
     if (in_array($provider, ['google', 'onedrive'])) {
-        SnapSmackCloudOAuth::clearToken($provider);
+        SnapSmackCloudOAuth::clearToken($provider, $pdo);
         $label = ($provider === 'google') ? 'Google Drive' : 'OneDrive';
-        header("Location: smack-cloud.php?msg=" . urlencode("Disconnected from {$label}.") . "&msg_type=success");
+        header("Location: smack-cloud.php?msg=" . urlencode("Unlinked from {$label}.") . "&msg_type=success");
     } else {
         header("Location: smack-cloud.php?msg=" . urlencode("Unknown provider.") . "&msg_type=error");
     }
@@ -90,8 +99,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'push_now') {
         exit;
     }
 
-    if (!SnapSmackCloudOAuth::hasActiveToken($provider)) {
-        echo "ERROR: No active session token for this provider. Please connect first.\n";
+    // Try to refresh from stored token if session token expired
+    if (!SnapSmackCloudOAuth::ensureAccessToken($provider, $settings, $salt)) {
+        echo "ERROR: Not linked to this provider. Please connect via Cloud Backup settings.\n";
         exit;
     }
 
@@ -208,11 +218,13 @@ if (isset($_GET['msg'])) {
     $msg_type = $_GET['msg_type'] ?? 'success';
 }
 
-// Provider status
+// Provider status — "linked" = refresh token stored, "ready" = active session token
 $googleConfigured   = SnapSmackCloudOAuth::isProviderConfigured('google', $settings);
 $onedriveConfigured = SnapSmackCloudOAuth::isProviderConfigured('onedrive', $settings);
-$googleConnected    = SnapSmackCloudOAuth::hasActiveToken('google');
-$onedriveConnected  = SnapSmackCloudOAuth::hasActiveToken('onedrive');
+$googleLinked       = SnapSmackCloudOAuth::isProviderLinked('google', $settings);
+$onedriveLinked     = SnapSmackCloudOAuth::isProviderLinked('onedrive', $settings);
+$googleReady        = $googleLinked || SnapSmackCloudOAuth::hasActiveToken('google');
+$onedriveReady      = $onedriveLinked || SnapSmackCloudOAuth::hasActiveToken('onedrive');
 
 $page_title = "Cloud Backup Configuration";
 include 'core/admin-header.php';
@@ -302,24 +314,24 @@ include 'core/sidebar.php';
          ================================================================ -->
     <div class="box">
         <h3>AUTHORIZATION STATUS</h3>
-        <p class="dim">Session-only tokens — authorization expires when you log out or your session ends. No credentials are stored beyond this session.</p>
+        <p class="dim">Authorize once — your refresh token is stored encrypted so you can push anytime without re-authenticating.</p>
 
         <div class="post-layout-grid">
             <div class="post-col-left">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: <?php echo $googleConnected ? '#4CAF50' : '#999'; ?>;"></span>
-                    <strong>GOOGLE DRIVE: <?php echo $googleConnected ? 'CONNECTED' : 'NOT CONNECTED'; ?></strong>
+                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: <?php echo $googleReady ? '#4CAF50' : '#999'; ?>;"></span>
+                    <strong>GOOGLE DRIVE: <?php echo $googleLinked ? 'LINKED' : ($googleReady ? 'ACTIVE' : 'NOT LINKED'); ?></strong>
                 </div>
 
-                <?php if ($googleConfigured && !$googleConnected): ?>
+                <?php if ($googleConfigured && !$googleReady): ?>
                     <?php
                     $googleCreds = SnapSmackCloudOAuth::getStoredCredentials('google', $settings, $salt);
                     $googleRedirect = $siteUrl . '/smack-cloud.php?action=oauth_callback&provider=google';
                     $googleAuthUrl = SnapSmackCloudOAuth::getAuthorizationUrl('google', $googleCreds['client_id'], $googleRedirect);
                     ?>
-                    <a href="<?php echo htmlspecialchars($googleAuthUrl); ?>" class="btn-smack">CONNECT TO GOOGLE DRIVE</a>
-                <?php elseif ($googleConnected): ?>
-                    <a href="smack-cloud.php?action=disconnect&provider=google" class="btn-smack" onclick="return confirm('Disconnect from Google Drive?');">DISCONNECT</a>
+                    <a href="<?php echo htmlspecialchars($googleAuthUrl); ?>" class="btn-smack">LINK GOOGLE DRIVE</a>
+                <?php elseif ($googleReady): ?>
+                    <a href="smack-cloud.php?action=disconnect&provider=google" class="btn-smack" onclick="return confirm('Unlink Google Drive? You will need to re-authorize.');">UNLINK</a>
                 <?php else: ?>
                     <span class="dim">Configure credentials above first.</span>
                 <?php endif; ?>
@@ -327,19 +339,19 @@ include 'core/sidebar.php';
 
             <div class="post-col-right">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: <?php echo $onedriveConnected ? '#4CAF50' : '#999'; ?>;"></span>
-                    <strong>ONEDRIVE: <?php echo $onedriveConnected ? 'CONNECTED' : 'NOT CONNECTED'; ?></strong>
+                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: <?php echo $onedriveReady ? '#4CAF50' : '#999'; ?>;"></span>
+                    <strong>ONEDRIVE: <?php echo $onedriveLinked ? 'LINKED' : ($onedriveReady ? 'ACTIVE' : 'NOT LINKED'); ?></strong>
                 </div>
 
-                <?php if ($onedriveConfigured && !$onedriveConnected): ?>
+                <?php if ($onedriveConfigured && !$onedriveReady): ?>
                     <?php
                     $onedriveCreds = SnapSmackCloudOAuth::getStoredCredentials('onedrive', $settings, $salt);
                     $onedriveRedirect = $siteUrl . '/smack-cloud.php?action=oauth_callback&provider=onedrive';
                     $onedriveAuthUrl = SnapSmackCloudOAuth::getAuthorizationUrl('onedrive', $onedriveCreds['client_id'], $onedriveRedirect);
                     ?>
-                    <a href="<?php echo htmlspecialchars($onedriveAuthUrl); ?>" class="btn-smack">CONNECT TO ONEDRIVE</a>
-                <?php elseif ($onedriveConnected): ?>
-                    <a href="smack-cloud.php?action=disconnect&provider=onedrive" class="btn-smack" onclick="return confirm('Disconnect from OneDrive?');">DISCONNECT</a>
+                    <a href="<?php echo htmlspecialchars($onedriveAuthUrl); ?>" class="btn-smack">LINK ONEDRIVE</a>
+                <?php elseif ($onedriveReady): ?>
+                    <a href="smack-cloud.php?action=disconnect&provider=onedrive" class="btn-smack" onclick="return confirm('Unlink OneDrive? You will need to re-authorize.');">UNLINK</a>
                 <?php else: ?>
                     <span class="dim">Configure credentials above first.</span>
                 <?php endif; ?>
@@ -358,12 +370,12 @@ include 'core/sidebar.php';
     <div class="dash-grid dash-grid-2">
         <div class="box box-flex">
             <h4 style="margin-top: 0;">GOOGLE DRIVE</h4>
-            <?php if ($googleConnected): ?>
+            <?php if ($googleReady): ?>
                 <button type="button" class="btn-smack btn-block push-cloud-btn" data-provider="google" data-type="recovery_kit">PUSH RECOVERY KIT</button>
                 <button type="button" class="btn-smack btn-block push-cloud-btn" data-provider="google" data-type="wxr" style="margin-top: 8px;">PUSH WORDPRESS WXR</button>
                 <button type="button" class="btn-smack btn-block push-cloud-btn" data-provider="google" data-type="json" style="margin-top: 8px;">PUSH PORTABLE JSON</button>
             <?php else: ?>
-                <p class="dim"><?php echo $googleConfigured ? 'Connect to Google Drive above to enable push.' : 'Configure credentials above first.'; ?></p>
+                <p class="dim"><?php echo $googleConfigured ? 'Link Google Drive above to enable push.' : 'Configure credentials above first.'; ?></p>
                 <button type="button" class="btn-smack btn-block" disabled>PUSH RECOVERY KIT</button>
                 <button type="button" class="btn-smack btn-block" disabled style="margin-top: 8px;">PUSH WORDPRESS WXR</button>
                 <button type="button" class="btn-smack btn-block" disabled style="margin-top: 8px;">PUSH PORTABLE JSON</button>
@@ -372,12 +384,12 @@ include 'core/sidebar.php';
 
         <div class="box box-flex">
             <h4 style="margin-top: 0;">ONEDRIVE</h4>
-            <?php if ($onedriveConnected): ?>
+            <?php if ($onedriveReady): ?>
                 <button type="button" class="btn-smack btn-block push-cloud-btn" data-provider="onedrive" data-type="recovery_kit">PUSH RECOVERY KIT</button>
                 <button type="button" class="btn-smack btn-block push-cloud-btn" data-provider="onedrive" data-type="wxr" style="margin-top: 8px;">PUSH WORDPRESS WXR</button>
                 <button type="button" class="btn-smack btn-block push-cloud-btn" data-provider="onedrive" data-type="json" style="margin-top: 8px;">PUSH PORTABLE JSON</button>
             <?php else: ?>
-                <p class="dim"><?php echo $onedriveConfigured ? 'Connect to OneDrive above to enable push.' : 'Configure credentials above first.'; ?></p>
+                <p class="dim"><?php echo $onedriveConfigured ? 'Link OneDrive above to enable push.' : 'Configure credentials above first.'; ?></p>
                 <button type="button" class="btn-smack btn-block" disabled>PUSH RECOVERY KIT</button>
                 <button type="button" class="btn-smack btn-block" disabled style="margin-top: 8px;">PUSH WORDPRESS WXR</button>
                 <button type="button" class="btn-smack btn-block" disabled style="margin-top: 8px;">PUSH PORTABLE JSON</button>

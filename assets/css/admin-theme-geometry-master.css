@@ -2055,6 +2055,10 @@ input[type="range"]:active::-webkit-slider-thumb {
         grid-template-columns: 1fr 1fr;
     }
 
+    .dash-grid-4 {
+        grid-template-columns: 1fr 1fr;
+    }
+
     .post-layout-grid,
     .grid-50-50 {
         gap: 20px;
@@ -2146,7 +2150,8 @@ input[type="range"]:active::-webkit-slider-thumb {
 
     .dash-grid,
     .grid-33,
-    .dash-grid-2 {
+    .dash-grid-2,
+    .dash-grid-4 {
         grid-template-columns: 1fr;
     }
 
