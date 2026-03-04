@@ -262,6 +262,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
             text-transform: uppercase;
             letter-spacing: 2px;
         }
+        .method-note {
+            margin-top: 12px;
+            font-size: 0.8rem;
+            color: #555;
+        }
     </style>
 </head>
 <body>
@@ -306,7 +311,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
             <button type="submit">Deploy SnapSmack</button>
         </form>
 
-        <p style="margin-top:12px;font-size:0.8rem;color:#555;">
+        <p class="method-note">
             <?php if ($has_git): ?>
                 Will use Git clone (preferred).
             <?php else: ?>

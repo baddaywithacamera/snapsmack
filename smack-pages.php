@@ -121,12 +121,12 @@ include 'core/sidebar.php';
             <input type="text" name="image_asset" value="<?php echo htmlspecialchars($edit_page['image_asset'] ?? ''); ?>" placeholder="e.g. media_assets/1706821234.jpg">
 
             <label>Content (Shortcodes and plain text only)</label>
-            <textarea name="content" style="height: 400px;"><?php echo htmlspecialchars($edit_page['content'] ?? ''); ?></textarea>
+            <textarea name="content" rows="20"><?php echo htmlspecialchars($edit_page['content'] ?? ''); ?></textarea>
 
             <div class="form-action-row">
                 <button type="submit" name="save_page" class="master-update-btn">COMMIT TO DATABASE</button>
                 <?php if($edit_page): ?>
-                    <a href="smack-pages.php" class="btn-reset" style="margin-left: 20px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; padding: 0 30px; height: 52px; border-radius: 4px;">ABORT</a>
+                    <a href="smack-pages.php" class="btn-reset btn-abort">ABORT</a>
                 <?php endif; ?>
             </div>
         </div>
@@ -139,7 +139,7 @@ include 'core/sidebar.php';
                 <div class="item-text">
                     <div class="signal-sender">
                         [<?php echo $p['menu_order']; ?>] <?php echo htmlspecialchars($p['title']); ?>
-                        <span style="color: #444; font-size: 0.8rem; margin-left: 10px;">/<?php echo htmlspecialchars($p['slug']); ?></span>
+                        <span class="dim text-sm ml-10">/<?php echo htmlspecialchars($p['slug']); ?></span>
                     </div>
                 </div>
                 <div class="item-actions">

@@ -161,7 +161,7 @@ include 'core/sidebar.php';
                         <div class="preview-frame">
                             <img src="<?php echo $img['img_file']; ?>" class="swap-preview">
                         </div>
-                        <p class="dim" style="margin-top:15px;">
+                        <p class="dim mt-15">
                             <strong>NOTE:</strong> Replacement is permanent. Current asset and thumbnail will be purged.
                         </p>
                     </div>

@@ -141,7 +141,7 @@ include 'core/sidebar.php';
             <div class="dim">
                 BY <?php echo strtoupper(htmlspecialchars($current_admin_meta['author'])); ?>
                 <?php if (!empty($current_admin_meta['support'])): ?>
-                    | <a href="mailto:<?php echo htmlspecialchars($current_admin_meta['support']); ?>" style="color: #247AA2; text-decoration: none;">SUPPORT</a>
+                    | <a href="mailto:<?php echo htmlspecialchars($current_admin_meta['support']); ?>" class="support-link">SUPPORT</a>
                 <?php endif; ?>
             </div>
         </div>
@@ -172,19 +172,19 @@ include 'core/sidebar.php';
                 <div class="dash-grid">
                     <div class="lens-input-wrapper">
                         <label>MASTHEAD MODE</label>
-                        <select name="settings[masthead_type]" onchange="document.getElementById('logo-upload-group').style.display = (this.value === 'logo') ? 'block' : 'none';">
+                        <select name="settings[masthead_type]" onchange="document.getElementById('logo-upload-group').classList.toggle('d-none', this.value !== 'logo');">
                             <option value="text" <?php echo (($settings['masthead_type'] ?? 'text') == 'text') ? 'selected' : ''; ?>>Plain Text (Public Skin Font)</option>
                             <option value="logo" <?php echo (($settings['masthead_type'] ?? 'text') == 'logo') ? 'selected' : ''; ?>>Custom Logo Image</option>
                         </select>
                     </div>
 
-                    <div class="lens-input-wrapper" id="logo-upload-group" style="display: <?php echo (($settings['masthead_type'] ?? 'text') == 'logo') ? 'block' : 'none'; ?>;">
+                    <div class="lens-input-wrapper<?php echo (($settings['masthead_type'] ?? 'text') == 'logo') ? '' : ' d-none'; ?>" id="logo-upload-group">
                         <label>UPLOAD LOGO (PNG/SVG)</label>
-                        <input type="file" name="site_logo_file" accept="image/*" style="width: 100%; box-sizing: border-box; padding: 5px; background: #000; color: #ccc; border: 1px solid #333;">
+                        <input type="file" name="site_logo_file" accept="image/*" class="file-input-raw">
                         <?php if (!empty($settings['site_logo'])): ?>
-                            <div style="margin-top: 10px; padding: 10px; background: #111; border: 1px solid #333;">
+                            <div class="logo-preview-box">
                                 <span class="dim">ACTIVE LOGO:</span><br>
-                                <img src="<?php echo BASE_URL . htmlspecialchars($settings['site_logo']); ?>" style="max-height: 50px; margin-top: 10px;">
+                                <img src="<?php echo BASE_URL . htmlspecialchars($settings['site_logo']); ?>" class="logo-preview-img">
                             </div>
                         <?php endif; ?>
                     </div>
@@ -217,11 +217,11 @@ include 'core/sidebar.php';
                         <label>ARCHIVE DISPLAY MODE</label>
 
                         <?php if ($layout_locked): ?>
-                            <select disabled style="opacity: 0.4; cursor: not-allowed;">
+                            <select disabled class="select-locked">
                                 <option><?php echo strtoupper($all_layouts[$supported_layouts[0]]); ?></option>
                             </select>
                             <input type="hidden" name="settings[archive_layout]" value="<?php echo htmlspecialchars($supported_layouts[0]); ?>">
-                            <p class="dim" style="margin-top: 6px; font-size: 0.75em;">
+                            <p class="dim field-hint">
                                 ACTIVE SKIN ONLY SUPPORTS THIS LAYOUT MODE.
                             </p>
                         <?php else: ?>
@@ -278,11 +278,11 @@ include 'core/sidebar.php';
                         ?>
 
                         <?php if ($wall_unavailable): ?>
-                            <select disabled style="opacity: 0.4; cursor: not-allowed;">
+                            <select disabled class="select-locked">
                                 <option>DISABLED BY SKIN</option>
                             </select>
                             <input type="hidden" name="settings[show_wall_link]" value="0">
-                            <p class="dim" style="margin-top: 6px; font-size: 0.75em;">
+                            <p class="dim field-hint">
                                 <?php if ($pimpotron_active): ?>
                                     PIMPOTRON IS ACTIVE &mdash; WALL ENGINE IS INCOMPATIBLE WITH THIS SKIN.
                                 <?php else: ?>

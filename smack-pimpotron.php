@@ -270,11 +270,11 @@ include 'core/sidebar.php';
             </div>
             <div class="lens-input-wrapper">
                 <label>CREATE NEW SLIDESHOW</label>
-                <div style="display:flex;gap:10px;align-items:stretch;">
-                    <form method="POST" style="display:contents;">
+                <div class="pimp-create-row">
+                    <form method="POST" class="d-contents">
                         <input type="hidden" name="action" value="create_slideshow">
-                        <input type="text" name="name" placeholder="SLIDESHOW NAME" style="flex:1;min-width:0;margin:0;">
-                        <button type="submit" class="btn-smack" style="margin:0;width:auto;flex-shrink:0;">CREATE</button>
+                        <input type="text" name="name" placeholder="SLIDESHOW NAME">
+                        <button type="submit" class="btn-smack">CREATE</button>
                     </form>
                 </div>
             </div>
@@ -307,12 +307,12 @@ include 'core/sidebar.php';
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <p class="dim" style="font-size:0.75em;margin-top:4px;">ONE FONT. LOCKED. NO EXCEPTIONS.</p>
+                    <p class="dim field-hint">ONE FONT. LOCKED. NO EXCEPTIONS.</p>
                 </div>
             </div>
 
-            <h3 style="margin-top:20px;">MASTER GLITCH DEFAULTS</h3>
-            <p class="dim" style="font-size:0.8em;margin-bottom:12px;">Per-slide overrides will trump these. Leave slide fields blank to inherit.</p>
+            <h3 class="mt-20">MASTER GLITCH DEFAULTS</h3>
+            <p class="dim text-sm mb-12">Per-slide overrides will trump these. Leave slide fields blank to inherit.</p>
             <div class="dash-grid">
                 <div class="lens-input-wrapper">
                     <label>DEFAULT GLITCH FREQUENCY</label>
@@ -366,7 +366,7 @@ include 'core/sidebar.php';
         <table class="smack-table" id="slide-sort-table">
             <thead>
                 <tr>
-                    <th style="width:30px;">#</th>
+                    <th class="col-w-30">#</th>
                     <th>TYPE</th>
                     <th>CONTENT</th>
                     <th>OVERLAY</th>
@@ -377,7 +377,7 @@ include 'core/sidebar.php';
             </thead>
             <tbody>
                 <?php foreach ($slides as $i => $sl): ?>
-                <tr data-slide-id="<?php echo $sl['id']; ?>" style="cursor:grab;">
+                <tr data-slide-id="<?php echo $sl['id']; ?>" class="cursor-grab">
                     <td class="drag-handle">&#8597; <?php echo $i + 1; ?></td>
                     <td><?php echo strtoupper($sl['slide_type']); ?></td>
                     <td>
@@ -392,7 +392,7 @@ include 'core/sidebar.php';
                         <?php elseif ($sl['slide_type'] === 'matrix'): ?>
                             <span style="color:<?php echo $sl['rain_color_hex'] ?? '#00FF00'; ?>;">&#9608;</span> RAIN
                         <?php else: ?>
-                            <span style="background:<?php echo $sl['bg_color_hex']; ?>;width:14px;height:14px;display:inline-block;border:1px solid #444;"></span> TEXT
+                            <span class="pimp-color-swatch" style="background:<?php echo $sl['bg_color_hex']; ?>;"></span> TEXT
                         <?php endif; ?>
                     </td>
                     <td><?php echo $sl['overlay_text'] ? htmlspecialchars(mb_strimwidth($sl['overlay_text'], 0, 20, '…')) : '<span class="dim">—</span>'; ?></td>
@@ -402,9 +402,9 @@ include 'core/sidebar.php';
                         /
                         <?php echo $sl['glitch_frequency'] ? strtoupper($sl['glitch_frequency']) : '<span class="dim">INHERIT</span>'; ?>
                     </td>
-                    <td style="white-space:nowrap;">
+                    <td class="nowrap">
                         <a href="smack-pimpotron.php?sid=<?php echo $active_sid; ?>&edit_slide=<?php echo $sl['id']; ?>" class="action-edit">EDIT</a>
-                        <form method="POST" style="display:inline;margin-left:6px;" onsubmit="return confirm('DELETE THIS SLIDE?');">
+                        <form method="POST" class="form-inline" onsubmit="return confirm('DELETE THIS SLIDE?');">
                             <input type="hidden" name="action" value="delete_slide">
                             <input type="hidden" name="slide_id" value="<?php echo $sl['id']; ?>">
                             <button type="submit" class="action-delete">DEL</button>
@@ -548,10 +548,10 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
-            <div class="box" style="margin-top:20px;">
+            <div class="box mt-20">
                 <h4>OVERLAY TEXT</h4>
                 <div class="dash-grid">
-                    <div class="lens-input-wrapper" style="grid-column:1/-1;">
+                    <div class="lens-input-wrapper grid-col-full">
                         <label>TEXT (BLANK = NO OVERLAY)</label>
                         <input type="text" name="overlay_text" value="<?php echo htmlspecialchars($editing_slide['overlay_text']??''); ?>" placeholder="LEAVE BLANK FOR NO TEXT">
                     </div>
@@ -585,8 +585,8 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
-            <div class="box" style="margin-top:20px;">
-                <h4>GLITCH OVERRIDES <span class="dim" style="font-size:0.75em;">(BLANK = INHERIT FROM SLIDESHOW)</span></h4>
+            <div class="box mt-20">
+                <h4>GLITCH OVERRIDES <span class="dim text-0-75">(BLANK = INHERIT FROM SLIDESHOW)</span></h4>
                 <div class="dash-grid">
                     <div class="lens-input-wrapper">
                         <label>FREQUENCY OVERRIDE</label>
@@ -614,7 +614,7 @@ include 'core/sidebar.php';
                     <?php echo $editing_slide ? 'UPDATE SLIDE' : 'ADD SLIDE'; ?>
                 </button>
                 <?php if ($editing_slide): ?>
-                    <a href="smack-pimpotron.php?sid=<?php echo $active_sid; ?>" class="dim" style="margin-left:15px;">CANCEL</a>
+                    <a href="smack-pimpotron.php?sid=<?php echo $active_sid; ?>" class="dim ml-15">CANCEL</a>
                 <?php endif; ?>
             </div>
         </form>

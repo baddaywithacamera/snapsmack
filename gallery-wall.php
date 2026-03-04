@@ -191,7 +191,7 @@ try {
                 </div>
             </div>
         <?php endforeach; ?>
-        <div id="wall-sentinel" style="width: 1px; height: 1px; pointer-events: none;"></div>
+        <div id="wall-sentinel" class="wall-sentinel"></div>
     </div>
 </div>
 

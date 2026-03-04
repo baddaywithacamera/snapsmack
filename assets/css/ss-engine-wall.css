@@ -150,3 +150,9 @@ body, html {
         width: 80vw;
     }
 }
+
+#wall-sentinel {
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+}

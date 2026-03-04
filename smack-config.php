@@ -238,7 +238,7 @@ include 'core/sidebar.php';
                             <option value="off"    <?php echo ($state === 'off')    ? 'selected' : ''; ?>>OFF</option>
                         </select>
                         <span class="dim"><?php echo $slot['hint']; ?></span>
-                        <div class="footer-custom-field" id="field-<?php echo $custom_key; ?>" style="<?php echo ($state === 'custom') ? '' : 'display:none;'; ?> margin-top: 8px;">
+                        <div class="footer-custom-field<?php echo ($state === 'custom') ? '' : ' d-none'; ?>" id="field-<?php echo $custom_key; ?>">
                             <input type="text"
                                    name="settings[<?php echo $custom_key; ?>]"
                                    value="<?php echo htmlspecialchars($custom_val); ?>"
@@ -269,7 +269,7 @@ include 'core/sidebar.php';
                             <option value="off"    <?php echo ($state === 'off')    ? 'selected' : ''; ?>>OFF</option>
                         </select>
                         <span class="dim"><?php echo $slot['hint']; ?></span>
-                        <div class="footer-custom-field" id="field-<?php echo $custom_key; ?>" style="<?php echo ($state === 'custom') ? '' : 'display:none;'; ?> margin-top: 8px;">
+                        <div class="footer-custom-field<?php echo ($state === 'custom') ? '' : ' d-none'; ?>" id="field-<?php echo $custom_key; ?>">
                             <input type="text"
                                    name="settings[<?php echo $custom_key; ?>]"
                                    value="<?php echo htmlspecialchars($custom_val); ?>"
@@ -348,7 +348,7 @@ include 'core/sidebar.php';
                         <div class="file-name-display" id="logo-name">
                             <?php echo !empty($settings['header_logo_url']) ? "CURRENT" : "SELECT FILE"; ?>
                         </div>
-                        <input type="file" name="logo_upload" id="logo-input" accept="image/*" style="display:none;" onchange="document.getElementById('logo-name').innerText = this.files[0].name;">
+                        <input type="file" name="logo_upload" id="logo-input" accept="image/*" class="file-input-hidden" onchange="document.getElementById('logo-name').innerText = this.files[0].name;">
                     </div>
 
                     <label>FAVICON</label>
@@ -357,7 +357,7 @@ include 'core/sidebar.php';
                         <div class="file-name-display" id="favicon-name">
                             <?php echo !empty($settings['favicon_url']) ? "CURRENT: " . basename($settings['favicon_url']) : "SELECT FILE (.ICO, .PNG, .SVG)"; ?>
                         </div>
-                        <input type="file" name="favicon_upload" id="favicon-input" accept=".ico,.png,.svg,image/x-icon,image/png,image/svg+xml" style="display:none;" onchange="document.getElementById('favicon-name').innerText = this.files[0].name;">
+                        <input type="file" name="favicon_upload" id="favicon-input" accept=".ico,.png,.svg,image/x-icon,image/png,image/svg+xml" class="file-input-hidden" onchange="document.getElementById('favicon-name').innerText = this.files[0].name;">
                     </div>
                 </div>
             </div>
@@ -397,7 +397,7 @@ include 'core/sidebar.php';
                 </div>
                 <div class="lens-input-wrapper">
                     <label>LIVE PREVIEW</label>
-                    <div id="local-clock" class="read-only-display" style="padding: 8px 12px; font-size: 0.95rem; letter-spacing: 0.5px;">SYNCING...</div>
+                    <div id="local-clock" class="read-only-display clock-display">SYNCING...</div>
                 </div>
             </div>
         </div>

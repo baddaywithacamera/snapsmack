@@ -29,8 +29,8 @@ if (!$running) {
             Optionally verifies SHA-256 checksums (slower but confirms file integrity). This replaces the old
             media manifest export with a lightweight, database-driven approach.
         </p>
-        <form method="POST" style="margin-top:20px;">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:20px;">
+        <form method="POST" class="mt-20">
+            <label class="flex align-center gap-8 cursor-pointer mb-20">
                 <input type="checkbox" name="verify_checksums" value="1">
                 <span>Also verify SHA-256 checksums (slower — hashes each file on disk)</span>
             </label>

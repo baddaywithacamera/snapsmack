@@ -139,7 +139,7 @@ include 'core/sidebar.php';
                                 echo '<div class="section-divider"></div>';
                             }
                             $current_cat = $p['cat_name'];
-                            echo '<h4 class="dim" style="text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">' . htmlspecialchars($current_cat ?: 'UNCATEGORIZED') . '</h4>';
+                            echo '<h4 class="dim blogroll-cat-heading">' . htmlspecialchars($current_cat ?: 'UNCATEGORIZED') . '</h4>';
                         }
                     ?>
                         <div class="recent-item">

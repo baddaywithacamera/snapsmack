@@ -911,6 +911,47 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             border-radius: 3px;
         }
         .complete-box a:hover { background: #c0ffb0; }
+
+        /* --- INLINE STYLES MOVED TO CLASSES --- */
+        .install-desc-note {
+            color: #888;
+            margin-bottom: 20px;
+        }
+        .install-divider-label {
+            margin-top: 28px;
+            padding-top: 16px;
+            border-top: 1px solid #2a2a2a;
+        }
+        .install-file-input {
+            color: #ccc;
+        }
+        .install-recovery-note {
+            color: #888;
+            margin-bottom: 20px;
+        }
+        .install-image-count-label {
+            color: #888;
+            margin-bottom: 20px;
+        }
+        .install-count-highlight {
+            color: #a0ff90;
+        }
+        .install-radio-label {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+        .install-radio-input {
+            margin-top: 4px;
+        }
+        .install-radio-text {
+            color: #eee;
+        }
+        .install-flat-path-label {
+            margin-top: 16px;
+        }
     </style>
 </head>
 <body>
@@ -1017,7 +1058,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
     <?php // ============================================================= ?>
     <?php if ($step === 2): ?>
         <h2>Step 2 — Database Configuration</h2>
-        <p style="color:#888;margin-bottom:20px;">Enter the database credentials from your hosting control panel. The database must already exist.</p>
+        <p class="install-desc-note">Enter the database credentials from your hosting control panel. The database must already exist.</p>
 
         <form method="post">
             <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
@@ -1074,7 +1115,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             <input type="text" id="site_tagline" name="site_tagline" value="<?php echo htmlspecialchars($_POST['site_tagline'] ?? ''); ?>">
             <div class="hint">Optional. A short description or subtitle.</div>
 
-            <label for="admin_user" style="margin-top:28px;padding-top:16px;border-top:1px solid #2a2a2a;">Admin Username</label>
+            <label for="admin_user" class="install-divider-label">Admin Username</label>
             <input type="text" id="admin_user" name="admin_user" value="<?php echo htmlspecialchars($_POST['admin_user'] ?? ''); ?>">
 
             <label for="admin_email">Admin Email</label>
@@ -1111,7 +1152,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             <input type="text" id="site_tagline" name="site_tagline" value="<?php echo htmlspecialchars($_POST['site_tagline'] ?? ''); ?>">
             <div class="hint">Optional. A short description or subtitle.</div>
 
-            <label for="admin_user" style="margin-top:28px;padding-top:16px;border-top:1px solid #2a2a2a;">Admin Username</label>
+            <label for="admin_user" class="install-divider-label">Admin Username</label>
             <input type="text" id="admin_user" name="admin_user" value="<?php echo htmlspecialchars($_POST['admin_user'] ?? ''); ?>">
 
             <label for="admin_email">Admin Email</label>
@@ -1178,7 +1219,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
                 <button type="submit">Continue to File Restoration</button>
             </form>
         <?php else: ?>
-            <p style="color:#888;margin-bottom:20px;">No existing database found. You'll need to provide credentials and a SQL dump file.</p>
+            <p class="install-recovery-note">No existing database found. You'll need to provide credentials and a SQL dump file.</p>
             <form method="post">
                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                 <input type="hidden" name="step" value="r2">
@@ -1195,7 +1236,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
     <?php // ============================================================= ?>
     <?php if ($recovery_mode && $step === 'r2'): ?>
         <h2>Recovery — Database &amp; SQL Import</h2>
-        <p style="color:#888;margin-bottom:20px;">Enter your database credentials and upload the SQL dump from your backup.</p>
+        <p class="install-recovery-note">Enter your database credentials and upload the SQL dump from your backup.</p>
 
         <form method="post" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
@@ -1214,8 +1255,8 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             <label for="db_pass">Database Password</label>
             <input type="password" id="db_pass" name="db_pass">
 
-            <label for="sql_dump" style="margin-top:28px;padding-top:16px;border-top:1px solid #2a2a2a;">SQL Dump File</label>
-            <input type="file" id="sql_dump" name="sql_dump" accept=".sql" style="color:#ccc;">
+            <label for="sql_dump" class="install-divider-label">SQL Dump File</label>
+            <input type="file" id="sql_dump" name="sql_dump" accept=".sql" class="install-file-input">
             <div class="hint">The .sql file from Backup &amp; Recovery → Full Database export.</div>
 
             <button type="submit">Import &amp; Continue</button>
@@ -1242,9 +1283,9 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             try { $asset_count = $pdo->query("SELECT COUNT(*) FROM snap_assets")->fetchColumn(); } catch (Exception $e) {}
         } catch (Exception $e) { $img_count = '?'; }
         ?>
-        <p style="color:#888;margin-bottom:20px;">
-            Found <strong style="color:#a0ff90;"><?php echo $img_count; ?></strong> image records
-            <?php if ($asset_count > 0): ?> and <strong style="color:#a0ff90;"><?php echo $asset_count; ?></strong> media assets<?php endif; ?>
+        <p class="install-image-count-label">
+            Found <strong class="install-count-highlight"><?php echo $img_count; ?></strong> image records
+            <?php if ($asset_count > 0): ?> and <strong class="install-count-highlight"><?php echo $asset_count; ?></strong> media assets<?php endif; ?>
             in the database.
         </p>
 
@@ -1253,23 +1294,23 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             <input type="hidden" name="step" value="r4">
             <input type="hidden" name="mode" value="recovery">
 
-            <label style="display:flex;align-items:flex-start;gap:10px;margin-top:20px;cursor:pointer;">
-                <input type="radio" name="image_mode" value="in_place" checked style="margin-top:4px;">
+            <label class="install-radio-label">
+                <input type="radio" name="image_mode" value="in_place" checked class="install-radio-input">
                 <div>
-                    <strong style="color:#eee;">Images are already in the correct directory structure</strong>
+                    <strong class="install-radio-text">Images are already in the correct directory structure</strong>
                     <div class="hint">Files are in <code>img_uploads/YYYY/MM/</code> with thumbs in subdirectories. Just verify and regenerate missing thumbs.</div>
                 </div>
             </label>
 
-            <label style="display:flex;align-items:flex-start;gap:10px;margin-top:20px;cursor:pointer;">
-                <input type="radio" name="image_mode" value="flat" style="margin-top:4px;">
+            <label class="install-radio-label">
+                <input type="radio" name="image_mode" value="flat" class="install-radio-input">
                 <div>
-                    <strong style="color:#eee;">All images are in one flat folder</strong>
+                    <strong class="install-radio-text">All images are in one flat folder</strong>
                     <div class="hint">All image files were dumped into a single directory. The recovery engine will use the database paths to sort them into the correct <code>img_uploads/YYYY/MM/</code> structure.</div>
                 </div>
             </label>
 
-            <label for="flat_path" style="margin-top:16px;">Flat folder path (relative to site root)</label>
+            <label for="flat_path" class="install-flat-path-label">Flat folder path (relative to site root)</label>
             <input type="text" id="flat_path" name="flat_path" placeholder="e.g. recovery/ or img_dumps/" value="">
             <div class="hint">Only needed if you selected "flat folder" above.</div>
 

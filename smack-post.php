@@ -462,7 +462,7 @@ include 'core/sidebar.php';
                         <div class="file-upload-wrapper">
                             <div class="file-custom-btn">INJECT ASSET</div>
                             <span id="post-file-name" class="file-name-display">No file selected...</span>
-                            <input type="file" name="img_file" id="post-file-input" accept="image/*" style="display:none;">
+                            <input type="file" name="img_file" id="post-file-input" accept="image/*" class="file-input-hidden">
                         </div>
                     </div>
                 </div>
@@ -526,8 +526,8 @@ include 'core/sidebar.php';
             </div>
         </div>
 
-        <div id="progress-container" class="progress-container" style="display:none;">
-            <div id="progress-bar" class="progress-bar" style="width:0%;"></div>
+        <div id="progress-container" class="progress-container">
+            <div id="progress-bar" class="progress-bar"></div>
         </div>
 
         <div class="form-action-row">

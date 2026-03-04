@@ -75,7 +75,7 @@ include 'core/sidebar.php';
         <div class="file-upload-wrapper" id="drop-zone" onclick="document.getElementById('file-input').click()">
             <div class="file-custom-btn">CHOOSE FILE</div>
             <span id="file-name-display" class="file-name-display">No signal selected... or drag & drop here.</span>
-            <input type="file" id="file-input" accept="image/*" style="display:none">
+            <input type="file" id="file-input" accept="image/*" class="file-input-hidden">
         </div>
     </div>
 

@@ -393,7 +393,7 @@ include 'core/sidebar.php';
                 <form method="POST">
                     <input type="hidden" name="action" value="sync_assets">
                     <input type="hidden" name="batch_offset" value="<?php echo $asset_sync_next_offset; ?>">
-                    <button type="submit" class="btn-smack btn-block" style="background:#ff4444;">CONTINUE SYNC (BATCH <?php echo $asset_sync_next_offset; ?>+)</button>
+                    <button type="submit" class="btn-smack btn-block btn-backup">CONTINUE SYNC (BATCH <?php echo $asset_sync_next_offset; ?>+)</button>
                 </form>
             <?php else: ?>
                 <form method="POST">

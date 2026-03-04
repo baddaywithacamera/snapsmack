@@ -120,7 +120,7 @@ include 'core/sidebar.php';
                            class="action-delete" 
                            onclick="return confirm('Confirm permanent deletion of this user?')">DELETE</a>
                     <?php else: ?>
-                        <span class="dim" style="font-size: 0.6rem; letter-spacing: 0.5px;">(ACTIVE SESSION)</span>
+                        <span class="dim badge-active-session">(ACTIVE SESSION)</span>
                     <?php endif; ?>
                 </div>
             </div>

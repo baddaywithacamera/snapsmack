@@ -137,7 +137,7 @@ include 'core/sidebar.php';
                 <span class="stat-label">VERIFIED</span>
             </div>
             <div>
-                <span class="stat-val" style="color: #ff3e3e;"><?php echo $deleted_count; ?></span>
+                <span class="stat-val"><?php echo $deleted_count; ?></span>
                 <span class="stat-label">PURGED</span>
             </div>
         </div>

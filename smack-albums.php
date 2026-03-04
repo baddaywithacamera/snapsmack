@@ -97,8 +97,8 @@ include 'core/sidebar.php';
                     </div>
 
                     <?php if ($edit_mode): ?>
-                        <div class="lens-input-wrapper" style="margin-top: 20px;">
-                            <a href="smack-albums.php" class="btn-reset" style="display:block; text-align:center; text-decoration:none; padding:15px; border-radius:4px;">CANCEL EDIT</a>
+                        <div class="lens-input-wrapper mt-20">
+                            <a href="smack-albums.php" class="btn-reset btn-cancel-block">CANCEL EDIT</a>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -109,7 +109,7 @@ include 'core/sidebar.php';
                     <h3>ACTIVE MISSIONS</h3>
                     
                     <?php if (empty($albums)): ?>
-                        <p class="dim" style="padding:20px;">No missions registered.</p>
+                        <p class="dim empty-notice">No missions registered.</p>
                     <?php else: ?>
                         <?php foreach ($albums as $a): ?>
                             <div class="recent-item">

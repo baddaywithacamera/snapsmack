@@ -878,76 +878,42 @@ foreach ($help_topics as $slug => $topic) {
 }
 ?>
 
-<div class="main-content" style="display: flex; gap: 0; min-height: calc(100vh - 60px);">
+<div class="help-layout">
 
     <!-- Help Navigation Sidebar -->
-    <div class="help-nav" style="
-        width: 260px;
-        min-width: 260px;
-        border-right: 1px solid var(--lens-border, #333);
-        padding: 20px 0;
-        overflow-y: auto;
-        max-height: calc(100vh - 60px);
-    ">
-        <div style="padding: 0 16px 16px 16px; border-bottom: 1px solid var(--lens-border, #333); margin-bottom: 12px;">
-            <h2 style="font-size: 1.1rem; letter-spacing: 3px; text-transform: uppercase; margin: 0 0 4px 0;">MAN PAGES</h2>
-            <p style="font-size: 0.7rem; color: var(--text-secondary, #777); margin: 0; letter-spacing: 1px; text-transform: uppercase;">SnapSmack Documentation</p>
+    <div class="help-nav">
+        <div class="help-nav-header">
+            <h2 class="help-nav-title">MAN PAGES</h2>
+            <p class="help-nav-subtitle">SnapSmack Documentation</p>
         </div>
 
         <?php foreach ($sections as $section_name => $topics): ?>
-            <div style="margin-bottom: 16px;">
-                <div style="
-                    font-size: 0.65rem;
-                    letter-spacing: 2px;
-                    text-transform: uppercase;
-                    color: var(--text-secondary, #666);
-                    padding: 4px 16px;
-                    font-weight: 700;
-                "><?php echo htmlspecialchars($section_name); ?></div>
+            <div class="help-nav-section">
+                <div class="help-nav-section-label"><?php echo htmlspecialchars($section_name); ?></div>
 
                 <?php foreach ($topics as $slug => $topic): ?>
-                    <a href="smack-help.php?topic=<?php echo urlencode($slug); ?>"
-                       style="
-                        display: block;
-                        padding: 7px 16px 7px 24px;
-                        font-size: 0.8rem;
-                        text-decoration: none;
-                        color: <?php echo ($slug === $active_topic) ? 'var(--text-main, #eee)' : 'var(--text-secondary, #999)'; ?>;
-                        background: <?php echo ($slug === $active_topic) ? 'var(--lens-border, #222)' : 'transparent'; ?>;
-                        border-left: <?php echo ($slug === $active_topic) ? '3px solid var(--text-main, #eee)' : '3px solid transparent'; ?>;
-                        transition: all 0.15s ease;
-                        letter-spacing: 0.5px;
-                    "><?php echo htmlspecialchars($topic['icon'] ?? ''); ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?></a>
+                    <a href="smack-help.php?topic=<?php echo urlencode($slug); ?>" class="help-nav-link<?php echo ($slug === $active_topic) ? ' active' : ''; ?>"><?php echo htmlspecialchars($topic['icon'] ?? ''); ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?></a>
                 <?php endforeach; ?>
             </div>
         <?php endforeach; ?>
     </div>
 
     <!-- Help Content Area -->
-    <div class="help-content" style="
-        flex: 1;
-        padding: 32px 40px;
-        overflow-y: auto;
-        max-height: calc(100vh - 60px);
-    ">
+    <div class="help-content">
         <?php
         $topic = $help_topics[$active_topic];
         ?>
 
-        <div style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--lens-border, #333);">
-            <div style="font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text-secondary, #666); margin-bottom: 6px;">
+        <div class="help-topic-header">
+            <div class="help-topic-section">
                 <?php echo htmlspecialchars($topic['section']); ?>
             </div>
-            <h1 style="font-size: 1.6rem; letter-spacing: 1px; margin: 0;">
+            <h1 class="help-topic-title">
                 <?php echo $topic['icon'] ?? ''; ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?>
             </h1>
         </div>
 
-        <div class="help-body" style="
-            line-height: 1.7;
-            font-size: 0.9rem;
-            max-width: 780px;
-        ">
+        <div class="help-body">
             <style>
                 .help-body h3 {
                     font-size: 1.15rem;
@@ -1002,16 +968,7 @@ foreach ($help_topics as $slug => $topic) {
         </div>
 
         <!-- Topic Navigation -->
-        <div style="
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid var(--lens-border, #333);
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.75rem;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-        ">
+        <div class="help-topic-nav">
             <?php
             $slugs = array_keys($help_topics);
             $current_index = array_search($active_topic, $slugs);
@@ -1020,14 +977,14 @@ foreach ($help_topics as $slug => $topic) {
             ?>
             <div>
                 <?php if ($prev): ?>
-                    <a href="smack-help.php?topic=<?php echo urlencode($prev); ?>" style="color: var(--text-secondary, #999); text-decoration: none;">
+                    <a href="smack-help.php?topic=<?php echo urlencode($prev); ?>">
                         &larr; <?php echo htmlspecialchars($help_topics[$prev]['title']); ?>
                     </a>
                 <?php endif; ?>
             </div>
             <div>
                 <?php if ($next): ?>
-                    <a href="smack-help.php?topic=<?php echo urlencode($next); ?>" style="color: var(--text-secondary, #999); text-decoration: none;">
+                    <a href="smack-help.php?topic=<?php echo urlencode($next); ?>">
                         <?php echo htmlspecialchars($help_topics[$next]['title']); ?> &rarr;
                     </a>
                 <?php endif; ?>

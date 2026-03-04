@@ -139,7 +139,7 @@ include 'core/sidebar.php';
             <?php endif; ?>
             
         <?php else: ?>
-            <div class="read-only-display text-center" style="border:none;">NO SIGNALS DETECTED.</div>
+            <div class="read-only-display text-center no-border">NO SIGNALS DETECTED.</div>
         <?php endif; ?>
     </div>
 </div>

@@ -44,19 +44,19 @@ $border_style = $settings['image_frame_style'] ?? 'box';
     </div>
 
     <div id="footer">
-        <div id="pane-info" class="footer-pane" style="display:none;">
+        <div id="pane-info" class="footer-pane">
             <h2 class="photo-title-footer"><?php echo htmlspecialchars($img['img_title']); ?></h2>
             <div class="description">
                 <?php echo $snapsmack->parseContent($img['img_description'] ?? ''); ?>
             </div>
-            
+
             <div class="meta">
                 <div class="meta-header">TECHNICAL SPECIFICATIONS</div>
                 <table class="exif-table">
-                    <?php 
+                    <?php
                     $labels = [
-                        'Model' => 'Model', 'lens' => 'Lens', 'FNumber' => 'Aperture', 
-                        'ExposureTime' => 'Shutter', 'ISOSpeedRatings' => 'ISO', 
+                        'Model' => 'Model', 'lens' => 'Lens', 'FNumber' => 'Aperture',
+                        'ExposureTime' => 'Shutter', 'ISOSpeedRatings' => 'ISO',
                         'FocalLength' => 'Focal', 'film' => 'Film', 'flash' => 'Flash'
                     ];
                     foreach($labels as $key => $label): ?>
@@ -71,21 +71,21 @@ $border_style = $settings['image_frame_style'] ?? 'box';
             </div>
         </div>
 
-        <div id="pane-comments" class="footer-pane" style="display:none;">
+        <div id="pane-comments" class="footer-pane">
             <?php if ($comments_active): ?>
-                
-                <div class="meta-header" style="margin-bottom: 40px; text-align:center;">SIGNALS</div>
-                
+
+                <div class="meta-header signals-header">SIGNALS</div>
+
                 <?php if ($comments): ?>
-                    <table class="exif-table" style="width:100%; margin-bottom:40px;">
+                    <table class="exif-table signals-table">
                         <?php foreach($comments as $c): ?>
                             <tr>
-                                <td class="exif-label" style="vertical-align:top; width:120px;">
+                                <td class="exif-label">
                                     <?php echo htmlspecialchars($c['comment_author']); ?>
                                 </td>
                                 <td class="exif-value">
                                     <?php echo nl2br(htmlspecialchars($c['comment_text'])); ?>
-                                    <div style="font-size:0.7rem; color:var(--text-dim); margin-top:5px;">
+                                    <div class="signal-date">
                                         [<?php echo date('Y-m-d', strtotime($c['comment_date'])); ?>]
                                     </div>
                                 </td>
@@ -93,7 +93,7 @@ $border_style = $settings['image_frame_style'] ?? 'box';
                         <?php endforeach; ?>
                     </table>
                 <?php else: ?>
-                    <div class="description" style="text-align:center; color:var(--text-dim);">NO SIGNALS RECORDED.</div>
+                    <div class="description signals-empty">NO SIGNALS RECORDED.</div>
                 <?php endif; ?>
 
                 <form action="<?php echo BASE_URL; ?>process-comment.php" method="POST" class="comment-form">

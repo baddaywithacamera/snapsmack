@@ -305,7 +305,7 @@ include 'core/sidebar.php';
             </div>
             <label class="mt-30">DISK USAGE (<?php echo $disk_used_pct; ?>%)</label>
             <div class="read-only-display"><?php echo formatBytes($disk_total - $disk_free); ?> of <?php echo formatBytes($disk_total); ?></div>
-            <div class="progress-container mt-20" style="display: block;">
+            <div class="progress-container mt-20 d-block">
                 <div class="progress-bar" style="width: <?php echo $disk_used_pct; ?>%;"></div>
             </div>
         </div>

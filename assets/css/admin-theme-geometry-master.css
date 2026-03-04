@@ -1225,6 +1225,332 @@ input[type="range"]:active::-webkit-slider-thumb {
 
 /* Small text utility */
 .text-sm { font-size: 0.8rem; }
+.text-xs { font-size: 0.6rem; }
+.text-0-65 { font-size: 0.65rem; }
+.text-0-7 { font-size: 0.7rem; }
+.text-0-75 { font-size: 0.75rem; }
+
+/* Display utilities */
+.d-none { display: none; }
+.d-block { display: block; }
+.d-inline { display: inline; }
+.d-inline-block { display: inline-block; }
+.d-contents { display: contents; }
+
+/* Additional spacing utilities */
+.mt-0  { margin-top: 0 !important; }
+.mt-4  { margin-top: 4px !important; }
+.mt-6  { margin-top: 6px !important; }
+.mt-8  { margin-top: 8px !important; }
+.mt-10 { margin-top: 10px !important; }
+.mt-12 { margin-top: 12px !important; }
+.mt-16 { margin-top: 16px !important; }
+.mt-24 { margin-top: 24px !important; }
+.mt-28 { margin-top: 28px !important; }
+.mb-0  { margin-bottom: 0 !important; }
+.mb-4  { margin-bottom: 4px !important; }
+.mb-8  { margin-bottom: 8px !important; }
+.mb-10 { margin-bottom: 10px !important; }
+.mb-12 { margin-bottom: 12px !important; }
+.mb-16 { margin-bottom: 16px !important; }
+.mb-20 { margin-bottom: 20px !important; }
+.ml-6  { margin-left: 6px !important; }
+.ml-10 { margin-left: 10px !important; }
+.ml-15 { margin-left: 15px !important; }
+.ml-20 { margin-left: 20px !important; }
+.pt-16 { padding-top: 16px !important; }
+
+/* Text utilities */
+.text-center { text-align: center; }
+.text-upper  { text-transform: uppercase; }
+.ls-half { letter-spacing: 0.5px; }
+.ls-1 { letter-spacing: 1px; }
+.ls-2 { letter-spacing: 2px; }
+.ls-3 { letter-spacing: 3px; }
+.nowrap { white-space: nowrap; }
+
+/* Cursor utilities */
+.cursor-grab { cursor: grab; }
+
+/* Opacity utilities */
+.opacity-40 { opacity: 0.4; }
+
+/* Grid span */
+.grid-col-full { grid-column: 1 / -1; }
+
+/* Hidden file input — positioned inside .file-upload-wrapper */
+.file-input-hidden { display: none; }
+
+/* Scroll sentinel (gallery wall infinite-scroll trigger) */
+.wall-sentinel {
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+}
+
+/* Locked/disabled select overlay */
+.select-locked {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Small hint text below form fields */
+.field-hint {
+    margin-top: 6px;
+    font-size: 0.75em;
+}
+
+/* Abort/Cancel button in form action rows */
+.btn-abort {
+    margin-left: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    padding: 0 30px;
+    height: 52px;
+    border-radius: 4px;
+}
+
+/* Inline form (e.g. delete button beside edit link) */
+.form-inline {
+    display: inline;
+    margin-left: 6px;
+}
+
+/* Active session badge (smack-users) */
+.badge-active-session {
+    font-size: 0.6rem;
+    letter-spacing: 0.5px;
+}
+
+/* Skin card badge row */
+.skin-badge-row {
+    margin-bottom: 8px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+/* Skin gallery: "up to date" label */
+.skin-status-current {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 6px 0;
+}
+
+/* Local-only badge in skin gallery */
+.badge-local-only {
+    font-size: 0.6rem;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+}
+
+/* Logo preview container (globalvibe) */
+.logo-preview-box {
+    margin-top: 10px;
+    padding: 10px;
+}
+
+.logo-preview-img {
+    max-height: 50px;
+    margin-top: 10px;
+}
+
+/* Raw file input styling (globalvibe logo upload) */
+.file-input-raw {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 5px;
+}
+
+/* Footer custom field default hidden state handled by .d-none + JS */
+.footer-custom-field {
+    margin-top: 8px;
+}
+
+/* Clock display (smack-config time preview) */
+.clock-display {
+    padding: 8px 12px;
+    font-size: 0.95rem;
+    letter-spacing: 0.5px;
+}
+
+/* Pimpotron: create-slideshow inline row */
+.pimp-create-row {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+}
+
+.pimp-create-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+}
+
+.pimp-create-row .btn-smack {
+    margin: 0;
+    width: auto;
+    flex-shrink: 0;
+}
+
+/* Pimpotron: color swatch inline preview in slide table */
+.pimp-color-swatch {
+    width: 14px;
+    height: 14px;
+    display: inline-block;
+    border-width: 1px;
+    border-style: solid;
+}
+
+/* Blogroll category heading */
+.blogroll-cat-heading {
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+/* Albums: cancel-edit link */
+.btn-cancel-block {
+    display: block;
+    text-align: center;
+    text-decoration: none;
+    padding: 15px;
+    border-radius: 4px;
+}
+
+/* Table column width utilities */
+.col-w-30 { width: 30px; }
+
+/* Support link in skin/globalvibe appearance controllers */
+.support-link {
+    text-decoration: none;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Reverse email anti-spam (core/footer) */
+.reverse-email {
+    unicode-bidi: bidi-override;
+    direction: rtl;
+}
+
+/* --- HELP PAGE LAYOUT --- */
+.help-layout {
+    display: flex;
+    gap: 0;
+    min-height: calc(100vh - 60px);
+}
+
+.help-nav {
+    width: 260px;
+    min-width: 260px;
+    border-right: 1px solid var(--lens-border, #333);
+    padding: 20px 0;
+    overflow-y: auto;
+    max-height: calc(100vh - 60px);
+}
+
+.help-nav-header {
+    padding: 0 16px 16px 16px;
+    border-bottom: 1px solid var(--lens-border, #333);
+    margin-bottom: 12px;
+}
+
+.help-nav-title {
+    font-size: 1.1rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin: 0 0 4px 0;
+}
+
+.help-nav-subtitle {
+    font-size: 0.7rem;
+    color: var(--text-secondary, #777);
+    margin: 0;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.help-nav-section {
+    margin-bottom: 16px;
+}
+
+.help-nav-section-label {
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-secondary, #666);
+    padding: 4px 16px;
+    font-weight: 700;
+}
+
+.help-nav-link {
+    display: block;
+    padding: 7px 16px 7px 24px;
+    font-size: 0.8rem;
+    text-decoration: none;
+    color: var(--text-secondary, #999);
+    border-left: 3px solid transparent;
+    transition: all 0.15s ease;
+    letter-spacing: 0.5px;
+}
+
+.help-nav-link.active {
+    color: var(--text-main, #eee);
+    background: var(--lens-border, #222);
+    border-left-color: var(--text-main, #eee);
+}
+
+.help-content {
+    flex: 1;
+    padding: 32px 40px;
+    overflow-y: auto;
+    max-height: calc(100vh - 60px);
+}
+
+.help-topic-header {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--lens-border, #333);
+}
+
+.help-topic-section {
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-secondary, #666);
+    margin-bottom: 6px;
+}
+
+.help-topic-title {
+    font-size: 1.6rem;
+    letter-spacing: 1px;
+    margin: 0;
+}
+
+.help-body {
+    line-height: 1.7;
+    font-size: 0.9rem;
+    max-width: 780px;
+}
+
+.help-topic-nav {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--lens-border, #333);
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.help-topic-nav a {
+    color: var(--text-secondary, #999);
+    text-decoration: none;
+}
 
 /* --- APPEARANCE CONTROLLER --- */
 .appearance-controller {

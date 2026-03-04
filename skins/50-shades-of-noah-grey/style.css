@@ -809,3 +809,16 @@ body {
     letter-spacing: 0.5px;
     color: var(--text-dim);
 }
+
+/* ==========================================================================
+   INLINE STYLE REMOVALS - CSS CLASSES
+   ========================================================================= */
+
+/* Pane default state — JS toggles visibility */
+.footer-pane { display: none; }
+
+/* Signals section */
+.signals-header { margin-bottom: 40px; text-align: center; }
+.signals-table { width: 100%; margin-bottom: 40px; }
+.signal-date { font-size: 0.7rem; color: #444; margin-top: 5px; }
+.signals-empty { text-align: center; }

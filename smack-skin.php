@@ -520,7 +520,7 @@ include 'core/sidebar.php';
             <div class="dim">
                 BY <?php echo strtoupper(htmlspecialchars($manifest['author'])); ?>
                 <?php if (!empty($manifest['support'])): ?>
-                    | <a href="mailto:<?php echo htmlspecialchars($manifest['support']); ?>" style="color: #00ff00; text-decoration: none;">SUPPORT</a>
+                    | <a href="mailto:<?php echo htmlspecialchars($manifest['support']); ?>" class="support-link">SUPPORT</a>
                 <?php endif; ?>
             </div>
         </div>
@@ -565,7 +565,7 @@ include 'core/sidebar.php';
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <p class="dim" style="margin-top: 6px; font-size: 0.75em;">COLOUR PALETTE FOR THE ACTIVE SKIN. GEOMETRY AND LAYOUT ARE UNCHANGED.</p>
+                        <p class="dim field-hint">COLOUR PALETTE FOR THE ACTIVE SKIN. GEOMETRY AND LAYOUT ARE UNCHANGED.</p>
                     </div>
                 </div>
             </div>
@@ -699,12 +699,12 @@ include 'core/sidebar.php';
         <div class="box">
             <h3>SKIN REGISTRY</h3>
             <div class="gallery-alert error">> <?php echo htmlspecialchars($registry['error']); ?></div>
-            <p class="dim" style="margin-top: 10px;">
-                REGISTRY URL: <span style="color: #888;"><?php echo htmlspecialchars($registry_url); ?></span>
+            <p class="dim mt-10">
+                REGISTRY URL: <span class="dim"><?php echo htmlspecialchars($registry_url); ?></span>
             </p>
 
             <!-- Fallback: show locally installed skins only -->
-            <h3 style="margin-top: 24px;">INSTALLED SKINS</h3>
+            <h3 class="mt-24">INSTALLED SKINS</h3>
             <div class="gallery-grid">
                 <?php foreach ($local_skins as $slug => $skin): ?>
                     <div class="skin-card">
@@ -720,7 +720,7 @@ include 'core/sidebar.php';
                                 <span class="skin-card-name"><?php echo htmlspecialchars($skin['name']); ?></span>
                                 <span class="skin-card-version">v<?php echo htmlspecialchars($skin['version']); ?></span>
                             </div>
-                            <div style="margin-bottom: 8px;">
+                            <div class="mb-8">
                                 <span class="installed-badge <?php echo ($current_db_active === $slug) ? 'active-badge' : ''; ?>">
                                     <?php echo ($current_db_active === $slug) ? 'ACTIVE' : 'INSTALLED'; ?>
                                 </span>
@@ -781,7 +781,7 @@ include 'core/sidebar.php';
                                  alt="<?php echo htmlspecialchars($skin['name']); ?>"
                                  loading="lazy"
                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                            <span class="no-preview" style="display:none;">PREVIEW UNAVAILABLE</span>
+                            <span class="no-preview d-none">PREVIEW UNAVAILABLE</span>
                         <?php elseif (file_exists("skins/{$slug}/screenshot.png")): ?>
                             <img src="skins/<?php echo htmlspecialchars($slug); ?>/screenshot.png"
                                  alt="<?php echo htmlspecialchars($skin['name']); ?>">
@@ -798,7 +798,7 @@ include 'core/sidebar.php';
                         </div>
 
                         <!-- Status + Installed badges -->
-                        <div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
+                        <div class="skin-badge-row">
                             <span class="status-badge <?php echo htmlspecialchars($skin['status'] ?? 'stable'); ?>">
                                 <?php echo strtoupper($skin['status'] ?? 'STABLE'); ?>
                             </span>
@@ -874,7 +874,7 @@ include 'core/sidebar.php';
 
                             <?php else: ?>
                                 <!-- Installed and up to date -->
-                                <span style="font-size: 0.7rem; color: #555; text-transform: uppercase; letter-spacing: 1px; padding: 6px 0;">
+                                <span class="skin-status-current">
                                     UP TO DATE
                                 </span>
                             <?php endif; ?>
@@ -915,14 +915,14 @@ include 'core/sidebar.php';
                             <span class="skin-card-name"><?php echo htmlspecialchars($skin['name']); ?></span>
                             <span class="skin-card-version">v<?php echo htmlspecialchars($skin['version']); ?></span>
                         </div>
-                        <div style="margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
+                        <div class="skin-badge-row">
                             <span class="status-badge <?php echo htmlspecialchars($skin['status']); ?>">
                                 <?php echo strtoupper($skin['status']); ?>
                             </span>
                             <span class="installed-badge <?php echo ($current_db_active === $slug) ? 'active-badge' : ''; ?>">
                                 <?php echo ($current_db_active === $slug) ? 'ACTIVE' : 'INSTALLED'; ?>
                             </span>
-                            <span style="font-size: 0.6rem; color: #666; letter-spacing: 1px; padding: 2px 8px;">LOCAL ONLY</span>
+                            <span class="badge-local-only">LOCAL ONLY</span>
                         </div>
                         <div class="skin-card-desc"><?php echo htmlspecialchars($skin['description']); ?></div>
                         <div class="skin-card-meta">BY <?php echo strtoupper(htmlspecialchars($skin['author'])); ?></div>

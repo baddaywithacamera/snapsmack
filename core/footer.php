@@ -38,7 +38,7 @@ if ($email_mode === 'on') {
     if ($raw_email !== '') {
         $reversed = strrev($raw_email);
         $slots[] = 'EMAIL: <a href="mailto:' . htmlspecialchars($raw_email) . '" class="footer-link">'
-                 . '<span class="reverse-email" style="unicode-bidi:bidi-override; direction:rtl;">'
+                 . '<span class="reverse-email">'
                  . htmlspecialchars($reversed)
                  . '</span></a>';
     }

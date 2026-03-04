@@ -572,7 +572,7 @@ include 'core/sidebar.php';
                 <div>
                     <strong><?php echo htmlspecialchars($skin['name']); ?></strong>
                     <?php if ($skin['description']): ?>
-                        <span style="opacity:0.6;margin-left:10px;"><?php echo htmlspecialchars($skin['description']); ?></span>
+                        <span class="dim ml-10"><?php echo htmlspecialchars($skin['description']); ?></span>
                     <?php endif; ?>
                 </div>
                 <span class="skin-notify-version">v<?php echo htmlspecialchars($skin['version']); ?></span>
@@ -592,7 +592,7 @@ include 'core/sidebar.php';
         <?php endforeach; ?>
         <?php endif; ?>
 
-        <a href="smack-skin.php?tab=gallery" class="btn-smack mt-25" style="display:inline-block;text-decoration:none;text-align:center;">
+        <a href="smack-skin.php?tab=gallery" class="btn-smack mt-25 btn-block">
             OPEN SKIN GALLERY
         </a>
     </div>
@@ -611,13 +611,13 @@ include 'core/sidebar.php';
                     <button type="submit" name="action" value="cron_remove" class="btn-smack" <?php echo !$version_job_registered ? 'disabled' : ''; ?>>REMOVE VERSION CHECK</button>
                 </div>
             </form>
-            <p style="font-size:0.8rem;opacity:0.5;margin-top:15px;">
+            <p class="dim text-sm mt-15">
                 Without cron, the dashboard falls back to a 24-hour on-load check.
             </p>
         <?php else: ?>
             <label>CRON ENGINE</label>
             <div class="read-only-display">NOT SUPPORTED ON THIS HOST</div>
-            <p style="font-size:0.8rem;opacity:0.5;margin-top:10px;">
+            <p class="dim text-sm mt-10">
                 The dashboard will fall back to checking every 24 hours on page load.
             </p>
         <?php endif; ?>
