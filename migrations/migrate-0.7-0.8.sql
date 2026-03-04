@@ -203,7 +203,18 @@ VALUES
 
 
 -- ============================================================================
--- 11. VERSION STAMP
+-- 11. STICKY HEADER — scroll-to-top transparency engine
+-- ============================================================================
+
+INSERT IGNORE INTO snap_settings (setting_key, setting_val)
+VALUES
+    ('sticky_header_enabled', '0'),
+    ('sticky_header_opacity', '12'),
+    ('sticky_header_blur',    '14');
+
+
+-- ============================================================================
+-- 12. VERSION STAMP
 -- ============================================================================
 
 UPDATE snap_settings

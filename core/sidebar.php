@@ -74,6 +74,9 @@ if (!empty($settings['active_skin'])) {
                     <li class="<?php echo ($current_page == 'smack-social-dock.php') ? 'active' : ''; ?>">
                         <a href="smack-social-dock.php">Social Dock</a>
                     </li>
+                    <li class="<?php echo ($current_page == 'smack-sticky-header.php') ? 'active' : ''; ?>">
+                        <a href="smack-sticky-header.php">Sticky Header</a>
+                    </li>
                     <li class="<?php echo ($current_page == 'smack-css.php') ? 'active' : ''; ?>">
                         <a href="smack-css.php">Smack Your CSS Up!</a>
                     </li>

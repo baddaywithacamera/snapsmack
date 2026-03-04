@@ -25,3 +25,7 @@
 <?php include __DIR__ . '/social-dock.php'; ?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-social-dock.css">
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-social-dock.js?v=<?php echo time(); ?>"></script>
+
+<?php include __DIR__ . '/sticky-header.php'; ?>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-sticky-header.css">
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-sticky-header.js?v=<?php echo time(); ?>"></script>
