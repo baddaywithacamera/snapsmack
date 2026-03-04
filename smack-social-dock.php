@@ -27,18 +27,20 @@ if (isset($_POST['save_social_dock'])) {
 
     // Appearance settings
     $appearance_keys = [
-        'social_dock_icon_color'  => '#ffffff',
+        'social_dock_color_light' => '#ffffff',
+        'social_dock_color_dark'  => '#1a1a1a',
+        'social_dock_color_mode'  => 'light',
+        'social_dock_shadow'      => '1',
         'social_dock_opacity'     => '20',
         'social_dock_icon_shape'  => 'round',
         'social_dock_icon_style'  => 'outline',
     ];
     foreach ($appearance_keys as $akey => $default) {
         $aval = trim($_POST[$akey] ?? $default);
-        // Validate icon_shape
         if ($akey === 'social_dock_icon_shape' && !in_array($aval, ['round', 'square'])) $aval = 'round';
-        // Validate icon_style
         if ($akey === 'social_dock_icon_style' && !in_array($aval, ['outline', 'solid'])) $aval = 'outline';
-        // Validate opacity (0-100)
+        if ($akey === 'social_dock_color_mode' && !in_array($aval, ['light', 'dark'])) $aval = 'light';
+        if ($akey === 'social_dock_shadow') $aval = isset($_POST[$akey]) ? '1' : '0';
         if ($akey === 'social_dock_opacity') $aval = max(0, min(100, (int)$aval));
         $stmt->execute([$akey, $aval, $aval]);
     }
@@ -135,18 +137,27 @@ include 'core/sidebar.php';
 
             <div class="post-layout-grid">
                 <div class="post-col-left">
-                    <label>ICON COLOR</label>
+                    <label>LIGHT COLOR</label>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <input type="color" name="social_dock_icon_color" value="<?php echo htmlspecialchars($settings['social_dock_icon_color'] ?? '#ffffff'); ?>" style="width: 50px; height: 34px; border: 1px solid #ccc; cursor: pointer;" oninput="this.nextElementSibling.value = this.value">
-                        <input type="text" value="<?php echo htmlspecialchars($settings['social_dock_icon_color'] ?? '#ffffff'); ?>" style="width: 100px; font-family: monospace;" onchange="this.previousElementSibling.value = this.value" oninput="this.previousElementSibling.value = this.value">
+                        <input type="color" name="social_dock_color_light" value="<?php echo htmlspecialchars($settings['social_dock_color_light'] ?? '#ffffff'); ?>" style="width: 50px; height: 34px; border: 1px solid #ccc; cursor: pointer;" oninput="this.nextElementSibling.value = this.value">
+                        <input type="text" value="<?php echo htmlspecialchars($settings['social_dock_color_light'] ?? '#ffffff'); ?>" style="width: 100px; font-family: monospace;" onchange="this.previousElementSibling.value = this.value" oninput="this.previousElementSibling.value = this.value">
                     </div>
+                    <span class="dim">Used on dark backgrounds.</span>
 
-                    <label style="margin-top: 15px;">DOCK BACKGROUND OPACITY</label>
+                    <label style="margin-top: 15px;">DARK COLOR</label>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <input type="range" name="social_dock_opacity" min="0" max="100" value="<?php echo htmlspecialchars($settings['social_dock_opacity'] ?? '20'); ?>" style="flex: 1;" oninput="this.nextElementSibling.textContent = this.value + '%'">
-                        <span style="min-width: 40px; font-family: monospace;"><?php echo htmlspecialchars($settings['social_dock_opacity'] ?? '20'); ?>%</span>
+                        <input type="color" name="social_dock_color_dark" value="<?php echo htmlspecialchars($settings['social_dock_color_dark'] ?? '#1a1a1a'); ?>" style="width: 50px; height: 34px; border: 1px solid #ccc; cursor: pointer;" oninput="this.nextElementSibling.value = this.value">
+                        <input type="text" value="<?php echo htmlspecialchars($settings['social_dock_color_dark'] ?? '#1a1a1a'); ?>" style="width: 100px; font-family: monospace;" onchange="this.previousElementSibling.value = this.value" oninput="this.previousElementSibling.value = this.value">
                     </div>
-                    <span class="dim">0% = fully transparent (no backdrop), 100% = fully opaque dark glass.</span>
+                    <span class="dim">Used on light backgrounds.</span>
+
+                    <label style="margin-top: 15px;">DEFAULT MODE</label>
+                    <?php $current_mode = $settings['social_dock_color_mode'] ?? 'light'; ?>
+                    <select name="social_dock_color_mode">
+                        <option value="light" <?php echo $current_mode === 'light' ? 'selected' : ''; ?>>Light icons (for dark sites)</option>
+                        <option value="dark" <?php echo $current_mode === 'dark' ? 'selected' : ''; ?>>Dark icons (for light sites)</option>
+                    </select>
+                    <span class="dim">Which color set to use by default.</span>
                 </div>
 
                 <div class="post-col-right">
@@ -164,6 +175,19 @@ include 'core/sidebar.php';
                         <option value="solid" <?php echo $current_style === 'solid' ? 'selected' : ''; ?>>Solid — filled background with white symbol</option>
                     </select>
                     <span class="dim">Outline icons turn solid on hover. Solid icons brighten on hover.</span>
+
+                    <label style="margin-top: 15px;">
+                        <input type="checkbox" name="social_dock_shadow" value="1" <?php echo ($settings['social_dock_shadow'] ?? '1') === '1' ? 'checked' : ''; ?>>
+                        ICON DROP SHADOW
+                    </label>
+                    <span class="dim" style="display: block; margin-top: 4px;">Subtle shadow behind each icon for contrast against busy backgrounds.</span>
+
+                    <label style="margin-top: 15px;">DOCK BACKGROUND OPACITY</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="range" name="social_dock_opacity" min="0" max="100" value="<?php echo htmlspecialchars($settings['social_dock_opacity'] ?? '20'); ?>" style="flex: 1;" oninput="this.nextElementSibling.textContent = this.value + '%'">
+                        <span style="min-width: 40px; font-family: monospace;"><?php echo htmlspecialchars($settings['social_dock_opacity'] ?? '20'); ?>%</span>
+                    </div>
+                    <span class="dim">0% = fully transparent (no backdrop), 100% = fully opaque dark glass.</span>
                 </div>
             </div>
         </div>

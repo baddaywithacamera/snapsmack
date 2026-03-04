@@ -118,10 +118,16 @@ if (!in_array($_dock_position, $_valid_positions)) {
 }
 
 // Appearance settings → CSS custom properties
-$_dock_color   = $settings['social_dock_icon_color'] ?? '#ffffff';
-$_dock_opacity = max(0, min(100, (int)($settings['social_dock_opacity'] ?? 20)));
-$_dock_shape   = ($settings['social_dock_icon_shape'] ?? 'round') === 'square' ? 'square' : 'round';
-$_dock_style   = ($settings['social_dock_icon_style'] ?? 'outline') === 'solid' ? 'solid' : 'outline';
+$_dock_color_light = $settings['social_dock_color_light'] ?? '#ffffff';
+$_dock_color_dark  = $settings['social_dock_color_dark'] ?? '#1a1a1a';
+$_dock_color_mode  = ($settings['social_dock_color_mode'] ?? 'light') === 'dark' ? 'dark' : 'light';
+$_dock_shadow      = ($settings['social_dock_shadow'] ?? '1') === '1';
+$_dock_opacity     = max(0, min(100, (int)($settings['social_dock_opacity'] ?? 20)));
+$_dock_shape       = ($settings['social_dock_icon_shape'] ?? 'round') === 'square' ? 'square' : 'round';
+$_dock_style       = ($settings['social_dock_icon_style'] ?? 'outline') === 'solid' ? 'solid' : 'outline';
+
+// Active color based on mode
+$_dock_color = ($_dock_color_mode === 'dark') ? $_dock_color_dark : $_dock_color_light;
 
 // Convert hex colour to RGB for rgba() usage in CSS
 $_dock_rgb = '255,255,255';
@@ -132,6 +138,7 @@ if (preg_match('/^#?([0-9a-f]{6})$/i', $_dock_color, $_m)) {
 $_dock_classes = 'social-dock dock-' . $_dock_position;
 if ($_dock_shape === 'square') $_dock_classes .= ' dock-square';
 if ($_dock_style === 'solid')  $_dock_classes .= ' dock-solid';
+if ($_dock_shadow)             $_dock_classes .= ' dock-shadow';
 ?>
 <div class="<?php echo htmlspecialchars($_dock_classes); ?>"
      data-dock-position="<?php echo htmlspecialchars($_dock_position); ?>"
