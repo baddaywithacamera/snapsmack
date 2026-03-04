@@ -315,8 +315,8 @@ include 'core/sidebar.php';
         font-size: 0.9rem;
         font-weight: bold;
     }
-    .version-current { background: #1a3a1a; color: #4a4; border: 1px solid #2a5a2a; }
-    .version-available { background: #3a2a0a; color: #da4; border: 1px solid #5a4a1a; }
+    .version-current { background: rgba(0,128,0,0.1); color: #080; border: 1px solid rgba(0,128,0,0.3); }
+    .version-available { background: rgba(200,160,0,0.1); color: #860; border: 1px solid rgba(200,160,0,0.3); }
 
     .changelog-list {
         margin: 15px 0;
@@ -335,11 +335,11 @@ include 'core/sidebar.php';
         display: block;
         font-size: 0.75rem;
         padding: 2px 0;
-        opacity: 0.7;
+        opacity: 0.75;
     }
-    .file-added { color: #6d6; }
-    .file-modified { color: #dd6; }
-    .file-removed { color: #d66; }
+    .file-added { color: #080; }
+    .file-modified { color: #860; }
+    .file-removed { color: #c00; }
 
     .step-log { margin: 20px 0; }
     .step-row {
@@ -355,7 +355,7 @@ include 'core/sidebar.php';
     .step-ok { background: rgba(40, 120, 40, 0.15); }
     .step-fail { background: rgba(180, 40, 40, 0.15); }
     .step-icon { font-size: 1.1rem; }
-    .step-detail { opacity: 0.6; margin-left: auto; }
+    .step-detail { opacity: 0.75; margin-left: auto; }
 
     .skin-notify-card {
         display: flex;
@@ -368,9 +368,9 @@ include 'core/sidebar.php';
         background: rgba(74, 144, 217, 0.08);
         font-size: 0.85rem;
     }
-    .skin-notify-new { border-left-color: #4ad94a; background: rgba(74, 217, 74, 0.08); }
-    .skin-notify-update { border-left-color: #d9d94a; background: rgba(217, 217, 74, 0.08); }
-    .skin-notify-version { font-family: monospace; opacity: 0.7; }
+    .skin-notify-new { border-left-color: #080; background: rgba(0,128,0,0.06); }
+    .skin-notify-update { border-left-color: #860; background: rgba(200,160,0,0.06); }
+    .skin-notify-version { font-family: monospace; opacity: 0.75; }
 
     .update-warning {
         padding: 12px 18px;

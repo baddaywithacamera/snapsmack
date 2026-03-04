@@ -305,8 +305,9 @@ include 'core/sidebar.php';
 }
 .skin-tab:hover { color: #aaa; }
 .skin-tab.active {
-    color: #00ff00;
-    border-bottom-color: #00ff00;
+    opacity: 1;
+    font-weight: 900;
+    border-bottom-color: currentColor;
 }
 
 /* --- GALLERY: Skin cards grid --- */
@@ -452,7 +453,7 @@ include 'core/sidebar.php';
     transition: opacity 0.2s;
 }
 .gallery-btn:hover { opacity: 0.8; }
-.gallery-btn.install  { background: #00ff00; color: #000; }
+.gallery-btn.install  { background: #666; color: #fff; }
 .gallery-btn.update   { background: #ffcc00; color: #000; }
 .gallery-btn.remove   { background: #333;    color: #f66; border: 1px solid #633; }
 .gallery-btn.disabled {
@@ -478,7 +479,7 @@ include 'core/sidebar.php';
     color: #555;
     margin-bottom: 16px;
 }
-.registry-info a { color: #00ff00; text-decoration: none; }
+.registry-info a { text-decoration: underline; }
 </style>
 
 <div class="main">
