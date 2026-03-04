@@ -100,7 +100,7 @@ $show_map_bg = ($settings['show_map_background'] ?? '1') === '1';
         <?php if (!empty($images)): ?>
             <?php foreach ($images as $img): ?>
                 <a href="<?php echo BASE_URL . htmlspecialchars($img['img_slug']); ?>" class="justified-item" title="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>">
-                    <img src="<?php echo BASE_URL . ltrim($img['img_thumb'] ?? $img['img_thumb_square'], '/'); ?>"
+                    <img src="<?php echo BASE_URL . ltrim($img['img_thumb_aspect'] ?? $img['img_thumb_square'], '/'); ?>"
                          alt="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>"
                          loading="lazy"
                          style="border: <?php echo $thumb_bw; ?>px solid <?php echo htmlspecialchars($border_val); ?>;">
