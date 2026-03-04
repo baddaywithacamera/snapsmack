@@ -427,6 +427,26 @@ try {
 define(\'SNAPSMACK_VERSION\', \'' . $installer_version_label . '\');
 define(\'SNAPSMACK_VERSION_SHORT\', \'' . $installer_version . '\');
 define(\'SNAPSMACK_TABLE_PREFIX\', \'' . $prefix . '\');
+
+// --- MOBILE SKIN OVERRIDE ---
+// The slug of the skin forced onto mobile devices. This skin is not selectable
+// in the admin skin picker — it is served automatically when a phone is detected.
+define(\'SNAPSMACK_MOBILE_SKIN\', \'pocket-operator\');
+
+/**
+ * Detect mobile devices via User-Agent string.
+ * Returns true for phones; tablets are treated as desktop.
+ */
+function snapsmack_is_mobile(): bool {
+    $ua = $_SERVER[\'HTTP_USER_AGENT\'] ?? \'\';
+    if (empty($ua)) return false;
+
+    // Match common phone tokens. The \'Mobile\' token catches most modern phones
+    // (iOS Safari, Chrome Mobile, Samsung, etc.). Additional patterns cover
+    // older or niche handsets. Tablets (iPad, Android without \'Mobile\') are
+    // intentionally excluded so they receive the normal desktop skin.
+    return (bool) preg_match(\'/Mobile|iPhone|iPod|Android.*Mobile|webOS|BlackBerry|Opera Mini|IEMobile|Windows Phone/i\', $ua);
+}
 ';
 
         $wrote_const = @file_put_contents(__DIR__ . '/core/constants.php', $constants_php);
@@ -449,8 +469,8 @@ define(\'SNAPSMACK_TABLE_PREFIX\', \'' . $prefix . '\');
                 'site_name'                 => $_SESSION['site_name'] ?? 'My SnapSmack Site',
                 'site_tagline'              => $_SESSION['site_tagline'] ?? '',
                 'site_url'                  => '',
-                'active_skin'               => 'new_horizon_dark',
-                'active_skin_variant'       => '',
+                'active_skin'               => 'new-horizon-dark',
+                'active_skin_variant'       => 'dark',
                 'active_theme'              => 'midnight-lime',
                 'timezone'                  => 'UTC',
                 'date_format'               => 'F j, Y',
@@ -595,12 +615,17 @@ HTACCESS;
         }
     }
 
-    // --- VERIFY DEFAULT SKIN ---
-    // Hard block: the public site will 404 without its default skin.
+    // --- VERIFY SHIPPED SKINS ---
+    // The installer ships with two skins: New Horizon (desktop) and Pocket Rocket (mobile).
+    // New Horizon is a hard requirement — the public site will 404 without it.
+    // Pocket Rocket is a soft warning — mobile users just get the desktop skin instead.
     $skin_warning = '';
-    if (!is_dir(__DIR__ . '/skins/new_horizon_dark')) {
-        $errors[] = 'Default skin "New Horizon Dark" not found in skins/. The public site cannot load without it. Make sure the full SnapSmack codebase (including the skins/ directory) is uploaded before running the installer.';
+    if (!is_dir(__DIR__ . '/skins/new-horizon-dark')) {
+        $errors[] = 'Default skin "New Horizon" not found in skins/. The public site cannot load without it. Make sure the full SnapSmack codebase (including the skins/ directory) is uploaded before running the installer.';
         $skin_warning = $errors[count($errors) - 1];
+    }
+    if (!is_dir(__DIR__ . '/skins/pocket-operator')) {
+        $skin_warning .= ($skin_warning ? ' ' : '') . 'Mobile skin "Pocket Rocket" not found in skins/. Mobile visitors will see the desktop skin until Pocket Rocket is installed from the gallery.';
     }
 
     // --- SELF-DELETE ---

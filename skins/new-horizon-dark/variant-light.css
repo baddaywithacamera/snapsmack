@@ -1,0 +1,21 @@
+/**
+ * SNAPSMACK - Light variant for the new-horizon-dark skin
+ * Alpha v0.7
+ */
+:root {
+    --bg-page:        #f2f2f2;
+    --bg-secondary:   #e8e8e8;
+    --bg-tertiary:    #dddddd;
+    --bg-chrome:      #d0d0d0;
+    --border-primary: #cccccc;
+    --border-accent:  #999999;
+    --border-dim:     #dddddd;
+    --text-primary:   #333333;
+    --text-bright:    #111111;
+    --text-secondary: #555555;
+    --text-dim:       #777777;
+    --text-muted:     #aaaaaa;
+    --text-faint:     #bbbbbb;
+    --text-link:      #222222;
+    --input-bg:       #e0e0e0;
+}

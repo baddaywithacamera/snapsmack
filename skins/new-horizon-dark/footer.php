@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Footer for the new_horizon_dark skin
+ * SNAPSMACK - Footer for the new-horizon-dark skin
  * Alpha v0.6
  *
  * Injects skin-specific JavaScript libraries and closes the document.

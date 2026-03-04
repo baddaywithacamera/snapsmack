@@ -16,7 +16,7 @@ require_once __DIR__ . '/core/parser.php';
 // --- INITIALIZATION ---
 $settings = [];
 $site_name = 'ISWA.CA';
-$active_skin = 'new_horizon_dark';
+$active_skin = 'new-horizon-dark';
 $prev_slug = $next_slug = $first_slug = $last_slug = "";
 $comment_count = 0;
 
@@ -36,6 +36,11 @@ try {
     // Override defaults with database values if they exist
     $active_skin = $settings['active_skin'] ?? $active_skin;
     $site_name = $settings['site_name'] ?? $site_name;
+
+    // Force Pocket Rocket on mobile devices (phones only, not tablets)
+    if (snapsmack_is_mobile() && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)) {
+        $active_skin = SNAPSMACK_MOBILE_SKIN;
+    }
 
     // --- REQUEST ROUTING ---
     $path_info = $_SERVER['PATH_INFO'] ?? '';

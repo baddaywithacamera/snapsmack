@@ -1,5 +1,5 @@
 /**
- * SNAPSMACK - Stylesheet for the new_horizon_dark skin
+ * SNAPSMACK - Stylesheet for the new-horizon-dark skin
  * Alpha v0.6
  */
 
@@ -11,20 +11,20 @@ html {
     height: 100%;
     margin: 0;
     padding: 0;
-    background: #000000;
-    color: #cccccc;
+    background: var(--bg-page);
+    color: var(--text-primary);
     font-family: Georgia, 'Times New Roman', Times, serif;
-    overflow: hidden; 
+    overflow: hidden;
 }
 
 body {
     height: 100%;
     margin: 0;
     padding: 0;
-    background: #000000;
-    color: #cccccc;
+    background: var(--bg-page);
+    color: var(--text-primary);
     font-family: Georgia, 'Times New Roman', Times, serif;
-    overflow-y: auto; 
+    overflow-y: auto;
 }
 
 /* ==========================================================================
@@ -53,9 +53,9 @@ body {
     ========================================================================= */
 
 #header {
-    background: #000000;
+    background: var(--bg-page);
     height: 80px; /* FIXED: Absolute baseline */
-    padding: 0;   
+    padding: 0;
     flex-shrink: 0;
     z-index: 20;
     position: relative;
@@ -79,15 +79,15 @@ body {
     font-size: 1.2rem;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: #ffffff;
+    color: var(--text-bright);
     margin: 0;
-    line-height: 1; 
+    line-height: 1;
     display: block;
 }
 
 .logo-area a {
     text-decoration: none;
-    color: #ffffff;
+    color: var(--text-bright);
 }
 
 .site-logo {
@@ -106,7 +106,7 @@ body {
 }
 
 .nav-menu a {
-    color: #aaaaaa;
+    color: var(--text-secondary);
     text-decoration: none;
     font-family: 'Inter', sans-serif;
     font-weight: 600;
@@ -117,12 +117,12 @@ body {
 }
 
 .nav-menu a:hover, .nav-menu a.active {
-    color: #ffffff;
+    color: var(--text-bright);
 }
 
 .nav-menu .sep {
     padding: 0 15px;
-    color: #444444;
+    color: var(--text-faint);
     font-size: 0.9rem;
     cursor: default;
 }
@@ -132,20 +132,20 @@ body {
     ========================================================================= */
 
 #photobox {
-    background: #000000;
+    background: var(--bg-page);
     width: 100%;
     /* 1. Calculate Full Available Void: 100vh - 80px (Header) - 60px (Infobox) */
-    height: calc(100vh - 140px); 
+    height: calc(100vh - 140px);
     display: flex;
     justify-content: center;
-    align-items: center; 
+    align-items: center;
     /* 2. OPTICAL LIFT: 50px bottom padding moves the center point UP by 25px */
-    padding: 0 0 50px 0 !important; 
+    padding: 0 0 50px 0 !important;
     margin: 0 !important;
     box-sizing: border-box;
     overflow: hidden;
     flex-grow: 1;
-    flex-shrink: 0 !important; 
+    flex-shrink: 0 !important;
 }
 
 .main-photo {
@@ -164,15 +164,15 @@ body {
 
 /* THE INDEX FRAME */
 img.post-image {
-    max-width: 100%; 
+    max-width: 100%;
     max-height: 100%;
     width: auto;
     height: auto;
     box-sizing: border-box;
-    border: 5px solid #666666; 
+    border: 5px solid var(--border-accent);
     box-shadow: none;
     cursor: zoom-in !important;
-    outline: none !important; 
+    outline: none !important;
 }
 
 /* ==========================================================================
@@ -180,9 +180,9 @@ img.post-image {
     ========================================================================= */
 
 #infobox {
-    background: #222222; 
-    border-top: 1px solid #333333;
-    border-bottom: 1px solid #000000;
+    background: var(--bg-tertiary);
+    border-top: 1px solid var(--border-primary);
+    border-bottom: 1px solid var(--bg-page);
     height: 60px; /* FIXED: Absolute baseline */
     padding: 0;
     display: flex;
@@ -215,7 +215,7 @@ img.post-image {
 }
 
 .nav-links a {
-    color: #aaaaaa;
+    color: var(--text-secondary);
     text-decoration: none;
     font-weight: 600;
     font-size: 0.85rem;
@@ -224,16 +224,16 @@ img.post-image {
 }
 
 .nav-links a:hover {
-    color: #ffffff;
+    color: var(--text-bright);
 }
 
 .nav-links .sep {
-    color: #444444;
+    color: var(--text-faint);
     font-size: 0.9rem;
 }
 
 .dim {
-    color: #333333;
+    color: var(--border-primary);
     font-weight: 600;
     font-size: 0.85rem;
 }
@@ -243,11 +243,11 @@ img.post-image {
     ========================================================================= */
 
 #footer {
-    background: #131313; 
-    border-top: 1px solid #333333; 
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-primary);
     padding: 52px 0 0 0; /* REDUCED 35% from 80px */
     text-align: left;
-    display: none; 
+    display: none;
     width: 100%;
     flex-grow: 0 !important;
     flex-shrink: 0 !important;
@@ -268,7 +268,7 @@ img.post-image {
 
 .photo-title-footer {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    color: #ffffff;
+    color: var(--text-bright);
     text-transform: uppercase;
     letter-spacing: 1px;
     font-size: 2rem;
@@ -280,7 +280,7 @@ img.post-image {
     font-family: Georgia, 'Times New Roman', Times, serif;
     line-height: 1.6;
     font-size: 1.2rem;
-    color: #bbbbbb;
+    color: var(--text-secondary);
     margin-bottom: 40px;
 }
 
@@ -289,13 +289,13 @@ img.post-image {
     ========================================================================= */
 
 #system-footer {
-    background: #393939 !important; 
+    background: var(--bg-chrome) !important;
     padding: 32px 0 !important; /* REDUCED 35% from 50px */
     text-align: center !important;
     width: 100% !important;
-    border-top: 1px solid #666666 !important;
+    border-top: 1px solid var(--border-accent) !important;
     margin-top: auto;
-    display: none; 
+    display: none;
 }
 
 #footer[style*="display: block"] ~ #system-footer,
@@ -304,21 +304,21 @@ img.post-image {
 }
 
 #system-footer .inside {
-    max-width: 95% !important; 
+    max-width: 95% !important;
     margin: 0 auto;
     font-family: 'Inter', sans-serif;
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    color: #cccccc;
+    color: var(--text-primary);
 }
 
 #system-footer p, #sig-text {
-    color: #cccccc !important;
+    color: var(--text-primary) !important;
     font-family: 'Inter', sans-serif !important;
     font-size: 0.7rem !important;
     text-transform: uppercase !important;
-    letter-spacing: 1.5px !important; 
+    letter-spacing: 1.5px !important;
     margin: 0 !important;
 }
 
@@ -327,7 +327,7 @@ img.post-image {
     ========================================================================= */
 
 .meta {
-    border-top: 1px solid #333333;
+    border-top: 1px solid var(--border-primary);
     padding-top: 40px;
     margin-top: 40px;
     text-align: center;
@@ -338,14 +338,14 @@ img.post-image {
     margin-bottom: 25px;
     font-family: 'Inter', sans-serif;
     letter-spacing: 4px;
-    font-size: 1.1rem; 
-    color: #888888; 
+    font-size: 1.1rem;
+    color: var(--text-dim);
     text-transform: uppercase;
     font-weight: 600;
 }
 
 .meta-header.no-signals {
-    color: #eeeeee !important; 
+    color: var(--text-link) !important;
 }
 
 .exif-table {
@@ -359,18 +359,18 @@ img.post-image {
 .exif-label {
     padding-right: 40px;
     padding-bottom: 12px;
-    color: #555555;
+    color: var(--text-muted);
     font-weight: 900;
     text-transform: uppercase;
     font-family: sans-serif;
-    width: 160px; 
+    width: 160px;
     vertical-align: top;
 }
 
 .exif-value {
     padding-bottom: 12px;
-    color: #aaaaaa;
-    font-family: 'Courier New', Courier, monospace !important; 
+    color: var(--text-secondary);
+    font-family: 'Courier New', Courier, monospace !important;
     font-size: 1.1em;
     letter-spacing: 0.5px;
 }
@@ -380,7 +380,7 @@ img.post-image {
     ========================================================================= */
 
 .comment-form {
-    border-top: 1px solid #222222;
+    border-top: 1px solid var(--border-dim);
     padding-top: 40px;
     margin-top: 40px;
     padding-bottom: 80px;
@@ -394,9 +394,9 @@ img.post-image {
 
 .comment-form input,
 .comment-form textarea {
-    background: #000000;
-    color: #cccccc;
-    border: 1px solid #333333;
+    background: var(--bg-page);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
     padding: 15px;
     font-family: "Courier New", Courier, monospace;
     font-size: 0.95rem;
@@ -415,9 +415,9 @@ img.post-image {
 
 .comment-form button {
     margin-top: 20px;
-    background: #222222;
-    color: #888888;
-    border: 1px solid #333333;
+    background: var(--bg-tertiary);
+    color: var(--text-dim);
+    border: 1px solid var(--border-primary);
     padding: 12px 30px;
     cursor: pointer;
     font-family: sans-serif;
@@ -452,7 +452,7 @@ img.post-image {
 .square-grid .thumb-container,
 .cropped-grid .thumb-container {
     margin: 0 auto;
-    background: #000000;
+    background: var(--bg-page);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -463,7 +463,7 @@ img.post-image {
 .square-grid .thumb-link,
 .cropped-grid .thumb-link {
     display: inline-block;
-    border: 3px solid #666666;
+    border: 3px solid var(--border-accent);
     box-shadow: none;
     box-sizing: border-box;
 }
@@ -535,8 +535,8 @@ img.post-image {
     z-index: 100;
 }
 
-.static-transmission #footer { background: #131313 !important; }
-.static-transmission #system-footer { background: #393939 !important; border-top: 1px solid #666666 !important; }
+.static-transmission #footer { background: var(--bg-secondary) !important; }
+.static-transmission #system-footer { background: var(--bg-chrome) !important; border-top: 1px solid var(--border-accent) !important; }
 
 /* THE LANE: Centered 850px container with 20px padding for symmetry */
 .static-content {
@@ -545,9 +545,9 @@ img.post-image {
     padding-left: 20px;
     padding-right: 20px;
     box-sizing: border-box;
-    background: #000000;
+    background: var(--bg-page);
     text-align: left;
-    overflow-x: hidden; 
+    overflow-x: hidden;
 }
 
 .static-content::after { 
@@ -560,14 +560,14 @@ img.post-image {
 .static-page-title {
     width: 100% !important;
     max-width: 850px !important;
-    margin: 0 0 40px 0 !important; 
+    margin: 0 0 40px 0 !important;
     padding-left: 24px !important; /* 20px baseline + 4px frame compensation */
     padding-right: 20px !important;
     text-align: left !important;
     display: block !important;
     box-sizing: border-box !important;
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    color: #ffffff;
+    color: var(--text-bright);
     text-transform: uppercase;
     letter-spacing: 1px;
     font-size: 2rem;
@@ -576,9 +576,9 @@ img.post-image {
 
 /* THE BIO IMAGE: 17px Top (Baseline Snap) and 10px Left (Lane Shift) */
 .static-transmission .description .align-left {
-    float: left !important;                    
-    margin: 17px 50px 25px 10px !important; 
-    border: 3px solid #666666 !important;
+    float: left !important;
+    margin: 17px 50px 25px 10px !important;
+    border: 3px solid var(--border-accent) !important;
     box-shadow: none !important;
     max-width: 40% !important;
     height: auto !important;
@@ -615,11 +615,11 @@ img.post-image {
     display: block;
     height: auto;
     box-sizing: border-box;
-    border: 5px solid #666666 !important;
+    border: 5px solid var(--border-accent) !important;
     box-shadow: none !important;
     /* PADDING UNDER: 60px space before the next paragraph */
     margin-top: 20px;
-    margin-bottom: 60px !important; 
+    margin-bottom: 60px !important;
 }
 
 /* ENFORCING THE LANE: 850px container minus the 42px of total frame depth */
@@ -671,8 +671,8 @@ span.dropcap {
     display: flex;
     align-items: center;
     gap: 10px;
-    background: #000;
-    border: 1px solid #333;
+    background: var(--bg-page);
+    border: 1px solid var(--border-primary);
     padding: 0 10px;
 }
 
@@ -690,8 +690,8 @@ span.dropcap {
     align-items: center;
     margin: 0;
     padding-left: 10px;
-    border-left: 1px solid #222; 
-    color: #666;
+    border-left: 1px solid var(--border-dim);
+    color: var(--border-accent);
     height: 100%;
     cursor: pointer;
 }
@@ -707,9 +707,9 @@ span.dropcap {
 }
 
 .select-box {
-    background: #000;
-    border: 1px solid #333;
-    color: #ccc;
+    background: var(--bg-page);
+    border: 1px solid var(--border-primary);
+    color: var(--text-primary);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -723,8 +723,8 @@ span.dropcap {
     top: 100%;
     left: 0;
     width: 100%;
-    background: #111;
-    border: 1px solid #333;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
     z-index: 100;
     max-height: 250px;
     overflow-y: auto;
@@ -732,14 +732,14 @@ span.dropcap {
 
 .dropdown-search-wrapper {
     padding: 5px;
-    border-bottom: 1px solid #222;
+    border-bottom: 1px solid var(--border-dim);
 }
 
 .dropdown-search-wrapper input {
     width: 100%;
-    background: #000;
-    border: 1px solid #333;
-    color: #fff;
+    background: var(--bg-page);
+    border: 1px solid var(--border-primary);
+    color: var(--text-bright);
     padding: 5px;
 }
 
@@ -748,12 +748,12 @@ span.dropcap {
     cursor: pointer;
     display: flex;
     align-items: center;
-    color: #aaa;
+    color: var(--text-secondary);
 }
 
 .multi-cat-item:hover {
-    background: #222;
-    color: #fff;
+    background: var(--bg-tertiary);
+    color: var(--text-bright);
 }
 
 .multi-cat-item input {
@@ -783,9 +783,9 @@ span.dropcap {
 }
 
 #infobox select {
-    background: #000000;
-    color: #cccccc;
-    border: 1px solid #333333;
+    background: var(--bg-page);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
     padding: 5px;
     font-family: 'Inter', sans-serif;
     font-size: 0.8rem;
@@ -795,16 +795,16 @@ span.dropcap {
 
 #infobox select:focus {
     outline: none;
-    border-color: #666666;
+    border-color: var(--border-accent);
 }
 
 #infobox a.active {
-    color: #ffffff;
+    color: var(--text-bright);
     font-size: 0.75rem;
 }
 
 #infobox a.inactive {
-    color: #555555;
+    color: var(--text-muted);
     font-size: 0.75rem;
 }
 
@@ -812,7 +812,7 @@ span.dropcap {
     grid-column: 1 / -1;
     text-align: center;
     padding: 100px;
-    color: #444444;
+    color: var(--text-faint);
     font-family: 'Courier New', monospace;
     letter-spacing: 2px;
 }
@@ -843,16 +843,16 @@ span.dropcap {
 }
 
 .sql-error-notice {
-    background: #200; 
-    color: #f99; 
-    padding: 20px; 
-    font-family: monospace; 
+    background: #200;
+    color: #f99;
+    padding: 20px;
+    font-family: monospace;
     border: 1px solid red;
 }
 
 .empty-gallery-msg, .not-found-msg {
-    color: #eee; 
-    text-align: center; 
+    color: var(--text-link);
+    text-align: center;
     padding: 100px 50px;
 }
 
@@ -862,8 +862,8 @@ span.dropcap {
 
 #system-footer .sep {
     display: inline-block;
-    margin: 0 12px; 
-    color: #666;
+    margin: 0 12px;
+    color: var(--border-accent);
 }
 
 .footer-link {
@@ -873,7 +873,7 @@ span.dropcap {
 }
 
 .footer-link:hover {
-    color: #ffffff;
+    color: var(--text-bright);
 }
 
 .rss-tag {
@@ -914,10 +914,10 @@ span.dropcap {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 2px;
-    color: #666666;
+    color: var(--border-accent);
     margin: 0 0 20px 0;
     padding-bottom: 10px;
-    border-bottom: 1px solid #222222;
+    border-bottom: 1px solid var(--border-dim);
 }
 
 /* Grid — columns controlled by manifest blogroll_columns select,
@@ -931,7 +931,7 @@ span.dropcap {
 /* Individual peer entry */
 .blogroll-peer {
     padding-bottom: 24px;
-    border-bottom: 1px solid #1a1a1a;
+    border-bottom: 1px solid var(--bg-secondary);
 }
 
 .blogroll-peer:last-child {
@@ -948,13 +948,13 @@ span.dropcap {
 }
 
 .blogroll-peer-name a {
-    color: #cccccc;
+    color: var(--text-primary);
     text-decoration: none;
     transition: color 0.2s ease;
 }
 
 .blogroll-peer-name a:hover {
-    color: #ffffff;
+    color: var(--text-bright);
 }
 
 /* Editorial description — display toggled by manifest blogroll_show_desc */
@@ -962,7 +962,7 @@ span.dropcap {
     display: block;
     font-family: Georgia, 'Times New Roman', Times, serif;
     font-size: 0.9rem;
-    color: #888888;
+    color: var(--text-dim);
     line-height: 1.6;
     margin: 4px 0 8px 0;
     padding: 0;
@@ -974,7 +974,7 @@ span.dropcap {
     font-family: 'Courier New', Courier, monospace;
     font-size: 0.7rem;
     letter-spacing: 0.5px;
-    color: #444444;
+    color: var(--text-faint);
 }
 
 /* ==========================================================================
@@ -987,5 +987,5 @@ span.dropcap {
 /* Signals section */
 .signals-header { margin-bottom: 40px; text-align: center; }
 .signals-table { width: 100%; margin-bottom: 40px; }
-.signal-date { font-size: 0.7rem; color: #444; margin-top: 5px; }
+.signal-date { font-size: 0.7rem; color: var(--text-faint); margin-top: 5px; }
 .signals-empty { text-align: center; }

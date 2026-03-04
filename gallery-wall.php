@@ -24,6 +24,14 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', $final_base);
 }
 
+// --- MOBILE REDIRECT ---
+// Gallery wall is desktop-only. Phones get redirected to archive.
+// constants.php is loaded via core/db.php above.
+if (snapsmack_is_mobile()) {
+    header("Location: archive.php");
+    exit;
+}
+
 // --- SKIN MANIFEST & SUPPORT CHECK ---
 $active_skin = $settings['active_skin'] ?? '';
 $manifest = [];

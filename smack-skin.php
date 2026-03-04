@@ -99,6 +99,9 @@ $skin_dirs       = array_filter(glob('skins/*'), 'is_dir');
 $available_skins = [];
 foreach ($skin_dirs as $dir) {
     $slug = basename($dir);
+    // Pocket Rocket is a mobile-only skin — it is forced automatically on phones
+    // and should never appear in the admin skin selector.
+    if (defined('SNAPSMACK_MOBILE_SKIN') && $slug === SNAPSMACK_MOBILE_SKIN) continue;
     if (file_exists($dir . '/manifest.php')) {
         $temp = include $dir . '/manifest.php';
         $available_skins[$slug] = $temp['name'] ?? ucfirst($slug);
@@ -290,7 +293,7 @@ include 'core/sidebar.php';
     display: flex;
     gap: 0;
     margin-bottom: 24px;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid rgba(128,128,128,0.3);
 }
 .skin-tab {
     padding: 10px 24px;
@@ -298,12 +301,13 @@ include 'core/sidebar.php';
     font-weight: 700;
     letter-spacing: 2px;
     text-transform: uppercase;
-    color: #666;
+    color: inherit;
+    opacity: 0.5;
     text-decoration: none;
     border-bottom: 2px solid transparent;
-    transition: color 0.2s, border-color 0.2s;
+    transition: color 0.2s, border-color 0.2s, opacity 0.2s;
 }
-.skin-tab:hover { color: #aaa; }
+.skin-tab:hover { opacity: 0.75; }
 .skin-tab.active {
     opacity: 1;
     font-weight: 900;
@@ -318,8 +322,8 @@ include 'core/sidebar.php';
     margin-top: 20px;
 }
 .skin-card {
-    background: #1a1a1a;
-    border: 1px solid #333;
+    background: rgba(128,128,128,0.06);
+    border: 1px solid rgba(128,128,128,0.25);
     border-radius: 4px;
     overflow: hidden;
     display: flex;
@@ -328,7 +332,7 @@ include 'core/sidebar.php';
 .skin-card-screenshot {
     width: 100%;
     height: 180px;
-    background: #111;
+    background: rgba(128,128,128,0.08);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -341,7 +345,7 @@ include 'core/sidebar.php';
     object-fit: cover;
 }
 .skin-card-screenshot .no-preview {
-    color: #444;
+    opacity: 0.35;
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 2px;
@@ -361,25 +365,25 @@ include 'core/sidebar.php';
 .skin-card-name {
     font-size: 0.95rem;
     font-weight: 700;
-    color: #eee;
+    color: inherit;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
 .skin-card-version {
     font-size: 0.7rem;
-    color: #666;
+    opacity: 0.5;
     font-family: monospace;
 }
 .skin-card-desc {
     font-size: 0.8rem;
-    color: #888;
+    opacity: 0.6;
     line-height: 1.5;
     margin-bottom: 12px;
     flex: 1;
 }
 .skin-card-meta {
     font-size: 0.7rem;
-    color: #555;
+    opacity: 0.4;
     margin-bottom: 12px;
 }
 .skin-card-features {
@@ -396,9 +400,9 @@ include 'core/sidebar.php';
     letter-spacing: 1px;
     font-weight: 600;
 }
-.feature-tag.wall    { background: #1a2a1a; color: #6f6; border: 1px solid #363; }
-.feature-tag.no-wall { background: #2a1a1a; color: #f66; border: 1px solid #633; }
-.feature-tag.layout  { background: #1a1a2a; color: #99f; border: 1px solid #336; }
+.feature-tag.wall    { background: rgba(128,128,128,0.1); color: inherit; opacity: 0.7; border: 1px solid rgba(128,128,128,0.3); }
+.feature-tag.no-wall { background: rgba(128,128,128,0.06); color: inherit; opacity: 0.5; border: 1px solid rgba(128,128,128,0.2); }
+.feature-tag.layout  { background: rgba(128,128,128,0.1); color: inherit; opacity: 0.7; border: 1px solid rgba(128,128,128,0.3); }
 
 /* --- STATUS BADGES --- */
 .status-badge {
@@ -410,9 +414,9 @@ include 'core/sidebar.php';
     padding: 2px 8px;
     border-radius: 3px;
 }
-.status-badge.stable     { background: #1a3a1a; color: #6f6; border: 1px solid #3a3; }
-.status-badge.beta       { background: #3a3a1a; color: #ff6; border: 1px solid #993; }
-.status-badge.development { background: #3a1a1a; color: #f66; border: 1px solid #933; }
+.status-badge.stable     { background: rgba(128,128,128,0.1); color: inherit; opacity: 0.8; border: 1px solid rgba(128,128,128,0.3); }
+.status-badge.beta       { background: rgba(128,128,128,0.08); color: inherit; opacity: 0.65; border: 1px solid rgba(128,128,128,0.25); }
+.status-badge.development { background: rgba(128,128,128,0.06); color: inherit; opacity: 0.5; border: 1px solid rgba(128,128,128,0.2); }
 
 /* Installed badge */
 .installed-badge {
@@ -423,14 +427,16 @@ include 'core/sidebar.php';
     text-transform: uppercase;
     padding: 2px 8px;
     border-radius: 3px;
-    background: #1a2a3a;
-    color: #6cf;
-    border: 1px solid #369;
+    background: rgba(128,128,128,0.1);
+    color: inherit;
+    opacity: 0.7;
+    border: 1px solid rgba(128,128,128,0.3);
 }
 .active-badge {
-    background: #1a3a1a;
-    color: #6f6;
-    border: 1px solid #3a3;
+    background: rgba(128,128,128,0.15);
+    opacity: 0.9;
+    font-weight: 900;
+    border: 1px solid rgba(128,128,128,0.4);
 }
 
 /* --- GALLERY BUTTONS --- */
@@ -453,14 +459,15 @@ include 'core/sidebar.php';
     transition: opacity 0.2s;
 }
 .gallery-btn:hover { opacity: 0.8; }
-.gallery-btn.install  { background: #666; color: #fff; }
-.gallery-btn.update   { background: #ffcc00; color: #000; }
-.gallery-btn.remove   { background: #333;    color: #f66; border: 1px solid #633; }
+.gallery-btn.install  { background: rgba(128,128,128,0.25); color: inherit; font-weight: 900; }
+.gallery-btn.update   { background: rgba(128,128,128,0.2); color: inherit; }
+.gallery-btn.remove   { background: rgba(128,128,128,0.08); color: inherit; opacity: 0.5; border: 1px solid rgba(128,128,128,0.2); }
 .gallery-btn.disabled {
-    background: #222;
-    color: #555;
+    background: rgba(128,128,128,0.05);
+    color: inherit;
+    opacity: 0.3;
     cursor: not-allowed;
-    border: 1px solid #333;
+    border: 1px solid rgba(128,128,128,0.15);
 }
 
 /* --- GALLERY ERROR/SUCCESS --- */
@@ -470,8 +477,8 @@ include 'core/sidebar.php';
     border-radius: 3px;
     font-size: 0.8rem;
 }
-.gallery-alert.success { background: #1a3a1a; color: #6f6; border: 1px solid #3a3; }
-.gallery-alert.error   { background: #3a1a1a; color: #f66; border: 1px solid #933; }
+.gallery-alert.success { background: rgba(128,128,128,0.1); color: inherit; border: 1px solid rgba(128,128,128,0.3); }
+.gallery-alert.error   { background: rgba(128,128,128,0.06); color: inherit; opacity: 0.8; border: 1px solid rgba(128,128,128,0.2); }
 
 /* --- REGISTRY INFO --- */
 .registry-info {
@@ -479,7 +486,7 @@ include 'core/sidebar.php';
     color: #555;
     margin-bottom: 16px;
 }
-.registry-info a { text-decoration: underline; }
+.registry-info a { text-decoration: underline; color: inherit; opacity: 0.7; }
 </style>
 
 <div class="main">
@@ -532,7 +539,7 @@ include 'core/sidebar.php';
                 <select name="s" onchange="this.form.submit()">
                     <?php foreach ($available_skins as $slug => $name): ?>
                         <option value="<?php echo $slug; ?>" <?php echo ($target_skin == $slug) ? 'selected' : ''; ?>>
-                            <?php echo $name; ?>
+                            <?php echo strtoupper($name); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>

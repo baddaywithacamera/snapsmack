@@ -79,7 +79,7 @@ html, body {
 
 /* Sub-nav groups for organized menu sections */
 .sidebar li.nav-group {
-    margin-bottom: 20px;
+    margin-bottom: 40px;
     border-bottom: none;
     padding-bottom: 0;
 }
@@ -160,9 +160,9 @@ html, body {
 h2 {
     font-size: 1.2rem;
     font-weight: 500;
-    letter-spacing: 1px;
+    letter-spacing: 2px;
     margin: 0 0 30px 0;
-    padding-bottom: 15px;
+    padding-bottom: 10px;
     line-height: 1.0;
     border-bottom-width: 2px;
     border-bottom-style: solid;
@@ -174,6 +174,9 @@ h2 {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 30px;
+    padding-bottom: 10px;
+    border-bottom-width: 2px;
+    border-bottom-style: solid;
 }
 
 .header-row h2 {
@@ -333,6 +336,16 @@ label {
     font-weight: 600;
     letter-spacing: 0.5px;
     margin-bottom: 12px;
+    margin-top: 24px;
+}
+
+/* First label after a heading or at top of container needs no extra top gap */
+h3 + label,
+h3 + form label:first-of-type,
+.box > label:first-child,
+.box > form > label:first-child,
+legend + label {
+    margin-top: 0;
 }
 
 /* Standard 52px input height for all field types */
@@ -392,6 +405,59 @@ textarea,
     cursor: default;
     user-select: all;
     pointer-events: auto;
+}
+
+/* --- SHORTCODE TOOLBAR --- */
+.sc-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 8px 15px;
+    border-width: 1px 1px 0 1px;
+    border-style: solid;
+    border-radius: 4px 4px 0 0;
+    align-items: center;
+}
+
+.sc-toolbar + textarea {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.sc-toolbar .sc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    height: auto;
+    margin-top: 0;
+    padding: 4px 10px;
+    font-family: inherit;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+    line-height: 1.4;
+    min-height: 26px;
+    white-space: nowrap;
+}
+
+.sc-toolbar .sc-sep {
+    width: 1px;
+    height: 16px;
+    margin: 0 3px;
+    opacity: 0.15;
+}
+
+.sc-toolbar .sc-btn-preview {
+    margin-left: auto;
+    padding: 4px 14px;
+    font-weight: 900;
+    letter-spacing: 2px;
 }
 
 input[readonly],
@@ -740,7 +806,7 @@ button:active,
     letter-spacing: 0.5px;
 }
 
-.stat-row .label { opacity: 0.6; }
+.stat-row .label { font-weight: 400; }
 .stat-row .value { font-weight: 700; }
 
 /* --- PAGINATION --- */

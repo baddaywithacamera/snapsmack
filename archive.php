@@ -33,6 +33,11 @@ try {
     $active_skin = $settings['active_skin'] ?? 'smackdown';
     $site_name = $settings['site_name'] ?? $site_name;
 
+    // Force Pocket Rocket on mobile devices (phones only, not tablets)
+    if (snapsmack_is_mobile() && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)) {
+        $active_skin = SNAPSMACK_MOBILE_SKIN;
+    }
+
     // --- ARCHIVE LAYOUT MODE ---
     // Determines visual presentation: square (1:1), cropped (max 3:2/2:3), or masonry (full aspect).
     // Loaded from skin manifest via settings. Falls back to 'square' if invalid.

@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Skin Help Topics: New Horizon Dark
+ * SNAPSMACK - Skin Help Topics: New Horizon
  * Alpha v0.7
  *
  * Returns an array of help topics for the Man Pages system.
@@ -10,12 +10,12 @@
 return [
 
     'skin-overview' => [
-        'section'  => 'Active Skin: New Horizon Dark',
+        'section'  => 'Active Skin: New Horizon',
         'title'    => 'Skin Overview',
         'icon'     => '&#x25CF;',
         'content'  => <<<'HTML'
-<h3>New Horizon Dark — v5.5</h3>
-<p>New Horizon Dark is the flagship SnapSmack skin. It is a high-contrast dark-mode theme
+<h3>New Horizon — v5.5</h3>
+<p>New Horizon is the flagship SnapSmack skin. It is a high-contrast dark-mode theme
 built for photographers who want maximum control over presentation. Every visual element
 — framing, typography, spacing, wall physics — is configurable through the Pimpotron
 (Smooth Your Skin).</p>
@@ -39,12 +39,12 @@ HTML
     ],
 
     'skin-framing' => [
-        'section'  => 'Active Skin: New Horizon Dark',
+        'section'  => 'Active Skin: New Horizon',
         'title'    => 'Image Framing',
         'icon'     => '&#x25A1;',
         'content'  => <<<'HTML'
 <h3>Image Frame Styles</h3>
-<p>New Horizon Dark offers five distinct frame styles for single-image views and a separate
+<p>New Horizon offers five distinct frame styles for single-image views and a separate
 set for archive thumbnails. Configure these in Smooth Your Skin under "Vertical Locks".</p>
 
 <h4>Single Image Frames</h4>
@@ -69,7 +69,7 @@ HTML
     ],
 
     'skin-wall' => [
-        'section'  => 'Active Skin: New Horizon Dark',
+        'section'  => 'Active Skin: New Horizon',
         'title'    => 'Gallery Wall Settings',
         'icon'     => '&#x25A6;',
         'content'  => <<<'HTML'
@@ -102,12 +102,12 @@ HTML
     ],
 
     'skin-typography' => [
-        'section'  => 'Active Skin: New Horizon Dark',
+        'section'  => 'Active Skin: New Horizon',
         'title'    => 'Typography',
         'icon'     => '&#x0041;',
         'content'  => <<<'HTML'
 <h3>Typography Controls</h3>
-<p>New Horizon Dark provides separate typography settings for different areas of the site.</p>
+<p>New Horizon provides separate typography settings for different areas of the site.</p>
 
 <h4>Header</h4>
 <ul>
@@ -138,7 +138,7 @@ HTML
     ],
 
     'skin-blogroll' => [
-        'section'  => 'Active Skin: New Horizon Dark',
+        'section'  => 'Active Skin: New Horizon',
         'title'    => 'Blogroll Display',
         'icon'     => '&#x2661;',
         'content'  => <<<'HTML'

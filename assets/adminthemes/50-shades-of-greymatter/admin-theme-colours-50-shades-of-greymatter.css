@@ -314,7 +314,7 @@ button:hover {
 .stat-row {
     border-bottom-color: #DDDDDD;
 }
-.stat-row .label { color: #888888; }
+.stat-row .label { color: #666666; }
 .stat-row .value { color: #333333; }
 .highlight-green { color: #666666; }
 
@@ -490,4 +490,29 @@ input[type="range"]::-webkit-slider-thumb {
 .css-preview-block {
     border-color: #CCCCCC;
     background-color: #F0F0F0;
+}
+
+/* SHORTCODE TOOLBAR */
+.sc-toolbar {
+    background-color: #E6E6E6;
+    border-color: #CCCCCC;
+}
+.sc-toolbar .sc-btn {
+    background-color: #D8D8D8;
+    color: #555555;
+}
+.sc-toolbar .sc-btn:hover {
+    background-color: #666666;
+    color: #FFFFFF;
+}
+.sc-toolbar .sc-sep {
+    background-color: #AAAAAA;
+}
+.sc-toolbar .sc-btn-preview {
+    background-color: #666666;
+    color: #FFFFFF;
+}
+.sc-toolbar .sc-btn-preview:hover {
+    background-color: #444444;
+    color: #FFFFFF;
 }

@@ -2,14 +2,14 @@
     "registry_version": 1,
     "generated": "2026-03-03T12:00:00Z",
     "skins": {
-        "new_horizon_dark": {
-            "name": "New Horizon Dark",
+        "new-horizon-dark": {
+            "name": "New Horizon",
             "version": "5.5",
             "status": "stable",
             "author": "Sean McCormick",
             "description": "High-contrast dark mode with archival framing, tactical layout controls, and full JS library support.",
-            "screenshot": "https://updates.snapsmack.ca/skins/new_horizon_dark/screenshot.png",
-            "download_url": "https://updates.snapsmack.ca/skins/new_horizon_dark/new_horizon_dark-5.5.zip",
+            "screenshot": "https://updates.snapsmack.ca/skins/new-horizon-dark/screenshot.png",
+            "download_url": "https://updates.snapsmack.ca/skins/new-horizon-dark/new-horizon-dark-5.5.zip",
             "download_size": 245000,
             "signature": "",
             "requires_php": "8.0",
@@ -36,14 +36,14 @@
                 "archive_layouts": ["square", "cropped", "masonry"]
             }
         },
-        "impact_printer": {
+        "impact-printer": {
             "name": "Impact Printer",
             "version": "2.1",
             "status": "stable",
             "author": "Sean McCormick",
             "description": "Continuous-feed dot-matrix printer circa 1983. Tractor-feed paper textures, ASCII character borders, faded ribbon ink.",
-            "screenshot": "https://updates.snapsmack.ca/skins/impact_printer/screenshot.png",
-            "download_url": "https://updates.snapsmack.ca/skins/impact_printer/impact_printer-2.1.zip",
+            "screenshot": "https://updates.snapsmack.ca/skins/impact-printer/screenshot.png",
+            "download_url": "https://updates.snapsmack.ca/skins/impact-printer/impact-printer-2.1.zip",
             "download_size": 520000,
             "signature": "",
             "requires_php": "8.0",
@@ -70,7 +70,7 @@
             }
         },
         "pocket-operator": {
-            "name": "Pocket Operator",
+            "name": "Pocket Rocket",
             "version": "1.0",
             "status": "stable",
             "author": "Sean McCormick",

@@ -351,12 +351,14 @@ HTML
 
 $help_topics['formatting-toolbar'] = [
     'section'  => 'Content Creation',
-    'title'    => 'Formatting Toolbar',
+    'title'    => 'Shortcode Toolbar',
     'icon'     => '&#x2630;',
     'content'  => <<<'HTML'
-<h3>Formatting Toolbar &amp; Live Preview</h3>
-<p>The formatting toolbar appears above the description textarea on the New Post and
-Edit pages. It provides one-click formatting without needing to type HTML tags by hand.</p>
+<h3>Shortcode Toolbar</h3>
+<p>The shortcode toolbar appears above the content textarea on New Post, Edit, and
+Static Pages. Each button inserts tags or shortcodes at the cursor position. If you
+select text first, wrapping tags (bold, italic, link, headings, blockquote, dropcap)
+will wrap your selection.</p>
 
 <h4>Text Formatting</h4>
 <ul>
@@ -372,31 +374,26 @@ Edit pages. It provides one-click formatting without needing to type HTML tags b
     <li><strong>H3</strong> — Heading level 3.</li>
     <li><strong>BQ</strong> — Blockquote. Wraps the selection in
     <code>&lt;blockquote&gt;</code> tags.</li>
+    <li><strong>HR</strong> — Inserts a horizontal rule (<code>&lt;hr&gt;</code>).</li>
 </ul>
 
-<h4>Layout</h4>
+<h4>Layout &amp; Media</h4>
 <ul>
-    <li><strong>COL 2 / COL 3</strong> — Inserts a multi-column layout block. Content
-    between <code>[col]</code> markers goes in separate columns. See the
+    <li><strong>IMG</strong> — Prompts for an image ID, size (full/wall/small), and
+    alignment (center/left/right), then inserts the <code>[img:ID|size|align]</code>
+    shortcode. Get image IDs from the Media Library page.</li>
+    <li><strong>COL 2 / COL 3</strong> — Inserts a multi-column layout block with
+    placeholder content. Edit the text between <code>[col]</code> markers. See the
     <em>Shortcodes</em> topic for full syntax.</li>
-    <li><strong>DROP</strong> — Wraps the first character of your selection in a dropcap
-    shortcode for decorative display.</li>
+    <li><strong>DROP</strong> — Wraps the selection in a dropcap shortcode for
+    decorative first-letter display.</li>
 </ul>
 
-<h4>Media</h4>
-<ul>
-    <li><strong>IMG</strong> — Opens a dropdown panel where you enter an image ID, choose
-    a size (Full / Wall / Small), and alignment (Centre / Left / Right). Click INSERT
-    to drop the shortcode into the editor. Get image IDs from the Media Library page.</li>
-</ul>
-
-<h4>Live Preview</h4>
-<p>The preview panel to the right of the textarea shows a rendered approximation of your
-content as it will appear on the public site. It updates automatically as you type
-(with a short delay to avoid hammering the server). Click the REFRESH button for an
-immediate update.</p>
-<p>The preview renders all shortcodes including images, columns, and dropcaps. On narrow
-screens, the preview panel stacks below the textarea.</p>
+<h4>Preview</h4>
+<p>The <strong>PREVIEW</strong> button (far right of the toolbar) opens a new browser tab
+showing your content rendered through the active skin, exactly as it will appear on
+the public site. All shortcodes are processed — images, columns, and dropcaps will
+display in their final form. The preview is read-only and marked "NOT PUBLISHED".</p>
 HTML
 ];
 

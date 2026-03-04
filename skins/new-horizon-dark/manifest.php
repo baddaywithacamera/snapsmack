@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Configuration manifest for the new_horizon_dark skin
+ * SNAPSMACK - Configuration manifest for the new-horizon-dark skin
  * Alpha v0.7
  *
  * Defines layout options, features, and customization controls.
@@ -11,13 +11,19 @@ $inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
 $fonts = $inventory['fonts'] ?? [];
 
 return [
-    'name'          => 'New Horizon Dark',
+    'name'          => 'New Horizon',
     'version'       => '5.5',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
-    'description'   => 'High-contrast dark mode with archival framing, tactical layout controls, and full JS library support.',
+    'description'   => 'High-contrast photography skin with archival framing, tactical layout controls, and full JS library support. Light and dark variants.',
     'status'        => 'stable',
-    
+
+    'variants' => [
+        'dark'  => 'Dark',
+        'light' => 'Light',
+    ],
+    'default_variant' => 'dark',
+
     'features' => [
         'supports_wall'   => true,
         'archive_layouts' => ['square', 'cropped', 'masonry'],

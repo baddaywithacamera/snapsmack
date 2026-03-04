@@ -469,3 +469,28 @@ input[type="range"]::-webkit-slider-thumb {
     background-color: #000000;
     color: #FFFFFF; /* Fresh code glint */
 }
+
+/* SHORTCODE TOOLBAR */
+.sc-toolbar {
+    background-color: #1a1a1a;
+    border-color: #333333;
+}
+.sc-toolbar .sc-btn {
+    background-color: #0d0d0d;
+    color: #666666;
+}
+.sc-toolbar .sc-btn:hover {
+    background-color: #1a1a1a;
+    color: #FFFFFF;
+}
+.sc-toolbar .sc-sep {
+    background-color: #333333;
+}
+.sc-toolbar .sc-btn-preview {
+    background-color: #FFFFFF;
+    color: #000000;
+}
+.sc-toolbar .sc-btn-preview:hover {
+    background-color: #AAAAAA;
+    color: #000000;
+}

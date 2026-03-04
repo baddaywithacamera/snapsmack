@@ -38,7 +38,7 @@ headings, Georgia for body content, and Inter for the footer. These choices refl
 newspaper heritage — high-contrast serifs for impact, clean sans-serifs for readability.</p>
 
 <h4>Frame Styles</h4>
-<p>Shares the same five frame styles as New Horizon Dark: Revival Double, Classic White,
+<p>Shares the same five frame styles as New Horizon: Revival Double, Classic White,
 Gallery Mat, Minimal Bevel, and Obsidian.</p>
 HTML
     ],

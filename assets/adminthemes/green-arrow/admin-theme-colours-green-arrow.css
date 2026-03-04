@@ -494,3 +494,28 @@ input[type="range"]::-webkit-slider-thumb {
     border-color: #0D260D;
     background-color: #020802;
 }
+
+/* SHORTCODE TOOLBAR */
+.sc-toolbar {
+    background-color: #061406;
+    border-color: #0D260D;
+}
+.sc-toolbar .sc-btn {
+    background-color: #020802;
+    color: #008E3A;
+}
+.sc-toolbar .sc-btn:hover {
+    background-color: #0D260D;
+    color: #00C853;
+}
+.sc-toolbar .sc-sep {
+    background-color: #040F04;
+}
+.sc-toolbar .sc-btn-preview {
+    background-color: #00C853;
+    color: #020802;
+}
+.sc-toolbar .sc-btn-preview:hover {
+    background-color: #0D260D;
+    color: #00C853;
+}

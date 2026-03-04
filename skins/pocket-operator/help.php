@@ -1,17 +1,17 @@
 <?php
 /**
- * SNAPSMACK - Skin Help Topics: Pocket Operator
+ * SNAPSMACK - Skin Help Topics: Pocket Rocket
  * Alpha v0.7
  */
 
 return [
 
     'skin-overview-po' => [
-        'section'  => 'Active Skin: Pocket Operator',
+        'section'  => 'Active Skin: Pocket Rocket',
         'title'    => 'Skin Overview',
         'icon'     => '&#x25A3;',
         'content'  => <<<'HTML'
-<h3>Pocket Operator — v1.0</h3>
+<h3>Pocket Rocket — v1.0</h3>
 <p>A mobile-first skin for phone screens. Everything scrolls vertically, everything
 taps, nothing hovers. Medium grey palette with 1px borders. No gallery wall, no
 justified grid, no cropped thumbnails — aspect-preserved images only.</p>
@@ -38,7 +38,7 @@ HTML
     ],
 
     'skin-navigation-po' => [
-        'section'  => 'Active Skin: Pocket Operator',
+        'section'  => 'Active Skin: Pocket Rocket',
         'title'    => 'Navigation & Drawers',
         'icon'     => '&#x2630;',
         'content'  => <<<'HTML'

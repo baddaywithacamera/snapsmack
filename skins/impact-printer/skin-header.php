@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Skin header for the impact_printer skin
+ * SNAPSMACK - Skin header for the impact-printer skin
  * Alpha v0.6
  */
 ?>

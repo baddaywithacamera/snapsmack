@@ -27,7 +27,13 @@ $rendered  = $snapsmack->parseContent($content);
 // --- FULL PAGE MODE (new tab preview) ---
 if (isset($_GET['mode']) && $_GET['mode'] === 'full') {
     $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
-    $active_skin = $settings['active_skin'] ?? 'new_horizon_dark';
+    $active_skin = $settings['active_skin'] ?? 'new-horizon-dark';
+
+    // Force Pocket Rocket on mobile devices (phones only, not tablets)
+    if (function_exists('snapsmack_is_mobile') && snapsmack_is_mobile() && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)) {
+        $active_skin = SNAPSMACK_MOBILE_SKIN;
+    }
+
     if (!defined('BASE_URL')) {
         define('BASE_URL', rtrim($settings['site_url'] ?? '/', '/') . '/');
     }

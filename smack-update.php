@@ -315,8 +315,8 @@ include 'core/sidebar.php';
         font-size: 0.9rem;
         font-weight: bold;
     }
-    .version-current { background: rgba(0,128,0,0.1); color: #080; border: 1px solid rgba(0,128,0,0.3); }
-    .version-available { background: rgba(200,160,0,0.1); color: #860; border: 1px solid rgba(200,160,0,0.3); }
+    .version-current { background: rgba(128,128,128,0.1); color: inherit; border: 1px solid rgba(128,128,128,0.3); }
+    .version-available { background: rgba(128,128,128,0.08); color: inherit; opacity: 0.8; border: 1px solid rgba(128,128,128,0.25); }
 
     .changelog-list {
         margin: 15px 0;
@@ -337,9 +337,9 @@ include 'core/sidebar.php';
         padding: 2px 0;
         opacity: 0.75;
     }
-    .file-added { color: #080; }
-    .file-modified { color: #860; }
-    .file-removed { color: #c00; }
+    .file-added { color: inherit; opacity: 0.9; }
+    .file-modified { color: inherit; opacity: 0.7; }
+    .file-removed { color: inherit; opacity: 0.5; text-decoration: line-through; }
 
     .step-log { margin: 20px 0; }
     .step-row {
@@ -368,7 +368,7 @@ include 'core/sidebar.php';
         background: rgba(74, 144, 217, 0.08);
         font-size: 0.85rem;
     }
-    .skin-notify-new { border-left-color: #080; background: rgba(0,128,0,0.06); }
+    .skin-notify-new { border-left-color: rgba(128,128,128,0.5); background: rgba(128,128,128,0.06); }
     .skin-notify-update { border-left-color: #860; background: rgba(200,160,0,0.06); }
     .skin-notify-version { font-family: monospace; opacity: 0.75; }
 

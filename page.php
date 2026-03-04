@@ -34,6 +34,11 @@ try {
     $active_skin = $settings['active_skin'] ?? 'smackdown';
     $site_name = $settings['site_name'] ?? $site_name;
 
+    // Force Pocket Rocket on mobile devices (phones only, not tablets)
+    if (snapsmack_is_mobile() && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)) {
+        $active_skin = SNAPSMACK_MOBILE_SKIN;
+    }
+
     // --- PAGE LOOKUP ---
     $page_stmt = $pdo->prepare("SELECT * FROM snap_pages WHERE slug = ? AND is_active = 1 LIMIT 1");
     $page_stmt->execute([$slug]);

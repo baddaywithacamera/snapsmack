@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Footer for the impact_printer skin
+ * SNAPSMACK - Footer for the impact-printer skin
  * Alpha v0.6
  *
  * Injects skin-specific JavaScript libraries and closes the document.

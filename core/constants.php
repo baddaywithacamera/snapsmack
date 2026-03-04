@@ -10,3 +10,23 @@
 
 define('SNAPSMACK_VERSION', 'Alpha 0.7');
 define('SNAPSMACK_VERSION_SHORT', '0.7');
+
+// --- MOBILE SKIN OVERRIDE ---
+// The slug of the skin forced onto mobile devices. This skin is not selectable
+// in the admin skin picker — it is served automatically when a phone is detected.
+define('SNAPSMACK_MOBILE_SKIN', 'pocket-operator');
+
+/**
+ * Detect mobile devices via User-Agent string.
+ * Returns true for phones; tablets are treated as desktop.
+ */
+function snapsmack_is_mobile(): bool {
+    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    if (empty($ua)) return false;
+
+    // Match common phone tokens. The 'Mobile' token catches most modern phones
+    // (iOS Safari, Chrome Mobile, Samsung, etc.). Additional patterns cover
+    // older or niche handsets. Tablets (iPad, Android without 'Mobile') are
+    // intentionally excluded so they receive the normal desktop skin.
+    return (bool) preg_match('/Mobile|iPhone|iPod|Android.*Mobile|webOS|BlackBerry|Opera Mini|IEMobile|Windows Phone/i', $ua);
+}

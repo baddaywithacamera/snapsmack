@@ -471,3 +471,28 @@ input[type="range"]::-webkit-slider-thumb {
     border-bottom-color: #d1f0e4;
     background-color: #ffffff;
 }
+
+/* SHORTCODE TOOLBAR */
+.sc-toolbar {
+    background-color: #d1f0e4;
+    border-color: #b5e6d4;
+}
+.sc-toolbar .sc-btn {
+    background-color: #ffffff;
+    color: #6a9c8b;
+}
+.sc-toolbar .sc-btn:hover {
+    background-color: #3dcca6;
+    color: #ffffff;
+}
+.sc-toolbar .sc-sep {
+    background-color: #b5e6d4;
+}
+.sc-toolbar .sc-btn-preview {
+    background-color: #3dcca6;
+    color: #ffffff;
+}
+.sc-toolbar .sc-btn-preview:hover {
+    background-color: #2e997d;
+    color: #ffffff;
+}

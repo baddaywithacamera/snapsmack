@@ -121,7 +121,23 @@ include 'core/sidebar.php';
             <input type="text" name="image_asset" value="<?php echo htmlspecialchars($edit_page['image_asset'] ?? ''); ?>" placeholder="e.g. media_assets/1706821234.jpg">
 
             <label>Content (Shortcodes and plain text only)</label>
-            <textarea name="content" rows="20"><?php echo htmlspecialchars($edit_page['content'] ?? ''); ?></textarea>
+            <div class="sc-toolbar" data-target="page-content">
+                <button type="button" class="sc-btn" data-action="bold" title="Bold">B</button>
+                <button type="button" class="sc-btn" data-action="italic" title="Italic">I</button>
+                <button type="button" class="sc-btn" data-action="link" title="Insert Link">LINK</button>
+                <span class="sc-sep"></span>
+                <button type="button" class="sc-btn" data-action="h2" title="Heading 2">H2</button>
+                <button type="button" class="sc-btn" data-action="h3" title="Heading 3">H3</button>
+                <button type="button" class="sc-btn" data-action="blockquote" title="Blockquote">BQ</button>
+                <button type="button" class="sc-btn" data-action="hr" title="Horizontal Rule">HR</button>
+                <span class="sc-sep"></span>
+                <button type="button" class="sc-btn" data-action="img" title="Insert Image Shortcode">IMG</button>
+                <button type="button" class="sc-btn" data-action="col2" title="2-Column Layout">COL 2</button>
+                <button type="button" class="sc-btn" data-action="col3" title="3-Column Layout">COL 3</button>
+                <button type="button" class="sc-btn" data-action="dropcap" title="Dropcap">DROP</button>
+                <button type="button" class="sc-btn sc-btn-preview" data-action="preview" title="Preview in New Tab">PREVIEW</button>
+            </div>
+            <textarea id="page-content" name="content" rows="20"><?php echo htmlspecialchars($edit_page['content'] ?? ''); ?></textarea>
 
             <div class="form-action-row">
                 <button type="submit" name="save_page" class="master-update-btn">COMMIT TO DATABASE</button>
@@ -151,4 +167,5 @@ include 'core/sidebar.php';
     </div>
 </div>
 
+<script src="assets/js/shortcode-toolbar.js"></script>
 <?php include 'core/admin-footer.php'; ?>

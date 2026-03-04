@@ -1,9 +1,9 @@
 <?php
 /**
- * SNAPSMACK - Main layout template for the new_horizon_dark skin
+ * SNAPSMACK - Main layout template for the impact-printer skin
  * Alpha v0.6
  *
- * Renders the photo display, navigation, metadata, and comments sections.
+ * Renders the photo display with ASCII frame borders, navigation, metadata, and comments sections.
  */
 require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
 
@@ -11,29 +11,36 @@ require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
 $global_on = (($settings['global_comments_enabled'] ?? '1') == '1');
 $post_on   = (($img['allow_comments'] ?? '1') == '1');
 $comments_active = ($global_on && $post_on);
+
+// Determine the ASCII border style from settings
+$border_style = $settings['image_frame_style'] ?? 'box';
 ?>
 
 <div id="scroll-stage">
 
     <?php include('skin-header.php'); ?>
 
-    <div id="photobox">
-        <div class="main-photo">
-            <?php 
-            include dirname(__DIR__, 2) . '/core/download-overlay.php'; 
-            ?>
-            <img src="<?php echo BASE_URL . ltrim($img['img_file'], '/'); ?>" 
-                 alt="<?php echo htmlspecialchars($img['img_title']); ?>" 
-                 class="post-image">
+    <div id="ip-photobox">
+        <div class="ip-photo-wrap">
+            <?php include dirname(__DIR__, 2) . '/core/download-overlay.php'; ?>
+
+            <div class="ip-ascii-frame" data-border-style="<?php echo htmlspecialchars($border_style); ?>">
+                <span class="ip-border-left"></span>
+                <div class="ip-ascii-frame-inner">
+                    <img src="<?php echo BASE_URL . ltrim($img['img_file'], '/'); ?>" 
+                         alt="<?php echo htmlspecialchars($img['img_title']); ?>" 
+                         class="ip-image post-image"
+                         id="main-image">
+                </div>
+                <span class="ip-border-right"></span>
+            </div>
+
             <?php echo $download_button; ?>
         </div>
     </div>
 
     <div id="infobox">
-        <?php 
-        /* The navigation bar handles its own link logic */
-        include dirname(__DIR__, 2) . '/core/navigation_bar.php'; 
-        ?>
+        <?php include dirname(__DIR__, 2) . '/core/navigation_bar.php'; ?>
     </div>
 
     <div id="footer">

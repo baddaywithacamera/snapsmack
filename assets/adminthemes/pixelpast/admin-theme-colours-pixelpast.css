@@ -492,3 +492,28 @@ input[type="range"]::-webkit-slider-thumb {
     border-color: #DDDDDD;
     background-color: #FFFFFF;
 }
+
+/* SHORTCODE TOOLBAR */
+.sc-toolbar {
+    background-color: #EEEEEE;
+    border-color: #DDDDDD;
+}
+.sc-toolbar .sc-btn {
+    background-color: #FFFFFF;
+    color: #555555;
+}
+.sc-toolbar .sc-btn:hover {
+    background-color: #247AA2;
+    color: #FFFFFF;
+}
+.sc-toolbar .sc-sep {
+    background-color: #CCCCCC;
+}
+.sc-toolbar .sc-btn-preview {
+    background-color: #247AA2;
+    color: #FFFFFF;
+}
+.sc-toolbar .sc-btn-preview:hover {
+    background-color: #1A5A7A;
+    color: #FFFFFF;
+}

@@ -12,7 +12,7 @@ $inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
 $fonts = $inventory['fonts'] ?? [];
 
 return [
-    'name'          => 'Pocket Operator',
+    'name'          => 'Pocket Rocket',
     'version'       => '1.0',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',

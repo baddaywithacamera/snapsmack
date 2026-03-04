@@ -31,6 +31,11 @@ try {
     $active_skin = $settings['active_skin'] ?? 'smackdown';
     $site_name   = $settings['site_name'] ?? $site_name;
 
+    // Force Pocket Rocket on mobile devices (phones only, not tablets)
+    if (snapsmack_is_mobile() && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)) {
+        $active_skin = SNAPSMACK_MOBILE_SKIN;
+    }
+
     // --- ACCESS CONTROL ---
     // Redirect to home if blogroll feature is disabled
     if (($settings['blogroll_enabled'] ?? '1') == '0') {
