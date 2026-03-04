@@ -57,64 +57,81 @@ $comments_active = ($global_on && $post_on);
         <?php include dirname(__DIR__, 2) . '/core/navigation_bar.php'; ?>
     </div>
 
-    <div id="footer">
-        <div id="pane-info" class="footer-pane">
-            <div class="description">
-                <?php echo $snapsmack->parseContent($img['img_description'] ?? ''); ?>
-            </div>
-
-            <?php if ($exif_display_enabled ?? true): ?>
-            <div class="meta">
-                <div class="meta-header">TECHNICAL SPECIFICATIONS</div>
-                <table class="exif-table">
-                    <?php
-                    $labels = [
-                        'Model' => 'Model', 'lens' => 'Lens', 'FNumber' => 'Aperture',
-                        'ExposureTime' => 'Shutter', 'ISOSpeedRatings' => 'ISO',
-                        'FocalLength' => 'Focal', 'film' => 'Film', 'flash' => 'Flash'
-                    ];
-                    foreach($labels as $key => $label): ?>
-                        <?php if(!empty($exif_data[$key]) && $exif_data[$key] !== 'N/A'): ?>
-                            <tr>
-                                <td class="exif-label"><?php echo $label; ?></td>
-                                <td class="exif-value"><?php echo htmlspecialchars($exif_data[$key]); ?></td>
-                            </tr>
-                        <?php endif; ?>
-                    <?php endforeach; ?>
-                </table>
-            </div>
-            <?php endif; ?>
-        </div>
-
-        <div id="pane-comments" class="footer-pane">
-            <?php if ($comments_active): ?>
-                <div class="meta-header signals-header">SIGNALS</div>
-                <?php if ($comments): ?>
-                    <table class="exif-table signals-table">
-                        <?php foreach($comments as $c): ?>
-                            <tr>
-                                <td class="exif-label"><?php echo htmlspecialchars($c['comment_author']); ?></td>
-                                <td class="exif-value">
-                                    <?php echo nl2br(htmlspecialchars($c['comment_text'])); ?>
-                                    <div class="signal-date">[<?php echo date('Y-m-d', strtotime($c['comment_date'])); ?>]</div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </table>
-                <?php else: ?>
-                    <div class="description signals-empty">NO SIGNALS RECORDED.</div>
+    <!-- Center-expanding info/comments overlay -->
+    <div id="htbs-info-overlay" class="htbs-overlay">
+        <div class="htbs-overlay-backdrop"></div>
+        <div class="htbs-overlay-box">
+            <div class="htbs-overlay-tabs">
+                <button class="htbs-tab active" data-pane="info">INFO</button>
+                <?php if ($comments_active): ?>
+                    <button class="htbs-tab" data-pane="comments">SIGNALS</button>
                 <?php endif; ?>
+                <button class="htbs-overlay-close" title="Close">&times;</button>
+            </div>
+            <div class="htbs-overlay-content">
 
-                <form action="<?php echo BASE_URL; ?>process-comment.php" method="POST" class="comment-form">
-                    <input type="hidden" name="img_id" value="<?php echo $img['id']; ?>">
-                    <div class="form-row">
-                        <input type="text" name="author" placeholder="CALLSIGN" required>
-                        <input type="email" name="email" placeholder="EMAIL" required>
+                <!-- INFO pane -->
+                <div id="htbs-pane-info" class="htbs-pane active">
+                    <div class="description">
+                        <?php echo $snapsmack->parseContent($img['img_description'] ?? ''); ?>
                     </div>
-                    <textarea name="comment_text" placeholder="MESSAGE..." required></textarea>
-                    <button type="submit">TRANSMIT</button>
-                </form>
-            <?php endif; ?>
+
+                    <?php if ($exif_display_enabled ?? true): ?>
+                    <div class="meta">
+                        <div class="meta-header">TECHNICAL SPECIFICATIONS</div>
+                        <table class="exif-table">
+                            <?php
+                            $labels = [
+                                'Model' => 'Model', 'lens' => 'Lens', 'FNumber' => 'Aperture',
+                                'ExposureTime' => 'Shutter', 'ISOSpeedRatings' => 'ISO',
+                                'FocalLength' => 'Focal', 'film' => 'Film', 'flash' => 'Flash'
+                            ];
+                            foreach($labels as $key => $label): ?>
+                                <?php if(!empty($exif_data[$key]) && $exif_data[$key] !== 'N/A'): ?>
+                                    <tr>
+                                        <td class="exif-label"><?php echo $label; ?></td>
+                                        <td class="exif-value"><?php echo htmlspecialchars($exif_data[$key]); ?></td>
+                                    </tr>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </table>
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- SIGNALS pane -->
+                <div id="htbs-pane-comments" class="htbs-pane">
+                    <?php if ($comments_active): ?>
+                        <div class="meta-header signals-header">SIGNALS</div>
+                        <?php if ($comments): ?>
+                            <table class="exif-table signals-table">
+                                <?php foreach($comments as $c): ?>
+                                    <tr>
+                                        <td class="exif-label"><?php echo htmlspecialchars($c['comment_author']); ?></td>
+                                        <td class="exif-value">
+                                            <?php echo nl2br(htmlspecialchars($c['comment_text'])); ?>
+                                            <div class="signal-date">[<?php echo date('Y-m-d', strtotime($c['comment_date'])); ?>]</div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </table>
+                        <?php else: ?>
+                            <div class="description signals-empty">NO SIGNALS RECORDED.</div>
+                        <?php endif; ?>
+
+                        <form action="<?php echo BASE_URL; ?>process-comment.php" method="POST" class="comment-form">
+                            <input type="hidden" name="img_id" value="<?php echo $img['id']; ?>">
+                            <div class="form-row">
+                                <input type="text" name="author" placeholder="CALLSIGN" required>
+                                <input type="email" name="email" placeholder="EMAIL" required>
+                            </div>
+                            <textarea name="comment_text" placeholder="MESSAGE..." required></textarea>
+                            <button type="submit">TRANSMIT</button>
+                        </form>
+                    <?php endif; ?>
+                </div>
+
+            </div>
         </div>
     </div>
 
@@ -151,9 +168,101 @@ $comments_active = ($global_on && $post_on);
 </div>
 
 <script>
-// Scroll active filmstrip item into view
+/**
+ * Hip To Be Square — Center Overlay Controller
+ * Info and Signals appear in an elegant box that expands from center.
+ * Bypasses ss-engine-footer.js (no #footer element).
+ * Same hotkeys (1/2) work via smackdown API bridge.
+ */
 document.addEventListener('DOMContentLoaded', function() {
+
+    // --- Filmstrip auto-scroll ---
     var active = document.querySelector('.htbs-filmstrip-item.active');
     if (active) active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+
+    // --- Overlay elements ---
+    var overlay  = document.getElementById('htbs-info-overlay');
+    var backdrop = overlay ? overlay.querySelector('.htbs-overlay-backdrop') : null;
+    var closeBtn = overlay ? overlay.querySelector('.htbs-overlay-close') : null;
+    var tabs     = overlay ? overlay.querySelectorAll('.htbs-tab') : [];
+    var panes    = overlay ? overlay.querySelectorAll('.htbs-pane') : [];
+    var btnInfo  = document.getElementById('show-details');
+    var btnComm  = document.getElementById('show-comments');
+
+    function showPane(name) {
+        for (var i = 0; i < tabs.length; i++) {
+            tabs[i].classList.toggle('active', tabs[i].getAttribute('data-pane') === name);
+        }
+        for (var j = 0; j < panes.length; j++) {
+            panes[j].classList.toggle('active', panes[j].id === 'htbs-pane-' + name);
+        }
+    }
+
+    function openOverlay(pane) {
+        if (!overlay) return;
+        showPane(pane);
+        overlay.classList.add('open');
+    }
+
+    function closeOverlay() {
+        if (!overlay) return;
+        overlay.classList.remove('open');
+    }
+
+    function isOpen() {
+        return overlay && overlay.classList.contains('open');
+    }
+
+    function activePane() {
+        for (var i = 0; i < tabs.length; i++) {
+            if (tabs[i].classList.contains('active')) return tabs[i].getAttribute('data-pane');
+        }
+        return null;
+    }
+
+    // --- Tab clicks ---
+    for (var i = 0; i < tabs.length; i++) {
+        tabs[i].addEventListener('click', function() {
+            var pane = this.getAttribute('data-pane');
+            if (pane) showPane(pane);
+        });
+    }
+
+    // --- Close triggers ---
+    if (closeBtn) closeBtn.addEventListener('click', closeOverlay);
+    if (backdrop) backdrop.addEventListener('click', closeOverlay);
+
+    // --- Nav bar button intercepts ---
+    if (btnInfo) {
+        btnInfo.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            if (isOpen() && activePane() === 'info') { closeOverlay(); }
+            else { openOverlay('info'); }
+        });
+    }
+
+    if (btnComm) {
+        btnComm.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            if (isOpen() && activePane() === 'comments') { closeOverlay(); }
+            else { openOverlay('comments'); }
+        });
+    }
+
+    // --- Smackdown API bridge (keyboard engine compat) ---
+    window.smackdown = window.smackdown || {};
+    window.smackdown.toggleFooter = function(target, e) {
+        if (e) e.preventDefault();
+        if (target === 'info') {
+            if (isOpen() && activePane() === 'info') closeOverlay();
+            else openOverlay('info');
+        } else if (target === 'comments') {
+            if (isOpen() && activePane() === 'comments') closeOverlay();
+            else openOverlay('comments');
+        }
+    };
+    window.smackdown.closeFooter = closeOverlay;
 });
 </script>

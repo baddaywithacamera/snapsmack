@@ -76,14 +76,23 @@ document.addEventListener('keydown', function(e) {
             scrollToFooter();
         }
     }
+
+    // Download shortcut
+    if (e.key === 'd' || e.key === 'D') {
+        const dlBtn = document.querySelector('.snap-download-btn');
+        if (dlBtn) dlBtn.click();
+    }
 });
 
 // --- UTILITY FUNCTIONS ---
 
 function scrollToFooter() {
-    const footer = document.getElementById('footer') || document.querySelector('footer');
-    if (footer) {
-        footer.scrollIntoView({ behavior: 'smooth' });
+    const target = document.getElementById('footer')
+        || document.getElementById('htbs-info-overlay')
+        || document.querySelector('.pwa-drawer-top')
+        || document.querySelector('footer');
+    if (target) {
+        target.scrollIntoView({ behavior: 'smooth' });
     }
 }
 
@@ -139,6 +148,8 @@ function createHelpModal() {
 
     const commentsEnabled = document.getElementById('show-comments') !== null;
     const commentHint = commentsEnabled ? '<strong>[ 2 ]</strong> <span>Toggle Comments</span>' : '';
+    const downloadAvail = document.querySelector('.snap-download-btn') !== null;
+    const downloadHint = downloadAvail ? '<strong>[ D ]</strong> <span>Download</span>' : '';
 
     const backdrop = document.createElement('div');
     backdrop.id = 'snap-help-modal';
@@ -164,6 +175,7 @@ function createHelpModal() {
             <strong>SPACE</strong> <span>Next / Prev Image</span>
             <strong>[ 1 ]</strong> <span>Toggle Info</span>
             ${commentHint}
+            ${downloadHint}
             <strong>[ F1 ]</strong> <span>This Menu</span>
             <strong>[ ESC ]</strong> <span>Close</span>
         </div>
