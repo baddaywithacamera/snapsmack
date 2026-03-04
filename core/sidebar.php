@@ -51,6 +51,9 @@ if (!empty($settings['active_skin'])) {
                     <li class="<?php echo ($current_page == 'smack-comments.php') ? 'active' : ''; ?>">
                         <a href="smack-comments.php">Signals</a>
                     </li>
+                    <li class="<?php echo ($current_page == 'smack-pages.php') ? 'active' : ''; ?>">
+                        <a href="smack-pages.php">Static Pages</a>
+                    </li>
                 </ul>
             </li>
 
