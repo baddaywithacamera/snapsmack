@@ -9,20 +9,11 @@
 
 class FormattingToolbar {
 
-    constructor(textareaId, previewId, ajaxUrl) {
+    constructor(textareaId, ajaxUrl) {
         this.textarea = document.getElementById(textareaId);
-        this.preview  = document.getElementById(previewId);
         this.ajaxUrl  = ajaxUrl;
-        this.debounceTimer = null;
 
-        if (!this.textarea || !this.preview) return;
-
-        this._setupAutoPreview();
-
-        // Initial preview render if textarea already has content (edit page)
-        if (this.textarea.value.trim()) {
-            this.refreshPreview();
-        }
+        if (!this.textarea) return;
     }
 
     // =====================================================================
@@ -112,43 +103,31 @@ class FormattingToolbar {
     }
 
     // =====================================================================
-    //  PREVIEW
+    //  PREVIEW IN NEW TAB
     // =====================================================================
 
-    refreshPreview() {
+    openPreviewTab() {
         const content = this.textarea.value;
-        const preview = this.preview;
-
         if (!content.trim()) {
-            preview.innerHTML = '<p style="opacity:0.4;">Preview will appear here&hellip;</p>';
+            alert('Nothing to preview — write something first.');
             return;
         }
 
-        // Show loading indicator
-        preview.style.opacity = '0.6';
+        // POST to the AJAX endpoint from a hidden form targeting a new tab
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = this.ajaxUrl + '?mode=full';
+        form.target = '_blank';
 
-        const formData = new FormData();
-        formData.append('content', content);
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'content';
+        input.value = content;
+        form.appendChild(input);
 
-        fetch(this.ajaxUrl, {
-            method: 'POST',
-            body: formData,
-            credentials: 'same-origin'
-        })
-        .then(function(response) { return response.json(); })
-        .then(function(data) {
-            preview.style.opacity = '1';
-            if (data.success) {
-                preview.innerHTML = data.html;
-            } else {
-                preview.innerHTML = '<p style="color:#f44;">Preview error: ' + (data.error || 'unknown') + '</p>';
-            }
-        })
-        .catch(function(err) {
-            preview.style.opacity = '1';
-            preview.innerHTML = '<p style="color:#f44;">Preview failed — check console.</p>';
-            console.error('Preview fetch error:', err);
-        });
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
     }
 
     // =====================================================================
@@ -178,7 +157,7 @@ class FormattingToolbar {
         const newPos = start + replacement.length;
         ta.selectionStart = ta.selectionEnd = newPos;
 
-        this._triggerPreview();
+        // preview removed — use PREVIEW button for new-tab preview
     }
 
     _wrapSelection(before, after) {
@@ -196,7 +175,7 @@ class FormattingToolbar {
         ta.selectionStart = sel.start + before.length;
         ta.selectionEnd   = sel.start + before.length + text.length;
 
-        this._triggerPreview();
+        // preview removed — use PREVIEW button for new-tab preview
     }
 
     _wrapBlock(before, after) {
@@ -213,7 +192,7 @@ class FormattingToolbar {
         this.textarea.value = val.substring(0, sel.start) + replacement + val.substring(sel.end);
         this.textarea.focus();
 
-        this._triggerPreview();
+        // preview removed — use PREVIEW button for new-tab preview
     }
 
     _insertAtCursor(text) {
@@ -227,23 +206,9 @@ class FormattingToolbar {
         const newPos = pos + text.length;
         ta.selectionStart = ta.selectionEnd = newPos;
 
-        this._triggerPreview();
+        // preview removed — use PREVIEW button for new-tab preview
     }
 
-    _triggerPreview() {
-        clearTimeout(this.debounceTimer);
-        const self = this;
-        this.debounceTimer = setTimeout(function() {
-            self.refreshPreview();
-        }, 400);
-    }
-
-    _setupAutoPreview() {
-        const self = this;
-        this.textarea.addEventListener('input', function() {
-            self._triggerPreview();
-        });
-    }
 }
 
 // =====================================================================
@@ -251,9 +216,8 @@ class FormattingToolbar {
 // =====================================================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    var ta      = document.getElementById('desc');
-    var preview = document.getElementById('preview-panel');
-    if (ta && preview) {
-        window.toolbar = new FormattingToolbar('desc', 'preview-panel', 'smack-preview-ajax.php');
+    var ta = document.getElementById('desc');
+    if (ta) {
+        window.toolbar = new FormattingToolbar('desc', 'smack-preview-ajax.php');
     }
 });

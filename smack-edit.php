@@ -216,21 +216,12 @@ include 'core/sidebar.php';
                                     <button type="button" class="toolbar-btn" onclick="window.toolbar?.insertImageFromPanel()">INSERT</button>
                                 </div>
                             </div>
+                            <div class="toolbar-group">
+                                <button type="button" class="toolbar-btn toolbar-btn-preview" onclick="window.toolbar?.openPreviewTab()" title="Preview in new tab">PREVIEW</button>
+                            </div>
                         </div>
 
-                        <!-- Two-pane editor: textarea + live preview -->
-                        <div class="editor-with-preview">
-                            <div class="editor-pane">
-                                <textarea id="desc" name="desc"><?php echo htmlspecialchars($post['img_description']); ?></textarea>
-                            </div>
-                            <div class="preview-pane">
-                                <div class="preview-header">
-                                    <span class="preview-label">LIVE PREVIEW</span>
-                                    <button type="button" class="preview-refresh-btn" onclick="window.toolbar?.refreshPreview()">REFRESH</button>
-                                </div>
-                                <div id="preview-panel"></div>
-                            </div>
-                        </div>
+                        <textarea id="desc" name="desc"><?php echo htmlspecialchars($post['img_description']); ?></textarea>
                     </div>
                 </div>
 
