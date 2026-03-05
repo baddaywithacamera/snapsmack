@@ -51,6 +51,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $registered_paths = [];
         $fixed_square = 0;
         $fixed_aspect = 0;
+        $db_backfilled = 0;
+
+        // Prepared statement for backfilling recovery metadata
+        $backfill_stmt = $pdo->prepare("
+            UPDATE snap_images
+            SET img_thumb_square = ?, img_thumb_aspect = ?, img_checksum = ?
+            WHERE id = ?
+        ");
 
         foreach ($batch as $img) {
             $file = $img['img_file'];
@@ -141,6 +149,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     imagedestroy($src);
                 }
             }
+
+            // --- BACKFILL RECOVERY METADATA ---
+            // Always ensure DB has thumb paths and checksum, even if thumbs already existed.
+            $rel_sq  = ltrim(str_replace('\\', '/', $sq_thumb), './');
+            $rel_asp = ltrim(str_replace('\\', '/', $aspect_thumb), './');
+            $checksum = hash_file('sha256', $file);
+
+            $backfill_stmt->execute([$rel_sq, $rel_asp, $checksum, $img['id']]);
+            $db_backfilled++;
         }
 
         $next_offset = $offset + $batch_size;
@@ -178,7 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        $msg = "BATCH {$offset}–{$batch_end} of {$total_images}: Generated {$fixed_square} square + {$fixed_aspect} aspect thumbs.";
+        $msg = "BATCH {$offset}–{$batch_end} of {$total_images}: Generated {$fixed_square} square + {$fixed_aspect} aspect thumbs. Backfilled {$db_backfilled} DB recovery records.";
         if (!$has_more) {
             $msg .= " Purged {$purged_orphans} orphan files. <strong>ALL DONE.</strong>";
         } else {
