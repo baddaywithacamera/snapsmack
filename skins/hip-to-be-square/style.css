@@ -1,0 +1,1668 @@
+/* ============================================================================
+   Hip to be Square - CSS Stylesheet
+   Gallery Skin with Photorealistic Picture Frames (Dark Teal Edition)
+   ============================================================================ */
+
+/* ============================================================================
+   CSS Custom Properties (defaults, can be overridden by admin panel)
+   ============================================================================ */
+
+:root {
+    --frame-color: #0d1f29;
+    --frame-width: 8px;
+    --mat-color: #14333f;
+    --mat-width: 24px;
+    --wall-bg: #1a2e38;
+    --text-primary: #d0dde3;
+    --text-secondary: #6a8a96;
+    --accent-color: #00e5ff;
+    --grid-cols: 4;
+}
+
+/* ============================================================================
+   Base Styles & Body
+   ============================================================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    height: 100%;
+}
+
+body {
+    background-color: var(--wall-bg);
+    background-image: url('assets/wall-smooth-plaster.jpg');
+    background-repeat: repeat;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--text-primary);
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* ============================================================================
+   Typography
+   ============================================================================ */
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 500;
+    margin-bottom: 0.5em;
+}
+
+h1 {
+    font-size: 24px;
+}
+
+h2 {
+    font-size: 20px;
+}
+
+h3 {
+    font-size: 18px;
+}
+
+p {
+    margin-bottom: 1em;
+}
+
+a {
+    color: var(--accent-color);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: #ffe033;
+    text-decoration: underline;
+}
+
+/* ============================================================================
+   Gallery Header
+   ============================================================================ */
+
+/* This skin IS the gallery — hide the Gallery View nav link */
+.htbs-header .wall-nav-item {
+    display: none !important;
+}
+
+.htbs-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--header-height, 60px);
+    background-color: #0f2029;
+    border-bottom: 1px solid rgba(0, 228, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 30px;
+    z-index: 100;
+    transition: box-shadow 0.3s ease;
+}
+
+.htbs-header.scrolled {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Header content from core/header.php */
+.htbs-header .inside {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.htbs-header .logo-area {
+    flex-shrink: 0;
+}
+
+.htbs-header .logo-area a {
+    text-decoration: none;
+}
+
+.htbs-header .site-title-text {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--accent-color);
+    margin: 0;
+}
+
+.htbs-header .nav-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+}
+
+.htbs-header .nav-menu li {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.htbs-header .nav-menu a {
+    font-size: 12px;
+    color: var(--text-primary);
+    text-decoration: none;
+    letter-spacing: 1px;
+    padding: 0 10px;
+    transition: color 0.2s ease;
+}
+
+.htbs-header .nav-menu a:hover {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.htbs-header .nav-menu .sep {
+    color: rgba(0, 228, 255, 0.2);
+    font-size: 11px;
+}
+
+/* ============================================================================
+   Picture Frame System — Photorealistic Gallery Frames
+
+   Light source: top-left (~10 o'clock). Every surface is modelled with
+   directional highlights and shadows to simulate real depth.
+
+   Structure (outside → in):
+     .frame-mount    → wall shadow + spacing
+     .frame-border   → wooden moulding (grain, profile, gilding)
+       ::before      → outer gilded/lacquer lip
+       ::after       → inner rabbet (recessed channel)
+     .frame-mat      → acid-free mat board with paper texture
+     .frame-bevel    → 45° window cut through the mat
+     .frame-image    → image + protective glass reflection
+   ============================================================================ */
+
+/* --- Frame Mount — wall shadow ------------------------------------------- */
+.frame-mount {
+    display: inline-block;
+    padding: 18px;
+    /* Natural wall shadow: contact penumbra + soft ambient + directional spread.
+       box-shadow on frame-border avoids the sharp edge that drop-shadow creates. */
+}
+
+/* --- Frame Border — wooden moulding -------------------------------------- */
+.frame-border {
+    background: var(--frame-color);
+    padding: var(--frame-width);
+    position: relative;
+
+    /* Multi-layer wood grain:
+       1) Fine parallel grain lines (slightly off-axis for realism)
+       2) Wider growth-ring variation
+       3) Directional light fall across the moulding profile */
+    background-image:
+        /* Fine grain */
+        repeating-linear-gradient(
+            93deg,
+            rgba(255, 255, 255, 0.04) 0px,
+            transparent 1px,
+            transparent 2px
+        ),
+        /* Growth ring variation */
+        repeating-linear-gradient(
+            88deg,
+            transparent 0px,
+            rgba(0, 0, 0, 0.03) 4px,
+            transparent 5px,
+            transparent 11px
+        ),
+        /* Knot / colour variation */
+        radial-gradient(
+            ellipse at 20% 50%,
+            rgba(0, 0, 0, 0.04) 0%,
+            transparent 40%
+        ),
+        radial-gradient(
+            ellipse at 75% 30%,
+            rgba(255, 255, 255, 0.03) 0%,
+            transparent 35%
+        ),
+        /* Directional light across moulding face */
+        linear-gradient(
+            145deg,
+            rgba(255, 255, 255, 0.14) 0%,
+            rgba(255, 255, 255, 0.06) 20%,
+            transparent 45%,
+            rgba(0, 0, 0, 0.04) 65%,
+            rgba(0, 0, 0, 0.10) 100%
+        );
+
+    /* Moulding profile built from layered inset shadows:
+       - Outer highlight (top/left catches light)
+       - Outer shadow (bottom/right falls away)
+       - Mid-profile ridge (secondary highlight)
+       - Inner shadow approaching the rabbet */
+    box-shadow:
+        /* ── Wall shadow (outer, soft gaussian blur) ── */
+        0 2px 4px rgba(0, 0, 0, 0.12),
+        0 6px 16px rgba(0, 0, 0, 0.14),
+        3px 10px 30px rgba(0, 0, 0, 0.10),
+        /* ── Moulding profile (inset) ── */
+        /* Outermost edge — bright highlight on top/left */
+        inset 2px 2px 0 rgba(255, 255, 255, 0.22),
+        inset 1px 1px 0 rgba(255, 255, 255, 0.14),
+        /* Outermost edge — deep shadow on bottom/right */
+        inset -2px -2px 0 rgba(0, 0, 0, 0.30),
+        inset -1px -1px 0 rgba(0, 0, 0, 0.18),
+        /* Mid-profile ridge — second highlight band */
+        inset 5px 5px 3px rgba(255, 255, 255, 0.10),
+        /* Mid-profile — second shadow band */
+        inset -4px -4px 3px rgba(0, 0, 0, 0.12),
+        /* Deep interior — approaching the rabbet */
+        inset 7px 7px 6px rgba(0, 0, 0, 0.06),
+        inset -6px -6px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* Outer gilded/lacquer lip — thin bright edge around outside of frame */
+.frame-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-bottom-color: rgba(0, 0, 0, 0.15);
+    border-right-color: rgba(0, 0, 0, 0.15);
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Inner rabbet — recessed channel where frame meets mat.
+   Dark lip that steps down into the mat plane. */
+.frame-border::after {
+    content: '';
+    position: absolute;
+    top: calc(var(--frame-width) - 3px);
+    left: calc(var(--frame-width) - 3px);
+    right: calc(var(--frame-width) - 3px);
+    bottom: calc(var(--frame-width) - 3px);
+    /* Sharp step-down into mat */
+    box-shadow:
+        inset 2px 2px 2px rgba(0, 0, 0, 0.40),
+        inset -1px -1px 1px rgba(255, 255, 255, 0.12),
+        inset 1px 1px 4px rgba(0, 0, 0, 0.15);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* --- Frame Mat — acid-free mat board ------------------------------------- */
+.frame-mat {
+    background: var(--mat-color);
+    padding: var(--mat-width);
+    position: relative;
+
+    /* Paper texture: fibre noise + subtle tonal variation + vignette */
+    background-image:
+        /* Fibre noise — tiny random-feeling dots */
+        repeating-linear-gradient(
+            37deg,
+            transparent 0px,
+            rgba(0, 0, 0, 0.008) 1px,
+            transparent 2px,
+            transparent 5px
+        ),
+        repeating-linear-gradient(
+            127deg,
+            transparent 0px,
+            rgba(0, 0, 0, 0.006) 1px,
+            transparent 2px,
+            transparent 7px
+        ),
+        /* Warm tonal shift across surface */
+        linear-gradient(
+            170deg,
+            rgba(255, 255, 255, 0.04) 0%,
+            transparent 50%,
+            rgba(0, 0, 0, 0.02) 100%
+        ),
+        /* Soft vignette from mat edges */
+        radial-gradient(
+            ellipse at center,
+            transparent 50%,
+            rgba(0, 0, 0, 0.03) 100%
+        );
+    /* Mat board is slightly raised from frame rabbet */
+    box-shadow:
+        inset 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+/* --- Frame Bevel — 45° window cut through mat board ---------------------- */
+/* Bevel style (none/single/double) applied via PHP in skin-header.php      */
+
+/* Single bevel (default) — 45° window cut through mat board */
+.frame-bevel {
+    position: relative;
+    box-shadow:
+        /* Top bevel face — bright, catches light from top-left */
+        inset 3px 3px 0 rgba(255, 255, 255, 1.0),
+        inset 5px 5px 1px rgba(255, 255, 255, 0.60),
+        /* Bottom bevel face — deep shadow on lower/right edge */
+        inset -3px -3px 0 rgba(0, 0, 0, 0.70),
+        inset -5px -5px 2px rgba(0, 0, 0, 0.36),
+        /* Transition line where bevel meets image plane */
+        inset 1px 1px 0 rgba(0, 0, 0, 0.30);
+}
+
+/* Reveal line at the edge of the bevel cut */
+.frame-bevel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 1px solid rgba(0, 0, 0, 0.24);
+    border-top-color: rgba(255, 255, 255, 0.80);
+    border-left-color: rgba(255, 255, 255, 0.80);
+    pointer-events: none;
+}
+
+/* --- Frame Image — contains photo + glass reflection --------------------- */
+.frame-image {
+    position: relative;
+    overflow: hidden;
+    line-height: 0;
+    background: #0f2029;
+}
+
+/* Protective glass — subtle diagonal reflection across the image */
+.frame-image::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        /* Primary reflection streak — diagonal from top-left */
+        linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.08) 0%,
+            rgba(255, 255, 255, 0.03) 25%,
+            transparent 50%,
+            transparent 100%
+        );
+    pointer-events: none;
+    z-index: 2;
+}
+
+.frame-image img {
+    display: block;
+    width: 100%;
+    height: auto;
+    transition: transform 0.3s ease;
+}
+
+.frame-image:hover img {
+    transform: scale(1.02);
+}
+
+/* ============================================================================
+   Plaque - nameplate below frame in single view
+   ============================================================================ */
+
+.plaque {
+    text-align: center;
+    margin-top: 20px;
+    padding: 12px 30px;
+    background: rgba(15, 32, 41, 0.9);
+    border: 1px solid rgba(0, 228, 255, 0.2);
+    display: inline-block;
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.htbs-gallery-room:hover .plaque {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.plaque-title {
+    font-family: Georgia, serif;
+    font-size: 16px;
+    color: var(--text-primary);
+    letter-spacing: 1px;
+    font-weight: 500;
+}
+
+.plaque-date {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+/* ============================================================================
+   Single Image View
+   ============================================================================ */
+
+.htbs-single {
+    padding-top: var(--header-height, 60px);
+    padding-bottom: 120px; /* room for filmstrip */
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.htbs-gallery-room {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    max-width: 90vw;
+    margin: 0 auto;
+    padding: 20px 0;
+}
+
+.htbs-gallery-room .frame-mount {
+    max-width: 70vh;
+}
+
+.htbs-gallery-room .frame-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* ─── Navigation bar (prev/info/comments/next) ─── */
+
+/* On archive pages, #infobox sits above the grid — needs to clear the fixed header */
+.archive-page #infobox {
+    padding-top: calc(var(--header-height, 60px) + 20px);
+    position: relative;
+    z-index: 10;
+}
+
+#infobox {
+    text-align: center;
+    margin: 24px auto;
+    max-width: 960px;
+}
+
+#infobox .nav-links {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 6px;
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-secondary);
+}
+
+#infobox .nav-links a {
+    color: var(--text-primary);
+    text-decoration: none;
+    padding: 6px 10px;
+    white-space: nowrap;
+    transition: color 0.2s ease;
+}
+
+#infobox .nav-links a:hover {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+#infobox .nav-links .sep {
+    color: rgba(0, 228, 255, 0.2);
+}
+
+#infobox .nav-links .dim {
+    color: rgba(0, 228, 255, 0.2);
+    padding: 6px 10px;
+    white-space: nowrap;
+}
+
+#infobox .nav-links .filter-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+#infobox .nav-links .left,
+#infobox .nav-links .center,
+#infobox .nav-links .right {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+}
+
+/* Navigation arrows for single view */
+.htbs-nav-arrow {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 32, 41, 0.8);
+    border: 1px solid rgba(0, 228, 255, 0.3);
+    cursor: pointer;
+    z-index: 50;
+    transition: all 0.2s ease;
+    font-size: 20px;
+    color: var(--text-primary);
+}
+
+.htbs-nav-arrow:hover {
+    background: rgba(15, 32, 41, 0.95);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    color: var(--accent-color);
+}
+
+.htbs-nav-arrow.prev {
+    left: 20px;
+}
+
+.htbs-nav-arrow.next {
+    right: 20px;
+}
+
+.htbs-nav-arrow:disabled,
+.htbs-nav-arrow.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.htbs-nav-arrow:disabled:hover,
+.htbs-nav-arrow.disabled:hover {
+    background: rgba(15, 32, 41, 0.5);
+    color: var(--text-primary);
+}
+
+/* ============================================================================
+   Slider Landing Page
+   ============================================================================ */
+
+.htbs-slider-landing {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* Header is fixed/60px — padding-top clears it, box-sizing keeps 100vh honest */
+    padding-top: var(--header-height, 60px);
+}
+
+.htbs-slider-landing > footer,
+.htbs-slider-landing > #system-footer {
+    flex-shrink: 0;
+    width: 100%;
+}
+
+.htbs-slider-container {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.htbs-slider-wrapper {
+    width: 94%;
+}
+
+/* Slide content — center frames and plaques within each slide */
+.htbs-slide-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+}
+
+.htbs-slide-link:hover {
+    text-decoration: none;
+}
+
+.htbs-slide-link .frame-mount {
+    max-width: 100%;
+}
+
+.htbs-slide-link .frame-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.slider-slide {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+}
+
+/* Slider controls styling */
+.htbs-slider-control {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 10;
+}
+
+.htbs-slider-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(0, 228, 255, 0.2);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 228, 255, 0.15);
+}
+
+.htbs-slider-dot.active {
+    background: var(--accent-color);
+    transform: scale(1.2);
+}
+
+/* ============================================================================
+   Page Wrapper — sticky footer for archive pages
+   ============================================================================ */
+
+body.archive-page #page-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+body.archive-page #scroll-stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ============================================================================
+   Archive Grid
+   ============================================================================ */
+
+.htbs-archive-grid {
+    flex: 1;
+    padding: 30px 60px 40px;
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 4), 1fr);
+    gap: 30px;
+    margin: 0 auto;
+    max-width: 1600px;
+    width: 100%;
+    align-content: center;
+    justify-items: center;
+}
+
+.htbs-archive-item {
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    width: 100%;
+}
+
+.htbs-archive-item:hover {
+    transform: scale(1.02);
+}
+
+/* Archive thumbnail frames — proportionally scaled from hero */
+.htbs-archive-item .frame-mount {
+    padding: 8px;
+    width: 100%;
+}
+
+.htbs-archive-item .frame-border {
+    /* ~50% of hero frame width for proportional scaling */
+    padding: calc(var(--frame-width, 8px) * 0.5);
+    box-shadow:
+        /* Wall shadow — lighter than hero */
+        0 1px 3px rgba(0, 0, 0, 0.10),
+        0 4px 10px rgba(0, 0, 0, 0.12),
+        2px 6px 18px rgba(0, 0, 0, 0.08),
+        /* Moulding profile — scaled */
+        inset 1px 1px 0 rgba(255, 255, 255, 0.22),
+        inset -1px -1px 0 rgba(0, 0, 0, 0.30),
+        inset 3px 3px 2px rgba(255, 255, 255, 0.10),
+        inset -3px -3px 2px rgba(0, 0, 0, 0.12);
+}
+
+.htbs-archive-item .frame-border::after {
+    top: calc(var(--frame-width, 8px) * 0.5 - 2px);
+    left: calc(var(--frame-width, 8px) * 0.5 - 2px);
+    right: calc(var(--frame-width, 8px) * 0.5 - 2px);
+    bottom: calc(var(--frame-width, 8px) * 0.5 - 2px);
+}
+
+.htbs-archive-item .frame-mat {
+    /* ~50% of hero mat width for proportional scaling */
+    padding: calc(var(--mat-width, 24px) * 0.5);
+}
+
+/* Bevel scaled down for thumbnails — uniform 2px on all edges */
+.htbs-archive-item .frame-bevel {
+    box-shadow:
+        inset 2px 2px 0 rgba(255, 255, 255, 1.0),
+        inset 3px 3px 1px rgba(255, 255, 255, 0.50),
+        inset -2px -2px 0 rgba(0, 0, 0, 0.60),
+        inset -3px -3px 1px rgba(0, 0, 0, 0.30),
+        inset 1px 1px 0 rgba(0, 0, 0, 0.25);
+}
+
+.htbs-archive-item .frame-bevel::after {
+    border: 1px solid rgba(0, 0, 0, 0.20);
+    border-top-color: rgba(255, 255, 255, 0.70);
+    border-left-color: rgba(255, 255, 255, 0.70);
+}
+
+/* Plain border mode — simple 3px border in frame colour, no frame structure */
+.htbs-archive-item .htbs-plain-thumb {
+    border: 3px solid var(--frame-color, #0d1f29);
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.10), 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.htbs-archive-item .htbs-plain-thumb img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* Archive images */
+.htbs-archive-item .frame-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* Title overlay on archive items */
+.htbs-archive-title {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 10px 8px;
+    background: rgba(0, 15, 22, 0.75);
+    color: #d0dde3;
+    font-size: 12px;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    backdrop-filter: blur(2px);
+}
+
+.htbs-archive-item:hover .htbs-archive-title {
+    opacity: 1;
+}
+
+/* ============================================================================
+   Filmstrip
+   Horizontal scrollable strip of image thumbnails
+   ============================================================================ */
+
+.htbs-filmstrip {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(15, 32, 41, 0.95);
+    border-top: 1px solid rgba(0, 228, 255, 0.15);
+    backdrop-filter: blur(4px);
+    z-index: 80;
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: 100px;
+    padding: 10px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+}
+
+.htbs-filmstrip::-webkit-scrollbar {
+    height: 6px;
+}
+
+.htbs-filmstrip::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.htbs-filmstrip::-webkit-scrollbar-thumb {
+    background: rgba(0, 228, 255, 0.3);
+    border-radius: 3px;
+}
+
+.htbs-filmstrip::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 228, 255, 0.6);
+}
+
+.htbs-filmstrip-item {
+    flex-shrink: 0;
+    width: 70px;
+    height: 70px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+    overflow: hidden;
+    line-height: 0;
+    font-size: 0;
+}
+
+.htbs-filmstrip-item.active {
+    border-color: var(--accent-color);
+    transform: scale(1.05);
+}
+
+.htbs-filmstrip-item:hover {
+    opacity: 0.8;
+}
+
+.htbs-filmstrip-item img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ============================================================================
+   Footer Styling
+   Clean, minimal, gallery aesthetic
+   ============================================================================ */
+
+.htbs-footer,
+footer {
+    background: #0f2029;
+    border-top: 1px solid rgba(0, 228, 255, 0.15);
+    padding: var(--footer-padding, 20px) 30px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: auto;
+    flex-shrink: 0;
+}
+
+footer .inside {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+footer .footer-metadata-bar {
+    text-align: center;
+    width: 100%;
+}
+
+footer .footer-metadata-bar p {
+    margin: 0;
+    line-height: 1;
+}
+
+.htbs-footer a,
+footer a {
+    color: var(--accent-color);
+}
+
+.htbs-footer a:hover,
+footer a:hover {
+    color: #ffe033;
+}
+
+/* ============================================================================
+   Info & Details Section
+   EXIF data, comments, metadata display
+   ============================================================================ */
+
+/* (Info & comments now rendered inside .htbs-overlay-box) */
+
+.htbs-info-section {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.htbs-info-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(0, 228, 255, 0.15);
+}
+
+/* EXIF Data Table */
+.htbs-exif-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.htbs-exif-table tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.htbs-exif-table tr:last-child {
+    border-bottom: none;
+}
+
+.htbs-exif-table td {
+    padding: 8px 0;
+}
+
+.htbs-exif-table td:first-child {
+    font-weight: 600;
+    color: var(--text-secondary);
+    width: 40%;
+    padding-right: 20px;
+}
+
+.htbs-exif-table td:last-child {
+    color: var(--text-primary);
+}
+
+/* Comment Form */
+.htbs-comment-form {
+    margin-top: 30px;
+    padding-top: 30px;
+    border-top: 1px solid rgba(0, 228, 255, 0.15);
+}
+
+.htbs-comment-form-group {
+    margin-bottom: 20px;
+}
+
+.htbs-comment-form label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.htbs-comment-form input,
+.htbs-comment-form textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid rgba(0, 228, 255, 0.2);
+    border-radius: 2px;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
+}
+
+.htbs-comment-form input:focus,
+.htbs-comment-form textarea:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.2);
+}
+
+.htbs-comment-form textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+.htbs-comment-form-button {
+    background: var(--accent-color);
+    color: #0d1f29;
+    border: none;
+    padding: 10px 30px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 2px;
+}
+
+.htbs-comment-form-button:hover {
+    background: #ffe033;
+    box-shadow: 0 2px 8px rgba(255, 224, 51, 0.25);
+}
+
+.htbs-comment-form-button:active {
+    transform: scale(0.98);
+}
+
+/* Comment Display */
+.htbs-comment {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.htbs-comment:last-child {
+    border-bottom: none;
+}
+
+.htbs-comment-author {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.htbs-comment-date {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-left: 10px;
+}
+
+.htbs-comment-text {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+/* ============================================================================
+   Center-Expanding Info/Comments Overlay
+   ============================================================================ */
+
+.htbs-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.htbs-overlay.open {
+    pointer-events: auto;
+    opacity: 1;
+}
+
+.htbs-overlay-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 12, 18, 0.8);
+}
+
+.htbs-overlay-box {
+    position: relative;
+    width: 90%;
+    max-width: 700px;
+    max-height: 80vh;
+    background: #0f2029;
+    border: 3px solid #00e5ff;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 228, 255, 0.2);
+    display: flex;
+    flex-direction: column;
+    transform: scale(0.85);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.htbs-overlay.open .htbs-overlay-box {
+    transform: scale(1);
+}
+
+.htbs-overlay-tabs {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid rgba(0, 228, 255, 0.15);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.htbs-tab {
+    padding: 14px 24px;
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #6a8a96;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.htbs-tab:hover {
+    color: #d0dde3;
+}
+
+.htbs-tab.active {
+    color: #d0dde3;
+    border-bottom-color: var(--accent-color);
+}
+
+.htbs-overlay-close {
+    margin-left: auto;
+    padding: 10px 16px;
+    font-size: 20px;
+    color: #6a8a96;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+
+.htbs-overlay-close:hover {
+    color: #d0dde3;
+}
+
+.htbs-overlay-content {
+    overflow-y: auto;
+    padding: 30px;
+    flex-grow: 1;
+}
+
+.htbs-pane {
+    display: none;
+}
+
+.htbs-pane.active {
+    display: block;
+}
+
+/* Inherit existing styles inside the overlay */
+.htbs-overlay-content .description {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    line-height: 1.6;
+    font-size: 14px;
+    color: #d0dde3;
+    margin-bottom: 24px;
+}
+
+.htbs-overlay-content .meta-header {
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #6a8a96;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(0, 228, 255, 0.15);
+}
+
+.htbs-overlay-content .exif-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.htbs-overlay-content .exif-table tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.htbs-overlay-content .exif-table td {
+    padding: 8px 0;
+}
+
+.htbs-overlay-content .exif-label {
+    font-weight: 600;
+    color: #6a8a96;
+    width: 35%;
+    padding-right: 16px;
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.htbs-overlay-content .exif-value {
+    color: #d0dde3;
+}
+
+.htbs-overlay-content .signals-empty {
+    font-style: italic;
+    color: #6a8a96;
+}
+
+.htbs-overlay-content .signal-date {
+    font-size: 11px;
+    color: #6a8a96;
+    margin-top: 4px;
+}
+
+.htbs-overlay-content .comment-form {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(0, 228, 255, 0.15);
+}
+
+.htbs-overlay-content .comment-form .form-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.htbs-overlay-content .comment-form .form-row input {
+    flex: 1;
+}
+
+.htbs-overlay-content .comment-form input,
+.htbs-overlay-content .comment-form textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid rgba(0, 228, 255, 0.2);
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    font-size: 12px;
+    color: #d0dde3;
+    background: rgba(255, 255, 255, 0.05);
+    box-sizing: border-box;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: border-color 0.2s ease;
+}
+
+.htbs-overlay-content .comment-form input:focus,
+.htbs-overlay-content .comment-form textarea:focus {
+    outline: none;
+    border-color: #00e5ff;
+    box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.2);
+}
+
+.htbs-overlay-content .comment-form textarea {
+    resize: vertical;
+    min-height: 80px;
+    margin-bottom: 8px;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.htbs-overlay-content .comment-form button {
+    background: #00e5ff;
+    color: #0d1f29;
+    padding: 10px 30px;
+    border: none;
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.htbs-overlay-content .comment-form button:hover {
+    background: #ffe033;
+}
+
+/* ============================================================================
+   Responsive Design
+   ============================================================================ */
+
+/* Tablets and smaller desktops */
+@media (max-width: 1024px) {
+    :root {
+        --grid-cols: 3;
+    }
+
+    .htbs-archive-grid {
+        gap: 24px;
+        padding: 20px 30px 30px;
+    }
+
+    .htbs-header {
+        padding: 0 20px;
+    }
+
+    .htbs-nav-arrow {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+
+    .htbs-nav-arrow.prev {
+        left: 10px;
+    }
+
+    .htbs-nav-arrow.next {
+        right: 10px;
+    }
+}
+
+/* Small tablets and large phones */
+@media (max-width: 768px) {
+    :root {
+        --grid-cols: 2;
+        --frame-width: 6px;
+        --mat-width: 14px;
+    }
+
+    body {
+        font-size: 12px;
+    }
+
+    .htbs-header {
+        height: 50px;
+        padding: 0 15px;
+    }
+
+    .htbs-header-logo {
+        font-size: 16px;
+    }
+
+    .htbs-header-nav {
+        gap: 20px;
+    }
+
+    .htbs-single {
+        padding-top: 50px;
+    }
+
+    .htbs-gallery-room .frame-mount {
+        max-width: 100%;
+        padding: 15px;
+    }
+
+    .htbs-gallery-room .frame-border {
+        max-height: 60vh;
+    }
+
+    .htbs-nav-arrow {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+
+    .htbs-nav-arrow.prev {
+        left: 5px;
+    }
+
+    .htbs-nav-arrow.next {
+        right: 5px;
+    }
+
+    .htbs-archive-grid {
+        gap: 20px;
+        padding: 15px 20px 20px;
+    }
+
+    .htbs-filmstrip {
+        height: 80px;
+        padding: 8px;
+    }
+
+    .htbs-filmstrip-item {
+        width: 60px;
+        height: 60px;
+    }
+
+    .plaque {
+        margin-top: 15px;
+        padding: 10px 20px;
+    }
+
+    .plaque-title {
+        font-size: 14px;
+    }
+
+    .plaque-date {
+        font-size: 10px;
+    }
+
+    .htbs-overlay-box {
+        width: 95%;
+    }
+
+    .htbs-overlay-content {
+        padding: 20px;
+    }
+
+    .htbs-tab {
+        padding: 12px 16px;
+        font-size: 10px;
+    }
+
+    .htbs-overlay-content .comment-form .form-row {
+        flex-direction: column;
+    }
+}
+
+/* Phones */
+@media (max-width: 480px) {
+    :root {
+        --grid-cols: 1;
+        --frame-width: 4px;
+        --mat-width: 12px;
+    }
+
+    body {
+        font-size: 11px;
+    }
+
+    .htbs-header {
+        height: 45px;
+        padding: 0 12px;
+    }
+
+    .htbs-header-logo {
+        font-size: 14px;
+    }
+
+    .htbs-header-nav {
+        gap: 15px;
+        font-size: 11px;
+    }
+
+    .htbs-single {
+        padding-top: 45px;
+    }
+
+    .htbs-gallery-room .frame-mount {
+        padding: 10px;
+    }
+
+    .htbs-gallery-room .frame-border {
+        max-height: 50vh;
+    }
+
+    .htbs-nav-arrow {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+
+    .htbs-archive-grid {
+        gap: 16px;
+        padding: 10px 15px 15px;
+    }
+
+    .htbs-archive-item .frame-mount {
+        padding: 8px;
+    }
+
+    .htbs-filmstrip {
+        height: 70px;
+        padding: 6px;
+        gap: 8px;
+    }
+
+    .htbs-filmstrip-item {
+        width: 50px;
+        height: 50px;
+    }
+
+    .plaque {
+        margin-top: 12px;
+        padding: 8px 15px;
+    }
+
+    .plaque-title {
+        font-size: 12px;
+    }
+
+    .plaque-date {
+        font-size: 9px;
+    }
+
+    .htbs-overlay-box {
+        width: 98%;
+    }
+
+    .htbs-overlay-content {
+        padding: 15px;
+    }
+
+    .htbs-tab {
+        padding: 10px 12px;
+        font-size: 9px;
+        letter-spacing: 1px;
+    }
+}
+
+/* ============================================================================
+   Utility Classes
+   ============================================================================ */
+
+.hidden {
+    display: none !important;
+}
+
+.invisible {
+    visibility: hidden;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-muted {
+    color: var(--text-secondary);
+}
+
+.mt-small {
+    margin-top: 10px;
+}
+
+.mt-medium {
+    margin-top: 20px;
+}
+
+.mt-large {
+    margin-top: 30px;
+}
+
+.mb-small {
+    margin-bottom: 10px;
+}
+
+.mb-medium {
+    margin-bottom: 20px;
+}
+
+.mb-large {
+    margin-bottom: 30px;
+}
+
+/* ============================================================================
+   Print Styles
+   ============================================================================ */
+
+@media print {
+    .htbs-header,
+    .htbs-nav-arrow,
+    .htbs-filmstrip,
+    .htbs-overlay,
+    footer {
+        display: none !important;
+    }
+
+    body {
+        background: #1a2e38;
+        padding: 20px;
+    }
+
+    .htbs-gallery-room {
+        max-width: 100%;
+    }
+
+    .frame-border {
+        box-shadow: none;
+    }
+}
+
+/* ============================================================================
+   Accessibility
+   ============================================================================ */
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+button:focus,
+a:focus,
+input:focus,
+textarea:focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+/* ============================================================================
+   Animation Keyframes
+   ============================================================================ */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease;
+}
+
+.slide-in-up {
+    animation: slideInUp 0.3s ease;
+}

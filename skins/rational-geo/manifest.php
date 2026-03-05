@@ -24,7 +24,7 @@ return [
     'author'          => 'Sean McCormick',
     'author_email'    => 'sean@baddaywithacamera.ca',
     'description'     => 'An homage to the world\'s best magazine. Editorial serif typography, the iconic yellow accent, light and dark variants. For anyone who has read it and loved it or dreamed of having their work published in it.',
-    'status'          => 'stable',
+    'status'          => 'beta',
 
     'variants' => [
         'light' => 'Light (Magazine Interior)',
