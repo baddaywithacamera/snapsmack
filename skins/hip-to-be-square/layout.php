@@ -142,7 +142,7 @@ $comments_active = ($global_on && $post_on);
     if ($show_filmstrip):
         $now_local = date('Y-m-d H:i:s');
         $film_stmt = $pdo->prepare("
-            SELECT id, img_slug, img_thumb_square, img_title
+            SELECT id, img_slug, img_file, img_thumb_square, img_title
             FROM snap_images
             WHERE img_status = 'published' AND img_date <= ?
             ORDER BY img_date DESC
@@ -154,7 +154,15 @@ $comments_active = ($global_on && $post_on);
     <div class="htbs-filmstrip">
         <?php foreach ($filmstrip_images as $fi):
             $fi_link = BASE_URL . htmlspecialchars($fi['img_slug']);
-            $fi_thumb = !empty($fi['img_thumb_square']) ? BASE_URL . ltrim($fi['img_thumb_square'], '/') : '';
+            // Prefer DB thumb path; fall back to constructing from img_file
+            if (!empty($fi['img_thumb_square'])) {
+                $fi_thumb = BASE_URL . ltrim($fi['img_thumb_square'], '/');
+            } elseif (!empty($fi['img_file'])) {
+                $fi_path = pathinfo($fi['img_file']);
+                $fi_thumb = BASE_URL . ltrim($fi_path['dirname'] . '/thumbs/t_' . $fi_path['basename'], '/');
+            } else {
+                $fi_thumb = '';
+            }
             $is_active = ($fi['id'] == $img['id']) ? ' active' : '';
         ?>
             <a href="<?php echo $fi_link; ?>" class="htbs-filmstrip-item<?php echo $is_active; ?>" title="<?php echo htmlspecialchars($fi['img_title']); ?>">
