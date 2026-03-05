@@ -195,13 +195,41 @@ return [
         ],
 
         // TYPOGRAPHY section
+        'htbs_title_font' => [
+            'section' => 'TYPOGRAPHY',
+            'type' => 'select',
+            'label' => 'Site Title Font',
+            'default' => 'Georgia',
+            'options' => $fonts,
+            'selector' => '.htbs-header .site-title-text',
+            'property' => 'font-family',
+        ],
+        'htbs_title_size' => [
+            'section' => 'TYPOGRAPHY',
+            'type' => 'range',
+            'label' => 'Site Title Size (px)',
+            'default' => '18',
+            'min' => '12',
+            'max' => '36',
+            'selector' => '.htbs-header .site-title-text',
+            'property' => 'font-size',
+            'unit' => 'px',
+        ],
+        'htbs_title_color' => [
+            'section' => 'TYPOGRAPHY',
+            'type' => 'color',
+            'label' => 'Site Title Colour',
+            'default' => '#b8965a',
+            'selector' => '.htbs-header .site-title-text',
+            'property' => 'color',
+        ],
         'htbs_heading_font' => [
             'section' => 'TYPOGRAPHY',
             'type' => 'select',
-            'label' => 'Heading Font',
+            'label' => 'Plaque / Heading Font',
             'default' => 'Georgia',
             'options' => $fonts,
-            'selector' => '.plaque-title, .htbs-site-title',
+            'selector' => '.plaque-title',
             'property' => 'font-family',
         ],
         'htbs_body_font' => [
