@@ -8,11 +8,11 @@
    ============================================================================ */
 
 :root {
-    --frame-color: #0d1f29;
+    --frame-color: #ffe033;
     --frame-width: 8px;
-    --mat-color: #14333f;
+    --mat-color: #ffe033;
     --mat-width: 24px;
-    --wall-bg: #1a2e38;
+    --wall-bg: #1f3845;
     --text-primary: #d0dde3;
     --text-secondary: #6a8a96;
     --accent-color: #00e5ff;
@@ -129,7 +129,7 @@ a:hover {
     font-size: 18px;
     font-weight: 600;
     letter-spacing: 1px;
-    color: var(--accent-color);
+    color: #ffe033;
     margin: 0;
 }
 
