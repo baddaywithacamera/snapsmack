@@ -113,6 +113,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_global_appearanc
         }
     }
 
+    // C. Handle Sticky Header Settings
+    if (isset($_POST['sticky_header_section'])) {
+        $sh_stmt = $pdo->prepare(
+            "INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?"
+        );
+
+        $sh_enabled = isset($_POST['sticky_header_enabled']) ? '1' : '0';
+        $sh_stmt->execute(['sticky_header_enabled', $sh_enabled, $sh_enabled]);
+
+        $sh_opacity = max(0, min(100, (int)($_POST['sticky_header_opacity'] ?? 12)));
+        $sh_stmt->execute(['sticky_header_opacity', $sh_opacity, $sh_opacity]);
+
+        $sh_blur = max(0, min(30, (int)($_POST['sticky_header_blur'] ?? 14)));
+        $sh_stmt->execute(['sticky_header_blur', $sh_blur, $sh_blur]);
+    }
+
     header("Location: smack-globalvibe.php?msg=CALIBRATED");
     exit;
 }
@@ -299,6 +315,39 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
+
+            <div class="box">
+                <h3>STICKY HEADER</h3>
+                <input type="hidden" name="sticky_header_section" value="1">
+                <div class="dash-grid">
+                    <div class="lens-input-wrapper">
+                        <label>
+                            <input type="checkbox" name="sticky_header_enabled" value="1" <?php echo ($settings['sticky_header_enabled'] ?? '0') === '1' ? 'checked' : ''; ?>>
+                            ENABLE STICKY HEADER
+                        </label>
+                        <span class="dim" style="display: block; margin-top: 4px;">Header stays pinned to the top on scroll. Goes transparent while idle, snaps back opaque on hover.</span>
+                        <p class="dim" style="margin-top: 10px;">Skins with their own fixed headers are automatically excluded.</p>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>BACKGROUND OPACITY (TRANSPARENT STATE)</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="range" name="sticky_header_opacity" min="0" max="100" value="<?php echo htmlspecialchars($settings['sticky_header_opacity'] ?? '12'); ?>" style="flex: 1;" oninput="this.nextElementSibling.textContent = this.value + '%'">
+                            <span style="min-width: 40px; font-family: monospace;"><?php echo htmlspecialchars($settings['sticky_header_opacity'] ?? '12'); ?>%</span>
+                        </div>
+                        <span class="dim">0% = fully see-through, 100% = fully opaque.</span>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>BACKDROP BLUR</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="range" name="sticky_header_blur" min="0" max="30" value="<?php echo htmlspecialchars($settings['sticky_header_blur'] ?? '14'); ?>" style="flex: 1;" oninput="this.nextElementSibling.textContent = this.value + 'px'">
+                            <span style="min-width: 40px; font-family: monospace;"><?php echo htmlspecialchars($settings['sticky_header_blur'] ?? '14'); ?>px</span>
+                        </div>
+                        <span class="dim">Glass-morphism blur. Higher = more frosted glass. 0 = no blur.</span>
+                    </div>
+                </div>
+            </div>
 
         </div>
 
