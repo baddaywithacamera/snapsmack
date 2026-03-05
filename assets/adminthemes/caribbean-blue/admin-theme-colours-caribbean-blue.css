@@ -18,43 +18,41 @@ html, body {
     border-right-color: #1A242F;
 }
 
-.sidebar h2 {
+.sidebar-brand {
     color: #00FFFF;
     border-bottom-color: #1A242F;
 }
 
-.sidebar li {
-    border-bottom-color: rgba(255, 255, 255, 0.05);
+.nav-section-toggle {
+    color: #444444;
+    background-color: transparent;
 }
 
-.sidebar a {
+.nav-section-toggle:hover {
+    background-color: rgba(0, 255, 255, 0.06);
+}
+
+.nav-section.open .nav-section-toggle {
+    background-color: rgba(0, 255, 255, 0.08);
+}
+
+.nav-section-arrow {
+    color: inherit;
+}
+
+.nav-section-links a {
     color: #F8F9FA;
 }
 
-.sidebar a:hover,
-.sidebar li.active a {
+.nav-section-links a:hover,
+.nav-section-links li.active a {
     color: #00FFFF;
-    background-color: transparent !important;
     text-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
-}
-
-.sidebar li.active {
-    border-left: none;
-    background-color: transparent !important;
-}
-
-.sidebar li.nav-group {
-    color: rgba(255, 255, 255, 0.4);
-    background-color: transparent !important;
-}
-
-.sidebar ul.sub-nav {
-    border-left-color: #00FFFF;
 }
 
 .sidebar-bottom {
     background-color: #081220;
-    border-top: none;
+    border-top-color: #111111;
 }
 
 .sidebar .logout {
@@ -67,7 +65,7 @@ html, body {
 }
 
 .credits-admin {
-    color: rgba(255, 255, 255, 0.3);
+    color: #333333;
 }
 
 /* 03: MAIN HEADERS */

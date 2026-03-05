@@ -18,42 +18,41 @@ html, body {
     border-right-color: #1A1A1A;
 }
 
-.sidebar h2 {
+.sidebar-brand {
     color: #FFCC00;
     border-bottom-color: #1A1A1A;
 }
 
-.sidebar li {
-    border-bottom-color: #111111;
-}
-
-.sidebar a {
-    color: #888888;
-}
-
-.sidebar a:hover,
-.sidebar li.active a {
-    color: #FFCC00;
-    background-color: transparent;
-    text-shadow: 0 0 10px rgba(255, 204, 0, 0.4);
-}
-
-.sidebar li.active {
-    border-left: none;
-}
-
-.sidebar li.nav-group {
+.nav-section-toggle {
     color: #444444;
     background-color: transparent;
 }
 
-.sidebar ul.sub-nav {
-    border-left-color: #FFCC00;
+.nav-section-toggle:hover {
+    background-color: rgba(255, 204, 0, 0.06);
+}
+
+.nav-section.open .nav-section-toggle {
+    background-color: rgba(255, 204, 0, 0.08);
+}
+
+.nav-section-arrow {
+    color: inherit;
+}
+
+.nav-section-links a {
+    color: #888888;
+}
+
+.nav-section-links a:hover,
+.nav-section-links li.active a {
+    color: #FFCC00;
+    text-shadow: 0 0 10px rgba(255, 204, 0, 0.4);
 }
 
 .sidebar-bottom {
     background-color: #0A0A0A;
-    border-top: none;
+    border-top-color: #111111;
 }
 
 .sidebar .logout {

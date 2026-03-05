@@ -1,0 +1,9 @@
+This license applies to the following files included in SnapSmack:
+- assets/fonts/KeyBinds/keybinds.regular.ttf
+
+KeyBinds
+By l-c-p (lucapri)
+https://www.1001fonts.com/keybinds-font.html
+
+License: Free for personal and commercial use.
+Credit to the designer is required when using this font.

@@ -18,41 +18,41 @@ html, body {
     border-right-color: #f0c8dc;
 }
 
-.sidebar h2 {
+.sidebar-brand {
     color: #e83e8c;
     border-bottom-color: #f0c8dc;
 }
 
-.sidebar li {
-    border-bottom-color: #f0c8dc;
+.nav-section-toggle {
+    color: #b598a6;
+    background-color: transparent;
 }
 
-.sidebar a {
+.nav-section-toggle:hover {
+    background-color: rgba(232, 62, 140, 0.06);
+}
+
+.nav-section.open .nav-section-toggle {
+    background-color: rgba(232, 62, 140, 0.08);
+}
+
+.nav-section-arrow {
+    color: inherit;
+}
+
+.nav-section-links a {
     color: #8f6b7d;
 }
 
-.sidebar a:hover,
-.sidebar li.active a {
+.nav-section-links a:hover,
+.nav-section-links li.active a {
     color: #e83e8c;
     text-shadow: 0 0 8px rgba(232, 62, 140, 0.3);
 }
 
-.sidebar li.active {
-    border-left: none;
-}
-
-.sidebar li.nav-group {
-    color: #b598a6;
-    background-color: #fdf0f6;
-}
-
-.sidebar ul.sub-nav {
-    border-left-color: #e83e8c;
-}
-
 .sidebar-bottom {
     background-color: #fdf0f6;
-    border-top: none;
+    border-top-color: #f0c8dc;
 }
 
 .sidebar .logout {

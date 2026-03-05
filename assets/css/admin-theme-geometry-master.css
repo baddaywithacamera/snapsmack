@@ -24,12 +24,12 @@ html, body {
 
 /* --- SIDEBAR NAVIGATION --- */
 .sidebar {
-    width: 260px;
+    width: 240px;
     height: 100vh;
     position: fixed;
     top: 0;
     left: 0;
-    padding: 25px 25px 20px 25px;
+    padding: 20px 16px 16px 16px;
     border-right-width: 1px;
     border-right-style: solid;
     display: flex;
@@ -42,108 +42,144 @@ html, body {
     flex-grow: 1;
 }
 
-.sidebar h2 {
+/* Brand / site name */
+.sidebar-brand {
+    display: block;
     text-transform: uppercase;
-    letter-spacing: 2px;
-    font-size: 1.2rem;
-    font-weight: 500;
-    margin: 0 0 18px 0;
-    padding-bottom: 10px;
+    letter-spacing: 3px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0 0 20px 0;
+    padding: 0 0 14px 0;
     line-height: 1.0;
     border-bottom-width: 2px;
     border-bottom-style: solid;
-}
-
-.sidebar ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.sidebar li {
-    margin-bottom: 6px;
-    border-bottom-width: 1px;
-    border-bottom-style: solid;
-    padding-bottom: 6px;
-}
-
-.sidebar a {
     text-decoration: none;
-    font-size: 0.85rem;
-    font-weight: 400;
-    letter-spacing: 1px;
+}
+
+/* Accordion container */
+.sidebar-accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Each collapsible section */
+.nav-section {
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* Section toggle button (the clickable header) */
+.nav-section-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+    border-radius: 4px;
+}
+
+.nav-section-toggle:hover {
+    opacity: 1;
+}
+
+.nav-section-label {
+    font-size: 0.68rem;
+    font-weight: 700;
     text-transform: uppercase;
-    display: block;
-    transition: all 0.2s ease;
+    letter-spacing: 1.5px;
+    line-height: 1;
 }
 
-/* Sub-nav groups for organized menu sections */
-.sidebar li.nav-group {
-    margin-bottom: 40px;
-    border-bottom: none;
-    padding-bottom: 0;
+/* Arrow indicator */
+.nav-section-arrow {
+    display: inline-block;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid currentColor;
+    opacity: 0.4;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    flex-shrink: 0;
+    margin-left: 8px;
 }
 
-.sidebar li.nav-group strong {
-    display: block;
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 10px;
-    padding-left: 2px;
-    font-weight: 500;
+.nav-section.open .nav-section-arrow {
+    transform: rotate(180deg);
+    opacity: 0.7;
 }
 
-.sidebar ul.sub-nav {
-    padding-left: 15px;
-    border-left-width: 1px;
-    border-left-style: solid;
-    margin-left: 5px;
-}
-
-.sidebar ul.sub-nav li {
-    margin-bottom: 5px;
-    padding-bottom: 5px;
-    border-bottom-width: 1px;
-    border-bottom-style: solid;
-}
-
-.sidebar ul.sub-nav li:last-child {
-    border-bottom: none;
-}
-
-.sidebar ul.sub-nav a {
-    font-weight: 400;
-    font-size: 0.8rem;
-}
-
-.sidebar li.nav-divider {
-    border: 0;
-    border-top-width: 1px;
-    border-top-style: solid;
-    margin: 8px 0;
+/* Links container — hidden by default, revealed when .open */
+.nav-section-links {
+    list-style: none;
+    margin: 0;
     padding: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease, padding 0.35s ease, opacity 0.25s ease;
+    opacity: 0;
+}
+
+.nav-section.open .nav-section-links {
+    max-height: 500px;
+    padding: 4px 0 8px 0;
+    opacity: 1;
+}
+
+/* Individual nav links */
+.nav-section-links li {
+    margin: 0;
+    padding: 0;
+}
+
+.nav-section-links a {
+    display: block;
+    padding: 6px 12px 6px 22px;
+    text-decoration: none;
+    font-size: 0.78rem;
+    font-weight: 400;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    border-radius: 3px;
+    transition: all 0.15s ease;
+    line-height: 1.3;
+}
+
+.nav-section-links li.active a {
+    font-weight: 700;
 }
 
 /* Sidebar bottom: logout + credits */
 .sidebar-bottom {
-    padding-top: 12px;
+    padding-top: 14px;
+    margin-top: 8px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
+    border-top-width: 1px;
+    border-top-style: solid;
 }
 
 .sidebar .logout {
-    font-weight: 500;
+    font-weight: 600;
     text-transform: uppercase;
-    font-size: 0.85rem;
+    font-size: 0.72rem;
+    letter-spacing: 1.5px;
     text-decoration: none;
     display: block;
-    margin-bottom: 5px;
+    padding: 6px 0;
+    transition: all 0.2s ease;
 }
 
 .credits-admin {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     text-transform: uppercase;
     letter-spacing: 1px;
     opacity: 0.6;
@@ -151,7 +187,7 @@ html, body {
 
 /* --- MAIN CONTENT & PAGE HEADERS --- */
 .main {
-    margin-left: 260px;
+    margin-left: 240px;
     padding: 25px 80px 140px 80px;
     min-height: 100vh;
 }
@@ -1126,7 +1162,7 @@ input[type="range"]:active::-webkit-slider-thumb {
 #admin-universal-footer {
     position: fixed;
     bottom: 0;
-    left: 260px;
+    left: 240px;
     right: 0;
     border-top-width: 1px;
     border-top-style: solid;
@@ -2076,7 +2112,7 @@ input[type="range"]:active::-webkit-slider-thumb {
 /* ─── RESPONSIVE: TABLET PORTRAIT (≤1024px) ────────────────────── */
 @media (max-width: 1024px) {
     .sidebar {
-        transform: translateX(-260px);
+        transform: translateX(-240px);
         transition: transform 0.3s ease;
     }
 

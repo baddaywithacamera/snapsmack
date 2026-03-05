@@ -3,15 +3,15 @@
  * SNAPSMACK - Admin Sidebar Navigation
  * Alpha v0.7
  *
- * Renders the admin dashboard sidebar with sections for content management,
- * skin customization, and system configuration. The Pimpotron link appears
- * conditionally based on the active skin's manifest declaration.
+ * Accordion-style sidebar with four collapsible sections.
+ * "The Good Shit" opens by default; whichever section contains
+ * the current page auto-opens instead when navigating.
+ * Only one section is open at a time.
  */
 
 $current_page = basename($_SERVER['PHP_SELF']);
 
 // --- CONDITIONAL PIMPOTRON DETECTION ---
-// Check if the active skin declares support for the Pimpotron engine
 $_sidebar_pimpotron = false;
 if (!empty($settings['active_skin'])) {
     $_sidebar_skin_slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $settings['active_skin']);
@@ -21,15 +21,37 @@ if (!empty($settings['active_skin'])) {
         $_sidebar_pimpotron = !empty($_sidebar_manifest['engines']['pimpotron']);
     }
 }
+
+// --- SECTION / PAGE MAP ---
+// Determine which accordion section to auto-open based on the current page.
+$_section_map = [
+    'good-shit'  => ['smack-admin.php','smack-post.php','smack-manage.php','smack-edit.php','smack-cats.php','smack-albums.php','smack-media.php','smack-comments.php','smack-pages.php'],
+    'pimp'       => ['smack-globalvibe.php','smack-skin.php','smack-pimpotron.php','smack-social-dock.php','smack-css.php'],
+    'boring'     => ['smack-config.php','smack-users.php','smack-maintenance.php','smack-backup.php','smack-ftp.php','smack-cloud.php','smack-update.php'],
+    'help'       => ['smack-help.php'],
+];
+$_active_section = 'good-shit'; // default
+foreach ($_section_map as $sec => $pages) {
+    if (in_array($current_page, $pages)) {
+        $_active_section = $sec;
+        break;
+    }
+}
 ?>
 
 <div class="sidebar">
     <div class="sidebar-top">
-        <h2>SnapSmack</h2>
-        <ul>
-            <li class="nav-group">
-                <strong>The Good Shit</strong>
-                <ul class="sub-nav">
+        <a href="smack-admin.php" class="sidebar-brand">SnapSmack</a>
+
+        <nav class="sidebar-accordion">
+
+            <!-- SECTION 1: The Good Shit -->
+            <div class="nav-section<?php echo ($_active_section === 'good-shit') ? ' open' : ''; ?>" data-section="good-shit">
+                <button type="button" class="nav-section-toggle">
+                    <span class="nav-section-label">The Good Shit</span>
+                    <span class="nav-section-arrow"></span>
+                </button>
+                <ul class="nav-section-links">
                     <li class="<?php echo ($current_page == 'smack-admin.php') ? 'active' : ''; ?>">
                         <a href="smack-admin.php">Dashboard</a>
                     </li>
@@ -55,11 +77,15 @@ if (!empty($settings['active_skin'])) {
                         <a href="smack-pages.php">Static Pages</a>
                     </li>
                 </ul>
-            </li>
+            </div>
 
-            <li class="nav-group">
-                <strong>Pimp Your Ride</strong>
-                <ul class="sub-nav">
+            <!-- SECTION 2: Pimp Your Ride -->
+            <div class="nav-section<?php echo ($_active_section === 'pimp') ? ' open' : ''; ?>" data-section="pimp">
+                <button type="button" class="nav-section-toggle">
+                    <span class="nav-section-label">Pimp Your Ride</span>
+                    <span class="nav-section-arrow"></span>
+                </button>
+                <ul class="nav-section-links">
                     <li class="<?php echo ($current_page == 'smack-globalvibe.php') ? 'active' : ''; ?>">
                         <a href="smack-globalvibe.php">Global Vibe</a>
                     </li>
@@ -78,11 +104,15 @@ if (!empty($settings['active_skin'])) {
                         <a href="smack-css.php">Smack Your CSS Up!</a>
                     </li>
                 </ul>
-            </li>
+            </div>
 
-            <li class="nav-group">
-                <strong>Boring Ass Stuff</strong>
-                <ul class="sub-nav">
+            <!-- SECTION 3: Boring Ass Stuff -->
+            <div class="nav-section<?php echo ($_active_section === 'boring') ? ' open' : ''; ?>" data-section="boring">
+                <button type="button" class="nav-section-toggle">
+                    <span class="nav-section-label">Boring Ass Stuff</span>
+                    <span class="nav-section-arrow"></span>
+                </button>
+                <ul class="nav-section-links">
                     <li class="<?php echo ($current_page == 'smack-config.php') ? 'active' : ''; ?>">
                         <a href="smack-config.php">Configuration</a>
                     </li>
@@ -93,7 +123,7 @@ if (!empty($settings['active_skin'])) {
                         <a href="smack-maintenance.php">Maintenance</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-backup.php') ? 'active' : ''; ?>">
-                        <a href="smack-backup.php">Backup & Recovery</a>
+                        <a href="smack-backup.php">Backup &amp; Recovery</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-ftp.php') ? 'active' : ''; ?>">
                         <a href="smack-ftp.php">FTP Backup</a>
@@ -105,17 +135,22 @@ if (!empty($settings['active_skin'])) {
                         <a href="smack-update.php">System Updates</a>
                     </li>
                 </ul>
-            </li>
+            </div>
 
-            <li class="nav-group">
-                <strong>Help, I Need Somebody!</strong>
-                <ul class="sub-nav">
+            <!-- SECTION 4: Help -->
+            <div class="nav-section<?php echo ($_active_section === 'help') ? ' open' : ''; ?>" data-section="help">
+                <button type="button" class="nav-section-toggle">
+                    <span class="nav-section-label">Help, I Need Somebody!</span>
+                    <span class="nav-section-arrow"></span>
+                </button>
+                <ul class="nav-section-links">
                     <li class="<?php echo ($current_page == 'smack-help.php') ? 'active' : ''; ?>">
                         <a href="smack-help.php">User Manual</a>
                     </li>
                 </ul>
-            </li>
-        </ul>
+            </div>
+
+        </nav>
     </div>
 
     <div class="sidebar-bottom">
@@ -123,3 +158,5 @@ if (!empty($settings['active_skin'])) {
         <div class="credits-admin">&copy; 2026 Sean McCormick</div>
     </div>
 </div>
+</content>
+</invoke>

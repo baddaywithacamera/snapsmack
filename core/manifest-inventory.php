@@ -274,6 +274,33 @@ return [
             'style'  => 'normal',
         ],
 
+        // ---- Square Sans Serif 7 ----------------------------------------
+        'SquareSanSerif7' => [
+            'label'  => 'Square Sans Serif 7 (Blocky / Digital Clock)',
+            'file'   => 'assets/fonts/SquareSanSerif7/square-sans-serif-7.regular.ttf',
+            'format' => 'truetype',
+            'weight' => 'normal',
+            'style'  => 'normal',
+        ],
+
+        // ---- KeyBinds ----------------------------------------------------
+        'KeyBinds' => [
+            'label'  => 'KeyBinds (Keyboard Key Caps)',
+            'file'   => 'assets/fonts/KeyBinds/keybinds.regular.ttf',
+            'format' => 'truetype',
+            'weight' => 'normal',
+            'style'  => 'normal',
+        ],
+
+        // ---- Linux Biolinum Keyboard -------------------------------------
+        'LinuxBiolinumKeyboard' => [
+            'label'  => 'Linux Biolinum Keyboard (Framed Key Glyphs)',
+            'file'   => 'assets/fonts/LinuxBiolinum/linux-biolinum.keyboard.ttf',
+            'format' => 'truetype',
+            'weight' => 'bold',
+            'style'  => 'normal',
+        ],
+
     ],
 
 

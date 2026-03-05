@@ -473,16 +473,24 @@ a:hover {
 
 /* ─── Navigation bar (prev/info/comments/next) ─── */
 
+/* On archive pages, #infobox sits above the grid — needs to clear the fixed header */
+.archive-page #infobox {
+    padding-top: calc(var(--header-height, 60px) + 20px);
+    position: relative;
+    z-index: 10;
+}
+
 #infobox {
     text-align: center;
     margin: 24px auto;
-    max-width: 700px;
+    max-width: 960px;
 }
 
 #infobox .nav-links {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-wrap: nowrap;
     gap: 6px;
     font-family: 'Courier Prime', 'Courier New', monospace;
     font-size: 11px;
@@ -496,6 +504,7 @@ a:hover {
     color: var(--text-primary);
     text-decoration: none;
     padding: 6px 10px;
+    white-space: nowrap;
     transition: color 0.2s ease;
 }
 
@@ -511,6 +520,14 @@ a:hover {
 #infobox .nav-links .dim {
     color: #cccccc;
     padding: 6px 10px;
+    white-space: nowrap;
+}
+
+#infobox .nav-links .filter-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
 }
 
 #infobox .nav-links .left,
@@ -518,6 +535,8 @@ a:hover {
 #infobox .nav-links .right {
     display: inline-flex;
     align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 6px;
 }
 
@@ -677,7 +696,7 @@ body.archive-page #scroll-stage {
 
 .htbs-archive-grid {
     flex: 1;
-    padding: calc(var(--header-height, 60px) + 30px) 60px 40px;
+    padding: 30px 60px 40px;
     display: grid;
     grid-template-columns: repeat(var(--grid-cols, 4), 1fr);
     gap: 30px;
@@ -730,6 +749,22 @@ body.archive-page #scroll-stage {
 .htbs-archive-item .frame-mat {
     /* ~50% of hero mat width for proportional scaling */
     padding: calc(var(--mat-width, 24px) * 0.5);
+}
+
+/* Bevel scaled down for thumbnails — uniform 2px on all edges */
+.htbs-archive-item .frame-bevel {
+    box-shadow:
+        inset 2px 2px 0 rgba(255, 255, 255, 1.0),
+        inset 3px 3px 1px rgba(255, 255, 255, 0.50),
+        inset -2px -2px 0 rgba(0, 0, 0, 0.60),
+        inset -3px -3px 1px rgba(0, 0, 0, 0.30),
+        inset 1px 1px 0 rgba(0, 0, 0, 0.25);
+}
+
+.htbs-archive-item .frame-bevel::after {
+    border: 1px solid rgba(0, 0, 0, 0.20);
+    border-top-color: rgba(255, 255, 255, 0.70);
+    border-left-color: rgba(255, 255, 255, 0.70);
 }
 
 /* Plain border mode — simple 3px border in frame colour, no frame structure */
@@ -860,6 +895,23 @@ footer {
     letter-spacing: 1px;
     margin-top: auto;
     flex-shrink: 0;
+}
+
+footer .inside {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+footer .footer-metadata-bar {
+    text-align: center;
+    width: 100%;
+}
+
+footer .footer-metadata-bar p {
+    margin: 0;
+    line-height: 1;
 }
 
 .htbs-footer a,
@@ -1275,7 +1327,7 @@ footer a:hover {
 
     .htbs-archive-grid {
         gap: 24px;
-        padding: calc(var(--header-height, 60px) + 20px) 30px 30px;
+        padding: 20px 30px 30px;
     }
 
     .htbs-header {
@@ -1351,7 +1403,7 @@ footer a:hover {
 
     .htbs-archive-grid {
         gap: 20px;
-        padding: calc(var(--header-height, 50px) + 15px) 20px 20px;
+        padding: 15px 20px 20px;
     }
 
     .htbs-filmstrip {
@@ -1441,7 +1493,7 @@ footer a:hover {
 
     .htbs-archive-grid {
         gap: 16px;
-        padding: calc(var(--header-height, 45px) + 10px) 15px 15px;
+        padding: 10px 15px 15px;
     }
 
     .htbs-archive-item .frame-mount {

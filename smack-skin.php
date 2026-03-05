@@ -296,6 +296,22 @@ if (isset($_POST['save_skin_settings'])) {
 $page_title = "SKIN ADMIN";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
+
+// --- LOCAL FONT @FONT-FACE DECLARATIONS ---
+// Needed so font previews and dropdown option styles render local TTF fonts.
+$global_inventory = include 'core/manifest-inventory.php';
+$local_fonts = $global_inventory['local_fonts'] ?? [];
+if (!empty($local_fonts)) {
+    echo '<style id="snapsmack-admin-local-fonts">' . "\n";
+    foreach ($local_fonts as $family => $font) {
+        $file_url = BASE_URL . ltrim($font['file'], '/');
+        $format   = $font['format'] ?? 'truetype';
+        $weight   = $font['weight'] ?? 'normal';
+        $style    = $font['style'] ?? 'normal';
+        echo "@font-face { font-family: '{$family}'; src: url('{$file_url}') format('{$format}'); font-weight: {$weight}; font-style: {$style}; font-display: swap; }\n";
+    }
+    echo '</style>' . "\n";
+}
 ?>
 
 <style>
@@ -626,9 +642,7 @@ include 'core/sidebar.php';
                             <?php elseif ($o['type'] === 'select'): ?>
                                 <?php $is_font = (($o['property'] ?? '') === 'font-family'); ?>
                                 <select name="skin_opt[<?php echo $k; ?>]"
-                                    <?php if ($is_font): ?>
-                                        onchange="var ps=this.parentNode.querySelectorAll('.font-preview-text'); ps.forEach(function(p){p.style.fontFamily='\"'+this.value+'\", sans-serif';}.bind(this)); if(ps[0])ps[0].textContent=this.value;"
-                                    <?php endif; ?>>
+                                    <?php if ($is_font): ?>data-font-preview="1"<?php endif; ?>>
                                     <?php foreach ($o['options'] as $sv => $sl): ?>
                                         <option value="<?php echo $sv; ?>"
                                             <?php echo ($val == $sv) ? 'selected' : ''; ?>
@@ -986,4 +1000,5 @@ include 'core/sidebar.php';
 <?php endif; ?>
 </div>
 
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-font-preview.js?v=<?php echo time(); ?>"></script>
 <?php include 'core/admin-footer.php'; ?>

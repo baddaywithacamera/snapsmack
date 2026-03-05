@@ -18,41 +18,41 @@ html, body {
     border-right-color: #081A08;
 }
 
-.sidebar h2 {
+.sidebar-brand {
     color: #00C853;
     border-bottom-color: #081A08;
 }
 
-.sidebar li {
-    border-bottom-color: #040F04;
+.nav-section-toggle {
+    color: #006400;
+    background-color: transparent;
 }
 
-.sidebar a {
+.nav-section-toggle:hover {
+    background-color: rgba(0, 200, 83, 0.06);
+}
+
+.nav-section.open .nav-section-toggle {
+    background-color: rgba(0, 200, 83, 0.08);
+}
+
+.nav-section-arrow {
+    color: inherit;
+}
+
+.nav-section-links a {
     color: #008E3A;
 }
 
-.sidebar a:hover,
-.sidebar li.active a {
+.nav-section-links a:hover,
+.nav-section-links li.active a {
     color: #00C853;
     text-shadow: 0 0 8px rgba(0, 200, 83, 0.4);
 }
 
-.sidebar li.active {
-    border-left: none;
-}
-
-.sidebar li.nav-group {
-    color: #006400;
-    background-color: #020802;
-}
-
-.sidebar ul.sub-nav {
-    border-left-color: #00C853;
-}
-
 .sidebar-bottom {
     background-color: #020802;
-    border-top: none;
+    border-top-color: #040F04;
 }
 
 .sidebar .logout {
