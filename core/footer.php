@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Public Footer Engine
- * Alpha v0.6
+ * Alpha v0.7
  *
  * Renders a configurable footer with 5 slots: copyright, email, theme name,
  * powered by, and RSS (always visible). Each slot can be ON (default content),
@@ -11,7 +11,7 @@
 
 // --- VERSION STRING ---
 // Pull version constant if available, otherwise fall back to default
-$version_str = defined('SNAPSMACK_VERSION') ? SNAPSMACK_VERSION : 'Alpha 0.6';
+$version_str = defined('SNAPSMACK_VERSION') ? SNAPSMACK_VERSION : 'Alpha 0.7';
 
 // --- SLOT CONTENT RESOLUTION ---
 // Each slot resolves to a string or null. Null means the slot is hidden.

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - System Inventory
- * Alpha v0.6
+ * Alpha v0.7
  *
  * Single source of truth for all available system resources: local fonts,
  * Google Fonts, and JavaScript engines. Skins request assets from this list

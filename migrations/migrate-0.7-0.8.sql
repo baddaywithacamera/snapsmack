@@ -1,5 +1,5 @@
 -- ============================================================================
--- SNAPSMACK Migration: v0.7 → v0.8
+-- SNAPSMACK Migration: v0.6 → v0.7
 -- Run on your live database via phpMyAdmin SQL tab or MySQL CLI.
 -- Safe to run multiple times — uses IF NOT EXISTS and INSERT IGNORE.
 -- ============================================================================
@@ -83,6 +83,13 @@ VALUES
     ('slider_autoplay',        '0'),
     ('slider_loop',            '1'),
     -- Galleria skin settings (htbs_ prefix kept for backward compat)
+    ('htbs_wall_texture',        'canvas'),
+    ('htbs_wall_color',          '#3d3d3d'),
+    ('htbs_frame_color',         '#2c2017'),
+    ('htbs_frame_width',         '12'),
+    ('htbs_mat_color',           '#f5f0eb'),
+    ('htbs_mat_width',           '24'),
+    ('htbs_title_color',         '#ffffff'),
     ('htbs_header_height',       '60'),
     ('htbs_footer_padding',      '20'),
     ('htbs_slider_per_view',     '2'),
@@ -102,6 +109,9 @@ VALUES
     ('htbs_title_size',          '18'),
     ('htbs_heading_font',        'Georgia'),
     ('htbs_body_font',           'Inter');
+
+-- Clean up stale keys renamed during development
+DELETE FROM snap_settings WHERE setting_key IN ('htbs_grid_cols', 'htbs_mini_frames');
 
 
 -- ============================================================================
@@ -242,5 +252,5 @@ WHERE setting_key = 'active_skin' AND setting_val = 'hip-to-be-square';
 -- ============================================================================
 
 UPDATE snap_settings
-SET setting_val = '0.8.0-alpha'
+SET setting_val = '0.7.0-alpha'
 WHERE setting_key = 'installed_version';
