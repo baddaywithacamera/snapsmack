@@ -168,7 +168,7 @@ echo "<hr>";
 echo "<h3>BACKFILL COMPLETE.</h3>";
 echo "<p class='info'>Processed: {$processed} | Skipped: {$skipped}</p>";
 echo "<p class='warn'>NOTE: Old wall_ prefix thumbnails are no longer generated.<br>";
-echo "The gallery wall loads full-resolution images directly.<br>";
+echo "The floating gallery loads full-resolution images directly.<br>";
 echo "You can safely delete any existing wall_* files from your thumbs directories.</p>";
 echo "<p>You can now delete this file from your server.</p>";
 echo "</body></html>";

@@ -286,7 +286,7 @@ include 'core/sidebar.php';
                         <input type="number" name="settings[browse_cols]" value="<?php echo htmlspecialchars($settings['browse_cols'] ?? 4); ?>">
                     </div>
                     <div class="lens-input-wrapper">
-                        <label>WALL ENGINE LINK</label>
+                        <label>FLOATING GALLERY LINK</label>
 
                         <?php
                         $supports_wall    = !empty($manifest['features']['supports_wall']);
@@ -300,9 +300,9 @@ include 'core/sidebar.php';
                             <input type="hidden" name="settings[show_wall_link]" value="0">
                             <p class="dim field-hint">
                                 <?php if ($pimpotron_active): ?>
-                                    PIMPOTRON IS ACTIVE &mdash; WALL ENGINE IS INCOMPATIBLE WITH THIS SKIN.
+                                    PIMPOTRON IS ACTIVE &mdash; FLOATING GALLERY IS INCOMPATIBLE WITH THIS SKIN.
                                 <?php else: ?>
-                                    ACTIVE SKIN DOES NOT SUPPORT THE GALLERY WALL.
+                                    ACTIVE SKIN DOES NOT SUPPORT THE FLOATING GALLERY.
                                 <?php endif; ?>
                             </p>
                         <?php else: ?>

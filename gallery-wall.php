@@ -1,14 +1,15 @@
 <?php
 /**
- * SNAPSMACK - Gallery wall 3D experience
+ * SNAPSMACK - Floating Gallery 3D experience
  * Alpha v0.6
  *
  * Desktop-only interactive 3D gallery. Redirects to archive on mobile devices
- * or if the skin doesn't support the wall feature. Integrates typography,
+ * or if the skin doesn't support the floating gallery feature. Integrates typography,
  * colors, and shadow settings from the active skin manifest.
  */
 
 require_once 'core/db.php';
+require_once 'core/skin-settings.php';
 
 // --- SETTINGS LOADING ---
 try {
@@ -17,7 +18,7 @@ try {
 } catch (Exception $e) { $settings = []; }
 
 // --- BASE URL BOOTSTRAP ---
-// Gallery-wall is standalone so it bootstraps BASE_URL here before any includes
+// Floating Gallery is standalone so it bootstraps BASE_URL here before any includes
 if (!defined('BASE_URL')) {
     $db_defined_url = $settings['site_url'] ?? '/';
     $final_base = rtrim($db_defined_url, '/') . '/';
@@ -25,7 +26,7 @@ if (!defined('BASE_URL')) {
 }
 
 // --- MOBILE REDIRECT ---
-// Gallery wall is desktop-only. Phones get redirected to archive.
+// Floating gallery is desktop-only. Phones get redirected to archive.
 // constants.php is loaded via core/db.php above.
 if (snapsmack_is_mobile()) {
     header("Location: archive.php");
@@ -34,6 +35,7 @@ if (snapsmack_is_mobile()) {
 
 // --- SKIN MANIFEST & SUPPORT CHECK ---
 $active_skin = $settings['active_skin'] ?? '';
+snapsmack_apply_skin_settings($settings, $active_skin);
 $manifest = [];
 if ($active_skin && file_exists("skins/{$active_skin}/manifest.php")) {
     $manifest = include "skins/{$active_skin}/manifest.php";
@@ -114,7 +116,7 @@ try {
     include 'core/meta.php';
     ?>
 
-    <title>Gallery Wall | <?php echo htmlspecialchars($settings['site_name'] ?? 'SnapSmack'); ?></title>
+    <title>Floating Gallery | <?php echo htmlspecialchars($settings['site_name'] ?? 'SnapSmack'); ?></title>
 
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-wall.css?v=<?php echo time(); ?>">
 

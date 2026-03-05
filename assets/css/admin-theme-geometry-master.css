@@ -29,7 +29,7 @@ html, body {
     position: fixed;
     top: 0;
     left: 0;
-    padding: 20px 16px 16px 16px;
+    padding: 25px 16px 16px 16px;
     border-right-width: 1px;
     border-right-style: solid;
     display: flex;
@@ -49,8 +49,8 @@ html, body {
     letter-spacing: 3px;
     font-size: 1.05rem;
     font-weight: 600;
-    margin: 0 0 20px 0;
-    padding: 0 0 14px 0;
+    margin: 0 0 16px 0;
+    padding: 0 0 10px 0;
     line-height: 1.0;
     border-bottom-width: 2px;
     border-bottom-style: solid;
@@ -61,32 +61,29 @@ html, body {
 .sidebar-accordion {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 0;
 }
 
-/* Each collapsible section */
+/* Each collapsible section — two thin lines that split to reveal links */
 .nav-section {
-    border-radius: 4px;
     overflow: hidden;
 }
 
-/* Section toggle button (the clickable header) */
+/* Section toggle — flat label with double-line rule beneath */
 .nav-section-toggle {
     display: flex;
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    padding: 10px 12px;
+    padding: 16px 0 0 0;
     border: none;
     background: transparent;
     cursor: pointer;
     text-align: left;
-    transition: background-color 0.2s ease, opacity 0.2s ease;
-    border-radius: 4px;
 }
 
-.nav-section-toggle:hover {
-    opacity: 1;
+.nav-section-toggle:hover .nav-section-label {
+    opacity: 0.85;
 }
 
 .nav-section-label {
@@ -95,17 +92,19 @@ html, body {
     text-transform: uppercase;
     letter-spacing: 1.5px;
     line-height: 1;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
 }
 
-/* Arrow indicator */
+/* Arrow indicator — minimal */
 .nav-section-arrow {
     display: inline-block;
     width: 0;
     height: 0;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 5px solid currentColor;
-    opacity: 0.4;
+    border-left: 3px solid transparent;
+    border-right: 3px solid transparent;
+    border-top: 4px solid currentColor;
+    opacity: 0.2;
     transition: transform 0.3s ease, opacity 0.3s ease;
     flex-shrink: 0;
     margin-left: 8px;
@@ -113,23 +112,34 @@ html, body {
 
 .nav-section.open .nav-section-arrow {
     transform: rotate(180deg);
-    opacity: 0.7;
+    opacity: 0.3;
 }
 
-/* Links container — hidden by default, revealed when .open */
+/* Double-line rule — two thin lines below the section title.
+   When closed they sit tight together; when open, links appear between them. */
 .nav-section-links {
     list-style: none;
     margin: 0;
     padding: 0;
     max-height: 0;
     overflow: hidden;
+    border-top: 1px solid rgba(128,128,128,0.2);
+    border-bottom: 1px solid rgba(128,128,128,0.2);
+    margin-top: 6px;
     transition: max-height 0.35s ease, padding 0.35s ease, opacity 0.25s ease;
     opacity: 0;
 }
 
+/* Closed state: two lines touching (zero height content between them) */
+.nav-section:not(.open) .nav-section-links {
+    padding: 0;
+    opacity: 1;
+}
+
+/* Open state: lines split apart to reveal links */
 .nav-section.open .nav-section-links {
     max-height: 500px;
-    padding: 4px 0 8px 0;
+    padding: 4px 0;
     opacity: 1;
 }
 
@@ -141,13 +151,12 @@ html, body {
 
 .nav-section-links a {
     display: block;
-    padding: 6px 12px 6px 22px;
+    padding: 6px 12px 6px 14px;
     text-decoration: none;
     font-size: 0.78rem;
     font-weight: 400;
     letter-spacing: 0.8px;
     text-transform: uppercase;
-    border-radius: 3px;
     transition: all 0.15s ease;
     line-height: 1.3;
 }

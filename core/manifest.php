@@ -7,7 +7,7 @@
  * aesthetic (1983 tractor-feed) with sprocket holes, ASCII art borders,
  * and customizable paper stocks (green-bar ledger or plain white).
  *
- * Disabled features: gallery wall, justified archive layout, glitch engine.
+ * Disabled features: floating gallery, justified archive layout, glitch engine.
  * Font picker is restricted to DotMatrix family + select monospace fonts only.
  */
 

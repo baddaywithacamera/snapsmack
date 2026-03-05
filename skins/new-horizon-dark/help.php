@@ -22,7 +22,7 @@ built for photographers who want maximum control over presentation. Every visual
 
 <h4>Key Features</h4>
 <ul>
-    <li><strong>Gallery Wall support</strong> — fully interactive 3D drag-and-drop wall
+    <li><strong>Floating Gallery support</strong> — fully interactive 3D drag-and-drop wall
     with configurable physics, shadows, and typography.</li>
     <li><strong>Three archive layouts</strong> — Square (uniform grid), Cropped (constrained
     aspect ratio), and Masonry (justified rows preserving full aspect ratio).</li>
@@ -70,11 +70,11 @@ HTML
 
     'skin-wall' => [
         'section'  => 'Active Skin: New Horizon',
-        'title'    => 'Gallery Wall Settings',
+        'title'    => 'Floating Gallery Settings',
         'icon'     => '&#x25A6;',
         'content'  => <<<'HTML'
-<h3>Gallery Wall Configuration</h3>
-<p>The gallery wall is a 3D interactive experience unique to skins that support it.
+<h3>Floating Gallery Configuration</h3>
+<p>The floating gallery is a 3D interactive experience unique to skins that support it.
 Configure it in Smooth Your Skin under "Wall Specific".</p>
 
 <h4>Physics</h4>

@@ -198,53 +198,55 @@ include 'core/sidebar.php';
     <?php endif; ?>
 
     <!-- ============================================================
-         RECOVERY KIT — Export + Import in a single row
+         DISASTER RECOVERY — Recovery Kit + User Credentials
          ============================================================ -->
-    <div class="dash-grid dash-grid-2">
-        <div class="box box-flex">
-            <h3>EXPORT RECOVERY KIT</h3>
-            <p class="skin-desc-text">Complete backup — database, media library, branding assets, active skin. Everything needed to rebuild from scratch.</p>
-            <form method="POST">
-                <input type="hidden" name="action" value="export">
-                <input type="hidden" name="type" value="recovery_kit">
-                <button type="submit" class="btn-smack btn-block">DOWNLOAD RECOVERY KIT</button>
-            </form>
-        </div>
-
-        <div class="box box-flex">
-            <h3>IMPORT RECOVERY KIT</h3>
-            <p class="skin-desc-text">Upload a previously exported .tar.gz to restore your entire site. Overwrites the database and restores all files.</p>
-            <form method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="action" value="import_recovery">
-                <div class="file-upload-wrapper" onclick="document.getElementById('recovery-input').click()">
-                    <div class="file-custom-btn">SELECT FILE</div>
-                    <div class="file-name-display" id="recovery-name">SELECT .TAR.GZ FILE</div>
-                    <input type="file" name="recovery_file" id="recovery-input" accept=".tar.gz,.gz" class="file-input-hidden" onchange="document.getElementById('recovery-name').innerText = this.files[0].name;">
-                </div>
-                <button type="submit" class="btn-smack btn-block" onclick="return confirm('This will overwrite your database and files. Continue?');">IMPORT RECOVERY KIT</button>
-            </form>
+    <div class="box">
+        <h3>DISASTER RECOVERY</h3>
+        <div class="dash-grid">
+            <div class="box box-flex">
+                <h3>EXPORT RECOVERY KIT</h3>
+                <p class="skin-desc-text">Complete backup — database, media library, branding assets, active skin. Everything needed to rebuild from scratch.</p>
+                <form method="POST">
+                    <input type="hidden" name="action" value="export">
+                    <input type="hidden" name="type" value="recovery_kit">
+                    <button type="submit" class="btn-smack btn-block">DOWNLOAD RECOVERY KIT</button>
+                </form>
+            </div>
+            <div class="box box-flex">
+                <h3>IMPORT RECOVERY KIT</h3>
+                <p class="skin-desc-text">Upload a previously exported .tar.gz to restore your entire site. Overwrites the database and restores all files.</p>
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="action" value="import_recovery">
+                    <div class="file-upload-wrapper" onclick="document.getElementById('recovery-input').click()">
+                        <div class="file-custom-btn">SELECT FILE</div>
+                        <div class="file-name-display" id="recovery-name">SELECT .TAR.GZ FILE</div>
+                        <input type="file" name="recovery_file" id="recovery-input" accept=".tar.gz,.gz" class="file-input-hidden" onchange="document.getElementById('recovery-name').innerText = this.files[0].name;">
+                    </div>
+                    <button type="submit" class="btn-smack btn-block" onclick="return confirm('This will overwrite your database and files. Continue?');">IMPORT RECOVERY KIT</button>
+                </form>
+            </div>
+            <div class="box box-flex">
+                <h3>USER CREDENTIALS</h3>
+                <p class="skin-desc-text">Exports user table only — logins and permission hashes. Essential for regaining entry to a fresh install.</p>
+                <form method="POST">
+                    <input type="hidden" name="action" value="export">
+                    <input type="hidden" name="type" value="keys">
+                    <button type="submit" class="btn-smack btn-block">DOWNLOAD</button>
+                </form>
+            </div>
         </div>
     </div>
 
     <!-- ============================================================
-         DATABASE DUMPS — 3-column grid, no section header box
+         ROUTINE BACKUPS — Full SQL dump + Schema only
          ============================================================ -->
-    <div class="dash-grid mt-30">
+    <div class="dash-grid dash-grid-2 mt-30">
         <div class="box box-flex">
             <h3>FULL SQL DUMP</h3>
             <p class="skin-desc-text">Complete database export — structure and all content. Standard backup for site migrations.</p>
             <form method="POST">
                 <input type="hidden" name="action" value="export">
                 <input type="hidden" name="type" value="full">
-                <button type="submit" class="btn-smack btn-block">DOWNLOAD</button>
-            </form>
-        </div>
-        <div class="box box-flex">
-            <h3>USER CREDENTIALS</h3>
-            <p class="skin-desc-text">Exports user table only — logins and permission hashes. Essential for regaining entry to a fresh install.</p>
-            <form method="POST">
-                <input type="hidden" name="action" value="export">
-                <input type="hidden" name="type" value="keys">
                 <button type="submit" class="btn-smack btn-block">DOWNLOAD</button>
             </form>
         </div>
@@ -260,28 +262,36 @@ include 'core/sidebar.php';
     </div>
 
     <!-- ============================================================
-         DATA LIBERATION + MAINTENANCE — 4-column grid
-         WXR, JSON, Verify Integrity, Source Archive
+         MIGRATION TOOLS — WordPress and JSON exports
          ============================================================ -->
-    <div class="dash-grid dash-grid-4 mt-30">
-        <div class="box box-flex">
-            <h3>WORDPRESS WXR</h3>
-            <p class="skin-desc-text">Standard WordPress eXtended RSS format. Import directly into any WordPress site.</p>
-            <form method="POST">
-                <input type="hidden" name="action" value="export">
-                <input type="hidden" name="type" value="wxr">
-                <button type="submit" class="btn-smack btn-block">EXPORT</button>
-            </form>
+    <div class="box mt-30">
+        <h3>MIGRATION TOOLS</h3>
+        <div class="dash-grid dash-grid-2">
+            <div class="box box-flex">
+                <h3>WORDPRESS WXR</h3>
+                <p class="skin-desc-text">Standard WordPress eXtended RSS format. Import directly into any WordPress site.</p>
+                <form method="POST">
+                    <input type="hidden" name="action" value="export">
+                    <input type="hidden" name="type" value="wxr">
+                    <button type="submit" class="btn-smack btn-block">EXPORT</button>
+                </form>
+            </div>
+            <div class="box box-flex">
+                <h3>PORTABLE JSON</h3>
+                <p class="skin-desc-text">Platform-agnostic export with documented schema. For migration to any CMS.</p>
+                <form method="POST">
+                    <input type="hidden" name="action" value="export">
+                    <input type="hidden" name="type" value="json_export">
+                    <button type="submit" class="btn-smack btn-block">EXPORT</button>
+                </form>
+            </div>
         </div>
-        <div class="box box-flex">
-            <h3>PORTABLE JSON</h3>
-            <p class="skin-desc-text">Platform-agnostic export with documented schema. For migration to any CMS.</p>
-            <form method="POST">
-                <input type="hidden" name="action" value="export">
-                <input type="hidden" name="type" value="json_export">
-                <button type="submit" class="btn-smack btn-block">EXPORT</button>
-            </form>
-        </div>
+    </div>
+
+    <!-- ============================================================
+         SYSTEM TOOLS — Integrity check + Source archive
+         ============================================================ -->
+    <div class="dash-grid dash-grid-2 mt-30">
         <div class="box box-flex">
             <h3>VERIFY INTEGRITY</h3>
             <p class="skin-desc-text">Spot-checks files against stored SHA-256 checksums. Lightweight — no full filesystem walk.</p>

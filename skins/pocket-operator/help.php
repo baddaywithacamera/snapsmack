@@ -13,7 +13,7 @@ return [
         'content'  => <<<'HTML'
 <h3>Pocket Rocket — v1.0</h3>
 <p>A mobile-first skin for phone screens. Everything scrolls vertically, everything
-taps, nothing hovers. Medium grey palette with 1px borders. No gallery wall, no
+taps, nothing hovers. Medium grey palette with 1px borders. No floating gallery, no
 justified grid, no cropped thumbnails — aspect-preserved images only.</p>
 
 <h4>Key Features</h4>

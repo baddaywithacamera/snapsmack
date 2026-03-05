@@ -251,7 +251,7 @@ control panel).</p>
 
 <h4>Public Skin</h4>
 <p>Select from installed skins. Each skin has its own visual language, layout options,
-and feature set. Some skins support the gallery wall, others don't. Some offer multiple
+and feature set. Some skins support the floating gallery, others don't. Some offer multiple
 archive layouts. The active skin determines what manifest options are available in
 Smooth Your Skin.</p>
 
@@ -279,7 +279,7 @@ $help_topics['smooth-skin'] = [
 <h4>Customize Tab</h4>
 <p>Adjust the active skin's settings. The available options depend on which skin is active —
 each skin defines its own manifest with sections like Canvas &amp; Layout, Framing &amp;
-Presentation, Typography, Gallery Wall, and Content. Changes are applied immediately and
+Presentation, Typography, Floating Gallery, and Content. Changes are applied immediately and
 generate CSS that is injected into the public site.</p>
 <p>Option types include colour pickers, range sliders, dropdowns, and number fields. Each
 option targets a specific CSS selector and property, so you can see exactly what it affects.</p>
@@ -842,17 +842,17 @@ HTML
 
 $help_topics['gallery-wall'] = [
     'section'  => 'Public Features',
-    'title'    => 'Gallery Wall',
+    'title'    => 'Floating Gallery',
     'icon'     => '&#x25A6;',
     'content'  => <<<'HTML'
-<h3>Interactive Gallery Wall</h3>
-<p>The gallery wall is a 3D interactive experience that displays your photographs as
+<h3>Interactive Floating Gallery</h3>
+<p>The floating gallery is a 3D interactive experience that displays your photographs as
 draggable tiles on a virtual wall. It is desktop-only — mobile visitors are automatically
 redirected to the standard archive view.</p>
 
 <h4>Requirements</h4>
-<p>The gallery wall only appears when the active skin declares <code>supports_wall</code>
-in its manifest. Not all skins include wall support.</p>
+<p>The floating gallery only appears when the active skin declares <code>supports_wall</code>
+in its manifest. Not all skins include floating gallery support.</p>
 
 <h4>Physics</h4>
 <p>The wall uses simulated physics for dragging and momentum. You can tune:</p>

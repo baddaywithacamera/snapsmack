@@ -4,7 +4,7 @@
  * Alpha v0.7
  *
  * Fixed 48px header bar with hamburger toggle and slide-down nav drawer.
- * No hotkeys, no gallery wall link — mobile-first, tap-only navigation.
+ * No hotkeys, no floating gallery link — mobile-first, tap-only navigation.
  */
 
 // Pull header config and dynamic pages from core

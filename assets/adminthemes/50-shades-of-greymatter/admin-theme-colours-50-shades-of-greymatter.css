@@ -1,8 +1,10 @@
 /**
  * SNAPSMACK - 50 Shades of Greymatter admin theme colors
- * Alpha v0.6
+ * Alpha v0.7
  *
- * Light theme with neutral greys. All color values for admin-theme-geometry-master.css.
+ * COLOURS ONLY. All geometry lives in admin-theme-geometry-master.css.
+ * This file supplies hex values, background-colors, border-colors,
+ * color-scheme, text-shadow, and box-shadow colour definitions.
  */
 
 /* 01: GLOBAL BASE */
@@ -25,19 +27,6 @@ html, body {
 
 .nav-section-toggle {
     color: #888888;
-    background-color: transparent;
-}
-
-.nav-section-toggle:hover {
-    background-color: rgba(68, 68, 68, 0.06);
-}
-
-.nav-section.open .nav-section-toggle {
-    background-color: rgba(68, 68, 68, 0.08);
-}
-
-.nav-section-arrow {
-    color: inherit;
 }
 
 .nav-section-links a {
@@ -57,7 +46,6 @@ html, body {
 
 .sidebar .logout {
     color: #999999;
-    font-weight: 700;
 }
 
 .sidebar .logout:hover {
@@ -106,7 +94,6 @@ input[type="datetime-local"], input[type="date"], select, textarea,
     color: #333333;
 }
 
-/* Custom multiselect dropdown colours */
 .dropdown-content {
     background-color: #FFFFFF;
     border-color: #DDDDDD;
@@ -132,7 +119,6 @@ input[type="datetime-local"], input[type="date"], select, textarea,
     background-color: #F5F5F5;
 }
 
-/* Read-only display fields get a lighter border for the inset look */
 .read-only-display {
     background-color: #FFFFFF;
     border-color: #BBBBBB;
@@ -144,7 +130,6 @@ input:focus, textarea:focus, select:focus {
     border-color: #666666;
     background-color: #FFFFFF;
     box-shadow: 0 0 8px rgba(102, 102, 102, 0.2);
-    outline: none;
 }
 
 /* 06: MEDIA PREVIEWS */
@@ -153,44 +138,29 @@ input:focus, textarea:focus, select:focus {
     border-color: #DDDDDD;
 }
 
-/* 07: SIGNALS (The Fixes) */
-.signal-control-header {
-    /* Geometry handled in Master Geometry file */
-}
-
-/* The Status Pill */
+/* 07: SIGNALS */
 .status-online {
     color: #666666;
     border-color: #666666;
-    background-color: rgba(102, 102, 102, 0.05);
+    background-color: transparent;
 }
 
 .status-offline {
     color: #999999;
     border-color: #999999;
-    background-color: rgba(153, 153, 153, 0.05);
+    background-color: transparent;
 }
 
-/* Sender Name */
 .signal-sender {
     color: #666666;
-    font-weight: 700;
-}
-.signal-sender span.dim {
-    color: #888888;
 }
 
-/* The Body Text */
 .signal-body {
     color: #333333;
     background-color: #FFFFFF;
-    border: 1px solid #DDDDDD;
-    padding: 15px;
-    border-radius: 4px;
-    margin: 10px 0;
+    border-color: #DDDDDD;
 }
 
-/* Metadata Links (Killing the Blue) */
 .signal-meta {
     color: #888888;
 }
@@ -207,8 +177,6 @@ input:focus, textarea:focus, select:focus {
 }
 
 /* 08: BUTTONS & ACTIONS */
-
-/* Green buttons (New Post, Live Site) — go grey on hover */
 .btn-smack, .master-update-btn {
     background-color: #666666;
     color: #FFFFFF;
@@ -219,7 +187,6 @@ input:focus, textarea:focus, select:focus {
     box-shadow: 0 0 16px rgba(102, 102, 102, 0.5);
 }
 
-/* Grey buttons (Backup, Settings) — go green on hover */
 .btn-smack.btn-backup,
 .btn-smack.btn-settings {
     background-color: #CCCCCC;
@@ -232,7 +199,6 @@ input:focus, textarea:focus, select:focus {
     box-shadow: 0 0 16px rgba(102, 102, 102, 0.5);
 }
 
-/* Live Site stays green, same hover treatment as other green buttons */
 .btn-smack.btn-live {
     background-color: #666666;
     color: #FFFFFF;
@@ -243,12 +209,10 @@ input:focus, textarea:focus, select:focus {
     box-shadow: 0 0 16px rgba(102, 102, 102, 0.5);
 }
 
-/* All other buttons (Manage Signals etc) — universal green glow on hover */
 button:hover {
     box-shadow: 0 0 16px rgba(102, 102, 102, 0.4);
 }
 
-/* INCOMING / BROADCASTING nav buttons — persistent colour definition */
 .btn-clear {
     background-color: transparent;
     color: #888888;
@@ -266,7 +230,6 @@ button:hover {
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
-/* Action Links */
 .action-authorize, .action-edit {
     color: #666666;
     border-color: #666666;
@@ -359,7 +322,6 @@ button:hover {
     color: #888888;
 }
 
-/* Inline checkbox labels (Built-in, N/A) — match input border treatment */
 .built-in-label {
     background-color: #DDDDDD;
     border-color: #CCCCCC;
@@ -391,10 +353,10 @@ input[type="checkbox"]:checked::after {
     background-color: #F0F0F0;
     border-top-color: #CCCCCC;
 }
-.footer-left { color: #888888; font-size: 1rem; }
+.footer-left { color: #888888; }
 .footer-left a { color: #666666; border-bottom-color: #BBBBBB; }
 .footer-left a:hover { color: #666666; border-bottom-color: #666666; }
-.footer-right { color: #888888; font-size: 1rem; }
+.footer-right { color: #888888; }
 
 /* 14: APPEARANCE */
 .appearance-controller {
@@ -410,7 +372,7 @@ input[type="checkbox"]:checked::after {
 .theme-title-display { color: #000000; }
 .skin-desc-text { color: #888888; }
 
-/* Filter + Reset buttons */
+/* 15: FILTER & RESET BUTTONS */
 .btn-smack-filter {
     background-color: #666666;
     color: #FFFFFF;
@@ -423,43 +385,33 @@ input[type="checkbox"]:checked::after {
 .btn-reset {
     background-color: transparent;
     color: #888888;
-    border: 1px solid #CCCCCC;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    border-radius: 4px;
+    border-color: #CCCCCC;
 }
 .btn-reset:hover {
     border-color: #999999;
     color: #999999;
 }
 
-
 .alert-success {
     color: #666666;
     border-color: #666666;
-    background-color: rgba(102, 102, 102, 0.1);
+    background-color: transparent;
 }
 
 .alert-error {
     color: #999999;
     border-color: #999999;
-    background-color: rgba(153, 153, 153, 0.1);
+    background-color: transparent;
 }
 
-/* 16: INPUT RANGE (Webkit) */
+/* 16: INPUT RANGE */
 input[type="range"]::-webkit-slider-runnable-track {
     background-color: #DDDDDD;
 }
 input[type="range"]::-webkit-slider-thumb {
     background-color: #666666;
 }
-/* Asset cards (Media Library) */
+
 .asset-card {
     border-color: #CCCCCC;
     background-color: #FFFFFF;
@@ -469,30 +421,27 @@ input[type="range"]::-webkit-slider-thumb {
     background-color: #F0F0F0;
 }
 
-/* 17: CSS OVERRIDE PAGE (smack-css.php) */
+/* 17: CSS OVERRIDE PAGE */
 .css-tab {
     color: #777;
     border-color: #CCCCCC;
 }
-
 .css-tab:hover {
     color: #666666;
     border-color: #666666;
 }
-
 .css-tab-active {
     color: #666666;
     border-color: #666666;
     text-shadow: 0 0 8px rgba(102, 102, 102, 0.5);
     box-shadow: 0 0 8px rgba(102, 102, 102, 0.15);
 }
-
 .css-preview-block {
     border-color: #CCCCCC;
     background-color: #F0F0F0;
 }
 
-/* SHORTCODE TOOLBAR */
+/* 18: SHORTCODE TOOLBAR */
 .sc-toolbar {
     background-color: #E6E6E6;
     border-color: #CCCCCC;

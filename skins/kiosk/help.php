@@ -25,7 +25,7 @@ SnapSmack's most advanced engine support.</p>
     <li><strong>Pimpotron engine</strong> — Kiosk is the first skin to use the Pimpotron
     3D slideshow engine. When active, the Pimpotron link appears in the sidebar and the
     hero area of the site displays your configured slideshow.</li>
-    <li><strong>Gallery Wall support</strong> — full interactive wall with Playfair Display
+    <li><strong>Floating Gallery support</strong> — full interactive wall with Playfair Display
     as the default title font.</li>
     <li><strong>Glitch effects</strong> — built-in support for the glitch CSS engine,
     adding occasional visual distortion for creative effect.</li>

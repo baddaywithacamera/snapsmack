@@ -27,7 +27,7 @@ bit and does not break character.</p>
     Dying (barely visible, smeared), controlling opacity and bleed effects.</li>
     <li><strong>Restricted font palette</strong> — only DotMatrix and Tiny5 font families
     are available. No proportional fonts.</li>
-    <li><strong>No gallery wall</strong> — wall support is disabled. The dot-matrix printer
+    <li><strong>No floating gallery</strong> — wall support is disabled. The dot-matrix printer
     cannot render a 3D experience (it is, after all, a printer).</li>
     <li><strong>Two archive layouts</strong> — Square and Cropped only. Masonry/justified
     is disabled (a printer feeds paper in fixed columns).</li>

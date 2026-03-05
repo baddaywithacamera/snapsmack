@@ -11,6 +11,9 @@ backups/
 img_uploads/
 media_assets/
 
+# Claude / AI tooling
+CLAUDE.md
+
 # OS junk
 .DS_Store
 Thumbs.db

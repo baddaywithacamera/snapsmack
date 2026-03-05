@@ -8,8 +8,8 @@
  */
 
 // --- Conditional settings ---
-$bevel_style = $settings['htbs_bevel_style'] ?? 'single';
-$wood_grain = $settings['htbs_wood_grain'] ?? 'natural';
+$bevel_style  = $settings['htbs_bevel_style']  ?? 'single';
+$wood_grain   = $settings['htbs_wood_grain']    ?? 'natural';
 $force_square = ($settings['htbs_force_square'] ?? '0') === '1';
 
 $needs_overrides = ($bevel_style !== 'single' || $wood_grain === 'none' || $force_square);

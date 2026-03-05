@@ -9,7 +9,7 @@
 
 // --- Conditional settings ---
 $bevel_style = $settings['htbs_bevel_style'] ?? 'single';
-$wood_grain = $settings['htbs_wood_grain'] ?? 'none';
+$wood_grain  = $settings['htbs_wood_grain']  ?? 'none';
 ?>
 <style>
 /* Always square — this skin's raison d'être */

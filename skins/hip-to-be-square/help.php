@@ -7,8 +7,8 @@ return [
             'body'  => 'Hip to be Square forces a 1:1 square crop on all images — hero views, slider slides, and archive thumbnails. Portrait and landscape originals are center-cropped automatically. No aspect ratio toggle; square is the only shape here.',
         ],
         [
-            'title' => 'Gallery Wall Concept',
-            'body'  => 'Your photographs are presented as framed artwork mounted on a gallery wall. The landing page features a horizontal slider, and the archive shows a clean grid of framed thumbnails. Wall textures (plaster, linen, concrete) can be changed in Skin Admin.',
+            'title' => 'Floating Gallery Concept',
+            'body'  => 'Your photographs are presented as framed artwork mounted on a floating gallery. The landing page features a horizontal slider, and the archive shows a clean grid of framed thumbnails. Wall textures (plaster, linen, concrete) can be changed in Skin Admin.',
         ],
         [
             'title' => 'Picture Frames',

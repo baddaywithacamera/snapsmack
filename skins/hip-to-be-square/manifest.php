@@ -32,21 +32,21 @@ return [
             'label' => 'Wall Texture',
             'default' => 'concrete',
             'options' => [
-                'smooth-plaster' => 'Smooth Plaster',
-                'linen' => 'Linen Canvas',
-                'concrete' => 'Concrete',
-                'solid' => 'Solid Colour',
+                'smooth-plaster' => ['label' => 'Smooth Plaster', 'css' => "{ background-image: url('skins/hip-to-be-square/assets/wall-smooth-plaster.jpg'); background-repeat: repeat; }"],
+                'linen'          => ['label' => 'Linen Canvas',   'css' => "{ background-image: url('skins/hip-to-be-square/assets/wall-linen.jpg'); background-repeat: repeat; }"],
+                'concrete'       => ['label' => 'Concrete',       'css' => "{ background-image: url('skins/hip-to-be-square/assets/wall-concrete.jpg'); background-repeat: repeat; }"],
+                'solid'          => ['label' => 'Solid Colour',   'css' => '{ background-image: none; }'],
             ],
-            'selector' => ':root',
-            'property' => '--wall-texture',
+            'selector' => 'body',
+            'property' => 'custom-wall-texture',
         ],
         'htbs_wall_color' => [
             'section' => 'GALLERY WALL',
             'type' => 'color',
             'label' => 'Wall Background Colour',
             'default' => '#1f3845',
-            'selector' => 'body',
-            'property' => 'background-color',
+            'selector' => ':root',
+            'property' => '--wall-bg',
         ],
 
         // PICTURE FRAMES section
@@ -110,6 +110,50 @@ return [
                 'none' => 'Smooth (No Grain)',
             ],
             // No selector/property — handled by PHP conditional CSS in skin-header.php
+        ],
+
+        // HEADER section
+        'htbs_nav_color' => [
+            'section' => 'HEADER',
+            'type' => 'color',
+            'label' => 'Nav Link Colour',
+            'default' => '#d0dde3',
+            'selector' => '.htbs-header .nav-menu a',
+            'property' => 'color',
+        ],
+        'htbs_nav_hover_color' => [
+            'section' => 'HEADER',
+            'type' => 'color',
+            'label' => 'Nav Link Hover',
+            'default' => '#00e5ff',
+            'selector' => '.htbs-header .nav-menu a:hover',
+            'property' => 'color',
+        ],
+
+        // FOOTER section
+        'htbs_footer_text_color' => [
+            'section' => 'FOOTER',
+            'type' => 'color',
+            'label' => 'Footer Text Colour',
+            'default' => '#6a8a96',
+            'selector' => '.htbs-footer, footer',
+            'property' => 'color',
+        ],
+        'htbs_footer_link_color' => [
+            'section' => 'FOOTER',
+            'type' => 'color',
+            'label' => 'Footer Link Colour',
+            'default' => '#00e5ff',
+            'selector' => '.htbs-footer a, footer a',
+            'property' => 'color',
+        ],
+        'htbs_footer_link_hover' => [
+            'section' => 'FOOTER',
+            'type' => 'color',
+            'label' => 'Footer Link Hover',
+            'default' => '#ffe033',
+            'selector' => '.htbs-footer a:hover, footer a:hover',
+            'property' => 'color',
         ],
 
         // LAYOUT section
@@ -250,7 +294,7 @@ return [
             'section' => 'TYPOGRAPHY',
             'type' => 'select',
             'label' => 'Site Title Font',
-            'default' => 'Bebas Neue',
+            'default' => 'SquareSanSerif7',
             'options' => $fonts,
             'selector' => '.htbs-header .site-title-text',
             'property' => 'font-family',
@@ -278,7 +322,7 @@ return [
             'section' => 'TYPOGRAPHY',
             'type' => 'select',
             'label' => 'Plaque / Heading Font',
-            'default' => 'Bebas Neue',
+            'default' => 'SquareSanSerif7',
             'options' => $fonts,
             'selector' => '.plaque-title',
             'property' => 'font-family',
@@ -287,7 +331,7 @@ return [
             'section' => 'TYPOGRAPHY',
             'type' => 'select',
             'label' => 'Body Font',
-            'default' => 'DM Sans',
+            'default' => 'KeyBinds',
             'options' => $fonts,
             'selector' => 'body, .description, .meta',
             'property' => 'font-family',

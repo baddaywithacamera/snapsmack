@@ -21,7 +21,7 @@ chromatic element on the page.</p>
 <ul>
     <li><strong>Three monochrome variants</strong> — Dark (near-black background), Medium
     (mid-grey), and Light (off-white). Switch between them in Smooth Your Skin.</li>
-    <li><strong>Gallery Wall support</strong> — with greyscale-appropriate shadow and text
+    <li><strong>Floating Gallery support</strong> — with greyscale-appropriate shadow and text
     defaults.</li>
     <li><strong>Three archive layouts</strong> — Square, Cropped, and Masonry (justified).</li>
     <li><strong>Frame styles</strong> — six options: Thin Border, Medium Border, Heavy Border,

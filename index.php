@@ -12,6 +12,7 @@ error_reporting(E_ALL);
 
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/parser.php';
+require_once __DIR__ . '/core/skin-settings.php';
 
 // --- INITIALIZATION ---
 $settings = [];
@@ -41,6 +42,9 @@ try {
     if (snapsmack_is_mobile() && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)) {
         $active_skin = SNAPSMACK_MOBILE_SKIN;
     }
+
+    // Overlay skin-scoped settings so each skin retains its own customizations
+    snapsmack_apply_skin_settings($settings, $active_skin);
 
     // --- REQUEST ROUTING ---
     $path_info = $_SERVER['PATH_INFO'] ?? '';

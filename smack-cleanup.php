@@ -3,7 +3,7 @@
  * SNAPSMACK - Asset and database sync utility
  * Alpha v0.6
  *
- * Regenerates missing gallery wall thumbnails and prunes orphan files.
+ * Regenerates missing floating gallery thumbnails and prunes orphan files.
  * Ensures the physical file system matches the database registry.
  */
 
@@ -53,7 +53,7 @@ include 'core/sidebar.php';
                 continue;
             }
 
-            // Generate the Gallery Wall thumbnail if it does not exist.
+            // Generate the Floating Gallery thumbnail if it does not exist.
             if (!file_exists($wall_thumb)) {
                 list($orig_w, $orig_h) = getimagesize($file);
                 $wall_h = 500;

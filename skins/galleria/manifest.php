@@ -32,21 +32,21 @@ return [
             'label' => 'Wall Texture',
             'default' => 'smooth-plaster',
             'options' => [
-                'smooth-plaster' => 'Smooth Plaster',
-                'linen' => 'Linen Canvas',
-                'concrete' => 'Concrete',
-                'solid' => 'Solid Colour',
+                'smooth-plaster' => ['label' => 'Smooth Plaster', 'css' => "{ background-image: url('skins/galleria/assets/wall-smooth-plaster.jpg'); background-repeat: repeat; }"],
+                'linen'          => ['label' => 'Linen Canvas',   'css' => "{ background-image: url('skins/galleria/assets/wall-linen.jpg'); background-repeat: repeat; }"],
+                'concrete'       => ['label' => 'Concrete',       'css' => "{ background-image: url('skins/galleria/assets/wall-concrete.jpg'); background-repeat: repeat; }"],
+                'solid'          => ['label' => 'Solid Colour',   'css' => '{ background-image: none; }'],
             ],
-            'selector' => ':root',
-            'property' => '--wall-texture',
+            'selector' => 'body',
+            'property' => 'custom-wall-texture',
         ],
         'htbs_wall_color' => [
             'section' => 'GALLERY WALL',
             'type' => 'color',
             'label' => 'Wall Background Colour',
             'default' => '#f5f0eb',
-            'selector' => 'body',
-            'property' => 'background-color',
+            'selector' => ':root',
+            'property' => '--wall-bg',
         ],
 
         // PICTURE FRAMES section
@@ -110,6 +110,50 @@ return [
                 'none' => 'Smooth (No Grain)',
             ],
             // No selector/property — handled by PHP conditional CSS in skin-header.php
+        ],
+
+        // HEADER section
+        'htbs_nav_color' => [
+            'section' => 'HEADER',
+            'type' => 'color',
+            'label' => 'Nav Link Colour',
+            'default' => '#333333',
+            'selector' => '.htbs-header .nav-menu a',
+            'property' => 'color',
+        ],
+        'htbs_nav_hover_color' => [
+            'section' => 'HEADER',
+            'type' => 'color',
+            'label' => 'Nav Link Hover',
+            'default' => '#b8965a',
+            'selector' => '.htbs-header .nav-menu a:hover',
+            'property' => 'color',
+        ],
+
+        // FOOTER section
+        'htbs_footer_text_color' => [
+            'section' => 'FOOTER',
+            'type' => 'color',
+            'label' => 'Footer Text Colour',
+            'default' => '#777777',
+            'selector' => '.htbs-footer, footer',
+            'property' => 'color',
+        ],
+        'htbs_footer_link_color' => [
+            'section' => 'FOOTER',
+            'type' => 'color',
+            'label' => 'Footer Link Colour',
+            'default' => '#b8965a',
+            'selector' => '.htbs-footer a, footer a',
+            'property' => 'color',
+        ],
+        'htbs_footer_link_hover' => [
+            'section' => 'FOOTER',
+            'type' => 'color',
+            'label' => 'Footer Link Hover',
+            'default' => '#a0803f',
+            'selector' => '.htbs-footer a:hover, footer a:hover',
+            'property' => 'color',
         ],
 
         // LAYOUT section

@@ -28,17 +28,6 @@ html, body {
     background-color: transparent;
 }
 
-.nav-section-toggle:hover {
-    background-color: rgba(255, 204, 0, 0.06);
-}
-
-.nav-section.open .nav-section-toggle {
-    background-color: rgba(255, 204, 0, 0.08);
-}
-
-.nav-section-arrow {
-    color: inherit;
-}
 
 .nav-section-links a {
     color: #888888;
@@ -57,7 +46,6 @@ html, body {
 
 .sidebar .logout {
     color: #FFCC00;
-    font-weight: 700;
 }
 
 .sidebar .logout:hover {
@@ -176,22 +164,17 @@ input:focus, textarea:focus, select:focus {
 /* Sender Name */
 .signal-sender {
     color: #FFCC00;
-    font-weight: 600;
 }
 .signal-sender span,
 .signal-sender span.dim {
     color: #666666;
-    font-weight: 400;
 }
 
 /* The Body Text */
 .signal-body {
     color: #FFFFFF;
     background-color: #1A1A1A;
-    border: 1px solid #FFCC00;
-    padding: 15px;
-    border-radius: 4px;
-    margin: 10px 0;
+    border-color: #FFCC00;
 }
 
 /* Metadata Links (Killing the Blue) */
@@ -394,10 +377,10 @@ input[type="checkbox"]:checked::after {
     background-color: #0A0A0A;
     border-top-color: #1A1A1A;
 }
-.footer-left { color: #333333; font-size: 1rem; }
+.footer-left { color: #333333; }
 .footer-left a { color: #FFCC00; border-bottom-color: #FFCC00; }
 .footer-left a:hover { color: #FFFFFF; border-bottom-color: #FFFFFF; }
-.footer-right { color: #333333; font-size: 1rem; }
+.footer-right { color: #333333; }
 
 /* 14: APPEARANCE */
 .appearance-controller {
@@ -425,16 +408,7 @@ input[type="checkbox"]:checked::after {
 .btn-reset {
     background-color: transparent;
     color: #666666;
-    border: 1px solid #1A1A1A;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    border-radius: 4px;
+    border-color: #1A1A1A;
 }
 .btn-reset:hover {
     border-color: #997A00;

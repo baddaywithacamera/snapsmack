@@ -15,6 +15,7 @@
 
 require_once 'core/auth.php';
 require_once 'core/skin-registry.php';
+require_once 'core/skin-settings.php';
 
 // --- SETTINGS BOOTSTRAP ---
 // Must load BEFORE skin discovery so active_skin is available.
@@ -111,6 +112,7 @@ foreach ($skin_dirs as $dir) {
 $current_db_active = $settings['active_skin'] ?? array_key_first($available_skins);
 $target_skin       = $_GET['s'] ?? $current_db_active;
 if (!isset($available_skins[$target_skin])) $target_skin = array_key_first($available_skins);
+snapsmack_apply_skin_settings($settings, $target_skin);
 $manifest = include "skins/{$target_skin}/manifest.php";
 
 // --- 3. ENGINE RESOLUTION ---
@@ -128,10 +130,15 @@ foreach ($required_engines as $engine_key) {
 if (isset($_POST['save_skin_settings'])) {
 
     // 4a. Persistence: Save individual skin and engine control values.
+    //     Skin option keys are stored with a skin prefix (e.g. "galleria__htbs_wall_color")
+    //     so each skin retains its own customizations independently.
+    //     Engine control keys (non-htbs_) are saved bare — they're global.
+    $save_skin = $_POST['active_skin_target'] ?? $target_skin;
     if (isset($_POST['skin_opt'])) {
         foreach ($_POST['skin_opt'] as $s_key => $s_val) {
+            $scoped_key = $save_skin . '__' . $s_key;
             $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
-                ->execute([$s_key, $s_val, $s_val]);
+                ->execute([$scoped_key, $s_val, $s_val]);
         }
     }
 
@@ -147,6 +154,7 @@ if (isset($_POST['save_skin_settings'])) {
 
     // 4b. Refresh local settings cache for CSS compilation.
     $all_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+    snapsmack_apply_skin_settings($all_settings, $active_skin);
 
     // 4c. Public CSS Compilation.
     $generated_public = "/* SKIN_START */\n";
@@ -877,9 +885,9 @@ if (!empty($local_fonts)) {
                         <?php if (!empty($skin['features'])): ?>
                             <div class="skin-card-features">
                                 <?php if (!empty($skin['features']['supports_wall'])): ?>
-                                    <span class="feature-tag wall">WALL</span>
+                                    <span class="feature-tag wall">FLOAT</span>
                                 <?php else: ?>
-                                    <span class="feature-tag no-wall">NO WALL</span>
+                                    <span class="feature-tag no-wall">NO FLOAT</span>
                                 <?php endif; ?>
                                 <?php foreach (($skin['features']['archive_layouts'] ?? []) as $layout): ?>
                                     <span class="feature-tag layout"><?php echo strtoupper(htmlspecialchars($layout)); ?></span>

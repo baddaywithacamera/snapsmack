@@ -11,6 +11,7 @@
 
 require_once __DIR__ . '/core/auth.php';
 require_once __DIR__ . '/core/parser.php';
+require_once __DIR__ . '/core/skin-settings.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -33,6 +34,9 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'full') {
     if (function_exists('snapsmack_is_mobile') && snapsmack_is_mobile() && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)) {
         $active_skin = SNAPSMACK_MOBILE_SKIN;
     }
+
+    // Overlay skin-scoped settings so each skin retains its own customizations
+    snapsmack_apply_skin_settings($settings, $active_skin);
 
     if (!defined('BASE_URL')) {
         define('BASE_URL', rtrim($settings['site_url'] ?? '/', '/') . '/');

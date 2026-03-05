@@ -28,17 +28,6 @@ html, body {
     background-color: transparent;
 }
 
-.nav-section-toggle:hover {
-    background-color: rgba(232, 62, 140, 0.06);
-}
-
-.nav-section.open .nav-section-toggle {
-    background-color: rgba(232, 62, 140, 0.08);
-}
-
-.nav-section-arrow {
-    color: inherit;
-}
 
 .nav-section-links a {
     color: #8f6b7d;
@@ -57,7 +46,6 @@ html, body {
 
 .sidebar .logout {
     color: #4a303d;
-    font-weight: 700;
 }
 
 .sidebar .logout:hover {
@@ -163,35 +151,30 @@ input:focus, textarea:focus, select:focus {
 .status-online {
     color: #3b6991;
     border-color: #3b6991;
-    background-color: rgba(59, 105, 145, 0.1);
+    background-color: transparent;
 }
 
 /* Offline simulated via dimming */
 .status-offline {
     color: #8f6b7d;
     border-color: #8f6b7d;
-    background-color: rgba(143, 107, 125, 0.1);
+    background-color: transparent;
 }
 
 /* Sender Name */
 .signal-sender {
     color: #4a303d;
-    font-weight: 600;
 }
 .signal-sender span,
 .signal-sender span.dim {
     color: #8f6b7d;
-    font-weight: 400;
 }
 
 /* The Body Text */
 .signal-body {
     color: #4a303d;
     background-color: #ffffff;
-    border: 1px solid #f0c8dc;
-    padding: 15px;
-    border-radius: 4px;
-    margin: 10px 0;
+    border-color: #f0c8dc;
 }
 
 /* Metadata Links */
@@ -396,10 +379,10 @@ input[type="checkbox"]:checked::after {
     background-color: #fdf0f6;
     border-top-color: #f0c8dc;
 }
-.footer-left { color: #8f6b7d; font-size: 1rem; }
+.footer-left { color: #8f6b7d; }
 .footer-left a { color: #4a303d; border-bottom-color: #e6b3cc; }
 .footer-left a:hover { color: #e83e8c; border-bottom-color: #e83e8c; }
-.footer-right { color: #8f6b7d; font-size: 1rem; }
+.footer-right { color: #8f6b7d; }
 
 /* 14: APPEARANCE */
 .appearance-controller {
@@ -428,16 +411,7 @@ input[type="checkbox"]:checked::after {
 .btn-reset {
     background-color: transparent;
     color: #8f6b7d;
-    border: 1px solid #f0c8dc;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    border-radius: 4px;
+    border-color: #f0c8dc;
 }
 .btn-reset:hover {
     border-color: #4a303d;
@@ -447,13 +421,13 @@ input[type="checkbox"]:checked::after {
 .alert-success {
     color: #3b6991;
     border-color: #3b6991;
-    background-color: rgba(59, 105, 145, 0.1);
+    background-color: transparent;
 }
 
 .alert-error {
     color: #4a303d;
     border-color: #4a303d;
-    background-color: rgba(217, 83, 79, 0.1);
+    background-color: transparent;
 }
 
 /* 16: INPUT RANGE (Webkit) */

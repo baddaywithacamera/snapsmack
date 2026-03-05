@@ -3,8 +3,8 @@ return [
     'skin_name' => 'Galleria',
     'topics' => [
         [
-            'title' => 'Gallery Wall Concept',
-            'body'  => 'Galleria presents your photographs as framed artwork mounted on a gallery wall. The landing page features a horizontal slider, and the archive shows a clean grid of framed thumbnails. Wall textures (plaster, linen, concrete) can be changed in the Skin Admin.',
+            'title' => 'Floating Gallery Concept',
+            'body'  => 'Galleria presents your photographs as framed artwork mounted on a floating gallery. The landing page features a horizontal slider, and the archive shows a clean grid of framed thumbnails. Wall textures (plaster, linen, concrete) can be changed in the Skin Admin.',
         ],
         [
             'title' => 'Picture Frames',

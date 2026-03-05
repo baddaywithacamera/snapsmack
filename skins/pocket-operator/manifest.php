@@ -4,7 +4,7 @@
  * Alpha v0.7
  *
  * Mobile-first skin. Doomscroll feed, hamburger nav, swipe drawers.
- * Medium grey palette, 1px borders, no gallery wall, no justified,
+ * Medium grey palette, 1px borders, no floating gallery, no justified,
  * no cropped thumbs. Aspect-preserved thumbnails only.
  */
 
@@ -17,7 +17,7 @@ return [
     'version'       => '1.0',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
-    'description'   => 'Mobile-first skin for phone screens. Doomscroll feed, hamburger nav, swipe drawers for info and signals. No gallery wall, no justified grid, no cropped thumbs. Gen Z approved, boomer built.',
+    'description'   => 'Mobile-first skin for phone screens. Doomscroll feed, hamburger nav, swipe drawers for info and signals. No floating gallery, no justified grid, no cropped thumbs. Gen Z approved, boomer built.',
     'status'        => 'stable',
 
     'features' => [
