@@ -1,6 +1,7 @@
 <?php
 $inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
 $fonts = $inventory['fonts'] ?? [];
+foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label'];
 
 return [
     'name' => 'Hip to be Square',

@@ -11,12 +11,8 @@
 
 // Load font picker options from inventory
 $inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
-$fonts = [];
-if (isset($inventory['fonts'])) {
-    foreach ($inventory['fonts'] as $key => $meta) {
-        $fonts[$key] = $meta['label'] ?? $key;
-    }
-}
+$fonts = $inventory['fonts'] ?? [];
+foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label'];
 
 return [
     'name'            => 'Rational Geo',
