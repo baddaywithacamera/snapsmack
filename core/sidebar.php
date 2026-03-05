@@ -107,8 +107,14 @@ if (!empty($settings['active_skin'])) {
                     <li class="<?php echo ($current_page == 'smack-update.php') ? 'active' : ''; ?>">
                         <a href="smack-update.php">System Updates</a>
                     </li>
+                </ul>
+            </li>
+
+            <li class="nav-group">
+                <strong>Help, I Need Somebody!</strong>
+                <ul class="sub-nav">
                     <li class="<?php echo ($current_page == 'smack-help.php') ? 'active' : ''; ?>">
-                        <a href="smack-help.php">Man Pages</a>
+                        <a href="smack-help.php">User Manual</a>
                     </li>
                 </ul>
             </li>

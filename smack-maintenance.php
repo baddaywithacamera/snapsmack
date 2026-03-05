@@ -365,64 +365,59 @@ include 'core/sidebar.php';
     <?php endforeach; ?>
 
     <div class="dash-grid">
-        <div class="box">
-            <h3>REGISTRY SYNC</h3>
-            <p class="skin-desc-text">Fixes category count mismatches by purging "ghost" data from deleted images.</p>
-            <br>
+        <div class="box box-flex">
+            <h3>CLEAN ORPHAN DATA</h3>
+            <p class="skin-desc-text">Purges leftover category and album mappings for images that no longer exist. Fixes count mismatches without touching any files.</p>
             <form method="POST">
                 <input type="hidden" name="action" value="sync_cats">
-                <button type="submit" class="btn-smack btn-block">SYNC REGISTRY</button>
+                <button type="submit" class="btn-smack btn-block">CLEAN DATABASE</button>
             </form>
         </div>
 
-        <div class="box">
-            <h3>DB OPTIMIZATION</h3>
-            <p class="skin-desc-text">Defragments tables and recreates indexes. Boosts dashboard and site transmission speeds.</p>
-            <br>
+        <div class="box box-flex">
+            <h3>OPTIMIZE TABLES</h3>
+            <p class="skin-desc-text">Defragments MySQL tables and rebuilds indexes. Speeds up queries across the dashboard and public site.</p>
             <form method="POST">
                 <input type="hidden" name="action" value="optimize">
-                <button type="submit" class="btn-smack btn-block">OPTIMIZE TABLES</button>
+                <button type="submit" class="btn-smack btn-block">OPTIMIZE</button>
             </form>
         </div>
 
-        <div class="box">
-            <h3>ASSET SYNC</h3>
-            <p class="skin-desc-text">Rebuilds missing thumbnails in batches of 25 to avoid server overload. Orphan files are pruned on the final batch. Keep clicking <strong>CONTINUE</strong> until complete.</p>
-            <br>
+        <div class="box box-flex">
+            <h3>REBUILD THUMBNAILS</h3>
+            <p class="skin-desc-text">Regenerates missing thumbnails in batches of 25. Orphan image files with no database record are deleted on the final batch.</p>
             <?php if (!empty($asset_sync_has_more)): ?>
                 <form method="POST">
                     <input type="hidden" name="action" value="sync_assets">
                     <input type="hidden" name="batch_offset" value="<?php echo $asset_sync_next_offset; ?>">
-                    <button type="submit" class="btn-smack btn-block btn-backup">CONTINUE SYNC (BATCH <?php echo $asset_sync_next_offset; ?>+)</button>
+                    <button type="submit" class="btn-smack btn-block btn-backup">CONTINUE (BATCH <?php echo $asset_sync_next_offset; ?>+)</button>
                 </form>
             <?php else: ?>
                 <form method="POST">
                     <input type="hidden" name="action" value="sync_assets">
                     <input type="hidden" name="batch_offset" value="0">
-                    <button type="submit" class="btn-smack btn-block">SYNC & PRUNE ASSETS</button>
+                    <button type="submit" class="btn-smack btn-block">REBUILD</button>
                 </form>
             <?php endif; ?>
         </div>
     </div>
 
     <div class="dash-grid dash-grid-2 mt-30">
-        <div class="box">
-            <h3>HTACCESS CHECK</h3>
+        <div class="box box-flex">
+            <h3>HTACCESS DIAGNOSTICS</h3>
             <p class="skin-desc-text">Verifies that root and upload directory .htaccess files contain all required SnapSmack rules — HTTPS, clean URLs, security headers, PHP blocking, caching, and compression.</p>
-            <br>
             <form method="POST">
                 <input type="hidden" name="action" value="htaccess_check">
-                <button type="submit" class="btn-smack btn-block">RUN DIAGNOSTICS</button>
+                <button type="submit" class="btn-smack btn-block">RUN CHECK</button>
             </form>
         </div>
 
-        <div class="box">
+        <div class="box box-flex">
             <h3>HTACCESS REPAIR</h3>
-            <p class="skin-desc-text">Strips any damaged SnapSmack block and writes a clean copy of all rules. Preserves any non-SnapSmack rules added by your host. Also restores the upload directory PHP execution block.</p>
-            <br>
+            <p class="skin-desc-text">Strips any damaged SnapSmack block and writes a clean copy of all rules. Preserves any non-SnapSmack rules added by your host. Restores upload directory PHP execution block.</p>
             <form method="POST" onsubmit="return confirm('This will regenerate the SnapSmack .htaccess rules. Any manual edits inside the SnapSmack block will be replaced. Continue?')">
                 <input type="hidden" name="action" value="htaccess_repair">
-                <button type="submit" class="btn-smack btn-block">REPAIR HTACCESS</button>
+                <button type="submit" class="btn-smack btn-block">REPAIR</button>
             </form>
         </div>
     </div>

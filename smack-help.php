@@ -1,15 +1,20 @@
 <?php
 /**
- * SNAPSMACK - Man Pages (Help System)
- * Alpha v0.7
+ * SNAPSMACK - User Manual
+ * Alpha v0.8
  *
  * In-admin documentation system covering every feature of the CMS.
- * Topics are organised into sections. Active skins can inject their own
- * help topics via a help.php file in the skin directory.
+ * Topics are organised into sections and filtered by user role — editors
+ * only see topics relevant to content management, admins see everything.
+ * Active skins can inject their own help topics via a help.php file.
  */
 
-$page_title = 'Man Pages';
+$page_title = 'User Manual';
 require_once 'core/auth.php';
+
+// Detect user role for contextual filtering
+$_help_user_role = $_SESSION['user_role'] ?? 'editor';
+
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 
@@ -529,6 +534,7 @@ $help_topics['configuration'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'Configuration',
     'icon'     => '&#x2699;',
+    'role'     => 'admin',
     'content'  => <<<'HTML'
 <h3>Global Configuration</h3>
 <p>Site-wide settings that affect the entire installation.</p>
@@ -573,6 +579,7 @@ $help_topics['user-manager'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'User Manager',
     'icon'     => '&#x263A;',
+    'role'     => 'admin',
     'content'  => <<<'HTML'
 <h3>User Management</h3>
 <p>SnapSmack supports multiple user accounts with two roles.</p>
@@ -603,6 +610,7 @@ $help_topics['maintenance'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'Maintenance',
     'icon'     => '&#x2692;',
+    'role'     => 'admin',
     'content'  => <<<'HTML'
 <h3>Database &amp; Asset Maintenance</h3>
 <p>Housekeeping tools for keeping your installation healthy.</p>
@@ -630,6 +638,7 @@ $help_topics['backup'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'Backup & Recovery',
     'icon'     => '&#x2B07;',
+    'role'     => 'admin',
     'content'  => <<<'HTML'
 <h3>Backup &amp; Recovery</h3>
 <p>The backup page is organised into four sections covering everything from quick exports
@@ -681,6 +690,7 @@ $help_topics['ftp-backup'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'FTP Backup',
     'icon'     => '&#x21C5;',
+    'role'     => 'admin',
     'content'  => <<<'HTML'
 <h3>FTP Backup</h3>
 <p>Push database dumps to a remote FTP/FTPS server for off-site storage.</p>
@@ -711,6 +721,7 @@ $help_topics['cloud-backup'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'Cloud Backup',
     'icon'     => '&#x2601;',
+    'role'     => 'admin',
     'content'  => <<<'HTML'
 <h3>Cloud Backup</h3>
 <p>Push database dumps to Google Drive or OneDrive using OAuth 2.0 authentication.</p>
@@ -743,6 +754,7 @@ $help_topics['updates'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'System Updates',
     'icon'     => '&#x21BB;',
+    'role'     => 'admin',
     'content'  => <<<'HTML'
 <h3>Update System</h3>
 <p>SnapSmack can update itself from the official update server. All update packages are
@@ -934,6 +946,7 @@ $help_topics['cron'] = [
     'section'  => 'System',
     'title'    => 'Scheduled Tasks (Cron)',
     'icon'     => '&#x23F0;',
+    'role'     => 'admin',
     'content'  => <<<'HTML'
 <h3>Cron Jobs &amp; Scheduled Tasks</h3>
 <p>SnapSmack uses cron jobs for tasks that need to run periodically without manual
@@ -970,6 +983,7 @@ $help_topics['installer'] = [
     'section'  => 'System',
     'title'    => 'Installer',
     'icon'     => '&#x2316;',
+    'role'     => 'admin',
     'content'  => <<<'HTML'
 <h3>First-Run Installer</h3>
 <p>The installer (<code>install.php</code>) guides you through setting up a fresh
@@ -1011,6 +1025,18 @@ if (!empty($settings['active_skin'])) {
             $help_topics = array_merge($help_topics, $skin_help);
         }
     }
+}
+
+// =========================================================================
+//  ROLE-BASED FILTERING
+// =========================================================================
+
+// Editors only see topics without a role restriction (or role=editor).
+// Admins see everything.
+if ($_help_user_role !== 'admin') {
+    $help_topics = array_filter($help_topics, function ($t) {
+        return empty($t['role']) || $t['role'] === 'editor';
+    });
 }
 
 // =========================================================================
@@ -1170,48 +1196,42 @@ foreach ($help_topics as $slug => $ht) {
 
     /* ─── TABLE OF CONTENTS ──────────────────────────────────────────── */
     .help-toc-section {
-        margin-bottom: 28px;
+        margin-bottom: 30px;
     }
     .help-toc-section-title {
-        font-size: 0.8rem;
+        font-size: 0.85rem;
         letter-spacing: 2px;
         text-transform: uppercase;
         color: var(--text-secondary, #aaa);
-        margin: 0 0 12px 0;
+        margin: 0 0 10px 0;
         padding-bottom: 6px;
         border-bottom: 1px solid var(--lens-border, #333);
     }
-    .help-toc-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
+    .help-toc-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
     }
-    @media (max-width: 900px) {
-        .help-toc-grid { grid-template-columns: 1fr; }
+    .help-toc-list li {
+        margin-bottom: 2px;
     }
-    .help-toc-card {
+    .help-toc-list a {
         display: block;
-        padding: 12px 14px;
-        border: 1px solid var(--lens-border, #333);
-        border-radius: 4px;
-        text-decoration: none;
+        padding: 6px 10px;
+        font-size: 1rem;
         color: var(--text-main, #eee);
-        transition: background 0.15s ease, border-color 0.15s ease;
+        text-decoration: none;
+        border-radius: 3px;
+        transition: background 0.15s ease;
     }
-    .help-toc-card:hover {
-        background: var(--bg-secondary, rgba(255,255,255,0.04));
-        border-color: var(--accent, #6cf);
+    .help-toc-list a:hover {
+        background: var(--bg-secondary, rgba(255,255,255,0.05));
     }
-    .help-toc-card-title {
-        font-size: 0.9rem;
-        font-weight: bold;
-        letter-spacing: 0.5px;
-    }
-    .help-toc-card-desc {
-        font-size: 0.78rem;
+    .help-toc-list .help-toc-desc {
+        font-size: 0.82rem;
         color: var(--text-secondary, #999);
-        margin-top: 4px;
-        line-height: 1.4;
+        margin-left: 26px;
+        padding-bottom: 4px;
     }
 </style>
 
@@ -1220,7 +1240,7 @@ foreach ($help_topics as $slug => $ht) {
     <!-- Help Navigation Sidebar -->
     <div class="help-nav">
         <div class="help-nav-header">
-            <h2 class="help-nav-title">MAN PAGES</h2>
+            <h2 class="help-nav-title">USER MANUAL</h2>
             <p class="help-nav-subtitle">SnapSmack Documentation</p>
         </div>
 
@@ -1257,7 +1277,7 @@ foreach ($help_topics as $slug => $ht) {
         <?php if ($show_toc): ?>
             <!-- ═══ TABLE OF CONTENTS ═══ -->
             <div class="help-topic-header">
-                <h1 class="help-topic-title">&#x2630;&ensp;Man Pages</h1>
+                <h1 class="help-topic-title">&#x2630;&ensp;User Manual</h1>
             </div>
 
             <div class="help-body">
@@ -1267,26 +1287,23 @@ foreach ($help_topics as $slug => $ht) {
                 <?php foreach ($sections as $section_name => $topics): ?>
                     <div class="help-toc-section">
                         <h3 class="help-toc-section-title"><?php echo htmlspecialchars($section_name); ?></h3>
-                        <div class="help-toc-grid">
+                        <ul class="help-toc-list">
                             <?php foreach ($topics as $slug => $topic): ?>
                                 <?php
-                                // Extract first sentence from content as description
-                                $_raw = strip_tags($topic['content']);
-                                $_raw = preg_replace('/\s+/', ' ', trim($_raw));
-                                // Skip the h3 title (first few words before the actual description)
                                 $_first_p = '';
                                 if (preg_match('/<p>(.*?)<\/p>/s', $topic['content'], $_pm)) {
                                     $_first_p = strip_tags($_pm[1]);
                                 }
-                                if (empty($_first_p)) $_first_p = substr($_raw, 0, 120);
                                 if (strlen($_first_p) > 120) $_first_p = substr($_first_p, 0, 117) . '...';
                                 ?>
-                                <a href="smack-help.php?topic=<?php echo urlencode($slug); ?>" class="help-toc-card">
-                                    <div class="help-toc-card-title"><?php echo $topic['icon'] ?? ''; ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?></div>
-                                    <div class="help-toc-card-desc"><?php echo htmlspecialchars($_first_p); ?></div>
-                                </a>
+                                <li>
+                                    <a href="smack-help.php?topic=<?php echo urlencode($slug); ?>"><?php echo $topic['icon'] ?? ''; ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?></a>
+                                    <?php if (!empty($_first_p)): ?>
+                                        <div class="help-toc-desc"><?php echo htmlspecialchars($_first_p); ?></div>
+                                    <?php endif; ?>
+                                </li>
                             <?php endforeach; ?>
-                        </div>
+                        </ul>
                     </div>
                 <?php endforeach; ?>
             </div>
