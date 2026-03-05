@@ -177,7 +177,7 @@ $comments_active = ($global_on && $post_on);
 
 <script>
 /**
- * Hip To Be Square — Center Overlay Controller
+ * Galleria — Center Overlay Controller
  * Info and Signals appear in an elegant box that expands from center.
  * Bypasses ss-engine-footer.js (no #footer element).
  * Same hotkeys (1/2) work via smackdown API bridge.

@@ -3,11 +3,11 @@ $inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
 $fonts = $inventory['fonts'] ?? [];
 
 return [
-    'name' => 'Hip To Be Square',
+    'name' => 'Galleria',
     'version' => '1.0',
     'author' => 'Sean McCormick',
     'support' => 'sean@baddaywithacamera.ca',
-    'description' => 'Gallery wall skin with CSS picture frames, configurable matting, and a horizontal slider landing page. Photographs presented as framed artwork.',
+    'description' => 'Gallery skin with photorealistic CSS picture frames, configurable matting, bevels, and wood grain. Slider landing, framed archive grid, and filmstrip navigation. All aspect ratios supported.',
     'status' => 'stable',
 
     'features' => [
@@ -63,9 +63,10 @@ return [
             'label' => 'Frame Width (px)',
             'default' => '8',
             'min' => '3',
-            'max' => '20',
+            'max' => '22',
             'selector' => ':root',
             'property' => '--frame-width',
+            'unit' => 'px',
         ],
         'htbs_mat_color' => [
             'section' => 'PICTURE FRAMES',
@@ -81,9 +82,10 @@ return [
             'label' => 'Mat Width (px)',
             'default' => '24',
             'min' => '8',
-            'max' => '60',
+            'max' => '72',
             'selector' => ':root',
             'property' => '--mat-width',
+            'unit' => 'px',
         ],
         'htbs_bevel_style' => [
             'section' => 'PICTURE FRAMES',
@@ -95,8 +97,42 @@ return [
                 'single' => 'Single Bevel',
                 'double' => 'Double Bevel',
             ],
+            // No selector/property — handled by PHP conditional CSS in skin-header.php
+        ],
+        'htbs_wood_grain' => [
+            'section' => 'PICTURE FRAMES',
+            'type' => 'select',
+            'label' => 'Wood Grain',
+            'default' => 'natural',
+            'options' => [
+                'natural' => 'Natural Grain',
+                'none' => 'Smooth (No Grain)',
+            ],
+            // No selector/property — handled by PHP conditional CSS in skin-header.php
+        ],
+
+        // LAYOUT section
+        'htbs_header_height' => [
+            'section' => 'LAYOUT',
+            'type' => 'range',
+            'label' => 'Header Height (px)',
+            'default' => '60',
+            'min' => '40',
+            'max' => '100',
             'selector' => ':root',
-            'property' => '--bevel-style',
+            'property' => '--header-height',
+            'unit' => 'px',
+        ],
+        'htbs_footer_padding' => [
+            'section' => 'LAYOUT',
+            'type' => 'range',
+            'label' => 'Footer Padding (px)',
+            'default' => '20',
+            'min' => '8',
+            'max' => '50',
+            'selector' => ':root',
+            'property' => '--footer-padding',
+            'unit' => 'px',
         ],
 
         // SLIDER section
@@ -118,6 +154,7 @@ return [
             'max' => '1500',
             'selector' => ':root',
             'property' => '--slider-speed',
+            'unit' => 'ms',
         ],
         'htbs_slider_auto' => [
             'section' => 'SLIDER',
@@ -144,17 +181,39 @@ return [
             'type' => 'range',
             'label' => 'Grid Columns',
             'default' => '4',
-            'min' => '3',
+            'min' => '2',
             'max' => '6',
             'selector' => '.htbs-archive-grid',
             'property' => '--grid-cols',
         ],
+        'htbs_archive_max_width' => [
+            'section' => 'ARCHIVE GRID',
+            'type' => 'range',
+            'label' => 'Grid Max Width (px)',
+            'default' => '1600',
+            'min' => '900',
+            'max' => '2400',
+            'selector' => '.htbs-archive-grid',
+            'property' => 'max-width',
+            'unit' => 'px',
+        ],
+        'htbs_archive_padding' => [
+            'section' => 'ARCHIVE GRID',
+            'type' => 'range',
+            'label' => 'Side Padding (px)',
+            'default' => '60',
+            'min' => '10',
+            'max' => '120',
+            'selector' => '.htbs-archive-grid',
+            'property' => 'padding-left, padding-right',
+            'unit' => 'px',
+        ],
         'htbs_archive_miniframes' => [
             'section' => 'ARCHIVE GRID',
             'type' => 'select',
-            'label' => 'Show Mini Frames',
+            'label' => 'Thumbnail Style',
             'default' => '1',
-            'options' => ['1' => 'Yes', '0' => 'No'],
+            'options' => ['1' => 'Mini Frames (scaled from hero)', '0' => 'Plain Border (3px frame colour)'],
             'selector' => ':root',
             'property' => '--archive-frames',
         ],
@@ -188,8 +247,8 @@ return [
             'section' => 'IMAGE CROP',
             'type' => 'select',
             'label' => 'Force Square Crop',
-            'default' => '1',
-            'options' => ['1' => 'Yes (Square)', '0' => 'No (Original Aspect)'],
+            'default' => '0',
+            'options' => ['0' => 'No (Original Aspect)', '1' => 'Yes (Square)'],
             'selector' => ':root',
             'property' => '--force-square',
         ],

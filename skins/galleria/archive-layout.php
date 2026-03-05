@@ -1,6 +1,6 @@
 <?php
 /**
- * Hip To Be Square - Archive Grid Layout
+ * Galleria - Archive Grid Layout
  *
  * Skin-specific archive grid with miniature picture frames.
  * Variables available from archive.php: $images, $settings, $all_cats, $all_albums,
@@ -49,10 +49,11 @@ $grid_cols = (int)($settings['htbs_archive_cols'] ?? 4);
                         </div>
                     </div>
                 <?php else: ?>
-                    <img src="<?php echo $thumb_url; ?>"
-                         alt="<?php echo htmlspecialchars($img['img_title']); ?>"
-                         loading="lazy"
-                         style="width:100%; aspect-ratio:1; object-fit:cover;">
+                    <div class="htbs-plain-thumb">
+                        <img src="<?php echo $thumb_url; ?>"
+                             alt="<?php echo htmlspecialchars($img['img_title']); ?>"
+                             loading="lazy">
+                    </div>
                 <?php endif; ?>
                 <div class="htbs-archive-title"><?php echo htmlspecialchars($img['img_title']); ?></div>
             </a>

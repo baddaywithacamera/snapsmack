@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS `snap_assets` (
 
 -- ============================================================================
 -- 2. COLUMN ADDITION — snap_images.img_display_options
---    Per-image frame/mat/bevel overrides for Hip To Be Square, plus
+--    Per-image frame/mat/bevel overrides for Galleria skin, plus
 --    extracted colour palette. Stored as JSON.
 --    Uses INFORMATION_SCHEMA check so it won't fail if already present.
 -- ============================================================================
@@ -66,7 +66,7 @@ VALUES ('download_salt', 'CHANGE-ME-to-a-random-string-at-least-32-chars');
 
 
 -- ============================================================================
--- 4. HIP TO BE SQUARE — skin setting defaults
+-- 4. GALLERIA — skin setting defaults
 -- ============================================================================
 
 INSERT IGNORE INTO snap_settings (setting_key, setting_val)
@@ -82,11 +82,26 @@ VALUES
     ('slider_speed',           '400'),
     ('slider_autoplay',        '0'),
     ('slider_loop',            '1'),
-    ('htbs_grid_cols',         '4'),
-    ('htbs_mini_frames',       '1'),
-    ('htbs_show_filmstrip',    '1'),
-    ('htbs_plaque_style',      'brass'),
-    ('htbs_force_square',      '0');
+    -- Galleria skin settings (htbs_ prefix kept for backward compat)
+    ('htbs_header_height',       '60'),
+    ('htbs_footer_padding',      '20'),
+    ('htbs_slider_per_view',     '2'),
+    ('htbs_slider_speed',        '800'),
+    ('htbs_slider_auto',         '0'),
+    ('htbs_slider_loop',         '1'),
+    ('htbs_archive_cols',        '4'),
+    ('htbs_archive_max_width',   '1600'),
+    ('htbs_archive_padding',     '60'),
+    ('htbs_archive_miniframes',  '1'),
+    ('htbs_show_filmstrip',      '1'),
+    ('htbs_plaque_style',        'classic'),
+    ('htbs_force_square',        '0'),
+    ('htbs_bevel_style',         'single'),
+    ('htbs_wood_grain',          'natural'),
+    ('htbs_title_font',          'Georgia'),
+    ('htbs_title_size',          '18'),
+    ('htbs_heading_font',        'Georgia'),
+    ('htbs_body_font',           'Inter');
 
 
 -- ============================================================================
@@ -214,7 +229,16 @@ VALUES
 
 
 -- ============================================================================
--- 12. VERSION STAMP
+-- 12. SKIN RENAME — hip-to-be-square → galleria
+-- ============================================================================
+
+UPDATE snap_settings
+SET setting_val = 'galleria'
+WHERE setting_key = 'active_skin' AND setting_val = 'hip-to-be-square';
+
+
+-- ============================================================================
+-- 13. VERSION STAMP
 -- ============================================================================
 
 UPDATE snap_settings

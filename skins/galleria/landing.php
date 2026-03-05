@@ -1,6 +1,6 @@
 <?php
 /**
- * Hip To Be Square - Slider Landing Page
+ * Galleria - Slider Landing Page
  *
  * Full-viewport horizontal slider showing framed images.
  * Uses the reusable SnapSlider engine (ss-engine-slider.js).
@@ -69,16 +69,11 @@ $loop = ($settings['htbs_slider_loop'] ?? '1') === '1';
                                     </div>
                                 </div>
                             </div>
-                            <div class="plaque">
-                                <div class="plaque-title"><?php echo htmlspecialchars($slide['img_title']); ?></div>
-                                <div class="plaque-date"><?php echo date('F j, Y', strtotime($slide['img_date'])); ?></div>
-                            </div>
                         </a>
                     </div>
                     <?php endforeach; ?>
                 </div>
-                <button class="slider-arrow slider-prev" aria-label="Previous">&#8249;</button>
-                <button class="slider-arrow slider-next" aria-label="Next">&#8250;</button>
+                <!-- Arrows injected automatically by SnapSlider engine -->
             </div>
         </div>
     </div>

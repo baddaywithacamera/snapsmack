@@ -24,7 +24,7 @@ require_once __DIR__ . '/release-pubkey.php';
 
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
 
-define('UPDATER_API_URL', 'https://updates.snapsmack.ca/releases/latest.json');
+define('UPDATER_API_URL', 'https://snapsmack.ca/releases/latest.json');
 define('UPDATER_BACKUP_DIR', dirname(__DIR__) . '/backups');
 define('UPDATER_MIGRATIONS_DIR', dirname(__DIR__) . '/migrations');
 define('UPDATER_TEMP_DIR', sys_get_temp_dir() . '/snapsmack_update');

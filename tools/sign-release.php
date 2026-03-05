@@ -19,7 +19,7 @@
  *
  * OUTPUT:
  *   Prints the JSON fields you need to paste into latest.json on your
- *   update server at https://updates.snapsmack.ca/releases/latest.json
+ *   update server at https://snapsmack.ca/releases/latest.json
  *
  * REQUIREMENTS:
  *   - PHP 8.0+ with libsodium (built-in)
@@ -143,13 +143,13 @@ try {
 
 // ─── OUTPUT ──────────────────────────────────────────────────────────────────
 
-$download_url = "https://updates.snapsmack.ca/releases/snapsmack-{$version}.zip";
+$download_url = "https://snapsmack.ca/releases/snapsmack-{$version}.zip";
 
 echo "\n";
 echo "LATEST.JSON TEMPLATE\n";
 echo "════════════════════\n";
 echo "Copy the JSON below into your update server at:\n";
-echo "https://updates.snapsmack.ca/releases/latest.json\n\n";
+echo "https://snapsmack.ca/releases/latest.json\n\n";
 
 $json = [
     'version'         => $version,
@@ -179,7 +179,7 @@ echo "\nREMINDERS:\n";
 echo "  1. Edit the changelog and file_changes arrays\n";
 echo "  2. Set schema_changes to true if this version includes migrations\n";
 echo "  3. Upload the zip to: {$download_url}\n";
-echo "  4. Upload the JSON to: https://updates.snapsmack.ca/releases/latest.json\n";
+echo "  4. Upload the JSON to: https://snapsmack.ca/releases/latest.json\n";
 echo "  5. Test by clicking CHECK FOR UPDATES in SnapSmack admin\n";
 echo "\nDone.\n";
 

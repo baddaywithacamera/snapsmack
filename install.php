@@ -500,7 +500,7 @@ function snapsmack_is_mobile(): bool {
                 'custom_css_public'         => '',
                 'custom_css_admin'          => '',
                 'footer_injection_scripts'  => '',
-                'skin_registry_url'         => 'https://updates.snapsmack.ca/skins/registry.json',
+                'skin_registry_url'         => 'https://snapsmack.ca/skins/registry.json',
                 'installed_version'         => $installer_version,
                 'install_timestamp'         => date('Y-m-d H:i:s'),
             ];

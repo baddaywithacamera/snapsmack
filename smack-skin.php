@@ -156,6 +156,11 @@ if (isset($_POST['save_skin_settings'])) {
         $val = ($all_settings[$key] ?? '') !== '' ? $all_settings[$key] : $meta['default'];
         $prop = $meta['property'] ?? '';
 
+        // Skip options with no CSS property — handled by PHP (e.g. bevel style, wood grain)
+        if ($prop === '') {
+            continue;
+        }
+
         // Skip data-attributes — read by JS engines, not CSS
         if (strpos($prop, 'data-') === 0) {
             continue;
@@ -181,7 +186,13 @@ if (isset($_POST['save_skin_settings'])) {
             }
             $generated_public .= "{$meta['selector']} { font-family: \"{$val}\", {$fallback}; }\n";
         } elseif ($meta['type'] === 'range' || $meta['type'] === 'number') {
-            $unit = (substr($prop, 0, 2) === '--') ? '' : 'px';
+            // Use manifest unit if declared; default to px for standard CSS properties,
+            // empty for CSS custom properties (unless manifest explicitly sets a unit).
+            if (isset($meta['unit'])) {
+                $unit = $meta['unit'];
+            } else {
+                $unit = (substr($prop, 0, 2) === '--') ? '' : 'px';
+            }
             // Handle comma-separated properties (e.g. 'padding-left, padding-right')
             $props = array_map('trim', explode(',', $prop));
             $declarations = [];
@@ -602,22 +613,40 @@ include 'core/sidebar.php';
                                     <input type="color" name="skin_opt[<?php echo $k; ?>]" value="<?php echo htmlspecialchars($val); ?>">
                                     <span class="hex-display"><?php echo strtoupper(htmlspecialchars($val)); ?></span>
                                 </div>
-                            <?php elseif ($o['type'] === 'range'): ?>
+                            <?php elseif ($o['type'] === 'range'):
+                                $display_unit = strtoupper($o['unit'] ?? 'px');
+                            ?>
                                 <div class="range-wrapper">
                                     <input type="range" name="skin_opt[<?php echo $k; ?>]"
                                         min="<?php echo $o['min']; ?>" max="<?php echo $o['max']; ?>"
                                         value="<?php echo htmlspecialchars($val); ?>"
-                                        oninput="this.nextElementSibling.innerText = this.value + 'PX'">
-                                    <span class="active-val"><?php echo strtoupper(htmlspecialchars($val)); ?>PX</span>
+                                        oninput="this.nextElementSibling.innerText = this.value + '<?php echo $display_unit; ?>'">
+                                    <span class="active-val"><?php echo strtoupper(htmlspecialchars($val)); ?><?php echo $display_unit; ?></span>
                                 </div>
                             <?php elseif ($o['type'] === 'select'): ?>
-                                <select name="skin_opt[<?php echo $k; ?>]">
+                                <?php $is_font = (($o['property'] ?? '') === 'font-family'); ?>
+                                <select name="skin_opt[<?php echo $k; ?>]"
+                                    <?php if ($is_font): ?>
+                                        onchange="var ps=this.parentNode.querySelectorAll('.font-preview-text'); ps.forEach(function(p){p.style.fontFamily='\"'+this.value+'\", sans-serif';}.bind(this)); if(ps[0])ps[0].textContent=this.value;"
+                                    <?php endif; ?>>
                                     <?php foreach ($o['options'] as $sv => $sl): ?>
-                                        <option value="<?php echo $sv; ?>" <?php echo ($val == $sv) ? 'selected' : ''; ?>>
+                                        <option value="<?php echo $sv; ?>"
+                                            <?php echo ($val == $sv) ? 'selected' : ''; ?>
+                                            <?php if ($is_font): ?>style="font-family: '<?php echo $sv; ?>', sans-serif;"<?php endif; ?>>
                                             <?php echo is_array($sl) ? $sl['label'] : $sl; ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
+                                <?php if ($is_font): ?>
+                                    <div class="font-preview" style="margin-top:8px; padding:10px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:3px;">
+                                        <span class="font-preview-text" style="font-family: '<?php echo htmlspecialchars($val); ?>', sans-serif; font-size:18px; letter-spacing:0.5px;">
+                                            <?php echo htmlspecialchars($val); ?>
+                                        </span>
+                                        <span style="display:block; font-family: '<?php echo htmlspecialchars($val); ?>', sans-serif; font-size:13px; opacity:0.5; margin-top:4px;" class="font-preview-text">
+                                            The quick brown fox jumps over the lazy dog
+                                        </span>
+                                    </div>
+                                <?php endif; ?>
                             <?php else: ?>
                                 <input type="text" name="skin_opt[<?php echo $k; ?>]" value="<?php echo htmlspecialchars($val); ?>">
                             <?php endif; ?>
@@ -650,6 +679,7 @@ include 'core/sidebar.php';
                         <label><?php echo strtoupper(htmlspecialchars($o['label'] ?? $k)); ?></label>
                         <?php if (($o['type'] ?? '') === 'range'):
                             $step = $o['step'] ?? '1';
+                            $display_unit2 = strtoupper($o['unit'] ?? 'px');
                         ?>
                             <div class="range-wrapper">
                                 <input type="range" name="skin_opt[<?php echo htmlspecialchars($k); ?>]"
@@ -657,8 +687,8 @@ include 'core/sidebar.php';
                                     max="<?php echo htmlspecialchars($o['max'] ?? 100); ?>"
                                     step="<?php echo htmlspecialchars($step); ?>"
                                     value="<?php echo htmlspecialchars($val); ?>"
-                                    oninput="this.nextElementSibling.innerText = this.value">
-                                <span class="active-val"><?php echo htmlspecialchars($val); ?></span>
+                                    oninput="this.nextElementSibling.innerText = this.value + '<?php echo $display_unit2; ?>'">
+                                <span class="active-val"><?php echo htmlspecialchars($val); ?><?php echo $display_unit2; ?></span>
                             </div>
                         <?php elseif (($o['type'] ?? '') === 'select'): ?>
                             <select name="skin_opt[<?php echo htmlspecialchars($k); ?>]">

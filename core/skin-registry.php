@@ -43,7 +43,7 @@
 // }
 
 // Default registry URL — can be overridden via snap_settings.skin_registry_url
-define('SKIN_REGISTRY_DEFAULT_URL', 'https://updates.snapsmack.ca/skins/registry.json');
+define('SKIN_REGISTRY_DEFAULT_URL', 'https://snapsmack.ca/skins/registry.json');
 
 // Where skins live on disk
 define('SKINS_DIR', dirname(__DIR__) . '/skins');

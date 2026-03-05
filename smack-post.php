@@ -256,7 +256,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             $db_checksum     = hash_file('sha256', $target_path);
 
             // --- COLOUR PALETTE EXTRACTION ---
-            // Extract dominant colours from the image for Hip To Be Square frame customisation.
+            // Extract dominant colours from the image for Galleria frame customisation.
             $palette = snapsmack_extract_palette($target_path, 5);
             $display_options_json = !empty($palette) ? json_encode(['palette' => $palette]) : null;
         }
