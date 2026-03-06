@@ -1,0 +1,20 @@
+/**
+ * SNAPSMACK - Dark variant for the true-grit skin
+ * Alpha v0.7
+ *
+ * Charcoal base. Texture shows through the dark overlay.
+ */
+:root {
+    --bg-primary:    #1a1a1a;
+    --bg-secondary:  #242424;
+    --bg-chrome:     #1e1e1e;
+    --border:        #333333;
+    --text-primary:  #e0e0e0;
+    --text-secondary:#999999;
+    --text-dim:      #555555;
+    --accent:        #b0b0b0;
+    --accent-hover:  #e8e8e8;
+    --accent-dim:    #707070;
+    --input-bg:      #1e1e1e;
+    --wall-bg:       #2a2a2a;
+}

@@ -1,0 +1,20 @@
+/**
+ * SNAPSMACK - Light variant for the true-grit skin
+ * Alpha v0.7
+ *
+ * Warm grey base. Texture shows through the light overlay.
+ */
+:root {
+    --bg-primary:    #e8e4df;
+    --bg-secondary:  #ddd8d2;
+    --bg-chrome:     #d5d0ca;
+    --border:        #c0bab3;
+    --text-primary:  #2a2a2a;
+    --text-secondary:#555555;
+    --text-dim:      #999999;
+    --accent:        #666666;
+    --accent-hover:  #333333;
+    --accent-dim:    #aaaaaa;
+    --input-bg:      #e0dbd5;
+    --wall-bg:       #d8d3cd;
+}
