@@ -24,8 +24,7 @@ html, body {
 }
 
 .nav-section-toggle {
-    color: #b89f95;
-    background-color: transparent;
+    color: #7a5c50;
 }
 
 
@@ -150,14 +149,12 @@ input:focus, textarea:focus, select:focus {
 .status-online {
     color: #32998a;
     border-color: #32998a;
-    background-color: transparent;
 }
 
 /* Offline simulated via dimming */
 .status-offline {
     color: #8a6c5f;
     border-color: #8a6c5f;
-    background-color: transparent;
 }
 
 /* Sender Name */
@@ -236,7 +233,6 @@ button:hover {
 
 /* INCOMING / BROADCASTING nav buttons */
 .btn-clear {
-    background-color: transparent;
     color: #8a6c5f;
     border-color: #f0bca5;
 }
@@ -408,7 +404,6 @@ input[type="checkbox"]:checked::after {
     box-shadow: 0 0 16px rgba(255, 130, 92, 0.4);
 }
 .btn-reset {
-    background-color: transparent;
     color: #8a6c5f;
     border-color: #fcd5c5;
 }
@@ -420,13 +415,11 @@ input[type="checkbox"]:checked::after {
 .alert-success {
     color: #32998a;
     border-color: #32998a;
-    background-color: transparent;
 }
 
 .alert-error {
     color: #4a362d;
     border-color: #4a362d;
-    background-color: transparent;
 }
 
 /* 16: INPUT RANGE (Webkit) */

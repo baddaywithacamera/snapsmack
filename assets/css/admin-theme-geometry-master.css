@@ -49,7 +49,7 @@ html, body {
     letter-spacing: 3px;
     font-size: 1.05rem;
     font-weight: 600;
-    margin: 0 0 16px 0;
+    margin: 0 0 24px 0;
     padding: 0 0 10px 0;
     line-height: 1.0;
     border-bottom-width: 2px;
@@ -64,39 +64,67 @@ html, body {
     gap: 0;
 }
 
-/* Each collapsible section — two thin lines that split to reveal links */
+/* Each collapsible section */
 .nav-section {
     overflow: hidden;
 }
 
-/* Section toggle — flat label with double-line rule beneath */
+/* Section toggle — plain text link, NOT a button bar.
+   appearance:none kills all native button chrome.
+   inline-flex keeps label+arrow hugging each other instead of
+   stretching across the full width like a toolbar button. */
 .nav-section-toggle {
-    display: flex;
+    -webkit-appearance: none;
+    appearance: none;
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    padding: 16px 0 0 0;
+    justify-content: flex-start;
+    gap: 5px;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 15px 0 0 0;
     border: none;
-    background: transparent;
+    border-radius: 0;
+    background: none !important;
+    box-shadow: none !important;
     cursor: pointer;
     text-align: left;
+    outline: none;
+    font: inherit;
+    font-size: inherit;
+    line-height: 1;
+    filter: none;
+    transform: none;
 }
 
+.nav-section-toggle:hover,
+.nav-section-toggle:focus,
+.nav-section.open .nav-section-toggle {
+    background: none !important;
+    box-shadow: none !important;
+    filter: none;
+    transform: none;
+}
+
+/* Hover: underline like a text link */
 .nav-section-toggle:hover .nav-section-label {
-    opacity: 0.85;
+    text-decoration: underline;
 }
 
+/* Label — fully visible, theme colour is the colour */
 .nav-section-label {
-    font-size: 0.68rem;
+    font-size: 0.8rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1.5px;
     line-height: 1;
-    opacity: 0.6;
-    transition: opacity 0.2s ease;
+    opacity: 1;
+    transition: opacity 0.15s ease;
+    text-decoration: none;
 }
 
-/* Arrow indicator — minimal */
+/* Arrow indicator — tiny, sits right next to the label */
 .nav-section-arrow {
     display: inline-block;
     width: 0;
@@ -107,7 +135,6 @@ html, body {
     opacity: 0.2;
     transition: transform 0.3s ease, opacity 0.3s ease;
     flex-shrink: 0;
-    margin-left: 8px;
 }
 
 .nav-section.open .nav-section-arrow {
@@ -115,28 +142,30 @@ html, body {
     opacity: 0.3;
 }
 
-/* Double-line rule — two thin lines below the section title.
-   When closed they sit tight together; when open, links appear between them. */
+/* ─── Double-line rule ───
+   Two thin lines sit below each section title.
+   Closed: lines touch (zero content height between them).
+   Open: lines split apart and links appear between them. */
 .nav-section-links {
     list-style: none;
     margin: 0;
     padding: 0;
     max-height: 0;
     overflow: hidden;
-    border-top: 1px solid rgba(128,128,128,0.2);
-    border-bottom: 1px solid rgba(128,128,128,0.2);
+    border-top: 1px solid rgba(128,128,128,0.22);
+    border-bottom: 1px solid rgba(128,128,128,0.22);
     margin-top: 6px;
     transition: max-height 0.35s ease, padding 0.35s ease, opacity 0.25s ease;
     opacity: 0;
 }
 
-/* Closed state: two lines touching (zero height content between them) */
+/* Closed: two lines touching, visible */
 .nav-section:not(.open) .nav-section-links {
     padding: 0;
     opacity: 1;
 }
 
-/* Open state: lines split apart to reveal links */
+/* Open: lines split apart to reveal links */
 .nav-section.open .nav-section-links {
     max-height: 500px;
     padding: 4px 0;
@@ -151,7 +180,7 @@ html, body {
 
 .nav-section-links a {
     display: block;
-    padding: 6px 12px 6px 14px;
+    padding: 5px 12px 5px 0;
     text-decoration: none;
     font-size: 0.78rem;
     font-weight: 400;
@@ -159,6 +188,10 @@ html, body {
     text-transform: uppercase;
     transition: all 0.15s ease;
     line-height: 1.3;
+}
+
+.nav-section-links a:hover {
+    text-decoration: underline;
 }
 
 .nav-section-links li.active a {
