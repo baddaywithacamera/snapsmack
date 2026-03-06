@@ -25,7 +25,6 @@ html, body {
 
 .nav-section-toggle {
     color: #444444;
-    background-color: transparent;
 }
 
 
@@ -236,7 +235,6 @@ button:hover {
 
 /* INCOMING / BROADCASTING nav buttons */
 .btn-clear {
-    background-color: transparent;
     color: #888888;
     border-color: #1A1A1A;
 }
@@ -406,7 +404,6 @@ input[type="checkbox"]:checked::after {
     color: #000000;
 }
 .btn-reset {
-    background-color: transparent;
     color: #666666;
     border-color: #1A1A1A;
 }

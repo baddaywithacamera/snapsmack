@@ -24,8 +24,7 @@ html, body {
 }
 
 .nav-section-toggle {
-    color: #777777;
-    background-color: transparent;
+    color: #505050;
 }
 
 
@@ -235,7 +234,6 @@ button:hover {
 
 /* INCOMING / BROADCASTING nav buttons — persistent colour definition */
 .btn-clear {
-    background-color: transparent;
     color: #555555;
     border-color: #DDDDDD;
 }
@@ -406,7 +404,6 @@ input[type="checkbox"]:checked::after {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 .btn-reset {
-    background-color: transparent;
     color: #777777;
     border-color: #DDDDDD;
 }
