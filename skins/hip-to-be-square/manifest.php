@@ -113,6 +113,14 @@ return [
         ],
 
         // HEADER section
+        'htbs_header_bg_color' => [
+            'section' => 'HEADER',
+            'type' => 'color',
+            'label' => 'Header Background',
+            'default' => '#0f2029',
+            'selector' => '.htbs-header',
+            'property' => 'background-color',
+        ],
         'htbs_nav_color' => [
             'section' => 'HEADER',
             'type' => 'color',
@@ -131,6 +139,14 @@ return [
         ],
 
         // FOOTER section
+        'htbs_footer_bg_color' => [
+            'section' => 'FOOTER',
+            'type' => 'color',
+            'label' => 'Footer Background',
+            'default' => '#0f2029',
+            'selector' => '.htbs-footer, footer',
+            'property' => 'background-color',
+        ],
         'htbs_footer_text_color' => [
             'section' => 'FOOTER',
             'type' => 'color',
@@ -289,6 +305,32 @@ return [
 
         // NO IMAGE CROP section — always square, enforced in skin-header.php
 
+        // COLOURS section — global palette
+        'htbs_text_primary' => [
+            'section' => 'COLOURS',
+            'type' => 'color',
+            'label' => 'Primary Text',
+            'default' => '#d0dde3',
+            'selector' => ':root',
+            'property' => '--text-primary',
+        ],
+        'htbs_text_secondary' => [
+            'section' => 'COLOURS',
+            'type' => 'color',
+            'label' => 'Secondary Text',
+            'default' => '#6a8a96',
+            'selector' => ':root',
+            'property' => '--text-secondary',
+        ],
+        'htbs_accent_color' => [
+            'section' => 'COLOURS',
+            'type' => 'color',
+            'label' => 'Accent Colour',
+            'default' => '#00e5ff',
+            'selector' => ':root',
+            'property' => '--accent-color',
+        ],
+
         // TYPOGRAPHY section
         'htbs_title_font' => [
             'section' => 'TYPOGRAPHY',
@@ -305,7 +347,7 @@ return [
             'label' => 'Site Title Size (px)',
             'default' => '22',
             'min' => '12',
-            'max' => '36',
+            'max' => '100',
             'selector' => '.htbs-header .site-title-text',
             'property' => 'font-size',
             'unit' => 'px',

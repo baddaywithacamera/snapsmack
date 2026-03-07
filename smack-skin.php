@@ -277,15 +277,9 @@ if (isset($_POST['save_skin_settings'])) {
         }
     }
 
-    // 4d-ii. Engine script and CSS injection
-    foreach ($resolved_engines as $engine_key => $engine) {
-        if (!empty($engine['css'])) {
-            $injection .= '<link rel="stylesheet" href="' . BASE_URL . $engine['css'] . '?v=' . $v . '">' . "\n";
-        }
-        if (!empty($engine['path'])) {
-            $injection .= '<script src="' . BASE_URL . $engine['path'] . '?v=' . $v . '"></script>' . "\n";
-        }
-    }
+    // 4d-ii. Engine scripts are loaded by skin-footer.php at runtime via
+    //        the manifest require_scripts[] list. They must NOT be duplicated
+    //        here — only the Google Font CDN link belongs in the injection blob.
 
     $pdo->prepare("REPLACE INTO snap_settings (setting_key, setting_val) VALUES ('footer_injection_scripts', ?)")
         ->execute([$injection]);
@@ -319,6 +313,19 @@ if (!empty($local_fonts)) {
         echo "@font-face { font-family: '{$family}'; src: url('{$file_url}') format('{$format}'); font-weight: {$weight}; font-style: {$style}; font-display: swap; }\n";
     }
     echo '</style>' . "\n";
+}
+
+// --- GOOGLE FONT PREVIEWS ---
+// Load all Google Fonts from the inventory so they render in the font picker
+// dropdown options. Single CDN request, admin-only page — no performance concern.
+$google_families = $global_inventory['fonts'] ?? [];
+if (!empty($google_families)) {
+    $gf_parts = [];
+    foreach (array_keys($google_families) as $fam) {
+        $gf_parts[] = 'family=' . str_replace(' ', '+', $fam) . ':wght@400;700';
+    }
+    $gf_url = 'https://fonts.googleapis.com/css2?' . implode('&', $gf_parts) . '&display=swap';
+    echo '<link rel="stylesheet" href="' . htmlspecialchars($gf_url) . '">' . "\n";
 }
 ?>
 

@@ -1,10 +1,15 @@
 /**
  * SNAPSMACK - Footer Controller
- * Alpha v0.6
+ * Alpha v0.7
  *
- * Manages animated footer panes: info, comments, and help. Handles sliding
- * animations and exposes control methods to other engines.
+ * Manages animated footer panes: info, comments, and help. Guards against
+ * double-loading (the script can appear twice via footer_injection_scripts).
+ * Close animation uses max-height transition with a safety timeout so the
+ * animating lock can never get permanently stuck.
  */
+
+if (!window._ssFooterLoaded) {
+window._ssFooterLoaded = true;
 
 document.addEventListener('DOMContentLoaded', () => {
     const btnInfo = document.getElementById('show-details');
@@ -17,16 +22,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (footer) {
         footer.style.display = 'none';
-        footer.style.maxHeight = '0';
-        footer.style.transition = 'max-height 0.32s cubic-bezier(.2,.9,.2,1)';
 
-        let animating = false;
+        let closing = false;
+        const CLOSE_MS = 320;
+
+        // --- SCROLL HELPER ---
+        const scrollToDrawer = () => {
+            requestAnimationFrame(() => {
+                footer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        };
 
         // --- TOGGLE HANDLER ---
-        // Determines which pane to show and manages open/close state
         const handleToggle = (target, e) => {
             if (e) e.preventDefault();
-            if (animating) return;
+            if (closing) return;
 
             // Safety checks for pane existence
             if (target === 'comments' && !paneComm) return;
@@ -57,45 +67,39 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (target === 'info') paneInfo.style.display = 'block';
             else if (target === 'help') paneHelp.style.display = 'block';
 
-            footer.offsetHeight; // Force reflow
-
-            if (isClosed) openFooter();
-            else {
-                footer.style.maxHeight = footer.scrollHeight + 'px';
-                footer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        };
-
-        // --- OPEN ANIMATION ---
-        const openFooter = () => {
-            animating = true;
+            // Show footer and scroll into view
             footer.style.display = 'block';
-            footer.offsetHeight;
-            footer.style.maxHeight = footer.scrollHeight + 'px';
-            footer.addEventListener('transitionend', function onOpen(ev) {
-                if (ev.propertyName === 'max-height') {
-                    footer.removeEventListener('transitionend', onOpen);
-                    footer.style.maxHeight = 'none';
-                    footer.style.overflow = 'visible';
-                    footer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    animating = false;
-                }
-            });
+            scrollToDrawer();
         };
 
-        // --- CLOSE ANIMATION ---
+        // --- CLOSE (animated slide-up) ---
         const closeFooter = () => {
-            if (footer.style.display === 'none' || animating) return;
-            animating = true;
-            footer.style.maxHeight = footer.scrollHeight + 'px';
-            footer.offsetHeight;
-            footer.style.maxHeight = '0';
+            if (footer.style.display === 'none' || closing) return;
+            closing = true;
+
+            // Snapshot current height, enable transition, collapse to 0
             footer.style.overflow = 'hidden';
+            footer.style.maxHeight = footer.scrollHeight + 'px';
+            footer.style.transition = 'max-height ' + CLOSE_MS + 'ms cubic-bezier(.2,.9,.2,1)';
+            footer.offsetHeight; // force reflow
+            footer.style.maxHeight = '0';
+
+            // Clean up after transition (or safety timeout)
+            const finish = () => {
+                footer.style.display = 'none';
+                footer.style.transition = '';
+                footer.style.maxHeight = '';
+                footer.style.overflow = '';
+                closing = false;
+            };
+
+            const safety = setTimeout(finish, CLOSE_MS + 50);
+
             footer.addEventListener('transitionend', function onClose(ev) {
                 if (ev.propertyName === 'max-height') {
+                    clearTimeout(safety);
                     footer.removeEventListener('transitionend', onClose);
-                    footer.style.display = 'none';
-                    animating = false;
+                    finish();
                 }
             });
         };
@@ -110,3 +114,5 @@ document.addEventListener('DOMContentLoaded', () => {
         window.smackdown.closeFooter = closeFooter;
     }
 });
+
+} // end double-load guard

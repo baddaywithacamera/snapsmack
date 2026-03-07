@@ -21,7 +21,7 @@ $slider_stmt->execute([$now_local, $slider_limit]);
 $slider_images = $slider_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Slider config from settings (Pimpotron values)
-$per_view = (int)($settings['htbs_slider_per_view'] ?? 2);
+$per_view = 1; // Galleria: one image per wall, always
 $speed = (int)($settings['htbs_slider_speed'] ?? 800);
 $auto_advance = ($settings['htbs_slider_auto'] ?? '0') === '1';
 $loop = ($settings['htbs_slider_loop'] ?? '1') === '1';
@@ -50,9 +50,8 @@ $loop = ($settings['htbs_slider_loop'] ?? '1') === '1';
                         if (!empty($d_opts['mat_width'])) $style_parts[] = "--mat-width:{$d_opts['mat_width']}px";
                         $inline = !empty($style_parts) ? ' style="' . implode(';', $style_parts) . '"' : '';
 
-                        // Use square thumbnail for slider
-                        $thumb = $slide['img_thumb_square'] ?? '';
-                        $img_url = !empty($thumb) ? BASE_URL . ltrim($thumb, '/') : BASE_URL . ltrim($slide['img_file'], '/');
+                        // Use full image so the slider engine can detect panoramic aspect ratios
+                        $img_url = BASE_URL . ltrim($slide['img_file'], '/');
                     ?>
                     <div class="slider-slide">
                         <a href="<?php echo $slide_link; ?>" class="htbs-slide-link">

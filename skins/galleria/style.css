@@ -402,36 +402,26 @@ a:hover {
    Plaque - nameplate below frame in single view
    ============================================================================ */
 
-.plaque {
+/* Info title block inside overlay */
+.info-title-block {
     text-align: center;
-    margin-top: 20px;
-    padding: 12px 30px;
-    background: rgba(255, 255, 255, 0.8);
-    border: 1px solid #ddd;
-    display: inline-block;
-    backdrop-filter: blur(4px);
-    opacity: 0;
-    transform: translateY(6px);
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #d5d0cb;
 }
 
-.htbs-gallery-room:hover .plaque {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.plaque-title {
+.info-title {
     font-family: Georgia, serif;
-    font-size: 16px;
+    font-size: 20px;
     color: var(--text-primary);
     letter-spacing: 1px;
-    font-weight: 500;
+    font-weight: 400;
+    margin-bottom: 6px;
 }
 
-.plaque-date {
+.info-date {
     font-size: 11px;
     color: var(--text-secondary);
-    margin-top: 4px;
     text-transform: uppercase;
     letter-spacing: 2px;
 }
@@ -441,33 +431,45 @@ a:hover {
    ============================================================================ */
 
 .htbs-single {
-    padding-top: var(--header-height, 60px);
-    padding-bottom: 120px; /* room for filmstrip */
-    min-height: 100vh;
+    --footer-bar-height: 3vh;
+    padding-top: var(--header-height, 7vh);
+    padding-bottom: calc(14vh + var(--footer-bar-height));
+    height: 100vh;
+    overflow: hidden;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
+}
+
+.htbs-single #infobox {
+    display: none;
 }
 
 .htbs-gallery-room {
-    text-align: center;
+    flex: 1;
+    min-height: 0;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    flex: 1;
-    max-width: 90vw;
-    margin: 0 auto;
-    padding: 20px 0;
+    padding: 2vh 3vw;
 }
 
+/* Frame-aware constraints — image max dimensions account for the frame
+   overhead (mount padding 18px + frame-width + mat-width on each side)
+   so the entire framed piece fits the available viewport space.
+   Available height ≈ 82vh minus UI chrome (header, filmstrip, footer, nav). */
 .htbs-gallery-room .frame-mount {
-    max-width: 70vh;
+    max-width: 85vw;
+    max-height: 100%;
+    overflow: hidden;
 }
 
 .htbs-gallery-room .frame-image img {
-    width: 100%;
-    height: auto;
     display: block;
+    max-width: calc(65vw - 3vw - 2 * var(--frame-width, 8px) - 2 * var(--mat-width, 24px));
+    max-height: calc(82vh - 18vh - 2 * var(--frame-width, 8px) - 2 * var(--mat-width, 24px));
+    width: auto;
+    height: auto;
 }
 
 /* ─── Navigation bar (prev/info/comments/next) ─── */
@@ -589,10 +591,11 @@ a:hover {
    ============================================================================ */
 
 .htbs-slider-landing {
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    box-sizing: border-box;
     /* Header is fixed/60px — padding-top clears it, box-sizing keeps 100vh honest */
     padding-top: var(--header-height, 60px);
 }
@@ -605,6 +608,7 @@ a:hover {
 
 .htbs-slider-container {
     flex: 1;
+    min-height: 0;
     width: 100%;
     display: flex;
     align-items: center;
@@ -614,6 +618,12 @@ a:hover {
 
 .htbs-slider-wrapper {
     width: 94%;
+}
+
+/* Vertical centering: let the container's align-items: center handle it.
+   Track only needs align-items for mixed-height slides in a row. */
+.htbs-slider-wrapper .slider-track {
+    align-items: center;
 }
 
 /* Slide content — center frames and plaques within each slide */
@@ -635,8 +645,10 @@ a:hover {
 }
 
 .htbs-slide-link .frame-image img {
-    width: 100%;
+    width: auto;
     height: auto;
+    max-width: 100%;
+    max-height: 56vh;
     display: block;
 }
 
@@ -645,6 +657,17 @@ a:hover {
     align-items: center;
     justify-content: center;
     padding: 10px;
+    transition: width 0.4s ease;
+}
+
+/* One-per-wall proportional scaling — portraits are the reference size,
+   landscapes at 75%, extreme panos at 85% so portraits don't feel tiny */
+.slider-slide[data-orient="landscape"] .htbs-slide-link .frame-image img {
+    max-height: 42vh;
+}
+
+.slider-slide[data-orient="pano"] .htbs-slide-link .frame-image img {
+    max-height: 48vh;
 }
 
 /* Slider controls styling */
@@ -702,7 +725,8 @@ body.archive-page #scroll-stage {
     margin: 0 auto;
     max-width: 1600px;
     width: 100%;
-    align-content: center;
+    align-content: start;
+    align-items: start;
     justify-items: center;
 }
 
@@ -775,15 +799,21 @@ body.archive-page #scroll-stage {
 
 .htbs-archive-item .htbs-plain-thumb img {
     width: 100%;
-    height: auto;
+    height: 100%;
     display: block;
+    object-fit: cover;
 }
 
-/* Archive images */
+/* Archive images — fill the aspect-ratio container, crop excess */
+.htbs-archive-item .frame-image {
+    overflow: hidden;
+}
+
 .htbs-archive-item .frame-image img {
     width: 100%;
-    height: auto;
+    height: 100%;
     display: block;
+    object-fit: cover;
 }
 
 /* Title overlay on archive items */
@@ -813,7 +843,7 @@ body.archive-page #scroll-stage {
 
 .htbs-filmstrip {
     position: fixed;
-    bottom: 0;
+    bottom: var(--footer-bar-height, 50px);
     left: 0;
     right: 0;
     background: rgba(255, 255, 255, 0.95);
@@ -921,6 +951,16 @@ footer a {
 .htbs-footer a:hover,
 footer a:hover {
     color: #a0803f;
+}
+
+/* Lock footer to viewport bottom on single image view */
+.htbs-single footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 79;
+    margin-top: 0;
 }
 
 /* ============================================================================
@@ -1374,16 +1414,34 @@ footer a:hover {
     }
 
     .htbs-single {
-        padding-top: 50px;
+        padding-top: 6vh;
+        padding-bottom: calc(12vh + var(--footer-bar-height, 3vh));
+    }
+
+    .htbs-gallery-room {
+        padding: 1.5vh 2vw;
     }
 
     .htbs-gallery-room .frame-mount {
-        max-width: 100%;
-        padding: 15px;
+        max-width: 96vw;
+        padding: 1.5vw;
     }
 
-    .htbs-gallery-room .frame-border {
-        max-height: 60vh;
+    .htbs-gallery-room .frame-image img {
+        max-width: calc(92vw - 2.5vw - 2 * var(--frame-width, 6px) - 2 * var(--mat-width, 14px));
+        max-height: calc(82vh - 16vh - 2 * var(--frame-width, 6px) - 2 * var(--mat-width, 14px));
+    }
+
+    .htbs-slide-link .frame-image img {
+        max-height: 48vh;
+    }
+
+    .slider-slide[data-orient="landscape"] .htbs-slide-link .frame-image img {
+        max-height: 36vh;
+    }
+
+    .slider-slide[data-orient="pano"] .htbs-slide-link .frame-image img {
+        max-height: 41vh;
     }
 
     .htbs-nav-arrow {
@@ -1413,19 +1471,6 @@ footer a:hover {
     .htbs-filmstrip-item {
         width: 60px;
         height: 60px;
-    }
-
-    .plaque {
-        margin-top: 15px;
-        padding: 10px 20px;
-    }
-
-    .plaque-title {
-        font-size: 14px;
-    }
-
-    .plaque-date {
-        font-size: 10px;
     }
 
     .htbs-overlay-box {
@@ -1473,15 +1518,26 @@ footer a:hover {
     }
 
     .htbs-single {
-        padding-top: 45px;
+        padding-top: 5.5vh;
+        padding-bottom: calc(10vh + var(--footer-bar-height, 3vh));
+    }
+
+    .htbs-gallery-room {
+        padding: 1vh 1.5vw;
     }
 
     .htbs-gallery-room .frame-mount {
-        padding: 10px;
+        max-width: 98vw;
+        padding: 1vw;
     }
 
-    .htbs-gallery-room .frame-border {
-        max-height: 50vh;
+    .htbs-gallery-room .frame-image img {
+        max-width: calc(96vw - 2vw - 2 * var(--frame-width, 4px) - 2 * var(--mat-width, 12px));
+        max-height: calc(82vh - 14vh - 2 * var(--frame-width, 4px) - 2 * var(--mat-width, 12px));
+    }
+
+    .htbs-slide-link .frame-image img {
+        max-height: 44vh;
     }
 
     .htbs-nav-arrow {
@@ -1510,19 +1566,6 @@ footer a:hover {
         height: 50px;
     }
 
-    .plaque {
-        margin-top: 12px;
-        padding: 8px 15px;
-    }
-
-    .plaque-title {
-        font-size: 12px;
-    }
-
-    .plaque-date {
-        font-size: 9px;
-    }
-
     .htbs-overlay-box {
         width: 98%;
     }
@@ -1536,6 +1579,134 @@ footer a:hover {
         font-size: 9px;
         letter-spacing: 1px;
     }
+}
+
+/* ============================================================================
+   Static Pages & Blogroll
+   Shared styling for blogroll.php, about.php, and other static pages.
+   Clears the fixed header and provides a centered content lane.
+   ============================================================================ */
+
+body.static-transmission {
+    padding-top: var(--header-height, 60px);
+    background: #ffffff;
+    background-image: none;
+}
+
+body.static-transmission #scroll-stage {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Page title — big, airy, gallery-catalog feel */
+.static-page-title {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 28px;
+    font-weight: 400;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    margin: 0 0 60px 0;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #d5d0cb;
+}
+
+/* Blogroll canvas — generous centered content lane */
+.blogroll-canvas {
+    max-width: 720px;
+    margin: 60px auto 80px auto;
+    padding: 0 40px;
+    box-sizing: border-box;
+    text-align: left;
+    flex: 1;
+}
+
+/* Category block — breathe between groups */
+.blogroll-category-block {
+    margin-bottom: 70px;
+}
+
+/* Category heading — refined label */
+.blogroll-category-heading {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 13px;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    color: var(--accent-color);
+    margin: 0 0 36px 0;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #d5d0cb;
+}
+
+/* Peer grid */
+.blogroll-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+}
+
+/* Individual peer — generous padding, subtle dividers */
+.blogroll-peer {
+    padding: 32px 0;
+    border-bottom: 1px solid #e8e4e0;
+    transition: background 0.3s ease;
+}
+
+.blogroll-peer:first-child {
+    padding-top: 0;
+}
+
+.blogroll-peer:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.blogroll-peer:hover {
+    background: transparent;
+}
+
+/* Peer name — prominent, warm link */
+.blogroll-peer-name {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 22px;
+    font-weight: 400;
+    margin-bottom: 8px;
+    line-height: 1.3;
+}
+
+.blogroll-peer-name a {
+    color: var(--accent-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.blogroll-peer-name a:hover {
+    color: var(--text-primary);
+}
+
+/* Peer description — elegant serif body text */
+.blogroll-peer-desc {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 16px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin: 0 0 10px 0;
+    padding: 0;
+    max-width: 600px;
+}
+
+/* Peer URL — quiet, monospaced whisper */
+.blogroll-peer-url {
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: #b0a89e;
+}
+
+.dim {
+    color: var(--text-secondary);
 }
 
 /* ============================================================================

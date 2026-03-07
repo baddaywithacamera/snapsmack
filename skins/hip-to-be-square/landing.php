@@ -50,9 +50,16 @@ $loop = ($settings['htbs_slider_loop'] ?? '1') === '1';
                         if (!empty($d_opts['mat_width'])) $style_parts[] = "--mat-width:{$d_opts['mat_width']}px";
                         $inline = !empty($style_parts) ? ' style="' . implode(';', $style_parts) . '"' : '';
 
-                        // Use square thumbnail for slider
-                        $thumb = $slide['img_thumb_square'] ?? '';
-                        $img_url = !empty($thumb) ? BASE_URL . ltrim($thumb, '/') : BASE_URL . ltrim($slide['img_file'], '/');
+                        // Square thumbs only — it's Hip to be SQUARE
+                        // Prefer DB square thumb; fall back to constructed thumb path
+                        if (!empty($slide['img_thumb_square'])) {
+                            $img_url = BASE_URL . ltrim($slide['img_thumb_square'], '/');
+                        } elseif (!empty($slide['img_file'])) {
+                            $pi = pathinfo($slide['img_file']);
+                            $img_url = BASE_URL . ltrim($pi['dirname'] . '/thumbs/t_' . $pi['basename'], '/');
+                        } else {
+                            $img_url = '';
+                        }
                     ?>
                     <div class="slider-slide">
                         <a href="<?php echo $slide_link; ?>" class="htbs-slide-link">

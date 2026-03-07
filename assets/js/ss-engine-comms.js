@@ -1,10 +1,18 @@
 /**
  * SNAPSMACK - Hotkey Engine
- * Alpha v0.6
+ * Alpha v0.7
  *
  * Keyboard navigation and shortcuts. F1 opens help menu, ESC closes overlays,
- * arrow keys navigate gallery, number keys toggle info panes.
+ * arrow keys navigate gallery (or control slider when present), number keys
+ * toggle info panes.
+ *
+ * Double-load guard: this script is loaded both by skin-footer.php (via the
+ * manifest require_scripts list) and globally by core/footer-scripts.php.
+ * The guard ensures only one set of event listeners is registered.
  */
+
+if (!window._ssCommsLoaded) {
+window._ssCommsLoaded = true;
 
 // --- HELP SYSTEM ---
 
@@ -33,8 +41,12 @@ document.addEventListener('keydown', function(e) {
         return;
     }
 
-    // Gallery navigation with arrow keys
-    if (window.SNAP_DATA) {
+    // Slider detection: if a slider is active on the page, arrow keys and
+    // spacebar should control the slider, not navigate between posts.
+    var sliderActive = !!document.querySelector('.ss-slider');
+
+    // Gallery navigation with arrow keys (single post view only)
+    if (window.SNAP_DATA && !sliderActive) {
         if (e.key === 'ArrowLeft' && window.SNAP_DATA.prevUrl) {
             window.location.href = window.SNAP_DATA.prevUrl;
         }
@@ -46,7 +58,6 @@ document.addEventListener('keydown', function(e) {
         // Spacebar navigates backward through archive (newest to oldest)
         if (e.key === ' ') {
             e.preventDefault();
-            const isAtBottom = (window.innerHeight + window.scrollY) >= document.body.offsetHeight - 5;
 
             if (window.SNAP_DATA.prevUrl) {
                 window.location.href = window.SNAP_DATA.prevUrl;
@@ -146,10 +157,17 @@ function createHelpModal() {
     const bgColor = style.backgroundColor;
     const textColor = style.color;
 
-    const commentsEnabled = document.getElementById('show-comments') !== null;
-    const commentHint = commentsEnabled ? '<strong>[ 2 ]</strong> <span>Toggle Comments</span>' : '';
-    const downloadAvail = document.querySelector('.snap-download-btn') !== null;
-    const downloadHint = downloadAvail ? '<strong>[ D ]</strong> <span>Download</span>' : '';
+    // Detect available features to show relevant shortcuts
+    var sliderPresent = !!document.querySelector('.ss-slider');
+    var commentsEnabled = document.getElementById('show-comments') !== null;
+    var commentHint = commentsEnabled ? '<strong>[ 2 ]</strong> <span>Toggle Comments</span>' : '';
+    var downloadAvail = document.querySelector('.snap-download-btn') !== null;
+    var downloadHint = downloadAvail ? '<strong>[ D ]</strong> <span>Download</span>' : '';
+
+    // Arrow key labels adapt to slider vs single post context
+    var leftLabel = sliderPresent ? 'Prev Slide' : 'Prev Image';
+    var rightLabel = sliderPresent ? 'Next Slide' : 'Next Image';
+    var spaceLabel = sliderPresent ? '' : '<strong>SPACE</strong> <span>Prev Image</span>';
 
     const backdrop = document.createElement('div');
     backdrop.id = 'snap-help-modal';
@@ -170,9 +188,9 @@ function createHelpModal() {
     panel.innerHTML = `
         <h2 style="margin-top:0; margin-bottom:20px; font-size:1.2rem; letter-spacing:2px; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:10px; text-align:center;">System Controls</h2>
         <div style="display: grid; grid-template-columns: 100px 1fr; gap: 10px; text-align: left; font-size: 13px; width: fit-content; margin: 0 auto;">
-            <strong>LEFT</strong> <span>Prev Image</span>
-            <strong>RIGHT</strong> <span>Next Image</span>
-            <strong>SPACE</strong> <span>Next / Prev Image</span>
+            <strong>LEFT</strong> <span>${leftLabel}</span>
+            <strong>RIGHT</strong> <span>${rightLabel}</span>
+            ${spaceLabel}
             <strong>[ 1 ]</strong> <span>Toggle Info</span>
             ${commentHint}
             ${downloadHint}
@@ -200,3 +218,5 @@ function closeAllOverlays() {
         window.smackdown.closeLightbox();
     }
 }
+
+} // end double-load guard
