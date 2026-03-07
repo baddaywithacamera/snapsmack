@@ -1,6 +1,11 @@
 /**
  * SnapSmack Gallery Slider Engine
- * A lightweight, dependency-free horizontal gallery slider component
+ * Alpha v0.7
+ *
+ * A lightweight, dependency-free horizontal gallery slider component.
+ * Panorama-aware: images wider than panoThreshold automatically get
+ * full-width slides so they display at a usable size instead of being
+ * squeezed into a perView fraction.
  *
  * Usage:
  *   var slider = new SnapSlider({
@@ -10,7 +15,8 @@
  *     easing: 'ease-in-out',
  *     autoAdvance: false,
  *     autoInterval: 5000,
- *     loop: true
+ *     loop: true,
+ *     panoThreshold: 2.0   // aspect ratio above which a slide goes full-width
  *   });
  */
 
@@ -28,6 +34,7 @@
     this.autoAdvance = options.autoAdvance || false;
     this.autoInterval = options.autoInterval || 5000;
     this.loop = options.loop !== false;
+    this.panoThreshold = options.panoThreshold || 2.0;
 
     // State
     this.currentIndex = 0;
@@ -36,7 +43,11 @@
     this.autoPlayTimer = null;
     this.trackElement = null;
     this.slides = [];
-    this.slideWidth = 0;
+
+    // Per-slide layout (panorama-aware)
+    this.slideSpans = [];    // 1 = normal, perView = full-width pano
+    this.slideWidths = [];   // computed px width per slide
+    this.slideOffsets = [];  // cumulative px offset to each slide
 
     // Binding
     this._onNextClick = this._onNextClick.bind(this);
@@ -70,7 +81,7 @@
     // Add main slider class
     this.container.classList.add('ss-slider');
 
-    // Set CSS custom property for perView
+    // Set CSS custom property for perView (used by base CSS as fallback)
     this.container.style.setProperty('--per-view', this.perView);
 
     // Find track element
@@ -94,6 +105,9 @@
       slide.classList.add('slider-slide');
     });
 
+    // Analyze aspect ratios and assign spans
+    this._analyzeSlides();
+
     // Set initial transform state
     this.trackElement.style.transition = 'none';
     this.trackElement.style.transform = 'translateX(0)';
@@ -101,7 +115,7 @@
     // Create navigation arrows
     this._createArrows();
 
-    // Calculate dimensions
+    // Calculate dimensions (uses slideSpans from _analyzeSlides)
     this._calculateDimensions();
 
     // Attach event listeners
@@ -111,6 +125,67 @@
     if (this.autoAdvance) {
       this._startAutoPlay();
     }
+  };
+
+  /**
+   * Scan each slide's image for aspect ratio.
+   * Images wider than panoThreshold get full-width treatment (span = perView).
+   * Handles lazy-loaded images by re-analyzing when they finish loading.
+   */
+  SnapSlider.prototype._analyzeSlides = function() {
+    var self = this;
+    this.slideSpans = [];
+
+    this.slides.forEach(function(slide, i) {
+      var img = slide.querySelector('img');
+      if (!img) {
+        self.slideSpans[i] = 1;
+        return;
+      }
+
+      // If the image is already loaded, check its dimensions
+      if (img.naturalWidth && img.naturalHeight) {
+        var ratio = img.naturalWidth / img.naturalHeight;
+        self.slideSpans[i] = self._spanForRatio(ratio);
+        self._classifySlide(slide, ratio);
+      } else {
+        // Not loaded yet — default to 1, re-check on load
+        self.slideSpans[i] = 1;
+        img.addEventListener('load', function() {
+          var ratio = img.naturalWidth / img.naturalHeight;
+          var newSpan = self._spanForRatio(ratio);
+          self._classifySlide(slide, ratio);
+          if (newSpan !== self.slideSpans[i]) {
+            self.slideSpans[i] = newSpan;
+            self._calculateDimensions();
+            self._updateSlidePosition(false);
+          }
+        });
+      }
+    });
+  };
+
+  /**
+   * Tag a slide with orientation data for CSS proportional scaling.
+   * portrait (<0.9), landscape (0.9–panoThreshold), pano (>=panoThreshold)
+   */
+  SnapSlider.prototype._classifySlide = function(slide, ratio) {
+    if (ratio < 0.9) {
+      slide.setAttribute('data-orient', 'portrait');
+    } else if (ratio >= this.panoThreshold) {
+      slide.setAttribute('data-orient', 'pano');
+    } else {
+      slide.setAttribute('data-orient', 'landscape');
+    }
+  };
+
+  /**
+   * Determine how many "slots" a slide should span based on aspect ratio.
+   * Returns 1 for normal images, perView for panoramas (full container width).
+   */
+  SnapSlider.prototype._spanForRatio = function(ratio) {
+    if (this.perView <= 1) return 1;
+    return (ratio >= this.panoThreshold) ? this.perView : 1;
   };
 
   /**
@@ -133,11 +208,32 @@
   };
 
   /**
-   * Calculate slide dimensions based on perView
+   * Calculate per-slide widths and cumulative offsets.
+   * Normal slides get containerWidth / perView.
+   * Panoramic slides get containerWidth (full width).
    */
   SnapSlider.prototype._calculateDimensions = function() {
     var containerWidth = this.container.offsetWidth;
-    this.slideWidth = containerWidth / this.perView;
+    var unitWidth = containerWidth / this.perView;
+
+    this.slideWidths = [];
+    this.slideOffsets = [];
+    var offset = 0;
+
+    for (var i = 0; i < this.totalSlides; i++) {
+      var span = this.slideSpans[i] || 1;
+      var w = unitWidth * span;
+      this.slideWidths[i] = w;
+      this.slideOffsets[i] = offset;
+
+      // Override CSS width on this slide element
+      this.slides[i].style.width = w + 'px';
+
+      offset += w;
+    }
+
+    // Set track total width so flexbox doesn't compress slides
+    this.trackElement.style.width = offset + 'px';
   };
 
   /**
@@ -288,16 +384,56 @@
   };
 
   /**
-   * Navigate to next slide
+   * Find the first slide of the next "page" — the first slide that isn't
+   * fully visible from the current position. This ensures panos (and any
+   * other wide slides) always snap to their own view, never partially shown.
+   */
+  SnapSlider.prototype._nextPageIndex = function() {
+    var containerWidth = this.container.offsetWidth;
+    var currentOffset = this.slideOffsets[this.currentIndex] || 0;
+    var edge = currentOffset + containerWidth;
+
+    // Find first slide whose right edge exceeds the visible area
+    for (var i = this.currentIndex + 1; i < this.totalSlides; i++) {
+      var slideRight = this.slideOffsets[i] + this.slideWidths[i];
+      if (slideRight > edge + 1) { // +1 for rounding tolerance
+        return i;
+      }
+    }
+    // All remaining slides fit — we're at the end
+    return -1;
+  };
+
+  /**
+   * Find the first slide of the previous "page" — step back by one
+   * container width from the current position.
+   */
+  SnapSlider.prototype._prevPageIndex = function() {
+    var containerWidth = this.container.offsetWidth;
+    var currentOffset = this.slideOffsets[this.currentIndex] || 0;
+    var target = currentOffset - containerWidth;
+    if (target <= 0) return 0;
+
+    // Find the slide that contains this target offset
+    for (var i = this.totalSlides - 1; i >= 0; i--) {
+      if (this.slideOffsets[i] <= target + 1) {
+        return i;
+      }
+    }
+    return 0;
+  };
+
+  /**
+   * Navigate to next page of slides
    */
   SnapSlider.prototype.next = function() {
     if (this.isAnimating || this.totalSlides === 0) {
       return;
     }
 
-    var nextIndex = this.currentIndex + 1;
+    var nextIndex = this._nextPageIndex();
 
-    if (nextIndex >= this.totalSlides) {
+    if (nextIndex === -1) {
       if (this.loop) {
         this.goTo(0);
       }
@@ -308,16 +444,17 @@
   };
 
   /**
-   * Navigate to previous slide
+   * Navigate to previous page of slides
    */
   SnapSlider.prototype.prev = function() {
     if (this.isAnimating || this.totalSlides === 0) {
       return;
     }
 
-    var prevIndex = this.currentIndex - 1;
+    var prevIndex = this._prevPageIndex();
 
-    if (prevIndex < 0) {
+    if (prevIndex >= this.currentIndex) {
+      // Already at or past the beginning
       if (this.loop) {
         this.goTo(this.totalSlides - 1);
       }
@@ -348,10 +485,33 @@
   };
 
   /**
-   * Update slide position with animation
+   * Update slide position using cumulative offsets (panorama-aware).
+   * Each slide may have a different width, so offset is looked up
+   * from the slideOffsets array instead of multiplying by a uniform width.
+   *
+   * When the remaining slides from currentIndex to the end don't fill the
+   * container width, they are centered horizontally for a polished look.
    */
   SnapSlider.prototype._updateSlidePosition = function(animate) {
-    var offset = -this.currentIndex * this.slideWidth;
+    var containerWidth = this.container.offsetWidth;
+    var lastSlide = this.totalSlides - 1;
+    var totalTrackWidth = this.slideOffsets[lastSlide] + this.slideWidths[lastSlide];
+
+    // Width of all slides from currentIndex to end
+    var remainingWidth = totalTrackWidth - (this.slideOffsets[this.currentIndex] || 0);
+
+    var offset;
+    if (totalTrackWidth <= containerWidth) {
+      // Fewer slides than can fill the view — center the whole track
+      offset = (containerWidth - totalTrackWidth) / 2;
+    } else if (remainingWidth < containerWidth) {
+      // End of track: center the remaining slides within the container
+      var gap = containerWidth - remainingWidth;
+      offset = -(this.slideOffsets[this.currentIndex] || 0) + (gap / 2);
+    } else {
+      // Normal: position current slide at left edge
+      offset = -(this.slideOffsets[this.currentIndex] || 0);
+    }
 
     if (animate) {
       this.isAnimating = true;
@@ -394,7 +554,7 @@
     var self = this;
     this.autoPlayTimer = setInterval(function() {
       self.next();
-    }, this.autoInterval);
+    }, self.autoInterval);
   };
 
   /**
@@ -424,11 +584,13 @@
     this.container.classList.remove('ss-slider');
     this.slides.forEach(function(slide) {
       slide.classList.remove('slider-slide');
+      slide.style.width = '';
     });
 
     // Reset styles
     this.trackElement.style.transition = '';
     this.trackElement.style.transform = '';
+    this.trackElement.style.width = '';
     this.container.style.setProperty('--per-view', '');
 
     // Clear state
@@ -436,6 +598,9 @@
     this.trackElement = null;
     this.currentIndex = 0;
     this.totalSlides = 0;
+    this.slideSpans = [];
+    this.slideWidths = [];
+    this.slideOffsets = [];
   };
 
   // Expose to window

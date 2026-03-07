@@ -3,6 +3,7 @@
  * Hip to be Square - Archive Grid Layout
  *
  * Skin-specific archive grid with miniature picture frames.
+ * Square thumbnails only — it's in the name.
  * Variables available from archive.php: $images, $settings, $all_cats, $all_albums,
  * $cat_filter, $album_filter, $archive_layout
  */
@@ -18,7 +19,7 @@ $grid_cols = (int)($settings['htbs_archive_cols'] ?? 4);
             $full_img_path = ltrim($img['img_file'], '/');
             $filename = basename($full_img_path);
             $folder = str_replace($filename, '', $full_img_path);
-            // Use square thumbnail for the grid
+            // Square thumbnails only
             $thumb_url = BASE_URL . $folder . 'thumbs/t_' . $filename;
 
             // Per-image frame overrides

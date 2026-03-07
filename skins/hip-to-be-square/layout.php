@@ -46,11 +46,6 @@ $comments_active = ($global_on && $post_on);
             </div>
         </div>
 
-        <!-- Plaque label -->
-        <div class="plaque">
-            <div class="plaque-title"><?php echo htmlspecialchars($img['img_title']); ?></div>
-            <div class="plaque-date"><?php echo date('F j, Y', strtotime($img['img_date'])); ?></div>
-        </div>
     </div>
 
     <div id="infobox">
@@ -72,6 +67,10 @@ $comments_active = ($global_on && $post_on);
 
                 <!-- INFO pane -->
                 <div id="htbs-pane-info" class="htbs-pane active">
+                    <div class="info-title-block">
+                        <div class="info-title"><?php echo htmlspecialchars($img['img_title']); ?></div>
+                        <div class="info-date"><?php echo date('F j, Y', strtotime($img['img_date'])); ?></div>
+                    </div>
                     <div class="description">
                         <?php echo $snapsmack->parseContent($img['img_description'] ?? ''); ?>
                     </div>

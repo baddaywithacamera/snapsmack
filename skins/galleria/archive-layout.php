@@ -9,17 +9,36 @@
 
 $show_frames = ($settings['htbs_archive_miniframes'] ?? '1') === '1';
 $grid_cols = (int)($settings['htbs_archive_cols'] ?? 4);
+
+// Aspect ratio bounds — clamp between 2:3 (portrait) and 3:2 (landscape)
+$ratio_min = 2 / 3;  // 0.667
+$ratio_max = 3 / 2;  // 1.500
 ?>
 
 <div class="htbs-archive-grid" style="--grid-cols: <?php echo $grid_cols; ?>;">
     <?php if ($images): ?>
         <?php foreach ($images as $img):
             $link = BASE_URL . htmlspecialchars($img['img_slug']);
-            $full_img_path = ltrim($img['img_file'], '/');
-            $filename = basename($full_img_path);
-            $folder = str_replace($filename, '', $full_img_path);
-            // Use square thumbnail for the grid
-            $thumb_url = BASE_URL . $folder . 'thumbs/t_' . $filename;
+
+            // Prefer aspect-ratio thumbnail, fall back to square thumb
+            if (!empty($img['img_thumb_aspect'])) {
+                $thumb_url = BASE_URL . ltrim($img['img_thumb_aspect'], '/');
+            } else {
+                $full_img_path = ltrim($img['img_file'], '/');
+                $filename = basename($full_img_path);
+                $folder = str_replace($filename, '', $full_img_path);
+                $thumb_url = BASE_URL . $folder . 'thumbs/t_' . $filename;
+            }
+
+            // Compute clamped aspect ratio from stored dimensions
+            $iw = (int)($img['img_width'] ?? 0);
+            $ih = (int)($img['img_height'] ?? 0);
+            if ($iw > 0 && $ih > 0) {
+                $ratio = $iw / $ih;
+                $ratio = max($ratio_min, min($ratio_max, $ratio));
+            } else {
+                $ratio = 1; // fallback square
+            }
 
             // Per-image frame overrides
             $d_opts = [];
@@ -39,7 +58,7 @@ $grid_cols = (int)($settings['htbs_archive_cols'] ?? 4);
                         <div class="frame-border">
                             <div class="frame-mat">
                                 <div class="frame-bevel">
-                                    <div class="frame-image">
+                                    <div class="frame-image" style="aspect-ratio: <?php echo round($ratio, 4); ?>;">
                                         <img src="<?php echo $thumb_url; ?>"
                                              alt="<?php echo htmlspecialchars($img['img_title']); ?>"
                                              loading="lazy">
@@ -49,7 +68,7 @@ $grid_cols = (int)($settings['htbs_archive_cols'] ?? 4);
                         </div>
                     </div>
                 <?php else: ?>
-                    <div class="htbs-plain-thumb">
+                    <div class="htbs-plain-thumb" style="aspect-ratio: <?php echo round($ratio, 4); ?>;">
                         <img src="<?php echo $thumb_url; ?>"
                              alt="<?php echo htmlspecialchars($img['img_title']); ?>"
                              loading="lazy">
