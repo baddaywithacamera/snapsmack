@@ -152,9 +152,13 @@ if (isset($_POST['save_skin_settings'])) {
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
         ->execute([$active_skin, $active_skin]);
 
-    // 4b. Refresh local settings cache for CSS compilation.
+    // 4b. Refresh local settings cache for CSS compilation AND form display.
+    // Both $all_settings (used by compiler) and $settings (used by form rendering)
+    // must reflect the just-saved values. Without this, the form shows stale values
+    // after save, and a second save would silently revert changes.
     $all_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
     snapsmack_apply_skin_settings($all_settings, $active_skin);
+    $settings = $all_settings;
 
     // 4c. Public CSS Compilation.
     $generated_public = "/* SKIN_START */\n";
