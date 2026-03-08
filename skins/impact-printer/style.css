@@ -500,12 +500,13 @@ body {
 #browse-grid.square-grid,
 #browse-grid.cropped-grid {
     display: grid;
-    grid-template-columns: repeat(var(--grid-cols, 4), 1fr);
+    grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 200px));
     gap: var(--grid-gap, 80px);
     max-width: 95%;
     margin: 60px auto;
     padding: 0 20px;
-    flex: 1 0 auto;
+    justify-content: center;
+    flex: 0 0 auto;
 }
 
 .square-grid .thumb-container,
@@ -515,19 +516,25 @@ body {
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
 }
 
 .square-grid .thumb-link,
 .cropped-grid .thumb-link {
-    display: inline-block;
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
     border: 1px solid var(--border);
     box-shadow: none;
+    box-sizing: border-box;
 }
 
 .square-grid .thumb-link img,
 .cropped-grid .thumb-link img {
-    max-width: var(--thumb-width, 400px);
-    height: auto;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     display: block;
     transition: opacity 0.3s ease;
     opacity: var(--ip-ink-opacity, 0.65);
