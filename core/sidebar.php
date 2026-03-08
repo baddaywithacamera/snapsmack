@@ -31,8 +31,8 @@ $_section_map = [
     'help'       => ['smack-help.php'],
 ];
 $_active_section = 'good-shit'; // default
-foreach ($_section_map as $sec => $pages) {
-    if (in_array($current_page, $pages)) {
+foreach ($_section_map as $sec => $_sec_pages) {
+    if (in_array($current_page, $_sec_pages)) {
         $_active_section = $sec;
         break;
     }
