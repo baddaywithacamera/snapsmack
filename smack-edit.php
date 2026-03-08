@@ -204,14 +204,18 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper post-description-wrap">
                         <label>DESCRIPTION / STORY</label>
                         <div class="sc-toolbar" data-target="desc">
-                            <button type="button" class="sc-btn" data-action="bold" title="Bold">B</button>
-                            <button type="button" class="sc-btn" data-action="italic" title="Italic">I</button>
+                            <button type="button" class="sc-btn" data-action="bold" title="Bold (Ctrl+B)">B</button>
+                            <button type="button" class="sc-btn" data-action="italic" title="Italic (Ctrl+I)">I</button>
+                            <button type="button" class="sc-btn" data-action="underline" title="Underline (Ctrl+U)">U</button>
                             <button type="button" class="sc-btn" data-action="link" title="Insert Link">LINK</button>
                             <span class="sc-sep"></span>
                             <button type="button" class="sc-btn" data-action="h2" title="Heading 2">H2</button>
                             <button type="button" class="sc-btn" data-action="h3" title="Heading 3">H3</button>
                             <button type="button" class="sc-btn" data-action="blockquote" title="Blockquote">BQ</button>
                             <button type="button" class="sc-btn" data-action="hr" title="Horizontal Rule">HR</button>
+                            <span class="sc-sep"></span>
+                            <button type="button" class="sc-btn" data-action="ul" title="Bullet List">UL</button>
+                            <button type="button" class="sc-btn" data-action="ol" title="Numbered List">OL</button>
                             <span class="sc-sep"></span>
                             <button type="button" class="sc-btn" data-action="img" title="Insert Image Shortcode">IMG</button>
                             <button type="button" class="sc-btn" data-action="col2" title="2-Column Layout">COL 2</button>
