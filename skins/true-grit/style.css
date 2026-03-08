@@ -46,7 +46,7 @@ body::before {
     width: 100%;
     height: 100%;
     background-color: var(--overlay-color, #1a1a1a);
-    opacity: var(--overlay-opacity, 0.4);
+    opacity: calc(var(--overlay-opacity, 40) / 100);
     pointer-events: none;
     z-index: 0;
 }
@@ -79,7 +79,7 @@ body::before {
    ========================================================================= */
 
 #tg-header {
-    background: var(--bg-primary);
+    background-color: var(--bg-primary);
     height: 80px;
     padding: 0;
     flex-shrink: 0;
@@ -312,7 +312,7 @@ body::before {
    ========================================================================= */
 
 #system-footer {
-    background: var(--bg-chrome) !important;
+    background-color: var(--bg-chrome);
     padding: 32px 0 !important;
     text-align: center !important;
     width: 100% !important;
@@ -483,15 +483,17 @@ body::before {
 
 .square-grid .thumb-link,
 .cropped-grid .thumb-link {
-    display: inline-block;
+    display: block;
     border: none;
     box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    width: 100%;
 }
 
 .square-grid .thumb-link img,
 .cropped-grid .thumb-link img {
-    max-width: var(--thumb-width, 400px);
-    height: auto;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     display: block;
     transition: opacity 0.3s ease;
 }
@@ -534,11 +536,10 @@ body::before {
 
 .static-content {
     max-width: 850px !important;
-    margin: 40px auto 0 auto !important;
-    padding-left: 20px;
-    padding-right: 20px;
+    margin: 0 auto 0 auto !important;
+    padding: 0 40px 50px 40px;
     box-sizing: border-box;
-    background: transparent;
+    background: var(--bg-primary);
     text-align: left;
     overflow-x: hidden;
 }
@@ -552,9 +553,8 @@ body::before {
 .static-page-title {
     width: 100% !important;
     max-width: 850px !important;
-    margin: 0 0 40px 0 !important;
-    padding-left: 24px !important;
-    padding-right: 20px !important;
+    margin: 0 0 20px 0 !important;
+    padding: 30px 0 0 0 !important;
     text-align: left !important;
     display: block !important;
     box-sizing: border-box !important;
@@ -564,6 +564,7 @@ body::before {
     letter-spacing: 1px;
     font-size: 2rem;
     font-weight: 300;
+    background: var(--bg-primary);
 }
 
 .static-transmission .description .align-left {
@@ -764,9 +765,10 @@ body::before {
 .blogroll-canvas {
     max-width: 900px;
     margin: 40px auto 0 auto;
-    padding: 0 20px;
+    padding: 30px 40px 50px 40px;
     box-sizing: border-box;
     text-align: left;
+    background: var(--bg-primary);
 }
 
 .blogroll-category-block {

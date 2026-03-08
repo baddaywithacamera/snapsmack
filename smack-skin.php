@@ -650,6 +650,7 @@ if (!empty($google_families)) {
                                 <div class="range-wrapper">
                                     <input type="range" name="skin_opt[<?php echo $k; ?>]"
                                         min="<?php echo $o['min']; ?>" max="<?php echo $o['max']; ?>"
+                                        step="<?php echo $o['step'] ?? '1'; ?>"
                                         value="<?php echo htmlspecialchars($val); ?>"
                                         oninput="this.nextElementSibling.innerText = this.value + '<?php echo $display_unit; ?>'">
                                     <span class="active-val"><?php echo strtoupper(htmlspecialchars($val)); ?><?php echo $display_unit; ?></span>

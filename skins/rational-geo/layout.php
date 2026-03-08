@@ -26,7 +26,7 @@ $border_colors = [
 ];
 $bc = $settings['image_border_color'] ?? 'yellow';
 $border_val = $border_colors[$bc] ?? '#FFCC00';
-$hero_bw = (int)($settings['hero_border_width'] ?? '8');
+$hero_bw = (int)($settings['hero_border_width'] ?? '20');
 
 // EXIF labels
 $exif_labels = [
@@ -80,17 +80,12 @@ $exif_labels = [
             <img class="rg-image post-image"
                  src="<?php echo BASE_URL . ltrim($img['img_file'], '/'); ?>"
                  alt="<?php echo htmlspecialchars($img['img_title']); ?>"
-                 style="border: <?php echo $hero_bw; ?>px solid <?php echo htmlspecialchars($border_val); ?>;">
+                 style="border: var(--rg-hero-inner, 4px) solid #ffffff; outline: <?php echo $hero_bw; ?>px solid <?php echo htmlspecialchars($border_val); ?>;">
             <?php echo $download_button; ?>
         </div>
     </div>
 
-    <!-- INFOBOX (core navigation bar) -->
-    <div id="infobox">
-        <?php include dirname(__DIR__, 2) . '/core/navigation_bar.php'; ?>
-    </div>
-
-    <!-- INFO DRAWER — slides UP from bottom (magazine caption block) -->
+    <!-- INFO DRAWER — expands between photobox and infobox (like New Horizon #footer) -->
     <div id="rg-info-drawer" class="rg-drawer rg-drawer-bottom">
         <div class="rg-drawer-inner">
             <h2 class="rg-photo-title"><?php echo htmlspecialchars($img['img_title']); ?></h2>
@@ -120,6 +115,11 @@ $exif_labels = [
                 </div>
             <?php endif; ?>
         </div>
+    </div>
+
+    <!-- INFOBOX (core navigation bar) — in-flow, flex-shrink: 0 -->
+    <div id="infobox">
+        <?php include dirname(__DIR__, 2) . '/core/navigation_bar.php'; ?>
     </div>
 
     <?php include('skin-footer.php'); ?>
@@ -223,9 +223,5 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isOpen(commDrawer)) closeDrawer(commDrawer);
     };
 
-    // --- Map background ---
-    <?php if ($show_map_bg): ?>
-    document.body.classList.add('rg-map-bg');
-    <?php endif; ?>
 });
 </script>

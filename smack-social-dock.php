@@ -51,7 +51,8 @@ if (isset($_POST['save_social_dock'])) {
         'social_dock_facebook', 'social_dock_youtube', 'social_dock_500px',
         'social_dock_vero', 'social_dock_threads', 'social_dock_bluesky',
         'social_dock_linkedin', 'social_dock_pinterest', 'social_dock_tumblr',
-        'social_dock_deviantart', 'social_dock_behance', 'social_dock_website',
+        'social_dock_deviantart', 'social_dock_behance', 'social_dock_linktree',
+        'social_dock_website',
     ];
 
     foreach ($platforms as $key) {
@@ -247,6 +248,9 @@ include 'core/sidebar.php';
 
                     <label>BEHANCE</label>
                     <input type="url" name="social_dock_behance" value="<?php echo htmlspecialchars($settings['social_dock_behance'] ?? ''); ?>" placeholder="https://www.behance.net/you">
+
+                    <label>LINKTREE</label>
+                    <input type="url" name="social_dock_linktree" value="<?php echo htmlspecialchars($settings['social_dock_linktree'] ?? ''); ?>" placeholder="https://linktr.ee/you">
 
                     <label>PERSONAL WEBSITE</label>
                     <input type="url" name="social_dock_website" value="<?php echo htmlspecialchars($settings['social_dock_website'] ?? ''); ?>" placeholder="https://yoursite.com">

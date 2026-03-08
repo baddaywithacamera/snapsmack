@@ -23,7 +23,9 @@
     --rg-link-hover:    #FFCC00;     /* links go yellow on hover */
     --rg-input-bg:      #ffffff;     /* form fields */
     --rg-overlay-bg:    rgba(245, 242, 237, 0.97);
-    --rg-map-opacity:   0.06;        /* subtle map background */
+
     --rg-shadow:        0 2px 8px rgba(0,0,0,0.08);
     --rg-shadow-hover:  0 4px 16px rgba(0,0,0,0.12);
+    --rg-nav-color:     #333333;
+    --rg-nav-dim:       rgba(0, 0, 0, 0.25);
 }

@@ -12,7 +12,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'          => '50 Shades of Noah Grey',
-    'version'       => '2.4',
+    'version'       => '1.0',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Pure greyscale photography skin. Three monochrome variants with zero colour accents.',
@@ -83,6 +83,18 @@ return [
         /* ============================================================
            SECTION 2: ARCHIVE GRID
            ============================================================ */
+
+        'archive_layout' => [
+            'section'  => 'ARCHIVE GRID',
+            'type'     => 'select',
+            'label'    => 'Archive Layout Mode',
+            'default'  => 'square',
+            'options'  => [
+                'square'  => 'Square Grid',
+                'cropped' => 'Cropped Grid (Natural Aspect)',
+                'masonry' => 'Justified / Masonry (Flickr Style)',
+            ],
+        ],
 
         'browse_cols' => [
             'section'  => 'ARCHIVE GRID',

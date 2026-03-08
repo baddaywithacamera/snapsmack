@@ -16,8 +16,10 @@
   --justified-row-height: 260px;
 
   /* Border Sizing */
-  --rg-hero-border: 8px;
-  --rg-thumb-border: 2px;
+  --rg-hero-border: 20px;
+  --rg-hero-inner: 4px;
+  --rg-thumb-border: 3px;
+  --rg-thumb-inner: 1px;
   --rg-border-color: #FFCC00;
 
   /* Typography Scale */
@@ -40,8 +42,7 @@
   --space-3xl: 4rem;
 
   /* Z-index Scale */
-  --z-map-bg: 0;
-  --z-content: 1;
+  --z-content: 2;
   --z-drawer: 10;
   --z-header: 100;
   --z-overlay: 1000;
@@ -61,6 +62,16 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Flex column viewport lock — mirrors New Horizon snapping engine.
+   z-index: 1 ensures content sits above body::after (the map pseudo at z:0). */
+#page-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
 body {
   font-family: 'Source Serif 4', Georgia, serif;
   font-size: var(--font-scale-base);
@@ -68,31 +79,29 @@ body {
   color: var(--rg-text-primary);
   background-color: var(--rg-bg-page);
   position: relative;
+
+  /* Map intensity variable — used by ::after pseudo for the SVG topo overlay */
 }
 
-/* Map background pattern — antique cartographic contour lines */
-body.rg-map-bg::before {
-  content: '';
+/* Cartographic background — SVG topographic map of western Canada.
+   Uses body::after pseudo so the slider (--rg-map-pct) can control opacity
+   without affecting body itself. The SVG tiles seamlessly and sits behind
+   all content since #page-wrapper establishes its own stacking layer.
+   The SVG (assets/topo-map.svg) is original artwork, no copyright. */
+body::after {
+  content: "";
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-image:
-    /* Fine latitude/longitude grid */
-    linear-gradient(0deg, transparent 24%, rgba(255, 204, 0, 0.025) 25%, rgba(255, 204, 0, 0.025) 26%, transparent 27%, transparent 74%, rgba(255, 204, 0, 0.025) 75%, rgba(255, 204, 0, 0.025) 76%, transparent 77%),
-    linear-gradient(90deg, transparent 24%, rgba(255, 204, 0, 0.025) 25%, rgba(255, 204, 0, 0.025) 26%, transparent 27%, transparent 74%, rgba(255, 204, 0, 0.025) 75%, rgba(255, 204, 0, 0.025) 76%, transparent 77%),
-    /* Larger grid overlay */
-    linear-gradient(0deg, transparent 49.5%, rgba(255, 204, 0, 0.04) 50%, rgba(255, 204, 0, 0.04) 50.5%, transparent 51%),
-    linear-gradient(90deg, transparent 49.5%, rgba(255, 204, 0, 0.04) 50%, rgba(255, 204, 0, 0.04) 50.5%, transparent 51%),
-    /* Organic contour circles (faux topographic lines) */
-    radial-gradient(ellipse at 20% 30%, transparent 150px, rgba(255, 204, 0, 0.03) 151px, rgba(255, 204, 0, 0.03) 152px, transparent 153px, transparent 250px, rgba(255, 204, 0, 0.025) 251px, rgba(255, 204, 0, 0.025) 252px, transparent 253px),
-    radial-gradient(ellipse at 70% 60%, transparent 100px, rgba(255, 204, 0, 0.03) 101px, rgba(255, 204, 0, 0.03) 102px, transparent 103px, transparent 200px, rgba(255, 204, 0, 0.025) 201px, rgba(255, 204, 0, 0.025) 202px, transparent 203px),
-    radial-gradient(ellipse at 40% 80%, transparent 80px, rgba(255, 204, 0, 0.02) 81px, rgba(255, 204, 0, 0.02) 82px, transparent 83px, transparent 180px, rgba(255, 204, 0, 0.02) 181px, rgba(255, 204, 0, 0.02) 182px, transparent 183px);
-  background-size: 50px 50px, 50px 50px, 200px 200px, 200px 200px, 600px 500px, 500px 600px, 450px 400px;
   pointer-events: none;
-  z-index: var(--z-map-bg);
-  opacity: var(--rg-map-opacity, 0.15);
+  z-index: 0;
+  background-image: url('assets/topo-map.png');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center center;
+  opacity: calc(var(--rg-map-pct, 30) / 100);
 }
 
 /* ============================================================================
@@ -206,32 +215,19 @@ small,
   opacity: 0.8;
 }
 
-.rg-logo-square {
-  width: 30px;
-  height: 30px;
-  background-color: var(--rg-accent);
-  flex-shrink: 0;
-}
-
 .rg-masthead {
-  font-family: 'Playfair Display', serif;
-  font-size: var(--font-scale-xl);
-  font-weight: 700;
+  font-family: 'Marcellus', serif;
+  font-size: 1.6rem;
+  font-weight: 400;
   color: var(--rg-text-primary);
-  letter-spacing: 0.05em;
-}
-
-.rg-masthead-rational {
-  display: block;
-  font-size: var(--font-scale-lg);
-}
-
-.rg-masthead-geo {
-  display: block;
-  font-size: var(--font-scale-xl);
-  font-weight: 900;
-  color: var(--rg-accent);
   letter-spacing: 0.15em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+/* Hide duplicate site name from core/header.php — skin masthead handles it */
+.rg-header-nav .logo-area {
+  display: none;
 }
 
 .rg-header-nav {
@@ -239,32 +235,76 @@ small,
   gap: var(--space-xl);
 }
 
-.rg-header-nav a {
-  font-family: 'Playfair Display', serif;
-  font-size: var(--font-scale-base);
+.rg-header-nav .nav-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 40px;
+}
+
+.rg-header-nav .nav-menu li {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 40px;
+}
+
+.rg-header-nav .nav-menu .sep {
+  display: none;
+}
+
+.rg-header-nav a,
+.rg-header-nav .nav-menu a {
+  font-family: Arial, Helvetica, -apple-system, system-ui, sans-serif;
+  font-size: 0.85rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--rg-text-primary);
+  letter-spacing: 1px;
+  color: var(--rg-nav-color);
   transition: color 0.2s ease;
+  text-decoration: none;
+  padding: 6px 0;
+  display: inline-block;
 }
 
-.rg-header-nav a:hover {
+.rg-header-nav a:hover,
+.rg-header-nav .nav-menu a:hover {
   color: var(--rg-accent);
+  text-decoration: none;
 }
 
-.rg-header-nav a.active {
-  color: var(--rg-accent);
-  border-bottom: 2px solid var(--rg-accent);
-  padding-bottom: 2px;
-}
 
 /* ============================================================================
    PHOTOBOX (Hero Image Display)
    ========================================================================== */
 
+/* --- Single-view flex column (mirrors New Horizon snapping engine) ---
+   scroll-stage.rg-single is a flex column inside #page-wrapper.
+   Header is fixed; everything else is in-flow so drawers push naturally. */
+
 .rg-single {
-  margin-top: 0; /* header is inside scroll-stage */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  align-items: stretch;
+  position: relative;
+}
+
+/* Hide footer on single image view — only show on archive/static/blogroll */
+.rg-single #system-footer,
+.rg-single footer {
+  display: none;
+}
+
+/* Drawers: flex-shrink: 0 so they never collapse */
+.rg-single .rg-drawer {
+  flex-shrink: 0;
 }
 
 #rg-photobox {
@@ -272,12 +312,15 @@ small,
   justify-content: center;
   align-items: center;
   width: 100%;
-  height: calc(100vh - 70px - 50px);
-  background-color: var(--rg-bg-secondary);
-  margin-top: 70px;
+  background-color: transparent;
+  margin-top: 70px; /* Clear fixed header */
   position: relative;
-  z-index: var(--z-content);
-  overflow: hidden;
+  overflow: visible; /* outline lives outside the box — don't clip it */
+  box-sizing: border-box;
+  flex-grow: 1;
+  flex-shrink: 0 !important;
+  min-height: 0;
+  padding: 0 !important; /* override compiled blob until admin re-saves */
 }
 
 .rg-photo-wrap {
@@ -286,7 +329,9 @@ small,
   align-items: center;
   width: 100%;
   height: 100%;
-  padding: var(--space-2xl);
+  /* Equal padding on all sides — keeps image dead-center */
+  padding: 4vh 4vw;
+  box-sizing: border-box;
 }
 
 .rg-image.post-image {
@@ -294,7 +339,8 @@ small,
   max-height: 100%;
   width: auto;
   height: auto;
-  border: var(--rg-hero-border) solid var(--rg-border-color);
+  border: var(--rg-hero-inner) solid #ffffff;
+  outline: var(--rg-hero-border) solid var(--rg-accent);
   box-shadow: var(--rg-shadow);
   display: block;
 }
@@ -329,8 +375,23 @@ small,
    INFOBOX (Navigation Bar)
    ========================================================================== */
 
+/* Single view: infobox in-flow (not fixed), snaps to bottom via flex layout */
+.rg-single #infobox {
+  height: 50px;
+  flex-shrink: 0;
+  background-color: var(--rg-bg-chrome);
+  border-top: 1px solid var(--rg-border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  z-index: var(--z-header);
+  box-sizing: border-box;
+}
+
+/* Archive/static pages: infobox is inline, not fixed */
 #infobox {
-  position: relative;
   z-index: var(--z-content);
   height: 50px;
   background-color: var(--rg-bg-chrome);
@@ -343,30 +404,49 @@ small,
 }
 
 #infobox .nav-links {
-  display: flex;
-  gap: var(--space-lg);
-  padding: 0 var(--space-xl);
-  height: 100%;
+  display: inline-flex;
   align-items: center;
+  gap: 40px;
+  height: 100%;
   white-space: nowrap;
+  font-family: Arial, Helvetica, -apple-system, system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+#infobox .nav-links .left,
+#infobox .nav-links .center,
+#infobox .nav-links .right {
+  display: inline-flex;
+  align-items: center;
+  gap: 40px;
+  margin: 0;
 }
 
 #infobox .nav-links a {
-  font-family: 'Playfair Display', serif;
-  font-size: var(--font-scale-sm);
+  color: #999999;
+  text-decoration: none;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--rg-text-primary);
-  transition: color 0.2s ease, border-bottom-color 0.2s ease;
-  padding-bottom: var(--space-sm);
-  border-bottom: 2px solid transparent;
+  font-size: 0.85rem;
+  padding: 6px 0;
+  display: inline-block;
+  transition: color 0.2s ease;
 }
 
 #infobox .nav-links a:hover,
 #infobox .nav-links a.active {
   color: var(--rg-accent);
-  border-bottom-color: var(--rg-accent);
+}
+
+#infobox .nav-links .sep {
+  color: var(--rg-nav-dim);
+  font-size: 0.9rem;
+}
+
+#infobox .nav-links .dim {
+  color: var(--rg-nav-dim);
+  font-weight: 600;
+  font-size: 0.85rem;
 }
 
 /* ============================================================================
@@ -581,133 +661,137 @@ small,
    ARCHIVE/GRID LAYOUTS
    ========================================================================== */
 
-#browse-grid.cropped-grid {
+/* --- Cropped Grid: fixed-size thumbnails centered in the grid.
+       Hero frame (20px yellow outline + 4px white border) scaled to ~25%. --- */
+
+.rg-archive-grid {
+  flex: 1;
+  padding: 30px 60px 40px;
   display: grid;
-  grid-template-columns: repeat(var(--grid-cols), 1fr);
-  gap: var(--space-xl);
-  padding: var(--space-xl);
-  background-color: var(--rg-bg-page);
+  grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 250px));
+  gap: 30px;
+  margin: 0 auto;
+  max-width: 1600px;
+  width: 100%;
+  justify-content: center;
+  align-content: start;
+  align-items: center;
+  justify-items: center;
 }
 
-#browse-grid.cropped-grid .grid-item {
+.rg-archive-item {
   position: relative;
-  overflow: hidden;
-  aspect-ratio: 1;
-  border: var(--rg-thumb-border) solid var(--rg-border);
-  background-color: var(--rg-bg-secondary);
-  transition: box-shadow 0.2s ease;
   cursor: pointer;
+  transition: transform 0.2s ease;
+  width: 100%;
 }
 
-#browse-grid.cropped-grid .grid-item:hover {
-  box-shadow: var(--rg-shadow-hover);
+/* Portraits: 60% width so they don't dominate the row */
+.rg-archive-item:has(.rg-thumb-portrait) {
+  width: 70%;
 }
 
-#browse-grid.cropped-grid .grid-item img {
+.rg-archive-item:hover {
+  transform: scale(1.02);
+}
+
+/* Miniature hero frame: outline=yellow outer, border=white inner, same as
+   .rg-image.post-image but scaled down (20px→5px, 4px→2px). */
+.rg-archive-item .rg-thumb {
+  border: 2px solid #ffffff;
+  outline: 5px solid var(--rg-accent, #FFCC00);
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.rg-archive-item .rg-thumb img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
   display: block;
+  object-fit: cover;
 }
 
-#browse-grid.cropped-grid .grid-item-overlay {
+/* Title overlay — Galleria's .htbs-archive-title with Marcellus */
+.rg-archive-title {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent);
-  padding: var(--space-lg);
-  color: white;
+  padding: 10px 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  font-family: 'Marcellus', serif;
+  font-size: 12px;
+  text-align: center;
   opacity: 0;
   transition: opacity 0.2s ease;
+  backdrop-filter: blur(2px);
 }
 
-#browse-grid.cropped-grid .grid-item:hover .grid-item-overlay {
+.rg-archive-item:hover .rg-archive-title {
   opacity: 1;
 }
 
-#browse-grid.cropped-grid .grid-item-title {
-  font-family: 'Playfair Display', serif;
-  font-size: var(--font-scale-base);
-  font-weight: 600;
-  color: white;
-}
-
-/* Justified Grid */
+/* --- Justified Grid: public-facing.css handles flex layout.
+       We only add RG-specific overrides: positioning + yellow/white borders.
+       NOTE: public-facing.css resets border/box-shadow with !important on
+       .justified-item, so we use outline (not affected by that reset). --- */
 
 #justified-grid {
-  display: block;
-  padding: var(--space-xl);
-  background-color: var(--rg-bg-page);
-}
-
-#justified-grid .justified-row {
-  display: flex;
-  gap: var(--space-lg);
-  margin-bottom: var(--space-lg);
-  height: var(--justified-row-height);
+  max-width: 95%;
+  margin: 0 auto;
+  padding: 30px 0;
+  box-sizing: border-box;
+  flex: 1 0 auto;
 }
 
 #justified-grid .justified-item {
-  flex: 1;
-  overflow: hidden;
-  border: var(--rg-thumb-border) solid var(--rg-border);
-  background-color: var(--rg-bg-secondary);
-  transition: box-shadow 0.2s ease;
-  cursor: pointer;
-  position: relative;
-}
-
-#justified-grid .justified-item:hover {
-  box-shadow: var(--rg-shadow-hover);
+  outline: 2px solid var(--rg-accent);
+  outline-offset: -2px;
 }
 
 #justified-grid .justified-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+  transition: opacity 0.3s ease;
 }
 
-/* Layout Toggle */
+#justified-grid .justified-item:hover img {
+  opacity: 0.8;
+}
+
+/* --- Floating layout toggle: transparent, right-aligned, shows on hover --- */
 
 .rg-layout-toggle {
-  display: flex;
-  gap: var(--space-sm);
-  padding: var(--space-lg) var(--space-xl);
-  background-color: var(--rg-bg-chrome);
-  border-bottom: 1px solid var(--rg-border-light);
-  justify-content: flex-end;
-  align-items: center;
+  position: fixed;
+  top: 100px;
+  right: 2vw;
+  z-index: 100;
+  opacity: 0.15;
+  transition: opacity 0.3s ease;
 }
 
-.rg-layout-toggle-label {
-  font-size: var(--font-scale-sm);
-  color: var(--rg-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
+.rg-layout-toggle:hover {
+  opacity: 1;
 }
 
 .rg-layout-toggle-switch {
   display: flex;
-  background-color: var(--rg-border);
-  border-radius: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+  border-radius: 3px;
   padding: 2px;
-  cursor: pointer;
+  gap: 2px;
 }
 
 .rg-layout-toggle-switch button {
-  padding: var(--space-sm) var(--space-md);
+  padding: 6px 10px;
   border: none;
   background-color: transparent;
-  color: var(--rg-text-secondary);
-  font-size: var(--font-scale-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1rem;
   cursor: pointer;
   transition: background-color 0.2s ease, color 0.2s ease;
+  border-radius: 2px;
+  line-height: 1;
 }
 
 .rg-layout-toggle-switch button.active {
@@ -715,41 +799,278 @@ small,
   color: #000;
 }
 
+.rg-layout-toggle-switch button:hover:not(.active) {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* --- Breadcrumb (when filtering by album/category) --- */
+
+.rg-breadcrumb {
+  padding: var(--space-md) 2vw;
+  font-size: var(--font-scale-sm);
+  color: var(--rg-text-secondary);
+}
+
+.rg-breadcrumb a {
+  color: var(--rg-accent);
+  text-decoration: none;
+}
+
+.rg-breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.rg-breadcrumb-sep {
+  margin: 0 var(--space-sm);
+  color: var(--rg-text-secondary);
+}
+
+.rg-breadcrumb-current {
+  color: var(--rg-text-primary);
+}
+
+/* --- Archive page base ---
+     Copied from Galleria: flex scaffold so the grid fills viewport height.
+     archive.php provides: skin-header, #infobox (filter bar), #scroll-stage.
+     We hide the default #infobox (RG uses its own floating toggle). */
+
+body.archive-page #page-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  height: auto;
+}
+
+body.archive-page #infobox {
+  display: none;
+}
+
+body.archive-page #scroll-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-top: 90px;
+  position: relative;
+}
+
 /* ============================================================================
-   ARCHIVE PAGE HEADER
+   STATIC PAGES & BLOGROLL
+   Adapted from Galleria's editorial blogroll with RG colour palette.
    ========================================================================== */
 
-.rg-archive {
-  margin-top: 70px;
+body.static-transmission {
+  padding-top: 70px;
+  background-color: var(--rg-bg-page);
 }
 
-.rg-archive-header {
-  padding: var(--space-2xl) var(--space-xl);
-  background-color: var(--rg-bg-secondary);
-  border-bottom: 1px solid var(--rg-border-light);
+body.static-transmission #scroll-stage {
+  min-height: 100vh;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-md);
+  flex-direction: column;
+  position: relative;
 }
 
-.rg-archive-header-left {
+/* Static content lane — generous whitespace, centered */
+.static-content {
+  max-width: 720px;
+  margin: 60px auto 80px auto;
+  padding: 0 40px;
+  box-sizing: border-box;
+  text-align: left;
   flex: 1;
 }
 
-.rg-archive-title {
-  font-family: 'Playfair Display', serif;
-  font-size: var(--font-scale-3xl);
-  font-weight: 700;
-  color: var(--rg-text-primary);
-  margin-bottom: var(--space-md);
+.static-content::after {
+  content: "";
+  display: table;
+  clear: both;
 }
 
-.rg-archive-subtitle {
-  font-size: var(--font-scale-base);
+/* Page title — Marcellus editorial style */
+.static-page-title {
+  font-family: 'Marcellus', serif;
+  font-size: 1.6rem;
+  font-weight: 400;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--rg-accent);
+  margin: 0 0 40px 0;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--rg-border-light);
+}
+
+/* Page body — Playfair Display editorial serif */
+.static-content .description {
+  font-family: 'Playfair Display', 'Georgia', serif;
+  font-size: 1.05rem;
+  line-height: 2;
   color: var(--rg-text-secondary);
-  line-height: 1.6;
+}
+
+.static-content .description h2,
+.static-content .description h3 {
+  font-family: 'Marcellus', serif;
+  color: var(--rg-text-primary);
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 50px 0 20px 0;
+}
+
+.static-content .description h2 {
+  font-size: 1.3rem;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rg-border-light);
+}
+
+.static-content .description h3 {
+  font-size: 1.1rem;
+}
+
+.static-content .description p {
+  margin-bottom: 1.5em;
+}
+
+.static-content .description em {
+  color: var(--rg-text-primary);
+  font-style: italic;
+}
+
+.static-content .description a {
+  color: var(--rg-accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.3s ease, color 0.3s ease;
+}
+
+.static-content .description a:hover {
+  color: var(--rg-text-primary);
+  border-bottom-color: var(--rg-accent);
+}
+
+/* Hero image on static pages */
+.static-transmission #photobox.page-hero {
+  display: block;
+  min-height: auto;
+  padding: 0;
+  width: auto;
+  background: transparent;
+  margin: 0;
+}
+
+.static-transmission .description .align-left {
+  float: left;
+  margin: 5px 40px 20px 0;
+  border: 3px solid var(--rg-accent);
+  max-width: 40%;
+  height: auto;
+  display: block;
+}
+
+/* Kill the manager's ghost break after floated images */
+.static-transmission .description img + br {
+  display: none;
+}
+
+/* Kill paragraph top interference for baseline snap */
+.static-transmission .description p:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* Blogroll canvas — centered content lane */
+.blogroll-canvas {
+  max-width: 720px;
+  margin: 4vw auto 6vw auto;
+  padding: 0 4vw;
+  box-sizing: border-box;
+  text-align: left;
+  flex: 1;
+}
+
+/* Category block */
+.blogroll-category-block {
+  margin-bottom: 4vw;
+}
+
+/* Category heading — NatGeo yellow accent, small caps */
+.blogroll-category-heading {
+  font-family: 'Marcellus', serif;
+  font-size: 0.8rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--rg-accent);
+  margin: 0 0 2vw 0;
+  padding-bottom: 0.8vw;
+  border-bottom: 1px solid var(--rg-border-light);
+}
+
+/* Peer grid */
+.blogroll-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+/* Individual peer — padded, subtle dividers */
+.blogroll-peer {
+  padding: 2vw 0;
+  border-bottom: 1px solid var(--rg-border-light);
+  transition: background 0.3s ease;
+}
+
+.blogroll-peer:first-child {
+  padding-top: 0;
+}
+
+.blogroll-peer:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+/* Peer name — prominent, accent-coloured link */
+.blogroll-peer-name {
+  font-family: 'Marcellus', serif;
+  font-size: 1.25rem;
+  font-weight: 400;
+  margin-bottom: 0.4em;
+  line-height: 1.3;
+}
+
+.blogroll-peer-name a {
+  color: var(--rg-accent);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.blogroll-peer-name a:hover {
+  color: var(--rg-text-primary);
+}
+
+/* Peer description — serif body text */
+.blogroll-peer-desc {
+  font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  font-size: 0.95rem;
+  color: var(--rg-text-secondary);
+  line-height: 1.7;
+  margin: 0 0 0.5em 0;
+  padding: 0;
+  max-width: 600px;
+}
+
+/* Peer URL — quiet monospace */
+.blogroll-peer-url {
+  font-family: 'DM Mono', 'Courier New', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.5px;
+  color: var(--rg-text-secondary);
+  opacity: 0.5;
+}
+
+.dim {
+  color: var(--rg-text-secondary);
 }
 
 /* ============================================================================
@@ -759,51 +1080,65 @@ small,
 #system-footer {
   background-color: var(--rg-bg-chrome);
   border-top: 1px solid var(--rg-border-light);
-  padding: var(--space-2xl) var(--space-xl);
-  margin-top: var(--space-3xl);
+  padding: 32px 0;
+  text-align: center;
+  width: 100%;
+  margin-top: auto;
 }
 
-#system-footer .footer-content {
-  max-width: 1400px;
+body.archive-page #system-footer,
+body.static-transmission #system-footer {
+  display: block;
+  position: relative;
+  z-index: 100;
+}
+
+#system-footer .inside {
+  max-width: 95%;
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: var(--space-xl);
-}
-
-#system-footer h4 {
-  font-family: 'Playfair Display', serif;
-  font-size: var(--font-scale-lg);
-  color: var(--rg-text-primary);
-  margin-bottom: var(--space-md);
+  font-family: var(--rg-font-body, 'Inter', sans-serif);
+  font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--rg-text-secondary);
 }
 
 #system-footer p {
-  font-size: var(--font-scale-sm);
   color: var(--rg-text-secondary);
+  font-family: var(--rg-font-body, 'Inter', sans-serif);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
   line-height: 1.7;
-  margin-bottom: var(--space-md);
+  margin: 0;
 }
 
-#system-footer a {
-  color: var(--rg-link);
+#system-footer .sep {
+  display: inline-block;
+  margin: 0 12px;
+  color: var(--rg-border-light);
+}
+
+#system-footer a,
+.footer-link {
+  color: var(--rg-text-secondary);
+  text-decoration: none;
   transition: color 0.2s ease;
 }
 
-#system-footer a:hover {
+#system-footer a:hover,
+.footer-link:hover {
   color: var(--rg-accent);
 }
 
-#system-footer-bottom {
-  text-align: center;
-  margin-top: var(--space-2xl);
-  padding-top: var(--space-xl);
-  border-top: 1px solid var(--rg-border-light);
-  font-size: var(--font-scale-sm);
-  color: var(--rg-text-dim);
+.rss-tag {
+  font-weight: normal;
+  letter-spacing: 1px;
+}
+
+.reverse-email {
+  unicode-bidi: bidi-override;
+  direction: rtl;
 }
 
 /* ============================================================================
@@ -938,19 +1273,15 @@ input[type="reset"]:active {
   }
 
   .rg-masthead {
-    font-size: var(--font-scale-lg);
-  }
-
-  .rg-masthead-geo {
-    font-size: var(--font-scale-lg);
+    font-size: 1.4rem;
   }
 
   #rg-photobox {
-    height: calc(100vh - 60px - 50px);
+    margin-top: 60px; /* match smaller header */
   }
 
   .rg-photo-wrap {
-    padding: var(--space-lg);
+    padding: 2.5vh 2.5vw;
   }
 
   .rg-image.post-image {
@@ -961,18 +1292,13 @@ input[type="reset"]:active {
     padding: var(--space-lg) var(--space-lg);
   }
 
-  #browse-grid.cropped-grid {
-    gap: var(--space-lg);
-    padding: var(--space-lg);
+  .rg-archive-grid {
+    gap: 24px;
+    padding: 20px 30px 30px;
   }
 
-  #justified-grid {
-    padding: var(--space-lg);
-  }
-
-  #justified-grid .justified-row {
-    gap: var(--space-md);
-    margin-bottom: var(--space-md);
+  .rg-layout-toggle {
+    top: 70px;
   }
 
   .rg-photo-title {
@@ -1002,41 +1328,26 @@ input[type="reset"]:active {
     padding: 0 var(--space-md);
   }
 
-  .rg-logo-square {
-    width: 24px;
-    height: 24px;
-  }
-
-  .rg-logo-link {
-    gap: var(--space-sm);
-  }
-
   .rg-masthead {
-    font-size: var(--font-scale-base);
+    font-size: 1.2rem;
   }
 
-  .rg-masthead-rational {
-    font-size: var(--font-scale-sm);
+  .rg-header-nav .nav-menu,
+  .rg-header-nav .nav-menu li {
+    gap: 20px;
   }
 
-  .rg-masthead-geo {
-    font-size: var(--font-scale-base);
-  }
-
-  .rg-header-nav {
-    gap: var(--space-md);
-  }
-
-  .rg-header-nav a {
-    font-size: var(--font-scale-xs);
+  .rg-header-nav a,
+  .rg-header-nav .nav-menu a {
+    font-size: 0.75rem;
   }
 
   #rg-photobox {
-    height: calc(100vh - 50px - 50px);
+    margin-top: 50px;
   }
 
   .rg-photo-wrap {
-    padding: var(--space-md);
+    padding: 2vh 2vw;
   }
 
   .rg-image.post-image {
@@ -1048,13 +1359,15 @@ input[type="reset"]:active {
     overflow-x: scroll;
   }
 
-  #infobox .nav-links {
-    gap: var(--space-md);
-    padding: 0 var(--space-md);
+  #infobox .nav-links,
+  #infobox .nav-links .left,
+  #infobox .nav-links .center,
+  #infobox .nav-links .right {
+    gap: 20px;
   }
 
   #infobox .nav-links a {
-    font-size: var(--font-scale-xs);
+    font-size: 0.75rem;
   }
 
   .rg-drawer-inner {
@@ -1078,38 +1391,20 @@ input[type="reset"]:active {
     gap: var(--space-sm);
   }
 
-  #browse-grid.cropped-grid {
-    gap: var(--space-md);
-    padding: var(--space-md);
-  }
-
-  #justified-grid {
-    padding: var(--space-md);
-  }
-
-  #justified-grid .justified-row {
-    gap: var(--space-sm);
-    margin-bottom: var(--space-sm);
-    height: 180px;
+  .rg-archive-grid {
+    gap: 20px;
+    padding: 15px 20px 20px;
   }
 
   .rg-layout-toggle {
-    padding: var(--space-md) var(--space-md);
-    justify-content: center;
+    top: 60px;
   }
 
-  .rg-archive {
-    margin-top: 50px;
-  }
-
-  .rg-archive-header {
-    padding: var(--space-lg) var(--space-md);
+  body.archive-page #scroll-stage {
+    flex: 1;
+    display: flex;
     flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .rg-archive-title {
-    font-size: var(--font-scale-2xl);
+    margin-top: 50px;
   }
 
   .rg-comment-form-field {
@@ -1128,9 +1423,8 @@ input[type="reset"]:active {
     font-size: var(--font-scale-lg);
   }
 
-  #system-footer .footer-content {
-    grid-template-columns: 1fr;
-    gap: var(--space-lg);
+  #system-footer {
+    padding: 24px 0;
   }
 
   .rg-comment-form-field input,
@@ -1149,33 +1443,20 @@ input[type="reset"]:active {
     height: 45px;
   }
 
-  .rg-logo-square {
-    width: 20px;
-    height: 20px;
-  }
-
   .rg-header-nav {
     display: none;
   }
 
   .rg-masthead {
-    font-size: var(--font-scale-sm);
-  }
-
-  .rg-masthead-rational {
-    display: none;
-  }
-
-  .rg-masthead-geo {
-    font-size: var(--font-scale-base);
+    font-size: 1rem;
   }
 
   #rg-photobox {
-    height: calc(100vh - 45px - 45px);
+    margin-top: 45px;
   }
 
   .rg-photo-wrap {
-    padding: var(--space-sm);
+    padding: 1.5vh 1.5vw;
   }
 
   .rg-image.post-image {
@@ -1196,14 +1477,15 @@ input[type="reset"]:active {
     height: 40px;
   }
 
-  #infobox .nav-links {
-    gap: var(--space-sm);
-    padding: 0 var(--space-sm);
+  #infobox .nav-links,
+  #infobox .nav-links .left,
+  #infobox .nav-links .center,
+  #infobox .nav-links .right {
+    gap: 12px;
   }
 
   #infobox .nav-links a {
-    font-size: var(--font-scale-xs);
-    padding-bottom: var(--space-xs);
+    font-size: 0.7rem;
   }
 
   .rg-drawer-inner {
@@ -1230,37 +1512,20 @@ input[type="reset"]:active {
     font-size: var(--font-scale-xs);
   }
 
-  #browse-grid.cropped-grid {
-    gap: var(--space-sm);
-    padding: var(--space-sm);
-  }
-
-  #justified-grid {
-    padding: var(--space-sm);
-  }
-
-  #justified-grid .justified-row {
-    gap: var(--space-xs);
-    margin-bottom: var(--space-xs);
-    height: 150px;
+  .rg-archive-grid {
+    gap: 16px;
+    padding: 10px 15px 15px;
   }
 
   .rg-layout-toggle {
-    padding: var(--space-sm);
+    top: 55px;
+  }
+
+  body.archive-page #scroll-stage {
+    flex: 1;
+    display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
-  }
-
-  .rg-archive {
     margin-top: 45px;
-  }
-
-  .rg-archive-header {
-    padding: var(--space-md) var(--space-sm);
-  }
-
-  .rg-archive-title {
-    font-size: var(--font-scale-xl);
   }
 
   .rg-comment {
@@ -1315,16 +1580,16 @@ input[type="reset"]:active {
   }
 
   #system-footer {
-    padding: var(--space-xl) var(--space-md);
-    margin-top: var(--space-xl);
+    padding: 20px 0;
   }
 
-  #system-footer h4 {
-    font-size: var(--font-scale-base);
+  #system-footer .inside {
+    font-size: 0.6rem;
+    letter-spacing: 1px;
   }
 
   #system-footer p {
-    font-size: var(--font-scale-xs);
+    font-size: 0.6rem;
   }
 }
 
@@ -1624,6 +1889,10 @@ input[type="reset"]:active {
   body {
     margin: 0;
     padding: 0;
+  }
+
+  body::after {
+    display: none !important;
   }
 
   #rg-photobox {

@@ -19,7 +19,7 @@ foreach ($dm_keys as $k) {
 
 return [
     'name'          => 'Impact Printer',
-    'version'       => '2.1',
+    'version'       => '1.0',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Continuous-feed dot-matrix printer circa 1983. Tractor-feed paper textures, ASCII character borders, faded ribbon ink. Two paper stocks: green-bar ledger and plain white.',
