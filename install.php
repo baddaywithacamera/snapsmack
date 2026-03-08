@@ -988,8 +988,18 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
 
     <?php
     // --- STEP DOTS ---
+    // Map internal step numbers to visual step numbers (1–4).
+    // Internal step 3 (schema creation) is processing-only and immediately
+    // advances to step 4, so the user never sees it as a distinct page.
+    // Visual mapping: internal 1→1, 2→2, 3→3, 4→3, 5→4, complete→done
     $total_steps = 4;
-    $current_num = ($step === 'complete') ? $total_steps + 1 : $step;
+    if ($step === 'complete') {
+        $current_num = $total_steps + 1; // all dots "done"
+    } elseif ($step >= 4) {
+        $current_num = $step - 1; // shift 4→3, 5→4
+    } else {
+        $current_num = $step;
+    }
     echo '<div class="step-indicator">';
     for ($i = 1; $i <= $total_steps; $i++) {
         if ($i < $current_num) echo '<div class="step-dot done"></div>';
