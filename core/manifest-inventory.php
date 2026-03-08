@@ -301,6 +301,51 @@ return [
             'style'  => 'normal',
         ],
 
+        // ---- American Stencil ----------------------------------------------
+        'AmericanStencil' => [
+            'label'  => 'American Stencil (Military / Cargo Crate)',
+            'file'   => 'assets/fonts/American Stencil/AmericanStencil.otf',
+            'format' => 'opentype',
+            'weight' => 'normal',
+            'style'  => 'normal',
+        ],
+
+        // ---- Cold Night for Alligators -------------------------------------
+        'ColdNightForAlligators' => [
+            'label'  => 'Cold Night for Alligators (Horror / Scratched)',
+            'file'   => 'assets/fonts/Cold Night for Alligators/coldnightforalligators.ttf',
+            'format' => 'truetype',
+            'weight' => 'normal',
+            'style'  => 'normal',
+        ],
+
+        // ---- Even Badder Mofo ----------------------------------------------
+        'EvenBadderMofo' => [
+            'label'  => 'Even Badder Mofo (Grunge / Distressed)',
+            'file'   => 'assets/fonts/Even Badder Mofo/Even Badder Mofo.ttf',
+            'format' => 'truetype',
+            'weight' => 'normal',
+            'style'  => 'normal',
+        ],
+
+        // ---- Spray.ME ------------------------------------------------------
+        'SprayME' => [
+            'label'  => 'Spray.ME (Stencil / Spray Paint)',
+            'file'   => 'assets/fonts/Spray.ME/sprayme.ttf',
+            'format' => 'truetype',
+            'weight' => 'normal',
+            'style'  => 'normal',
+        ],
+
+        // ---- Victorious ----------------------------------------------------
+        'Victorious' => [
+            'label'  => 'Victorious (Bold / Rough Brush)',
+            'file'   => 'assets/fonts/Victorious/Victorious.ttf',
+            'format' => 'truetype',
+            'weight' => 'normal',
+            'style'  => 'normal',
+        ],
+
     ],
 
 
@@ -397,6 +442,7 @@ return [
         'Spectral'              => 'Spectral (Screen Serif / Google-commissioned)',
         'Instrument Serif'      => 'Instrument Serif (Elegant / Figma-era editorial)',
         'Crimson Pro'           => 'Crimson Pro (Book Quality / Refined long text)',
+        'Marcellus'             => 'Marcellus (Roman Capitals / NatGeo masthead feel)',
         'Philosopher'           => 'Philosopher (Literary / Old-World Serif)',
 
         // ----------------------------------------------------------------

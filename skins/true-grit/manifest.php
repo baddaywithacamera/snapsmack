@@ -17,7 +17,7 @@ return [
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Found-texture photography skin. Photographic wall backgrounds with opacity overlay, archival framing, justified grid, and floating photo wall. Built for foundtextures.ca.',
-    'status'        => 'development',
+    'status'        => 'stable',
 
     'features' => [
         'supports_wall'   => true,
@@ -90,11 +90,11 @@ return [
         'wall_overlay_opacity' => [
             'section'  => 'WALL TEXTURE',
             'type'     => 'range',
-            'label'    => 'Overlay Opacity',
-            'default'  => '0.4',
+            'label'    => 'Overlay Opacity (%)',
+            'default'  => '40',
             'min'      => '0',
-            'max'      => '0.95',
-            'step'     => '0.05',
+            'max'      => '100',
+            'unit'     => '',
             'selector' => ':root',
             'property' => '--overlay-opacity'
         ],
@@ -106,6 +106,24 @@ return [
             'default'  => '#1a1a1a',
             'selector' => ':root',
             'property' => '--overlay-color'
+        ],
+
+        'header_bg_color' => [
+            'section'  => 'WALL TEXTURE',
+            'type'     => 'color',
+            'label'    => 'Header Background',
+            'default'  => '#1a1a1a',
+            'selector' => '#tg-header',
+            'property' => 'background-color'
+        ],
+
+        'footer_bg_color' => [
+            'section'  => 'WALL TEXTURE',
+            'type'     => 'color',
+            'label'    => 'Footer Background',
+            'default'  => '#1e1e1e',
+            'selector' => '#system-footer',
+            'property' => 'background-color'
         ],
 
         /* ============================================================
@@ -151,6 +169,18 @@ return [
            SECTION 3: ARCHIVE GRID
            ============================================================ */
 
+        'archive_layout' => [
+            'section'  => 'ARCHIVE GRID',
+            'type'     => 'select',
+            'label'    => 'Archive Layout Mode',
+            'default'  => 'square',
+            'options'  => [
+                'square'  => 'Square Grid',
+                'cropped' => 'Cropped Grid (Natural Aspect)',
+                'masonry' => 'Justified / Masonry (Flickr Style)',
+            ],
+        ],
+
         'browse_cols' => [
             'section'  => 'ARCHIVE GRID',
             'type'     => 'range',
@@ -171,6 +201,24 @@ return [
             'max'      => '500',
             'selector' => '#justified-grid',
             'property' => '--justified-row-height'
+        ],
+
+        'archive_aspect_ratio' => [
+            'section'  => 'ARCHIVE GRID',
+            'type'     => 'select',
+            'label'    => 'Thumbnail Aspect Ratio Lock',
+            'default'  => 'auto',
+            'selector' => '.square-grid .thumb-link, .cropped-grid .thumb-link',
+            'property' => 'custom-aspect-ratio',
+            'options'  => [
+                'auto'      => ['label' => 'Natural (No Lock)',               'css' => '{ aspect-ratio: auto; overflow: visible; }'],
+                '1-1'       => ['label' => '1:1 Square',                      'css' => '{ aspect-ratio: 1 / 1; overflow: hidden; }'],
+                '4-3'       => ['label' => '4:3 Landscape',                   'css' => '{ aspect-ratio: 4 / 3; overflow: hidden; }'],
+                '3-2'       => ['label' => '3:2 Landscape',                   'css' => '{ aspect-ratio: 3 / 2; overflow: hidden; }'],
+                '16-9'      => ['label' => '16:9 Landscape (Cinematic)',      'css' => '{ aspect-ratio: 16 / 9; overflow: hidden; }'],
+                '3-4'       => ['label' => '3:4 Portrait',                    'css' => '{ aspect-ratio: 3 / 4; overflow: hidden; }'],
+                '2-3'       => ['label' => '2:3 Portrait',                    'css' => '{ aspect-ratio: 2 / 3; overflow: hidden; }'],
+            ]
         ],
 
         /* ============================================================
@@ -392,6 +440,17 @@ return [
             'max'      => '100',
             'selector' => '#infobox',
             'property' => 'height'
+        ],
+
+        'footer_height' => [
+            'section'  => 'VERTICAL LOCKS',
+            'type'     => 'range',
+            'label'    => 'Footer Height Lock (px)',
+            'default'  => '32',
+            'min'      => '16',
+            'max'      => '80',
+            'selector' => '#system-footer',
+            'property' => 'padding-top, padding-bottom'
         ],
 
         'static_section_spacing' => [

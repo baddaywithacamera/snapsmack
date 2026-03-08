@@ -20,7 +20,7 @@ return [
     'author'          => 'Sean McCormick',
     'author_email'    => 'sean@baddaywithacamera.ca',
     'description'     => 'An homage to the world\'s best magazine. Editorial serif typography, the iconic yellow accent, light and dark variants. For anyone who has read it and loved it or dreamed of having their work published in it.',
-    'status'          => 'beta',
+    'status'          => 'stable',
 
     'variants' => [
         'light' => 'Light (Magazine Interior)',
@@ -48,6 +48,14 @@ return [
            SECTION 1: LAYOUT
            ============================================================ */
 
+        'show_wall_link' => [
+            'section'  => 'LAYOUT',
+            'type'     => 'select',
+            'label'    => 'Show Gallery Wall Link',
+            'default'  => '0',
+            'options'  => ['1' => 'Enabled', '0' => 'Disabled'],
+        ],
+
         'main_canvas_width' => [
             'section'  => 'LAYOUT',
             'type'     => 'range',
@@ -62,12 +70,14 @@ return [
         'optical_lift' => [
             'section'  => 'LAYOUT',
             'type'     => 'range',
-            'label'    => 'Image Bottom Spacing (px)',
-            'default'  => '40',
-            'min'      => '0',
-            'max'      => '120',
-            'selector' => '#rg-photobox',
-            'property' => 'padding-bottom',
+            'label'    => 'Image Padding (vw)',
+            'default'  => '3',
+            'min'      => '1',
+            'max'      => '8',
+            'step'     => '0.5',
+            'selector' => '.rg-photo-wrap',
+            'property' => 'padding',
+            'unit'     => 'vw',
         ],
 
         'header_height' => [
@@ -103,9 +113,9 @@ return [
             'section'  => 'IMAGE PRESENTATION',
             'type'     => 'range',
             'label'    => 'Hero Image Border (px)',
-            'default'  => '8',
+            'default'  => '20',
             'min'      => '0',
-            'max'      => '20',
+            'max'      => '30',
         ],
 
         'thumb_border_width' => [
@@ -128,9 +138,32 @@ return [
             ],
         ],
 
+        'map_opacity' => [
+            'section'  => 'IMAGE PRESENTATION',
+            'type'     => 'range',
+            'label'    => 'Map Intensity (%)',
+            'default'  => '30',
+            'min'      => '5',
+            'max'      => '80',
+            'unit'     => '',
+            'selector' => ':root',
+            'property' => '--rg-map-pct',
+        ],
+
         /* ============================================================
            SECTION 3: ARCHIVE GRID
            ============================================================ */
+
+        'archive_layout' => [
+            'section'  => 'ARCHIVE GRID',
+            'type'     => 'select',
+            'label'    => 'Archive Layout Mode',
+            'default'  => 'cropped',
+            'options'  => [
+                'cropped' => 'Cropped Grid (Natural Aspect)',
+                'masonry' => 'Justified / Masonry (Flickr Style)',
+            ],
+        ],
 
         'browse_cols' => [
             'section'  => 'ARCHIVE GRID',
@@ -172,10 +205,23 @@ return [
             'section'  => 'TYPOGRAPHY',
             'type'     => 'select',
             'label'    => 'Masthead / Title Font',
-            'default'  => 'Playfair Display',
+            'default'  => 'Marcellus',
             'options'  => $fonts,
             'selector' => '.rg-masthead, .rg-photo-title, .rg-drawer-title',
             'property' => 'font-family',
+        ],
+
+        'masthead_font_size' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'range',
+            'label'    => 'Masthead Font Size (rem)',
+            'default'  => '1.6',
+            'min'      => '0.8',
+            'max'      => '3.0',
+            'step'     => '0.1',
+            'selector' => '.rg-masthead',
+            'property' => 'font-size',
+            'unit'     => 'rem',
         ],
 
         'body_font' => [

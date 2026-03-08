@@ -430,6 +430,7 @@ legend + label {
 input[type="text"],
 input[type="number"],
 input[type="email"],
+input[type="url"],
 input[type="password"],
 input[type="datetime-local"],
 input[type="date"],

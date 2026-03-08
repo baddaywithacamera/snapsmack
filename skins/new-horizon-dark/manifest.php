@@ -13,7 +13,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'          => 'New Horizon',
-    'version'       => '5.5',
+    'version'       => '1.0',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'High-contrast photography skin with archival framing, tactical layout controls, and full JS library support. Light and dark variants.',
@@ -83,6 +83,18 @@ return [
         /* ---------------------------------------------------------------------
            SECTION 2: ARCHIVE GRID
            --------------------------------------------------------------------- */
+
+        'archive_layout' => [
+            'section'  => 'ARCHIVE GRID',
+            'type'     => 'select',
+            'label'    => 'Archive Layout Mode',
+            'default'  => 'square',
+            'options'  => [
+                'square'  => 'Square Grid',
+                'cropped' => 'Cropped Grid (Natural Aspect)',
+                'masonry' => 'Justified / Masonry (Flickr Style)',
+            ],
+        ],
 
         'browse_cols' => [
             'section'  => 'ARCHIVE GRID',
