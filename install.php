@@ -319,9 +319,10 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
 // =====================================================================
 if ($step === 4 && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_user']) && empty($errors)) {
 
-    $site_name   = trim($_POST['site_name'] ?? '');
+    $site_name    = trim($_POST['site_name'] ?? '');
     $site_tagline = trim($_POST['site_tagline'] ?? '');
-    $admin_user  = trim($_POST['admin_user'] ?? '');
+    $site_url     = rtrim(trim($_POST['site_url'] ?? ''), '/');
+    $admin_user   = trim($_POST['admin_user'] ?? '');
     $admin_email = trim($_POST['admin_email'] ?? '');
     $admin_pass  = $_POST['admin_pass'] ?? '';
     $admin_pass2 = $_POST['admin_pass2'] ?? '';
@@ -349,6 +350,7 @@ if ($step === 4 && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_
             $_SESSION['admin_created'] = true;
             $_SESSION['site_name']    = $site_name;
             $_SESSION['site_tagline'] = $site_tagline;
+            $_SESSION['site_url']     = $site_url;
             $step = 5;
         } catch (PDOException $e) {
             $errors[] = 'Failed to create admin user: ' . htmlspecialchars($e->getMessage());
@@ -469,7 +471,7 @@ function snapsmack_is_mobile(): bool {
             $defaults = [
                 'site_name'                 => $_SESSION['site_name'] ?? 'My SnapSmack Site',
                 'site_tagline'              => $_SESSION['site_tagline'] ?? '',
-                'site_url'                  => '',
+                'site_url'                  => $_SESSION['site_url'] ?? '',
                 'active_skin'               => 'new-horizon-dark',
                 'active_skin_variant'       => 'dark',
                 'active_theme'              => 'midnight-lime',
@@ -988,8 +990,18 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
 
     <?php
     // --- STEP DOTS ---
+    // Map internal step numbers to visual step numbers (1–4).
+    // Internal step 3 (schema creation) is processing-only and immediately
+    // advances to step 4, so the user never sees it as a distinct page.
+    // Visual mapping: internal 1→1, 2→2, 3→3, 4→3, 5→4, complete→done
     $total_steps = 4;
-    $current_num = ($step === 'complete') ? $total_steps + 1 : $step;
+    if ($step === 'complete') {
+        $current_num = $total_steps + 1; // all dots "done"
+    } elseif ($step >= 4) {
+        $current_num = $step - 1; // shift 4→3, 5→4
+    } else {
+        $current_num = $step;
+    }
     echo '<div class="step-indicator">';
     for ($i = 1; $i <= $total_steps; $i++) {
         if ($i < $current_num) echo '<div class="step-dot done"></div>';
@@ -1141,6 +1153,10 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             <input type="text" id="site_tagline" name="site_tagline" value="<?php echo htmlspecialchars($_POST['site_tagline'] ?? ''); ?>">
             <div class="hint">Optional. A short description or subtitle.</div>
 
+            <label for="site_url">Site URL</label>
+            <input type="text" id="site_url" name="site_url" value="<?php echo htmlspecialchars($_POST['site_url'] ?? ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . rtrim(dirname($_SERVER['SCRIPT_NAME']), '/'))); ?>" placeholder="https://example.com">
+            <div class="hint">The full URL to your SnapSmack site. No trailing slash.</div>
+
             <label for="admin_user" class="install-divider-label">Admin Username</label>
             <input type="text" id="admin_user" name="admin_user" value="<?php echo htmlspecialchars($_POST['admin_user'] ?? ''); ?>">
 
@@ -1177,6 +1193,10 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             <label for="site_tagline">Tagline</label>
             <input type="text" id="site_tagline" name="site_tagline" value="<?php echo htmlspecialchars($_POST['site_tagline'] ?? ''); ?>">
             <div class="hint">Optional. A short description or subtitle.</div>
+
+            <label for="site_url">Site URL</label>
+            <input type="text" id="site_url" name="site_url" value="<?php echo htmlspecialchars($_POST['site_url'] ?? ''); ?>" placeholder="https://example.com">
+            <div class="hint">The full URL to your SnapSmack site. No trailing slash.</div>
 
             <label for="admin_user" class="install-divider-label">Admin Username</label>
             <input type="text" id="admin_user" name="admin_user" value="<?php echo htmlspecialchars($_POST['admin_user'] ?? ''); ?>">
