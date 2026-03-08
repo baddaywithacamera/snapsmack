@@ -76,6 +76,58 @@
         document.body.removeChild(form);
     }
 
+    // --- Execute a toolbar action on a textarea ---
+    function execAction(action, textarea) {
+        switch (action) {
+            case 'bold':
+                insertAtCursor(textarea, '<strong>', '</strong>');
+                break;
+            case 'italic':
+                insertAtCursor(textarea, '<em>', '</em>');
+                break;
+            case 'underline':
+                insertAtCursor(textarea, '<u>', '</u>');
+                break;
+            case 'link':
+                var url = prompt('URL:', 'https://');
+                if (url) insertAtCursor(textarea, '<a href="' + url + '">', '</a>');
+                break;
+            case 'h2':
+                insertAtCursor(textarea, '<h2>', '</h2>');
+                break;
+            case 'h3':
+                insertAtCursor(textarea, '<h3>', '</h3>');
+                break;
+            case 'blockquote':
+                insertAtCursor(textarea, '<blockquote>', '</blockquote>');
+                break;
+            case 'hr':
+                insertAtCursor(textarea, '\n<hr>\n');
+                break;
+            case 'img':
+                insertImage(textarea);
+                break;
+            case 'col2':
+                insertColumns(textarea, 2);
+                break;
+            case 'col3':
+                insertColumns(textarea, 3);
+                break;
+            case 'dropcap':
+                insertAtCursor(textarea, '[dropcap]', '[/dropcap]');
+                break;
+            case 'ul':
+                insertAtCursor(textarea, '\n<ul>\n  <li>', '</li>\n  <li></li>\n</ul>\n');
+                break;
+            case 'ol':
+                insertAtCursor(textarea, '\n<ol>\n  <li>', '</li>\n  <li></li>\n</ol>\n');
+                break;
+            case 'preview':
+                previewInNewTab(textarea);
+                break;
+        }
+    }
+
     // --- Bind toolbar buttons ---
     // Called on DOMContentLoaded. Finds all .sc-toolbar containers
     // and wires their buttons to the associated textarea.
@@ -90,48 +142,25 @@
             toolbar.querySelectorAll('[data-action]').forEach(function (btn) {
                 btn.addEventListener('click', function (e) {
                     e.preventDefault();
-                    var action = this.getAttribute('data-action');
-
-                    switch (action) {
-                        case 'bold':
-                            insertAtCursor(textarea, '<strong>', '</strong>');
-                            break;
-                        case 'italic':
-                            insertAtCursor(textarea, '<em>', '</em>');
-                            break;
-                        case 'link':
-                            var url = prompt('URL:', 'https://');
-                            if (url) insertAtCursor(textarea, '<a href="' + url + '">', '</a>');
-                            break;
-                        case 'h2':
-                            insertAtCursor(textarea, '<h2>', '</h2>');
-                            break;
-                        case 'h3':
-                            insertAtCursor(textarea, '<h3>', '</h3>');
-                            break;
-                        case 'blockquote':
-                            insertAtCursor(textarea, '<blockquote>', '</blockquote>');
-                            break;
-                        case 'hr':
-                            insertAtCursor(textarea, '\n<hr>\n');
-                            break;
-                        case 'img':
-                            insertImage(textarea);
-                            break;
-                        case 'col2':
-                            insertColumns(textarea, 2);
-                            break;
-                        case 'col3':
-                            insertColumns(textarea, 3);
-                            break;
-                        case 'dropcap':
-                            insertAtCursor(textarea, '[dropcap]', '[/dropcap]');
-                            break;
-                        case 'preview':
-                            previewInNewTab(textarea);
-                            break;
-                    }
+                    execAction(this.getAttribute('data-action'), textarea);
                 });
+            });
+
+            // --- Keyboard shortcuts (Ctrl+B, Ctrl+I, Ctrl+U) ---
+            textarea.addEventListener('keydown', function (e) {
+                if (!e.ctrlKey && !e.metaKey) return;
+
+                var key = e.key.toLowerCase();
+                if (key === 'b') {
+                    e.preventDefault();
+                    execAction('bold', textarea);
+                } else if (key === 'i') {
+                    e.preventDefault();
+                    execAction('italic', textarea);
+                } else if (key === 'u') {
+                    e.preventDefault();
+                    execAction('underline', textarea);
+                }
             });
         });
     }
