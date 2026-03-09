@@ -532,7 +532,7 @@ function updater_run_migrations(PDO $pdo, array $migration_files): array {
 /**
  * Update the installed version in the settings table and rewrite constants.php.
  */
-function updater_set_version(PDO $pdo, string $version_short, string $version_full): bool {
+function updater_set_version(PDO $pdo, string $version_short, string $version_full, string $codename = ''): bool {
     try {
         // Update settings table
         $stmt = $pdo->prepare("UPDATE snap_settings SET setting_val = ? WHERE setting_key = 'installed_version'");
@@ -544,8 +544,9 @@ function updater_set_version(PDO $pdo, string $version_short, string $version_fu
         $stmt->execute([date('Y-m-d H:i:s')]);
 
         // Rewrite constants.php — sanitize version strings to prevent code injection
-        $safe_full  = preg_replace('/[^a-zA-Z0-9 ._-]/', '', $version_full);
-        $safe_short = preg_replace('/[^a-zA-Z0-9._-]/', '', $version_short);
+        $safe_full     = preg_replace('/[^a-zA-Z0-9 ._-]/', '', $version_full);
+        $safe_short    = preg_replace('/[^a-zA-Z0-9._-]/', '', $version_short);
+        $safe_codename = preg_replace('/[^a-zA-Z0-9 _-]/', '', $codename);
 
         $constants_file = __DIR__ . '/constants.php';
         if (file_exists($constants_file)) {
@@ -560,6 +561,20 @@ function updater_set_version(PDO $pdo, string $version_short, string $version_fu
                 "define('SNAPSMACK_VERSION_SHORT', '{$safe_short}');",
                 $content
             );
+            // Update codename if present, or add it after VERSION_SHORT
+            if (preg_match("/define\('SNAPSMACK_VERSION_CODENAME'/", $content)) {
+                $content = preg_replace(
+                    "/define\('SNAPSMACK_VERSION_CODENAME',\s*'[^']*'\);/",
+                    "define('SNAPSMACK_VERSION_CODENAME', '{$safe_codename}');",
+                    $content
+                );
+            } elseif ($safe_codename !== '') {
+                $content = preg_replace(
+                    "/(define\('SNAPSMACK_VERSION_SHORT',\s*'[^']*'\);)/",
+                    "$1\ndefine('SNAPSMACK_VERSION_CODENAME', '{$safe_codename}');",
+                    $content
+                );
+            }
             file_put_contents($constants_file, $content);
         }
 

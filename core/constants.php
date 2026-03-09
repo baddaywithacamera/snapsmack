@@ -10,6 +10,7 @@
 
 define('SNAPSMACK_VERSION', 'Alpha 0.7');
 define('SNAPSMACK_VERSION_SHORT', '0.7');
+define('SNAPSMACK_VERSION_CODENAME', 'Lapdog');
 
 // --- MOBILE SKIN OVERRIDE ---
 // The slug of the skin forced onto mobile devices. This skin is not selectable
