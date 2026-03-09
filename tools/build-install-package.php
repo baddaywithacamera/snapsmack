@@ -78,6 +78,8 @@ $exclude_dirs = [
     'public',
     'screenshots',
     'tools',               // Dev-only tools
+    'skins/kiosk',         // Development status — not ready for distribution
+    'skins/impact-printer', // Specialty skin — available as optional download
 ];
 
 // Individual files to skip
