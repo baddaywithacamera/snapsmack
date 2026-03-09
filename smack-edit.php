@@ -426,7 +426,7 @@ include 'core/sidebar.php';
 .btn-secondary { background: #333; color: #aaa; border: 1px solid #555; padding: 6px 14px; cursor: pointer; font-size: 0.8em; text-transform: uppercase; }
 .btn-secondary:hover { background: #444; color: #fff; }
 </style>
-<script src="assets/js/smack-ui-private.js?v=<?php echo time(); ?>"></script>
+<script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
 <script>
     window.addEventListener('DOMContentLoaded', () => {
         if(typeof updateLabel === "function") { 
