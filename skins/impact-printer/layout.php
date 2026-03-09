@@ -50,6 +50,7 @@ $border_style = $settings['image_frame_style'] ?? 'box';
                 <?php echo $snapsmack->parseContent($img['img_description'] ?? ''); ?>
             </div>
 
+            <?php if ($exif_display_enabled ?? true): ?>
             <div class="meta">
                 <div class="meta-header">TECHNICAL SPECIFICATIONS</div>
                 <table class="exif-table">
@@ -69,6 +70,7 @@ $border_style = $settings['image_frame_style'] ?? 'box';
                     <?php endforeach; ?>
                 </table>
             </div>
+            <?php endif; ?>
         </div>
 
         <div id="pane-comments" class="footer-pane">
