@@ -24,14 +24,40 @@ function smack_autop($text) {
     $text = preg_replace('/(\[img:[^\]]+\])\s*\n+/', '$1', $text);
     $text = str_replace(["\r\n", "\r"], "\n", $text);
 
+    // Protect block-level HTML (lists, tables, blockquotes, etc.) from
+    // paragraph wrapping. Extract them, leave placeholders, restore after.
+    $protected = [];
+    $text = preg_replace_callback(
+        '/<(ul|ol|table|blockquote|pre|div|figure|section|aside)[\s>].*?<\/\1>/si',
+        function ($m) use (&$protected) {
+            $key = '<!--BLOCK:' . count($protected) . '-->';
+            $protected[$key] = $m[0];
+            return "\n\n" . $key . "\n\n";
+        },
+        $text
+    );
+
     // Split by blank lines to identify paragraph boundaries.
     $chunks = preg_split('/\n\n+/', $text, -1, PREG_SPLIT_NO_EMPTY);
 
     foreach ($chunks as &$chunk) {
-        $chunk = '<p>' . nl2br(trim($chunk)) . '</p>';
+        $trimmed = trim($chunk);
+        // Don't wrap placeholders in <p> tags
+        if (str_starts_with($trimmed, '<!--BLOCK:')) {
+            $chunk = $trimmed;
+        } else {
+            $chunk = '<p>' . nl2br($trimmed) . '</p>';
+        }
     }
 
-    return implode("\n", $chunks);
+    $result = implode("\n", $chunks);
+
+    // Restore protected blocks
+    foreach ($protected as $key => $block) {
+        $result = str_replace($key, $block, $result);
+    }
+
+    return $result;
 }
 
 // --- HTML TO PLAIN TEXT REVERTER ---
