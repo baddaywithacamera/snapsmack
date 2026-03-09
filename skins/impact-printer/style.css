@@ -631,7 +631,7 @@ body {
     opacity: var(--ip-ink-opacity, 0.65);
 }
 
-/* --- LIST STYLING (inherits skin font) --- */
+/* --- LIST STYLING (inherits skin font for markers) --- */
 .description ul,
 .description ol,
 .static-content ul,
@@ -640,19 +640,41 @@ body {
     padding-left: 2em;
     margin: 0.8em 0;
     line-height: 2;
+    list-style: none;
 }
-.description ul,
-.static-content ul {
-    list-style: disc;
+.description ul > li,
+.static-content ul > li {
+    font-family: inherit;
+    padding-left: 0.3em;
+    position: relative;
+}
+.description ul > li::before,
+.static-content ul > li::before {
+    content: '-';
+    position: absolute;
+    left: -1.2em;
+    font-family: inherit;
 }
 .description ol,
 .static-content ol {
-    list-style: decimal;
+    list-style: none;
+    counter-reset: ip-list;
 }
-.description li,
-.static-content li {
+.description ol > li,
+.static-content ol > li {
     font-family: inherit;
     padding-left: 0.3em;
+    position: relative;
+    counter-increment: ip-list;
+}
+.description ol > li::before,
+.static-content ol > li::before {
+    content: counter(ip-list) '.';
+    position: absolute;
+    left: -2em;
+    width: 1.6em;
+    text-align: right;
+    font-family: inherit;
 }
 
 .static-transmission .description .align-left {
