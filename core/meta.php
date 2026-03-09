@@ -31,13 +31,51 @@ if (!empty($page_title) && !$is_home) {
 }
 
 // --- OPEN GRAPH META TAGS ---
-// For social media sharing: use page image if available, fall back to logo
+// Priority chain for og:image:
+//   1. Single image post ($img from index.php)
+//   2. Static page hero image ($page_data from page.php)
+//   3. Latest published image (homepage, archive, blogroll)
+//   4. Site logo fallback
 $og_title = $display_title;
-$og_image = "";
-if (!empty($page['image_asset'])) {
+$og_description = '';
+$og_image = '';
+$og_type = 'website';
+
+if (!empty($img['img_file'])) {
+    // Single image view — use the post image
+    $og_image = BASE_URL . ltrim($img['img_file'], '/');
+    $og_type  = 'article';
+    if (!empty($img['img_description'])) {
+        $og_description = mb_substr(strip_tags($img['img_description']), 0, 200);
+    }
+} elseif (!empty($page_data['image_asset'])) {
+    // Static page with a hero image
+    $og_image = BASE_URL . ltrim($page_data['image_asset'], '/');
+} elseif (!empty($page['image_asset'])) {
+    // Legacy fallback for skin-specific meta overrides
     $og_image = BASE_URL . ltrim($page['image_asset'], '/');
-} elseif (!empty($settings['header_logo_url'])) {
+}
+
+// If still empty, fetch the latest published image as the site preview
+if (empty($og_image) && isset($pdo)) {
+    try {
+        $og_latest = $pdo->query("SELECT img_file FROM snap_images WHERE img_status = 'published' ORDER BY img_date DESC LIMIT 1")->fetchColumn();
+        if ($og_latest) {
+            $og_image = BASE_URL . ltrim($og_latest, '/');
+        }
+    } catch (Exception $e) {
+        // Silently fall through to logo fallback
+    }
+}
+
+// Final fallback: site logo
+if (empty($og_image) && !empty($settings['header_logo_url'])) {
     $og_image = BASE_URL . ltrim($settings['header_logo_url'], '/');
+}
+
+// Site description fallback for og:description
+if (empty($og_description) && !empty($settings['site_tagline'])) {
+    $og_description = $settings['site_tagline'];
 }
 
 // --- CANONICAL URL ---
@@ -76,10 +114,23 @@ if (!empty($settings['favicon_url'])):
 
 <meta property="og:site_name" content="<?php echo $site_name; ?>">
 <meta property="og:title" content="<?php echo $og_title; ?>">
-<meta property="og:type" content="website">
+<meta property="og:type" content="<?php echo $og_type; ?>">
 <meta property="og:url" content="<?php echo $canonical_url; ?>">
+<?php if (!empty($og_description)): ?>
+<meta property="og:description" content="<?php echo htmlspecialchars($og_description); ?>">
+<?php endif; ?>
 <?php if (!empty($og_image)): ?>
 <meta property="og:image" content="<?php echo $og_image; ?>">
+<meta property="og:image:width" content="1200">
+<?php endif; ?>
+
+<meta name="twitter:card" content="<?php echo !empty($og_image) ? 'summary_large_image' : 'summary'; ?>">
+<meta name="twitter:title" content="<?php echo $og_title; ?>">
+<?php if (!empty($og_description)): ?>
+<meta name="twitter:description" content="<?php echo htmlspecialchars($og_description); ?>">
+<?php endif; ?>
+<?php if (!empty($og_image)): ?>
+<meta name="twitter:image" content="<?php echo $og_image; ?>">
 <?php endif; ?>
 
 <style id="snapsmack-core-vars">
