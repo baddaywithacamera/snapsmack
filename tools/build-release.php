@@ -261,6 +261,7 @@ echo "https://snapsmack.ca/releases/latest.json\n\n";
 $template = [
     'version'         => $to_ver,
     'version_full'    => "Alpha {$to_ver}",
+    'codename'        => '',
     'released'        => date('Y-m-d'),
     'download_url'    => "https://snapsmack.ca/releases/{$zip_name}",
     'checksum_sha256' => $checksum,

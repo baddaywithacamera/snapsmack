@@ -15,7 +15,7 @@
     </div>
 
     <div class="footer-right">
-        SNAPSMACK ALPHA V0.5 &copy; <?php echo date("Y"); ?>
+        SNAPSMACK <?php echo strtoupper(defined('SNAPSMACK_VERSION') ? SNAPSMACK_VERSION : 'Alpha 0.7'); ?> &copy; <?php echo date("Y"); ?>
     </div>
 </footer>
 

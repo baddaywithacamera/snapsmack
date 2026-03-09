@@ -94,6 +94,7 @@ if ($action === 'check') {
         $core_update = [
             'version'        => $release_info['version'] ?? '',
             'version_full'   => $release_info['version_full'] ?? '',
+            'codename'       => $release_info['codename'] ?? '',
             'released'       => $release_info['released'] ?? '',
             'changelog'      => $release_info['changelog'] ?? [],
             'file_changes'   => $release_info['file_changes'] ?? [],
@@ -223,7 +224,7 @@ if ($action === 'apply' && !empty($cached_result['core_update'])) {
                         // If we haven't errored out, finalize
                         if ($flash_type !== 'error') {
                             // Step 7: Update version
-                            updater_set_version($pdo, $update['version'], $update['version_full'] ?? "Alpha {$update['version']}");
+                            updater_set_version($pdo, $update['version'], $update['version_full'] ?? "Alpha {$update['version']}", $update['codename'] ?? '');
                             $steps[] = ['label' => 'Version updated', 'status' => 'ok', 'detail' => "v{$installed_version} → v{$update['version']}"];
 
                             // Clear cached check
@@ -242,6 +243,126 @@ if ($action === 'apply' && !empty($cached_result['core_update'])) {
     }
 
     $update_result = $steps;
+}
+
+// --- ACTION: MANUAL ZIP UPLOAD ---
+// Fallback for hosts that block outbound HTTPS. The user downloads the zip
+// on their own machine and uploads it through the admin panel.
+$upload_result = null;
+if ($action === 'upload_zip' && !empty($_FILES['update_zip']['tmp_name'])) {
+    $upload_steps = [];
+    $upload_file = $_FILES['update_zip']['tmp_name'];
+    $upload_name = $_FILES['update_zip']['name'] ?? 'unknown.zip';
+
+    // Validate extension
+    if (!preg_match('/\.zip$/i', $upload_name)) {
+        $flash_msg = 'UPLOADED FILE IS NOT A ZIP ARCHIVE.';
+        $flash_type = 'error';
+    } else {
+        // Step 1: Move to temp dir
+        if (!is_dir(UPDATER_TEMP_DIR)) {
+            mkdir(UPDATER_TEMP_DIR, 0700, true);
+        }
+        $dest = UPDATER_TEMP_DIR . '/snapsmack-upload.zip';
+        move_uploaded_file($upload_file, $dest);
+        $upload_steps[] = ['label' => 'Upload received', 'status' => 'ok', 'detail' => $upload_name];
+
+        // Step 2: Read the manifest from the cached check (if any) for checksum verification
+        $expected_checksum = $cached_result['core_update']['checksum_sha256'] ?? '';
+        $expected_signature = $cached_result['core_update']['signature'] ?? '';
+        $target_version = $cached_result['core_update']['version'] ?? '';
+        $target_version_full = $cached_result['core_update']['version_full'] ?? '';
+
+        // Step 3: Verify checksum if we have one from a prior check
+        $verified = true;
+        if ($expected_checksum) {
+            $verify_error = '';
+            if (!updater_verify_package($dest, $expected_checksum, $expected_signature, $verify_error)) {
+                $verified = false;
+                $upload_steps[] = ['label' => 'Verification', 'status' => 'fail', 'detail' => $verify_error];
+                $flash_msg = "VERIFICATION FAILED: {$verify_error}";
+                $flash_type = 'error';
+                updater_cleanup();
+            } else {
+                $upload_steps[] = ['label' => 'Verification passed', 'status' => 'ok', 'detail' => 'Checksum + signature OK'];
+            }
+        } else {
+            $upload_steps[] = ['label' => 'Verification skipped', 'status' => 'ok', 'detail' => 'No cached manifest to verify against'];
+        }
+
+        if ($verified) {
+            // Step 4: Force backup
+            $backup_error = '';
+            $backup_file = updater_create_backup($backup_error);
+            if ($backup_file === false) {
+                $flash_msg = "BACKUP FAILED: {$backup_error}. UPDATE ABORTED.";
+                $flash_type = 'error';
+                $upload_steps[] = ['label' => 'Backup', 'status' => 'fail', 'detail' => $backup_error];
+                updater_cleanup();
+            } else {
+                $upload_steps[] = ['label' => 'Backup created', 'status' => 'ok', 'detail' => basename($backup_file)];
+                $_SESSION['update_backup_file'] = $backup_file;
+
+                // Step 5: Extract
+                $extract = updater_extract($dest);
+                $upload_steps[] = [
+                    'label' => 'Extraction',
+                    'status' => $extract['success'] ? 'ok' : 'fail',
+                    'detail' => "{$extract['files_updated']} updated, {$extract['files_skipped']} protected"
+                ];
+
+                if (!$extract['success']) {
+                    $flash_msg = 'EXTRACTION FAILED. ERRORS: ' . implode('; ', $extract['errors']);
+                    $flash_type = 'error';
+                } else {
+                    // Step 6: Schema migrations (if we know the target version)
+                    if ($target_version) {
+                        $migrations = updater_find_migrations($installed_version, $target_version);
+                        if (!empty($migrations)) {
+                            $migrate_result = updater_run_migrations($pdo, $migrations);
+                            $upload_steps[] = [
+                                'label' => 'Schema migrations',
+                                'status' => $migrate_result['success'] ? 'ok' : 'fail',
+                                'detail' => implode(', ', $migrate_result['applied'])
+                            ];
+
+                            if (!$migrate_result['success']) {
+                                $rb_error = '';
+                                updater_rollback($backup_file, $rb_error);
+                                $flash_msg = 'MIGRATION FAILED. SYSTEM ROLLED BACK.';
+                                $flash_type = 'error';
+                                $upload_steps[] = ['label' => 'Rollback', 'status' => 'ok', 'detail' => 'Restored from backup'];
+                                updater_cleanup();
+                            }
+                        }
+                    }
+
+                    // Finalize if no errors
+                    if ($flash_type !== 'error') {
+                        if ($target_version) {
+                            $target_codename = $cached_result['core_update']['codename'] ?? '';
+                            updater_set_version($pdo, $target_version, $target_version_full ?: "Alpha {$target_version}", $target_codename);
+                            $upload_steps[] = ['label' => 'Version updated', 'status' => 'ok', 'detail' => "v{$installed_version} → v{$target_version}"];
+                        }
+
+                        $pdo->exec("DELETE FROM snap_settings WHERE setting_key = 'update_check_result'");
+                        $cached_result = null;
+
+                        updater_cleanup();
+                        $flash_msg = $target_version
+                            ? "UPDATE COMPLETE VIA UPLOAD. NOW RUNNING v{$target_version}."
+                            : "PACKAGE EXTRACTED SUCCESSFULLY.";
+                        $flash_type = 'success';
+                    }
+                }
+            }
+        }
+    }
+
+    $upload_result = $upload_steps ?? null;
+    if ($upload_result) {
+        $update_result = $upload_result;
+    }
 }
 
 // --- ACTION: CRON REGISTRATION ---
@@ -416,6 +537,9 @@ include 'core/sidebar.php';
         <div class="stat-row">
             <span class="label">VERSION:</span>
             <span class="version-badge version-current"><?php echo htmlspecialchars($installed_full); ?></span>
+            <?php if (defined('SNAPSMACK_VERSION_CODENAME') && SNAPSMACK_VERSION_CODENAME): ?>
+                <span class="dim ml-10">&ldquo;<?php echo htmlspecialchars(SNAPSMACK_VERSION_CODENAME); ?>&rdquo;</span>
+            <?php endif; ?>
         </div>
         <div class="stat-row mt-20">
             <span class="label">LAST CHECK:</span>
@@ -559,6 +683,26 @@ include 'core/sidebar.php';
         <?php endif; ?>
     </div>
     <?php endif; ?>
+
+    <!-- MANUAL UPLOAD FALLBACK -->
+    <div class="box update-section">
+        <h3>MANUAL UPDATE (UPLOAD)</h3>
+        <p class="dim text-sm mb-15">
+            If this server cannot reach snapsmack.ca, download the update zip on your own machine and upload it here.
+            The same backup, verification, and extraction pipeline will run.
+        </p>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+            <div class="lens-input-wrapper">
+                <label>UPDATE PACKAGE (.zip)</label>
+                <input type="file" name="update_zip" accept=".zip" required style="padding: 8px;">
+            </div>
+            <button type="submit" name="action" value="upload_zip" class="btn-smack mt-15"
+                    onclick="return confirm('Apply update from uploaded zip? A backup will be created first.');">
+                UPLOAD &amp; APPLY
+            </button>
+        </form>
+    </div>
 
     <!-- SKIN NOTIFICATIONS -->
     <?php if (!empty($cached_result['new_skins']) || !empty($cached_result['updated_skins'])): ?>
