@@ -48,6 +48,46 @@
         insertAtCursor(textarea, tag);
     }
 
+    // --- List builder: splits selected text into <li> items ---
+    // Splits on blank lines (double CR) or single newlines. If nothing
+    // is selected, inserts an empty scaffold with two blank items.
+    function insertList(textarea, tag) {
+        var start = textarea.selectionStart;
+        var end   = textarea.selectionEnd;
+        var text  = textarea.value;
+        var selected = text.substring(start, end);
+        var items;
+
+        if (selected.length > 0) {
+            // Split on blank lines first; fall back to single newlines.
+            items = selected.split(/\n\s*\n/);
+            if (items.length === 1) {
+                items = selected.split(/\n/);
+            }
+            // Trim each item and drop empties.
+            items = items.map(function (s) { return s.trim(); })
+                         .filter(function (s) { return s.length > 0; });
+        }
+
+        var block;
+        if (items && items.length > 0) {
+            block = '\n<' + tag + '>\n';
+            items.forEach(function (item) {
+                block += '  <li>' + item + '</li>\n';
+            });
+            block += '</' + tag + '>\n';
+        } else {
+            block = '\n<' + tag + '>\n  <li></li>\n  <li></li>\n</' + tag + '>\n';
+        }
+
+        textarea.value = text.substring(0, start) + block + text.substring(end);
+        // Place cursor inside the first empty <li> or after the block.
+        var cursorPos = start + block.indexOf('<li>') + 4;
+        textarea.selectionStart = cursorPos;
+        textarea.selectionEnd   = cursorPos;
+        textarea.focus();
+    }
+
     // --- Column shortcode: prompt for count ---
     function insertColumns(textarea, cols) {
         var block = '[columns=' + cols + ']\nFirst column content.\n';
@@ -117,10 +157,10 @@
                 insertAtCursor(textarea, '[dropcap]', '[/dropcap]');
                 break;
             case 'ul':
-                insertAtCursor(textarea, '\n<ul>\n  <li>', '</li>\n  <li></li>\n</ul>\n');
+                insertList(textarea, 'ul');
                 break;
             case 'ol':
-                insertAtCursor(textarea, '\n<ol>\n  <li>', '</li>\n  <li></li>\n</ol>\n');
+                insertList(textarea, 'ol');
                 break;
             case 'preview':
                 previewInNewTab(textarea);
