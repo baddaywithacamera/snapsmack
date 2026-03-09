@@ -351,6 +351,7 @@ if ($step === 4 && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_
             $_SESSION['site_name']    = $site_name;
             $_SESSION['site_tagline'] = $site_tagline;
             $_SESSION['site_url']     = $site_url;
+            $_SESSION['admin_email']  = $admin_email;
             $step = 5;
         } catch (PDOException $e) {
             $errors[] = 'Failed to create admin user: ' . htmlspecialchars($e->getMessage());
@@ -472,6 +473,7 @@ function snapsmack_is_mobile(): bool {
                 'site_name'                 => $_SESSION['site_name'] ?? 'My SnapSmack Site',
                 'site_tagline'              => $_SESSION['site_tagline'] ?? '',
                 'site_url'                  => $_SESSION['site_url'] ?? '',
+                'site_email'                => $_SESSION['admin_email'] ?? '',
                 'active_skin'               => 'new-horizon-dark',
                 'active_skin_variant'       => 'dark',
                 'active_theme'              => 'midnight-lime',
