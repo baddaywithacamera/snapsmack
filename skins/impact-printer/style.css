@@ -538,7 +538,7 @@ body {
 
 /* --- CROPPED GRID (3:2 landscape / 2:3 portrait / 1:1 square) --- */
 .cropped-grid .thumb-container {
-    margin: 0 auto;
+    width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
