@@ -115,6 +115,9 @@ include 'core/sidebar.php';
 
                     <label>BASE SITE URL</label>
                     <input type="text" name="settings[site_url]" value="<?php echo htmlspecialchars($settings['site_url'] ?? 'https://iswa.ca/'); ?>">
+
+                    <label>SITE EMAIL</label>
+                    <input type="email" name="settings[site_email]" value="<?php echo htmlspecialchars($settings['site_email'] ?? ''); ?>" placeholder="e.g. contact@example.com">
                 </div>
 
                 <div class="post-col-right">
