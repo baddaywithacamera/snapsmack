@@ -631,6 +631,30 @@ body {
     opacity: var(--ip-ink-opacity, 0.65);
 }
 
+/* --- LIST STYLING (inherits skin font) --- */
+.description ul,
+.description ol,
+.static-content ul,
+.static-content ol {
+    font-family: inherit;
+    padding-left: 2em;
+    margin: 0.8em 0;
+    line-height: 2;
+}
+.description ul,
+.static-content ul {
+    list-style: disc;
+}
+.description ol,
+.static-content ol {
+    list-style: decimal;
+}
+.description li,
+.static-content li {
+    font-family: inherit;
+    padding-left: 0.3em;
+}
+
 .static-transmission .description .align-left {
     float: left !important;
     margin: 17px 50px 25px 10px !important;
