@@ -1,12 +1,13 @@
 <?php
 /**
  * SNAPSMACK - Download Overlay Helper
- * Alpha v0.7
+ * Alpha v0.7.1
  *
  * Generates a download button for individual photos when enabled. The button
  * uses CSS position:fixed to stay visible without interfering with the skin's
- * layout. Supports external download URLs (e.g., Google Drive) or serves files
- * directly via HMAC-authenticated tokens.
+ * layout. Supports external download URLs (e.g., Google Drive, OneDrive) or
+ * serves files directly via HMAC-authenticated tokens. Share links from both
+ * providers are auto-converted to direct download URLs.
  *
  * Expected variables in scope:
  *   $img      — The image record array from snap_images
@@ -31,11 +32,21 @@ if ($global_downloads && $post_downloads) {
     $external_url = trim($img['download_url'] ?? '');
 
     // --- EXTERNAL URL HANDLING ---
-    // If an external URL is set, use it directly (with Google Drive conversion)
+    // If an external URL is set, use it directly (with Google Drive / OneDrive conversion)
     if (!empty($external_url)) {
         // Auto-convert Google Drive view links to direct download
         if (preg_match('#drive\.google\.com/file/d/([^/]+)#', $external_url, $m)) {
             $external_url = 'https://drive.google.com/uc?export=download&id=' . $m[1];
+        }
+
+        // Auto-convert OneDrive/SharePoint share links to direct download
+        // Covers 1drv.ms short links and onedrive.live.com/redir links
+        if (preg_match('#1drv\.ms/#', $external_url) || preg_match('#onedrive\.live\.com/redir#', $external_url)) {
+            $external_url = rtrim($external_url, '&') . '&download=1';
+        }
+        // SharePoint-hosted OneDrive links: swap sharing action to download
+        if (preg_match('#my\.sharepoint\.com/.+/:([a-z]):/g/#', $external_url)) {
+            $external_url = preg_replace('/\?e=.+$/', '?download=1', $external_url);
         }
         $download_url = $external_url;
         $target = ' target="_blank" rel="noopener"';

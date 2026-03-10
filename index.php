@@ -1,10 +1,14 @@
 <?php
 /**
  * SNAPSMACK - Main public controller that handles image display and navigation
- * Alpha v0.6
+ * Alpha v0.7.1
  *
  * Routes requests to images by slug, loads the active skin template, and
  * manages navigation between published images with proper timestamp filtering.
+ *
+ * Supports homepage_mode setting:
+ *   - 'latest_post'  (default) — shows latest published image via skin landing/layout
+ *   - 'static_page'           — renders a chosen static page as homepage; blog moves to blog.php
  */
 
 ini_set('display_errors', 1);
@@ -46,11 +50,87 @@ try {
     // Overlay skin-scoped settings so each skin retains its own customizations
     snapsmack_apply_skin_settings($settings, $active_skin);
 
-    // --- REQUEST ROUTING ---
+    // --- HOMEPAGE MODE: STATIC PAGE ---
+    // If no specific slug is requested and homepage_mode is static_page, render the
+    // chosen page using the same pattern as page.php instead of the image feed.
     $path_info = $_SERVER['PATH_INFO'] ?? '';
     $requested_slug = trim($path_info, '/');
     if (empty($requested_slug)) $requested_slug = $_GET['s'] ?? $_GET['name'] ?? null;
 
+    $homepage_mode   = $settings['homepage_mode'] ?? 'latest_post';
+    $homepage_page_id = (int)($settings['homepage_page_id'] ?? 0);
+
+    $force_blog = !empty($_SERVER['SNAPSMACK_FORCE_BLOG']);
+
+    if (!$force_blog && !$requested_slug && $homepage_mode === 'static_page' && $homepage_page_id > 0) {
+        // Load the static page from snap_pages
+        $hp_stmt = $pdo->prepare("SELECT * FROM snap_pages WHERE id = ? AND is_active = 1 LIMIT 1");
+        $hp_stmt->execute([$homepage_page_id]);
+        $page_data = $hp_stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($page_data) {
+            // Render as static page — reuse the page.php template pattern
+            $page_title = htmlspecialchars($page_data['title']);
+            $skin_path  = 'skins/' . $active_skin;
+
+            if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
+                include __DIR__ . '/' . $skin_path . '/skin-meta.php';
+            }
+            ?>
+            <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css?v=<?php echo time(); ?>">
+            <body class="static-transmission homepage-static">
+                <div id="page-wrapper">
+                    <div id="scroll-stage">
+                        <?php
+                        $header_file = __DIR__ . '/' . $skin_path . '/skin-header.php';
+                        if (file_exists($header_file)) {
+                            include $header_file;
+                        } else {
+                            include __DIR__ . '/core/header.php';
+                        }
+                        ?>
+
+                        <?php if (!empty($page_data['image_asset'])): ?>
+                            <div id="photobox" class="page-hero">
+                                <div class="main-photo">
+                                    <img src="<?php echo BASE_URL . ltrim($page_data['image_asset'], '/'); ?>"
+                                         class="post-image"
+                                         alt="<?php echo $page_title; ?>">
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <div class="static-content">
+                            <h1 class="static-page-title"><?php echo $page_title; ?></h1>
+                            <div class="description">
+                                <?php
+                                if (!empty($page_data['content'])) {
+                                    echo $snapsmack->parseContent($page_data['content']);
+                                } else {
+                                    echo "<p class='dim'>No content signal found for this sector.</p>";
+                                }
+                                ?>
+                            </div>
+                        </div>
+
+                        <?php
+                        $footer_file = __DIR__ . '/' . $skin_path . '/skin-footer.php';
+                        if (file_exists($footer_file)) {
+                            include $footer_file;
+                        }
+                        ?>
+                    </div>
+                </div>
+                <?php include __DIR__ . '/core/footer-scripts.php'; ?>
+            </body>
+            </html>
+            <?php
+            exit; // Static homepage rendered — stop here
+        }
+        // If page not found, fall through to normal latest-post behaviour
+    }
+
+    // --- REQUEST ROUTING (LATEST POST MODE) ---
     // --- IMAGE LOOKUP ---
     if ($requested_slug) {
         $stmt = $pdo->prepare("SELECT * FROM snap_images WHERE img_slug = ? AND img_status = 'published' LIMIT 1");
