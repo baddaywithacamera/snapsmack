@@ -158,7 +158,7 @@ echo "  Skipped {$files_skipped} excluded entries\n\n";
 // ─── BUILD ZIP ──────────────────────────────────────────────────────────────
 
 $safe_ver = preg_replace('/[^a-zA-Z0-9._-]/', '', $version_short);
-$zip_name = "snapsmack-{$safe_ver}-full.zip";
+$zip_name = "snapsmack-{$safe_ver}.zip";
 $zip_path = rtrim($output_dir, '/') . '/' . $zip_name;
 $wrapper  = "snapsmack-{$safe_ver}/";
 
