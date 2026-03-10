@@ -202,6 +202,17 @@ body {
     height: auto;
 }
 
+/* Inline frame wrapper for images in static pages and descriptions */
+.snap-inline-frame {
+    width: fit-content;
+    margin: 1.5em auto;
+}
+.snap-inline-frame .ip-ascii-frame-inner img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
 /* Side border spans no longer needed — hide them */
 .ip-border-left,
 .ip-border-right {
@@ -606,6 +617,7 @@ body {
     text-align: left;
     overflow-x: hidden;
 }
+
 
 .static-content::after {
     content: "";
