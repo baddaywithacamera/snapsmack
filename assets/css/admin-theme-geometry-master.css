@@ -489,12 +489,18 @@ textarea,
 /* --- SHORTCODE TOOLBAR --- */
 .sc-toolbar {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 5px;
     padding: 8px 15px;
     border-width: 1px 1px 0 1px;
     border-style: solid;
     border-radius: 4px 4px 0 0;
+}
+
+.sc-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
     align-items: center;
 }
 

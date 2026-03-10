@@ -9,6 +9,7 @@
  *   [img:ID|size|align]              — inline image from media library or posts
  *   [columns=N] ... [col] ... [/columns] — multi-column grid layout
  *   [dropcap]X[/dropcap]            — decorative first-letter dropcap
+ *   [spacer:N]                       — vertical gap (1–100 pixels)
  *
  * Auto-paragraph: double newlines (\n\n) become <p> tags automatically.
  * Single newlines within a paragraph become <br>.
@@ -66,6 +67,16 @@ class SnapSmack {
 
         // --- PHASE 4: IMAGE SHORTCODES ---
         $content = $this->parseImages($content);
+
+        // --- PHASE 5: SPACER SHORTCODES ---
+        $content = $this->parseSpacers($content);
+
+        // --- PHASE 6: BLOCK NESTING CLEANUP ---
+        // When [img:] shortcodes sit inside the same <p> as text (either from
+        // old saves or same-line authoring), Phase 2 wraps everything in <p>
+        // and Phase 4 converts the shortcode to a <div>, creating invalid
+        // <p><div>...</div>text</p>. Split the div out and re-wrap leftovers.
+        $content = $this->cleanBlockNesting($content);
 
         return $content;
     }
@@ -191,6 +202,77 @@ class SnapSmack {
     }
 
     // =========================================================================
+    //  SPACER SHORTCODE
+    // =========================================================================
+
+    /**
+     * Parse [spacer:N] shortcodes into vertical gap divs.
+     *
+     * Accepts pixel values 1–100. Values outside range are clamped.
+     * Renders as an empty div with an explicit height.
+     */
+    private function parseSpacers($content) {
+        return preg_replace_callback(
+            '/\[spacer:\s*(\d+)\]/i',
+            function ($matches) {
+                $px = max(1, min(100, (int) $matches[1]));
+                return '<div class="snap-spacer" style="height:' . $px . 'px" aria-hidden="true"></div>';
+            },
+            $content
+        );
+    }
+
+    // =========================================================================
+    //  BLOCK NESTING CLEANUP
+    // =========================================================================
+
+    /**
+     * Fix invalid <p><div>...</div></p> nesting created when image shortcodes
+     * inside a paragraph get expanded into block-level elements.
+     *
+     * Splits block-level snap-inline-frame divs out of their parent <p> and
+     * re-wraps any leftover text in new <p> tags.
+     */
+    private function cleanBlockNesting($content) {
+        // Match any <p> that contains a snap-inline-frame div
+        return preg_replace_callback(
+            '/<p>(.*?<div class="snap-inline-frame[^"]*">.*?<\/div><\/div>.*?)<\/p>/si',
+            function ($matches) {
+                $inner = $matches[1];
+
+                // Split around the frame div(s)
+                $parts = preg_split(
+                    '/(<div class="snap-inline-frame[^"]*">.*?<\/div><\/div>)/si',
+                    $inner,
+                    -1,
+                    PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY
+                );
+
+                $output = '';
+                foreach ($parts as $part) {
+                    $trimmed = trim($part);
+                    if ($trimmed === '' || $trimmed === '<br>' || $trimmed === '<br/>') continue;
+
+                    if (str_starts_with($trimmed, '<div class="snap-inline-frame')) {
+                        // Block-level frame — output as-is, no <p> wrapper
+                        $output .= $trimmed . "\n";
+                    } else {
+                        // Leftover text — strip leading/trailing <br> and re-wrap
+                        $trimmed = preg_replace('/^(<br\s*\/?>)+|(<br\s*\/?>)+$/i', '', $trimmed);
+                        $trimmed = trim($trimmed);
+                        if ($trimmed !== '') {
+                            $output .= '<p>' . $trimmed . '</p>' . "\n";
+                        }
+                    }
+                }
+
+                return $output;
+            },
+            $content
+        );
+    }
+
+    // =========================================================================
     //  IMAGE SHORTCODE
     // =========================================================================
 
@@ -240,10 +322,11 @@ class SnapSmack {
                 }
 
                 $full_src = $base . $final_path;
-                $classes  = "snapsmack-asset asset-$size align-$align";
+                $classes  = "snap-framed-img asset-$size align-$align";
 
                 return sprintf(
-                    '<img src="%s" class="%s" alt="%s" loading="lazy">',
+                    '<div class="snap-inline-frame align-%s"><div class="ip-ascii-frame-inner"><img src="%s" class="%s" alt="%s" loading="lazy"></div></div>',
+                    $align,
                     $full_src,
                     $classes,
                     htmlspecialchars($asset['name'])

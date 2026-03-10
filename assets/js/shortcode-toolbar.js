@@ -162,6 +162,17 @@
             case 'ol':
                 insertList(textarea, 'ol');
                 break;
+            case 'spacer':
+                var px = prompt('Spacer height in pixels (1–100):', '20');
+                if (px !== null) {
+                    px = parseInt(px, 10);
+                    if (px >= 1 && px <= 100) {
+                        insertAtCursor(textarea, '[spacer:' + px + ']');
+                    } else {
+                        alert('Enter a number between 1 and 100.');
+                    }
+                }
+                break;
             case 'preview':
                 previewInNewTab(textarea);
                 break;
