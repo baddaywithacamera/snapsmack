@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Global site configuration
- * Alpha v0.7
+ * Alpha v0.7.1
  *
  * Manages site identity, branding, navigation, footer layout, and image processing parameters.
  * Handles logo and favicon uploads, timezone settings, and feature toggles.
@@ -179,6 +179,26 @@ include 'core/sidebar.php';
                             <option value="0" <?php echo (($settings['blogroll_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED</option>
                         </select>
                         <span class="dim">CONTROLS NAV LINK AND PUBLIC PAGE ACCESS.</span>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>HOMEPAGE MODE</label>
+                        <select name="settings[homepage_mode]" id="homepage-mode-select">
+                            <option value="latest_post" <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'latest_post') ? 'selected' : ''; ?>>LATEST POST (DEFAULT)</option>
+                            <option value="static_page" <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'static_page') ? 'selected' : ''; ?>>STATIC PAGE</option>
+                        </select>
+                        <span class="dim">LATEST POST SHOWS NEWEST IMAGE. STATIC PAGE USES A PAGE AS HOMEPAGE.</span>
+                    </div>
+
+                    <div class="lens-input-wrapper homepage-page-picker<?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'static_page') ? '' : ' d-none'; ?>" id="homepage-page-picker">
+                        <label>HOMEPAGE PAGE</label>
+                        <select name="settings[homepage_page_id]">
+                            <option value="0">SELECT A PAGE</option>
+                            <?php foreach($pages_list as $p): ?>
+                                <option value="<?php echo $p['id']; ?>" <?php echo (($settings['homepage_page_id'] ?? 0) == $p['id']) ? 'selected' : ''; ?>><?php echo strtoupper(htmlspecialchars($p['title'])); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <span class="dim">BLOG MOVES TO A SEPARATE /BLOG LINK IN NAVIGATION.</span>
                     </div>
                 </div>
             </div>
@@ -421,6 +441,17 @@ document.querySelectorAll('.footer-slot-toggle').forEach(function(sel) {
         }
     });
 });
+
+// Toggle homepage page picker visibility based on homepage mode.
+var homepageMode = document.getElementById('homepage-mode-select');
+if (homepageMode) {
+    homepageMode.addEventListener('change', function() {
+        var picker = document.getElementById('homepage-page-picker');
+        if (picker) {
+            picker.style.display = (this.value === 'static_page') ? '' : 'none';
+        }
+    });
+}
 </script>
 
 <script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>

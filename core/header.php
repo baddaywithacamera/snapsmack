@@ -1,11 +1,12 @@
 <?php
 /**
  * SNAPSMACK - Public Navigation Header
- * Alpha v0.6
+ * Alpha v0.7.1
  *
  * Renders the site logo and main navigation bar. Navigation items are: HOME,
- * ARCHIVE VIEW, GALLERY VIEW (conditional), BLOGROLL (conditional), and any
- * dynamic pages. Respects show_wall_link setting to hide gallery view on mobile.
+ * BLOG (when homepage is a static page), ARCHIVE VIEW, GALLERY VIEW (conditional),
+ * BLOGROLL (conditional), and any dynamic pages. Respects homepage_mode setting
+ * and show_wall_link setting to hide gallery view on mobile.
  */
 
 // --- ENVIRONMENT BOOTSTRAP ---
@@ -21,11 +22,23 @@ $site_display_name = $site_name ?? 'SNAPSMACK';
 $header_type = $settings['header_type'] ?? 'text';
 $logo_path   = $settings['header_logo_url'] ?? '';
 
+// --- HOMEPAGE MODE ---
+$homepage_mode    = $settings['homepage_mode'] ?? 'latest_post';
+$homepage_page_id = (int)($settings['homepage_page_id'] ?? 0);
+
 // --- DYNAMIC PAGE RETRIEVAL ---
-// Load all active pages from the database for menu insertion
+// Load all active pages from the database for menu insertion.
+// If a static page is set as homepage, exclude it from the dynamic list
+// (it's already the homepage — no need to show it twice in the nav).
 try {
-    $pages_stmt = $pdo->query("SELECT title, slug FROM snap_pages WHERE is_active = 1 ORDER BY menu_order ASC");
-    $dynamic_pages = $pages_stmt->fetchAll(PDO::FETCH_ASSOC);
+    if ($homepage_mode === 'static_page' && $homepage_page_id > 0) {
+        $pages_stmt = $pdo->prepare("SELECT title, slug FROM snap_pages WHERE is_active = 1 AND id != ? ORDER BY menu_order ASC");
+        $pages_stmt->execute([$homepage_page_id]);
+        $dynamic_pages = $pages_stmt->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        $pages_stmt = $pdo->query("SELECT title, slug FROM snap_pages WHERE is_active = 1 ORDER BY menu_order ASC");
+        $dynamic_pages = $pages_stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 } catch (PDOException $e) {
     $dynamic_pages = [];
 }
@@ -57,6 +70,11 @@ if (sessionStorage.getItem('snapsmack_help_seen')) {
     <li>
         <a href="<?php echo BASE_URL; ?>">HOME</a>
         <span class="sep">|</span>
+
+        <?php if ($homepage_mode === 'static_page'): ?>
+            <a href="<?php echo BASE_URL; ?>blog.php">BLOG</a>
+            <span class="sep">|</span>
+        <?php endif; ?>
 
         <a href="<?php echo BASE_URL; ?>archive.php">ARCHIVE VIEW</a>
 
