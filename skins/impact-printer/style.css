@@ -353,6 +353,17 @@ body {
     opacity: var(--ip-ink-opacity, 0.65);
 }
 
+.description a,
+.static-content a {
+    color: inherit;
+    text-decoration: underline;
+}
+
+.description a:hover,
+.static-content a:hover {
+    color: var(--text-primary);
+}
+
 /* ==========================================================================
    SYSTEM FOOTER
    ========================================================================= */
