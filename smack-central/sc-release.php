@@ -3,9 +3,10 @@
  * SMACK CENTRAL - Release Packager
  * Alpha v0.7.1
  *
- * Pulls a git tag from the local SnapSmack repo clone, builds a distributable
- * zip via git archive, SHA-256 checksums it, signs the checksum with the
- * Ed25519 private key, moves the zip to the releases directory, and publishes
+ * Fetches tags from GitHub, downloads the repo zip for the selected tag,
+ * repackages it as a clean distributable zip (no local git or shell access
+ * required), SHA-256 checksums it, signs the checksum with the Ed25519
+ * private key, drops the zip in the releases directory, and publishes
  * releases/latest.json in the format the SnapSmack updater expects.
  */
 
@@ -13,20 +14,27 @@ require_once __DIR__ . '/sc-auth.php';
 $sc_active_nav = 'sc-release.php';
 $sc_page_title = 'Release Packager';
 
+// ── GitHub config ─────────────────────────────────────────────────────────────
+// Define SNAPSMACK_GITHUB_REPO / SNAPSMACK_GITHUB_TOKEN in sc-config.php to
+// override these defaults. Token is optional but raises the rate limit from
+// 60 → 5000 requests/hour.
+if (!defined('SNAPSMACK_GITHUB_REPO'))  define('SNAPSMACK_GITHUB_REPO',  'baddaywithacamera/snapsmack');
+if (!defined('SNAPSMACK_GITHUB_TOKEN')) define('SNAPSMACK_GITHUB_TOKEN', '');
+
 // ── Preflight checks ──────────────────────────────────────────────────────────
 $preflight = [];
 
-if (!function_exists('exec')) {
-    $preflight[] = ['err', 'exec() is disabled on this server. Release packaging requires shell access.'];
-}
 if (!function_exists('sodium_crypto_sign_detached')) {
     $preflight[] = ['err', 'libsodium is not available. PHP 7.2+ with sodium extension required.'];
 }
+if (!class_exists('ZipArchive')) {
+    $preflight[] = ['err', 'ZipArchive is not available. Install the php-zip extension.'];
+}
+if (!function_exists('curl_init') && !ini_get('allow_url_fopen')) {
+    $preflight[] = ['err', 'No HTTP fetch method available. Enable curl or allow_url_fopen in php.ini.'];
+}
 if (!defined('SMACK_RELEASE_PRIVKEY') || strlen(SMACK_RELEASE_PRIVKEY) !== 128) {
     $preflight[] = ['err', 'SMACK_RELEASE_PRIVKEY is not set or is the wrong length. Check sc-config.php.'];
-}
-if (!is_dir(SNAPSMACK_REPO_PATH) || !is_dir(SNAPSMACK_REPO_PATH . '/.git')) {
-    $preflight[] = ['warn', 'No git repo found at ' . SNAPSMACK_REPO_PATH . '. Use the Clone button below to initialise it.'];
 }
 if (!is_dir(RELEASES_DIR)) {
     $preflight[] = ['warn', 'Releases directory does not exist: ' . RELEASES_DIR . '. Create it and make it web-accessible.'];
@@ -34,53 +42,138 @@ if (!is_dir(RELEASES_DIR)) {
 
 $preflight_ok = !array_filter($preflight, fn($p) => $p[0] === 'err');
 
-// ── Helper: run a shell command, return output and exit code ──────────────────
-function sc_run(string $cmd): array {
-    $output = [];
-    $code   = -1;
-    exec($cmd . ' 2>&1', $output, $code);
-    return [
-        'output' => implode("\n", $output),
-        'lines'  => $output,
-        'ok'     => $code === 0,
-        'code'   => $code,
-    ];
+// ── Helper: raw HTTP GET (curl preferred, file_get_contents fallback) ─────────
+function sc_http_raw(string $url, array $extra_headers = []): string|false {
+    if (function_exists('curl_init')) {
+        $ch   = curl_init($url);
+        $opts = [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS      => 5,
+            CURLOPT_TIMEOUT        => 120,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_USERAGENT      => 'SnapSmack-SC/0.7.1',
+        ];
+        if ($extra_headers) $opts[CURLOPT_HTTPHEADER] = $extra_headers;
+        curl_setopt_array($ch, $opts);
+        $body = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        return ($body !== false && $code === 200) ? $body : false;
+    }
+    $ctx_opts = ['http' => ['timeout' => 120, 'user_agent' => 'SnapSmack-SC/0.7.1']];
+    if ($extra_headers) $ctx_opts['http']['header'] = implode("\r\n", $extra_headers);
+    return @file_get_contents($url, false, stream_context_create($ctx_opts));
 }
 
-// ── Helper: list tags from local repo ─────────────────────────────────────────
+// ── Helper: GitHub API GET → decoded array ────────────────────────────────────
+function sc_github_get(string $endpoint): array|false {
+    $headers = ['Accept: application/vnd.github.v3+json', 'User-Agent: SnapSmack-SC/0.7.1'];
+    if (SNAPSMACK_GITHUB_TOKEN) {
+        $headers[] = 'Authorization: token ' . SNAPSMACK_GITHUB_TOKEN;
+    }
+    $body = sc_http_raw('https://api.github.com/' . ltrim($endpoint, '/'), $headers);
+    if ($body === false) return false;
+    $data = json_decode($body, true);
+    return is_array($data) ? $data : false;
+}
+
+// ── Helper: list tags from GitHub ─────────────────────────────────────────────
 function sc_list_tags(): array {
-    $repo = escapeshellarg(SNAPSMACK_REPO_PATH);
-    $git  = escapeshellcmd(GIT_BIN);
-    $r    = sc_run("{$git} -C {$repo} tag --sort=-version:refname");
-    if (!$r['ok'] || empty($r['lines'])) return [];
-    return array_filter(array_map('trim', $r['lines']));
+    $data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/tags?per_page=30');
+    if (!is_array($data)) return [];
+    return array_column($data, 'name');
 }
 
-// ── Helper: parse file_changes from git diff between two tags ─────────────────
+// ── Helper: file changes between two tags via GitHub compare API ──────────────
 function sc_file_changes(string $from_tag, string $to_tag): array {
-    $repo  = escapeshellarg(SNAPSMACK_REPO_PATH);
-    $git   = escapeshellcmd(GIT_BIN);
-    $from  = escapeshellarg($from_tag);
-    $to    = escapeshellarg($to_tag);
-    $r     = sc_run("{$git} -C {$repo} diff --name-status {$from}..{$to}");
+    $from = urlencode($from_tag);
+    $to   = urlencode($to_tag);
+    $data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . "/compare/{$from}...{$to}");
     $added = $modified = $removed = [];
-    foreach ($r['lines'] as $line) {
-        if (preg_match('/^([AMD])\s+(.+)$/', trim($line), $m)) {
-            match($m[1]) {
-                'A' => $added[]    = $m[2],
-                'M' => $modified[] = $m[2],
-                'D' => $removed[]  = $m[2],
-                default => null,
-            };
-        }
+    if (!is_array($data) || empty($data['files'])) {
+        return ['added' => [], 'modified' => [], 'removed' => []];
+    }
+    foreach ($data['files'] as $f) {
+        $name   = $f['filename'] ?? '';
+        $status = $f['status']   ?? '';
+        match ($status) {
+            'added'    => $added[]    = $name,
+            'modified' => $modified[] = $name,
+            'removed'  => $removed[]  = $name,
+            'renamed'  => $modified[] = $name, // treat renames as modified (new path)
+            default    => null,
+        };
     }
     return ['added' => $added, 'modified' => $modified, 'removed' => $removed];
 }
 
-// ── POST: Clone repo ──────────────────────────────────────────────────────────
-$action      = $_POST['action'] ?? '';
-$build_error = '';
-$build_log   = [];
+// ── Helper: download GitHub tag zip and repackage as clean release zip ────────
+// GitHub zips include a wrapper directory (e.g. "snapsmack-0.7.1/"). This
+// function strips that prefix so the release zip contains files at their
+// actual paths, matching what git archive would have produced.
+function sc_build_release_zip(string $tag, string $zip_dest): array {
+    $url  = 'https://github.com/' . SNAPSMACK_GITHUB_REPO . '/archive/refs/tags/' . urlencode($tag) . '.zip';
+    $data = sc_http_raw($url);
+    if ($data === false) {
+        return ['ok' => false, 'msg' => 'Could not download zip from GitHub. Check outbound HTTPS access.'];
+    }
+
+    $tmp_src = sys_get_temp_dir() . '/sc_gh_' . time() . '_' . rand(1000, 9999) . '.zip';
+    file_put_contents($tmp_src, $data);
+    $dl_kb = round(strlen($data) / 1024);
+    unset($data);
+
+    $src = new ZipArchive();
+    if ($src->open($tmp_src) !== true) {
+        @unlink($tmp_src);
+        return ['ok' => false, 'msg' => 'Could not open downloaded zip — file may be corrupt.'];
+    }
+
+    // Detect the wrapper prefix: find the first top-level directory entry.
+    // GitHub names it "{reponame}-{tagname-without-v}/" e.g. "snapsmack-0.7.1/"
+    $prefix = '';
+    for ($i = 0; $i < $src->numFiles; $i++) {
+        $n = $src->getNameIndex($i);
+        if (str_ends_with($n, '/') && substr_count(rtrim($n, '/'), '/') === 0) {
+            $prefix = $n;
+            break;
+        }
+    }
+
+    $dst = new ZipArchive();
+    if ($dst->open($zip_dest, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        $src->close();
+        @unlink($tmp_src);
+        return ['ok' => false, 'msg' => 'Could not create release zip at ' . $zip_dest . ' — check directory permissions.'];
+    }
+
+    $count = 0;
+    for ($i = 0; $i < $src->numFiles; $i++) {
+        $name = $src->getNameIndex($i);
+        $rel  = $prefix ? substr($name, strlen($prefix)) : $name;
+        if ($rel === '' || str_ends_with($rel, '/')) continue;
+        if (str_contains($rel, '..') || str_starts_with($rel, '/')) continue;
+        $content = $src->getFromIndex($i);
+        if ($content === false) continue;
+        $dst->addFromString($rel, $content);
+        $count++;
+    }
+
+    $src->close();
+    $dst->close();
+    @unlink($tmp_src);
+
+    return [
+        'ok'  => true,
+        'msg' => "Downloaded {$dl_kb} KB from GitHub, packaged {$count} files (prefix stripped: \"{$prefix}\")",
+    ];
+}
+
+// ── POST: Build release ───────────────────────────────────────────────────────
+$action       = $_POST['action'] ?? '';
+$build_error  = '';
+$build_log    = [];
 $build_result = null;
 
 // Retrieve flash result from session after redirect.
@@ -89,34 +182,13 @@ if (isset($_SESSION['sc_release_built'])) {
     unset($_SESSION['sc_release_built']);
 }
 
-if ($action === 'clone' && $preflight_ok) {
-    $git     = escapeshellcmd(GIT_BIN);
-    $url     = escapeshellarg(defined('SNAPSMACK_REPO_URL') ? SNAPSMACK_REPO_URL : '');
-    $path    = escapeshellarg(SNAPSMACK_REPO_PATH);
-    $r       = sc_run("{$git} clone {$url} {$path}");
-    $build_log = $r['lines'];
-    if (!$r['ok']) $build_error = 'Clone failed. See log below.';
-    header('Location: sc-release.php');
-    exit;
-}
-
-// ── POST: Fetch tags ──────────────────────────────────────────────────────────
-if ($action === 'fetch' && $preflight_ok) {
-    $git  = escapeshellcmd(GIT_BIN);
-    $repo = escapeshellarg(SNAPSMACK_REPO_PATH);
-    sc_run("{$git} -C {$repo} fetch --tags --prune");
-    header('Location: sc-release.php');
-    exit;
-}
-
-// ── POST: Build release ───────────────────────────────────────────────────────
 if ($action === 'build' && $preflight_ok) {
 
-    $tag           = trim($_POST['tag']           ?? '');
-    $version       = trim($_POST['version']       ?? '');
-    $version_full  = trim($_POST['version_full']  ?? '');
-    $released      = trim($_POST['released']      ?? date('Y-m-d'));
-    $requires_php  = trim($_POST['requires_php']  ?? '8.0');
+    $tag            = trim($_POST['tag']            ?? '');
+    $version        = trim($_POST['version']        ?? '');
+    $version_full   = trim($_POST['version_full']   ?? '');
+    $released       = trim($_POST['released']       ?? date('Y-m-d'));
+    $requires_php   = trim($_POST['requires_php']   ?? '8.0');
     $requires_mysql = trim($_POST['requires_mysql'] ?? '5.7');
     $schema_changes = !empty($_POST['schema_changes']);
     $changelog_raw  = trim($_POST['changelog'] ?? '');
@@ -132,55 +204,45 @@ if ($action === 'build' && $preflight_ok) {
     }
 
     if (!$build_error) {
-        $git        = escapeshellcmd(GIT_BIN);
-        $repo       = escapeshellarg(SNAPSMACK_REPO_PATH);
-        $tag_safe   = escapeshellarg($tag);
-        $zip_name   = 'snapsmack-' . preg_replace('/[^a-zA-Z0-9._\-]/', '', $version) . '.zip';
-        $zip_tmp    = sys_get_temp_dir() . '/' . $zip_name;
-        $zip_out    = escapeshellarg($zip_tmp);
+        $zip_name = 'snapsmack-' . preg_replace('/[^a-zA-Z0-9._\-]/', '', $version) . '.zip';
+        $zip_dest = rtrim(RELEASES_DIR, '/') . '/' . $zip_name;
 
-        // Step 1: git archive
-        $build_log[] = "→ git archive {$tag} → {$zip_tmp}";
-        $r = sc_run("{$git} -C {$repo} archive --format=zip --output={$zip_out} {$tag_safe}");
-        $build_log = array_merge($build_log, $r['lines']);
+        // Step 1: Download from GitHub + repackage as clean zip
+        $build_log[] = "→ Downloading tag {$tag} from GitHub…";
+        $zip_result  = sc_build_release_zip($tag, $zip_dest);
+        $build_log[] = '→ ' . $zip_result['msg'];
 
-        if (!$r['ok']) {
-            $build_error = 'git archive failed. See log below.';
+        if (!$zip_result['ok']) {
+            $build_error = $zip_result['msg'];
         } else {
             // Step 2: SHA-256
-            $checksum = hash_file('sha256', $zip_tmp);
+            $checksum    = hash_file('sha256', $zip_dest);
             $build_log[] = "→ SHA-256: {$checksum}";
 
             // Step 3: Sign
             try {
-                $privkey   = sodium_hex2bin(SMACK_RELEASE_PRIVKEY);
-                $sig       = sodium_crypto_sign_detached($checksum, $privkey);
-                $sig_hex   = sodium_bin2hex($sig);
+                $privkey     = sodium_hex2bin(SMACK_RELEASE_PRIVKEY);
+                $sig         = sodium_crypto_sign_detached($checksum, $privkey);
+                $sig_hex     = sodium_bin2hex($sig);
                 $build_log[] = "→ Signed OK";
             } catch (SodiumException $e) {
                 $build_error = 'Signing failed: ' . $e->getMessage();
             }
 
             if (!$build_error) {
-                // Step 4: Move zip to releases dir
-                $zip_dest    = rtrim(RELEASES_DIR, '/') . '/' . $zip_name;
-                if (!rename($zip_tmp, $zip_dest)) {
-                    // rename fails across filesystem boundaries — fall back to copy
-                    copy($zip_tmp, $zip_dest);
-                    unlink($zip_tmp);
-                }
-                $file_size   = filesize($zip_dest);
+                $file_size    = filesize($zip_dest);
                 $download_url = rtrim(RELEASES_URL, '/') . '/' . $zip_name;
-                $build_log[] = "→ Zip saved: {$zip_dest} (" . number_format($file_size / 1024, 1) . " KB)";
+                $build_log[]  = "→ Zip saved: {$zip_dest} (" . number_format($file_size / 1024, 1) . " KB)";
 
-                // Step 5: file_changes from previous release
+                // Step 4: File changes via GitHub compare API
                 $file_changes = ['added' => [], 'modified' => [], 'removed' => []];
                 try {
                     $prev = sc_db()->query("SELECT git_tag FROM sc_releases ORDER BY id DESC LIMIT 1")->fetch();
                     if ($prev && $prev['git_tag'] !== $tag) {
+                        $build_log[]  = "→ Comparing {$prev['git_tag']}…{$tag} via GitHub API…";
                         $file_changes = sc_file_changes($prev['git_tag'], $tag);
-                        $total_changes = count($file_changes['added']) + count($file_changes['modified']) + count($file_changes['removed']);
-                        $build_log[] = "→ File changes vs {$prev['git_tag']}: {$total_changes} files";
+                        $total        = count($file_changes['added']) + count($file_changes['modified']) + count($file_changes['removed']);
+                        $build_log[]  = "→ File changes vs {$prev['git_tag']}: {$total} files";
                     } else {
                         $build_log[] = "→ No previous release to diff against; file_changes will be empty.";
                     }
@@ -188,41 +250,36 @@ if ($action === 'build' && $preflight_ok) {
                     $build_log[] = "→ Could not compute file_changes: " . $e->getMessage();
                 }
 
-                // Step 5b: Auto-detect schema_changes from file diff.
-                // If any migrations/*.sql file appears in the diff, override the
-                // checkbox value so the installer always knows to run migrations.
-                $diff_all = array_merge(
-                    $file_changes['added']    ?? [],
-                    $file_changes['modified'] ?? []
-                );
+                // Step 4b: Auto-detect schema_changes from diff
+                $diff_all = array_merge($file_changes['added'] ?? [], $file_changes['modified'] ?? []);
                 foreach ($diff_all as $_df) {
                     if (str_starts_with($_df, 'migrations/')) {
                         $schema_changes = true;
-                        $build_log[] = "→ schema_changes: true (migration file detected in diff)";
+                        $build_log[]    = "→ schema_changes: true (migration file detected in diff)";
                         break;
                     }
                 }
 
-                // Step 6: Write latest.json
+                // Step 5: Write latest.json
                 $manifest = [
-                    'version'        => $version,
-                    'version_full'   => $version_full,
-                    'released'       => $released,
-                    'download_url'   => $download_url,
+                    'version'         => $version,
+                    'version_full'    => $version_full,
+                    'released'        => $released,
+                    'download_url'    => $download_url,
                     'checksum_sha256' => $checksum,
-                    'signature'      => $sig_hex,
-                    'changelog'      => $changelog,
-                    'file_changes'   => $file_changes,
-                    'schema_changes' => $schema_changes,
-                    'requires_php'   => $requires_php,
-                    'requires_mysql' => $requires_mysql,
-                    'download_size'  => $file_size,
+                    'signature'       => $sig_hex,
+                    'changelog'       => $changelog,
+                    'file_changes'    => $file_changes,
+                    'schema_changes'  => $schema_changes,
+                    'requires_php'    => $requires_php,
+                    'requires_mysql'  => $requires_mysql,
+                    'download_size'   => $file_size,
                 ];
                 $json_path = rtrim(RELEASES_DIR, '/') . '/latest.json';
                 file_put_contents($json_path, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
                 $build_log[] = "→ latest.json written";
 
-                // Step 7: Persist to db
+                // Step 6: Persist to DB
                 try {
                     $db = sc_db();
                     $db->exec("UPDATE sc_releases SET is_latest = 0");
@@ -264,9 +321,8 @@ if ($action === 'build' && $preflight_ok) {
 }
 
 // ── Fetch data for the form ───────────────────────────────────────────────────
-$tags     = [];
-$repo_ok  = is_dir(SNAPSMACK_REPO_PATH . '/.git');
-if ($repo_ok && $preflight_ok) {
+$tags = [];
+if ($preflight_ok) {
     $tags = sc_list_tags();
 }
 
@@ -281,7 +337,7 @@ try {
 } catch (Exception $e) {}
 
 // Auto-fill version from latest tag if possible
-$latest_tag     = $tags[0] ?? '';
+$latest_tag      = $tags[0] ?? '';
 $default_version = ltrim(preg_replace('/^v/i', '', $latest_tag), '');
 
 require __DIR__ . '/sc-layout-top.php';
@@ -289,7 +345,7 @@ require __DIR__ . '/sc-layout-top.php';
 
 <div class="sc-page-header">
   <span class="sc-page-title">Release Packager</span>
-  <span class="sc-dim">git archive → sha256 → sign → publish</span>
+  <span class="sc-dim">github → zip → sha256 → sign → publish</span>
 </div>
 
 <?php foreach ($preflight as [$level, $msg]): ?>
@@ -345,12 +401,9 @@ require __DIR__ . '/sc-layout-top.php';
     <div class="sc-box">
       <div class="sc-box-header">
         <span class="sc-box-title">Build New Release</span>
-        <?php if ($preflight_ok): ?>
-        <form method="post" action="sc-release.php" style="margin:0;">
-          <input type="hidden" name="action" value="fetch">
-          <button type="submit" class="sc-btn sc-btn--sm">↻ Fetch Tags</button>
-        </form>
-        <?php endif; ?>
+        <span class="sc-dim" style="font-size:var(--sc-size-label);">
+          <?php echo htmlspecialchars(SNAPSMACK_GITHUB_REPO); ?>
+        </span>
       </div>
       <div class="sc-box-body">
 
@@ -364,17 +417,15 @@ require __DIR__ . '/sc-layout-top.php';
         <?php if (!$preflight_ok): ?>
         <p class="sc-dim">Fix the errors above before building a release.</p>
 
-        <?php elseif (!$repo_ok): ?>
-        <p class="sc-dim" style="margin-bottom:16px;">
-          No local repo found. Clone it once to get started.
-        </p>
-        <form method="post" action="sc-release.php">
-          <input type="hidden" name="action" value="clone">
-          <button type="submit" class="sc-btn sc-btn--primary">Clone Repo</button>
-        </form>
-
         <?php elseif (empty($tags)): ?>
-        <p class="sc-dim">No tags found in the local repo. Click Fetch Tags to pull from remote.</p>
+        <div class="sc-alert sc-alert--warn">
+          Could not fetch tags from GitHub. Check that this server has outbound HTTPS access
+          and that <code><?php echo htmlspecialchars(SNAPSMACK_GITHUB_REPO); ?></code> is public.
+          <?php if (!SNAPSMACK_GITHUB_TOKEN): ?>
+          If you're hitting the rate limit (60 req/hr), add
+          <code>define('SNAPSMACK_GITHUB_TOKEN', 'your-token');</code> to sc-config.php.
+          <?php endif; ?>
+        </div>
 
         <?php else: ?>
         <form method="post" action="sc-release.php">
@@ -385,7 +436,7 @@ require __DIR__ . '/sc-layout-top.php';
             <select name="tag" class="sc-select" id="tag-select">
               <?php foreach ($tags as $t): ?>
               <option value="<?php echo htmlspecialchars($t); ?>"
-                      data-version="<?php echo htmlspecialchars(ltrim(preg_replace('/^v/i','', $t), '')); ?>">
+                      data-version="<?php echo htmlspecialchars(ltrim(preg_replace('/^v/i', '', $t), '')); ?>">
                 <?php echo htmlspecialchars($t); ?>
               </option>
               <?php endforeach; ?>
@@ -427,6 +478,9 @@ require __DIR__ . '/sc-layout-top.php';
             <input type="checkbox" name="schema_changes" id="schema_changes" value="1">
             <label for="schema_changes">Schema changes in this release</label>
           </div>
+          <p class="sc-hint" style="margin-top:-8px; margin-bottom:12px;">
+            Auto-detected if any <code>migrations/</code> file is in the diff — override here if needed.
+          </p>
 
           <div class="sc-field">
             <label>Changelog</label>
