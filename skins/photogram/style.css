@@ -1,0 +1,925 @@
+/**
+ * SNAPSMACK — Photogram Skin
+ * Alpha v0.7
+ *
+ * Mobile-first phone-app layout. Max 480px centred column on desktop.
+ * All configurable values live in :root custom properties.
+ * The compiled custom_css_public blob loads after this file and overrides them.
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CSS CUSTOM PROPERTIES — DESIGN TOKENS
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+    --pg-accent:          #3D6B9E;
+    --pg-bg:              #FFFFFF;
+    --pg-surface:         #FAFAFA;
+    --pg-text:            #1A1A1A;
+    --pg-text-muted:      #8E8E8E;
+    --pg-border:          #DBDBDB;
+    --pg-grid-gap:        0px;
+    --pg-avatar-radius:   50%;
+    --pg-sheet-radius:    16px;
+    --pg-sheet-speed:     280ms;
+    --pg-nav-height:      50px;
+    --pg-header-height:   44px;
+    --pg-outer-bg:        #EFEFEF;
+    --pg-font:            -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLOBAL RESET & BASE
+   ═══════════════════════════════════════════════════════════════════════════ */
+*, *::before, *::after {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--pg-font);
+    color: var(--pg-text);
+    background: var(--pg-outer-bg);
+    overflow-x: hidden;
+}
+
+a {
+    color: var(--pg-accent);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+img {
+    display: block;
+    max-width: 100%;
+}
+
+button {
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 0;
+    font-family: inherit;
+    color: inherit;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   APP SHELL — THE PHONE COLUMN
+   ═══════════════════════════════════════════════════════════════════════════ */
+#pg-app {
+    max-width: 480px;
+    min-height: 100vh;
+    margin: 0 auto;
+    background: var(--pg-bg);
+    position: relative;
+    /* Clip sheets that slide in from off-screen */
+    overflow-x: hidden;
+}
+
+/* On desktop: show a subtle card shadow so the column reads as a phone */
+@media (min-width: 480px) {
+    body {
+        background: var(--pg-outer-bg);
+    }
+    #pg-app {
+        box-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 4px 32px rgba(0,0,0,.10);
+        min-height: 100vh;
+    }
+}
+
+/* Padding at bottom so content isn't hidden behind fixed nav */
+.pg-content {
+    padding-bottom: calc(var(--pg-nav-height) + 8px);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOP BAR (Post view, Discover)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pg-top-bar {
+    height: var(--pg-header-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px 0 8px;
+    border-bottom: 1px solid var(--pg-border);
+    background: var(--pg-bg);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.pg-top-bar-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--pg-text);
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+}
+
+.pg-top-bar-btn {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--pg-text);
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.pg-top-bar-btn:hover {
+    opacity: 0.6;
+}
+
+.pg-top-bar-btn svg {
+    display: block;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BOTTOM NAVIGATION BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+#pg-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    height: var(--pg-nav-height);
+    background: var(--pg-bg);
+    border-top: 1px solid var(--pg-border);
+    display: flex;
+    align-items: stretch;
+    z-index: 100;
+}
+
+/* Safety: if JS hasn't run yet, still looks right */
+@media (max-width: 480px) {
+    #pg-nav {
+        left: 0;
+        transform: none;
+    }
+}
+
+.pg-nav-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--pg-text-muted);
+    font-size: 22px;
+    transition: color 0.15s ease;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pg-nav-tab:hover {
+    text-decoration: none;
+    color: var(--pg-text);
+}
+
+.pg-nav-tab.active {
+    color: var(--pg-text);
+}
+
+.pg-nav-tab svg {
+    display: block;
+    transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+/* Active tab: filled icon */
+.pg-nav-tab.active svg.pg-icon-outline { display: none; }
+.pg-nav-tab:not(.active) svg.pg-icon-filled { display: none; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PROFILE / LANDING PAGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pg-profile {
+    padding: 20px 16px 12px;
+}
+
+.pg-profile-top {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 14px;
+}
+
+.pg-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: var(--pg-avatar-radius);
+    object-fit: cover;
+    background: var(--pg-border);
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.pg-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+}
+
+/* Fallback if no avatar image */
+.pg-avatar-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: var(--pg-avatar-radius);
+    background: var(--pg-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--pg-text-muted);
+    font-size: 32px;
+    flex-shrink: 0;
+}
+
+.pg-profile-stats {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+    justify-content: space-around;
+}
+
+.pg-stat {
+    text-align: center;
+    line-height: 1.2;
+}
+
+.pg-stat-count {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--pg-text);
+    display: block;
+}
+
+.pg-stat-label {
+    font-size: 13px;
+    color: var(--pg-text-muted);
+    display: block;
+}
+
+.pg-profile-bio {
+    margin-bottom: 12px;
+}
+
+.pg-display-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--pg-text);
+    display: block;
+    margin-bottom: 3px;
+}
+
+.pg-bio-text {
+    font-size: 14px;
+    color: var(--pg-text);
+    line-height: 1.45;
+    white-space: pre-line;
+}
+
+.pg-bio-text a {
+    color: var(--pg-accent);
+}
+
+.pg-site-url {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--pg-accent);
+    display: inline-block;
+    margin-top: 2px;
+}
+
+/* Profile page: no traditional header, just the bare top with site title */
+.pg-profile-header {
+    height: var(--pg-header-height);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid var(--pg-border);
+    background: var(--pg-bg);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.pg-profile-header-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--pg-text);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ARCHIVE GRID — 3-COL SQUARE
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pg-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--pg-grid-gap, 0px);
+    /* No padding — grid runs edge to edge within the app column */
+}
+
+.pg-grid-cell {
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    display: block;
+    position: relative;
+    background: var(--pg-border);
+}
+
+.pg-grid-cell img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.2s ease;
+}
+
+.pg-grid-cell:hover img {
+    transform: scale(1.03);
+}
+
+/* Carousel badge (Phase 2 — shown when post has >1 image) */
+.pg-carousel-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    color: #fff;
+    font-size: 16px;
+    line-height: 1;
+    text-shadow: 0 1px 3px rgba(0,0,0,.6);
+    pointer-events: none;
+}
+
+/* Empty state */
+.pg-grid-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--pg-text-muted);
+    font-size: 14px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   POST VIEW (layout.php)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Author row above the image */
+.pg-post-author {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    gap: 10px;
+}
+
+.pg-post-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--pg-border);
+    overflow: hidden;
+}
+
+.pg-post-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.pg-post-avatar-placeholder {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--pg-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--pg-text-muted);
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.pg-post-author-info {
+    flex: 1;
+    line-height: 1.2;
+}
+
+.pg-post-author-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--pg-text);
+    display: block;
+}
+
+.pg-post-author-sub {
+    font-size: 12px;
+    color: var(--pg-text-muted);
+    display: block;
+}
+
+.pg-post-more-btn {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--pg-text);
+    font-size: 20px;
+    letter-spacing: 1px;
+}
+
+/* The post image — full width, native aspect ratio */
+.pg-post-image-wrap {
+    position: relative;
+    width: 100%;
+    background: #000;
+    overflow: hidden;
+}
+
+.pg-post-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+/* Carousel dots (Phase 2) */
+.pg-carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px 0 4px;
+}
+
+.pg-carousel-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--pg-border);
+    transition: background 0.2s ease;
+}
+
+.pg-carousel-dot.active {
+    background: var(--pg-accent);
+}
+
+/* Action bar: heart + comment bubble */
+.pg-action-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px 4px;
+}
+
+.pg-action-btn {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--pg-text);
+    font-size: 24px;
+    transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.pg-action-btn:active {
+    transform: scale(0.85);
+}
+
+.pg-action-btn svg {
+    display: block;
+    pointer-events: none;
+}
+
+/* Like button — filled heart when liked */
+.pg-like-btn.liked svg.pg-heart-outline { display: none; }
+.pg-like-btn:not(.liked) svg.pg-heart-filled { display: none; }
+.pg-like-btn.liked svg.pg-heart-filled { color: #ED4956; }
+
+/* Like count line */
+.pg-like-count {
+    padding: 0 12px 4px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--pg-text);
+    line-height: 1.4;
+}
+
+/* Caption: bold username inline, then caption text */
+.pg-caption {
+    padding: 2px 12px 6px;
+    font-size: 14px;
+    color: var(--pg-text);
+    line-height: 1.5;
+}
+
+.pg-caption-username {
+    font-weight: 700;
+    margin-right: 4px;
+}
+
+.pg-caption-hashtag {
+    color: var(--pg-accent);
+}
+
+/* "View all N comments" trigger */
+.pg-view-comments {
+    display: block;
+    padding: 2px 12px 8px;
+    font-size: 14px;
+    color: var(--pg-text-muted);
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+    text-align: left;
+    width: 100%;
+}
+
+.pg-view-comments:hover {
+    color: var(--pg-text);
+}
+
+/* Post timestamp */
+.pg-post-time {
+    padding: 0 12px 12px;
+    font-size: 11px;
+    color: var(--pg-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEART BURST ANIMATION (double-tap to like)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pg-heart-burst {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    font-size: 80px;
+    line-height: 1;
+    pointer-events: none;
+    user-select: none;
+    animation: pg-heart-pop 0.65s cubic-bezier(0.17, 0.89, 0.32, 1.28) forwards;
+    z-index: 50;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,.3));
+}
+
+@keyframes pg-heart-pop {
+    0%   { transform: translate(-50%, -50%) scale(0);   opacity: 1; }
+    35%  { transform: translate(-50%, -50%) scale(1.4); opacity: 1; }
+    55%  { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+    75%  { transform: translate(-50%, -50%) scale(1.25); opacity: 0.9; }
+    100% { transform: translate(-50%, -50%) scale(1.0); opacity: 0; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMMENTS BOTTOM SHEET
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Backdrop overlay */
+#pg-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 199;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--pg-sheet-speed, 280ms) ease;
+}
+
+#pg-sheet-backdrop.open {
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* The sheet itself */
+#pg-comments-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%) translateY(100%);
+    width: 100%;
+    max-width: 480px;
+    height: 85vh;
+    background: var(--pg-surface);
+    border-radius: var(--pg-sheet-radius, 16px) var(--pg-sheet-radius, 16px) 0 0;
+    z-index: 200;
+    transition: transform var(--pg-sheet-speed, 280ms) cubic-bezier(0.32, 0.72, 0, 1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#pg-comments-sheet.open {
+    transform: translateX(-50%) translateY(0);
+}
+
+@media (max-width: 480px) {
+    #pg-comments-sheet {
+        left: 0;
+        transform: translateY(100%);
+    }
+    #pg-comments-sheet.open {
+        transform: translateY(0);
+    }
+}
+
+/* Drag handle pill */
+.pg-sheet-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--pg-border);
+    border-radius: 2px;
+    margin: 10px auto 0;
+    flex-shrink: 0;
+    cursor: grab;
+}
+
+/* Sheet header row */
+.pg-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid var(--pg-border);
+    flex-shrink: 0;
+    position: relative;
+}
+
+.pg-sheet-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--pg-text);
+}
+
+.pg-sheet-close {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--pg-text-muted);
+    font-size: 20px;
+    border-radius: 50%;
+}
+
+.pg-sheet-close:hover {
+    background: var(--pg-border);
+    color: var(--pg-text);
+}
+
+/* Scrollable comment list */
+.pg-sheet-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding: 0 0 8px;
+}
+
+/* Override community component styling inside the sheet */
+#pg-comments-sheet .ss-community {
+    border: none;
+    background: transparent;
+    padding: 0;
+}
+
+#pg-comments-sheet .ss-community-likes,
+#pg-comments-sheet .ss-community-reactions {
+    display: none !important;
+}
+
+#pg-comments-sheet .ss-community-comments {
+    padding: 0;
+}
+
+/* Pinned comment input at bottom of sheet */
+.pg-sheet-input-row {
+    padding: 10px 12px;
+    border-top: 1px solid var(--pg-border);
+    background: var(--pg-surface);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    /* Respect safe area on iPhone X+ */
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+}
+
+.pg-sheet-input {
+    flex: 1;
+    padding: 9px 14px;
+    border: 1px solid var(--pg-border);
+    border-radius: 20px;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--pg-text);
+    background: var(--pg-bg);
+    outline: none;
+}
+
+.pg-sheet-input:focus {
+    border-color: var(--pg-accent);
+}
+
+.pg-sheet-input::placeholder {
+    color: var(--pg-text-muted);
+}
+
+.pg-sheet-send {
+    color: var(--pg-accent);
+    font-size: 14px;
+    font-weight: 700;
+    padding: 4px 6px;
+    opacity: 0.4;
+    transition: opacity 0.15s;
+}
+
+.pg-sheet-send.ready {
+    opacity: 1;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DISCOVER PAGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pg-discover {
+    padding: 16px;
+}
+
+.pg-discover-heading {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--pg-text);
+    margin: 0 0 20px;
+    letter-spacing: -0.5px;
+}
+
+.pg-section-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--pg-text);
+    margin: 0 0 10px;
+}
+
+/* Tag pills */
+.pg-tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.pg-tag-pill {
+    padding: 7px 14px;
+    border: 1px solid var(--pg-border);
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--pg-text);
+    background: var(--pg-bg);
+    white-space: nowrap;
+}
+
+.pg-tag-pill:hover {
+    background: var(--pg-border);
+    text-decoration: none;
+    color: var(--pg-text);
+}
+
+/* Trending grid: 2-col */
+.pg-trending-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.pg-trending-card {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 8px;
+    overflow: hidden;
+    display: block;
+    background: var(--pg-border);
+}
+
+.pg-trending-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.pg-trending-card-label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px 10px 8px;
+    background: linear-gradient(to bottom, transparent, rgba(0,0,0,.55));
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* Phase 1 Discover notice */
+.pg-discover-notice {
+    background: #FFF8E7;
+    border: 1px solid #FFD966;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 24px;
+    font-size: 13px;
+    color: #7A5C00;
+    line-height: 1.5;
+}
+
+.pg-discover-notice strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 14px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOAD MORE / PAGINATION
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pg-load-more-wrap {
+    text-align: center;
+    padding: 20px;
+}
+
+.pg-load-more-btn {
+    display: inline-block;
+    padding: 10px 28px;
+    border: 1px solid var(--pg-border);
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--pg-text);
+    background: var(--pg-bg);
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.pg-load-more-btn:hover {
+    background: var(--pg-surface);
+    text-decoration: none;
+    color: var(--pg-text);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UTILITY CLASSES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pg-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.pg-divider {
+    height: 1px;
+    background: var(--pg-border);
+    margin: 0;
+}
+
+.pg-text-muted {
+    color: var(--pg-text-muted);
+    font-size: 13px;
+}

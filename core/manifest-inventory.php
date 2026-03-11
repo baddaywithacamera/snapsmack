@@ -661,5 +661,10 @@ return [
             'css'          => 'assets/css/ss-community.css',
             'has_settings' => false,
         ],
+        'smack-photogram' => [
+            'label'        => 'Photogram Engine (Bottom sheet, double-tap like, nav)',
+            'path'         => 'assets/js/ss-engine-photogram.js',
+            'has_settings' => false,
+        ],
     ]
 ];
