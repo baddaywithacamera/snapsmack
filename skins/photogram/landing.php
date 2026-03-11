@@ -9,6 +9,13 @@
  * Variables available from index.php: $pdo, $settings, $active_skin, $site_name
  */
 
+// ── Sub-page routing: ?pg=search ─────────────────────────────────────────
+$_pg_page = $_GET['pg'] ?? '';
+if ($_pg_page === 'search' && ($settings['pg_show_search'] ?? '0') === '1') {
+    include __DIR__ . '/search.php';
+    return; // search.php includes its own header/footer
+}
+
 // ── Image count for profile stats ─────────────────────────────────────────
 $now_local  = date('Y-m-d H:i:s');
 $count_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published' AND img_date <= ?");
