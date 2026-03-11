@@ -242,6 +242,28 @@ function community_setting(string $key, mixed $default = null): mixed {
 
 
 // ---------------------------------------------------------------------------
+// snap_community_ready()
+//
+// Returns true if the community infrastructure tables have been created
+// (i.e. the community migration has been run). Returns false silently if any
+// required table is missing so callers can bail gracefully without crashing
+// the page. Result is cached for the lifetime of the request.
+// ---------------------------------------------------------------------------
+function snap_community_ready(): bool {
+    global $pdo;
+    static $checked = null;
+    if ($checked !== null) return $checked;
+    try {
+        $pdo->query("SELECT 1 FROM snap_community_sessions LIMIT 0");
+        $checked = true;
+    } catch (PDOException $e) {
+        $checked = false;
+    }
+    return $checked;
+}
+
+
+// ---------------------------------------------------------------------------
 // community_rate_limit($action, $limit_key)
 //
 // Returns true if the current IP is within the allowed rate for $action.

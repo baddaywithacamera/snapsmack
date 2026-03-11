@@ -25,6 +25,9 @@ if (empty($img['id']))                                      return;
 
 require_once __DIR__ . '/community-session.php';
 
+// --- GUARD: Bail silently if community migration hasn't been run yet ---
+if (!snap_community_ready()) return;
+
 // --- POST PERMISSION ---
 if ((($img['allow_comments'] ?? '1') != '1')) return;
 
