@@ -16,7 +16,7 @@
 
 $active_tab    = $pg_active_tab ?? 'home';
 $show_discover = ($settings['pg_show_discover'] ?? '1') === '1';
-$show_search   = ($settings['pg_show_search']   ?? '0') === '1';
+$show_search   = ($settings['search_enabled']    ?? '0') === '1';
 
 // Base URL for nav links
 $home_url     = BASE_URL;

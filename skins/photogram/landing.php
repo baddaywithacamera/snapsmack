@@ -11,7 +11,7 @@
 
 // ── Sub-page routing: ?pg=search ─────────────────────────────────────────
 $_pg_page = $_GET['pg'] ?? '';
-if ($_pg_page === 'search' && ($settings['pg_show_search'] ?? '0') === '1') {
+if ($_pg_page === 'search' && ($settings['search_enabled'] ?? '0') === '1') {
     include __DIR__ . '/search.php';
     return; // search.php includes its own header/footer
 }

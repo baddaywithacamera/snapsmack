@@ -160,6 +160,15 @@ include 'core/sidebar.php';
                         </select>
                         <span class="dim">HIDES TECHNICAL SPECIFICATIONS PANEL. DATA IS STILL STORED.</span>
                     </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>SITE-WIDE SEARCH</label>
+                        <select name="settings[search_enabled]">
+                            <option value="0" <?php echo (($settings['search_enabled'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED (DEFAULT)</option>
+                            <option value="1" <?php echo (($settings['search_enabled'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
+                        </select>
+                        <span class="dim">ENABLES FULL-TEXT SEARCH ON SKINS THAT SUPPORT IT (E.G. PHOTOGRAM).</span>
+                    </div>
                 </div>
 
                 <div class="post-col-right">
