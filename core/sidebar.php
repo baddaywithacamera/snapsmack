@@ -27,7 +27,7 @@ if (!empty($settings['active_skin'])) {
 $_section_map = [
     'good-shit'  => ['smack-admin.php','smack-post.php','smack-manage.php','smack-edit.php','smack-cats.php','smack-albums.php','smack-media.php','smack-comments.php','smack-pages.php','smack-community-config.php','smack-community-users.php'],
     'pimp'       => ['smack-globalvibe.php','smack-skin.php','smack-pimpotron.php','smack-social-dock.php','smack-css.php'],
-    'boring'     => ['smack-config.php','smack-users.php','smack-maintenance.php','smack-backup.php','smack-ftp.php','smack-cloud.php','smack-verify.php','smack-update.php'],
+    'boring'     => ['smack-config.php','smack-users.php','smack-maintenance.php','smack-backup.php','smack-disaster.php','smack-ftp.php','smack-cloud.php','smack-verify.php','smack-update.php'],
     'help'       => ['smack-help.php'],
 ];
 $_active_section = 'good-shit'; // default
@@ -127,6 +127,9 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     </li>
                     <li class="<?php echo in_array($current_page, ['smack-backup.php','smack-ftp.php','smack-cloud.php','smack-verify.php']) ? 'active' : ''; ?>">
                         <a href="smack-backup.php">Backup &amp; Recovery</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-disaster.php') ? 'active' : ''; ?>">
+                        <a href="smack-disaster.php">Disaster Recovery</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-update.php') ? 'active' : ''; ?>">
                         <a href="smack-update.php">System Updates</a>
