@@ -40,6 +40,8 @@ $exif_labels = [
 
     <?php include('skin-header.php'); ?>
 
+    <?php include dirname(__DIR__, 2) . '/core/community-dock.php'; ?>
+
     <!-- COMMENTS DRAWER — slides DOWN from top (masthead section feel) -->
     <div id="rg-comments-drawer" class="rg-drawer rg-drawer-top">
         <div class="rg-drawer-inner">

@@ -221,6 +221,16 @@ INSERT IGNORE INTO snap_settings (setting_key, setting_val) VALUES
     ('community_session_days',       '30')
 ;
 
+-- Community dock: floating FAB for likes and reactions
+-- community_dock_position: same 8 positions as social_dock_position
+-- community_active_reactions: JSON array of up to 6 enabled reaction codes
+-- community_allow_dislike: '1' enables the thumbs-down reaction
+INSERT IGNORE INTO snap_settings (setting_key, setting_val) VALUES
+    ('community_dock_position',      'bottom-right'),
+    ('community_active_reactions',   '["fire","chef-kiss","wow","moody","sharp","golden-hour"]'),
+    ('community_allow_dislike',      '0')
+;
+
 
 -- ============================================================================
 -- 9. VERSION STAMP

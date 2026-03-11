@@ -50,6 +50,13 @@ $show_comments  = (string)($manifest_data['community_comments']  ?? $settings['c
 $show_likes     = (string)($manifest_data['community_likes']     ?? $settings['community_likes_enabled']     ?? '1') === '1';
 $show_reactions = (string)($manifest_data['community_reactions'] ?? $settings['community_reactions_enabled'] ?? '0') === '1';
 
+// If the community dock is active (migration has run), it handles likes and reactions.
+// The component becomes comments-only to avoid showing likes in two places.
+if (array_key_exists('community_dock_position', $settings)) {
+    $show_likes     = false;
+    $show_reactions = false;
+}
+
 // Nothing to show — bail silently
 if (!$show_comments && !$show_likes && !$show_reactions) {
     return;
