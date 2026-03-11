@@ -118,7 +118,7 @@ include 'core/sidebar.php';
                     <span class="dim">USED FOR LINK PREVIEWS (OG) AND FEED SKIN PROFILE BIOS.</span>
 
                     <label>BASE SITE URL</label>
-                    <input type="text" name="settings[site_url]" value="<?php echo htmlspecialchars($settings['site_url'] ?? 'https://iswa.ca/'); ?>">
+                    <input type="text" name="settings[site_url]" value="<?php echo htmlspecialchars($settings['site_url'] ?? 'https://example.com/'); ?>">
 
                     <label>SITE EMAIL</label>
                     <input type="email" name="settings[site_email]" value="<?php echo htmlspecialchars($settings['site_email'] ?? ''); ?>" placeholder="e.g. contact@example.com">

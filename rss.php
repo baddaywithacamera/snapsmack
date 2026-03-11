@@ -15,7 +15,7 @@ $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings
 $settings = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
 $site_name = $settings['site_name'] ?? 'ISWA.CA';
-$site_url  = rtrim($settings['site_url'] ?? 'https://iswa.ca/', '/') . '/';
+$site_url  = rtrim($settings['site_url'] ?? 'https://example.com/', '/') . '/';
 $site_desc = $settings['site_description'] ?? '3D Anaglyph Photography';
 
 // --- FEED SETUP ---
