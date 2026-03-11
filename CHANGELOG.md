@@ -33,6 +33,21 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - Photogram search (`skins/photogram/search.php`): LIKE search across `img_title` and `img_description`, 60-result cap, 3-column results grid, empty state. Off by default (`search_enabled = 0` in Global Config). Search nav tab appears when enabled.
 - Photogram about tab: bottom nav person icon now resolves to the page with `slug = 'about'` (falls back to first active page by menu_order). Tab is hidden when no pages exist. Previously pointed back to home.
 - `site_description` field added to Global Config → Site Identity & Branding (textarea, 1–2 sentences). Used as the profile bio in Photogram and The Grid landing pages, and as the preferred `og:description` source. Both skins already read this key; the field simply had no way to be populated before.
+- `smack-forum.php`: community forum client. Renders inside the admin panel; accessible only to install administrators. Auto-registers the install with the forum hub on first visit (stores API key in `snap_settings` as `forum_api_key`). Views: board list, thread list (paginated), thread detail with replies, new thread form, reply form. Delete controls for own posts. Enabled by default; configurable via `forum_enabled` toggle in Global Config. API endpoint configurable via `forum_api_url` for self-hosted forks.
+- `forum_enabled` and `forum_api_url` settings added to Global Config → Architecture & Interaction. `forum_enabled` defaults on. `forum_api_url` defaults to `https://snapsmack.ca/api/forum`; self-hosters point this at their own hub.
+- Forum nav link added to sidebar under **Help, I Need Somebody!** section alongside User Manual.
+- `smack-central/`: SMACK CENTRAL hub administration application. Separate codebase deployed to snapsmack.ca as its own git repo. Foundation: `sc-config.example.php`, `sc-schema.sql` (`sc_admin_users`, `sc_settings`, `sc_releases`, `sc_rss_cache`), `sc-db.php`, `sc-auth.php`, `sc-login.php`, `sc-logout.php`, `sc-layout-top.php`, `sc-layout-bottom.php`, `sc-dashboard.php`.
+- `smack-central/assets/css/sc-geometry.css`: Design token file. All `--sc-` custom properties mirroring SnapSmack midnight-lime admin visual language with `sc-` namespace for future merge compatibility.
+- `smack-central/assets/css/sc-admin.css`: Full SMACK CENTRAL component stylesheet — layout shell, sidebar, boxes, form fields, buttons, alerts, tables, stat grid, status dots, release result panel, build log.
+- `smack-central/sc-release.php`: Release Packager. Pulls a git tag from a local SnapSmack repo clone, builds a distributable zip via `git archive`, SHA-256 checksums it, signs the checksum with the Ed25519 private key via libsodium, moves the zip to the releases directory, writes `releases/latest.json` in the format `core/updater.php` expects, computes `file_changes` by diffing against the previous release tag, and persists the full release record to `sc_releases`. Preflight panel warns on missing dependencies. Release history table and live `latest.json` preview inline.
+- `smack-central-design.docx` updated: Phase 6 (Release Packager) added to Build Order; Release Packager added to Modules and File Structure tables.
+- Comment identity system: three modes selectable in Community Settings → System Toggles.
+  - `open` (default) — any visitor can comment with just a name; no account or login required.
+  - `hybrid` — logged-in account holders post with full identity; guests still welcome with a name.
+  - `registered` — community account required (original behaviour).
+  - `snap_community_comments.user_id` made nullable; `guest_name` (VARCHAR 100) and `guest_email` (VARCHAR 200) columns added. See `migrations/migrate-comment-identity.sql`.
+  - Guest comments display the visitor's chosen name with an initial avatar. No delete button (guests have no session to prove identity).
+  - Rate limiting unchanged — already IP-based, applies equally to guests and account holders.
 
 ### Changed
 - `search_enabled` moved from Photogram skin manifest (`pg_show_search`) to global `snap_settings` key, controlled from **Global Config → Architecture & Interaction**. Skins that support search read this shared key; setting survives skin switches.

@@ -28,7 +28,7 @@ $_section_map = [
     'good-shit'  => ['smack-admin.php','smack-post.php','smack-manage.php','smack-edit.php','smack-cats.php','smack-albums.php','smack-media.php','smack-comments.php','smack-pages.php','smack-community-config.php','smack-community-users.php'],
     'pimp'       => ['smack-globalvibe.php','smack-skin.php','smack-pimpotron.php','smack-social-dock.php','smack-css.php'],
     'boring'     => ['smack-config.php','smack-users.php','smack-maintenance.php','smack-backup.php','smack-disaster.php','smack-ftp.php','smack-cloud.php','smack-verify.php','smack-update.php'],
-    'help'       => ['smack-help.php'],
+    'help'       => ['smack-help.php','smack-forum.php'],
 ];
 $_active_section = 'good-shit'; // default
 foreach ($_section_map as $sec => $_sec_pages) {
@@ -146,6 +146,9 @@ foreach ($_section_map as $sec => $_sec_pages) {
                 <ul class="nav-section-links">
                     <li class="<?php echo ($current_page == 'smack-help.php') ? 'active' : ''; ?>">
                         <a href="smack-help.php">User Manual</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-forum.php') ? 'active' : ''; ?>">
+                        <a href="smack-forum.php">Community Forum</a>
                     </li>
                 </ul>
             </div>

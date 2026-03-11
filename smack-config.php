@@ -173,6 +173,23 @@ include 'core/sidebar.php';
                         </select>
                         <span class="dim">ENABLES FULL-TEXT SEARCH ON SKINS THAT SUPPORT IT (E.G. PHOTOGRAM).</span>
                     </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>COMMUNITY FORUM</label>
+                        <select name="settings[forum_enabled]">
+                            <option value="1" <?php echo (($settings['forum_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED (DEFAULT)</option>
+                            <option value="0" <?php echo (($settings['forum_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED</option>
+                        </select>
+                        <span class="dim">SHOWS THE FORUM CLIENT IN YOUR ADMIN PANEL. CONNECTS TO THE SNAPSMACK COMMUNITY HUB.</span>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>FORUM API URL</label>
+                        <input type="text" name="settings[forum_api_url]"
+                               value="<?php echo htmlspecialchars($settings['forum_api_url'] ?? 'https://snapsmack.ca/api/forum'); ?>"
+                               placeholder="https://snapsmack.ca/api/forum">
+                        <span class="dim">SELF-HOSTERS: POINT THIS AT YOUR OWN FORUM SERVER. LEAVE DEFAULT FOR THE OFFICIAL HUB.</span>
+                    </div>
                 </div>
 
                 <div class="post-col-right">

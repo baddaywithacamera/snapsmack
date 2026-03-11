@@ -1,0 +1,54 @@
+/**
+ * SMACK CENTRAL - Geometry / Design Tokens
+ * Alpha v0.7.1
+ *
+ * All --sc- custom properties. Mirrors SnapSmack admin visual language
+ * (midnight-lime theme) with sc- namespace so the two can be merged later
+ * without collisions. sc-admin.css uses only these tokens — never raw values.
+ */
+
+:root {
+    /* ── Backgrounds ─────────────────────────────────────── */
+    --sc-bg-page:       #141414;   /* body, sidebar */
+    --sc-bg-box:        #1a1a1a;   /* .sc-box content area */
+    --sc-bg-box-head:   #111111;   /* .sc-box header strip */
+    --sc-bg-input:      #111111;   /* text inputs, textareas, selects */
+    --sc-bg-row-alt:    #1e1e1e;   /* alternating table rows */
+    --sc-bg-overlay:    rgba(0,0,0,.55); /* modal backdrop */
+
+    /* ── Borders ─────────────────────────────────────────── */
+    --sc-border:        #2a2a2a;
+    --sc-border-input:  #333333;
+    --sc-border-focus:  #39FF14;
+
+    /* ── Text ────────────────────────────────────────────── */
+    --sc-text:          #cccccc;
+    --sc-text-dim:      #555555;
+    --sc-text-label:    #777777;
+
+    /* ── Accent (neon lime — matches SnapSmack midnight-lime) */
+    --sc-accent:        #39FF14;
+    --sc-accent-glow:   rgba(57,255,20,.35);
+    --sc-accent-dim:    rgba(57,255,20,.15);
+
+    /* ── Status colours ──────────────────────────────────── */
+    --sc-danger:        #ff3e3e;
+    --sc-danger-bg:     rgba(255,62,62,.12);
+    --sc-warn:          #f39c12;
+    --sc-warn-bg:       rgba(243,156,18,.12);
+    --sc-success:       #39FF14;
+    --sc-success-bg:    rgba(57,255,20,.10);
+
+    /* ── Typography ──────────────────────────────────────── */
+    --sc-font:          'Arial', 'Helvetica Neue', sans-serif;
+    --sc-font-mono:     'Courier New', Courier, monospace;
+    --sc-size-base:     13px;
+    --sc-size-label:    0.7rem;
+    --sc-size-dim:      0.75rem;
+
+    /* ── Layout ──────────────────────────────────────────── */
+    --sc-sidebar-w:     210px;
+    --sc-radius:        4px;
+    --sc-radius-sm:     2px;
+    --sc-transition:    0.18s ease;
+}
