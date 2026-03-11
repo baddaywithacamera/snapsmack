@@ -201,7 +201,7 @@ if ($action === 'apply' && !empty($cached_result['core_update'])) {
                         $flash_type = 'error';
                     } else {
                         // Step 6: Schema migrations
-                        $migrations = updater_find_migrations($installed_version, $update['version']);
+                        $migrations = updater_find_migrations($pdo);
                         if (!empty($migrations)) {
                             $migrate_result = updater_run_migrations($pdo, $migrations);
                             $steps[] = [
@@ -315,9 +315,9 @@ if ($action === 'upload_zip' && !empty($_FILES['update_zip']['tmp_name'])) {
                     $flash_msg = 'EXTRACTION FAILED. ERRORS: ' . implode('; ', $extract['errors']);
                     $flash_type = 'error';
                 } else {
-                    // Step 6: Schema migrations (if we know the target version)
-                    if ($target_version) {
-                        $migrations = updater_find_migrations($installed_version, $target_version);
+                    // Step 6: Schema migrations
+                    if (true) {
+                        $migrations = updater_find_migrations($pdo);
                         if (!empty($migrations)) {
                             $migrate_result = updater_run_migrations($pdo, $migrations);
                             $upload_steps[] = [

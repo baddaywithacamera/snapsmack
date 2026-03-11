@@ -435,58 +435,77 @@ function _updater_detect_wrapper(ZipArchive $zip): string {
 // ─── SCHEMA MIGRATIONS ─────────────────────────────────────────────────────
 
 /**
- * Find and return the ordered chain of migration files needed to go from
- * $from_version to $to_version.
- * Returns an array of file paths in execution order, or empty if none needed.
+ * Find all pending migration files that have not yet been applied.
+ *
+ * Uses a snap_migrations tracking table to record what has been run,
+ * so migrations are idempotent and safe to call on every update regardless
+ * of version distance. Files are returned sorted alphabetically, which
+ * is also chronological given the "migrate-feature-name.sql" naming convention.
+ *
+ * Returns an array of absolute file paths, empty if nothing is pending.
  */
-function updater_find_migrations(string $from_version, string $to_version): array {
+function updater_find_migrations(PDO $pdo): array {
     $dir = UPDATER_MIGRATIONS_DIR;
     if (!is_dir($dir)) return [];
 
-    // Scan for all migration files
-    $files = glob("{$dir}/migrate_*.sql");
-    if (empty($files)) return [];
+    // Ensure tracking table exists (compatible with MySQL 5.6+)
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS snap_migrations (
+            migration  VARCHAR(100) NOT NULL,
+            applied_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (migration)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
 
-    // Parse version pairs from filenames
-    $migrations = [];
+    // Fetch already-applied migration names
+    $applied = $pdo->query("SELECT migration FROM snap_migrations")
+                   ->fetchAll(PDO::FETCH_COLUMN);
+    $applied = array_flip($applied);
+
+    // Scan migrations directory, sort alphabetically for deterministic order
+    $files = glob("{$dir}/migrate*.sql") ?: [];
+    sort($files);
+
+    $pending = [];
     foreach ($files as $f) {
-        $base = basename($f, '.sql');
-        if (preg_match('/^migrate_(.+?)_(.+)$/', $base, $m)) {
-            $migrations[] = [
-                'from' => $m[1],
-                'to'   => $m[2],
-                'file' => $f,
-            ];
+        if (!isset($applied[basename($f)])) {
+            $pending[] = $f;
         }
     }
 
-    // Build the chain from $from_version → $to_version
-    $chain = [];
-    $current = $from_version;
-    $max_hops = 50; // safety valve
-
-    while (version_compare($current, $to_version, '<') && $max_hops-- > 0) {
-        $found = false;
-        foreach ($migrations as $m) {
-            if ($m['from'] === $current) {
-                $chain[] = $m['file'];
-                $current = $m['to'];
-                $found = true;
-                break;
-            }
-        }
-        if (!$found) break; // gap in chain — no migration available for this hop
-    }
-
-    return $chain;
+    return $pending;
 }
 
 /**
- * Execute a chain of migration SQL files against the database.
- * Returns ['success' => bool, 'applied' => [...], 'errors' => [...]]
+ * Execute a list of migration SQL files against the database.
+ *
+ * MySQL compatibility:
+ *   DDL statements (ALTER TABLE, CREATE TABLE) cannot be wrapped in
+ *   transactions on MySQL — they auto-commit. We therefore execute each
+ *   statement individually and tolerate the two most common "already done"
+ *   errors so that migrations are safe to attempt more than once:
+ *
+ *     MySQL 1060  ER_DUP_FIELDNAME  — ADD COLUMN when column already exists
+ *     MySQL 1050  ER_TABLE_EXISTS_ERROR — CREATE TABLE when table already exists
+ *     MySQL 1091  ER_CANT_DROP_FIELD_OR_KEY — DROP INDEX/KEY that doesn't exist
+ *
+ *   Any other PDOException is a real failure: the chain stops and the caller
+ *   can trigger a rollback.
+ *
+ * Each successfully processed file is recorded in snap_migrations so it
+ * will not be run again.
+ *
+ * Returns ['success' => bool, 'applied' => [...filenames...], 'errors' => [...]]
  */
 function updater_run_migrations(PDO $pdo, array $migration_files): array {
     $result = ['success' => true, 'applied' => [], 'errors' => []];
+
+    // MySQL errno values that mean "this change is already in place" — safe to skip
+    $idempotent_errno = [
+        1060, // ER_DUP_FIELDNAME      — column already exists
+        1050, // ER_TABLE_EXISTS_ERROR — table already exists
+        1091, // ER_CANT_DROP_FIELD_OR_KEY — key/index doesn't exist
+    ];
 
     foreach ($migration_files as $file) {
         $sql = file_get_contents($file);
@@ -496,30 +515,37 @@ function updater_run_migrations(PDO $pdo, array $migration_files): array {
             continue;
         }
 
+        $migration_name = basename($file);
+
         try {
-            // Split on semicolons for multi-statement migrations
-            // (PDO exec handles multiple statements, but we want per-statement error tracking)
-            $statements = array_filter(
-                array_map('trim', explode(';', $sql)),
-                function($s) { return $s !== '' && !str_starts_with($s, '--'); }
-            );
+            // Split into individual statements on semicolons
+            foreach (explode(';', $sql) as $raw) {
+                // Strip comments; skip blank statements
+                $stmt = trim(preg_replace('/^\s*--.*$/m', '', $raw));
+                if ($stmt === '') continue;
 
-            $pdo->beginTransaction();
-
-            foreach ($statements as $stmt) {
-                $pdo->exec($stmt);
+                try {
+                    $pdo->exec($stmt);
+                } catch (\PDOException $inner) {
+                    $errno = (int)($inner->errorInfo[1] ?? 0);
+                    if (in_array($errno, $idempotent_errno, true)) {
+                        // Already applied — this is expected on re-runs or partial applies
+                        continue;
+                    }
+                    throw $inner; // real error — bubble up to outer catch
+                }
             }
 
-            $pdo->commit();
-            $result['applied'][] = basename($file);
+            // Record as applied so it never runs again
+            $pdo->prepare("INSERT IGNORE INTO snap_migrations (migration, applied_at) VALUES (?, NOW())")
+                ->execute([$migration_name]);
+
+            $result['applied'][] = $migration_name;
 
         } catch (\PDOException $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            $result['errors'][] = basename($file) . ': ' . $e->getMessage();
+            $result['errors'][] = $migration_name . ': ' . $e->getMessage();
             $result['success'] = false;
-            break; // Stop the chain on first failure
+            break; // Stop on first real failure — caller handles rollback
         }
     }
 
