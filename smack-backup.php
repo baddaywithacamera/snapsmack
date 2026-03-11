@@ -134,12 +134,7 @@ include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <div class="header-row">
-        <h2>BACKUP & RECOVERY</h2>
-        <div class="header-actions">
-            <a href="smack-disaster.php" class="btn-smack">DISASTER RECOVERY</a>
-        </div>
-    </div>
+    <h2>BACKUP & RECOVERY</h2>
 
     <!-- ============================================================
          ROUTINE BACKUPS — Full SQL dump + Schema only
