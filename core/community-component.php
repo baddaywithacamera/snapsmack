@@ -79,6 +79,12 @@ if (!$post_comments_on) {
     return;
 }
 
+// --- COMMENT IDENTITY MODE ---
+// open       — anyone can comment with just a name (default)
+// hybrid     — account holders get full identity; guests still welcome
+// registered — community account required (original behaviour)
+$comment_identity = $settings['comment_identity'] ?? 'open';
+
 // --- CURRENT USER ---
 $community_user = community_current_user();
 $post_id        = (int)$img['id'];
@@ -120,13 +126,16 @@ if ($show_reactions) {
 }
 
 // --- COMMUNITY COMMENTS ---
+// LEFT JOIN so guest comments (user_id IS NULL) are included alongside account comments.
 $community_comments = [];
 if ($show_comments) {
     $cc_stmt = $pdo->prepare("
         SELECT cc.id, cc.comment_text, cc.created_at, cc.edited_at,
-               cu.username, cu.display_name, cu.avatar_url
+               cu.username, cu.display_name, cu.avatar_url,
+               cc.guest_name, cc.guest_email,
+               CASE WHEN cc.user_id IS NULL THEN 1 ELSE 0 END AS is_guest
         FROM snap_community_comments cc
-        JOIN snap_community_users cu ON cu.id = cc.user_id
+        LEFT JOIN snap_community_users cu ON cu.id = cc.user_id
         WHERE cc.post_id = ? AND cc.status = 'visible'
         ORDER BY cc.created_at ASC
     ");
@@ -159,7 +168,8 @@ $reaction_set = [
 <div class="ss-community"
      data-post-id="<?php echo $post_id; ?>"
      data-auth-url="<?php echo htmlspecialchars($auth_url); ?>"
-     data-logged-in="<?php echo $community_user ? '1' : '0'; ?>">
+     data-logged-in="<?php echo $community_user ? '1' : '0'; ?>"
+     data-comment-mode="<?php echo htmlspecialchars($comment_identity); ?>">
 
     <?php // ================================================================
           // LIKES + REACTIONS BAR
@@ -239,19 +249,21 @@ $reaction_set = [
         <?php if (!empty($community_comments)): ?>
         <div class="ss-comment-thread" aria-label="Comments">
             <?php foreach ($community_comments as $c):
-                $display = htmlspecialchars($c['display_name'] ?: $c['username']);
-                $date    = date('Y-m-d', strtotime($c['created_at']));
-                $is_own  = $community_user && $community_user['username'] === $c['username'];
+                $is_guest = (bool)$c['is_guest'];
+                $display  = $is_guest
+                    ? htmlspecialchars($c['guest_name'] ?: 'Anonymous')
+                    : htmlspecialchars($c['display_name'] ?: $c['username']);
+                $initial  = strtoupper(substr($is_guest ? ($c['guest_name'] ?: 'A') : ($c['username'] ?: '?'), 0, 1));
+                $date     = date('Y-m-d', strtotime($c['created_at']));
+                $is_own   = !$is_guest && $community_user && $community_user['username'] === $c['username'];
             ?>
             <div class="ss-comment" data-comment-id="<?php echo (int)$c['id']; ?>">
                 <div class="ss-comment-meta">
-                    <?php if ($c['avatar_url']): ?>
+                    <?php if (!$is_guest && $c['avatar_url']): ?>
                     <img src="<?php echo htmlspecialchars($c['avatar_url']); ?>"
                          alt="" class="ss-avatar" width="28" height="28" loading="lazy">
                     <?php else: ?>
-                    <span class="ss-avatar-placeholder" aria-hidden="true">
-                        <?php echo strtoupper(substr($c['username'], 0, 1)); ?>
-                    </span>
+                    <span class="ss-avatar-placeholder" aria-hidden="true"><?php echo $initial; ?></span>
                     <?php endif; ?>
                     <span class="ss-commenter"><?php echo $display; ?></span>
                     <span class="ss-comment-date"><?php echo $date; ?></span>
@@ -267,6 +279,7 @@ $reaction_set = [
         <?php endif; ?>
 
         <?php if ($community_user): ?>
+        <!-- Logged-in account form — shown in all modes when user is authenticated -->
         <form class="ss-comment-form" data-post-id="<?php echo $post_id; ?>">
             <div class="ss-comment-input-row">
                 <?php if ($community_user['avatar_url']): ?>
@@ -294,7 +307,34 @@ $reaction_set = [
             <div class="ss-comment-status" role="status" aria-live="polite"></div>
         </form>
 
+        <?php elseif ($comment_identity !== 'registered'): ?>
+        <!-- Guest comment form — open and hybrid modes, unauthenticated visitor -->
+        <form class="ss-comment-form ss-comment-form--guest" data-post-id="<?php echo $post_id; ?>">
+            <div class="ss-comment-guest-fields">
+                <input type="text"  name="guest_name"  class="ss-guest-name"
+                       placeholder="Your name (required)" maxlength="100">
+                <input type="email" name="guest_email" class="ss-guest-email"
+                       placeholder="Email (optional, never shown)" maxlength="200">
+            </div>
+            <div class="ss-comment-input-row">
+                <span class="ss-avatar-placeholder" aria-hidden="true">?</span>
+                <textarea name="comment_text" class="ss-comment-textarea"
+                          placeholder="Add a comment..."
+                          rows="1" maxlength="2000"
+                          aria-label="Comment"></textarea>
+            </div>
+            <div class="ss-comment-actions" hidden>
+                <span class="ss-comment-author">Commenting as guest</span>
+                <div class="ss-comment-btns">
+                    <button type="button" class="ss-comment-cancel">Cancel</button>
+                    <button type="submit" class="ss-comment-submit">Post</button>
+                </div>
+            </div>
+            <div class="ss-comment-status" role="status" aria-live="polite"></div>
+        </form>
+
         <?php else: ?>
+        <!-- Registered mode — sign-in prompt -->
         <div class="ss-comment-login-prompt">
             <a href="<?php echo htmlspecialchars($auth_url); ?>">Sign in</a> to leave a comment.
         </div>

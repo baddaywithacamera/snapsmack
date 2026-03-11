@@ -48,9 +48,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const root = document.querySelector('.ss-community');
     if (root) {
 
-        const postId   = root.dataset.postId;
-        const authUrl  = root.dataset.authUrl;
-        const loggedIn = root.dataset.loggedIn === '1';
+        const postId      = root.dataset.postId;
+        const authUrl     = root.dataset.authUrl;
+        const loggedIn    = root.dataset.loggedIn === '1';
+        const commentMode = root.dataset.commentMode || 'open'; // open | hybrid | registered
 
         // --- Like button ---
         const likeBtn   = root.querySelector('.ss-like-btn');
@@ -169,12 +170,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- Comment form ---
-        const commentForm    = root.querySelector('.ss-comment-form');
-        const commentActions = root.querySelector('.ss-comment-actions');
-        const commentArea    = root.querySelector('.ss-comment-textarea');
-        const cancelBtn      = root.querySelector('.ss-comment-cancel');
-        const statusEl       = root.querySelector('.ss-comment-status');
-        const thread         = root.querySelector('.ss-comment-thread');
+        const commentForm      = root.querySelector('.ss-comment-form');
+        const commentActions   = root.querySelector('.ss-comment-actions');
+        const commentArea      = root.querySelector('.ss-comment-textarea');
+        const cancelBtn        = root.querySelector('.ss-comment-cancel');
+        const statusEl         = root.querySelector('.ss-comment-status');
+        const thread           = root.querySelector('.ss-comment-thread');
+        const guestNameInput   = commentForm ? commentForm.querySelector('.ss-guest-name')  : null;
+        const guestEmailInput  = commentForm ? commentForm.querySelector('.ss-guest-email') : null;
 
         if (commentArea && commentActions) {
             commentArea.addEventListener('focus', () => {
@@ -199,27 +202,42 @@ document.addEventListener('DOMContentLoaded', () => {
         if (commentForm) {
             commentForm.addEventListener('submit', e => {
                 e.preventDefault();
-                if (!loggedIn) { window.location.href = authUrl; return; }
+
+                // Registered mode with no session: redirect to sign-in
+                if (commentMode === 'registered' && !loggedIn) {
+                    window.location.href = authUrl;
+                    return;
+                }
 
                 const text = commentArea ? commentArea.value.trim() : '';
                 if (!text) return;
+
+                // Guest name is required in open/hybrid mode when not logged in
+                if (!loggedIn && guestNameInput && !guestNameInput.value.trim()) {
+                    setStatus('Please enter your name before posting.');
+                    guestNameInput.focus();
+                    return;
+                }
 
                 const submitBtn = commentForm.querySelector('.ss-comment-submit');
                 if (submitBtn) submitBtn.disabled = true;
                 setStatus('Posting...');
 
-                post('/process-community-comment.php', {
-                    post_id:      postId,
-                    comment_text: text,
-                })
+                const payload = { post_id: postId, comment_text: text };
+                if (guestNameInput)  payload.guest_name  = guestNameInput.value.trim();
+                if (guestEmailInput) payload.guest_email = guestEmailInput.value.trim();
+
+                post('/process-community-comment.php', payload)
                 .then(data => {
                     if (data.error) {
                         const msgs = {
-                            rate_limited:       'Too many comments. Slow down.',
-                            email_not_verified: 'Verify your email before commenting.',
-                            comments_disabled:  'Comments are currently disabled.',
-                            empty_comment:      'Comment cannot be empty.',
-                            comment_too_long:   'Comment is too long (max 2000 characters).',
+                            rate_limited:        'Too many comments. Slow down.',
+                            email_not_verified:  'Verify your email before commenting.',
+                            comments_disabled:   'Comments are currently disabled.',
+                            empty_comment:       'Comment cannot be empty.',
+                            comment_too_long:    'Comment is too long (max 2000 characters).',
+                            guest_name_required: 'Please enter your name.',
+                            guest_name_too_long: 'Name is too long (max 100 characters).',
                         };
                         setStatus(msgs[data.error] || 'Something went wrong. Try again.');
                     } else {
@@ -252,27 +270,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (commentsSection) commentsSection.insertBefore(threadEl, commentsSection.firstChild);
             }
 
-            const initial = (data.username || '?').charAt(0).toUpperCase();
-            const display = data.display_name || data.username;
+            const isGuest = !!data.is_guest;
+            const display = isGuest
+                ? (data.guest_name || 'Anonymous')
+                : (data.display_name || data.username || '?');
+            const initial = display.charAt(0).toUpperCase();
+
+            // Delete button only for authenticated account comments
+            const deleteBtn = !isGuest
+                ? `<button class="ss-comment-delete" data-comment-id="${data.comment_id}"
+                           aria-label="Delete comment">✕</button>`
+                : '';
 
             const node = document.createElement('div');
             node.className = 'ss-comment';
             node.dataset.commentId = data.comment_id;
             node.innerHTML = `
                 <div class="ss-comment-meta">
-                    ${data.avatar_url
+                    ${(!isGuest && data.avatar_url)
                         ? `<img src="${escHtml(data.avatar_url)}" alt="" class="ss-avatar" width="28" height="28">`
                         : `<span class="ss-avatar-placeholder" aria-hidden="true">${escHtml(initial)}</span>`
                     }
                     <span class="ss-commenter">${escHtml(display)}</span>
                     <span class="ss-comment-date">${escHtml(data.date_label)}</span>
-                    <button class="ss-comment-delete" data-comment-id="${data.comment_id}"
-                            aria-label="Delete comment">✕</button>
+                    ${deleteBtn}
                 </div>
                 <div class="ss-comment-body">${escHtml(data.comment_text).replace(/\n/g, '<br>')}</div>
             `;
             threadEl.appendChild(node);
-            wireDeleteButton(node.querySelector('.ss-comment-delete'));
+            if (!isGuest) {
+                wireDeleteButton(node.querySelector('.ss-comment-delete'));
+            }
         }
 
         // --- Comment delete ---

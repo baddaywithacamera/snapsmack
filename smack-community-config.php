@@ -46,6 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_community'])) {
         'community_reactions_enabled' => ($_POST['community_reactions_enabled'] ?? '0') === '1' ? '1' : '0',
         'community_allow_dislike'     => ($_POST['community_allow_dislike']     ?? '0') === '1' ? '1' : '0',
 
+        // Comment identity
+        'comment_identity'            => in_array($_POST['comment_identity'] ?? 'open', ['open', 'hybrid', 'registered'])
+                                            ? ($_POST['comment_identity'] ?? 'open')
+                                            : 'open',
+
         // Dock position
         'community_dock_position'     => $_POST['community_dock_position'] ?? 'bottom-right',
 
@@ -138,11 +143,30 @@ include 'core/sidebar.php';
 
             <label class="toggle-row">
                 <span class="toggle-label">COMMENTS</span>
-                <span class="toggle-desc">Allow signed-in visitors to leave comments on photos.</span>
+                <span class="toggle-desc">Enable the comment thread on photo pages.</span>
                 <input type="hidden"   name="community_comments_enabled" value="0">
                 <input type="checkbox" name="community_comments_enabled" value="1"
                     <?php echo ($settings['community_comments_enabled'] ?? '1') === '1' ? 'checked' : ''; ?>>
             </label>
+
+            <div class="field-row identity-row">
+                <label for="comment_identity">COMMENT IDENTITY</label>
+                <select id="comment_identity" name="comment_identity">
+                    <?php
+                    $ci = $settings['comment_identity'] ?? 'open';
+                    $ci_opts = [
+                        'open'       => 'OPEN — ANYONE CAN COMMENT WITH A NAME (DEFAULT)',
+                        'hybrid'     => 'HYBRID — ACCOUNTS GET FULL IDENTITY; GUESTS WELCOME',
+                        'registered' => 'REGISTERED — COMMUNITY ACCOUNT REQUIRED',
+                    ];
+                    foreach ($ci_opts as $val => $label):
+                    ?>
+                    <option value="<?php echo $val; ?>" <?php echo $ci === $val ? 'selected' : ''; ?>>
+                        <?php echo $label; ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
 
             <label class="toggle-row">
                 <span class="toggle-label">LIKES</span>
@@ -431,14 +455,19 @@ include 'core/sidebar.php';
 }
 .field-row input[type="text"],
 .field-row input[type="email"],
-.field-row input[type="number"] {
-    width: 100%; max-width: 320px;
+.field-row input[type="number"],
+.field-row select {
+    width: 100%; max-width: 420px;
     padding: 0.4rem 0.6rem;
     background: var(--input-bg, #111);
     border: 1px solid var(--border, #444);
     color: var(--text, #eee);
     border-radius: 3px;
-    font-size: 0.88rem;
+    font-size: 0.82rem;
+}
+.identity-row {
+    padding: 0.4rem 0 0.75rem;
+    border-bottom: 1px solid var(--border, #333);
 }
 .rate-limit-grid {
     display: grid;

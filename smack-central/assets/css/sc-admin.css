@@ -1,0 +1,437 @@
+/**
+ * SMACK CENTRAL - Admin Styles
+ * Alpha v0.7.1
+ *
+ * All values via --sc- tokens from sc-geometry.css.
+ * sc- prefix on all SMACK CENTRAL classes to prevent future merge collisions.
+ */
+
+/* ── Reset & Base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+    background-color: var(--sc-bg-page);
+    color: var(--sc-text);
+    font-family: var(--sc-font);
+    font-size: var(--sc-size-base);
+    color-scheme: dark;
+}
+
+a { color: var(--sc-accent); text-decoration: none; }
+a:hover { filter: brightness(1.2); }
+
+/* ── Login page ──────────────────────────────────────────────────────────── */
+.sc-login-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+.sc-login-wrap { width: 100%; max-width: 360px; padding: 24px; }
+.sc-login-box {
+    background: var(--sc-bg-box);
+    border: 1px solid var(--sc-border);
+    border-radius: var(--sc-radius);
+    padding: 36px 32px 28px;
+}
+.sc-login-brand {
+    font-size: 1.4rem;
+    font-weight: 900;
+    letter-spacing: 2px;
+    color: var(--sc-accent);
+    text-shadow: 0 0 12px var(--sc-accent-glow);
+    margin-bottom: 4px;
+}
+.sc-login-sub {
+    font-size: var(--sc-size-dim);
+    color: var(--sc-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 28px;
+}
+
+/* ── Admin shell: sidebar + main ─────────────────────────────────────────── */
+.sc-shell {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar */
+.sc-sidebar {
+    width: var(--sc-sidebar-w);
+    min-height: 100vh;
+    background: var(--sc-bg-page);
+    border-right: 1px solid var(--sc-border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+.sc-sidebar-brand {
+    display: block;
+    padding: 20px 20px 16px;
+    font-size: 0.85rem;
+    font-weight: 900;
+    letter-spacing: 2px;
+    color: var(--sc-accent);
+    text-shadow: 0 0 8px var(--sc-accent-glow);
+    border-bottom: 1px solid var(--sc-border);
+    text-decoration: none;
+}
+.sc-sidebar-brand:hover { filter: brightness(1.15); }
+.sc-nav { padding: 16px 0; flex: 1; }
+.sc-nav-label {
+    display: block;
+    padding: 0 20px 6px;
+    font-size: 0.6rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--sc-text-dim);
+}
+.sc-nav a {
+    display: block;
+    padding: 8px 20px;
+    font-size: var(--sc-size-dim);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--sc-text-dim);
+    text-decoration: none;
+    transition: color var(--sc-transition);
+}
+.sc-nav a:hover,
+.sc-nav a.active {
+    color: var(--sc-accent);
+    text-shadow: 0 0 6px var(--sc-accent-glow);
+}
+.sc-sidebar-bottom {
+    padding: 16px 20px;
+    border-top: 1px solid var(--sc-border);
+}
+.sc-sidebar-bottom a {
+    font-size: var(--sc-size-dim);
+    color: var(--sc-danger);
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.sc-sidebar-bottom a:hover { filter: brightness(1.2); }
+
+/* Main content area */
+.sc-main {
+    flex: 1;
+    padding: 28px 32px;
+    max-width: 1100px;
+}
+
+/* ── Page header row ─────────────────────────────────────────────────────── */
+.sc-page-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--sc-border);
+}
+.sc-page-title {
+    font-size: 0.8rem;
+    font-weight: 900;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--sc-text);
+}
+.sc-page-sub {
+    font-size: var(--sc-size-dim);
+    color: var(--sc-text-dim);
+}
+
+/* ── Box cards ───────────────────────────────────────────────────────────── */
+.sc-box {
+    background: var(--sc-bg-box);
+    border: 1px solid var(--sc-border);
+    border-radius: var(--sc-radius);
+    margin-bottom: 20px;
+}
+.sc-box-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    background: var(--sc-bg-box-head);
+    border-bottom: 1px solid var(--sc-border);
+    border-radius: var(--sc-radius) var(--sc-radius) 0 0;
+}
+.sc-box-title {
+    font-size: var(--sc-size-label);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--sc-text-label);
+}
+.sc-box-body { padding: 20px 18px; }
+
+/* ── Two-column grid ─────────────────────────────────────────────────────── */
+.sc-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+.sc-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+@media (max-width: 900px) {
+    .sc-grid-2, .sc-grid-3 { grid-template-columns: 1fr; }
+}
+
+/* ── Form fields ─────────────────────────────────────────────────────────── */
+.sc-field {
+    margin-bottom: 18px;
+}
+.sc-field label,
+.sc-label {
+    display: block;
+    font-size: var(--sc-size-label);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--sc-text-label);
+    margin-bottom: 6px;
+}
+.sc-field input[type="text"],
+.sc-field input[type="password"],
+.sc-field input[type="date"],
+.sc-field select,
+.sc-field textarea,
+input.sc-input,
+select.sc-select,
+textarea.sc-textarea {
+    width: 100%;
+    background: var(--sc-bg-input);
+    border: 1px solid var(--sc-border-input);
+    border-radius: var(--sc-radius-sm);
+    color: var(--sc-text);
+    font-family: var(--sc-font);
+    font-size: var(--sc-size-base);
+    padding: 9px 12px;
+    transition: border-color var(--sc-transition);
+    outline: none;
+}
+.sc-field input:focus,
+.sc-field select:focus,
+.sc-field textarea:focus,
+input.sc-input:focus,
+select.sc-select:focus,
+textarea.sc-textarea:focus {
+    border-color: var(--sc-border-focus);
+    box-shadow: 0 0 0 2px var(--sc-accent-dim);
+}
+.sc-field textarea { resize: vertical; min-height: 80px; }
+.sc-field .sc-hint {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--sc-text-dim);
+    margin-top: 5px;
+    font-style: italic;
+}
+
+/* Checkbox row */
+.sc-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+.sc-checkbox-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--sc-accent); }
+.sc-checkbox-row label { font-size: var(--sc-size-dim); color: var(--sc-text); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.sc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 20px;
+    height: 38px;
+    font-family: var(--sc-font);
+    font-size: var(--sc-size-label);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: var(--sc-radius-sm);
+    border: 1px solid var(--sc-accent);
+    background: transparent;
+    color: var(--sc-accent);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background var(--sc-transition), color var(--sc-transition), box-shadow var(--sc-transition);
+    white-space: nowrap;
+}
+.sc-btn:hover {
+    background: var(--sc-accent-dim);
+    box-shadow: 0 0 8px var(--sc-accent-glow);
+}
+.sc-btn:active { filter: brightness(.9); }
+.sc-btn--full { width: 100%; margin-top: 8px; }
+.sc-btn--primary {
+    background: var(--sc-accent);
+    color: #000;
+    border-color: var(--sc-accent);
+    font-weight: 900;
+}
+.sc-btn--primary:hover { background: #53ff2a; box-shadow: 0 0 12px var(--sc-accent-glow); color: #000; }
+.sc-btn--danger { border-color: var(--sc-danger); color: var(--sc-danger); }
+.sc-btn--danger:hover { background: var(--sc-danger-bg); }
+.sc-btn--sm { height: 28px; padding: 0 12px; font-size: 0.65rem; }
+.sc-btn-row { display: flex; gap: 10px; align-items: center; }
+
+/* ── Alerts & notices ────────────────────────────────────────────────────── */
+.sc-alert {
+    padding: 12px 16px;
+    border-radius: var(--sc-radius-sm);
+    font-size: var(--sc-size-dim);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 18px;
+    border: 1px solid;
+}
+.sc-alert--error   { background: var(--sc-danger-bg);  border-color: var(--sc-danger);  color: var(--sc-danger); }
+.sc-alert--success { background: var(--sc-success-bg); border-color: var(--sc-success); color: var(--sc-success); }
+.sc-alert--warn    { background: var(--sc-warn-bg);    border-color: var(--sc-warn);    color: var(--sc-warn); }
+.sc-alert--info    { background: var(--sc-accent-dim); border-color: var(--sc-accent);  color: var(--sc-accent); }
+
+/* ── Code / mono ─────────────────────────────────────────────────────────── */
+.sc-mono {
+    font-family: var(--sc-font-mono);
+    font-size: 0.8rem;
+    color: var(--sc-accent);
+    word-break: break-all;
+}
+.sc-code-block {
+    background: #0a0a0a;
+    border: 1px solid var(--sc-border);
+    border-radius: var(--sc-radius-sm);
+    padding: 12px 14px;
+    font-family: var(--sc-font-mono);
+    font-size: 0.78rem;
+    color: var(--sc-accent);
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin-bottom: 12px;
+}
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+.sc-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.sc-table th {
+    text-align: left;
+    font-size: var(--sc-size-label);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--sc-text-dim);
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--sc-border);
+}
+.sc-table td {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--sc-border);
+    vertical-align: middle;
+    font-size: var(--sc-size-base);
+}
+.sc-table tr:last-child td { border-bottom: none; }
+.sc-table td.sc-td-right { text-align: right; }
+
+/* ── Dim text ────────────────────────────────────────────────────────────── */
+.sc-dim { color: var(--sc-text-dim); font-size: var(--sc-size-dim); }
+
+/* ── Status dots ─────────────────────────────────────────────────────────── */
+.sc-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+.sc-dot--live    { background: var(--sc-success); box-shadow: 0 0 4px var(--sc-accent-glow); }
+.sc-dot--warn    { background: var(--sc-warn); }
+.sc-dot--dead    { background: var(--sc-danger); }
+.sc-dot--unknown { background: var(--sc-text-dim); }
+
+/* ── Stat boxes (dashboard) ──────────────────────────────────────────────── */
+.sc-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+}
+.sc-stat {
+    background: var(--sc-bg-box);
+    border: 1px solid var(--sc-border);
+    border-radius: var(--sc-radius);
+    padding: 18px 16px;
+}
+.sc-stat__val {
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: var(--sc-accent);
+    line-height: 1;
+    margin-bottom: 6px;
+}
+.sc-stat__label {
+    font-size: var(--sc-size-label);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--sc-text-dim);
+}
+
+/* ── Release page specifics ──────────────────────────────────────────────── */
+.sc-release-result {
+    background: #0a0a0a;
+    border: 1px solid var(--sc-accent);
+    border-radius: var(--sc-radius);
+    padding: 20px;
+    margin-top: 20px;
+}
+.sc-release-result__row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+    align-items: flex-start;
+}
+.sc-release-result__key {
+    font-size: var(--sc-size-label);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--sc-text-dim);
+    width: 120px;
+    flex-shrink: 0;
+    padding-top: 2px;
+}
+.sc-release-result__val { font-family: var(--sc-font-mono); font-size: 0.8rem; color: var(--sc-accent); word-break: break-all; }
+.sc-release-result__val a { color: var(--sc-accent); }
+
+/* ── Progress / build log ────────────────────────────────────────────────── */
+.sc-build-log {
+    background: #080808;
+    border: 1px solid var(--sc-border);
+    border-radius: var(--sc-radius-sm);
+    padding: 14px;
+    font-family: var(--sc-font-mono);
+    font-size: 0.75rem;
+    color: #888;
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 12px;
+}
+.sc-build-log .ok   { color: var(--sc-success); }
+.sc-build-log .err  { color: var(--sc-danger); }
+.sc-build-log .info { color: var(--sc-accent); }
