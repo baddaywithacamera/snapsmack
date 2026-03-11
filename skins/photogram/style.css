@@ -1015,3 +1015,11 @@ button {
 .pg-caption-hashtag:hover {
     text-decoration: underline;
 }
+
+/* ── System footer suppression ───────────────────────────────────────────── */
+/* Photogram is a phone-app skin; the bottom nav replaces the site footer.
+   The core #system-footer renders below #pg-app in normal flow and is
+   clipped by the fixed #pg-nav — hide it entirely. */
+#system-footer {
+    display: none;
+}
