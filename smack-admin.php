@@ -105,8 +105,15 @@ $current_admin_meta = $admin_themes[$active_admin_slug] ?? [
 
 // --- CONTENT STATISTICS ---
 // Tallies published, scheduled, and draft posts to show content status at a glance.
-$count_pub     = $pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND img_date <= NOW()")->fetchColumn();
-$count_pending = $pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND img_date > NOW()")->fetchColumn();
+// Uses PHP's local timestamp (not MySQL NOW()) to match the timezone used when
+// posts are saved — same pattern as smack-manage.php.
+$now_local     = date('Y-m-d H:i:s');
+$count_pub     = $pdo->prepare("SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND img_date <= ?");
+$count_pub->execute([$now_local]);
+$count_pub     = $count_pub->fetchColumn();
+$count_pending = $pdo->prepare("SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND img_date > ?");
+$count_pending->execute([$now_local]);
+$count_pending = $count_pending->fetchColumn();
 $count_drafts  = $pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status='draft'")->fetchColumn();
 
 // Tallies pending and approved comments for the moderation queue.
