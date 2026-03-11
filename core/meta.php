@@ -74,7 +74,10 @@ if (empty($og_image) && !empty($settings['header_logo_url'])) {
 }
 
 // Site description fallback for og:description
-if (empty($og_description) && !empty($settings['site_tagline'])) {
+// Prefer site_description (a dedicated bio sentence) over the tagline.
+if (empty($og_description) && !empty($settings['site_description'])) {
+    $og_description = $settings['site_description'];
+} elseif (empty($og_description) && !empty($settings['site_tagline'])) {
     $og_description = $settings['site_tagline'];
 }
 
