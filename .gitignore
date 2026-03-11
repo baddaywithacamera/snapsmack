@@ -20,3 +20,6 @@ Thumbs.db
 desktop.ini
 HIP-TO-BE-SQUARE-SPEC.docx
 PICASA-WEB-ALBUMS-SPEC.docx
+
+# Forum server — separate deployable for snapsmack.ca, not part of the install package
+forum-server/
