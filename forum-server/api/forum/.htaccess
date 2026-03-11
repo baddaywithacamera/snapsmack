@@ -1,0 +1,6 @@
+RewriteEngine On
+
+# Route all requests to index.php with path as query param
+# e.g. /api/forum/threads/42 -> index.php?path=threads/42
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^(.*)$ index.php?path=$1 [QSA,L]
