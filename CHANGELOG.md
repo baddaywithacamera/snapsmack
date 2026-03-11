@@ -11,8 +11,27 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - OneDrive/SharePoint share links auto-converted to direct downloads in the download overlay, matching existing Google Drive behaviour.
 - Spacer shortcode `[spacer:N]` for explicit vertical gaps (1–100px) in the text editor.
 - Spacer button added to the shortcode toolbar.
+- Community infrastructure: likes (`snap_likes`), reactions (`snap_reactions`), community accounts (`snap_community_accounts`, `snap_community_sessions`), and account verification system.
+- Community component (`core/community-component.php`): shared include for likes, reactions, and comments. Drop-in for any skin layout.
+- Community dock (`core/community-dock.php`): floating FAB for likes and reactions, position-configurable, conflict-safe with social dock.
+- `smack-community-config.php`: admin settings page for community features — global toggles, dock position picker, active reaction set (up to 6), thumbs-down toggle, email settings, rate limits.
+- `smack-community-users.php`: community account management page.
+- Community nav link added to sidebar under Good Shit section.
+- Disaster Recovery split out of Backup & Recovery into its own admin page (`smack-disaster.php`) with Export Recovery Kit, Import Recovery Kit, and User Credentials handlers.
+- Disaster Recovery nav link added to sidebar. Backup & Recovery page now links to it from a dedicated button.
+- Photogram skin (`skins/photogram/`): phone-native photo feed skin reproducing the Pixelfed/classic Instagram app experience. 3-column square archive grid, full-aspect post view, inline likes, comments bottom sheet, fixed bottom nav bar. Mobile-first; renders as a centred 480px phone column on desktop.
+- `ss-engine-photogram.js`: Photogram engine — bottom sheet with touch drag-to-dismiss, double-tap image to like with heart burst animation, like button optimistic UI, nav tab state.
+- Photogram design document (`photogram-design-document.docx`): full Phase 1/2 spec including screen inventory, CSS architecture, JS requirements, phase build plan, and open questions.
 
 ### Changed
+- All stable skins (Galleria, Hip to be Square, Impact Printer, True Grit, 50 Shades of Noah Grey, New Horizon Dark, Pocket Rocket) retrofitted with community component and community dock. Legacy anonymous comment system removed from all skins.
+- Each retrofitted skin manifest updated with `smack-community` in `require_scripts` and `community_comments`, `community_likes`, `community_reactions` flags.
+- `core/community-component.php`: added `$pg_suppress_likes` override flag so Photogram (and future skins) can suppress the likes row when handling likes inline.
+- `core/manifest-inventory.php`: `smack-photogram` engine registered.
+- Pocket Operator skin renamed to **Pocket Rocket** throughout (`skins/pocket-operator/` → `skins/pocket-rocket/`, all internal references updated).
+- `SNAPSMACK_MOBILE_SKIN` constant changed from `pocket-operator` to `photogram`. Photogram is now the default mobile skin served automatically on phone detection.
+- Pocket Rocket status set to `beta` (functional, present in all installs, superseded by Photogram).
+- Photogram status set to `beta` (Phase 1 complete, serving as default mobile skin).
 - Shortcode toolbar split onto two rows to accommodate new buttons.
 - Content links in Impact Printer styled monochrome (inherit colour, underline only).
 - Build script outputs `snapsmack-{version}.zip` instead of `snapsmack-{version}-full.zip`.
@@ -23,6 +42,10 @@ All notable changes to SnapSmack are documented here. Newest release first.
 ### Fixed
 - `<p>` tags no longer wrap block-level image frame divs on static pages (display-time `cleanBlockNesting` in parser).
 - ASCII border frames now shrink-wrap tightly around images (`width: fit-content`).
+
+### Migrations
+- `migrate-rename-pocket-operator.sql`: updates any install with `active_skin = 'pocket-operator'` in `snap_settings` to `pocket-rocket`. Safe to run on installs that never used Pocket Operator (no-op).
+- Community infrastructure tables (`snap_likes`, `snap_reactions`, `snap_community_accounts`, `snap_community_sessions`) require the 0.7.1 migration to be run before community features are active.
 
 ---
 
