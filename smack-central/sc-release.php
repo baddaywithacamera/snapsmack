@@ -188,6 +188,21 @@ if ($action === 'build' && $preflight_ok) {
                     $build_log[] = "→ Could not compute file_changes: " . $e->getMessage();
                 }
 
+                // Step 5b: Auto-detect schema_changes from file diff.
+                // If any migrations/*.sql file appears in the diff, override the
+                // checkbox value so the installer always knows to run migrations.
+                $diff_all = array_merge(
+                    $file_changes['added']    ?? [],
+                    $file_changes['modified'] ?? []
+                );
+                foreach ($diff_all as $_df) {
+                    if (str_starts_with($_df, 'migrations/')) {
+                        $schema_changes = true;
+                        $build_log[] = "→ schema_changes: true (migration file detected in diff)";
+                        break;
+                    }
+                }
+
                 // Step 6: Write latest.json
                 $manifest = [
                     'version'        => $version,
