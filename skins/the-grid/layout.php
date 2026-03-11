@@ -13,6 +13,7 @@
  */
 
 require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
+require_once dirname(__DIR__, 2) . '/core/snap-tags.php';
 
 // ── Load the post container for this image ────────────────────────────────
 $post = null;
@@ -197,11 +198,11 @@ include __DIR__ . '/skin-header.php';
         <?php if (!empty($post['description'])): ?>
         <div class="tg-post-caption">
             <?php
-            // Run through the shortcode parser if available
+            $caption_html = snap_render_caption($post['description'], BASE_URL, 'tg-hashtag');
             if (function_exists('snapsmack_parse_shortcodes')) {
-                echo snapsmack_parse_shortcodes(nl2br(htmlspecialchars($post['description'])));
+                echo snapsmack_parse_shortcodes(nl2br($caption_html));
             } else {
-                echo nl2br(htmlspecialchars($post['description']));
+                echo nl2br($caption_html);
             }
             ?>
         </div>
