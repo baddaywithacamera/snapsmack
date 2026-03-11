@@ -57,6 +57,12 @@ if (array_key_exists('community_dock_position', $settings)) {
     $show_reactions = false;
 }
 
+// If the calling skin handles likes inline (e.g. Photogram), suppress them here.
+if (!empty($pg_suppress_likes)) {
+    $show_likes     = false;
+    $show_reactions = false;
+}
+
 // Nothing to show — bail silently
 if (!$show_comments && !$show_likes && !$show_reactions) {
     return;
