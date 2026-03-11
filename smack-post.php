@@ -20,6 +20,28 @@ $msg = "";
 $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
 $settings = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
+// --- POST-PAGE ROUTING ---
+// If the active skin declares a custom posting page via manifest 'post_page',
+// delegate entirely to the matching smack-post-{value}.php file.
+// The override file handles both GET (render form) and POST (process upload).
+// Falls through silently if the key is absent or the override file is missing.
+$active_skin = $settings['active_skin'] ?? '';
+if ($active_skin) {
+    $manifest_path = __DIR__ . '/skins/' . $active_skin . '/manifest.php';
+    if (is_file($manifest_path)) {
+        $manifest = [];
+        include $manifest_path;
+        $post_page_override = $manifest['post_page'] ?? '';
+        if ($post_page_override) {
+            $override_file = __DIR__ . '/smack-post-' . $post_page_override . '.php';
+            if (is_file($override_file)) {
+                include $override_file;
+                exit;
+            }
+        }
+    }
+}
+
 // --- FORM SUBMISSION HANDLER ---
 // Processes file uploads, generates thumbnails, extracts EXIF data,
 // and stores the image record with metadata in the database.
