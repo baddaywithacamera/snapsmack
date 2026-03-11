@@ -7,10 +7,6 @@
  */
 require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
 
-// Check if comments are enabled globally and for this specific post
-$global_on = (($settings['global_comments_enabled'] ?? '1') == '1');
-$post_on   = (($img['allow_comments'] ?? '1') == '1');
-$comments_active = ($global_on && $post_on);
 ?>
 
 <div id="scroll-stage">
@@ -63,44 +59,11 @@ $comments_active = ($global_on && $post_on);
         </div>
 
         <div id="pane-comments" class="footer-pane">
-            <?php if ($comments_active): ?>
-
-                <div class="meta-header signals-header">SIGNALS</div>
-
-                <?php if ($comments): ?>
-                    <table class="exif-table signals-table">
-                        <?php foreach($comments as $c): ?>
-                            <tr>
-                                <td class="exif-label">
-                                    <?php echo htmlspecialchars($c['comment_author']); ?>
-                                </td>
-                                <td class="exif-value">
-                                    <?php echo nl2br(htmlspecialchars($c['comment_text'])); ?>
-                                    <div class="signal-date">
-                                        [<?php echo date('Y-m-d', strtotime($c['comment_date'])); ?>]
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </table>
-                <?php else: ?>
-                    <div class="description signals-empty">NO SIGNALS RECORDED.</div>
-                <?php endif; ?>
-
-                <form action="<?php echo BASE_URL; ?>process-comment.php" method="POST" class="comment-form">
-                    <input type="hidden" name="img_id" value="<?php echo $img['id']; ?>">
-                    <div class="form-row">
-                        <input type="text" name="author" placeholder="CALLSIGN" required>
-                        <input type="email" name="email" placeholder="EMAIL" required>
-                    </div>
-                    <textarea name="comment_text" placeholder="MESSAGE..." required></textarea>
-                    <button type="submit">TRANSMIT</button>
-                </form>
-
-            <?php endif; ?>
+            <?php include dirname(__DIR__, 2) . '/core/community-component.php'; ?>
         </div>
     </div>
 
+    <?php include dirname(__DIR__, 2) . '/core/community-dock.php'; ?>
     <?php include('skin-footer.php'); ?>
 
 </div>

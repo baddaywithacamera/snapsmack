@@ -9,9 +9,7 @@
  */
 require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
 
-$global_on = (($settings['global_comments_enabled'] ?? '1') == '1');
-$post_on   = (($img['allow_comments'] ?? '1') == '1');
-$comments_active = ($global_on && $post_on);
+
 ?>
 
 <?php include __DIR__ . '/skin-header.php'; ?>
@@ -52,9 +50,7 @@ $comments_active = ($global_on && $post_on);
         <!-- DRAWER TOGGLES -->
         <div class="po-drawer-toggle">
             <button class="po-drawer-btn" onclick="poToggleDrawer('info')">INFO</button>
-            <?php if ($comments_active): ?>
-                <button class="po-drawer-btn" onclick="poToggleDrawer('signals')">SIGNALS (<?php echo count($comments); ?>)</button>
-            <?php endif; ?>
+            <button class="po-drawer-btn" onclick="poToggleDrawer('signals')">SIGNALS</button>
         </div>
 
         <!-- INFO DRAWER (slides down) -->
@@ -97,33 +93,14 @@ $comments_active = ($global_on && $post_on);
         </div>
 
         <!-- SIGNALS DRAWER (slides up) -->
-        <?php if ($comments_active): ?>
         <div id="po-signals-drawer" class="po-signals-drawer">
             <div class="po-signals-content">
-                <?php if ($comments): ?>
-                    <?php foreach ($comments as $c): ?>
-                        <div class="po-signal">
-                            <div class="po-signal-author"><?php echo htmlspecialchars($c['comment_author']); ?></div>
-                            <div class="po-signal-text"><?php echo nl2br(htmlspecialchars($c['comment_text'])); ?></div>
-                            <div class="po-signal-date"><?php echo date('Y-m-d', strtotime($c['comment_date'])); ?></div>
-                        </div>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <div class="po-no-signals">NO SIGNALS RECORDED</div>
-                <?php endif; ?>
-
-                <form action="<?php echo BASE_URL; ?>process-comment.php" method="POST" class="po-comment-form">
-                    <input type="hidden" name="img_id" value="<?php echo $img['id']; ?>">
-                    <input type="text" name="author" placeholder="CALLSIGN" required>
-                    <input type="email" name="email" placeholder="EMAIL" required>
-                    <textarea name="comment_text" placeholder="MESSAGE..." required></textarea>
-                    <button type="submit">TRANSMIT</button>
-                </form>
+                <?php include dirname(__DIR__, 2) . '/core/community-component.php'; ?>
             </div>
         </div>
-        <?php endif; ?>
 
     </div>
 </div>
 
+<?php include dirname(__DIR__, 2) . '/core/community-dock.php'; ?>
 <?php include __DIR__ . '/skin-footer.php'; ?>
