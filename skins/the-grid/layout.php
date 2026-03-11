@@ -25,9 +25,11 @@ if (!empty($img['post_id'])) {
 }
 
 if ($post) {
-    // Load all images in the post in sort order
+    // Load all images in the post in sort order (including per-image frame style)
     $pi_stmt = $pdo->prepare("
-        SELECT i.*, pi.sort_position, pi.is_cover
+        SELECT i.*, pi.sort_position, pi.is_cover,
+               pi.img_size_pct, pi.img_border_px, pi.img_border_color,
+               pi.img_bg_color, pi.img_shadow
         FROM snap_post_images pi
         JOIN snap_images i ON i.id = pi.image_id
         WHERE pi.post_id = ? AND pi.sort_position >= 0
@@ -36,6 +38,50 @@ if ($post) {
     $pi_stmt->execute([$post['id']]);
     $post_images = $pi_stmt->fetchAll();
 }
+
+// ── Frame style resolution ─────────────────────────────────────────────────
+// Resolves the correct size/border/bg/shadow for a given image based on
+// the active customisation level (per_grid | per_carousel | per_image).
+$_tg_shadow_map = [
+    '0' => 'none',
+    '1' => '0 2px 10px rgba(0,0,0,.20)',
+    '2' => '0 4px 20px rgba(0,0,0,.45)',
+    '3' => '0 8px 40px rgba(0,0,0,.70)',
+];
+$_tg_customize_level = $settings['tg_customize_level'] ?? 'per_grid';
+
+$tg_resolve_frame = function ($pi_row) use ($settings, $_tg_customize_level, $_tg_shadow_map, &$post) {
+    switch ($_tg_customize_level) {
+        case 'per_image':
+            $sz  = (int)($pi_row['img_size_pct']     ?? 100);
+            $bpx = (int)($pi_row['img_border_px']    ?? 0);
+            $bc  = $pi_row['img_border_color'] ?? '#000000';
+            $bg  = $pi_row['img_bg_color']     ?? '#ffffff';
+            $sh  = (string)($pi_row['img_shadow']    ?? '0');
+            break;
+        case 'per_carousel':
+            $sz  = (int)($post['post_img_size_pct']  ?? 100);
+            $bpx = (int)($post['post_border_px']     ?? 0);
+            $bc  = $post['post_border_color'] ?? '#000000';
+            $bg  = $post['post_bg_color']     ?? '#ffffff';
+            $sh  = (string)($post['post_shadow']     ?? '0');
+            break;
+        default: // per_grid
+            $sz  = (int)($settings['tg_frame_size_pct']     ?? 100);
+            $bpx = (int)($settings['tg_frame_border_px']    ?? 0);
+            $bc  = $settings['tg_frame_border_color'] ?? '#000000';
+            $bg  = $settings['tg_frame_bg_color']     ?? '#ffffff';
+            $sh  = (string)($settings['tg_frame_shadow']    ?? '0');
+    }
+    return [
+        'size_pct'    => $sz,
+        'border_px'   => $bpx,
+        'border_color'=> $bc,
+        'bg_color'    => $bg,
+        'shadow_css'  => $_tg_shadow_map[$sh] ?? 'none',
+        'is_framed'   => ($sz < 100 || $bpx > 0 || (int)$sh > 0),
+    ];
+};
 
 // Fallback: single image, no post container (legacy)
 if (empty($post_images)) {
@@ -92,11 +138,31 @@ include __DIR__ . '/skin-header.php';
              data-slider-mode="carousel"
              data-exif-map="<?php echo htmlspecialchars(json_encode($exif_map)); ?>">
             <div class="slider-track">
-                <?php foreach ($post_images as $pimg): ?>
-                <div class="slider-slide" data-image-id="<?php echo $pimg['id']; ?>">
+                <?php foreach ($post_images as $pimg):
+                    $frame = $tg_resolve_frame($pimg);
+                    if ($frame['is_framed']):
+                        $slide_vars = sprintf(
+                            '--slide-bg:%s; --slide-img-size:%d%%; --slide-border-w:%dpx; --slide-border-c:%s; --slide-shadow:%s;',
+                            htmlspecialchars($frame['bg_color']),
+                            $frame['size_pct'],
+                            $frame['border_px'],
+                            htmlspecialchars($frame['border_color']),
+                            htmlspecialchars($frame['shadow_css'])
+                        );
+                        $slide_class = 'slider-slide tg-slide--framed';
+                        $img_style   = 'max-height:calc(80vh - ' . ($frame['border_px'] * 2 + 20) . 'px); object-fit:contain;';
+                    else:
+                        $slide_vars  = '';
+                        $slide_class = 'slider-slide';
+                        $img_style   = 'width:100%; max-height:80vh; object-fit:contain; background:#000;';
+                    endif;
+                ?>
+                <div class="<?php echo $slide_class; ?>"
+                     data-image-id="<?php echo $pimg['id']; ?>"
+                     <?php if ($slide_vars): ?>style="<?php echo $slide_vars; ?>"<?php endif; ?>>
                     <img src="<?php echo htmlspecialchars($pimg['img_file']); ?>"
                          alt="<?php echo htmlspecialchars($pimg['img_title']); ?>"
-                         style="width:100%; max-height:80vh; object-fit:contain; background:#000;"
+                         style="<?php echo $img_style; ?>"
                          loading="lazy">
                 </div>
                 <?php endforeach; ?>
@@ -105,12 +171,23 @@ include __DIR__ . '/skin-header.php';
         <!-- Dots injected here by SnapSlider -->
     </div>
 
-    <?php else: ?>
+    <?php else:
+        $frame = $tg_resolve_frame($cover_img);
+        $single_wrap_bg = $frame['is_framed']
+            ? 'background:' . htmlspecialchars($frame['bg_color']) . '; text-align:center; padding:20px;'
+            : 'background:#000; text-align:center;';
+        $single_img_style = $frame['is_framed'] ? sprintf(
+            'max-width:%d%%; max-height:80vh; object-fit:contain; border:%dpx solid %s; box-shadow:%s; box-sizing:border-box;',
+            $frame['size_pct'], $frame['border_px'],
+            htmlspecialchars($frame['border_color']), htmlspecialchars($frame['shadow_css'])
+        ) : '';
+    ?>
     <!-- ── Single image ───────────────────────────────────────────────── -->
-    <div style="background:#000; text-align:center;">
+    <div style="<?php echo $single_wrap_bg; ?>">
         <img src="<?php echo htmlspecialchars($cover_img['img_file']); ?>"
              alt="<?php echo htmlspecialchars($cover_img['img_title']); ?>"
-             class="tg-single-img">
+             class="tg-single-img"
+             <?php if ($single_img_style): ?>style="<?php echo $single_img_style; ?>"<?php endif; ?>>
     </div>
     <?php endif; ?>
 

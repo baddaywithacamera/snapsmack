@@ -7,7 +7,7 @@
  * manifest declares 'post_page' => 'carousel'. Also accessible directly
  * at smack-post-carousel.php for testing.
  *
- * Accepts 1–10 images per post. Creates a snap_posts record (single,
+ * Accepts 1–20 images per post. Creates a snap_posts record (single,
  * carousel, or panorama), processes each image through the standard
  * pipeline (EXIF, resize, thumbs, checksum, palette), and inserts
  * snap_post_images pivot rows in the user-specified sort order.
@@ -28,6 +28,10 @@ ini_set('memory_limit', '512M');
 
 $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
 $settings      = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// Frame customisation level from the active skin. Defaults to per_grid (no
+// per-post or per-image controls rendered) if setting is not present.
+$customize_level = $settings['tg_customize_level'] ?? 'per_grid';
 
 $is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
            strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
@@ -57,6 +61,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
     // sort_order[] is a confirmation; we trust the file array order.
     $sort_order  = $_POST['sort_order'] ?? [];
     $exif_manual = $_POST['exif']       ?? [];
+
+    // --- FRAME STYLE ---
+    // per_carousel: one style set for the whole post.
+    $post_style_size   = max(75, min(100, (int)($_POST['post_img_size_pct'] ?? 100)));
+    $post_style_bpx    = max(0,  min(20,  (int)($_POST['post_border_px']    ?? 0)));
+    $post_style_bc     = preg_match('/^#[0-9a-fA-F]{6}$/', $_POST['post_border_color'] ?? '')
+                             ? $_POST['post_border_color'] : '#000000';
+    $post_style_bg     = preg_match('/^#[0-9a-fA-F]{6}$/', $_POST['post_bg_color'] ?? '')
+                             ? $_POST['post_bg_color'] : '#ffffff';
+    $post_style_shadow = max(0, min(3, (int)($_POST['post_shadow'] ?? 0)));
+
+    // per_image: parallel arrays indexed by file position.
+    $per_img_sizes   = $_POST['img_size_pct']     ?? [];
+    $per_img_bpx     = $_POST['img_border_px']    ?? [];
+    $per_img_bc      = $_POST['img_border_color'] ?? [];
+    $per_img_bg      = $_POST['img_bg_color']     ?? [];
+    $per_img_shadow  = $_POST['img_shadow']       ?? [];
 
     // --- IMAGE SETTINGS ---
     $max_w  = (int)($settings['max_width_landscape']  ?? 2500);
@@ -284,12 +305,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
         $post_stmt = $pdo->prepare("
             INSERT INTO snap_posts
                 (title, slug, description, post_type, status, created_at,
-                 allow_comments, allow_download, download_url, panorama_rows)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 allow_comments, allow_download, download_url, panorama_rows,
+                 post_img_size_pct, post_border_px, post_border_color,
+                 post_bg_color, post_shadow)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $post_stmt->execute([
             $title, $post_slug, $desc, $post_type, $status, $post_date,
-            $allow_cmt, $allow_dl, $dl_url, $pano_rows
+            $allow_cmt, $allow_dl, $dl_url, $pano_rows,
+            $post_style_size, $post_style_bpx, $post_style_bc,
+            $post_style_bg,   $post_style_shadow,
         ]);
         $post_id = (int)$pdo->lastInsertId();
 
@@ -297,10 +322,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
         foreach ($processed_images as $pos => $img) {
             $is_cover = ($pos === 0) ? 1 : 0;
 
+            // Resolve per-image style for this pivot row.
+            if ($customize_level === 'per_image') {
+                $pi_sz  = max(75, min(100, (int)($per_img_sizes[$pos]  ?? 100)));
+                $pi_bpx = max(0,  min(20,  (int)($per_img_bpx[$pos]   ?? 0)));
+                $pi_bc  = preg_match('/^#[0-9a-fA-F]{6}$/', $per_img_bc[$pos]  ?? '')
+                              ? $per_img_bc[$pos]  : '#000000';
+                $pi_bg  = preg_match('/^#[0-9a-fA-F]{6}$/', $per_img_bg[$pos]  ?? '')
+                              ? $per_img_bg[$pos]  : '#ffffff';
+                $pi_sh  = max(0, min(3, (int)($per_img_shadow[$pos]   ?? 0)));
+            } elseif ($customize_level === 'per_carousel') {
+                $pi_sz  = $post_style_size;   $pi_bpx = $post_style_bpx;
+                $pi_bc  = $post_style_bc;     $pi_bg  = $post_style_bg;
+                $pi_sh  = $post_style_shadow;
+            } else {
+                // per_grid: store defaults; layout resolves from skin settings at render time.
+                $pi_sz = 100; $pi_bpx = 0; $pi_bc = '#000000'; $pi_bg = '#ffffff'; $pi_sh = 0;
+            }
+
             $pdo->prepare("
-                INSERT INTO snap_post_images (post_id, image_id, sort_position, is_cover)
-                VALUES (?, ?, ?, ?)
-            ")->execute([$post_id, $img['image_id'], $pos, $is_cover]);
+                INSERT INTO snap_post_images
+                    (post_id, image_id, sort_position, is_cover,
+                     img_size_pct, img_border_px, img_border_color, img_bg_color, img_shadow)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ")->execute([$post_id, $img['image_id'], $pos, $is_cover,
+                         $pi_sz, $pi_bpx, $pi_bc, $pi_bg, $pi_sh]);
 
             $pdo->prepare("UPDATE snap_images SET post_id = ? WHERE id = ?")
                 ->execute([$post_id, $img['image_id']]);
@@ -355,7 +401,8 @@ include 'core/sidebar.php';
 
     <div id="cp-error" class="notice notice-error" style="display:none;"></div>
 
-    <form id="cp-form" method="POST" enctype="multipart/form-data">
+    <form id="cp-form" method="POST" enctype="multipart/form-data"
+          data-customize-level="<?php echo htmlspecialchars($customize_level); ?>">
 
         <!-- =================================================================
              SECTION 1: POST METADATA
@@ -374,11 +421,11 @@ include 'core/sidebar.php';
                         <label>POST TYPE</label>
                         <select id="cp-post-type" name="post_type" class="full-width-select">
                             <option value="single">Single Image</option>
-                            <option value="carousel" selected>Carousel (up to 10 images)</option>
+                            <option value="carousel" selected>Carousel (up to 20 images)</option>
                             <option value="panorama">Panorama Split</option>
                         </select>
                         <p id="cp-type-hint" class="skin-desc-text" style="margin-top:6px;">
-                            Multi-image post. Viewers swipe through up to 10 images.
+                            Multi-image post. Viewers swipe through up to 20 images.
                         </p>
                     </div>
 
@@ -515,6 +562,70 @@ include 'core/sidebar.php';
         </div>
 
         <!-- =================================================================
+             SECTION 1b: PER-CAROUSEL FRAME STYLE
+             Only shown when The Grid skin is active with customize_level = per_carousel.
+             Per-image style controls appear in each strip item's FRAME panel (JS-built).
+             ================================================================= -->
+        <?php if ($customize_level === 'per_carousel'): ?>
+        <div class="box mt-30">
+            <h3 style="margin:0 0 6px;">IMAGE FRAME STYLE</h3>
+            <p class="skin-desc-text" style="margin-bottom:16px;">
+                This style applies to every image in the post. Adjust per image by switching to Per Image mode in Skin Admin.
+            </p>
+            <div class="post-layout-grid" style="gap:16px;">
+                <div class="flex-1">
+                    <div class="lens-input-wrapper">
+                        <label>IMAGE SIZE</label>
+                        <select name="post_img_size_pct" class="full-width-select">
+                            <option value="100">100% — edge to edge</option>
+                            <option value="95">95%</option>
+                            <option value="90">90%</option>
+                            <option value="85">85%</option>
+                            <option value="80">80%</option>
+                            <option value="75">75%</option>
+                        </select>
+                    </div>
+                    <div class="lens-input-wrapper">
+                        <label>BORDER THICKNESS</label>
+                        <select name="post_border_px" class="full-width-select">
+                            <option value="0">None</option>
+                            <option value="1">1px</option>
+                            <option value="2">2px</option>
+                            <option value="3">3px</option>
+                            <option value="5">5px</option>
+                            <option value="8">8px</option>
+                            <option value="10">10px</option>
+                            <option value="15">15px</option>
+                            <option value="20">20px</option>
+                        </select>
+                    </div>
+                    <div class="lens-input-wrapper">
+                        <label>DROP SHADOW</label>
+                        <select name="post_shadow" class="full-width-select">
+                            <option value="0">None</option>
+                            <option value="1">Soft</option>
+                            <option value="2">Medium</option>
+                            <option value="3">Heavy</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="lens-input-wrapper">
+                        <label>BORDER COLOUR</label>
+                        <input type="color" name="post_border_color" value="#000000"
+                               style="width:100%; height:38px; padding:2px 4px;">
+                    </div>
+                    <div class="lens-input-wrapper">
+                        <label>BACKGROUND COLOUR</label>
+                        <input type="color" name="post_bg_color" value="#ffffff"
+                               style="width:100%; height:38px; padding:2px 4px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- =================================================================
              SECTION 2: IMAGE DROP ZONE + PREVIEW STRIP
              ================================================================= -->
         <div class="box mt-30">
@@ -530,7 +641,7 @@ include 'core/sidebar.php';
                        multiple style="display:none;">
                 <div class="cp-drop-icon">⊕</div>
                 <p class="cp-drop-label">DROP IMAGES HERE or click to browse</p>
-                <p class="cp-drop-sub dim">JPG · PNG · WebP &nbsp;·&nbsp; Up to 10 images per post</p>
+                <p class="cp-drop-sub dim">JPG · PNG · WebP &nbsp;·&nbsp; Up to 20 images per post</p>
             </div>
 
             <div id="cp-strip" class="cp-strip"></div>

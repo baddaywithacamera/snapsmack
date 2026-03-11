@@ -18,9 +18,51 @@ $curr_page   = max(1, (int)($_GET['p'] ?? 1));
 $offset      = ($curr_page - 1) * $per_page;
 
 // Read skin settings
-$show_profile   = ($settings['tg_profile_header']     ?? '1') === '1';
-$carousel_ind   = $settings['tg_carousel_indicator']  ?? 'icon';
-$hover_overlay  = $settings['tg_hover_overlay']       ?? 'title';
+$show_profile    = ($settings['tg_profile_header']     ?? '1') === '1';
+$carousel_ind    = $settings['tg_carousel_indicator']  ?? 'icon';
+$hover_overlay   = $settings['tg_hover_overlay']       ?? 'title';
+$customize_level = $settings['tg_customize_level']     ?? 'per_grid';
+
+// ── Frame style resolver ───────────────────────────────────────────────────
+$_tg_shadow_map = [
+    '0' => 'none',
+    '1' => '0 2px 10px rgba(0,0,0,.20)',
+    '2' => '0 4px 20px rgba(0,0,0,.45)',
+    '3' => '0 8px 40px rgba(0,0,0,.70)',
+];
+
+$tg_resolve_tile_frame = function ($cover_pi_row, $post_row) use ($settings, $customize_level, $_tg_shadow_map) {
+    switch ($customize_level) {
+        case 'per_image':
+            $sz  = (int)($cover_pi_row['img_size_pct']     ?? 100);
+            $bpx = (int)($cover_pi_row['img_border_px']    ?? 0);
+            $bc  = $cover_pi_row['img_border_color'] ?? '#000000';
+            $bg  = $cover_pi_row['img_bg_color']     ?? '#ffffff';
+            $sh  = (string)($cover_pi_row['img_shadow']    ?? '0');
+            break;
+        case 'per_carousel':
+            $sz  = (int)($post_row['post_img_size_pct']  ?? 100);
+            $bpx = (int)($post_row['post_border_px']     ?? 0);
+            $bc  = $post_row['post_border_color'] ?? '#000000';
+            $bg  = $post_row['post_bg_color']     ?? '#ffffff';
+            $sh  = (string)($post_row['post_shadow']     ?? '0');
+            break;
+        default: // per_grid
+            $sz  = (int)($settings['tg_frame_size_pct']     ?? 100);
+            $bpx = (int)($settings['tg_frame_border_px']    ?? 0);
+            $bc  = $settings['tg_frame_border_color'] ?? '#000000';
+            $bg  = $settings['tg_frame_bg_color']     ?? '#ffffff';
+            $sh  = (string)($settings['tg_frame_shadow']    ?? '0');
+    }
+    return [
+        'size_pct'    => $sz,
+        'border_px'   => $bpx,
+        'border_color'=> $bc,
+        'bg_color'    => $bg,
+        'shadow_css'  => $_tg_shadow_map[$sh] ?? 'none',
+        'is_framed'   => ($sz < 100 || $bpx > 0 || (int)$sh > 0),
+    ];
+};
 
 // ── Post count (for profile header) ──────────────────────────────────────
 $count_stmt = $pdo->prepare(
@@ -33,7 +75,7 @@ $post_count = (int)$count_stmt->fetchColumn();
 $total_pages = max(1, (int)ceil($post_count / $per_page));
 
 // ── Fetch posts with cover image ──────────────────────────────────────────
-// One row per post: cover image + image count.
+// One row per post: cover image + image count + frame style columns.
 $grid_stmt = $pdo->prepare("
     SELECT
         p.id          AS post_id,
@@ -41,10 +83,20 @@ $grid_stmt = $pdo->prepare("
         p.slug        AS post_slug,
         p.post_type,
         p.created_at,
+        p.post_img_size_pct,
+        p.post_border_px,
+        p.post_border_color,
+        p.post_bg_color,
+        p.post_shadow,
         i.id          AS img_id,
         i.img_file,
         i.img_thumb_square,
         i.img_slug,
+        pi.img_size_pct,
+        pi.img_border_px,
+        pi.img_border_color,
+        pi.img_bg_color,
+        pi.img_shadow,
         (SELECT COUNT(*)
          FROM snap_post_images spi
          WHERE spi.post_id = p.id
@@ -109,8 +161,24 @@ include __DIR__ . '/skin-header.php';
             $image_count = (int)$post['image_count'];
             $is_carousel = $image_count > 1;
             $title_safe  = htmlspecialchars($post['title']);
+
+            // Resolve frame style for this tile
+            $tile_frame   = $tg_resolve_tile_frame($post, $post);
+            $tile_class   = 'tg-tile' . ($tile_frame['is_framed'] ? ' tg-tile--framed' : '');
+            $tile_css_vars = '';
+            if ($tile_frame['is_framed']) {
+                $tile_css_vars = sprintf(
+                    '--tile-bg:%s; --tile-img-size:%d%%; --tile-border-w:%dpx; --tile-border-c:%s; --tile-shadow:%s;',
+                    htmlspecialchars($tile_frame['bg_color']),
+                    $tile_frame['size_pct'],
+                    $tile_frame['border_px'],
+                    htmlspecialchars($tile_frame['border_color']),
+                    htmlspecialchars($tile_frame['shadow_css'])
+                );
+            }
         ?>
-        <div class="tg-tile">
+        <div class="<?php echo $tile_class; ?>"
+             <?php if ($tile_css_vars): ?>style="<?php echo $tile_css_vars; ?>"<?php endif; ?>>
             <a href="<?php echo $post_url; ?>" title="<?php echo $title_safe; ?>">
                 <img src="<?php echo htmlspecialchars($thumb_src); ?>"
                      alt="<?php echo $title_safe; ?>"

@@ -169,6 +169,79 @@ return [
             'property' => '--font-body',
         ],
 
+        // ---- IMAGE FRAME ---------------------------------------------------
+        // tg_customize_level controls which style resolution path is active.
+        //   per_grid     — one style for all images, set here in Skin Admin.
+        //   per_carousel — each post defines its own style (stored on snap_posts).
+        //   per_image    — each photo has its own style (stored on snap_post_images).
+        'tg_customize_level' => [
+            'section' => 'IMAGE FRAME',
+            'type'    => 'select',
+            'label'   => 'Customisation Level',
+            'default' => 'per_grid',
+            'options' => [
+                'per_grid'     => 'Site-wide (one style for all images)',
+                'per_carousel' => 'Per Post (each post defines its own style)',
+                'per_image'    => 'Per Image (each photo has its own style)',
+            ],
+        ],
+        'tg_frame_size_pct' => [
+            'section' => 'IMAGE FRAME',
+            'type'    => 'select',
+            'label'   => 'Image Size Within Tile',
+            'default' => '100',
+            'options' => [
+                '100' => '100% — edge to edge',
+                '95'  => '95%',
+                '90'  => '90%',
+                '85'  => '85%',
+                '80'  => '80%',
+                '75'  => '75%',
+            ],
+            // No selector/property: PHP applies this inline in landing.php / layout.php.
+        ],
+        'tg_frame_border_px' => [
+            'section' => 'IMAGE FRAME',
+            'type'    => 'select',
+            'label'   => 'Border Thickness',
+            'default' => '0',
+            'options' => [
+                '0'  => 'None',
+                '1'  => '1px',
+                '2'  => '2px',
+                '3'  => '3px',
+                '5'  => '5px',
+                '8'  => '8px',
+                '10' => '10px',
+                '15' => '15px',
+                '20' => '20px',
+            ],
+        ],
+        'tg_frame_border_color' => [
+            'section' => 'IMAGE FRAME',
+            'type'    => 'color',
+            'label'   => 'Border Colour',
+            'default' => '#000000',
+        ],
+        'tg_frame_bg_color' => [
+            'section' => 'IMAGE FRAME',
+            'type'    => 'color',
+            'label'   => 'Frame Background Colour',
+            'default' => '#ffffff',
+        ],
+        'tg_frame_shadow' => [
+            'section' => 'IMAGE FRAME',
+            'type'    => 'select',
+            'label'   => 'Drop Shadow on Image',
+            'default' => '0',
+            'options' => [
+                '0' => 'None',
+                '1' => 'Soft',
+                '2' => 'Medium',
+                '3' => 'Heavy',
+            ],
+        ],
+
         // ---- LAYOUT --------------------------------------------------------
         'tg_max_width' => [
             'section'  => 'LAYOUT',

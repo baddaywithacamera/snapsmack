@@ -48,6 +48,7 @@ ini_set('memory_limit', '512M');
 
 $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
 $settings      = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+$customize_level = $settings['tg_customize_level'] ?? 'per_grid';
 $max_w  = (int)($settings['max_width_landscape']  ?? 2500);
 $max_h  = (int)($settings['max_height_portrait']  ?? 1850);
 $jpeg_q = (int)($settings['jpeg_quality']         ?? 85);
@@ -77,14 +78,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $remove_ids   = array_map('intval', $_POST['remove_image_ids'] ?? []);
     $exif_overrides = $_POST['exif']               ?? [];      // [image_id][field] = value
 
+    // --- Frame style (per_carousel: one set for the whole post) ---
+    $post_style_size   = max(75, min(100, (int)($_POST['post_img_size_pct'] ?? 100)));
+    $post_style_bpx    = max(0,  min(20,  (int)($_POST['post_border_px']    ?? 0)));
+    $post_style_bc     = preg_match('/^#[0-9a-fA-F]{6}$/', $_POST['post_border_color'] ?? '')
+                             ? $_POST['post_border_color'] : '#000000';
+    $post_style_bg     = preg_match('/^#[0-9a-fA-F]{6}$/', $_POST['post_bg_color'] ?? '')
+                             ? $_POST['post_bg_color'] : '#ffffff';
+    $post_style_shadow = max(0, min(3, (int)($_POST['post_shadow'] ?? 0)));
+
+    // per_image: arrays keyed by image_id (existing) and position (new uploads).
+    $pi_style_sizes  = $_POST['img_size_pct']     ?? [];   // [image_id => value]
+    $pi_style_bpx    = $_POST['img_border_px']    ?? [];
+    $pi_style_bc     = $_POST['img_border_color'] ?? [];
+    $pi_style_bg     = $_POST['img_bg_color']     ?? [];
+    $pi_style_shadow = $_POST['img_shadow']       ?? [];
+    // New-image parallel style arrays (position-indexed, parallel to new_img_files[])
+    $new_style_sizes  = $_POST['new_img_size_pct']     ?? [];
+    $new_style_bpx    = $_POST['new_img_border_px']    ?? [];
+    $new_style_bc     = $_POST['new_img_border_color'] ?? [];
+    $new_style_bg     = $_POST['new_img_bg_color']     ?? [];
+    $new_style_shadow = $_POST['new_img_shadow']       ?? [];
+
     // --- Update snap_posts ---
     $pdo->prepare("
         UPDATE snap_posts
         SET title = ?, description = ?, status = ?, created_at = ?,
-            panorama_rows = ?, allow_comments = ?, allow_download = ?, download_url = ?
+            panorama_rows = ?, allow_comments = ?, allow_download = ?, download_url = ?,
+            post_img_size_pct = ?, post_border_px = ?, post_border_color = ?,
+            post_bg_color = ?, post_shadow = ?
         WHERE id = ?
     ")->execute([$title, $desc, $status, $post_date,
-                 $pano_rows, $allow_cmt, $allow_dl, $dl_url, $post_id]);
+                 $pano_rows, $allow_cmt, $allow_dl, $dl_url,
+                 $post_style_size, $post_style_bpx, $post_style_bc,
+                 $post_style_bg,   $post_style_shadow,
+                 $post_id]);
 
     // --- Rebuild category / album maps ---
     $pdo->prepare("DELETE FROM snap_post_cat_map WHERE post_id = ?")->execute([$post_id]);
@@ -127,6 +155,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ->execute([$post_id, $cover_img_id]);
     }
 
+    // --- Update per-image frame style on snap_post_images ---
+    if ($customize_level === 'per_image') {
+        foreach ($pi_style_sizes as $img_id => $sz) {
+            $img_id = (int)$img_id;
+            $sz     = max(75, min(100, (int)$sz));
+            $bpx    = max(0,  min(20,  (int)($pi_style_bpx[$img_id]    ?? 0)));
+            $bc     = preg_match('/^#[0-9a-fA-F]{6}$/', $pi_style_bc[$img_id]    ?? '')
+                          ? $pi_style_bc[$img_id]    : '#000000';
+            $bg     = preg_match('/^#[0-9a-fA-F]{6}$/', $pi_style_bg[$img_id]    ?? '')
+                          ? $pi_style_bg[$img_id]    : '#ffffff';
+            $sh     = max(0, min(3, (int)($pi_style_shadow[$img_id]    ?? 0)));
+            $pdo->prepare("
+                UPDATE snap_post_images
+                SET img_size_pct = ?, img_border_px = ?, img_border_color = ?,
+                    img_bg_color = ?, img_shadow = ?
+                WHERE post_id = ? AND image_id = ?
+            ")->execute([$sz, $bpx, $bc, $bg, $sh, $post_id, $img_id]);
+        }
+    }
+
     // --- Update per-image EXIF overrides ---
     foreach ($exif_overrides as $img_id => $fields) {
         $img_id = (int)$img_id;
@@ -162,7 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $max_pos_stmt->execute([$post_id]);
         $next_pos = (int)$max_pos_stmt->fetchColumn() + 1;
 
-        for ($i = 0; $i < $files_count && $current_count < 10; $i++) {
+        for ($i = 0; $i < $files_count && $current_count < 20; $i++) {
             if ($_FILES['new_img_files']['error'][$i] !== UPLOAD_ERR_OK) continue;
 
             $tmp_name  = $_FILES['new_img_files']['tmp_name'][$i];
@@ -303,8 +351,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
 
             $new_img_id = (int)$pdo->lastInsertId();
-            $pdo->prepare("INSERT INTO snap_post_images (post_id, image_id, sort_position, is_cover) VALUES (?, ?, ?, 0)")
-                ->execute([$post_id, $new_img_id, $next_pos]);
+
+            // Resolve style for this new image.
+            if ($customize_level === 'per_image') {
+                $ni_sz  = max(75, min(100, (int)($new_style_sizes[$i]  ?? 100)));
+                $ni_bpx = max(0,  min(20,  (int)($new_style_bpx[$i]   ?? 0)));
+                $ni_bc  = preg_match('/^#[0-9a-fA-F]{6}$/', $new_style_bc[$i]  ?? '')
+                              ? $new_style_bc[$i]  : '#000000';
+                $ni_bg  = preg_match('/^#[0-9a-fA-F]{6}$/', $new_style_bg[$i]  ?? '')
+                              ? $new_style_bg[$i]  : '#ffffff';
+                $ni_sh  = max(0, min(3, (int)($new_style_shadow[$i]   ?? 0)));
+            } elseif ($customize_level === 'per_carousel') {
+                $ni_sz = $post_style_size; $ni_bpx = $post_style_bpx;
+                $ni_bc = $post_style_bc;   $ni_bg  = $post_style_bg;
+                $ni_sh = $post_style_shadow;
+            } else {
+                $ni_sz = 100; $ni_bpx = 0; $ni_bc = '#000000'; $ni_bg = '#ffffff'; $ni_sh = 0;
+            }
+
+            $pdo->prepare("
+                INSERT INTO snap_post_images
+                    (post_id, image_id, sort_position, is_cover,
+                     img_size_pct, img_border_px, img_border_color, img_bg_color, img_shadow)
+                VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?)
+            ")->execute([$post_id, $new_img_id, $next_pos,
+                         $ni_sz, $ni_bpx, $ni_bc, $ni_bg, $ni_sh]);
 
             $next_pos++;
             $current_count++;
@@ -336,9 +407,11 @@ $post_stmt->execute([$post_id]);
 $post = $post_stmt->fetch();
 if (!$post) die('Post not found.');
 
-// Load all images in this post, ordered by sort_position
+// Load all images in this post, ordered by sort_position (including frame style columns)
 $images_stmt = $pdo->prepare("
-    SELECT i.*, pi.sort_position, pi.is_cover, pi.id AS pivot_id
+    SELECT i.*, pi.sort_position, pi.is_cover, pi.id AS pivot_id,
+           pi.img_size_pct, pi.img_border_px, pi.img_border_color,
+           pi.img_bg_color, pi.img_shadow
     FROM snap_post_images pi
     JOIN snap_images i ON i.id = pi.image_id
     WHERE pi.post_id = ? AND pi.sort_position >= 0
@@ -383,7 +456,8 @@ include 'core/sidebar.php';
         <div class="alert box alert-success"><?php echo htmlspecialchars($msg); ?></div>
     <?php endif; ?>
 
-    <form id="ce-form" method="POST" enctype="multipart/form-data">
+    <form id="ce-form" method="POST" enctype="multipart/form-data"
+          data-customize-level="<?php echo htmlspecialchars($customize_level); ?>">
 
         <!-- New file input (populated by JS via DataTransfer before submit) -->
         <input type="file" name="new_img_files[]" multiple style="display:none;" id="ce-new-file-hidden">
@@ -528,6 +602,67 @@ include 'core/sidebar.php';
         </div>
 
         <!-- ===================================================================
+             SECTION 1b: PER-CAROUSEL FRAME STYLE
+             =================================================================== -->
+        <?php if ($customize_level === 'per_carousel'): ?>
+        <div class="box mt-30">
+            <h3 style="margin:0 0 6px;">IMAGE FRAME STYLE</h3>
+            <p class="skin-desc-text" style="margin-bottom:16px;">
+                Applied to every image in this post.
+            </p>
+            <div class="post-layout-grid" style="gap:16px;">
+                <div class="flex-1">
+                    <div class="lens-input-wrapper">
+                        <label>IMAGE SIZE</label>
+                        <select name="post_img_size_pct" class="full-width-select">
+                            <?php foreach ([100=>'100% — edge to edge',95=>'95%',90=>'90%',85=>'85%',80=>'80%',75=>'75%'] as $v=>$l): ?>
+                            <option value="<?php echo $v; ?>" <?php echo ($post['post_img_size_pct']??100)==$v?'selected':''; ?>><?php echo $l; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="lens-input-wrapper">
+                        <label>BORDER THICKNESS</label>
+                        <select name="post_border_px" class="full-width-select">
+                            <?php foreach ([0=>'None',1=>'1px',2=>'2px',3=>'3px',5=>'5px',8=>'8px',10=>'10px',15=>'15px',20=>'20px'] as $v=>$l): ?>
+                            <option value="<?php echo $v; ?>" <?php echo ($post['post_border_px']??0)==$v?'selected':''; ?>><?php echo $l; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="lens-input-wrapper">
+                        <label>DROP SHADOW</label>
+                        <select name="post_shadow" class="full-width-select">
+                            <?php foreach ([0=>'None',1=>'Soft',2=>'Medium',3=>'Heavy'] as $v=>$l): ?>
+                            <option value="<?php echo $v; ?>" <?php echo ($post['post_shadow']??0)==$v?'selected':''; ?>><?php echo $l; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="lens-input-wrapper">
+                        <label>BORDER COLOUR</label>
+                        <input type="color" name="post_border_color"
+                               value="<?php echo htmlspecialchars($post['post_border_color'] ?? '#000000'); ?>"
+                               style="width:100%; height:38px; padding:2px 4px;">
+                    </div>
+                    <div class="lens-input-wrapper">
+                        <label>BACKGROUND COLOUR</label>
+                        <input type="color" name="post_bg_color"
+                               value="<?php echo htmlspecialchars($post['post_bg_color'] ?? '#ffffff'); ?>"
+                               style="width:100%; height:38px; padding:2px 4px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php else: ?>
+            <?php /* per_grid: no form controls — style is resolved from Skin Admin at render time */ ?>
+            <input type="hidden" name="post_img_size_pct" value="<?php echo (int)($post['post_img_size_pct'] ?? 100); ?>">
+            <input type="hidden" name="post_border_px"    value="<?php echo (int)($post['post_border_px']    ?? 0); ?>">
+            <input type="hidden" name="post_border_color" value="<?php echo htmlspecialchars($post['post_border_color'] ?? '#000000'); ?>">
+            <input type="hidden" name="post_bg_color"     value="<?php echo htmlspecialchars($post['post_bg_color']     ?? '#ffffff'); ?>">
+            <input type="hidden" name="post_shadow"       value="<?php echo (int)($post['post_shadow'] ?? 0); ?>">
+        <?php endif; ?>
+
+        <!-- ===================================================================
              SECTION 2: IMAGE STRIP
              =================================================================== -->
         <div class="box mt-30">
@@ -535,7 +670,7 @@ include 'core/sidebar.php';
                 <h3 style="margin:0;">SOURCE ASSETS</h3>
                 <div style="display:flex; gap:12px; align-items:center;">
                     <span class="dim" style="font-size:12px; letter-spacing:1px;">
-                        <?php echo count($post_images); ?> / 10 images
+                        <?php echo count($post_images); ?> / 20 images
                     </span>
                     <button type="button" id="ce-add-toggle" class="btn-secondary">+ ADD MORE IMAGES</button>
                 </div>
@@ -595,6 +730,51 @@ include 'core/sidebar.php';
                             </div>
                         </div>
                     </div>
+
+                    <?php if ($customize_level === 'per_image'): ?>
+                    <!-- Frame style toggle + panel (per_image mode only) -->
+                    <button type="button" class="ce-style-toggle cp-exif-toggle" style="margin-top:4px;">FRAME ▸</button>
+                    <div class="ce-style-panel cp-exif-panel" style="display:none;">
+                        <div class="cp-exif-grid">
+                            <div class="lens-input-wrapper">
+                                <label>IMAGE SIZE</label>
+                                <select name="img_size_pct[<?php echo $pimg['id']; ?>]" class="full-width-select">
+                                    <?php foreach ([100=>'100%',95=>'95%',90=>'90%',85=>'85%',80=>'80%',75=>'75%'] as $v=>$l): ?>
+                                    <option value="<?php echo $v; ?>" <?php echo ($pimg['img_size_pct']??100)==$v?'selected':''; ?>><?php echo $l; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="lens-input-wrapper">
+                                <label>BORDER</label>
+                                <select name="img_border_px[<?php echo $pimg['id']; ?>]" class="full-width-select">
+                                    <?php foreach ([0=>'None',1=>'1px',2=>'2px',3=>'3px',5=>'5px',8=>'8px',10=>'10px',15=>'15px',20=>'20px'] as $v=>$l): ?>
+                                    <option value="<?php echo $v; ?>" <?php echo ($pimg['img_border_px']??0)==$v?'selected':''; ?>><?php echo $l; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="lens-input-wrapper">
+                                <label>BORDER COLOUR</label>
+                                <input type="color" name="img_border_color[<?php echo $pimg['id']; ?>]"
+                                       value="<?php echo htmlspecialchars($pimg['img_border_color'] ?? '#000000'); ?>"
+                                       style="height:30px; width:100%; padding:2px 4px;">
+                            </div>
+                            <div class="lens-input-wrapper">
+                                <label>BG COLOUR</label>
+                                <input type="color" name="img_bg_color[<?php echo $pimg['id']; ?>]"
+                                       value="<?php echo htmlspecialchars($pimg['img_bg_color'] ?? '#ffffff'); ?>"
+                                       style="height:30px; width:100%; padding:2px 4px;">
+                            </div>
+                            <div class="lens-input-wrapper">
+                                <label>SHADOW</label>
+                                <select name="img_shadow[<?php echo $pimg['id']; ?>]" class="full-width-select">
+                                    <?php foreach ([0=>'None',1=>'Soft',2=>'Medium',3=>'Heavy'] as $v=>$l): ?>
+                                    <option value="<?php echo $v; ?>" <?php echo ($pimg['img_shadow']??0)==$v?'selected':''; ?>><?php echo $l; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -648,6 +828,16 @@ window.addEventListener('DOMContentLoaded', function () {
         updateLabel('cat');
         updateLabel('album');
     }
+    // Wire FRAME toggle buttons for per_image style panels (PHP-rendered strip items).
+    document.querySelectorAll('.ce-style-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var panel = this.nextElementSibling;
+            if (!panel || !panel.classList.contains('ce-style-panel')) return;
+            var open = panel.style.display !== 'none';
+            panel.style.display = open ? 'none' : 'block';
+            this.textContent = open ? 'FRAME ▸' : 'FRAME ▾';
+        });
+    });
 });
 </script>
 <?php include 'core/admin-footer.php'; ?>
