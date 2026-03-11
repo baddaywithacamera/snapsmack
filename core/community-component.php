@@ -41,6 +41,9 @@ if (empty($img['id'])) {
 
 require_once __DIR__ . '/community-session.php';
 
+// --- GUARD: Bail silently if community migration hasn't been run yet ---
+if (!snap_community_ready()) return;
+
 // --- MANIFEST FLAGS ---
 // Skin manifest may override global settings per-skin.
 // $skin_manifest is loaded by core/manifest.php before layout.php runs.
