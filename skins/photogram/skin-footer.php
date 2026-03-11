@@ -18,9 +18,26 @@ $active_tab    = $pg_active_tab ?? 'home';
 $show_discover = ($settings['pg_show_discover'] ?? '1') === '1';
 
 // Base URL for nav links
-$home_url    = BASE_URL;
-$discover_url = BASE_URL . '?pg=discover'; // Phase 1 placeholder
-$profile_url  = BASE_URL; // Profile IS the home for now
+$home_url     = BASE_URL;
+$discover_url = BASE_URL . '?pg=discover';
+
+// About tab: prefer page with slug='about', fall back to first active page by menu_order
+$_pg_about_page = null;
+if (isset($pdo)) {
+    $_pg_about_stmt = $pdo->prepare(
+        "SELECT slug FROM snap_pages WHERE is_active = 1 AND slug = 'about' LIMIT 1"
+    );
+    $_pg_about_stmt->execute();
+    $_pg_about_page = $_pg_about_stmt->fetchColumn() ?: null;
+    if (!$_pg_about_page) {
+        $_pg_fallback   = $pdo->query(
+            "SELECT slug FROM snap_pages WHERE is_active = 1 ORDER BY menu_order ASC LIMIT 1"
+        );
+        $_pg_about_page = ($_pg_fallback ? $_pg_fallback->fetchColumn() : null) ?: null;
+    }
+}
+$show_about  = !empty($_pg_about_page);
+$profile_url = $show_about ? BASE_URL . 'page.php?slug=' . rawurlencode($_pg_about_page) : BASE_URL;
 ?>
 
 <!-- ── Bottom Navigation Bar ─────────────────────────────────────────── -->
@@ -56,8 +73,9 @@ $profile_url  = BASE_URL; // Profile IS the home for now
     </a>
     <?php endif; ?>
 
-    <!-- Profile -->
-    <a href="<?php echo $home_url; ?>" class="pg-nav-tab<?php echo $active_tab === 'profile' ? ' active' : ''; ?>" aria-label="Profile">
+    <!-- About / Profile — hidden when no page is configured -->
+    <?php if ($show_about): ?>
+    <a href="<?php echo $profile_url; ?>" class="pg-nav-tab<?php echo $active_tab === 'about' ? ' active' : ''; ?>" aria-label="About">
         <!-- Outline -->
         <svg class="pg-icon-outline" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -69,6 +87,7 @@ $profile_url  = BASE_URL; // Profile IS the home for now
             <circle cx="12" cy="7" r="4"/>
         </svg>
     </a>
+    <?php endif; ?>
 
 </nav>
 
