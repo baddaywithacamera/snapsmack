@@ -43,33 +43,7 @@ $exif_labels = [
     <!-- COMMENTS DRAWER — slides DOWN from top (masthead section feel) -->
     <div id="rg-comments-drawer" class="rg-drawer rg-drawer-top">
         <div class="rg-drawer-inner">
-            <?php if ($comments_active): ?>
-                <div class="rg-comments-header">Editorial Notes</div>
-                <?php if ($comments): ?>
-                    <div class="rg-comments-list">
-                        <?php foreach ($comments as $c): ?>
-                            <div class="rg-comment">
-                                <div class="rg-comment-author"><?php echo htmlspecialchars($c['comment_author']); ?></div>
-                                <div class="rg-comment-date"><?php echo date('F j, Y', strtotime($c['comment_date'])); ?></div>
-                                <div class="rg-comment-text"><?php echo nl2br(htmlspecialchars($c['comment_text'])); ?></div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <p class="rg-no-comments">No editorial notes yet.</p>
-                <?php endif; ?>
-
-                <form action="<?php echo BASE_URL; ?>process-comment.php" method="POST" class="rg-comment-form">
-                    <input type="hidden" name="img_id" value="<?php echo $img['id']; ?>">
-                    <h3>Leave a Note</h3>
-                    <div class="rg-comment-form-row">
-                        <input type="text" name="author" placeholder="Your name" required>
-                        <input type="email" name="email" placeholder="Email" required>
-                    </div>
-                    <textarea name="comment_text" placeholder="Your thoughts..." required></textarea>
-                    <button type="submit" class="rg-comment-form-submit">Submit</button>
-                </form>
-            <?php endif; ?>
+            <?php include dirname(__DIR__, 2) . '/core/community-component.php'; ?>
         </div>
     </div>
 

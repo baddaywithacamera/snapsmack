@@ -40,7 +40,12 @@ return [
         'smack-keyboard',
         'smack-justified-lib',
         'smack-justified',
+        'smack-community',
     ],
+
+    'community_comments'  => '1',
+    'community_likes'     => '1',
+    'community_reactions' => '0',
 
     'options' => [
 
