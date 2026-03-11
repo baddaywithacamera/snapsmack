@@ -34,7 +34,7 @@ try {
 
     // Define BASE_URL from settings or fallback. Ensures trailing slash for consistent routing.
     if (!defined('BASE_URL')) {
-        $db_url = $settings['site_url'] ?? 'https://iswa.ca/';
+        $db_url = $settings['site_url'] ?? 'https://example.com/';
         define('BASE_URL', rtrim($db_url, '/') . '/');
     }
 

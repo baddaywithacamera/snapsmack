@@ -28,7 +28,7 @@ try {
 
     // Define BASE_URL from database. Source of truth for site URL.
     if (!defined('BASE_URL')) {
-        $db_url = $settings['site_url'] ?? 'https://iswa.ca/';
+        $db_url = $settings['site_url'] ?? 'https://example.com/';
         define('BASE_URL', rtrim($db_url, '/') . '/');
     }
 

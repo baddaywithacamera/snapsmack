@@ -4,6 +4,10 @@ core/db.php
 # Backups contain full source + database dumps — never commit
 backups/
 
+# Schema snapshots are install-specific (contain live AUTO_INCREMENT values etc.)
+# They have no place in the distribution repo.
+database/schema/
+
 # Updater temp files
 /tmp/snapsmack_update/
 
