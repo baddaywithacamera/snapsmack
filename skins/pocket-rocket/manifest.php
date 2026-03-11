@@ -18,7 +18,7 @@ return [
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Mobile-first skin for phone screens. Doomscroll feed, hamburger nav, swipe drawers for info and signals. No floating gallery, no justified grid, no cropped thumbs. Gen Z approved, boomer built.',
-    'status'        => 'development',
+    'status'        => 'beta',
 
     'features' => [
         'supports_wall'   => false,
