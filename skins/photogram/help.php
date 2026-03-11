@@ -20,13 +20,19 @@
         <li>The <strong>Discover tab</strong> shows your local tags and recent photos. Cross-network discovery comes in a future update.</li>
     </ul>
 
+    <h3 style="font-size: 14px; font-weight: 700; margin: 20px 0 8px;">Hashtags</h3>
+    <p style="margin: 0 0 16px;">Add <strong>#hashtags</strong> to any image description and they become tappable archive links. Tapping a tag opens a filtered grid of all photos sharing that tag. Tags are extracted automatically when you save or post — no extra steps required.</p>
+
+    <h3 style="font-size: 14px; font-weight: 700; margin: 20px 0 8px;">Search</h3>
+    <p style="margin: 0 0 16px;">Site-wide search is off by default. Enable it in <strong>Admin &gt; Configuration &gt; Architecture &amp; Interaction → Site-Wide Search</strong>. Once on, a search tab appears in the bottom nav. Search looks through photo titles and descriptions.</p>
+
     <h3 style="font-size: 14px; font-weight: 700; margin: 20px 0 8px;">Skin Options</h3>
     <ul style="margin: 0 0 16px; padding-left: 20px;">
         <li><strong>Grid Gap</strong> — Controls the space between grid cells (none, hairline, or small).</li>
         <li><strong>Avatar Shape</strong> — Circle or rounded square.</li>
         <li><strong>Accent Colour</strong> — Used for links, active tab indicator, and interactive elements.</li>
         <li><strong>Sheet Speed</strong> — How fast the comment sheet slides in.</li>
-        <li><strong>Show Discover Tab</strong> — Toggle the Discover tab on or off.</li>
+        <li><strong>Show Discover Tab</strong> — Toggle the Discover tab on or off from Skin Admin.</li>
     </ul>
 
     <h3 style="font-size: 14px; font-weight: 700; margin: 20px 0 8px;">Community Accounts</h3>
