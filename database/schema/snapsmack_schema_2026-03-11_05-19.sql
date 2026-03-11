@@ -1,10 +1,11 @@
 -- SnapSmack Backup Service
 -- Type: SCHEMA
--- Date: 2026-03-11 01:42:52
+-- Date: 2026-03-11 05:19:28
 
 DROP TABLE IF EXISTS `snap_images`;
 CREATE TABLE `snap_images` (
   `id` int NOT NULL AUTO_INCREMENT,
+  `post_id` int DEFAULT NULL COMMENT 'FK to snap_posts.id. NULL = pre-migration standalone image.',
   `img_title` varchar(255) NOT NULL,
   `img_slug` varchar(255) NOT NULL,
   `img_description` text,
