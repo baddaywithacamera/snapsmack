@@ -26,5 +26,9 @@ return [
             'title' => 'Archive Grid',
             'body'  => 'The archive displays thumbnails in miniature frames matching the hero image framing. Column count (2-6), max width, and side padding are all configurable. Frames can be toggled to plain borders if preferred.',
         ],
+        [
+            'title' => 'Likes, Reactions & Comments',
+            'body'  => 'SnapSmack ships a built-in community system: likes, emoji reactions, and comments — all self-hosted on your own server, no third-party tracking. A floating dock appears on every page; visitors tap it to like or react to a photograph without needing an account. Comments require a free community account created directly on your site. Manage everything in Admin > Community Settings: toggle features on or off, pick your reaction set (up to 6 emoji), set rate limits, and configure comment notification emails.',
+        ],
     ],
 ];
