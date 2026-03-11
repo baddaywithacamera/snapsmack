@@ -266,6 +266,34 @@ img { display: block; max-width: 100%; }
     -webkit-box-orient: vertical;
 }
 
+/* ── Framed tile mode ──────────────────────────────────────────────────────
+   Applied when per-image/carousel/grid style brings size below 100%,
+   adds a border, or adds a shadow. PHP emits class .tg-tile--framed and
+   CSS custom properties on the .tg-tile element itself.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.tg-tile--framed {
+    background: var(--tile-bg, #ffffff);
+}
+
+.tg-tile--framed a {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    background:      var(--tile-bg, #ffffff);
+}
+
+.tg-tile--framed img {
+    /* override fill-tile behaviour */
+    width:        var(--tile-img-size, 100%);
+    height:       var(--tile-img-size, 100%);
+    object-fit:   contain;
+    border:       var(--tile-border-w, 0px) solid var(--tile-border-c, transparent);
+    box-shadow:   var(--tile-shadow, none);
+    box-sizing:   border-box;
+    transition:   opacity 0.2s;
+}
+
 /* Panorama tiles: the first tile forces a new row via grid-column: 1 */
 .tg-tile--pano-first  { grid-column: 1; }
 .tg-tile--pano-middle { /* naturally placed in column 2 */ }
@@ -324,6 +352,32 @@ img { display: block; max-width: 100%; }
     max-height: 80vh;
     object-fit: contain;
     display: block;
+}
+
+/* ── Framed carousel slide ─────────────────────────────────────────────────
+   When a slide has per-image/carousel/grid framing, PHP adds .tg-slide--framed
+   and writes --slide-bg, --slide-img-size, --slide-border-w, --slide-border-c,
+   --slide-shadow as inline CSS vars on the .slider-slide element.
+   The img inside keeps its natural height; width + border + shadow are applied.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.tg-slide--framed {
+    background:      var(--slide-bg, #000) !important;
+    display:         flex !important;
+    align-items:     center;
+    justify-content: center;
+    min-height:      280px;
+}
+
+.tg-slide--framed img {
+    width:      var(--slide-img-size, 100%) !important;
+    height:     auto !important;
+    max-height: 80vh !important;
+    object-fit: contain !important;
+    border:     var(--slide-border-w, 0px) solid var(--slide-border-c, transparent) !important;
+    box-shadow: var(--slide-shadow, none) !important;
+    box-sizing: border-box !important;
+    background: transparent !important;
 }
 
 /* Post body: caption, EXIF, actions */

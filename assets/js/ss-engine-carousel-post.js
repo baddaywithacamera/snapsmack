@@ -5,10 +5,13 @@
  * JavaScript engine for the multi-image carousel posting page
  * (smack-post-carousel.php). Handles:
  *
- *   - Drag-and-drop + click-to-browse file selection (up to 10 images)
+ *   - Drag-and-drop + click-to-browse file selection (up to 20 images)
  *   - FileReader thumbnail preview strip
  *   - Drag-to-reorder within the preview strip (touch + mouse)
  *   - Per-image EXIF panel expand/collapse
+ *   - Per-image FRAME style panel (size, border px, border colour, bg colour, shadow)
+ *     shown only when the form's data-customize-level === "per_image"
+ *   - styleList[] kept in sync with fileList[] through add/remove/reorder
  *   - Sort position hidden inputs kept in sync with visual order
  *   - File removal with index renumbering
  *   - Post type selector UI (single / carousel / panorama)
@@ -19,13 +22,15 @@
 (function () {
     'use strict';
 
-    var MAX_FILES  = 10;
+    var MAX_FILES  = 20;
     var ACCEPTED   = ['image/jpeg', 'image/png', 'image/webp'];
 
     // --- STATE ---
 
-    var fileList   = [];   // ordered array of File objects, mirrors the strip
-    var dragSrcIdx = null; // index of strip item being dragged
+    var fileList      = [];   // ordered array of File objects, mirrors the strip
+    var styleList     = [];   // parallel array of style objects, mirrors fileList
+    var dragSrcIdx    = null; // index of strip item being dragged
+    var customizeLevel = 'per_grid'; // read from form data attribute on init
 
     // --- DOM REFS (populated on init) ---
 
@@ -49,11 +54,21 @@
 
         if (!dropZone) return; // not on the carousel post page
 
+        customizeLevel = (form && form.getAttribute('data-customize-level')) || 'per_grid';
+
         initDropZone();
         initFileInput();
         initPostTypeSelector();
         initFormSubmit();
     });
+
+    // =========================================================================
+    // STYLE HELPERS
+    // =========================================================================
+
+    function defaultStyle() {
+        return { size_pct: 100, border_px: 0, border_color: '#000000', bg_color: '#ffffff', shadow: 0 };
+    }
 
     // =========================================================================
     // DROP ZONE
@@ -104,6 +119,7 @@
             });
             if (isDupe) return;
             fileList.push(f);
+            styleList.push(defaultStyle());
             added++;
         });
 
@@ -114,6 +130,7 @@
 
     function removeFile(idx) {
         fileList.splice(idx, 1);
+        styleList.splice(idx, 1);
         renderStrip();
         updateDropZoneState();
         validateForm();
@@ -137,9 +154,14 @@
                 ? '<span class="cp-cover-badge">COVER</span>'
                 : '';
 
-            // Carousel indicator on non-first items when multiple files
+            // Position badge on all items when multiple files
             var posBadge = fileList.length > 1
                 ? '<span class="cp-pos-badge">' + (idx + 1) + '</span>'
+                : '';
+
+            var styleToggle = customizeLevel === 'per_image'
+                ? '<button type="button" class="cp-style-toggle cp-exif-toggle" style="margin-top:4px;">FRAME ▸</button>' +
+                  buildStylePanel(idx)
                 : '';
 
             item.innerHTML =
@@ -152,6 +174,7 @@
                 '<div class="cp-item-label">' + escHtml(file.name) + '</div>' +
                 '<button type="button" class="cp-exif-toggle">EXIF ▾</button>' +
                 buildExifPanel(idx) +
+                styleToggle +
                 '<input type="hidden" name="sort_order[]" value="' + idx + '">';
 
             // Generate preview thumbnail
@@ -173,6 +196,30 @@
                 panel.style.display = isOpen ? 'none' : 'block';
                 this.textContent = isOpen ? 'EXIF ▾' : 'EXIF ▴';
             });
+
+            // FRAME style toggle
+            var styleToggleBtn = item.querySelector('.cp-style-toggle');
+            if (styleToggleBtn) {
+                styleToggleBtn.addEventListener('click', function () {
+                    var panel = item.querySelector('.cp-style-panel');
+                    var isOpen = panel.style.display !== 'none';
+                    panel.style.display = isOpen ? 'none' : 'block';
+                    this.textContent = isOpen ? 'FRAME ▸' : 'FRAME ▾';
+                });
+                // Sync styleList when user changes a style input
+                item.querySelectorAll('.cp-style-input').forEach(function (input) {
+                    input.addEventListener('change', function () {
+                        var field = this.getAttribute('data-style-field');
+                        if (!styleList[idx]) styleList[idx] = defaultStyle();
+                        var val = this.value;
+                        if (field === 'border_color' || field === 'bg_color') {
+                            styleList[idx][field] = val;
+                        } else {
+                            styleList[idx][field] = parseInt(val, 10) || 0;
+                        }
+                    });
+                });
+            }
 
             // Drag-to-reorder (mouse)
             item.addEventListener('dragstart', function (e) {
@@ -202,8 +249,11 @@
                 e.preventDefault();
                 item.classList.remove('drag-over');
                 if (dragSrcIdx === null || dragSrcIdx === idx) return;
-                var moved = fileList.splice(dragSrcIdx, 1)[0];
-                fileList.splice(idx, 0, moved);
+                // Move file and style in tandem
+                var movedFile  = fileList.splice(dragSrcIdx, 1)[0];
+                var movedStyle = styleList.splice(dragSrcIdx, 1)[0];
+                fileList.splice(idx, 0, movedFile);
+                styleList.splice(idx, 0, movedStyle);
                 dragSrcIdx = null;
                 renderStrip();
                 validateForm();
@@ -212,10 +262,6 @@
             stripEl.appendChild(item);
         });
 
-        // Hidden inputs that carry file order to PHP (parallel array to $_FILES['img_files'])
-        // We also need to carry EXIF overrides. The actual File objects are collected
-        // at submit time in order from fileList, so sort_order[] just tells PHP which
-        // file index is cover (always 0 after reorder).
         updateSortInputs();
     }
 
@@ -236,6 +282,53 @@
                         '<option value="">Auto-detect</option>' +
                         '<option value="No">No</option>' +
                         '<option value="Yes">Yes</option>' +
+                    '</select>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    }
+
+    function buildStylePanel(idx) {
+        var s = styleList[idx] || defaultStyle();
+        function opt(val, label, cur) {
+            return '<option value="' + val + '"' + (cur == val ? ' selected' : '') + '>' + label + '</option>';
+        }
+        return '<div class="cp-style-panel cp-exif-panel" style="display:none;">' +
+            '<div class="cp-exif-grid">' +
+                '<div class="lens-input-wrapper">' +
+                    '<label>IMAGE SIZE</label>' +
+                    '<select name="img_size_pct[]" class="full-width-select cp-style-input" data-style-field="size_pct">' +
+                        opt(100, '100% — edge to edge', s.size_pct) +
+                        opt(95, '95%', s.size_pct) + opt(90, '90%', s.size_pct) +
+                        opt(85, '85%', s.size_pct) + opt(80, '80%', s.size_pct) +
+                        opt(75, '75%', s.size_pct) +
+                    '</select>' +
+                '</div>' +
+                '<div class="lens-input-wrapper">' +
+                    '<label>BORDER THICKNESS</label>' +
+                    '<select name="img_border_px[]" class="full-width-select cp-style-input" data-style-field="border_px">' +
+                        opt(0,'None',s.border_px) + opt(1,'1px',s.border_px) + opt(2,'2px',s.border_px) +
+                        opt(3,'3px',s.border_px)  + opt(5,'5px',s.border_px) + opt(8,'8px',s.border_px) +
+                        opt(10,'10px',s.border_px)+ opt(15,'15px',s.border_px)+ opt(20,'20px',s.border_px) +
+                    '</select>' +
+                '</div>' +
+                '<div class="lens-input-wrapper">' +
+                    '<label>BORDER COLOUR</label>' +
+                    '<input type="color" name="img_border_color[]" value="' + escHtml(s.border_color) + '"' +
+                           ' class="cp-style-input" data-style-field="border_color"' +
+                           ' style="height:32px; width:100%; padding:2px 4px;">' +
+                '</div>' +
+                '<div class="lens-input-wrapper">' +
+                    '<label>BACKGROUND COLOUR</label>' +
+                    '<input type="color" name="img_bg_color[]" value="' + escHtml(s.bg_color) + '"' +
+                           ' class="cp-style-input" data-style-field="bg_color"' +
+                           ' style="height:32px; width:100%; padding:2px 4px;">' +
+                '</div>' +
+                '<div class="lens-input-wrapper">' +
+                    '<label>SHADOW</label>' +
+                    '<select name="img_shadow[]" class="full-width-select cp-style-input" data-style-field="shadow">' +
+                        opt(0,'None',s.shadow) + opt(1,'Soft',s.shadow) +
+                        opt(2,'Medium',s.shadow) + opt(3,'Heavy',s.shadow) +
                     '</select>' +
                 '</div>' +
             '</div>' +
@@ -278,7 +371,8 @@
             }
             // Enforce single-file for panorama (one wide image to split)
             if (type === 'panorama' && fileList.length > 1) {
-                fileList = fileList.slice(0, 1);
+                fileList  = fileList.slice(0, 1);
+                styleList = styleList.slice(0, 1);
                 renderStrip();
                 updateDropZoneState();
             }
@@ -292,7 +386,7 @@
         if (!hint) return;
         var messages = {
             'single':   'Standard single-image post. Works with all skins.',
-            'carousel': 'Multi-image post. Viewers swipe through up to 10 images.',
+            'carousel': 'Multi-image post. Viewers swipe through up to 20 images.',
             'panorama': 'Upload one wide image. The system slices it into 3, 6, or 9 grid tiles.'
         };
         hint.textContent = messages[type] || '';
@@ -328,8 +422,7 @@
 
             var formData = new FormData(form);
 
-            // Remove any previously-attached file fields and re-attach in strip order
-            // (fileList is already sorted by the drag-to-reorder logic)
+            // Re-attach files in strip order
             formData.delete('img_files[]');
             fileList.forEach(function (f) {
                 formData.append('img_files[]', f);
@@ -340,6 +433,24 @@
             fileList.forEach(function (_, idx) {
                 formData.append('sort_order[]', idx);
             });
+
+            // For per_image mode, re-sync style arrays to match strip order.
+            // (Inputs are rebuilt by renderStrip() on reorder so DOM order is
+            // already correct, but we sync from styleList for safety.)
+            if (customizeLevel === 'per_image') {
+                formData.delete('img_size_pct[]');
+                formData.delete('img_border_px[]');
+                formData.delete('img_border_color[]');
+                formData.delete('img_bg_color[]');
+                formData.delete('img_shadow[]');
+                styleList.forEach(function (s) {
+                    formData.append('img_size_pct[]',     s.size_pct);
+                    formData.append('img_border_px[]',    s.border_px);
+                    formData.append('img_border_color[]', s.border_color);
+                    formData.append('img_bg_color[]',     s.bg_color);
+                    formData.append('img_shadow[]',       s.shadow);
+                });
+            }
 
             var xhr = new XMLHttpRequest();
             xhr.open('POST', 'smack-post-carousel.php');
