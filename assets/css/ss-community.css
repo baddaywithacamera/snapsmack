@@ -1,0 +1,435 @@
+/**
+ * SNAPSMACK - Community Component Styles
+ * Alpha v0.8
+ *
+ * Styles for .ss-community — the likes, reactions, and comment thread
+ * block included in skin layout.php files.
+ *
+ * Philosophy: neutral defaults that won't clash with any skin. Skins can
+ * override via their own style.css using the .ss-community selector.
+ * No skin-specific rules live here.
+ *
+ * Loaded via require_scripts[] in skin manifests alongside
+ * ss-engine-community.js.
+ */
+
+
+/* ==========================================================================
+   CONTAINER
+   ========================================================================== */
+
+.ss-community {
+    margin-top: 32px;
+    font-family: inherit;
+    font-size: 14px;
+    color: inherit;
+}
+
+
+/* ==========================================================================
+   INTERACTION BAR (likes + reactions row)
+   ========================================================================== */
+
+.ss-community-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+
+/* --- LIKE BUTTON --- */
+
+.ss-like-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    color: inherit;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    transition: border-color 0.15s, color 0.15s;
+    user-select: none;
+}
+
+.ss-like-btn:hover {
+    border-color: rgba(128, 128, 128, 0.7);
+}
+
+.ss-like-btn.is-liked {
+    border-color: #e05252;
+    color: #e05252;
+}
+
+.ss-like-icon {
+    font-size: 15px;
+    line-height: 1;
+    transition: transform 0.1s;
+}
+
+.ss-like-btn.is-liked .ss-like-icon {
+    transform: scale(1.15);
+}
+
+.ss-like-count {
+    font-size: 12px;
+    opacity: 0.7;
+    min-width: 1ch;
+}
+
+
+/* --- REACTIONS WRAP --- */
+
+.ss-reactions-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ss-reaction-trigger {
+    background: none;
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    color: inherit;
+    width: 36px;
+    height: 32px;
+    cursor: pointer;
+    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s;
+}
+
+.ss-reaction-trigger:hover,
+.ss-reaction-trigger.has-reaction {
+    border-color: rgba(128, 128, 128, 0.7);
+}
+
+.ss-reaction-add {
+    font-size: 14px;
+    opacity: 0.5;
+}
+
+.ss-reaction-picker {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    background: var(--wall-bg, #1a1a1a);
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 240px;
+    z-index: 100;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.ss-reaction-picker[hidden] {
+    display: none;
+}
+
+.ss-reaction-opt {
+    background: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-size: 18px;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: border-color 0.1s, transform 0.1s;
+    border-radius: 2px;
+}
+
+.ss-reaction-opt:hover {
+    border-color: rgba(128, 128, 128, 0.4);
+    transform: scale(1.2);
+}
+
+.ss-reaction-opt.is-active {
+    border-color: rgba(128, 128, 128, 0.6);
+    background: rgba(128, 128, 128, 0.1);
+}
+
+.ss-rx-count {
+    position: absolute;
+    bottom: 1px;
+    right: 2px;
+    font-size: 8px;
+    opacity: 0.6;
+    font-family: inherit;
+    line-height: 1;
+}
+
+
+/* --- REACTION SUMMARY --- */
+
+.ss-reaction-summary {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.ss-rx-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+
+/* --- AUTH NUDGE --- */
+
+.ss-auth-nudge {
+    font-size: 12px;
+    opacity: 0.5;
+    letter-spacing: 0.02em;
+    margin-left: auto;
+}
+
+.ss-auth-nudge a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.ss-auth-nudge a:hover {
+    opacity: 1;
+    text-decoration: none;
+}
+
+
+/* ==========================================================================
+   COMMENT THREAD
+   ========================================================================== */
+
+.ss-comments {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.ss-comment-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 24px;
+}
+
+.ss-comment {
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+}
+
+.ss-comment:first-child {
+    border-top: 1px solid rgba(128, 128, 128, 0.1);
+}
+
+
+/* --- COMMENT META ROW --- */
+
+.ss-comment-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.ss-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.ss-avatar-placeholder {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(128, 128, 128, 0.2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0;
+    flex-shrink: 0;
+}
+
+.ss-commenter {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+.ss-comment-date {
+    font-size: 11px;
+    opacity: 0.4;
+}
+
+.ss-comment-delete {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0;
+    font-size: 10px;
+    padding: 2px 4px;
+    margin-left: auto;
+    transition: opacity 0.15s;
+}
+
+.ss-comment:hover .ss-comment-delete {
+    opacity: 0.4;
+}
+
+.ss-comment-delete:hover {
+    opacity: 1 !important;
+}
+
+.ss-comment-body {
+    font-size: 14px;
+    line-height: 1.55;
+    opacity: 0.85;
+    padding-left: 36px; /* aligns with text after avatar */
+}
+
+
+/* ==========================================================================
+   COMMENT FORM
+   ========================================================================== */
+
+.ss-comment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ss-comment-input-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.ss-comment-textarea {
+    flex: 1;
+    background: none;
+    border: none;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.3);
+    color: inherit;
+    font-family: inherit;
+    font-size: 14px;
+    padding: 6px 0;
+    resize: none;
+    outline: none;
+    line-height: 1.5;
+    transition: border-color 0.15s;
+    min-height: 32px;
+    overflow: hidden;
+}
+
+.ss-comment-textarea:focus {
+    border-bottom-color: rgba(128, 128, 128, 0.7);
+}
+
+.ss-comment-textarea::placeholder {
+    opacity: 0.4;
+}
+
+.ss-comment-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 38px; /* aligns with textarea */
+}
+
+.ss-comment-actions[hidden] {
+    display: none;
+}
+
+.ss-comment-author {
+    font-size: 11px;
+    opacity: 0.4;
+    letter-spacing: 0.04em;
+}
+
+.ss-comment-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.ss-comment-cancel,
+.ss-comment-submit {
+    background: none;
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    color: inherit;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.ss-comment-cancel:hover {
+    border-color: rgba(128, 128, 128, 0.6);
+}
+
+.ss-comment-submit {
+    background: rgba(128, 128, 128, 0.15);
+}
+
+.ss-comment-submit:hover {
+    background: rgba(128, 128, 128, 0.3);
+    border-color: rgba(128, 128, 128, 0.6);
+}
+
+.ss-comment-submit:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.ss-comment-status {
+    font-size: 12px;
+    padding-left: 38px;
+    opacity: 0.6;
+    min-height: 1em;
+}
+
+
+/* --- NOT LOGGED IN PROMPT --- */
+
+.ss-comment-login-prompt {
+    font-size: 13px;
+    opacity: 0.5;
+    padding: 12px 0;
+    border-top: 1px solid rgba(128, 128, 128, 0.15);
+}
+
+.ss-comment-login-prompt a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.ss-comment-login-prompt a:hover {
+    opacity: 1;
+    text-decoration: none;
+}
