@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Global JavaScript Engine Loader
- * Alpha v0.6
+ * Alpha v0.7.1
  *
  * Loads core JavaScript engines used on all public pages: the HUD (toast
  * notifications), communications engine (keyboard shortcuts), and Thomas the

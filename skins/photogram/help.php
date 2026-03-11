@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Photogram Help
- * Alpha v0.7
+ * Alpha v0.7.1
  */
 ?>
 
@@ -29,5 +29,5 @@
         <li><strong>Show Discover Tab</strong> — Toggle the Discover tab on or off.</li>
     </ul>
 
-    <p style="color: #8E8E8E; font-size: 13px;">Photogram — Alpha v0.7</p>
+    <p style="color: #8E8E8E; font-size: 13px;">Photogram — Alpha v0.7.1</p>
 </div>

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Reaction Toggle Handler
- * Alpha v0.8
+ * Alpha v0.7.1
  *
  * AJAX endpoint. Sets or clears a reaction on a post for the authenticated
  * community user. One reaction per user per post — setting a new reaction

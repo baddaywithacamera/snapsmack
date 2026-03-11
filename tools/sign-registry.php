@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Registry Signing Utility
- * Alpha v0.7
+ * Alpha v0.7.1
  *
  * Adds Ed25519 signatures to each skin entry in registry.json.
  * For each skin: SHA-256 the zip → sign with Ed25519 → store hex sig.

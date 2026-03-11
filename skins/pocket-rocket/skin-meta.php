@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Meta tags for the pocket-rocket skin
- * Alpha v0.7
+ * Alpha v0.7.1
  */
 
 // Include core meta tags for SEO and CSS

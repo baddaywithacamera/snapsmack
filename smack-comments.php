@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Comment moderation interface
- * Alpha v0.8
+ * Alpha v0.7.1
  *
  * Manages review, approval, and deletion of visitor comments.
  * Covers both legacy anonymous comments (snap_comments) and community

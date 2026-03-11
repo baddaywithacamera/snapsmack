@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - Photogram Engine
- * Alpha v0.7
+ * Alpha v0.7.1
  *
  * Handles all Photogram-specific interactions:
  *   - Comments bottom sheet (open, close, drag-to-dismiss)

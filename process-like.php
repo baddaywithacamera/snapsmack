@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Like Toggle Handler
- * Alpha v0.8
+ * Alpha v0.7.1
  *
  * AJAX endpoint. Toggles a like on a post for the authenticated community user.
  * Returns JSON: { liked: bool, count: int } or { error: string }.

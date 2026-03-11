@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the true-grit skin
- * Alpha v0.7
+ * Alpha v0.7.1
  *
  * Found-texture photography skin. 50 Shades chassis with photographic wall
  * textures, opacity overlay, and archival frame styles from New Horizon.
