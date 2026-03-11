@@ -3,21 +3,36 @@
  * Alpha v0.7.1
  *
  * A lightweight, dependency-free horizontal gallery slider component.
- * Panorama-aware: images wider than panoThreshold automatically get
- * full-width slides so they display at a usable size instead of being
- * squeezed into a perView fraction.
+ * Supports two operating modes, selected via data-slider-mode on the container:
  *
- * Usage:
+ *   data-slider-mode="landing"  (default)
+ *     Multi-slide filmstrip view. Used by Galleria/H2BS landing pages.
+ *     perView slides visible at once. Panorama-aware: images wider than
+ *     panoThreshold automatically get full-width slides.
+ *
+ *   data-slider-mode="carousel"
+ *     Single-post carousel view. One slide visible at a time. Dot indicators
+ *     rendered below the track. Dispatches 'snapslider:slidechange' custom
+ *     event on each transition with { imageId, index, total } in detail so
+ *     the host page can update an EXIF panel. Reads per-image EXIF from
+ *     data-exif-map JSON attribute on the container (keyed by image ID).
+ *
+ * Usage (landing mode):
  *   var slider = new SnapSlider({
  *     container: document.getElementById('my-slider'),
  *     perView: 3,
  *     speed: 800,
- *     easing: 'ease-in-out',
- *     autoAdvance: false,
- *     autoInterval: 5000,
  *     loop: true,
- *     panoThreshold: 2.0   // aspect ratio above which a slide goes full-width
+ *     panoThreshold: 2.0
  *   });
+ *
+ * Usage (carousel mode):
+ *   var slider = new SnapSlider({
+ *     container: document.getElementById('my-carousel'),
+ *     speed: 400,
+ *     loop: false
+ *   });
+ *   // data-slider-mode="carousel" on the container element activates carousel mode.
  */
 
 (function(window) {
@@ -26,15 +41,32 @@
   function SnapSlider(options) {
     options = options || {};
 
+    // Carousel mode: read from data attribute first, allow override via options
+    var modeAttr = options.container
+      ? (options.container.getAttribute('data-slider-mode') || 'landing')
+      : 'landing';
+    this.mode = options.mode || modeAttr; // 'landing' | 'carousel'
+
     // Configuration
     this.container = options.container;
-    this.perView = options.perView || 1;
+    // Carousel mode always shows 1 slide at a time regardless of perView option
+    this.perView = (this.mode === 'carousel') ? 1 : (options.perView || 1);
     this.speed = options.speed || 800;
     this.easing = options.easing || 'ease-in-out';
     this.autoAdvance = options.autoAdvance || false;
     this.autoInterval = options.autoInterval || 5000;
     this.loop = options.loop !== false;
     this.panoThreshold = options.panoThreshold || 2.0;
+
+    // Carousel mode: dot indicator element + EXIF map
+    this.dotsElement = null;
+    this.exifMap = {};
+    if (this.mode === 'carousel' && this.container) {
+      var exifAttr = this.container.getAttribute('data-exif-map');
+      if (exifAttr) {
+        try { this.exifMap = JSON.parse(exifAttr); } catch(e) {}
+      }
+    }
 
     // State
     this.currentIndex = 0;
@@ -114,6 +146,11 @@
 
     // Create navigation arrows
     this._createArrows();
+
+    // Carousel mode: create dot indicators below the track
+    if (this.mode === 'carousel') {
+      this._createDots();
+    }
 
     // Calculate dimensions (uses slideSpans from _analyzeSlides)
     this._calculateDimensions();
@@ -531,16 +568,77 @@
   };
 
   /**
-   * Dispatch custom slide-change event
+   * Dispatch slide-change events and update carousel dots.
+   *
+   * Always fires 'slide-change' (legacy, landing mode).
+   * In carousel mode, also fires 'snapslider:slidechange' with:
+   *   { index, total, imageId, exif }
+   * The host page listens for snapslider:slidechange to update an EXIF panel.
    */
   SnapSlider.prototype._dispatchChangeEvent = function() {
-    var event = new CustomEvent('slide-change', {
-      detail: {
-        index: this.currentIndex,
-        total: this.totalSlides
-      }
+    // Legacy event (landing mode consumers listen to this)
+    var legacyEvent = new CustomEvent('slide-change', {
+      detail: { index: this.currentIndex, total: this.totalSlides }
     });
-    this.container.dispatchEvent(event);
+    this.container.dispatchEvent(legacyEvent);
+
+    // Carousel mode: emit richer event and update dots
+    if (this.mode === 'carousel') {
+      var slide = this.slides[this.currentIndex];
+      var imageId = slide ? (slide.getAttribute('data-image-id') || '') : '';
+      var exif = imageId ? (this.exifMap[imageId] || {}) : {};
+
+      var carouselEvent = new CustomEvent('snapslider:slidechange', {
+        bubbles: true,
+        detail: {
+          index:   this.currentIndex,
+          total:   this.totalSlides,
+          imageId: imageId,
+          exif:    exif
+        }
+      });
+      this.container.dispatchEvent(carouselEvent);
+
+      this._updateDots();
+    }
+  };
+
+  /**
+   * Create dot indicator strip for carousel mode.
+   * Inserts a <div class="ss-slider-dots"> immediately after the container.
+   * Dots are always rendered; active dot gets .is-active class.
+   */
+  SnapSlider.prototype._createDots = function() {
+    if (this.totalSlides < 2) return; // no dots for single-image posts
+
+    var self = this;
+    var wrap = document.createElement('div');
+    wrap.className = 'ss-slider-dots';
+
+    for (var i = 0; i < this.totalSlides; i++) {
+      (function(idx) {
+        var dot = document.createElement('button');
+        dot.className = 'ss-slider-dot' + (idx === 0 ? ' is-active' : '');
+        dot.setAttribute('aria-label', 'Go to image ' + (idx + 1));
+        dot.addEventListener('click', function() { self.goTo(idx); });
+        wrap.appendChild(dot);
+      })(i);
+    }
+
+    // Insert after the slider container
+    this.container.parentNode.insertBefore(wrap, this.container.nextSibling);
+    this.dotsElement = wrap;
+  };
+
+  /**
+   * Update the active dot to reflect currentIndex.
+   */
+  SnapSlider.prototype._updateDots = function() {
+    if (!this.dotsElement) return;
+    var dots = this.dotsElement.querySelectorAll('.ss-slider-dot');
+    for (var i = 0; i < dots.length; i++) {
+      dots[i].classList.toggle('is-active', i === this.currentIndex);
+    }
   };
 
   /**
@@ -579,6 +677,12 @@
     arrows.forEach(function(arrow) {
       arrow.parentNode.removeChild(arrow);
     });
+
+    // Remove dots (carousel mode)
+    if (this.dotsElement && this.dotsElement.parentNode) {
+      this.dotsElement.parentNode.removeChild(this.dotsElement);
+      this.dotsElement = null;
+    }
 
     // Remove slider classes
     this.container.classList.remove('ss-slider');
