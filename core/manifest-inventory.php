@@ -655,5 +655,11 @@ return [
                 ]
             ]
         ],
+        'smack-community' => [
+            'label'        => 'Community Engine (Likes, Comments, Reactions)',
+            'path'         => 'assets/js/ss-engine-community.js',
+            'css'          => 'assets/css/ss-community.css',
+            'has_settings' => false,
+        ],
     ]
 ];
