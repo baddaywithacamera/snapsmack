@@ -1,10 +1,12 @@
 <?php
 /**
  * SNAPSMACK - Comment moderation interface
- * Alpha v0.6
+ * Alpha v0.8
  *
  * Manages review, approval, and deletion of visitor comments.
- * Provides search and filtering for pending and approved comments.
+ * Covers both legacy anonymous comments (snap_comments) and community
+ * account comments (snap_community_comments). Tab selector switches
+ * between the two systems. Search and pagination apply within each tab.
  */
 
 require_once 'core/auth.php';
@@ -14,22 +16,39 @@ require_once 'core/auth.php';
 $s_rows = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $global_comments_active = (($s_rows['global_comments_enabled'] ?? '1') == '1');
 
+// --- SYSTEM TAB ---
+// 'legacy' = snap_comments (anonymous, moderation queue)
+// 'community' = snap_community_comments (account-required, visible/hidden)
+$system = $_GET['system'] ?? 'community';
+
 // --- MODERATION ACTIONS ---
-// Processes approval or deletion of individual comments.
 if (isset($_GET['action']) && isset($_GET['id'])) {
     $id = (int)$_GET['id'];
-    if ($_GET['action'] == 'approve') {
-        $pdo->prepare("UPDATE snap_comments SET is_approved = 1 WHERE id = ?")->execute([$id]);
-        $msg = "Signal authorized. Broadcasting live.";
-    } elseif ($_GET['action'] == 'delete') {
-        $pdo->prepare("DELETE FROM snap_comments WHERE id = ?")->execute([$id]);
-        $msg = "Signal terminated.";
+    if ($system === 'community') {
+        if ($_GET['action'] === 'hide') {
+            $pdo->prepare("UPDATE snap_community_comments SET status = 'hidden' WHERE id = ?")->execute([$id]);
+            $msg = "Comment hidden.";
+        } elseif ($_GET['action'] === 'restore') {
+            $pdo->prepare("UPDATE snap_community_comments SET status = 'visible' WHERE id = ?")->execute([$id]);
+            $msg = "Comment restored.";
+        } elseif ($_GET['action'] === 'delete') {
+            $pdo->prepare("UPDATE snap_community_comments SET status = 'deleted' WHERE id = ?")->execute([$id]);
+            $msg = "Comment deleted.";
+        }
+    } else {
+        // Legacy system
+        if ($_GET['action'] == 'approve') {
+            $pdo->prepare("UPDATE snap_comments SET is_approved = 1 WHERE id = ?")->execute([$id]);
+            $msg = "Signal authorized. Broadcasting live.";
+        } elseif ($_GET['action'] == 'delete') {
+            $pdo->prepare("DELETE FROM snap_comments WHERE id = ?")->execute([$id]);
+            $msg = "Signal terminated.";
+        }
     }
 }
 
 // --- SEARCH AND PAGINATION ---
-// Supports filtering comments by view mode (pending vs. live) and keyword search.
-$view_mode = $_GET['view'] ?? 'pending';
+$view_mode = $_GET['view'] ?? ($system === 'community' ? 'visible' : 'pending');
 $search = trim($_GET['s'] ?? '');
 $search_query = $search ? " AND (c.comment_author LIKE ? OR c.comment_text LIKE ? OR c.comment_email LIKE ?)" : "";
 $params = $search ? ["%$search%", "%$search%", "%$search%"] : [];
@@ -83,8 +102,16 @@ include 'core/sidebar.php';
         </form>
         
         <div class="signal-nav-group">
-            <a href="?view=pending" class="btn-clear <?php if($view_mode == 'pending') echo 'active'; ?>">INCOMING (<?php echo $pending_count; ?>)</a>
-            <a href="?view=live" class="btn-clear <?php if($view_mode == 'live') echo 'active'; ?>">BROADCASTING (<?php echo $live_count; ?>)</a>
+            <?php if ($system === 'community'): ?>
+                <a href="?system=community&view=visible" class="btn-clear <?php echo $view_mode === 'visible' ? 'active' : ''; ?>">VISIBLE (<?php echo $live_count; ?>)</a>
+                <a href="?system=community&view=hidden"  class="btn-clear <?php echo $view_mode === 'hidden'  ? 'active' : ''; ?>">HIDDEN (<?php echo $pending_count; ?>)</a>
+            <?php else: ?>
+                <a href="?system=legacy&view=pending" class="btn-clear <?php echo $view_mode === 'pending' ? 'active' : ''; ?>">INCOMING (<?php echo $pending_count; ?>)</a>
+                <a href="?system=legacy&view=live"    class="btn-clear <?php echo $view_mode === 'live'    ? 'active' : ''; ?>">BROADCASTING (<?php echo $live_count; ?>)</a>
+            <?php endif; ?>
+            <span class="sep">|</span>
+            <a href="?system=community" class="btn-clear <?php echo $system === 'community' ? 'active' : ''; ?>">COMMUNITY</a>
+            <a href="?system=legacy"    class="btn-clear <?php echo $system === 'legacy'    ? 'active' : ''; ?>">LEGACY</a>
         </div>
     </div>
 
