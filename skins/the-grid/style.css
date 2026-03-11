@@ -529,3 +529,14 @@ img { display: block; max-width: 100%; }
     .tg-wrap { padding: 0 8px; }
     .tg-topbar-inner { padding: 0 12px; }
 }
+
+/* ── Hashtag links in captions ────────────────────────────────────────────── */
+.tg-hashtag {
+    color: var(--accent-color, #0095f6);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.tg-hashtag:hover {
+    text-decoration: underline;
+}

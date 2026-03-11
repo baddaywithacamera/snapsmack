@@ -16,10 +16,12 @@
 
 $active_tab    = $pg_active_tab ?? 'home';
 $show_discover = ($settings['pg_show_discover'] ?? '1') === '1';
+$show_search   = ($settings['pg_show_search']   ?? '0') === '1';
 
 // Base URL for nav links
 $home_url     = BASE_URL;
 $discover_url = BASE_URL . '?pg=discover';
+$search_url   = BASE_URL . '?pg=search';
 
 // About tab: prefer page with slug='about', fall back to first active page by menu_order
 $_pg_about_page = null;
@@ -66,6 +68,22 @@ $profile_url = $show_about ? BASE_URL . 'page.php?slug=' . rawurlencode($_pg_abo
             <line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
         <!-- Filled -->
+        <svg class="pg-icon-filled" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+    </a>
+    <?php endif; ?>
+
+    <?php if ($show_search): ?>
+    <!-- Search -->
+    <a href="<?php echo $search_url; ?>" class="pg-nav-tab<?php echo $active_tab === 'search' ? ' active' : ''; ?>" aria-label="Search">
+        <!-- Outline -->
+        <svg class="pg-icon-outline" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <!-- Filled (bolder stroke = active) -->
         <svg class="pg-icon-filled" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="11" cy="11" r="8"/>
             <line x1="21" y1="21" x2="16.65" y2="16.65"/>

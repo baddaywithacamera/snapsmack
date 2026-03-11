@@ -107,6 +107,14 @@ return [
             'options' => ['1' => 'Yes', '0' => 'No'],
             // No selector/property — PHP conditional in skin-footer.php
         ],
+        'pg_show_search' => [
+            'section' => 'NAVIGATION',
+            'type'    => 'select',
+            'label'   => 'Enable Search',
+            'default' => '0',
+            'options' => ['1' => 'Yes', '0' => 'No'],
+            // No selector/property — PHP conditional in skin-footer.php
+        ],
 
         // ── TYPOGRAPHY ────────────────────────────────────────────────────
         'pg_body_font' => [
