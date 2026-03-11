@@ -36,7 +36,8 @@ return [
         'smack-footer',
         'smack-lightbox',
         'smack-justified-lib',
-        'smack-justified'
+        'smack-justified',
+        'smack-community'
     ],
 
     'options' => [
@@ -486,4 +487,9 @@ return [
         .active-val { width: 50px; text-align: right; font-family: monospace; }
         .hex-display { font-family: monospace; }
     "
+
+
+    'community_comments'  => '1',
+    'community_likes'     => '1',
+    'community_reactions' => '0',
 ];

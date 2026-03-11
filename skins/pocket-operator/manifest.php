@@ -34,6 +34,7 @@ return [
     // Minimal script loading — no lightbox, no justified, no wall physics
     'require_scripts' => [
         'smack-footer',
+        'smack-community'
     ],
 
     // --- CUSTOMIZATION OPTIONS ---
@@ -76,4 +77,9 @@ return [
             'property' => 'font-size',
         ],
     ],
+
+
+    'community_comments'  => '1',
+    'community_likes'     => '1',
+    'community_reactions' => '0',
 ];
