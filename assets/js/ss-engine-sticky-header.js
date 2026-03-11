@@ -12,7 +12,7 @@
  *   3. <header>                first semantic header element
  *
  * Skip criteria:
- *   - Already position:fixed or position:sticky (e.g. pocket-operator)
+ *   - Already position:fixed or position:sticky (e.g. pocket-rocket, photogram)
  *   - data-sticky-header="false"
  */
 (function () {

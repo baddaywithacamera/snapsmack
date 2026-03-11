@@ -435,7 +435,7 @@ define(\'SNAPSMACK_TABLE_PREFIX\', \'' . $prefix . '\');
 // --- MOBILE SKIN OVERRIDE ---
 // The slug of the skin forced onto mobile devices. This skin is not selectable
 // in the admin skin picker — it is served automatically when a phone is detected.
-define(\'SNAPSMACK_MOBILE_SKIN\', \'pocket-operator\');
+define(\'SNAPSMACK_MOBILE_SKIN\', \'photogram\');
 
 /**
  * Detect mobile devices via User-Agent string.
@@ -629,8 +629,8 @@ HTACCESS;
         $errors[] = 'Default skin "New Horizon" not found in skins/. The public site cannot load without it. Make sure the full SnapSmack codebase (including the skins/ directory) is uploaded before running the installer.';
         $skin_warning = $errors[count($errors) - 1];
     }
-    if (!is_dir(__DIR__ . '/skins/pocket-operator')) {
-        $skin_warning .= ($skin_warning ? ' ' : '') . 'Mobile skin "Pocket Rocket" not found in skins/. Mobile visitors will see the desktop skin until Pocket Rocket is installed from the gallery.';
+    if (!is_dir(__DIR__ . '/skins/photogram')) {
+        $skin_warning .= ($skin_warning ? ' ' : '') . 'Mobile skin "Photogram" not found in skins/. Mobile visitors will see the desktop skin until Photogram is installed from the gallery.';
     }
 
     // --- SELF-DELETE ---

@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Skin header for the pocket-operator skin
+ * SNAPSMACK - Skin header for the pocket-rocket skin
  * Alpha v0.7
  *
  * Fixed 48px header bar with hamburger toggle and slide-down nav drawer.
