@@ -1,6 +1,6 @@
 -- ============================================================================
 -- SNAPSMACK Migration: Post Container Layer
--- Target: Alpha v0.8
+-- Alpha v0.7.1
 --
 -- Introduces the concept of a post as a container for one or more images.
 -- Adds snap_posts (post metadata), snap_post_images (pivot/ordering),
@@ -86,12 +86,35 @@ CREATE TABLE IF NOT EXISTS `snap_post_images` (
 --    NULL = legacy standalone record (pre-migration).
 --    After the data migration below, every row will have a post_id.
 --    New posts written by the carousel poster always set post_id immediately.
+--
+--    ADD COLUMN IF NOT EXISTS is MariaDB-only. Guard with information_schema
+--    so this is safe to re-run on any MySQL 5.7+ / MariaDB install.
 -- ============================================================================
 
-ALTER TABLE `snap_images`
-    ADD COLUMN IF NOT EXISTS `post_id` int DEFAULT NULL
-        COMMENT 'FK to snap_posts.id. NULL = pre-migration standalone image.'
-        AFTER `id`;
+DROP PROCEDURE IF EXISTS `snap_add_post_id_col`;
+
+DELIMITER $$
+
+CREATE PROCEDURE `snap_add_post_id_col`()
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME   = 'snap_images'
+          AND COLUMN_NAME  = 'post_id'
+    ) THEN
+        ALTER TABLE `snap_images`
+            ADD COLUMN `post_id` int DEFAULT NULL
+                COMMENT 'FK to snap_posts.id. NULL = pre-migration standalone image.'
+                AFTER `id`;
+    END IF;
+END$$
+
+DELIMITER ;
+
+CALL `snap_add_post_id_col`();
+DROP PROCEDURE IF EXISTS `snap_add_post_id_col`;
 
 
 -- ============================================================================
