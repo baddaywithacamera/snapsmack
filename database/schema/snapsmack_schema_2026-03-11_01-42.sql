@@ -1,6 +1,6 @@
 -- SnapSmack Backup Service
 -- Type: SCHEMA
--- Date: 2026-03-11 00:29:43
+-- Date: 2026-03-11 01:42:52
 
 DROP TABLE IF EXISTS `snap_images`;
 CREATE TABLE `snap_images` (
