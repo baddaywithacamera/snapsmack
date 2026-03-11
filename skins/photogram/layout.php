@@ -27,16 +27,15 @@ $like_count   = 0;
 $comment_count = count($comments);
 
 // Fetch like count and check if current session already liked
-$like_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_likes WHERE img_id = ?");
+$like_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_likes WHERE post_id = ?");
 $like_stmt->execute([$image_id]);
 $like_count = (int)$like_stmt->fetchColumn();
 
-if (!empty($_SESSION['community_account_id'])) {
-    $lc_stmt = $pdo->prepare("SELECT 1 FROM snap_likes WHERE img_id = ? AND account_id = ?");
-    $lc_stmt->execute([$image_id, $_SESSION['community_account_id']]);
+$_pg_community_user = community_current_user();
+if ($_pg_community_user) {
+    $lc_stmt = $pdo->prepare("SELECT 1 FROM snap_likes WHERE post_id = ? AND user_id = ?");
+    $lc_stmt->execute([$image_id, (int)$_pg_community_user['id']]);
     $is_liked = (bool)$lc_stmt->fetchColumn();
-} elseif (!empty($_SESSION['anon_liked_images']) && in_array($image_id, $_SESSION['anon_liked_images'])) {
-    $is_liked = true;
 }
 
 // ── Caption / description ─────────────────────────────────────────────────
