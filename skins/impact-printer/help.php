@@ -82,4 +82,23 @@ of real computer paper. The canvas width is configurable from 700–1600px.</p>
 HTML
     ],
 
+    'skin-community-printer' => [
+        'section'  => 'Active Skin: Impact Printer',
+        'title'    => 'Likes, Reactions & Comments',
+        'icon'     => '&#x2665;',
+        'content'  => <<<'HTML'
+<h3>Community Features</h3>
+<p>SnapSmack ships a built-in community system: likes, emoji reactions, and comments — all self-hosted on your own server, no third-party tracking or login walls.</p>
+
+<h4>Community Dock</h4>
+<p>A floating action button appears on every page. Tap it to expand the dock, which reveals a like button and a reaction picker (up to 6 emoji). Visitors can react without creating an account. Dock position (bottom-left or bottom-right) and the active reaction set are configured in Admin > Community Settings.</p>
+
+<h4>Comments</h4>
+<p>Comments appear below each image. To leave a comment, visitors create a free community account directly on your site — no email confirmation required, no third-party auth. Once logged in, their display name appears on all their comments. Approve or reject comments from Admin > Manage.</p>
+
+<h4>Admin Controls</h4>
+<p>Go to Admin > Community Settings to toggle likes, reactions, and comments independently; choose the active reaction set; enable or disable the thumbs-down reaction; set rate limits; and configure email notifications for new comments.</p>
+HTML
+    ],
+
 ];

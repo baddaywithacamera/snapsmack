@@ -63,4 +63,20 @@ drawer can be open at a time — opening one closes the other.</p>
 HTML
     ],
 
+    'skin-community-po' => [
+        'section'  => 'Active Skin: Pocket Rocket',
+        'title'    => 'Community Accounts & Settings',
+        'icon'     => '&#x2665;',
+        'content'  => <<<'HTML'
+<h3>Community Features</h3>
+<p>The likes button and reaction picker appear on every page via the community dock. Visitors can react without creating an account. Comments (shown in the Signals drawer) require a free community account created directly on your site.</p>
+
+<h4>Community Accounts</h4>
+<p>Visitors register and log in directly on your site — no email confirmation required, no third-party auth. Once logged in, their display name appears on all their comments. Manage community accounts in Admin > Community Users.</p>
+
+<h4>Admin Controls</h4>
+<p>Go to Admin > Community Settings to toggle likes, reactions, and comments independently; choose the active reaction set (up to 6 emoji); enable or disable the thumbs-down reaction; set rate limits; and configure email notifications for new comments.</p>
+HTML
+    ],
+
 ];

@@ -24,4 +24,8 @@ return [
         'title' => 'Magazine Page Layout',
         'body'  => 'On single image views, the editorial notes (comments) drop down from the top like a masthead section, while the photo caption and technical details slide up from the bottom like a magazine caption block. Press 1 for info, 2 for comments.'
     ],
+    [
+        'title' => 'Likes, Reactions & Comments',
+        'body'  => 'SnapSmack ships a built-in community system: likes, emoji reactions, and threaded comments — all self-hosted on your own server, no third-party tracking. A floating dock appears on every page; visitors tap it to like or react without needing an account. Comments require a free community account created directly on your site. Manage everything in Admin > Community Settings: toggle features on or off, pick your reaction set (up to 6 emoji), set rate limits, and configure comment notification emails.',
+    ],
 ];

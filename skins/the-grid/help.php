@@ -20,7 +20,7 @@ return [
         ],
         [
             'title' => 'Uploading and Posting',
-            'body'  => 'Go to Admin > New Post to upload images. You can drag multiple files onto the upload strip at once. Reorder them by dragging. Click the COVER badge on any image to promote it as the grid tile. The post title, description, categories, and albums all work the same as in other SnapSmack skins.',
+            'body'  => 'Go to Admin > New Post to upload images. You can drag multiple files onto the upload strip at once — up to 20 per post. Reorder them by dragging. Click the COVER badge on any image to promote it as the grid tile. The post title, description, categories, and albums all work the same as in other SnapSmack skins.',
         ],
         [
             'title' => 'Editing a Post',
@@ -41,6 +41,14 @@ return [
         [
             'title' => 'Tile Appearance',
             'body'  => 'Tile gap (0–5 px), corner radius (0–8 px), and hover overlay style (title, image count, or none) are all configurable in Skin Admin under GRID. The overall content max-width can be set to 735 px, 935 px, or 1080 px to suit your preferred density.',
+        ],
+        [
+            'title' => 'Image Frame Customisation',
+            'body'  => 'The Grid lets you composite your photographs into custom frames — the kind of careful presentation photographers used to do in Photoshop actions or Instasize before the platforms stripped it out. In Skin Admin under IMAGE FRAME, set the customisation mode: Per Grid applies one style to every tile; Per Carousel lets each post define its own look; Per Image gives every individual photo its own treatment. Style controls per image: size within the square (75–100% in 5% increments), border width (0–20 px), border colour, background colour, and drop shadow intensity (none, soft, medium, heavy). When a frame is applied, the tile switches from full-bleed cover crop to a flex-centred contained image over a coloured background.',
+        ],
+        [
+            'title' => 'Likes, Reactions & Comments',
+            'body'  => 'SnapSmack\'s community system gives visitors a way to interact with your photographs. A floating dock appears on every page with a like button and a reaction picker — visitors can react without creating an account. Comments require a free community account, created directly on your site (no third-party login). Manage everything in Admin > Community Settings: toggle likes, reactions, and comments independently, set the active reaction set (up to 6 emoji), configure rate limits, and set up comment notification emails.',
         ],
         [
             'title' => 'Got Zuck Fucked?',
