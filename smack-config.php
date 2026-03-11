@@ -113,6 +113,10 @@ include 'core/sidebar.php';
                     <label>TAGLINE</label>
                     <input type="text" name="settings[site_tagline]" value="<?php echo htmlspecialchars($settings['site_tagline'] ?? ''); ?>">
 
+                    <label>SITE DESCRIPTION</label>
+                    <textarea name="settings[site_description]" rows="3" placeholder="One or two sentences about this blog. Used for Open Graph link previews and photo-feed skin profiles."><?php echo htmlspecialchars($settings['site_description'] ?? ''); ?></textarea>
+                    <span class="dim">USED FOR LINK PREVIEWS (OG) AND FEED SKIN PROFILE BIOS.</span>
+
                     <label>BASE SITE URL</label>
                     <input type="text" name="settings[site_url]" value="<?php echo htmlspecialchars($settings['site_url'] ?? 'https://iswa.ca/'); ?>">
 
