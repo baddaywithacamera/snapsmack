@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Main layout template for the pocket-operator skin
+ * SNAPSMACK - Main layout template for the pocket-rocket skin
  * Alpha v0.7
  *
  * Single transmission page. Photo, title bar, prev/next nav, two drawer

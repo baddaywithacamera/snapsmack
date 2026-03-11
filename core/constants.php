@@ -15,7 +15,7 @@ define('SNAPSMACK_VERSION_CODENAME', 'Lapdog');
 // --- MOBILE SKIN OVERRIDE ---
 // The slug of the skin forced onto mobile devices. This skin is not selectable
 // in the admin skin picker — it is served automatically when a phone is detected.
-define('SNAPSMACK_MOBILE_SKIN', 'pocket-operator');
+define('SNAPSMACK_MOBILE_SKIN', 'photogram');
 
 /**
  * Detect mobile devices via User-Agent string.

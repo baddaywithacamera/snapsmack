@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Configuration manifest for the pocket-operator skin
+ * SNAPSMACK - Configuration manifest for the pocket-rocket skin
  * Alpha v0.7
  *
  * Mobile-first skin. Doomscroll feed, hamburger nav, swipe drawers.
@@ -18,7 +18,7 @@ return [
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Mobile-first skin for phone screens. Doomscroll feed, hamburger nav, swipe drawers for info and signals. No floating gallery, no justified grid, no cropped thumbs. Gen Z approved, boomer built.',
-    'status'        => 'stable',
+    'status'        => 'development',
 
     'features' => [
         'supports_wall'   => false,

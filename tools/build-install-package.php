@@ -197,7 +197,7 @@ define('SNAPSMACK_VERSION_SHORT', '%%VERSION_SHORT%%');
 define('SNAPSMACK_VERSION_CODENAME', '%%VERSION_CODENAME%%');
 
 // --- MOBILE SKIN OVERRIDE ---
-define('SNAPSMACK_MOBILE_SKIN', 'pocket-operator');
+define('SNAPSMACK_MOBILE_SKIN', 'photogram');
 
 /**
  * Detect mobile devices via User-Agent string.
