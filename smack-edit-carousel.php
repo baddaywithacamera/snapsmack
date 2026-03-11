@@ -26,6 +26,7 @@
 
 require_once 'core/auth.php';
 require_once 'core/palette-extract.php';
+require_once 'core/snap-tags.php';
 
 // $id is already validated by smack-edit.php before this file is included.
 // Resolve image ID → post ID.
@@ -393,6 +394,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($final_count > 1) {
         $pdo->prepare("UPDATE snap_posts SET post_type = 'carousel' WHERE id = ? AND post_type = 'single'")
             ->execute([$post_id]);
+    }
+
+    // Sync hashtags from description (cover image carries the post's tags)
+    $cover_stmt = $pdo->prepare(
+        "SELECT image_id FROM snap_post_images WHERE post_id = ? AND is_cover = 1 LIMIT 1"
+    );
+    $cover_stmt->execute([$post_id]);
+    $cover_img_id = (int)$cover_stmt->fetchColumn();
+    if ($cover_img_id) {
+        snap_sync_tags($pdo, $cover_img_id, $desc ?? '');
     }
 
     $msg = 'Success: Post updated.';

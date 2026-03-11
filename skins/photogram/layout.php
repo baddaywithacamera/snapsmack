@@ -12,6 +12,7 @@
  */
 
 require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
+require_once dirname(__DIR__, 2) . '/core/snap-tags.php';
 
 // ── Profile data ──────────────────────────────────────────────────────────
 $site_title  = $settings['site_title']       ?? $site_name ?? 'Photogram';
@@ -179,14 +180,7 @@ $pg_active_tab = 'home';
     <?php if (!empty($caption_raw)): ?>
         <div class="pg-caption">
             <span class="pg-caption-username"><?php echo htmlspecialchars($site_title); ?></span><?php
-            // Linkify #hashtags
-            $caption_esc = htmlspecialchars($caption_raw);
-            $caption_linked = preg_replace(
-                '/#(\w+)/',
-                '<a href="' . BASE_URL . '?tag=$1" class="pg-caption-hashtag">#$1</a>',
-                $caption_esc
-            );
-            echo $caption_linked;
+            echo snap_render_caption($caption_raw, BASE_URL, 'pg-caption-hashtag');
             ?>
         </div>
     <?php endif; ?>

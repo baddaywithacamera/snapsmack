@@ -22,6 +22,7 @@
 
 require_once 'core/auth.php';
 require_once 'core/palette-extract.php';
+require_once 'core/snap-tags.php';
 
 set_time_limit(600);
 ini_set('memory_limit', '512M');
@@ -351,6 +352,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
             $pdo->prepare("UPDATE snap_images SET post_id = ? WHERE id = ?")
                 ->execute([$post_id, $img['image_id']]);
         }
+
+        // Sync hashtags from description to snap_tags + snap_image_tags (cover image)
+        snap_sync_tags($pdo, $processed_images[0]['image_id'], $desc ?? '');
 
         // Category mappings (image-level for backward compat + post-level)
         $cover_image_id = $processed_images[0]['image_id'];

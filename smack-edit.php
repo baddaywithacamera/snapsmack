@@ -8,6 +8,7 @@
  */
 
 require_once 'core/auth.php';
+require_once 'core/snap-tags.php';
 
 // --- REQUEST VALIDATION ---
 // Requires an image ID parameter to load the correct record.
@@ -116,6 +117,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Update the primary image record with all modified fields.
     $stmt = $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_film = ?, img_exif = ?, img_status = ?, img_date = ?, img_orientation = ?, allow_comments = ?, allow_download = ?, download_url = ?, img_display_options = ? WHERE id = ?");
     $stmt->execute([$title, $desc, $film_val, json_encode($updated_exif), $status, $custom_date, $orientation, $allow_comments, $allow_download, $download_url, $display_json, $id]);
+
+    // Sync hashtags extracted from description
+    snap_sync_tags($pdo, $id, $desc);
 
     // Delete and re-populate category mappings.
     $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
