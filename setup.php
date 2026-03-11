@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Bootstrap Deployer
- * Alpha v0.7
+ * Alpha v0.7.1
  *
  * Upload this single file to an empty directory on your server and open it
  * in a browser. It pulls the SnapSmack codebase from GitHub (via Git or zip

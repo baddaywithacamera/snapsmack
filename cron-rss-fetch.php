@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - RSS feed synchronization utility
- * Alpha v0.6
+ * Alpha v0.7.1
  *
  * Automated background task that fetches and records latest update dates for
  * blogroll peers. Designed to run via system cron (CLI only) to keep network

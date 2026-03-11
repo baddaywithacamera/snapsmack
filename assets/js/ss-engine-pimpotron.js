@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - Pimpotron Engine
- * Alpha v0.6
+ * Alpha v0.7.1
  *
  * Slide sequencer with support for image, text, video, and matrix slides.
  * Modular design: MatrixRain class is independent of sequencer logic.

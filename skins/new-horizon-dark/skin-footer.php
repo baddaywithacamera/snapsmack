@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin footer for the new-horizon-dark skin
- * Alpha v0.7
+ * Alpha v0.7.1
  *
  * Loads required JavaScript engines from the manifest, then includes
  * the core footer to close the document.

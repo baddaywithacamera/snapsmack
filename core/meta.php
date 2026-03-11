@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - SEO Meta Tags and CSS Variables
- * Alpha v0.6
+ * Alpha v0.7.1
  *
  * Generates canonical URLs, Open Graph tags, page titles, and favicon links.
  * Sets up CSS custom properties for grid gaps. Handles the critical CSS load

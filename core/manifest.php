@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Impact Printer Skin Manifest
- * Alpha v0.7
+ * Alpha v0.7.1
  *
  * Configuration for the Impact Printer skin: a retro dot-matrix printer
  * aesthetic (1983 tractor-feed) with sprocket holes, ASCII art borders,

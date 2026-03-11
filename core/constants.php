@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - System Constants
- * Alpha v0.7
+ * Alpha v0.7.1
  *
  * Defines version strings and system-wide constants. Include this early in
  * the bootstrap chain (e.g., from db.php) to ensure availability throughout

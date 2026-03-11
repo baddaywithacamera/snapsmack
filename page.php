@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Static page renderer
- * Alpha v0.6
+ * Alpha v0.7.1
  *
  * Loads and displays a single static page by slug from the snap_pages table.
  * Redirects to archive if the requested page does not exist or is inactive.

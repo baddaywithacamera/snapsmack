@@ -1,6 +1,6 @@
 /**
  * SnapSmack Gallery Slider Engine
- * Alpha v0.7
+ * Alpha v0.7.1
  *
  * A lightweight, dependency-free horizontal gallery slider component.
  * Panorama-aware: images wider than panoThreshold automatically get
