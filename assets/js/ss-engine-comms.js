@@ -97,6 +97,35 @@ document.addEventListener('keydown', function(e) {
 
 // --- UTILITY FUNCTIONS ---
 
+// getThemeColors()
+// Resolves the modal's bg/text colours in the right priority order:
+//   1. CSS custom properties (--bg-primary / --text-primary on :root)
+//   2. Computed body backgroundColor / color
+//   3. Hard fallbacks (#1a1a1a / #e0e0e0)
+//
+// This handles skins that set background via background-image only (e.g.
+// Impact Printer's tractor-feed texture), where computed backgroundColor
+// is rgba(0,0,0,0) — transparent — making the modal invisible.
+function getThemeColors() {
+    var rootStyle  = getComputedStyle(document.documentElement);
+    var bodyStyle  = getComputedStyle(document.body);
+
+    var bgColor   = rootStyle.getPropertyValue('--bg-primary').trim();
+    var textColor = rootStyle.getPropertyValue('--text-primary').trim();
+
+    if (!bgColor)   bgColor   = bodyStyle.backgroundColor;
+    if (!textColor) textColor = bodyStyle.color;
+
+    // If background is still transparent (no bg-color, background-image only)
+    // fall back to a safe near-black so the panel is always visible.
+    if (!bgColor || bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent') {
+        bgColor = '#1a1a1a';
+    }
+    if (!textColor) textColor = '#e0e0e0';
+
+    return { bgColor: bgColor, textColor: textColor };
+}
+
 function scrollToFooter() {
     const target = document.getElementById('footer')
         || document.getElementById('htbs-info-overlay')
@@ -114,9 +143,7 @@ function createHelpToast() {
     if (isMobile) return;
     if (localStorage.getItem('snapsmack_help_seen') === 'true' || window.HIDE_SNAP_HELP) return;
 
-    const style = window.getComputedStyle(document.body);
-    const bgColor = style.backgroundColor;
-    const textColor = style.color;
+    const { bgColor, textColor } = getThemeColors();
 
     const toast = document.createElement('div');
     toast.id = 'snap-help-toast';
@@ -153,9 +180,7 @@ function toggleHelpModal() {
 }
 
 function createHelpModal() {
-    const style = window.getComputedStyle(document.body);
-    const bgColor = style.backgroundColor;
-    const textColor = style.color;
+    const { bgColor, textColor } = getThemeColors();
 
     // Detect available features to show relevant shortcuts
     var sliderPresent = !!document.querySelector('.ss-slider');
