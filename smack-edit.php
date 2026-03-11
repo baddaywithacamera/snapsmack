@@ -19,6 +19,32 @@ if (!$id) {
 
 $msg = "";
 
+// --- EDIT-PAGE ROUTING ---
+// If the active skin declares a custom edit page via manifest 'edit_page',
+// delegate entirely to smack-edit-{value}.php. That file has access to $id
+// (already validated above) and handles both GET and POST.
+// Falls through silently if the key is absent or the file is missing.
+$_ss_settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
+$_ss_settings = $_ss_settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+$_ss_active_skin = $_ss_settings['active_skin'] ?? '';
+if ($_ss_active_skin) {
+    $_ss_manifest_path = __DIR__ . '/skins/' . $_ss_active_skin . '/manifest.php';
+    if (is_file($_ss_manifest_path)) {
+        $_ss_manifest = [];
+        include $_ss_manifest_path;
+        $_ss_edit_override = $_ss_manifest['edit_page'] ?? '';
+        if ($_ss_edit_override) {
+            $_ss_edit_file = __DIR__ . '/smack-edit-' . $_ss_edit_override . '.php';
+            if (is_file($_ss_edit_file)) {
+                include $_ss_edit_file;
+                exit;
+            }
+        }
+    }
+}
+unset($_ss_settings_stmt, $_ss_settings, $_ss_active_skin,
+      $_ss_manifest_path, $_ss_manifest, $_ss_edit_override, $_ss_edit_file);
+
 // --- FORM SUBMISSION HANDLER ---
 // Processes metadata updates and category/album reassignments.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

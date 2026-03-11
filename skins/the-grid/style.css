@@ -1,0 +1,477 @@
+/**
+ * SNAPSMACK - The Grid Skin Styles
+ * Alpha v0.7.1
+ *
+ * Clean, minimal Instagram-inspired grid skin.
+ * All configurable values are CSS custom properties on :root.
+ * The compiled CSS blob from smack-skin.php loads after this file
+ * and overrides defaults via the same :root variables.
+ */
+
+/* ==========================================================================
+   CUSTOM PROPERTY DEFAULTS
+   Override these via the skin settings panel (compiled CSS blob).
+   ========================================================================== */
+
+:root {
+    --bg-primary:        #ffffff;
+    --text-primary:      #262626;
+    --text-secondary:    #8e8e8e;
+    --accent-color:      #0095f6;
+    --border-color:      #dbdbdb;
+    --font-body:         -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+
+    --grid-gap:          2px;
+    --grid-bg:           #ffffff;
+    --tile-radius:       0px;
+    --content-max-width: 935px;
+
+    /* Carousel dot colours — inherit site accent */
+    --carousel-dot-color:        rgba(38, 38, 38, 0.2);
+    --carousel-dot-active-color: var(--accent-color);
+}
+
+/* ==========================================================================
+   RESET & BASE
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+a {
+    color: var(--text-primary);
+    text-decoration: none;
+}
+a:hover { opacity: 0.7; }
+
+img { display: block; max-width: 100%; }
+
+/* ==========================================================================
+   LAYOUT SHELL
+   ========================================================================== */
+
+.tg-wrap {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+/* Top nav bar */
+.tg-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tg-topbar-inner {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: 0 16px;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.tg-site-name {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text-primary);
+}
+
+/* ==========================================================================
+   PROFILE HEADER
+   Shown above the grid on the landing page.
+   ========================================================================== */
+
+.tg-profile {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: 30px 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tg-profile-avatar {
+    width: 77px;
+    height: 77px;
+    border-radius: 50%;
+    background: var(--border-color);
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tg-profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.tg-profile-avatar-initials {
+    font-size: 28px;
+    font-weight: 300;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.tg-profile-info { flex: 1; min-width: 0; }
+
+.tg-profile-username {
+    font-size: 20px;
+    font-weight: 300;
+    margin: 0 0 10px;
+    color: var(--text-primary);
+}
+
+.tg-profile-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 10px;
+}
+
+.tg-profile-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.tg-profile-stat-num {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.tg-profile-stat-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.tg-profile-bio {
+    font-size: 14px;
+    color: var(--text-primary);
+    margin: 0;
+    white-space: pre-line;
+}
+
+/* ==========================================================================
+   3-COLUMN GRID
+   ========================================================================== */
+
+.tg-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--grid-gap);
+    background: var(--grid-bg);
+    margin-top: var(--grid-gap);
+}
+
+/* Individual grid tile */
+.tg-tile {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    background: var(--border-color);
+    border-radius: var(--tile-radius);
+}
+
+.tg-tile a {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+}
+
+.tg-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: opacity 0.2s;
+}
+
+.tg-tile:hover img { opacity: 0.85; }
+
+/* Carousel indicator badge (top-right corner) */
+.tg-tile-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+    pointer-events: none;
+    line-height: 1;
+}
+
+.tg-tile-indicator--icon {
+    color: #fff;
+    font-size: 16px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    /* Unicode: layered squares ⧉ */
+}
+
+.tg-tile-indicator--count {
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    letter-spacing: 0.3px;
+}
+
+/* Hover overlay: title or count shown on hover */
+.tg-tile-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 1;
+    pointer-events: none;
+    padding: 12px;
+}
+
+.tg-tile:hover .tg-tile-overlay { opacity: 1; }
+
+.tg-tile-overlay-text {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.3;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+/* Panorama tiles: the first tile forces a new row via grid-column: 1 */
+.tg-tile--pano-first  { grid-column: 1; }
+.tg-tile--pano-middle { /* naturally placed in column 2 */ }
+.tg-tile--pano-last   { /* naturally placed in column 3 */ }
+
+/* ==========================================================================
+   SINGLE POST VIEW (layout.php)
+   ========================================================================== */
+
+.tg-post-wrap {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+}
+
+/* Post header: back arrow + title */
+.tg-post-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tg-back-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 20px;
+    padding: 4px 8px 4px 0;
+    display: flex;
+    align-items: center;
+}
+
+.tg-back-btn:hover { opacity: 0.6; }
+
+.tg-post-title-text {
+    font-size: 16px;
+    font-weight: 600;
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* Carousel container for multi-image posts */
+.tg-carousel-wrap {
+    position: relative;
+    background: #000;
+    width: 100%;
+}
+
+/* Single image: full-width, max square-ish */
+.tg-single-img {
+    width: 100%;
+    max-height: 80vh;
+    object-fit: contain;
+    display: block;
+}
+
+/* Post body: caption, EXIF, actions */
+.tg-post-body {
+    padding: 12px 16px 0;
+}
+
+.tg-post-caption {
+    font-size: 14px;
+    color: var(--text-primary);
+    line-height: 1.6;
+    margin-bottom: 12px;
+}
+
+/* EXIF panel */
+.tg-exif-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    padding: 10px 0;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 12px;
+}
+
+.tg-exif-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.tg-exif-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+}
+
+.tg-exif-value {
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+/* Post date */
+.tg-post-date {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+/* Community component container */
+.tg-community-wrap {
+    border-top: 1px solid var(--border-color);
+    padding: 0 16px;
+}
+
+/* ==========================================================================
+   ARCHIVE VIEW (categories, albums)
+   Same grid as landing — just no profile header.
+   ========================================================================== */
+
+.tg-archive-header {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tg-archive-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 4px;
+}
+
+.tg-archive-meta {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* ==========================================================================
+   PAGINATION
+   ========================================================================== */
+
+.tg-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 20px 16px;
+}
+
+.tg-page-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-block;
+    transition: background 0.15s;
+}
+
+.tg-page-btn:hover,
+.tg-page-btn.is-current {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    border-color: var(--text-primary);
+}
+
+/* ==========================================================================
+   FOOTER
+   ========================================================================== */
+
+.tg-footer {
+    border-top: 1px solid var(--border-color);
+    padding: 24px 16px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+.tg-footer a {
+    color: var(--text-secondary);
+}
+
+.tg-footer a:hover {
+    color: var(--text-primary);
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 600px) {
+    .tg-profile {
+        gap: 20px;
+        padding: 20px 16px;
+    }
+    .tg-profile-avatar {
+        width: 56px;
+        height: 56px;
+    }
+    .tg-profile-username { font-size: 16px; }
+    .tg-profile-stats { gap: 16px; }
+    .tg-wrap { padding: 0 8px; }
+    .tg-topbar-inner { padding: 0 12px; }
+}

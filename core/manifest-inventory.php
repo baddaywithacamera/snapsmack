@@ -666,5 +666,10 @@ return [
             'path'         => 'assets/js/ss-engine-photogram.js',
             'has_settings' => false,
         ],
+        'smack-carousel-post' => [
+            'label'        => 'Carousel Post Engine (Multi-image upload strip with drag-reorder)',
+            'path'         => 'assets/js/ss-engine-carousel-post.js',
+            'has_settings' => false,
+        ],
     ]
 ];
