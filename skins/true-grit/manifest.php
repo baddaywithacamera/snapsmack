@@ -604,8 +604,7 @@ return [
         .control-group-flex input { flex: 1; }
         .active-val { width: 50px; text-align: right; font-family: monospace; }
         .hex-display { font-family: monospace; }
-    "
-
+    ",
 
     'community_comments'  => '1',
     'community_likes'     => '1',
