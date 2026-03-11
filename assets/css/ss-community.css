@@ -1,12 +1,18 @@
 /**
- * SNAPSMACK - Community Component Styles
+ * SNAPSMACK - Community Component + Dock Styles
  * Alpha v0.8
  *
- * Styles for .ss-community — the likes, reactions, and comment thread
- * block included in skin layout.php files.
+ * Two distinct blocks:
+ *
+ *   1. .ss-community-dock  — floating FAB cluster (likes + reactions).
+ *      Fixed-position, lives outside the document flow. Mirrors the social
+ *      dock's position class system (ss-cdock-bottom-right etc.).
+ *
+ *   2. .ss-community       — in-flow comment thread block, embedded in
+ *      a skin's layout (drawer, panel, etc.).
  *
  * Philosophy: neutral defaults that won't clash with any skin. Skins can
- * override via their own style.css using the .ss-community selector.
+ * override via their own style.css using these selectors.
  * No skin-specific rules live here.
  *
  * Loaded via require_scripts[] in skin manifests alongside
@@ -432,4 +438,270 @@
 .ss-comment-login-prompt a:hover {
     opacity: 1;
     text-decoration: none;
+}
+
+
+/* ==========================================================================
+   COMMUNITY DOCK — floating FAB cluster
+   ========================================================================== */
+
+/* --- BASE --- */
+
+.ss-community-dock {
+    position: fixed;
+    z-index: 9997;           /* below social dock (9998) and lightbox */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;    /* children re-enable as needed */
+}
+
+.ss-community-dock * {
+    pointer-events: auto;
+}
+
+
+/* --- CORNER POSITIONS --- */
+/* Mirrors ss-engine-social-dock.css naming: ss-cdock-{position} */
+
+.ss-cdock-bottom-right {
+    bottom: 84px;   /* stacks above the download button (bottom:80px) */
+    right: 30px;
+}
+
+.ss-cdock-bottom-left {
+    bottom: 84px;
+    left: 30px;
+}
+
+.ss-cdock-top-right {
+    top: 84px;
+    right: 30px;
+}
+
+.ss-cdock-top-left {
+    top: 84px;
+    left: 30px;
+}
+
+.ss-cdock-right-top {
+    right: 16px;
+    top: 84px;
+}
+
+.ss-cdock-right-bottom {
+    right: 16px;
+    bottom: 84px;
+}
+
+.ss-cdock-left-top {
+    left: 16px;
+    top: 84px;
+}
+
+.ss-cdock-left-bottom {
+    left: 16px;
+    bottom: 84px;
+}
+
+
+/* --- CONFLICT OFFSET ---
+   Applied when community dock and social dock share a corner.
+   Shifts the community dock inward so they don't overlap. */
+
+.ss-cdock-bottom-right.ss-cdock-conflict { right: 76px;  }
+.ss-cdock-bottom-left.ss-cdock-conflict  { left:  76px;  }
+.ss-cdock-top-right.ss-cdock-conflict    { right: 76px;  }
+.ss-cdock-top-left.ss-cdock-conflict     { left:  76px;  }
+.ss-cdock-right-top.ss-cdock-conflict    { bottom: 76px; }
+.ss-cdock-right-bottom.ss-cdock-conflict { bottom: 76px; }
+.ss-cdock-left-top.ss-cdock-conflict     { bottom: 76px; }
+.ss-cdock-left-bottom.ss-cdock-conflict  { bottom: 76px; }
+
+
+/* --- BUTTON CLUSTER --- */
+
+.ss-cdock-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+
+/* --- INDIVIDUAL BUTTONS --- */
+
+.ss-cdock-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    background: rgba(0, 0, 0, 0.65);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 18px;
+    line-height: 1;
+    transition: background 0.15s, border-color 0.15s, transform 0.15s, color 0.15s;
+    padding: 0;
+    opacity: 0.7;
+    text-decoration: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.ss-cdock-btn:hover {
+    background: rgba(0, 0, 0, 0.88);
+    border-color: rgba(255, 255, 255, 0.6);
+    color: #fff;
+    transform: scale(1.1);
+    opacity: 1;
+}
+
+
+/* --- LIKE BUTTON --- */
+
+.ss-cdock-like-btn.is-liked {
+    border-color: rgba(224, 82, 82, 0.8);
+    color: #e05252;
+    opacity: 1;
+}
+
+.ss-cdock-like-btn.is-liked:hover {
+    border-color: #e05252;
+}
+
+.ss-cdock-like-icon {
+    font-size: 20px;
+    line-height: 1;
+    transition: transform 0.1s;
+}
+
+.ss-cdock-like-btn.is-liked .ss-cdock-like-icon {
+    transform: scale(1.2);
+}
+
+.ss-cdock-like-count {
+    font-size: 9px;
+    font-family: inherit;
+    letter-spacing: 0;
+    line-height: 1;
+    opacity: 0.8;
+    min-width: 1ch;
+    text-align: center;
+}
+
+
+/* --- REACTION TRIGGER --- */
+
+.ss-cdock-react-btn.has-reaction {
+    border-color: rgba(255, 255, 255, 0.5);
+    opacity: 1;
+}
+
+.ss-cdock-current-rx {
+    font-size: 20px;
+}
+
+.ss-cdock-react-btn svg {
+    opacity: 0.8;
+}
+
+
+/* --- REACTION PICKER --- */
+
+.ss-cdock-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.75);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 28px;
+    padding: 8px 6px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+
+    /* Slide-in animation */
+    transform-origin: bottom center;
+    animation: ss-cdock-expand 0.2s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+.ss-cdock-picker[hidden] {
+    display: none;
+}
+
+@keyframes ss-cdock-expand {
+    from { opacity: 0; transform: scale(0.8) translateY(8px); }
+    to   { opacity: 1; transform: scale(1)   translateY(0);   }
+}
+
+/* Flip direction for top-positioned docks */
+.ss-cdock-top-right .ss-cdock-picker,
+.ss-cdock-top-left  .ss-cdock-picker {
+    transform-origin: top center;
+    animation-name: ss-cdock-expand-down;
+}
+
+@keyframes ss-cdock-expand-down {
+    from { opacity: 0; transform: scale(0.8) translateY(-8px); }
+    to   { opacity: 1; transform: scale(1)   translateY(0);    }
+}
+
+
+/* --- REACTION OPTION BUTTONS --- */
+
+.ss-cdock-reaction {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid transparent;
+    background: none;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    transition: background 0.12s, border-color 0.12s, transform 0.12s;
+    padding: 0;
+    position: relative;
+}
+
+.ss-cdock-reaction:hover {
+    background: rgba(255, 255, 255, 0.12);
+    transform: scale(1.2);
+}
+
+.ss-cdock-reaction.is-active {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.ss-cdock-emoji {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.ss-cdock-rx-count {
+    font-size: 8px;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1;
+    font-family: inherit;
+}
+
+
+/* --- RESPONSIVE --- */
+
+@media (max-width: 480px) {
+    .ss-community-dock {
+        display: none;
+    }
 }

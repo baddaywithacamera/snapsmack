@@ -19,12 +19,13 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/community-session.php';
 
-// --- VALID REACTION CODES ---
-// Must stay in sync with the $reaction_set array in core/community-component.php.
+// --- MASTER REACTION REGISTRY ---
+// Universe of all valid codes. Must stay in sync with the registry in
+// core/community-dock.php and core/community-component.php.
 const VALID_REACTIONS = [
     'fire', 'chef-kiss', 'wow', 'moody', 'sharp', 'golden-hour',
     'cinematic', 'peaceful', 'haunting', 'story', 'colours',
-    'light', 'texture', 'timing', 'composition',
+    'light', 'texture', 'timing', 'composition', 'thumbs-down',
 ];
 
 // --- AUTH ---
@@ -53,11 +54,27 @@ if (($settings['community_enabled'] ?? '1') !== '1' ||
     exit;
 }
 
+// --- ACTIVE REACTION SET ---
+// Blog owner configures which reactions are enabled (up to 6) via admin.
+// community_active_reactions is a JSON array of slugs stored in snap_settings.
+// thumbs-down is gated separately by community_allow_dislike.
+$raw_active = $settings['community_active_reactions'] ?? '[]';
+$active_reactions = json_decode($raw_active, true) ?: [];
+if (($settings['community_allow_dislike'] ?? '0') === '1') {
+    if (!in_array('thumbs-down', $active_reactions, true)) {
+        $active_reactions[] = 'thumbs-down';
+    }
+}
+// Always intersect with master registry to prevent junk codes from settings
+$active_reactions = array_values(array_intersect($active_reactions, VALID_REACTIONS));
+
 // --- INPUT ---
 $post_id       = (int)($_POST['post_id'] ?? 0);
 $reaction_code = trim($_POST['reaction_code'] ?? '');
 
-if ($post_id < 1 || !in_array($reaction_code, VALID_REACTIONS, true)) {
+if ($post_id < 1 ||
+    !in_array($reaction_code, VALID_REACTIONS, true) ||
+    !in_array($reaction_code, $active_reactions, true)) {
     http_response_code(400);
     echo json_encode(['error' => 'invalid_input']);
     exit;
