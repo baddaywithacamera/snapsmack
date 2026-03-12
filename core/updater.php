@@ -337,6 +337,7 @@ function updater_create_backup(string &$error = ''): string|false {
 
                 $offset += $batch;
                 if (count($rows) < $batch) break; // last batch
+                usleep(50000); // 50ms pause between batches — stay under host I/O rate limit
             }
         }
 
@@ -569,6 +570,11 @@ function updater_extract_chunk(string $zip_path, int $offset, int $time_limit_se
         }
 
         $result['files_updated']++;
+
+        // Throttle I/O — pause every 10 files to stay under shared-host rate limits
+        if ($result['files_updated'] % 10 === 0) {
+            usleep(25000); // 25ms
+        }
     }
 
     $zip->close();
