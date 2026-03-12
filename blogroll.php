@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Public blogroll network
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Renders a categorized list of external peer links. Inherits static page styling
  * and respects the skin system for headers and footers.

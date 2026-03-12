@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the kiosk skin
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Defines layout options, pimpotron engine configuration, and customization controls.
  */

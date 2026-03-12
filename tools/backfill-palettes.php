@@ -2,7 +2,7 @@
 <?php
 /**
  * SNAPSMACK - Colour Palette Backfill Utility
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Extracts colour palettes from all images that lack palette data
  * and backfills the img_display_options JSON column.

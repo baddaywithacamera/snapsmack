@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Global site configuration
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Manages site identity, branding, navigation, footer layout, and image processing parameters.
  * Handles logo and favicon uploads, timezone settings, and feature toggles.

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Obfuscated download endpoint for full-resolution images
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Streams original images with attachment disposition. Token is HMAC-SHA256
  * of image ID plus a server secret, preventing direct URL guessing.

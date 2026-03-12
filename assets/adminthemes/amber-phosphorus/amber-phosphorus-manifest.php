@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the Amber Phosphorus admin theme
- * Alpha v0.7.2
+ * Alpha v0.7.3
  */
 
 return [

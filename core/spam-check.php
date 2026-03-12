@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Akismet Spam Filter
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Checks incoming comments against the Akismet spam detection service.
  * Requires an Akismet API key to be stored in the database settings.
