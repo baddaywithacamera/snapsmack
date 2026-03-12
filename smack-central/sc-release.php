@@ -174,8 +174,21 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
     }
 
     // Safety exclusions — always skipped regardless of diff mode.
-    // Fonts are large, static, and pre-installed; they are never in a diff anyway.
-    $always_exclude = ['assets/fonts/'];
+    // Fonts are pre-installed and never updated. On-demand / development skins
+    // are distributed separately; only stock skins ship in the release zip.
+    // Stock skins: hip-to-be-square, galleria, new-horizon-dark,
+    //              50-shades-of-noah-grey, rational-geo,
+    //              photogram (mandatory default mobile skin — always included).
+    // On-demand: impact-printer (boutique, distributed separately).
+    // Development / not yet released: kiosk, pocket-rocket, the-grid (target: v0.8).
+    $always_exclude = [
+        'assets/fonts/',
+        'skins/true-grit/',
+        'skins/kiosk/',
+        'skins/pocket-rocket/',
+        'skins/impact-printer/',
+        'skins/the-grid/',
+    ];
 
     $differential = !empty($include_files);
     $include_set  = $differential ? array_flip($include_files) : [];
