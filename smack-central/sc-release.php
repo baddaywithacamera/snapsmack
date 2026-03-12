@@ -42,6 +42,21 @@ if (!is_dir(RELEASES_DIR)) {
 
 $preflight_ok = !array_filter($preflight, fn($p) => $p[0] === 'err');
 
+// ── Derive the Ed25519 public key from the private key ────────────────────────
+// The sodium secret key is 64 bytes: [32-byte seed][32-byte public key].
+// We extract the last 32 bytes to get the matching public key for release-pubkey.php.
+$sc_derived_pubkey = '';
+if (defined('SMACK_RELEASE_PRIVKEY') && strlen(SMACK_RELEASE_PRIVKEY) === 128) {
+    try {
+        $sk = sodium_hex2bin(SMACK_RELEASE_PRIVKEY);
+        $sc_derived_pubkey = function_exists('sodium_crypto_sign_publickey_from_secretkey')
+            ? sodium_bin2hex(sodium_crypto_sign_publickey_from_secretkey($sk))
+            : sodium_bin2hex(substr($sk, 32, 32));
+    } catch (Exception $e) {
+        $sc_derived_pubkey = '';
+    }
+}
+
 // ── Helper: raw HTTP GET (curl preferred, file_get_contents fallback) ─────────
 function sc_http_raw(string $url, array $extra_headers = []): string|false {
     if (function_exists('curl_init')) {
@@ -563,6 +578,25 @@ require __DIR__ . '/sc-layout-top.php';
       </div>
     </div>
     <?php endif; ?>
+
+    <!-- ── Signing key info ──────────────────────────────────────────────── -->
+    <div class="sc-box" style="margin-top:20px;">
+      <div class="sc-box-header">
+        <span class="sc-box-title">Signing Key</span>
+        <span class="sc-dim" style="font-size:var(--sc-size-label);">Ed25519</span>
+      </div>
+      <div class="sc-box-body">
+        <?php if ($sc_derived_pubkey): ?>
+        <p class="sc-dim" style="margin-bottom:10px;font-size:var(--sc-size-label);">
+          Public key for <code>core/release-pubkey.php</code> on all installs.
+          Copy this value into <code>define('SNAPSMACK_RELEASE_PUBKEY', '…')</code>.
+        </p>
+        <div class="sc-code-block" style="word-break:break-all;user-select:all;cursor:text;"><?php echo htmlspecialchars($sc_derived_pubkey); ?></div>
+        <?php else: ?>
+        <p class="sc-dim">Public key unavailable — check SMACK_RELEASE_PRIVKEY in sc-config.php.</p>
+        <?php endif; ?>
+      </div>
+    </div>
   </div>
 
 </div><!-- /.sc-grid-2 -->
