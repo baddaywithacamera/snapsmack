@@ -435,3 +435,22 @@ textarea.sc-textarea:focus {
 .sc-build-log .ok   { color: var(--sc-success); }
 .sc-build-log .err  { color: var(--sc-danger); }
 .sc-build-log .info { color: var(--sc-accent); }
+
+/* ── Forum Admin ─────────────────────────────────────────────────────────── */
+.sc-tab-bar { display: flex; gap: 4px; margin-bottom: 20px; }
+.sc-tab { padding: 7px 16px; border-radius: var(--sc-radius-sm); font-size: var(--sc-size-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--sc-text-dim); text-decoration: none; border: 1px solid transparent; }
+.sc-tab:hover { color: var(--sc-text); }
+.sc-tab.active { background: var(--sc-surface); border-color: var(--sc-border); color: var(--sc-accent); }
+
+.sc-flash { background: var(--sc-surface); border: 1px solid var(--sc-success); color: var(--sc-success); border-radius: var(--sc-radius-sm); padding: 10px 16px; margin-bottom: 16px; font-size: 0.85rem; }
+
+.sc-box-body--flush { padding: 0; }
+.sc-pad { padding: 16px 20px; }
+
+.sc-badge { display: inline-block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; padding: 2px 7px; border-radius: 3px; background: var(--sc-border); color: var(--sc-text-dim); }
+.sc-badge--ok   { background: rgba(0,200,80,.15); color: var(--sc-success); }
+.sc-badge--warn { background: rgba(255,160,0,.15); color: #ffa000; }
+
+.sc-row--muted td { opacity: .45; }
+
+.sc-btn-row--tight { display: flex; gap: 4px; }
