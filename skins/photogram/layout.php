@@ -16,7 +16,7 @@ require_once dirname(__DIR__, 2) . '/core/snap-tags.php';
 
 // ── Profile data ──────────────────────────────────────────────────────────
 $site_title  = $settings['site_title']       ?? $site_name ?? 'Photogram';
-$avatar_file = $settings['site_avatar']      ?? $settings['site_logo'] ?? '';
+$avatar_file = $settings['site_avatar'] ?? $settings['site_logo'] ?? $settings['favicon_url'] ?? '';
 
 // ── Like state for current viewer ─────────────────────────────────────────
 // Uses the same community session pattern as ss-engine-community.js
