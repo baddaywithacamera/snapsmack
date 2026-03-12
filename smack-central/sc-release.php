@@ -226,6 +226,58 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
     ];
 }
 
+// ── POST: Delete release ──────────────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_release') {
+    $del_tag = trim($_POST['del_tag'] ?? '');
+    if ($del_tag) {
+        $db  = sc_db();
+        $rel = $db->prepare("SELECT download_url, is_latest FROM sc_releases WHERE git_tag = ? LIMIT 1");
+        $rel->execute([$del_tag]);
+        $row = $rel->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            // Remove the zip file from disk
+            $zip_file = rtrim(RELEASES_DIR, '/') . '/' . basename($row['download_url']);
+            if (file_exists($zip_file)) @unlink($zip_file);
+
+            // Remove DB record
+            $db->prepare("DELETE FROM sc_releases WHERE git_tag = ?")->execute([$del_tag]);
+
+            // If we just deleted the latest, promote the next most recent
+            if ($row['is_latest']) {
+                $next = $db->query("SELECT git_tag FROM sc_releases ORDER BY id DESC LIMIT 1")->fetch();
+                if ($next) {
+                    $db->prepare("UPDATE sc_releases SET is_latest = 1 WHERE git_tag = ?")->execute([$next['git_tag']]);
+                    // Rewrite latest.json
+                    $latest = $db->prepare("SELECT * FROM sc_releases WHERE git_tag = ? LIMIT 1");
+                    $latest->execute([$next['git_tag']]);
+                    $lr = $latest->fetch(PDO::FETCH_ASSOC);
+                    if ($lr) {
+                        $json = json_encode([
+                            'version'         => $lr['version'],
+                            'version_full'    => $lr['version_full'],
+                            'released'        => $lr['released_at'],
+                            'download_url'    => $lr['download_url'],
+                            'checksum_sha256' => $lr['checksum_sha256'],
+                            'signature'       => $lr['signature'],
+                            'changelog'       => array_filter(array_map('trim', explode("\n", $lr['changelog']))),
+                            'requires_php'    => $lr['requires_php'],
+                            'requires_mysql'  => $lr['requires_mysql'],
+                            'schema_changes'  => (bool)$lr['schema_changes'],
+                        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+                        file_put_contents(rtrim(RELEASES_DIR, '/') . '/latest.json', $json);
+                    }
+                } else {
+                    // No releases left — remove latest.json
+                    @unlink(rtrim(RELEASES_DIR, '/') . '/latest.json');
+                }
+            }
+        }
+    }
+    header('Location: sc-release.php');
+    exit;
+}
+
 // ── POST: Build release ───────────────────────────────────────────────────────
 $action       = $_POST['action'] ?? '';
 $build_error  = '';
@@ -577,6 +629,7 @@ require __DIR__ . '/sc-layout-top.php';
               <th>Tag</th>
               <th>Date</th>
               <th>Size</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -597,6 +650,13 @@ require __DIR__ . '/sc-layout-top.php';
             <td class="sc-dim"><?php echo htmlspecialchars($rel['released_at']); ?></td>
             <td class="sc-dim" style="white-space:nowrap;">
               <?php echo $rel['download_size'] ? number_format($rel['download_size'] / 1024, 0) . ' KB' : '—'; ?>
+            </td>
+            <td>
+              <form method="post" onsubmit="return confirm('Delete <?php echo htmlspecialchars($rel['version_full']); ?>? This removes the zip and DB record.')">
+                <input type="hidden" name="action"  value="delete_release">
+                <input type="hidden" name="del_tag" value="<?php echo htmlspecialchars($rel['git_tag']); ?>">
+                <button class="sc-btn sc-btn--sm sc-btn--danger">Delete</button>
+              </form>
             </td>
           </tr>
           <?php endforeach; ?>
