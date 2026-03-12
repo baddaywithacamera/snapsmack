@@ -64,7 +64,26 @@ CREATE TABLE IF NOT EXISTS `snap_post_images` (
 
 
 -- ============================================================================
--- 3. ADD post_id COLUMN TO snap_images
+-- 3. IMAGE FRAME STYLE COLUMNS ON snap_post_images AND snap_posts
+--    (formerly migrate-image-style.sql -- moved here so snap_post_images
+--    exists before these ALTERs run. Runner skips 1060 on re-runs.)
+-- ============================================================================
+
+ALTER TABLE snap_post_images ADD COLUMN img_size_pct     TINYINT UNSIGNED NOT NULL DEFAULT 100;
+ALTER TABLE snap_post_images ADD COLUMN img_border_px    TINYINT UNSIGNED NOT NULL DEFAULT 0;
+ALTER TABLE snap_post_images ADD COLUMN img_border_color CHAR(7)          NOT NULL DEFAULT '#000000';
+ALTER TABLE snap_post_images ADD COLUMN img_bg_color     CHAR(7)          NOT NULL DEFAULT '#ffffff';
+ALTER TABLE snap_post_images ADD COLUMN img_shadow       TINYINT UNSIGNED NOT NULL DEFAULT 0;
+
+ALTER TABLE snap_posts ADD COLUMN post_img_size_pct  TINYINT UNSIGNED NOT NULL DEFAULT 100;
+ALTER TABLE snap_posts ADD COLUMN post_border_px     TINYINT UNSIGNED NOT NULL DEFAULT 0;
+ALTER TABLE snap_posts ADD COLUMN post_border_color  CHAR(7)          NOT NULL DEFAULT '#000000';
+ALTER TABLE snap_posts ADD COLUMN post_bg_color      CHAR(7)          NOT NULL DEFAULT '#ffffff';
+ALTER TABLE snap_posts ADD COLUMN post_shadow        TINYINT UNSIGNED NOT NULL DEFAULT 0;
+
+
+-- ============================================================================
+-- 4. ADD post_id COLUMN TO snap_images
 --    Migration runner skips 1060 (ER_DUP_FIELDNAME) so safe to re-run.
 -- ============================================================================
 
