@@ -647,11 +647,16 @@ function updater_find_migrations(PDO $pdo): array {
 function updater_run_migrations(PDO $pdo, array $migration_files): array {
     $result = ['success' => true, 'applied' => [], 'errors' => []];
 
-    // MySQL errno values that mean "this change is already in place" — safe to skip
+    // MySQL errno values that mean "this change is already in place or not applicable"
+    // — safe to skip rather than treat as a fatal error.
     $idempotent_errno = [
-        1060, // ER_DUP_FIELDNAME      — column already exists
-        1050, // ER_TABLE_EXISTS_ERROR — table already exists
+        1060, // ER_DUP_FIELDNAME        — ADD COLUMN when column already exists
+        1050, // ER_TABLE_EXISTS_ERROR   — CREATE TABLE when table already exists
         1091, // ER_CANT_DROP_FIELD_OR_KEY — key/index doesn't exist
+        1146, // ER_NO_SUCH_TABLE        — ALTER TABLE on a table that was never
+              //                           created on this installation (e.g. community
+              //                           feature not installed); mark as applied so
+              //                           it doesn't block future updates.
     ];
 
     foreach ($migration_files as $file) {
