@@ -1,6 +1,8 @@
 {
     "_comment": "Paths listed here are NEVER overwritten by the updater. Relative to project root.",
     "_format": "Each entry is a path relative to the SnapSmack root directory. Directories should end with /.",
+    "_note_skins": "skins/ is intentionally NOT protected. Stock skins ship in every full release zip and must be kept current. Non-stock / boutique skins are never included in the release zip so they are naturally untouched.",
+    "_note_fonts": "assets/fonts/ is intentionally NOT protected. Fonts are excluded at zip-build time so they never appear in a release zip — protecting them here is redundant.",
 
     "protected": [
         "core/db.php",
@@ -9,10 +11,8 @@
         "protected_paths.json",
         "img_uploads/",
         "media_assets/",
-        "assets/fonts/",
         "assets/img/",
         "backups/",
-        "skins/",
         ".htaccess",
         "robots.txt"
     ]
