@@ -413,6 +413,14 @@ if ($action === 'stage_migrate'
         $pdo->exec("DELETE FROM snap_settings WHERE setting_key = 'update_check_result'");
         updater_cleanup();
 
+        // Asset sync: fetch any fonts or JS engines missing after the update.
+        require_once __DIR__ . '/core/asset-sync.php';
+        asset_sync_bust_cache(); // discard cached manifest — new release may add assets
+        $sync_msg = asset_sync_run();
+        if ($sync_msg !== null) {
+            $_SESSION['update_state']['log'][] = ['label' => 'Asset sync', 'status' => 'ok', 'detail' => $sync_msg];
+        }
+
         // Store log for display after session clear
         $_SESSION['update_complete_log'] = $_SESSION['update_state']['log'];
         unset($_SESSION['update_state']);
@@ -511,6 +519,15 @@ if ($action === 'upload_zip' && !empty($_FILES['update_zip']['tmp_name'])) {
                         $pdo->exec("DELETE FROM snap_settings WHERE setting_key = 'update_check_result'");
                         $cached_result = null;
                         updater_cleanup();
+
+                        // Asset sync: fetch any missing fonts or JS engines.
+                        require_once __DIR__ . '/core/asset-sync.php';
+                        asset_sync_bust_cache();
+                        $sync_msg = asset_sync_run();
+                        if ($sync_msg !== null) {
+                            $upload_steps[] = ['label' => 'Asset sync', 'status' => 'ok', 'detail' => $sync_msg];
+                        }
+
                         $flash_msg  = $target_version ? "UPDATE COMPLETE VIA UPLOAD. NOW RUNNING v{$target_version}." : "PACKAGE EXTRACTED SUCCESSFULLY.";
                         $flash_type = 'success';
                     }

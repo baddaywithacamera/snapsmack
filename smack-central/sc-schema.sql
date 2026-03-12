@@ -44,6 +44,24 @@ CREATE TABLE IF NOT EXISTS sc_releases (
     KEY idx_is_latest   (is_latest)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ── Asset repository ─────────────────────────────────────────────────────────
+-- Tracks font families and JS/CSS engine files hosted for on-demand install.
+-- Populated by sc-assets.php; asset-manifest.json is regenerated from this table.
+CREATE TABLE IF NOT EXISTS sc_assets (
+    id           INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+    asset_type   ENUM('font','script','css') NOT NULL,
+    family       VARCHAR(100)    NOT NULL DEFAULT '' COMMENT 'Font family folder name; empty for scripts',
+    filename     VARCHAR(200)    NOT NULL,
+    rel_path     VARCHAR(300)    NOT NULL COMMENT 'Path relative to CMS root e.g. assets/fonts/Foo/foo.ttf',
+    file_path    VARCHAR(500)    NOT NULL COMMENT 'Absolute path on this server',
+    download_url VARCHAR(500)    NOT NULL,
+    file_size    INT UNSIGNED    NOT NULL DEFAULT 0,
+    sha256       CHAR(64)        NOT NULL DEFAULT '',
+    created_at   TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_rel_path (rel_path)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ── RSS cache ─────────────────────────────────────────────────────────────────
 -- (Future: Phase 4 RSS Console)
 CREATE TABLE IF NOT EXISTS sc_rss_cache (

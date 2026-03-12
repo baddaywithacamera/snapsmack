@@ -27,6 +27,8 @@ $sc_active_nav = $sc_active_nav ?? '';
          class="<?php echo $sc_active_nav === 'sc-dashboard.php' ? 'active' : ''; ?>">Dashboard</a>
       <a href="sc-release.php"
          class="<?php echo $sc_active_nav === 'sc-release.php'   ? 'active' : ''; ?>">Release Packager</a>
+      <a href="sc-assets.php"
+         class="<?php echo $sc_active_nav === 'sc-assets.php'    ? 'active' : ''; ?>">Asset Repository</a>
       <span class="sc-nav-label" style="margin-top:16px;">Community</span>
       <a href="sc-forum.php"
          class="<?php echo $sc_active_nav === 'sc-forum.php'     ? 'active' : ''; ?>">Forum Admin</a>

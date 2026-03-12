@@ -48,3 +48,14 @@ define('RELEASES_URL', 'https://snapsmack.ca/releases/');
 
 // Path to the git binary. 'git' works if git is in PATH; use full path if not.
 define('GIT_BIN', 'git');
+
+// ── Asset Repository ─────────────────────────────────────────────────────────
+// SC_ASSETS_DIR: absolute path to the directory that hosts font and JS files.
+//   Structure: {SC_ASSETS_DIR}/fonts/{FamilyName}/{file.ttf}
+//              {SC_ASSETS_DIR}/js/{ss-engine-name.js}
+//              {SC_ASSETS_DIR}/css/{ss-engine-name.css}
+// Must be web-accessible. Create it alongside your releases/ directory.
+define('SC_ASSETS_DIR', '/home/youruser/public_html/sc-assets/');
+
+// Public URL of the sc-assets directory (trailing slash).
+define('SC_ASSETS_URL', 'https://snapsmack.ca/sc-assets/');
