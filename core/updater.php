@@ -418,6 +418,120 @@ function updater_extract(string $zip_path): array {
 }
 
 /**
+ * Extract a time-limited chunk of the update zip archive.
+ *
+ * Shared-host safe: runs for at most $time_limit_sec seconds per call, then
+ * returns control so the caller can continue in a subsequent HTTP request.
+ * Call repeatedly with the returned next_offset until done === true.
+ *
+ * @param string $zip_path       Path to the update zip
+ * @param int    $offset         Index of the first zip entry to process
+ * @param int    $time_limit_sec Stop after this many seconds (default: 12)
+ * @return array {
+ *   success:       bool,
+ *   files_updated: int,
+ *   files_skipped: int,
+ *   errors:        string[],
+ *   next_offset:   int,
+ *   total:         int,
+ *   done:          bool,
+ * }
+ */
+function updater_extract_chunk(string $zip_path, int $offset, int $time_limit_sec = 12): array {
+    $start     = microtime(true);
+    $root      = dirname(__DIR__);
+    $protected = updater_load_protected_paths();
+
+    $result = [
+        'success'       => true,
+        'files_updated' => 0,
+        'files_skipped' => 0,
+        'errors'        => [],
+        'next_offset'   => $offset,
+        'total'         => 0,
+        'done'          => false,
+    ];
+
+    $zip = new ZipArchive();
+    $res = $zip->open($zip_path);
+    if ($res !== true) {
+        $result['success'] = false;
+        $result['errors'][] = "Failed to open zip (error {$res}).";
+        $result['done']     = true;
+        return $result;
+    }
+
+    $total           = $zip->numFiles;
+    $result['total'] = $total;
+    $wrapper         = _updater_detect_wrapper($zip);
+
+    for ($i = $offset; $i < $total; $i++) {
+        // Check time budget every 10 entries to limit microtime() call overhead
+        if ($i % 10 === 0 && $i > $offset && (microtime(true) - $start) >= $time_limit_sec) {
+            $result['next_offset'] = $i;
+            $zip->close();
+            return $result; // not done — caller continues from next_offset
+        }
+
+        $entry    = $zip->getNameIndex($i);
+        $relative = $entry;
+
+        // Strip wrapper folder if present
+        if ($wrapper !== '') {
+            if (!str_starts_with($entry, $wrapper)) continue;
+            $relative = substr($entry, strlen($wrapper));
+        }
+
+        // Block path traversal
+        if (str_contains($relative, '..') || str_starts_with($relative, '/')) {
+            $result['errors'][] = "Blocked path: {$relative}";
+            continue;
+        }
+
+        // Directory entry — create if not protected, then skip
+        if ($relative === '' || str_ends_with($relative, '/')) {
+            if ($relative !== '' && !updater_is_protected($relative, $protected)) {
+                $dir = $root . '/' . rtrim($relative, '/');
+                if (!is_dir($dir)) mkdir($dir, 0755, true);
+            }
+            continue;
+        }
+
+        // Skip protected paths
+        if (updater_is_protected($relative, $protected)) {
+            $result['files_skipped']++;
+            continue;
+        }
+
+        // Ensure parent directory exists
+        $dest     = $root . '/' . $relative;
+        $dest_dir = dirname($dest);
+        if (!is_dir($dest_dir)) mkdir($dest_dir, 0755, true);
+
+        // Extract file
+        $content = $zip->getFromIndex($i);
+        if ($content === false) {
+            $result['errors'][] = "Failed to read: {$relative}";
+            continue;
+        }
+
+        if (file_put_contents($dest, $content) === false) {
+            $result['errors'][] = "Failed to write: {$relative}";
+            $result['success']  = false;
+            continue;
+        }
+
+        $result['files_updated']++;
+    }
+
+    $zip->close();
+    $result['done']        = true;
+    $result['next_offset'] = $total;
+    return $result;
+}
+
+
+/**
  * Detect if all zip entries share a common wrapper folder.
  * Returns the wrapper prefix (e.g., "snapsmack-0.8/") or empty string.
  */

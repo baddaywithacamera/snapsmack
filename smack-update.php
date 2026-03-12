@@ -87,6 +87,118 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action) {
     }
 }
 
+// ── PICK UP SESSION FLASH (set by chunked extract redirect) ──────────────────
+if (empty($flash_msg) && !empty($_SESSION['stage_flash_msg'])) {
+    $flash_msg  = $_SESSION['stage_flash_msg'];
+    $flash_type = $_SESSION['stage_flash_type'] ?? 'error';
+    unset($_SESSION['stage_flash_msg'], $_SESSION['stage_flash_type']);
+}
+
+// ── STAGED EXTRACT: CHUNK HANDLER (GET — outputs standalone page, then exits) ─
+//
+// Each call processes up to ~12 seconds of zip extraction, saves progress to
+// session, and outputs a self-refreshing progress page.  When the zip is fully
+// extracted it redirects back to the main update page (stage advances to
+// 'extracted').  No JS required — meta-refresh only.
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'stage_extract_chunk') {
+    $chunk_state = $_SESSION['update_chunk_state'] ?? null;
+
+    // Guard: if either state is gone, something went wrong — bail to main page
+    if (!$chunk_state || empty($_SESSION['update_state'])) {
+        header('Location: smack-update.php');
+        exit;
+    }
+
+    $zip_path = $chunk_state['zip_path'];
+    $offset   = (int)($chunk_state['offset'] ?? 0);
+
+    $chunk = updater_extract_chunk($zip_path, $offset);
+
+    // Accumulate running totals
+    $chunk_state['files_updated'] += $chunk['files_updated'];
+    $chunk_state['files_skipped'] += $chunk['files_skipped'];
+    $chunk_state['errors']         = array_merge($chunk_state['errors'], $chunk['errors']);
+    $chunk_state['total']          = $chunk['total'] ?: ($chunk_state['total'] ?? 1);
+    $chunk_state['offset']         = $chunk['next_offset'];
+    $_SESSION['update_chunk_state'] = $chunk_state;
+
+    if (!$chunk['success']) {
+        // Fatal write error — surface to main page via session flash
+        $_SESSION['update_state']['log'][] = [
+            'label'  => 'Extraction failed',
+            'status' => 'fail',
+            'detail' => implode('; ', $chunk_state['errors']),
+        ];
+        $_SESSION['stage_flash_msg']  = 'EXTRACTION FAILED: ' . implode('; ', $chunk_state['errors']);
+        $_SESSION['stage_flash_type'] = 'error';
+        unset($_SESSION['update_chunk_state']);
+        header('Location: smack-update.php');
+        exit;
+    }
+
+    if ($chunk['done']) {
+        // All entries processed — advance stage and return to main page
+        $_SESSION['update_state']['stage'] = 'extracted';
+        $_SESSION['update_state']['log'][] = [
+            'label'  => 'Files extracted',
+            'status' => 'ok',
+            'detail' => "{$chunk_state['files_updated']} updated, {$chunk_state['files_skipped']} protected",
+        ];
+        unset($_SESSION['update_chunk_state']);
+        header('Location: smack-update.php');
+        exit;
+    }
+
+    // Still extracting — render a self-refreshing progress page
+    $total      = $chunk_state['total'] ?: 1;
+    $done_count = $chunk_state['offset'];
+    $pct        = min(99, (int)(($done_count / $total) * 100)); // cap at 99 until truly done
+    $updated    = $chunk_state['files_updated'];
+    $skipped    = $chunk_state['files_skipped'];
+
+    header('Content-Type: text/html; charset=UTF-8');
+    ?><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="1;url=smack-update.php?action=stage_extract_chunk">
+<title>SnapSmack ― Extracting Update</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    background: #111; color: #ccc; font-family: 'Courier New', monospace;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; min-height: 100vh;
+}
+h2 { color: #39FF14; letter-spacing: 3px; font-size: 0.85rem; margin-bottom: 30px; text-transform: uppercase; }
+.wrap { width: 440px; max-width: 90vw; }
+.pct  { font-size: 1.6rem; color: #39FF14; text-align: center; margin-bottom: 10px; font-weight: bold; }
+.bar-bg {
+    background: #1a1a1a; border: 1px solid #333; border-radius: 3px;
+    height: 22px; overflow: hidden; margin-bottom: 14px;
+}
+.bar-fill { background: #39FF14; height: 100%; width: <?php echo $pct; ?>%; }
+.stats { font-size: 0.75rem; color: #777; text-align: center; line-height: 2; }
+.blink { animation: bl 1.2s step-end infinite; }
+@keyframes bl { 50% { opacity: 0; } }
+</style>
+</head>
+<body>
+<h2>EXTRACTING UPDATE<span class="blink"> _</span></h2>
+<div class="wrap">
+    <div class="pct"><?php echo $pct; ?>%</div>
+    <div class="bar-bg"><div class="bar-fill"></div></div>
+    <div class="stats">
+        <?php echo number_format($done_count); ?> of <?php echo number_format($total); ?> entries<br>
+        <?php echo number_format($updated); ?> written &nbsp;&middot;&nbsp; <?php echo number_format($skipped); ?> protected
+    </div>
+</div>
+</body>
+</html>
+<?php
+    exit;
+}
+
 // ── ACTION: LIVE CHECK ────────────────────────────────────────────────────────
 if ($action === 'check') {
     $release_info = updater_fetch_release_info();
@@ -150,7 +262,7 @@ if ($action === 'check') {
 // ── STAGED UPDATE: CANCEL ─────────────────────────────────────────────────────
 if ($action === 'cancel_update') {
     if (!empty($stage_state['zip_path'])) @unlink($stage_state['zip_path']);
-    unset($_SESSION['update_state'], $_SESSION['update_complete_log']);
+    unset($_SESSION['update_state'], $_SESSION['update_complete_log'], $_SESSION['update_chunk_state']);
     $stage_state = null;
     $flash_msg   = 'UPDATE CANCELLED.';
     $flash_type  = 'info';
@@ -228,23 +340,27 @@ if ($action === 'stage_backup'
     }
 }
 
-// ── STAGED UPDATE: STAGE 4 — EXTRACT ─────────────────────────────────────────
+// ── STAGED UPDATE: STAGE 4 — EXTRACT (initialises chunked extraction) ─────────
+//
+// Rather than extracting the entire zip in one request (which times out on
+// shared hosts with large font files), we initialise chunk state here and
+// immediately redirect to the GET chunk handler.  The chunk handler processes
+// the zip in ≤12-second bursts, auto-continuing via meta-refresh, until all
+// files are extracted — then it redirects back here with stage = 'extracted'.
 if ($action === 'stage_extract'
     && !empty($stage_state)
     && ($stage_state['stage'] ?? '') === 'backed_up'
 ) {
-    $extract = updater_extract($stage_state['zip_path']);
-
-    if (!$extract['success']) {
-        $flash_msg  = 'EXTRACTION FAILED: ' . implode('; ', $extract['errors']);
-        $flash_type = 'error';
-        $_SESSION['update_state']['log'][] = ['label' => 'Extraction failed', 'status' => 'fail', 'detail' => implode('; ', $extract['errors'])];
-        $stage_state = $_SESSION['update_state'];
-    } else {
-        $_SESSION['update_state']['stage'] = 'extracted';
-        $_SESSION['update_state']['log'][] = ['label' => 'Files extracted', 'status' => 'ok', 'detail' => "{$extract['files_updated']} updated, {$extract['files_skipped']} protected"];
-        $stage_state = $_SESSION['update_state'];
-    }
+    $_SESSION['update_chunk_state'] = [
+        'zip_path'      => $stage_state['zip_path'],
+        'offset'        => 0,
+        'files_updated' => 0,
+        'files_skipped' => 0,
+        'errors'        => [],
+        'total'         => 0,
+    ];
+    header('Location: smack-update.php?action=stage_extract_chunk');
+    exit;
 }
 
 // ── STAGED UPDATE: STAGE 5 — MIGRATE + FINALIZE ──────────────────────────────
