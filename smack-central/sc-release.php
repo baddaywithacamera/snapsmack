@@ -163,12 +163,28 @@ function sc_build_release_zip(string $tag, string $zip_dest): array {
         return ['ok' => false, 'msg' => 'Could not create release zip at ' . $zip_dest . ' — check directory permissions.'];
     }
 
-    $count = 0;
+    // Paths to exclude from release zips — these are static assets that never
+    // change between releases and are already on disk from the initial install.
+    // Excluding them keeps update packages small (fonts alone add ~40 MB).
+    $exclude_prefixes = [
+        'assets/fonts/',  // TTF font families — large, static, pre-installed
+    ];
+
+    $count   = 0;
+    $skipped = 0;
     for ($i = 0; $i < $src->numFiles; $i++) {
         $name = $src->getNameIndex($i);
         $rel  = $prefix ? substr($name, strlen($prefix)) : $name;
         if ($rel === '' || str_ends_with($rel, '/')) continue;
         if (str_contains($rel, '..') || str_starts_with($rel, '/')) continue;
+
+        // Skip excluded paths
+        $excluded = false;
+        foreach ($exclude_prefixes as $excl) {
+            if (str_starts_with($rel, $excl)) { $excluded = true; break; }
+        }
+        if ($excluded) { $skipped++; continue; }
+
         $content = $src->getFromIndex($i);
         if ($content === false) continue;
         $dst->addFromString($rel, $content);
@@ -181,7 +197,7 @@ function sc_build_release_zip(string $tag, string $zip_dest): array {
 
     return [
         'ok'  => true,
-        'msg' => "Downloaded {$dl_kb} KB from GitHub, packaged {$count} files (prefix stripped: \"{$prefix}\")",
+        'msg' => "Downloaded {$dl_kb} KB from GitHub, packaged {$count} files, excluded {$skipped} (fonts) (prefix: \"{$prefix}\")",
     ];
 }
 
