@@ -213,7 +213,9 @@ function updater_verify_package(string $file_path, string $expected_sha256, stri
 function updater_load_protected_paths(): array {
     $file = UPDATER_PROTECTED_PATHS_FILE;
     if (!file_exists($file)) {
-        // Sensible defaults if the file is missing
+        // Sensible defaults if the file is missing.
+        // Note: skins/ is intentionally NOT protected — stock skins must be
+        // updatable. Non-stock skins are safe because they're never in the zip.
         return [
             'core/db.php',
             'core/constants.php',
@@ -223,7 +225,6 @@ function updater_load_protected_paths(): array {
             'media_assets/',
             'assets/img/',
             'backups/',
-            'skins/',
             '.htaccess',
             'robots.txt',
         ];
