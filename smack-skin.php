@@ -295,6 +295,14 @@ if (isset($_POST['save_skin_settings'])) {
             ->execute([$generated_admin, $generated_admin]);
     }
 
+    // 4f. Asset sync — fetch any fonts or JS engines missing from disk.
+    // Runs silently; result appended to flash if anything was fetched or failed.
+    require_once 'core/asset-sync.php';
+    $sync_msg = asset_sync_run();
+    if ($sync_msg !== null) {
+        $_SESSION['gallery_flash'] = 'Assets: ' . $sync_msg;
+    }
+
     header("Location: smack-skin.php?s={$active_skin}&msg=updated");
     exit;
 }
