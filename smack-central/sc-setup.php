@@ -19,9 +19,40 @@
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 
-// Where to pull the code from. Swap the tag if you want a different release.
-const REPO_ZIP_URL = 'https://github.com/baddaywithacamera/snapsmack/archive/refs/tags/v0.7.1.zip';
-const REPO_PREFIX  = 'snapsmack-0.7.1/';   // folder name inside the zip
+const REPO_SLUG = 'baddaywithacamera/snapsmack';
+
+/**
+ * Resolve the latest GitHub release tag and return [zip_url, prefix].
+ * Falls back to a hardcoded version if the API is unreachable.
+ */
+function sc_resolve_latest_tag(): array {
+    $fallback_tag = 'v0.7.1';
+
+    $ctx  = stream_context_create(['http' => [
+        'timeout'    => 10,
+        'user_agent' => 'SnapSmack-Installer/1.0',
+        'header'     => 'Accept: application/vnd.github.v3+json',
+    ]]);
+    $body = @file_get_contents(
+        'https://api.github.com/repos/' . REPO_SLUG . '/tags?per_page=1',
+        false, $ctx
+    );
+
+    $tag = $fallback_tag;
+    if ($body !== false) {
+        $data = json_decode($body, true);
+        if (!empty($data[0]['name'])) {
+            $tag = $data[0]['name'];
+        }
+    }
+
+    $slug   = ltrim(preg_replace('/^v/i', '', $tag), '');  // "0.7.1"
+    $prefix = 'snapsmack-' . $slug . '/';
+    $url    = 'https://github.com/' . REPO_SLUG . '/archive/refs/tags/' . urlencode($tag) . '.zip';
+    return [$url, $prefix, $tag];
+}
+
+[$repo_zip_url, $repo_prefix, $resolved_tag] = sc_resolve_latest_tag();
 
 // ─── GUARD: Already installed? ───────────────────────────────────────────────
 
@@ -188,8 +219,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
 
     if (!$error) {
         // Step 1: Download repo zip
-        $steps[] = ['info', 'Downloading ' . REPO_ZIP_URL . ' …'];
-        $zip_data = sc_http_get(REPO_ZIP_URL);
+        $steps[] = ['info', 'Downloading ' . $repo_zip_url . ' …'];
+        $zip_data = sc_http_get($repo_zip_url);
         if ($zip_data === false) {
             $error = 'Could not download repo zip. Check your server\'s outbound HTTPS access.';
         } else {
@@ -201,7 +232,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
 
     if (!$error) {
         // Step 2: Extract smack-central/ into this directory
-        $written = sc_extract_subfolder($zip_tmp, REPO_PREFIX, 'smack-central', __DIR__);
+        $written = sc_extract_subfolder($zip_tmp, $repo_prefix, 'smack-central', __DIR__);
         if ($written === false) {
             $error = 'Could not open downloaded zip. The download may be corrupt — try again.';
         } else {
@@ -211,7 +242,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
 
     if (!$error && $install_forum && $forum_dest) {
         // Step 3 (optional): Extract forum-server/api/forum/ to the specified path
-        $fw = sc_extract_subfolder($zip_tmp, REPO_PREFIX, 'forum-server/api/forum', $forum_dest);
+        $fw = sc_extract_subfolder($zip_tmp, $repo_prefix, 'forum-server/api/forum', $forum_dest);
         if ($fw === false) {
             $steps[] = ['warn', 'Forum server extraction failed — skipping. Deploy manually from forum-server/api/forum/.'];
         } else {
@@ -236,7 +267,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
 
     if (!$error) {
         // Step 5: Run forum-schema.sql (from zip)
-        $forum_sql = sc_extract_file($zip_tmp, REPO_PREFIX . 'forum-server/forum-schema.sql');
+        $forum_sql = sc_extract_file($zip_tmp, $repo_prefix . 'forum-server/forum-schema.sql');
         if ($forum_sql !== false) {
             $r = sc_run_sql($pdo, $forum_sql);
             if ($r['errors']) {
@@ -251,7 +282,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
 
     if (!$error) {
         // Step 6: Run sc-schema.sql (from zip)
-        $sc_sql = sc_extract_file($zip_tmp, REPO_PREFIX . 'smack-central/sc-schema.sql');
+        $sc_sql = sc_extract_file($zip_tmp, $repo_prefix . 'smack-central/sc-schema.sql');
         if ($sc_sql !== false) {
             $r = sc_run_sql($pdo, $sc_sql);
             if ($r['errors']) {
@@ -517,9 +548,8 @@ body {
 </div>
 
 <div class="alert alert-info">
-    This installer will download
-    <code style="color:var(--accent)"><?php echo REPO_ZIP_URL; ?></code>
-    and extract the application files into this directory.
+    Installing <strong><?php echo htmlspecialchars($resolved_tag); ?></strong> — latest tag resolved from GitHub.
+    Download: <code style="color:var(--accent)"><?php echo htmlspecialchars($repo_zip_url); ?></code>
 </div>
 
 <?php if ($already_done): ?>
