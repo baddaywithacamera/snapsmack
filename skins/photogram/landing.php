@@ -44,7 +44,7 @@ $has_more   = ($offset + count($grid_images)) < $post_count;
 $site_title  = $settings['site_title']       ?? $site_name ?? 'Photogram';
 $site_desc   = $settings['site_description'] ?? '';
 $site_url    = $settings['site_url']         ?? '';
-$avatar_file = $settings['site_avatar']      ?? $settings['site_logo'] ?? '';
+$avatar_file = $settings['site_avatar'] ?? $settings['site_logo'] ?? $settings['favicon_url'] ?? '';
 
 $pg_active_tab = 'home';
 ?>
