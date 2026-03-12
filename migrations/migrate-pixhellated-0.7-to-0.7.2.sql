@@ -226,9 +226,8 @@ CREATE TABLE IF NOT EXISTS snap_post_album_map (
     KEY idx_album_id (album_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Add post_id FK to snap_images.
--- Pixhellated already has this column — 1060 "Duplicate column" is expected, ignore it.
-ALTER TABLE snap_images ADD COLUMN post_id INT DEFAULT NULL AFTER id;
+-- Add post_id FK to snap_images (MySQL 8.0+: IF NOT EXISTS prevents 1060 error on re-run).
+ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS post_id INT DEFAULT NULL AFTER id;
 
 
 -- ============================================================================
