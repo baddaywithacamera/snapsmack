@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - The Grid Skin Header
- * Alpha v0.7.1
+ * Alpha v0.7.2
  *
  * Outputs the sticky top nav bar and opens the page wrapper.
  * No conditional CSS overrides are needed in Phase 1 — all dynamic

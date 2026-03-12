@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Carousel Post Composer
- * Alpha v0.7.1
+ * Alpha v0.7.2
  *
  * Multi-image posting page. Invoked automatically when the active skin's
  * manifest declares 'post_page' => 'carousel'. Also accessible directly

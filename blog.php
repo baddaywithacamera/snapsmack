@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Blog Feed (Latest Post View)
- * Alpha v0.7.1
+ * Alpha v0.7.2
  *
  * When homepage_mode is set to 'static_page', the image feed moves here.
  * This file is a thin redirect wrapper: if homepage_mode is 'latest_post'

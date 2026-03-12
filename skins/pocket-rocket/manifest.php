@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the pocket-rocket skin
- * Alpha v0.7.1
+ * Alpha v0.7.2
  *
  * Mobile-first skin. Doomscroll feed, hamburger nav, swipe drawers.
  * Medium grey palette, 1px borders, no floating gallery, no justified,

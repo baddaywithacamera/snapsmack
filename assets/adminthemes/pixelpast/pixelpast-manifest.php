@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the Pixelpast admin theme
- * Alpha v0.7.1
+ * Alpha v0.7.2
  */
 
 return [

@@ -1,0 +1,25 @@
+{
+    "version": "0.7.1",
+    "version_full": "Alpha 0.7.1",
+    "released": "2026-03-11",
+    "download_url": "https://snapsmack.ca/releases/snapsmack-0.7.1.zip",
+    "checksum_sha256": "682de5362ea63e8f89cf0ed7b9be950cb806c622aec39ba3f88229a238451af3",
+    "signature": "f5f4237ddf68085a96697807dd8f2d74b2d3f3c0e8e157d02a6f3f6280237da7105f6710ce6b22d362454377ce60be651e1c942d86ae1ade263f49cd85d1f606",
+    "changelog": [
+        "Added comment identity system with open, hybrid, and registered modes",
+        "Guest commenting supported in open and hybrid modes",
+        "Migration runner now tracks applied migrations to prevent re-runs",
+        "MySQL 5.6 compatibility fixes for schema migrations",
+        "SMACK CENTRAL installer and release packager",
+        "Forum integration foundation"
+    ],
+    "file_changes": {
+        "added": [],
+        "modified": [],
+        "removed": []
+    },
+    "schema_changes": false,
+    "requires_php": "8.0",
+    "requires_mysql": "5.7",
+    "download_size": 47155651
+}

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Core Updater Engine
- * Alpha v0.7.1
+ * Alpha v0.7.2
  *
  * Backend functions for the self-update system. Handles downloading release
  * packages, verifying SHA-256 checksums and Ed25519 signatures, extracting

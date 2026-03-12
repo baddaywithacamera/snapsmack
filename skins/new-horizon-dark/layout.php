@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Main layout template for the new-horizon-dark skin
- * Alpha v0.7.1
+ * Alpha v0.7.2
  *
  * Renders the photo display, navigation, metadata, and comments sections.
  */
