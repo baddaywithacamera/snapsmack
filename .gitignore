@@ -25,3 +25,6 @@ desktop.ini
 HIP-TO-BE-SQUARE-SPEC.docx
 PICASA-WEB-ALBUMS-SPEC.docx
 
+
+# Release packages (built by Smack Central, not stored in source)
+releases/
