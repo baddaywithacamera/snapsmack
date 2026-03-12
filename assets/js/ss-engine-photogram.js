@@ -1,9 +1,10 @@
 /**
  * SNAPSMACK - Photogram Engine
- * Alpha v0.7.1
+ * Alpha v0.7.3
  *
  * Handles all Photogram-specific interactions:
  *   - Comments bottom sheet (open, close, drag-to-dismiss)
+ *   - Single-tap image → full-screen lightbox (80% backdrop, portrait/landscape aware)
  *   - Double-tap to like with heart burst animation
  *   - Like button toggle (optimistic UI)
  *   - Sheet comment input / send (delegates to community component)
@@ -227,13 +228,15 @@
         });
 
         // ── Double-tap on image ────────────────────────────────────────────
+        // Single tap → open lightbox (delayed 310ms to distinguish from double-tap)
+        // Double-tap → like + heart burst
         if (imageWrap) {
             imageWrap.addEventListener('touchend', function (e) {
                 var now = Date.now();
                 var timeSince = now - lastTap;
 
                 if (timeSince < 300 && timeSince > 0) {
-                    // Double-tap detected
+                    // Double-tap detected — cancel pending lightbox open
                     clearTimeout(tapTimeout);
                     lastTap = 0;
 
@@ -247,11 +250,20 @@
                     e.preventDefault();
                 } else {
                     lastTap = now;
-                    // Single-tap — let it propagate normally (navigation etc.)
+                    // Single-tap: delay confirm it isn't a double-tap, then open lightbox
+                    clearTimeout(tapTimeout);
+                    tapTimeout = setTimeout(function () {
+                        openLightbox();
+                    }, 310);
                 }
             }, { passive: false });
 
-            // Desktop double-click fallback
+            // Desktop: single click opens lightbox, double-click does like
+            imageWrap.addEventListener('click', function (e) {
+                // Skip on touch devices — handled via touchend
+                if (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return;
+                openLightbox();
+            });
             imageWrap.addEventListener('dblclick', function (e) {
                 if (likeBtn.dataset.liked !== '1') {
                     toggleLike(likeBtn, likeCount, imageId);
@@ -343,6 +355,68 @@
 
 
     // ══════════════════════════════════════════════════════════════════════
+    //  LIGHTBOX
+    // ══════════════════════════════════════════════════════════════════════
+    var lightbox     = null;
+    var lightboxImg  = null;
+    var lbOpen       = false;
+
+    function openLightbox() {
+        if (!lightbox || lbOpen) return;
+        var src = document.getElementById('pg-post-image');
+        if (!src) return;
+
+        // Copy full-res src into lightbox image
+        if (lightboxImg) lightboxImg.src = src.src;
+
+        lightbox.hidden = false;
+        // Force reflow so the transition plays
+        lightbox.offsetHeight; // eslint-disable-line no-unused-expressions
+        lightbox.classList.add('pg-lightbox-open');
+        lbOpen = true;
+        document.body.style.overflow = 'hidden';
+
+        // Push history state so the back button dismisses the lightbox
+        history.pushState({ pgLightbox: true }, '');
+    }
+
+    function closeLightbox() {
+        if (!lightbox || !lbOpen) return;
+        lightbox.classList.remove('pg-lightbox-open');
+        lbOpen = false;
+        document.body.style.overflow = '';
+        // Hide after transition
+        setTimeout(function () {
+            if (!lbOpen) lightbox.hidden = true;
+        }, 250);
+    }
+
+    function initLightbox() {
+        lightbox    = document.getElementById('pg-lightbox');
+        lightboxImg = document.getElementById('pg-lightbox-img');
+        var closeBtn  = document.getElementById('pg-lightbox-close');
+        var backdrop  = document.getElementById('pg-lightbox-backdrop');
+
+        if (!lightbox) return;
+
+        // Close via X button
+        if (closeBtn) closeBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            closeLightbox();
+        });
+
+        // Close by tapping the backdrop (anywhere outside the image)
+        if (backdrop) backdrop.addEventListener('click', closeLightbox);
+
+        // Close via browser back button
+        window.addEventListener('popstate', function (e) {
+            if (lbOpen) {
+                closeLightbox();
+            }
+        });
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
     //  NAV TAB ACTIVE STATE
     //  (Handles back/forward navigation restoring correct active tab)
     // ══════════════════════════════════════════════════════════════════════
@@ -369,6 +443,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         initSheet();
         initLike();
+        initLightbox();
         initNavHighlight();
     });
 
