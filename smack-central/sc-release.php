@@ -127,7 +127,18 @@ function sc_file_changes(string $from_tag, string $to_tag): array {
 // GitHub zips include a wrapper directory (e.g. "snapsmack-0.7.1/"). This
 // function strips that prefix so the release zip contains files at their
 // actual paths, matching what git archive would have produced.
-function sc_build_release_zip(string $tag, string $zip_dest): array {
+/**
+ * Download the GitHub tag zip and repackage it as a clean release zip.
+ *
+ * @param string $tag           Git tag to download (e.g. "v0.7.2")
+ * @param string $zip_dest      Where to write the release zip
+ * @param array  $include_files Differential file list (added + modified paths,
+ *                              relative to repo root). When non-empty, ONLY
+ *                              these files are included — differential release.
+ *                              When empty, all files are included (full release,
+ *                              first-release fallback).
+ */
+function sc_build_release_zip(string $tag, string $zip_dest, array $include_files = []): array {
     $url  = 'https://github.com/' . SNAPSMACK_GITHUB_REPO . '/archive/refs/tags/' . urlencode($tag) . '.zip';
     $data = sc_http_raw($url);
     if ($data === false) {
@@ -145,8 +156,7 @@ function sc_build_release_zip(string $tag, string $zip_dest): array {
         return ['ok' => false, 'msg' => 'Could not open downloaded zip — file may be corrupt.'];
     }
 
-    // Detect the wrapper prefix: find the first top-level directory entry.
-    // GitHub names it "{reponame}-{tagname-without-v}/" e.g. "snapsmack-0.7.1/"
+    // Detect the wrapper prefix e.g. "snapsmack-0.7.2/"
     $prefix = '';
     for ($i = 0; $i < $src->numFiles; $i++) {
         $n = $src->getNameIndex($i);
@@ -163,12 +173,12 @@ function sc_build_release_zip(string $tag, string $zip_dest): array {
         return ['ok' => false, 'msg' => 'Could not create release zip at ' . $zip_dest . ' — check directory permissions.'];
     }
 
-    // Paths to exclude from release zips — these are static assets that never
-    // change between releases and are already on disk from the initial install.
-    // Excluding them keeps update packages small (fonts alone add ~40 MB).
-    $exclude_prefixes = [
-        'assets/fonts/',  // TTF font families — large, static, pre-installed
-    ];
+    // Safety exclusions — always skipped regardless of diff mode.
+    // Fonts are large, static, and pre-installed; they are never in a diff anyway.
+    $always_exclude = ['assets/fonts/'];
+
+    $differential = !empty($include_files);
+    $include_set  = $differential ? array_flip($include_files) : [];
 
     $count   = 0;
     $skipped = 0;
@@ -178,12 +188,13 @@ function sc_build_release_zip(string $tag, string $zip_dest): array {
         if ($rel === '' || str_ends_with($rel, '/')) continue;
         if (str_contains($rel, '..') || str_starts_with($rel, '/')) continue;
 
-        // Skip excluded paths
-        $excluded = false;
-        foreach ($exclude_prefixes as $excl) {
-            if (str_starts_with($rel, $excl)) { $excluded = true; break; }
+        // Differential mode: only include files that changed
+        if ($differential && !isset($include_set[$rel])) { $skipped++; continue; }
+
+        // Safety exclusions
+        foreach ($always_exclude as $excl) {
+            if (str_starts_with($rel, $excl)) { $skipped++; continue 2; }
         }
-        if ($excluded) { $skipped++; continue; }
 
         $content = $src->getFromIndex($i);
         if ($content === false) continue;
@@ -195,9 +206,10 @@ function sc_build_release_zip(string $tag, string $zip_dest): array {
     $dst->close();
     @unlink($tmp_src);
 
+    $mode = $differential ? "differential ({$count} changed files)" : "full ({$count} files)";
     return [
         'ok'  => true,
-        'msg' => "Downloaded {$dl_kb} KB from GitHub, packaged {$count} files, excluded {$skipped} (fonts) (prefix: \"{$prefix}\")",
+        'msg' => "Downloaded {$dl_kb} KB from GitHub, packaged {$mode}, skipped {$skipped}",
     ];
 }
 
@@ -238,19 +250,38 @@ if ($action === 'build' && $preflight_ok) {
         $zip_name = 'snapsmack-' . preg_replace('/[^a-zA-Z0-9._\-]/', '', $version) . '.zip';
         $zip_dest = rtrim(RELEASES_DIR, '/') . '/' . $zip_name;
 
-        // Step 1: Download from GitHub + repackage as clean zip
+        // Step 1: Diff — compute changed files BEFORE building the zip so we
+        // can build a differential package containing only what changed.
+        $file_changes  = ['added' => [], 'modified' => [], 'removed' => []];
+        $include_files = []; // empty = full release fallback
+        try {
+            $prev = sc_db()->query("SELECT git_tag FROM sc_releases ORDER BY id DESC LIMIT 1")->fetch();
+            if ($prev && $prev['git_tag'] !== $tag) {
+                $build_log[]   = "→ Diffing {$prev['git_tag']}…{$tag} via GitHub API…";
+                $file_changes  = sc_file_changes($prev['git_tag'], $tag);
+                $include_files = array_merge($file_changes['added'], $file_changes['modified']);
+                $total         = count($file_changes['added']) + count($file_changes['modified']) + count($file_changes['removed']);
+                $build_log[]   = "→ {$total} file(s) changed vs {$prev['git_tag']} — building differential zip";
+            } else {
+                $build_log[] = "→ No previous release found — building full zip";
+            }
+        } catch (Exception $e) {
+            $build_log[] = "→ Diff failed (" . $e->getMessage() . ") — falling back to full zip";
+        }
+
+        // Step 2: Download from GitHub + repackage as differential (or full) zip
         $build_log[] = "→ Downloading tag {$tag} from GitHub…";
-        $zip_result  = sc_build_release_zip($tag, $zip_dest);
+        $zip_result  = sc_build_release_zip($tag, $zip_dest, $include_files);
         $build_log[] = '→ ' . $zip_result['msg'];
 
         if (!$zip_result['ok']) {
             $build_error = $zip_result['msg'];
         } else {
-            // Step 2: SHA-256
+            // Step 3: SHA-256
             $checksum    = hash_file('sha256', $zip_dest);
             $build_log[] = "→ SHA-256: {$checksum}";
 
-            // Step 3: Sign
+            // Step 4: Sign
             try {
                 $privkey     = sodium_hex2bin(SMACK_RELEASE_PRIVKEY);
                 $sig         = sodium_crypto_sign_detached($checksum, $privkey);
@@ -264,22 +295,6 @@ if ($action === 'build' && $preflight_ok) {
                 $file_size    = filesize($zip_dest);
                 $download_url = rtrim(RELEASES_URL, '/') . '/' . $zip_name;
                 $build_log[]  = "→ Zip saved: {$zip_dest} (" . number_format($file_size / 1024, 1) . " KB)";
-
-                // Step 4: File changes via GitHub compare API
-                $file_changes = ['added' => [], 'modified' => [], 'removed' => []];
-                try {
-                    $prev = sc_db()->query("SELECT git_tag FROM sc_releases ORDER BY id DESC LIMIT 1")->fetch();
-                    if ($prev && $prev['git_tag'] !== $tag) {
-                        $build_log[]  = "→ Comparing {$prev['git_tag']}…{$tag} via GitHub API…";
-                        $file_changes = sc_file_changes($prev['git_tag'], $tag);
-                        $total        = count($file_changes['added']) + count($file_changes['modified']) + count($file_changes['removed']);
-                        $build_log[]  = "→ File changes vs {$prev['git_tag']}: {$total} files";
-                    } else {
-                        $build_log[] = "→ No previous release to diff against; file_changes will be empty.";
-                    }
-                } catch (Exception $e) {
-                    $build_log[] = "→ Could not compute file_changes: " . $e->getMessage();
-                }
 
                 // Step 4b: Auto-detect schema_changes from diff
                 $diff_all = array_merge($file_changes['added'] ?? [], $file_changes['modified'] ?? []);
