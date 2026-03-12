@@ -830,6 +830,39 @@ function updater_cleanup(): void {
     }
 }
 
+/**
+ * Prune old pre-update backup files from the backups directory.
+ *
+ * Keeps only the $keep most recent files matching the pre-update backup
+ * naming pattern (pre-update_*.sql, pre-update_*.sql.gz, pre-update_*.tar.gz).
+ * Everything older is deleted. Call this after every successful update so
+ * backups don't pile up on shared hosting indefinitely.
+ *
+ * @param int $keep  Number of most-recent backup files to retain (default: 3)
+ */
+function updater_prune_backups(int $keep = 3): void {
+    $dir = UPDATER_BACKUP_DIR;
+    if (!is_dir($dir)) return;
+
+    // Collect all backup files matching the pre-update pattern
+    $files = array_merge(
+        glob("{$dir}/pre-update_*.sql")    ?: [],
+        glob("{$dir}/pre-update_*.sql.gz") ?: [],
+        glob("{$dir}/pre-update_*.tar.gz") ?: [],
+        glob("{$dir}/pre-update_*.zip")    ?: []
+    );
+
+    if (count($files) <= $keep) return;
+
+    // Sort newest-first by modification time
+    usort($files, fn($a, $b) => filemtime($b) - filemtime($a));
+
+    // Delete everything beyond the keep threshold
+    foreach (array_slice($files, $keep) as $old) {
+        @unlink($old);
+    }
+}
+
 
 // ─── SKIN REGISTRY CHECK (for dual notification) ───────────────────────────
 
