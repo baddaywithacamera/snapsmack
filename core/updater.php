@@ -257,65 +257,71 @@ function updater_is_protected(string $relative_path, array $protected): bool {
 // ─── BACKUP ─────────────────────────────────────────────────────────────────
 
 /**
- * Create a forced pre-update backup of the entire source tree (minus uploads).
- * Returns the backup file path on success, or false on failure.
+ * Create a pre-update database dump.
  *
- * The backup excludes:
- * - img_uploads/ (too large, user handles media separately)
- * - media_assets/ (same reason)
- * - backups/ (prevent recursive backup bloat)
- * - .git/ (not needed for recovery)
+ * Dumps all SnapSmack tables to a .sql file in the backups directory.
+ * A DB dump is all that's needed before an update — if migrations go wrong
+ * the DB can be restored from this file, and files can always be restored
+ * from the previous release zip.
+ *
+ * Returns the backup file path on success, or false on failure.
  */
 function updater_create_backup(string &$error = ''): string|false {
-    $root = dirname(__DIR__);
-    $backup_dir = UPDATER_BACKUP_DIR;
+    global $pdo;
 
+    $backup_dir = UPDATER_BACKUP_DIR;
     if (!is_dir($backup_dir)) {
         mkdir($backup_dir, 0755, true);
     }
 
-    $timestamp = date('Y-m-d_H-i-s');
-    $version = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : 'unknown';
+    $timestamp    = date('Y-m-d_H-i-s');
+    $version      = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : 'unknown';
     $safe_version = preg_replace('/[^a-zA-Z0-9._-]/', '', $version);
-    $backup_file = "{$backup_dir}/pre-update_{$safe_version}_{$timestamp}.tar.gz";
-
-    // Exclusion list (relative to root)
-    $exclude_dirs = ['img_uploads', 'media_assets', 'backups', '.git', 'node_modules'];
+    $backup_file  = "{$backup_dir}/pre-update_{$safe_version}_{$timestamp}.sql";
 
     try {
-        $phar = new PharData($backup_file);
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($root, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::SELF_FIRST
-        );
+        // Get all table names
+        $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+        if (empty($tables)) {
+            $error = 'No tables found in database.';
+            return false;
+        }
 
-        foreach ($iterator as $file) {
-            $real = $file->getRealPath();
-            $relative = str_replace($root . DIRECTORY_SEPARATOR, '', $real);
-            $relative = str_replace('\\', '/', $relative);
+        $sql  = "-- SnapSmack pre-update DB backup\n";
+        $sql .= "-- Version: {$version}  Date: " . date('Y-m-d H:i:s') . "\n";
+        $sql .= "-- Tables: " . implode(', ', $tables) . "\n\n";
+        $sql .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
 
-            // Skip excluded directories
-            $skip = false;
-            foreach ($exclude_dirs as $excl) {
-                if (str_starts_with($relative, $excl . '/') || $relative === $excl) {
-                    $skip = true;
-                    break;
+        foreach ($tables as $table) {
+            $quoted = "`{$table}`";
+
+            // CREATE TABLE
+            $create = $pdo->query("SHOW CREATE TABLE {$quoted}")->fetch(PDO::FETCH_NUM);
+            $sql   .= "DROP TABLE IF EXISTS {$quoted};\n";
+            $sql   .= $create[1] . ";\n\n";
+
+            // Row data
+            $rows = $pdo->query("SELECT * FROM {$quoted}")->fetchAll(PDO::FETCH_ASSOC);
+            if ($rows) {
+                $cols    = '`' . implode('`, `', array_keys($rows[0])) . '`';
+                $sql    .= "INSERT INTO {$quoted} ({$cols}) VALUES\n";
+                $values  = [];
+                foreach ($rows as $row) {
+                    $escaped = array_map(function ($v) use ($pdo) {
+                        if ($v === null) return 'NULL';
+                        return $pdo->quote($v);
+                    }, array_values($row));
+                    $values[] = '(' . implode(', ', $escaped) . ')';
                 }
-            }
-            if ($skip) continue;
-
-            if ($file->isFile()) {
-                $phar->addFile($real, $relative);
+                $sql .= implode(",\n", $values) . ";\n\n";
             }
         }
 
-        // Compress
-        $phar->compress(Phar::GZ);
+        $sql .= "SET FOREIGN_KEY_CHECKS=1;\n";
 
-        // PharData creates .tar then .tar.gz — clean up the intermediate .tar
-        $tar_file = str_replace('.tar.gz', '.tar', $backup_file);
-        if (file_exists($tar_file)) {
-            @unlink($tar_file);
+        if (file_put_contents($backup_file, $sql) === false) {
+            $error = 'Could not write backup file to ' . $backup_dir;
+            return false;
         }
 
         return $backup_file;
