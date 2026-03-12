@@ -21,7 +21,7 @@ return [
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'A shadow of what a photo-sharing app used to be. Phone-native layout: 3-column archive grid, full-aspect post view, inline likes, bottom-sheet comments. Reproduces the Pixelfed / classic Instagram experience in a self-hosted blog.',
-    'status'      => 'beta',
+    'status'      => 'stable',
 
     'features' => [
         'supports_wall'    => false,

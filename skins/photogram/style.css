@@ -1023,3 +1023,109 @@ button {
 #system-footer {
     display: none;
 }
+
+/* ── Static page padding (About, etc.) ───────────────────────────────────── */
+/* page.php renders .static-content outside of pg-app — give it breathing room
+   and constrain it to the phone column width. */
+.static-content {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 16px 20px calc(var(--pg-nav-height, 56px) + 24px);
+}
+
+/* ── Lightbox ─────────────────────────────────────────────────────────────── */
+.pg-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pg-lightbox[hidden] {
+    display: none;
+}
+
+.pg-lightbox-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    opacity: 0;
+    transition: opacity 0.22s ease;
+}
+
+.pg-lightbox.pg-lightbox-open .pg-lightbox-backdrop {
+    opacity: 1;
+}
+
+.pg-lightbox-img-wrap {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: scale(0.92);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+/* Portrait: constrain by height; landscape/square: constrain by width */
+.pg-lightbox-img-wrap.pg-orient-portrait {
+    max-height: 100dvh;
+    max-width: 100dvw;
+}
+
+.pg-lightbox-img-wrap.pg-orient-landscape {
+    max-width: 100dvw;
+    max-height: 100dvh;
+}
+
+.pg-lightbox.pg-lightbox-open .pg-lightbox-img-wrap {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.pg-lightbox-img {
+    display: block;
+    max-width: 100dvw;
+    max-height: 100dvh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+/* Portrait images fill height; landscape images fill width */
+.pg-lightbox-img-wrap.pg-orient-portrait .pg-lightbox-img {
+    max-height: 100dvh;
+    max-width: 100dvw;
+}
+
+.pg-lightbox-img-wrap.pg-orient-landscape .pg-lightbox-img {
+    max-width: 100dvw;
+    max-height: 100dvh;
+}
+
+.pg-lightbox-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 2;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.22s ease;
+    padding: 0;
+}
+
+.pg-lightbox.pg-lightbox-open .pg-lightbox-close {
+    opacity: 1;
+}

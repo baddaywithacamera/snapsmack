@@ -126,7 +126,13 @@ $pg_active_tab = 'home';
     </div>
 
     <!-- ── Image ────────────────────────────────────────────────────────── -->
-    <div class="pg-post-image-wrap" id="pg-image-wrap">
+    <?php
+    // 0 = landscape, 1 = portrait, 2 = square — from upload-time classification
+    $img_orient = (int)($img['img_orientation'] ?? 0);
+    $orient_class = ($img_orient === 1) ? 'pg-orient-portrait' : 'pg-orient-landscape';
+    ?>
+    <div class="pg-post-image-wrap <?php echo $orient_class; ?>" id="pg-image-wrap"
+         data-orientation="<?php echo $img_orient; ?>">
         <?php include dirname(__DIR__, 2) . '/core/download-overlay.php'; ?>
         <img src="<?php echo htmlspecialchars($img_url); ?>"
              alt="<?php echo htmlspecialchars($img['img_title']); ?>"
@@ -135,6 +141,19 @@ $pg_active_tab = 'home';
              draggable="false">
         <?php echo $download_button ?? ''; ?>
         <!-- Heart burst injected by JS on double-tap -->
+    </div>
+
+    <!-- ── Lightbox ──────────────────────────────────────────────────────── -->
+    <div id="pg-lightbox" class="pg-lightbox" role="dialog" aria-modal="true" aria-label="Full-screen image" hidden>
+        <div id="pg-lightbox-backdrop" class="pg-lightbox-backdrop"></div>
+        <div id="pg-lightbox-img-wrap" class="pg-lightbox-img-wrap <?php echo $orient_class; ?>">
+            <img id="pg-lightbox-img" class="pg-lightbox-img" src="" alt="<?php echo htmlspecialchars($img['img_title']); ?>">
+        </div>
+        <button id="pg-lightbox-close" class="pg-lightbox-close" aria-label="Close">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
     </div>
 
     <!-- ── Action Bar ───────────────────────────────────────────────────── -->
