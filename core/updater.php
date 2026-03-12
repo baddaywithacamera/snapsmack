@@ -508,17 +508,44 @@ function updater_extract_chunk(string $zip_path, int $offset, int $time_limit_se
         $dest_dir = dirname($dest);
         if (!is_dir($dest_dir)) mkdir($dest_dir, 0755, true);
 
-        // Extract file
-        $content = $zip->getFromIndex($i);
-        if ($content === false) {
-            $result['errors'][] = "Failed to read: {$relative}";
-            continue;
-        }
+        // Extract file — stream large files to avoid loading them fully into memory
+        $stat      = $zip->statIndex($i);
+        $file_size = $stat['size'] ?? 0;
 
-        if (file_put_contents($dest, $content) === false) {
-            $result['errors'][] = "Failed to write: {$relative}";
-            $result['success']  = false;
-            continue;
+        if ($file_size > 102400) {
+            // > 100 KB: stream directly to disk via ZipArchive::getStream()
+            $src_stream = $zip->getStream($entry);
+            if ($src_stream === false) {
+                $result['errors'][] = "Failed to open stream: {$relative}";
+                continue;
+            }
+            $dest_fp = @fopen($dest, 'wb');
+            if ($dest_fp === false) {
+                fclose($src_stream);
+                $result['errors'][] = "Failed to open for write: {$relative}";
+                $result['success']  = false;
+                continue;
+            }
+            $bytes = stream_copy_to_stream($src_stream, $dest_fp);
+            fclose($src_stream);
+            fclose($dest_fp);
+            if ($bytes === false) {
+                $result['errors'][] = "Stream write failed: {$relative}";
+                $result['success']  = false;
+                continue;
+            }
+        } else {
+            // Small file: read into memory and write at once
+            $content = $zip->getFromIndex($i);
+            if ($content === false) {
+                $result['errors'][] = "Failed to read: {$relative}";
+                continue;
+            }
+            if (file_put_contents($dest, $content) === false) {
+                $result['errors'][] = "Failed to write: {$relative}";
+                $result['success']  = false;
+                continue;
+            }
         }
 
         $result['files_updated']++;
