@@ -10,20 +10,21 @@
  *
  * Also shows skin registry notifications (new skins available, skin updates).
  *
- * FLOW:
- * 1. CHECK  — Fetch latest release info from update server
- * 2. REVIEW — Display changelog, file changes, migration warnings
- * 3. BACKUP — Forced pre-update backup (no skip option)
- * 4. APPLY  — Download, verify, extract, migrate
- * 5. DONE   — Success screen with version bump, or rollback on failure
+ * FLOW (staged — each stage is a separate HTTP request to avoid timeouts):
+ * 1. CHECK         — Fetch latest release info from update server
+ * 2. REVIEW        — Display changelog, file changes, migration warnings
+ * 3. STAGE: download  — Download zip to temp dir
+ * 4. STAGE: verify    — Checksum + Ed25519 signature check
+ * 5. STAGE: backup    — Forced pre-update backup
+ * 6. STAGE: extract   — Extract files (protected paths never overwritten)
+ * 7. STAGE: migrate   — Run schema migrations + bump version
+ * 8. DONE          — Success screen, or rollback on failure
  */
 
 require_once 'core/auth.php';
 require_once 'core/updater.php';
 
 // --- EARLY CRON DETECTION ---
-// Must run before POST handlers that depend on $cron_supported.
-// admin-header.php also sets these, but it loads after the handlers.
 if (!isset($cron_supported)) {
     $cron_supported = false;
     $php_cli_path   = '';
@@ -43,9 +44,8 @@ $csrf = $_SESSION['update_csrf'];
 
 // --- CURRENT VERSION ---
 $installed_version = SNAPSMACK_VERSION_SHORT ?? '0.0';
-$installed_full = SNAPSMACK_VERSION ?? 'Unknown';
+$installed_full    = SNAPSMACK_VERSION ?? 'Unknown';
 
-// Also check settings table
 try {
     $stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = 'installed_version'");
     $stmt->execute();
@@ -57,7 +57,7 @@ try {
 
 // --- CACHED CHECK RESULT ---
 $cached_result = null;
-$last_check = null;
+$last_check    = null;
 try {
     $stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = 'update_check_result'");
     $stmt->execute();
@@ -69,54 +69,57 @@ try {
     $last_check = $stmt->fetchColumn();
 } catch (PDOException $e) {}
 
-// --- ACTION HANDLERS ---
-$action = $_POST['action'] ?? $_GET['action'] ?? '';
-$flash_msg = '';
+// --- STAGED UPDATE STATE ---
+// Persists between stages via session.
+$stage_state = $_SESSION['update_state'] ?? null;
+
+// --- ACTION HANDLER ---
+$action     = $_POST['action'] ?? $_GET['action'] ?? '';
+$flash_msg  = '';
 $flash_type = 'info';
 
 // CSRF validation for POST actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action) {
     if (!isset($_POST['csrf']) || !hash_equals($csrf, $_POST['csrf'])) {
-        $flash_msg = 'CSRF VALIDATION FAILED. REFRESH AND TRY AGAIN.';
+        $flash_msg  = 'CSRF VALIDATION FAILED. REFRESH AND TRY AGAIN.';
         $flash_type = 'error';
-        $action = ''; // block the action
+        $action     = '';
     }
 }
 
-// --- ACTION: LIVE CHECK ---
+// ── ACTION: LIVE CHECK ────────────────────────────────────────────────────────
 if ($action === 'check') {
     $release_info = updater_fetch_release_info();
-    $skin_info = updater_check_skin_registry($pdo);
-    $core_status = updater_check_status($installed_version, $release_info);
+    $skin_info    = updater_check_skin_registry($pdo);
+    $core_status  = updater_check_status($installed_version, $release_info);
 
     $core_update = null;
     if ($core_status === 'update_available') {
         $core_update = [
-            'version'        => $release_info['version'] ?? '',
-            'version_full'   => $release_info['version_full'] ?? '',
-            'codename'       => $release_info['codename'] ?? '',
-            'released'       => $release_info['released'] ?? '',
-            'changelog'      => $release_info['changelog'] ?? [],
-            'file_changes'   => $release_info['file_changes'] ?? [],
-            'schema_changes' => $release_info['schema_changes'] ?? false,
-            'download_size'  => $release_info['download_size'] ?? 0,
-            'requires_php'   => $release_info['requires_php'] ?? '8.0',
-            'download_url'   => $release_info['download_url'] ?? '',
-            'checksum_sha256'=> $release_info['checksum_sha256'] ?? '',
-            'signature'      => $release_info['signature'] ?? '',
+            'version'         => $release_info['version']         ?? '',
+            'version_full'    => $release_info['version_full']    ?? '',
+            'codename'        => $release_info['codename']        ?? '',
+            'released'        => $release_info['released']        ?? '',
+            'changelog'       => $release_info['changelog']       ?? [],
+            'file_changes'    => $release_info['file_changes']    ?? [],
+            'schema_changes'  => $release_info['schema_changes']  ?? false,
+            'download_size'   => $release_info['download_size']   ?? 0,
+            'requires_php'    => $release_info['requires_php']    ?? '8.0',
+            'download_url'    => $release_info['download_url']    ?? '',
+            'checksum_sha256' => $release_info['checksum_sha256'] ?? '',
+            'signature'       => $release_info['signature']       ?? '',
         ];
     }
 
-    // Store in cache
     $cached_result = [
-        'checked_at'         => date('c'),
-        'installed_version'  => $installed_version,
-        'core_status'        => $core_status,
-        'core_update'        => $core_update,
-        'new_skins'          => $skin_info['new_skins'],
-        'updated_skins'      => $skin_info['updated_skins'],
-        'skin_notifications' => $skin_info['total_notifications'],
-        'total_notifications'=> ($core_update ? 1 : 0) + $skin_info['total_notifications'],
+        'checked_at'          => date('c'),
+        'installed_version'   => $installed_version,
+        'core_status'         => $core_status,
+        'core_update'         => $core_update,
+        'new_skins'           => $skin_info['new_skins'],
+        'updated_skins'       => $skin_info['updated_skins'],
+        'skin_notifications'  => $skin_info['total_notifications'],
+        'total_notifications' => ($core_update ? 1 : 0) + $skin_info['total_notifications'],
     ];
 
     $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('update_check_result', ?)
@@ -129,159 +132,193 @@ if ($action === 'check') {
     $last_check = date('Y-m-d H:i:s');
 
     if ($core_status === 'error') {
-        $flash_msg = 'COULD NOT REACH UPDATE SERVER. CHECK YOUR CONNECTION.';
+        $flash_msg  = 'COULD NOT REACH UPDATE SERVER. CHECK YOUR CONNECTION.';
         $flash_type = 'error';
     } elseif ($core_status === 'up_to_date' && $skin_info['total_notifications'] === 0) {
-        $flash_msg = 'SYSTEM IS UP TO DATE. NO NEW SKINS AVAILABLE.';
+        $flash_msg  = 'SYSTEM IS UP TO DATE. NO NEW SKINS AVAILABLE.';
         $flash_type = 'success';
     } else {
         $notifications = [];
         if ($core_update) $notifications[] = "Core update available: v{$core_update['version']}";
-        if (count($skin_info['new_skins']) > 0) $notifications[] = count($skin_info['new_skins']) . " new skin(s) available";
+        if (count($skin_info['new_skins'])    > 0) $notifications[] = count($skin_info['new_skins'])    . " new skin(s) available";
         if (count($skin_info['updated_skins']) > 0) $notifications[] = count($skin_info['updated_skins']) . " skin update(s) available";
-        $flash_msg = strtoupper(implode(' — ', $notifications));
+        $flash_msg  = strtoupper(implode(' — ', $notifications));
         $flash_type = 'warning';
     }
 }
 
-// --- ACTION: APPLY UPDATE ---
-$update_result = null;
-if ($action === 'apply' && !empty($cached_result['core_update'])) {
-    $update = $cached_result['core_update'];
-    $steps = [];
-
-    // Step 1: PHP version check
-    $required_php = $update['requires_php'] ?? '8.0';
-    if (version_compare(PHP_VERSION, $required_php, '<')) {
-        $flash_msg = "UPDATE REQUIRES PHP {$required_php}+. YOU ARE RUNNING " . PHP_VERSION . ".";
-        $flash_type = 'error';
-    } else {
-        // Step 2: Force backup
-        $backup_error = '';
-        $backup_file = updater_create_backup($backup_error);
-        if ($backup_file === false) {
-            $flash_msg = "BACKUP FAILED: {$backup_error}. UPDATE ABORTED.";
-            $flash_type = 'error';
-        } else {
-            $steps[] = ['label' => 'Backup created', 'status' => 'ok', 'detail' => basename($backup_file)];
-            $_SESSION['update_backup_file'] = $backup_file;
-
-            // Step 3: Download
-            $dl_error = '';
-            $zip_path = updater_download($update['download_url'], $dl_error);
-            if ($zip_path === false) {
-                $flash_msg = "DOWNLOAD FAILED: {$dl_error}";
-                $flash_type = 'error';
-                $steps[] = ['label' => 'Download', 'status' => 'fail', 'detail' => $dl_error];
-            } else {
-                $steps[] = ['label' => 'Download complete', 'status' => 'ok', 'detail' => ''];
-
-                // Step 4: Verify
-                $verify_error = '';
-                $checksum = $update['checksum_sha256'] ?? '';
-                $signature = $update['signature'] ?? '';
-                if ($checksum && !updater_verify_package($zip_path, $checksum, $signature, $verify_error)) {
-                    $flash_msg = "VERIFICATION FAILED: {$verify_error}";
-                    $flash_type = 'error';
-                    $steps[] = ['label' => 'Verification', 'status' => 'fail', 'detail' => $verify_error];
-                    updater_cleanup();
-                } else {
-                    $steps[] = ['label' => 'Verification passed', 'status' => 'ok', 'detail' => ''];
-
-                    // Step 5: Extract
-                    $extract = updater_extract($zip_path);
-                    $steps[] = [
-                        'label' => 'Extraction',
-                        'status' => $extract['success'] ? 'ok' : 'fail',
-                        'detail' => "{$extract['files_updated']} updated, {$extract['files_skipped']} protected"
-                    ];
-
-                    if (!$extract['success']) {
-                        $flash_msg = 'EXTRACTION FAILED. ERRORS: ' . implode('; ', $extract['errors']);
-                        $flash_type = 'error';
-                    } else {
-                        // Step 6: Schema migrations
-                        $migrations = updater_find_migrations($pdo);
-                        if (!empty($migrations)) {
-                            $migrate_result = updater_run_migrations($pdo, $migrations);
-                            $steps[] = [
-                                'label' => 'Schema migrations',
-                                'status' => $migrate_result['success'] ? 'ok' : 'fail',
-                                'detail' => implode(', ', $migrate_result['applied'])
-                            ];
-
-                            if (!$migrate_result['success']) {
-                                // Rollback on migration failure
-                                $rb_error = '';
-                                updater_rollback($backup_file, $rb_error);
-                                $flash_msg = 'MIGRATION FAILED. SYSTEM ROLLED BACK. Errors: ' . implode('; ', $migrate_result['errors']);
-                                $flash_type = 'error';
-                                $steps[] = ['label' => 'Rollback', 'status' => 'ok', 'detail' => 'Restored from backup'];
-                                updater_cleanup();
-                            }
-                        }
-
-                        // If we haven't errored out, finalize
-                        if ($flash_type !== 'error') {
-                            // Step 7: Update version
-                            updater_set_version($pdo, $update['version'], $update['version_full'] ?? "Alpha {$update['version']}", $update['codename'] ?? '');
-                            $steps[] = ['label' => 'Version updated', 'status' => 'ok', 'detail' => "v{$installed_version} → v{$update['version']}"];
-
-                            // Clear cached check
-                            $pdo->exec("DELETE FROM snap_settings WHERE setting_key = 'update_check_result'");
-                            $cached_result = null;
-
-                            updater_cleanup();
-
-                            $flash_msg = "UPDATE COMPLETE. NOW RUNNING v{$update['version']}.";
-                            $flash_type = 'success';
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    $update_result = $steps;
+// ── STAGED UPDATE: CANCEL ─────────────────────────────────────────────────────
+if ($action === 'cancel_update') {
+    if (!empty($stage_state['zip_path'])) @unlink($stage_state['zip_path']);
+    unset($_SESSION['update_state'], $_SESSION['update_complete_log']);
+    $stage_state = null;
+    $flash_msg   = 'UPDATE CANCELLED.';
+    $flash_type  = 'info';
 }
 
-// --- ACTION: MANUAL ZIP UPLOAD ---
-// Fallback for hosts that block outbound HTTPS. The user downloads the zip
-// on their own machine and uploads it through the admin panel.
-$upload_result = null;
-if ($action === 'upload_zip' && !empty($_FILES['update_zip']['tmp_name'])) {
-    $upload_steps = [];
-    $upload_file = $_FILES['update_zip']['tmp_name'];
-    $upload_name = $_FILES['update_zip']['name'] ?? 'unknown.zip';
+// ── STAGED UPDATE: STAGE 1 — DOWNLOAD ────────────────────────────────────────
+if ($action === 'stage_download' && !empty($cached_result['core_update'])) {
+    $update       = $cached_result['core_update'];
+    $required_php = $update['requires_php'] ?? '8.0';
 
-    // Validate extension
-    if (!preg_match('/\.zip$/i', $upload_name)) {
-        $flash_msg = 'UPLOADED FILE IS NOT A ZIP ARCHIVE.';
+    if (version_compare(PHP_VERSION, $required_php, '<')) {
+        $flash_msg  = "UPDATE REQUIRES PHP {$required_php}+. YOU ARE RUNNING " . PHP_VERSION . ".";
         $flash_type = 'error';
     } else {
-        // Step 1: Move to temp dir
-        if (!is_dir(UPDATER_TEMP_DIR)) {
-            mkdir(UPDATER_TEMP_DIR, 0700, true);
+        $dl_error = '';
+        $zip_path = updater_download($update['download_url'], $dl_error);
+        if ($zip_path === false) {
+            $flash_msg  = "DOWNLOAD FAILED: {$dl_error}";
+            $flash_type = 'error';
+        } else {
+            $size_mb = number_format(filesize($zip_path) / 1048576, 1);
+            $_SESSION['update_state'] = [
+                'stage'    => 'downloaded',
+                'zip_path' => $zip_path,
+                'update'   => $update,
+                'log'      => [['label' => 'Package downloaded', 'status' => 'ok', 'detail' => "{$size_mb} MB"]],
+            ];
+            $stage_state = $_SESSION['update_state'];
         }
+    }
+}
+
+// ── STAGED UPDATE: STAGE 2 — VERIFY ──────────────────────────────────────────
+if ($action === 'stage_verify'
+    && !empty($stage_state)
+    && ($stage_state['stage'] ?? '') === 'downloaded'
+) {
+    $update   = $stage_state['update'];
+    $zip_path = $stage_state['zip_path'];
+    $verify_error = '';
+
+    if (!updater_verify_package($zip_path, $update['checksum_sha256'] ?? '', $update['signature'] ?? '', $verify_error)) {
+        $flash_msg  = "VERIFICATION FAILED: {$verify_error}";
+        $flash_type = 'error';
+        @unlink($zip_path);
+        unset($_SESSION['update_state']);
+        $stage_state = null;
+    } else {
+        $_SESSION['update_state']['stage'] = 'verified';
+        $_SESSION['update_state']['log'][] = ['label' => 'Signature verified', 'status' => 'ok', 'detail' => 'SHA-256 + Ed25519 OK'];
+        $stage_state = $_SESSION['update_state'];
+    }
+}
+
+// ── STAGED UPDATE: STAGE 3 — BACKUP ──────────────────────────────────────────
+if ($action === 'stage_backup'
+    && !empty($stage_state)
+    && ($stage_state['stage'] ?? '') === 'verified'
+) {
+    $backup_error = '';
+    $backup_file  = updater_create_backup($backup_error);
+
+    if ($backup_file === false) {
+        $flash_msg  = "BACKUP FAILED: {$backup_error}. UPDATE ABORTED.";
+        $flash_type = 'error';
+        @unlink($stage_state['zip_path'] ?? '');
+        unset($_SESSION['update_state']);
+        $stage_state = null;
+    } else {
+        $_SESSION['update_state']['stage']       = 'backed_up';
+        $_SESSION['update_state']['backup_file'] = $backup_file;
+        $_SESSION['update_backup_file']          = $backup_file; // keep for rollback button
+        $_SESSION['update_state']['log'][]       = ['label' => 'Backup created', 'status' => 'ok', 'detail' => basename($backup_file)];
+        $stage_state = $_SESSION['update_state'];
+    }
+}
+
+// ── STAGED UPDATE: STAGE 4 — EXTRACT ─────────────────────────────────────────
+if ($action === 'stage_extract'
+    && !empty($stage_state)
+    && ($stage_state['stage'] ?? '') === 'backed_up'
+) {
+    $extract = updater_extract($stage_state['zip_path']);
+
+    if (!$extract['success']) {
+        $flash_msg  = 'EXTRACTION FAILED: ' . implode('; ', $extract['errors']);
+        $flash_type = 'error';
+        $_SESSION['update_state']['log'][] = ['label' => 'Extraction failed', 'status' => 'fail', 'detail' => implode('; ', $extract['errors'])];
+        $stage_state = $_SESSION['update_state'];
+    } else {
+        $_SESSION['update_state']['stage'] = 'extracted';
+        $_SESSION['update_state']['log'][] = ['label' => 'Files extracted', 'status' => 'ok', 'detail' => "{$extract['files_updated']} updated, {$extract['files_skipped']} protected"];
+        $stage_state = $_SESSION['update_state'];
+    }
+}
+
+// ── STAGED UPDATE: STAGE 5 — MIGRATE + FINALIZE ──────────────────────────────
+if ($action === 'stage_migrate'
+    && !empty($stage_state)
+    && ($stage_state['stage'] ?? '') === 'extracted'
+) {
+    $update     = $stage_state['update'];
+    $migrations = updater_find_migrations($pdo);
+
+    if (!empty($migrations)) {
+        $migrate_result = updater_run_migrations($pdo, $migrations);
+
+        if (!$migrate_result['success']) {
+            $rb_error = '';
+            updater_rollback($stage_state['backup_file'] ?? '', $rb_error);
+            $flash_msg  = 'MIGRATION FAILED. SYSTEM ROLLED BACK. Errors: ' . implode('; ', $migrate_result['errors']);
+            $flash_type = 'error';
+            $_SESSION['update_state']['log'][] = ['label' => 'Migrations failed — rolled back', 'status' => 'fail', 'detail' => implode('; ', $migrate_result['errors'])];
+            $stage_state = $_SESSION['update_state'];
+        } else {
+            $_SESSION['update_state']['log'][] = ['label' => 'Migrations run', 'status' => 'ok', 'detail' => implode(', ', $migrate_result['applied'])];
+        }
+    } else {
+        $_SESSION['update_state']['log'][] = ['label' => 'No migrations needed', 'status' => 'ok', 'detail' => ''];
+    }
+
+    if ($flash_type !== 'error') {
+        updater_set_version($pdo, $update['version'], $update['version_full'] ?? "Alpha {$update['version']}", $update['codename'] ?? '');
+        $_SESSION['update_state']['log'][] = ['label' => 'Version updated', 'status' => 'ok', 'detail' => "v{$installed_version} → v{$update['version']}"];
+
+        $pdo->exec("DELETE FROM snap_settings WHERE setting_key = 'update_check_result'");
+        updater_cleanup();
+
+        // Store log for display after session clear
+        $_SESSION['update_complete_log'] = $_SESSION['update_state']['log'];
+        unset($_SESSION['update_state']);
+        $stage_state = null;
+
+        $flash_msg  = "UPDATE COMPLETE. NOW RUNNING v{$update['version']}.";
+        $flash_type = 'success';
+        $cached_result = null;
+    }
+}
+
+// ── ACTION: MANUAL ZIP UPLOAD ─────────────────────────────────────────────────
+$update_result = null;
+if ($action === 'upload_zip' && !empty($_FILES['update_zip']['tmp_name'])) {
+    $upload_steps = [];
+    $upload_file  = $_FILES['update_zip']['tmp_name'];
+    $upload_name  = $_FILES['update_zip']['name'] ?? 'unknown.zip';
+
+    if (!preg_match('/\.zip$/i', $upload_name)) {
+        $flash_msg  = 'UPLOADED FILE IS NOT A ZIP ARCHIVE.';
+        $flash_type = 'error';
+    } else {
+        if (!is_dir(UPDATER_TEMP_DIR)) mkdir(UPDATER_TEMP_DIR, 0700, true);
         $dest = UPDATER_TEMP_DIR . '/snapsmack-upload.zip';
         move_uploaded_file($upload_file, $dest);
         $upload_steps[] = ['label' => 'Upload received', 'status' => 'ok', 'detail' => $upload_name];
 
-        // Step 2: Read the manifest from the cached check (if any) for checksum verification
-        $expected_checksum = $cached_result['core_update']['checksum_sha256'] ?? '';
-        $expected_signature = $cached_result['core_update']['signature'] ?? '';
-        $target_version = $cached_result['core_update']['version'] ?? '';
-        $target_version_full = $cached_result['core_update']['version_full'] ?? '';
+        $expected_checksum  = $cached_result['core_update']['checksum_sha256'] ?? '';
+        $expected_signature = $cached_result['core_update']['signature']       ?? '';
+        $target_version     = $cached_result['core_update']['version']         ?? '';
+        $target_version_full = $cached_result['core_update']['version_full']   ?? '';
 
-        // Step 3: Verify checksum if we have one from a prior check
         $verified = true;
         if ($expected_checksum) {
             $verify_error = '';
             if (!updater_verify_package($dest, $expected_checksum, $expected_signature, $verify_error)) {
-                $verified = false;
+                $verified       = false;
                 $upload_steps[] = ['label' => 'Verification', 'status' => 'fail', 'detail' => $verify_error];
-                $flash_msg = "VERIFICATION FAILED: {$verify_error}";
-                $flash_type = 'error';
+                $flash_msg      = "VERIFICATION FAILED: {$verify_error}";
+                $flash_type     = 'error';
                 updater_cleanup();
             } else {
                 $upload_steps[] = ['label' => 'Verification passed', 'status' => 'ok', 'detail' => 'Checksum + signature OK'];
@@ -291,81 +328,66 @@ if ($action === 'upload_zip' && !empty($_FILES['update_zip']['tmp_name'])) {
         }
 
         if ($verified) {
-            // Step 4: Force backup
             $backup_error = '';
-            $backup_file = updater_create_backup($backup_error);
+            $backup_file  = updater_create_backup($backup_error);
             if ($backup_file === false) {
-                $flash_msg = "BACKUP FAILED: {$backup_error}. UPDATE ABORTED.";
-                $flash_type = 'error';
+                $flash_msg      = "BACKUP FAILED: {$backup_error}. UPDATE ABORTED.";
+                $flash_type     = 'error';
                 $upload_steps[] = ['label' => 'Backup', 'status' => 'fail', 'detail' => $backup_error];
                 updater_cleanup();
             } else {
-                $upload_steps[] = ['label' => 'Backup created', 'status' => 'ok', 'detail' => basename($backup_file)];
-                $_SESSION['update_backup_file'] = $backup_file;
+                $upload_steps[]                  = ['label' => 'Backup created', 'status' => 'ok', 'detail' => basename($backup_file)];
+                $_SESSION['update_backup_file']  = $backup_file;
 
-                // Step 5: Extract
-                $extract = updater_extract($dest);
+                $extract        = updater_extract($dest);
                 $upload_steps[] = [
-                    'label' => 'Extraction',
+                    'label'  => 'Extraction',
                     'status' => $extract['success'] ? 'ok' : 'fail',
                     'detail' => "{$extract['files_updated']} updated, {$extract['files_skipped']} protected"
                 ];
 
                 if (!$extract['success']) {
-                    $flash_msg = 'EXTRACTION FAILED. ERRORS: ' . implode('; ', $extract['errors']);
+                    $flash_msg  = 'EXTRACTION FAILED. ERRORS: ' . implode('; ', $extract['errors']);
                     $flash_type = 'error';
                 } else {
-                    // Step 6: Schema migrations
-                    if (true) {
-                        $migrations = updater_find_migrations($pdo);
-                        if (!empty($migrations)) {
-                            $migrate_result = updater_run_migrations($pdo, $migrations);
-                            $upload_steps[] = [
-                                'label' => 'Schema migrations',
-                                'status' => $migrate_result['success'] ? 'ok' : 'fail',
-                                'detail' => implode(', ', $migrate_result['applied'])
-                            ];
-
-                            if (!$migrate_result['success']) {
-                                $rb_error = '';
-                                updater_rollback($backup_file, $rb_error);
-                                $flash_msg = 'MIGRATION FAILED. SYSTEM ROLLED BACK.';
-                                $flash_type = 'error';
-                                $upload_steps[] = ['label' => 'Rollback', 'status' => 'ok', 'detail' => 'Restored from backup'];
-                                updater_cleanup();
-                            }
+                    $migrations = updater_find_migrations($pdo);
+                    if (!empty($migrations)) {
+                        $migrate_result = updater_run_migrations($pdo, $migrations);
+                        $upload_steps[] = [
+                            'label'  => 'Schema migrations',
+                            'status' => $migrate_result['success'] ? 'ok' : 'fail',
+                            'detail' => implode(', ', $migrate_result['applied'])
+                        ];
+                        if (!$migrate_result['success']) {
+                            $rb_error = '';
+                            updater_rollback($backup_file, $rb_error);
+                            $flash_msg  = 'MIGRATION FAILED. SYSTEM ROLLED BACK.';
+                            $flash_type = 'error';
+                            $upload_steps[] = ['label' => 'Rollback', 'status' => 'ok', 'detail' => 'Restored from backup'];
+                            updater_cleanup();
                         }
                     }
 
-                    // Finalize if no errors
                     if ($flash_type !== 'error') {
                         if ($target_version) {
                             $target_codename = $cached_result['core_update']['codename'] ?? '';
                             updater_set_version($pdo, $target_version, $target_version_full ?: "Alpha {$target_version}", $target_codename);
                             $upload_steps[] = ['label' => 'Version updated', 'status' => 'ok', 'detail' => "v{$installed_version} → v{$target_version}"];
                         }
-
                         $pdo->exec("DELETE FROM snap_settings WHERE setting_key = 'update_check_result'");
                         $cached_result = null;
-
                         updater_cleanup();
-                        $flash_msg = $target_version
-                            ? "UPDATE COMPLETE VIA UPLOAD. NOW RUNNING v{$target_version}."
-                            : "PACKAGE EXTRACTED SUCCESSFULLY.";
+                        $flash_msg  = $target_version ? "UPDATE COMPLETE VIA UPLOAD. NOW RUNNING v{$target_version}." : "PACKAGE EXTRACTED SUCCESSFULLY.";
                         $flash_type = 'success';
                     }
                 }
             }
         }
     }
-
-    $upload_result = $upload_steps ?? null;
-    if ($upload_result) {
-        $update_result = $upload_result;
-    }
+    $update_result = $upload_steps;
 }
 
-// --- ACTION: CRON REGISTRATION ---
+// ── ACTION: CRON REGISTRATION ─────────────────────────────────────────────────
 if (($action === 'cron_register' || $action === 'cron_remove') && $cron_supported) {
     $script_path = realpath(__DIR__ . '/cron-version-check.php');
     $cron_line   = "0 */6 * * * {$php_cli_path} {$script_path} >> /dev/null 2>&1";
@@ -382,10 +404,10 @@ if (($action === 'cron_register' || $action === 'cron_remove') && $cron_supporte
             file_put_contents($tmp, $new_cron);
             exec("crontab {$tmp} 2>&1", $out, $ret);
             unlink($tmp);
-            $flash_msg = ($ret === 0) ? 'VERSION CHECK JOB REGISTERED. RUNS EVERY 6 HOURS.' : 'FAILED TO REGISTER: ' . implode(' ', $out);
+            $flash_msg  = ($ret === 0) ? 'VERSION CHECK JOB REGISTERED. RUNS EVERY 6 HOURS.' : 'FAILED TO REGISTER: ' . implode(' ', $out);
             $flash_type = ($ret === 0) ? 'success' : 'error';
         } else {
-            $flash_msg = 'JOB ALREADY REGISTERED.';
+            $flash_msg  = 'JOB ALREADY REGISTERED.';
             $flash_type = 'success';
         }
     } elseif ($action === 'cron_remove') {
@@ -394,30 +416,36 @@ if (($action === 'cron_register' || $action === 'cron_remove') && $cron_supporte
         file_put_contents($tmp, trim($cleaned) . "\n");
         exec("crontab {$tmp} 2>&1", $out, $ret);
         unlink($tmp);
-        $flash_msg = ($ret === 0) ? 'VERSION CHECK JOB REMOVED.' : 'FAILED TO REMOVE: ' . implode(' ', $out);
+        $flash_msg  = ($ret === 0) ? 'VERSION CHECK JOB REMOVED.' : 'FAILED TO REMOVE: ' . implode(' ', $out);
         $flash_type = ($ret === 0) ? 'success' : 'error';
     }
 }
 
-// Check if version check job is currently registered
 $version_job_registered = false;
 if ($cron_supported) {
     exec('crontab -l 2>&1', $vc_cron, $vc_rc);
     $version_job_registered = ($vc_rc === 0 && strpos(implode("\n", $vc_cron), '# snapsmack-version-check') !== false);
 }
 
-// --- ACTION: ROLLBACK ---
+// ── ACTION: ROLLBACK ──────────────────────────────────────────────────────────
 if ($action === 'rollback' && !empty($_SESSION['update_backup_file'])) {
     $rb_error = '';
     $ok = updater_rollback($_SESSION['update_backup_file'], $rb_error);
     if ($ok) {
-        $flash_msg = 'ROLLBACK COMPLETE. PREVIOUS VERSION RESTORED.';
+        $flash_msg  = 'ROLLBACK COMPLETE. PREVIOUS VERSION RESTORED.';
         $flash_type = 'success';
         unset($_SESSION['update_backup_file']);
     } else {
-        $flash_msg = "ROLLBACK FAILED: {$rb_error}";
+        $flash_msg  = "ROLLBACK FAILED: {$rb_error}";
         $flash_type = 'error';
     }
+}
+
+// Retrieve completed update log (if we just finalized)
+$complete_log = null;
+if (!empty($_SESSION['update_complete_log'])) {
+    $complete_log = $_SESSION['update_complete_log'];
+    unset($_SESSION['update_complete_log']);
 }
 
 // --- PAGE RENDER ---
@@ -436,89 +464,62 @@ include 'core/sidebar.php';
         font-size: 0.9rem;
         font-weight: bold;
     }
-    .version-current { background: rgba(128,128,128,0.1); color: inherit; border: 1px solid rgba(128,128,128,0.3); }
+    .version-current   { background: rgba(128,128,128,0.1); color: inherit; border: 1px solid rgba(128,128,128,0.3); }
     .version-available { background: rgba(128,128,128,0.08); color: inherit; opacity: 0.8; border: 1px solid rgba(128,128,128,0.25); }
 
-    .changelog-list {
-        margin: 15px 0;
-        padding-left: 20px;
-        list-style: disc;
-    }
-    .changelog-list li {
-        margin-bottom: 6px;
-        color: inherit;
-        opacity: 0.85;
-    }
+    .changelog-list { margin: 15px 0; padding-left: 20px; list-style: disc; }
+    .changelog-list li { margin-bottom: 6px; color: inherit; opacity: 0.85; }
 
     .file-changes { margin: 15px 0; }
     .file-changes h4 { margin-bottom: 8px; font-size: 0.8rem; letter-spacing: 1px; }
-    .file-changes code {
-        display: block;
-        font-size: 0.75rem;
-        padding: 2px 0;
-        opacity: 0.75;
-    }
-    .file-added { color: inherit; opacity: 0.9; }
+    .file-changes code { display: block; font-size: 0.75rem; padding: 2px 0; opacity: 0.75; }
+    .file-added    { color: inherit; opacity: 0.9; }
     .file-modified { color: inherit; opacity: 0.7; }
-    .file-removed { color: inherit; opacity: 0.5; text-decoration: line-through; }
+    .file-removed  { color: inherit; opacity: 0.5; text-decoration: line-through; }
 
     .step-log { margin: 20px 0; }
     .step-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 8px 12px;
-        margin-bottom: 4px;
-        border-radius: 3px;
-        font-family: monospace;
-        font-size: 0.8rem;
+        display: flex; align-items: center; gap: 12px;
+        padding: 8px 12px; margin-bottom: 4px;
+        border-radius: 3px; font-family: monospace; font-size: 0.8rem;
     }
-    .step-ok { background: rgba(40, 120, 40, 0.15); }
+    .step-ok   { background: rgba(40, 120, 40, 0.15); }
     .step-fail { background: rgba(180, 40, 40, 0.15); }
-    .step-icon { font-size: 1.1rem; }
+    .step-icon  { font-size: 1.1rem; }
     .step-detail { opacity: 0.75; margin-left: auto; }
 
-    .skin-notify-card {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 15px;
-        margin-bottom: 8px;
-        border-radius: 3px;
-        border-left: 3px solid #4a90d9;
-        background: rgba(74, 144, 217, 0.08);
-        font-size: 0.85rem;
+    .stage-box {
+        border: 2px solid #39FF14;
+        border-radius: 4px;
+        padding: 20px;
+        margin-bottom: 24px;
+        background: rgba(57, 255, 20, 0.03);
     }
-    .skin-notify-new { border-left-color: rgba(128,128,128,0.5); background: rgba(128,128,128,0.06); }
+    .stage-box h3 { margin-bottom: 16px; }
+    .stage-next-btn { margin-top: 16px; }
+    .stage-cancel { margin-top: 10px; }
+
+    .skin-notify-card {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 10px 15px; margin-bottom: 8px; border-radius: 3px;
+        border-left: 3px solid #4a90d9; background: rgba(74, 144, 217, 0.08); font-size: 0.85rem;
+    }
+    .skin-notify-new    { border-left-color: rgba(128,128,128,0.5); background: rgba(128,128,128,0.06); }
     .skin-notify-update { border-left-color: #860; background: rgba(200,160,0,0.06); }
     .skin-notify-version { font-family: monospace; opacity: 0.75; }
 
     .update-warning {
-        padding: 12px 18px;
-        margin: 15px 0;
-        border-radius: 3px;
-        border-left: 4px solid #d94a4a;
-        background: rgba(217, 74, 74, 0.08);
-        font-size: 0.85rem;
+        padding: 12px 18px; margin: 15px 0; border-radius: 3px;
+        border-left: 4px solid #d94a4a; background: rgba(217, 74, 74, 0.08); font-size: 0.85rem;
     }
-
     .confirm-box {
-        padding: 20px;
-        margin: 20px 0;
-        border: 2px solid #da4;
-        border-radius: 4px;
-        background: rgba(221, 170, 68, 0.05);
+        padding: 20px; margin: 20px 0; border: 2px solid #da4;
+        border-radius: 4px; background: rgba(221, 170, 68, 0.05);
     }
     .confirm-box p { margin-bottom: 15px; }
-
     .cron-info {
-        margin-top: 20px;
-        padding: 12px 18px;
-        border-radius: 3px;
-        background: rgba(255,255,255,0.03);
-        font-family: monospace;
-        font-size: 0.75rem;
-        line-height: 1.6;
+        margin-top: 20px; padding: 12px 18px; border-radius: 3px;
+        background: rgba(255,255,255,0.03); font-family: monospace; font-size: 0.75rem; line-height: 1.6;
     }
 </style>
 
@@ -526,9 +527,9 @@ include 'core/sidebar.php';
     <h2>SYSTEM UPDATES</h2>
 
     <?php if ($flash_msg): ?>
-        <div class="alert alert-<?php echo $flash_type === 'error' ? 'danger' : ($flash_type === 'warning' ? 'warning' : 'success'); ?> mb-25">
-            &gt; <?php echo htmlspecialchars($flash_msg); ?>
-        </div>
+    <div class="alert alert-<?php echo $flash_type === 'error' ? 'danger' : ($flash_type === 'warning' ? 'warning' : 'success'); ?> mb-25">
+        &gt; <?php echo htmlspecialchars($flash_msg); ?>
+    </div>
     <?php endif; ?>
 
     <!-- CURRENT VERSION INFO -->
@@ -549,46 +550,108 @@ include 'core/sidebar.php';
             <span class="label">SIGNING:</span>
             <span class="value"><?php echo SNAPSMACK_SIGNING_ENFORCED ? 'ENFORCED' : 'ADVISORY (PLACEHOLDER KEY)'; ?></span>
         </div>
-
         <form method="POST" class="mt-25">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
             <button type="submit" name="action" value="check" class="btn-smack">CHECK FOR UPDATES NOW</button>
         </form>
     </div>
 
-    <!-- UPDATE STEPS LOG (if we just ran an update) -->
+    <!-- COMPLETED UPDATE LOG -->
+    <?php if ($complete_log): ?>
+    <div class="box update-section">
+        <h3>UPDATE LOG</h3>
+        <div class="step-log">
+            <?php foreach ($complete_log as $step): ?>
+            <div class="step-row step-<?php echo $step['status']; ?>">
+                <span class="step-icon"><?php echo $step['status'] === 'ok' ? '✓' : '✗'; ?></span>
+                <span><?php echo htmlspecialchars($step['label']); ?></span>
+                <?php if ($step['detail']): ?>
+                    <span class="step-detail"><?php echo htmlspecialchars($step['detail']); ?></span>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- UPLOAD RESULT LOG -->
     <?php if ($update_result): ?>
     <div class="box update-section">
         <h3>UPDATE LOG</h3>
         <div class="step-log">
             <?php foreach ($update_result as $step): ?>
-                <div class="step-row step-<?php echo $step['status']; ?>">
-                    <span class="step-icon"><?php echo $step['status'] === 'ok' ? '✓' : '✗'; ?></span>
-                    <span><?php echo htmlspecialchars($step['label']); ?></span>
-                    <?php if ($step['detail']): ?>
-                        <span class="step-detail"><?php echo htmlspecialchars($step['detail']); ?></span>
-                    <?php endif; ?>
-                </div>
+            <div class="step-row step-<?php echo $step['status']; ?>">
+                <span class="step-icon"><?php echo $step['status'] === 'ok' ? '✓' : '✗'; ?></span>
+                <span><?php echo htmlspecialchars($step['label']); ?></span>
+                <?php if ($step['detail']): ?>
+                    <span class="step-detail"><?php echo htmlspecialchars($step['detail']); ?></span>
+                <?php endif; ?>
+            </div>
             <?php endforeach; ?>
         </div>
-
         <?php if ($flash_type === 'error' && !empty($_SESSION['update_backup_file'])): ?>
-            <div class="update-warning">
-                THE UPDATE ENCOUNTERED AN ERROR. You can attempt a rollback to restore the previous version.
-            </div>
-            <form method="POST">
-                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                <button type="submit" name="action" value="rollback" class="btn-smack"
-                        onclick="return confirm('Restore from backup? This will overwrite all files changed by the failed update.');">
-                    ROLLBACK TO PREVIOUS VERSION
-                </button>
-            </form>
+        <div class="update-warning">THE UPDATE ENCOUNTERED AN ERROR. You can attempt a rollback.</div>
+        <form method="POST">
+            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+            <button type="submit" name="action" value="rollback" class="btn-smack"
+                    onclick="return confirm('Restore from backup? This will overwrite all files changed by the failed update.');">
+                ROLLBACK TO PREVIOUS VERSION
+            </button>
+        </form>
         <?php endif; ?>
     </div>
     <?php endif; ?>
 
-    <!-- CORE UPDATE DETAILS (from cache) -->
-    <?php if (!empty($cached_result['core_update'])): ?>
+    <!-- STAGED UPDATE IN PROGRESS -->
+    <?php if ($stage_state): ?>
+    <?php $stage = $stage_state['stage'] ?? ''; ?>
+    <div class="stage-box">
+        <h3>UPDATE IN PROGRESS — <?php echo strtoupper($stage); ?></h3>
+
+        <!-- Accumulated log -->
+        <div class="step-log">
+            <?php foreach ($stage_state['log'] as $step): ?>
+            <div class="step-row step-<?php echo $step['status']; ?>">
+                <span class="step-icon"><?php echo $step['status'] === 'ok' ? '✓' : '✗'; ?></span>
+                <span><?php echo htmlspecialchars($step['label']); ?></span>
+                <?php if ($step['detail']): ?>
+                    <span class="step-detail"><?php echo htmlspecialchars($step['detail']); ?></span>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <?php if ($flash_type !== 'error'): ?>
+        <!-- Next stage button -->
+        <form method="POST" class="stage-next-btn">
+            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+            <?php if ($stage === 'downloaded'): ?>
+                <button type="submit" name="action" value="stage_verify" class="btn-smack">VERIFY PACKAGE →</button>
+            <?php elseif ($stage === 'verified'): ?>
+                <button type="submit" name="action" value="stage_backup" class="btn-smack">CREATE BACKUP →</button>
+            <?php elseif ($stage === 'backed_up'): ?>
+                <button type="submit" name="action" value="stage_extract" class="btn-smack">EXTRACT FILES →</button>
+            <?php elseif ($stage === 'extracted'): ?>
+                <button type="submit" name="action" value="stage_migrate" class="btn-smack">RUN MIGRATIONS &amp; FINALIZE →</button>
+            <?php endif; ?>
+        </form>
+        <?php else: ?>
+        <div class="update-warning">The update encountered an error at this stage. Cancel to start over.</div>
+        <?php endif; ?>
+
+        <!-- Cancel -->
+        <form method="POST" class="stage-cancel">
+            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+            <button type="submit" name="action" value="cancel_update" class="btn-smack"
+                    onclick="return confirm('Cancel this update and discard the downloaded package?');"
+                    style="opacity:0.5;">
+                CANCEL UPDATE
+            </button>
+        </form>
+    </div>
+
+    <?php elseif (!empty($cached_result['core_update'])): ?>
+    <!-- CORE UPDATE DETAILS (only shown when not in a staged update) -->
     <?php $upd = $cached_result['core_update']; ?>
     <div class="box update-section">
         <h3>CORE UPDATE AVAILABLE</h3>
@@ -611,7 +674,6 @@ include 'core/sidebar.php';
         </div>
         <?php endif; ?>
 
-        <!-- Changelog -->
         <?php if (!empty($upd['changelog'])): ?>
         <label class="mt-30">CHANGELOG</label>
         <ul class="changelog-list">
@@ -621,7 +683,6 @@ include 'core/sidebar.php';
         </ul>
         <?php endif; ?>
 
-        <!-- File Changes -->
         <?php if (!empty($upd['file_changes'])): ?>
         <div class="file-changes mt-20">
             <label>FILE CHANGES</label>
@@ -646,36 +707,37 @@ include 'core/sidebar.php';
         </div>
         <?php endif; ?>
 
-        <!-- Schema Warning -->
         <?php if (!empty($upd['schema_changes'])): ?>
         <div class="update-warning mt-20">
-            THIS UPDATE INCLUDES DATABASE SCHEMA CHANGES. A full backup will be created before applying. Migrations will be applied automatically.
+            THIS UPDATE INCLUDES DATABASE SCHEMA CHANGES. A full backup will be created before applying. Migrations will run automatically.
         </div>
         <?php endif; ?>
 
-        <!-- PHP Version Check -->
         <?php if (!empty($upd['requires_php']) && version_compare(PHP_VERSION, $upd['requires_php'], '<')): ?>
         <div class="update-warning mt-20">
             THIS UPDATE REQUIRES PHP <?php echo htmlspecialchars($upd['requires_php']); ?>+.
             You are running PHP <?php echo PHP_VERSION; ?>. Update your PHP installation first.
         </div>
         <?php else: ?>
-        <!-- Confirm & Apply -->
         <div class="confirm-box">
             <p>Applying this update will:</p>
             <ul class="changelog-list">
+                <li>Download the update package from snapsmack.ca</li>
+                <li>Verify the checksum and Ed25519 signature</li>
                 <li>Create a full backup of the current installation</li>
-                <li>Download and verify the update package</li>
                 <li>Extract new files (protected paths are never overwritten)</li>
                 <?php if (!empty($upd['schema_changes'])): ?>
                     <li>Run database schema migrations</li>
                 <?php endif; ?>
                 <li>Update the version number</li>
             </ul>
+            <p class="dim text-sm" style="margin-bottom:15px;">
+                Each step runs as a separate request — no timeouts on slow connections.
+            </p>
             <form method="POST">
                 <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                <button type="submit" name="action" value="apply" class="btn-smack master-update-btn"
-                        onclick="return confirm('Apply update to v<?php echo htmlspecialchars($upd['version']); ?>? A backup will be created first.');">
+                <button type="submit" name="action" value="stage_download" class="btn-smack master-update-btn"
+                        onclick="return confirm('Begin update to v<?php echo htmlspecialchars($upd['version']); ?>?');">
                     APPLY UPDATE → v<?php echo htmlspecialchars($upd['version']); ?>
                 </button>
             </form>
@@ -708,7 +770,6 @@ include 'core/sidebar.php';
     <?php if (!empty($cached_result['new_skins']) || !empty($cached_result['updated_skins'])): ?>
     <div class="box update-section">
         <h3>SKIN REGISTRY</h3>
-
         <?php if (!empty($cached_result['new_skins'])): ?>
         <label>NEW SKINS AVAILABLE</label>
         <?php foreach ($cached_result['new_skins'] as $skin): ?>
@@ -723,22 +784,16 @@ include 'core/sidebar.php';
             </div>
         <?php endforeach; ?>
         <?php endif; ?>
-
         <?php if (!empty($cached_result['updated_skins'])): ?>
         <label class="<?php echo !empty($cached_result['new_skins']) ? 'mt-25' : ''; ?>">SKIN UPDATES AVAILABLE</label>
         <?php foreach ($cached_result['updated_skins'] as $skin): ?>
             <div class="skin-notify-card skin-notify-update">
-                <div>
-                    <strong><?php echo htmlspecialchars($skin['name']); ?></strong>
-                </div>
+                <div><strong><?php echo htmlspecialchars($skin['name']); ?></strong></div>
                 <span class="skin-notify-version">v<?php echo htmlspecialchars($skin['from']); ?> → v<?php echo htmlspecialchars($skin['to']); ?></span>
             </div>
         <?php endforeach; ?>
         <?php endif; ?>
-
-        <a href="smack-skin.php?tab=gallery" class="btn-smack mt-25 btn-block">
-            OPEN SKIN GALLERY
-        </a>
+        <a href="smack-skin.php?tab=gallery" class="btn-smack mt-25 btn-block">OPEN SKIN GALLERY</a>
     </div>
     <?php endif; ?>
 
@@ -752,18 +807,14 @@ include 'core/sidebar.php';
                 <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
                 <div class="action-grid-dual">
                     <button type="submit" name="action" value="cron_register" class="btn-smack" <?php echo $version_job_registered ? 'disabled' : ''; ?>>REGISTER VERSION CHECK</button>
-                    <button type="submit" name="action" value="cron_remove" class="btn-smack" <?php echo !$version_job_registered ? 'disabled' : ''; ?>>REMOVE VERSION CHECK</button>
+                    <button type="submit" name="action" value="cron_remove"   class="btn-smack" <?php echo !$version_job_registered ? 'disabled' : ''; ?>>REMOVE VERSION CHECK</button>
                 </div>
             </form>
-            <p class="dim text-sm mt-15">
-                Without cron, the dashboard falls back to a 24-hour on-load check.
-            </p>
+            <p class="dim text-sm mt-15">Without cron, the dashboard falls back to a 24-hour on-load check.</p>
         <?php else: ?>
             <label>CRON ENGINE</label>
             <div class="read-only-display">NOT SUPPORTED ON THIS HOST</div>
-            <p class="dim text-sm mt-10">
-                The dashboard will fall back to checking every 24 hours on page load.
-            </p>
+            <p class="dim text-sm mt-10">The dashboard will fall back to checking every 24 hours on page load.</p>
         <?php endif; ?>
     </div>
 </div>
