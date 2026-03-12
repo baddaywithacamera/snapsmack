@@ -691,10 +691,11 @@ function updater_run_migrations(PDO $pdo, array $migration_files): array {
         $migration_name = basename($file);
 
         try {
-            // Split into individual statements on semicolons
-            foreach (explode(';', $sql) as $raw) {
-                // Strip comments; skip blank statements
-                $stmt = trim(preg_replace('/^\s*--.*$/m', '', $raw));
+            // Strip -- comments BEFORE splitting on semicolons, so semicolons
+            // inside comments never get treated as statement terminators.
+            $sql_stripped = preg_replace('/^\s*--.*$/m', '', $sql);
+            foreach (explode(';', $sql_stripped) as $raw) {
+                $stmt = trim($raw);
                 if ($stmt === '') continue;
 
                 try {

@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS `snap_community_comments` (
 ALTER TABLE snap_community_comments
     MODIFY COLUMN user_id INT UNSIGNED NULL DEFAULT NULL;
 
--- Add guest name column (required for guest comments; NULL for account comments).
+-- Add guest name column (required for guest comments, NULL for account comments).
 -- No-op on fresh installs (1060 skipped by migration runner).
 ALTER TABLE snap_community_comments
     ADD COLUMN guest_name VARCHAR(100) NULL DEFAULT NULL AFTER user_id;
