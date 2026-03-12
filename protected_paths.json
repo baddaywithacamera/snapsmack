@@ -9,6 +9,7 @@
         "protected_paths.json",
         "img_uploads/",
         "media_assets/",
+        "assets/fonts/",
         "assets/img/",
         "backups/",
         "skins/",
