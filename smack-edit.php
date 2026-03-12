@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Image metadata editor
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Allows modification of image titles, descriptions, EXIF metadata overrides,
  * publication status, and category/album associations.

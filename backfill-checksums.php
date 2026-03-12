@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Recovery metadata backfill utility
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Populates img_thumb_square, img_thumb_aspect, and img_checksum columns
  * for existing images that predate the recovery schema enrichment.

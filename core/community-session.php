@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Community Session Manager
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Manages visitor (community user) authentication state for public-facing
  * pages. Parallel to core/auth.php but for snap_community_users, not admins.

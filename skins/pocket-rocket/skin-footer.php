@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Footer for the pocket-rocket skin
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Loads manifest-requested scripts and includes the core footer.
  */

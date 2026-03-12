@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin Package Builder
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Packages individual skins as standalone zip files for optional download
  * from snapsmack.ca/releases/skins/. Users extract into their skins/ directory

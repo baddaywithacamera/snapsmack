@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Photogram Help
- * Alpha v0.7.2
+ * Alpha v0.7.3
  */
 ?>
 
@@ -39,5 +39,5 @@
     <p style="margin: 0 0 8px;">Likes and reactions work without an account. To leave a comment, visitors create a free community account directly on your site — no third-party login required. Manage accounts in Admin > Community Users.</p>
     <p style="margin: 0 0 16px;">Configure community features globally in <strong>Admin > Community Settings</strong>: toggle likes, reactions, and comments on or off; choose the active reaction set; set rate limits; and configure email notifications for new comments.</p>
 
-    <p style="color: #8E8E8E; font-size: 13px;">Photogram — Alpha v0.7.2</p>
+    <p style="color: #8E8E8E; font-size: 13px;">Photogram — Alpha v0.7.3</p>
 </div>

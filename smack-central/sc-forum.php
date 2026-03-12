@@ -1,7 +1,7 @@
 <?php
 /**
  * SMACK CENTRAL - Forum Admin
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Moderation and management for the SnapSmack community forum.
  * Covers: registered installs, categories, threads, replies.

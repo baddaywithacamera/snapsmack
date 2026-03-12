@@ -1,7 +1,7 @@
 <?php
 /**
  * SMACK CENTRAL - Asset Repository
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Hosts the font families and JS engine files that SnapSmack installs pull
  * from on demand via core/asset-sync.php. Manages file uploads, generates

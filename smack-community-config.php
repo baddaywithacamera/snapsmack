@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Community Settings
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Admin panel for configuring the community system:
  *   - Global feature toggles (community on/off, comments, likes, reactions)

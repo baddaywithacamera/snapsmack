@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Photogram Archive Layout
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * 3-column square-crop grid. Used for paginated archive pages and tag pages.
  * Also embedded inline in landing.php for the profile grid.

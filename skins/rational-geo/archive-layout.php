@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Rational Geo Archive Layout
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Toggle between natural-ratio thumbnail grid and justified/masonry layout.
  * Visitor preference persists via localStorage.

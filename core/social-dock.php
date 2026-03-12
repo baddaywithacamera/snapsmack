@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK — Social Profile Dock
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Renders a floating dock of social profile links on public pages.
  * Included by core/footer-scripts.php. Settings from snap_settings.

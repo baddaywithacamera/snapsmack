@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - First-Run Installer
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Single-file setup wizard for fresh SnapSmack deployments. Checks the server
  * environment, creates the database schema, sets up the first admin user, and

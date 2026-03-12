@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin header for the pocket-rocket skin
- * Alpha v0.7.2
+ * Alpha v0.7.3
  *
  * Fixed 48px header bar with hamburger toggle and slide-down nav drawer.
  * No hotkeys, no floating gallery link — mobile-first, tap-only navigation.
