@@ -269,6 +269,8 @@ function updater_is_protected(string $relative_path, array $protected): bool {
 function updater_create_backup(string &$error = ''): string|false {
     global $pdo;
 
+    @set_time_limit(120);
+
     $backup_dir = UPDATER_BACKUP_DIR;
     if (!is_dir($backup_dir)) {
         mkdir($backup_dir, 0755, true);
@@ -279,33 +281,50 @@ function updater_create_backup(string &$error = ''): string|false {
     $safe_version = preg_replace('/[^a-zA-Z0-9._-]/', '', $version);
     $backup_file  = "{$backup_dir}/pre-update_{$safe_version}_{$timestamp}.sql";
 
+    $fh = fopen($backup_file, 'wb');
+    if (!$fh) {
+        $error = 'Could not write backup file to ' . $backup_dir;
+        return false;
+    }
+
     try {
-        // Get all table names
         $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
         if (empty($tables)) {
+            fclose($fh);
+            @unlink($backup_file);
             $error = 'No tables found in database.';
             return false;
         }
 
-        $sql  = "-- SnapSmack pre-update DB backup\n";
-        $sql .= "-- Version: {$version}  Date: " . date('Y-m-d H:i:s') . "\n";
-        $sql .= "-- Tables: " . implode(', ', $tables) . "\n\n";
-        $sql .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
+        // Header — streamed straight to disk, no giant string in memory
+        fwrite($fh, "-- SnapSmack pre-update DB backup\n");
+        fwrite($fh, "-- Version: {$version}  Date: " . date('Y-m-d H:i:s') . "\n");
+        fwrite($fh, "-- Tables: " . implode(', ', $tables) . "\n\n");
+        fwrite($fh, "SET FOREIGN_KEY_CHECKS=0;\n\n");
 
         foreach ($tables as $table) {
             $quoted = "`{$table}`";
 
             // CREATE TABLE
             $create = $pdo->query("SHOW CREATE TABLE {$quoted}")->fetch(PDO::FETCH_NUM);
-            $sql   .= "DROP TABLE IF EXISTS {$quoted};\n";
-            $sql   .= $create[1] . ";\n\n";
+            fwrite($fh, "DROP TABLE IF EXISTS {$quoted};\n");
+            fwrite($fh, $create[1] . ";\n\n");
 
-            // Row data
-            $rows = $pdo->query("SELECT * FROM {$quoted}")->fetchAll(PDO::FETCH_ASSOC);
-            if ($rows) {
-                $cols    = '`' . implode('`, `', array_keys($rows[0])) . '`';
-                $sql    .= "INSERT INTO {$quoted} ({$cols}) VALUES\n";
-                $values  = [];
+            // Stream rows in batches of 200 to keep memory flat
+            $offset = 0;
+            $batch  = 200;
+            $cols   = null;
+
+            while (true) {
+                $stmt = $pdo->query("SELECT * FROM {$quoted} LIMIT {$batch} OFFSET {$offset}");
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                if (!$rows) break;
+
+                if ($cols === null) {
+                    $cols = '`' . implode('`, `', array_keys($rows[0])) . '`';
+                }
+
+                $values = [];
                 foreach ($rows as $row) {
                     $escaped = array_map(function ($v) use ($pdo) {
                         if ($v === null) return 'NULL';
@@ -313,20 +332,21 @@ function updater_create_backup(string &$error = ''): string|false {
                     }, array_values($row));
                     $values[] = '(' . implode(', ', $escaped) . ')';
                 }
-                $sql .= implode(",\n", $values) . ";\n\n";
+                fwrite($fh, "INSERT INTO {$quoted} ({$cols}) VALUES\n");
+                fwrite($fh, implode(",\n", $values) . ";\n\n");
+
+                $offset += $batch;
+                if (count($rows) < $batch) break; // last batch
             }
         }
 
-        $sql .= "SET FOREIGN_KEY_CHECKS=1;\n";
-
-        if (file_put_contents($backup_file, $sql) === false) {
-            $error = 'Could not write backup file to ' . $backup_dir;
-            return false;
-        }
-
+        fwrite($fh, "SET FOREIGN_KEY_CHECKS=1;\n");
+        fclose($fh);
         return $backup_file;
 
     } catch (\Exception $e) {
+        fclose($fh);
+        @unlink($backup_file);
         $error = 'Backup failed: ' . $e->getMessage();
         return false;
     }
