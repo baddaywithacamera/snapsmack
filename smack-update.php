@@ -112,7 +112,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'stage_extract_chunk') {
     $zip_path = $chunk_state['zip_path'];
     $offset   = (int)($chunk_state['offset'] ?? 0);
 
+    // Sanity-check the zip still exists (temp files can vanish on shared hosts)
+    if (!file_exists($zip_path)) {
+        $_SESSION['stage_flash_msg']  = 'EXTRACTION FAILED: Update package not found on disk. Please start over.';
+        $_SESSION['stage_flash_type'] = 'error';
+        unset($_SESSION['update_state'], $_SESSION['update_chunk_state']);
+        header('Location: smack-update.php');
+        exit;
+    }
+
+    // Persist session to disk BEFORE starting extraction.
+    // If PHP is killed mid-extraction (OOM / server timeout), the session
+    // survives intact so the next meta-refresh can retry from the same offset.
+    session_write_close();
+    @set_time_limit(60); // ask for more time; shared host may ignore this
+
     $chunk = updater_extract_chunk($zip_path, $offset);
+
+    // Re-open session to record results
+    session_start();
 
     // Accumulate running totals
     $chunk_state['files_updated'] += $chunk['files_updated'];

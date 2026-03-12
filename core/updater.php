@@ -437,7 +437,7 @@ function updater_extract(string $zip_path): array {
  *   done:          bool,
  * }
  */
-function updater_extract_chunk(string $zip_path, int $offset, int $time_limit_sec = 12): array {
+function updater_extract_chunk(string $zip_path, int $offset, int $time_limit_sec = 8): array {
     $start     = microtime(true);
     $root      = dirname(__DIR__);
     $protected = updater_load_protected_paths();
