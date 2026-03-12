@@ -756,7 +756,8 @@ button:active,
 .action-edit,
 .action-swap,
 .action-delete,
-.action-authorize {
+.action-authorize,
+.action-hide {
     width: auto;
     height: 32px;
     padding: 0 12px;
@@ -771,6 +772,16 @@ button:active,
     text-decoration: none;
     text-transform: uppercase;
     transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+/* action-hide: amber — mute/suppress without destroying */
+.action-hide {
+    color: #FFB347;
+    border-color: #FFB347;
+}
+.action-hide:hover {
+    background-color: #FFB347;
+    color: #111;
 }
 
 /* --- ITEM LAYOUTS (ARCHIVE LISTS, MANAGE PAGES) --- */
