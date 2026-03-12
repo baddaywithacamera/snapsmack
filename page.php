@@ -61,6 +61,15 @@ try {
 $page_title = htmlspecialchars($page_data['title']);
 $skin_path  = 'skins/' . $active_skin;
 
+// Let the active skin override the page layout entirely.
+// Photogram (and future skins) can ship skin-page.php to render static
+// pages in their own app shell rather than the generic desktop layout.
+$skin_page_tpl = __DIR__ . '/' . $skin_path . '/skin-page.php';
+if (file_exists($skin_page_tpl)) {
+    include $skin_page_tpl;
+    exit;
+}
+
 if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
     include __DIR__ . '/' . $skin_path . '/skin-meta.php';
 }

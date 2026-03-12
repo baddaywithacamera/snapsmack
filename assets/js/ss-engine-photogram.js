@@ -232,6 +232,9 @@
         // Double-tap → like + heart burst
         if (imageWrap) {
             imageWrap.addEventListener('touchend', function (e) {
+                // Don't intercept taps on links or buttons (e.g. download overlay)
+                if (e.target.closest('a, button')) return;
+
                 var now = Date.now();
                 var timeSince = now - lastTap;
 
@@ -262,6 +265,8 @@
             imageWrap.addEventListener('click', function (e) {
                 // Skip on touch devices — handled via touchend
                 if (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return;
+                // Skip if clicking a link or button (e.g. download overlay)
+                if (e.target.closest('a, button')) return;
                 openLightbox();
             });
             imageWrap.addEventListener('dblclick', function (e) {
