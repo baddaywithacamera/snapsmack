@@ -34,7 +34,7 @@ ALTER TABLE snap_community_comments
 ALTER TABLE snap_community_comments
     ADD COLUMN guest_name VARCHAR(100) NULL DEFAULT NULL AFTER user_id;
 
--- Add guest email column (optional; never displayed publicly).
+-- Add guest email column (optional, never displayed publicly).
 -- No-op on fresh installs (1060 skipped by migration runner).
 ALTER TABLE snap_community_comments
     ADD COLUMN guest_email VARCHAR(200) NULL DEFAULT NULL AFTER guest_name;
