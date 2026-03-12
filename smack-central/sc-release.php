@@ -316,28 +316,27 @@ if ($action === 'build' && $preflight_ok) {
         $zip_name = 'snapsmack-' . preg_replace('/[^a-zA-Z0-9._\-]/', '', $version) . '.zip';
         $zip_dest = rtrim(RELEASES_DIR, '/') . '/' . $zip_name;
 
-        // Step 1: Diff — compute changed files BEFORE building the zip so we
-        // can build a differential package containing only what changed.
-        $file_changes  = ['added' => [], 'modified' => [], 'removed' => []];
-        $include_files = []; // empty = full release fallback
+        // Step 1: Diff — informational only. Always builds a full zip so installs
+        // that skipped intermediate releases get every file. Diff is kept for
+        // the build log, schema_changes auto-detection, and the DB file_changes record.
+        $file_changes = ['added' => [], 'modified' => [], 'removed' => []];
         try {
             $prev = sc_db()->query("SELECT git_tag FROM sc_releases ORDER BY id DESC LIMIT 1")->fetch();
             if ($prev && $prev['git_tag'] !== $tag) {
-                $build_log[]   = "→ Diffing {$prev['git_tag']}…{$tag} via GitHub API…";
-                $file_changes  = sc_file_changes($prev['git_tag'], $tag);
-                $include_files = array_merge($file_changes['added'], $file_changes['modified']);
-                $total         = count($file_changes['added']) + count($file_changes['modified']) + count($file_changes['removed']);
-                $build_log[]   = "→ {$total} file(s) changed vs {$prev['git_tag']} — building differential zip";
-            } else {
-                $build_log[] = "→ No previous release found — building full zip";
+                $build_log[]  = "→ Diffing {$prev['git_tag']}…{$tag} via GitHub API (informational)…";
+                $file_changes = sc_file_changes($prev['git_tag'], $tag);
+                $total        = count($file_changes['added']) + count($file_changes['modified']) + count($file_changes['removed']);
+                $build_log[]  = "→ {$total} file(s) changed vs {$prev['git_tag']}";
             }
         } catch (Exception $e) {
-            $build_log[] = "→ Diff failed (" . $e->getMessage() . ") — falling back to full zip";
+            $build_log[] = "→ Diff skipped (" . $e->getMessage() . ")";
         }
 
-        // Step 2: Download from GitHub + repackage as differential (or full) zip
+        // Step 2: Download from GitHub + repackage as FULL zip (no file filter).
+        // Full zips ensure every install — regardless of which versions were
+        // skipped — receives a complete and consistent set of files.
         $build_log[] = "→ Downloading tag {$tag} from GitHub…";
-        $zip_result  = sc_build_release_zip($tag, $zip_dest, $include_files);
+        $zip_result  = sc_build_release_zip($tag, $zip_dest, []);
         $build_log[] = '→ ' . $zip_result['msg'];
 
         if (!$zip_result['ok']) {
