@@ -1024,15 +1024,6 @@ button {
     display: none;
 }
 
-/* ── Static page padding (About, etc.) ───────────────────────────────────── */
-/* page.php renders .static-content outside of pg-app — give it breathing room
-   and constrain it to the phone column width. */
-.static-content {
-    max-width: 480px;
-    margin: 0 auto;
-    padding: 16px 20px calc(var(--pg-nav-height, 56px) + 24px);
-}
-
 /* ── Lightbox ─────────────────────────────────────────────────────────────── */
 .pg-lightbox {
     position: fixed;
@@ -1128,4 +1119,113 @@ button {
 
 .pg-lightbox.pg-lightbox-open .pg-lightbox-close {
     opacity: 1;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATIC PAGES — skin-page.php (About, etc.)
+   Full-width hero image, page title, body content — Instagram/Pixelfed style.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Hero image: 100% width, no border, no frame treatment */
+.pg-page-hero {
+    width: 100%;
+    background: #000;
+    overflow: hidden;
+    line-height: 0; /* eliminate gap below inline img */
+}
+
+.pg-page-hero-img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+}
+
+/* Body area: page title + content with consistent Photogram gutters */
+.pg-page-body {
+    padding: 20px 16px calc(var(--pg-nav-height, 50px) + 24px);
+}
+
+.pg-page-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--pg-text);
+    font-family: var(--pg-font);
+    margin: 0 0 14px;
+    line-height: 1.3;
+}
+
+/* Page content: system sans-serif, consistent with IG/Pixelfed */
+.pg-page-content {
+    font-family: var(--pg-font);
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--pg-text);
+}
+
+.pg-page-content p {
+    margin: 0 0 14px;
+}
+
+.pg-page-content p:last-child {
+    margin-bottom: 0;
+}
+
+.pg-page-content a {
+    color: var(--pg-accent);
+    text-decoration: none;
+}
+
+.pg-page-content a:hover {
+    text-decoration: underline;
+}
+
+.pg-page-content h2,
+.pg-page-content h3 {
+    font-family: var(--pg-font);
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--pg-text);
+    margin: 22px 0 8px;
+    line-height: 1.3;
+}
+
+.pg-page-content h2:first-child,
+.pg-page-content h3:first-child {
+    margin-top: 0;
+}
+
+.pg-page-content ul,
+.pg-page-content ol {
+    padding-left: 20px;
+    margin: 0 0 14px;
+}
+
+.pg-page-content li {
+    margin-bottom: 6px;
+}
+
+.pg-page-content img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 8px 0;
+    display: block;
+}
+
+.pg-page-content strong {
+    font-weight: 700;
+}
+
+.pg-page-content em {
+    font-style: italic;
+}
+
+.pg-page-content blockquote {
+    border-left: 3px solid var(--pg-border);
+    margin: 14px 0;
+    padding: 4px 0 4px 14px;
+    color: var(--pg-text-muted);
+    font-style: italic;
 }
