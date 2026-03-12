@@ -137,7 +137,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['new_image'])) {
             // Update the archive record with new file path, thumbs, checksum, and metadata.
             $sql = "UPDATE snap_images SET img_file = ?, img_thumb_square = ?, img_thumb_aspect = ?, img_checksum = ?, img_film = ?, img_exif = ?, img_width = ?, img_height = ?, img_orientation = ? WHERE id = ?";
             $pdo->prepare($sql)->execute([$new_path, $save_thumb, $save_aspect, $file_checksum, $film_manual, json_encode($final_exif), $orig_w, $orig_h, $orientation, $id]);
-            header("Location: smack-manage.php?msg=swapped");
+            // The form is submitted via XHR — return plain "success" and let JS redirect.
+            echo "success";
             exit;
         }
     }
