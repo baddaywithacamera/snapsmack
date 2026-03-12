@@ -299,6 +299,7 @@ if ($action === 'build' && $preflight_ok) {
     $requires_php   = trim($_POST['requires_php']   ?? '8.0');
     $requires_mysql = trim($_POST['requires_mysql'] ?? '5.7');
     $schema_changes = !empty($_POST['schema_changes']);
+    $codename       = trim($_POST['codename']       ?? '');
     $changelog_raw  = trim($_POST['changelog'] ?? '');
     $changelog      = array_values(array_filter(array_map('trim', explode("\n", $changelog_raw))));
 
@@ -375,6 +376,7 @@ if ($action === 'build' && $preflight_ok) {
                 $manifest = [
                     'version'         => $version,
                     'version_full'    => $version_full,
+                    'codename'        => $codename,
                     'released'        => $released,
                     'download_url'    => $download_url,
                     'checksum_sha256' => $checksum,
@@ -565,6 +567,10 @@ require __DIR__ . '/sc-layout-top.php';
               <label>Version Full</label>
               <input type="text" name="version_full" id="version-full-input"
                      placeholder="Alpha 0.8" value="Alpha <?php echo htmlspecialchars($default_version); ?>">
+            </div>
+            <div class="sc-field">
+              <label>Codename <span class="sc-dim" style="font-weight:400;text-transform:none;">(optional)</span></label>
+              <input type="text" name="codename" placeholder="Sitzfleisch">
             </div>
           </div>
 
