@@ -1,5 +1,6 @@
-# Live database credentials — never commit this
+# Live database credentials — never commit these
 core/db.php
+smack-central/sc-config.php
 
 # Backups contain full source + database dumps — never commit
 backups/

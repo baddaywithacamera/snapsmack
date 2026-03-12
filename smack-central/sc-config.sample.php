@@ -1,9 +1,11 @@
 <?php
 /**
- * SMACK CENTRAL - Configuration
+ * SMACK CENTRAL - Configuration Sample
  *
- * Copy this file to sc-config.php and fill in the values.
- * sc-config.php is gitignored and must never be committed.
+ * This file is committed to the repo as the canonical template.
+ * sc-config.php (gitignored) is the live working copy — kept in sync
+ * with this file by the development process. FTP sc-config.php to the
+ * server and fill in the real values for each placeholder.
  */
 
 // ── Database ──────────────────────────────────────────────────────────────────
