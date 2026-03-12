@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Footer scripts for the pocket-rocket skin
- * Alpha v0.7.1
+ * Alpha v0.7.2
  *
  * Drawer toggle logic. No hotkey engines, no lightbox, no wall physics.
  * Just two drawers that open and close.

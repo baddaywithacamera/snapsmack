@@ -1,16 +1,16 @@
 <?php
 /**
  * SNAPSMACK - System Constants
- * Alpha v0.7.1
+ * Alpha v0.7.2
  *
  * Defines version strings and system-wide constants. Include this early in
  * the bootstrap chain (e.g., from db.php) to ensure availability throughout
  * the application.
  */
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7');
-define('SNAPSMACK_VERSION_SHORT', '0.7');
-define('SNAPSMACK_VERSION_CODENAME', 'Lapdog');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.2');
+define('SNAPSMACK_VERSION_SHORT', '0.7.2');
+define('SNAPSMACK_VERSION_CODENAME', 'Sitzfleisch');
 
 // --- MOBILE SKIN OVERRIDE ---
 // The slug of the skin forced onto mobile devices. This skin is not selectable

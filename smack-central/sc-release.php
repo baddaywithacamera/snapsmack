@@ -1,7 +1,7 @@
 <?php
 /**
  * SMACK CENTRAL - Release Packager
- * Alpha v0.7.1
+ * Alpha v0.7.2
  *
  * Fetches tags from GitHub, downloads the repo zip for the selected tag,
  * repackages it as a clean distributable zip (no local git or shell access
@@ -67,7 +67,7 @@ function sc_http_raw(string $url, array $extra_headers = []): string|false {
             CURLOPT_MAXREDIRS      => 5,
             CURLOPT_TIMEOUT        => 120,
             CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_USERAGENT      => 'SnapSmack-SC/0.7.1',
+            CURLOPT_USERAGENT      => 'SnapSmack-SC/0.7.2',
         ];
         if ($extra_headers) $opts[CURLOPT_HTTPHEADER] = $extra_headers;
         curl_setopt_array($ch, $opts);
@@ -76,14 +76,14 @@ function sc_http_raw(string $url, array $extra_headers = []): string|false {
         curl_close($ch);
         return ($body !== false && $code === 200) ? $body : false;
     }
-    $ctx_opts = ['http' => ['timeout' => 120, 'user_agent' => 'SnapSmack-SC/0.7.1']];
+    $ctx_opts = ['http' => ['timeout' => 120, 'user_agent' => 'SnapSmack-SC/0.7.2']];
     if ($extra_headers) $ctx_opts['http']['header'] = implode("\r\n", $extra_headers);
     return @file_get_contents($url, false, stream_context_create($ctx_opts));
 }
 
 // ── Helper: GitHub API GET → decoded array ────────────────────────────────────
 function sc_github_get(string $endpoint): array|false {
-    $headers = ['Accept: application/vnd.github.v3+json', 'User-Agent: SnapSmack-SC/0.7.1'];
+    $headers = ['Accept: application/vnd.github.v3+json', 'User-Agent: SnapSmack-SC/0.7.2'];
     if (SNAPSMACK_GITHUB_TOKEN) {
         $headers[] = 'Authorization: token ' . SNAPSMACK_GITHUB_TOKEN;
     }

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Main layout template for the pocket-rocket skin
- * Alpha v0.7.1
+ * Alpha v0.7.2
  *
  * Single transmission page. Photo, title bar, prev/next nav, two drawer
  * toggles (INFO / SIGNALS), info drawer slides down, signals drawer slides up.

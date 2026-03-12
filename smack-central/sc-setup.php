@@ -1,7 +1,7 @@
 <?php
 /**
  * SMACK CENTRAL - Bootstrap Installer
- * Alpha v0.7.1
+ * Alpha v0.7.2
  *
  * Upload THIS FILE ALONE to your target directory on snapsmack.ca.
  * Navigate to it in a browser. It does everything else:
@@ -26,7 +26,7 @@ const REPO_SLUG = 'baddaywithacamera/snapsmack';
  * Falls back to a hardcoded version if the API is unreachable.
  */
 function sc_resolve_latest_tag(): array {
-    $fallback_tag = 'v0.7.1';
+    $fallback_tag = 'v0.7.2';
 
     $ctx  = stream_context_create(['http' => [
         'timeout'    => 10,
@@ -88,7 +88,7 @@ function sc_http_get(string $url): string|false {
             CURLOPT_MAXREDIRS      => 5,
             CURLOPT_TIMEOUT        => 120,
             CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_USERAGENT      => 'SnapSmack-Installer/0.7.1',
+            CURLOPT_USERAGENT      => 'SnapSmack-Installer/0.7.2',
         ]);
         $body = curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -97,7 +97,7 @@ function sc_http_get(string $url): string|false {
     }
     $ctx = stream_context_create(['http' => [
         'timeout'    => 120,
-        'user_agent' => 'SnapSmack-Installer/0.7.1',
+        'user_agent' => 'SnapSmack-Installer/0.7.2',
     ]]);
     return @file_get_contents($url, false, $ctx);
 }

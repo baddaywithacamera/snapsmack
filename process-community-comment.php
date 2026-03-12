@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Community Comment Handler
- * Alpha v0.7.1
+ * Alpha v0.7.2
  *
  * AJAX endpoint. Submits a new comment or deletes an existing comment.
  *
