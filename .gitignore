@@ -28,3 +28,6 @@ PICASA-WEB-ALBUMS-SPEC.docx
 
 # Release packages (built by Smack Central, not stored in source)
 releases/
+
+# Server-side auth file (cPanel / host-generated, not source code)
+auth.php
