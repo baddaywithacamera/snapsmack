@@ -171,7 +171,7 @@ if ($action === 'upload_font' && $preflight_ok) {
                 $zip->close();
 
                 sc_assets_write_manifest();
-                $flash = "Font family "{$family}" — {$installed} file(s) installed" . ($skipped ? ", {$skipped} skipped." : '.');
+                $flash = "Font family \"{$family}\" — {$installed} file(s) installed" . ($skipped ? ", {$skipped} skipped." : '.');
                 $flash_type = 'success';
             }
         }
