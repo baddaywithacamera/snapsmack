@@ -43,11 +43,20 @@
 
         img.style.cursor = 'zoom-in';
 
-        // touchend fires immediately — no 300ms synthetic-click delay.
+        // Touch: touchend fires immediately, preventDefault blocks the
+        // follow-on synthetic click so openLightbox isn't called twice.
+        var lbTouched = false;
         img.addEventListener('touchend', function (e) {
             e.preventDefault();
+            lbTouched = true;
             openLightbox(img.src);
         }, { passive: false });
+
+        // Mouse / desktop click — skip if a touch just fired.
+        img.addEventListener('click', function () {
+            if (lbTouched) { lbTouched = false; return; }
+            openLightbox(img.src);
+        });
     }
 
     function openLightbox(src) {
