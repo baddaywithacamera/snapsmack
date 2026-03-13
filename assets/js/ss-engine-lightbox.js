@@ -8,9 +8,11 @@
 
 if (!window._ssLightboxLoaded) {
 window._ssLightboxLoaded = true;
+console.log('[LB] ss-engine-lightbox.js: script parsed');
 
 document.addEventListener('DOMContentLoaded', () => {
     const photo = document.querySelector('.post-image, .pg-post-image');
+    console.log('[LB] DOMContentLoaded fired, photo:', photo);
     if (!photo) return;
 
     photo.style.cursor = 'zoom-in';

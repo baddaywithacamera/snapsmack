@@ -113,6 +113,7 @@ $profile_url = $show_about ? BASE_URL . 'page.php?slug=' . rawurlencode($_pg_abo
 // ── Load required JS engines from manifest ─────────────────────────────────
 $skin_manifest = include __DIR__ . '/manifest.php';
 $requested     = $skin_manifest['require_scripts'] ?? [];
+echo '<script>console.log("[FTR] skin-footer.php reached, requested scripts: ' . implode(', ', $requested) . '")</script>' . "\n";
 
 if (!empty($requested)) {
     $inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
