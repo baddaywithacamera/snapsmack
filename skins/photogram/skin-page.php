@@ -13,9 +13,11 @@
  */
 
 $pg_active_tab = 'profile'; // About page lives under the profile nav tab
+
+include __DIR__ . '/skin-meta.php';
 ?>
-<?php include('skin-meta.php'); ?>
-<?php include('skin-header.php'); ?>
+<body class="static-transmission">
+<?php include __DIR__ . '/skin-header.php'; ?>
 
 <div id="pg-app">
 <div class="pg-content">
@@ -57,4 +59,7 @@ $pg_active_tab = 'profile'; // About page lives under the profile nav tab
 </div><!-- /.pg-content -->
 </div><!-- /#pg-app -->
 
-<?php include('skin-footer.php'); ?>
+<?php include __DIR__ . '/skin-footer.php'; ?>
+<?php include dirname(__DIR__, 2) . '/core/footer-scripts.php'; ?>
+</body>
+</html>

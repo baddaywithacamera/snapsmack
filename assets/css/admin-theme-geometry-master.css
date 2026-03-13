@@ -46,9 +46,9 @@ html, body {
 .sidebar-brand {
     display: block;
     text-transform: uppercase;
-    letter-spacing: 3px;
-    font-size: 1.05rem;
-    font-weight: 600;
+    letter-spacing: 2px;
+    font-size: 1.2rem;
+    font-weight: 500;
     margin: 0 0 24px 0;
     padding: 0 0 10px 0;
     line-height: 1.0;

@@ -68,8 +68,8 @@ $pg_suppress_likes = true;
 $pg_active_tab = 'home';
 ?>
 
-<?php include('skin-meta.php'); ?>
-<?php include('skin-header.php'); ?>
+<?php include __DIR__ . '/skin-meta.php'; ?>
+<?php include __DIR__ . '/skin-header.php'; ?>
 
 <div id="pg-app">
 <div class="pg-content">
@@ -260,4 +260,4 @@ $pg_active_tab = 'home';
 
 </div><!-- /#pg-app -->
 
-<?php include('skin-footer.php'); ?>
+<?php include __DIR__ . '/skin-footer.php'; ?>

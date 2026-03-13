@@ -45,8 +45,8 @@ $site_title  = $settings['site_title'] ?? $site_name ?? 'Photogram';
 $pg_active_tab = 'discover'; // nearest semantic match
 ?>
 
-<?php include('skin-meta.php'); ?>
-<?php include('skin-header.php'); ?>
+<?php include __DIR__ . '/skin-meta.php'; ?>
+<?php include __DIR__ . '/skin-header.php'; ?>
 
 <div id="pg-app">
 <div class="pg-content">
@@ -128,4 +128,4 @@ $pg_active_tab = 'discover'; // nearest semantic match
 </div><!-- /.pg-content -->
 </div><!-- /#pg-app -->
 
-<?php include('skin-footer.php'); ?>
+<?php include __DIR__ . '/skin-footer.php'; ?>

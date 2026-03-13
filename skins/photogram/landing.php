@@ -28,10 +28,17 @@ $curr_page  = max(1, (int)($_GET['p'] ?? 1));
 $offset     = ($curr_page - 1) * $per_page;
 
 $grid_stmt = $pdo->prepare("
-    SELECT id, img_title, img_slug, img_file, img_thumb_square
-    FROM snap_images
-    WHERE img_status = 'published' AND img_date <= ?
-    ORDER BY img_date DESC
+    SELECT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_square,
+           COALESCE(c.comment_count, 0) AS comment_count
+    FROM snap_images i
+    LEFT JOIN (
+        SELECT post_id, COUNT(*) AS comment_count
+        FROM snap_community_comments
+        WHERE status = 'visible'
+        GROUP BY post_id
+    ) c ON c.post_id = i.id
+    WHERE i.img_status = 'published' AND i.img_date <= ?
+    ORDER BY i.img_date DESC
     LIMIT ? OFFSET ?
 ");
 $grid_stmt->execute([$now_local, $per_page, $offset]);
@@ -49,8 +56,8 @@ $avatar_file = $settings['site_avatar'] ?? $settings['site_logo'] ?? $settings['
 $pg_active_tab = 'home';
 ?>
 
-<?php include('skin-meta.php'); ?>
-<?php include('skin-header.php'); ?>
+<?php include __DIR__ . '/skin-meta.php'; ?>
+<?php include __DIR__ . '/skin-header.php'; ?>
 
 <div id="pg-app">
 <div class="pg-content">
@@ -92,18 +99,11 @@ $pg_active_tab = 'home';
         </div>
 
         <!-- Bio block -->
+        <?php if (!empty($site_desc)): ?>
         <div class="pg-profile-bio">
-            <span class="pg-display-name"><?php echo htmlspecialchars($site_title); ?></span>
-            <?php if (!empty($site_desc)): ?>
-                <p class="pg-bio-text"><?php echo htmlspecialchars($site_desc); ?></p>
-            <?php endif; ?>
-            <?php if (!empty($site_url)): ?>
-                <a href="<?php echo htmlspecialchars($site_url); ?>"
-                   class="pg-site-url"
-                   target="_blank"
-                   rel="noopener noreferrer"><?php echo htmlspecialchars($site_url); ?></a>
-            <?php endif; ?>
+            <p class="pg-bio-text"><?php echo htmlspecialchars($site_desc); ?></p>
         </div>
+        <?php endif; ?>
     </section>
 
     <div class="pg-divider"></div>
@@ -133,7 +133,14 @@ $pg_active_tab = 'home';
                          alt="<?php echo htmlspecialchars($gi['img_title']); ?>"
                          loading="lazy">
                 <?php endif; ?>
-                <!-- Carousel badge — Phase 2, rendered here when snap_posts available -->
+                <?php if ((int)$gi['comment_count'] > 0): ?>
+                    <span class="pg-grid-comment-count" aria-hidden="true">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        <?php echo (int)$gi['comment_count']; ?>
+                    </span>
+                <?php endif; ?>
             </a>
             <?php endforeach; ?>
         <?php else: ?>
@@ -152,4 +159,4 @@ $pg_active_tab = 'home';
 </div><!-- /.pg-content -->
 </div><!-- /#pg-app -->
 
-<?php include('skin-footer.php'); ?>
+<?php include __DIR__ . '/skin-footer.php'; ?>
