@@ -28,15 +28,21 @@ $like_count   = 0;
 $comment_count = count($comments);
 
 // Fetch like count and check if current session already liked
-$like_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_likes WHERE post_id = ?");
-$like_stmt->execute([$image_id]);
-$like_count = (int)$like_stmt->fetchColumn();
+// Wrapped in try/catch — snap_likes only exists if the community migration has been run.
+try {
+    $like_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_likes WHERE post_id = ?");
+    $like_stmt->execute([$image_id]);
+    $like_count = (int)$like_stmt->fetchColumn();
 
-$_pg_community_user = community_current_user();
-if ($_pg_community_user) {
-    $lc_stmt = $pdo->prepare("SELECT 1 FROM snap_likes WHERE post_id = ? AND user_id = ?");
-    $lc_stmt->execute([$image_id, (int)$_pg_community_user['id']]);
-    $is_liked = (bool)$lc_stmt->fetchColumn();
+    $_pg_community_user = community_current_user();
+    if ($_pg_community_user) {
+        $lc_stmt = $pdo->prepare("SELECT 1 FROM snap_likes WHERE post_id = ? AND user_id = ?");
+        $lc_stmt->execute([$image_id, (int)$_pg_community_user['id']]);
+        $is_liked = (bool)$lc_stmt->fetchColumn();
+    }
+} catch (Exception $_pg_likes_ex) {
+    // Community tables not yet migrated — like count stays 0, button shows unhighlighted.
+    $_pg_community_user = null;
 }
 
 // ── Caption / description ─────────────────────────────────────────────────
@@ -68,7 +74,6 @@ $pg_suppress_likes = true;
 $pg_active_tab = 'home';
 ?>
 
-<?php include __DIR__ . '/skin-meta.php'; ?>
 <?php include __DIR__ . '/skin-header.php'; ?>
 
 <div id="pg-app">
