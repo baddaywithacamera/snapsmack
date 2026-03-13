@@ -198,7 +198,7 @@ include __DIR__ . '/skin-header.php';
         <?php if (!empty($post['description'])): ?>
         <div class="tg-post-caption">
             <?php
-            $caption_html = snap_render_caption($post['description'], BASE_URL, 'tg-hashtag');
+            $caption_html = snap_render_caption_html($post['description'], BASE_URL, 'tg-hashtag');
             if (function_exists('snapsmack_parse_shortcodes')) {
                 echo snapsmack_parse_shortcodes(nl2br($caption_html));
             } else {
