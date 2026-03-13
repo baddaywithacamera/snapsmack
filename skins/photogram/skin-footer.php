@@ -110,10 +110,6 @@ $profile_url = $show_about ? BASE_URL . 'page.php?slug=' . rawurlencode($_pg_abo
 </nav>
 
 <?php
-// ── Eruda mobile console (debug builds only) ───────────────────────────────
-echo '<script src="https://cdn.jsdelivr.net/npm/eruda"></script>' . "\n";
-echo '<script>eruda.init();</script>' . "\n";
-
 // ── Load required JS engines from manifest ─────────────────────────────────
 $skin_manifest = include __DIR__ . '/manifest.php';
 $requested     = $skin_manifest['require_scripts'] ?? [];

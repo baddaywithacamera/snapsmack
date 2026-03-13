@@ -4,7 +4,6 @@
  *
  * Handles all Photogram-specific interactions:
  *   - Comments bottom sheet (open, close, drag-to-dismiss)
- *   - Single-tap image → full-screen lightbox (80% backdrop, portrait/landscape aware)
  *   - Double-tap to like with heart burst animation
  *   - Like button toggle (optimistic UI)
  *   - Sheet comment input / send (delegates to community component)
@@ -223,26 +222,6 @@
         });
     }
 
-    // ── Image-area tap handler ──────────────────────────────────────────────
-    // Single tap  → open lightbox (after 310ms double-tap window)
-    // Double tap  → like + heart burst
-    // Called from initLightbox so the two features share init lifecycle.
-    function initImageTap(imageWrap) {
-        // Touch: open lightbox immediately on finger-up.
-        // preventDefault stops the browser firing a synthetic click afterwards.
-        imageWrap.addEventListener('touchend', function (e) {
-            if (e.target.closest('a, button')) return;
-            e.preventDefault();
-            openLightbox();
-        }, { passive: false });
-
-        // Mouse (desktop): single click opens lightbox.
-        imageWrap.addEventListener('click', function (e) {
-            if (e.target.closest('a, button')) return;
-            openLightbox();
-        });
-    }
-
     function toggleLike(btn, countEl, imageId) {
         if (likeInFlight) return;
         likeInFlight = true;
@@ -325,73 +304,6 @@
 
 
     // ══════════════════════════════════════════════════════════════════════
-    //  LIGHTBOX
-    // ══════════════════════════════════════════════════════════════════════
-    var lightbox     = null;
-    var lightboxImg  = null;
-    var lbOpen       = false;
-
-    function openLightbox() {
-        if (!lightbox || lbOpen) return;
-        var src = document.getElementById('pg-post-image');
-        if (!src) return;
-
-        // Copy full-res src into lightbox image
-        if (lightboxImg) lightboxImg.src = src.src;
-
-        lightbox.hidden = false;
-        // Force reflow so the transition plays
-        lightbox.offsetHeight; // eslint-disable-line no-unused-expressions
-        lightbox.classList.add('pg-lightbox-open');
-        lbOpen = true;
-        document.body.style.overflow = 'hidden';
-
-        // Push history state so the back button dismisses the lightbox
-        history.pushState({ pgLightbox: true }, '');
-    }
-
-    function closeLightbox() {
-        if (!lightbox || !lbOpen) return;
-        lightbox.classList.remove('pg-lightbox-open');
-        lbOpen = false;
-        document.body.style.overflow = '';
-        // Hide after transition
-        setTimeout(function () {
-            if (!lbOpen) lightbox.hidden = true;
-        }, 250);
-    }
-
-    function initLightbox() {
-        lightbox    = document.getElementById('pg-lightbox');
-        lightboxImg = document.getElementById('pg-lightbox-img');
-        var closeBtn  = document.getElementById('pg-lightbox-close');
-        var backdrop  = document.getElementById('pg-lightbox-backdrop');
-
-        if (!lightbox) return;
-
-        // Wire the image-tap handler here so it always initialises regardless
-        // of whether the like button rendered (initLike bails early without it).
-        var imageWrap = document.getElementById('pg-image-wrap');
-        if (imageWrap) initImageTap(imageWrap);
-
-        // Close via X button
-        if (closeBtn) closeBtn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            closeLightbox();
-        });
-
-        // Close by tapping the backdrop (anywhere outside the image)
-        if (backdrop) backdrop.addEventListener('click', closeLightbox);
-
-        // Close via browser back button
-        window.addEventListener('popstate', function (e) {
-            if (lbOpen) {
-                closeLightbox();
-            }
-        });
-    }
-
-    // ══════════════════════════════════════════════════════════════════════
     //  NAV TAB ACTIVE STATE
     //  (Handles back/forward navigation restoring correct active tab)
     // ══════════════════════════════════════════════════════════════════════
@@ -418,7 +330,6 @@
     document.addEventListener('DOMContentLoaded', function () {
         initSheet();
         initLike();
-        initLightbox();
         initNavHighlight();
     });
 

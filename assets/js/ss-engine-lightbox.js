@@ -10,7 +10,7 @@ if (!window._ssLightboxLoaded) {
 window._ssLightboxLoaded = true;
 
 document.addEventListener('DOMContentLoaded', () => {
-    const photo = document.querySelector('.post-image');
+    const photo = document.querySelector('.post-image, .pg-post-image');
     if (!photo) return;
 
     photo.style.cursor = 'zoom-in';
@@ -34,9 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 180);
     };
 
-    // --- CLICK HANDLER ---
-    // Open lightbox on image click
-    photo.addEventListener('click', () => {
+    // --- OPEN FUNCTION ---
+    const openLightbox = () => {
         if (activeOverlay) return;
 
         const overlay = document.createElement('div');
@@ -68,6 +67,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // Expose to hotkey engine so ESC key works
         window.smackdown = window.smackdown || {};
         window.smackdown.closeLightbox = removeOverlay;
+    };
+
+    // Touch: fire immediately on finger-up (no 300ms synthetic-click delay).
+    photo.addEventListener('touchend', (e) => {
+        if (e.target.closest('a, button')) return;
+        e.preventDefault();
+        openLightbox();
+    }, { passive: false });
+
+    // Mouse / desktop click
+    photo.addEventListener('click', () => {
+        openLightbox();
     });
 });
 

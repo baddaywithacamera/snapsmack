@@ -31,6 +31,7 @@ return [
 
     'require_scripts' => [
         'smack-community',
+        'smack-lightbox',
         'smack-photogram',
     ],
 

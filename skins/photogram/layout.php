@@ -143,19 +143,6 @@ $pg_active_tab = 'home';
         <!-- Heart burst injected by JS on double-tap -->
     </div>
 
-    <!-- ── Lightbox ──────────────────────────────────────────────────────── -->
-    <div id="pg-lightbox" class="pg-lightbox" role="dialog" aria-modal="true" aria-label="Full-screen image" hidden>
-        <div id="pg-lightbox-backdrop" class="pg-lightbox-backdrop"></div>
-        <div id="pg-lightbox-img-wrap" class="pg-lightbox-img-wrap <?php echo $orient_class; ?>">
-            <img id="pg-lightbox-img" class="pg-lightbox-img" src="" alt="<?php echo htmlspecialchars($img['img_title']); ?>">
-        </div>
-        <button id="pg-lightbox-close" class="pg-lightbox-close" aria-label="Close">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-        </button>
-    </div>
-
     <!-- ── Action Bar ───────────────────────────────────────────────────── -->
     <div class="pg-action-bar">
 
