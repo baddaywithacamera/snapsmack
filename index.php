@@ -121,7 +121,12 @@ try {
                         ?>
                     </div>
                 </div>
-                <?php include __DIR__ . '/core/footer-scripts.php'; ?>
+                <?php
+                // Load global JS engines (social dock, sticky header, etc.) unless using Photogram
+                if ($active_skin !== 'photogram') {
+                    include __DIR__ . '/core/footer-scripts.php';
+                }
+                ?>
             </body>
             </html>
             <?php
@@ -141,7 +146,10 @@ try {
             ?><body class="is-hashtag-page"><div id="page-wrapper"><?php
             include $hashtag_template;
             ?></div><?php
-            include __DIR__ . '/core/footer-scripts.php';
+            // Load global JS engines (social dock, sticky header, etc.) unless using Photogram
+            if ($active_skin !== 'photogram') {
+                include __DIR__ . '/core/footer-scripts.php';
+            }
             ?></body></html><?php
             exit;
         }
@@ -236,6 +244,12 @@ include __DIR__ . '/' . $skin_path . '/skin-meta.php';
         lastUrl: "<?php echo (string)$last_slug; ?>"
     };
 </script>
-<?php include __DIR__ . '/core/footer-scripts.php'; ?>
+<?php
+// Load global JS engines (social dock, sticky header, etc.) unless using Photogram,
+// which has its own mobile-optimized UI and doesn't need these overlays.
+if ($active_skin !== 'photogram') {
+    include __DIR__ . '/core/footer-scripts.php';
+}
+?>
 </body>
 </html>
