@@ -28,7 +28,7 @@
  */
 
 // Ed25519 public key for release signature verification
-define('SNAPSMACK_RELEASE_PUBKEY', '4b397509c45a995c2a5c098582a7a547892d6a7bc91b2ecc60e79c9e776c53d3');
+define('SNAPSMACK_RELEASE_PUBKEY', '60b370837a26e483421a331fa283273be39cf8302906069836c58c34a423abe2');
 
 // Set to true once a real key is installed and all releases are being signed.
 // When false, signature verification is logged but not enforced.

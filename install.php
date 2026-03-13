@@ -12,8 +12,8 @@
 
 // --- CONFIGURATION ---
 // The version this installer deploys.
-$installer_version       = '0.7.0-alpha';
-$installer_version_label = 'Alpha 0.7';
+$installer_version       = '0.7.3';
+$installer_version_label = 'Alpha v0.7.3';
 
 // --- SESSION INIT ---
 session_start();
@@ -186,6 +186,7 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
                 `img_thumb_aspect` varchar(255) DEFAULT NULL COMMENT 'Relative path to aspect-ratio thumbnail (a_ prefix)',
                 `img_checksum` varchar(64) DEFAULT NULL COMMENT 'SHA-256 hash of main image file for recovery verification',
                 `img_display_options` text DEFAULT NULL COMMENT 'JSON: per-image frame/mat/bevel overrides and extracted colour palette',
+                `post_id` int DEFAULT NULL COMMENT 'FK to snap_posts — populated when image is wrapped in a post',
                 PRIMARY KEY (`id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
@@ -289,6 +290,201 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
                 `asset_checksum` varchar(64) DEFAULT NULL COMMENT 'SHA-256 hash for recovery verification',
                 `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- MIGRATION TRACKING ---
+            "{$prefix}migrations" => "CREATE TABLE IF NOT EXISTS `{$prefix}migrations` (
+                `id`         int unsigned NOT NULL AUTO_INCREMENT,
+                `migration`  varchar(200) NOT NULL,
+                `applied_at` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_migration` (`migration`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- RATE LIMITER (community prerequisite) ---
+            "{$prefix}rate_limits" => "CREATE TABLE IF NOT EXISTS `{$prefix}rate_limits` (
+                `id`           int unsigned NOT NULL AUTO_INCREMENT,
+                `ip`           varchar(45)  NOT NULL,
+                `action`       varchar(50)  NOT NULL,
+                `count`        int unsigned NOT NULL DEFAULT 1,
+                `window_start` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_ip_action` (`ip`, `action`),
+                KEY `idx_window` (`window_start`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- COMMUNITY USERS ---
+            "{$prefix}community_users" => "CREATE TABLE IF NOT EXISTS `{$prefix}community_users` (
+                `id`             int unsigned NOT NULL AUTO_INCREMENT,
+                `username`       varchar(50)  NOT NULL,
+                `display_name`   varchar(100) DEFAULT NULL,
+                `email`          varchar(150) NOT NULL,
+                `password_hash`  varchar(255) NOT NULL,
+                `avatar_url`     varchar(500) DEFAULT NULL,
+                `bio`            text         DEFAULT NULL,
+                `status`         enum('active','unverified','suspended') NOT NULL DEFAULT 'unverified',
+                `email_verified` tinyint(1)   NOT NULL DEFAULT 0,
+                `last_seen_at`   datetime     DEFAULT NULL,
+                `created_at`     datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_username` (`username`),
+                UNIQUE KEY `uq_email`    (`email`),
+                KEY `idx_status` (`status`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- COMMUNITY SESSIONS ---
+            "{$prefix}community_sessions" => "CREATE TABLE IF NOT EXISTS `{$prefix}community_sessions` (
+                `id`         int unsigned NOT NULL AUTO_INCREMENT,
+                `user_id`    int unsigned NOT NULL,
+                `token`      varchar(64)  NOT NULL,
+                `expires_at` datetime     NOT NULL,
+                `ip`         varchar(45)  DEFAULT NULL,
+                `user_agent` varchar(500) DEFAULT NULL,
+                `created_at` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_token`      (`token`),
+                KEY `idx_user_id`    (`user_id`),
+                KEY `idx_expires_at` (`expires_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- COMMUNITY TOKENS (email verify / password reset) ---
+            "{$prefix}community_tokens" => "CREATE TABLE IF NOT EXISTS `{$prefix}community_tokens` (
+                `id`         int unsigned NOT NULL AUTO_INCREMENT,
+                `user_id`    int unsigned NOT NULL,
+                `token`      varchar(64)  NOT NULL,
+                `type`       varchar(30)  NOT NULL,
+                `expires_at` datetime     NOT NULL,
+                `created_at` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_token`      (`token`),
+                KEY `idx_user_type` (`user_id`, `type`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- LIKES ---
+            "{$prefix}likes" => "CREATE TABLE IF NOT EXISTS `{$prefix}likes` (
+                `id`         int unsigned NOT NULL AUTO_INCREMENT,
+                `post_id`    int unsigned NOT NULL,
+                `user_id`    int unsigned NOT NULL,
+                `created_at` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_post_user` (`post_id`, `user_id`),
+                KEY `idx_post_id` (`post_id`),
+                KEY `idx_user_id` (`user_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- REACTIONS ---
+            "{$prefix}reactions" => "CREATE TABLE IF NOT EXISTS `{$prefix}reactions` (
+                `id`            int unsigned NOT NULL AUTO_INCREMENT,
+                `post_id`       int unsigned NOT NULL,
+                `user_id`       int unsigned NOT NULL,
+                `reaction_code` varchar(20)  NOT NULL,
+                `created_at`    datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_post_user` (`post_id`, `user_id`),
+                KEY `idx_post_id` (`post_id`),
+                KEY `idx_user_id` (`user_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- COMMUNITY COMMENTS (separate from legacy snap_comments) ---
+            "{$prefix}community_comments" => "CREATE TABLE IF NOT EXISTS `{$prefix}community_comments` (
+                `id`           int unsigned NOT NULL AUTO_INCREMENT,
+                `post_id`      int unsigned NOT NULL,
+                `user_id`      int unsigned NULL DEFAULT NULL,
+                `guest_name`   varchar(100) NULL DEFAULT NULL,
+                `guest_email`  varchar(200) NULL DEFAULT NULL,
+                `comment_text` text         NOT NULL,
+                `status`       enum('visible','hidden','deleted') NOT NULL DEFAULT 'visible',
+                `ip`           varchar(45)  NULL DEFAULT NULL,
+                `created_at`   datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                KEY `idx_post_status` (`post_id`, `status`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- POSTS (container layer wrapping one or more images) ---
+            "{$prefix}posts" => "CREATE TABLE IF NOT EXISTS `{$prefix}posts` (
+                `id`              int          NOT NULL AUTO_INCREMENT,
+                `title`           varchar(500) NOT NULL,
+                `slug`            varchar(600) NOT NULL,
+                `description`     text         DEFAULT NULL,
+                `post_type`       enum('single','carousel','panorama') NOT NULL DEFAULT 'single',
+                `status`          varchar(20)  NOT NULL DEFAULT 'published',
+                `created_at`      datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `updated_at`      datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                `allow_comments`  tinyint(1)   NOT NULL DEFAULT 1,
+                `allow_download`  tinyint(1)   NOT NULL DEFAULT 0,
+                `download_url`    varchar(500) DEFAULT NULL,
+                `download_count`  int          NOT NULL DEFAULT 0,
+                `panorama_rows`   tinyint      NOT NULL DEFAULT 1,
+                `import_source`   varchar(50)  DEFAULT NULL,
+                `import_id`       varchar(200) DEFAULT NULL,
+                `post_img_size_pct`   tinyint unsigned NOT NULL DEFAULT 100,
+                `post_border_px`      tinyint unsigned NOT NULL DEFAULT 0,
+                `post_border_color`   char(7)          NOT NULL DEFAULT '#000000',
+                `post_bg_color`       char(7)          NOT NULL DEFAULT '#ffffff',
+                `post_shadow`         tinyint unsigned NOT NULL DEFAULT 0,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_slug`   (`slug`),
+                UNIQUE KEY `uq_import` (`import_source`, `import_id`),
+                KEY `idx_status`       (`status`),
+                KEY `idx_created_at`   (`created_at`),
+                KEY `idx_post_type`    (`post_type`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- POST-TO-IMAGE MAP ---
+            "{$prefix}post_images" => "CREATE TABLE IF NOT EXISTS `{$prefix}post_images` (
+                `id`               int          NOT NULL AUTO_INCREMENT,
+                `post_id`          int          NOT NULL,
+                `image_id`         int          NOT NULL,
+                `sort_position`    smallint     NOT NULL DEFAULT 0,
+                `is_cover`         tinyint(1)   NOT NULL DEFAULT 0,
+                `grid_col`         tinyint      DEFAULT NULL,
+                `grid_row`         tinyint      DEFAULT NULL,
+                `img_size_pct`     tinyint unsigned NOT NULL DEFAULT 100,
+                `img_border_px`    tinyint unsigned NOT NULL DEFAULT 0,
+                `img_border_color` char(7)          NOT NULL DEFAULT '#000000',
+                `img_bg_color`     char(7)          NOT NULL DEFAULT '#ffffff',
+                `img_shadow`       tinyint unsigned NOT NULL DEFAULT 0,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_image`  (`image_id`),
+                KEY `idx_post_id` (`post_id`),
+                KEY `idx_sort`    (`post_id`, `sort_position`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- POST-TO-CATEGORY MAP ---
+            "{$prefix}post_cat_map" => "CREATE TABLE IF NOT EXISTS `{$prefix}post_cat_map` (
+                `post_id` int NOT NULL,
+                `cat_id`  int NOT NULL,
+                PRIMARY KEY (`post_id`, `cat_id`),
+                KEY `idx_cat_id` (`cat_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- POST-TO-ALBUM MAP ---
+            "{$prefix}post_album_map" => "CREATE TABLE IF NOT EXISTS `{$prefix}post_album_map` (
+                `post_id`  int NOT NULL,
+                `album_id` int NOT NULL,
+                PRIMARY KEY (`post_id`, `album_id`),
+                KEY `idx_album_id` (`album_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- HASHTAGS ---
+            "{$prefix}tags" => "CREATE TABLE IF NOT EXISTS `{$prefix}tags` (
+                `id`         int unsigned AUTO_INCREMENT PRIMARY KEY,
+                `tag`        varchar(100) NOT NULL,
+                `slug`       varchar(100) NOT NULL,
+                `use_count`  int unsigned DEFAULT 0,
+                `created_at` timestamp    DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY `uq_slug` (`slug`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- IMAGE-TO-TAG MAP ---
+            "{$prefix}image_tags" => "CREATE TABLE IF NOT EXISTS `{$prefix}image_tags` (
+                `id`         int unsigned AUTO_INCREMENT PRIMARY KEY,
+                `image_id`   int unsigned NOT NULL,
+                `tag_id`     int unsigned NOT NULL,
+                `created_at` timestamp    DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY `uq_image_tag` (`image_id`, `tag_id`),
+                KEY `idx_tag_id`   (`tag_id`),
+                KEY `idx_image_id` (`image_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ];
 
