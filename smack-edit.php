@@ -172,6 +172,9 @@ $comment_count = $pdo->prepare("SELECT COUNT(*) FROM snap_community_comments WHE
 $comment_count->execute([$id]);
 $comment_count = (int)$comment_count->fetchColumn();
 
+// Download count from the image record
+$download_count = (int)($post['img_download_count'] ?? 0);
+
 $page_title = "Edit Meta";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
@@ -276,6 +279,7 @@ include 'core/sidebar.php';
                         <div class="engagement-stats">
                             <span class="stat-item">❤️ Likes: <strong><?php echo $like_count; ?></strong></span>
                             <span class="stat-item">💬 Transmissions: <strong><?php echo $comment_count; ?></strong></span>
+                            <span class="stat-item">⬇️ Downloads: <strong><?php echo $download_count; ?></strong></span>
                         </div>
                     </div>
 

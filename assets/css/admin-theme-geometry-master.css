@@ -2186,6 +2186,10 @@ input[type="range"]:active::-webkit-slider-thumb {
     font-weight: 500;
 }
 
+.meta-downloads {
+    font-weight: 500;
+}
+
 /* ─── RESPONSIVE: SMALL DESKTOP / LARGE TABLET (≤1200px) ──────── */
 @media (max-width: 1200px) {
     .main {
