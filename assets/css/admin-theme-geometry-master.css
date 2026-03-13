@@ -2161,6 +2161,31 @@ input[type="range"]:active::-webkit-slider-thumb {
     display: block;
 }
 
+/* ─── ENGAGEMENT STATS ────────────────────────────────────────────── */
+.engagement-stats {
+    display: flex;
+    gap: 20px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    font-size: 0.95rem;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stat-item strong {
+    font-weight: 600;
+    font-size: 1.1em;
+}
+
+.meta-likes {
+    font-weight: 500;
+}
+
 /* ─── RESPONSIVE: SMALL DESKTOP / LARGE TABLET (≤1200px) ──────── */
 @media (max-width: 1200px) {
     .main {
