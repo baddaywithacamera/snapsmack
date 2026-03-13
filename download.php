@@ -74,6 +74,11 @@ $clean_name = preg_replace('/[^a-zA-Z0-9_-]/', '-', $img['img_title']);
 $clean_name = preg_replace('/-+/', '-', trim($clean_name, '-'));
 $download_name = $clean_name . '.' . $ext;
 
+// --- INCREMENT DOWNLOAD COUNTER ---
+// Bump the download count before streaming the file
+$update_stmt = $pdo->prepare("UPDATE snap_images SET img_download_count = img_download_count + 1 WHERE id = ?");
+$update_stmt->execute([$img_id]);
+
 header('Content-Type: ' . $mime);
 header('Content-Disposition: attachment; filename="' . $download_name . '"');
 header('Content-Length: ' . filesize($file_path));

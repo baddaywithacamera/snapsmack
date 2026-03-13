@@ -197,6 +197,7 @@ include 'core/sidebar.php';
                                 <span class="meta-mission">[ MISSION: <?php echo htmlspecialchars($p['album_list'] ?: 'NONE'); ?> ]</span>
                                 <span class="meta-trans">[ TRANS: <?php echo (int)$p['comment_count']; ?> ]</span>
                                 <span class="meta-likes">[ LIKES: <?php echo (int)$p['like_count']; ?> ]</span>
+                                <span class="meta-downloads">[ DL: <?php echo (int)$p['img_download_count']; ?> ]</span>
                             </div>
                         </div>
                     </div>
