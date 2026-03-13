@@ -86,7 +86,7 @@ $count_stmt->execute($params);
 $total_rows = $count_stmt->fetchColumn();
 $total_pages = ceil($total_rows / $per_page);
 
-// Fetch the current page of posts with related category, album, and comment data.
+// Fetch the current page of posts with related category, album, comment, and like data.
 $sql = "SELECT i.*,
         (SELECT GROUP_CONCAT(c.cat_name ORDER BY c.cat_name ASC SEPARATOR ', ')
          FROM snap_categories c
@@ -96,7 +96,8 @@ $sql = "SELECT i.*,
          FROM snap_albums a
          JOIN snap_image_album_map am ON a.id = am.album_id
          WHERE am.image_id = i.id) as album_list,
-        (SELECT COUNT(*) FROM snap_comments WHERE img_id = i.id) as comment_count
+        (SELECT COUNT(*) FROM snap_comments WHERE img_id = i.id) as comment_count,
+        (SELECT COUNT(*) FROM snap_likes WHERE post_id = i.id) as like_count
         FROM snap_images i
         $where_sql
         ORDER BY i.img_date DESC
@@ -191,10 +192,11 @@ include 'core/sidebar.php';
                             <code class="slug-display">/<?php echo htmlspecialchars($p['img_slug'] ?? 'no-slug'); ?></code>
 
                             <div class="item-meta">
-                                <?php echo date("M j, Y - H:i", strtotime($p['img_date'])); ?> 
+                                <?php echo date("M j, Y - H:i", strtotime($p['img_date'])); ?>
                                 <span class="meta-reg">[ REG: <?php echo htmlspecialchars($p['category_list'] ?: 'NONE'); ?> ]</span>
                                 <span class="meta-mission">[ MISSION: <?php echo htmlspecialchars($p['album_list'] ?: 'NONE'); ?> ]</span>
                                 <span class="meta-trans">[ TRANS: <?php echo (int)$p['comment_count']; ?> ]</span>
+                                <span class="meta-likes">[ LIKES: <?php echo (int)$p['like_count']; ?> ]</span>
                             </div>
                         </div>
                     </div>

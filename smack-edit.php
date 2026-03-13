@@ -163,6 +163,15 @@ $mapped_albums = $mapped_albums->fetchAll(PDO::FETCH_COLUMN);
 $all_cats = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
 $all_albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
 
+// Count likes and comments for display
+$like_count = $pdo->prepare("SELECT COUNT(*) FROM snap_likes WHERE post_id = ?");
+$like_count->execute([$id]);
+$like_count = (int)$like_count->fetchColumn();
+
+$comment_count = $pdo->prepare("SELECT COUNT(*) FROM snap_community_comments WHERE post_id = ? AND status = 'visible'");
+$comment_count->execute([$id]);
+$comment_count = (int)$comment_count->fetchColumn();
+
 $page_title = "Edit Meta";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
@@ -262,6 +271,14 @@ include 'core/sidebar.php';
                 </div>
 
                 <div class="post-col-right">
+                    <div class="lens-input-wrapper">
+                        <label>ENGAGEMENT METRICS</label>
+                        <div class="engagement-stats">
+                            <span class="stat-item">❤️ Likes: <strong><?php echo $like_count; ?></strong></span>
+                            <span class="stat-item">💬 Transmissions: <strong><?php echo $comment_count; ?></strong></span>
+                        </div>
+                    </div>
+
                     <div class="lens-input-wrapper">
                         <label>PUBLICATION STATUS</label>
                         <select name="img_status" class="full-width-select">
