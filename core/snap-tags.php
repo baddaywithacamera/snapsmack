@@ -116,3 +116,36 @@ function snap_render_caption(string $text, string $base_url, string $css_class =
         $safe . ' '   // trailing space so end-of-string tags match the lookahead
     );
 }
+
+/**
+ * Render caption with safe HTML tags allowed (lists, emphasis, links).
+ * Removes dangerous tags, preserves safe ones, converts hashtags to links.
+ * Safe to output directly — strip_tags() removes any malicious markup.
+ *
+ * @param string $text      Raw caption (may contain HTML)
+ * @param string $base_url  BASE_URL constant value
+ * @param string $css_class CSS class on hashtag links
+ */
+function snap_render_caption_html(string $text, string $base_url, string $css_class = 'snap-hashtag'): string {
+    // Whitelist safe HTML tags: paragraph, break, emphasis, list, link, blockquote
+    $allowed = '<p><br><strong><em><u><a><ul><ol><li><blockquote>';
+    $safe = strip_tags($text, $allowed);
+
+    // If the text has no block-level HTML tags, convert plain newlines to <br>
+    // so posts written in plain text still display with proper line breaks.
+    if (!preg_match('/<(p|ul|ol|blockquote)[\s>]/i', $safe)) {
+        $safe = nl2br($safe);
+    }
+
+    // Convert #hashtags to anchor links
+    return preg_replace_callback(
+        '/#([a-zA-Z][a-zA-Z0-9_]{0,49})(?=[^a-zA-Z0-9_]|$)/',
+        static function (array $m) use ($base_url, $css_class): string {
+            $slug    = strtolower($m[1]);
+            $display = '#' . htmlspecialchars($m[1], ENT_QUOTES, 'UTF-8');
+            $href    = htmlspecialchars($base_url . '?tag=' . rawurlencode($slug), ENT_QUOTES, 'UTF-8');
+            return '<a href="' . $href . '" class="' . $css_class . '">' . $display . '</a>';
+        },
+        $safe . ' '
+    );
+}

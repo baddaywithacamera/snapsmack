@@ -9,8 +9,12 @@
  * Variables available from index.php: $pdo, $settings, $active_skin, $site_name
  */
 
-// ── Sub-page routing: ?pg=search ─────────────────────────────────────────
+// ── Sub-page routing: ?pg=feed | ?pg=search ──────────────────────────────
 $_pg_page = $_GET['pg'] ?? '';
+if ($_pg_page === 'feed') {
+    include __DIR__ . '/feed.php';
+    return; // feed.php includes its own header/footer
+}
 if ($_pg_page === 'search' && ($settings['search_enabled'] ?? '0') === '1') {
     include __DIR__ . '/search.php';
     return; // search.php includes its own header/footer
@@ -112,7 +116,8 @@ $pg_active_tab = 'home';
     <main class="pg-grid" aria-label="Photos">
         <?php if (!empty($grid_images)): ?>
             <?php foreach ($grid_images as $gi):
-                $link      = BASE_URL . htmlspecialchars($gi['img_slug']);
+                // Tap grid cell → feed view starting at this image
+                $link = BASE_URL . '?pg=feed&from=' . (int)$gi['id'];
 
                 // Prefer square thumbnail; fall back to constructing path from full image
                 if (!empty($gi['img_thumb_square'])) {
