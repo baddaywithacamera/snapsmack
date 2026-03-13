@@ -191,7 +191,7 @@ $pg_active_tab = 'home';
     <?php if (!empty($caption_raw)): ?>
         <div class="pg-caption">
             <span class="pg-caption-username"><?php echo htmlspecialchars($site_title); ?></span><?php
-            echo snap_render_caption($caption_raw, BASE_URL, 'pg-caption-hashtag');
+            echo snap_render_caption_html($caption_raw, BASE_URL, 'pg-caption-hashtag');
             ?>
         </div>
     <?php endif; ?>

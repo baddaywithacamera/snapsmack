@@ -197,6 +197,18 @@ try {
 $skin_path = 'skins/' . $active_skin;
 $page_title = $img['img_title'] ?? 'Home';
 
+// ── Early exit for JSON AJAX requests ────────────────────────────────────────
+// Must happen BEFORE skin-meta.php outputs any HTML, otherwise
+// feed.php cannot set Content-Type: application/json headers.
+if (($_GET['format'] ?? '') === 'json' && ($_GET['pg'] ?? '') !== '') {
+    $skin_path = 'skins/' . $active_skin;
+    $landing_file = __DIR__ . '/' . $skin_path . '/landing.php';
+    if (file_exists($landing_file)) {
+        include $landing_file;
+        exit;
+    }
+}
+
 include __DIR__ . '/' . $skin_path . '/skin-meta.php';
 ?>
 <body class="is-photo-page">

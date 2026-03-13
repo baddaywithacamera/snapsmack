@@ -564,6 +564,37 @@ button {
     margin-right: 4px;
 }
 
+.pg-caption-title {
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.pg-caption-body {
+    margin-top: 0;
+}
+
+/* HTML content inside captions */
+.pg-caption p {
+    margin: 0 0 6px;
+    display: block;
+}
+.pg-caption p:last-child { margin-bottom: 0; }
+.pg-caption ul,
+.pg-caption ol {
+    margin: 4px 0 6px 20px;
+    padding: 0;
+}
+.pg-caption li { margin-bottom: 2px; }
+.pg-caption strong { font-weight: 700; }
+.pg-caption em { font-style: italic; }
+.pg-caption u { text-decoration: underline; }
+.pg-caption blockquote {
+    margin: 6px 0 6px 12px;
+    padding-left: 8px;
+    border-left: 2px solid var(--pg-border);
+    opacity: 0.8;
+}
+
 .pg-caption-hashtag {
     color: var(--pg-accent);
 }
@@ -1048,12 +1079,18 @@ button {
 
 /* ── Lightbox ─────────────────────────────────────────────────────────────── */
 .pg-lightbox {
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    z-index: 99999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transform: none !important;  /* Prevent parent transforms from affecting this */
 }
 
 .pg-lightbox[hidden] {
@@ -1062,8 +1099,13 @@ button {
 
 .pg-lightbox-backdrop {
     position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.8);
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
     opacity: 0;
     transition: opacity 0.22s ease;
 }
@@ -1078,20 +1120,11 @@ button {
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 100%;
+    height: 100%;
     opacity: 0;
     transform: scale(0.92);
     transition: opacity 0.22s ease, transform 0.22s ease;
-}
-
-/* Portrait: constrain by height; landscape/square: constrain by width */
-.pg-lightbox-img-wrap.pg-orient-portrait {
-    max-height: 100dvh;
-    max-width: 100dvw;
-}
-
-.pg-lightbox-img-wrap.pg-orient-landscape {
-    max-width: 100dvw;
-    max-height: 100dvh;
 }
 
 .pg-lightbox.pg-lightbox-open .pg-lightbox-img-wrap {
@@ -1099,24 +1132,16 @@ button {
     transform: scale(1);
 }
 
+/* Image scaling: use dynamic viewport units for mobile, object-fit to preserve aspect */
 .pg-lightbox-img {
     display: block;
-    max-width: 100dvw;
+    max-width: 100vw;
     max-height: 100dvh;
     width: auto;
     height: auto;
     object-fit: contain;
-}
-
-/* Portrait images fill height; landscape images fill width */
-.pg-lightbox-img-wrap.pg-orient-portrait .pg-lightbox-img {
-    max-height: 100dvh;
-    max-width: 100dvw;
-}
-
-.pg-lightbox-img-wrap.pg-orient-landscape .pg-lightbox-img {
-    max-width: 100dvw;
-    max-height: 100dvh;
+    pointer-events: none;
+    -webkit-user-drag: none;
 }
 
 .pg-lightbox-close {
@@ -1250,6 +1275,112 @@ button {
     padding: 4px 0 4px 14px;
     color: var(--pg-text-muted);
     font-style: italic;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FEED VIEW (feed.php)
+   Vertical scroll of full-width posts — the IG/Pixelfed middle layer.
+   Posts reuse .pg-post-author, .pg-post-image-wrap, .pg-action-bar, etc.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Feed container — full width within app shell */
+#pg-feed {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Individual post card — border separator between items */
+.pg-feed-item {
+    border-bottom: 1px solid var(--pg-border);
+}
+
+.pg-feed-item:last-of-type {
+    border-bottom: none;
+}
+
+/* Image link wrapper — block, no underline, no tap flash */
+.pg-feed-image-link {
+    display: block;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    /* Cursor: pointer on desktop, natural on mobile */
+    cursor: pointer;
+}
+
+.pg-feed-image-link:hover {
+    text-decoration: none;
+}
+
+/* Feed images: eager loading for JS-appended items uses lazy via attribute;
+   initial PHP-rendered batch will use the img[loading] attribute directly.
+   No extra CSS needed — reuses .pg-post-image-wrap and .pg-post-image. */
+
+/* Comment and more-options links in feed reuse .pg-action-btn style */
+.pg-feed-item .pg-action-btn {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    color: var(--pg-text);
+    transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.pg-feed-item .pg-action-btn:hover {
+    text-decoration: none;
+}
+
+.pg-feed-item .pg-action-btn:active {
+    transform: scale(0.85);
+}
+
+/* Comment links in feed inherit view-comments styling but are <a> not <button> */
+.pg-feed-item .pg-view-comments {
+    display: block;
+}
+
+/* Empty state */
+.pg-feed-empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--pg-text-muted);
+    font-size: 14px;
+}
+
+/* ── Infinite scroll sentinel ──────────────────────────────────────────────── */
+.pg-feed-sentinel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    min-height: 60px;
+    font-size: 13px;
+    color: var(--pg-text-muted);
+}
+
+/* Loading spinner (CSS-only) */
+.pg-feed-sentinel.pg-feed-loading::after {
+    content: '';
+    display: block;
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--pg-border);
+    border-top-color: var(--pg-accent);
+    border-radius: 50%;
+    animation: pg-feed-spin 0.7s linear infinite;
+}
+
+@keyframes pg-feed-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* End-of-feed message */
+.pg-feed-sentinel.pg-feed-end {
+    color: var(--pg-text-muted);
+    font-size: 12px;
+    letter-spacing: 0.04em;
 }
 
 
