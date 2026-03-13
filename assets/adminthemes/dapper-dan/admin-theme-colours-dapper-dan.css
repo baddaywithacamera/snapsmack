@@ -485,3 +485,11 @@ input[type="range"]::-webkit-slider-thumb {
     background-color: #222222;
     color: #EAB308;
 }
+/* Confirmation / status messages */
+.msg {
+    color: #EAB308;
+}
+
+.alert-text {
+    color: #EAB308;
+}

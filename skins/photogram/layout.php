@@ -233,7 +233,14 @@ $pg_active_tab = 'home';
         <?php
         // Community component — likes suppressed (Photogram handles inline).
         // $pg_suppress_likes is set above.
-        include dirname(__DIR__, 2) . '/core/community-component.php';
+        // Wrapped in try/catch: community-component.php queries snap_community_comments
+        // and snap_likes which may not exist if the migration hasn't been run, even
+        // though snap_community_ready() only probes snap_community_sessions.
+        try {
+            include dirname(__DIR__, 2) . '/core/community-component.php';
+        } catch (Throwable $_cc_err) {
+            // Community tables incomplete or unavailable — sheet renders empty.
+        }
         ?>
     </div>
 

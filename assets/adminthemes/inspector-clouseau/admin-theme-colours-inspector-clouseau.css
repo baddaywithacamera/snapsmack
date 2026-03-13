@@ -465,3 +465,11 @@ input[type="range"]::-webkit-slider-thumb {
     background-color: #c22970;
     color: #ffffff;
 }
+/* Confirmation / status messages */
+.msg {
+    color: #3b6991;
+}
+
+.alert-text {
+    color: #3b6991;
+}

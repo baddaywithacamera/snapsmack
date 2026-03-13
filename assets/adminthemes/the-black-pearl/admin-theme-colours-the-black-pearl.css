@@ -464,3 +464,11 @@ input[type="range"]::-webkit-slider-thumb {
     background-color: #AAAAAA;
     color: #000000;
 }
+/* Confirmation / status messages */
+.msg {
+    color: #AAAAAA;
+}
+
+.alert-text {
+    color: #AAAAAA;
+}
