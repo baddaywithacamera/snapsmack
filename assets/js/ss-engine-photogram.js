@@ -12,7 +12,6 @@
 
 (function () {
     'use strict';
-    console.log('[PG] script loaded, readyState:', document.readyState);
 
     // ── Shared POST helper ─────────────────────────────────────────────────
     function post(url, data, cb) {
@@ -40,7 +39,6 @@
 
     function initLightbox() {
         var img = document.getElementById('pg-post-image');
-        console.log('[PG] initLightbox, img:', img);
         if (!img) return;
 
         img.style.cursor = 'zoom-in';
@@ -49,19 +47,16 @@
         img.addEventListener('touchend', function (e) {
             e.preventDefault();
             lbTouched = true;
-            console.log('[PG] touchend on image');
             openLightbox(img.src);
         }, { passive: false });
 
         img.addEventListener('click', function () {
-            console.log('[PG] click on image, lbTouched:', lbTouched);
             if (lbTouched) { lbTouched = false; return; }
             openLightbox(img.src);
         });
     }
 
     function openLightbox(src) {
-        console.log('[PG] openLightbox called, src:', src ? src.slice(-30) : null);
         if (lbOverlay) return;
 
         var overlay = document.createElement('div');

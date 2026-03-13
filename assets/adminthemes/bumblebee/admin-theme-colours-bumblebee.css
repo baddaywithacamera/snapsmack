@@ -489,3 +489,11 @@ input[type="range"]::-webkit-slider-thumb {
     border-color: #1A1A1A;
     background-color: #0A0A0A;
 }
+/* Confirmation / status messages */
+.msg {
+    color: #FFCC00;
+}
+
+.alert-text {
+    color: #FFCC00;
+}
