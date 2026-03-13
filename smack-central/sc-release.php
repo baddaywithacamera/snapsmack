@@ -14,6 +14,11 @@ require_once __DIR__ . '/sc-auth.php';
 $sc_active_nav = 'sc-release.php';
 $sc_page_title = 'Release Packager';
 
+// Shared hosts enforce short max_execution_time (often 30s). Release builds
+// need to download a zip from GitHub; the tag list fetch needs a few seconds.
+// Override here so the process isn't killed mid-flight.
+@set_time_limit(300);
+
 // ── GitHub config ─────────────────────────────────────────────────────────────
 // Define SNAPSMACK_GITHUB_REPO / SNAPSMACK_GITHUB_TOKEN in sc-config.php to
 // override these defaults. Token is optional but raises the rate limit from
@@ -36,7 +41,9 @@ if (!function_exists('curl_init') && !ini_get('allow_url_fopen')) {
 if (!defined('SMACK_RELEASE_PRIVKEY') || strlen(SMACK_RELEASE_PRIVKEY) !== 128) {
     $preflight[] = ['err', 'SMACK_RELEASE_PRIVKEY is not set or is the wrong length. Check sc-config.php.'];
 }
-if (!is_dir(RELEASES_DIR)) {
+if (!defined('RELEASES_DIR') || RELEASES_DIR === '' || RELEASES_DIR === '/') {
+    $preflight[] = ['err', 'RELEASES_DIR is not configured. Set it to the absolute server path of your releases folder in sc-config.php (e.g. /home/youruser/public_html/releases/).'];
+} elseif (!is_dir(RELEASES_DIR)) {
     $preflight[] = ['warn', 'Releases directory does not exist: ' . RELEASES_DIR . '. Create it and make it web-accessible.'];
 }
 
@@ -58,14 +65,14 @@ if (defined('SMACK_RELEASE_PRIVKEY') && strlen(SMACK_RELEASE_PRIVKEY) === 128) {
 }
 
 // ── Helper: raw HTTP GET (curl preferred, file_get_contents fallback) ─────────
-function sc_http_raw(string $url, array $extra_headers = []): string|false {
+function sc_http_raw(string $url, array $extra_headers = [], int $timeout = 120): string|false {
     if (function_exists('curl_init')) {
         $ch   = curl_init($url);
         $opts = [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_MAXREDIRS      => 5,
-            CURLOPT_TIMEOUT        => 120,
+            CURLOPT_TIMEOUT        => $timeout,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_USERAGENT      => 'SnapSmack-SC/0.7.3',
         ];
@@ -87,7 +94,9 @@ function sc_github_get(string $endpoint): array|false {
     if (SNAPSMACK_GITHUB_TOKEN) {
         $headers[] = 'Authorization: token ' . SNAPSMACK_GITHUB_TOKEN;
     }
-    $body = sc_http_raw('https://api.github.com/' . ltrim($endpoint, '/'), $headers);
+    // 15s timeout for API calls — short enough to fail fast on page load,
+    // long enough to handle a slow response. Zip downloads use the default 120s.
+    $body = sc_http_raw('https://api.github.com/' . ltrim($endpoint, '/'), $headers, 15);
     if ($body === false) return false;
     $data = json_decode($body, true);
     return is_array($data) ? $data : false;
