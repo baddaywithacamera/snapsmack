@@ -18,7 +18,7 @@ $global_comments_active = (($s_rows['global_comments_enabled'] ?? '1') == '1');
 // --- SYSTEM TAB ---
 // 'legacy'    = snap_comments (anonymous, moderation queue)
 // 'community' = snap_community_comments (account/guest, visible/hidden)
-$system = $_GET['system'] ?? 'community';
+$system = $_GET['system'] ?? 'legacy';
 
 // --- MODERATION ACTIONS ---
 if (isset($_GET['action']) && isset($_GET['id'])) {
@@ -54,8 +54,14 @@ $page      = isset($_GET['p']) ? (int)$_GET['p'] : 1;
 $offset    = ($page - 1) * $per_page;
 
 // ── Community counts (for nav tabs) ──────────────────────────────────────────
-$cc_visible_count = $pdo->query("SELECT COUNT(*) FROM snap_community_comments WHERE status = 'visible'")->fetchColumn();
-$cc_hidden_count  = $pdo->query("SELECT COUNT(*) FROM snap_community_comments WHERE status = 'hidden'")->fetchColumn();
+// Guarded: snap_community_comments only exists after the community migration.
+try {
+    $cc_visible_count = $pdo->query("SELECT COUNT(*) FROM snap_community_comments WHERE status = 'visible'")->fetchColumn();
+    $cc_hidden_count  = $pdo->query("SELECT COUNT(*) FROM snap_community_comments WHERE status = 'hidden'")->fetchColumn();
+} catch (Exception $e) {
+    $cc_visible_count = 0;
+    $cc_hidden_count  = 0;
+}
 
 // ── Legacy counts (for nav tabs) ─────────────────────────────────────────────
 $leg_pending_count = $pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 0")->fetchColumn();
