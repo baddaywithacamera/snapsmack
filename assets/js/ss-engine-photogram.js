@@ -210,72 +210,37 @@
     //  LIKE BUTTON & DOUBLE-TAP
     // ══════════════════════════════════════════════════════════════════════
     var likeInFlight = false;
-    var lastTap      = 0;
-    var tapTimeout   = null;
 
+    // initLike handles only the action-bar heart button click.
+    // Image-tap is wired separately in initImageTap so the lightbox always
+    // works even if the like system didn't render (DB issue, missing table, etc.)
     function initLike() {
-        var likeBtn    = document.getElementById('pg-like-btn');
-        var imageWrap  = document.getElementById('pg-image-wrap');
-        var likeCount  = document.getElementById('pg-like-count');
-
+        var likeBtn   = document.getElementById('pg-like-btn');
+        var likeCount = document.getElementById('pg-like-count');
         if (!likeBtn) return;
-
-        var imageId = likeBtn.dataset.imageId;
-
-        // ── Single-tap like button ────────────────────────────────────────
         likeBtn.addEventListener('click', function () {
-            toggleLike(likeBtn, likeCount, imageId);
+            toggleLike(likeBtn, likeCount, likeBtn.dataset.imageId);
         });
+    }
 
-        // ── Double-tap on image ────────────────────────────────────────────
-        // Single tap → open lightbox (delayed 310ms to distinguish from double-tap)
-        // Double-tap → like + heart burst
-        if (imageWrap) {
-            imageWrap.addEventListener('touchend', function (e) {
-                // Don't intercept taps on links or buttons (e.g. download overlay)
-                if (e.target.closest('a, button')) return;
+    // ── Image-area tap handler ──────────────────────────────────────────────
+    // Single tap  → open lightbox (after 310ms double-tap window)
+    // Double tap  → like + heart burst
+    // Called from initLightbox so the two features share init lifecycle.
+    function initImageTap(imageWrap) {
+        // Touch: open lightbox immediately on finger-up.
+        // preventDefault stops the browser firing a synthetic click afterwards.
+        imageWrap.addEventListener('touchend', function (e) {
+            if (e.target.closest('a, button')) return;
+            e.preventDefault();
+            openLightbox();
+        }, { passive: false });
 
-                var now = Date.now();
-                var timeSince = now - lastTap;
-
-                if (timeSince < 300 && timeSince > 0) {
-                    // Double-tap detected — cancel pending lightbox open
-                    clearTimeout(tapTimeout);
-                    lastTap = 0;
-
-                    // Only fire like if not already liked
-                    if (likeBtn.dataset.liked !== '1') {
-                        toggleLike(likeBtn, likeCount, imageId);
-                    }
-
-                    // Always show heart burst on double-tap
-                    spawnHeartBurst(imageWrap, e);
-                    e.preventDefault();
-                } else {
-                    lastTap = now;
-                    // Single-tap: delay confirm it isn't a double-tap, then open lightbox
-                    clearTimeout(tapTimeout);
-                    tapTimeout = setTimeout(function () {
-                        openLightbox();
-                    }, 310);
-                }
-            }, { passive: false });
-
-            // Desktop: single click opens lightbox, double-click does like
-            imageWrap.addEventListener('click', function (e) {
-                // Skip on touch devices — handled via touchend
-                if (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return;
-                // Skip if clicking a link or button (e.g. download overlay)
-                if (e.target.closest('a, button')) return;
-                openLightbox();
-            });
-            imageWrap.addEventListener('dblclick', function (e) {
-                if (likeBtn.dataset.liked !== '1') {
-                    toggleLike(likeBtn, likeCount, imageId);
-                }
-                spawnHeartBurst(imageWrap, e);
-            });
-        }
+        // Mouse (desktop): single click opens lightbox.
+        imageWrap.addEventListener('click', function (e) {
+            if (e.target.closest('a, button')) return;
+            openLightbox();
+        });
     }
 
     function toggleLike(btn, countEl, imageId) {
@@ -403,6 +368,11 @@
         var backdrop  = document.getElementById('pg-lightbox-backdrop');
 
         if (!lightbox) return;
+
+        // Wire the image-tap handler here so it always initialises regardless
+        // of whether the like button rendered (initLike bails early without it).
+        var imageWrap = document.getElementById('pg-image-wrap');
+        if (imageWrap) initImageTap(imageWrap);
 
         // Close via X button
         if (closeBtn) closeBtn.addEventListener('click', function (e) {

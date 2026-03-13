@@ -37,8 +37,8 @@ if ($q !== '') {
 $site_title = $settings['site_title'] ?? $site_name ?? 'Photogram';
 ?>
 
-<?php include('skin-meta.php'); ?>
-<?php include('skin-header.php'); ?>
+<?php include __DIR__ . '/skin-meta.php'; ?>
+<?php include __DIR__ . '/skin-header.php'; ?>
 
 <div id="pg-app">
 <div class="pg-content">
@@ -135,4 +135,4 @@ $site_title = $settings['site_title'] ?? $site_name ?? 'Photogram';
 </div><!-- /.pg-content -->
 </div><!-- /#pg-app -->
 
-<?php include('skin-footer.php'); ?>
+<?php include __DIR__ . '/skin-footer.php'; ?>
