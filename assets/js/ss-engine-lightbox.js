@@ -1,25 +1,26 @@
 /**
  * SNAPSMACK - Lightbox Engine
- * Alpha v0.7.1
+ * Alpha v0.7.3
  *
- * Full-screen image viewer with fade-in overlay. Click to open, click to close
- * or press ESC. Guards against double-loading with internal flag.
+ * Full-screen image viewer with fade-in overlay. Click/tap to open, click to
+ * close or press ESC. Guards against double-loading with internal flag.
+ *
+ * NOTE: Scripts are loaded at the end of <body> by skin-footer.php so
+ * DOMContentLoaded will have already fired by the time this executes. Use
+ * readyState guard instead of a bare DOMContentLoaded listener.
  */
 
 if (!window._ssLightboxLoaded) {
 window._ssLightboxLoaded = true;
-console.log('[LB] ss-engine-lightbox.js: script parsed');
 
-document.addEventListener('DOMContentLoaded', () => {
+function _ssLightboxInit() {
     const photo = document.querySelector('.post-image, .pg-post-image');
-    console.log('[LB] DOMContentLoaded fired, photo:', photo);
     if (!photo) return;
 
     photo.style.cursor = 'zoom-in';
     let activeOverlay = null;
 
     // --- CONFIGURATION ---
-    // Pull opacity setting from global config, default to 0.8
     const opacitySetting = (window.SMACK_CONFIG && window.SMACK_CONFIG.lightbox && window.SMACK_CONFIG.lightbox.opacity)
         ? window.SMACK_CONFIG.lightbox.opacity
         : '0.8';
@@ -57,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(overlay);
         activeOverlay = overlay;
 
-        // Force reflow to trigger CSS transition
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 overlay.style.opacity = '1';
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.smackdown.closeLightbox = removeOverlay;
     };
 
-    // Touch: fire immediately on finger-up (no 300ms synthetic-click delay).
+    // Touch: fire on finger-up, no 300ms synthetic-click delay.
     photo.addEventListener('touchend', (e) => {
         if (e.target.closest('a, button')) return;
         e.preventDefault();
@@ -82,6 +82,13 @@ document.addEventListener('DOMContentLoaded', () => {
     photo.addEventListener('click', () => {
         openLightbox();
     });
-});
+}
+
+// Scripts load at end of <body> — DOMContentLoaded may have already fired.
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _ssLightboxInit);
+} else {
+    _ssLightboxInit();
+}
 
 } // end double-load guard

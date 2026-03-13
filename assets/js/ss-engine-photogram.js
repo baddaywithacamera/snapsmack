@@ -12,7 +12,6 @@
 
 (function () {
     'use strict';
-    console.log('[PG] ss-engine-photogram.js: script parsed');
 
     // ── Shared POST helper ─────────────────────────────────────────────────
     function post(url, data, cb) {
@@ -328,13 +327,17 @@
     // ══════════════════════════════════════════════════════════════════════
     //  INIT
     // ══════════════════════════════════════════════════════════════════════
-    document.addEventListener('DOMContentLoaded', function () {
-        console.log('[PG] DOMContentLoaded fired');
-        console.log('[PG] #pg-comments-sheet:', document.getElementById('pg-comments-sheet'));
-        console.log('[PG] #pg-like-btn:', document.getElementById('pg-like-btn'));
+    function _pgInit() {
         initSheet();
         initLike();
         initNavHighlight();
-    });
+    }
+
+    // Scripts load at end of <body> — DOMContentLoaded may have already fired.
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', _pgInit);
+    } else {
+        _pgInit();
+    }
 
 }());
