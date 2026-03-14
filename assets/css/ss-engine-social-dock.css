@@ -2,15 +2,19 @@
  * SNAPSMACK — Social Profile Dock
  * ss-engine-social-dock.css
  *
- * Floating glass-morphism dock for social profile links.
+ * Floating dock of social profile links styled as independent circles
+ * matching the download button aesthetic. Each icon is a 48px dark
+ * semi-translucent circle with a subtle border. The whole dock is
+ * semi-transparent at idle and reveals fully on hover proximity.
+ *
  * 8 position classes: 4 corners + 4 side edges.
  * Side-mounted docks slide off-screen during scroll via JS toggle.
+ *
+ * CSS custom properties (set inline from PHP):
+ *   --dock-bg:       circle background colour (rgba)
+ *   --dock-border:   circle border colour (rgba)
+ *   --dock-icon:     SVG icon fill/stroke colour
  */
-
-/* ─── CSS CUSTOM PROPERTIES (set via inline style from PHP) ────── */
-/* --dock-color:      icon colour (hex)                             */
-/* --dock-rgb:        icon colour as r,g,b for rgba()               */
-/* --dock-bg-opacity: dock background opacity 0-1                   */
 
 /* ─── BASE DOCK ────────────────────────────────────────────────── */
 
@@ -18,86 +22,104 @@
     position: fixed;
     z-index: 9998;
     display: flex;
-    gap: 4px;
-    padding: 8px;
-    border-radius: 10px;
-    background: rgba(0, 0, 0, var(--dock-bg-opacity, 0.2));
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
-    border: 1px solid rgba(255, 255, 255, calc(var(--dock-bg-opacity, 0.2) * 0.6));
-    box-shadow: 0 2px 12px rgba(0, 0, 0, calc(var(--dock-bg-opacity, 0.2) * 0.75));
+    gap: 10px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+
+    /* Semi-translucent at idle, full on hover */
+    opacity: var(--dock-idle-opacity, 0.5);
+    transition: opacity 0.3s ease;
 }
 
-/* Fallback for browsers without backdrop-filter */
-@supports not (backdrop-filter: blur(14px)) {
-    .social-dock {
-        background: rgba(0, 0, 0, calc(var(--dock-bg-opacity, 0.2) + 0.35));
-    }
+.social-dock:hover {
+    opacity: 1;
 }
 
 
-/* ─── ICON LINKS (outline style — default) ─────────────────────── */
+/* ─── ICON LINKS ───────────────────────────────────────────────── */
 
 .dock-link {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
-    color: var(--dock-color, #fff);
-    opacity: 0.75;
+    background: var(--dock-bg, rgba(0, 0, 0, 0.7));
+    border: 2px solid var(--dock-border, rgba(255, 255, 255, 0.3));
+    color: var(--dock-icon, #fff);
     text-decoration: none;
-    transition: transform 0.2s ease, opacity 0.2s ease, background 0.2s ease, color 0.2s ease;
-    background: transparent;
+    cursor: pointer;
+    transition: transform 0.15s ease,
+                background 0.15s ease,
+                border-color 0.15s ease;
 }
 
 .dock-link:hover {
-    transform: scale(1.2);
-    opacity: 1;
-    background: rgba(var(--dock-rgb, 255,255,255), 0.15);
+    transform: scale(1.1);
+    background: var(--dock-bg-hover, rgba(0, 0, 0, 0.9));
+    border-color: var(--dock-border-hover, rgba(255, 255, 255, 0.7));
 }
 
 .dock-link svg {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     flex-shrink: 0;
 }
 
 
-/* ─── SOLID STYLE — filled background, white icon ──────────────── */
+/* ─── DOWNLOAD ICON IN DOCK ────────────────────────────────────── */
 
-.dock-solid .dock-link {
-    background: rgba(var(--dock-rgb, 255,255,255), 0.2);
-    opacity: 0.85;
+.dock-link .snap-download-icon {
+    display: block;
+    width: 18px;
+    height: 18px;
+    position: relative;
 }
 
-.dock-solid .dock-link:hover {
-    background: var(--dock-color, #fff);
-    color: rgba(0, 0, 0, 0.85);
-    opacity: 1;
+.dock-link .snap-download-icon::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 2px;
+    height: 12px;
+    background: var(--dock-icon, #fff);
+    transform: translateX(-50%);
+}
+
+.dock-link .snap-download-icon::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 7px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--dock-icon, #fff);
+    border-bottom: 2px solid var(--dock-icon, #fff);
+    transform: translateX(-50%) rotate(45deg);
+}
+
+.dock-link .snap-download-icon span {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--dock-icon, #fff);
 }
 
 
-/* ─── ICON DROP SHADOW ────────────────────────────────────────── */
+/* ─── ICON DROP SHADOW (optional) ──────────────────────────────── */
 
 .dock-shadow .dock-link {
-    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
 }
 
 .dock-shadow .dock-link:hover {
-    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
-}
-
-
-/* ─── SQUARE SHAPE — rounded-corner squares instead of circles ─── */
-
-.dock-square .dock-link {
-    border-radius: 6px;
-}
-
-.dock-square {
-    border-radius: 8px;
+    filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.5));
 }
 
 
@@ -182,6 +204,10 @@
     transform: translateX(calc(100% + 20px));
     opacity: 0;
 }
+
+
+/* ─── STANDALONE DOWNLOAD SUPPRESSION ──────────────────────────── */
+/* JS hides the standalone .snap-download-btn when dock absorbs it */
 
 
 /* ─── RESPONSIVE ───────────────────────────────────────────────── */

@@ -4,7 +4,7 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
-## 0.7.3 — "Bedpan" (2026-03-12)
+## 0.7.3 — "Whoopie Cushion" (2026-03-14)
 
 ### Added
 - `core/asset-sync.php`: on-demand font and JS asset delivery. Checks `manifest-inventory.php` against disk; fetches any missing files from Smack Central's `releases/asset-manifest.json`; SHA-256 verifies each download before writing. 1-hour local cache. Auto-runs on skin save (`smack-skin.php`) and after successful updates (`smack-update.php`).
@@ -15,6 +15,18 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - `updater_prune_backups(int $keep = 3)` in `core/updater.php`: after every successful update, keeps only the 3 most recent pre-update backup files and deletes older ones. Prevents backup directory bloat on long-running installs.
 - Photogram: single-tap post image now opens a full-screen lightbox — 80% black backdrop with scale-in animation. Portrait images fill height; landscape/square fill width. Dismisses on backdrop tap, X button, or browser back gesture (`pushState`/`popstate`). Double-tap to like still works: a 310 ms delay on single-tap distinguishes the two gestures.
 - Photogram: `static-content` (About and other static pages) padded 20 px horizontally, constrained to the 480 px phone column, with bottom clearance for the nav bar.
+- Forum redesign: complete Discourse-inspired dark theme. Category list with coloured accent bars, threaded post stream with gutter avatars, responsive layout. `smack-forum.php` rewritten.
+- Forum avatars: site favicons pulled from Google's favicon API (`s2/favicons?domain=&sz=64`) with initial-letter fallback. Rendered square with 4 px border-radius.
+- Forum moderator role system: `is_moderator` flag on `ss_forum_installs`. Moderators can pin/unpin threads, lock/unlock threads, and delete any thread or reply. Promote/demote UI in Smack Central forum admin.
+- Forum hub posting: Smack Central can post threads and replies as "SnapSmack HQ" via a registered hub install identity (`api_key='hub_internal_reserved'`).
+- Forum API `PATCH /threads/{id}` route for moderator pin/lock toggles.
+- Forum API now returns `author_domain` on threads and replies (JOIN to `ss_forum_installs`) and `caller_is_mod` flag.
+- `sc_forum_db()` added to `smack-central/sc-db.php` for isolated forum database access.
+- `migrations/migrate-forum-moderators.sql`: adds `is_moderator` column to `ss_forum_installs` and registers snapsmack.ca as the hub install.
+- Social dock redesign: each icon is now an independent 48 px dark circle matching the download button aesthetic. Semi-translucent at idle (configurable opacity), full opacity on hover.
+- Social dock absorbs the download button: when downloads are active for the current image, the download icon appears as the first circle in the dock. Standalone download button hidden via JS when dock is present; falls back to standalone when dock is disabled.
+- Bluesky SVG icon replaced with the correct butterfly logo (was rendering as a playing card ace at small sizes).
+- Threads SVG icon replaced with the official at-sign thread path.
 
 ### Changed
 - **Photogram promoted to `stable`**. It is now a core skin — shipped in every full release zip and must be present on every install. Removed from optional/beta distribution.
@@ -25,6 +37,10 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - Release Packager (`sc-release.php`): codename field added to the build form and written to `latest.json`.
 - Smack Central page header vertical alignment fixed (`align-items: baseline` → `center`).
 - Photogram avatar fallback chain extended: `site_avatar` → `site_logo` → `favicon_url` → SVG placeholder. Sites that have a favicon but no dedicated avatar now show it in the Photogram profile circle.
+- Social dock admin: removed icon shape (round/square) and icon style (outline/solid) options. All icons are now circles. Opacity slider relabelled "Idle Opacity" with 10–100% range (default 50%).
+- Social dock CSS: glassmorphism bar container removed. No backdrop-blur, no shared border. Each icon stands alone.
+- All file headers bumped to Alpha v0.7.3 across the entire codebase (63 files still at v0.7.1 updated).
+- Spent migration scripts removed from `migrations/` (already applied to all installs).
 
 ### Fixed
 - Photogram infinite scroll feed: fixed cursor-based pagination with min/max post ID bounds. Feed now knows upfront when it has reached the true oldest/newest post (via max_id/min_id), preventing ghost AJAX calls and false "no more posts" messages. Updated JS to use DOM-embedded bounds and check reachedTop/reachedBottom conditions before continuing pagination.

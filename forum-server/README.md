@@ -89,19 +89,20 @@ Content-Type: application/json
 
 | Method | Endpoint | Auth | Purpose |
 |--------|----------|------|---------|
-| POST | `/register` | None | Register an install; returns `api_key` |
+| POST | `/register` | None | Register an install; returns `api_key` and `is_moderator` status |
 | GET | `/categories` | Install key | List active boards with counts |
-| GET | `/threads?cat=N&page=N` | Install key | List threads (pinned first, then by activity) |
-| GET | `/threads/{id}` | Install key | Thread + all replies |
+| GET | `/threads?cat=N&page=N` | Install key | List threads (pinned first, then by activity); includes `author_domain` and `caller_is_mod` |
+| GET | `/threads/{id}` | Install key | Thread + all replies; includes `author_domain` on each post and `caller_is_mod` |
 | POST | `/threads` | Install key | Create a thread |
 | POST | `/threads/{id}/replies` | Install key | Add a reply |
+| PATCH | `/threads/{id}` | Moderator install key | Toggle `is_pinned` and/or `is_locked` on a thread |
 | PATCH | `/installs/me` | Install key | Update display name |
-| DELETE | `/threads/{id}` | Install key (own) or mod key | Soft-delete a thread |
-| DELETE | `/replies/{id}` | Install key (own) or mod key | Soft-delete a reply |
+| DELETE | `/threads/{id}` | Install key (own) or moderator | Soft-delete a thread |
+| DELETE | `/replies/{id}` | Install key (own) or moderator | Soft-delete a reply |
 
 ### Moderator actions
 
-Pass `FORUM_MOD_KEY` as the Bearer token to delete any thread or reply regardless of ownership. Keep this key private.
+Installs with `is_moderator = 1` in `ss_forum_installs` can delete any thread or reply, and pin/lock threads via the PATCH route. Promote installs to moderator from the Smack Central forum admin panel. The legacy `FORUM_MOD_KEY` Bearer token still works for direct API access.
 
 ---
 

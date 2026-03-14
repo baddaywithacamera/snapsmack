@@ -20,6 +20,7 @@
  */
 
 $download_button = '';
+$_snap_download_url = '';    // consumed by social-dock.php
 
 // --- DOWNLOAD VISIBILITY LOGIC ---
 // Downloads are shown only if both the global setting AND the individual post

@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - Wall Engine
- * Alpha v0.7.1
+ * Alpha v0.7.3
  *
  * 3D perspective wall gallery with physics-driven panning, touch gestures,
  * infinite scroll, and zoomable image viewer. Keyboard and mouse controls.
@@ -96,7 +96,7 @@ function createHelpUI() {
             <li><strong>PG UP / DN</strong> : Zoom Wall In/Out</li>
             <li><strong>H / ESC</strong> : Help / Close</li>
         </ul>
-        <div style="margin-top: 20px; font-size: 0.7rem; opacity: 0.7;">SnapSmack Alpha v0.7.1</div>
+        <div style="margin-top: 20px; font-size: 0.7rem; opacity: 0.7;">SnapSmack Alpha v0.7.3</div>
     `;
     document.body.appendChild(modal);
 }

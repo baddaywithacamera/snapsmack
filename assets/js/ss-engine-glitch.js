@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - Glitch Engine
- * Alpha v0.7.1
+ * Alpha v0.7.3
  *
  * Random chaos effects on page elements. Reads configuration from CSS variables
  * on .post-image element. Only active when enabled and on public pages.
