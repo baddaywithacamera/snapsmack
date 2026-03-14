@@ -58,6 +58,67 @@ function forum_api(string $method, string $endpoint, array $body = [], string $k
     return $data;
 }
 
+/**
+ * Generate a two-letter avatar initial from a display name.
+ */
+function forum_initials(string $name): string {
+    $parts = preg_split('/[\s\-_.]+/', trim($name));
+    if (count($parts) >= 2) {
+        return strtoupper(mb_substr($parts[0], 0, 1) . mb_substr($parts[1], 0, 1));
+    }
+    return strtoupper(mb_substr($name, 0, 2));
+}
+
+/**
+ * Deterministic avatar colour from a display name.  Returns an HSL hue so we
+ * can keep saturation / lightness consistent across the dark theme.
+ */
+function forum_avatar_hue(string $name): int {
+    return crc32($name) % 360;
+}
+
+/**
+ * Render an avatar element.  If a domain is available, uses the site's
+ * favicon via Google's favicon service with a fallback to the initials
+ * circle on load error.  Without a domain, renders initials directly.
+ *
+ * $size: 'sm' | '' | 'lg'
+ */
+function forum_avatar(string $name, string $domain = '', string $size = ''): string {
+    $hue      = forum_avatar_hue($name);
+    $initials = htmlspecialchars(forum_initials($name));
+    $cls      = 'forum-avatar' . ($size ? " forum-avatar--{$size}" : '');
+    $bg       = "background:hsl({$hue},55%,45%);";
+
+    if ($domain !== '') {
+        // Google's public favicon API — returns a 16/32/64px icon for any domain.
+        $fav_url = 'https://www.google.com/s2/favicons?domain=' . urlencode($domain) . '&sz=64';
+        // On error, swap the <img> for the initials fallback
+        return '<div class="' . $cls . '" style="' . $bg . '">'
+             . '<img src="' . htmlspecialchars($fav_url) . '" '
+             . 'alt="" style="width:100%;height:100%;border-radius:4px;object-fit:cover;" '
+             . 'onerror="this.remove();">'
+             . '<span class="forum-avatar__fallback">' . $initials . '</span>'
+             . '</div>';
+    }
+
+    return '<div class="' . $cls . '" style="' . $bg . '">' . $initials . '</div>';
+}
+
+/**
+ * Human-friendly relative timestamp ("3 h ago", "yesterday", "Mar 4").
+ */
+function forum_ago(string $datetime): string {
+    $ts   = strtotime($datetime);
+    $diff = time() - $ts;
+    if ($diff < 60)    return 'just now';
+    if ($diff < 3600)  return floor($diff / 60) . 'm ago';
+    if ($diff < 86400) return floor($diff / 3600) . 'h ago';
+    if ($diff < 172800) return 'yesterday';
+    if ($diff < 604800) return floor($diff / 86400) . 'd ago';
+    return date('M j', $ts);
+}
+
 // ── Auto-Registration ─────────────────────────────────────────────────────────
 // On first visit (no stored API key), register this install and persist the key.
 $reg_error = '';
@@ -128,6 +189,26 @@ if ($action === 'post-reply' && $forum_enabled && $forum_api_key) {
     }
 }
 
+if ($action === 'pin-thread' && $forum_enabled && $forum_api_key) {
+    $thread_id = (int)($_POST['thread_id'] ?? 0);
+    $pin_val   = (int)($_POST['pin_value'] ?? 0);
+    if ($thread_id) {
+        forum_api('PATCH', "threads/{$thread_id}", ['is_pinned' => (bool)$pin_val], $forum_api_key);
+    }
+    header("Location: smack-forum.php?view=thread&id={$thread_id}");
+    exit;
+}
+
+if ($action === 'lock-thread' && $forum_enabled && $forum_api_key) {
+    $thread_id = (int)($_POST['thread_id'] ?? 0);
+    $lock_val  = (int)($_POST['lock_value'] ?? 0);
+    if ($thread_id) {
+        forum_api('PATCH', "threads/{$thread_id}", ['is_locked' => (bool)$lock_val], $forum_api_key);
+    }
+    header("Location: smack-forum.php?view=thread&id={$thread_id}");
+    exit;
+}
+
 if ($action === 'delete-thread' && $forum_enabled && $forum_api_key) {
     $thread_id  = (int)($_POST['thread_id']  ?? 0);
     $return_cat = (int)($_POST['return_cat'] ?? 0);
@@ -156,8 +237,9 @@ $thread_id      = (int)($_GET['id']       ?? 0);
 $page           = max(1, (int)($_GET['page'] ?? 1));
 $new_thread_cat = (int)($_GET['new_thread_cat'] ?? $cat_id);
 
-$api_data  = [];
-$api_error = '';
+$api_data   = [];
+$api_error  = '';
+$is_mod     = false;
 
 if ($forum_enabled && $forum_api_key) {
     if ($view === 'categories') {
@@ -166,12 +248,17 @@ if ($forum_enabled && $forum_api_key) {
     } elseif ($view === 'threads') {
         $api_data  = forum_api('GET', "threads?cat={$cat_id}&page={$page}", [], $forum_api_key);
         if ($api_data['_error']) $api_error = $api_data['message'] ?? $api_data['_message'] ?? 'Could not load threads.';
+        $is_mod = !empty($api_data['caller_is_mod']);
     } elseif ($view === 'thread') {
         $api_data  = forum_api('GET', "threads/{$thread_id}", [], $forum_api_key);
         if ($api_data['_error']) $api_error = $api_data['message'] ?? $api_data['_message'] ?? 'Thread not found.';
+        $is_mod = !empty($api_data['caller_is_mod']);
     }
     // new-thread fetches categories inline below
 }
+
+// Category accent colours — rotates through a palette for visual variety.
+$cat_accents = ['#e45735','#e2b714','#39FF14','#00bcd4','#ab47bc','#ff7043','#26a69a','#5c6bc0'];
 
 $current_page = 'smack-forum.php';
 require 'core/admin-header.php';
@@ -179,140 +266,388 @@ require 'core/sidebar.php';
 ?>
 
 <style>
-/* ── Forum post cards ────────────────────────────────────────────────────── */
-.forum-post {
-    border-width: 1px;
-    border-style: solid;
-    border-radius: 4px;
-    margin-bottom: 12px;
-    overflow: hidden;
-}
-.forum-post--op {
-    margin-bottom: 20px;
-}
-.forum-post--compose {
-    margin-top: 24px;
-}
-.forum-post__meta {
+/* ══════════════════════════════════════════════════════════════════════════════
+   FORUM — Discourse-inspired dark theme
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Breadcrumbs ─────────────────────────────────────────────────────────── */
+.forum-crumbs {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
+    gap: 8px;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #222;
+}
+.forum-crumbs a {
+    color: #777;
+    text-decoration: none;
+    transition: color 0.15s;
+}
+.forum-crumbs a:hover { color: #ccc; }
+.forum-crumbs .sep { color: #333; }
+.forum-crumbs .current { color: #ccc; font-weight: 600; }
+
+/* ── Category grid — Discourse-style rows with coloured accent ───────────── */
+.forum-cat-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.forum-cat-row {
+    display: grid;
+    grid-template-columns: 4px 1fr 100px 100px;
+    align-items: center;
+    background: #181818;
+    border-radius: 4px;
+    text-decoration: none;
+    transition: background 0.15s;
+    overflow: hidden;
+}
+.forum-cat-row:hover { background: #1e1e1e; }
+.forum-cat-row__accent {
+    width: 4px;
+    align-self: stretch;
+    border-radius: 4px 0 0 4px;
+}
+.forum-cat-row__info {
+    padding: 18px 20px;
+}
+.forum-cat-row__name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #ddd;
+    margin-bottom: 4px;
+}
+.forum-cat-row__desc {
+    font-size: 0.78rem;
+    color: #666;
+    line-height: 1.4;
+}
+.forum-cat-row__stat {
+    text-align: center;
+    padding: 18px 12px;
+}
+.forum-cat-row__stat-num {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #aaa;
+}
+.forum-cat-row__stat-label {
+    display: block;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #555;
+    margin-top: 2px;
+}
+
+/* ── Thread list — Discourse-style rows ──────────────────────────────────── */
+.forum-thread-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.forum-thread-row {
+    display: grid;
+    grid-template-columns: 44px 1fr 64px 100px;
+    align-items: center;
+    gap: 0;
+    background: #181818;
+    border-radius: 4px;
+    padding: 14px 16px;
+    transition: background 0.15s;
+}
+.forum-thread-row:hover { background: #1e1e1e; }
+.forum-thread-row--pinned { border-left: 3px solid #e2b714; }
+
+.forum-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #000;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+}
+.forum-avatar--sm {
+    width: 32px;
+    height: 32px;
+    font-size: 0.6rem;
+}
+.forum-avatar--lg {
+    width: 44px;
+    height: 44px;
     font-size: 0.75rem;
+}
+/* When favicon loads, hide the text fallback behind it */
+.forum-avatar { position: relative; overflow: hidden; }
+.forum-avatar img { position: relative; z-index: 2; }
+.forum-avatar__fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+
+.forum-thread-row__info {
+    min-width: 0;
+    padding: 0 12px;
+}
+.forum-thread-row__title {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: #ddd;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.forum-thread-row__title a {
+    color: inherit;
+    text-decoration: none;
+}
+.forum-thread-row__title a:hover { color: #fff; }
+.forum-thread-row__byline {
+    font-size: 0.72rem;
+    color: #555;
+}
+.forum-thread-row__replies {
+    text-align: center;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #888;
+}
+.forum-thread-row__replies small {
+    display: block;
+    font-size: 0.6rem;
+    font-weight: 400;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-bottom-width: 1px;
-    border-bottom-style: solid;
+    color: #444;
+    margin-top: 1px;
 }
-.forum-post__meta strong {
+.forum-thread-row__activity {
+    text-align: right;
+    font-size: 0.75rem;
+    color: #555;
+}
+.forum-badges {
+    display: inline-flex;
+    gap: 4px;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+.forum-badge {
+    display: inline-block;
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
     font-weight: 700;
+    vertical-align: middle;
 }
-.forum-post__meta .form-inline {
+.forum-badge--pinned { background: #e2b714; color: #000; }
+.forum-badge--locked { background: #333; color: #888; }
+
+/* ── Thread detail — Discourse-style post stream ─────────────────────────── */
+.forum-stream {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+.forum-post {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 0;
+    border-bottom: 1px solid #1a1a1a;
+    padding: 24px 0;
+}
+.forum-post:first-child { padding-top: 0; }
+.forum-post:last-child { border-bottom: none; }
+.forum-post__gutter {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 2px;
+}
+.forum-post__content {
+    min-width: 0;
+}
+.forum-post__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    font-size: 0.78rem;
+}
+.forum-post__author {
+    font-weight: 700;
+    color: #ccc;
+}
+.forum-post__time {
+    color: #555;
+}
+.forum-post__actions {
     margin-left: auto;
 }
 .forum-post__body {
-    padding: 16px;
     font-size: 0.88rem;
-    line-height: 1.6;
+    line-height: 1.7;
+    color: #bbb;
     white-space: pre-wrap;
     word-break: break-word;
 }
-.forum-breadcrumb {
-    font-size: 0.75rem;
+.forum-post--op .forum-post__body {
+    font-size: 0.92rem;
+}
+
+/* ── Reply composer ──────────────────────────────────────────────────────── */
+.forum-composer {
+    background: #181818;
+    border-radius: 6px;
+    padding: 20px 24px;
+    margin-top: 24px;
+}
+.forum-composer__label {
+    font-size: 0.72rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 16px;
+    letter-spacing: 0.8px;
+    color: #555;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
-.forum-breadcrumb a {
-    text-decoration: none;
-    opacity: 0.5;
-}
-.forum-breadcrumb a:hover {
-    opacity: 1;
-}
-.forum-breadcrumb span {
-    opacity: 0.4;
-    margin: 0 6px;
-}
-.forum-cat-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 12px;
-    margin-top: 8px;
-}
-.forum-cat-card {
-    border-width: 1px;
-    border-style: solid;
-    border-radius: 4px;
-    padding: 16px;
-    text-decoration: none;
-    display: block;
-    transition: border-color 0.2s, background 0.2s;
-}
-.forum-cat-card__name {
-    font-weight: 700;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
-}
-.forum-cat-card__desc {
-    font-size: 0.78rem;
-    opacity: 0.6;
-    margin-bottom: 10px;
-    line-height: 1.4;
-}
-.forum-cat-card__counts {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    opacity: 0.5;
-}
-.forum-thread-table {
+.forum-composer textarea {
     width: 100%;
-    border-collapse: collapse;
+    resize: vertical;
+    min-height: 120px;
+    background: #111;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    color: #ccc;
+    font-family: inherit;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    padding: 14px 16px;
+    transition: border-color 0.15s;
 }
-.forum-thread-table th {
-    text-align: left;
-    text-transform: uppercase;
-    font-size: 0.7rem;
-    letter-spacing: 1px;
-    padding-bottom: 12px;
-    border-bottom-width: 1px;
-    border-bottom-style: solid;
-    opacity: 0.6;
+.forum-composer textarea:focus {
+    border-color: #39FF14;
+    outline: none;
+    box-shadow: 0 0 8px rgba(57, 255, 20, 0.15);
 }
-.forum-thread-table td {
-    padding: 14px 0;
-    vertical-align: middle;
-    border-bottom-width: 1px;
-    border-bottom-style: solid;
+.forum-composer__footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
 }
-.forum-thread-table tr:last-child td {
-    border-bottom: none;
+
+/* ── Thread title bar ────────────────────────────────────────────────────── */
+.forum-thread-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #eee;
+    margin-bottom: 6px;
+    line-height: 1.3;
 }
-.forum-thread-table td.td-right {
-    text-align: right;
-    font-size: 0.78rem;
-    white-space: nowrap;
+.forum-thread-meta {
+    font-size: 0.75rem;
+    color: #555;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #222;
 }
-.forum-pin-badge {
-    font-size: 10px;
-    margin-right: 4px;
+
+/* ── Pagination ──────────────────────────────────────────────────────────── */
+.forum-pagination {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #1a1a1a;
 }
-.forum-lock-badge {
-    font-size: 10px;
-    margin-right: 4px;
-    opacity: 0.45;
-}
-.forum-header-row {
+
+/* ── Header bar (title + new thread button) ──────────────────────────────── */
+.forum-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 16px;
 }
-.forum-header-row .box-title {
-    margin: 0;
+.forum-header__title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #888;
+}
+.forum-new-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 16px;
+    background: #39FF14;
+    color: #000;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    border: none;
+    border-radius: 4px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+}
+.forum-new-btn:hover {
+    background: #2ce00f;
+    box-shadow: 0 0 12px rgba(57, 255, 20, 0.3);
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+.forum-empty {
+    text-align: center;
+    padding: 48px 24px;
+    color: #555;
+    font-size: 0.85rem;
+}
+.forum-empty strong {
+    display: block;
+    font-size: 0.95rem;
+    color: #777;
+    margin-bottom: 8px;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 680px) {
+    .forum-cat-row {
+        grid-template-columns: 4px 1fr;
+    }
+    .forum-cat-row__stat { display: none; }
+    .forum-thread-row {
+        grid-template-columns: 40px 1fr;
+        padding: 12px;
+    }
+    .forum-thread-row__replies,
+    .forum-thread-row__activity { display: none; }
+    .forum-post {
+        grid-template-columns: 1fr;
+    }
+    .forum-post__gutter { display: none; }
 }
 </style>
 
@@ -323,16 +658,16 @@ require 'core/sidebar.php';
     <!-- ── DISABLED ──────────────────────────────────────────────────── -->
     <div class="box" style="grid-column: 1 / -1;">
       <div class="box-header"><span class="box-title">COMMUNITY FORUM</span></div>
-      <div class="box-body" style="text-align: center; padding: 40px 24px;">
-        <p class="dim" style="margin-bottom: 12px;">The community forum is currently disabled.</p>
-        <p class="dim">Enable it under <a href="smack-config.php">Configuration → Architecture &amp; Interaction</a>.</p>
+      <div class="box-body forum-empty">
+        <strong>Forum Disabled</strong>
+        <p>Enable it under <a href="smack-config.php">Configuration &rarr; Architecture &amp; Interaction</a>.</p>
       </div>
     </div>
 
     <?php elseif ($reg_error): ?>
     <!-- ── REGISTRATION FAILED ───────────────────────────────────────── -->
     <div class="box" style="grid-column: 1 / -1;">
-      <div class="box-header"><span class="box-title">COMMUNITY FORUM — REGISTRATION FAILED</span></div>
+      <div class="box-header"><span class="box-title">COMMUNITY FORUM</span></div>
       <div class="box-body">
         <div class="alert"><?php echo htmlspecialchars($reg_error); ?></div>
         <p class="dim">Make sure your Site URL is set correctly in <a href="smack-config.php">Configuration</a>, then reload this page to retry.</p>
@@ -355,29 +690,49 @@ require 'core/sidebar.php';
     <div class="box" style="grid-column: 1 / -1;">
       <div class="box-header">
         <span class="box-title">COMMUNITY FORUM</span>
-        <span class="dim" style="font-size: 11px; margin-left: auto;">SNAPSMACK ADMINS ONLY</span>
+        <span class="dim" style="font-size: 11px; margin-left: auto;">SNAPSMACK ADMINS</span>
       </div>
       <div class="box-body">
 
         <?php if (isset($_GET['posted'])): ?>
-          <div class="alert" style="margin-bottom: 16px;">Thread posted.</div>
+          <div class="alert alert-success" style="margin-bottom: 20px;">Thread posted successfully.</div>
         <?php endif; ?>
 
         <?php $cats = $api_data['categories'] ?? []; ?>
         <?php if (empty($cats)): ?>
-          <p class="dim">No boards found. Check that the forum schema has been imported on snapsmack.ca.</p>
+          <div class="forum-empty">
+            <strong>No boards found</strong>
+            <p>Check that the forum schema has been imported on snapsmack.ca.</p>
+          </div>
         <?php else: ?>
-        <div class="forum-cat-grid">
-          <?php foreach ($cats as $cat): ?>
-          <a href="smack-forum.php?view=threads&cat=<?php echo (int)$cat['id']; ?>" class="forum-cat-card">
-            <div class="forum-cat-card__name"><?php echo htmlspecialchars($cat['name']); ?></div>
-            <?php if (!empty($cat['description'])): ?>
-            <div class="forum-cat-card__desc"><?php echo htmlspecialchars($cat['description']); ?></div>
-            <?php endif; ?>
-            <div class="forum-cat-card__counts">
-              <?php echo (int)$cat['thread_count']; ?> threads
-              &nbsp;&bull;&nbsp;
-              <?php echo (int)$cat['reply_count']; ?> replies
+
+        <!-- Column labels -->
+        <div style="display:grid; grid-template-columns:4px 1fr 100px 100px; font-size:0.65rem; text-transform:uppercase; letter-spacing:1px; color:#444; padding:0 0 8px 0;">
+          <span></span>
+          <span style="padding-left:20px;">Board</span>
+          <span style="text-align:center;">Threads</span>
+          <span style="text-align:center;">Replies</span>
+        </div>
+
+        <div class="forum-cat-list">
+          <?php foreach ($cats as $ci => $cat):
+              $accent = $cat_accents[$ci % count($cat_accents)];
+          ?>
+          <a href="smack-forum.php?view=threads&cat=<?php echo (int)$cat['id']; ?>" class="forum-cat-row">
+            <div class="forum-cat-row__accent" style="background:<?php echo $accent; ?>;"></div>
+            <div class="forum-cat-row__info">
+              <div class="forum-cat-row__name"><?php echo htmlspecialchars($cat['name']); ?></div>
+              <?php if (!empty($cat['description'])): ?>
+              <div class="forum-cat-row__desc"><?php echo htmlspecialchars($cat['description']); ?></div>
+              <?php endif; ?>
+            </div>
+            <div class="forum-cat-row__stat">
+              <span class="forum-cat-row__stat-num"><?php echo (int)$cat['thread_count']; ?></span>
+              <span class="forum-cat-row__stat-label">Threads</span>
+            </div>
+            <div class="forum-cat-row__stat">
+              <span class="forum-cat-row__stat-num"><?php echo (int)$cat['reply_count']; ?></span>
+              <span class="forum-cat-row__stat-label">Replies</span>
             </div>
           </a>
           <?php endforeach; ?>
@@ -402,58 +757,70 @@ require 'core/sidebar.php';
           <a href="smack-forum.php" style="opacity:.45; text-decoration:none; font-weight:400;">FORUM</a>
           &nbsp;/&nbsp;<?php echo htmlspecialchars(strtoupper($cat_name)); ?>
         </span>
-        <a href="smack-forum.php?view=new-thread&new_thread_cat=<?php echo $cat_id; ?>" class="action-edit" style="margin-left:auto;">+ NEW THREAD</a>
+        <a href="smack-forum.php?view=new-thread&new_thread_cat=<?php echo $cat_id; ?>" class="forum-new-btn" style="margin-left:auto;">+ New Thread</a>
       </div>
       <div class="box-body">
 
         <?php if (isset($_GET['replied'])): ?>
-          <div class="alert" style="margin-bottom:16px;">Reply posted.</div>
+          <div class="alert alert-success" style="margin-bottom:20px;">Reply posted successfully.</div>
         <?php endif; ?>
 
         <?php if (empty($threads)): ?>
-          <p class="dim">No threads yet. Be the first to post.</p>
+          <div class="forum-empty">
+            <strong>No threads yet</strong>
+            <p>Be the first to start a conversation.</p>
+          </div>
         <?php else: ?>
-        <table class="forum-thread-table">
-          <thead>
-            <tr>
-              <th>Thread</th>
-              <th style="width:80px; text-align:right;">Replies</th>
-              <th style="width:140px; text-align:right;">Last Activity</th>
-              <th style="width:60px;"></th>
-            </tr>
-          </thead>
-          <tbody>
-          <?php foreach ($threads as $t): ?>
-            <tr>
-              <td>
-                <?php if ($t['is_pinned']): ?><span class="forum-pin-badge" title="Pinned">📌</span><?php endif; ?>
-                <?php if ($t['is_locked']): ?><span class="forum-lock-badge" title="Locked">🔒</span><?php endif; ?>
-                <strong><?php echo htmlspecialchars($t['title']); ?></strong><br>
-                <span class="dim" style="font-size:11px;">
-                  by <?php echo htmlspecialchars($t['display_name']); ?>
-                  &nbsp;&bull;&nbsp;
-                  <?php echo date('M j, Y', strtotime($t['created_at'])); ?>
+
+        <!-- Column labels -->
+        <div style="display:grid; grid-template-columns:44px 1fr 64px 100px; font-size:0.65rem; text-transform:uppercase; letter-spacing:1px; color:#444; padding:0 16px 10px;">
+          <span></span>
+          <span style="padding-left:12px;">Topic</span>
+          <span style="text-align:center;">Replies</span>
+          <span style="text-align:right;">Activity</span>
+        </div>
+
+        <div class="forum-thread-list">
+          <?php foreach ($threads as $t):
+              $pinned   = !empty($t['is_pinned']);
+              $locked   = !empty($t['is_locked']);
+              $last_act = $t['last_reply_at'] ?? $t['created_at'];
+          ?>
+          <div class="forum-thread-row<?php echo $pinned ? ' forum-thread-row--pinned' : ''; ?>">
+            <?php echo forum_avatar($t['display_name'], $t['author_domain'] ?? ''); ?>
+            <div class="forum-thread-row__info">
+              <div class="forum-thread-row__title">
+                <?php if ($pinned || $locked): ?>
+                <span class="forum-badges">
+                  <?php if ($pinned): ?><span class="forum-badge forum-badge--pinned">Pinned</span><?php endif; ?>
+                  <?php if ($locked): ?><span class="forum-badge forum-badge--locked">Locked</span><?php endif; ?>
                 </span>
-              </td>
-              <td class="td-right"><?php echo (int)$t['reply_count']; ?></td>
-              <td class="td-right dim">
-                <?php echo $t['last_reply_at'] ? date('M j, Y', strtotime($t['last_reply_at'])) : '—'; ?>
-              </td>
-              <td class="td-right">
-                <a href="smack-forum.php?view=thread&id=<?php echo (int)$t['id']; ?>" class="action-edit">READ</a>
-              </td>
-            </tr>
+                <?php endif; ?>
+                <a href="smack-forum.php?view=thread&id=<?php echo (int)$t['id']; ?>"><?php echo htmlspecialchars($t['title']); ?></a>
+              </div>
+              <div class="forum-thread-row__byline">
+                <?php echo htmlspecialchars($t['display_name']); ?>
+                &middot;
+                <?php echo date('M j, Y', strtotime($t['created_at'])); ?>
+              </div>
+            </div>
+            <div class="forum-thread-row__replies">
+              <?php echo (int)$t['reply_count']; ?>
+              <small>replies</small>
+            </div>
+            <div class="forum-thread-row__activity"><?php echo forum_ago($last_act); ?></div>
+          </div>
           <?php endforeach; ?>
-          </tbody>
-        </table>
+        </div>
 
         <?php if ($page > 1 || $has_more): ?>
-        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+        <div class="forum-pagination">
           <?php if ($page > 1): ?>
-            <a href="smack-forum.php?view=threads&cat=<?php echo $cat_id; ?>&page=<?php echo $page - 1; ?>" class="action-edit">← Prev</a>
+            <a href="smack-forum.php?view=threads&cat=<?php echo $cat_id; ?>&page=<?php echo $page - 1; ?>" class="action-edit">&larr; Prev</a>
           <?php endif; ?>
+          <span class="dim" style="font-size:0.75rem; line-height:32px;">Page <?php echo $page; ?></span>
           <?php if ($has_more): ?>
-            <a href="smack-forum.php?view=threads&cat=<?php echo $cat_id; ?>&page=<?php echo $page + 1; ?>" class="action-edit">Next →</a>
+            <a href="smack-forum.php?view=threads&cat=<?php echo $cat_id; ?>&page=<?php echo $page + 1; ?>" class="action-edit">Next &rarr;</a>
           <?php endif; ?>
         </div>
         <?php endif; ?>
@@ -473,94 +840,144 @@ require 'core/sidebar.php';
     ?>
     <div class="box" style="grid-column: 1 / -1;">
       <div class="box-header">
-        <span class="box-title" style="font-size:0.78rem; font-weight:400;">
+        <span class="box-title" style="font-size:0.72rem; font-weight:400;">
           <a href="smack-forum.php" style="opacity:.45; text-decoration:none;">FORUM</a>
           &nbsp;/&nbsp;
           <a href="smack-forum.php?view=threads&cat=<?php echo (int)($thread['category_id'] ?? 0); ?>" style="opacity:.45; text-decoration:none;">
             <?php echo htmlspecialchars(strtoupper($thread['category_name'] ?? 'BOARD')); ?>
           </a>
-          &nbsp;/&nbsp;<strong style="font-size:0.82rem;"><?php echo htmlspecialchars($thread['title'] ?? ''); ?></strong>
         </span>
-        <a href="smack-forum.php?view=new-thread&new_thread_cat=<?php echo (int)($thread['category_id'] ?? 0); ?>" class="action-edit" style="margin-left:auto;">+ NEW THREAD</a>
+        <a href="smack-forum.php?view=new-thread&new_thread_cat=<?php echo (int)($thread['category_id'] ?? 0); ?>" class="forum-new-btn" style="margin-left:auto;">+ New Thread</a>
       </div>
       <div class="box-body">
 
         <?php if (isset($_GET['replied'])): ?>
-          <div class="alert" style="margin-bottom:16px;">Reply posted.</div>
+          <div class="alert alert-success" style="margin-bottom:20px;">Reply posted successfully.</div>
         <?php endif; ?>
         <?php if ($msg): ?>
-          <div class="alert" style="margin-bottom:16px;"><?php echo htmlspecialchars($msg); ?></div>
+          <div class="alert" style="margin-bottom:20px;"><?php echo htmlspecialchars($msg); ?></div>
         <?php endif; ?>
 
         <?php if (empty($thread)): ?>
-          <p class="dim">Thread not found or has been removed.</p>
+          <div class="forum-empty">
+            <strong>Thread not found</strong>
+            <p>It may have been removed.</p>
+          </div>
         <?php else: ?>
 
-        <!-- Opening Post -->
-        <div class="forum-post forum-post--op">
-          <div class="forum-post__meta">
-            <strong><?php echo htmlspecialchars($thread['display_name']); ?></strong>
-            <span class="dim"><?php echo date('M j, Y \a\t g:ia', strtotime($thread['created_at'])); ?></span>
-            <?php if ($thread['is_pinned']): ?><span style="font-size:10px; opacity:.6; text-transform:uppercase; letter-spacing:.5px;">Pinned</span><?php endif; ?>
-            <?php if ($thread['is_locked']): ?><span style="font-size:10px; opacity:.45; text-transform:uppercase; letter-spacing:.5px;">Locked</span><?php endif; ?>
-            <?php if ($thread['display_name'] === $my_display): ?>
-            <form method="post" action="smack-forum.php" class="form-inline"
-                  onsubmit="return confirm('Delete this thread and all its replies?');">
-              <input type="hidden" name="action"     value="delete-thread">
-              <input type="hidden" name="thread_id"  value="<?php echo (int)$thread['id']; ?>">
-              <input type="hidden" name="return_cat" value="<?php echo (int)$thread['category_id']; ?>">
-              <button type="submit" class="action-delete">Delete</button>
-            </form>
-            <?php endif; ?>
-          </div>
-          <div class="forum-post__body"><?php echo nl2br(htmlspecialchars($thread['body'])); ?></div>
+        <!-- Thread title -->
+        <div class="forum-thread-title">
+          <?php if (!empty($thread['is_pinned'])): ?><span class="forum-badge forum-badge--pinned" style="font-size:10px; vertical-align:middle; margin-right:8px;">Pinned</span><?php endif; ?>
+          <?php if (!empty($thread['is_locked'])): ?><span class="forum-badge forum-badge--locked" style="font-size:10px; vertical-align:middle; margin-right:8px;">Locked</span><?php endif; ?>
+          <?php echo htmlspecialchars($thread['title']); ?>
+        </div>
+        <div class="forum-thread-meta">
+          <?php echo htmlspecialchars($thread['category_name'] ?? ''); ?>
+          &middot;
+          <?php echo count($replies); ?> <?php echo count($replies) === 1 ? 'reply' : 'replies'; ?>
+          &middot;
+          started <?php echo date('M j, Y', strtotime($thread['created_at'])); ?>
         </div>
 
-        <!-- Replies -->
-        <?php foreach ($replies as $r): ?>
-        <div class="forum-post">
-          <div class="forum-post__meta">
-            <strong><?php echo htmlspecialchars($r['display_name']); ?></strong>
-            <span class="dim"><?php echo date('M j, Y \a\t g:ia', strtotime($r['created_at'])); ?></span>
-            <?php if ($r['display_name'] === $my_display): ?>
-            <form method="post" action="smack-forum.php" class="form-inline"
-                  onsubmit="return confirm('Delete this reply?');">
-              <input type="hidden" name="action"    value="delete-reply">
-              <input type="hidden" name="reply_id"  value="<?php echo (int)$r['id']; ?>">
-              <input type="hidden" name="thread_id" value="<?php echo (int)$thread['id']; ?>">
-              <button type="submit" class="action-delete">Delete</button>
-            </form>
-            <?php endif; ?>
-          </div>
-          <div class="forum-post__body"><?php echo nl2br(htmlspecialchars($r['body'])); ?></div>
-        </div>
-        <?php endforeach; ?>
+        <!-- Post stream -->
+        <div class="forum-stream">
 
-        <!-- Reply Form -->
+          <!-- Opening Post -->
+          <div class="forum-post forum-post--op">
+            <div class="forum-post__gutter">
+              <?php echo forum_avatar($thread['display_name'], $thread['author_domain'] ?? '', 'lg'); ?>
+            </div>
+            <div class="forum-post__content">
+              <div class="forum-post__header">
+                <span class="forum-post__author"><?php echo htmlspecialchars($thread['display_name']); ?></span>
+                <span class="forum-post__time"><?php echo date('M j, Y \a\t g:ia', strtotime($thread['created_at'])); ?></span>
+                <?php if ($thread['display_name'] === $my_display || $is_mod): ?>
+                <div class="forum-post__actions">
+                  <?php if ($is_mod): ?>
+                  <form method="post" action="smack-forum.php" style="display:inline;">
+                    <input type="hidden" name="action"     value="pin-thread">
+                    <input type="hidden" name="thread_id"  value="<?php echo (int)$thread['id']; ?>">
+                    <input type="hidden" name="pin_value"  value="<?php echo $thread['is_pinned'] ? 0 : 1; ?>">
+                    <button type="submit" class="action-edit"><?php echo $thread['is_pinned'] ? 'Unpin' : 'Pin'; ?></button>
+                  </form>
+                  <form method="post" action="smack-forum.php" style="display:inline;">
+                    <input type="hidden" name="action"     value="lock-thread">
+                    <input type="hidden" name="thread_id"  value="<?php echo (int)$thread['id']; ?>">
+                    <input type="hidden" name="lock_value" value="<?php echo $thread['is_locked'] ? 0 : 1; ?>">
+                    <button type="submit" class="action-edit"><?php echo $thread['is_locked'] ? 'Unlock' : 'Lock'; ?></button>
+                  </form>
+                  <?php endif; ?>
+                  <form method="post" action="smack-forum.php" style="display:inline;"
+                        onsubmit="return confirm('Delete this thread and all its replies?');">
+                    <input type="hidden" name="action"     value="delete-thread">
+                    <input type="hidden" name="thread_id"  value="<?php echo (int)$thread['id']; ?>">
+                    <input type="hidden" name="return_cat" value="<?php echo (int)$thread['category_id']; ?>">
+                    <button type="submit" class="action-delete">Delete</button>
+                  </form>
+                </div>
+                <?php endif; ?>
+              </div>
+              <div class="forum-post__body"><?php echo nl2br(htmlspecialchars($thread['body'])); ?></div>
+            </div>
+          </div>
+
+          <!-- Replies -->
+          <?php foreach ($replies as $r): ?>
+          <div class="forum-post">
+            <div class="forum-post__gutter">
+              <?php echo forum_avatar($r['display_name'], $r['author_domain'] ?? '', 'lg'); ?>
+            </div>
+            <div class="forum-post__content">
+              <div class="forum-post__header">
+                <span class="forum-post__author"><?php echo htmlspecialchars($r['display_name']); ?></span>
+                <span class="forum-post__time"><?php echo date('M j, Y \a\t g:ia', strtotime($r['created_at'])); ?></span>
+                <?php if ($r['display_name'] === $my_display || $is_mod): ?>
+                <div class="forum-post__actions">
+                  <form method="post" action="smack-forum.php" style="display:inline;"
+                        onsubmit="return confirm('Delete this reply?');">
+                    <input type="hidden" name="action"    value="delete-reply">
+                    <input type="hidden" name="reply_id"  value="<?php echo (int)$r['id']; ?>">
+                    <input type="hidden" name="thread_id" value="<?php echo (int)$thread['id']; ?>">
+                    <button type="submit" class="action-delete">Delete</button>
+                  </form>
+                </div>
+                <?php endif; ?>
+              </div>
+              <div class="forum-post__body"><?php echo nl2br(htmlspecialchars($r['body'])); ?></div>
+            </div>
+          </div>
+          <?php endforeach; ?>
+
+        </div><!-- /.forum-stream -->
+
+        <!-- Reply composer -->
         <?php if (!$thread['is_locked']): ?>
-        <div class="forum-post forum-post--compose">
-          <div class="forum-post__meta">
-            <strong>REPLY AS <?php echo htmlspecialchars(strtoupper($my_display)); ?></strong>
+        <div class="forum-composer">
+          <div class="forum-composer__label">
+            <?php
+            // The composer avatar uses the current install's own domain
+            $my_domain = preg_replace('/^https?:\/\//i', '', rtrim($settings['site_url'] ?? '', '/'));
+            $my_domain = rtrim($my_domain, '/');
+            echo forum_avatar($my_display, $my_domain, 'sm');
+            ?>
+            Reply as <?php echo htmlspecialchars($my_display); ?>
           </div>
-          <div style="padding: 16px;">
-            <?php if ($msg && $action === 'post-reply'): ?>
-              <div class="alert" style="margin-bottom:12px;"><?php echo htmlspecialchars($msg); ?></div>
-            <?php endif; ?>
-            <form method="post" action="smack-forum.php">
-              <input type="hidden" name="action"    value="post-reply">
-              <input type="hidden" name="thread_id" value="<?php echo (int)$thread['id']; ?>">
-              <div class="lens-input-wrapper" style="margin:0 0 12px;">
-                <textarea name="body" rows="5" placeholder="Write your reply…"
-                          style="width:100%; resize:vertical;" required><?php echo htmlspecialchars($_POST['body'] ?? ''); ?></textarea>
-              </div>
-              <div style="text-align:right;">
-                <button type="submit" class="btn-smack btn-mt-0" style="width:auto; height:40px; padding:0 24px; margin:0;">POST REPLY</button>
-              </div>
-            </form>
-          </div>
+          <?php if ($msg && $action === 'post-reply'): ?>
+            <div class="alert" style="margin-bottom:12px;"><?php echo htmlspecialchars($msg); ?></div>
+          <?php endif; ?>
+          <form method="post" action="smack-forum.php">
+            <input type="hidden" name="action"    value="post-reply">
+            <input type="hidden" name="thread_id" value="<?php echo (int)$thread['id']; ?>">
+            <textarea name="body" placeholder="Write your reply&#8230;" required><?php echo htmlspecialchars($_POST['body'] ?? ''); ?></textarea>
+            <div class="forum-composer__footer">
+              <button type="submit" class="forum-new-btn">Post Reply</button>
+            </div>
+          </form>
         </div>
         <?php else: ?>
-          <p class="dim" style="text-align:center; font-size:12px; margin-top:20px;">This thread is locked.</p>
+          <div class="forum-empty" style="padding:24px;">
+            This thread is locked.
+          </div>
         <?php endif; ?>
 
         <?php endif; // thread exists ?>
@@ -622,15 +1039,15 @@ require 'core/sidebar.php';
 
           <div class="lens-input-wrapper">
             <label>BODY</label>
-            <textarea name="body" rows="10" placeholder="Describe your issue, question, or topic…"
+            <textarea name="body" rows="10" placeholder="Describe your issue, question, or topic&#8230;"
                       style="width:100%; resize:vertical;" required><?php echo htmlspecialchars($_POST['body'] ?? ''); ?></textarea>
-            <span class="dim">20,000 character limit.</span>
+            <span class="dim" style="font-size:0.72rem; margin-top:6px;">20,000 character limit.</span>
           </div>
 
           <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:16px;">
             <?php $back_url = $new_thread_cat ? "smack-forum.php?view=threads&cat={$new_thread_cat}" : 'smack-forum.php'; ?>
-            <a href="<?php echo $back_url; ?>" class="action-edit">CANCEL</a>
-            <button type="submit" class="btn-smack btn-mt-0" style="width:auto; height:40px; padding:0 24px; margin:0;">POST THREAD</button>
+            <a href="<?php echo $back_url; ?>" class="action-edit" style="line-height:36px;">CANCEL</a>
+            <button type="submit" class="forum-new-btn">Post Thread</button>
           </div>
         </form>
 

@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS ss_forum_installs (
     registered_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_seen_at    TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     is_banned       TINYINT(1)     NOT NULL DEFAULT 0,
+    is_moderator    TINYINT(1)     NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     UNIQUE KEY uq_api_key (api_key),
     UNIQUE KEY uq_domain  (domain)
