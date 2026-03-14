@@ -4,6 +4,10 @@
  * Alpha v0.7.3
  *
  * Renders a floating dock of social profile links on public pages.
+ * Each icon is styled as an independent circle matching the download
+ * button aesthetic. When downloads are active for the current image,
+ * the download icon is included in the dock.
+ *
  * Included by core/footer-scripts.php. Settings from snap_settings.
  */
 
@@ -53,12 +57,12 @@ $_dock_platforms = [
     'threads' => [
         'label' => 'Threads',
         'key' => 'social_dock_threads',
-        'svg' => '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.186 2c3.73 0 5.88 1.785 6.724 3.46.574 1.14.862 2.47.862 3.96 0 .08-.002.158-.004.237a4.82 4.82 0 01-2.128 3.755c-.126.09-.26.174-.4.252.014.197.02.397.02.6 0 1.17-.195 2.24-.585 3.19-.585 1.43-1.582 2.49-2.97 3.16-1.135.545-2.466.82-3.96.82-1.703 0-3.183-.374-4.403-1.112C3.87 19.44 2.96 18.15 2.44 16.48l2.08-.72c.38 1.22 1.04 2.14 1.96 2.74.92.6 2.04.9 3.34.9 1.66 0 2.94-.44 3.8-1.3.72-.72 1.08-1.72 1.08-2.96 0-.11-.003-.218-.008-.324a4.56 4.56 0 01-2.512.716c-1.42 0-2.62-.36-3.57-1.07-.96-.72-1.44-1.74-1.44-3.04 0-1.22.46-2.2 1.38-2.94.92-.74 2.08-1.11 3.48-1.11 1.24 0 2.27.34 3.09 1.01.24.2.45.42.64.66v-1.5h2.12v5.58c0 .04 0 .08-.002.12.17-.1.332-.21.488-.33 1.1-.84 1.66-1.97 1.66-3.38 0-2.76-1.82-5.3-5.62-5.3-2.16 0-3.88.64-5.12 1.9-1.24 1.28-1.86 3.02-1.86 5.2 0 2.28.68 4.06 2.02 5.32 1.34 1.26 3.16 1.9 5.44 1.9h.12v2.1h-.12c-2.86 0-5.2-.84-6.98-2.52C3.34 17.74 2.4 15.38 2.4 12.42c0-2.72.82-4.96 2.44-6.7C6.48 3.98 8.88 3.04 11.82 3.04L12.186 2z"/></svg>'
+        'svg' => '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.28 11.58a6.45 6.45 0 00-.29-.14c-.2-3.1-1.88-4.87-4.69-4.89h-.04c-1.68 0-3.07.72-3.92 2.03l1.63 1.12c.63-.96 1.63-1.13 2.3-1.13h.03c.89.01 1.56.26 2 .76.32.36.53.86.64 1.49a11.6 11.6 0 00-2.62-.07c-2.6.15-4.27 1.67-4.14 3.74.06 1.05.58 1.95 1.46 2.54.74.5 1.7.74 2.7.69 1.32-.07 2.36-.53 3.08-1.38.55-.64.89-1.47 1.04-2.52.62.38 1.08.87 1.33 1.47.42 1.02.45 2.7-.76 3.92-1.06 1.06-2.34 1.52-4.25 1.54-2.12-.02-3.73-.7-4.79-2-.99-1.22-1.5-2.97-1.53-5.22.02-2.25.54-4 1.53-5.22 1.06-1.3 2.67-1.98 4.79-2 2.14.02 3.78.71 4.87 2.04.53.65.93 1.45 1.2 2.38l1.86-.5c-.33-1.17-.86-2.18-1.58-3.03-1.42-1.73-3.5-2.62-6.17-2.64h-.18c-2.64.02-4.7.91-6.1 2.64C5.64 7.58 5.03 9.72 5 12.36v.08c.03 2.64.64 4.78 1.82 6.36 1.4 1.73 3.46 2.62 6.1 2.64h.18c2.34-.02 4-.64 5.37-2.01 1.78-1.78 1.72-4.01 1.1-5.51-.44-1.08-1.27-1.96-2.42-2.56l.13.22zm-4.12 3.97c-1.1.07-2.25-.43-2.31-1.49-.04-.78.56-1.65 2.34-1.75.2-.01.4-.02.6-.02.7 0 1.35.07 1.95.2-.22 2.54-1.4 2.99-2.58 3.06z"/></svg>'
     ],
     'bluesky' => [
         'label' => 'Bluesky',
         'key' => 'social_dock_bluesky',
-        'svg' => '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.24 5.2 5.84 8.82 5.06 11.1c-.24.7-.36 1.26-.36 1.64 0 1.48 1.2 2.26 2.4 2.26.66 0 1.34-.2 1.9-.6-.82 1.74-2.5 3-4.5 3.6.82.26 1.66.4 2.5.4 3.34 0 5.58-2.48 5-5.4.58 2.92 2.66 5.4 6 5.4.84 0 1.68-.14 2.5-.4-2 -.6-3.68-1.86-4.5-3.6.56.4 1.24.6 1.9.6 1.2 0 2.4-.78 2.4-2.26 0-.38-.12-.94-.36-1.64C18.16 8.82 15.76 5.2 12 2z"/></svg>'
+        'svg' => '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.335 3.836c2.15 1.653 4.468 5.007 5.665 7.196 1.197-2.189 3.514-5.543 5.665-7.196 1.553-1.192 4.065-2.108 4.065 1.186 0 .658-.377 5.53-.598 6.32-.77 2.758-3.577 3.46-6.063 3.035 4.343.744 5.448 3.203 3.063 5.66-4.534 4.671-6.517-1.17-7.025-2.665a4.358 4.358 0 01-.14-.452c-.018-.062-.027-.093-.027-.068s-.009.006-.028.068c-.038.13-.084.284-.139.452-.508 1.496-2.491 7.336-7.025 2.666-2.385-2.458-1.28-4.917 3.063-5.66-2.486.424-5.294-.278-6.064-3.036C.647 10.552.27 5.68.27 5.022c0-3.294 2.512-2.378 4.065-1.186z"/></svg>'
     ],
     'linkedin' => [
         'label' => 'LinkedIn',
@@ -110,8 +114,12 @@ foreach ($_dock_platforms as $_platform_key => $_platform) {
     }
 }
 
-// If no active links, bail
-if (empty($_dock_links)) {
+// Check if a download button is available for the current image
+// (set by core/download-overlay.php earlier in the page)
+$_dock_has_download = !empty($download_button);
+
+// If no active links AND no download button, bail
+if (empty($_dock_links) && !$_dock_has_download) {
     return;
 }
 
@@ -122,32 +130,70 @@ if (!in_array($_dock_position, $_valid_positions)) {
     $_dock_position = 'bottom-right';
 }
 
-// Appearance settings → CSS custom properties
+// Appearance settings
 $_dock_color_light = $settings['social_dock_color_light'] ?? '#ffffff';
 $_dock_color_dark  = $settings['social_dock_color_dark'] ?? '#1a1a1a';
 $_dock_color_mode  = ($settings['social_dock_color_mode'] ?? 'light') === 'dark' ? 'dark' : 'light';
 $_dock_shadow      = ($settings['social_dock_shadow'] ?? '1') === '1';
-$_dock_opacity     = max(0, min(100, (int)($settings['social_dock_opacity'] ?? 20)));
-$_dock_shape       = ($settings['social_dock_icon_shape'] ?? 'round') === 'square' ? 'square' : 'round';
-$_dock_style       = ($settings['social_dock_icon_style'] ?? 'outline') === 'solid' ? 'solid' : 'outline';
+$_dock_opacity     = max(0, min(100, (int)($settings['social_dock_opacity'] ?? 50)));
 
-// Active color based on mode
+// Active colour based on mode
 $_dock_color = ($_dock_color_mode === 'dark') ? $_dock_color_dark : $_dock_color_light;
 
-// Convert hex colour to RGB for rgba() usage in CSS
+// Convert hex colour to RGB for rgba() usage
 $_dock_rgb = '255,255,255';
 if (preg_match('/^#?([0-9a-f]{6})$/i', $_dock_color, $_m)) {
     $_dock_rgb = hexdec(substr($_m[1], 0, 2)) . ',' . hexdec(substr($_m[1], 2, 2)) . ',' . hexdec(substr($_m[1], 4, 2));
 }
 
+// Derive bg/border colours from the icon colour
+// Light mode (white icons): dark circles with white borders
+// Dark mode (dark icons): light circles with dark borders
+if ($_dock_color_mode === 'light') {
+    $_bg_base      = 'rgba(0, 0, 0, 0.7)';
+    $_bg_hover     = 'rgba(0, 0, 0, 0.9)';
+    $_border_base  = 'rgba(' . $_dock_rgb . ', 0.3)';
+    $_border_hover = 'rgba(' . $_dock_rgb . ', 0.7)';
+} else {
+    $_bg_base      = 'rgba(255, 255, 255, 0.7)';
+    $_bg_hover     = 'rgba(255, 255, 255, 0.9)';
+    $_border_base  = 'rgba(' . $_dock_rgb . ', 0.3)';
+    $_border_hover = 'rgba(' . $_dock_rgb . ', 0.7)';
+}
+
+// Build CSS classes
 $_dock_classes = 'social-dock dock-' . $_dock_position;
-if ($_dock_shape === 'square') $_dock_classes .= ' dock-square';
-if ($_dock_style === 'solid')  $_dock_classes .= ' dock-solid';
-if ($_dock_shadow)             $_dock_classes .= ' dock-shadow';
+if ($_dock_shadow) $_dock_classes .= ' dock-shadow';
+
+// Inline custom properties
+$_dock_style = implode('; ', [
+    '--dock-bg: ' . $_bg_base,
+    '--dock-bg-hover: ' . $_bg_hover,
+    '--dock-border: ' . $_border_base,
+    '--dock-border-hover: ' . $_border_hover,
+    '--dock-icon: ' . htmlspecialchars($_dock_color),
+    '--dock-idle-opacity: ' . ($_dock_opacity / 100),
+]);
 ?>
 <div class="<?php echo htmlspecialchars($_dock_classes); ?>"
      data-dock-position="<?php echo htmlspecialchars($_dock_position); ?>"
-     style="--dock-color: <?php echo htmlspecialchars($_dock_color); ?>; --dock-rgb: <?php echo $_dock_rgb; ?>; --dock-bg-opacity: <?php echo $_dock_opacity / 100; ?>;">
+     style="<?php echo $_dock_style; ?>">
+
+    <?php
+    // Download icon (first in dock when active)
+    if ($_dock_has_download):
+        // Extract the href from the existing download button
+        preg_match('/href="([^"]*)"/', $download_button, $_dl_match);
+        $_dl_href = $_dl_match[1] ?? '#';
+        // Check for target="_blank"
+        $_dl_target = (strpos($download_button, 'target="_blank"') !== false)
+            ? ' target="_blank" rel="noopener"' : '';
+    ?>
+        <a href="<?php echo $_dl_href; ?>" class="dock-link" title="Download full resolution"<?php echo $_dl_target; ?>>
+            <span class="snap-download-icon"><span></span></span>
+        </a>
+    <?php endif; ?>
+
     <?php foreach ($_dock_links as $_link): ?>
         <a href="<?php echo htmlspecialchars($_link['url']); ?>" target="_blank" rel="noopener" title="<?php echo htmlspecialchars($_link['label']); ?>" class="dock-link">
             <?php echo $_link['svg']; ?>

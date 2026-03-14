@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - Admin UI Engine
- * Alpha v0.7.1
+ * Alpha v0.7.3
  *
  * Handles admin-side interface: custom multiselect dropdowns, label management,
  * registry filtering, file upload handling, EXIF preflight, and form submission.

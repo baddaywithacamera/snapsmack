@@ -4,7 +4,8 @@
  * Alpha v0.7.3
  *
  * Admin page for configuring the floating social profile links dock.
- * Toggle on/off, pick a position, enter profile URLs for each platform.
+ * Toggle on/off, pick a position, customise colours, enter profile URLs.
+ * The dock also absorbs the download button when downloads are active.
  */
 
 require_once 'core/auth.php';
@@ -31,14 +32,10 @@ if (isset($_POST['save_social_dock'])) {
         'social_dock_color_dark'  => '#1a1a1a',
         'social_dock_color_mode'  => 'light',
         'social_dock_shadow'      => '1',
-        'social_dock_opacity'     => '20',
-        'social_dock_icon_shape'  => 'round',
-        'social_dock_icon_style'  => 'outline',
+        'social_dock_opacity'     => '50',
     ];
     foreach ($appearance_keys as $akey => $default) {
         $aval = trim($_POST[$akey] ?? $default);
-        if ($akey === 'social_dock_icon_shape' && !in_array($aval, ['round', 'square'])) $aval = 'round';
-        if ($akey === 'social_dock_icon_style' && !in_array($aval, ['outline', 'solid'])) $aval = 'outline';
         if ($akey === 'social_dock_color_mode' && !in_array($aval, ['light', 'dark'])) $aval = 'light';
         if ($akey === 'social_dock_shadow') $aval = isset($_POST[$akey]) ? '1' : '0';
         if ($akey === 'social_dock_opacity') $aval = max(0, min(100, (int)$aval));
@@ -94,7 +91,7 @@ include 'core/sidebar.php';
                         <input type="checkbox" name="social_dock_enabled" value="1" <?php echo ($settings['social_dock_enabled'] ?? '0') === '1' ? 'checked' : ''; ?>>
                         ENABLE SOCIAL DOCK
                     </label>
-                    <span class="dim" style="display: block; margin-top: 4px;">Floating profile links visible on every public page.</span>
+                    <span class="dim" style="display: block; margin-top: 4px;">Floating profile links visible on every public page. When downloads are enabled for an image, the download button appears in the dock automatically.</span>
                 </div>
 
                 <div class="post-col-right">
@@ -109,10 +106,10 @@ include 'core/sidebar.php';
                             'bottom-right' => 'Bottom Right',
                         ],
                         'Side Edges (slides on scroll)' => [
-                            'left-top' => 'Left Side \u2014 Top',
-                            'left-bottom' => 'Left Side \u2014 Bottom',
-                            'right-top' => 'Right Side \u2014 Top',
-                            'right-bottom' => 'Right Side \u2014 Bottom',
+                            'left-top' => 'Left Side — Top',
+                            'left-bottom' => 'Left Side — Bottom',
+                            'right-top' => 'Right Side — Top',
+                            'right-bottom' => 'Right Side — Bottom',
                         ],
                     ];
                     ?>
@@ -135,22 +132,23 @@ include 'core/sidebar.php';
              ============================================================ -->
         <div class="box">
             <h3>APPEARANCE</h3>
+            <p class="dim">Each icon is rendered as a circle. Light colour is used for icon fills on dark backgrounds; dark colour for light backgrounds. The circle background automatically contrasts with the icon colour.</p>
 
             <div class="post-layout-grid">
                 <div class="post-col-left">
-                    <label>LIGHT COLOR</label>
+                    <label>LIGHT ICON COLOUR</label>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <input type="color" name="social_dock_color_light" value="<?php echo htmlspecialchars($settings['social_dock_color_light'] ?? '#ffffff'); ?>" style="width: 50px; height: 34px; border: 1px solid #ccc; cursor: pointer;" oninput="this.nextElementSibling.value = this.value">
                         <input type="text" value="<?php echo htmlspecialchars($settings['social_dock_color_light'] ?? '#ffffff'); ?>" style="width: 100px; font-family: monospace;" onchange="this.previousElementSibling.value = this.value" oninput="this.previousElementSibling.value = this.value">
                     </div>
-                    <span class="dim">Used on dark backgrounds.</span>
+                    <span class="dim">Icon colour and border tint for dark backgrounds.</span>
 
-                    <label style="margin-top: 15px;">DARK COLOR</label>
+                    <label style="margin-top: 15px;">DARK ICON COLOUR</label>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <input type="color" name="social_dock_color_dark" value="<?php echo htmlspecialchars($settings['social_dock_color_dark'] ?? '#1a1a1a'); ?>" style="width: 50px; height: 34px; border: 1px solid #ccc; cursor: pointer;" oninput="this.nextElementSibling.value = this.value">
                         <input type="text" value="<?php echo htmlspecialchars($settings['social_dock_color_dark'] ?? '#1a1a1a'); ?>" style="width: 100px; font-family: monospace;" onchange="this.previousElementSibling.value = this.value" oninput="this.previousElementSibling.value = this.value">
                     </div>
-                    <span class="dim">Used on light backgrounds.</span>
+                    <span class="dim">Icon colour and border tint for light backgrounds.</span>
 
                     <label style="margin-top: 15px;">DEFAULT MODE</label>
                     <?php $current_mode = $settings['social_dock_color_mode'] ?? 'light'; ?>
@@ -158,37 +156,22 @@ include 'core/sidebar.php';
                         <option value="light" <?php echo $current_mode === 'light' ? 'selected' : ''; ?>>Light icons (for dark sites)</option>
                         <option value="dark" <?php echo $current_mode === 'dark' ? 'selected' : ''; ?>>Dark icons (for light sites)</option>
                     </select>
-                    <span class="dim">Which color set to use by default.</span>
+                    <span class="dim">Which colour set to use.</span>
                 </div>
 
                 <div class="post-col-right">
-                    <label>ICON SHAPE</label>
-                    <?php $current_shape = $settings['social_dock_icon_shape'] ?? 'round'; ?>
-                    <select name="social_dock_icon_shape">
-                        <option value="round" <?php echo $current_shape === 'round' ? 'selected' : ''; ?>>Round</option>
-                        <option value="square" <?php echo $current_shape === 'square' ? 'selected' : ''; ?>>Square (rounded corners)</option>
-                    </select>
-
-                    <label style="margin-top: 15px;">ICON STYLE</label>
-                    <?php $current_style = $settings['social_dock_icon_style'] ?? 'outline'; ?>
-                    <select name="social_dock_icon_style">
-                        <option value="outline" <?php echo $current_style === 'outline' ? 'selected' : ''; ?>>Outline — transparent icons, solid on hover</option>
-                        <option value="solid" <?php echo $current_style === 'solid' ? 'selected' : ''; ?>>Solid — filled background with white symbol</option>
-                    </select>
-                    <span class="dim">Outline icons turn solid on hover. Solid icons brighten on hover.</span>
-
-                    <label style="margin-top: 15px;">
+                    <label>
                         <input type="checkbox" name="social_dock_shadow" value="1" <?php echo ($settings['social_dock_shadow'] ?? '1') === '1' ? 'checked' : ''; ?>>
                         ICON DROP SHADOW
                     </label>
-                    <span class="dim" style="display: block; margin-top: 4px;">Subtle shadow behind each icon for contrast against busy backgrounds.</span>
+                    <span class="dim" style="display: block; margin-top: 4px;">Subtle shadow behind each circle for contrast against busy backgrounds.</span>
 
-                    <label style="margin-top: 15px;">DOCK BACKGROUND OPACITY</label>
+                    <label style="margin-top: 15px;">IDLE OPACITY</label>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <input type="range" name="social_dock_opacity" min="0" max="100" value="<?php echo htmlspecialchars($settings['social_dock_opacity'] ?? '20'); ?>" style="flex: 1;" oninput="this.nextElementSibling.textContent = this.value + '%'">
-                        <span style="min-width: 40px; font-family: monospace;"><?php echo htmlspecialchars($settings['social_dock_opacity'] ?? '20'); ?>%</span>
+                        <input type="range" name="social_dock_opacity" min="10" max="100" value="<?php echo htmlspecialchars($settings['social_dock_opacity'] ?? '50'); ?>" style="flex: 1;" oninput="this.nextElementSibling.textContent = this.value + '%'">
+                        <span style="min-width: 40px; font-family: monospace;"><?php echo htmlspecialchars($settings['social_dock_opacity'] ?? '50'); ?>%</span>
                     </div>
-                    <span class="dim">0% = fully transparent (no backdrop), 100% = fully opaque dark glass.</span>
+                    <span class="dim">How visible the dock is when not being hovered. Hovering always reveals at full opacity.</span>
                 </div>
             </div>
         </div>
