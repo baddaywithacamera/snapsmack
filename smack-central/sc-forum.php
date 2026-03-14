@@ -11,7 +11,7 @@ require_once __DIR__ . '/sc-auth.php';
 $sc_active_nav = 'sc-forum.php';
 $sc_page_title = 'Forum Admin';
 
-$db      = sc_db();
+$db      = sc_forum_db();
 $flash   = '';
 $section = $_GET['section'] ?? 'installs';
 
@@ -29,6 +29,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db->prepare("UPDATE ss_forum_installs SET is_banned = 0 WHERE id = ?")
            ->execute([(int)$_POST['id']]);
         $flash = 'Install unbanned.';
+    } elseif ($action === 'promote_mod' && !empty($_POST['id'])) {
+        $db->prepare("UPDATE ss_forum_installs SET is_moderator = 1 WHERE id = ?")
+           ->execute([(int)$_POST['id']]);
+        $flash = 'Install promoted to moderator.';
+    } elseif ($action === 'demote_mod' && !empty($_POST['id'])) {
+        $db->prepare("UPDATE ss_forum_installs SET is_moderator = 0 WHERE id = ?")
+           ->execute([(int)$_POST['id']]);
+        $flash = 'Moderator privileges removed.';
     }
 
     // Categories
@@ -67,6 +75,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $flash = 'Reply deleted.';
     }
 
+    // Hub posting — post thread or reply as "SnapSmack HQ"
+    elseif ($action === 'hub_post_thread') {
+        $cat_id = (int)($_POST['category_id'] ?? 0);
+        $title  = trim($_POST['title']        ?? '');
+        $body   = trim($_POST['body']         ?? '');
+        if ($cat_id && $title !== '' && $body !== '') {
+            // Look up the hub install row
+            $hub = $db->query("SELECT id, display_name FROM ss_forum_installs WHERE domain = 'snapsmack.ca' LIMIT 1")->fetch();
+            if ($hub) {
+                $db->beginTransaction();
+                try {
+                    $db->prepare(
+                        "INSERT INTO ss_forum_threads (category_id, install_id, display_name, title, body) VALUES (?, ?, ?, ?, ?)"
+                    )->execute([$cat_id, $hub['id'], $hub['display_name'], $title, $body]);
+                    $db->prepare("UPDATE ss_forum_categories SET thread_count = thread_count + 1 WHERE id = ?")->execute([$cat_id]);
+                    $db->commit();
+                    $flash = 'Thread posted as ' . $hub['display_name'] . '.';
+                    $section = 'threads';
+                } catch (Exception $e) {
+                    $db->rollBack();
+                    $flash = 'Error posting thread: ' . $e->getMessage();
+                }
+            } else {
+                $flash = 'Hub install not found. Run the moderator migration first.';
+            }
+        } else {
+            $flash = 'Category, title, and body are all required.';
+            $section = 'post';
+        }
+    } elseif ($action === 'hub_post_reply') {
+        $thread_id = (int)($_POST['thread_id'] ?? 0);
+        $body      = trim($_POST['body']       ?? '');
+        if ($thread_id && $body !== '') {
+            $hub = $db->query("SELECT id, display_name FROM ss_forum_installs WHERE domain = 'snapsmack.ca' LIMIT 1")->fetch();
+            if ($hub) {
+                $db->beginTransaction();
+                try {
+                    $db->prepare(
+                        "INSERT INTO ss_forum_replies (thread_id, install_id, display_name, body) VALUES (?, ?, ?, ?)"
+                    )->execute([$thread_id, $hub['id'], $hub['display_name'], $body]);
+                    $t_stmt = $db->prepare("SELECT category_id FROM ss_forum_threads WHERE id = ? LIMIT 1");
+                    $t_stmt->execute([$thread_id]);
+                    $t_row = $t_stmt->fetch();
+                    $db->prepare("UPDATE ss_forum_threads SET reply_count = reply_count + 1, last_reply_at = NOW() WHERE id = ?")->execute([$thread_id]);
+                    if ($t_row) {
+                        $db->prepare("UPDATE ss_forum_categories SET reply_count = reply_count + 1 WHERE id = ?")->execute([$t_row['category_id']]);
+                    }
+                    $db->commit();
+                    $flash = 'Reply posted as ' . $hub['display_name'] . '.';
+                } catch (Exception $e) {
+                    $db->rollBack();
+                    $flash = 'Error posting reply: ' . $e->getMessage();
+                }
+            } else {
+                $flash = 'Hub install not found. Run the moderator migration first.';
+            }
+        } else {
+            $flash = 'Thread and body are required.';
+            $section = 'post';
+        }
+    }
+
     header('Location: sc-forum.php?section=' . urlencode($section) . ($flash ? '&flash=' . urlencode($flash) : ''));
     exit;
 }
@@ -81,7 +151,7 @@ $threads    = [];
 
 try {
     $installs = $db->query("
-        SELECT id, domain, display_name, ss_version, registered_at, last_seen_at, is_banned
+        SELECT id, domain, display_name, ss_version, registered_at, last_seen_at, is_banned, is_moderator
         FROM ss_forum_installs
         ORDER BY is_banned ASC, registered_at DESC
     ")->fetchAll(PDO::FETCH_ASSOC);
@@ -128,6 +198,7 @@ require __DIR__ . '/sc-layout-top.php';
   <a href="?section=installs"   class="sc-tab <?php echo $section === 'installs'   ? 'active' : ''; ?>">Installs (<?php echo count($installs); ?>)</a>
   <a href="?section=categories" class="sc-tab <?php echo $section === 'categories' ? 'active' : ''; ?>">Categories</a>
   <a href="?section=threads"    class="sc-tab <?php echo $section === 'threads'    ? 'active' : ''; ?>">Threads</a>
+  <a href="?section=post"       class="sc-tab <?php echo $section === 'post'       ? 'active' : ''; ?>">Post as HQ</a>
 </div>
 
 <?php if ($section === 'installs'): ?>
@@ -146,6 +217,7 @@ require __DIR__ . '/sc-layout-top.php';
           <th>Version</th>
           <th>Registered</th>
           <th>Last Seen</th>
+          <th>Role</th>
           <th>Status</th>
           <th></th>
         </tr>
@@ -158,16 +230,29 @@ require __DIR__ . '/sc-layout-top.php';
           <td><?php echo htmlspecialchars($row['ss_version']); ?></td>
           <td class="sc-dim"><?php echo htmlspecialchars(substr($row['registered_at'], 0, 10)); ?></td>
           <td class="sc-dim"><?php echo htmlspecialchars(substr($row['last_seen_at'], 0, 10)); ?></td>
+          <td>
+            <?php if ($row['is_moderator']): ?>
+              <span class="sc-badge sc-badge--ok">Moderator</span>
+            <?php else: ?>
+              <span class="sc-badge">Member</span>
+            <?php endif; ?>
+          </td>
           <td><?php echo $row['is_banned'] ? '<span class="sc-badge sc-badge--warn">Banned</span>' : '<span class="sc-badge sc-badge--ok">Active</span>'; ?></td>
           <td>
-            <form method="post">
-              <input type="hidden" name="id" value="<?php echo (int)$row['id']; ?>">
-              <input type="hidden" name="action" value="<?php echo $row['is_banned'] ? 'unban_install' : 'ban_install'; ?>">
-              <input type="hidden" name="_section" value="installs">
-              <button type="submit" class="sc-btn sc-btn--sm <?php echo $row['is_banned'] ? '' : 'sc-btn--danger'; ?>">
-                <?php echo $row['is_banned'] ? 'Unban' : 'Ban'; ?>
-              </button>
-            </form>
+            <div class="sc-btn-row sc-btn-row--tight">
+              <form method="post" style="display:inline">
+                <input type="hidden" name="id" value="<?php echo (int)$row['id']; ?>">
+                <input type="hidden" name="action" value="<?php echo $row['is_moderator'] ? 'demote_mod' : 'promote_mod'; ?>">
+                <button type="submit" class="sc-btn sc-btn--sm"><?php echo $row['is_moderator'] ? 'Demote' : 'Promote'; ?></button>
+              </form>
+              <form method="post" style="display:inline">
+                <input type="hidden" name="id" value="<?php echo (int)$row['id']; ?>">
+                <input type="hidden" name="action" value="<?php echo $row['is_banned'] ? 'unban_install' : 'ban_install'; ?>">
+                <button type="submit" class="sc-btn sc-btn--sm <?php echo $row['is_banned'] ? '' : 'sc-btn--danger'; ?>">
+                  <?php echo $row['is_banned'] ? 'Unban' : 'Ban'; ?>
+                </button>
+              </form>
+            </div>
           </td>
         </tr>
       <?php endforeach; ?>
@@ -285,6 +370,56 @@ require __DIR__ . '/sc-layout-top.php';
       </tbody>
     </table>
     <?php endif; ?>
+  </div>
+</div>
+
+<?php elseif ($section === 'post'): ?>
+<!-- ── POST AS HQ ── -->
+<div class="sc-box">
+  <div class="sc-box-header"><span class="sc-box-title">Post Thread as SnapSmack HQ</span></div>
+  <div class="sc-box-body">
+    <form method="post">
+      <input type="hidden" name="action" value="hub_post_thread">
+      <div class="sc-field">
+        <label class="sc-label">Category</label>
+        <select name="category_id" class="sc-input" required>
+          <option value="">— Select —</option>
+          <?php foreach ($categories as $c): ?>
+            <?php if ($c['is_active']): ?>
+            <option value="<?php echo (int)$c['id']; ?>"><?php echo htmlspecialchars($c['name']); ?></option>
+            <?php endif; ?>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="sc-field">
+        <label class="sc-label">Title</label>
+        <input type="text" name="title" class="sc-input" maxlength="200" required>
+      </div>
+      <div class="sc-field">
+        <label class="sc-label">Body</label>
+        <textarea name="body" class="sc-input" rows="8" style="height:auto; resize:vertical;" required></textarea>
+      </div>
+      <button type="submit" class="sc-btn sc-btn--primary" style="margin-top:12px;">Post Thread</button>
+    </form>
+  </div>
+</div>
+
+<div class="sc-box">
+  <div class="sc-box-header"><span class="sc-box-title">Reply to Thread as SnapSmack HQ</span></div>
+  <div class="sc-box-body">
+    <form method="post">
+      <input type="hidden" name="action" value="hub_post_reply">
+      <div class="sc-field">
+        <label class="sc-label">Thread ID</label>
+        <input type="number" name="thread_id" class="sc-input" min="1" required>
+        <span class="sc-dim" style="font-size:.75rem; margin-top:4px; display:block;">Find the thread ID in the Threads tab.</span>
+      </div>
+      <div class="sc-field">
+        <label class="sc-label">Body</label>
+        <textarea name="body" class="sc-input" rows="6" style="height:auto; resize:vertical;" required></textarea>
+      </div>
+      <button type="submit" class="sc-btn sc-btn--primary" style="margin-top:12px;">Post Reply</button>
+    </form>
   </div>
 </div>
 

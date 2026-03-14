@@ -119,6 +119,15 @@ function is_mod(): bool {
     return false;
 }
 
+/**
+ * Returns true if the authenticated install has the moderator flag.
+ * Falls back to is_mod() so the global mod key also works.
+ */
+function is_install_mod(?array $install = null): bool {
+    if (is_mod()) return true;
+    return $install && !empty($install['is_moderator']);
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 $method = $_SERVER['REQUEST_METHOD'];
 $path   = trim($_GET['path'] ?? '', '/');
@@ -158,7 +167,11 @@ if ($method === 'POST' && $path === 'register') {
         $pdo->prepare(
             "UPDATE ss_forum_installs SET display_name = ?, ss_version = ?, last_seen_at = NOW() WHERE domain = ?"
         )->execute([$display_name, $ss_version, $domain]);
-        respond(['api_key' => $existing['api_key'], 'status' => 'existing']);
+        // Fetch is_moderator for the response
+        $mod_stmt = $pdo->prepare("SELECT is_moderator FROM ss_forum_installs WHERE domain = ? LIMIT 1");
+        $mod_stmt->execute([$domain]);
+        $mod_row = $mod_stmt->fetch();
+        respond(['api_key' => $existing['api_key'], 'status' => 'existing', 'is_moderator' => (bool)($mod_row['is_moderator'] ?? 0)]);
     }
 
     $api_key = bin2hex(random_bytes(32));
@@ -189,7 +202,7 @@ if ($method === 'GET' && $path === 'categories') {
 // GET /threads?cat=N&page=N
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'GET' && $path === 'threads') {
-    require_auth();
+    $install  = require_auth();
     $pdo      = get_pdo();
     $cat_id   = (int)($_GET['cat']  ?? 0);
     $page     = max(1, (int)($_GET['page'] ?? 1));
@@ -212,9 +225,11 @@ if ($method === 'GET' && $path === 'threads') {
         SELECT t.id, t.category_id, t.display_name, t.title,
                t.is_pinned, t.is_locked, t.reply_count,
                t.last_reply_at, t.created_at,
-               c.name AS category_name, c.slug AS category_slug
+               c.name AS category_name, c.slug AS category_slug,
+               i.domain AS author_domain
         FROM ss_forum_threads t
         JOIN ss_forum_categories c ON c.id = t.category_id
+        LEFT JOIN ss_forum_installs i ON i.id = t.install_id
         WHERE $where
         ORDER BY t.is_pinned DESC, t.last_reply_at DESC
         LIMIT ? OFFSET ?
@@ -223,11 +238,12 @@ if ($method === 'GET' && $path === 'threads') {
     $threads = $stmt->fetchAll();
 
     respond([
-        'threads'     => $threads,
-        'total_count' => $total,
-        'page'        => $page,
-        'per_page'    => $per_page,
-        'has_more'    => ($offset + count($threads)) < $total,
+        'threads'      => $threads,
+        'total_count'  => $total,
+        'page'         => $page,
+        'per_page'     => $per_page,
+        'has_more'     => ($offset + count($threads)) < $total,
+        'caller_is_mod' => (bool)($install['is_moderator'] ?? 0),
     ]);
 }
 
@@ -235,14 +251,16 @@ if ($method === 'GET' && $path === 'threads') {
 // GET /threads/{id}
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'GET' && count($parts) === 2 && $parts[0] === 'threads' && ctype_digit($parts[1])) {
-    require_auth();
+    $install   = require_auth();
     $thread_id = (int)$parts[1];
     $pdo = get_pdo();
 
     $stmt = $pdo->prepare("
-        SELECT t.*, c.name AS category_name, c.slug AS category_slug
+        SELECT t.*, c.name AS category_name, c.slug AS category_slug,
+               i.domain AS author_domain
         FROM ss_forum_threads t
         JOIN ss_forum_categories c ON c.id = t.category_id
+        LEFT JOIN ss_forum_installs i ON i.id = t.install_id
         WHERE t.id = ? AND t.is_deleted = 0
         LIMIT 1
     ");
@@ -253,14 +271,16 @@ if ($method === 'GET' && count($parts) === 2 && $parts[0] === 'threads' && ctype
     }
 
     $reply_stmt = $pdo->prepare("
-        SELECT id, install_id, display_name, body, created_at
-        FROM ss_forum_replies
-        WHERE thread_id = ? AND is_deleted = 0
-        ORDER BY created_at ASC
+        SELECT r.id, r.install_id, r.display_name, r.body, r.created_at,
+               i.domain AS author_domain
+        FROM ss_forum_replies r
+        LEFT JOIN ss_forum_installs i ON i.id = r.install_id
+        WHERE r.thread_id = ? AND r.is_deleted = 0
+        ORDER BY r.created_at ASC
     ");
     $reply_stmt->execute([$thread_id]);
 
-    respond(['thread' => $thread, 'replies' => $reply_stmt->fetchAll()]);
+    respond(['thread' => $thread, 'replies' => $reply_stmt->fetchAll(), 'caller_is_mod' => (bool)($install['is_moderator'] ?? 0)]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -377,12 +397,43 @@ if ($method === 'PATCH' && $path === 'installs/me') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PATCH /threads/{id}  — moderator-only: pin / lock toggles
+// ─────────────────────────────────────────────────────────────────────────────
+if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'threads' && ctype_digit($parts[1])) {
+    $install   = require_auth();
+    if (!is_install_mod($install)) {
+        api_error(403, 'FORBIDDEN', 'Only moderators can modify thread flags.');
+    }
+
+    $thread_id = (int)$parts[1];
+    $b         = body();
+    $pdo       = get_pdo();
+
+    $stmt = $pdo->prepare("SELECT id, is_pinned, is_locked FROM ss_forum_threads WHERE id = ? AND is_deleted = 0 LIMIT 1");
+    $stmt->execute([$thread_id]);
+    $thread = $stmt->fetch();
+    if (!$thread) api_error(404, 'THREAD_NOT_FOUND', 'Thread not found.');
+
+    $pinned = $thread['is_pinned'];
+    $locked = $thread['is_locked'];
+
+    if (isset($b['is_pinned'])) $pinned = $b['is_pinned'] ? 1 : 0;
+    if (isset($b['is_locked'])) $locked = $b['is_locked'] ? 1 : 0;
+
+    $pdo->prepare("UPDATE ss_forum_threads SET is_pinned = ?, is_locked = ? WHERE id = ?")
+        ->execute([$pinned, $locked, $thread_id]);
+
+    respond(['status' => 'updated', 'is_pinned' => (bool)$pinned, 'is_locked' => (bool)$locked]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // DELETE /threads/{id}
 // Own threads: install must match. Moderator: any thread.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'threads' && ctype_digit($parts[1])) {
     $mod        = is_mod();
     $install    = $mod ? null : require_auth();
+    $has_power  = is_install_mod($install);
     $thread_id  = (int)$parts[1];
     $pdo        = get_pdo();
 
@@ -393,7 +444,7 @@ if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'threads' && ct
     $thread = $stmt->fetch();
     if (!$thread) api_error(404, 'THREAD_NOT_FOUND', 'Thread not found.');
 
-    if (!$mod && (int)$thread['install_id'] !== (int)$install['id']) {
+    if (!$has_power && (int)$thread['install_id'] !== (int)$install['id']) {
         api_error(403, 'FORBIDDEN', 'You can only delete your own threads.');
     }
 
@@ -410,10 +461,11 @@ if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'threads' && ct
 // Own replies: install must match. Moderator: any reply.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'replies' && ctype_digit($parts[1])) {
-    $mod      = is_mod();
-    $install  = $mod ? null : require_auth();
-    $reply_id = (int)$parts[1];
-    $pdo      = get_pdo();
+    $mod       = is_mod();
+    $install   = $mod ? null : require_auth();
+    $has_power = is_install_mod($install);
+    $reply_id  = (int)$parts[1];
+    $pdo       = get_pdo();
 
     $stmt = $pdo->prepare(
         "SELECT id, install_id, thread_id FROM ss_forum_replies WHERE id = ? AND is_deleted = 0 LIMIT 1"
@@ -422,7 +474,7 @@ if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'replies' && ct
     $reply = $stmt->fetch();
     if (!$reply) api_error(404, 'REPLY_NOT_FOUND', 'Reply not found.');
 
-    if (!$mod && (int)$reply['install_id'] !== (int)$install['id']) {
+    if (!$has_power && (int)$reply['install_id'] !== (int)$install['id']) {
         api_error(403, 'FORBIDDEN', 'You can only delete your own replies.');
     }
 

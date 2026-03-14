@@ -1,3 +1,0 @@
--- migrate-image-style.sql
--- Style columns moved into migrate-posts.sql where snap_post_images is created.
--- This file is retained so snap_migrations records it as applied on older installs.
