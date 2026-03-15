@@ -18,10 +18,12 @@ $edit_data = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = trim($_POST['cat_name']);
 
+    $description = trim($_POST['cat_description'] ?? '');
+
     // Insert a new category.
     if (isset($_POST['new_cat']) && !empty($name)) {
-        $stmt = $pdo->prepare("INSERT INTO snap_categories (cat_name) VALUES (?)");
-        $stmt->execute([$name]);
+        $stmt = $pdo->prepare("INSERT INTO snap_categories (cat_name, cat_description) VALUES (?, ?)");
+        $stmt->execute([$name, $description]);
         header("Location: smack-cats.php?msg=REGISTRY+ENTRY+ADDED");
         exit;
     }
@@ -29,8 +31,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Update an existing category.
     if (isset($_POST['update_cat']) && !empty($name)) {
         $id = (int)$_POST['cat_id'];
-        $stmt = $pdo->prepare("UPDATE snap_categories SET cat_name = ? WHERE id = ?");
-        $stmt->execute([$name, $id]);
+        $stmt = $pdo->prepare("UPDATE snap_categories SET cat_name = ?, cat_description = ? WHERE id = ?");
+        $stmt->execute([$name, $description, $id]);
         header("Location: smack-cats.php?msg=REGISTRY+ENTRY+MODIFIED");
         exit;
     }
@@ -90,6 +92,11 @@ include 'core/sidebar.php';
                         <input type="text" name="cat_name" value="<?php echo $edit_mode ? htmlspecialchars($edit_data['cat_name']) : ''; ?>" placeholder="E.G. STREET, PORTRAITS, LANDSCAPE" required autofocus>
                     </div>
 
+                    <div class="lens-input-wrapper mt-20">
+                        <label>DESCRIPTION <span class="dim">(optional — shown on category pages &amp; used for SEO)</span></label>
+                        <textarea name="cat_description" rows="3" placeholder="A short description of this category."><?php echo $edit_mode ? htmlspecialchars($edit_data['cat_description'] ?? '') : ''; ?></textarea>
+                    </div>
+
                     <?php if ($edit_mode): ?>
                         <div class="lens-input-wrapper mt-20">
                             <a href="smack-cats.php" class="btn-smack btn-block">CANCEL EDIT</a>
@@ -111,6 +118,9 @@ include 'core/sidebar.php';
                                     <div class="item-text">
                                         <strong><?php echo htmlspecialchars($c['cat_name']); ?></strong>
                                         <code class="slug-display">TRANSMISSIONS: <?php echo (int)$c['img_count']; ?></code>
+                                        <?php if (!empty($c['cat_description'])): ?>
+                                            <span class="dim" style="display:block;margin-top:4px;font-size:0.85em;"><?php echo htmlspecialchars($c['cat_description']); ?></span>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
 
