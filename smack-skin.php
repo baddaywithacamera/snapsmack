@@ -407,13 +407,67 @@ if (!empty($google_families)) {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    display: none;
 }
+.skin-card-screenshot img.ss-active { display: block; }
 .skin-card-screenshot .no-preview {
     opacity: 0.35;
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 2px;
 }
+.ss-dots {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 5px;
+    z-index: 2;
+}
+.ss-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.4);
+    border: 1px solid rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: background .15s;
+}
+.ss-dot.active { background: rgba(255,255,255,0.9); }
+.ss-nav {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .15s;
+    z-index: 2;
+    font-size: 18px;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    user-select: none;
+}
+.skin-card-screenshot:hover .ss-nav { opacity: 1; }
+.ss-nav-prev { left: 0; }
+.ss-nav-next { right: 0; }
+.ss-label {
+    position: absolute;
+    top: 6px; left: 8px;
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 3px;
+    z-index: 2;
+    display: none;
+}
+.skin-card-screenshot:hover .ss-label { display: block; }
 .skin-card-body {
     padding: 16px;
     flex: 1;
@@ -779,6 +833,63 @@ if (!empty($google_families)) {
     <?php endif; ?>
 
     <?php
+    // ── Screenshot discovery helper ────────────────────────────────────
+    // Returns array of ['file'=>relative_path, 'label'=>'Archive'|etc.]
+    // for all screenshot-*.png files in a skin directory.
+    // Falls back to screenshot.png for legacy skins with a single shot.
+    function skin_screenshots(string $slug): array {
+        $dir   = "skins/{$slug}";
+        $shots = [];
+        $names = [
+            'screenshot-landing.png' => 'Landing',
+            'screenshot-archive.png' => 'Archive',
+            'screenshot-page.png'    => 'Text Page',
+        ];
+        foreach ($names as $file => $label) {
+            if (file_exists("{$dir}/{$file}")) {
+                $shots[] = ['file' => "{$dir}/{$file}", 'label' => $label];
+            }
+        }
+        // Fallback: single screenshot.png (legacy)
+        if (empty($shots) && file_exists("{$dir}/screenshot.png")) {
+            $shots[] = ['file' => "{$dir}/screenshot.png", 'label' => 'Preview'];
+        }
+        return $shots;
+    }
+
+    // Renders the screenshot carousel HTML for a skin card.
+    function render_skin_screenshots(string $slug, string $skin_name, ?string $remote_screenshot = null): void {
+        $shots = skin_screenshots($slug);
+        if (!empty($shots)): ?>
+            <?php foreach ($shots as $i => $s): ?>
+                <img src="<?php echo htmlspecialchars($s['file']); ?>"
+                     alt="<?php echo htmlspecialchars($skin_name . ' — ' . $s['label']); ?>"
+                     class="<?php echo $i === 0 ? 'ss-active' : ''; ?>"
+                     data-label="<?php echo htmlspecialchars($s['label']); ?>"
+                     loading="lazy">
+            <?php endforeach; ?>
+            <?php if (count($shots) > 1): ?>
+                <span class="ss-label"><?php echo htmlspecialchars($shots[0]['label']); ?></span>
+                <span class="ss-nav ss-nav-prev" onclick="ssNav(this,-1)">&lsaquo;</span>
+                <span class="ss-nav ss-nav-next" onclick="ssNav(this,1)">&rsaquo;</span>
+                <span class="ss-dots">
+                    <?php foreach ($shots as $i => $s): ?>
+                        <span class="ss-dot<?php echo $i === 0 ? ' active' : ''; ?>" onclick="ssGo(this,<?php echo $i; ?>)"></span>
+                    <?php endforeach; ?>
+                </span>
+            <?php endif; ?>
+        <?php elseif ($remote_screenshot): ?>
+            <img src="<?php echo htmlspecialchars($remote_screenshot); ?>"
+                 alt="<?php echo htmlspecialchars($skin_name); ?>"
+                 class="ss-active"
+                 loading="lazy"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <span class="no-preview d-none">PREVIEW UNAVAILABLE</span>
+        <?php else: ?>
+            <span class="no-preview">NO PREVIEW</span>
+        <?php endif;
+    }
+
     // Fetch registry and local skin data
     $registry_url = $settings['skin_registry_url'] ?? SKIN_REGISTRY_DEFAULT_URL;
     $registry     = skin_registry_fetch($registry_url);
@@ -799,11 +910,7 @@ if (!empty($google_families)) {
                 <?php foreach ($local_skins as $slug => $skin): ?>
                     <div class="skin-card">
                         <div class="skin-card-screenshot">
-                            <?php if (file_exists("skins/{$slug}/screenshot.png")): ?>
-                                <img src="skins/<?php echo htmlspecialchars($slug); ?>/screenshot.png" alt="<?php echo htmlspecialchars($skin['name']); ?>">
-                            <?php else: ?>
-                                <span class="no-preview">NO PREVIEW</span>
-                            <?php endif; ?>
+                            <?php render_skin_screenshots($slug, $skin['name']); ?>
                         </div>
                         <div class="skin-card-body">
                             <div class="skin-card-header">
@@ -864,20 +971,9 @@ if (!empty($google_families)) {
         <div class="gallery-grid">
             <?php foreach ($gallery_skins as $slug => $skin): ?>
                 <div class="skin-card">
-                    <!-- Screenshot -->
+                    <!-- Screenshot(s) -->
                     <div class="skin-card-screenshot">
-                        <?php if (!empty($skin['screenshot'])): ?>
-                            <img src="<?php echo htmlspecialchars($skin['screenshot']); ?>"
-                                 alt="<?php echo htmlspecialchars($skin['name']); ?>"
-                                 loading="lazy"
-                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                            <span class="no-preview d-none">PREVIEW UNAVAILABLE</span>
-                        <?php elseif (file_exists("skins/{$slug}/screenshot.png")): ?>
-                            <img src="skins/<?php echo htmlspecialchars($slug); ?>/screenshot.png"
-                                 alt="<?php echo htmlspecialchars($skin['name']); ?>">
-                        <?php else: ?>
-                            <span class="no-preview">NO PREVIEW</span>
-                        <?php endif; ?>
+                        <?php render_skin_screenshots($slug, $skin['name'] ?? $slug, $skin['screenshot'] ?? null); ?>
                     </div>
 
                     <!-- Body -->
@@ -993,12 +1089,7 @@ if (!empty($google_families)) {
             ?>
                 <div class="skin-card">
                     <div class="skin-card-screenshot">
-                        <?php if (file_exists("skins/{$slug}/screenshot.png")): ?>
-                            <img src="skins/<?php echo htmlspecialchars($slug); ?>/screenshot.png"
-                                 alt="<?php echo htmlspecialchars($skin['name']); ?>">
-                        <?php else: ?>
-                            <span class="no-preview">NO PREVIEW</span>
-                        <?php endif; ?>
+                        <?php render_skin_screenshots($slug, $skin['name']); ?>
                     </div>
                     <div class="skin-card-body">
                         <div class="skin-card-header">
@@ -1039,4 +1130,30 @@ if (!empty($google_families)) {
 </div>
 
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-font-preview.js?v=<?php echo time(); ?>"></script>
+<script>
+/* ── Skin screenshot carousel ───────────────────────────────────── */
+function ssNav(el, dir) {
+    var card  = el.closest('.skin-card-screenshot');
+    var imgs  = card.querySelectorAll('img');
+    var dots  = card.querySelectorAll('.ss-dot');
+    var label = card.querySelector('.ss-label');
+    if (imgs.length < 2) return;
+    var cur = 0;
+    imgs.forEach(function(img, i){ if (img.classList.contains('ss-active')) cur = i; });
+    var next = (cur + dir + imgs.length) % imgs.length;
+    imgs[cur].classList.remove('ss-active');
+    imgs[next].classList.add('ss-active');
+    dots.forEach(function(d, i){ d.classList.toggle('active', i === next); });
+    if (label) label.textContent = imgs[next].dataset.label || '';
+}
+function ssGo(el, idx) {
+    var card  = el.closest('.skin-card-screenshot');
+    var imgs  = card.querySelectorAll('img');
+    var dots  = card.querySelectorAll('.ss-dot');
+    var label = card.querySelector('.ss-label');
+    imgs.forEach(function(img, i){ img.classList.toggle('ss-active', i === idx); });
+    dots.forEach(function(d, i){ d.classList.toggle('active', i === idx); });
+    if (label) label.textContent = imgs[idx].dataset.label || '';
+}
+</script>
 <?php include 'core/admin-footer.php'; ?>
