@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK — Sticky Header Engine Template
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Outputs CSS custom properties onto the <html> element for the sticky
  * header engine. Included by core/footer-scripts.php.

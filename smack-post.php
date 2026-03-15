@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Post upload and image processing
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Handles image uploads, automatic EXIF extraction and metadata handling,
  * orientation correction, and thumbnail generation in multiple formats.

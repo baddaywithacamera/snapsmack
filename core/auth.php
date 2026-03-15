@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Core Authentication Guard
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Manages user sessions, login gates, and theme preferences. On each page
  * load, this file ensures a user's preferred skin is pulled from the database

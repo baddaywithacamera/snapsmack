@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Asset and database sync utility
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Regenerates missing floating gallery thumbnails and prunes orphan files.
  * Ensures the physical file system matches the database registry.

@@ -1,7 +1,7 @@
 <?php
 /**
  * SMACK CENTRAL - Asset Deploy Helper
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * One-shot script: downloads the SnapSmack repo zip from GitHub,
  * extracts all font families and ss-engine JS/CSS files into SC_ASSETS_DIR,

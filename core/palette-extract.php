@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Colour Palette Extraction
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Extracts a dominant colour palette from an image using quantized sampling.
  * Supports JPEG, PNG, and WebP formats via GD library.

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the Bumblebee admin theme
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  */
 
 return [

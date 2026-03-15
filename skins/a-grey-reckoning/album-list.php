@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Album listing template for the a-grey-reckoning skin
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Recreates Noah Grey's "Series Collections" page from noahgrey.com
  * circa 2006: thumbnail on the left, album title in small caps on

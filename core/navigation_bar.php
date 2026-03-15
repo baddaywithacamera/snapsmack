@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Photo Navigation Bar
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Renders navigation controls for browsing between photos: Previous, First,
  * Info, Comments, Last, Next. Respects both global and per-post comment

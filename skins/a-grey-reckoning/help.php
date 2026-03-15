@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin Help Topics: Grey Expectations
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  */
 
 return [

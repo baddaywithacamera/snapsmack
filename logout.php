@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Logout and session destruction
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Clears administrative session data and destroys session cookies.
  * Redirects user to login screen.

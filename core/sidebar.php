@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Admin Sidebar Navigation
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Accordion-style sidebar with four collapsible sections.
  * "The Good Shit" opens by default; whichever section contains

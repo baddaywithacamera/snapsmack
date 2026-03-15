@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - Carousel Post Engine
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * JavaScript engine for the multi-image carousel posting page
  * (smack-post-carousel.php). Handles:

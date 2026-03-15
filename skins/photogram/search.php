@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Photogram Search
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Full-text search across img_title and img_description.
  * Loaded by skin-footer.php when ?pg=search is requested and

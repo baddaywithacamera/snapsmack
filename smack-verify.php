@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - File integrity verification
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Lightweight replacement for the old media manifest export. Checks that files
  * referenced in the database exist on disk and optionally verifies SHA-256
