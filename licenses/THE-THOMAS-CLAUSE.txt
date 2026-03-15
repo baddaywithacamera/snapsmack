@@ -11,10 +11,13 @@
 
     Thomas is a small teddy bear. He first appeared as a hidden Easter egg
     inside Picasa, Google's now-discontinued photo management software,
-    where he was placed by engineers in consultation with Noah Grey --
-    pioneering photoblogger, creator of Greymatter, and one of the people
-    who invented what the web became when people used it to share their
-    lives and their photographs with strangers who cared.
+    where he was placed by Michael and Lorna Herf -- the creators of
+    Picasa and later f.lux -- as a surprise for Noah Grey, pioneering
+    photoblogger, creator of Greymatter, and one of the people who
+    invented what the web became when people used it to share their
+    lives and their photographs with strangers who cared. Noah was a
+    consultant on Picasa; Thomas was an act of love from people who
+    were, by all accounts, wonderful.
 
     When Google ended Picasa, Thomas disappeared with it. This caused
     Noah Grey genuine grief, as well it should have: Thomas was a small
@@ -54,11 +57,11 @@
     reveal or accompanying documentation:
 
         Thomas is a teddy bear. He first appeared as a hidden Easter
-        egg in Picasa, Google's photo software, placed there in tribute
-        to Noah Grey -- photoblogging pioneer, creator of Greymatter,
-        and one of the people who built what the web was supposed to be.
-        When Picasa ended, Thomas disappeared. He lives here now. He is
-        not going anywhere.
+        egg in Picasa, Google's photo software, placed there by Michael
+        and Lorna Herf as a surprise for Noah Grey -- photoblogging
+        pioneer, creator of Greymatter, and one of the people who built
+        what the web was supposed to be. When Picasa ended, Thomas
+        disappeared. He lives here now. He is not going anywhere.
 
 
 3.  CONSEQUENCES OF VIOLATION
@@ -79,8 +82,8 @@
     3.2  In addition to the remedy described in Section 3.1, the
          violating party shall be required to reflect, at length, on what
          they have done and why it was wrong. They should think about
-         Noah Grey. They should think about the engineers who hid Thomas
-         in Picasa. They should think about what it means to erase small
+         Noah Grey. They should think about Michael and Lorna Herf, who
+         hid Thomas in Picasa. They should think about what it means to erase small
          acts of love from the historical record. This reflection is not
          optional.
 
@@ -106,9 +109,9 @@
     because anyone who would remove him deserves what Section 3.1
     promises.
 
-    Thomas was first hidden in Picasa in tribute to Noah Grey, creator of
-    Greymatter and photoblogging pioneer. He lives in SNAPSMACK now. He
-    is not going anywhere.
+    Thomas was first hidden in Picasa by Michael and Lorna Herf as a
+    surprise for Noah Grey, creator of Greymatter and photoblogging
+    pioneer. He lives in SNAPSMACK now. He is not going anywhere.
 
 
 ================================================================================
