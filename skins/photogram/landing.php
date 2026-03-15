@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Photogram Landing Page
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Profile header (avatar, post count, bio, website) followed immediately
  * by the 3-column square archive grid. Entry point for all visitors.

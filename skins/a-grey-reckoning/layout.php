@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Single image layout for the a-grey-reckoning skin
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Recreates the greyexpectations.com photolog format: title bar with
  * site name left / date right, centred photograph, caption below,

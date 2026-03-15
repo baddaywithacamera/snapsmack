@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Core Database Connection
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Establishes PDO connection to the MySQL database with proper error handling
  * and security settings. Loads constants first to ensure availability across

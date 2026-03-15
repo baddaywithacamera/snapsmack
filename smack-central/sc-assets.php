@@ -1,7 +1,7 @@
 <?php
 /**
  * SMACK CENTRAL - Asset Repository
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Hosts the font families and JS engine files that SnapSmack installs pull
  * from on demand via core/asset-sync.php. Manages file uploads, generates
@@ -344,29 +344,31 @@ require __DIR__ . '/sc-layout-top.php';
 
 <!-- ── Manifest status bar ──────────────────────────────────────────────── -->
 <div class="sc-box" style="margin-bottom:24px">
-  <div class="sc-box-head">
-    <span>Manifest Status</span>
-    <form method="post" style="display:inline">
-      <input type="hidden" name="action" value="regen_manifest">
-      <button class="sc-btn sc-btn--sm" type="submit">Regenerate</button>
-    </form>
-    <form method="post" style="display:inline; margin-left:8px">
-      <input type="hidden" name="action" value="rescan_disk">
-      <button class="sc-btn sc-btn--sm" type="submit">Rescan Disk</button>
-    </form>
-    <?php if ($manifest_url): ?>
-    <a href="<?php echo htmlspecialchars($manifest_url); ?>" target="_blank" class="sc-btn sc-btn--sm" style="margin-left:8px">View JSON</a>
-    <?php endif; ?>
+  <div class="sc-box-header">
+    <span class="sc-box-title">Manifest Status</span>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <form method="post" style="display:inline">
+        <input type="hidden" name="action" value="regen_manifest">
+        <button class="sc-btn sc-btn--sm sc-btn--primary" type="submit">Regenerate</button>
+      </form>
+      <form method="post" style="display:inline">
+        <input type="hidden" name="action" value="rescan_disk">
+        <button class="sc-btn sc-btn--sm sc-btn--primary" type="submit">Rescan Disk</button>
+      </form>
+      <?php if ($manifest_url): ?>
+      <a href="<?php echo htmlspecialchars($manifest_url); ?>" target="_blank" class="sc-btn sc-btn--sm">View JSON</a>
+      <?php endif; ?>
+    </div>
   </div>
-  <div class="sc-box-body sc-pad">
-    <span class="sc-dim">Last generated: </span><?php echo htmlspecialchars($manifest_mtime); ?>
-    &nbsp;&nbsp;<span class="sc-dim">Total assets:</span> <?php echo count($fonts) + count($scripts); ?> families / files
+  <div class="sc-box-body">
+    <span class="sc-dim">Last generated: </span><strong><?php echo htmlspecialchars($manifest_mtime); ?></strong>
+    &nbsp;&nbsp;<span class="sc-dim">Total assets:</span> <strong><?php echo count($fonts) + count($scripts); ?> families / files</strong>
   </div>
 </div>
 
 <!-- ── Tab bar ──────────────────────────────────────────────────────────── -->
-<div class="sc-tab-bar" style="margin-bottom:24px">
-  <button class="sc-tab sc-tab--active" onclick="scTab(this,'tab-fonts')">Fonts (<?php echo count($fonts); ?> families)</button>
+<div class="sc-tab-bar">
+  <button class="sc-tab active" onclick="scTab(this,'tab-fonts')">Fonts (<?php echo count($fonts); ?> families)</button>
   <button class="sc-tab" onclick="scTab(this,'tab-scripts')">Scripts (<?php echo count($scripts); ?> files)</button>
   <button class="sc-tab" onclick="scTab(this,'tab-upload')">Upload</button>
 </div>
@@ -377,7 +379,10 @@ require __DIR__ . '/sc-layout-top.php';
 <p class="sc-dim">No fonts uploaded yet. Use the Upload tab to add font families.</p>
 <?php else: foreach ($fonts as $family => $files): ?>
 <div class="sc-box" style="margin-bottom:16px">
-  <div class="sc-box-head"><?php echo htmlspecialchars($family); ?> <span class="sc-dim" style="font-weight:400">(<?php echo count($files); ?> file<?php echo count($files) !== 1 ? 's' : ''; ?>)</span></div>
+  <div class="sc-box-header">
+    <span class="sc-box-title"><?php echo htmlspecialchars($family); ?></span>
+    <span class="sc-dim"><?php echo count($files); ?> file<?php echo count($files) !== 1 ? 's' : ''; ?></span>
+  </div>
   <div class="sc-box-body sc-box-body--flush">
     <table class="sc-table" style="width:100%">
       <thead><tr>
@@ -451,8 +456,8 @@ require __DIR__ . '/sc-layout-top.php';
 
   <!-- Font family upload -->
   <div class="sc-box" style="margin-bottom:24px">
-    <div class="sc-box-head">Upload Font Family</div>
-    <div class="sc-box-body sc-pad">
+    <div class="sc-box-header"><span class="sc-box-title">Upload Font Family</span></div>
+    <div class="sc-box-body">
       <p class="sc-dim" style="margin-top:0">Upload a ZIP of a font family. All TTF / OTF / WOFF / WOFF2 files found inside will be extracted and registered. The family name defaults to the zip filename — override below if needed.</p>
       <form method="post" enctype="multipart/form-data">
         <input type="hidden" name="action" value="upload_font">
@@ -472,8 +477,8 @@ require __DIR__ . '/sc-layout-top.php';
 
   <!-- Script upload -->
   <div class="sc-box">
-    <div class="sc-box-head">Upload JS Engine / CSS</div>
-    <div class="sc-box-body sc-pad">
+    <div class="sc-box-header"><span class="sc-box-title">Upload JS Engine / CSS</span></div>
+    <div class="sc-box-body">
       <p class="sc-dim" style="margin-top:0">Upload a JS engine file and its optional companion CSS. Filenames must match exactly what manifest-inventory.php declares in the <code>path</code> and <code>css</code> fields.</p>
       <form method="post" enctype="multipart/form-data">
         <input type="hidden" name="action" value="upload_script">
@@ -494,12 +499,12 @@ require __DIR__ . '/sc-layout-top.php';
 
 <script>
 function scTab(btn, id) {
-    document.querySelectorAll('.sc-tab').forEach(b => b.classList.remove('sc-tab--active'));
+    document.querySelectorAll('.sc-tab').forEach(b => b.classList.remove('active'));
     ['tab-fonts','tab-scripts','tab-upload'].forEach(t => {
         var el = document.getElementById(t);
         if (el) el.style.display = (t === id) ? '' : 'none';
     });
-    btn.classList.add('sc-tab--active');
+    btn.classList.add('active');
 }
 </script>
 

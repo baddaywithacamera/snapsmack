@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin header for the grey-expectations skin
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Minimal header: site title left, navigation right, separated by
  * generous letter-spacing and small-caps type. The header is quiet

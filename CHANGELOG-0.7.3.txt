@@ -1,4 +1,4 @@
-SNAPSMACK Alpha v0.7.3 "Whoopie Cushion"
+SNAPSMACK Alpha v0.7.3a "Whoopie Cushion"
 Released March 14, 2026
 
 NEW FEATURES
@@ -52,6 +52,6 @@ SCHEMA CHANGES (RUN MANUALLY)
 
 HOUSEKEEPING
 
-- All file headers bumped to Alpha v0.7.3
+- All file headers bumped to Alpha v0.7.3a
 - Spent migration scripts removed from migrations directory
 - Fixed Ed25519 release signing pubkey mismatch that prevented updater from verifying packages

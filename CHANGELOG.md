@@ -39,7 +39,7 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - Photogram avatar fallback chain extended: `site_avatar` → `site_logo` → `favicon_url` → SVG placeholder. Sites that have a favicon but no dedicated avatar now show it in the Photogram profile circle.
 - Social dock admin: removed icon shape (round/square) and icon style (outline/solid) options. All icons are now circles. Opacity slider relabelled "Idle Opacity" with 10–100% range (default 50%).
 - Social dock CSS: glassmorphism bar container removed. No backdrop-blur, no shared border. Each icon stands alone.
-- All file headers bumped to Alpha v0.7.3 across the entire codebase (63 files still at v0.7.1 updated).
+- All file headers bumped to Alpha v0.7.3a across the entire codebase (63 files still at v0.7.1 updated).
 - Spent migration scripts removed from `migrations/` (already applied to all installs).
 
 ### Fixed

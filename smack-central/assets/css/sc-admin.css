@@ -1,6 +1,6 @@
 /**
  * SMACK CENTRAL - Admin Styles
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * All values via --sc- tokens from sc-geometry.css.
  * sc- prefix on all SMACK CENTRAL classes to prevent future merge collisions.
@@ -336,11 +336,11 @@ textarea.sc-textarea:focus {
     text-transform: uppercase;
     letter-spacing: 1px;
     color: var(--sc-text-dim);
-    padding-bottom: 10px;
+    padding: 10px 12px;
     border-bottom: 1px solid var(--sc-border);
 }
 .sc-table td {
-    padding: 12px 0;
+    padding: 12px;
     border-bottom: 1px solid var(--sc-border);
     vertical-align: middle;
     font-size: var(--sc-size-base);
@@ -438,11 +438,11 @@ textarea.sc-textarea:focus {
 
 /* ── Forum Admin ─────────────────────────────────────────────────────────── */
 .sc-tab-bar { display: flex; gap: 4px; margin-bottom: 20px; }
-.sc-tab { padding: 7px 16px; border-radius: var(--sc-radius-sm); font-size: var(--sc-size-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--sc-text-dim); text-decoration: none; border: 1px solid transparent; }
-.sc-tab:hover { color: var(--sc-text); }
-.sc-tab.active { background: var(--sc-surface); border-color: var(--sc-border); color: var(--sc-accent); }
+.sc-tab { padding: 7px 16px; border-radius: var(--sc-radius-sm); font-size: var(--sc-size-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--sc-text-label); text-decoration: none; border: 1px solid var(--sc-border); cursor: pointer; }
+.sc-tab:hover { color: var(--sc-text); border-color: var(--sc-text-dim); }
+.sc-tab.active { background: var(--sc-bg-box-head); border-color: var(--sc-accent); color: var(--sc-accent); }
 
-.sc-flash { background: var(--sc-surface); border: 1px solid var(--sc-success); color: var(--sc-success); border-radius: var(--sc-radius-sm); padding: 10px 16px; margin-bottom: 16px; font-size: 0.85rem; }
+.sc-flash { background: var(--sc-success-bg); border: 1px solid var(--sc-success); color: var(--sc-success); border-radius: var(--sc-radius-sm); padding: 10px 16px; margin-bottom: 16px; font-size: 0.85rem; }
 
 .sc-box-body--flush { padding: 0; }
 .sc-pad { padding: 16px 20px; }

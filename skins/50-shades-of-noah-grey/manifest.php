@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the 50-shades-of-noah-grey skin
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Defines layout options, features, and customization controls with three greyscale variants.
  */

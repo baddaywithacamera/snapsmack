@@ -1,7 +1,7 @@
 <?php
 /**
  * SMACK CENTRAL - Release Packager
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Fetches tags from GitHub, downloads the repo zip for the selected tag,
  * repackages it as a clean distributable zip (no local git or shell access

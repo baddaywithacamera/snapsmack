@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Community Forum
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Forum client for the SnapSmack admin community. Connects to the hub API on
  * snapsmack.ca (or a self-hosted fork) via REST. Access is restricted to

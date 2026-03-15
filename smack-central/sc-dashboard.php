@@ -1,7 +1,7 @@
 <?php
 /**
  * SMACK CENTRAL - Dashboard
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  */
 
 require_once __DIR__ . '/sc-auth.php';

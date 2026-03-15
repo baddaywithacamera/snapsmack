@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Cloud Backup Configuration & Push
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * OAuth cloud push to Google Drive and OneDrive. Refresh tokens stored
  * encrypted (AES-256-CBC) in snap_settings — authorize once, push anytime.

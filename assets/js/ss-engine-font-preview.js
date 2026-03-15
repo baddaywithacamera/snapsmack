@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - Font Preview Engine
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Handles live font previews on the skin admin panel.
  * Listens for change events on <select data-font-preview="1"> elements,

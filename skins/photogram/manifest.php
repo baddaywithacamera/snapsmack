@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Photogram Skin Manifest
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Mobile-first photo feed skin. Reproduces the Pixelfed / classic Instagram
  * phone-app experience: 3-column square archive grid, full-aspect post view,

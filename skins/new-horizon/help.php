@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin Help Topics: New Horizon
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Returns an array of help topics for the Man Pages system.
  * These are merged into smack-help.php when this skin is active.

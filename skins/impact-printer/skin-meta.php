@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Meta tags for the impact-printer skin
- * Alpha v0.7.3
+ * Alpha v0.7.3a
  *
  * Includes core meta tags and loads the appropriate paper texture variant stylesheet.
  */
