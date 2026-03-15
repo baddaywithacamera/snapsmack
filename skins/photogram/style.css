@@ -1045,6 +1045,45 @@ button {
     text-align: center;
 }
 
+/* ── Tag chips in search results ────────────────────────────────────────────── */
+.pg-search-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 16px 12px;
+}
+.pg-search-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background: var(--pg-bg-card, #262626);
+    color: var(--pg-text, #e0e0e0);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background .15s;
+}
+.pg-search-tag-chip:hover {
+    background: var(--pg-accent, #0095f6);
+    color: #fff;
+}
+.pg-search-tag-hash {
+    color: var(--pg-accent, #0095f6);
+}
+.pg-search-tag-chip:hover .pg-search-tag-hash {
+    color: #fff;
+}
+.pg-search-tag-count {
+    font-size: 11px;
+    color: var(--pg-text-muted, #888);
+    font-weight: 400;
+}
+.pg-search-tag-chip:hover .pg-search-tag-count {
+    color: rgba(255,255,255,.7);
+}
+
 /* ── Back button (hashtag / search headers) ────────────────────────────────── */
 .pg-back-btn {
     display: flex;
