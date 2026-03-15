@@ -632,6 +632,15 @@ require 'core/sidebar.php';
     margin-bottom: 8px;
 }
 
+/* ── Emoji picker ────────────────────────────────────────────────────────── */
+.forum-emoji-bar { display: flex; gap: 2px; margin-bottom: 8px; flex-wrap: wrap; }
+.forum-emoji-btn {
+    background: none; border: 1px solid transparent; border-radius: 4px;
+    font-size: 1.2rem; padding: 4px 6px; cursor: pointer; line-height: 1;
+    transition: all 0.12s;
+}
+.forum-emoji-btn:hover { background: #222; border-color: #333; transform: scale(1.2); }
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 680px) {
     .forum-cat-row {
@@ -690,7 +699,7 @@ require 'core/sidebar.php';
     <div class="box" style="grid-column: 1 / -1;">
       <div class="box-header">
         <span class="box-title">COMMUNITY FORUM</span>
-        <span class="dim" style="font-size: 11px; margin-left: auto;">SNAPSMACK ADMINS</span>
+        <span class="dim" style="font-size: 11px; margin-left: auto;"><?php echo count($cats); ?> BOARDS</span>
       </div>
       <div class="box-body">
 
@@ -968,6 +977,11 @@ require 'core/sidebar.php';
           <form method="post" action="smack-forum.php">
             <input type="hidden" name="action"    value="post-reply">
             <input type="hidden" name="thread_id" value="<?php echo (int)$thread['id']; ?>">
+            <div class="forum-emoji-bar">
+              <?php foreach (['😊','😂','🤔','👍','👎','🔥','❤️','🎉','💡','⚠️','🐛','✅','❌','🚀','💎','📌','🔒','👀','🙏','💬'] as $em): ?>
+              <button type="button" class="forum-emoji-btn" onclick="forumInsertEmoji(this,'<?php echo $em; ?>')"><?php echo $em; ?></button>
+              <?php endforeach; ?>
+            </div>
             <textarea name="body" placeholder="Write your reply&#8230;" required><?php echo htmlspecialchars($_POST['body'] ?? ''); ?></textarea>
             <div class="forum-composer__footer">
               <button type="submit" class="forum-new-btn">Post Reply</button>
@@ -1039,6 +1053,11 @@ require 'core/sidebar.php';
 
           <div class="lens-input-wrapper">
             <label>BODY</label>
+            <div class="forum-emoji-bar">
+              <?php foreach (['😊','😂','🤔','👍','👎','🔥','❤️','🎉','💡','⚠️','🐛','✅','❌','🚀','💎','📌','🔒','👀','🙏','💬'] as $em): ?>
+              <button type="button" class="forum-emoji-btn" onclick="forumInsertEmoji(this,'<?php echo $em; ?>')"><?php echo $em; ?></button>
+              <?php endforeach; ?>
+            </div>
             <textarea name="body" rows="10" placeholder="Describe your issue, question, or topic&#8230;"
                       style="width:100%; resize:vertical;" required><?php echo htmlspecialchars($_POST['body'] ?? ''); ?></textarea>
             <span class="dim" style="font-size:0.72rem; margin-top:6px;">20,000 character limit.</span>
@@ -1059,4 +1078,17 @@ require 'core/sidebar.php';
   </div><!-- /.dash-grid -->
 </div><!-- /.main -->
 
+<script>
+function forumInsertEmoji(btn, emoji) {
+    var form = btn.closest('form') || btn.closest('.lens-input-wrapper')?.closest('form');
+    var ta = form ? form.querySelector('textarea') : btn.closest('.lens-input-wrapper')?.querySelector('textarea');
+    if (!ta) return;
+    var start = ta.selectionStart;
+    var end   = ta.selectionEnd;
+    var val   = ta.value;
+    ta.value  = val.substring(0, start) + emoji + val.substring(end);
+    ta.selectionStart = ta.selectionEnd = start + emoji.length;
+    ta.focus();
+}
+</script>
 <?php require 'core/admin-footer.php'; ?>
