@@ -78,6 +78,11 @@ if (sessionStorage.getItem('snapsmack_help_seen')) {
 
         <a href="<?php echo BASE_URL; ?>archive.php">ARCHIVE VIEW</a>
 
+        <?php if (($settings['albums_link_enabled'] ?? '0') === '1'): ?>
+            <span class="sep">|</span>
+            <a href="<?php echo BASE_URL; ?>albums.php">ALBUMS</a>
+        <?php endif; ?>
+
         <?php if (($settings['show_wall_link'] ?? '1') === '1'): ?>
             <span class="sep wall-nav-item">|</span>
             <a href="<?php echo BASE_URL; ?>gallery-wall.php" class="wall-nav-item">GALLERY VIEW</a>

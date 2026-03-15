@@ -1,0 +1,56 @@
+SNAPSMACK Alpha v0.7.3 "Whoopie Cushion"
+Released March 14, 2026
+
+NEW FEATURES
+
+- Asset synchronization system: installs now auto-fetch missing fonts and JS engines from Smack Central on skin save and after updates, verified by SHA-256 checksums with a 1-hour local cache
+- Smack Central Asset Repository (sc-assets.php): admin panel for managing hosted fonts and JS engines with ZIP upload, auto-extraction, disk rescan, and automatic asset manifest regeneration
+- Album listing page (albums.php): public-facing page listing all albums with cover thumbnails, entry counts, and dates; cover image derived from most recent published image in each album with optional manual override via new cover_image_id column
+- Albums nav link in site header, gated behind albums_link_enabled setting
+- Forum moderator system: pin/unpin threads, lock/unlock threads, delete any thread or reply, with promote/demote UI in Smack Central forum admin
+- Forum hub posting: Smack Central can post threads and replies as "SnapSmack HQ" via reserved internal API key
+- Download tracking: img_download_count column tracks downloads per image with counter display in admin post editor and archive manager
+- Social dock redesign: each icon now renders as an independent 48px dark circle, semi-translucent at idle (configurable 10-100% opacity), full opacity on hover, download button absorbed into dock when both are active
+
+PHOTOGRAM
+
+- Promoted to stable status — now a core skin shipped in every release
+- Single-tap image opens full-screen lightbox with 80% black backdrop and scale-in animation; dismiss via backdrop tap, X button, or browser back gesture
+- New feed page component with bidirectional infinite scroll and cursor-based pagination
+- About page support with proper padding constrained to phone column width
+- Avatar fallback chain: site_avatar > site_logo > favicon_url > SVG placeholder
+- Social dock and sticky header conditionally excluded from Photogram
+
+RELEASE MANAGEMENT
+
+- Release zips are now always full zips, not differential; installs skipping intermediate versions receive complete, consistent file sets
+- Release packager now includes codename field written to latest.json
+- Removed skins/ and assets/fonts/ from protected_paths.json so stock skins and fonts can be updated properly
+- Backup pruning: updater now keeps only 3 most recent pre-update backups and deletes older ones automatically
+
+ADMIN
+
+- Like count and engagement metrics displayed in post editor and archive manager
+- Social dock admin simplified: removed icon shape and style options, added idle opacity slider
+- Smack Central page header vertical alignment fixed
+- sc-config.php now gitignored; sc-config.sample.php committed as template
+
+BUG FIXES
+
+- Fixed Photogram infinite scroll inserting posts in reversed order when scrolling up
+- Fixed Photogram caption rendering: HTML tags now render correctly via snap_render_caption_html() whitelist
+- Fixed Photogram caption layout showing repeated site name before caption text
+- Fixed image swap (smack-swap.php) returning full HTML page instead of success response to XHR requests
+- Fixed Bluesky SVG icon rendering as playing card ace in social dock
+- Fixed Threads SVG icon to use official at-sign thread path
+- Fixed updater protected paths contradicting protected_paths.json for skins directory
+
+MIGRATIONS
+
+- migrate-album-category-covers.sql: adds cover_image_id to snap_albums and snap_categories
+- migrate-forum-moderators.sql: adds is_moderator column to ss_forum_installs
+
+HOUSEKEEPING
+
+- All file headers bumped to Alpha v0.7.3
+- Spent migration scripts removed from migrations directory
