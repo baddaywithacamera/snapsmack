@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Admin Dashboard Header
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Outputs the HTML <head> and opening <body> tags for all admin pages.
  * Resolves the active theme from the user's session preference, loads the

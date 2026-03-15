@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - First-Run Installer
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Single-file setup wizard for fresh SnapSmack deployments. Checks the server
  * environment, creates the database schema, sets up the first admin user, and
@@ -13,7 +13,7 @@
 // --- CONFIGURATION ---
 // The version this installer deploys.
 $installer_version       = '0.7.3';
-$installer_version_label = 'Alpha v0.7.3a';
+$installer_version_label = 'Alpha v0.7.4';
 
 // --- SESSION INIT ---
 session_start();

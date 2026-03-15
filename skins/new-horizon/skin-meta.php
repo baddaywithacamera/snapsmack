@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Meta tags for the new-horizon skin
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Includes core meta tags, loads the variant colour stylesheet,
  * then loads the skin's main stylesheet.

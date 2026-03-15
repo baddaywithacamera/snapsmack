@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin header for the true-grit skin
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  */
 ?>
 <div id="tg-header">

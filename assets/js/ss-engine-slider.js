@@ -1,6 +1,6 @@
 /**
  * SnapSmack Gallery Slider Engine
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * A lightweight, dependency-free horizontal gallery slider component.
  * Supports two operating modes, selected via data-slider-mode on the container:

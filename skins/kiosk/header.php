@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Header for the kiosk skin
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  */
 ?>
 <div id="header">

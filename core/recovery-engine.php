@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Recovery Engine
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Handles site restoration from a SQL dump and image files. Used by the
  * installer's recovery mode. Can relocate images from a flat recovery

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - User account management
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Handles creation, editing, and deletion of administrator and editor accounts.
  * Enforces password hashing and prevents self-deletion of the active user.

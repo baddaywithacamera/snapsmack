@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Main public controller that handles image display and navigation
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Routes requests to images by slug, loads the active skin template, and
  * manages navigation between published images with proper timestamp filtering.

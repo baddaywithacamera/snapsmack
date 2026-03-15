@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - Lightbox Engine
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Full-screen image viewer with fade-in overlay. Click/tap to open, click to
  * close or press ESC. Guards against double-loading with internal flag.

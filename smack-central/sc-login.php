@@ -1,7 +1,7 @@
 <?php
 /**
  * SMACK CENTRAL - Login
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  */
 
 require_once __DIR__ . '/sc-config.php';

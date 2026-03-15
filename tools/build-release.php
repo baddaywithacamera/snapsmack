@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Release Builder
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Builds a core update package between two git tags. Uses git diff to
  * determine added/modified/deleted files, filters out protected paths,

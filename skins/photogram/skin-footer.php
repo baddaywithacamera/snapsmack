@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Photogram Skin Footer
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Renders the fixed bottom navigation bar, loads required JS engines,
  * and includes core footer (closes </body></html>).

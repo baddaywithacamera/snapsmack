@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin Settings Overlay
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Overlays skin-scoped DB values onto bare setting keys so each skin
  * retains its own customizations independently.

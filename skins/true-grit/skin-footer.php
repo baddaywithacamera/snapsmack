@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Footer for the true-grit skin
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Injects skin-specific JavaScript libraries and closes the document.
  */

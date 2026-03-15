@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - EXIF Data Formatter
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Converts raw EXIF data (stored as JSON) into human-readable photography
  * metadata. Handles rational number conversion for aperture, shutter speed,

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Archive grid layout for the a-grey-reckoning skin
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * White-bordered square thumbnails on black, reminiscent of the
  * noahgrey.com/photography/portfolios grid circa 2006. Simple,

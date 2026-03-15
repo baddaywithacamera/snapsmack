@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Release Signing Public Key
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Contains the Ed25519 public key used to verify the authenticity of update
  * packages downloaded from the release server. The corresponding private key

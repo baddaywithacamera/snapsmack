@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Photogram Skin Meta
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Delegates to core meta.php for <head> content, viewport, and font loading.
  */
