@@ -61,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
     $download_url = trim($_POST['download_url'] ?? '');
     $selected_cats = $_POST['cat_ids'] ?? [];
     $selected_albums = $_POST['album_ids'] ?? [];
+    $manual_tags = trim($_POST['tags'] ?? '');
 
     // Film stock field supports explicit "N/A" via checkbox override.
     $film_val = $_POST['film_stock'] ?? '';
@@ -357,8 +358,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             $pdo->prepare("INSERT INTO snap_image_album_map (image_id, album_id) VALUES (?, ?)")->execute([$new_img_id, (int)$aid]);
         }
 
-        // Sync hashtags from title + description.
-        snap_sync_tags($pdo, (int)$new_img_id, $title . ' ' . $desc);
+        // Sync hashtags from title + description + manual tags field.
+        snap_sync_tags($pdo, (int)$new_img_id, $title . ' ' . $desc . ' ' . $manual_tags);
 
         if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
             echo "success";
@@ -466,6 +467,11 @@ include 'core/sidebar.php';
                             </div>
                         </div>
                         <textarea id="desc" name="desc" placeholder="Plain text. Blank lines become paragraph breaks."></textarea>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>TAGS</label>
+                        <input type="text" name="tags" placeholder="#concrete #rust #peeling — space-separated hashtags">
                     </div>
                 </div>
 

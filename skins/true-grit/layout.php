@@ -7,6 +7,7 @@
  * Based on 50 Shades chassis with tg- namespace.
  */
 require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
+require_once dirname(__DIR__, 2) . '/core/snap-tags.php';
 
 ?>
 
@@ -35,6 +36,18 @@ require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
             <div class="description">
                 <?php echo $snapsmack->parseContent($img['img_description'] ?? ''); ?>
             </div>
+
+            <?php
+            // ── Hashtags ──────────────────────────────────────────────
+            $image_tags = snap_get_tags($pdo, (int)$img['id']);
+            if (!empty($image_tags)):
+            ?>
+            <div class="tg-tags">
+                <?php foreach ($image_tags as $t): ?>
+                    <a href="<?php echo BASE_URL . '?tag=' . rawurlencode($t['slug']); ?>" class="tg-tag">#<?php echo htmlspecialchars($t['slug']); ?></a>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
 
             <?php if ($exif_display_enabled ?? true): ?>
             <div class="meta">
