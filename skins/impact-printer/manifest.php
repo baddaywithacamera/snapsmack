@@ -22,7 +22,7 @@ return [
     'version'       => '1.0',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
-    'description'   => 'Continuous-feed dot-matrix printer circa 1983. Tractor-feed paper textures, ASCII character borders, faded ribbon ink. Two paper stocks: green-bar ledger and plain white.',
+    'description'   => 'Designed for photographers who enjoy using instant printer cameras that output on thermal paper. Continuous-feed tractor-feed paper textures, ASCII character borders, dithered halftone image rendering, faded ribbon ink. Two paper stocks: green-bar ledger and plain white.',
     'status'        => 'stable',
 
     'features' => [
