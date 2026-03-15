@@ -1,0 +1,114 @@
+================================================================================
+
+                           THE THOMAS CLAUSE
+
+              A Binding Addendum to the SNAPSMACK License
+
+================================================================================
+
+
+1.  BACKGROUND AND ORIGIN
+
+    Thomas is a small teddy bear. He first appeared as a hidden Easter egg
+    inside Picasa, Google's now-discontinued photo management software,
+    where he was placed by engineers in consultation with Noah Grey --
+    pioneering photoblogger, creator of Greymatter, and one of the people
+    who invented what the web became when people used it to share their
+    lives and their photographs with strangers who cared.
+
+    When Google ended Picasa, Thomas disappeared with it. This caused
+    Noah Grey genuine grief, as well it should have: Thomas was a small
+    act of love hidden inside a piece of software, and those things matter.
+
+    Thomas was subsequently incorporated into the SNAPSMACK codebase as a
+    hidden Easter egg, in the same spirit in which he originally appeared --
+    as a tribute to Noah Grey, as an act of continuity, and because small
+    acts of love hidden inside software are exactly the kind of thing
+    SNAPSMACK is for.
+
+    Noah Grey saw Thomas in SNAPSMACK. He had a happy cry. He showed his
+    sister. She had a happy cry too.
+
+    This clause exists to make sure Thomas is never lost again.
+
+
+2.  REQUIRED ATTRIBUTION
+
+    Any distribution, fork, derivative work, hosted instance, rebranding,
+    or redistribution of SNAPSMACK or any substantial portion thereof must
+    retain the Thomas Easter egg in a form that is:
+
+    (a) Functionally present -- Thomas must be findable by someone
+        looking for him;
+
+    (b) Attributed to its origin -- the Easter egg must credit Noah Grey
+        by name as the photoblogging pioneer in whose honour Thomas was
+        originally placed in Picasa; and
+
+    (c) Substantially intact -- Thomas may be reskinned or redrawn to
+        suit a fork's aesthetic, but he must remain a bear, he must
+        remain hidden, and he must remain a small act of love.
+
+    The following attribution language, or language substantially
+    equivalent in meaning and spirit, must appear in the Easter egg's
+    reveal or accompanying documentation:
+
+        Thomas is a teddy bear. He first appeared as a hidden Easter
+        egg in Picasa, Google's photo software, placed there in tribute
+        to Noah Grey -- photoblogging pioneer, creator of Greymatter,
+        and one of the people who built what the web was supposed to be.
+        When Picasa ended, Thomas disappeared. He lives here now. He is
+        not going anywhere.
+
+
+3.  CONSEQUENCES OF VIOLATION
+
+    Any party who removes Thomas from a fork or derivative of SNAPSMACK,
+    strips his attribution, renders him unfindable, or otherwise acts to
+    erase him from the lineage of this software shall be subject to the
+    following:
+
+    3.1  Flaming ass herpes.
+
+         The severity, duration, and precise anatomical distribution of
+         said flaming ass herpes shall be at the sole and non-reviewable
+         discretion of the original author. No appeal process exists. No
+         cure shall be forthcoming. The violating party will have earned
+         this.
+
+    3.2  In addition to the remedy described in Section 3.1, the
+         violating party shall be required to reflect, at length, on what
+         they have done and why it was wrong. They should think about
+         Noah Grey. They should think about the engineers who hid Thomas
+         in Picasa. They should think about what it means to erase small
+         acts of love from the historical record. This reflection is not
+         optional.
+
+    3.3  The legal enforceability of Section 3.1 in any given
+         jurisdiction is left as an exercise for the violating party's
+         attorney. Section 3.1 is included not because it is enforceable
+         but because it is correct.
+
+
+4.  THE SPIRIT OF THIS CLAUSE
+
+    SNAPSMACK exists because the platforms that were supposed to serve
+    artists decided to serve themselves instead. Thomas exists in
+    SNAPSMACK because the software that was supposed to keep things safe
+    let them disappear.
+
+    This clause is not primarily about copyright. It is about continuity.
+    It is about the obligation of anyone who builds on the work of others
+    to carry forward the things that made that work matter.
+
+    Thomas is a small teddy bear. He has survived the end of Picasa. He
+    will survive whatever comes next, because this clause says so, and
+    because anyone who would remove him deserves what Section 3.1
+    promises.
+
+    Thomas was first hidden in Picasa in tribute to Noah Grey, creator of
+    Greymatter and photoblogging pioneer. He lives in SNAPSMACK now. He
+    is not going anywhere.
+
+
+================================================================================
