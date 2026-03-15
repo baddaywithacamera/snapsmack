@@ -9,6 +9,7 @@
 
 require_once 'core/auth.php';
 require_once 'core/palette-extract.php';
+require_once 'core/snap-tags.php';
 
 // Extend limits for high-resolution image processing.
 set_time_limit(300);
@@ -355,6 +356,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         foreach ($selected_albums as $aid) {
             $pdo->prepare("INSERT INTO snap_image_album_map (image_id, album_id) VALUES (?, ?)")->execute([$new_img_id, (int)$aid]);
         }
+
+        // Sync hashtags from title + description.
+        snap_sync_tags($pdo, (int)$new_img_id, $title . ' ' . $desc);
 
         if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
             echo "success";

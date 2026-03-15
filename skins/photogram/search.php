@@ -3,33 +3,64 @@
  * SNAPSMACK - Photogram Search
  * Alpha v0.7.3a
  *
- * Full-text search across img_title and img_description.
- * Loaded by skin-footer.php when ?pg=search is requested and
- * pg_show_search is enabled. Falls back to empty state when
- * no query is provided.
+ * Full-text search across img_title, img_description, and hashtags.
+ * Loaded by landing.php when ?pg=search is requested and
+ * search_enabled is on. Falls back to empty state when no query
+ * is provided. Queries starting with # redirect to the hashtag
+ * archive page for that tag.
  */
 
 $q           = trim($_GET['q'] ?? '');
 $q_safe      = htmlspecialchars($q);
 $results     = [];
 $result_count = 0;
+$matched_tags = [];
 
 $pg_active_tab = 'search';
 
+// If the query looks like a hashtag, redirect to the tag archive
+if ($q !== '' && $q[0] === '#') {
+    $tag_candidate = substr($q, 1);
+    if (preg_match('/^[a-zA-Z][a-zA-Z0-9_]{0,49}$/', $tag_candidate)) {
+        header('Location: ' . BASE_URL . '?tag=' . rawurlencode(strtolower($tag_candidate)));
+        exit;
+    }
+}
+
 if ($q !== '') {
-    // Full-text LIKE search across title + description.
-    // Phase 2: switch to FULLTEXT index when install base warrants it.
+    $now = date('Y-m-d H:i:s');
+
+    // ── Find matching tags ──────────────────────────────────────────────
+    $tag_term = '%' . strtolower($q) . '%';
+    $tag_stmt = $pdo->prepare("
+        SELECT id, tag, slug, use_count
+        FROM snap_tags
+        WHERE slug LIKE ?
+          AND use_count > 0
+        ORDER BY use_count DESC
+        LIMIT 10
+    ");
+    $tag_stmt->execute([$tag_term]);
+    $matched_tags = $tag_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // ── Image search: title + description + tagged images ───────────────
     $search_term = '%' . $q . '%';
     $search_stmt = $pdo->prepare("
-        SELECT id, img_title, img_slug, img_file, img_thumb_square
-        FROM snap_images
-        WHERE img_status = 'published'
-          AND img_date   <= ?
-          AND (img_title LIKE ? OR img_description LIKE ?)
-        ORDER BY img_date DESC
+        SELECT DISTINCT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_square
+        FROM snap_images i
+        LEFT JOIN snap_image_tags it ON it.image_id = i.id
+        LEFT JOIN snap_tags t ON t.id = it.tag_id
+        WHERE i.img_status = 'published'
+          AND i.img_date   <= ?
+          AND (
+              i.img_title LIKE ?
+              OR i.img_description LIKE ?
+              OR t.slug LIKE ?
+          )
+        ORDER BY i.img_date DESC
         LIMIT 60
     ");
-    $search_stmt->execute([date('Y-m-d H:i:s'), $search_term, $search_term]);
+    $search_stmt->execute([$now, $search_term, $search_term, $tag_term]);
     $results      = $search_stmt->fetchAll(PDO::FETCH_ASSOC);
     $result_count = count($results);
 }
@@ -62,7 +93,7 @@ $site_title = $settings['site_title'] ?? $site_name ?? 'Photogram';
                 <input type="search"
                        name="q"
                        value="<?php echo $q_safe; ?>"
-                       placeholder="Search photos…"
+                       placeholder="Search photos or #tags…"
                        class="pg-search-input"
                        autocomplete="off"
                        autofocus>
@@ -81,6 +112,19 @@ $site_title = $settings['site_title'] ?? $site_name ?? 'Photogram';
     </div>
 
     <?php if ($q !== ''): ?>
+
+        <?php if (!empty($matched_tags)): ?>
+        <!-- ── Matching Tags ─────────────────────────────────────────────── -->
+        <div class="pg-search-tags">
+            <?php foreach ($matched_tags as $mt): ?>
+                <a href="<?php echo BASE_URL . '?tag=' . rawurlencode($mt['slug']); ?>" class="pg-search-tag-chip">
+                    <span class="pg-search-tag-hash">#</span><?php echo htmlspecialchars($mt['slug']); ?>
+                    <span class="pg-search-tag-count"><?php echo number_format((int)$mt['use_count']); ?></span>
+                </a>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+
         <!-- ── Result Count ────────────────────────────────────────────────── -->
         <div class="pg-search-meta">
             <?php if ($result_count > 0): ?>
@@ -128,7 +172,7 @@ $site_title = $settings['site_title'] ?? $site_name ?? 'Photogram';
                 <circle cx="11" cy="11" r="8"/>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
-            <p>Search titles and descriptions</p>
+            <p>Search titles, descriptions, and #hashtags</p>
         </div>
     <?php endif; ?>
 
