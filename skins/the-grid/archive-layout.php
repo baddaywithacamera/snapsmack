@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - The Grid Archive Layout
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Category and album archive view. Renders the same 3-column grid as the
  * landing page, scoped to the current category or album.

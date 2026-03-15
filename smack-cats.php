@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Category (registry) management
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Provides creation, editing, and deletion of photo categories.
  * Maintains associations between categories and their tagged images.

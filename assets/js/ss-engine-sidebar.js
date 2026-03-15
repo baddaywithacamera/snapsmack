@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - Sidebar Accordion Engine
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Pure accordion behaviour for the admin sidebar navigation.
  * One section open at a time; clicking a toggle slides the old

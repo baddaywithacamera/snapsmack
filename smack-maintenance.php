@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - System maintenance
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Performs database optimizations, taxonomy cleanup, and asset synchronization.
  * Clears orphaned mappings and defragments core tables to maintain performance.

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Photogram Post View
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Single post/image view. Full-width image at native aspect ratio,
  * inline like button, comment trigger that opens the bottom sheet.

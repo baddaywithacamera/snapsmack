@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - The Grid Skin Manifest
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Classic Instagram-style 3-column photo grid skin.
  * Activates the carousel posting interface (post_page => carousel)

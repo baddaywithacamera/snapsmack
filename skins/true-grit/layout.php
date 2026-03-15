@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Main layout template for the true-grit skin
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Renders the photo display, navigation, metadata, and comments sections.
  * Based on 50 Shades chassis with tg- namespace.

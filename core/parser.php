@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Content Parser and Asset Router
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Parses shortcodes in content and converts them to rich HTML.
  *

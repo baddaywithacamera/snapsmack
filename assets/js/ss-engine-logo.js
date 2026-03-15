@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - Logo Glitch Engine
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Idle animation loop for .snapsmack-logo. Applies random glitch effects at
  * irregular intervals with configurable frequency. Completely independent of

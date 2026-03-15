@@ -4,7 +4,7 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
-## 0.7.3a — "Whoopie Cushion" patch (2026-03-15)
+## 0.7.4 — "Whoopie Cushion" (2026-03-15)
 
 ### Added
 - Photogram profile stats: aggregate like count and comment count now shown alongside post count on the landing page header.
@@ -27,7 +27,12 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - Undefined CSS variables replaced: `--sc-surface` → `--sc-bg-box-head` (tabs) and `--sc-success-bg` (flash messages).
 - Community forum header changed from "SNAPSMACK ADMINS" to dynamic board count.
 - New Horizon Dark skin renamed to New Horizon (`skins/new-horizon-dark/` → `skins/new-horizon/`).
-- All file headers bumped to Alpha v0.7.3a across the entire codebase.
+- All file headers bumped to Alpha v0.7.4 across the entire codebase.
+- Custom version comparator `snap_version_compare()` added to `core/constants.php` — normalizes letter suffixes (a→.1, b→.2) to numeric segments before delegating to PHP's `version_compare()`. All five comparison call sites updated.
+- Skin gallery now shows up to three screenshots per skin (landing, archive, text page) with carousel navigation, dot indicators, and labels.
+- Impact Printer skin screenshots added (landing, archive, page).
+- Thomas the Bear Easter egg now uses the real Thomas photograph (transparent PNG from Picasa) instead of CSS-constructed bear.
+- Thomas Clause attribution corrected per Noah Grey's input.
 - Build artifacts (`packages/`, `registry.json`) added to `.gitignore`.
 
 ### Fixed

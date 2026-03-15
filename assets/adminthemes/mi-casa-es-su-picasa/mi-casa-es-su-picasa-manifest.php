@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the Mi Casa Es Su Picasa admin theme
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  */
 
 return [

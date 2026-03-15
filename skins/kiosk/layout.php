@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Main layout template for the kiosk skin
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Renders a kiosk display with pimpotron slideshow, logo glitch effects, and navigation.
  */

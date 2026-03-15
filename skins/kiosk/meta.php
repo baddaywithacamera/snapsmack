@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Meta tags and SEO for the kiosk skin
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Generates page titles, Open Graph tags, CSS variables, and canonical URLs.
  */

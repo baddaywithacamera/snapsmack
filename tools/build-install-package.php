@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Full Install Package Builder
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Builds a complete clean install zip for distribution on snapsmack.ca/releases.
  * Unlike build-release.php (which creates delta packages between git tags),

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Landing page for the grey-expectations skin
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Two layout modes:
  *   split — Navigation menu stacked on the left, large photo on the right

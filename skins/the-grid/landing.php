@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - The Grid Landing Page
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Classic 3-column photo grid with optional profile header.
  * Queries snap_posts joined to snap_post_images (cover only for

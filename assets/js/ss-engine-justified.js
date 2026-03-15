@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - Justified Grid Engine
- * Alpha v0.7.3a
+ * Alpha v0.7.4
  *
  * Wrapper for fjGallery (Flickr's justified gallery library). Only initializes
  * if .justified-grid element exists. Reads row height from window.JUSTIFIED_CONFIG.
