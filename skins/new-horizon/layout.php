@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Main layout template for the new-horizon-dark skin
+ * SNAPSMACK - Main layout template for the new-horizon skin
  * Alpha v0.7.3
  *
  * Renders the photo display, navigation, metadata, and comments sections.

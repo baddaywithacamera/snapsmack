@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Skin header for the new-horizon-dark skin
+ * SNAPSMACK - Skin header for the new-horizon skin
  * Alpha v0.7.3
  */
 ?>

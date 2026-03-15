@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Meta tags and SEO for the new-horizon-dark skin
+ * SNAPSMACK - Meta tags and SEO for the new-horizon skin
  * Alpha v0.7.3
  *
  * Generates page titles, Open Graph tags, CSS variables, and canonical URLs.

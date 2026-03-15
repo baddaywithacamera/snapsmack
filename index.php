@@ -21,7 +21,7 @@ require_once __DIR__ . '/core/skin-settings.php';
 // --- INITIALIZATION ---
 $settings = [];
 $site_name = 'ISWA.CA';
-$active_skin = 'new-horizon-dark';
+$active_skin = 'new-horizon';
 $prev_slug = $next_slug = $first_slug = $last_slug = "";
 $comment_count = 0;
 

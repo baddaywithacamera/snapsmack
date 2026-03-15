@@ -151,7 +151,7 @@ if (!empty($settings['favicon_url'])):
  * declarations so skins can use custom fonts.
  */
 $inventory_path = __DIR__ . '/manifest-inventory.php';
-$skin_manifest_path = dirname(__DIR__) . '/skins/' . ($active_skin ?? 'new-horizon-dark') . '/manifest.php';
+$skin_manifest_path = dirname(__DIR__) . '/skins/' . ($active_skin ?? 'new-horizon') . '/manifest.php';
 
 if (file_exists($inventory_path)) {
     $inv = include $inventory_path;
@@ -191,7 +191,7 @@ if (file_exists($inventory_path)) {
  */
 ?>
 
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>skins/<?php echo $active_skin ?? 'new-horizon-dark'; ?>/style.css?v=<?php echo time(); ?>">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>skins/<?php echo $active_skin ?? 'new-horizon'; ?>/style.css?v=<?php echo time(); ?>">
 
 <?php if (!empty($settings['custom_css_public'])): ?>
 <style id="snapsmack-dynamic-css">

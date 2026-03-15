@@ -185,7 +185,7 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
     // Safety exclusions — always skipped regardless of diff mode.
     // Fonts are pre-installed and never updated. On-demand / development skins
     // are distributed separately; only stock skins ship in the release zip.
-    // Stock skins (always ship): hip-to-be-square, galleria, new-horizon-dark,
+    // Stock skins (always ship): hip-to-be-square, galleria, new-horizon,
     //   50-shades-of-noah-grey, rational-geo, photogram.
     // Photogram is a core skin — it is the mandatory mobile skin and must
     //   travel with every release.

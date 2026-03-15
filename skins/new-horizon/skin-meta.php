@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Meta tags for the new-horizon-dark skin
+ * SNAPSMACK - Meta tags for the new-horizon skin
  * Alpha v0.7.3
  *
  * Includes core meta tags, loads the variant colour stylesheet,
@@ -16,7 +16,7 @@ $active_variant   = $settings['active_skin_variant'] ?? 'dark';
 if (!in_array($active_variant, $allowed_variants)) {
     $active_variant = 'dark';
 }
-$skin_slug    = $settings['active_skin'] ?? 'new-horizon-dark';
+$skin_slug    = $settings['active_skin'] ?? 'new-horizon';
 $variant_url  = BASE_URL . 'skins/' . $skin_slug . '/variant-' . $active_variant . '.css';
 $skin_css_url = BASE_URL . 'skins/' . $skin_slug . '/style.css';
 ?>

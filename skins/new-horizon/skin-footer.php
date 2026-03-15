@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Skin footer for the new-horizon-dark skin
+ * SNAPSMACK - Skin footer for the new-horizon skin
  * Alpha v0.7.3
  *
  * Loads required JavaScript engines from the manifest, then includes

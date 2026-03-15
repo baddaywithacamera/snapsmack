@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Configuration manifest for the new-horizon-dark skin
+ * SNAPSMACK - Configuration manifest for the new-horizon skin
  * Alpha v0.7.3
  *
  * Defines layout options, features, and customization controls.
