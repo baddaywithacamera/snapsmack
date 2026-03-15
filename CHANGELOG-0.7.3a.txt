@@ -1,0 +1,45 @@
+SNAPSMACK Alpha v0.7.3a "Whoopie Cushion" (patch)
+Released March 15, 2026
+
+PHOTOGRAM
+
+- Like and comment counters added to profile stats header (aggregate totals alongside post count)
+- Grid thumbnail overlays now show heart + comment icons with counts on hover/tap
+- Search upgraded: queries now match hashtags in addition to title and description
+- Matching tag chips shown above search results as tappable pills with post counts
+- Typing #hashtag in search redirects to the hashtag archive page
+- Hashtags now indexed on first publish (was only happening on edits and carousel posts)
+- Photogram protected from removal in skin gallery — it is the mandatory mobile skin
+
+COMMUNITY FORUM
+
+- Emoji picker added: 20-emoji click-to-insert bar on reply composer and new thread form
+- Forum header label changed from "SNAPSMACK ADMINS" to dynamic board count
+
+SMACK CENTRAL
+
+- Forum admin completely rebuilt: Discourse-style browsable UI replaces the old table-of-IDs interface
+  - Category rows with colour accent bars
+  - Threaded post stream with avatars and timestamps
+  - Inline mod controls: pin/unpin, lock/unlock, delete/restore
+  - Reply-as-HQ composer built into thread detail view
+  - Tabs: Forum (browsable), Installs (table), Manage Boards (table)
+- Emoji picker added to SC forum with same 20-emoji set
+- Admin tab buttons restyled for readability (were medium grey on medium grey)
+- Table cells now have proper horizontal padding throughout sc-admin.css
+- SC Assets page: fixed wrong CSS class names, wrapped manifest buttons in flex layout
+- Replaced undefined CSS variables (--sc-surface) with correct token references
+
+ADMIN
+
+- Category description field exposed in admin UI (was in DB schema but never wired up)
+- Development-status skins (Kiosk, The Grid) hidden from skin picker at runtime
+- The Grid added to install package exclusion list
+
+HOUSEKEEPING
+
+- New Horizon Dark skin renamed to New Horizon
+- All file headers bumped to Alpha v0.7.3a
+- Build artifacts (packages/, registry.json) added to .gitignore
+
+NO SCHEMA CHANGES — all tables referenced in this patch already exist from 0.7.3.

@@ -4,6 +4,40 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.3a — "Whoopie Cushion" patch (2026-03-15)
+
+### Added
+- Photogram profile stats: aggregate like count and comment count now shown alongside post count on the landing page header.
+- Photogram grid overlays: each thumbnail in the grid shows heart + comment icons with counts on hover/tap.
+- Photogram search upgrade: queries now match against hashtags (via `snap_tags` JOIN) in addition to title and description. Matching tag chips shown above image results as pill-style links with post counts.
+- Photogram search `#hashtag` redirect: typing `#concrete` in the search bar redirects straight to the `?tag=concrete` hashtag archive page.
+- `smack-post.php` now calls `snap_sync_tags()` after image insert, so hashtags in title and description are indexed on first publish (previously only synced on edit and carousel post).
+- Category description field exposed in admin UI (`smack-cats.php`): textarea on create/edit, saved to the existing `cat_description` column, shown inline in the category listing. Useful for category archive pages and SEO meta descriptions.
+- Emoji picker on community forum: 20-emoji click-to-insert bar on reply composer and new thread form (`smack-forum.php`).
+- Smack Central forum rewrite (`sc-forum.php`): replaced table-of-IDs admin with Discourse-style browsable UI. Category rows with colour accents, threaded post stream with avatars, inline mod controls (pin/unpin, lock/unlock, delete/restore), reply-as-HQ composer. Tabs: Forum (browsable), Installs (table), Manage Boards (table).
+- Emoji picker in Smack Central forum with same 20-emoji set.
+
+### Changed
+- Photogram skin promoted from `beta` to `stable`. Protected from removal in skin gallery — Photogram is the mandatory mobile skin and cannot be uninstalled.
+- Development-status skins (Kiosk, The Grid) now filtered out of the admin skin picker at runtime via manifest status check, regardless of deployment method (git clone vs install package).
+- The Grid added to build exclusion list in `build-install-package.php`.
+- Smack Central admin tabs restyled for readability: inactive tabs bumped from `--sc-text-dim` to `--sc-text-label` with visible border; active tabs use accent border and header background fill.
+- Smack Central table cells now have proper horizontal padding (`12px` on `th` and `td`, was `0`).
+- Smack Central `sc-assets.php` template corrected: `sc-box-head` → `sc-box-header`/`sc-box-title`, `sc-tab--active` → `active`, manifest buttons wrapped in flex container.
+- Undefined CSS variables replaced: `--sc-surface` → `--sc-bg-box-head` (tabs) and `--sc-success-bg` (flash messages).
+- Community forum header changed from "SNAPSMACK ADMINS" to dynamic board count.
+- New Horizon Dark skin renamed to New Horizon (`skins/new-horizon-dark/` → `skins/new-horizon/`).
+- All file headers bumped to Alpha v0.7.3a across the entire codebase.
+- Build artifacts (`packages/`, `registry.json`) added to `.gitignore`.
+
+### Fixed
+- `smack-post.php` missing `snap_sync_tags()` call — hashtags were silently ignored on initial publish.
+- Smack Central forum `$emoji_set` scope bug: variable defined inside one `elseif` branch but referenced in another. Moved to global scope.
+- SC Assets tab buttons unreadable (medium grey text on medium grey background).
+- SC Assets table cells missing left/top padding.
+
+---
+
 ## 0.7.3 — "Whoopie Cushion" (2026-03-14)
 
 ### Added
