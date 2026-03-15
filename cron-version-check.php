@@ -37,6 +37,20 @@ require_once "{$root}/core/db.php";
 // Load updater engine
 require_once "{$root}/core/updater.php";
 
+// Fallback for sites upgrading from < 0.7.4 where constants.php
+// doesn't yet define snap_version_compare().
+if (!function_exists('snap_version_compare')) {
+    function snap_version_compare(string $v1, string $v2, string $op = '>'): bool {
+        $normalise = function (string $v): string {
+            if (preg_match('/^(\d+(?:\.\d+)*)([a-z])$/i', $v, $m)) {
+                return $m[1] . '.' . (ord(strtolower($m[2])) - ord('a') + 1);
+            }
+            return $v . '.0';
+        };
+        return version_compare($normalise($v1), $normalise($v2), $op);
+    }
+}
+
 // --- FETCH CURRENT INSTALLED VERSION ---
 $installed_version = SNAPSMACK_VERSION_SHORT ?? '0.0';
 
