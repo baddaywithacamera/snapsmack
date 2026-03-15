@@ -76,19 +76,39 @@ try {
 
     // --- FILTER PARAMETERS ---
     // Extract category or album ID from query string
-    $cat_filter   = isset($_GET['cat']) ? (int)$_GET['cat'] : null;
-    $album_filter = isset($_GET['album']) ? (int)$_GET['album'] : null;
+    $cat_filter    = isset($_GET['cat']) ? (int)$_GET['cat'] : null;
+    $album_filter  = isset($_GET['album']) ? (int)$_GET['album'] : null;
+    $search_query  = trim($_GET['q'] ?? '');
+
+    // If search query looks like a hashtag, redirect to tag archive
+    if ($search_query !== '' && $search_query[0] === '#') {
+        $tag_candidate = substr($search_query, 1);
+        if (preg_match('/^[a-zA-Z][a-zA-Z0-9_]{0,49}$/', $tag_candidate)) {
+            header('Location: ' . BASE_URL . '?tag=' . rawurlencode(strtolower($tag_candidate)));
+            exit;
+        }
+    }
 
     // --- DATABASE QUERY ---
     // Timezone is configured globally in core/db.php.
     // Filters by publication status and timestamp to respect scheduled posts.
     $now_local = date('Y-m-d H:i:s');
 
-    $sql = "SELECT i.* FROM snap_images i ";
+    $sql = "SELECT DISTINCT i.* FROM snap_images i ";
     $where_clauses = ["i.img_status = 'published'", "i.img_date <= ?"];
     $params = [$now_local];
 
-    if ($cat_filter) {
+    if ($search_query !== '') {
+        // Search: join tags, match title/description/tags
+        $sql .= "LEFT JOIN snap_image_tags sit ON sit.image_id = i.id ";
+        $sql .= "LEFT JOIN snap_tags st ON st.id = sit.tag_id ";
+        $like = '%' . $search_query . '%';
+        $tag_like = '%' . strtolower($search_query) . '%';
+        $where_clauses[] = "(i.img_title LIKE ? OR i.img_description LIKE ? OR st.slug LIKE ?)";
+        $params[] = $like;
+        $params[] = $like;
+        $params[] = $tag_like;
+    } elseif ($cat_filter) {
         $sql .= "INNER JOIN snap_image_cat_map c ON i.id = c.image_id ";
         $where_clauses[] = "c.cat_id = ?";
         $params[] = $cat_filter;
@@ -109,6 +129,15 @@ try {
     // Fetch all categories and albums for filter dropdowns
     $all_cats   = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
     $all_albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
+
+    // Matching tags (shown when searching)
+    $matched_tags = [];
+    if ($search_query !== '') {
+        $tag_like = '%' . strtolower($search_query) . '%';
+        $tag_stmt = $pdo->prepare("SELECT slug, use_count FROM snap_tags WHERE slug LIKE ? AND use_count > 0 ORDER BY use_count DESC LIMIT 8");
+        $tag_stmt->execute([$tag_like]);
+        $matched_tags = $tag_stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
 } catch (Exception $e) {
     die("<div style='background:#300;color:#f99;padding:20px;border:1px solid red;font-family:monospace;'><h3>ARCHIVE_TRANSMISSION_ERROR</h3>" . $e->getMessage() . "</div>");
@@ -163,9 +192,32 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <span class="sep">|</span>
+
+                    <div class="filter-group">
+                        <form method="GET" action="archive.php" class="archive-search-form" style="display:inline-flex;align-items:center;gap:6px;">
+                            <input type="search" name="q" placeholder="Search or #tag…"
+                                   value="<?php echo htmlspecialchars($search_query); ?>"
+                                   class="archive-search-input" autocomplete="off">
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <?php if ($search_query !== ''): ?>
+        <div class="archive-search-status" style="text-align:center; padding:15px 0 0; font-family:'DM Sans',sans-serif; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-dim);">
+            <?php echo count($images); ?> result<?php echo count($images) !== 1 ? 's' : ''; ?> for &ldquo;<?php echo htmlspecialchars($search_query); ?>&rdquo;
+            &nbsp; <a href="archive.php" style="color:var(--accent);">[ CLEAR ]</a>
+        </div>
+        <?php if (!empty($matched_tags)): ?>
+        <div class="tg-tags" style="justify-content:center; padding:12px 0 0;">
+            <?php foreach ($matched_tags as $mt): ?>
+                <a href="?tag=<?php echo rawurlencode($mt['slug']); ?>" class="tg-tag">#<?php echo htmlspecialchars($mt['slug']); ?> (<?php echo (int)$mt['use_count']; ?>)</a>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+        <?php endif; ?>
 
         <div id="scroll-stage">
 

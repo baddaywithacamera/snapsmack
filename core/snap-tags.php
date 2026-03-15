@@ -93,6 +93,23 @@ function snap_sync_tags(PDO $pdo, int $image_id, string $text): void {
 // ── Render ────────────────────────────────────────────────────────────────────
 
 /**
+ * Retrieve all tags for a given image.
+ *
+ * @return array  Array of ['tag' => ..., 'slug' => ..., 'use_count' => ...]
+ */
+function snap_get_tags(PDO $pdo, int $image_id): array {
+    $stmt = $pdo->prepare("
+        SELECT t.tag, t.slug, t.use_count
+        FROM snap_tags t
+        JOIN snap_image_tags it ON it.tag_id = t.id
+        WHERE it.image_id = ?
+        ORDER BY t.slug ASC
+    ");
+    $stmt->execute([$image_id]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/**
  * Render plain text with #hashtags converted to anchor links.
  * HTML-escapes the rest of the text. Safe to output directly.
  *

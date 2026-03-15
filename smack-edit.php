@@ -61,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $allow_comments = (int)($_POST['allow_comments'] ?? 1);
     $allow_download = (int)($_POST['allow_download'] ?? 1);
     $download_url = trim($_POST['download_url'] ?? '');
+    $manual_tags = trim($_POST['tags'] ?? '');
     $selected_cats = $_POST['cat_ids'] ?? [];
     $selected_albums = $_POST['album_ids'] ?? [];
 
@@ -118,8 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_film = ?, img_exif = ?, img_status = ?, img_date = ?, img_orientation = ?, allow_comments = ?, allow_download = ?, download_url = ?, img_display_options = ? WHERE id = ?");
     $stmt->execute([$title, $desc, $film_val, json_encode($updated_exif), $status, $custom_date, $orientation, $allow_comments, $allow_download, $download_url, $display_json, $id]);
 
-    // Sync hashtags extracted from description
-    snap_sync_tags($pdo, $id, $desc);
+    // Sync hashtags from title + description + manual tags field.
+    snap_sync_tags($pdo, $id, $title . ' ' . $desc . ' ' . $manual_tags);
 
     // Delete and re-populate category mappings.
     $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
@@ -162,6 +163,10 @@ $mapped_albums = $mapped_albums->fetchAll(PDO::FETCH_COLUMN);
 // Load all available categories and albums for the form selectors.
 $all_cats = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
 $all_albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
+
+// Load existing tags for this image (pre-populate the tags field).
+$existing_tags = snap_get_tags($pdo, $id);
+$existing_tags_str = implode(' ', array_map(function($t) { return '#' . $t['slug']; }, $existing_tags));
 
 // Count likes and comments for display
 $like_count = $pdo->prepare("SELECT COUNT(*) FROM snap_likes WHERE post_id = ?");
@@ -270,6 +275,11 @@ include 'core/sidebar.php';
                             </div>
                         </div>
                         <textarea id="desc" name="desc" placeholder="Plain text. Blank lines become paragraph breaks."><?php echo htmlspecialchars($post['img_description']); ?></textarea>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>TAGS</label>
+                        <input type="text" name="tags" placeholder="#concrete #rust #peeling — space-separated hashtags" value="<?php echo htmlspecialchars($existing_tags_str); ?>">
                     </div>
                 </div>
 

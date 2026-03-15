@@ -848,3 +848,92 @@ body::before {
 .signals-table { width: 100%; margin-bottom: 40px; }
 .signal-date { font-size: 0.7rem; color: #444; margin-top: 5px; }
 .signals-empty { text-align: center; }
+
+/* ==========================================================================
+   HASHTAGS (Single Post View)
+   ========================================================================= */
+
+.tg-tags {
+    max-width: 850px;
+    margin: 0 auto 40px auto;
+    padding: 0 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.tg-tag {
+    display: inline-block;
+    font-family: 'DM Mono', 'Courier New', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+    text-decoration: none;
+    letter-spacing: 0.5px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.tg-tag:hover {
+    color: var(--accent-hover);
+    border-color: var(--accent);
+}
+
+/* ==========================================================================
+   SEARCH INPUT (Archive Infobox)
+   ========================================================================= */
+
+.archive-search-input {
+    background: var(--input-bg, var(--bg-primary));
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: 5px 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    width: 160px;
+}
+
+.archive-search-input::placeholder {
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.archive-search-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* ==========================================================================
+   PAGINATION (Hashtag Archive)
+   ========================================================================= */
+
+.tg-pagination {
+    text-align: center;
+    padding: 40px 0 60px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+}
+
+.tg-pagination a {
+    color: var(--accent);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.tg-pagination a:hover {
+    color: var(--accent-hover);
+}
+
+.tg-page-info {
+    color: var(--text-dim);
+}
