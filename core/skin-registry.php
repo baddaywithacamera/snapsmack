@@ -329,8 +329,15 @@ function skin_registry_install(string $slug, string $download_url, string $signa
  */
 function skin_registry_remove(string $slug, string $active_skin): array {
 
+    // Skins that are required by SnapSmack and cannot be removed
+    $protected = ['photogram'];
+
     if (!preg_match('/^[a-zA-Z0-9_-]+$/', $slug)) {
         return ['success' => false, 'message' => 'Invalid skin slug.'];
+    }
+
+    if (in_array($slug, $protected, true)) {
+        return ['success' => false, 'message' => 'This skin is required by SnapSmack and cannot be removed.'];
     }
 
     if ($slug === $active_skin) {
