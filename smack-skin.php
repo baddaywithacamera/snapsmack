@@ -28,6 +28,9 @@ if (!isset($settings)) {
 $active_tab = $_GET['tab'] ?? 'customize';
 if (!in_array($active_tab, ['customize', 'gallery'])) $active_tab = 'customize';
 
+// --- PROTECTED SKINS (cannot be removed) ---
+$protected_skins = ['photogram'];
+
 // --- GALLERY ACTION HANDLERS ---
 // Process install/remove requests before any output is sent.
 $gallery_msg = '';
@@ -61,7 +64,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
                 }
             }
         } elseif ($action === 'remove') {
-            $result = skin_registry_remove($slug, $active);
+            if (in_array($slug, $protected_skins, true)) {
+                $gallery_err = 'This skin is required by SnapSmack and cannot be removed.';
+                $result = ['success' => false];
+            } else {
+                $result = skin_registry_remove($slug, $active);
+            }
             if ($result['success']) {
                 skin_registry_clear_cache();
                 $gallery_msg = $result['message'];
@@ -105,6 +113,8 @@ foreach ($skin_dirs as $dir) {
     if (defined('SNAPSMACK_MOBILE_SKIN') && $slug === SNAPSMACK_MOBILE_SKIN) continue;
     if (file_exists($dir . '/manifest.php')) {
         $temp = include $dir . '/manifest.php';
+        // Development skins are not selectable in the admin skin picker
+        if (($temp['status'] ?? 'stable') === 'development') continue;
         $available_skins[$slug] = $temp['name'] ?? ucfirst($slug);
     }
 }
@@ -810,7 +820,7 @@ if (!empty($google_families)) {
                             </div>
                             <div class="skin-card-desc"><?php echo htmlspecialchars($skin['description']); ?></div>
                             <div class="skin-card-meta">BY <?php echo strtoupper(htmlspecialchars($skin['author'])); ?></div>
-                            <?php if ($current_db_active !== $slug): ?>
+                            <?php if ($current_db_active !== $slug && !in_array($slug, $protected_skins, true)): ?>
                                 <div class="skin-card-actions">
                                     <form method="POST">
                                         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
@@ -959,7 +969,7 @@ if (!empty($google_families)) {
                                 </span>
                             <?php endif; ?>
 
-                            <?php if ($skin['installed'] && $current_db_active !== $slug): ?>
+                            <?php if ($skin['installed'] && $current_db_active !== $slug && !in_array($slug, $protected_skins, true)): ?>
                                 <form method="POST">
                                     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                                     <input type="hidden" name="gallery_action" value="remove">
@@ -1006,7 +1016,7 @@ if (!empty($google_families)) {
                         </div>
                         <div class="skin-card-desc"><?php echo htmlspecialchars($skin['description']); ?></div>
                         <div class="skin-card-meta">BY <?php echo strtoupper(htmlspecialchars($skin['author'])); ?></div>
-                        <?php if ($current_db_active !== $slug): ?>
+                        <?php if ($current_db_active !== $slug && !in_array($slug, $protected_skins, true)): ?>
                             <div class="skin-card-actions">
                                 <form method="POST">
                                     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
