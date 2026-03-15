@@ -674,7 +674,7 @@ function snapsmack_is_mobile(): bool {
                 'site_tagline'              => $_SESSION['site_tagline'] ?? '',
                 'site_url'                  => $_SESSION['site_url'] ?? '',
                 'site_email'                => $_SESSION['admin_email'] ?? '',
-                'active_skin'               => 'new-horizon-dark',
+                'active_skin'               => 'new-horizon',
                 'active_skin_variant'       => 'dark',
                 'active_theme'              => 'midnight-lime',
                 'timezone'                  => 'UTC',
@@ -840,7 +840,7 @@ HTACCESS;
     // New Horizon is a hard requirement — the public site will 404 without it.
     // Pocket Rocket is a soft warning — mobile users just get the desktop skin instead.
     $skin_warning = '';
-    if (!is_dir(__DIR__ . '/skins/new-horizon-dark')) {
+    if (!is_dir(__DIR__ . '/skins/new-horizon')) {
         $errors[] = 'Default skin "New Horizon" not found in skins/. The public site cannot load without it. Make sure the full SnapSmack codebase (including the skins/ directory) is uploaded before running the installer.';
         $skin_warning = $errors[count($errors) - 1];
     }
