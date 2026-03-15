@@ -76,7 +76,7 @@ function updater_check_status(string $installed_version, array $release_info): s
     if (isset($release_info['error'])) {
         return 'error';
     }
-    return version_compare($release_info['version'], $installed_version, '>')
+    return snap_version_compare($release_info['version'], $installed_version, '>')
         ? 'update_available'
         : 'up_to_date';
 }
@@ -911,7 +911,7 @@ function updater_check_skin_registry(PDO $pdo): array {
             ];
         } elseif (
             isset($skin['version'], $local[$slug]['version']) &&
-            version_compare($skin['version'], $local[$slug]['version'], '>')
+            snap_version_compare($skin['version'], $local[$slug]['version'], '>')
         ) {
             // Installed skin has an update
             $updated_skins[] = [
