@@ -24,6 +24,20 @@
 require_once 'core/auth.php';
 require_once 'core/updater.php';
 
+// Fallback for sites upgrading from < 0.7.4 where constants.php
+// doesn't yet define snap_version_compare().
+if (!function_exists('snap_version_compare')) {
+    function snap_version_compare(string $v1, string $v2, string $op = '>'): bool {
+        $normalise = function (string $v): string {
+            if (preg_match('/^(\d+(?:\.\d+)*)([a-z])$/i', $v, $m)) {
+                return $m[1] . '.' . (ord(strtolower($m[2])) - ord('a') + 1);
+            }
+            return $v . '.0';
+        };
+        return version_compare($normalise($v1), $normalise($v2), $op);
+    }
+}
+
 // --- EARLY CRON DETECTION ---
 if (!isset($cron_supported)) {
     $cron_supported = false;

@@ -137,12 +137,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
                 }
 
                 if ($extracted_dir && is_dir($extracted_dir . '/core')) {
-                    // Move contents up into target directory
-                    $items = array_diff(scandir($extracted_dir), ['.', '..']);
-                    foreach ($items as $item) {
-                        rename($extracted_dir . '/' . $item, $target_dir . '/' . $item);
-                    }
-                    @rmdir($extracted_dir);
+                    // Recursively merge source into destination.
+                    // Plain rename() fails when the target directory already exists,
+                    // so we walk the tree: files overwrite, directories recurse.
+                    $merge_dirs = function (string $src, string $dst) use (&$merge_dirs): void {
+                        if (!is_dir($dst)) { @mkdir($dst, 0755, true); }
+                        $items = array_diff(scandir($src), ['.', '..']);
+                        foreach ($items as $item) {
+                            $s = $src . '/' . $item;
+                            $d = $dst . '/' . $item;
+                            if (is_dir($s)) {
+                                $merge_dirs($s, $d);
+                            } else {
+                                rename($s, $d);
+                            }
+                        }
+                        @rmdir($src);
+                    };
+                    $merge_dirs($extracted_dir, $target_dir);
 
                     // Remove db.php if it came from the repo
                     @unlink($target_dir . '/core/db.php');
