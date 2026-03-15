@@ -78,8 +78,11 @@ $exclude_dirs = [
     'public',
     'screenshots',
     'tools',               // Dev-only tools
-    'skins/kiosk',         // Development status — not ready for distribution
-    'skins/impact-printer', // Specialty skin — available as optional download
+    'skins/kiosk',              // Development status — not ready for distribution
+    'skins/impact-printer',     // Specialty skin — available via skin gallery
+    'skins/true-grit',          // 20MB+ textures — available via skin gallery
+    'skins/a-grey-reckoning',   // Development skin — not for distribution
+    'skins/50-shades-of-noah-grey', // Derivative of a-grey-reckoning — not for distribution
 ];
 
 // Individual files to skip

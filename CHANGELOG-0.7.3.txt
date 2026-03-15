@@ -45,12 +45,13 @@ BUG FIXES
 - Fixed Threads SVG icon to use official at-sign thread path
 - Fixed updater protected paths contradicting protected_paths.json for skins directory
 
-MIGRATIONS
+SCHEMA CHANGES (RUN MANUALLY)
 
-- migrate-album-category-covers.sql: adds cover_image_id to snap_albums and snap_categories
-- migrate-forum-moderators.sql: adds is_moderator column to ss_forum_installs
+- Album/category covers: cover_image_id column added to snap_albums and snap_categories
+- Forum moderators: is_moderator column added to ss_forum_installs (forum database only)
 
 HOUSEKEEPING
 
 - All file headers bumped to Alpha v0.7.3
 - Spent migration scripts removed from migrations directory
+- Fixed Ed25519 release signing pubkey mismatch that prevented updater from verifying packages

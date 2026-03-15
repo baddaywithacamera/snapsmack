@@ -1,0 +1,852 @@
+/**
+ * SNAPSMACK - A Grey Reckoning Skin Stylesheet
+ * Alpha v0.7.3
+ *
+ * Recreates the quiet, reverent aesthetic of Noah Grey's 2006-era
+ * photography websites. Solid black background, thin borders,
+ * small-caps typography with generous letter-spacing, and nothing
+ * between the viewer and the photograph.
+ */
+
+
+/* ─── ROOT VARIABLES ─────────────────────────────────────────────── */
+
+:root {
+    --ge-bg:            #000000;
+    --ge-text:          #999999;
+    --ge-text-dim:      #666666;
+    --ge-link:          #bbbbbb;
+    --ge-link-hover:    #ffffff;
+    --ge-border:        #333333;
+    --ge-photo-border:  #ffffff;
+    --ge-accent:        #cccccc;
+    --ge-canvas-width:  960px;
+    --ge-nav-size:      11px;
+    --ge-caption-size:  15px;
+    --ge-title-size:    14px;
+    --ge-spacing:       4px;
+    --grid-cols:        4;
+}
+
+
+/* ─── BASE RESET ─────────────────────────────────────────────────── */
+
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--ge-bg);
+    color: var(--ge-text);
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+    font-size: var(--ge-caption-size);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+    color: var(--ge-link);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: var(--ge-link-hover);
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+
+/* ─── CANVAS (CENTRED COLUMN) ────────────────────────────────────── */
+
+.ge-canvas {
+    max-width: var(--ge-canvas-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+
+/* ─── SITE HEADER ────────────────────────────────────────────────── */
+
+.ge-header {
+    padding: 40px 0 30px;
+}
+
+.ge-header .ge-canvas {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+/* Core header.php classes — styled to match the skin */
+.logo-area a {
+    text-decoration: none;
+}
+
+.site-title-text {
+    margin: 0;
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: var(--ge-title-size);
+    font-weight: 400;
+    letter-spacing: var(--ge-spacing);
+    text-transform: uppercase;
+    color: var(--ge-accent);
+}
+
+.site-logo {
+    max-height: 40px;
+    width: auto;
+}
+
+.nav-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-menu li {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0;
+}
+
+.nav-menu a {
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: var(--ge-nav-size);
+    font-weight: 400;
+    letter-spacing: var(--ge-spacing);
+    text-transform: uppercase;
+    color: var(--ge-text-dim);
+    text-decoration: none;
+}
+
+.nav-menu a:hover {
+    color: var(--ge-link-hover);
+}
+
+.nav-menu .sep {
+    color: var(--ge-text-dim);
+    margin: 0 6px;
+    opacity: 0.4;
+    font-size: var(--ge-nav-size);
+}
+
+.ge-site-title {
+    margin: 0;
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: var(--ge-title-size);
+    font-weight: 400;
+    letter-spacing: var(--ge-spacing);
+    text-transform: uppercase;
+    color: var(--ge-accent);
+}
+
+.ge-site-title a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.ge-site-title a:hover {
+    color: var(--ge-link-hover);
+}
+
+
+/* ─── NAVIGATION ─────────────────────────────────────────────────── */
+
+.ge-nav {
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: var(--ge-nav-size);
+    font-weight: 400;
+    letter-spacing: var(--ge-spacing);
+    text-transform: uppercase;
+}
+
+.ge-nav a {
+    color: var(--ge-text-dim);
+    text-decoration: none;
+}
+
+.ge-nav a:hover {
+    color: var(--ge-link-hover);
+}
+
+.ge-nav .sep {
+    color: var(--ge-text-dim);
+    margin: 0 6px;
+    opacity: 0.5;
+}
+
+.ge-nav .dim {
+    color: var(--ge-text-dim);
+    opacity: 0.3;
+}
+
+
+/* ─── TITLE BAR (SINGLE IMAGE) ───────────────────────────────────── */
+
+.ge-title-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-top: 1px solid var(--ge-border);
+    border-bottom: 1px solid var(--ge-border);
+    padding: 10px 0;
+    margin-bottom: 24px;
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: var(--ge-nav-size);
+    font-weight: 400;
+    letter-spacing: var(--ge-spacing);
+    text-transform: uppercase;
+}
+
+.ge-title-text {
+    color: var(--ge-accent);
+}
+
+.ge-title-date {
+    color: var(--ge-text-dim);
+    font-variant-numeric: tabular-nums;
+}
+
+
+/* ─── PHOTO DISPLAY ──────────────────────────────────────────────── */
+
+.ge-photo {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.ge-photo img {
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    margin: 0 auto;
+    border: 1px solid var(--ge-border);
+}
+
+
+/* ─── CAPTION / DESCRIPTION ──────────────────────────────────────── */
+
+.ge-caption {
+    max-width: 640px;
+    margin: 0 auto 32px;
+    text-align: center;
+    color: var(--ge-text);
+    line-height: 1.7;
+}
+
+.ge-caption p {
+    margin: 0 0 1em;
+}
+
+.ge-caption p:last-child {
+    margin-bottom: 0;
+}
+
+
+/* ─── PHOTO NAVIGATION ROW ───────────────────────────────────────── */
+
+.ge-photo-nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    padding: 16px 0;
+    border-top: 1px solid var(--ge-border);
+    margin-top: 8px;
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: var(--ge-nav-size);
+    font-weight: 400;
+    letter-spacing: var(--ge-spacing);
+    text-transform: uppercase;
+}
+
+.ge-photo-nav a {
+    color: var(--ge-text-dim);
+}
+
+.ge-photo-nav a:hover {
+    color: var(--ge-link-hover);
+}
+
+.ge-photo-nav .sep {
+    color: var(--ge-text-dim);
+    margin: 0 8px;
+    opacity: 0.4;
+}
+
+.ge-photo-nav .dim {
+    color: var(--ge-text-dim);
+    opacity: 0.3;
+}
+
+
+/* ─── EXIF / TECHNICAL DATA ──────────────────────────────────────── */
+
+.ge-exif {
+    max-width: 480px;
+    margin: 24px auto 0;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--ge-text-dim);
+    text-transform: uppercase;
+}
+
+.ge-exif table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ge-exif td {
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.ge-exif .exif-label {
+    width: 100px;
+    color: var(--ge-text-dim);
+    opacity: 0.7;
+}
+
+.ge-exif .exif-value {
+    color: var(--ge-text);
+}
+
+
+/* ─── FOOTER PANES (INFO / COMMENTS) ────────────────────────────── */
+
+/* Hidden by default — toggled by footer engine JS */
+.footer-pane {
+    display: none;
+}
+
+.ge-footer-content {
+    padding: 32px 0 60px;
+}
+
+.ge-footer-content .photo-title-footer {
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: var(--ge-spacing);
+    text-transform: uppercase;
+    color: var(--ge-accent);
+    margin: 0 0 16px;
+}
+
+.ge-footer-content .description {
+    color: var(--ge-text);
+    line-height: 1.7;
+    max-width: 640px;
+}
+
+
+/* ─── ARCHIVE: INFOBOX / FILTER BAR ──────────────────────────────── */
+
+#infobox {
+    max-width: var(--ge-canvas-width);
+    margin: 0 auto;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--ge-border);
+}
+
+#infobox .nav-links {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+#infobox .nav-links a {
+    color: var(--ge-text-dim);
+    text-decoration: none;
+}
+
+#infobox .nav-links a:hover,
+#infobox .nav-links a.active {
+    color: var(--ge-link-hover);
+}
+
+#infobox .nav-links .dim,
+#infobox .nav-links label {
+    color: var(--ge-text-dim);
+    opacity: 0.6;
+}
+
+#infobox .nav-links .sep {
+    color: var(--ge-text-dim);
+    opacity: 0.3;
+    margin: 0 4px;
+}
+
+#infobox .filter-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#infobox select {
+    background: #111;
+    color: var(--ge-text);
+    border: 1px solid var(--ge-border);
+    padding: 4px 8px;
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+#infobox select:focus {
+    outline: 1px solid var(--ge-text-dim);
+}
+
+
+/* ─── ARCHIVE GRID ───────────────────────────────────────────────── */
+
+.ge-archive-grid {
+    display: grid !important;
+    grid-template-columns: repeat(var(--grid-cols, 4), 1fr) !important;
+    gap: 20px !important;
+    padding: 32px 24px 60px !important;
+    max-width: var(--ge-canvas-width);
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+.ge-archive-thumb {
+    display: block !important;
+    text-decoration: none !important;
+    position: relative;
+    overflow: visible !important;
+}
+
+.ge-archive-thumb img {
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    object-fit: cover !important;
+    border: 4px solid #ffffff !important;
+    box-sizing: border-box !important;
+    display: block !important;
+    transition: opacity 0.2s ease;
+}
+
+.ge-archive-thumb:hover img {
+    opacity: 0.8;
+}
+
+.ge-archive-title {
+    display: block;
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ge-text-dim);
+    text-align: center;
+    margin-top: 8px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+
+/* ─── ARCHIVE PAGINATION ─────────────────────────────────────────── */
+
+.ge-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    padding: 24px 0 48px;
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: var(--ge-nav-size);
+    font-weight: 400;
+    letter-spacing: var(--ge-spacing);
+    text-transform: uppercase;
+}
+
+.ge-pagination a {
+    color: var(--ge-text-dim);
+}
+
+.ge-pagination a:hover {
+    color: var(--ge-link-hover);
+}
+
+.ge-pagination .sep {
+    color: var(--ge-text-dim);
+    margin: 0 8px;
+    opacity: 0.4;
+}
+
+.ge-pagination .dim {
+    opacity: 0.3;
+}
+
+.ge-pagination .current {
+    color: var(--ge-accent);
+}
+
+
+/* ─── ALBUM LISTING (SERIES COLLECTIONS) ─────────────────────────── */
+
+.ge-album-heading {
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: var(--ge-accent);
+    text-align: center;
+    margin: 32px 0 40px;
+    font-variant: small-caps;
+}
+
+.ge-album-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding-bottom: 60px;
+}
+
+.ge-album-row {
+    display: flex;
+    border: 1px solid var(--ge-border);
+    text-decoration: none;
+    transition: border-color 0.2s ease;
+    overflow: hidden;
+}
+
+.ge-album-row:hover {
+    border-color: var(--ge-text-dim);
+}
+
+.ge-album-thumb {
+    flex: 0 0 140px;
+    height: 140px;
+    overflow: hidden;
+    background: #111;
+}
+
+.ge-album-thumb img {
+    width: 140px;
+    height: 140px;
+    object-fit: cover;
+    display: block;
+    transition: opacity 0.2s ease;
+}
+
+.ge-album-row:hover .ge-album-thumb img {
+    opacity: 0.85;
+}
+
+.ge-album-thumb-empty {
+    width: 140px;
+    height: 140px;
+    background: #111;
+}
+
+.ge-album-meta {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px 24px;
+    text-align: center;
+}
+
+.ge-album-name {
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--ge-accent);
+    font-variant: small-caps;
+    margin-bottom: 8px;
+}
+
+.ge-album-count {
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--ge-text-dim);
+    display: block;
+}
+
+.ge-album-date {
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--ge-text-dim);
+    display: block;
+    margin-top: 2px;
+}
+
+.ge-album-empty {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--ge-text-dim);
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: var(--ge-nav-size);
+    letter-spacing: var(--ge-spacing);
+    text-transform: uppercase;
+}
+
+@media (max-width: 480px) {
+    .ge-album-thumb {
+        flex: 0 0 100px;
+        height: 100px;
+    }
+
+    .ge-album-thumb img {
+        width: 100px;
+        height: 100px;
+    }
+
+    .ge-album-meta {
+        padding: 12px 16px;
+    }
+
+    .ge-album-name {
+        font-size: 12px;
+        letter-spacing: 2px;
+    }
+}
+
+
+/* ─── LANDING PAGE: SPLIT LAYOUT ─────────────────────────────────── */
+
+.ge-landing-split {
+    display: flex;
+    min-height: 100vh;
+}
+
+.ge-landing-menu {
+    flex: 0 0 320px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 48px;
+}
+
+.ge-landing-logo {
+    margin-bottom: 48px;
+}
+
+.ge-landing-logo a {
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: var(--ge-title-size);
+    font-weight: 400;
+    letter-spacing: var(--ge-spacing);
+    text-transform: uppercase;
+    color: var(--ge-accent);
+    text-decoration: none;
+}
+
+.ge-landing-logo a:hover {
+    color: var(--ge-link-hover);
+}
+
+.ge-landing-nav-item {
+    margin-bottom: 28px;
+}
+
+.ge-landing-nav-item a {
+    display: block;
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: var(--ge-spacing);
+    text-transform: uppercase;
+    color: var(--ge-link);
+    text-decoration: none;
+    margin-bottom: 6px;
+}
+
+.ge-landing-nav-item a:hover {
+    color: var(--ge-link-hover);
+}
+
+.ge-landing-nav-desc {
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+    font-size: 13px;
+    color: var(--ge-text-dim);
+    line-height: 1.5;
+}
+
+.ge-landing-photo {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 40px 40px 40px 0;
+}
+
+.ge-landing-photo img {
+    max-width: 100%;
+    max-height: 90vh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border: 1px solid var(--ge-border);
+}
+
+
+/* ─── LANDING PAGE: HERO LAYOUT ──────────────────────────────────── */
+
+.ge-landing-hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ge-landing-hero img {
+    max-width: 90%;
+    max-height: 85vh;
+    border: 1px solid var(--ge-border);
+}
+
+.ge-landing-hero-nav {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+
+/* ─── STATIC / TEXT PAGES ────────────────────────────────────────── */
+
+.ge-static-page {
+    padding: 60px 0 80px;
+}
+
+.ge-static-page .static-page-title {
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: var(--ge-spacing);
+    text-transform: uppercase;
+    color: var(--ge-accent);
+    margin: 0 0 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--ge-border);
+}
+
+.ge-static-page .static-content {
+    max-width: 640px;
+    margin: 0 auto;
+    color: var(--ge-text);
+    line-height: 1.8;
+}
+
+
+/* ─── SYSTEM FOOTER OVERRIDES ────────────────────────────────────── */
+
+#system-footer {
+    border-top: 1px solid var(--ge-border);
+    padding: 20px 0;
+}
+
+#system-footer .inside {
+    max-width: var(--ge-canvas-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+#system-footer p {
+    font-family: 'Raleway', 'Helvetica Neue', sans-serif;
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ge-text-dim);
+    margin: 0;
+}
+
+#system-footer a {
+    color: var(--ge-text-dim);
+}
+
+#system-footer a:hover {
+    color: var(--ge-link-hover);
+}
+
+#system-footer .sep {
+    opacity: 0.4;
+    margin: 0 6px;
+}
+
+
+/* ─── COMMUNITY OVERRIDES ────────────────────────────────────────── */
+
+.community-dock {
+    /* Inherits from skin defaults */
+}
+
+
+/* ─── RESPONSIVE ─────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+    .ge-landing-split {
+        flex-direction: column;
+    }
+
+    .ge-landing-menu {
+        flex: none;
+        padding: 40px 24px;
+    }
+
+    .ge-landing-photo {
+        padding: 0 24px 40px;
+    }
+
+    .ge-archive-grid {
+        --grid-cols: 2 !important;
+    }
+
+    .ge-header .ge-canvas {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .ge-title-bar {
+        flex-direction: column;
+        gap: 4px;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .ge-archive-grid {
+        --grid-cols: 1 !important;
+    }
+
+    .ge-photo-nav {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .ge-landing-menu {
+        padding: 24px 16px;
+    }
+}
