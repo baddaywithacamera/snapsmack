@@ -183,7 +183,7 @@ function skin_registry_compare(array $registry, array $local): array {
         $result[$slug] = array_merge($remote, [
             'installed'        => $is_installed,
             'local_version'    => $local_ver,
-            'update_available' => $is_installed && version_compare($remote_ver, $local_ver, '>'),
+            'update_available' => $is_installed && snap_version_compare($remote_ver, $local_ver, '>'),
             'installable'      => ($remote['status'] ?? 'stable') !== 'development',
         ]);
     }

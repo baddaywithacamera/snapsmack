@@ -45,7 +45,7 @@ try {
     $stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = 'installed_version'");
     $stmt->execute();
     $db_version = $stmt->fetchColumn();
-    if ($db_version && version_compare($db_version, $installed_version, '>')) {
+    if ($db_version && snap_version_compare($db_version, $installed_version, '>')) {
         $installed_version = $db_version;
     }
 } catch (PDOException $e) {
