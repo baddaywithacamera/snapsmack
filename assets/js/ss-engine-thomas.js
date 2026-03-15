@@ -28,39 +28,30 @@
     }
 
     // --- BEAR CONSTRUCTION ---
-    // Create a single bear at random position and size
+    // Create a single bear at random position and size using the real Thomas image
     function buildBear() {
         const size = Math.floor(Math.random() * 120) + 80;
         const bear = document.createElement('div');
         bear.className = 'thomas-bear';
         bear.style.width  = size + 'px';
-        bear.style.height = size + 'px';
+        bear.style.height = Math.floor(size * 1.3) + 'px';
 
         const maxX = window.innerWidth  - size - 20;
         const maxY = window.innerHeight - size - 20;
         bear.style.left = Math.max(10, Math.floor(Math.random() * maxX)) + 'px';
         bear.style.top  = Math.max(10, Math.floor(Math.random() * maxY)) + 'px';
 
-        bear.innerHTML = `
-            <div class="bear">
-                <div class="bear-body"><div class="bear-belly"></div></div>
-                <div class="bear-arm left"></div>
-                <div class="bear-arm right"></div>
-                <div class="bear-leg left"><div class="bear-foot"></div></div>
-                <div class="bear-leg right"><div class="bear-foot"></div></div>
-                <div class="bear-head">
-                    <div class="bear-ear left"><div class="bear-ear-inner"></div></div>
-                    <div class="bear-ear right"><div class="bear-ear-inner"></div></div>
-                    <div class="bear-face">
-                        <div class="bear-eye left"></div>
-                        <div class="bear-eye right"></div>
-                        <div class="bear-nose"></div>
-                        <div class="bear-mouth"></div>
-                    </div>
-                </div>
-                <div class="bear-bowtie"><div class="bear-bowtie-knot"></div></div>
-            </div>
-        `;
+        // Resolve base URL from the script's own path
+        var scripts = document.getElementsByTagName('script');
+        var baseUrl = '';
+        for (var i = 0; i < scripts.length; i++) {
+            if (scripts[i].src && scripts[i].src.indexOf('ss-engine-thomas') !== -1) {
+                baseUrl = scripts[i].src.replace(/assets\/js\/.*$/, '');
+                break;
+            }
+        }
+
+        bear.innerHTML = '<img src="' + baseUrl + 'assets/site-images/thomas-transparent.png" alt="Thomas the Bear">';
 
         document.body.appendChild(bear);
         bearsActive = true;
