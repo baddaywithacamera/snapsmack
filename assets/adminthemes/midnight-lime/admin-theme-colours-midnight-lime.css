@@ -472,3 +472,133 @@ input[type="range"]::-webkit-slider-thumb {
 .alert-text {
     color: #39FF14;
 }
+
+/* 17: BOX SUB-STRUCTURE */
+.box-header {
+    background-color: #111;
+    border-bottom-color: #2a2a2a;
+}
+
+.box-title {
+    color: #777;
+}
+
+/* 18: FORUM PAGE */
+.forum-crumbs {
+    border-bottom-color: #222;
+}
+
+.forum-crumbs a { color: #777; }
+.forum-crumbs a:hover { color: #ccc; }
+.forum-crumbs .sep { color: #333; }
+.forum-crumbs .current { color: #ccc; }
+
+.forum-cat-row { background-color: #181818; }
+.forum-cat-row:hover { background-color: #1e1e1e; }
+.forum-cat-row__name { color: #ddd; }
+.forum-cat-row__desc { color: #666; }
+.forum-cat-row__stat-num { color: #aaa; }
+.forum-cat-row__stat-label { color: #555; }
+
+.forum-thread-row { background-color: #181818; }
+.forum-thread-row:hover { background-color: #1e1e1e; }
+.forum-thread-row--pinned { border-left-color: #e2b714; }
+.forum-thread-row__title { color: #ddd; }
+.forum-thread-row__title a:hover { color: #fff; }
+.forum-thread-row__byline { color: #555; }
+.forum-thread-row__replies { color: #888; }
+.forum-thread-row__replies small { color: #444; }
+.forum-thread-row__activity { color: #555; }
+
+.forum-avatar { color: #000; }
+.forum-badge--pinned { background-color: #e2b714; color: #000; }
+.forum-badge--locked { background-color: #333; color: #888; }
+
+.forum-post { border-bottom-color: #1a1a1a; }
+.forum-post__author { color: #ccc; }
+.forum-post__time { color: #555; }
+.forum-post__body { color: #bbb; }
+
+.forum-composer { background-color: #181818; }
+.forum-composer__label { color: #555; }
+.forum-composer textarea {
+    background-color: #111;
+    border-color: #2a2a2a;
+    color: #ccc;
+}
+.forum-composer textarea:focus {
+    border-color: #39FF14;
+    box-shadow: 0 0 8px rgba(57, 255, 20, 0.15);
+}
+
+.forum-thread-title { color: #eee; }
+.forum-thread-meta { color: #555; border-bottom-color: #222; }
+.forum-pagination { border-top-color: #1a1a1a; }
+.forum-header__title { color: #888; }
+
+.forum-new-btn { background-color: #39FF14; color: #000; }
+.forum-new-btn:hover {
+    background-color: #2ce00f;
+    box-shadow: 0 0 12px rgba(57, 255, 20, 0.3);
+}
+
+.forum-empty { color: #555; }
+.forum-empty strong { color: #777; }
+.forum-emoji-btn:hover { background-color: #222; border-color: #333; }
+
+/* 19: HELP PAGE */
+.help-nav { border-right-color: #2a2a2a; }
+.help-nav-header { border-bottom-color: #2a2a2a; }
+.help-nav-section-label { color: #666; }
+.help-nav-link { color: #999; }
+.help-nav-link.active {
+    color: #eee;
+    background-color: #222;
+    border-left-color: #eee;
+}
+
+.help-content { color: #ccc; }
+.help-topic-header { border-bottom-color: #2a2a2a; }
+.help-topic-section { color: #666; }
+.help-body { color: #ccc; }
+.help-body h4 { color: #aaa; }
+.help-body strong { color: #eee; }
+.help-body em { color: #aaa; }
+.help-body pre {
+    background-color: rgba(0,0,0,0.3);
+    border-color: #2a2a2a;
+}
+.help-body code {
+    background-color: rgba(0,0,0,0.2);
+}
+
+.help-search input {
+    border-color: #2a2a2a;
+    background-color: rgba(0,0,0,0.3);
+    color: #eee;
+}
+.help-search input::placeholder { color: #555; }
+.help-search input:focus { border-color: #39FF14; }
+
+.help-search-result { color: #eee; }
+.help-search-result:hover {
+    background-color: rgba(255,255,255,0.05);
+    border-color: #2a2a2a;
+}
+.help-search-result-section { color: #888; }
+.help-search-result-snippet { color: #999; }
+.help-search-result-snippet mark {
+    background-color: rgba(57, 255, 20, 0.25);
+    color: #eee;
+}
+.help-search-no-results { color: #888; }
+
+.help-toc-section-title {
+    color: #aaa;
+    border-bottom-color: #2a2a2a;
+}
+.help-toc-list a { color: #eee; }
+.help-toc-list a:hover { background-color: rgba(255,255,255,0.05); }
+.help-toc-list .help-toc-desc { color: #999; }
+.help-topic-nav { border-top-color: #2a2a2a; }
+.help-topic-nav a { color: #999; }
