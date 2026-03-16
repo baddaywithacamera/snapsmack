@@ -622,14 +622,21 @@ function updater_find_migrations(PDO $pdo): array {
     $dir = UPDATER_MIGRATIONS_DIR;
     if (!is_dir($dir)) return [];
 
-    // Ensure tracking table exists (compatible with MySQL 5.6+)
-    $pdo->exec("
+    // Ensure tracking table exists (compatible with MySQL 5.6+).
+    // Use query() + closeCursor() rather than exec() — CREATE TABLE IF NOT EXISTS
+    // sends back a warning packet when the table already exists, and exec() does
+    // not drain it, leaving the connection in a dirty state that causes errno 2014
+    // on the very next query.
+    $ps = $pdo->query("
         CREATE TABLE IF NOT EXISTS snap_migrations (
             migration  VARCHAR(100) NOT NULL,
             applied_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (migration)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
+    if ($ps !== false) {
+        $ps->closeCursor();
+    }
 
     // Fetch already-applied migration names
     $applied = $pdo->query("SELECT migration FROM snap_migrations")
@@ -660,8 +667,10 @@ function updater_find_migrations(PDO $pdo): array {
  *   errors so that migrations are safe to attempt more than once:
  *
  *     MySQL 1060  ER_DUP_FIELDNAME  — ADD COLUMN when column already exists
+ *     MySQL 1061  ER_DUP_KEYNAME   — ADD INDEX when index already exists
  *     MySQL 1050  ER_TABLE_EXISTS_ERROR — CREATE TABLE when table already exists
  *     MySQL 1091  ER_CANT_DROP_FIELD_OR_KEY — DROP INDEX/KEY that doesn't exist
+ *     MySQL 1146  ER_NO_SUCH_TABLE — table doesn't exist yet (feature not migrated)
  *
  *   Any other PDOException is a real failure: the chain stops and the caller
  *   can trigger a rollback.
@@ -676,9 +685,11 @@ function updater_run_migrations(PDO $pdo, array $migration_files): array {
 
     // MySQL errno values that mean "this change is already in place" — safe to skip
     $idempotent_errno = [
-        1060, // ER_DUP_FIELDNAME      — column already exists
-        1050, // ER_TABLE_EXISTS_ERROR — table already exists
+        1060, // ER_DUP_FIELDNAME        — column already exists
+        1061, // ER_DUP_KEYNAME          — index/key already exists
+        1050, // ER_TABLE_EXISTS_ERROR   — table already exists
         1091, // ER_CANT_DROP_FIELD_OR_KEY — key/index doesn't exist
+        1146, // ER_NO_SUCH_TABLE        — table not yet created (feature not migrated)
     ];
 
     foreach ($migration_files as $file) {
@@ -700,7 +711,16 @@ function updater_run_migrations(PDO $pdo, array $migration_files): array {
                 if ($stmt === '') continue;
 
                 try {
-                    $pdo->exec($stmt);
+                    // Use query() + closeCursor() rather than exec() so that
+                    // MySQL's result packet for DDL statements (ALTER TABLE,
+                    // ADD INDEX, etc.) is fully consumed before the next
+                    // statement runs. exec() bypasses PDO's buffering and
+                    // leaves a dangling result on the wire, causing errno 2014
+                    // on the very next query issued anywhere in the request.
+                    $ps = $pdo->query($stmt);
+                    if ($ps !== false) {
+                        $ps->closeCursor();
+                    }
                 } catch (\PDOException $inner) {
                     $errno = (int)($inner->errorInfo[1] ?? 0);
                     if (in_array($errno, $idempotent_errno, true)) {

@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Optimistic update
                 likeBtn.dataset.liked = nowLiked ? '1' : '0';
                 likeBtn.classList.toggle('is-liked', nowLiked);
-                if (likeIcon)  likeIcon.textContent  = nowLiked ? '♥' : '♡';
+
                 if (likeCount) likeCount.textContent = prevCount + (nowLiked ? 1 : -1);
                 likeBtn.setAttribute('aria-pressed', String(nowLiked));
                 likeBtn.setAttribute('aria-label', (nowLiked ? 'Unlike' : 'Like') + ' this post');
@@ -79,19 +79,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (data.error) {
                             likeBtn.dataset.liked = wasLiked ? '1' : '0';
                             likeBtn.classList.toggle('is-liked', wasLiked);
-                            if (likeIcon)  likeIcon.textContent  = wasLiked ? '♥' : '♡';
+            
                             if (likeCount) likeCount.textContent = prevCount;
                         } else {
                             likeBtn.dataset.liked = data.liked ? '1' : '0';
                             likeBtn.classList.toggle('is-liked', data.liked);
-                            if (likeIcon)  likeIcon.textContent  = data.liked ? '♥' : '♡';
+            
                             if (likeCount) likeCount.textContent = data.count;
                         }
                     })
                     .catch(() => {
                         likeBtn.dataset.liked = wasLiked ? '1' : '0';
                         likeBtn.classList.toggle('is-liked', wasLiked);
-                        if (likeIcon)  likeIcon.textContent  = wasLiked ? '♥' : '♡';
+        
                         if (likeCount) likeCount.textContent = prevCount;
                     });
             });
@@ -366,19 +366,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Optimistic update
                     dockHeartBtn.dataset.liked = nowLiked ? '1' : '0';
                     dockHeartBtn.classList.toggle('is-active', nowLiked);
-                    if (emojiEl) emojiEl.textContent = nowLiked ? '\u2665' : '\u2661';
+                    // SVG fill state handled by CSS via is-active class
 
                     post('/process-like.php', { post_id: dockPostId })
                         .then(data => {
                             if (data.error) {
                                 dockHeartBtn.dataset.liked = wasLiked ? '1' : '0';
                                 dockHeartBtn.classList.toggle('is-active', wasLiked);
-                                if (emojiEl) emojiEl.textContent = wasLiked ? '\u2665' : '\u2661';
+                                // SVG fill state handled by CSS via is-active class
                                 updateHeartCount(countEl, prevCount);
                             } else {
                                 dockHeartBtn.dataset.liked = data.liked ? '1' : '0';
                                 dockHeartBtn.classList.toggle('is-active', data.liked);
-                                if (emojiEl) emojiEl.textContent = data.liked ? '\u2665' : '\u2661';
+                                // SVG fill state handled by CSS via is-active class
                                 updateHeartCount(countEl, data.count);
                                 updateDockTriggerFace(null, data.liked);
                             }
@@ -386,7 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         .catch(() => {
                             dockHeartBtn.dataset.liked = wasLiked ? '1' : '0';
                             dockHeartBtn.classList.toggle('is-active', wasLiked);
-                            if (emojiEl) emojiEl.textContent = wasLiked ? '\u2665' : '\u2661';
+                            // SVG fill state handled by CSS via is-active class
                             updateHeartCount(countEl, prevCount);
                         });
 
@@ -498,7 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         curEl.className = 'ss-cdock-current-rx ss-cdock-heart-active';
                         dockReactBtn.appendChild(curEl);
                     }
-                    curEl.textContent = '\u2665';
+                    curEl.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
                     curEl.classList.add('ss-cdock-heart-active');
                     dockReactBtn.classList.remove('has-reaction');
                     dockReactBtn.classList.add('is-liked');

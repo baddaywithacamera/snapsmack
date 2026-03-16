@@ -160,6 +160,9 @@
 .dock-right-top,
 .dock-right-bottom {
     flex-direction: column;
+    /* JS overrides top/bottom/max-height to stay clear of header + nav bar.
+       overflow-y:hidden clips any excess icons rather than overlapping. */
+    overflow-y: hidden;
 }
 
 .dock-left-top {
@@ -190,7 +193,10 @@
 .dock-right-top,
 .dock-right-bottom {
     transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                opacity   0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                top       0.15s ease,
+                bottom    0.15s ease,
+                max-height 0.15s ease;
 }
 
 .dock-left-top.dock-hidden,

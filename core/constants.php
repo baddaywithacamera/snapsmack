@@ -8,9 +8,9 @@
  * the application.
  */
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.4a');
-define('SNAPSMACK_VERSION_SHORT', '0.7.4a');
-define('SNAPSMACK_VERSION_CODENAME', 'La-Z-Boy');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.4b');
+define('SNAPSMACK_VERSION_SHORT', '0.7.4b');
+define('SNAPSMACK_VERSION_CODENAME', 'Invalid Ring');
 
 // --- VERSION COMPARISON ---
 // PHP's version_compare() treats trailing letters as "alpha" (lower than

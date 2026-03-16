@@ -493,18 +493,18 @@ input[type="range"]::-webkit-slider-thumb {
 .forum-crumbs .sep { color: #333; }
 .forum-crumbs .current { color: #ccc; }
 
-.forum-cat-row { background-color: #181818; }
-.forum-cat-row:hover { background-color: #1e1e1e; }
+.forum-cat-row { border-bottom-color: #222; }
+.forum-cat-row:hover { background-color: rgba(255,255,255,0.025); }
 .forum-cat-row__name { color: #ddd; }
 .forum-cat-row__desc { color: #666; }
-.forum-cat-row__stat-num { color: #aaa; }
+.forum-cat-row__stat-num { color: #eee; }
 .forum-cat-row__stat-label { color: #555; }
 
-.forum-thread-row { background-color: #181818; }
-.forum-thread-row:hover { background-color: #1e1e1e; }
+.forum-thread-row { border-bottom-color: #222; }
+.forum-thread-row:hover { background-color: rgba(255,255,255,0.025); }
 .forum-thread-row--pinned { border-left-color: #e2b714; }
 .forum-thread-row__title { color: #ddd; }
-.forum-thread-row__title a:hover { color: #fff; }
+.forum-thread-row__title a:hover { color: #39FF14; }
 .forum-thread-row__byline { color: #555; }
 .forum-thread-row__replies { color: #888; }
 .forum-thread-row__replies small { color: #444; }

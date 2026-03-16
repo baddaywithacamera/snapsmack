@@ -102,11 +102,27 @@ function sc_github_get(string $endpoint): array|false {
     return is_array($data) ? $data : false;
 }
 
-// ── Helper: list tags from GitHub ─────────────────────────────────────────────
+// ── Helper: list tags from GitHub (sorted newest-first by version) ────────────
 function sc_list_tags(): array {
     $data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/tags?per_page=30');
     if (!is_array($data)) return [];
-    return array_column($data, 'name');
+    $tags = array_column($data, 'name');
+
+    // Normalise trailing letter suffix (a=1, b=2 …) into a numeric segment
+    // so version_compare() treats 0.7.4b > 0.7.4a > 0.7.4.
+    $norm = function (string $v): string {
+        $v = ltrim($v, 'vV');
+        if (preg_match('/^(\d+(?:\.\d+)*)([a-z])$/i', $v, $m)) {
+            return $m[1] . '.' . (ord(strtolower($m[2])) - ord('a') + 1);
+        }
+        return $v . '.0';
+    };
+
+    usort($tags, function ($a, $b) use ($norm) {
+        return version_compare($norm($b), $norm($a));   // descending
+    });
+
+    return $tags;
 }
 
 // ── Helper: file changes between two tags via GitHub compare API ──────────────
