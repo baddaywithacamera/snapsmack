@@ -325,69 +325,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // =========================================================================
-    // COMMUNITY DOCK (floating FAB: likes + reactions)
+    // COMMUNITY DOCK (single FAB: unified picker with heart + reactions)
     // =========================================================================
 
     const dock = document.getElementById('ss-community-dock');
     if (dock) {
 
         const dockPostId   = dock.dataset.postId;
-        const dockAuthUrl  = dock.dataset.authUrl;
-        const dockLoggedIn = dock.dataset.loggedIn === '1';
+        const dockReactBtn = dock.querySelector('.ss-cdock-react-btn');
+        const dockPicker   = dock.querySelector('.ss-cdock-picker');
+        const dockHeartBtn = dock ? dock.querySelector('.ss-cdock-heart') : null;
 
-        const dockLikeBtn   = dock.querySelector('.ss-cdock-like-btn');
-        const dockLikeIcon  = dock.querySelector('.ss-cdock-like-icon');
-        const dockLikeCount = dock.querySelector('.ss-cdock-like-count');
-        const dockReactBtn  = dock.querySelector('.ss-cdock-react-btn');
-        const dockPicker    = dock.querySelector('.ss-cdock-picker');
-
-        // --- Dock like toggle ---
-        if (dockLikeBtn) {
-            dockLikeBtn.addEventListener('click', () => {
-                // Anonymous likes allowed — no auth redirect for likes
-
-                const wasLiked  = dockLikeBtn.dataset.liked === '1';
-                const prevCount = dockLikeCount ? (parseInt(dockLikeCount.textContent, 10) || 0) : 0;
-                const nowLiked  = !wasLiked;
-
-                // Optimistic update
-                dockLikeBtn.dataset.liked = nowLiked ? '1' : '0';
-                dockLikeBtn.classList.toggle('is-liked', nowLiked);
-                if (dockLikeIcon)  dockLikeIcon.textContent  = nowLiked ? '♥' : '♡';
-                if (dockLikeCount) dockLikeCount.textContent = prevCount + (nowLiked ? 1 : -1);
-                dockLikeBtn.setAttribute('aria-pressed', String(nowLiked));
-                dockLikeBtn.setAttribute('aria-label', (nowLiked ? 'Unlike' : 'Like') + ' this photo');
-
-                post('/process-like.php', { post_id: dockPostId })
-                    .then(data => {
-                        if (data.error) {
-                            dockLikeBtn.dataset.liked = wasLiked ? '1' : '0';
-                            dockLikeBtn.classList.toggle('is-liked', wasLiked);
-                            if (dockLikeIcon)  dockLikeIcon.textContent  = wasLiked ? '♥' : '♡';
-                            if (dockLikeCount) dockLikeCount.textContent = prevCount;
-                        } else {
-                            dockLikeBtn.dataset.liked = data.liked ? '1' : '0';
-                            dockLikeBtn.classList.toggle('is-liked', data.liked);
-                            if (dockLikeIcon)  dockLikeIcon.textContent  = data.liked ? '♥' : '♡';
-                            if (dockLikeCount) dockLikeCount.textContent = data.count;
-                        }
-                    })
-                    .catch(() => {
-                        dockLikeBtn.dataset.liked = wasLiked ? '1' : '0';
-                        dockLikeBtn.classList.toggle('is-liked', wasLiked);
-                        if (dockLikeIcon)  dockLikeIcon.textContent  = wasLiked ? '♥' : '♡';
-                        if (dockLikeCount) dockLikeCount.textContent = prevCount;
-                    });
-            });
-        }
-
-        // --- Dock reaction picker ---
         if (dockReactBtn && dockPicker) {
 
             // Open / close picker on trigger click
             dockReactBtn.addEventListener('click', e => {
                 e.stopPropagation();
-                // Anonymous reactions allowed — no auth gate
                 const isOpen = !dockPicker.hidden;
                 dockPicker.hidden = isOpen;
                 dockReactBtn.setAttribute('aria-expanded', String(!isOpen));
@@ -401,8 +354,61 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // Reaction selection
-            dockPicker.querySelectorAll('.ss-cdock-reaction').forEach(btn => {
+            // --- Heart / Like (first button in picker) ---
+            if (dockHeartBtn) {
+                dockHeartBtn.addEventListener('click', () => {
+                    const wasLiked  = dockHeartBtn.dataset.liked === '1';
+                    const countEl   = dockHeartBtn.querySelector('.ss-cdock-rx-count');
+                    const emojiEl   = dockHeartBtn.querySelector('.ss-cdock-emoji');
+                    const prevCount = countEl ? (parseInt(countEl.textContent, 10) || 0) : 0;
+                    const nowLiked  = !wasLiked;
+
+                    // Optimistic update
+                    dockHeartBtn.dataset.liked = nowLiked ? '1' : '0';
+                    dockHeartBtn.classList.toggle('is-active', nowLiked);
+                    if (emojiEl) emojiEl.textContent = nowLiked ? '\u2665' : '\u2661';
+
+                    post('/process-like.php', { post_id: dockPostId })
+                        .then(data => {
+                            if (data.error) {
+                                dockHeartBtn.dataset.liked = wasLiked ? '1' : '0';
+                                dockHeartBtn.classList.toggle('is-active', wasLiked);
+                                if (emojiEl) emojiEl.textContent = wasLiked ? '\u2665' : '\u2661';
+                                updateHeartCount(countEl, prevCount);
+                            } else {
+                                dockHeartBtn.dataset.liked = data.liked ? '1' : '0';
+                                dockHeartBtn.classList.toggle('is-active', data.liked);
+                                if (emojiEl) emojiEl.textContent = data.liked ? '\u2665' : '\u2661';
+                                updateHeartCount(countEl, data.count);
+                                updateDockTriggerFace(null, data.liked);
+                            }
+                        })
+                        .catch(() => {
+                            dockHeartBtn.dataset.liked = wasLiked ? '1' : '0';
+                            dockHeartBtn.classList.toggle('is-active', wasLiked);
+                            if (emojiEl) emojiEl.textContent = wasLiked ? '\u2665' : '\u2661';
+                            updateHeartCount(countEl, prevCount);
+                        });
+
+                    dockPicker.hidden = true;
+                    dockReactBtn.setAttribute('aria-expanded', 'false');
+                });
+            }
+
+            function updateHeartCount(el, count) {
+                if (!el && count > 0) {
+                    el = document.createElement('span');
+                    el.className = 'ss-cdock-rx-count';
+                    dockHeartBtn.appendChild(el);
+                }
+                if (el) {
+                    if (count > 0) { el.textContent = count; }
+                    else            { el.remove(); }
+                }
+            }
+
+            // --- Reaction selection (non-heart buttons) ---
+            dockPicker.querySelectorAll('.ss-cdock-reaction:not(.ss-cdock-heart)').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const code = btn.dataset.code;
 
@@ -411,29 +417,29 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (data.error) return;
 
                             // Update trigger face
-                            updateDockTriggerFace(data.reaction);
+                            updateDockTriggerFace(data.reaction, null);
 
-                            // Update active states on picker buttons
-                            dockPicker.querySelectorAll('.ss-cdock-reaction').forEach(b => {
+                            // Update active states on reaction buttons (not heart)
+                            dockPicker.querySelectorAll('.ss-cdock-reaction:not(.ss-cdock-heart)').forEach(b => {
                                 const isActive = b.dataset.code === data.reaction;
                                 b.classList.toggle('is-active', isActive);
                                 b.setAttribute('aria-pressed', String(isActive));
                             });
 
-                            // Update count badges on picker buttons
-                            dockPicker.querySelectorAll('.ss-cdock-reaction').forEach(b => {
+                            // Update count badges
+                            dockPicker.querySelectorAll('.ss-cdock-reaction:not(.ss-cdock-heart)').forEach(b => {
                                 const rxCode = b.dataset.code;
-                                let countEl  = b.querySelector('.ss-cdock-rx-count');
+                                let cntEl    = b.querySelector('.ss-cdock-rx-count');
                                 const cnt    = data.counts[rxCode] || 0;
                                 if (cnt > 0) {
-                                    if (!countEl) {
-                                        countEl = document.createElement('span');
-                                        countEl.className = 'ss-cdock-rx-count';
-                                        b.appendChild(countEl);
+                                    if (!cntEl) {
+                                        cntEl = document.createElement('span');
+                                        cntEl.className = 'ss-cdock-rx-count';
+                                        b.appendChild(cntEl);
                                     }
-                                    countEl.textContent = cnt;
-                                } else if (countEl) {
-                                    countEl.remove();
+                                    cntEl.textContent = cnt;
+                                } else if (cntEl) {
+                                    cntEl.remove();
                                 }
                             });
 
@@ -444,32 +450,64 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             /**
-             * Update the reaction trigger button face after a reaction is set or cleared.
-             * When a reaction is active: shows the emoji in a .ss-cdock-current-rx span.
-             * When cleared: restores the default smiley SVG.
+             * Update the trigger FAB face.
+             * Priority: active reaction emoji > active like heart > default smiley.
+             * Pass reactionCode when a reaction changes, likedState when a like changes.
+             * Pass null for whichever didn't change — the function reads current DOM state.
              */
-            function updateDockTriggerFace(reactionCode) {
-                if (reactionCode) {
-                    const chosenBtn = dockPicker.querySelector(`[data-code="${reactionCode}"]`);
-                    const emojiEl   = chosenBtn ? chosenBtn.querySelector('.ss-cdock-emoji') : null;
-                    const emoji     = emojiEl ? emojiEl.textContent : '';
+            function updateDockTriggerFace(reactionCode, likedState) {
+                // Determine current states (use passed value or read from DOM)
+                var hasReaction = reactionCode !== undefined && reactionCode !== null
+                    ? true
+                    : !!dockPicker.querySelector('.ss-cdock-reaction:not(.ss-cdock-heart).is-active');
+                var rxCode = reactionCode !== undefined && reactionCode !== null
+                    ? reactionCode
+                    : (function() {
+                        var active = dockPicker.querySelector('.ss-cdock-reaction:not(.ss-cdock-heart).is-active');
+                        return active ? active.dataset.code : null;
+                    })();
+                var isLiked = likedState !== undefined && likedState !== null
+                    ? likedState
+                    : (dockHeartBtn && dockHeartBtn.dataset.liked === '1');
 
-                    let curEl = dockReactBtn.querySelector('.ss-cdock-current-rx');
+                if (rxCode) {
+                    // Show reaction emoji
+                    var chosenBtn = dockPicker.querySelector('[data-code="' + rxCode + '"]');
+                    var emojiEl   = chosenBtn ? chosenBtn.querySelector('.ss-cdock-emoji') : null;
+                    var emoji     = emojiEl ? emojiEl.textContent : '';
+
+                    var curEl = dockReactBtn.querySelector('.ss-cdock-current-rx');
                     if (!curEl) {
-                        // First time: replace SVG icon with emoji span
                         dockReactBtn.innerHTML = '';
                         curEl = document.createElement('span');
                         curEl.className = 'ss-cdock-current-rx';
                         dockReactBtn.appendChild(curEl);
                     }
                     curEl.textContent = emoji;
+                    curEl.classList.remove('ss-cdock-heart-active');
                     dockReactBtn.classList.add('has-reaction');
+                    dockReactBtn.classList.remove('is-liked');
                     dockReactBtn.title = chosenBtn ? chosenBtn.getAttribute('title') : '';
 
-                } else {
-                    // No reaction — restore default smiley SVG
+                } else if (isLiked) {
+                    // Show heart
+                    var curEl = dockReactBtn.querySelector('.ss-cdock-current-rx');
+                    if (!curEl) {
+                        dockReactBtn.innerHTML = '';
+                        curEl = document.createElement('span');
+                        curEl.className = 'ss-cdock-current-rx ss-cdock-heart-active';
+                        dockReactBtn.appendChild(curEl);
+                    }
+                    curEl.textContent = '\u2665';
+                    curEl.classList.add('ss-cdock-heart-active');
                     dockReactBtn.classList.remove('has-reaction');
-                    dockReactBtn.title = 'Add reaction';
+                    dockReactBtn.classList.add('is-liked');
+                    dockReactBtn.title = 'Liked';
+
+                } else {
+                    // Default smiley SVG
+                    dockReactBtn.classList.remove('has-reaction', 'is-liked');
+                    dockReactBtn.title = 'React';
                     dockReactBtn.innerHTML =
                         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"' +
                         ' stroke-linecap="round" stroke-linejoin="round" width="20" height="20" aria-hidden="true">' +
@@ -481,7 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-        } // end dock reaction picker
+        } // end dock picker
 
     } // end dock
 
