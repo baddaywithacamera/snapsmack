@@ -14,11 +14,23 @@ require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
 <div id="kiosk-grid" class="red-all-over">
 
     <header id="kiosk-header">
-        <h1 class="snapsmack-logo">SNAPSMACK</h1>
+        <h1 class="snapsmack-logo"
+            data-glitch-enabled="<?php echo ($settings['logo_glitch_enabled'] ?? '1') === '1' ? 'true' : 'false'; ?>"
+            data-glitch-frequency="<?php echo htmlspecialchars($settings['logo_frequency'] ?? 'normal'); ?>"
+            data-split-position="<?php echo (int)($settings['logo_split_position'] ?? 50); ?>"
+            data-split-drift="<?php echo ($settings['logo_split_drift'] ?? '1') === '1' ? 'true' : 'false'; ?>"
+            data-fonts="<?php
+                $logo_fonts = [];
+                if (($settings['logo_font_blackcasper'] ?? '1') === '1') $logo_fonts[] = 'blackcasper';
+                if (($settings['logo_font_courier']     ?? '1') === '1') $logo_fonts[] = 'courier';
+                echo htmlspecialchars(implode(',', $logo_fonts));
+            ?>">SNAPSMACK</h1>
     </header>
 
     <div id="hero-stage">
-        <div id="pimpotron-sequencer"></div>
+        <div id="pimpotron-sequencer"
+             data-endpoint="<?php echo BASE_URL; ?>api/pimpotron-payload.php?slideshow_id=1"
+             data-stage-id="pimpotron-sequencer"></div>
     </div>
 
     <footer id="kiosk-hud">
@@ -29,22 +41,5 @@ require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
 
 </div>
 
-<script>
-    window.PIMPOTRON_CONFIG = {
-        endpoint: '<?php echo BASE_URL; ?>api/pimpotron-payload.php?slideshow_id=1',
-        stageId:  'pimpotron-sequencer'
-    };
-
-    window.SNAP_LOGO_CONFIG = {
-        enabled:       <?php echo ($settings['logo_glitch_enabled'] ?? '1') === '1' ? 'true' : 'false'; ?>,
-        frequency:     '<?php echo htmlspecialchars($settings['logo_frequency']      ?? 'normal'); ?>',
-        splitPosition: <?php echo (int)($settings['logo_split_position'] ?? 50); ?>,
-        splitDrift:    <?php echo ($settings['logo_split_drift'] ?? '1') === '1' ? 'true' : 'false'; ?>,
-        fonts: [
-            <?php echo ($settings['logo_font_blackcasper'] ?? '1') === '1' ? "'blackcasper'," : ''; ?>
-            <?php echo ($settings['logo_font_courier']     ?? '1') === '1' ? "'courier'"      : ''; ?>
-        ]
-    };
-</script>
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-pimpotron.js?v=<?php echo time(); ?>"></script>
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-logo.js?v=<?php echo time(); ?>"></script>

@@ -151,6 +151,11 @@ body, html {
     }
 }
 
+/* Title visibility controlled by body class instead of inline PHP style */
+.wall-hide-titles .tile-meta {
+    visibility: hidden;
+}
+
 #wall-sentinel {
     width: 1px;
     height: 1px;

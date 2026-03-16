@@ -44,18 +44,6 @@ try {
 }
 ?>
 
-<script>
-/**
- * Session help persistence: if the user has already seen the help tutorial
- * this session, set a flag so hotkey-engine.js can respect it.
- */
-try {
-    if (sessionStorage.getItem('snapsmack_help_seen')) {
-        window.HIDE_SNAP_HELP = true;
-    }
-} catch(e) { /* storage blocked or consent not granted */ }
-</script>
-
 <div class="logo-area">
     <a href="<?php echo BASE_URL; ?>">
         <?php if ($header_type === 'image' && !empty($logo_path)): ?>

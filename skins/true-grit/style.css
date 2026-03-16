@@ -519,7 +519,15 @@ body::before {
     box-sizing: border-box;
 }
 
-.square-grid .thumb-link,
+.square-grid .thumb-link {
+    display: block;
+    border: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+}
+
 .cropped-grid .thumb-link {
     display: block;
     border: none;

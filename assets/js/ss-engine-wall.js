@@ -12,17 +12,20 @@ let activeClone = null;
 let originTile = null;
 
 // --- CONFIGURATION HANDSHAKE ---
-const config = window.WALL_CONFIG || {
-    friction: 0.90,
-    dragWeight: 1.25,
-    pinchPower: 20,
-    totalImages: 0,
-    initialLimit: 100
+// Reads data attributes from #wall-canvas; falls back to legacy window.WALL_CONFIG.
+const _wc = canvas ? canvas.dataset : {};
+const _legacy = window.WALL_CONFIG || {};
+const config = {
+    friction:     parseFloat(_wc.friction)      || _legacy.friction     || 0.90,
+    dragWeight:   parseFloat(_wc.dragWeight)     || _legacy.dragWeight   || 1.25,
+    pinchPower:   parseInt(_wc.pinchPower, 10)   || _legacy.pinchPower   || 20,
+    totalImages:  parseInt(_wc.totalImages, 10)  || _legacy.totalImages  || 0,
+    initialLimit: parseInt(_wc.initialLimit, 10) || _legacy.initialLimit || 100,
 };
 
 let friction = config.friction;
 let dragWeight = config.dragWeight;
-let pinchPower = config.pinchPower || 20;
+let pinchPower = config.pinchPower;
 let isDragging = false;
 let lastX = 0;
 let lastY = 0;

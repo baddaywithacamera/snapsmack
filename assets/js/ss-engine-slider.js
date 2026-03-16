@@ -710,4 +710,24 @@
   // Expose to window
   window.SnapSlider = SnapSlider;
 
+  // --- Auto-init from data attributes ---
+  // Any .ss-slider with data-auto-init will be automatically initialised on
+  // DOMContentLoaded using its data attributes for configuration. This replaces
+  // the inline <script> blocks that were duplicated in landing.php files.
+  document.addEventListener('DOMContentLoaded', function() {
+    var autoSliders = document.querySelectorAll('.ss-slider[data-auto-init]');
+    for (var i = 0; i < autoSliders.length; i++) {
+      var el = autoSliders[i];
+      new SnapSlider({
+        container:    el,
+        perView:      parseInt(el.getAttribute('data-per-view'), 10) || 1,
+        speed:        parseInt(el.getAttribute('data-speed'), 10) || 800,
+        easing:       el.getAttribute('data-easing') || 'ease-in-out',
+        autoAdvance:  el.getAttribute('data-auto-advance') === 'true',
+        autoInterval: parseInt(el.getAttribute('data-auto-interval'), 10) || 5000,
+        loop:         el.getAttribute('data-loop') !== 'false'
+      });
+    }
+  });
+
 })(window);

@@ -231,19 +231,17 @@ include __DIR__ . '/' . $skin_path . '/skin-meta.php';
             include __DIR__ . '/' . $skin_path . '/layout.php';
         }
     } else {
-        echo "<div class='not-found-msg' style='text-align:center; padding:100px; color:#fff;'><h1>404</h1>Transmission Lost.<br><small>Looking for: $skin_path</small></div>";
+        echo "<div class='not-found-msg'><h1>404</h1>Transmission Lost.<br><small>Looking for: $skin_path</small></div>";
     }
     ?>
 </div>
 
-<script>
-    window.SNAP_DATA = {
-        prevUrl: "<?php echo (string)$prev_slug; ?>",
-        nextUrl: "<?php echo (string)$next_slug; ?>",
-        firstUrl: "<?php echo (string)$first_slug; ?>",
-        lastUrl: "<?php echo (string)$last_slug; ?>"
-    };
-</script>
+<div id="snap-nav-data"
+     data-prev="<?php echo htmlspecialchars((string)$prev_slug); ?>"
+     data-next="<?php echo htmlspecialchars((string)$next_slug); ?>"
+     data-first="<?php echo htmlspecialchars((string)$first_slug); ?>"
+     data-last="<?php echo htmlspecialchars((string)$last_slug); ?>"
+     hidden></div>
 <?php
 // Load global JS engines (social dock, sticky header, etc.) unless using Photogram,
 // which has its own mobile-optimized UI and doesn't need these overlays.

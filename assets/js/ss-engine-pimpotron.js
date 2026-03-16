@@ -312,14 +312,18 @@ class PimpotronEngine {
 
 // --- BOOT ---
 document.addEventListener('DOMContentLoaded', () => {
-    const cfg      = window.PIMPOTRON_CONFIG ?? {};
-    const endpoint = cfg.endpoint ?? '/api/pimpotron-payload.php?slideshow_id=1';
-    const stageId  = cfg.stageId  ?? 'pimpotron-sequencer';
+    // Read from data attributes on the stage element, fall back to legacy window global.
+    const legacy   = window.PIMPOTRON_CONFIG ?? {};
+    const stage    = document.getElementById('pimpotron-sequencer')
+                  || document.querySelector('[data-stage-id]');
 
-    if (!document.getElementById(stageId)) {
-        console.warn(`[Pimpotron] Stage element #${stageId} not found. Engine aborted.`);
+    if (!stage) {
+        console.warn('[Pimpotron] Stage element not found. Engine aborted.');
         return;
     }
+
+    const endpoint = stage.dataset.endpoint || legacy.endpoint || '/api/pimpotron-payload.php?slideshow_id=1';
+    const stageId  = stage.dataset.stageId  || legacy.stageId  || stage.id || 'pimpotron-sequencer';
 
     const engine = new PimpotronEngine(endpoint, stageId);
     engine.init();

@@ -195,7 +195,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                     <span class="sep">|</span>
 
                     <div class="filter-group">
-                        <form method="GET" action="archive.php" class="archive-search-form" style="display:inline-flex;align-items:center;gap:6px;">
+                        <form method="GET" action="archive.php" class="archive-search-form">
                             <input type="search" name="q" placeholder="Search or #tag…"
                                    value="<?php echo htmlspecialchars($search_query); ?>"
                                    class="archive-search-input" autocomplete="off">
@@ -206,12 +206,12 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
         </div>
 
         <?php if ($search_query !== ''): ?>
-        <div class="archive-search-status" style="text-align:center; padding:15px 0 0; font-family:'DM Sans',sans-serif; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-dim);">
+        <div class="archive-search-status">
             <?php echo count($images); ?> result<?php echo count($images) !== 1 ? 's' : ''; ?> for &ldquo;<?php echo htmlspecialchars($search_query); ?>&rdquo;
-            &nbsp; <a href="archive.php" style="color:var(--accent);">[ CLEAR ]</a>
+            &nbsp; <a href="archive.php">[ CLEAR ]</a>
         </div>
         <?php if (!empty($matched_tags)): ?>
-        <div class="tg-tags" style="justify-content:center; padding:12px 0 0;">
+        <div class="tg-tags archive-tags-row">
             <?php foreach ($matched_tags as $mt): ?>
                 <a href="?tag=<?php echo rawurlencode($mt['slug']); ?>" class="tg-tag">#<?php echo htmlspecialchars($mt['slug']); ?> (<?php echo (int)$mt['use_count']; ?>)</a>
             <?php endforeach; ?>

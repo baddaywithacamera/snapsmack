@@ -671,5 +671,20 @@ return [
             'path'         => 'assets/js/ss-engine-carousel-post.js',
             'has_settings' => false,
         ],
+        'smack-overlay' => [
+            'label'        => 'Center-Expand Overlay (Info/Comments panel)',
+            'path'         => 'assets/js/ss-engine-overlay.js',
+            'has_settings' => false,
+        ],
+        'smack-drawer' => [
+            'label'        => 'Dual Drawer Controller (Top/Bottom drawers)',
+            'path'         => 'assets/js/ss-engine-drawer.js',
+            'has_settings' => false,
+        ],
+        'smack-carousel-view' => [
+            'label'        => 'Carousel View Engine (EXIF panel sync)',
+            'path'         => 'assets/js/ss-engine-carousel-view.js',
+            'has_settings' => false,
+        ],
     ]
 ];
