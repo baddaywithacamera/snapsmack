@@ -18,6 +18,7 @@ return [
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Found-texture photography skin. Photographic wall backgrounds with opacity overlay, archival framing, justified grid, and floating photo wall. Built for foundtextures.ca.',
     'status'        => 'stable',
+    'demo_url'      => 'https://foundtextures.ca',
 
     'features' => [
         'supports_wall'   => true,
