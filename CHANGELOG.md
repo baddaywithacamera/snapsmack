@@ -4,6 +4,33 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.4c — "La-Z-Boy" (2026-03-16)
+
+### Added
+- Hex colour code hashtags: `#007a8b`, `#c25e31`, `#8c7d70` etc. now work as tags. Previously, codes starting with a digit were silently dropped by the extraction regex. Both digit-leading and letter-leading 6-char hex codes are now extracted, stored, and rendered as tappable archive links in captions.
+- `snap_hex_to_color_family()`: maps any 6-character hex slug to a colour family name (red / orange / yellow / green / teal / blue / purple / pink / grey / black / white) via RGB → HSL conversion.
+- Colour-family search: searching "teal" in Archive View now returns images tagged with hex codes belonging to that family (e.g. `#007a8b`). Matched-tag chips below the results surface colour-family hits first.
+- `snap_backfill_color_families()`: one-shot post-update function that classifies any pre-existing hex-colour tags already in the database. Runs automatically after a successful update via both the staged-download and manual-ZIP paths.
+- Social dock bounds clamping: the dock now stays within the content area between the page header and the bottom navigation bar. Measured dynamically via `.logo-area` / `.nav-menu` (header) and last `.nav-links` (nav bar); re-clamped on scroll (rAF-throttled) and resize. Works across all skins without skin-specific configuration.
+
+### Changed
+- `snap_sync_tags()`: includes `color_family` in the tag upsert. Hex colour codes are classified on first insert; existing tags with `color_family IS NULL` are filled in via `COALESCE` when the image is next saved.
+- `snap_render_caption()` / `snap_render_caption_html()`: regex updated to render digit-leading hex codes as links.
+- `index.php` `?tag=` routing: now accepts digit-leading 6-char hex slugs (e.g. `?tag=007a8b`).
+- `archive.php` `#hashtag` redirect: accepts digit-leading hex slugs.
+- Community forum (`smack-forum.php`): consistent page-level `h2` / `header-row` pattern matching the rest of the admin interface. Rows use border separators instead of card backgrounds. Column labels use the `dim` class for theme-aware muting. Action buttons (+ NEW THREAD) live in `box-header` only — never in `header-row`.
+- Forum CSS (`admin-theme-geometry-master.css`): `forum-cat-list` and `forum-thread-list` gap set to 0; rows drop `border-radius` and `overflow: hidden`; `border-bottom` separator added with `:last-child` suppression.
+- Forum colours (`midnight-lime`): `forum-cat-row` and `forum-thread-row` use `border-bottom-color` instead of `background-color`; hover state uses `rgba(255,255,255,0.025)` instead of a flat fill; thread title hover uses accent green.
+- Social dock CSS: `overflow-y: hidden` added to vertical column variants; `top`, `bottom`, and `max-height` added to the transition list for smooth clamping animation.
+
+### Fixed
+- PDO errno 2014 ("Cannot execute queries while other unbuffered queries are active") during SQL migrations on shared hosts. Root cause: `PDO::exec()` doesn't drain MySQL's result/warning packets after DDL statements. Fixed in both `updater_find_migrations()` (CREATE TABLE) and `updater_run_migrations()` (each statement) by replacing `exec()` with `query()` + `closeCursor()`.
+
+### Migrations
+- `migrate-074c.sql`: `ALTER TABLE snap_tags ADD COLUMN color_family VARCHAR(20) DEFAULT NULL`; `ADD INDEX idx_tags_color_family`. Idempotent via the migration runner's errno 1060/1061 catch.
+
+---
+
 ## 0.7.4b — "Invalid Ring" (2026-03-15)
 
 ### Added
