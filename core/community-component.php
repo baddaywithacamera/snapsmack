@@ -129,6 +129,16 @@ if ($show_reactions) {
         $ur_stmt = $pdo->prepare("SELECT reaction_code FROM snap_reactions WHERE post_id = ? AND user_id = ? LIMIT 1");
         $ur_stmt->execute([$post_id, $community_user['id']]);
         $user_reaction = $ur_stmt->fetchColumn() ?: null;
+    } else {
+        try {
+            $_rx_salt  = $settings['download_salt'] ?? 'snapsmack-default-salt-change-me';
+            $_rx_hash  = hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0') . $_rx_salt);
+            $ur_stmt = $pdo->prepare("SELECT reaction_code FROM snap_reactions WHERE post_id = ? AND guest_hash = ? LIMIT 1");
+            $ur_stmt->execute([$post_id, $_rx_hash]);
+            $user_reaction = $ur_stmt->fetchColumn() ?: null;
+        } catch (PDOException $e) {
+            // guest_hash column doesn't exist yet — pre-migration
+        }
     }
 }
 

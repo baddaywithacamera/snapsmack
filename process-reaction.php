@@ -3,9 +3,10 @@
  * SNAPSMACK - Reaction Toggle Handler
  * Alpha v0.7.4
  *
- * AJAX endpoint. Sets or clears a reaction on a post for the authenticated
- * community user. One reaction per user per post — setting a new reaction
- * replaces the old one.
+ * AJAX endpoint. Sets or clears a reaction on a post. Supports both
+ * authenticated community users (tracked by user_id) and anonymous
+ * visitors (tracked by hashed IP). One reaction per identity per post —
+ * setting a new reaction replaces the old one.
  *
  * Returns JSON: { reaction: string|null, counts: { code: count, ... } }
  *
@@ -28,14 +29,6 @@ const VALID_REACTIONS = [
     'light', 'texture', 'timing', 'composition', 'thumbs-down',
 ];
 
-// --- AUTH ---
-$user = community_current_user();
-if (!$user) {
-    http_response_code(401);
-    echo json_encode(['error' => 'not_authenticated']);
-    exit;
-}
-
 // --- METHOD ---
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -55,7 +48,7 @@ if (($settings['community_enabled'] ?? '1') !== '1' ||
 }
 
 // --- ACTIVE REACTION SET ---
-// Blog owner configures which reactions are enabled (up to 6) via admin.
+// Blog owner configures which reactions are enabled (up to 10) via admin.
 // community_active_reactions is a JSON array of slugs stored in snap_settings.
 // thumbs-down is gated separately by community_allow_dislike.
 $raw_active = $settings['community_active_reactions'] ?? '[]';
@@ -80,6 +73,17 @@ if ($post_id < 1 ||
     exit;
 }
 
+// --- IDENTITY RESOLUTION ---
+$user = community_current_user();
+$user_id    = $user ? (int)$user['id'] : null;
+$guest_hash = null;
+
+if (!$user) {
+    $like_salt  = $settings['download_salt'] ?? 'snapsmack-default-salt-change-me';
+    $ip         = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $guest_hash = hash('sha256', $ip . $like_salt);
+}
+
 // --- VERIFY POST EXISTS ---
 $exists = $pdo->prepare("SELECT id FROM snap_images WHERE id = ? LIMIT 1");
 $exists->execute([$post_id]);
@@ -90,31 +94,54 @@ if (!$exists->fetchColumn()) {
 }
 
 // --- RATE LIMIT ---
-if (!community_rate_limit('likes')) {
+if (function_exists('community_rate_limit') && !community_rate_limit('likes')) {
     http_response_code(429);
     echo json_encode(['error' => 'rate_limited']);
     exit;
 }
 
 // --- TOGGLE ---
-$user_id = (int)$user['id'];
-
-$current = $pdo->prepare("SELECT reaction_code FROM snap_reactions WHERE post_id = ? AND user_id = ? LIMIT 1");
-$current->execute([$post_id, $user_id]);
+if ($user_id) {
+    $current = $pdo->prepare("SELECT reaction_code FROM snap_reactions WHERE post_id = ? AND user_id = ? LIMIT 1");
+    $current->execute([$post_id, $user_id]);
+} else {
+    try {
+        $current = $pdo->prepare("SELECT reaction_code FROM snap_reactions WHERE post_id = ? AND guest_hash = ? LIMIT 1");
+        $current->execute([$post_id, $guest_hash]);
+    } catch (PDOException $e) {
+        // guest_hash column doesn't exist yet — pre-migration
+        http_response_code(500);
+        echo json_encode(['error' => 'migration_required']);
+        exit;
+    }
+}
 $existing_code = $current->fetchColumn();
 
 if ($existing_code === $reaction_code) {
     // Same reaction — remove it (toggle off)
-    $pdo->prepare("DELETE FROM snap_reactions WHERE post_id = ? AND user_id = ?")
-        ->execute([$post_id, $user_id]);
+    if ($user_id) {
+        $pdo->prepare("DELETE FROM snap_reactions WHERE post_id = ? AND user_id = ?")
+            ->execute([$post_id, $user_id]);
+    } else {
+        $pdo->prepare("DELETE FROM snap_reactions WHERE post_id = ? AND guest_hash = ?")
+            ->execute([$post_id, $guest_hash]);
+    }
     $new_reaction = null;
 } else {
     // New or different reaction — upsert
-    $pdo->prepare("
-        INSERT INTO snap_reactions (post_id, user_id, reaction_code)
-        VALUES (?, ?, ?)
-        ON DUPLICATE KEY UPDATE reaction_code = VALUES(reaction_code), created_at = NOW()
-    ")->execute([$post_id, $user_id, $reaction_code]);
+    if ($user_id) {
+        $pdo->prepare("
+            INSERT INTO snap_reactions (post_id, user_id, reaction_code)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE reaction_code = VALUES(reaction_code), created_at = NOW()
+        ")->execute([$post_id, $user_id, $reaction_code]);
+    } else {
+        // For guests: delete any existing then insert fresh (no unique key on guest_hash yet)
+        $pdo->prepare("DELETE FROM snap_reactions WHERE post_id = ? AND guest_hash = ?")
+            ->execute([$post_id, $guest_hash]);
+        $pdo->prepare("INSERT INTO snap_reactions (post_id, user_id, guest_hash, reaction_code) VALUES (?, 0, ?, ?)")
+            ->execute([$post_id, $guest_hash, $reaction_code]);
+    }
     $new_reaction = $reaction_code;
 }
 

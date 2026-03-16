@@ -76,11 +76,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_community'])) {
         $saves['community_dock_position'] = 'bottom-right';
     }
 
-    // Active reactions: collect checked boxes (max 6, from registry only, no thumbs-down here)
+    // Active reactions: collect checked boxes (max 10, from registry only, no thumbs-down here)
     $checked = $_POST['active_reactions'] ?? [];
     $active  = [];
     foreach ($checked as $code) {
-        if (isset($reaction_registry[$code]) && count($active) < 6) {
+        if (isset($reaction_registry[$code]) && count($active) < 10) {
             $active[] = $code;
         }
     }
@@ -480,8 +480,8 @@ include 'core/sidebar.php';
 
 <script>
 (function () {
-    // Live reaction counter — disable checkboxes beyond 6 selections
-    var MAX = 6;
+    // Live reaction counter — disable checkboxes beyond 10 selections
+    var MAX = 10;
     var grid = document.querySelector('.reaction-picker-grid');
     var countDisplay = document.getElementById('rx-count-display');
     if (!grid || !countDisplay) return;
