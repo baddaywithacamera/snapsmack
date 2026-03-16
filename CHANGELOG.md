@@ -4,6 +4,18 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## Impact Printer v1.1 (2026-03-16)
+
+### Added
+- Archive thumbnails now use the ASCII box border (matching the hero image frame), hardcoded at 12 px weight with 16 px padding. One look, consistent across the grid.
+- Inline `[img:]` page images: independent **Inline Image Frame Style** picker (box / plus / equals / slash / none) with **Inline Image Border Weight** (default 9 px) and **Inline Image Border Padding** (default 8 px) controls in PRINT HEAD.
+- Inline images open the full-screen lightbox on click/tap via `data-lightbox-src`.
+
+### Changed
+- Archive Thumb Frame picker and Archive Thumb Border Weight slider removed from PRINT HEAD — thumb border is no longer user-configurable.
+
+---
+
 ## 0.7.4c — "La-Z-Boy" (2026-03-16)
 
 ### Added
