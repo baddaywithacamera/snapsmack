@@ -24,6 +24,7 @@ return [
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Designed for photographers who enjoy using instant printer cameras that output on thermal paper. Continuous-feed tractor-feed paper textures, ASCII character borders, dithered halftone image rendering, faded ribbon ink. Two paper stocks: green-bar ledger and plain white.',
     'status'        => 'stable',
+    'demo_url'      => 'https://pixhellated.ca',
 
     'features' => [
         'supports_wall'   => false,
