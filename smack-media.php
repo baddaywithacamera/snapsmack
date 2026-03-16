@@ -94,6 +94,10 @@ if (isset($_GET['delete'])) {
 $assets = $pdo->query("SELECT * FROM snap_assets ORDER BY created_at DESC")->fetchAll();
 $page_title = "Media Library";
 
+// Formats browsers can actually render as <img>.
+$web_formats = ['jpg','jpeg','png','gif','webp','svg','avif','bmp','ico'];
+
+
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
@@ -120,39 +124,40 @@ include 'core/sidebar.php';
     <div class="box">
         <h3>GLOBAL ASSET GALLERY</h3>
         <div class="asset-grid">
-            <?php foreach ($assets as $a): ?>
+            <?php foreach ($assets as $a):
+                $ext = strtolower(pathinfo($a['asset_path'], PATHINFO_EXTENSION));
+                $is_web = in_array($ext, $web_formats);
+            ?>
                 <div class="asset-card" id="asset-<?php echo $a['id']; ?>">
                     <div class="asset-thumb-wrapper">
-                        <img src="<?php echo $a['asset_path']; ?>" alt="Asset">
+                        <?php if ($is_web): ?>
+                            <img src="<?php echo htmlspecialchars($a['asset_path']); ?>" alt="<?php echo htmlspecialchars($a['asset_name']); ?>">
+                        <?php else: ?>
+                            <div class="asset-no-preview">.<?php echo strtoupper($ext); ?></div>
+                        <?php endif; ?>
                     </div>
 
                     <div class="asset-info">
-                        <div class="asset-controls">
-                            <div class="control-group">
-                                <label class="compact-label">Size</label>
-                                <select class="compact-select size-select" onchange="updateShortcode(<?php echo $a['id']; ?>)">
-                                    <option value="full">Full</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="small">Small</option>
-                                </select>
-                            </div>
-                            <div class="control-group">
-                                <label class="compact-label">Align</label>
-                                <select class="compact-select align-select" onchange="updateShortcode(<?php echo $a['id']; ?>)">
-                                    <option value="center">Center</option>
-                                    <option value="left">Left</option>
-                                    <option value="right">Right</option>
-                                </select>
-                            </div>
+                        <div class="asset-filename dim"><?php echo htmlspecialchars($a['asset_name']); ?></div>
+
+                        <div class="asset-shortcode-row">
+                            <div class="shortcode-display" onclick="copyToClipboard(this)">[img:<?php echo $a['id']; ?>|full|center]</div>
                         </div>
 
-                        <label class="compact-label mt-15">SHORTCODE</label>
-                        <div class="compact-preview shortcode-display" onclick="copyToClipboard(this)">
-                            [img:<?php echo $a['id']; ?>|full|center]
+                        <div class="asset-controls">
+                            <select class="size-select" onchange="updateShortcode(<?php echo $a['id']; ?>)">
+                                <option value="full">Full</option>
+                                <option value="wall">Wall</option>
+                                <option value="small">Small</option>
+                            </select>
+                            <select class="align-select" onchange="updateShortcode(<?php echo $a['id']; ?>)">
+                                <option value="center">Center</option>
+                                <option value="left">Left</option>
+                                <option value="right">Right</option>
+                            </select>
                         </div>
 
                         <div class="asset-actions">
-                            <!-- Hidden file input wired to this specific asset -->
                             <input type="file"
                                    id="swap-input-<?php echo $a['id']; ?>"
                                    accept="image/*"
@@ -161,7 +166,7 @@ include 'core/sidebar.php';
                             <button type="button"
                                     class="action-edit"
                                     onclick="document.getElementById('swap-input-<?php echo $a['id']; ?>').click()">SWAP</button>
-                            <a href="?delete=<?php echo $a['id']; ?>" class="action-delete-link" onclick="return confirm('Purge Asset?')">PURGE</a>
+                            <a href="?delete=<?php echo $a['id']; ?>" class="action-delete-link" onclick="return confirm('Purge asset #<?php echo $a['id']; ?>? Any [img:<?php echo $a['id']; ?>] shortcodes will break.')">PURGE</a>
                         </div>
                     </div>
                 </div>
