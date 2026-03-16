@@ -22,7 +22,7 @@ if (isset($_COOKIE['snap_consent'])) {
 // Check if a privacy policy page exists
 $privacy_url = '';
 if (isset($pdo)) {
-    $pp_stmt = $pdo->prepare("SELECT page_slug FROM snap_pages WHERE page_slug IN ('privacy', 'privacy-policy', 'cookies') AND page_status = 'published' LIMIT 1");
+    $pp_stmt = $pdo->prepare("SELECT slug FROM snap_pages WHERE slug IN ('privacy', 'privacy-policy', 'cookies') AND is_active = 1 LIMIT 1");
     $pp_stmt->execute();
     $pp_slug = $pp_stmt->fetchColumn();
     if ($pp_slug) {

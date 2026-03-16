@@ -41,12 +41,6 @@ if (!$img) {
     die('Image not found.');
 }
 
-// Per-image download flag check
-if (($img['allow_download'] ?? 0) != 1) {
-    http_response_code(403);
-    die('Download not available for this image.');
-}
-
 // --- TOKEN VERIFICATION ---
 // HMAC-SHA256 of image ID against stored salt prevents direct URL guessing
 $salt = $settings['download_salt'] ?? 'snapsmack-default-salt-change-me';

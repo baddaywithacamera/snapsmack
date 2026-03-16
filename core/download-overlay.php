@@ -23,12 +23,10 @@ $download_button = '';
 $_snap_download_url = '';    // consumed by social-dock.php
 
 // --- DOWNLOAD VISIBILITY LOGIC ---
-// Downloads are shown only if both the global setting AND the individual post
-// setting are enabled
+// Downloads are shown when the global setting is enabled.
 $global_downloads = (($settings['global_downloads_enabled'] ?? '0') === '1');
-$post_downloads   = (($img['allow_download'] ?? 0) == 1);
 
-if ($global_downloads && $post_downloads) {
+if ($global_downloads) {
 
     $external_url = trim($img['download_url'] ?? '');
 
