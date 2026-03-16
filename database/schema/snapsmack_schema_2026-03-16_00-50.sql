@@ -408,6 +408,7 @@ CREATE TABLE `snap_likes` (
 
 -- =====================================================================
 -- REACTIONS
+-- Includes guest_hash from migrate-074b-guest-reactions.sql
 -- =====================================================================
 
 DROP TABLE IF EXISTS `snap_reactions`;
@@ -415,10 +416,12 @@ CREATE TABLE `snap_reactions` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `post_id` int unsigned NOT NULL,
   `user_id` int unsigned NOT NULL,
+  `guest_hash` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `reaction_code` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_post_user` (`post_id`, `user_id`),
   KEY `idx_post_id` (`post_id`),
-  KEY `idx_user_id` (`user_id`)
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_reactions_guest` (`post_id`, `guest_hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
