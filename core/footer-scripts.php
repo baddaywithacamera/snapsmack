@@ -10,8 +10,16 @@
  * NOTE: The drawer engine is loaded by skin-footer.php (for info/comment
  * drawer on photo pages). The wall engine is loaded directly by gallery-wall.php
  * (page-specific). This file only outputs the shared global engines.
+ *
+ * LOAD ORDER: Consent engine FIRST — other engines check snapConsent.ok()
+ * before writing to localStorage/sessionStorage.
  */
 ?>
+
+<?php // --- CONSENT ENGINE (must load before any storage-writing scripts) --- ?>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-consent.css">
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-consent.js?v=<?php echo time(); ?>"></script>
+<?php include __DIR__ . '/consent-banner.php'; ?>
 
 <div id="hud" class="hud-msg"></div>
 

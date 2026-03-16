@@ -157,12 +157,12 @@ $show_map_bg = ($settings['show_map_background'] ?? '1') === '1';
             browseGrid.style.display = 'grid';
             justifiedGrid.style.display = 'none';
         }
-        try { localStorage.setItem(KEY, layout); } catch(e) {}
+        try { if (window.snapConsent && window.snapConsent.ok()) localStorage.setItem(KEY, layout); } catch(e) {}
     }
 
     function init() {
         var saved = null;
-        try { saved = localStorage.getItem(KEY); } catch(e) {}
+        try { saved = (window.snapConsent && window.snapConsent.ok()) ? localStorage.getItem(KEY) : null; } catch(e) {}
         setLayout(saved || '<?php echo htmlspecialchars($archive_default); ?>');
     }
 

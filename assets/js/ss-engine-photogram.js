@@ -396,9 +396,10 @@
         // Save key is the full page URL so different feed entry points don't
         // clobber each other.
         var scrollKey = 'pg-feed-scroll:' + window.location.href;
-        var savedY    = sessionStorage.getItem(scrollKey);
+        var _consentOk = window.snapConsent && window.snapConsent.ok();
+        var savedY    = _consentOk ? sessionStorage.getItem(scrollKey) : null;
         if (savedY) {
-            sessionStorage.removeItem(scrollKey);
+            if (_consentOk) sessionStorage.removeItem(scrollKey);
             // Two rAF passes let the browser finish initial layout before jumping.
             requestAnimationFrame(function () {
                 requestAnimationFrame(function () {
@@ -423,7 +424,7 @@
         // ── Save scroll before navigating to a solo page ────────────────
         feed.addEventListener('click', function (e) {
             if (e.target.closest('.pg-feed-solo-link, .pg-feed-image-link')) {
-                sessionStorage.setItem(scrollKey, String(window.scrollY));
+                if (window.snapConsent && window.snapConsent.ok()) sessionStorage.setItem(scrollKey, String(window.scrollY));
             }
         });
 

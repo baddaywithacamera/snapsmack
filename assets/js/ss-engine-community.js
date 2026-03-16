@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (likeBtn) {
             likeBtn.addEventListener('click', () => {
-                if (!loggedIn) { window.location.href = authUrl; return; }
+                // Anonymous likes allowed — no auth redirect for likes
 
                 const wasLiked  = likeBtn.dataset.liked === '1';
                 const prevCount = parseInt(likeCount ? likeCount.textContent : '0', 10) || 0;
@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Dock like toggle ---
         if (dockLikeBtn) {
             dockLikeBtn.addEventListener('click', () => {
-                if (!dockLoggedIn) { window.location.href = dockAuthUrl; return; }
+                // Anonymous likes allowed — no auth redirect for likes
 
                 const wasLiked  = dockLikeBtn.dataset.liked === '1';
                 const prevCount = dockLikeCount ? (parseInt(dockLikeCount.textContent, 10) || 0) : 0;
