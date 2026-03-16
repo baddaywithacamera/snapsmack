@@ -217,6 +217,11 @@ static page:</p>
 <pre>[img:42|full|center]</pre>
 <p>See the <em>Formatting Toolbar</em> topic for details on image shortcode syntax.</p>
 
+<h4>Swapping Assets</h4>
+<p>Click the <strong>SWAP</strong> button on any asset card to replace the file on disk
+with a new upload. The asset's ID is preserved, so any <code>[img:ID|...]</code> shortcodes
+already embedded in pages or descriptions continue to work without editing.</p>
+
 <h4>Deleting Assets</h4>
 <p>Deleting an asset removes the file from disk and the database record. Any shortcodes
 referencing the deleted asset will render as empty space on the public site.</p>
@@ -517,6 +522,9 @@ They are processed by the parser and converted to HTML when the page is displaye
 <pre>[img:42]
 [img:42|small|left]
 [img:7|wall|right]</pre>
+<p>Inline images open a full-screen lightbox viewer when clicked or tapped. The lightbox
+always shows the full-size original file, regardless of the size variant specified in
+the shortcode.</p>
 
 <h4>Multi-Column Layout</h4>
 <pre>[columns=N]
