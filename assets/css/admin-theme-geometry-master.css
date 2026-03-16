@@ -1061,8 +1061,8 @@ button:active,
 /* --- MEDIA LIBRARY --- */
 .asset-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 30px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 24px;
 }
 
 .asset-card {
@@ -1070,20 +1070,18 @@ button:active,
     border-style: solid;
     border-radius: 4px;
     overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.asset-card:hover {
-    transform: translateY(-2px);
+    display: flex;
+    flex-direction: column;
 }
 
 .asset-thumb-wrapper {
-    height: 150px;
+    height: 160px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-bottom-width: 1px;
     border-bottom-style: solid;
+    overflow: hidden;
 }
 
 .asset-thumb-wrapper img {
@@ -1092,49 +1090,70 @@ button:active,
     object-fit: contain;
 }
 
+.asset-no-preview {
+    font-family: monospace;
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+    opacity: 0.5;
+}
+
 .asset-info {
-    padding: 15px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+
+.asset-filename {
+    font-size: 0.7rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.asset-shortcode-row .shortcode-display {
+    font-family: monospace;
+    font-size: 0.8rem;
+    padding: 6px 10px;
+    border-width: 1px;
+    border-style: dashed;
+    border-radius: 3px;
+    text-align: center;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    letter-spacing: 0.3px;
+}
+.asset-shortcode-row .shortcode-display:hover {
+    opacity: 0.7;
 }
 
 .asset-controls {
     display: flex;
-    gap: 10px;
+    gap: 6px;
 }
-
-.asset-controls .control-group {
+.asset-controls select {
     flex: 1;
-}
-
-.asset-card label {
-    font-size: 0.65rem;
-    margin-bottom: 4px;
-    margin-top: 10px;
-    letter-spacing: 0.5px;
-}
-
-.asset-card select {
-    height: 32px;
-    padding: 0 8px;
-    font-size: 0.8rem;
-    margin: 0;
-}
-
-.asset-card .preview-box {
-    height: 32px;
-    padding: 0 10px;
+    height: 28px;
+    padding: 0 6px;
     font-size: 0.75rem;
-    font-family: monospace;
     margin: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
 }
 
 .asset-actions {
-    margin-top: 15px;
     display: flex;
-    justify-content: flex-end;
+    gap: 8px;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 4px;
+}
+.asset-actions .action-edit {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+}
+.asset-actions .action-delete-link {
+    font-size: 0.7rem;
+    margin-left: auto;
 }
 
 /* --- ENGINE MECHANICS (SLIDERS & COLOUR PICKERS) --- */

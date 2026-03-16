@@ -443,6 +443,14 @@ input[type="range"]::-webkit-slider-thumb {
     border-bottom-color: #1A242F;
     background-color: #050A14;
 }
+.asset-shortcode-row .shortcode-display {
+    border-color: #00FFFF;
+    color: #00FFFF;
+    background-color: #081220;
+}
+.asset-no-preview {
+    color: #555;
+}
 
 /* 17: CSS OVERRIDE PAGE (smack-css.php) */
 .css-tab {

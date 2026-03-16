@@ -426,6 +426,14 @@ input[type="range"]::-webkit-slider-thumb {
     border-bottom-color: #383838;
     background-color: #242424;
 }
+.asset-shortcode-row .shortcode-display {
+    border-color: #00b4b4;
+    color: #00b4b4;
+    background-color: #1e1e1e;
+}
+.asset-no-preview {
+    color: #555;
+}
 
 /* 17: CSS OVERRIDE PAGE (smack-css.php) */
 .css-tab {

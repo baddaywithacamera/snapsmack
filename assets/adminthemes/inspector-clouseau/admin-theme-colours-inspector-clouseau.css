@@ -440,6 +440,14 @@ input[type="range"]::-webkit-slider-thumb {
     border-bottom-color: #f0c8dc;
     background-color: #ffffff;
 }
+.asset-shortcode-row .shortcode-display {
+    border-color: #e83e8c;
+    color: #e83e8c;
+    background-color: #fdf0f6;
+}
+.asset-no-preview {
+    color: #555;
+}
 
 /* SHORTCODE TOOLBAR */
 .sc-toolbar {

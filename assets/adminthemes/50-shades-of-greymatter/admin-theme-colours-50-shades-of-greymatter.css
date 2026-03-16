@@ -414,6 +414,14 @@ input[type="range"]::-webkit-slider-thumb {
     border-bottom-color: #CCCCCC;
     background-color: #F0F0F0;
 }
+.asset-shortcode-row .shortcode-display {
+    border-color: #666666;
+    color: #666666;
+    background-color: #F0F0F0;
+}
+.asset-no-preview {
+    color: #555;
+}
 
 /* 17: CSS OVERRIDE PAGE */
 .css-tab {
