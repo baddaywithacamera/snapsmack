@@ -556,15 +556,16 @@ body {
     height: 100% !important;
     border-style: solid;
     border-color: transparent;
-    border-image: url('skins/impact-printer/textures/border-box.svg') 12 repeat;
+    border-image: url('textures/border-box.svg') 12 repeat;
     border-width: 12px;
-    padding: 16px;
+    padding: 0;
     box-shadow: none;
     box-sizing: border-box;
 }
 .square-grid .thumb-link img {
-    width: 100%;
-    height: 100%;
+    width: calc(100% - 32px);
+    height: calc(100% - 32px);
+    margin: 16px;
     object-fit: cover;
     display: block;
     transition: opacity 0.3s ease;
@@ -587,9 +588,9 @@ body {
     aspect-ratio: 3 / 2 !important;
     border-style: solid;
     border-color: transparent;
-    border-image: url('skins/impact-printer/textures/border-box.svg') 12 repeat;
+    border-image: url('textures/border-box.svg') 12 repeat;
     border-width: 12px;
-    padding: 16px;
+    padding: 0;
     box-shadow: none;
     box-sizing: border-box;
 }
@@ -602,8 +603,9 @@ body {
     aspect-ratio: 1 / 1 !important;
 }
 .cropped-grid .thumb-link img {
-    width: 100% !important;
-    height: 100% !important;
+    width: calc(100% - 32px) !important;
+    height: calc(100% - 32px) !important;
+    margin: 16px;
     object-fit: cover;
     display: block;
     transition: opacity 0.3s ease;
