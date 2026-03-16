@@ -96,6 +96,14 @@ shortcodes for images, columns, and dropcaps.</p>
 dropdowns. These are used for filtering on the public archive page and for organising
 your work into collections.</p>
 
+<h4>Tags</h4>
+<p>The <strong>Tags</strong> field lets you add hashtags to the transmission. Enter them
+space-separated with the # prefix, e.g. <code>#concrete #rust #peeling</code>. Tags are
+also extracted automatically from hashtags in the title and description, so you can tag
+from either place — the dedicated field just makes them visible and easy to manage.</p>
+<p>Tags create browsable archive pages on the public site. Visitors can click any tag to
+see all transmissions sharing that tag. Tags also appear in search results.</p>
+
 <h4>Publication Settings</h4>
 <ul>
     <li><strong>Status</strong> — Published (visible on the site) or Draft (hidden).</li>
@@ -158,9 +166,14 @@ page and in the sidebar navigation.</p>
 <p>Enter a name and click Create. Category names should be descriptive and concise
 (e.g., "Street Photography", "Portraits", "Landscapes").</p>
 
+<h4>Category Descriptions</h4>
+<p>Each category has an optional description field. Descriptions can be used by skins
+for category archive pages and SEO meta descriptions. Enter a sentence or two explaining
+what the category contains.</p>
+
 <h4>Editing &amp; Deleting</h4>
-<p>Click Edit to rename a category. Deleting a category removes the association with all
-transmissions but does not delete the transmissions themselves.</p>
+<p>Click Edit to rename a category or update its description. Deleting a category removes
+the association with all transmissions but does not delete the transmissions themselves.</p>
 HTML
 ];
 
@@ -285,8 +298,11 @@ generate CSS that is injected into the public site.</p>
 option targets a specific CSS selector and property, so you can see exactly what it affects.</p>
 
 <h4>Gallery Tab</h4>
-<p>Browse the skin registry for new skins and updates. Install, update, or remove skins.
-All downloads are cryptographically verified. You cannot remove the currently active skin.</p>
+<p>Browse the skin registry for new skins and updates. Each skin listing shows up to three
+screenshots (landing page, archive grid, and text page) in a carousel with navigation
+arrows and dot indicators. Install, update, or remove skins from this tab. All downloads
+are cryptographically verified. You cannot remove the currently active skin or protected
+skins (like Photogram, the mandatory mobile skin).</p>
 HTML
 ];
 
@@ -890,8 +906,49 @@ depends heavily on the active skin, but most skins offer multiple layout options
 at any given viewport width.</p>
 
 <h4>Filtering</h4>
-<p>Visitors can filter by category or album using the navigation on your public site. The
-archive loads additional images via AJAX as the visitor scrolls (infinite scroll).</p>
+<p>Visitors can filter by category or album using the dropdowns in the archive toolbar.
+A search box also appears in the toolbar — type any keyword to search across titles,
+descriptions, and tags. Queries starting with <code>#</code> redirect straight to the
+hashtag archive for that tag.</p>
+<p>When searching, matching tags appear as clickable chips above the results with post
+counts, making it easy to discover related content.</p>
+HTML
+];
+
+$help_topics['tags'] = [
+    'section'  => 'Public Features',
+    'title'    => 'Tags & Hashtags',
+    'icon'     => '&#x0023;',
+    'content'  => <<<'HTML'
+<h3>Tagging System</h3>
+<p>Tags let visitors browse your site by topic. Every transmission can have any number of
+tags, and each tag generates a dedicated archive page listing all transmissions that share it.</p>
+
+<h4>Adding Tags</h4>
+<p>There are two ways to tag a transmission:</p>
+<ul>
+    <li><strong>Tags field</strong> — on the New Post and Edit pages, enter space-separated
+    hashtags in the Tags field (e.g. <code>#concrete #rust #peeling</code>).</li>
+    <li><strong>Inline hashtags</strong> — write <code>#hashtags</code> anywhere in the title
+    or description. They are extracted automatically on save.</li>
+</ul>
+<p>Both methods feed into the same tagging engine. The Tags field simply makes existing tags
+visible and easy to edit without digging through the description text.</p>
+
+<h4>Tag Archives</h4>
+<p>Each tag gets a public archive page at <code>?tag=slug</code>. Visitors reach these by
+clicking a tag on a post, clicking a tag chip in search results, or typing
+<code>#tagname</code> in the archive search bar (which redirects to the tag archive).</p>
+<p>Tag archives use the same grid layout as the main archive (square, cropped, or masonry
+depending on skin settings) with pagination.</p>
+
+<h4>Tag Display</h4>
+<p>How tags appear on individual posts depends on the active skin. Skins that support tag
+display show clickable tag chips below the image description. Tags link to their archive page.</p>
+
+<h4>Search Integration</h4>
+<p>The archive search bar matches against tags in addition to titles and descriptions.
+Matching tags appear as clickable chips above the search results with post counts.</p>
 HTML
 ];
 

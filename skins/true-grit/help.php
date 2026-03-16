@@ -73,6 +73,33 @@ try a warm grey or cream overlay at 0.5–0.7 opacity.</p>
 HTML
     ],
 
+    'skin-tags-truegrit' => [
+        'section'  => 'Active Skin: True Grit',
+        'title'    => 'Tags & Search',
+        'icon'     => '&#x0023;',
+        'content'  => <<<'HTML'
+<h3>Tags &amp; Search in True Grit</h3>
+<p>True Grit supports the full tagging and search system, built for foundtextures.ca where
+browsing by material type is essential.</p>
+
+<h4>Tag Display</h4>
+<p>Tags appear as monospace bordered chips below each image's description. Clicking a tag
+opens the tag archive — a dedicated grid page showing all transmissions with that tag.
+The tag archive uses the same layout mode (square, cropped, or masonry) as your main archive.</p>
+
+<h4>Archive Search</h4>
+<p>The archive toolbar includes a search box alongside the existing category and album filters.
+Search matches against titles, descriptions, and tags. Typing <code>#tagname</code> redirects
+straight to that tag's archive page. Matching tags appear as clickable chips above search results.</p>
+
+<h4>Tagging Your Textures</h4>
+<p>Use the <strong>Tags</strong> field on the New Post or Edit page. Enter hashtags
+space-separated: <code>#concrete #rust #peeling #blue</code>. Tags are also extracted
+automatically from hashtags in the title and description. For a texture library, consistent
+tagging by material, colour, and condition makes the archive genuinely useful.</p>
+HTML
+    ],
+
     'skin-community-tg' => [
         'section'  => 'Active Skin: True Grit',
         'title'    => 'Likes, Reactions & Comments',
