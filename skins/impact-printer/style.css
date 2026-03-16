@@ -214,6 +214,14 @@ body {
 }
 
 
+/* Inline images: same ASCII border as hero, at half weight by default.
+   No !important — once the user saves settings the compiled CSS emits
+   .snap-inline-frame .ip-ascii-frame-inner directly and wins via load order. */
+.snap-inline-frame .ip-ascii-frame-inner {
+    border-width: 9px;
+    padding: 8px;
+}
+
 /* Side border spans no longer needed — hide them */
 .ip-border-left,
 .ip-border-right {
