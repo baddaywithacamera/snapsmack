@@ -5,9 +5,9 @@ smack-central/sc-config.php
 # Backups contain full source + database dumps — never commit
 backups/
 
-# Schema snapshots are install-specific (contain live AUTO_INCREMENT values etc.)
-# They have no place in the distribution repo.
-database/schema/
+# Schema reference file IS tracked — it is the canonical source of truth for
+# all table definitions and must stay in sync with install.php + migrations.
+# database/schema/
 
 # Updater temp files
 /tmp/snapsmack_update/
