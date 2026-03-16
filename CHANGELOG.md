@@ -4,6 +4,37 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.4b — "La-Z-Boy" (2026-03-16)
+
+### Added
+- Anonymous likes: visitors can like posts without creating a community account. Tracked by SHA-256 hashed IP — no PII stored.
+- Anonymous reactions: same IP-hash pattern as likes. Visitors can react to posts without login. Auth gate on reaction trigger button removed entirely.
+- Guest reaction state: dock and inline component both display the visitor's existing reaction on page load (IP hash lookup with try-catch fallback for pre-migration installs).
+- Max active reactions raised from 6 to 10.
+- Cookie consent banner: `core/consent-banner.php` — links to privacy/cookie page if one exists.
+- True Grit transparency system: header and footer backgrounds rendered via `::before` pseudo-elements with configurable opacity (0–100 slider) so text stays fully opaque.
+- True Grit header nav colour and hover colour options in manifest.
+- True Grit footer font colour and link hover colour options in manifest.
+- Help system updates for Photogram, True Grit, and main help file.
+- Canonical schema reference file tracked in `database/schema/` — unignored from `.gitignore`, rebuilt with all 24 tables and migration columns folded in.
+
+### Changed
+- True Grit skin bumped to v1.1.
+- True Grit `optical_lift` default changed from 50 to 0 (user typically sets this to zero).
+- True Grit static page top padding balanced with bottom (50px each).
+- True Grit footer `padding` stripped of `!important` so footer height slider works from manifest.
+- Downloads simplified to global-only — per-post `allow_download` gate removed from `download.php` and `core/download-overlay.php`.
+- Three separate `migrate-074b-*.sql` files consolidated into single `migrate-074b.sql`.
+
+### Fixed
+- Consent banner fatal `PDOException`: query referenced non-existent columns `page_slug` and `page_status` — corrected to `slug` and `is_active`.
+- Reaction trigger button (smiley face) forced login redirect even though likes (heart) worked anonymously. Root cause: JS auth gate on `#ss-cdock-react-trigger` not removed when anonymous likes were added. Fixed by removing all auth redirects from reaction triggers in `ss-engine-community.js`.
+
+### Migrations
+- `migrate-074b.sql`: adds `edited_at` to `snap_community_comments`, adds `guest_hash` column + index to both `snap_likes` and `snap_reactions`.
+
+---
+
 ## 0.7.4 — "Whoopie Cushion" (2026-03-15)
 
 ### Added
