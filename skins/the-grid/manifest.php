@@ -34,6 +34,7 @@ return [
         'smack-keyboard',
         'smack-community',
         'smack-slider',
+        'smack-carousel-view',
     ],
 
     'community_comments'  => true,

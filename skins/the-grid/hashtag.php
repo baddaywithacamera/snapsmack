@@ -60,13 +60,13 @@ $has_more = ($offset + count($grid_posts)) < $total_count;
 <div id="tg-app">
 
     <!-- ── Tag Header ──────────────────────────────────────────────────────── -->
-    <div class="tg-archive-header" style="max-width:<?php echo $tg_grid_width; ?>px; margin:0 auto; padding:20px 12px 8px;">
-        <a href="<?php echo BASE_URL; ?>" class="tg-back-link" style="display:inline-flex; align-items:center; gap:6px; text-decoration:none; opacity:.7; font-size:13px; margin-bottom:12px;">
+    <div class="tg-archive-header" style="max-width:<?php echo $tg_grid_width; ?>px;">
+        <a href="<?php echo BASE_URL; ?>" class="tg-back-link">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             Back
         </a>
-        <h2 style="font-size:22px; font-weight:700; margin:0 0 4px;"><?php echo htmlspecialchars($tag_display); ?></h2>
-        <p style="font-size:13px; opacity:.6; margin:0;"><?php echo number_format($total_count); ?> post<?php echo $total_count !== 1 ? 's' : ''; ?></p>
+        <h2><?php echo htmlspecialchars($tag_display); ?></h2>
+        <p><?php echo number_format($total_count); ?> post<?php echo $total_count !== 1 ? 's' : ''; ?></p>
     </div>
 
     <!-- ── Grid ────────────────────────────────────────────────────────────── -->
@@ -98,7 +98,7 @@ $has_more = ($offset + count($grid_posts)) < $total_count;
             </div>
             <?php endforeach; ?>
         <?php else: ?>
-            <div class="tg-grid-empty" style="grid-column:1/-1; text-align:center; padding:60px 20px; opacity:.5;">
+            <div class="tg-grid-empty">
                 No photos tagged <?php echo htmlspecialchars($tag_display); ?> yet.
             </div>
         <?php endif; ?>

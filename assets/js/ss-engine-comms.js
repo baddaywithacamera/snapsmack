@@ -17,6 +17,28 @@ window._ssCommsLoaded = true;
 // --- HELP SYSTEM ---
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Session help persistence: if the user has already seen the help tutorial
+    // this session, set a flag so the help toast is suppressed.
+    try {
+        if (sessionStorage.getItem('snapsmack_help_seen')) {
+            window.HIDE_SNAP_HELP = true;
+        }
+    } catch(e) { /* storage blocked or consent not granted */ }
+
+    // Build SNAP_DATA from data attributes (replaces inline <script> block).
+    // Falls back to legacy window.SNAP_DATA for pre-update compatibility.
+    if (!window.SNAP_DATA) {
+        var navEl = document.getElementById('snap-nav-data');
+        if (navEl) {
+            window.SNAP_DATA = {
+                prevUrl:  navEl.getAttribute('data-prev')  || '',
+                nextUrl:  navEl.getAttribute('data-next')  || '',
+                firstUrl: navEl.getAttribute('data-first') || '',
+                lastUrl:  navEl.getAttribute('data-last')  || ''
+            };
+        }
+    }
+
     if (window.SNAP_DATA) {
         createHelpToast();
     }

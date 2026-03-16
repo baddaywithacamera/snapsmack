@@ -183,7 +183,32 @@ class SnapSmackLogoEngine {
 
 // --- BOOT ---
 document.addEventListener('DOMContentLoaded', () => {
-    const cfg = window.SNAP_LOGO_CONFIG ?? {};
+    // Read from data attributes on .snapsmack-logo, fall back to legacy window global.
+    const legacy = window.SNAP_LOGO_CONFIG ?? {};
+    const logoEl = document.querySelector('.snapsmack-logo');
+
+    const cfg = {};
+    if (logoEl) {
+        cfg.enabled       = logoEl.dataset.glitchEnabled !== undefined
+                          ? logoEl.dataset.glitchEnabled !== 'false'
+                          : (legacy.enabled !== undefined ? legacy.enabled : true);
+        cfg.frequency     = logoEl.dataset.glitchFrequency || legacy.frequency || 'normal';
+        cfg.splitPosition = parseInt(logoEl.dataset.splitPosition, 10) || legacy.splitPosition || 50;
+        cfg.splitDrift    = logoEl.dataset.splitDrift !== undefined
+                          ? logoEl.dataset.splitDrift !== 'false'
+                          : (legacy.splitDrift !== undefined ? legacy.splitDrift : true);
+
+        // Fonts: data attribute is comma-separated, e.g. "blackcasper,courier"
+        if (logoEl.dataset.fonts) {
+            cfg.fonts = logoEl.dataset.fonts.split(',').map(function(f) { return f.trim(); }).filter(Boolean);
+        } else {
+            cfg.fonts = legacy.fonts || [];
+        }
+    } else {
+        // No logo element — use legacy config entirely
+        Object.assign(cfg, legacy);
+    }
+
     if (cfg.enabled === false) return;
 
     const engine = new SnapSmackLogoEngine(cfg);

@@ -250,51 +250,5 @@ include __DIR__ . '/skin-header.php';
 
 </div><!-- .tg-post-wrap -->
 
-<?php if ($is_carousel): ?>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    var container = document.getElementById('tg-carousel');
-    if (!container || typeof SnapSlider === 'undefined') return;
-
-    var slider = new SnapSlider({
-        container: container,
-        speed:     400,
-        loop:      false
-    });
-
-    // Update EXIF panel on slide change
-    container.addEventListener('snapslider:slidechange', function (e) {
-        var exif  = e.detail.exif || {};
-        var panel = document.getElementById('tg-exif-panel');
-        if (!panel) return;
-
-        // Clear existing items
-        panel.innerHTML = '';
-
-        var fields = {
-            camera: 'Camera', lens: 'Lens', focal: 'Focal', film: 'Film',
-            iso: 'ISO', aperture: 'Aperture', shutter: 'Shutter', flash: 'Flash'
-        };
-
-        Object.keys(fields).forEach(function (key) {
-            var val = (exif[key] || '').trim();
-            if (!val) return;
-            var item  = document.createElement('div');
-            item.className = 'tg-exif-item';
-            item.setAttribute('data-exif-key', key);
-            var lbl   = document.createElement('span');
-            lbl.className = 'tg-exif-label';
-            lbl.textContent = fields[key];
-            var valEl = document.createElement('span');
-            valEl.className = 'tg-exif-value';
-            valEl.textContent = val;
-            item.appendChild(lbl);
-            item.appendChild(valEl);
-            panel.appendChild(item);
-        });
-    });
-});
-</script>
-<?php endif; ?>
 
 <?php include __DIR__ . '/skin-footer.php'; ?>

@@ -22,7 +22,8 @@ return [
         'smack-lightbox',
         'smack-keyboard',
         'smack-slider',
-        'smack-community'
+        'smack-community',
+        'smack-overlay',
     ],
 
     'options' => [

@@ -41,6 +41,7 @@ return [
         'smack-justified-lib',
         'smack-justified',
         'smack-community',
+        'smack-drawer',
     ],
 
     'community_comments'  => '1',

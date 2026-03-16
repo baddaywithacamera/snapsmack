@@ -207,6 +207,41 @@
     box-shadow: none !important;
 }
 
+/* --- ARCHIVE SEARCH & FILTER CONTROLS --- */
+.archive-search-form {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.archive-search-status {
+    text-align: center;
+    padding: 15px 0 0;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+}
+
+.archive-search-status a {
+    color: var(--accent);
+}
+
+.archive-tags-row {
+    justify-content: center;
+    padding: 12px 0 0;
+}
+
+/* --- 404 / EMPTY STATE --- */
+.not-found-msg {
+    text-align: center;
+    padding: 80px 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.2rem;
+    color: var(--text-dim, #999);
+}
+
 /* --- ARCHIVE RESPONSIVE --- */
 @media (max-width: 768px) {
     .square-grid,

@@ -33,7 +33,13 @@ $loop = ($settings['htbs_slider_loop'] ?? '1') === '1';
 
     <div class="htbs-slider-container">
         <div class="htbs-slider-wrapper">
-            <div id="htbs-gallery-slider" class="ss-slider">
+            <div id="htbs-gallery-slider" class="ss-slider" data-auto-init
+                 data-per-view="<?php echo $per_view; ?>"
+                 data-speed="<?php echo $speed; ?>"
+                 data-easing="ease-in-out"
+                 data-auto-advance="<?php echo $auto_advance ? 'true' : 'false'; ?>"
+                 data-auto-interval="5000"
+                 data-loop="<?php echo $loop ? 'true' : 'false'; ?>">
                 <div class="slider-track">
                     <?php foreach ($slider_images as $slide):
                         $slide_link = BASE_URL . htmlspecialchars($slide['img_slug']);
@@ -88,18 +94,3 @@ $loop = ($settings['htbs_slider_loop'] ?? '1') === '1';
     <?php include('skin-footer.php'); ?>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    if (typeof SnapSlider !== 'undefined') {
-        new SnapSlider({
-            container: document.getElementById('htbs-gallery-slider'),
-            perView: <?php echo $per_view; ?>,
-            speed: <?php echo $speed; ?>,
-            easing: 'ease-in-out',
-            autoAdvance: <?php echo $auto_advance ? 'true' : 'false'; ?>,
-            autoInterval: 5000,
-            loop: <?php echo $loop ? 'true' : 'false'; ?>
-        });
-    }
-});
-</script>

@@ -120,74 +120,25 @@ try {
 
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-wall.css?v=<?php echo time(); ?>">
 
-    <style>
-        :root {
-            --wall-bg: <?php echo htmlspecialchars($wall_theme); ?>;
-            --wall-gap: <?php echo $wall_gap; ?>px;
-            --wall-font: <?php echo $font_css; ?>;
-            --wall-text: <?php echo htmlspecialchars($text_color); ?>;
-            --wall-shadow-string: <?php echo $shadow_css; ?>;
-        }
-
-        /* Wall canvas layout uses flex column wrap with full viewport height */
-        .wall-canvas {
-            display: flex;
-            flex-direction: column;
-            flex-wrap: wrap;
-            align-content: flex-start;
-            height: 100vh;
-            padding-left: var(--wall-gap);
-        }
-
-        .wall-tile {
-            margin-right: var(--wall-gap);
-            margin-bottom: var(--wall-gap);
-        }
-
-        .tile-meta {
-            visibility: <?php echo (($settings['show_titles'] ?? '1') == '1') ? 'visible' : 'hidden'; ?>;
-            position: absolute;
-            bottom: -60px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: max-content;
-            text-align: center;
-            font-family: var(--wall-font);
-            color: var(--wall-text);
-            text-shadow: var(--wall-shadow-string);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-            white-space: nowrap;
-        }
-
-        .wall-tile:hover .tile-meta,
-        .wall-tile.is-centered .tile-meta {
-            opacity: 1;
-        }
-    </style>
-
     <script>
-    // Mobile gate: Redirect touch devices or small screens to archive
+    // Mobile gate: Redirect touch devices or small screens to archive.
+    // Runs in <head> before body render as a client-side fallback for the PHP
+    // user-agent check (some devices slip through server-side sniffing).
     if (window.innerWidth < 768 || ('ontouchstart' in window && window.innerWidth < 1024)) {
         window.location.replace('archive.php');
     }
     </script>
 </head>
-<body class="is-wall">
-
-<script>
-    window.WALL_CONFIG = {
-        friction: <?php echo $wall_friction; ?>,
-        dragWeight: <?php echo $wall_dragweight; ?>,
-        pinchPower: <?php echo $pinch_power; ?>,
-        totalImages: <?php echo $total_images; ?>,
-        initialLimit: <?php echo $wall_limit; ?>
-    };
-</script>
+<body class="is-wall<?php echo (($settings['show_titles'] ?? '1') != '1') ? ' wall-hide-titles' : ''; ?>"
+      style="--wall-bg:<?php echo htmlspecialchars($wall_theme); ?>; --wall-gap:<?php echo $wall_gap; ?>px; --wall-font:<?php echo $font_css; ?>; --wall-text:<?php echo htmlspecialchars($text_color); ?>; --wall-shadow-string:<?php echo $shadow_css; ?>;">
 
 <div class="wall-viewport">
-    <div class="wall-canvas" id="wall-canvas">
+    <div class="wall-canvas" id="wall-canvas"
+         data-friction="<?php echo $wall_friction; ?>"
+         data-drag-weight="<?php echo $wall_dragweight; ?>"
+         data-pinch-power="<?php echo $pinch_power; ?>"
+         data-total-images="<?php echo $total_images; ?>"
+         data-initial-limit="<?php echo $wall_limit; ?>">
         <?php foreach ($images as $img): ?>
             <div class="wall-tile" style="<?php echo $tile_style; ?>" onclick="zoomImage(this)" data-full="<?php echo htmlspecialchars($img['img_file']); ?>">
                 <img src="<?php echo htmlspecialchars($img['img_file']); ?>" alt="Smack" loading="lazy">

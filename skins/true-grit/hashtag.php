@@ -71,7 +71,7 @@ $justified_row_height = (int)($settings['justified_row_height'] ?? 280);
     </div>
 </div>
 
-<div id="scroll-stage" style="display: block; overflow-y: auto;">
+<div id="scroll-stage">
 
 <?php if ($archive_layout === 'masonry'): ?>
     <div id="justified-grid" style="--justified-row-height: <?php echo $justified_row_height; ?>px;">
