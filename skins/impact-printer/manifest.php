@@ -107,7 +107,8 @@ return [
         /* ============================================================
            SECTION 2: PRINT HEAD (IMAGE FRAME)
            Hero image uses ASCII character borders via JS engine.
-           Archive thumbs use CSS borders (no ASCII on grids).
+           Archive thumbs: ASCII box hardcoded in style.css (no picker).
+           Inline images: ASCII box with weight/padding controls below.
            ============================================================ */
 
         'image_frame_style' => [
@@ -161,56 +162,6 @@ return [
             'max'      => '40',
             'selector' => '.ip-ascii-frame-inner',
             'property' => 'padding'
-        ],
-
-        'archive_frame_style' => [
-            'section'  => 'PRINT HEAD',
-            'type'     => 'select',
-            'label'    => 'Archive Thumb Frame',
-            'default'  => 'border_thin',
-            'selector' => '.square-grid .thumb-link, .cropped-grid .thumb-link',
-            'property' => 'custom-framing',
-            'options'  => [
-                'box'    => [
-                    'label' => 'ASCII Box     +----|----+',
-                    'css'   => "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-box.svg') 12 repeat; }"
-                ],
-                'plus'   => [
-                    'label' => 'ASCII Plus    + + + + + +',
-                    'css'   => "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-plus.svg') 12 repeat; }"
-                ],
-                'equals' => [
-                    'label' => 'ASCII Equals  = = = = = =',
-                    'css'   => "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-equals.svg') 12 repeat; }"
-                ],
-                'slash'  => [
-                    'label' => 'ASCII Slash   / / / / / /',
-                    'css'   => "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-slash.svg') 12 repeat; }"
-                ],
-                'border_thin' => [
-                    'label' => 'Thin Ink Border (1px)',
-                    'css'   => '{ border: 1px solid #888 !important; box-shadow: none !important; }'
-                ],
-                'border_medium' => [
-                    'label' => 'Medium Ink Border (2px)',
-                    'css'   => '{ border: 2px solid #777 !important; box-shadow: none !important; }'
-                ],
-                'none' => [
-                    'label' => 'No Frame',
-                    'css'   => '{ border: none !important; box-shadow: none !important; }'
-                ]
-            ]
-        ],
-
-        'archive_frame_weight' => [
-            'section'  => 'PRINT HEAD',
-            'type'     => 'range',
-            'label'    => 'Archive Thumb Border Weight (px)',
-            'default'  => '6',
-            'min'      => '2',
-            'max'      => '16',
-            'selector' => '.square-grid .thumb-link, .cropped-grid .thumb-link',
-            'property' => 'border-width'
         ],
 
         'inline_frame_style' => [

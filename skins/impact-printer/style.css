@@ -554,7 +554,11 @@ body {
     display: block !important;
     width: 100% !important;
     height: 100% !important;
-    border: 1px solid var(--border);
+    border-style: solid;
+    border-color: transparent;
+    border-image: url('skins/impact-printer/textures/border-box.svg') 12 repeat;
+    border-width: 12px;
+    padding: 16px;
     box-shadow: none;
     box-sizing: border-box;
 }
@@ -581,7 +585,11 @@ body {
     width: 100% !important;
     overflow: hidden;
     aspect-ratio: 3 / 2 !important;
-    border: 1px solid var(--border);
+    border-style: solid;
+    border-color: transparent;
+    border-image: url('skins/impact-printer/textures/border-box.svg') 12 repeat;
+    border-width: 12px;
+    padding: 16px;
     box-shadow: none;
     box-sizing: border-box;
 }
