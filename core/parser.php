@@ -321,15 +321,17 @@ class SnapSmack {
                     $final_path = $raw_path;
                 }
 
-                $full_src = $base . $final_path;
-                $classes  = "snap-framed-img asset-$size align-$align";
+                $full_src     = $base . $final_path;
+                $full_url     = $base . $raw_path;   // always original file, never a thumb
+                $classes      = "snap-framed-img asset-$size align-$align";
 
                 return sprintf(
-                    '<div class="snap-inline-frame align-%s"><div class="ip-ascii-frame-inner"><img src="%s" class="%s" alt="%s" loading="lazy"></div></div>',
+                    '<div class="snap-inline-frame align-%s"><div class="ip-ascii-frame-inner"><img src="%s" class="%s" alt="%s" loading="lazy" data-lightbox-src="%s" style="cursor:zoom-in"></div></div>',
                     $align,
                     $full_src,
                     $classes,
-                    htmlspecialchars($asset['name'])
+                    htmlspecialchars($asset['name']),
+                    htmlspecialchars($full_url)
                 );
             },
             $content

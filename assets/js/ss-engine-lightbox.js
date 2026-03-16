@@ -2,8 +2,13 @@
  * SNAPSMACK - Lightbox Engine
  * Alpha v0.7.4
  *
- * Full-screen image viewer with fade-in overlay. Click/tap to open, click to
- * close or press ESC. Guards against double-loading with internal flag.
+ * Full-screen image viewer with fade-in overlay. Handles:
+ *   - Single post image (.post-image / .pg-post-image) on layout/archive views
+ *   - Inline page images rendered by the [img:ID|size|align] shortcode parser
+ *     (identified by the data-lightbox-src attribute)
+ *
+ * Click/tap to open, click overlay or press ESC to close.
+ * Guards against double-loading with internal flag.
  *
  * NOTE: Scripts are loaded at the end of <body> by skin-footer.php so
  * DOMContentLoaded will have already fired by the time this executes. Use
@@ -14,16 +19,13 @@ if (!window._ssLightboxLoaded) {
 window._ssLightboxLoaded = true;
 
 function _ssLightboxInit() {
-    const photo = document.querySelector('.post-image, .pg-post-image');
-    if (!photo) return;
-
-    photo.style.cursor = 'zoom-in';
-    let activeOverlay = null;
 
     // --- CONFIGURATION ---
     const opacitySetting = (window.SMACK_CONFIG && window.SMACK_CONFIG.lightbox && window.SMACK_CONFIG.lightbox.opacity)
         ? window.SMACK_CONFIG.lightbox.opacity
         : '0.8';
+
+    let activeOverlay = null;
 
     // --- OVERLAY REMOVAL ---
     const removeOverlay = () => {
@@ -35,10 +37,13 @@ function _ssLightboxInit() {
             }
             activeOverlay = null;
         }, 180);
+        // Unregister hotkey
+        if (window.smackdown) window.smackdown.closeLightbox = null;
     };
 
     // --- OPEN FUNCTION ---
-    const openLightbox = () => {
+    // src: URL of the full-size image to display
+    const openLightbox = (src) => {
         if (activeOverlay) return;
 
         const overlay = document.createElement('div');
@@ -51,7 +56,7 @@ function _ssLightboxInit() {
         `;
 
         const big = document.createElement('img');
-        big.src = photo.src;
+        big.src = src;
         big.style.cssText = "max-width:95vw; max-height:95vh; box-shadow:0 0 40px rgba(0,0,0,0.8); object-fit:contain;";
 
         overlay.appendChild(big);
@@ -71,16 +76,40 @@ function _ssLightboxInit() {
         window.smackdown.closeLightbox = removeOverlay;
     };
 
-    // Touch: fire on finger-up, no 300ms synthetic-click delay.
-    photo.addEventListener('touchend', (e) => {
-        if (e.target.closest('a, button')) return;
-        e.preventDefault();
-        openLightbox();
-    }, { passive: false });
+    // -------------------------------------------------------------------------
+    //  1. SINGLE POST IMAGE  (.post-image / .pg-post-image)
+    //     Existing behaviour — direct src of the rendered image element.
+    // -------------------------------------------------------------------------
+    const photo = document.querySelector('.post-image, .pg-post-image');
+    if (photo) {
+        photo.style.cursor = 'zoom-in';
 
-    // Mouse / desktop click
-    photo.addEventListener('click', () => {
-        openLightbox();
+        photo.addEventListener('touchend', (e) => {
+            if (e.target.closest('a, button')) return;
+            e.preventDefault();
+            openLightbox(photo.src);
+        }, { passive: false });
+
+        photo.addEventListener('click', () => {
+            openLightbox(photo.src);
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    //  2. INLINE PAGE IMAGES  (img[data-lightbox-src])
+    //     Rendered by core/parser.php from [img:ID|size|align] shortcodes.
+    //     data-lightbox-src always points to the full-size original file.
+    // -------------------------------------------------------------------------
+    document.querySelectorAll('img[data-lightbox-src]').forEach(img => {
+        img.addEventListener('touchend', (e) => {
+            if (e.target.closest('a, button')) return;
+            e.preventDefault();
+            openLightbox(img.dataset.lightboxSrc);
+        }, { passive: false });
+
+        img.addEventListener('click', () => {
+            openLightbox(img.dataset.lightboxSrc);
+        });
     });
 }
 
