@@ -105,7 +105,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (reactionTrigger && reactionPicker) {
 
             reactionTrigger.addEventListener('click', () => {
-                if (!loggedIn) { window.location.href = authUrl; return; }
+                if (!loggedIn) {
+                    var hud = document.getElementById('hud');
+                    if (hud) { hud.textContent = 'Sign in to react'; hud.classList.add('show'); setTimeout(function(){ hud.classList.remove('show'); }, 2500); }
+                    return;
+                }
                 const isOpen = !reactionPicker.hidden;
                 reactionPicker.hidden = isOpen;
                 reactionTrigger.setAttribute('aria-expanded', String(!isOpen));
@@ -387,7 +391,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Open / close picker on trigger click
             dockReactBtn.addEventListener('click', e => {
                 e.stopPropagation();
-                if (!dockLoggedIn) { window.location.href = dockAuthUrl; return; }
+                if (!dockLoggedIn) {
+                    var hud = document.getElementById('hud');
+                    if (hud) { hud.textContent = 'Sign in to react'; hud.classList.add('show'); setTimeout(function(){ hud.classList.remove('show'); }, 2500); }
+                    return;
+                }
                 const isOpen = !dockPicker.hidden;
                 dockPicker.hidden = isOpen;
                 dockReactBtn.setAttribute('aria-expanded', String(!isOpen));
