@@ -4,7 +4,7 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
-## 0.7.4b — "La-Z-Boy" (2026-03-16)
+## 0.7.4b — "Invalid Ring" (2026-03-15)
 
 ### Added
 - Anonymous likes: visitors can like posts without creating a community account. Tracked by SHA-256 hashed IP — no PII stored.
@@ -25,13 +25,19 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - True Grit footer `padding` stripped of `!important` so footer height slider works from manifest.
 - Downloads simplified to global-only — per-post `allow_download` gate removed from `download.php` and `core/download-overlay.php`.
 - Three separate `migrate-074b-*.sql` files consolidated into single `migrate-074b.sql`.
+- Forum page inline styles (~400 lines) extracted to `admin-theme-geometry-master.css` (layout) and `admin-theme-colours-midnight-lime.css` (colours). No more inline `<style>` block.
+- Help manual inline styles (~170 lines) extracted the same way. CSS variable references (`var(--accent)`, `var(--text-secondary)`, etc.) replaced with direct class selectors matching the admin theme system.
+- Box sub-structure classes (`.box-header`, `.box-body`, `.box-title`) added to `admin-theme-geometry-master.css` and themed in the midnight-lime colour file.
 
 ### Fixed
 - Consent banner fatal `PDOException`: query referenced non-existent columns `page_slug` and `page_status` — corrected to `slug` and `is_active`.
 - Reaction trigger button (smiley face) forced login redirect even though likes (heart) worked anonymously. Root cause: JS auth gate on `#ss-cdock-react-trigger` not removed when anonymous likes were added. Fixed by removing all auth redirects from reaction triggers in `ss-engine-community.js`.
+- Community forum fatal crash on PHP 8+: `count($cats)` called before `$cats` was defined (line 702 vs 710). Page rendered the header then died silently. Fixed by moving the assignment above the count call.
+- Help manual search input focus border was blue (`#6cf` from orphaned CSS variable fallback) instead of neon green (`#39FF14`). Now themed through the midnight-lime colour file.
+- Migration `migrate-074b.sql` rewritten for true idempotency: bare `ALTER TABLE` replaced with `INFORMATION_SCHEMA.COLUMNS` / `INFORMATION_SCHEMA.STATISTICS` existence checks and prepared statements. Safe to re-run on any install state.
 
 ### Migrations
-- `migrate-074b.sql`: adds `edited_at` to `snap_community_comments`, adds `guest_hash` column + index to both `snap_likes` and `snap_reactions`.
+- `migrate-074b.sql`: adds `edited_at` to `snap_community_comments`, adds `guest_hash` column + index to both `snap_likes` and `snap_reactions`. Fully idempotent — checks column/index existence before altering.
 
 ---
 
