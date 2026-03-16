@@ -396,6 +396,15 @@ return [
             'property' => 'color'
         ],
 
+        'header_nav_hover_color' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'color',
+            'label'    => 'Header / Nav Hover Colour',
+            'default'  => '#ffffff',
+            'selector' => '.nav-menu a:hover, .nav-menu a.active, .logo-area a:hover',
+            'property' => 'color'
+        ],
+
         'static_heading_font' => [
             'section'  => 'TYPOGRAPHY',
             'type'     => 'select',
@@ -443,6 +452,15 @@ return [
             'label'    => 'Footer Font Colour',
             'default'  => '#888888',
             'selector' => '#system-footer p, #sig-text, #system-footer .sep, #system-footer a',
+            'property' => 'color'
+        ],
+
+        'footer_link_hover_color' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'color',
+            'label'    => 'Footer Link Hover Colour',
+            'default'  => '#cccccc',
+            'selector' => '#system-footer a:hover',
             'property' => 'color'
         ],
 

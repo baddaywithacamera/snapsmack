@@ -329,7 +329,7 @@ body::before {
 
 #system-footer {
     background-color: transparent;
-    padding: 32px 0 !important;
+    padding: 32px 0;
     text-align: center !important;
     position: relative;
     width: 100% !important;
