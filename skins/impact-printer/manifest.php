@@ -171,6 +171,22 @@ return [
             'selector' => '.square-grid .thumb-link, .cropped-grid .thumb-link',
             'property' => 'custom-framing',
             'options'  => [
+                'box'    => [
+                    'label' => 'ASCII Box     +----|----+',
+                    'css'   => "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-box.svg') 12 repeat; }"
+                ],
+                'plus'   => [
+                    'label' => 'ASCII Plus    + + + + + +',
+                    'css'   => "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-plus.svg') 12 repeat; }"
+                ],
+                'equals' => [
+                    'label' => 'ASCII Equals  = = = = = =',
+                    'css'   => "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-equals.svg') 12 repeat; }"
+                ],
+                'slash'  => [
+                    'label' => 'ASCII Slash   / / / / / /',
+                    'css'   => "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-slash.svg') 12 repeat; }"
+                ],
                 'border_thin' => [
                     'label' => 'Thin Ink Border (1px)',
                     'css'   => '{ border: 1px solid #888 !important; box-shadow: none !important; }'
@@ -184,6 +200,17 @@ return [
                     'css'   => '{ border: none !important; box-shadow: none !important; }'
                 ]
             ]
+        ],
+
+        'archive_frame_weight' => [
+            'section'  => 'PRINT HEAD',
+            'type'     => 'range',
+            'label'    => 'Archive Thumb Border Weight (px)',
+            'default'  => '6',
+            'min'      => '2',
+            'max'      => '16',
+            'selector' => '.square-grid .thumb-link, .cropped-grid .thumb-link',
+            'property' => 'border-width'
         ],
 
         'inline_frame_style' => [
