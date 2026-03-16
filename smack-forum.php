@@ -266,6 +266,9 @@ require 'core/sidebar.php';
 ?>
 
 <div class="main">
+  <div class="header-row">
+    <h2>COMMUNITY FORUM</h2>
+  </div>
   <div class="dash-grid">
 
     <?php if (!$forum_enabled): ?>
@@ -304,8 +307,8 @@ require 'core/sidebar.php';
     <?php $cats = $api_data['categories'] ?? []; ?>
     <div class="box" style="grid-column: 1 / -1;">
       <div class="box-header">
-        <span class="box-title">COMMUNITY FORUM</span>
-        <span class="dim" style="font-size: 11px; margin-left: auto;"><?php echo count($cats); ?> BOARDS</span>
+        <span class="box-title">BOARDS</span>
+        <span class="box-title" style="margin-left: auto;"><?php echo count($cats); ?> BOARDS</span>
       </div>
       <div class="box-body">
 
@@ -320,7 +323,7 @@ require 'core/sidebar.php';
         <?php else: ?>
 
         <!-- Column labels -->
-        <div style="display:grid; grid-template-columns:4px 1fr 100px 100px; font-size:0.65rem; text-transform:uppercase; letter-spacing:1px; color:#444; padding:0 0 8px 0;">
+        <div class="dim" style="display:grid; grid-template-columns:4px 1fr 100px 100px; font-size:0.65rem; text-transform:uppercase; letter-spacing:1px; padding:0 0 8px 0;">
           <span></span>
           <span style="padding-left:20px;">Board</span>
           <span style="text-align:center;">Threads</span>
@@ -366,11 +369,11 @@ require 'core/sidebar.php';
     ?>
     <div class="box" style="grid-column: 1 / -1;">
       <div class="box-header">
-        <span class="box-title">
-          <a href="smack-forum.php" style="opacity:.45; text-decoration:none; font-weight:400;">FORUM</a>
+        <span class="box-title" style="font-weight:400;">
+          <a href="smack-forum.php" style="opacity:.45; text-decoration:none;">FORUM</a>
           &nbsp;/&nbsp;<?php echo htmlspecialchars(strtoupper($cat_name)); ?>
         </span>
-        <a href="smack-forum.php?view=new-thread&new_thread_cat=<?php echo $cat_id; ?>" class="forum-new-btn" style="margin-left:auto;">+ New Thread</a>
+        <a href="smack-forum.php?view=new-thread&new_thread_cat=<?php echo $cat_id; ?>" class="action-edit" style="margin-left:auto;">+ NEW THREAD</a>
       </div>
       <div class="box-body">
 
@@ -386,7 +389,7 @@ require 'core/sidebar.php';
         <?php else: ?>
 
         <!-- Column labels -->
-        <div style="display:grid; grid-template-columns:44px 1fr 64px 100px; font-size:0.65rem; text-transform:uppercase; letter-spacing:1px; color:#444; padding:0 16px 10px;">
+        <div class="dim" style="display:grid; grid-template-columns:44px 1fr 64px 100px; font-size:0.65rem; text-transform:uppercase; letter-spacing:1px; padding:0 16px 10px;">
           <span></span>
           <span style="padding-left:12px;">Topic</span>
           <span style="text-align:center;">Replies</span>
@@ -453,14 +456,14 @@ require 'core/sidebar.php';
     ?>
     <div class="box" style="grid-column: 1 / -1;">
       <div class="box-header">
-        <span class="box-title" style="font-size:0.72rem; font-weight:400;">
+        <span class="box-title" style="font-weight:400;">
           <a href="smack-forum.php" style="opacity:.45; text-decoration:none;">FORUM</a>
           &nbsp;/&nbsp;
           <a href="smack-forum.php?view=threads&cat=<?php echo (int)($thread['category_id'] ?? 0); ?>" style="opacity:.45; text-decoration:none;">
             <?php echo htmlspecialchars(strtoupper($thread['category_name'] ?? 'BOARD')); ?>
           </a>
         </span>
-        <a href="smack-forum.php?view=new-thread&new_thread_cat=<?php echo (int)($thread['category_id'] ?? 0); ?>" class="forum-new-btn" style="margin-left:auto;">+ New Thread</a>
+        <a href="smack-forum.php?view=new-thread&new_thread_cat=<?php echo (int)($thread['category_id'] ?? 0); ?>" class="action-edit" style="margin-left:auto;">+ NEW THREAD</a>
       </div>
       <div class="box-body">
 

@@ -83,7 +83,7 @@ try {
     // If search query looks like a hashtag, redirect to tag archive
     if ($search_query !== '' && $search_query[0] === '#') {
         $tag_candidate = substr($search_query, 1);
-        if (preg_match('/^[a-zA-Z][a-zA-Z0-9_]{0,49}$/', $tag_candidate)) {
+        if (preg_match('/^(?:[a-zA-Z][a-zA-Z0-9_]{0,49}|[0-9][0-9a-fA-F]{5})$/', $tag_candidate)) {
             header('Location: ' . BASE_URL . '?tag=' . rawurlencode(strtolower($tag_candidate)));
             exit;
         }
@@ -99,15 +99,19 @@ try {
     $params = [$now_local];
 
     if ($search_query !== '') {
-        // Search: join tags, match title/description/tags
+        // Search: join tags, match title/description/tags/colour-family
+        // color_family match enables "blue", "teal" etc. to return images tagged with
+        // matching hex colour codes (e.g. searching "teal" finds #007a8b-tagged images).
         $sql .= "LEFT JOIN snap_image_tags sit ON sit.image_id = i.id ";
         $sql .= "LEFT JOIN snap_tags st ON st.id = sit.tag_id ";
-        $like = '%' . $search_query . '%';
-        $tag_like = '%' . strtolower($search_query) . '%';
-        $where_clauses[] = "(i.img_title LIKE ? OR i.img_description LIKE ? OR st.slug LIKE ?)";
+        $like         = '%' . $search_query . '%';
+        $tag_like     = '%' . strtolower($search_query) . '%';
+        $family_exact = strtolower(trim($search_query));
+        $where_clauses[] = "(i.img_title LIKE ? OR i.img_description LIKE ? OR st.slug LIKE ? OR st.color_family = ?)";
         $params[] = $like;
         $params[] = $like;
         $params[] = $tag_like;
+        $params[] = $family_exact;
     } elseif ($cat_filter) {
         $sql .= "INNER JOIN snap_image_cat_map c ON i.id = c.image_id ";
         $where_clauses[] = "c.cat_id = ?";
@@ -131,11 +135,22 @@ try {
     $all_albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
 
     // Matching tags (shown when searching)
+    // Includes colour-family matches so searching "teal" surfaces #007a8b etc.
     $matched_tags = [];
     if ($search_query !== '') {
-        $tag_like = '%' . strtolower($search_query) . '%';
-        $tag_stmt = $pdo->prepare("SELECT slug, use_count FROM snap_tags WHERE slug LIKE ? AND use_count > 0 ORDER BY use_count DESC LIMIT 8");
-        $tag_stmt->execute([$tag_like]);
+        $tag_like     = '%' . strtolower($search_query) . '%';
+        $family_exact = strtolower(trim($search_query));
+        $tag_stmt = $pdo->prepare("
+            SELECT slug, use_count, color_family
+            FROM snap_tags
+            WHERE (slug LIKE ? OR color_family = ?)
+              AND use_count > 0
+            ORDER BY
+                CASE WHEN color_family = ? THEN 0 ELSE 1 END,
+                use_count DESC
+            LIMIT 8
+        ");
+        $tag_stmt->execute([$tag_like, $family_exact, $family_exact]);
         $matched_tags = $tag_stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

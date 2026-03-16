@@ -162,7 +162,7 @@ if ($above_download) $dock_classes .= ' ss-cdock-above-download';
                 title="<?php echo $user_liked ? 'Unlike' : 'Like'; ?>"
                 aria-label="<?php echo $user_liked ? 'Unlike' : 'Like'; ?>"
                 aria-pressed="<?php echo $user_liked ? 'true' : 'false'; ?>">
-            <span class="ss-cdock-emoji"><?php echo $user_liked ? '♥' : '♡'; ?></span>
+            <span class="ss-cdock-emoji ss-cdock-heart-svg"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></span>
             <?php if ($like_count > 0): ?>
                 <span class="ss-cdock-rx-count"><?php echo $like_count; ?></span>
             <?php endif; ?>
@@ -205,7 +205,7 @@ if ($above_download) $dock_classes .= ' ss-cdock-above-download';
             <?php if ($user_reaction && isset($reaction_registry[$user_reaction])): ?>
                 <span class="ss-cdock-current-rx"><?php echo $reaction_registry[$user_reaction]['emoji']; ?></span>
             <?php elseif ($user_liked): ?>
-                <span class="ss-cdock-current-rx ss-cdock-heart-active">♥</span>
+                <span class="ss-cdock-current-rx ss-cdock-heart-active"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></span>
             <?php else: ?>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" aria-hidden="true">
                     <circle cx="12" cy="12" r="10"/>

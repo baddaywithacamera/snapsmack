@@ -138,7 +138,7 @@ try {
     // --- HASHTAG ARCHIVE ---
     // ?tag=slug routes to the skin's hashtag.php if it exists
     $requested_tag = trim($_GET['tag'] ?? '');
-    if ($requested_tag !== '' && preg_match('/^[a-zA-Z][a-zA-Z0-9_]{0,49}$/', $requested_tag)) {
+    if ($requested_tag !== '' && preg_match('/^(?:[a-zA-Z][a-zA-Z0-9_]{0,49}|[0-9][0-9a-fA-F]{5})$/', $requested_tag)) {
         $hashtag_template = __DIR__ . '/skins/' . $active_skin . '/hashtag.php';
         if (file_exists($hashtag_template)) {
             $requested_tag = strtolower($requested_tag); // normalise

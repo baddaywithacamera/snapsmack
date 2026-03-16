@@ -436,6 +436,13 @@ if ($action === 'stage_migrate'
             $_SESSION['update_state']['log'][] = ['label' => 'Asset sync', 'status' => 'ok', 'detail' => $sync_msg];
         }
 
+        // Backfill color_family for any pre-existing hex-colour tags.
+        require_once __DIR__ . '/core/snap-tags.php';
+        $backfilled = snap_backfill_color_families($pdo);
+        if ($backfilled > 0) {
+            $_SESSION['update_state']['log'][] = ['label' => 'Colour tag backfill', 'status' => 'ok', 'detail' => "{$backfilled} hex tag(s) classified"];
+        }
+
         // Store log for display after session clear
         $_SESSION['update_complete_log'] = $_SESSION['update_state']['log'];
         unset($_SESSION['update_state']);
@@ -542,6 +549,13 @@ if ($action === 'upload_zip' && !empty($_FILES['update_zip']['tmp_name'])) {
                         $sync_msg = asset_sync_run();
                         if ($sync_msg !== null) {
                             $upload_steps[] = ['label' => 'Asset sync', 'status' => 'ok', 'detail' => $sync_msg];
+                        }
+
+                        // Backfill color_family for any pre-existing hex-colour tags.
+                        require_once __DIR__ . '/core/snap-tags.php';
+                        $backfilled = snap_backfill_color_families($pdo);
+                        if ($backfilled > 0) {
+                            $upload_steps[] = ['label' => 'Colour tag backfill', 'status' => 'ok', 'detail' => "{$backfilled} hex tag(s) classified"];
                         }
 
                         $flash_msg  = $target_version ? "UPDATE COMPLETE VIA UPLOAD. NOW RUNNING v{$target_version}." : "PACKAGE EXTRACTED SUCCESSFULLY.";

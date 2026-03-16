@@ -34,10 +34,8 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - Reaction trigger button (smiley face) forced login redirect even though likes (heart) worked anonymously. Root cause: JS auth gate on `#ss-cdock-react-trigger` not removed when anonymous likes were added. Fixed by removing all auth redirects from reaction triggers in `ss-engine-community.js`.
 - Community forum fatal crash on PHP 8+: `count($cats)` called before `$cats` was defined (line 702 vs 710). Page rendered the header then died silently. Fixed by moving the assignment above the count call.
 - Help manual search input focus border was blue (`#6cf` from orphaned CSS variable fallback) instead of neon green (`#39FF14`). Now themed through the midnight-lime colour file.
-- Migration `migrate-074b.sql` rewritten for true idempotency: bare `ALTER TABLE` replaced with `INFORMATION_SCHEMA.COLUMNS` / `INFORMATION_SCHEMA.STATISTICS` existence checks and prepared statements. Safe to re-run on any install state.
-
 ### Migrations
-- `migrate-074b.sql`: adds `edited_at` to `snap_community_comments`, adds `guest_hash` column + index to both `snap_likes` and `snap_reactions`. Fully idempotent — checks column/index existence before altering.
+- `migrate-074b.sql`: adds `edited_at` to `snap_community_comments`, adds `guest_hash` column + index to both `snap_likes` and `snap_reactions`. Idempotent via the migration runner's errno 1060/1091 catch.
 
 ---
 

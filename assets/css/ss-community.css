@@ -75,9 +75,21 @@
 }
 
 .ss-like-icon {
-    font-size: 15px;
+    display: inline-flex;
+    align-items: center;
     line-height: 1;
     transition: transform 0.1s;
+}
+
+.ss-like-icon svg {
+    fill: none;
+    stroke: #e05252;
+    stroke-width: 1.5;
+    transition: fill 0.15s ease;
+}
+
+.ss-like-btn.is-liked .ss-like-icon svg {
+    fill: #e05252;
 }
 
 .ss-like-btn.is-liked .ss-like-icon {
@@ -583,16 +595,36 @@
     color: #e05252;
 }
 
-/* --- HEART IN PICKER --- */
+/* --- SVG HEART IN PICKER --- */
+
+.ss-cdock-heart-svg svg {
+    fill: none;
+    stroke: #e05252;
+    stroke-width: 1.5;
+    transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.ss-cdock-heart.is-active .ss-cdock-heart-svg svg {
+    fill: #e05252;
+    stroke: #e05252;
+}
 
 .ss-cdock-heart.is-active {
-    color: #e05252;
     border-color: rgba(224, 82, 82, 0.5);
     background: rgba(224, 82, 82, 0.12);
 }
 
 .ss-cdock-heart.is-active:hover {
     background: rgba(224, 82, 82, 0.2);
+}
+
+/* Heart SVG in FAB button */
+.ss-cdock-heart-active svg {
+    fill: #e05252;
+    stroke: #e05252;
+    stroke-width: 1.5;
+    width: 20px;
+    height: 20px;
 }
 
 .ss-cdock-current-rx {
