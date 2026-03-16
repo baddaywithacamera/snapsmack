@@ -163,6 +163,28 @@ return [
             'property' => 'padding'
         ],
 
+        'inline_frame_weight' => [
+            'section'  => 'PRINT HEAD',
+            'type'     => 'range',
+            'label'    => 'Inline Image Border Weight (px)',
+            'default'  => '9',
+            'min'      => '4',
+            'max'      => '24',
+            'selector' => '.snap-inline-frame .ip-ascii-frame-inner',
+            'property' => 'border-width'
+        ],
+
+        'inline_frame_padding' => [
+            'section'  => 'PRINT HEAD',
+            'type'     => 'range',
+            'label'    => 'Inline Image Border Padding (px)',
+            'default'  => '8',
+            'min'      => '0',
+            'max'      => '24',
+            'selector' => '.snap-inline-frame .ip-ascii-frame-inner',
+            'property' => 'padding'
+        ],
+
         'archive_frame_style' => [
             'section'  => 'PRINT HEAD',
             'type'     => 'select',

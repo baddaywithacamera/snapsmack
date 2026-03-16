@@ -213,14 +213,6 @@ body {
     height: auto;
 }
 
-/* Inline images use the same ASCII border pattern as the hero but at ~half weight.
-   Higher specificity (0,2,0) wins over the compiled CSS (0,1,0) so the
-   border-image style is inherited while border-width and padding are scaled down.
-   Proportional: hero defaults to 18px border / 15px padding → inline 9px / 8px. */
-.snap-inline-frame .ip-ascii-frame-inner {
-    border-width: 9px;
-    padding: 8px;
-}
 
 /* Side border spans no longer needed — hide them */
 .ip-border-left,
@@ -1010,10 +1002,6 @@ body {
         padding: 10px !important;
     }
 
-    .snap-inline-frame .ip-ascii-frame-inner {
-        border-width: 7px !important;
-        padding: 5px !important;
-    }
 }
 
 /* ==========================================================================
@@ -1047,11 +1035,6 @@ body {
     .ip-ascii-frame-inner {
         border-width: 10px !important;
         padding: 6px !important;
-    }
-
-    .snap-inline-frame .ip-ascii-frame-inner {
-        border-width: 5px !important;
-        padding: 3px !important;
     }
 
     .ip-border-left,
@@ -1099,11 +1082,6 @@ body {
     .ip-ascii-frame-inner {
         border-width: 6px !important;
         padding: 3px !important;
-    }
-
-    .snap-inline-frame .ip-ascii-frame-inner {
-        border-width: 4px !important;
-        padding: 2px !important;
     }
 
     .nav-links {
