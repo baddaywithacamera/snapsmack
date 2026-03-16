@@ -45,6 +45,17 @@ if ($community_user) {
     $ul_stmt = $pdo->prepare("SELECT id FROM snap_likes WHERE post_id = ? AND user_id = ? LIMIT 1");
     $ul_stmt->execute([$post_id, $community_user['id']]);
     $user_liked = (bool)$ul_stmt->fetchColumn();
+} else {
+    // Anonymous like check via hashed IP (no PII stored)
+    try {
+        $_like_salt  = $settings['download_salt'] ?? 'snapsmack-default-salt-change-me';
+        $_guest_hash = hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0') . $_like_salt);
+        $ul_stmt = $pdo->prepare("SELECT id FROM snap_likes WHERE post_id = ? AND guest_hash = ? LIMIT 1");
+        $ul_stmt->execute([$post_id, $_guest_hash]);
+        $user_liked = (bool)$ul_stmt->fetchColumn();
+    } catch (PDOException $e) {
+        // guest_hash column doesn't exist yet — pre-migration, skip
+    }
 }
 
 // --- REACTIONS ---

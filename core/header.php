@@ -49,9 +49,11 @@ try {
  * Session help persistence: if the user has already seen the help tutorial
  * this session, set a flag so hotkey-engine.js can respect it.
  */
-if (sessionStorage.getItem('snapsmack_help_seen')) {
-    window.HIDE_SNAP_HELP = true;
-}
+try {
+    if (sessionStorage.getItem('snapsmack_help_seen')) {
+        window.HIDE_SNAP_HELP = true;
+    }
+} catch(e) { /* storage blocked or consent not granted */ }
 </script>
 
 <div class="logo-area">

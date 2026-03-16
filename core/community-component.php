@@ -97,10 +97,6 @@ $reaction_map = [];  // reaction_code => count
 $user_reaction = null;
 
 if ($show_likes || $show_reactions) {
-    $like_count = (int)$pdo->prepare("SELECT COUNT(*) FROM snap_likes WHERE post_id = ?")
-                            ->execute([$post_id]) ? $pdo->query("SELECT COUNT(*) FROM snap_likes WHERE post_id = {$post_id}")->fetchColumn() : 0;
-
-    // Cleaner like count fetch
     $lc_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_likes WHERE post_id = ?");
     $lc_stmt->execute([$post_id]);
     $like_count = (int)$lc_stmt->fetchColumn();
@@ -109,6 +105,17 @@ if ($show_likes || $show_reactions) {
         $ul_stmt = $pdo->prepare("SELECT id FROM snap_likes WHERE post_id = ? AND user_id = ? LIMIT 1");
         $ul_stmt->execute([$post_id, $community_user['id']]);
         $user_liked = (bool)$ul_stmt->fetchColumn();
+    } else {
+        // Anonymous like check via hashed IP
+        try {
+            $_like_salt  = $settings['download_salt'] ?? 'snapsmack-default-salt-change-me';
+            $_guest_hash = hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0') . $_like_salt);
+            $ul_stmt = $pdo->prepare("SELECT id FROM snap_likes WHERE post_id = ? AND guest_hash = ? LIMIT 1");
+            $ul_stmt->execute([$post_id, $_guest_hash]);
+            $user_liked = (bool)$ul_stmt->fetchColumn();
+        } catch (PDOException $e) {
+            // guest_hash column doesn't exist yet — pre-migration
+        }
     }
 }
 
@@ -129,8 +136,14 @@ if ($show_reactions) {
 // LEFT JOIN so guest comments (user_id IS NULL) are included alongside account comments.
 $community_comments = [];
 if ($show_comments) {
+    // Check whether the edited_at column exists yet (added in 0.7.4b).
+    // If it doesn't, omit it so sites that haven't run the migration don't
+    // blow up with a fatal PDOException.
+    $_cc_cols = $pdo->query("SHOW COLUMNS FROM snap_community_comments LIKE 'edited_at'")->fetchColumn();
+    $_edited_col = $_cc_cols ? 'cc.edited_at' : 'NULL AS edited_at';
+
     $cc_stmt = $pdo->prepare("
-        SELECT cc.id, cc.comment_text, cc.created_at, cc.edited_at,
+        SELECT cc.id, cc.comment_text, cc.created_at, {$_edited_col},
                cu.username, cu.display_name, cu.avatar_url,
                cc.guest_name, cc.guest_email,
                CASE WHEN cc.user_id IS NULL THEN 1 ELSE 0 END AS is_guest
@@ -230,9 +243,9 @@ $reaction_set = [
 
         <?php endif; // show_reactions ?>
 
-        <?php if (!$community_user): ?>
+        <?php if (!$community_user && $show_reactions): ?>
         <div class="ss-auth-nudge">
-            <a href="<?php echo htmlspecialchars($auth_url); ?>">Sign in</a> to like<?php echo $show_reactions ? ' and react' : ''; ?>
+            <a href="<?php echo htmlspecialchars($auth_url); ?>">Sign in</a> to react
         </div>
         <?php endif; ?>
 

@@ -114,8 +114,19 @@ return [
             'type'     => 'color',
             'label'    => 'Header Background',
             'default'  => '#1a1a1a',
-            'selector' => '#tg-header',
-            'property' => 'background-color'
+            'selector' => ':root',
+            'property' => '--header-bg'
+        ],
+
+        'header_opacity' => [
+            'section'  => 'WALL TEXTURE',
+            'type'     => 'range',
+            'label'    => 'Header Opacity (%)',
+            'default'  => '100',
+            'min'      => '0',
+            'max'      => '100',
+            'selector' => ':root',
+            'property' => '--header-opacity'
         ],
 
         'footer_bg_color' => [
@@ -123,8 +134,19 @@ return [
             'type'     => 'color',
             'label'    => 'Footer Background',
             'default'  => '#1e1e1e',
-            'selector' => '#system-footer',
-            'property' => 'background-color'
+            'selector' => ':root',
+            'property' => '--footer-bg'
+        ],
+
+        'footer_opacity' => [
+            'section'  => 'WALL TEXTURE',
+            'type'     => 'range',
+            'label'    => 'Footer Opacity (%)',
+            'default'  => '100',
+            'min'      => '0',
+            'max'      => '100',
+            'selector' => ':root',
+            'property' => '--footer-opacity'
         ],
 
         /* ============================================================
@@ -365,6 +387,15 @@ return [
             'property' => 'font-weight'
         ],
 
+        'header_nav_color' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'color',
+            'label'    => 'Header / Nav Font Colour',
+            'default'  => '#cccccc',
+            'selector' => '.nav-menu a, .site-title-text, .logo-area a',
+            'property' => 'color'
+        ],
+
         'static_heading_font' => [
             'section'  => 'TYPOGRAPHY',
             'type'     => 'select',
@@ -406,6 +437,15 @@ return [
             'property' => 'font-size'
         ],
 
+        'footer_font_color' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'color',
+            'label'    => 'Footer Font Colour',
+            'default'  => '#888888',
+            'selector' => '#system-footer p, #sig-text, #system-footer .sep, #system-footer a',
+            'property' => 'color'
+        ],
+
         /* ============================================================
            SECTION 6: VERTICAL LOCKS
            ============================================================ */
@@ -414,7 +454,7 @@ return [
             'section'  => 'VERTICAL LOCKS',
             'type'     => 'range',
             'label'    => 'Optical Vertical Lift (px)',
-            'default'  => '50',
+            'default'  => '0',
             'min'      => '0',
             'max'      => '150',
             'selector' => '#tg-photobox',

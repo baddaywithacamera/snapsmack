@@ -141,7 +141,7 @@ function scrollToFooter() {
 function createHelpToast() {
     const isMobile = window.innerWidth <= 768 || window.matchMedia("(pointer: coarse)").matches;
     if (isMobile) return;
-    if (localStorage.getItem('snapsmack_help_seen') === 'true' || window.HIDE_SNAP_HELP) return;
+    if ((window.snapConsent && window.snapConsent.ok() && localStorage.getItem('snapsmack_help_seen') === 'true') || window.HIDE_SNAP_HELP) return;
 
     const { bgColor, textColor } = getThemeColors();
 
@@ -163,7 +163,7 @@ function createHelpToast() {
 
     setTimeout(() => {
         toast.style.opacity = '0';
-        localStorage.setItem('snapsmack_help_seen', 'true');
+        if (window.snapConsent && window.snapConsent.ok()) localStorage.setItem('snapsmack_help_seen', 'true');
     }, 5000);
 
     setTimeout(() => { if(toast.parentNode) toast.parentNode.removeChild(toast); }, 6000);
