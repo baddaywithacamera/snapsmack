@@ -163,28 +163,6 @@ return [
             'property' => 'padding'
         ],
 
-        'inline_frame_weight' => [
-            'section'  => 'PRINT HEAD',
-            'type'     => 'range',
-            'label'    => 'Inline Image Border Weight (px)',
-            'default'  => '9',
-            'min'      => '4',
-            'max'      => '24',
-            'selector' => '.snap-inline-frame .ip-ascii-frame-inner',
-            'property' => 'border-width'
-        ],
-
-        'inline_frame_padding' => [
-            'section'  => 'PRINT HEAD',
-            'type'     => 'range',
-            'label'    => 'Inline Image Border Padding (px)',
-            'default'  => '8',
-            'min'      => '0',
-            'max'      => '24',
-            'selector' => '.snap-inline-frame .ip-ascii-frame-inner',
-            'property' => 'padding'
-        ],
-
         'archive_frame_style' => [
             'section'  => 'PRINT HEAD',
             'type'     => 'select',
@@ -206,6 +184,59 @@ return [
                     'css'   => '{ border: none !important; box-shadow: none !important; }'
                 ]
             ]
+        ],
+
+        'inline_frame_style' => [
+            'section'  => 'PRINT HEAD',
+            'type'     => 'select',
+            'label'    => 'Inline Image Frame Style',
+            'default'  => 'box',
+            'selector' => '.snap-inline-frame .ip-ascii-frame-inner',
+            'property' => 'custom-framing',
+            'options'  => [
+                'box'    => [
+                    'label' => 'ASCII Box     +----|----+',
+                    'css'   => "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-box.svg') 12 repeat; }"
+                ],
+                'plus'   => [
+                    'label' => 'ASCII Plus    + + + + + +',
+                    'css'   => "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-plus.svg') 12 repeat; }"
+                ],
+                'equals' => [
+                    'label' => 'ASCII Equals  = = = = = =',
+                    'css'   => "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-equals.svg') 12 repeat; }"
+                ],
+                'slash'  => [
+                    'label' => 'ASCII Slash   / / / / / /',
+                    'css'   => "{ border-style: solid; border-color: transparent; border-image: url('skins/impact-printer/textures/border-slash.svg') 12 repeat; }"
+                ],
+                'none'   => [
+                    'label' => 'No Frame',
+                    'css'   => '{ border: none !important; }'
+                ],
+            ]
+        ],
+
+        'inline_frame_weight' => [
+            'section'  => 'PRINT HEAD',
+            'type'     => 'range',
+            'label'    => 'Inline Image Border Weight (px)',
+            'default'  => '9',
+            'min'      => '4',
+            'max'      => '24',
+            'selector' => '.snap-inline-frame .ip-ascii-frame-inner',
+            'property' => 'border-width'
+        ],
+
+        'inline_frame_padding' => [
+            'section'  => 'PRINT HEAD',
+            'type'     => 'range',
+            'label'    => 'Inline Image Border Padding (px)',
+            'default'  => '8',
+            'min'      => '0',
+            'max'      => '24',
+            'selector' => '.snap-inline-frame .ip-ascii-frame-inner',
+            'property' => 'padding'
         ],
 
         /* ============================================================
