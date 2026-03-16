@@ -406,6 +406,24 @@ return [
             'property' => 'color'
         ],
 
+        'accent_color' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'color',
+            'label'    => 'Link / Accent Colour',
+            'default'  => '#888888',
+            'selector' => ':root',
+            'property' => '--accent'
+        ],
+
+        'accent_hover_color' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'color',
+            'label'    => 'Link / Accent Hover Colour',
+            'default'  => '#ffffff',
+            'selector' => ':root',
+            'property' => '--accent-hover'
+        ],
+
         'static_heading_font' => [
             'section'  => 'TYPOGRAPHY',
             'type'     => 'select',
