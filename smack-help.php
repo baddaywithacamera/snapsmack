@@ -525,9 +525,11 @@ They are processed by the parser and converted to HTML when the page is displaye
 <p>Inline images open a full-screen lightbox viewer when clicked or tapped. The lightbox
 always shows the full-size original file, regardless of the size variant specified in
 the shortcode.</p>
-<p>In the Impact Printer skin, inline images automatically inherit the hero ASCII border
-style. Border weight and padding for inline images are controlled independently under
-<strong>Smooth Your Skin → PRINT HEAD → Inline Image Border Weight / Padding</strong>.</p>
+<p>In the Impact Printer skin, all three image contexts — hero, archive thumbnails, and
+inline page images — have independent ASCII border controls under
+<strong>Smooth Your Skin → PRINT HEAD</strong>. Each has its own style picker
+(box / plus / equals / slash / none) and weight slider. The archive thumb and inline
+pickers default to a smaller weight than the hero for visual hierarchy.</p>
 
 <h4>Multi-Column Layout</h4>
 <pre>[columns=N]
