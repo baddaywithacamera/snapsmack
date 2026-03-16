@@ -15,6 +15,44 @@ if (!is_dir($target_dir)) {
     mkdir($target_dir, 0755, true);
 }
 
+// --- ASSET SWAP ---
+// Replaces an existing asset's file while preserving its ID and all shortcode
+// references ([img:ID|size|align] embeds in pages remain valid automatically).
+if (isset($_POST['swap_id']) && isset($_FILES['file'])) {
+    $swap_id = (int)$_POST['swap_id'];
+
+    $stmt = $pdo->prepare("SELECT asset_path FROM snap_assets WHERE id = ?");
+    $stmt->execute([$swap_id]);
+    $old_path = $stmt->fetchColumn();
+
+    if (!$old_path) {
+        header('HTTP/1.1 404 Not Found');
+        echo json_encode(['status' => 'error', 'msg' => 'Asset not found']);
+        exit;
+    }
+
+    // Purge the old file from disk.
+    if (file_exists($old_path)) {
+        unlink($old_path);
+    }
+
+    // Store the replacement under a new filename.
+    $file_ext   = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
+    $file_name  = time() . '_' . uniqid() . '.' . $file_ext;
+    $target_file = $target_dir . $file_name;
+
+    if (move_uploaded_file($_FILES['file']['tmp_name'], $target_file)) {
+        $checksum = hash_file('sha256', $target_file);
+        $pdo->prepare("UPDATE snap_assets SET asset_name = ?, asset_path = ?, asset_checksum = ? WHERE id = ?")
+            ->execute([$_FILES['file']['name'], $target_file, $checksum, $swap_id]);
+        echo json_encode(['status' => 'success']);
+    } else {
+        header('HTTP/1.1 500 Internal Server Error');
+        echo json_encode(['status' => 'error', 'msg' => 'Upload failed']);
+    }
+    exit;
+}
+
 // --- AJAX FILE UPLOAD HANDLER ---
 // Processes asynchronous file uploads and returns JSON response.
 if (isset($_FILES['file'])) {
@@ -67,7 +105,7 @@ include 'core/sidebar.php';
 
     <div class="box">
         <h3>INJECT GLOBAL ASSET</h3>
-        
+
         <div class="progress-container" id="p-container">
             <div class="progress-bar" id="p-bar"></div>
         </div>
@@ -87,7 +125,7 @@ include 'core/sidebar.php';
                     <div class="asset-thumb-wrapper">
                         <img src="<?php echo $a['asset_path']; ?>" alt="Asset">
                     </div>
-                    
+
                     <div class="asset-info">
                         <div class="asset-controls">
                             <div class="control-group">
@@ -112,8 +150,17 @@ include 'core/sidebar.php';
                         <div class="compact-preview shortcode-display" onclick="copyToClipboard(this)">
                             [img:<?php echo $a['id']; ?>|full|center]
                         </div>
-                        
+
                         <div class="asset-actions">
+                            <!-- Hidden file input wired to this specific asset -->
+                            <input type="file"
+                                   id="swap-input-<?php echo $a['id']; ?>"
+                                   accept="image/*"
+                                   style="display:none"
+                                   data-asset-id="<?php echo $a['id']; ?>">
+                            <button type="button"
+                                    class="action-edit"
+                                    onclick="document.getElementById('swap-input-<?php echo $a['id']; ?>').click()">SWAP</button>
                             <a href="?delete=<?php echo $a['id']; ?>" class="action-delete-link" onclick="return confirm('Purge Asset?')">PURGE</a>
                         </div>
                     </div>
@@ -124,18 +171,18 @@ include 'core/sidebar.php';
 </div>
 
 <script>
-const fileInput = document.getElementById('file-input');
-const pContainer = document.getElementById('p-container');
-const pBar = document.getElementById('p-bar');
-const nameDisplay = document.getElementById('file-name-display');
+const fileInput    = document.getElementById('file-input');
+const pContainer   = document.getElementById('p-container');
+const pBar         = document.getElementById('p-bar');
+const nameDisplay  = document.getElementById('file-name-display');
 
 /**
  * Updates the shortcode string in the UI based on dropdown values.
  */
 function updateShortcode(id) {
-    const card = document.getElementById('asset-' + id);
-    const size = card.querySelector('.size-select').value;
-    const align = card.querySelector('.align-select').value;
+    const card    = document.getElementById('asset-' + id);
+    const size    = card.querySelector('.size-select').value;
+    const align   = card.querySelector('.align-select').value;
     const display = card.querySelector('.shortcode-display');
     display.innerText = `[img:${id}|${size}|${align}]`;
 }
@@ -188,6 +235,46 @@ function copyToClipboard(element) {
         setTimeout(() => { element.innerText = original; }, 1000);
     });
 }
+
+/**
+ * Swap an existing asset's file without changing its ID.
+ * All [img:ID|...] shortcodes in pages continue to work automatically.
+ */
+document.querySelectorAll('[id^="swap-input-"]').forEach(function(input) {
+    input.addEventListener('change', function() {
+        if (!this.files || !this.files[0]) return;
+        const assetId = this.dataset.assetId;
+        const card    = document.getElementById('asset-' + assetId);
+        const thumb   = card.querySelector('.asset-thumb-wrapper img');
+        const swapBtn = card.querySelector('.action-edit');
+
+        // Visual feedback while uploading
+        thumb.style.opacity   = '0.35';
+        swapBtn.disabled      = true;
+        swapBtn.textContent   = '...';
+
+        const formData = new FormData();
+        formData.append('swap_id', assetId);
+        formData.append('file', this.files[0]);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', 'smack-media.php', true);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                location.reload();
+            } else {
+                thumb.style.opacity  = '1';
+                swapBtn.disabled     = false;
+                swapBtn.textContent  = 'SWAP';
+                alert('Swap failed. Try again.');
+            }
+        };
+        xhr.send(formData);
+
+        // Reset so the same filename can be chosen again if needed
+        this.value = '';
+    });
+});
 </script>
 
 <?php include 'core/admin-footer.php'; ?>
