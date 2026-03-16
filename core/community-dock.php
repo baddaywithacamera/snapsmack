@@ -150,15 +150,31 @@ if ($above_download) $dock_classes .= ' ss-cdock-above-download';
      data-reactions="<?php echo $reactions_on && !empty($active_reactions) ? '1' : '0'; ?>">
 
     <?php // ================================================================
-          // REACTION PICKER (expands from trigger, above the main buttons)
+          // UNIFIED PICKER (heart/like first, then reactions)
+          // Always renders — at minimum the heart is shown.
           // ============================================================ ?>
-    <?php if ($reactions_on && !empty($active_reactions)): ?>
     <div class="ss-cdock-picker" hidden role="dialog" aria-label="Reactions">
-        <?php foreach ($active_reactions as $code):
-            if (!isset($reaction_registry[$code])) continue;
-            $rx      = $reaction_registry[$code];
-            $count   = $reaction_counts[$code] ?? 0;
-            $is_mine = ($user_reaction === $code);
+
+        <?php // --- Heart / Like (always first) --- ?>
+        <button class="ss-cdock-reaction ss-cdock-heart <?php echo $user_liked ? 'is-active' : ''; ?>"
+                data-action="like"
+                data-liked="<?php echo $user_liked ? '1' : '0'; ?>"
+                title="<?php echo $user_liked ? 'Unlike' : 'Like'; ?>"
+                aria-label="<?php echo $user_liked ? 'Unlike' : 'Like'; ?>"
+                aria-pressed="<?php echo $user_liked ? 'true' : 'false'; ?>">
+            <span class="ss-cdock-emoji"><?php echo $user_liked ? '♥' : '♡'; ?></span>
+            <?php if ($like_count > 0): ?>
+                <span class="ss-cdock-rx-count"><?php echo $like_count; ?></span>
+            <?php endif; ?>
+        </button>
+
+        <?php // --- Reaction emojis --- ?>
+        <?php if ($reactions_on && !empty($active_reactions)):
+            foreach ($active_reactions as $code):
+                if (!isset($reaction_registry[$code])) continue;
+                $rx      = $reaction_registry[$code];
+                $count   = $reaction_counts[$code] ?? 0;
+                $is_mine = ($user_reaction === $code);
         ?>
         <button class="ss-cdock-reaction <?php echo $is_mine ? 'is-active' : ''; ?>"
                 data-code="<?php echo htmlspecialchars($code); ?>"
@@ -170,25 +186,26 @@ if ($above_download) $dock_classes .= ' ss-cdock-above-download';
                 <span class="ss-cdock-rx-count"><?php echo $count; ?></span>
             <?php endif; ?>
         </button>
-        <?php endforeach; ?>
+        <?php endforeach; endif; ?>
+
     </div>
-    <?php endif; ?>
 
     <?php // ================================================================
-          // BUTTON CLUSTER (like + optional reaction trigger)
+          // BUTTON CLUSTER (single FAB — opens picker with heart + reactions)
           // ============================================================ ?>
     <div class="ss-cdock-buttons">
 
-        <?php if ($reactions_on && !empty($active_reactions)): ?>
-        <button class="ss-cdock-btn ss-cdock-react-btn <?php echo $user_reaction ? 'has-reaction' : ''; ?>"
+        <button class="ss-cdock-btn ss-cdock-react-btn <?php echo $user_reaction ? 'has-reaction' : ($user_liked ? 'is-liked' : ''); ?>"
                 id="ss-cdock-react-trigger"
                 aria-label="React to this photo"
                 aria-expanded="false"
                 title="<?php echo $user_reaction && isset($reaction_registry[$user_reaction])
                     ? htmlspecialchars($reaction_registry[$user_reaction]['label'])
-                    : 'Add reaction'; ?>">
+                    : ($user_liked ? 'Liked' : 'React'); ?>">
             <?php if ($user_reaction && isset($reaction_registry[$user_reaction])): ?>
                 <span class="ss-cdock-current-rx"><?php echo $reaction_registry[$user_reaction]['emoji']; ?></span>
+            <?php elseif ($user_liked): ?>
+                <span class="ss-cdock-current-rx ss-cdock-heart-active">♥</span>
             <?php else: ?>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" aria-hidden="true">
                     <circle cx="12" cy="12" r="10"/>
@@ -196,19 +213,6 @@ if ($above_download) $dock_classes .= ' ss-cdock-above-download';
                     <line x1="9" y1="9" x2="9.01" y2="9"/>
                     <line x1="15" y1="9" x2="15.01" y2="9"/>
                 </svg>
-            <?php endif; ?>
-        </button>
-        <?php endif; ?>
-
-        <button class="ss-cdock-btn ss-cdock-like-btn <?php echo $user_liked ? 'is-liked' : ''; ?>"
-                id="ss-cdock-like-btn"
-                data-liked="<?php echo $user_liked ? '1' : '0'; ?>"
-                aria-label="<?php echo $user_liked ? 'Unlike' : 'Like'; ?> this photo"
-                aria-pressed="<?php echo $user_liked ? 'true' : 'false'; ?>"
-                title="<?php echo $user_liked ? 'Unlike' : 'Like'; ?>">
-            <span class="ss-cdock-like-icon" aria-hidden="true"><?php echo $user_liked ? '♥' : '♡'; ?></span>
-            <?php if ($like_count > 0): ?>
-                <span class="ss-cdock-like-count"><?php echo $like_count; ?></span>
             <?php endif; ?>
         </button>
 

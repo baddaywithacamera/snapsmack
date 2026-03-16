@@ -74,8 +74,8 @@
 
 .dock-link .snap-download-icon {
     display: block;
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     position: relative;
 }
 
@@ -85,7 +85,7 @@
     left: 50%;
     top: 0;
     width: 2px;
-    height: 12px;
+    height: 13px;
     background: var(--dock-icon, #fff);
     transform: translateX(-50%);
 }
@@ -94,7 +94,7 @@
     content: '';
     position: absolute;
     left: 50%;
-    top: 7px;
+    top: 8px;
     width: 8px;
     height: 8px;
     border-right: 2px solid var(--dock-icon, #fff);
