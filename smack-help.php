@@ -600,6 +600,24 @@ on the active skin.</p>
     <li><strong>Global Downloads</strong> — master switch for the download button.
     Individual transmissions can still be toggled independently.</li>
 </ul>
+
+<h4>AI Training Crawlers</h4>
+<p>Controls whether AI companies can scrape your site content for model training.
+Three options:</p>
+<ul>
+    <li><strong>No Opinion (default)</strong> — no special directives are emitted. Standard
+    crawlers like Googlebot are unaffected. AI bots follow whatever default behaviour their
+    operators have set.</li>
+    <li><strong>Allow</strong> — explicitly permits known AI training crawlers (GPTBot,
+    ChatGPT-User, CCBot, Google-Extended, anthropic-ai, ClaudeBot, Bytespider) via
+    <code>Allow: /</code> directives in <code>robots.txt</code>.</li>
+    <li><strong>Disallow</strong> — blocks the same crawlers via <code>Disallow: /</code>
+    in <code>robots.txt</code> and adds <code>&lt;meta name="robots" content="noai, noimageai"&gt;</code>
+    to every page as a belt-and-suspenders measure for crawlers that honour the meta directive.</li>
+</ul>
+<p>The <code>robots.txt</code> file is regenerated every time you save Global Configuration.
+It also blocks public access to admin pages (<code>/smack-*</code>), <code>/core/</code>,
+<code>/backups/</code>, and <code>/migrations/</code> regardless of the AI policy setting.</p>
 HTML
 ];
 

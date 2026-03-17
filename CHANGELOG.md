@@ -16,9 +16,10 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
-## 0.7.4c — "La-Z-Boy" (2026-03-16)
+## 0.7.4c — "La-Z-Boy" (2026-03-17)
 
 ### Added
+- AI training crawler policy: new **AI Training Crawlers** setting in Global Config → Architecture & Interaction. Three modes — No Opinion (default), Allow, Disallow — control `robots.txt` directives for GPTBot, ChatGPT-User, CCBot, Google-Extended, anthropic-ai, ClaudeBot, and Bytespider. Disallow mode also injects `<meta name="robots" content="noai, noimageai">` on every page. `robots.txt` is regenerated on every Global Config save and always blocks `/smack-*`, `/core/`, `/backups/`, and `/migrations/`.
 - Media library asset swap: each asset card now has a **SWAP** button. Replaces the file on disk and updates the database record while preserving the asset ID, so all `[img:ID|...]` shortcodes already embedded in pages continue to resolve without any editing.
 - Inline `[img:]` page images now open the full-screen lightbox viewer on click or tap. The `data-lightbox-src` attribute always points to the original full-size file, regardless of whether the shortcode specifies `small`, `wall`, or `full` size.
 - Impact Printer: archive thumbnails now always use the ASCII box border (the same pattern as the hero image), hardcoded in `style.css` at 12 px weight with 16 px padding. No picker — just the box, chunky and consistent.

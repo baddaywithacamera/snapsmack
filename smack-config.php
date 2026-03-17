@@ -47,6 +47,36 @@ if (isset($_POST['save_settings'])) {
         $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
         $stmt->execute([$key, $val, $val]);
     }
+    // --- REGENERATE ROBOTS.TXT ---
+    // Build a robots.txt that reflects the AI training policy.
+    $ai_policy = $_POST['settings']['ai_training_policy'] ?? 'no_opinion';
+    $ai_bots   = ['GPTBot', 'ChatGPT-User', 'CCBot', 'Google-Extended', 'anthropic-ai', 'ClaudeBot', 'Bytespider'];
+
+    $robots  = "# SNAPSMACK — auto-generated robots.txt\n";
+    $robots .= "# Regenerated each time Global Configuration is saved.\n\n";
+    $robots .= "User-agent: *\n";
+    $robots .= "Disallow: /smack-*\n";
+    $robots .= "Disallow: /core/\n";
+    $robots .= "Disallow: /backups/\n";
+    $robots .= "Disallow: /migrations/\n\n";
+
+    if ($ai_policy === 'allow') {
+        foreach ($ai_bots as $bot) {
+            $robots .= "User-agent: {$bot}\n";
+            $robots .= "Allow: /\n\n";
+        }
+    } elseif ($ai_policy === 'disallow') {
+        foreach ($ai_bots as $bot) {
+            $robots .= "User-agent: {$bot}\n";
+            $robots .= "Disallow: /\n\n";
+        }
+    }
+    // 'no_opinion' = no AI-specific directives at all.
+
+    $robots .= "Sitemap: " . ($_POST['settings']['site_url'] ?? 'https://example.com/') . "sitemap.xml\n";
+
+    file_put_contents(__DIR__ . '/robots.txt', $robots);
+
     $msg = "Engine parameters updated successfully.";
 }
 
@@ -172,6 +202,16 @@ include 'core/sidebar.php';
                             <option value="1" <?php echo (($settings['search_enabled'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
                         </select>
                         <span class="dim">ENABLES FULL-TEXT SEARCH ON SKINS THAT SUPPORT IT (E.G. PHOTOGRAM).</span>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>AI TRAINING CRAWLERS</label>
+                        <select name="settings[ai_training_policy]">
+                            <option value="no_opinion" <?php echo (($settings['ai_training_policy'] ?? 'no_opinion') == 'no_opinion') ? 'selected' : ''; ?>>NO OPINION (DEFAULT)</option>
+                            <option value="allow" <?php echo (($settings['ai_training_policy'] ?? 'no_opinion') == 'allow') ? 'selected' : ''; ?>>ALLOW</option>
+                            <option value="disallow" <?php echo (($settings['ai_training_policy'] ?? 'no_opinion') == 'disallow') ? 'selected' : ''; ?>>DISALLOW</option>
+                        </select>
+                        <span class="dim">CONTROLS ROBOTS.TXT DIRECTIVES FOR GPTBOT, CLAUDEBOT, CCBOT, GOOGLE-EXTENDED, BYTESPIDER. REGENERATED ON SAVE.</span>
                     </div>
 
                     <div class="lens-input-wrapper">
