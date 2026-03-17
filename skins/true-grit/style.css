@@ -583,11 +583,15 @@ body::before {
 .static-content {
     max-width: 850px !important;
     margin: 0 auto 0 auto !important;
-    padding: 0 40px 50px 40px;
+    padding: 20px 40px 50px 40px;
     box-sizing: border-box;
     background: var(--bg-primary);
     text-align: left;
     overflow-x: hidden;
+}
+.static-content h2,
+.static-content h3 {
+    margin-top: 2em;
 }
 
 .static-content::after {
