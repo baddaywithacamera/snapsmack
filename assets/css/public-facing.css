@@ -59,7 +59,24 @@
     clear: both;
 }
 
-/* 4. CLEARFIX
+/* 4. PAGE HERO (STATIC PAGES)
+   -------------------------------------------------------------------------
+   Base styling for the hero image on static pages (page.php).
+   Skins override via .static-transmission #photobox.page-hero. */
+.page-hero {
+    margin-bottom: 0;
+}
+.page-hero .main-photo {
+    text-align: center;
+}
+.page-hero .main-photo img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+/* 5. CLEARFIX
    -------------------------------------------------------------------------
    Prevents floated images from overlapping following sections. 
    Targeting standard SnapSmack content containers. */

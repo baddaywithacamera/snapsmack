@@ -627,7 +627,7 @@ body::before {
     display: block !important;
 }
 
-.static-transmission #tg-photobox.page-hero {
+.static-transmission #photobox.page-hero {
     display: block !important;
     min-height: auto !important;
     padding: 0 !important;
