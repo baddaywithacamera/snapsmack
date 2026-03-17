@@ -97,13 +97,21 @@ class SnapSmack {
     private function autoParagraph($content) {
         // Protect existing block-level HTML and processed column blocks
         // by splitting around them and only wrapping the text fragments.
-        $block_tags = 'h[1-6]|div|blockquote|ul|ol|li|table|thead|tbody|tr|td|th|figure|figcaption|pre|hr|form|section|article|aside|nav|header|footer|p';
+        //
+        // Top-level block elements only. Child-only elements (li, td, th,
+        // tr, thead, tbody) are always nested inside their parent block and
+        // must NOT appear in this list — otherwise the non-greedy .*? will
+        // match <ul>...<li>...</li> as a single "block" and leave the rest
+        // of the list orphaned as text that gets incorrectly wrapped in <p>.
+        // Similarly, <p> is excluded because we generate those ourselves.
+        $block_tags = 'h[1-6]|div|blockquote|ul|ol|table|figure|figcaption|pre|form|section|article|aside|nav|header|footer';
 
-        // Split content into segments: block-level HTML vs. text
-        // This regex matches self-contained block elements (opening through closing)
-        // and also standalone <hr>, <br> etc.
+        // Split content into segments: block-level HTML vs. text.
+        // Backreference \2 ensures the closing tag matches the opening tag,
+        // so <ul>...<li>...</li>...<li>...</li>...</ul> is captured as one
+        // unbroken block instead of stopping at the first </li>.
         $segments = preg_split(
-            '/(<(?:' . $block_tags . ')[\s>].*?<\/(?:' . $block_tags . ')>|<hr\s*\/?>)/si',
+            '/(<(' . $block_tags . ')[\s>].*?<\/\2>|<hr\s*\/?>)/si',
             $content,
             -1,
             PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY
@@ -113,6 +121,10 @@ class SnapSmack {
         foreach ($segments as $segment) {
             $trimmed = trim($segment);
             if ($trimmed === '') continue;
+
+            // The backreference capture group (\2) produces bare tag-name
+            // segments like "ul", "h3" etc. — skip those.
+            if (preg_match('/^(?:' . $block_tags . ')$/i', $trimmed)) continue;
 
             // If this segment starts with a block-level tag, pass it through
             if (preg_match('/^<(?:' . $block_tags . ')[\s>]/i', $trimmed)) {
