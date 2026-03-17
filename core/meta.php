@@ -94,6 +94,14 @@ $exif_display_enabled = (($settings['exif_display_enabled'] ?? '1') == '1');
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<?php
+// --- AI TRAINING META DIRECTIVE ---
+// Belt-and-suspenders alongside robots.txt. Tells AI crawlers that respect
+// the noai/noimageai directives whether this content is available for training.
+$ai_policy = $settings['ai_training_policy'] ?? 'no_opinion';
+if ($ai_policy === 'disallow'): ?>
+<meta name="robots" content="noai, noimageai">
+<?php endif; ?>
 <title><?php echo $display_title; ?></title>
 
 <link rel="canonical" href="<?php echo $canonical_url; ?>">
