@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Photogram Search
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  *
  * Full-text search across img_title, img_description, and hashtags.
  * Loaded by landing.php when ?pg=search is requested and

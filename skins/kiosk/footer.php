@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Footer for the kiosk skin
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  *
  * Injects skin-specific JavaScript libraries and closes the document.
  */

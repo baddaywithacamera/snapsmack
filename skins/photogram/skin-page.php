@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Photogram Static Page View
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  *
  * Photogram-native layout for static pages (About, etc.).
  * Full-width hero image, page title, body content with Photogram gutters.

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the Purple Rain admin theme
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  */
 
 return [

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Meta tags and SEO for the new-horizon skin
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  *
  * Generates page titles, Open Graph tags, CSS variables, and canonical URLs.
  */

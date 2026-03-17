@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Global media library and asset management
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  *
  * Handles upload, storage, and retrieval of global media assets.
  * Generates shortcodes for embedding assets in pages and posts.

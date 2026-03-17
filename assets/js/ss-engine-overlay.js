@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - Center Overlay Controller
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  *
  * Shared overlay engine for skins that use the HTBS-style center-expand
  * info/comments panel (Galleria, Hip to be Square).

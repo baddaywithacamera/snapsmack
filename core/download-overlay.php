@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Download Overlay Helper
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  *
  * Generates a download button for individual photos when enabled. The button
  * uses CSS position:fixed to stay visible without interfering with the skin's

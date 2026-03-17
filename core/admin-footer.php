@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Admin Dashboard Footer
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  *
  * Closes the admin HTML structure with credits acknowledging PixelPost,
  * GreyMatter, and Noah Grey. Outputs the closing </body> and </html> tags.
