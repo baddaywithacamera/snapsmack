@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Preflight check
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  *
  * Analyzes image signals for titles and EXIF metadata prior to final upload.
  * Facilitates the pre-population of post metadata for technical consistency.

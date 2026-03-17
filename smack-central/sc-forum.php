@@ -1,7 +1,7 @@
 <?php
 /**
  * SMACK CENTRAL - Forum Admin
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  *
  * Discourse-style forum interface with full moderation controls.
  * Reads directly from the forum database — no API round-trips.

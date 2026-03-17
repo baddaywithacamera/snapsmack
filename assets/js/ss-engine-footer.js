@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - Footer Controller
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  *
  * Manages animated footer panes: info, comments, and help. Guards against
  * double-loading (the script can appear twice via footer_injection_scripts).

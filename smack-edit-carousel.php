@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Carousel Post Editor
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  *
  * Edit page for carousel and single posts created via the post-layer schema.
  * Invoked automatically when the active skin's manifest declares

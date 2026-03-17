@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Public Navigation Header
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  *
  * Renders the site logo and main navigation bar. Navigation items are: HOME,
  * BLOG (when homepage is a static page), ARCHIVE VIEW, GALLERY VIEW (conditional),

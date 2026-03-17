@@ -16,7 +16,7 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
-## 0.7.4c — "La-Z-Boy" (2026-03-17)
+## 0.7.4d — "La-Z-Boy" (2026-03-17)
 
 ### Added
 - AI training crawler policy: new **AI Training Crawlers** setting in Global Config → Architecture & Interaction. Three modes — No Opinion (default), Allow, Disallow — control `robots.txt` directives for GPTBot, ChatGPT-User, CCBot, Google-Extended, anthropic-ai, ClaudeBot, and Bytespider. Disallow mode also injects `<meta name="robots" content="noai, noimageai">` on every page. `robots.txt` is regenerated on every Global Config save and always blocks `/smack-*`, `/core/`, `/backups/`, and `/migrations/`.
@@ -42,6 +42,7 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ### Fixed
 - PDO errno 2014 ("Cannot execute queries while other unbuffered queries are active") during SQL migrations on shared hosts. Root cause: `PDO::exec()` doesn't drain MySQL's result/warning packets after DDL statements. Fixed in both `updater_find_migrations()` (CREATE TABLE) and `updater_run_migrations()` (each statement) by replacing `exec()` with `query()` + `closeCursor()`.
+- "MISSION FAILURE" alert on new post even though the image posted successfully. Root cause: `snap_sync_tags()` referenced the `color_family` column unconditionally, but installs that hadn't run the 0.7.4c migration hit a PDO fatal error (HTTP 500, empty body) after the DB insert completed. Fixed by detecting column existence and falling back to a simpler INSERT.
 
 ### Migrations
 - `migrate-074c.sql`: `ALTER TABLE snap_tags ADD COLUMN color_family VARCHAR(20) DEFAULT NULL`; `ADD INDEX idx_tags_color_family`. Idempotent via the migration runner's errno 1060/1061 catch.
@@ -106,7 +107,7 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - Undefined CSS variables replaced: `--sc-surface` → `--sc-bg-box-head` (tabs) and `--sc-success-bg` (flash messages).
 - Community forum header changed from "SNAPSMACK ADMINS" to dynamic board count.
 - New Horizon Dark skin renamed to New Horizon (`skins/new-horizon-dark/` → `skins/new-horizon/`).
-- All file headers bumped to Alpha v0.7.4 across the entire codebase.
+- All file headers bumped to Alpha v0.7.4d across the entire codebase.
 - Custom version comparator `snap_version_compare()` added to `core/constants.php` — normalizes letter suffixes (a→.1, b→.2) to numeric segments before delegating to PHP's `version_compare()`. All five comparison call sites updated.
 - Skin gallery now shows up to three screenshots per skin (landing, archive, text page) with carousel navigation, dot indicators, and labels.
 - Impact Printer skin screenshots added (landing, archive, page).

@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - Carousel View Controller
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  *
  * Initialises SnapSlider on the single-post carousel view and updates
  * the EXIF panel when slides change. Used by The Grid layout.php.

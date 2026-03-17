@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - FTP Configuration & Backup
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  *
  * Provides web UI for configuring FTP server settings and managing remote backups.
  * Tests FTP connectivity, pushes recovery kits and image directories to remote storage.

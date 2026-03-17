@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Registry Generator
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  *
  * Builds registry.json from local skin manifests. The output matches the
  * format consumed by core/skin-registry.php skin_registry_fetch().

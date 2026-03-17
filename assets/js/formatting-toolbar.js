@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK — Formatting Toolbar
- * Alpha v0.7.4
+ * Alpha v0.7.4d
  *
  * Lightweight vanilla JS toolbar for the transmission editor.
  * Wraps selected text in HTML / shortcodes, provides live preview

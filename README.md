@@ -1,6 +1,6 @@
 # SnapSmack
 
-**Alpha v0.7.4 "La-Z-Boy"**
+**Alpha v0.7.4d "La-Z-Boy"**
 
 A self-hosted photoblog CMS for people who care about their photographs. One image a day, your domain, no algorithm.
 
