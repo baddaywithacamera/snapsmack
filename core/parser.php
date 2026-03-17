@@ -103,8 +103,10 @@ class SnapSmack {
         // must NOT appear in this list — otherwise the non-greedy .*? will
         // match <ul>...<li>...</li> as a single "block" and leave the rest
         // of the list orphaned as text that gets incorrectly wrapped in <p>.
-        // Similarly, <p> is excluded because we generate those ourselves.
-        $block_tags = 'h[1-6]|div|blockquote|ul|ol|table|figure|figcaption|pre|form|section|article|aside|nav|header|footer';
+        // NOTE: <p> IS included because the user's content may already
+        // contain <p> tags from the editor — these must be passed through,
+        // not wrapped in another <p>.
+        $block_tags = 'p|h[1-6]|div|blockquote|ul|ol|table|figure|figcaption|pre|form|section|article|aside|nav|header|footer';
 
         // Split content into segments: block-level HTML vs. text.
         // Backreference \2 ensures the closing tag matches the opening tag,
