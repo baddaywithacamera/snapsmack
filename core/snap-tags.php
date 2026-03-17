@@ -130,19 +130,37 @@ function snap_sync_tags(PDO $pdo, int $image_id, string $text): void {
         return;
     }
 
+    // Detect whether the color_family column exists (added in 0.7.4c migration).
+    // If not, fall back to the simpler INSERT that omits it.
+    $has_color_family = false;
+    try {
+        $pdo->query("SELECT color_family FROM snap_tags LIMIT 0")->closeCursor();
+        $has_color_family = true;
+    } catch (PDOException $e) {
+        // Column doesn't exist yet — pre-migration install
+    }
+
     $tag_ids = [];
     foreach ($slugs as $slug) {
-        // Compute colour family for hex codes (null for regular word tags)
-        $color_family = snap_hex_to_color_family($slug);
+        if ($has_color_family) {
+            // Compute colour family for hex codes (null for regular word tags)
+            $color_family = snap_hex_to_color_family($slug);
 
-        // Upsert tag — preserve first-seen display form; get the ID either way.
-        // color_family is set on first insert; on duplicate we fill it in only if
-        // it was previously null (handles tags added before this migration ran).
-        $pdo->prepare(
-            "INSERT INTO snap_tags (tag, slug, color_family) VALUES (?, ?, ?)
-             ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id),
-             color_family = COALESCE(color_family, VALUES(color_family))"
-        )->execute([$slug, $slug, $color_family]);
+            // Upsert tag — preserve first-seen display form; get the ID either way.
+            // color_family is set on first insert; on duplicate we fill it in only if
+            // it was previously null (handles tags added before this migration ran).
+            $pdo->prepare(
+                "INSERT INTO snap_tags (tag, slug, color_family) VALUES (?, ?, ?)
+                 ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id),
+                 color_family = COALESCE(color_family, VALUES(color_family))"
+            )->execute([$slug, $slug, $color_family]);
+        } else {
+            // Pre-migration path: no color_family column yet
+            $pdo->prepare(
+                "INSERT INTO snap_tags (tag, slug) VALUES (?, ?)
+                 ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)"
+            )->execute([$slug, $slug]);
+        }
         $tag_ids[] = (int)$pdo->lastInsertId();
     }
 
