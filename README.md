@@ -16,6 +16,7 @@ Key characteristics:
 - **Swappable skins** — Galleria, Hip to be Square, True Grit, Photogram (Instagram-style), Impact Printer, 50 Shades of Noah Grey, A Grey Reckoning, New Horizon, and more. Each skin has its own CMS-driven appearance settings.
 - **Self-update system** — Ed25519-signed release packages; apply updates through the admin without SSH access.
 - **Community features** — comments, likes, and emoji reactions. Three identity modes: open (no account required), hybrid, or registered-only.
+- **AI training crawler policy** — choose to allow, disallow, or take no position on AI training crawlers. Disallow mode blocks known AI bots (GPTBot, CCBot, ClaudeBot, etc.) via `robots.txt` and injects `noai`/`noimageai` meta tags site-wide. Managed under Global Config.
 - **No tracking, no ads, no third-party dependencies at runtime.**
 
 ---
