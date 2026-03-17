@@ -550,7 +550,7 @@ body {
     display: block !important;
 }
 
-.static-transmission #fsog-photobox.page-hero {
+.static-transmission #photobox.page-hero {
     display: block !important;
     min-height: auto !important;
     padding: 0 !important;

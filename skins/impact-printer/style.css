@@ -729,7 +729,7 @@ body {
     display: block !important;
 }
 
-.static-transmission #ip-photobox.page-hero {
+.static-transmission #photobox.page-hero {
     display: block !important;
     min-height: auto !important;
     padding: 0 !important;
