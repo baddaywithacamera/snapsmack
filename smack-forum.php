@@ -16,7 +16,9 @@ if (!isset($settings)) {
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-$forum_api_url = rtrim($settings['forum_api_url'] ?? 'https://snapsmack.ca/api/forum', '/');
+// Forum URL is hardcoded to the official SnapSmack hub. Not configurable.
+// Forks can change this constant; end users cannot.
+$forum_api_url = 'https://snapsmack.ca/api/forum';
 $forum_api_key = $settings['forum_api_key'] ?? '';
 $forum_enabled = ($settings['forum_enabled'] ?? '1') === '1';
 
