@@ -19,9 +19,12 @@ if (!defined('BASE_URL')) {
 }
 
 // --- SESSION INITIALIZATION ---
-// Start the session if it hasn't been started yet. This is safe to call
-// multiple times.
+// Start the session if it hasn't been started yet. Double the default
+// PHP session lifetime from 24 minutes to 48 minutes so the admin
+// doesn't time out while composing posts.
 if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.gc_maxlifetime', 2880);
+    ini_set('session.cookie_lifetime', 2880);
     session_start();
 }
 
@@ -38,7 +41,17 @@ if (isset($_GET['logout'])) {
 
 // --- LOGIN GATE ---
 // Block unauthenticated users from seeing admin pages by redirecting to login.
+// For XHR requests, return a 401 JSON response instead of the login page HTML
+// so the client-side JS can detect the expired session and redirect cleanly.
 if (!isset($_SESSION['user_login'])) {
+    $is_xhr = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+              strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+    if ($is_xhr) {
+        header('HTTP/1.1 401 Unauthorized');
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'session_expired', 'msg' => 'Session expired. Please log in again.']);
+        exit;
+    }
     header("Location: " . BASE_URL . "login.php");
     exit;
 }
