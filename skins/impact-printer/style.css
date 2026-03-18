@@ -373,6 +373,12 @@ body {
     color: var(--text-primary);
 }
 
+.description a:has(img),
+.static-content a:has(img) {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
 /* ==========================================================================
    SYSTEM FOOTER
    ========================================================================= */

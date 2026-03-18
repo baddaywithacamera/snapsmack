@@ -296,6 +296,12 @@ img.post-image {
     color: var(--border-accent);
 }
 
+.description a:has(img),
+.static-content a:has(img) {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
 /* ==========================================================================
     THE SIGNATURE (SYSTEM FOOTER STRIP)
     ========================================================================= */

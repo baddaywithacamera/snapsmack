@@ -113,6 +113,16 @@
     opacity: 0.8;
 }
 
+/* Links wrapping images — no underline or decoration */
+.description a:has(img),
+.static-content a:has(img),
+.snap-inline-frame a,
+.description a img,
+.static-content a img {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
 /* 6. CLEARFIX
    -------------------------------------------------------------------------
    Prevents floated images from overlapping following sections. 
