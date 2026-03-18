@@ -151,6 +151,8 @@ if (!empty($settings['favicon_url'])):
 </style>
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-mosaic.css">
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js" defer></script>
 
 <?php
 /**

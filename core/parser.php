@@ -71,6 +71,9 @@ class SnapSmack {
         // --- PHASE 5: SPACER SHORTCODES ---
         $content = $this->parseSpacers($content);
 
+        // --- PHASE 5b: MOSAIC SHORTCODES ---
+        $content = $this->parseMosaics($content);
+
         // --- PHASE 6: BLOCK NESTING CLEANUP ---
         // When [img:] shortcodes sit inside the same <p> as text (either from
         // old saves or same-line authoring), Phase 2 wraps everything in <p>
@@ -231,6 +234,88 @@ class SnapSmack {
             function ($matches) {
                 $px = max(1, min(100, (int) $matches[1]));
                 return '<div class="snap-spacer" style="height:' . $px . 'px" aria-hidden="true"></div>';
+            },
+            $content
+        );
+    }
+
+    // =========================================================================
+    //  MOSAIC SHORTCODE
+    // =========================================================================
+
+    /**
+     * Parse [mosaic:ID] shortcodes into tiled image blocks.
+     *
+     * Looks up the mosaic in snap_mosaics, retrieves its asset list,
+     * and renders a container div with JSON data for the client-side
+     * layout engine (ss-engine-mosaic.js) to process.
+     */
+    private function parseMosaics($content) {
+        return preg_replace_callback(
+            '/\[mosaic:\s*(\d+)\]/i',
+            function ($matches) {
+                $mosaic_id = (int) $matches[1];
+
+                // Look up the mosaic record
+                try {
+                    $stmt = $this->pdo->prepare("SELECT asset_ids, gap FROM snap_mosaics WHERE id = ? LIMIT 1");
+                    $stmt->execute([$mosaic_id]);
+                    $mosaic = $stmt->fetch();
+                } catch (PDOException $e) {
+                    return '<!-- mosaic table not available -->';
+                }
+
+                if (!$mosaic) return '<!-- mosaic ' . $mosaic_id . ' not found -->';
+
+                $asset_ids = json_decode($mosaic['asset_ids'], true);
+                if (empty($asset_ids)) return '<!-- mosaic ' . $mosaic_id . ' has no assets -->';
+
+                // Fetch all assets in one query, preserving order
+                $placeholders = implode(',', array_fill(0, count($asset_ids), '?'));
+                $stmt = $this->pdo->prepare(
+                    "SELECT id, asset_name, asset_path FROM snap_assets WHERE id IN ($placeholders)"
+                );
+                $stmt->execute($asset_ids);
+                $assets_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                // Index by ID for ordering
+                $assets_by_id = [];
+                foreach ($assets_raw as $a) {
+                    $assets_by_id[$a['id']] = $a;
+                }
+
+                $base = defined('BASE_URL') ? BASE_URL : (rtrim($this->config['site_url'] ?? '/', '/') . '/');
+
+                // Build the image data array in mosaic order
+                $images = [];
+                foreach ($asset_ids as $aid) {
+                    if (!isset($assets_by_id[$aid])) continue;
+                    $a = $assets_by_id[$aid];
+                    $src = $base . ltrim($a['asset_path'], '/');
+
+                    // We need dimensions. Try getimagesize on the file path.
+                    $file_path = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '.', '/') . '/' . ltrim($a['asset_path'], '/');
+                    $w = 800; $h = 600; // fallback
+                    if (file_exists($file_path)) {
+                        $info = @getimagesize($file_path);
+                        if ($info) { $w = $info[0]; $h = $info[1]; }
+                    }
+
+                    $images[] = [
+                        'src'    => $src,
+                        'width'  => $w,
+                        'height' => $h,
+                        'alt'    => htmlspecialchars($a['asset_name']),
+                        'id'     => (int) $a['id']
+                    ];
+                }
+
+                if (empty($images)) return '<!-- mosaic ' . $mosaic_id . ' has no valid assets -->';
+
+                $gap = (int)($mosaic['gap'] ?? 4);
+                $json = htmlspecialchars(json_encode($images), ENT_QUOTES, 'UTF-8');
+
+                return '<div class="snap-mosaic" data-mosaic="' . $json . '" data-gap="' . $gap . '"></div>';
             },
             $content
         );

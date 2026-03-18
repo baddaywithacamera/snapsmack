@@ -1,0 +1,50 @@
+/**
+ * SNAPSMACK — Mosaic Engine Styles
+ * Alpha v0.7.4d
+ *
+ * Styling for inline [mosaic:ID] shortcode renders.
+ */
+
+.snap-mosaic {
+    width: 100%;
+    margin: 1.5em 0;
+    box-sizing: border-box;
+}
+
+.mosaic-row {
+    display: flex;
+    width: 100%;
+}
+
+.mosaic-item {
+    position: relative;
+    overflow: hidden;
+    background: #111;
+    flex-shrink: 0;
+}
+
+.mosaic-item img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.mosaic-item:hover img {
+    transform: scale(1.03);
+    filter: brightness(1.05);
+}
+
+/* Admin preview styling */
+.mosaic-preview-container {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 20px;
+    margin-top: 16px;
+}
+
+.mosaic-preview-container .snap-mosaic {
+    margin: 0;
+}
