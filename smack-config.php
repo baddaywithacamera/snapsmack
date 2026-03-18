@@ -223,13 +223,7 @@ include 'core/sidebar.php';
                         <span class="dim">SHOWS THE FORUM CLIENT IN YOUR ADMIN PANEL. CONNECTS TO THE SNAPSMACK COMMUNITY HUB.</span>
                     </div>
 
-                    <div class="lens-input-wrapper">
-                        <label>FORUM API URL</label>
-                        <input type="text" name="settings[forum_api_url]"
-                               value="<?php echo htmlspecialchars($settings['forum_api_url'] ?? 'https://snapsmack.ca/api/forum'); ?>"
-                               placeholder="https://snapsmack.ca/api/forum">
-                        <span class="dim">SELF-HOSTERS: POINT THIS AT YOUR OWN FORUM SERVER. LEAVE DEFAULT FOR THE OFFICIAL HUB.</span>
-                    </div>
+                    <!-- Forum URL is hardcoded to snapsmack.ca. Not user-configurable. -->
                 </div>
 
                 <div class="post-col-right">
