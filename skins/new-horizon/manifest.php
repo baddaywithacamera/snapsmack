@@ -128,7 +128,7 @@ return [
             'type'     => 'select',
             'label'    => 'Main Image Frame Style',
             'default'  => 'revival_double',
-            'selector' => 'img.post-image, .inline-asset, .static-transmission .description .align-left',
+            'selector' => 'img.post-image, .inline-asset, .snap-inline-frame, .static-transmission .description .align-left',
             'property' => 'custom-framing',
             'options'  => [
                 'revival_double' => [

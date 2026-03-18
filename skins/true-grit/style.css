@@ -650,7 +650,7 @@ body::before {
    INLINE ASSETS (PARSED SHORTCODES)
    ========================================================================= */
 
-.inline-asset, .snapsmack-asset {
+.inline-asset, .snapsmack-asset, .snap-inline-frame {
     display: block;
     height: auto;
     box-sizing: border-box;

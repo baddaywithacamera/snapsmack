@@ -241,7 +241,7 @@ return [
             'type'     => 'select',
             'label'    => 'Hero Image Frame',
             'default'  => 'border_thin',
-            'selector' => 'img.post-image, img.fsog-image, .inline-asset, .static-transmission .description .align-left',
+            'selector' => 'img.post-image, img.fsog-image, .inline-asset, .snap-inline-frame, .static-transmission .description .align-left',
             'property' => 'custom-framing',
             'options'  => [
                 'border_thin' => [
