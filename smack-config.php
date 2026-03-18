@@ -233,7 +233,25 @@ include 'core/sidebar.php';
                             <option value="1" <?php echo (($settings['global_downloads_enabled'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
                             <option value="0" <?php echo (($settings['global_downloads_enabled'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
                         </select>
-                        <span class="dim">MASTER OVERRIDE. PER-POST TOGGLE ALSO REQUIRED.</span>
+                        <span class="dim">MASTER OVERRIDE. WHEN DISABLED, NO POSTS SHOW DOWNLOAD BUTTONS REGARDLESS OF PER-POST SETTING.</span>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>DOWNLOAD DEFAULT FOR NEW POSTS</label>
+                        <select name="settings[download_default_mode]">
+                            <option value="per_post" <?php echo (($settings['download_default_mode'] ?? 'per_post') == 'per_post') ? 'selected' : ''; ?>>PER-POST (MANUALLY ENABLE EACH POST)</option>
+                            <option value="all_posts" <?php echo (($settings['download_default_mode'] ?? 'per_post') == 'all_posts') ? 'selected' : ''; ?>>ALL POSTS (DOWNLOADS ON BY DEFAULT)</option>
+                        </select>
+                        <span class="dim">WHEN SET TO ALL POSTS, NEW POSTS DEFAULT TO DOWNLOAD-ENABLED. YOU CAN STILL DISABLE PER-POST.</span>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>REQUIRE DOWNLOAD LINK?</label>
+                        <select name="settings[download_link_required]">
+                            <option value="0" <?php echo (($settings['download_link_required'] ?? '0') == '0') ? 'selected' : ''; ?>>NO (OPTIONAL)</option>
+                            <option value="1" <?php echo (($settings['download_link_required'] ?? '0') == '1') ? 'selected' : ''; ?>>YES (BLOCK SAVE IF MISSING)</option>
+                        </select>
+                        <span class="dim">WHEN ENABLED, POSTS WITH DOWNLOADS TURNED ON MUST HAVE A DOWNLOAD LINK OR THE SAVE WILL FAIL.</span>
                     </div>
 
                     <div class="lens-input-wrapper">
