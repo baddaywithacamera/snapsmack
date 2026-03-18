@@ -344,6 +344,18 @@ img {
     max-width: 640px;
 }
 
+.description a,
+.static-content a:not(.nav-menu a) {
+    color: var(--ge-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.description a:hover,
+.static-content a:not(.nav-menu a):hover {
+    color: var(--ge-link-hover);
+}
+
 
 /* ─── ARCHIVE: INFOBOX / FILTER BAR ──────────────────────────────── */
 
