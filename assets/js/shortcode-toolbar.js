@@ -36,6 +36,125 @@
         textarea.focus();
     }
 
+    // --- Link dialog: modal with URL, text, target, rel options ---
+    function insertLink(textarea) {
+        // Capture selected text before opening the dialog
+        var selStart = textarea.selectionStart;
+        var selEnd   = textarea.selectionEnd;
+        var selected = textarea.value.substring(selStart, selEnd);
+
+        // Remove any existing dialog
+        var existing = document.getElementById('sc-link-dialog-overlay');
+        if (existing) existing.remove();
+
+        // Build overlay + dialog
+        var overlay = document.createElement('div');
+        overlay.id = 'sc-link-dialog-overlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+
+        var dialog = document.createElement('div');
+        dialog.style.cssText = 'background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:24px 28px;min-width:380px;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#ccc;';
+
+        dialog.innerHTML =
+            '<div style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:18px;color:#fff;">Insert Link</div>' +
+
+            '<label style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;color:#888;">URL</label>' +
+            '<input id="sc-link-url" type="url" value="https://" style="width:100%;padding:8px 10px;background:#111;border:1px solid #333;border-radius:4px;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:14px;">' +
+
+            '<label style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;color:#888;">Link Text</label>' +
+            '<input id="sc-link-text" type="text" value="' + selected.replace(/"/g, '&quot;') + '" placeholder="Selected text or type here" style="width:100%;padding:8px 10px;background:#111;border:1px solid #333;border-radius:4px;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:14px;">' +
+
+            '<div style="display:flex;gap:20px;margin-bottom:20px;">' +
+                '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:#bbb;">' +
+                    '<input id="sc-link-newtab" type="checkbox" checked style="accent-color:#4a9eff;"> Open in new tab' +
+                '</label>' +
+                '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:#bbb;">' +
+                    '<input id="sc-link-nofollow" type="checkbox" style="accent-color:#4a9eff;"> Nofollow' +
+                '</label>' +
+            '</div>' +
+
+            '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
+                '<button id="sc-link-cancel" type="button" style="padding:8px 18px;background:#333;border:1px solid #444;border-radius:4px;color:#ccc;cursor:pointer;font-size:13px;">Cancel</button>' +
+                '<button id="sc-link-insert" type="button" style="padding:8px 18px;background:#4a9eff;border:none;border-radius:4px;color:#fff;cursor:pointer;font-weight:600;font-size:13px;">Insert Link</button>' +
+            '</div>';
+
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        // Focus URL field
+        var urlInput = document.getElementById('sc-link-url');
+        urlInput.focus();
+        urlInput.select();
+
+        // Close helper
+        function closeDialog() {
+            overlay.remove();
+            textarea.focus();
+        }
+
+        // Cancel
+        document.getElementById('sc-link-cancel').addEventListener('click', closeDialog);
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) closeDialog();
+        });
+
+        // Escape key
+        function onEscape(e) {
+            if (e.key === 'Escape') {
+                closeDialog();
+                document.removeEventListener('keydown', onEscape);
+            }
+        }
+        document.addEventListener('keydown', onEscape);
+
+        // Insert
+        function doInsert() {
+            var url     = document.getElementById('sc-link-url').value.trim();
+            var text    = document.getElementById('sc-link-text').value.trim();
+            var newTab  = document.getElementById('sc-link-newtab').checked;
+            var nofollow = document.getElementById('sc-link-nofollow').checked;
+
+            if (!url || url === 'https://') {
+                urlInput.style.borderColor = '#ff4444';
+                urlInput.focus();
+                return;
+            }
+
+            // Build the <a> tag
+            var tag = '<a href="' + url + '"';
+            if (newTab)   tag += ' target="_blank"';
+
+            // Build rel attribute
+            var rels = [];
+            if (newTab)   rels.push('noopener');
+            if (nofollow) rels.push('nofollow');
+            if (rels.length > 0) tag += ' rel="' + rels.join(' ') + '"';
+
+            tag += '>';
+
+            var linkText = text || selected || 'link text';
+            var closing  = '</a>';
+
+            document.removeEventListener('keydown', onEscape);
+            overlay.remove();
+
+            // Restore selection and insert
+            textarea.selectionStart = selStart;
+            textarea.selectionEnd   = selEnd;
+            insertAtCursor(textarea, tag + linkText + closing);
+        }
+
+        document.getElementById('sc-link-insert').addEventListener('click', doInsert);
+
+        // Enter key submits from either input
+        urlInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); doInsert(); }
+        });
+        document.getElementById('sc-link-text').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); doInsert(); }
+        });
+    }
+
     // --- Image shortcode: prompt for ID, size, align ---
     function insertImage(textarea) {
         var id = prompt('Image ID (from Media Library):');
@@ -129,8 +248,7 @@
                 insertAtCursor(textarea, '<u>', '</u>');
                 break;
             case 'link':
-                var url = prompt('URL:', 'https://');
-                if (url) insertAtCursor(textarea, '<a href="' + url + '">', '</a>');
+                insertLink(textarea);
                 break;
             case 'h2':
                 insertAtCursor(textarea, '<h2>', '</h2>');
@@ -211,6 +329,9 @@
                 } else if (key === 'u') {
                     e.preventDefault();
                     execAction('underline', textarea);
+                } else if (key === 'k') {
+                    e.preventDefault();
+                    execAction('link', textarea);
                 }
             });
         });

@@ -508,7 +508,7 @@ include 'core/sidebar.php';
                                 <button type="button" class="sc-btn" data-action="bold">B</button>
                                 <button type="button" class="sc-btn" data-action="italic">I</button>
                                 <button type="button" class="sc-btn" data-action="underline">U</button>
-                                <button type="button" class="sc-btn" data-action="link">LINK</button>
+                                <button type="button" class="sc-btn" data-action="link" title="Insert Link (Ctrl+K)">LINK</button>
                                 <span class="sc-sep"></span>
                                 <button type="button" class="sc-btn" data-action="h2">H2</button>
                                 <button type="button" class="sc-btn" data-action="h3">H3</button>

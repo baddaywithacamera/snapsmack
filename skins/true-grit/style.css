@@ -593,6 +593,12 @@ body::before {
 .static-content h3 {
     margin-top: 2em;
 }
+.static-content .description > :first-child h2,
+.static-content .description > :first-child h3,
+.static-content .description > h2:first-child,
+.static-content .description > h3:first-child {
+    margin-top: 0.5em;
+}
 
 .static-content::after {
     content: "";
@@ -603,8 +609,8 @@ body::before {
 .static-page-title {
     width: 100% !important;
     max-width: 850px !important;
-    margin: 0 0 20px 0 !important;
-    padding: 50px 0 0 0 !important;
+    margin: 0 0 10px 0 !important;
+    padding: 60px 0 0 0 !important;
     text-align: left !important;
     display: block !important;
     box-sizing: border-box !important;
@@ -656,7 +662,7 @@ body::before {
     box-sizing: border-box;
     border: none !important;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4) !important;
-    margin-top: 20px;
+    margin-top: 40px;
     margin-bottom: 60px !important;
 }
 
