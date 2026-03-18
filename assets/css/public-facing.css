@@ -98,6 +98,21 @@
     display: block;
 }
 
+/* 5b. CONTENT LINKS (BASE FALLBACK)
+   -------------------------------------------------------------------------
+   Ensures links inside description/static content are always visually
+   distinct even if a skin forgets to style them. Skins override. */
+.description a,
+.static-content a:not(.nav-menu a) {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.description a:hover,
+.static-content a:not(.nav-menu a):hover {
+    opacity: 0.8;
+}
+
 /* 6. CLEARFIX
    -------------------------------------------------------------------------
    Prevents floated images from overlapping following sections. 

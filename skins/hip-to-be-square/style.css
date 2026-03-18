@@ -1226,6 +1226,18 @@ footer a:hover {
     margin-bottom: 24px;
 }
 
+.description a,
+.static-content a:not(.nav-menu a) {
+    color: var(--accent-color);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.description a:hover,
+.static-content a:not(.nav-menu a):hover {
+    color: var(--text-primary);
+}
+
 .htbs-overlay-content .meta-header {
     font-family: 'Courier Prime', 'Courier New', monospace;
     font-size: 10px;

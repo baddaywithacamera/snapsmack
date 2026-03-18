@@ -281,6 +281,18 @@ body {
     margin-bottom: 40px;
 }
 
+.description a,
+.static-content a:not(.nav-menu a) {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.description a:hover,
+.static-content a:not(.nav-menu a):hover {
+    color: var(--accent-hover);
+}
+
 /* ==========================================================================
    THE SIGNATURE (SYSTEM FOOTER STRIP)
    ========================================================================= */

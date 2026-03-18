@@ -1271,6 +1271,18 @@ button {
     text-decoration: underline;
 }
 
+.description a,
+.static-content a:not(.nav-menu a) {
+    color: var(--pg-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.description a:hover,
+.static-content a:not(.nav-menu a):hover {
+    color: var(--pg-text);
+}
+
 .pg-page-content h2,
 .pg-page-content h3 {
     font-family: var(--pg-font);
