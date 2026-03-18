@@ -661,6 +661,12 @@ return [
             'css'          => 'assets/css/ss-community.css',
             'has_settings' => false,
         ],
+        'smack-mosaic' => [
+            'label'        => 'Mosaic Layout Engine (Tiled image groups)',
+            'path'         => 'assets/js/ss-engine-mosaic.js',
+            'css'          => 'assets/css/ss-engine-mosaic.css',
+            'has_settings' => false,
+        ],
         'smack-photogram' => [
             'label'        => 'Photogram Engine (Bottom sheet, double-tap like, nav)',
             'path'         => 'assets/js/ss-engine-photogram.js',
