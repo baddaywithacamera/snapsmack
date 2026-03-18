@@ -774,7 +774,14 @@ span.dropcap {
 #infobox .filter-group {
     display: flex;
     align-items: center;
-    gap: 40px;
+    gap: 8px;
+}
+
+#infobox .filter-group form {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
 }
 
 #infobox label.dim {
