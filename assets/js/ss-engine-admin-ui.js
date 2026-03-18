@@ -179,6 +179,10 @@ document.addEventListener("DOMContentLoaded", function () {
             xhr.onload = function () {
                 if (xhr.status === 200 && xhr.responseText.trim() === "success") {
                     window.location.href = "smack-manage.php?msg=success";
+                } else if (xhr.status === 401) {
+                    // Session expired — redirect to login instead of showing HTML
+                    alert("Session expired. Redirecting to login.");
+                    window.location.href = "login.php";
                 } else {
                     alert("MISSION FAILURE: " + xhr.responseText);
                     if (pCont) pCont.style.display = "none";
