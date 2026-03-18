@@ -20,7 +20,12 @@ return [
     'status'        => 'development',
     
     'features' => [
-        'supports_wall' => true, 
+        'supports_wall' => true,
+        'has_landing'   => true,
+        'post_modes'    => ['image'],
+        'instagram_mode' => false,
+        'carousel'      => false,
+        'community'     => [],
     ],
 
     // Feature engines enabled for this skin

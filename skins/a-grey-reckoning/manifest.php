@@ -24,6 +24,11 @@ return [
     'features' => [
         'supports_wall'   => false,
         'archive_layouts' => ['square'],
+        'has_landing'     => false,
+        'post_modes'      => ['image'],
+        'instagram_mode'  => false,
+        'carousel'        => false,
+        'community'       => ['likes', 'comments'],
     ],
 
     // No variants — the skin is dark by nature

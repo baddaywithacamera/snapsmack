@@ -29,6 +29,11 @@ return [
     'features' => [
         'supports_wall'   => false,
         'archive_layouts' => ['square', 'cropped'],
+        'has_landing'     => true,
+        'post_modes'      => ['image'],
+        'instagram_mode'  => false,
+        'carousel'        => false,
+        'community'       => ['likes', 'comments'],
     ],
 
     // VARIANT SYSTEM — paper stocks

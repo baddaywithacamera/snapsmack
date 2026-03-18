@@ -28,6 +28,11 @@ return [
         'supports_wall'    => false,
         'archive_layouts'  => ['square'],
         'supports_slider'  => false,
+        'has_landing'      => true,
+        'post_modes'       => ['image'],
+        'instagram_mode'   => true,
+        'carousel'         => true,
+        'community'        => ['likes', 'comments'],
     ],
 
     'require_scripts' => [

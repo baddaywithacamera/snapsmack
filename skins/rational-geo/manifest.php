@@ -32,6 +32,11 @@ return [
         'supports_wall'    => false,
         'supports_slider'  => false,
         'archive_layouts'  => ['cropped', 'masonry'],
+        'has_landing'      => true,
+        'post_modes'       => ['image'],
+        'instagram_mode'   => false,
+        'carousel'         => false,
+        'community'        => ['likes', 'comments'],
     ],
 
     'require_scripts' => [
