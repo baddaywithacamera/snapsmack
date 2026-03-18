@@ -548,6 +548,21 @@ inside columns. The layout collapses to a single column on mobile screens.</p>
 by the active skin's dropcap setting (configurable in Smooth Your Skin). Three styles
 are available: None, Simple Bold, and Tactical Block.</p>
 
+<h4>Spacer Shortcode</h4>
+<pre>[spacer:20]</pre>
+<p>Adds explicit vertical spacing (1–100px) within your content. Specify the pixel height
+as a number between the colons.</p>
+
+<h4>Mosaic Album Builder</h4>
+<pre>[mosaic:ID]</pre>
+<p>Embeds a tiled image mosaic created via the Mosaics page in the admin (under The Good Shit).
+From the Mosaics editor, pick assets from your media library, drag them to reorder, set the
+gap between tiles, and preview the layout live. The engine automatically packs images into rows
+forming clean rectangles, respecting each image's aspect ratio with no cropping. The layout is
+fully responsive — when the window resizes, the mosaic re-layouts automatically to fit the
+available width. Each mosaic you create gets a unique ID shown in the editor, which you use in
+the <code>[mosaic:ID]</code> shortcode.</p>
+
 <h4>Auto-Paragraph</h4>
 <p>You don't need to type <code>&lt;p&gt;</code> tags. The parser automatically converts
 double line breaks (pressing Enter twice) into paragraphs. Single line breaks become

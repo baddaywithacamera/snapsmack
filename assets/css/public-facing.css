@@ -15,7 +15,7 @@
     margin-bottom: 25px;
 }
 
-/* 2. SIZE OVERRIDES
+/* 1. SIZE OVERRIDES
    -------------------------------------------------------------------------
    !important is used to ensure these override theme-specific image rules. */
 
@@ -34,7 +34,7 @@
     width: 100% !important;
 }
 
-/* 3. ALIGNMENT LOGIC
+/* 2. ALIGNMENT LOGIC
    ------------------------------------------------------------------------- */
 
 /* Left: Text wraps around the right */
@@ -59,7 +59,7 @@
     clear: both;
 }
 
-/* 4. PAGE HERO (STATIC PAGES)
+/* 3. PAGE HERO (STATIC PAGES)
    -------------------------------------------------------------------------
    Base styling for the hero image on static pages (page.php).
    Skins override via .static-transmission #photobox.page-hero. */
@@ -76,7 +76,7 @@
     margin: 0 auto;
 }
 
-/* 5. INLINE IMAGE FRAMES (PARSER SHORTCODES)
+/* 4. INLINE IMAGE FRAMES (PARSER SHORTCODES)
    -------------------------------------------------------------------------
    Rendered by core/parser.php from [img:ID|size|align] shortcodes.
    Ensures block-level spacing when images sit inside .description text. */
@@ -98,7 +98,7 @@
     display: block;
 }
 
-/* 5b. CONTENT LINKS (BASE FALLBACK)
+/* 5. CONTENT LINKS (BASE FALLBACK)
    -------------------------------------------------------------------------
    Ensures links inside description/static content are always visually
    distinct even if a skin forgets to style them. Skins override. */
@@ -136,7 +136,7 @@
     direction: rtl;
 }
 
-/* 6. ARCHIVE LAYOUT ENGINE
+/* 8. ARCHIVE LAYOUT ENGINE
    -------------------------------------------------------------------------
    Three display modes for the archive grid, driven by skin manifest.
    Square = 1:1 cropped | Cropped = clamped aspect | Justified = row-fill
@@ -306,7 +306,7 @@
     }
 }
 
-/* 7. GALLERY WALL — MOBILE GATE
+/* 9. GALLERY WALL — MOBILE GATE
    -------------------------------------------------------------------------
    Hides the wall nav link on small/touch screens. The wall is a
    desktop-only 3D experience — mobile users get the archive grid. */
