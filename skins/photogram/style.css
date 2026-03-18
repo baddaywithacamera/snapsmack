@@ -1283,6 +1283,12 @@ button {
     color: var(--pg-text);
 }
 
+.description a:has(img),
+.static-content a:has(img) {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
 .pg-page-content h2,
 .pg-page-content h3 {
     font-family: var(--pg-font);

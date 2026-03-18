@@ -293,6 +293,12 @@ body {
     color: var(--accent-hover);
 }
 
+.description a:has(img),
+.static-content a:has(img) {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
 /* ==========================================================================
    THE SIGNATURE (SYSTEM FOOTER STRIP)
    ========================================================================= */

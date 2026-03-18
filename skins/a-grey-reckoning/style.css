@@ -356,6 +356,12 @@ img {
     color: var(--ge-link-hover);
 }
 
+.description a:has(img),
+.static-content a:has(img) {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
 
 /* ─── ARCHIVE: INFOBOX / FILTER BAR ──────────────────────────────── */
 

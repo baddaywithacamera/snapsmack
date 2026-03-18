@@ -404,6 +404,12 @@ img { display: block; max-width: 100%; }
     color: var(--text-primary);
 }
 
+.description a:has(img),
+.static-content a:has(img) {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
 /* EXIF panel */
 .tg-exif-panel {
     display: flex;

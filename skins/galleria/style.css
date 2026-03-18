@@ -1251,6 +1251,12 @@ footer a:hover {
     color: var(--text-primary);
 }
 
+.description a:has(img),
+.static-content a:has(img) {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
 .htbs-overlay-content .meta-header {
     font-family: 'Courier Prime', 'Courier New', monospace;
     font-size: 10px;
