@@ -61,6 +61,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $allow_comments = (int)($_POST['allow_comments'] ?? 1);
     $allow_download = (int)($_POST['allow_download'] ?? 1);
     $download_url = trim($_POST['download_url'] ?? '');
+
+    // Validate: if downloads are enabled and download link is required, block save
+    if ($allow_download && ($settings['download_link_required'] ?? '0') === '1' && empty($download_url)) {
+        $is_xhr = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+                  strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        if ($is_xhr) {
+            echo "Download link is required when downloads are enabled.";
+            exit;
+        }
+        $edit_error = "Download link is required when downloads are enabled.";
+    }
+
     $manual_tags = trim($_POST['tags'] ?? '');
     $selected_cats = $_POST['cat_ids'] ?? [];
     $selected_albums = $_POST['album_ids'] ?? [];
@@ -334,7 +346,7 @@ include 'core/sidebar.php';
                     </div>
 
                     <div class="lens-input-wrapper">
-                        <label>DOWNLOAD URL (EXTERNAL)</label>
+                        <label>DOWNLOAD URL (EXTERNAL)<?php if (($settings['download_link_required'] ?? '0') === '1'): ?> <span style="color:var(--danger, #cc4444);">*</span><?php endif; ?></label>
                         <input type="text" name="download_url" value="<?php echo htmlspecialchars($post['download_url'] ?? ''); ?>" placeholder="Google Drive, Dropbox, etc. Leave blank for local file.">
                     </div>
 

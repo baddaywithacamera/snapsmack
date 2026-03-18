@@ -59,6 +59,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
     $allow_comments = (int)($_POST['allow_comments'] ?? 1);
     $allow_download = (int)($_POST['allow_download'] ?? 0);
     $download_url = trim($_POST['download_url'] ?? '');
+
+    // Validate: if downloads are enabled and download link is required, block save
+    if ($allow_download && ($settings['download_link_required'] ?? '0') === '1' && empty($download_url)) {
+        $is_xhr = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+                  strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        if ($is_xhr) {
+            echo "Download link is required when downloads are enabled.";
+            exit;
+        }
+        $post_error = "Download link is required when downloads are enabled.";
+    }
     $selected_cats = $_POST['cat_ids'] ?? [];
     $selected_albums = $_POST['album_ids'] ?? [];
     $manual_tags = trim($_POST['tags'] ?? '');
@@ -67,6 +78,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
     $film_val = $_POST['film_stock'] ?? '';
     if (isset($_POST['film_na'])) {
         $film_val = 'N/A';
+    }
+
+    // Abort if validation failed (non-XHR path only — XHR already exited above)
+    if (!empty($post_error)) {
+        goto render_form;
     }
 
     $rel_dir = 'img_uploads/' . date('Y') . '/' . date('m');
@@ -370,6 +386,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
     }
 }
 
+render_form:
 // Load categories and albums for form selectors.
 $all_cats = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
 $all_albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
@@ -384,8 +401,14 @@ include 'core/sidebar.php';
         <h2>INITIALIZE NEW TRANSMISSION</h2>
     </div>
 
+    <?php if (!empty($post_error)): ?>
+        <div class="alert" style="background:rgba(204,68,68,0.15);border:1px solid rgba(204,68,68,0.4);color:#cc4444;padding:12px 16px;border-radius:4px;margin-bottom:16px;">
+            <?php echo htmlspecialchars($post_error); ?>
+        </div>
+    <?php endif; ?>
+
     <form id="smack-form-post" method="POST" enctype="multipart/form-data">
-        
+
         <div class="box">
             <div class="post-layout-grid">
                 
@@ -509,17 +532,19 @@ include 'core/sidebar.php';
                         </select>
                     </div>
 
+                    <?php $dl_default = ($settings['download_default_mode'] ?? 'per_post') === 'all_posts' ? '1' : '0'; ?>
                     <div class="lens-input-wrapper">
                         <label>ALLOW DOWNLOAD?</label>
-                        <select name="allow_download" class="full-width-select">
-                            <option value="0">DISABLED</option>
-                            <option value="1">ENABLED</option>
+                        <select name="allow_download" id="allow-download-select" class="full-width-select">
+                            <option value="0" <?php echo $dl_default === '0' ? 'selected' : ''; ?>>DISABLED</option>
+                            <option value="1" <?php echo $dl_default === '1' ? 'selected' : ''; ?>>ENABLED</option>
                         </select>
                     </div>
 
                     <div class="lens-input-wrapper">
-                        <label>DOWNLOAD URL (EXTERNAL)</label>
-                        <input type="text" name="download_url" placeholder="Google Drive, Dropbox, etc. Leave blank for local file.">
+                        <label>DOWNLOAD URL (EXTERNAL)<?php if (($settings['download_link_required'] ?? '0') === '1'): ?> <span style="color:var(--danger, #cc4444);">*</span><?php endif; ?></label>
+                        <input type="text" name="download_url" id="download-url-input" placeholder="Google Drive, Dropbox, etc. Leave blank for local file."
+                               <?php if (($settings['download_link_required'] ?? '0') === '1'): ?>data-required="1"<?php endif; ?>>
                     </div>
 
                     <div class="lens-input-wrapper">
