@@ -76,7 +76,29 @@
     margin: 0 auto;
 }
 
-/* 5. CLEARFIX
+/* 5. INLINE IMAGE FRAMES (PARSER SHORTCODES)
+   -------------------------------------------------------------------------
+   Rendered by core/parser.php from [img:ID|size|align] shortcodes.
+   Ensures block-level spacing when images sit inside .description text. */
+.snap-inline-frame {
+    margin: 1.5em auto;
+    text-align: center;
+}
+.snap-inline-frame.align-left {
+    float: left;
+    margin: 0.25em 1.5em 1em 0;
+}
+.snap-inline-frame.align-right {
+    float: right;
+    margin: 0.25em 0 1em 1.5em;
+}
+.snap-inline-frame img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* 6. CLEARFIX
    -------------------------------------------------------------------------
    Prevents floated images from overlapping following sections. 
    Targeting standard SnapSmack content containers. */
@@ -88,7 +110,7 @@
     clear: both;
 }
 
-/* 5. SCRAPER PROTECTION
+/* 7. SCRAPER PROTECTION
    ------------------------------------------------------------------------- 
    Applied to the reversed email string injected via core/footer.php.
    Thwarts automated harvesters by presenting gibberish in the source code
