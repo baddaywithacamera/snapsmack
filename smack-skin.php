@@ -392,6 +392,10 @@ if (!empty($google_families)) {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    transition: border-color 0.2s;
+}
+.skin-card:hover {
+    border-color: rgba(128,128,128,0.5);
 }
 .skin-card-screenshot {
     width: 100%;
@@ -908,7 +912,7 @@ if (!empty($google_families)) {
             <h3 class="mt-24">INSTALLED SKINS</h3>
             <div class="gallery-grid">
                 <?php foreach ($local_skins as $slug => $skin): ?>
-                    <div class="skin-card">
+                    <div class="skin-card" style="cursor:pointer;" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
                         <div class="skin-card-screenshot">
                             <?php render_skin_screenshots($slug, $skin['name']); ?>
                         </div>
@@ -970,7 +974,7 @@ if (!empty($google_families)) {
 
         <div class="gallery-grid">
             <?php foreach ($gallery_skins as $slug => $skin): ?>
-                <div class="skin-card">
+                <div class="skin-card" style="cursor:pointer;" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
                     <!-- Screenshot(s) -->
                     <div class="skin-card-screenshot">
                         <?php render_skin_screenshots($slug, $skin['name'] ?? $slug, $skin['screenshot'] ?? null); ?>
@@ -1087,7 +1091,7 @@ if (!empty($google_families)) {
             foreach ($local_skins as $slug => $skin):
                 if (isset($gallery_skins[$slug])) continue;
             ?>
-                <div class="skin-card">
+                <div class="skin-card" style="cursor:pointer;" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
                     <div class="skin-card-screenshot">
                         <?php render_skin_screenshots($slug, $skin['name']); ?>
                     </div>
@@ -1128,6 +1132,194 @@ if (!empty($google_families)) {
 
 <?php endif; ?>
 </div>
+
+<!-- ============================================================
+     SKIN DETAIL MODAL
+     ============================================================ -->
+<div id="skin-modal-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;overflow-y:auto;padding:40px 20px;" onclick="if(event.target===this)closeSkinModal()">
+    <div id="skin-modal" style="max-width:960px;margin:0 auto;background:var(--bg-primary, #1a1a1a);border:1px solid var(--border, #333);border-radius:8px;overflow:hidden;box-shadow:0 16px 64px rgba(0,0,0,0.5);">
+        <!-- Header -->
+        <div id="sm-header" style="padding:20px 24px;border-bottom:1px solid var(--border, #333);display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <span id="sm-name" style="font-size:1.3rem;font-weight:700;"></span>
+                <span id="sm-version" style="font-size:0.85rem;opacity:0.5;margin-left:8px;"></span>
+            </div>
+            <button onclick="closeSkinModal()" style="background:none;border:none;color:var(--text-dim, #888);font-size:1.5rem;cursor:pointer;padding:4px 8px;">&times;</button>
+        </div>
+
+        <!-- Screenshots side by side -->
+        <div id="sm-screenshots" style="display:flex;gap:4px;background:#000;"></div>
+
+        <!-- Body -->
+        <div style="padding:24px;">
+            <!-- Status badges -->
+            <div id="sm-badges" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;"></div>
+
+            <!-- Description -->
+            <div id="sm-desc" style="line-height:1.6;margin-bottom:20px;color:var(--text-secondary, #aaa);"></div>
+
+            <!-- Author + Demo -->
+            <div id="sm-meta" style="font-size:0.8rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim, #666);margin-bottom:20px;"></div>
+
+            <!-- Capabilities grid -->
+            <div style="margin-bottom:20px;">
+                <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim, #666);margin-bottom:8px;">CAPABILITIES</div>
+                <div id="sm-caps" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+            </div>
+
+            <!-- Actions -->
+            <div id="sm-actions" style="display:flex;gap:12px;justify-content:flex-end;padding-top:16px;border-top:1px solid var(--border, #333);"></div>
+        </div>
+    </div>
+</div>
+
+<?php
+// Build a JSON map of all skin data for the modal JS
+$modal_skins = [];
+
+// From registry + local comparison
+if (isset($gallery_skins)) {
+    foreach ($gallery_skins as $slug => $skin) {
+        $shots = skin_screenshots($slug);
+        $screenshots = [];
+        foreach ($shots as $s) {
+            $screenshots[] = ['src' => $s['file'], 'label' => $s['label']];
+        }
+        if (empty($screenshots) && !empty($skin['screenshot'])) {
+            $screenshots[] = ['src' => $skin['screenshot'], 'label' => 'Preview'];
+        }
+
+        // Load features from local manifest if installed
+        $features = $skin['features'] ?? [];
+        if ($skin['installed'] && file_exists("skins/{$slug}/manifest.php")) {
+            $m = include "skins/{$slug}/manifest.php";
+            $features = $m['features'] ?? $features;
+        }
+
+        $modal_skins[$slug] = [
+            'name'        => $skin['name'] ?? $slug,
+            'version'     => $skin['version'] ?? '?',
+            'author'      => $skin['author'] ?? 'Unknown',
+            'description' => $skin['description'] ?? '',
+            'status'      => $skin['status'] ?? 'stable',
+            'demo_url'    => $skin['demo_url'] ?? '',
+            'installed'   => $skin['installed'] ?? false,
+            'is_active'   => ($current_db_active === $slug),
+            'screenshots' => $screenshots,
+            'features'    => $features,
+        ];
+    }
+}
+
+// Add local-only skins not in registry
+foreach ($local_skins as $slug => $skin) {
+    if (isset($modal_skins[$slug])) continue;
+    $shots = skin_screenshots($slug);
+    $screenshots = [];
+    foreach ($shots as $s) {
+        $screenshots[] = ['src' => $s['file'], 'label' => $s['label']];
+    }
+
+    $modal_skins[$slug] = [
+        'name'        => $skin['name'],
+        'version'     => $skin['version'],
+        'author'      => $skin['author'],
+        'description' => $skin['description'],
+        'status'      => $skin['status'],
+        'demo_url'    => $skin['demo_url'] ?? '',
+        'installed'   => true,
+        'is_active'   => ($current_db_active === $slug),
+        'screenshots' => $screenshots,
+        'features'    => $skin['features'] ?? [],
+    ];
+}
+?>
+<script>
+var skinModalData = <?php echo json_encode($modal_skins); ?>;
+
+function openSkinModal(slug) {
+    var skin = skinModalData[slug];
+    if (!skin) return;
+
+    document.getElementById('sm-name').textContent = skin.name;
+    document.getElementById('sm-version').textContent = 'v' + skin.version;
+
+    // Screenshots side by side
+    var ssHtml = '';
+    if (skin.screenshots.length > 0) {
+        skin.screenshots.forEach(function(s) {
+            ssHtml += '<div style="flex:1;position:relative;">' +
+                '<img src="' + s.src + '" alt="' + s.label + '" style="width:100%;height:240px;object-fit:cover;display:block;" loading="lazy">' +
+                '<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);color:#fff;font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;padding:4px 8px;text-align:center;">' + s.label + '</div>' +
+                '</div>';
+        });
+    } else {
+        ssHtml = '<div style="flex:1;height:160px;display:flex;align-items:center;justify-content:center;color:#555;font-size:0.8rem;text-transform:uppercase;letter-spacing:2px;">No Preview Available</div>';
+    }
+    document.getElementById('sm-screenshots').innerHTML = ssHtml;
+
+    // Badges
+    var badges = '';
+    var statusClass = skin.status === 'stable' ? 'color:#4caf50;border-color:#4caf50;' :
+                      skin.status === 'beta' ? 'color:#ff9800;border-color:#ff9800;' :
+                      'color:#999;border-color:#666;';
+    badges += '<span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;padding:2px 8px;border:1px solid;border-radius:3px;' + statusClass + '">' + skin.status.toUpperCase() + '</span>';
+    if (skin.is_active) badges += '<span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;padding:2px 8px;border:1px solid;border-radius:3px;color:#4a9eff;border-color:#4a9eff;">ACTIVE</span>';
+    else if (skin.installed) badges += '<span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;padding:2px 8px;border:1px solid;border-radius:3px;color:#888;border-color:#555;">INSTALLED</span>';
+    document.getElementById('sm-badges').innerHTML = badges;
+
+    // Description
+    document.getElementById('sm-desc').textContent = skin.description;
+
+    // Meta
+    var meta = 'BY ' + skin.author.toUpperCase();
+    if (skin.demo_url) meta += ' | <a href="' + skin.demo_url + '" target="_blank" rel="noopener" style="color:var(--accent, #4a9eff);">LIVE DEMO</a>';
+    document.getElementById('sm-meta').innerHTML = meta;
+
+    // Capabilities
+    var f = skin.features || {};
+    var caps = '';
+    function cap(label, val, good) {
+        var style = good ? 'background:rgba(76,175,80,0.15);color:#4caf50;border:1px solid rgba(76,175,80,0.3);' :
+                           'background:rgba(128,128,128,0.1);color:#888;border:1px solid rgba(128,128,128,0.2);';
+        return '<span style="font-size:0.7rem;padding:3px 10px;border-radius:3px;' + style + '">' + label + '</span>';
+    }
+
+    caps += cap('LANDING PAGE', f.has_landing, f.has_landing);
+    if (f.instagram_mode) caps += cap('INSTAGRAM MODE', true, true);
+    if (f.carousel) caps += cap('CAROUSEL', true, true);
+    if (f.supports_wall) caps += cap('PHOTO WALL', true, true);
+
+    // Post modes
+    var modes = f.post_modes || ['image'];
+    modes.forEach(function(m) { caps += cap(m.toUpperCase() + ' POSTS', true, true); });
+
+    // Archive layouts
+    (f.archive_layouts || []).forEach(function(l) { caps += cap(l.toUpperCase(), true, true); });
+
+    // Community
+    (f.community || []).forEach(function(c) { caps += cap(c.toUpperCase(), true, true); });
+
+    document.getElementById('sm-caps').innerHTML = caps;
+
+    // Actions placeholder (view-only for now)
+    document.getElementById('sm-actions').innerHTML = '<button onclick="closeSkinModal()" style="padding:8px 20px;background:var(--bg-secondary, #333);border:1px solid var(--border, #444);border-radius:4px;color:var(--text-primary, #ccc);cursor:pointer;">CLOSE</button>';
+
+    document.getElementById('skin-modal-overlay').style.display = 'block';
+    document.addEventListener('keydown', skinModalEsc);
+}
+
+function closeSkinModal() {
+    document.getElementById('skin-modal-overlay').style.display = 'none';
+    document.removeEventListener('keydown', skinModalEsc);
+}
+function skinModalEsc(e) { if (e.key === 'Escape') closeSkinModal(); }
+
+// Prevent button/form clicks inside skin cards from opening the modal
+document.querySelectorAll('.skin-card-actions, .skin-card-actions button, .skin-card-actions form, .ss-nav, .ss-dot').forEach(function(el) {
+    el.addEventListener('click', function(e) { e.stopPropagation(); });
+});
+</script>
 
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-font-preview.js?v=<?php echo time(); ?>"></script>
 <script>

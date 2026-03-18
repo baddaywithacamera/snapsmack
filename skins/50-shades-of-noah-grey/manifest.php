@@ -21,6 +21,11 @@ return [
     'features' => [
         'supports_wall'   => true,
         'archive_layouts' => ['square', 'cropped', 'masonry'],
+        'has_landing'     => true,
+        'post_modes'      => ['image'],
+        'instagram_mode'  => false,
+        'carousel'        => false,
+        'community'       => ['likes', 'comments'],
     ],
 
     // Variant system for different greyscale themes
