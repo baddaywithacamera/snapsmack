@@ -17,6 +17,7 @@ Key characteristics:
 - **Self-update system** — Ed25519-signed release packages; apply updates through the admin without SSH access.
 - **Community features** — comments, likes, and emoji reactions. Three identity modes: open (no account required), hybrid, or registered-only.
 - **AI training crawler policy** — choose to allow, disallow, or take no position on AI training crawlers. Disallow mode blocks known AI bots (GPTBot, CCBot, ClaudeBot, etc.) via `robots.txt` and injects `noai`/`noimageai` meta tags site-wide. Managed under Global Config.
+- **Inline mosaics** — build tiled image groups from the media library and embed them in posts and pages via `[mosaic:ID]` shortcodes. Automatic row-based layout respects aspect ratios.
 - **No tracking, no ads, no third-party dependencies at runtime.**
 
 ---

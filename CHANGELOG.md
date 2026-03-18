@@ -16,9 +16,15 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
-## 0.7.4d — "La-Z-Boy" (2026-03-17)
+## 0.7.4d — "La-Z-Boy" (2026-03-18)
 
 ### Added
+- Mosaic album builder with `[mosaic:ID]` shortcode for inline tiled image groups. Created via the Mosaics page in the admin (under The Good Shit). Pick assets from media library, drag to reorder, set gap, preview live. Automatic row-based packing respects aspect ratios with no cropping. Responsive layout re-arranges on window resize. Each mosaic gets a unique ID shown in the editor.
+- Link dialog with `target="_blank"`, `rel="noopener"`, and `nofollow` options (Ctrl+K shortcut).
+- Skin capability flags in manifests (`has_landing`, `post_modes`, `instagram_mode`, `carousel`, `community`).
+- Skin detail modal in gallery — click any card to see screenshots, description, and capabilities.
+- Content link styling across all skins (previously unstyled default blue).
+- Base `.snap-inline-frame` and `.page-hero` CSS rules in `public-facing.css`.
 - AI training crawler policy: new **AI Training Crawlers** setting in Global Config → Architecture & Interaction. Three modes — No Opinion (default), Allow, Disallow — control `robots.txt` directives for GPTBot, ChatGPT-User, CCBot, Google-Extended, anthropic-ai, ClaudeBot, and Bytespider. Disallow mode also injects `<meta name="robots" content="noai, noimageai">` on every page. `robots.txt` is regenerated on every Global Config save and always blocks `/smack-*`, `/core/`, `/backups/`, and `/migrations/`.
 - Media library asset swap: each asset card now has a **SWAP** button. Replaces the file on disk and updates the database record while preserving the asset ID, so all `[img:ID|...]` shortcodes already embedded in pages continue to resolve without any editing.
 - Inline `[img:]` page images now open the full-screen lightbox viewer on click or tap. The `data-lightbox-src` attribute always points to the original full-size file, regardless of whether the shortcode specifies `small`, `wall`, or `full` size.
@@ -31,6 +37,8 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - Social dock bounds clamping: the dock now stays within the content area between the page header and the bottom navigation bar. Measured dynamically via `.logo-area` / `.nav-menu` (header) and last `.nav-links` (nav bar); re-clamped on scroll (rAF-throttled) and resize. Works across all skins without skin-specific configuration.
 
 ### Changed
+- Forum API URL hardcoded to snapsmack.ca, removed user-configurable setting.
+- Removed legacy files from New Horizon skin (header.php, footer.php, meta.php, footer_scripts.php, skin.json).
 - `snap_sync_tags()`: includes `color_family` in the tag upsert. Hex colour codes are classified on first insert; existing tags with `color_family IS NULL` are filled in via `COALESCE` when the image is next saved.
 - `snap_render_caption()` / `snap_render_caption_html()`: regex updated to render digit-leading hex codes as links.
 - `index.php` `?tag=` routing: now accepts digit-leading 6-char hex slugs (e.g. `?tag=007a8b`).
@@ -41,6 +49,10 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - Social dock CSS: `overflow-y: hidden` added to vertical column variants; `top`, `bottom`, and `max-height` added to the transition list for smooth clamping animation.
 
 ### Fixed
+- Static page hero CSS selector mismatch in True Grit, Impact Printer, 50 Shades (`#tg-photobox` vs `#photobox`).
+- `snap-inline-frame` class mismatch — parser output didn't match skin CSS selectors.
+- Archive search input vertical alignment in True Grit, Impact Printer, 50 Shades, New Horizon.
+- Session timeout doubled (24→48 min), expired sessions return 401 JSON for XHR instead of login page HTML.
 - PDO errno 2014 ("Cannot execute queries while other unbuffered queries are active") during SQL migrations on shared hosts. Root cause: `PDO::exec()` doesn't drain MySQL's result/warning packets after DDL statements. Fixed in both `updater_find_migrations()` (CREATE TABLE) and `updater_run_migrations()` (each statement) by replacing `exec()` with `query()` + `closeCursor()`.
 - "MISSION FAILURE" alert on new post even though the image posted successfully. Root cause: `snap_sync_tags()` referenced the `color_family` column unconditionally, but installs that hadn't run the 0.7.4c migration hit a PDO fatal error (HTTP 500, empty body) after the DB insert completed. Fixed by detecting column existence and falling back to a simpler INSERT.
 
