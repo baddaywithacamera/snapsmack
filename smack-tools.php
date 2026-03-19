@@ -3,59 +3,21 @@
  * SNAPSMACK - Companion Tools
  * Alpha v0.7.4d
  *
- * Lists available companion desktop tools and handles build package uploads.
- * Packages are stored in /packages/ and served as direct downloads.
+ * Lists available companion desktop tools with download links.
  */
 
 require_once 'core/auth.php';
 
-$msg      = '';
-$msg_type = 'success';
-
-// --- UPLOAD HANDLER ---
-// Accepts a new build zip for a named tool and saves it to /packages/.
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_tool'])) {
-    $tool_key = preg_replace('/[^a-z0-9\-]/', '', $_POST['tool_key'] ?? '');
-
-    if (empty($tool_key)) {
-        $msg      = 'Invalid tool key.';
-        $msg_type = 'error';
-    } elseif (!isset($_FILES['tool_zip']) || $_FILES['tool_zip']['error'] !== UPLOAD_ERR_OK) {
-        $msg      = 'Upload failed or no file selected.';
-        $msg_type = 'error';
-    } else {
-        $tmp   = $_FILES['tool_zip']['tmp_name'];
-        $name  = $_FILES['tool_zip']['name'];
-        $ext   = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-
-        if ($ext !== 'zip') {
-            $msg      = 'Only .zip files are accepted.';
-            $msg_type = 'error';
-        } else {
-            $dest = __DIR__ . '/packages/' . $tool_key . '.zip';
-            if (move_uploaded_file($tmp, $dest)) {
-                $msg = 'Package uploaded successfully.';
-            } else {
-                $msg      = 'Could not save file. Check /packages/ directory permissions.';
-                $msg_type = 'error';
-            }
-        }
-    }
-}
-
 // --- TOOL REGISTRY ---
-// Add new companion tools here. package_file is relative to /packages/.
+// Add new companion tools here.
 $tools = [
     [
-        'key'          => 'smackyourbatchup',
         'name'         => 'Smack Your Batch Up',
         'version'      => '0.7.4d',
         'platform'     => 'Windows (64-bit)',
-        'package_file' => 'smackyourbatchup.zip',
+        'download_url' => 'https://snapsmack.ca/tools/smackyourbatchup.zip',
         'description'  => 'Desktop tool for bulk-posting images to SnapSmack. Loads manifest files, embeds EXIF copyright metadata via piexif (pure Python, no external dependencies), resizes to web dimensions, uploads originals to Google Drive, and posts the batch to SnapSmack. Borrows the active admin colour scheme on connect. Drag to reorder, per-row category and album, accumulate multiple manifests before posting.',
         'requires'     => 'Windows 10/11 · Google Drive credentials JSON (optional)',
-        'source'       => 'tools/ft-batch-poster/',
-        'download_url' => 'https://snapsmack.ca/tools/smackyourbatchup.zip',
     ],
 ];
 
@@ -69,26 +31,13 @@ include 'core/sidebar.php';
         <h2>COMPANION TOOLS</h2>
     </div>
 
-    <?php if ($msg): ?>
-        <div class="alert alert-<?php echo $msg_type === 'error' ? 'error' : 'success'; ?>">
-            > <?php echo htmlspecialchars($msg); ?>
-        </div>
-    <?php endif; ?>
-
     <div class="box">
         <p class="dim tool-intro-text">
             Companion tools are standalone desktop applications that work alongside SnapSmack.
-            Upload a build package below to make it available for download here.
         </p>
     </div>
 
     <?php foreach ($tools as $tool): ?>
-        <?php
-        $pkg_path   = __DIR__ . '/packages/' . $tool['package_file'];
-        $pkg_exists = file_exists($pkg_path);
-        $pkg_size   = $pkg_exists ? round(filesize($pkg_path) / 1024 / 1024, 1) . ' MB' : null;
-        $pkg_date   = $pkg_exists ? date('Y-m-d', filemtime($pkg_path)) : null;
-        ?>
         <div class="box mt-15">
             <div class="box-header">
                 <span class="box-title"><?php echo htmlspecialchars($tool['name']); ?></span>
@@ -101,48 +50,16 @@ include 'core/sidebar.php';
                     <?php echo htmlspecialchars($tool['description']); ?>
                 </p>
                 <p class="dim tool-requires">
-                    <strong>Requires:</strong> <?php echo htmlspecialchars($tool['requires']); ?><br>
-                    <strong>Source:</strong> <code><?php echo htmlspecialchars($tool['source']); ?></code>
+                    <strong>Requires:</strong> <?php echo htmlspecialchars($tool['requires']); ?>
                 </p>
 
                 <div class="tool-download-row">
-                    <?php if (!empty($tool['download_url'])): ?>
-                        <a href="<?php echo htmlspecialchars($tool['download_url']); ?>"
-                           class="btn-smack">
-                            ↓ DOWNLOAD
-                        </a>
-                    <?php endif; ?>
-
-                    <?php if ($pkg_exists): ?>
-                        <a href="packages/<?php echo htmlspecialchars($tool['package_file']); ?>"
-                           class="btn-smack btn-settings"
-                           download>
-                            ↓ LOCAL PACKAGE
-                        </a>
-                        <span class="dim tool-pkg-meta">
-                            <?php echo $pkg_size; ?> &middot; uploaded <?php echo $pkg_date; ?>
-                        </span>
-                    <?php elseif (empty($tool['download_url'])): ?>
-                        <p class="dim tool-no-pkg">
-                            No package uploaded yet. Build the tool and upload the zip below.
-                        </p>
-                    <?php endif; ?>
+                    <a href="<?php echo htmlspecialchars($tool['download_url']); ?>"
+                       class="btn-smack">
+                        ↓ DOWNLOAD
+                    </a>
                 </div>
             </div>
-
-            <!-- Upload form for this tool -->
-            <form method="POST" enctype="multipart/form-data" class="tool-upload-form">
-                <input type="hidden" name="upload_tool" value="1">
-                <input type="hidden" name="tool_key" value="<?php echo htmlspecialchars($tool['key']); ?>">
-
-                <div class="tool-upload-row">
-                    <label class="dim tool-upload-label">
-                        <?php echo $pkg_exists ? 'REPLACE PACKAGE' : 'UPLOAD PACKAGE'; ?> (.zip)
-                    </label>
-                    <input type="file" name="tool_zip" accept=".zip" class="tool-upload-input">
-                    <button type="submit" class="btn-smack btn-settings">UPLOAD</button>
-                </div>
-            </form>
         </div>
     <?php endforeach; ?>
 </div>

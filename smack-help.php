@@ -1079,6 +1079,60 @@ entry but does not delete the PHP script.</p>
 HTML
 ];
 
+// ── SMACK YOUR BATCH UP ──────────────────────────────────────────────────
+
+$help_topics['smackyourbatchup'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Smack Your Batch Up',
+    'icon'     => '&#x25B6;',
+    'content'  => <<<'HTML'
+<h3>Smack Your Batch Up</h3>
+<p>Smack Your Batch Up is a standalone Windows desktop app for bulk-posting images
+to SnapSmack. It connects to your site, pulls your categories and albums, and lets
+you queue up dozens of images for posting in a single batch.</p>
+
+<h4>Getting Started</h4>
+<p>Download the tool from the Companion Tools page in the admin panel or from
+<code>https://snapsmack.ca/tools/smackyourbatchup.zip</code>. Extract and run the
+.exe — no installation required. On first launch, enter your SnapSmack site URL and
+admin credentials. The app connects to your site and loads your categories and albums.</p>
+
+<h4>Loading Images</h4>
+<p>Load images in two ways: point to a folder of images, or load a manifest file. A
+manifest is a text file that pairs image filenames with titles, descriptions, tags,
+categories, and albums — useful for pre-planned batch uploads. You can load multiple
+manifests and they accumulate in the queue.</p>
+
+<h4>Queue Management</h4>
+<p>Each image appears as a row with a thumbnail preview. You can drag rows to reorder
+them, change the category or album per row, and edit titles and tags inline. The queue
+shows everything that will be posted before you commit.</p>
+
+<h4>EXIF &amp; Copyright</h4>
+<p>The app automatically embeds EXIF copyright metadata into every image using piexif
+(pure Python — no external tools needed). Copyright text, artist name, image
+description, and tags are all written into the EXIF data before upload. This metadata
+survives on the server because SnapSmack preserves EXIF through its image processing
+pipeline.</p>
+
+<h4>Google Drive Integration</h4>
+<p>If you provide a Google Drive credentials JSON file, the app uploads full-resolution
+originals to a Drive folder before posting. The Drive URL is stored with each post,
+enabling a high-res download link on the public site. This is optional — the app works
+fine without it.</p>
+
+<h4>Admin Theme Sync</h4>
+<p>On connect, the app pulls your active admin colour scheme and applies it to the
+desktop UI. If you switch admin themes, reconnect and the app updates to match.</p>
+
+<h4>Building From Source</h4>
+<p>Source lives in <code>tools/ft-batch-poster/</code>. Run <code>build.bat</code> to
+compile with PyInstaller. The build reads the version from <code>main.py</code> and
+outputs a versioned exe to <code>C:\tools\</code>. Requires Python 3.11+ and
+<code>pip install -r requirements.txt</code>.</p>
+HTML
+];
+
 // ── INSTALLER ────────────────────────────────────────────────────────────
 
 $help_topics['installer'] = [
