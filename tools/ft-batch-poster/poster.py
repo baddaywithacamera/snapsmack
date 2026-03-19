@@ -280,7 +280,7 @@ class SnapSmackClient:
             if notes:
                 msg += f" ({'; '.join(notes)})"
 
-            return PostResult(entry, True, msg, web_path=web_path, drive_url=drive_url)
+            return PostResult(entry, True, msg, web_path=web_path, drive_url=drive_url, exif_ok=exif_ok)
 
         except requests.RequestException as e:
             return PostResult(entry, False, f"Network error: {e}", web_path=web_path)
