@@ -1,9 +1,11 @@
 """
 ft-batch-poster — main.py
-Found Textures batch posting tool for SnapSmack.
-Dark-themed desktop app with thumbnail table, drag reorder,
+SnapSmack Batch Image Poster.
+Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
+
+BUILD_VERSION = "0.7.4d-3"   # bump this on every rebuild
 
 import os
 import queue
@@ -363,7 +365,7 @@ class App(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title("SNAPSMACK BATCH IMAGE POSTER")
+        self.title(f"SNAPSMACK BATCH IMAGE POSTER  —  build {BUILD_VERSION}")
         self.geometry(f"{WIN_W}x{WIN_H}")
         self.minsize(860, 600)
         self.configure(bg=BG_DEEP)
@@ -541,7 +543,7 @@ class App(tk.Tk):
         header.pack_propagate(False)
 
         self._title_lbl = tk.Label(
-            header, text="SNAPSMACK  BATCH IMAGE POSTER",
+            header, text=f"SNAPSMACK  BATCH IMAGE POSTER",
             bg=BG_CARD, fg=ACCENT, font=FONT_TITLE,
         )
         self._title_lbl.pack(side="left", padx=16)
@@ -550,6 +552,8 @@ class App(tk.Tk):
         self._conn_dot.pack(side="right", padx=(0, 14))
         self._conn_lbl = tk.Label(header, text="Not connected", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
         self._conn_lbl.pack(side="right")
+        tk.Label(header, text=f"build {BUILD_VERSION}", bg=BG_CARD, fg=FG_DIM,
+                 font=("Segoe UI", 8)).pack(side="right", padx=(0, 20))
 
         tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
 
