@@ -18,6 +18,14 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ## 0.7.4d — "La-Z-Boy" (2026-03-18)
 
+### Added (2026-03-19)
+- **Batch Image Poster** (`tools/ft-batch-poster/`): standalone Windows desktop tool for bulk-posting images to SnapSmack with full EXIF/IPTC/XMP embedding. Loads one or more manifest files (accumulated — existing queue is preserved until the new Clear button is used), drag-reorders entries, sets per-row category and album, resizes to web dimensions, embeds copyright metadata via ExifTool, uploads originals to Google Drive, and posts to SnapSmack in a single batch. Connects to the live site on login and borrows the active admin colour scheme automatically.
+- **smack-tools.php**: new admin page (The Good Shit → Tools) listing available companion tools. Admins can upload a zipped build of Batch Image Poster and serve it as a download link from within the CMS.
+- `tools/ft-batch-poster/build.bat`: checks for both `exiftool.exe` and the required `exiftool_files\` Perl library folder before building; post-build robocopy step copies both into `dist\` automatically.
+
+### Fixed (2026-03-19)
+- Albums page (`smack-albums.php`): ADD TO REGISTRY / UPDATE MISSION button was placed outside the form grid in a `form-action-row` div, causing it to render at the bottom of the page below the footer and be unclickable. Button moved inside the left column, directly below the description textarea. Edit mode: UPDATE MISSION button appears first, CANCEL EDIT below it.
+
 ### Added
 - Mosaic album builder with `[mosaic:ID]` shortcode for inline tiled image groups. Created via the Mosaics page in the admin (under The Good Shit). Pick assets from media library, drag to reorder, set gap, preview live. Automatic row-based packing respects aspect ratios with no cropping. Responsive layout re-arranges on window resize. Each mosaic gets a unique ID shown in the editor.
 - Link dialog with `target="_blank"`, `rel="noopener"`, and `nofollow` options (Ctrl+K shortcut).

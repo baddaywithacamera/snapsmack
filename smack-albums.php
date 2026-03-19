@@ -96,8 +96,14 @@ include 'core/sidebar.php';
                         <textarea name="album_description" placeholder="Technical or artistic intent..." rows="8"><?php echo $edit_mode ? htmlspecialchars($edit_data['album_description'] ?? '') : ''; ?></textarea>
                     </div>
 
+                    <div class="lens-input-wrapper mt-20">
+                        <button type="submit" class="master-update-btn">
+                            <?php echo $edit_mode ? "UPDATE MISSION" : "ADD TO REGISTRY"; ?>
+                        </button>
+                    </div>
+
                     <?php if ($edit_mode): ?>
-                        <div class="lens-input-wrapper mt-20">
+                        <div class="lens-input-wrapper mt-10">
                             <a href="smack-albums.php" class="btn-reset btn-cancel-block">CANCEL EDIT</a>
                         </div>
                     <?php endif; ?>
@@ -136,11 +142,6 @@ include 'core/sidebar.php';
             </div>
         </div>
 
-        <div class="form-action-row">
-            <button type="submit" class="master-update-btn">
-                <?php echo $edit_mode ? "UPDATE MISSION" : "ADD TO REGISTRY"; ?>
-            </button>
-        </div>
     </form>
 </div>
 
