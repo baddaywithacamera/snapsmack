@@ -1115,23 +1115,27 @@ description, and tags are all written into the EXIF data before upload. This met
 survives on the server because SnapSmack preserves EXIF through its image processing
 pipeline.</p>
 
-<h4>Downloads &amp; Cloud Storage</h4>
-<p>SnapSmack supports a download button on posts that links to a full-resolution copy
-of the image stored on an external service. On the New Post page, set "Allow Download"
-to ENABLED and paste any public URL into the Download URL field — Google Drive, OneDrive,
-Dropbox, or any direct link. The batch poster automates this for Google Drive specifically
-(see below), but for manual posts any URL works.</p>
+<h4>Downloads &amp; Cloud Storage (Optional)</h4>
+<p>The batch poster works perfectly fine without any cloud storage. If you just want to
+post images, skip this section entirely — leave the Google Drive fields blank and the
+app ignores them. Downloads will be disabled on those posts.</p>
 
-<h4>Setting Up Google Drive (Automated)</h4>
-<p>The batch poster can automatically upload originals to Google Drive and attach the
-share link to each post. To set this up:</p>
+<p>If you <em>do</em> want a download button on your posts linking to full-resolution
+originals, SnapSmack supports any public URL — Google Drive, OneDrive, Dropbox, or any
+direct link. The batch poster automates this for Google Drive specifically. For other
+services, upload your originals manually and paste the share link into the Download URL
+field on the New Post or Edit Transmission page.</p>
+
+<h4>Setting Up Google Drive (Optional)</h4>
+<p>If you want the batch poster to automatically upload originals to Google Drive and
+attach the share link to each post:</p>
 <ol>
     <li>Go to <code>console.cloud.google.com</code> and create a project (or use an existing one).</li>
     <li>Enable the <strong>Google Drive API</strong> for that project (APIs &amp; Services → Library → search "Drive").</li>
     <li>Go to APIs &amp; Services → Credentials → Create Credentials → <strong>OAuth client ID</strong>.</li>
     <li>Application type: <strong>Desktop app</strong>. Name it anything you want.</li>
     <li>Download the resulting <code>credentials.json</code> file and save it somewhere permanent on your machine.</li>
-    <li>In Smack Your Batch Up, click the credentials file picker (🗁) and select your <code>credentials.json</code>.</li>
+    <li>In Smack Your Batch Up, click the credentials file picker and select your <code>credentials.json</code>.</li>
     <li>Enter the Google Drive folder ID where you want originals stored. The folder ID is the last segment
         of the folder URL — e.g. in <code>drive.google.com/drive/folders/1aBcDeFgHiJkLmN</code>, the ID is
         <code>1aBcDeFgHiJkLmN</code>. Make sure this folder is set to "Anyone with the link can view" so
@@ -1141,14 +1145,9 @@ share link to each post. To set this up:</p>
         to the exe — subsequent launches reconnect automatically without re-auth.</li>
 </ol>
 <p>Once connected, every image in the batch gets its original uploaded to Drive with EXIF
-metadata embedded, and the public share link is attached to the post automatically.</p>
-
-<h4>Setting Up OneDrive or Dropbox (Manual)</h4>
-<p>OneDrive and Dropbox are not automated by the batch poster, but work fine with manual
-posts. Upload your full-resolution originals to your preferred service, get a public
-share link for each file, and paste it into the Download URL field on the New Post page
-(or the Edit Transmission page for existing posts). The download button on the public
-site links directly to whatever URL you provide.</p>
+metadata embedded, and the public share link is attached to the post automatically. If
+you later want to stop using Drive, just clear the credentials and folder ID fields —
+the app goes back to posting without downloads.</p>
 
 <h4>Admin Theme Sync</h4>
 <p>On connect, the app pulls your active admin colour scheme and applies it to the
