@@ -799,7 +799,7 @@ include 'core/sidebar.php';
                     </ul>
                 <?php endif; ?>
 
-                <form method="POST" style="margin-top:16px;">
+                <form method="POST">
                     <input type="hidden" name="action" value="schema_fix">
                     <button type="submit" class="btn-smack">APPLY ALL FIXES</button>
                 </form>
