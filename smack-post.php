@@ -11,6 +11,49 @@ require_once 'core/auth.php';
 require_once 'core/palette-extract.php';
 require_once 'core/snap-tags.php';
 
+/**
+ * Extract the raw EXIF APP1 segment bytes from a JPEG file.
+ * GD strips EXIF on every imagejpeg() save, so we grab it before processing
+ * and put it back after. Returns null if no EXIF APP1 is found.
+ */
+function snap_exif_extract(string $path): ?string {
+    $fh = @fopen($path, 'rb');
+    if (!$fh) return null;
+    $soi = fread($fh, 2);
+    if ($soi !== "\xFF\xD8") { fclose($fh); return null; }
+    while (!feof($fh)) {
+        $marker = fread($fh, 2);
+        if (strlen($marker) < 2 || $marker[0] !== "\xFF") break;
+        $len_bytes = fread($fh, 2);
+        if (strlen($len_bytes) < 2) break;
+        $len = (ord($len_bytes[0]) << 8) | ord($len_bytes[1]);
+        $payload = fread($fh, $len - 2);
+        if ($marker[1] === "\xE1" && substr($payload, 0, 6) === "Exif\x00\x00") {
+            fclose($fh);
+            return $marker . $len_bytes . $payload; // full APP1 segment
+        }
+        if ($marker[1] === "\xDA") break; // start of scan — no more headers
+    }
+    fclose($fh);
+    return null;
+}
+
+/**
+ * Inject a raw EXIF APP1 segment into a JPEG, replacing any existing APP1.
+ * Call this after imagejpeg() to restore EXIF that GD stripped.
+ */
+function snap_exif_inject(string $path, string $app1): void {
+    $jpeg = @file_get_contents($path);
+    if (!$jpeg || substr($jpeg, 0, 2) !== "\xFF\xD8") return;
+    // Strip any existing APP1 at position 2
+    $rest = substr($jpeg, 2);
+    if (strlen($rest) >= 4 && $rest[0] === "\xFF" && $rest[1] === "\xE1") {
+        $seg_len = (ord($rest[2]) << 8) | ord($rest[3]);
+        $rest = substr($rest, 2 + $seg_len);
+    }
+    file_put_contents($path, "\xFF\xD8" . $app1 . $rest);
+}
+
 // Extend limits for high-resolution image processing.
 set_time_limit(300);
 ini_set('memory_limit', '512M');
@@ -151,6 +194,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         $db_checksum     = null;
         $display_options_json = null;
 
+        // Preserve EXIF before GD processing — GD strips it on every imagejpeg() save.
+        $preserved_exif = ($mime === 'image/jpeg') ? snap_exif_extract($target_path) : null;
+
         if ($mime == 'image/jpeg') { $src = imagecreatefromjpeg($target_path); }
         elseif ($mime == 'image/png') { $src = imagecreatefrompng($target_path); }
         elseif ($mime == 'image/webp') { $src = imagecreatefromwebp($target_path); }
@@ -234,6 +280,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
 
                 $orig_w = $d_w;
                 $orig_h = $d_h;
+            }
+
+            // Restore EXIF that GD stripped during orientation correction / resize.
+            if ($preserved_exif !== null) {
+                snap_exif_inject($target_path, $preserved_exif);
             }
 
             // --- SQUARE THUMBNAIL (t_ prefix) ---
