@@ -647,3 +647,8 @@ input[type="range"]::-webkit-slider-thumb {
 .reorder-status.saved  { color: #39FF14; }
 .reorder-status.error  { color: #E86060; }
 .batch-bar { background-color: #1c1c1c; border-color: #2a2a2a; color: #777777; }
+
+/* ─── COMPANION TOOLS (smack-tools.php) ──────────────────────────── */
+.tool-desc { color: #cccccc; }
+.tool-upload-form { border-top-color: #2a2a2a; }
+.tool-upload-input { background-color: #050505; border-color: #1a1a1a; color: #cccccc; }

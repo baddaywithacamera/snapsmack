@@ -47,13 +47,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_tool'])) {
 // Add new companion tools here. package_file is relative to /packages/.
 $tools = [
     [
-        'key'          => 'ft-batch-poster',
-        'name'         => 'Batch Image Poster',
+        'key'          => 'smackyourbatchup',
+        'name'         => 'Smack Your Batch Up',
         'version'      => '0.7.4d',
         'platform'     => 'Windows (64-bit)',
-        'package_file' => 'ft-batch-poster.zip',
-        'description'  => 'Desktop tool for bulk-posting images to SnapSmack. Loads manifest files, embeds full EXIF/IPTC/XMP copyright metadata via ExifTool, resizes to web dimensions, uploads originals to Google Drive, and posts the batch to SnapSmack. Borrows the active admin colour scheme on connect. Drag to reorder, per-row category and album, accumulate multiple manifests before posting.',
-        'requires'     => 'Windows 10/11 · ExifTool 12+ (bundled) · Google Drive credentials JSON (optional)',
+        'package_file' => 'smackyourbatchup.zip',
+        'description'  => 'Desktop tool for bulk-posting images to SnapSmack. Loads manifest files, embeds EXIF copyright metadata via piexif (pure Python, no external dependencies), resizes to web dimensions, uploads originals to Google Drive, and posts the batch to SnapSmack. Borrows the active admin colour scheme on connect. Drag to reorder, per-row category and album, accumulate multiple manifests before posting.',
+        'requires'     => 'Windows 10/11 · Google Drive credentials JSON (optional)',
         'source'       => 'tools/ft-batch-poster/',
     ],
 ];
@@ -75,7 +75,7 @@ include 'core/sidebar.php';
     <?php endif; ?>
 
     <div class="box">
-        <p class="dim" style="margin:0 0 4px;">
+        <p class="dim tool-intro-text">
             Companion tools are standalone desktop applications that work alongside SnapSmack.
             Upload a build package below to make it available for download here.
         </p>
@@ -88,53 +88,50 @@ include 'core/sidebar.php';
         $pkg_size   = $pkg_exists ? round(filesize($pkg_path) / 1024 / 1024, 1) . ' MB' : null;
         $pkg_date   = $pkg_exists ? date('Y-m-d', filemtime($pkg_path)) : null;
         ?>
-        <div class="box" style="margin-top:16px;">
+        <div class="box mt-15">
             <div class="box-header">
                 <span class="box-title"><?php echo htmlspecialchars($tool['name']); ?></span>
-                <code class="slug-display" style="margin-left:10px;">v<?php echo htmlspecialchars($tool['version']); ?></code>
-                <code class="slug-display" style="margin-left:6px;"><?php echo htmlspecialchars($tool['platform']); ?></code>
+                <code class="slug-display tool-version-badge">v<?php echo htmlspecialchars($tool['version']); ?></code>
+                <code class="slug-display tool-platform-badge"><?php echo htmlspecialchars($tool['platform']); ?></code>
             </div>
 
-            <div style="padding:16px 0 8px;">
-                <p style="margin:0 0 10px; color:var(--fg-main, #e8e8e0);">
+            <div class="tool-details">
+                <p class="tool-desc">
                     <?php echo htmlspecialchars($tool['description']); ?>
                 </p>
-                <p class="dim" style="margin:0 0 16px; font-size:0.85em;">
+                <p class="dim tool-requires">
                     <strong>Requires:</strong> <?php echo htmlspecialchars($tool['requires']); ?><br>
                     <strong>Source:</strong> <code><?php echo htmlspecialchars($tool['source']); ?></code>
                 </p>
 
                 <?php if ($pkg_exists): ?>
-                    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+                    <div class="tool-download-row">
                         <a href="packages/<?php echo htmlspecialchars($tool['package_file']); ?>"
                            class="btn-smack"
                            download>
                             ↓ DOWNLOAD PACKAGE
                         </a>
-                        <span class="dim" style="font-size:0.85em;">
+                        <span class="dim tool-pkg-meta">
                             <?php echo $pkg_size; ?> &middot; uploaded <?php echo $pkg_date; ?>
                         </span>
                     </div>
                 <?php else: ?>
-                    <p class="dim" style="margin:0 0 12px;">
+                    <p class="dim tool-no-pkg">
                         No package uploaded yet. Build the tool and upload the zip below.
                     </p>
                 <?php endif; ?>
             </div>
 
             <!-- Upload form for this tool -->
-            <form method="POST" enctype="multipart/form-data"
-                  style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border, #2a2a2a);">
+            <form method="POST" enctype="multipart/form-data" class="tool-upload-form">
                 <input type="hidden" name="upload_tool" value="1">
                 <input type="hidden" name="tool_key" value="<?php echo htmlspecialchars($tool['key']); ?>">
 
-                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                    <label class="dim" style="white-space:nowrap; font-size:0.85em;">
+                <div class="tool-upload-row">
+                    <label class="dim tool-upload-label">
                         <?php echo $pkg_exists ? 'REPLACE PACKAGE' : 'UPLOAD PACKAGE'; ?> (.zip)
                     </label>
-                    <input type="file" name="tool_zip" accept=".zip"
-                           style="background:var(--bg-input, #1e1e2a); color:var(--fg-main, #e8e8e0);
-                                  border:1px solid var(--border, #2a2a2a); padding:4px 8px; font-size:0.85em;">
+                    <input type="file" name="tool_zip" accept=".zip" class="tool-upload-input">
                     <button type="submit" class="btn-smack btn-settings">UPLOAD</button>
                 </div>
             </form>

@@ -2887,6 +2887,66 @@ input[type="range"]:active::-webkit-slider-thumb {
     white-space: nowrap;
 }
 
+/* ─── COMPANION TOOLS (smack-tools.php) ────────────────────────────── */
+.tool-intro-text   { margin: 0 0 4px; }
+.tool-version-badge { margin-left: 10px; }
+.tool-platform-badge { margin-left: 6px; }
+
+.tool-details {
+    padding: 16px 0 8px;
+}
+
+.tool-desc {
+    margin: 0 0 10px;
+}
+
+.tool-requires {
+    margin: 0 0 16px;
+    font-size: 0.85em;
+}
+
+.tool-download-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.tool-pkg-meta {
+    font-size: 0.85em;
+}
+
+.tool-no-pkg {
+    margin: 0 0 12px;
+}
+
+.tool-upload-form {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top-width: 1px;
+    border-top-style: solid;
+}
+
+.tool-upload-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.tool-upload-label {
+    white-space: nowrap;
+    font-size: 0.85em;
+}
+
+.tool-upload-input {
+    padding: 4px 8px;
+    font-size: 0.85em;
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 3px;
+}
+
 /* ─── RESPONSIVE: SMALL DESKTOP / LARGE TABLET (≤1200px) ──────── */
 @media (max-width: 1200px) {
     .main {

@@ -1,15 +1,15 @@
 @echo off
 REM ─────────────────────────────────────────────────────────────────────────
-REM  ft-batch-poster build script
+REM  Smack Your Batch Up — build script
 REM  Requires: Python 3.11+, pip install -r requirements.txt
-REM  Output:   C:\tools\ss-batch-poster-{version}.exe
-REM  EXIF is handled by piexif (pure Python) — no ExifTool needed.
+REM  Output:   C:\tools\smackyourbatchup-{version}.exe
+REM  EXIF is handled by piexif (pure Python) — no external dependencies.
 REM ─────────────────────────────────────────────────────────────────────────
 
 REM ── Read BUILD_VERSION from main.py ───────────────────────────────────────
 for /f "tokens=3 delims= " %%V in ('findstr /C:"BUILD_VERSION = " main.py') do set RAW_VER=%%V
 set BUILD_VER=%RAW_VER:"=%
-set EXE_NAME=ss-batch-poster-%BUILD_VER%.exe
+set EXE_NAME=smackyourbatchup-%BUILD_VER%.exe
 echo Build version: %BUILD_VER%
 echo Output name:   %EXE_NAME%
 
@@ -22,7 +22,7 @@ pyinstaller ^
     --onefile ^
     --windowed ^
     --clean ^
-    --name ss-batch-poster-%BUILD_VER% ^
+    --name smackyourbatchup-%BUILD_VER% ^
     --hidden-import=tkinter ^
     --hidden-import=tkinter.ttk ^
     --hidden-import=PIL ^

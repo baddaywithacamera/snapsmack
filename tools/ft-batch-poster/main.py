@@ -1,11 +1,11 @@
 """
-ft-batch-poster — main.py
-SnapSmack Batch Image Poster.
+Smack Your Batch Up — main.py
+SnapSmack batch image posting tool.
 Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.4d-10"   # bump this on every rebuild
+BUILD_VERSION = "0.7.4d-11"   # bump this on every rebuild
 
 import os
 import queue
@@ -363,7 +363,7 @@ class App(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title(f"SNAPSMACK BATCH IMAGE POSTER  —  build {BUILD_VERSION}")
+        self.title(f"SMACK YOUR BATCH UP  —  build {BUILD_VERSION}")
         self.geometry(f"{WIN_W}x{WIN_H}")
         self.minsize(860, 600)
         self.configure(bg=BG_DEEP)
