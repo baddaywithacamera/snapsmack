@@ -531,5 +531,3 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* ─── COMPANION TOOLS (smack-tools.php) ──────────────────────────── */
 .tool-desc { color: #e0e0e0; }
-.tool-upload-form { border-top-color: #383838; }
-.tool-upload-input { background-color: #1e1e1e; border-color: #383838; color: #e0e0e0; }
