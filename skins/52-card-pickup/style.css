@@ -95,9 +95,13 @@ a:hover { color: var(--text-primary); }
     height: auto;
 }
 
+/* Hover lift — straightens rotation, rises off the surface, deeper shadow */
 .pile-card-hover {
-    transform: translate(-50%, -50%) rotate(0deg) translateY(-6px) scale(1.02) !important;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25) !important;
+    transform: translate(-50%, -50%) rotate(0deg) translateY(-8px) scale(1.03) !important;
+    box-shadow:
+        0 2px 4px rgba(0,0,0,0.10),
+        0 8px 20px rgba(0,0,0,0.15),
+        0 16px 48px rgba(0,0,0,0.20) !important;
 }
 
 /* ── Title overlay ────────────────────────────────────────────────────── */
@@ -125,74 +129,233 @@ a:hover { color: var(--text-primary); }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   FRAME STYLES
+   FRAME STYLES — Photorealistic
+   Multi-layered CSS to simulate physical print materials.
    ══════════════════════════════════════════════════════════════════════ */
 
-/* ── Polaroid ─────────────────────────────────────────────────────────── */
+/* ── Polaroid ─────────────────────────────────────────────────────────
+   Classic instant print: thick white card stock, wider tab at bottom,
+   slight warm tint, paper grain texture via noise gradient, embossed
+   edge from multi-layer shadows, chemical development border around
+   the image window.
+   ──────────────────────────────────────────────────────────────────── */
 .pile-frame-polaroid {
-    background: #fff;
-    padding: 14px 14px 42px 14px;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18),
-                0 1px 3px rgba(0, 0, 0, 0.12);
+    /* Card stock — slightly warm off-white, not pure #fff */
+    background:
+        /* Paper grain: subtle noise texture */
+        repeating-conic-gradient(
+            rgba(0,0,0,0.008) 0%, transparent 0.5%, transparent 1%
+        ),
+        /* Warm base */
+        linear-gradient(168deg, #fefdfb 0%, #faf8f4 40%, #f7f4ef 100%);
+    padding: 15px 15px 48px 15px;
+    position: relative;
+    /* Multi-layer shadow: contact shadow + soft ambient + distant spread */
+    box-shadow:
+        0 1px 1px rgba(0,0,0,0.08),
+        0 2px 4px rgba(0,0,0,0.06),
+        0 4px 12px rgba(0,0,0,0.10),
+        0 8px 28px rgba(0,0,0,0.12);
 }
 
+/* Card edge thickness — visible on the left and bottom as a 1px darker line */
+.pile-frame-polaroid::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 1px solid rgba(0,0,0,0.06);
+    border-bottom: 2px solid rgba(0,0,0,0.08);
+    pointer-events: none;
+}
+
+/* Chemical development border: dark vignette around the image window */
 .pile-frame-polaroid img {
-    border: 1px solid rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(80,60,40,0.15);
+    box-shadow: inset 0 0 2px rgba(80,60,40,0.10);
 }
 
-/* ── Standard Print ───────────────────────────────────────────────────── */
+/* ── Standard Print ───────────────────────────────────────────────────
+   Drugstore 4×6: thin even white border, glossy paper sheen, slightly
+   rounded corners from the cutter, fingerprint-level micro-texture.
+   ──────────────────────────────────────────────────────────────────── */
 .pile-frame-print {
-    background: #fff;
-    padding: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15),
-                0 1px 2px rgba(0, 0, 0, 0.10);
+    background:
+        /* Glossy sheen: diagonal highlight */
+        linear-gradient(135deg, rgba(255,255,255,0.6) 0%, transparent 35%, transparent 65%, rgba(255,255,255,0.2) 100%),
+        /* Paper base — bright white with just a hint of cool blue */
+        linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%);
+    padding: 8px;
+    border-radius: 1px;
+    position: relative;
+    box-shadow:
+        0 0.5px 1px rgba(0,0,0,0.10),
+        0 2px 6px rgba(0,0,0,0.08),
+        0 6px 20px rgba(0,0,0,0.10);
+}
+
+/* Print edge: barely visible trim line */
+.pile-frame-print::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 1px solid rgba(0,0,0,0.04);
+    border-radius: 1px;
+    pointer-events: none;
+}
+
+/* Glossy surface catch on the image itself */
+.pile-frame-print::after {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    background: linear-gradient(
+        115deg,
+        transparent 0%,
+        transparent 40%,
+        rgba(255,255,255,0.06) 42%,
+        rgba(255,255,255,0.12) 44%,
+        transparent 46%,
+        transparent 100%
+    );
+    pointer-events: none;
+    z-index: 1;
 }
 
 .pile-frame-print img {
-    border: 1px solid rgba(0, 0, 0, 0.04);
+    display: block;
+    border: 1px solid rgba(0,0,0,0.03);
 }
 
-/* ── Borderless ───────────────────────────────────────────────────────── */
+/* ── Borderless ───────────────────────────────────────────────────────
+   Raw print, no border. Simulates a loose photograph with a realistic
+   corner curl (bottom-right), visible paper edge thickness, and the
+   slight warp that happens when a print sits on a surface. The curl
+   uses a layered pseudo-element with gradient shadow underneath.
+   ──────────────────────────────────────────────────────────────────── */
 .pile-frame-borderless {
     background: transparent;
     padding: 0;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.20);
     border-radius: 1px;
-    overflow: hidden;
+    overflow: visible;
     position: relative;
+    /* Lifted shadow — print doesn't sit perfectly flat */
+    box-shadow:
+        0 1px 2px rgba(0,0,0,0.12),
+        0 3px 8px rgba(0,0,0,0.08),
+        0 6px 20px rgba(0,0,0,0.10),
+        /* Slight curl lift on bottom-right */
+        4px 4px 8px -2px rgba(0,0,0,0.14);
 }
 
-/* Subtle dog-ear on bottom-right corner */
+.pile-frame-borderless img {
+    display: block;
+    border-radius: 1px;
+}
+
+/* Corner curl — folded triangle with shadow underneath */
 .pile-frame-borderless::after {
     content: '';
     position: absolute;
     bottom: 0;
     right: 0;
-    width: 18px;
-    height: 18px;
-    background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.06) 50%);
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(
+        135deg,
+        transparent 0%,
+        transparent 48%,
+        #ece8e2 49%,
+        #f5f2ed 52%,
+        #faf8f5 100%
+    );
+    box-shadow:
+        -2px -2px 4px rgba(0,0,0,0.06),
+        -1px -1px 2px rgba(0,0,0,0.04);
     pointer-events: none;
+    z-index: 2;
 }
 
-/* ── Slide Mount ──────────────────────────────────────────────────────── */
+/* Shadow under the curled corner — darker wedge on the surface beneath */
+.pile-frame-borderless::before {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 28px;
+    height: 28px;
+    background: radial-gradient(
+        ellipse at bottom right,
+        rgba(0,0,0,0.15) 0%,
+        rgba(0,0,0,0.08) 40%,
+        transparent 70%
+    );
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* ── Slide Mount ──────────────────────────────────────────────────────
+   35mm transparency in a cardboard mount. Thick dark frame (the mount
+   itself), rounded aperture corners for the film window, faint
+   embossed text impression, inner bevel where cardboard meets film,
+   and a subtle warm tint to the mount material. The film window gets
+   a backlight glow suggesting a light table.
+   ──────────────────────────────────────────────────────────────────── */
 .pile-frame-slide {
-    background: #1a1a1a;
-    padding: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.30);
+    /* Cardboard mount — not pure black, slightly warm dark grey with texture */
+    background:
+        /* Cardboard fibre texture */
+        repeating-conic-gradient(
+            rgba(255,255,255,0.015) 0%, transparent 0.8%, transparent 1.6%
+        ),
+        /* Warm dark base */
+        linear-gradient(170deg, #2a2726 0%, #1e1c1b 50%, #171615 100%);
+    padding: 12px;
     position: relative;
+    border-radius: 2px;
+    box-shadow:
+        0 1px 2px rgba(0,0,0,0.20),
+        0 3px 8px rgba(0,0,0,0.15),
+        0 8px 24px rgba(0,0,0,0.20),
+        /* Card thickness on bottom edge */
+        0 2px 0 0 #0d0c0b;
 }
 
-/* Inner highlight line */
+/* Inner bevel — where the mount aperture is cut, light catches the edge */
 .pile-frame-slide::before {
     content: '';
     position: absolute;
-    inset: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    inset: 10px;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-top-color: rgba(255,255,255,0.10);
+    border-left-color: rgba(255,255,255,0.08);
+    border-bottom-color: rgba(0,0,0,0.15);
+    border-right-color: rgba(0,0,0,0.10);
+    border-radius: 2px;
+    pointer-events: none;
+}
+
+/* Embossed mount branding — faint text impression (top-left corner) */
+.pile-frame-slide::after {
+    content: 'KODACHROME';
+    position: absolute;
+    top: 3px;
+    left: 14px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 4.5px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.06);
     pointer-events: none;
 }
 
 .pile-frame-slide img {
     display: block;
+    border-radius: 2px;
+    /* Film window backlight glow — suggests a light table */
+    box-shadow:
+        0 0 1px rgba(255,255,255,0.08),
+        0 0 6px rgba(200,220,255,0.04);
 }
 
 /* ── Reshuffle Button ─────────────────────────────────────────────────── */
