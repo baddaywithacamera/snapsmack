@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.4d-3"   # bump this on every rebuild
+BUILD_VERSION = "0.7.4d-4"   # bump this on every rebuild
 
 import os
 import queue
@@ -432,6 +432,17 @@ class App(tk.Tk):
         style.map("Ghost.TButton",
             background=[("active", BG_HOVER)],
         )
+        style.configure("Post.TButton",
+            background=ACCENT,
+            foreground=BG_DEEP,
+            font=("Segoe UI", 11, "bold"),
+            padding=(28, 10),
+            borderwidth=0,
+        )
+        style.map("Post.TButton",
+            background=[("active", "#E8A030"), ("disabled", BG_MID)],
+            foreground=[("disabled", FG_DIM)],
+        )
 
     def _apply_theme(self, theme: dict):
         """
@@ -466,6 +477,11 @@ class App(tk.Tk):
         )
         style.configure("Ghost.TButton", background=bg_input, foreground=fg)
         style.map("Ghost.TButton", background=[("active", bg_card)])
+        style.configure("Post.TButton", background=accent, foreground=bg)
+        style.map("Post.TButton",
+            background=[("active", _lighten(accent)), ("disabled", bg_input)],
+            foreground=[("active", bg), ("disabled", fg_dim)],
+        )
         style.configure("TCombobox",
             fieldbackground=bg_input, background=bg_input, foreground=fg,
             selectbackground=accent, selectforeground=bg, bordercolor=border,
@@ -557,9 +573,34 @@ class App(tk.Tk):
 
         tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
 
+        # ── Config collapse toggle bar ────────────────────────────────
+        self._cfg_visible = True
+        cfg_toggle = tk.Frame(self, bg=BG_DEEP, height=26, cursor="hand2")
+        cfg_toggle.pack(fill="x")
+        cfg_toggle.pack_propagate(False)
+        self._cfg_arrow = tk.Label(cfg_toggle, text="▲  CONFIGURATION",
+                                   bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL,
+                                   cursor="hand2")
+        self._cfg_arrow.pack(side="left", padx=14, pady=4)
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
+
         # ── Config area ───────────────────────────────────────────────
-        cfg = tk.Frame(self, bg=BG_DEEP)
-        cfg.pack(fill="x", padx=14, pady=10)
+        self._cfg_frame = tk.Frame(self, bg=BG_DEEP)
+        self._cfg_frame.pack(fill="x", padx=14, pady=10)
+        cfg = self._cfg_frame
+
+        def _toggle_cfg(e=None):
+            if self._cfg_visible:
+                self._cfg_frame.pack_forget()
+                self._cfg_arrow.configure(text="▼  CONFIGURATION")
+            else:
+                self._cfg_frame.pack(fill="x", padx=14, pady=10,
+                                     before=self._queue_rule)
+                self._cfg_arrow.configure(text="▲  CONFIGURATION")
+            self._cfg_visible = not self._cfg_visible
+
+        cfg_toggle.bind("<Button-1>", _toggle_cfg)
+        self._cfg_arrow.bind("<Button-1>", _toggle_cfg)
 
         # Two-column grid: CONNECTION (left) | MANIFEST & DEFAULTS (right)
         cols = tk.Frame(cfg, bg=BG_DEEP)
@@ -679,7 +720,8 @@ class App(tk.Tk):
         self._entry(copy_body, self._copyright_var, width=0).pack(fill="x")
 
         # ── Queue header (ruled like admin h2) ────────────────────────
-        tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
+        self._queue_rule = tk.Frame(self, bg=BORDER, height=1)
+        self._queue_rule.pack(fill="x")
         q_hdr = tk.Frame(self, bg=BG_DEEP, height=30)
         q_hdr.pack(fill="x")
         q_hdr.pack_propagate(False)
@@ -704,9 +746,9 @@ class App(tk.Tk):
                                          command=self._on_validate)
         self._validate_btn.pack(side="left", padx=(14, 6), pady=10)
 
-        self._post_btn = ttk.Button(bottom, text="Post Batch", style="Accent.TButton",
+        self._post_btn = ttk.Button(bottom, text="POST BATCH", style="Post.TButton",
                                      command=self._on_post)
-        self._post_btn.pack(side="left", pady=10)
+        self._post_btn.pack(side="left", pady=6)
 
         self._clear_btn = ttk.Button(bottom, text="Clear", style="Ghost.TButton",
                                       command=self._on_clear)
