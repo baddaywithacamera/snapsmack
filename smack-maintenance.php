@@ -208,6 +208,359 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $asset_sync_next_offset = $next_offset;
     }
 
+    // SCHEMA HEALTH CHECK
+    // Diffs the live DB against the canonical target schema defined here.
+    // Generates ALTER TABLE / CREATE TABLE SQL for anything missing and optionally runs it.
+    if ($action === 'schema_check' || $action === 'schema_fix') {
+
+        // ── Target schema ────────────────────────────────────────────────────
+        // Column name → ADD COLUMN definition (used for ALTER TABLE).
+        // Only missing columns/tables are reported — extra columns are ignored.
+        $target = [
+
+            'snap_images' => [
+                'id'                  => "int NOT NULL AUTO_INCREMENT",
+                'img_title'           => "varchar(255) NOT NULL",
+                'img_slug'            => "varchar(255) NOT NULL",
+                'img_description'     => "text",
+                'img_film'            => "varchar(100) DEFAULT NULL",
+                'img_date'            => "datetime NOT NULL",
+                'img_file'            => "varchar(255) NOT NULL",
+                'img_exif'            => "text",
+                'img_download_url'    => "varchar(500) DEFAULT NULL",
+                'img_download_count'  => "int unsigned NOT NULL DEFAULT '0'",
+                'img_width'           => "int DEFAULT '0'",
+                'img_height'          => "int DEFAULT '0'",
+                'img_status'          => "enum('published','draft') DEFAULT 'published'",
+                'img_orientation'     => "int DEFAULT '0'",
+                'allow_comments'      => "tinyint(1) DEFAULT '1'",
+                'allow_download'      => "tinyint(1) NOT NULL DEFAULT '1'",
+                'download_url'        => "varchar(512) NOT NULL DEFAULT ''",
+                'img_thumb_square'    => "varchar(255) DEFAULT NULL",
+                'img_thumb_aspect'    => "varchar(255) DEFAULT NULL",
+                'img_checksum'        => "varchar(64) DEFAULT NULL",
+                'img_display_options' => "text DEFAULT NULL",
+                'post_id'             => "int DEFAULT NULL",
+                'sort_order'          => "int NOT NULL DEFAULT '0'",
+            ],
+
+            'snap_categories' => [
+                'id'             => "int NOT NULL AUTO_INCREMENT",
+                'cat_name'       => "varchar(100) NOT NULL",
+                'cat_slug'       => "varchar(100) NOT NULL",
+                'cat_description'=> "text",
+                'cover_image_id' => "int DEFAULT NULL",
+            ],
+
+            'snap_albums' => [
+                'id'               => "int NOT NULL AUTO_INCREMENT",
+                'album_name'       => "varchar(255) NOT NULL",
+                'album_description'=> "text",
+                'cover_image_id'   => "int DEFAULT NULL",
+            ],
+
+            'snap_image_cat_map'   => ['image_id' => "int NOT NULL", 'cat_id'   => "int NOT NULL"],
+            'snap_image_album_map' => ['image_id' => "int NOT NULL", 'album_id' => "int NOT NULL"],
+
+            'snap_pages' => [
+                'id'          => "int NOT NULL AUTO_INCREMENT",
+                'slug'        => "varchar(100) NOT NULL",
+                'title'       => "varchar(255) NOT NULL",
+                'content'     => "longtext",
+                'image_asset' => "varchar(255) DEFAULT ''",
+                'is_active'   => "tinyint(1) DEFAULT '1'",
+                'menu_order'  => "int DEFAULT '0'",
+                'created_at'  => "timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP",
+            ],
+
+            'snap_settings' => [
+                'setting_key' => "varchar(100) NOT NULL",
+                'setting_val' => "text",
+            ],
+
+            'snap_comments' => [
+                'id'             => "int NOT NULL AUTO_INCREMENT",
+                'img_id'         => "int NOT NULL",
+                'comment_author' => "varchar(100) DEFAULT NULL",
+                'comment_email'  => "varchar(150) DEFAULT NULL",
+                'comment_text'   => "text",
+                'comment_date'   => "datetime DEFAULT CURRENT_TIMESTAMP",
+                'comment_ip'     => "varchar(45) DEFAULT NULL",
+                'is_approved'    => "tinyint(1) DEFAULT '0'",
+            ],
+
+            'snap_users' => [
+                'id'             => "int NOT NULL AUTO_INCREMENT",
+                'username'       => "varchar(50) NOT NULL",
+                'password_hash'  => "varchar(255) NOT NULL",
+                'user_role'      => "varchar(20) NOT NULL DEFAULT 'editor'",
+                'email'          => "varchar(100) DEFAULT NULL",
+                'preferred_skin' => "varchar(100) DEFAULT 'default-dark'",
+            ],
+
+            'snap_blogroll' => [
+                'id'               => "int NOT NULL AUTO_INCREMENT",
+                'peer_name'        => "varchar(255) NOT NULL",
+                'peer_url'         => "varchar(255) NOT NULL",
+                'cat_id'           => "int DEFAULT NULL",
+                'peer_rss'         => "varchar(255) DEFAULT NULL",
+                'peer_desc'        => "text",
+                'sort_order'       => "int NOT NULL DEFAULT '0'",
+                'rss_last_fetched' => "datetime DEFAULT NULL",
+                'rss_last_updated' => "datetime DEFAULT NULL",
+            ],
+
+            'snap_assets' => [
+                'id'             => "int NOT NULL AUTO_INCREMENT",
+                'asset_name'     => "varchar(255) NOT NULL",
+                'asset_path'     => "varchar(500) NOT NULL",
+                'asset_checksum' => "varchar(64) DEFAULT NULL",
+                'created_at'     => "timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP",
+            ],
+
+            'snap_migrations' => [
+                'id'         => "int unsigned NOT NULL AUTO_INCREMENT",
+                'migration'  => "varchar(200) NOT NULL",
+                'applied_at' => "datetime NOT NULL DEFAULT CURRENT_TIMESTAMP",
+            ],
+
+            'snap_rate_limits' => [
+                'id'           => "int unsigned NOT NULL AUTO_INCREMENT",
+                'ip'           => "varchar(45) NOT NULL",
+                'action'       => "varchar(50) NOT NULL",
+                'count'        => "int unsigned NOT NULL DEFAULT 1",
+                'window_start' => "datetime NOT NULL DEFAULT CURRENT_TIMESTAMP",
+            ],
+
+            'snap_likes' => [
+                'id'         => "int unsigned NOT NULL AUTO_INCREMENT",
+                'post_id'    => "int unsigned NOT NULL",
+                'user_id'    => "int unsigned NOT NULL",
+                'created_at' => "datetime NOT NULL DEFAULT CURRENT_TIMESTAMP",
+            ],
+
+            'snap_posts' => [
+                'id'                 => "int NOT NULL AUTO_INCREMENT",
+                'title'              => "varchar(500) NOT NULL",
+                'slug'               => "varchar(600) NOT NULL",
+                'description'        => "text DEFAULT NULL",
+                'post_type'          => "enum('single','carousel','panorama') NOT NULL DEFAULT 'single'",
+                'status'             => "varchar(20) NOT NULL DEFAULT 'published'",
+                'created_at'         => "datetime NOT NULL DEFAULT CURRENT_TIMESTAMP",
+                'updated_at'         => "datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+                'allow_comments'     => "tinyint(1) NOT NULL DEFAULT 1",
+                'allow_download'     => "tinyint(1) NOT NULL DEFAULT 0",
+                'download_url'       => "varchar(500) DEFAULT NULL",
+                'download_count'     => "int NOT NULL DEFAULT 0",
+                'panorama_rows'      => "tinyint NOT NULL DEFAULT 1",
+                'import_source'      => "varchar(50) DEFAULT NULL",
+                'import_id'          => "varchar(200) DEFAULT NULL",
+                'post_img_size_pct'  => "tinyint unsigned NOT NULL DEFAULT 100",
+                'post_border_px'     => "tinyint unsigned NOT NULL DEFAULT 0",
+                'post_border_color'  => "char(7) NOT NULL DEFAULT '#000000'",
+                'post_bg_color'      => "char(7) NOT NULL DEFAULT '#ffffff'",
+                'post_shadow'        => "tinyint unsigned NOT NULL DEFAULT 0",
+            ],
+
+            'snap_post_images' => [
+                'id'               => "int NOT NULL AUTO_INCREMENT",
+                'post_id'          => "int NOT NULL",
+                'image_id'         => "int NOT NULL",
+                'sort_position'    => "smallint NOT NULL DEFAULT 0",
+                'is_cover'         => "tinyint(1) NOT NULL DEFAULT 0",
+                'grid_col'         => "tinyint DEFAULT NULL",
+                'grid_row'         => "tinyint DEFAULT NULL",
+                'img_size_pct'     => "tinyint unsigned NOT NULL DEFAULT 100",
+                'img_border_px'    => "tinyint unsigned NOT NULL DEFAULT 0",
+                'img_border_color' => "char(7) NOT NULL DEFAULT '#000000'",
+                'img_bg_color'     => "char(7) NOT NULL DEFAULT '#ffffff'",
+                'img_shadow'       => "tinyint unsigned NOT NULL DEFAULT 0",
+            ],
+
+            'snap_post_cat_map'   => ['post_id' => "int NOT NULL", 'cat_id'  => "int NOT NULL"],
+            'snap_post_album_map' => ['post_id' => "int NOT NULL", 'album_id'=> "int NOT NULL"],
+
+            'snap_tags' => [
+                'id'         => "int unsigned AUTO_INCREMENT",
+                'tag'        => "varchar(100) NOT NULL",
+                'slug'       => "varchar(100) NOT NULL",
+                'use_count'  => "int unsigned DEFAULT 0",
+                'created_at' => "timestamp DEFAULT CURRENT_TIMESTAMP",
+            ],
+
+            'snap_image_tags' => [
+                'id'         => "int unsigned AUTO_INCREMENT",
+                'image_id'   => "int unsigned NOT NULL",
+                'tag_id'     => "int unsigned NOT NULL",
+                'created_at' => "timestamp DEFAULT CURRENT_TIMESTAMP",
+            ],
+
+            'snap_community_users' => [
+                'id'             => "int unsigned NOT NULL AUTO_INCREMENT",
+                'username'       => "varchar(50) NOT NULL",
+                'display_name'   => "varchar(100) DEFAULT NULL",
+                'email'          => "varchar(150) NOT NULL",
+                'password_hash'  => "varchar(255) NOT NULL",
+                'avatar_url'     => "varchar(500) DEFAULT NULL",
+                'bio'            => "text DEFAULT NULL",
+                'status'         => "enum('active','unverified','suspended') NOT NULL DEFAULT 'unverified'",
+                'email_verified' => "tinyint(1) NOT NULL DEFAULT 0",
+                'last_seen_at'   => "datetime DEFAULT NULL",
+                'created_at'     => "datetime NOT NULL DEFAULT CURRENT_TIMESTAMP",
+            ],
+
+            'snap_community_sessions' => [
+                'id'         => "int unsigned NOT NULL AUTO_INCREMENT",
+                'user_id'    => "int unsigned NOT NULL",
+                'token'      => "varchar(64) NOT NULL",
+                'expires_at' => "datetime NOT NULL",
+                'ip'         => "varchar(45) DEFAULT NULL",
+                'user_agent' => "varchar(500) DEFAULT NULL",
+                'created_at' => "datetime NOT NULL DEFAULT CURRENT_TIMESTAMP",
+            ],
+
+            'snap_community_tokens' => [
+                'id'         => "int unsigned NOT NULL AUTO_INCREMENT",
+                'user_id'    => "int unsigned NOT NULL",
+                'token'      => "varchar(64) NOT NULL",
+                'type'       => "varchar(30) NOT NULL",
+                'expires_at' => "datetime NOT NULL",
+                'created_at' => "datetime NOT NULL DEFAULT CURRENT_TIMESTAMP",
+            ],
+
+            'snap_community_comments' => [
+                'id'           => "int unsigned NOT NULL AUTO_INCREMENT",
+                'post_id'      => "int unsigned NOT NULL",
+                'user_id'      => "int unsigned NULL DEFAULT NULL",
+                'guest_name'   => "varchar(100) NULL DEFAULT NULL",
+                'guest_email'  => "varchar(200) NULL DEFAULT NULL",
+                'comment_text' => "text NOT NULL",
+                'status'       => "enum('visible','hidden','deleted') NOT NULL DEFAULT 'visible'",
+                'ip'           => "varchar(45) NULL DEFAULT NULL",
+                'created_at'   => "datetime NOT NULL DEFAULT CURRENT_TIMESTAMP",
+            ],
+
+            'snap_reactions' => [
+                'id'            => "int unsigned NOT NULL AUTO_INCREMENT",
+                'post_id'       => "int unsigned NOT NULL",
+                'user_id'       => "int unsigned NOT NULL",
+                'reaction_code' => "varchar(20) NOT NULL",
+                'created_at'    => "datetime NOT NULL DEFAULT CURRENT_TIMESTAMP",
+            ],
+        ];
+
+        // ── Query live DB ─────────────────────────────────────────────────────
+        $db_name = $pdo->query("SELECT DATABASE()")->fetchColumn();
+
+        $live_tables = $pdo->query(
+            "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE 'snap_%'"
+        )->fetchAll(PDO::FETCH_COLUMN);
+        $live_tables = array_flip($live_tables);
+
+        $live_cols_raw = $pdo->query(
+            "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE 'snap_%'"
+        )->fetchAll(PDO::FETCH_ASSOC);
+        $live_cols = [];
+        foreach ($live_cols_raw as $r) {
+            $live_cols[$r['TABLE_NAME']][$r['COLUMN_NAME']] = true;
+        }
+
+        // ── Build diff ────────────────────────────────────────────────────────
+        $missing_tables  = [];   // table => true
+        $missing_columns = [];   // [table, column, def]
+
+        foreach ($target as $table => $columns) {
+            if (!isset($live_tables[$table])) {
+                $missing_tables[$table] = true;
+            } else {
+                foreach ($columns as $col => $def) {
+                    if (!isset($live_cols[$table][$col])) {
+                        $missing_columns[] = ['table' => $table, 'col' => $col, 'def' => $def];
+                    }
+                }
+            }
+        }
+
+        $total_issues = count($missing_tables) + count($missing_columns);
+
+        if ($action === 'schema_check') {
+            if ($total_issues === 0) {
+                $log[] = "SUCCESS: Schema is healthy — all " . count($target) . " tables and their expected columns are present.";
+            } else {
+                $schema_issues = ['tables' => $missing_tables, 'columns' => $missing_columns];
+            }
+        }
+
+        if ($action === 'schema_fix') {
+            if ($total_issues === 0) {
+                $log[] = "SUCCESS: Nothing to fix — schema is already healthy.";
+            } else {
+                $fix_ok  = [];
+                $fix_err = [];
+
+                // Create missing tables using CREATE TABLE IF NOT EXISTS.
+                // Build a minimal but valid CREATE TABLE from the column definitions.
+                foreach ($missing_tables as $table => $_) {
+                    $cols_sql = [];
+                    foreach ($target[$table] as $col => $def) {
+                        $cols_sql[] = "`$col` $def";
+                    }
+                    // Add a PRIMARY KEY on `id` if present and auto_increment
+                    $has_pk = isset($target[$table]['id']) &&
+                              stripos($target[$table]['id'], 'AUTO_INCREMENT') !== false;
+                    $pk_clause = $has_pk ? ",\n    PRIMARY KEY (`id`)" : '';
+                    $sql = "CREATE TABLE IF NOT EXISTS `$table` (\n    "
+                         . implode(",\n    ", $cols_sql)
+                         . "$pk_clause\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+                    try {
+                        $pdo->exec($sql);
+                        $fix_ok[] = "Created table <code>$table</code>";
+                    } catch (Exception $e) {
+                        $fix_err[] = "Failed to create <code>$table</code>: " . $e->getMessage();
+                    }
+                }
+
+                // Add missing columns.
+                foreach ($missing_columns as $item) {
+                    $sql = "ALTER TABLE `{$item['table']}` ADD COLUMN `{$item['col']}` {$item['def']}";
+                    try {
+                        $pdo->exec($sql);
+                        $fix_ok[] = "Added <code>{$item['table']}.{$item['col']}</code>";
+                    } catch (Exception $e) {
+                        // Column may have just appeared (race) — check if it's a duplicate error.
+                        if (strpos($e->getMessage(), 'Duplicate column') !== false) {
+                            $fix_ok[] = "Skipped <code>{$item['table']}.{$item['col']}</code> (already exists)";
+                        } else {
+                            $fix_err[] = "Failed <code>{$item['table']}.{$item['col']}</code>: " . $e->getMessage();
+                        }
+                    }
+                }
+
+                // Seed sort_order on snap_images if it was just added and all rows are 0.
+                $all_zero = (int)$pdo->query(
+                    "SELECT COUNT(*) FROM snap_images WHERE sort_order != 0"
+                )->fetchColumn() === 0;
+                $has_rows = (int)$pdo->query(
+                    "SELECT COUNT(*) FROM snap_images"
+                )->fetchColumn() > 0;
+                if ($all_zero && $has_rows) {
+                    $pdo->exec("SET @r := 0");
+                    $pdo->exec("UPDATE snap_images SET sort_order = (@r := @r + 1) ORDER BY img_date DESC");
+                    $fix_ok[] = "Seeded <code>snap_images.sort_order</code> from existing date order";
+                }
+
+                if (!empty($fix_ok)) {
+                    $log[] = "SUCCESS: Applied " . count($fix_ok) . " fix(es):<br>&nbsp;&nbsp;• " . implode("<br>&nbsp;&nbsp;• ", $fix_ok);
+                }
+                if (!empty($fix_err)) {
+                    $log[] = "WARNING: " . count($fix_err) . " fix(es) failed:<br>&nbsp;&nbsp;• " . implode("<br>&nbsp;&nbsp;• ", $fix_err);
+                }
+            }
+        }
+    }
+
     // HTACCESS REPAIR
     // Checks root .htaccess and img_uploads/.htaccess, reports issues, repairs on demand.
     if ($action === 'htaccess_check' || $action === 'htaccess_repair') {
@@ -417,6 +770,53 @@ include 'core/sidebar.php';
                 </form>
             <?php endif; ?>
         </div>
+    </div>
+
+    <div class="box mt-30">
+        <h3>SCHEMA HEALTH</h3>
+        <p class="skin-desc-text">Compares the live database against the current codebase schema. Detects missing tables and columns regardless of which version you upgraded from or which migrations you ran. No migration files needed — just check and fix.</p>
+
+        <?php if (!empty($schema_issues)): ?>
+            <?php $total = count($schema_issues['tables']) + count($schema_issues['columns']); ?>
+            <div class="schema-report">
+                <p class="schema-count"><strong><?php echo $total; ?> issue<?php echo $total !== 1 ? 's' : ''; ?> found:</strong></p>
+
+                <?php if (!empty($schema_issues['tables'])): ?>
+                    <p class="schema-section-label">MISSING TABLES</p>
+                    <ul class="schema-list">
+                        <?php foreach ($schema_issues['tables'] as $tbl => $_): ?>
+                            <li><code><?php echo htmlspecialchars($tbl); ?></code> — table does not exist</li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+
+                <?php if (!empty($schema_issues['columns'])): ?>
+                    <p class="schema-section-label">MISSING COLUMNS</p>
+                    <ul class="schema-list">
+                        <?php foreach ($schema_issues['columns'] as $item): ?>
+                            <li><code><?php echo htmlspecialchars($item['table']); ?></code> → <code><?php echo htmlspecialchars($item['col']); ?></code> <span class="dim">(<?php echo htmlspecialchars($item['def']); ?>)</span></li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+
+                <form method="POST" style="margin-top:16px;">
+                    <input type="hidden" name="action" value="schema_fix">
+                    <button type="submit" class="btn-smack">APPLY ALL FIXES</button>
+                </form>
+            </div>
+        <?php else: ?>
+            <div class="schema-actions">
+                <form method="POST">
+                    <input type="hidden" name="action" value="schema_check">
+                    <button type="submit" class="btn-smack">RUN SCHEMA CHECK</button>
+                </form>
+                <form method="POST"
+                      onsubmit="return confirm('This will apply all schema fixes automatically. Run the check first if you want to preview what will change. Continue?')">
+                    <input type="hidden" name="action" value="schema_fix">
+                    <button type="submit" class="btn-smack btn-backup">APPLY FIXES DIRECTLY</button>
+                </form>
+            </div>
+        <?php endif; ?>
     </div>
 
     <div class="dash-grid dash-grid-2 mt-30">
