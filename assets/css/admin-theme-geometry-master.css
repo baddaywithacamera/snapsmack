@@ -2846,46 +2846,76 @@ input[type="range"]:active::-webkit-slider-thumb {
 }
 .manage-reorder-note { font-size: 12px; margin-bottom: 10px; }
 
-/* Batch select bar */
+/* Batch select bar — collapses to a quiet strip until items are checked */
 .batch-bar {
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 8px 12px;
-    margin-bottom: 12px;
-    border-radius: 4px;
-    border-width: 1px;
-    border-style: solid;
-    font-size: 12px;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    border-radius: 3px;
+    border: none;
+    font-size: 11px;
     letter-spacing: 0.5px;
-    opacity: 0.6;
-    transition: opacity 0.15s ease;
+    opacity: 0.4;
+    transition: opacity 0.2s ease, padding 0.2s ease;
 }
-.batch-bar--active { opacity: 1; }
+
+.batch-bar--active {
+    opacity: 1;
+    padding: 8px 12px;
+}
 
 .batch-select-all-label {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     cursor: pointer;
     white-space: nowrap;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
 }
 
 .batch-count-label {
     flex: 1;
+    font-size: 10px;
+    letter-spacing: 1px;
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
 }
 
+.batch-bar--active .batch-count-label { opacity: 1; }
+
+/* Hide delete button entirely until items are checked */
+.batch-delete-btn {
+    white-space: nowrap;
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 4px 12px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.batch-bar--active .batch-delete-btn {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Row checkbox — compact, doesn't push content */
 .batch-check-wrap {
     display: flex;
     align-items: center;
-    padding: 0 8px 0 0;
+    padding: 0 4px 0 0;
     flex-shrink: 0;
     cursor: pointer;
+    opacity: 0.4;
+    transition: opacity 0.15s ease;
 }
 
-.batch-delete-btn {
-    white-space: nowrap;
-}
+.recent-item:hover .batch-check-wrap,
+.batch-check-wrap:has(input:checked) { opacity: 1; }
 
 /* ─── COMPANION TOOLS (smack-tools.php) ────────────────────────────── */
 .tool-intro-text   { margin: 0 0 4px; }
