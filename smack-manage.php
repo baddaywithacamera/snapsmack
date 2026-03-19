@@ -23,6 +23,10 @@ if (isset($_POST['action']) && $_POST['action'] === 'batch_delete') {
         $img = $stmt->fetch();
 
         if ($img && file_exists($img['img_file'])) {
+            $pi = pathinfo($img['img_file']);
+            $td = $pi['dirname'] . '/thumbs';
+            @unlink($td . '/t_' . $pi['basename']);
+            @unlink($td . '/a_' . $pi['basename']);
             unlink($img['img_file']);
         }
 
@@ -87,8 +91,12 @@ if (isset($_GET['delete'])) {
     $stmt->execute([$id]);
     $img = $stmt->fetch();
 
-    // Delete the primary image file from disk.
+    // Delete the primary image file and its thumbnails from disk.
     if ($img && file_exists($img['img_file'])) {
+        $pi = pathinfo($img['img_file']);
+        $td = $pi['dirname'] . '/thumbs';
+        @unlink($td . '/t_' . $pi['basename']);
+        @unlink($td . '/a_' . $pi['basename']);
         unlink($img['img_file']);
     }
 
