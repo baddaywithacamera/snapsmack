@@ -189,6 +189,7 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
                 `img_checksum` varchar(64) DEFAULT NULL COMMENT 'SHA-256 hash of main image file for recovery verification',
                 `img_display_options` text DEFAULT NULL COMMENT 'JSON: per-image frame/mat/bevel overrides and extracted colour palette',
                 `post_id` int DEFAULT NULL COMMENT 'FK to snap_posts — populated when image is wrapped in a post',
+                `sort_order` int NOT NULL DEFAULT '0' COMMENT 'Manual display order. Lower = earlier in feed. 0 = unset (falls back to img_date DESC).',
                 PRIMARY KEY (`id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
