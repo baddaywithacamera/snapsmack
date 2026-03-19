@@ -687,6 +687,39 @@ return [
             'path'         => 'assets/js/ss-engine-pile.js',
             'has_settings' => false,
         ],
+        'smack-anaglyph' => [
+            'label'        => 'Anaglyph 3D Engine (Red/Cyan stereoscopic)',
+            'path'         => 'assets/js/ss-engine-anaglyph.js',
+            'css'          => 'assets/css/ss-engine-anaglyph.css',
+            'has_settings' => true,
+            'controls'     => [
+                'anaglyph_text_depth' => [
+                    'type'    => 'range',
+                    'label'   => 'Text Depth (px)',
+                    'default' => '3',
+                    'min'     => '1',
+                    'max'     => '8',
+                ],
+                'anaglyph_frame_depth' => [
+                    'type'    => 'range',
+                    'label'   => 'Frame Depth (px)',
+                    'default' => '4',
+                    'min'     => '1',
+                    'max'     => '12',
+                ],
+                'anaglyph_animation' => [
+                    'type'    => 'select',
+                    'label'   => 'Animation Mode',
+                    'default' => 'none',
+                    'options' => [
+                        'none'   => 'Static',
+                        'pulse'  => 'Depth Pulse (breathing)',
+                        'drift'  => 'Channel Drift (wandering)',
+                        'glitch' => 'Glitch (random snaps)',
+                    ],
+                ],
+            ],
+        ],
         'smack-drawer' => [
             'label'        => 'Dual Drawer Controller (Top/Bottom drawers)',
             'path'         => 'assets/js/ss-engine-drawer.js',
