@@ -610,3 +610,40 @@ input[type="range"]::-webkit-slider-thumb {
 .help-toc-list .help-toc-desc { color: #999; }
 .help-topic-nav { border-top-color: #2a2a2a; }
 .help-topic-nav a { color: #999; }
+
+/* ─── HELP SYSTEM (smack-help.php) ─────────────────────────────────── */
+.help-nav { background-color: #141414; border-right-color: #2a2a2a; }
+.help-nav-header { border-bottom-color: #2a2a2a; }
+.help-nav-subtitle { color: #777777; }
+.help-nav-section-label { color: #777777; }
+.help-nav-link { color: #777777; }
+.help-nav-link:hover { color: #39FF14; }
+.help-nav-link.active { color: #39FF14; background-color: #1c1c1c; border-left-color: #39FF14; }
+.help-search input { background-color: #050505; border-color: #1a1a1a; color: #cccccc; }
+.help-search-result { color: #777777; }
+.help-search-result:hover { background-color: #1c1c1c; border-color: #2a2a2a; }
+.help-search-result-section { color: #777777; }
+.help-search-no-results { color: #777777; }
+.help-topic-header { border-bottom-color: #2a2a2a; }
+.help-topic-section { color: #777777; }
+.help-topic-nav { border-top-color: #2a2a2a; }
+.help-topic-nav a { color: #777777; }
+.help-topic-nav a:hover { color: #39FF14; }
+.help-body pre { background-color: #1c1c1c; border-color: #2a2a2a; color: #cccccc; }
+.help-body code { background-color: #1c1c1c; border-color: #2a2a2a; color: #cccccc; }
+.help-toc-section-title { border-bottom-color: #2a2a2a; }
+.help-toc-list a { color: #cccccc; }
+.help-toc-list a:hover { color: #39FF14; }
+.help-toc-list .help-toc-desc { color: #777777; }
+
+/* ─── SCHEMA HEALTH (smack-maintenance.php) ─────────────────────────── */
+.schema-count { color: #39FF14; }
+.schema-section-label { color: #777777; }
+.schema-list li { border-bottom-color: #2a2a2a; color: #cccccc; }
+
+/* ─── MANAGE ARCHIVE — DRAG REORDER & BATCH DELETE ──────────────── */
+.drag-handle { color: #777777; }
+.reorder-status.saving { color: #777777; }
+.reorder-status.saved  { color: #39FF14; }
+.reorder-status.error  { color: #E86060; }
+.batch-bar { background-color: #1c1c1c; border-color: #2a2a2a; color: #777777; }

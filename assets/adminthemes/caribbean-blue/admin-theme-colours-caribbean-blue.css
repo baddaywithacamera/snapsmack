@@ -507,3 +507,40 @@ input[type="range"]::-webkit-slider-thumb {
 .alert-text {
     color: #00FFFF;
 }
+
+/* ─── HELP SYSTEM (smack-help.php) ─────────────────────────────────── */
+.help-nav { background-color: #081220; border-right-color: #1A242F; }
+.help-nav-header { border-bottom-color: #1A242F; }
+.help-nav-subtitle { color: #F8F9FA; }
+.help-nav-section-label { color: #F8F9FA; }
+.help-nav-link { color: #F8F9FA; }
+.help-nav-link:hover { color: #00FFFF; }
+.help-nav-link.active { color: #00FFFF; background-color: #1A242F; border-left-color: #00FFFF; }
+.help-search input { background-color: #061121; border-color: #007BA7; color: #F8F9FA; }
+.help-search-result { color: #F8F9FA; }
+.help-search-result:hover { background-color: #1A242F; border-color: #1A242F; }
+.help-search-result-section { color: #F8F9FA; }
+.help-search-no-results { color: #F8F9FA; }
+.help-topic-header { border-bottom-color: #1A242F; }
+.help-topic-section { color: #F8F9FA; }
+.help-topic-nav { border-top-color: #1A242F; }
+.help-topic-nav a { color: #F8F9FA; }
+.help-topic-nav a:hover { color: #00FFFF; }
+.help-body pre { background-color: #1A242F; border-color: #002366; color: #F8F9FA; }
+.help-body code { background-color: #1A242F; border-color: #002366; color: #F8F9FA; }
+.help-toc-section-title { border-bottom-color: #002366; }
+.help-toc-list a { color: #F8F9FA; }
+.help-toc-list a:hover { color: #00FFFF; }
+.help-toc-list .help-toc-desc { color: #F8F9FA; }
+
+/* ─── SCHEMA HEALTH (smack-maintenance.php) ─────────────────────────── */
+.schema-count { color: #00FFFF; }
+.schema-section-label { color: #F8F9FA; }
+.schema-list li { border-bottom-color: #1A242F; color: #F8F9FA; }
+
+/* ─── MANAGE ARCHIVE — DRAG REORDER & BATCH DELETE ──────────────── */
+.drag-handle { color: #F8F9FA; }
+.reorder-status.saving { color: #F8F9FA; }
+.reorder-status.saved  { color: #00FFFF; }
+.reorder-status.error  { color: #E86060; }
+.batch-bar { background-color: #1A242F; border-color: #002366; color: #F8F9FA; }

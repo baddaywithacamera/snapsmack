@@ -10,6 +10,33 @@
 
 require_once 'core/auth.php';
 
+// --- BATCH DELETE HANDLER ---
+// Accepts an array of image IDs and purges each one along with its files and
+// associated DB records. Redirects back with a count of deletions.
+if (isset($_POST['action']) && $_POST['action'] === 'batch_delete') {
+    $ids = array_filter(array_map('intval', $_POST['ids'] ?? []));
+    $deleted = 0;
+
+    foreach ($ids as $id) {
+        $stmt = $pdo->prepare("SELECT img_file FROM snap_images WHERE id = ?");
+        $stmt->execute([$id]);
+        $img = $stmt->fetch();
+
+        if ($img && file_exists($img['img_file'])) {
+            unlink($img['img_file']);
+        }
+
+        $pdo->prepare("DELETE FROM snap_images WHERE id = ?")->execute([$id]);
+        $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
+        $pdo->prepare("DELETE FROM snap_image_album_map WHERE image_id = ?")->execute([$id]);
+        $pdo->prepare("DELETE FROM snap_comments WHERE img_id = ?")->execute([$id]);
+        $deleted++;
+    }
+
+    header("Location: smack-manage.php?msg=batch_deleted&count=$deleted");
+    exit;
+}
+
 // --- AJAX: REORDER HANDLER ---
 // Receives an ordered array of post IDs for the current page and re-numbers
 // sort_order globally so the new sequence is preserved across all pages.
@@ -147,6 +174,16 @@ $post_list = $posts->fetchAll();
 $cats = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
 $albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
 
+$success_msg = '';
+if (!empty($_GET['msg'])) {
+    if ($_GET['msg'] === 'deleted') {
+        $success_msg = 'Transmission purged.';
+    } elseif ($_GET['msg'] === 'batch_deleted') {
+        $n = (int)($_GET['count'] ?? 0);
+        $success_msg = "$n transmission" . ($n !== 1 ? 's' : '') . " purged.";
+    }
+}
+
 $page_title = "Manage Archive";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
@@ -156,6 +193,10 @@ include 'core/sidebar.php';
     <div class="header-row header-row--ruled">
         <h2>MANAGE ARCHIVE (<?php echo $total_rows; ?>)</h2>
     </div>
+
+    <?php if ($success_msg): ?>
+        <div class="alert alert-success">> <?php echo htmlspecialchars($success_msg); ?></div>
+    <?php endif; ?>
 
     <div class="box">
         <form method="GET" class="manage-filter-bar">
@@ -213,47 +254,65 @@ include 'core/sidebar.php';
         <?php if (empty($post_list)): ?>
             <p class="dim text-center empty-notice">No archive entries match these criteria.</p>
         <?php else: ?>
-            <div id="sortable-list" class="<?php echo $filters_active ? 'reorder-disabled' : ''; ?>">
-            <?php foreach ($post_list as $p):
-                $is_draft = ($p['img_status'] === 'draft');
-                $is_scheduled = ($p['img_status'] === 'published' && strtotime($p['img_date']) > time());
-            ?>
-                <div class="recent-item" data-id="<?php echo $p['id']; ?>">
-                    <?php if (!$filters_active): ?>
-                    <div class="drag-handle" title="Drag to reorder">⠿</div>
-                    <?php endif; ?>
 
-                    <div class="item-details">
-                        <img src="/<?php echo ltrim($p['img_file'], '/'); ?>" class="archive-thumb">
+            <form method="POST" id="batch-form" onsubmit="return confirmBatchDelete()">
+                <input type="hidden" name="action" value="batch_delete">
 
-                        <div class="item-text">
-                            <strong>
-                                <?php echo htmlspecialchars($p['img_title']); ?>
-                                <?php if ($is_draft): ?> <span class="badge-draft">DRAFT</span><?php endif; ?>
-                                <?php if ($is_scheduled): ?> <span class="badge-scheduled">SCHEDULED</span><?php endif; ?>
-                            </strong>
+                <!-- Batch action bar — visible only when items are checked -->
+                <div class="batch-bar" id="batch-bar">
+                    <label class="batch-select-all-label">
+                        <input type="checkbox" id="select-all-cb"> SELECT ALL
+                    </label>
+                    <span class="batch-count-label" id="batch-count-label">0 selected</span>
+                    <button type="submit" class="btn-smack action-delete batch-delete-btn" id="batch-delete-btn" disabled>DELETE SELECTED</button>
+                </div>
 
-                            <code class="slug-display">/<?php echo htmlspecialchars($p['img_slug'] ?? 'no-slug'); ?></code>
+                <div id="sortable-list" class="<?php echo $filters_active ? 'reorder-disabled' : ''; ?>">
+                <?php foreach ($post_list as $p):
+                    $is_draft = ($p['img_status'] === 'draft');
+                    $is_scheduled = ($p['img_status'] === 'published' && strtotime($p['img_date']) > time());
+                ?>
+                    <div class="recent-item" data-id="<?php echo $p['id']; ?>">
+                        <label class="batch-check-wrap">
+                            <input type="checkbox" name="ids[]" value="<?php echo $p['id']; ?>" class="batch-cb">
+                        </label>
 
-                            <div class="item-meta">
-                                <?php echo date("M j, Y - H:i", strtotime($p['img_date'])); ?>
-                                <span class="meta-reg">[ REG: <?php echo htmlspecialchars($p['category_list'] ?: 'NONE'); ?> ]</span>
-                                <span class="meta-mission">[ MISSION: <?php echo htmlspecialchars($p['album_list'] ?: 'NONE'); ?> ]</span>
-                                <span class="meta-trans">[ TRANS: <?php echo (int)$p['comment_count']; ?> ]</span>
-                                <span class="meta-likes">[ LIKES: <?php echo (int)$p['like_count']; ?> ]</span>
-                                <span class="meta-downloads">[ DL: <?php echo (int)$p['img_download_count']; ?> ]</span>
+                        <?php if (!$filters_active): ?>
+                        <div class="drag-handle" title="Drag to reorder">⠿</div>
+                        <?php endif; ?>
+
+                        <div class="item-details">
+                            <img src="/<?php echo ltrim($p['img_file'], '/'); ?>" class="archive-thumb">
+
+                            <div class="item-text">
+                                <strong>
+                                    <?php echo htmlspecialchars($p['img_title']); ?>
+                                    <?php if ($is_draft): ?> <span class="badge-draft">DRAFT</span><?php endif; ?>
+                                    <?php if ($is_scheduled): ?> <span class="badge-scheduled">SCHEDULED</span><?php endif; ?>
+                                </strong>
+
+                                <code class="slug-display">/<?php echo htmlspecialchars($p['img_slug'] ?? 'no-slug'); ?></code>
+
+                                <div class="item-meta">
+                                    <?php echo date("M j, Y - H:i", strtotime($p['img_date'])); ?>
+                                    <span class="meta-reg">[ REG: <?php echo htmlspecialchars($p['category_list'] ?: 'NONE'); ?> ]</span>
+                                    <span class="meta-mission">[ MISSION: <?php echo htmlspecialchars($p['album_list'] ?: 'NONE'); ?> ]</span>
+                                    <span class="meta-trans">[ TRANS: <?php echo (int)$p['comment_count']; ?> ]</span>
+                                    <span class="meta-likes">[ LIKES: <?php echo (int)$p['like_count']; ?> ]</span>
+                                    <span class="meta-downloads">[ DL: <?php echo (int)$p['img_download_count']; ?> ]</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="item-actions">
-                        <a href="smack-edit.php?id=<?php echo $p['id']; ?>" class="action-edit">EDIT</a>
-                        <a href="smack-swap.php?id=<?php echo $p['id']; ?>" class="action-swap">SWAP</a>
-                        <a href="?delete=<?php echo $p['id']; ?>" class="action-delete" onclick="return confirm('PERMANENTLY PURGE this transmission?')">DELETE</a>
+                        <div class="item-actions">
+                            <a href="smack-edit.php?id=<?php echo $p['id']; ?>" class="action-edit">EDIT</a>
+                            <a href="smack-swap.php?id=<?php echo $p['id']; ?>" class="action-swap">SWAP</a>
+                            <a href="?delete=<?php echo $p['id']; ?>" class="action-delete" onclick="return confirm('PERMANENTLY PURGE this transmission?')">DELETE</a>
+                        </div>
                     </div>
+                <?php endforeach; ?>
                 </div>
-            <?php endforeach; ?>
-            </div>
+            </form>
 
             <div id="reorder-status" class="reorder-status" style="display:none;"></div>
 
@@ -271,6 +330,51 @@ include 'core/sidebar.php';
     </div>
 </div>
 
+<?php if (!empty($post_list)): ?>
+<script>
+// ── Batch select ─────────────────────────────────────────────────────────
+(function () {
+    var selectAll = document.getElementById('select-all-cb');
+    var countLabel = document.getElementById('batch-count-label');
+    var deleteBtn = document.getElementById('batch-delete-btn');
+    var batchBar  = document.getElementById('batch-bar');
+
+    function updateBar() {
+        var checked = document.querySelectorAll('.batch-cb:checked');
+        var n = checked.length;
+        countLabel.textContent = n + ' selected';
+        deleteBtn.disabled = (n === 0);
+        batchBar.classList.toggle('batch-bar--active', n > 0);
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            document.querySelectorAll('.batch-cb').forEach(function (cb) {
+                cb.checked = selectAll.checked;
+            });
+            updateBar();
+        });
+    }
+
+    document.querySelectorAll('.batch-cb').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+            var all = document.querySelectorAll('.batch-cb');
+            var checked = document.querySelectorAll('.batch-cb:checked');
+            if (selectAll) selectAll.indeterminate = (checked.length > 0 && checked.length < all.length);
+            if (selectAll) selectAll.checked = (checked.length === all.length);
+            updateBar();
+        });
+    });
+})();
+
+function confirmBatchDelete() {
+    var n = document.querySelectorAll('.batch-cb:checked').length;
+    if (n === 0) return false;
+    return confirm('PERMANENTLY PURGE ' + n + ' transmission' + (n !== 1 ? 's' : '') + '? This cannot be undone.');
+}
+</script>
+<?php endif; ?>
+
 <?php if (!$filters_active && !empty($post_list)): ?>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <script>
@@ -280,7 +384,7 @@ include 'core/sidebar.php';
 
     if (!list) return;
 
-    var sortable = Sortable.create(list, {
+    Sortable.create(list, {
         handle: '.drag-handle',
         animation: 150,
         ghostClass: 'sortable-ghost',
@@ -317,7 +421,7 @@ include 'core/sidebar.php';
                 statusEl.className = 'reorder-status error';
             }
         })
-        .catch(function (err) {
+        .catch(function () {
             statusEl.textContent = 'Save failed.';
             statusEl.className = 'reorder-status error';
         });
@@ -325,30 +429,5 @@ include 'core/sidebar.php';
 })();
 </script>
 <?php endif; ?>
-
-<style>
-.drag-handle {
-    cursor: grab;
-    padding: 0 12px 0 4px;
-    font-size: 18px;
-    color: var(--fg-dim, #666);
-    user-select: none;
-    flex-shrink: 0;
-    align-self: center;
-}
-.drag-handle:active { cursor: grabbing; }
-.sortable-ghost { opacity: 0.4; }
-.sortable-chosen { box-shadow: 0 2px 12px rgba(0,0,0,0.4); }
-.reorder-status {
-    font-size: 12px;
-    padding: 6px 12px;
-    margin-top: 8px;
-    border-radius: 4px;
-}
-.reorder-status.saving { color: #888; }
-.reorder-status.saved  { color: #4EC994; }
-.reorder-status.error  { color: #E86060; }
-.manage-reorder-note   { font-size: 12px; margin-bottom: 10px; }
-</style>
 
 <?php include 'core/admin-footer.php'; ?>
