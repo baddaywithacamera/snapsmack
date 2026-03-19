@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.4d-12"   # bump this on every rebuild
+BUILD_VERSION = "0.7.4d-13"   # bump this on every rebuild
 
 import os
 import queue
@@ -382,6 +382,21 @@ class App(tk.Tk):
         self.after(100, self._poll_queue)
 
     # ------------------------------------------------------------------
+    # Colour helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _lighten(hex_color: str) -> str:
+        h = hex_color.lstrip('#')
+        if len(h) == 3:
+            h = ''.join(c * 2 for c in h)
+        try:
+            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+            return f'#{min(255,int(r*1.15)):02x}{min(255,int(g*1.15)):02x}{min(255,int(b*1.15)):02x}'
+        except Exception:
+            return hex_color
+
+    # ------------------------------------------------------------------
     # TTK style
     # ------------------------------------------------------------------
 
@@ -400,8 +415,8 @@ class App(tk.Tk):
             padding=3,
         )
         style.map("TCombobox",
-            fieldbackground=[("readonly", BG_MID)],
-            foreground=[("readonly", FG_MAIN)],
+            fieldbackground=[("readonly", BG_MID), ("!readonly", BG_MID)],
+            foreground=[("readonly", FG_MAIN), ("!readonly", FG_MAIN)],
         )
         style.configure("TScrollbar",
             background=BG_MID,
@@ -456,33 +471,26 @@ class App(tk.Tk):
         fg       = theme.get('fg',       self._t_fg)
         fg_dim   = theme.get('fg_dim',   self._t_dim)
 
-        def _lighten(hex_color: str) -> str:
-            h = hex_color.lstrip('#')
-            if len(h) == 3:
-                h = ''.join(c * 2 for c in h)
-            try:
-                r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-                return f'#{min(255,int(r*1.15)):02x}{min(255,int(g*1.15)):02x}{min(255,int(b*1.15)):02x}'
-            except Exception:
-                return hex_color
-
         # ttk styles
         style = ttk.Style(self)
         style.configure("Accent.TButton", background=accent, foreground=bg)
         style.map("Accent.TButton",
-            background=[("active", _lighten(accent)), ("disabled", bg_input)],
+            background=[("active", self._lighten(accent)), ("disabled", bg_input)],
             foreground=[("active", bg), ("disabled", fg_dim)],
         )
         style.configure("Ghost.TButton", background=bg_input, foreground=fg)
         style.map("Ghost.TButton", background=[("active", bg_card)])
-        # Post button is a plain tk.Button — configure directly so Windows honours the colours.
-        self._post_btn.configure(
-            bg=accent, fg=bg,
-            activebackground=_lighten(accent), activeforeground=bg,
-        )
+        # Post button is a Label — always respects bg/fg on Windows.
+        self._post_btn.configure(bg=accent, fg=bg)
+        # Update hover binding to use the new accent
+        self._post_btn.bind("<Leave>", lambda e: self._post_btn.configure(bg=accent))
         style.configure("TCombobox",
             fieldbackground=bg_input, background=bg_input, foreground=fg,
             selectbackground=accent, selectforeground=bg, bordercolor=border,
+        )
+        style.map("TCombobox",
+            fieldbackground=[("readonly", bg_input), ("!readonly", bg_input)],
+            foreground=[("readonly", fg), ("!readonly", fg)],
         )
         style.configure("TScrollbar",
             background=bg_input, troughcolor=bg, bordercolor=bg, arrowcolor=fg_dim,
@@ -493,6 +501,9 @@ class App(tk.Tk):
         fg_map  = {self._t_fg: fg, self._t_dim: fg_dim, self._t_accent: accent}
 
         def _walk(widget):
+            # Skip the post button — it has its own accent colours
+            if widget is self._post_btn:
+                return
             # bg / background
             for attr in ('bg', 'background'):
                 try:
@@ -749,14 +760,19 @@ class App(tk.Tk):
                                          command=self._on_validate)
         self._validate_btn.pack(side="left", padx=(14, 6), pady=10)
 
-        self._post_btn = tk.Button(
-            bottom, text="POST BATCH", command=self._on_post,
+        # POST BATCH uses a Label with click binding — tk.Button on Windows
+        # ignores bg/fg under certain theme engines even with relief="flat".
+        # Labels always render their colours correctly.
+        self._post_btn = tk.Label(
+            bottom, text="POST BATCH",
             bg=ACCENT, fg=BG_DEEP,
             font=("Segoe UI", 11, "bold"),
-            relief="flat", padx=28, pady=10, cursor="hand2",
-            activebackground=ACCENT, activeforeground=BG_DEEP,
+            padx=28, pady=10, cursor="hand2",
         )
         self._post_btn.pack(side="left", pady=6)
+        self._post_btn.bind("<Button-1>", lambda e: self._on_post())
+        self._post_btn.bind("<Enter>", lambda e: self._post_btn.configure(bg=self._lighten(self._post_btn.cget('bg'))))
+        self._post_btn.bind("<Leave>", lambda e: self._post_btn.configure(bg=self._t_accent))
 
         self._clear_btn = ttk.Button(bottom, text="Clear", style="Ghost.TButton",
                                       command=self._on_clear)
@@ -1198,7 +1214,13 @@ class App(tk.Tk):
     def _set_posting(self, posting: bool):
         self._posting = posting
         state = "disabled" if posting else "normal"
-        self._post_btn.configure(state=state)
+        # Post button is a Label — simulate disabled by dimming and blocking clicks
+        if posting:
+            self._post_btn.configure(fg=FG_DIM, cursor="")
+            self._post_btn.unbind("<Button-1>")
+        else:
+            self._post_btn.configure(fg=BG_DEEP, cursor="hand2")
+            self._post_btn.bind("<Button-1>", lambda e: self._on_post())
         self._validate_btn.configure(state=state)
         self._connect_btn.configure(state=state)
 
