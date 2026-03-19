@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.4d-11"   # bump this on every rebuild
+BUILD_VERSION = "0.7.4d-12"   # bump this on every rebuild
 
 import os
 import queue
@@ -674,9 +674,14 @@ class App(tk.Tk):
         self._goog_creds_var   = tk.StringVar()
         self._drive_folder_var = tk.StringVar()
 
-        drv_box  = self._box(cfg, "GOOGLE DRIVE")
+        drv_box  = self._box(cfg, "GOOGLE DRIVE (OPTIONAL)")
         drv_box.pack(fill="x", pady=(10, 0))
         drv_body = self._box_body(drv_box)
+
+        tk.Label(
+            drv_body, text="Leave blank to post without download links.",
+            bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL,
+        ).pack(anchor="w", pady=(0, 6))
 
         drv_row = tk.Frame(drv_body, bg=BG_CARD)
         drv_row.pack(fill="x")
