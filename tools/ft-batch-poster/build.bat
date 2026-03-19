@@ -3,8 +3,7 @@ REM ─────────────────────────�
 REM  ft-batch-poster build script
 REM  Requires: Python 3.11+, pip install -r requirements.txt, exiftool.exe
 REM            AND exiftool_files\ folder in this folder.
-REM  Output:   dist\ft-batch-poster.exe  (single file, no install needed)
-REM  Distribute: dist\ft-batch-poster.exe + dist\exiftool.exe + dist\exiftool_files\
+REM  Output:   C:\tools\ss-batch-poster-{version}.exe
 REM ─────────────────────────────────────────────────────────────────────────
 
 echo Checking for exiftool.exe...
@@ -30,16 +29,24 @@ if not exist exiftool_files\ (
     exit /b 1
 )
 
+REM ── Read BUILD_VERSION from main.py ───────────────────────────────────────
+for /f "tokens=3 delims= " %%V in ('findstr /C:"BUILD_VERSION = " main.py') do set RAW_VER=%%V
+REM Strip surrounding quotes
+set BUILD_VER=%RAW_VER:"=%
+set EXE_NAME=ss-batch-poster-%BUILD_VER%.exe
+echo Build version: %BUILD_VER%
+echo Output name:   %EXE_NAME%
+
 echo Installing dependencies...
 pip install -r requirements.txt
 
 echo.
-echo Building ft-batch-poster.exe...
+echo Building %EXE_NAME%...
 pyinstaller ^
     --onefile ^
     --windowed ^
     --clean ^
-    --name ss-batch-poster ^
+    --name ss-batch-poster-%BUILD_VER% ^
     --hidden-import=tkinter ^
     --hidden-import=tkinter.ttk ^
     --hidden-import=PIL ^
@@ -55,8 +62,8 @@ pyinstaller ^
     main.py
 
 echo.
-if exist dist\ss-batch-poster.exe (
-    echo Build successful: dist\ss-batch-poster.exe
+if exist dist\%EXE_NAME% (
+    echo Build successful: dist\%EXE_NAME%
     echo Copying exiftool.exe to dist\...
     copy /Y exiftool.exe dist\exiftool.exe
     echo Copying exiftool_files\ to dist\exiftool_files\...
@@ -64,10 +71,10 @@ if exist dist\ss-batch-poster.exe (
 
     echo.
     echo Deploying to C:\tools...
-    copy /Y dist\ss-batch-poster.exe C:\tools\ss-batch-poster.exe
+    copy /Y dist\%EXE_NAME% C:\tools\%EXE_NAME%
     copy /Y dist\exiftool.exe C:\tools\exiftool.exe
     robocopy dist\exiftool_files C:\tools\exiftool_files /E /NFL /NDL /NJH /NJS >nul
-    echo Done. C:\tools is up to date.
+    echo Done. Launch: C:\tools\%EXE_NAME%
 ) else (
     echo Build FAILED. Check output above for errors.
 )
