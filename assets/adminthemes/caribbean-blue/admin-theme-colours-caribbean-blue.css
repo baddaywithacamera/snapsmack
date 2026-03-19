@@ -44,7 +44,7 @@ html, body {
 }
 
 .sidebar .logout {
-    color: #0D1B2A;
+    color: #5A8FA8;
 }
 
 .sidebar .logout:hover {
@@ -52,7 +52,7 @@ html, body {
 }
 
 .credits-admin {
-    color: #333333;
+    color: #4A6878;
 }
 
 /* 03: MAIN HEADERS */
@@ -153,8 +153,8 @@ input:focus, textarea:focus, select:focus {
 }
 
 .status-offline {
-    color: #0D1B2A;
-    border-color: #0D1B2A;
+    color: #4A6878;
+    border-color: #4A6878;
 }
 
 /* Sender Name */
@@ -259,11 +259,11 @@ button:hover {
 
 /* Delete action */
 .action-delete {
-    color: #0D1B2A;
-    border-color: #0D1B2A;
+    color: #7A4A5A;
+    border-color: #7A4A5A;
 }
 .action-delete:hover {
-    background-color: #0D1B2A;
+    background-color: #7A4A5A;
     color: #FFFFFF;
 }
 
