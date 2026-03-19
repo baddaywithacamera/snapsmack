@@ -61,12 +61,13 @@ if exist dist\ft-batch-poster.exe (
     copy /Y exiftool.exe dist\exiftool.exe
     echo Copying exiftool_files\ to dist\exiftool_files\...
     robocopy exiftool_files dist\exiftool_files /E /NFL /NDL /NJH /NJS >nul
-    echo Done.
+
     echo.
-    echo Distribute these three things together:
-    echo   dist\ft-batch-poster.exe
-    echo   dist\exiftool.exe
-    echo   dist\exiftool_files\
+    echo Deploying to C:\tools...
+    copy /Y dist\ft-batch-poster.exe C:\tools\ft-batch-poster.exe
+    copy /Y dist\exiftool.exe C:\tools\exiftool.exe
+    robocopy dist\exiftool_files C:\tools\exiftool_files /E /NFL /NDL /NJH /NJS >nul
+    echo Done. C:\tools is up to date.
 ) else (
     echo Build FAILED. Check output above for errors.
 )
