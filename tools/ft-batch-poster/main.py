@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.4d-4"   # bump this on every rebuild
+BUILD_VERSION = "0.7.4d-5"   # bump this on every rebuild
 
 import os
 import queue
@@ -1154,13 +1154,15 @@ class App(tk.Tk):
 
                     idx = current - 1
                     if result.success:
-                        self._entry_list.set_row_status(idx, 'ok', result.message)
+                        row_status = 'ok' if result.exif_ok else 'warning'
+                        self._entry_list.set_row_status(idx, row_status, result.message)
                     else:
                         self._entry_list.set_row_status(idx, 'error', result.message)
 
+                    row_color = FG_OK if result.success and result.exif_ok else (FG_WARN if result.success else FG_ERR)
                     self._set_status(
                         f"{'✓' if result.success else '✗'}  {result.entry.file} — {result.message}",
-                        FG_OK if result.success else FG_ERR,
+                        row_color,
                     )
 
                 elif msg[0] == 'done':

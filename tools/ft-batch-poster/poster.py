@@ -55,8 +55,9 @@ class PostResult:
     entry:    ManifestEntry
     success:  bool
     message:  str
-    web_path: str = ''   # path to the saved web version
-    drive_url: str = ''  # Google Drive share link (if uploaded)
+    web_path:  str  = ''    # path to the saved web version
+    drive_url: str  = ''    # Google Drive share link (if uploaded)
+    exif_ok:   bool = True  # False if EXIF embedding failed
 
 
 @dataclass
@@ -202,10 +203,12 @@ class SnapSmackClient:
             img.save(web_path, quality=92, optimize=True)
 
             # ── 2. Embed EXIF into web version (in place) ────────────
+            exif_ok = True
             try:
                 exif_writer.embed_inplace(web_path, entry.title, entry.tags, copyright_text=copyright_str)
             except Exception as e:
-                notes.append(f"EXIF skipped on web version: {e}")
+                exif_ok = False
+                notes.insert(0, f"⚠ EXIF FAILED: {e}")
 
             # ── 3. Upload original to Google Drive ────────────────────
             drive_url = ''
