@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.4d-8"   # bump this on every rebuild
+BUILD_VERSION = "0.7.4d-9"   # bump this on every rebuild
 
 import os
 import queue
@@ -475,10 +475,10 @@ class App(tk.Tk):
         )
         style.configure("Ghost.TButton", background=bg_input, foreground=fg)
         style.map("Ghost.TButton", background=[("active", bg_card)])
-        style.configure("Post.TButton", background=accent, foreground=bg)
-        style.map("Post.TButton",
-            background=[("active", _lighten(accent)), ("disabled", bg_input)],
-            foreground=[("active", bg), ("disabled", fg_dim)],
+        # Post button is a plain tk.Button — configure directly so Windows honours the colours.
+        self._post_btn.configure(
+            bg=accent, fg=bg,
+            activebackground=_lighten(accent), activeforeground=bg,
         )
         style.configure("TCombobox",
             fieldbackground=bg_input, background=bg_input, foreground=fg,
@@ -744,8 +744,13 @@ class App(tk.Tk):
                                          command=self._on_validate)
         self._validate_btn.pack(side="left", padx=(14, 6), pady=10)
 
-        self._post_btn = ttk.Button(bottom, text="POST BATCH", style="Post.TButton",
-                                     command=self._on_post)
+        self._post_btn = tk.Button(
+            bottom, text="POST BATCH", command=self._on_post,
+            bg=ACCENT, fg=BG_DEEP,
+            font=("Segoe UI", 11, "bold"),
+            relief="flat", padx=28, pady=10, cursor="hand2",
+            activebackground=ACCENT, activeforeground=BG_DEEP,
+        )
         self._post_btn.pack(side="left", pady=6)
 
         self._clear_btn = ttk.Button(bottom, text="Clear", style="Ghost.TButton",
