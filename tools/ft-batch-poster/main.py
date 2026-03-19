@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.4d-5"   # bump this on every rebuild
+BUILD_VERSION = "0.7.4d-6"   # bump this on every rebuild
 
 import os
 import queue
@@ -116,12 +116,12 @@ class EntryRow(tk.Frame):
 
         # ── Category combobox ─────────────────────────────────────────
         self._cat_var = tk.StringVar(value=self.entry.category)
-        cat_cb = ttk.Combobox(
+        self._cat_cb = ttk.Combobox(
             self, textvariable=self._cat_var, values=[''] + cats,
             font=FONT_SMALL, state="normal",
         )
-        cat_cb.place(x=378, y=20, width=180)
-        cat_cb.bind("<<ComboboxSelected>>",
+        self._cat_cb.place(x=378, y=20, width=180)
+        self._cat_cb.bind("<<ComboboxSelected>>",
                     lambda e: setattr(self.entry, 'category', self._cat_var.get()))
         self._cat_var.trace_add("write",
                     lambda *a: setattr(self.entry, 'category', self._cat_var.get()))
@@ -130,12 +130,12 @@ class EntryRow(tk.Frame):
 
         # ── Album combobox ────────────────────────────────────────────
         self._album_var = tk.StringVar(value=self.entry.album)
-        album_cb = ttk.Combobox(
+        self._album_cb = ttk.Combobox(
             self, textvariable=self._album_var, values=[''] + albums,
             font=FONT_SMALL, state="normal",
         )
-        album_cb.place(x=568, y=20, width=180)
-        album_cb.bind("<<ComboboxSelected>>",
+        self._album_cb.place(x=568, y=20, width=180)
+        self._album_cb.bind("<<ComboboxSelected>>",
                       lambda e: setattr(self.entry, 'album', self._album_var.get()))
         self._album_var.trace_add("write",
                       lambda *a: setattr(self.entry, 'album', self._album_var.get()))
@@ -183,14 +183,12 @@ class EntryRow(tk.Frame):
         self._handle.configure(bg=BG_HOVER if on else BG_CARD)
 
     def update_combos(self, cats: List[str], albums: List[str]):
-        for child in self.winfo_children():
-            if isinstance(child, ttk.Combobox):
-                current = child.get()
-                if 'cat' in str(child):
-                    child['values'] = [''] + cats
-                else:
-                    child['values'] = [''] + albums
-                child.set(current)
+        cur_cat = self._cat_cb.get()
+        self._cat_cb['values'] = [''] + cats
+        self._cat_cb.set(cur_cat)
+        cur_alb = self._album_cb.get()
+        self._album_cb['values'] = [''] + albums
+        self._album_cb.set(cur_alb)
 
 
 # ---------------------------------------------------------------------------

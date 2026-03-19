@@ -39,7 +39,7 @@ pyinstaller ^
     --onefile ^
     --windowed ^
     --clean ^
-    --name ft-batch-poster ^
+    --name ss-batch-poster ^
     --hidden-import=tkinter ^
     --hidden-import=tkinter.ttk ^
     --hidden-import=PIL ^
@@ -55,8 +55,8 @@ pyinstaller ^
     main.py
 
 echo.
-if exist dist\ft-batch-poster.exe (
-    echo Build successful: dist\ft-batch-poster.exe
+if exist dist\ss-batch-poster.exe (
+    echo Build successful: dist\ss-batch-poster.exe
     echo Copying exiftool.exe to dist\...
     copy /Y exiftool.exe dist\exiftool.exe
     echo Copying exiftool_files\ to dist\exiftool_files\...
@@ -64,7 +64,7 @@ if exist dist\ft-batch-poster.exe (
 
     echo.
     echo Deploying to C:\tools...
-    copy /Y dist\ft-batch-poster.exe C:\tools\ft-batch-poster.exe
+    copy /Y dist\ss-batch-poster.exe C:\tools\ss-batch-poster.exe
     copy /Y dist\exiftool.exe C:\tools\exiftool.exe
     robocopy dist\exiftool_files C:\tools\exiftool_files /E /NFL /NDL /NJH /NJS >nul
     echo Done. C:\tools is up to date.
