@@ -55,6 +55,7 @@ $tools = [
         'description'  => 'Desktop tool for bulk-posting images to SnapSmack. Loads manifest files, embeds EXIF copyright metadata via piexif (pure Python, no external dependencies), resizes to web dimensions, uploads originals to Google Drive, and posts the batch to SnapSmack. Borrows the active admin colour scheme on connect. Drag to reorder, per-row category and album, accumulate multiple manifests before posting.',
         'requires'     => 'Windows 10/11 · Google Drive credentials JSON (optional)',
         'source'       => 'tools/ft-batch-poster/',
+        'download_url' => 'https://snapsmack.ca/tools/smackyourbatchup.zip',
     ],
 ];
 
@@ -104,22 +105,29 @@ include 'core/sidebar.php';
                     <strong>Source:</strong> <code><?php echo htmlspecialchars($tool['source']); ?></code>
                 </p>
 
-                <?php if ($pkg_exists): ?>
-                    <div class="tool-download-row">
+                <div class="tool-download-row">
+                    <?php if (!empty($tool['download_url'])): ?>
+                        <a href="<?php echo htmlspecialchars($tool['download_url']); ?>"
+                           class="btn-smack">
+                            ↓ DOWNLOAD
+                        </a>
+                    <?php endif; ?>
+
+                    <?php if ($pkg_exists): ?>
                         <a href="packages/<?php echo htmlspecialchars($tool['package_file']); ?>"
-                           class="btn-smack"
+                           class="btn-smack btn-settings"
                            download>
-                            ↓ DOWNLOAD PACKAGE
+                            ↓ LOCAL PACKAGE
                         </a>
                         <span class="dim tool-pkg-meta">
                             <?php echo $pkg_size; ?> &middot; uploaded <?php echo $pkg_date; ?>
                         </span>
-                    </div>
-                <?php else: ?>
-                    <p class="dim tool-no-pkg">
-                        No package uploaded yet. Build the tool and upload the zip below.
-                    </p>
-                <?php endif; ?>
+                    <?php elseif (empty($tool['download_url'])): ?>
+                        <p class="dim tool-no-pkg">
+                            No package uploaded yet. Build the tool and upload the zip below.
+                        </p>
+                    <?php endif; ?>
+                </div>
             </div>
 
             <!-- Upload form for this tool -->
