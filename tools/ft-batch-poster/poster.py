@@ -200,15 +200,16 @@ class SnapSmackClient:
 
             img = PILImage.open(src_path)
             img.thumbnail((WEB_MAX_W, WEB_MAX_H), PILImage.LANCZOS)
-            img.save(web_path, quality=92, optimize=True)
 
-            # ── 2. Embed EXIF into web version (in place) ────────────
+            # ── 2. Build EXIF and embed during save (single step, reliable) ──
             exif_ok = True
             try:
-                exif_writer.embed_inplace(web_path, entry.title, entry.tags, copyright_text=copyright_str)
+                exif_bytes = exif_writer.build_exif_bytes(entry.title, entry.tags, copyright_str)
+                img.save(web_path, quality=92, optimize=True, exif=exif_bytes)
             except Exception as e:
                 exif_ok = False
                 notes.insert(0, f"⚠ EXIF FAILED: {e}")
+                img.save(web_path, quality=92, optimize=True)  # save without EXIF as fallback
 
             # ── 3. Upload original to Google Drive ────────────────────
             drive_url = ''

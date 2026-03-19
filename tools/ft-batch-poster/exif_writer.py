@@ -36,8 +36,8 @@ def _tags_to_keywords(tags_str: str) -> str:
     return ', '.join(keywords)
 
 
-def _build_exif(title: str, tags: str, copyright_text: str) -> bytes:
-    """Build a piexif-compatible EXIF bytes blob."""
+def build_exif_bytes(title: str, tags: str, copyright_text: str) -> bytes:
+    """Build a piexif-compatible EXIF bytes blob. Call this to get bytes for Pillow's exif= kwarg."""
     copyright_str = copyright_text or COPYRIGHT
     keywords      = _tags_to_keywords(tags)
 
@@ -63,7 +63,7 @@ def embed_inplace(path: str, title: str, tags: str, copyright_text: str = '') ->
     Raises RuntimeError on failure.
     """
     try:
-        exif_bytes = _build_exif(title, tags, copyright_text)
+        exif_bytes = build_exif_bytes(title, tags, copyright_text)
         piexif.insert(exif_bytes, path)
     except Exception as e:
         raise RuntimeError(f"piexif error: {e}")
