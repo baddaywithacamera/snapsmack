@@ -1,0 +1,249 @@
+{
+    "registry_version": 1,
+    "generated": "2026-03-15T03:58:25Z",
+    "skins": {
+        "50-shades-of-noah-grey": {
+            "name": "50 Shades of Noah Grey",
+            "version": "1.0",
+            "status": "stable",
+            "author": "Sean McCormick",
+            "description": "Pure greyscale photography skin. Three monochrome variants with zero colour accents.",
+            "screenshot": "https://snapsmack.ca/skins/screenshots/50-shades-of-noah-grey.png",
+            "download_url": "https://snapsmack.ca/skins/packages/50-shades-of-noah-grey-1.0.zip",
+            "download_size": 13377,
+            "signature": "14c3fac3ffcb7100e42654bb124aed1b2b82f55872e4c19aa5f3aa96732477b629d69be64ecc0518326bcee6ebe93ffe4944ebf4268a2eeedc042467f886f109",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.7",
+            "features": {
+                "supports_wall": true,
+                "archive_layouts": [
+                    "square",
+                    "cropped",
+                    "masonry"
+                ]
+            }
+        },
+        "a-grey-reckoning": {
+            "name": "A Grey Reckoning",
+            "version": "1.0",
+            "status": "stable",
+            "author": "Sean McCormick",
+            "description": "A quiet, reverent photoblog skin inspired by the 2006-era photography websites of Noah Grey. Dark backgrounds, thin borders, small-caps navigation, and nothing between the viewer and the photograph.",
+            "screenshot": "https://snapsmack.ca/skins/screenshots/a-grey-reckoning.png",
+            "download_url": "https://snapsmack.ca/skins/packages/a-grey-reckoning-1.0.zip",
+            "download_size": 15078,
+            "signature": "9c3c7be49efddfeb8f9648b9e2799223af44fdfe98f8dc41da4952d65ad58dd9ee970f588d405a38abe91ba76966014e6e8c420ed2b4fb04fbda36b64a7f770a",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.7",
+            "features": {
+                "supports_wall": false,
+                "archive_layouts": [
+                    "square"
+                ]
+            }
+        },
+        "galleria": {
+            "name": "Galleria",
+            "version": "1.0",
+            "status": "stable",
+            "author": "Sean McCormick",
+            "description": "Gallery skin with photorealistic CSS picture frames, configurable matting, bevels, and wood grain. Slider landing, framed archive grid, and filmstrip navigation. All aspect ratios supported.",
+            "screenshot": "https://snapsmack.ca/skins/screenshots/galleria.png",
+            "download_url": "https://snapsmack.ca/skins/packages/galleria-1.0.zip",
+            "download_size": 82042,
+            "signature": "1d9f9badb756318afd6c8adc73851a872d9ac3a1405cc9d06c4d2633a0cbab066c09f838f1b831a073958d388982299b76a801823ba36bc5a408bdab0e6a0702",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.7",
+            "features": {
+                "supports_wall": false,
+                "archive_layouts": [
+                    "square"
+                ],
+                "supports_slider": true
+            }
+        },
+        "hip-to-be-square": {
+            "name": "Hip to be Square",
+            "version": "1.0",
+            "status": "stable",
+            "author": "Sean McCormick",
+            "description": "It's hip to be square. Photorealistic gallery frames with a bold teal palette, bright yellow and cyan accents, and every image cropped to a perfect square \u2014 because sometimes it's cool to be a little unconventional. Fore!",
+            "screenshot": "https://snapsmack.ca/skins/screenshots/hip-to-be-square.png",
+            "download_url": "https://snapsmack.ca/skins/packages/hip-to-be-square-1.0.zip",
+            "download_size": 81789,
+            "signature": "88c1cdbb50aa3d7058f9a9054a950b295304eff50a60beeafb7a41ada10b193cf21985017445a8ec792cd218fbac1d23daf3128c182923f401bac1e5d7bb5b0f",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.7",
+            "features": {
+                "supports_wall": false,
+                "archive_layouts": [
+                    "square"
+                ],
+                "supports_slider": true
+            }
+        },
+        "impact-printer": {
+            "name": "Impact Printer",
+            "version": "1.0",
+            "status": "stable",
+            "author": "Sean McCormick",
+            "description": "Continuous-feed dot-matrix printer circa 1983. Tractor-feed paper textures, ASCII character borders, faded ribbon ink. Two paper stocks: green-bar ledger and plain white.",
+            "screenshot": "https://snapsmack.ca/skins/screenshots/impact-printer.png",
+            "download_url": "https://snapsmack.ca/skins/packages/impact-printer-1.0.zip",
+            "download_size": 7425839,
+            "signature": "4ed845e9f46a70d336a1bdb45ac82d4a62ee592a0c1a789c04ebc68fe875b7ca1d7c69a7eaeafb34fdab099e6976f518c9b6b2bb6eaad0d5c4cb985af9dcad08",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.7",
+            "features": {
+                "supports_wall": false,
+                "archive_layouts": [
+                    "square",
+                    "cropped"
+                ]
+            }
+        },
+        "kiosk": {
+            "name": "Kiosk",
+            "version": "0.1",
+            "status": "development",
+            "author": "Sean McCormick",
+            "description": "What is black and white and read all over? Blogs, motherfucker! Also this skin, except we mean red too. Well, both. Shut up.",
+            "screenshot": "https://snapsmack.ca/skins/screenshots/kiosk.png",
+            "download_url": "https://snapsmack.ca/skins/packages/kiosk-0.1.zip",
+            "download_size": 8348,
+            "signature": "86982f78a695e1f670b1736b8ceddaaaea70aa982ace89268a96d65d51111fc3b06ca470a6f72cb1e6510aa1e1b94c94baf61d8001145dd476658bbb38030e01",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.7",
+            "features": {
+                "supports_wall": true
+            },
+            "installable": false
+        },
+        "new-horizon": {
+            "name": "New Horizon",
+            "version": "1.0",
+            "status": "stable",
+            "author": "Sean McCormick",
+            "description": "High-contrast photography skin with archival framing, tactical layout controls, and full JS library support. Light and dark variants.",
+            "screenshot": "https://snapsmack.ca/skins/screenshots/new-horizon.png",
+            "download_url": "https://snapsmack.ca/skins/packages/new-horizon-1.0.zip",
+            "download_size": 17920,
+            "signature": "47a190a45f1d657c9079e2ee8cf37f2afa3cfe2f24a9c4d3bb667fe9a4dc0e8cc638f6bef81e0d2e57bfba8c0f2f182d80c8665b1ac7a9143e1eae9c4e1c4601",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.7",
+            "features": {
+                "supports_wall": true,
+                "archive_layouts": [
+                    "square",
+                    "cropped",
+                    "masonry"
+                ]
+            }
+        },
+        "photogram": {
+            "name": "Photogram",
+            "version": "1.0",
+            "status": "stable",
+            "author": "Sean McCormick",
+            "description": "A shadow of what a photo-sharing app used to be. Phone-native layout: 3-column archive grid, full-aspect post view, inline likes, bottom-sheet comments. Reproduces the Pixelfed / classic Instagram experience in a self-hosted blog.",
+            "screenshot": "https://snapsmack.ca/skins/screenshots/photogram.png",
+            "download_url": "https://snapsmack.ca/skins/packages/photogram-1.0.zip",
+            "download_size": 28627,
+            "signature": "a6b2200ae0c478b0e2d5cbb4206776e2d8216e6e233c1b0cf4c29f5e5ab199c8d729a9c11991c5fcd2acdc2f814063b039392be1a6d570d21f9bd8e58541c60b",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.7",
+            "features": {
+                "supports_wall": false,
+                "archive_layouts": [
+                    "square"
+                ],
+                "supports_slider": false
+            }
+        },
+        "rational-geo": {
+            "name": "Rational Geo",
+            "version": "1.0",
+            "status": "stable",
+            "author": "Sean McCormick",
+            "description": "An homage to the world's best magazine. Editorial serif typography, the iconic yellow accent, light and dark variants. For anyone who has read it and loved it or dreamed of having their work published in it.",
+            "screenshot": "https://snapsmack.ca/skins/screenshots/rational-geo.png",
+            "download_url": "https://snapsmack.ca/skins/packages/rational-geo-1.0.zip",
+            "download_size": 577782,
+            "signature": "1543fae1e06832a399950ce7cc8139b3ac75fd817f6fb78ffcdd76b43e59e203360a8947fe24f464caaf90689b751b4687254d91f37f35af780a29984f45f50c",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.7",
+            "features": {
+                "supports_wall": false,
+                "supports_slider": false,
+                "archive_layouts": [
+                    "cropped",
+                    "masonry"
+                ]
+            }
+        },
+        "the-grid": {
+            "name": "The Grid",
+            "version": "1.0",
+            "status": "development",
+            "author": "Sean McCormick",
+            "description": "Classic Instagram-style 3-column square-thumbnail photo grid. Carousel and panorama post support. Clean, minimal UI keeps the focus on the photographs.",
+            "screenshot": "https://snapsmack.ca/skins/screenshots/the-grid.png",
+            "download_url": "https://snapsmack.ca/skins/packages/the-grid-1.0.zip",
+            "download_size": 20359,
+            "signature": "50f32c20b42f6d0967ab33cb053a71e60036247cc86fd1fd454e0e493904e0c47cd45db9148eb43af40bf67cb466c6b7f1e3a4e8c3d988c1f31aa3c96398830c",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.7",
+            "features": {
+                "supports_wall": false,
+                "archive_layouts": [
+                    "square"
+                ],
+                "supports_slider": false
+            },
+            "installable": false
+        },
+        "true-grit": {
+            "name": "True Grit",
+            "version": "1.0",
+            "status": "stable",
+            "author": "Sean McCormick",
+            "description": "Found-texture photography skin. Photographic wall backgrounds with opacity overlay, archival framing, justified grid, and floating photo wall. Built for foundtextures.ca.",
+            "screenshot": "https://snapsmack.ca/skins/screenshots/true-grit.png",
+            "download_url": "https://snapsmack.ca/skins/packages/true-grit-1.0.zip",
+            "download_size": 20707306,
+            "signature": "fb1568bcc2dc0379f9dbed23fbcc7ccdcf66de09422a119791196a7b72ed4e1dde8a592017c32438fb3c5f449db311622d2d1657d0ee4b62ed30a360922fdd07",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.7",
+            "features": {
+                "supports_wall": true,
+                "archive_layouts": [
+                    "square",
+                    "cropped",
+                    "masonry"
+                ]
+            }
+        },
+        "52-card-pickup": {
+            "name": "52 Card Pickup",
+            "version": "1.0",
+            "status": "development",
+            "author": "Sean McCormick",
+            "description": "Randomised photo pile skin. Throws a configurable number of images onto the screen like prints tossed on a table. Four frame styles (Polaroid, standard print, borderless, slide mount), reshuffle to load a fresh set, and hover-to-lift interaction.",
+            "screenshot": "https://snapsmack.ca/skins/screenshots/52-card-pickup.png",
+            "download_url": "https://snapsmack.ca/skins/packages/52-card-pickup-1.0.zip",
+            "download_size": 0,
+            "signature": "",
+            "requires_php": "8.0",
+            "requires_snapsmack": "0.7",
+            "features": {
+                "supports_wall": false,
+                "archive_layouts": [
+                    "square"
+                ],
+                "supports_slider": false,
+                "has_landing": true
+            },
+            "installable": false
+        }
+    }
+}

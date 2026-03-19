@@ -682,6 +682,11 @@ return [
             'path'         => 'assets/js/ss-engine-overlay.js',
             'has_settings' => false,
         ],
+        'smack-pile' => [
+            'label'        => 'Photo Pile Engine (52 Card Pickup)',
+            'path'         => 'assets/js/ss-engine-pile.js',
+            'has_settings' => false,
+        ],
         'smack-drawer' => [
             'label'        => 'Dual Drawer Controller (Top/Bottom drawers)',
             'path'         => 'assets/js/ss-engine-drawer.js',
