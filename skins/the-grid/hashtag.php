@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - The Grid Hashtag Archive
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  *
  * 3-column square tile grid scoped to $requested_tag.
  * $requested_tag is set and validated by index.php before inclusion.

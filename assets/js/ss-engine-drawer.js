@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - Dual Drawer Controller
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  *
  * Rational Geo drawer engine: comments slide DOWN from below the header
  * (masthead section), info/caption slides UP from above the page footer

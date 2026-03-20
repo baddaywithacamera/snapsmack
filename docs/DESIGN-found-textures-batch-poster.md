@@ -2,7 +2,7 @@
 
 **Tool:** `ft-batch-poster`
 **Platform:** Windows desktop app (.exe, Python + tkinter + PyInstaller)
-**Target site:** foundtextures.ca (SnapSmack Alpha v0.7.4d)
+**Target site:** foundtextures.ca (SnapSmack Alpha v0.7.5)
 **Status:** Design / pre-build
 
 ---

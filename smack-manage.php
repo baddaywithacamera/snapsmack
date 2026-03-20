@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Archive management dashboard
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  *
  * Provides searchable listing of all posts with filtering by status, category, and album.
  * Supports deletion of posts with cascading removal of associated data and files.

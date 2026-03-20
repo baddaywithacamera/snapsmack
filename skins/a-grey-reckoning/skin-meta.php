@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Meta tags for the grey-expectations skin
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  *
  * Includes core meta tags for SEO, CSS loading, and font injection.
  * No variants — just the single dark stylesheet.

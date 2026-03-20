@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Community Component
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  *
  * Shared include for likes, reactions, and account-required comments.
  * Drop into any skin's layout.php after core/layout_logic.php has run.

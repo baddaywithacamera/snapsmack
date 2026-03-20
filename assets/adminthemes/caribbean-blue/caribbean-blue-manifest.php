@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the Caribbean Blue admin theme
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  */
 
 return [
