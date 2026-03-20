@@ -187,14 +187,15 @@ class SnapSmackClient:
 
     def post_image(
         self,
-        entry:            ManifestEntry,
-        image_folder:     str,
-        site_data:        SiteData,
-        default_category: str = '',
-        default_album:    str = '',
+        entry:               ManifestEntry,
+        image_folder:        str,
+        site_data:           SiteData,
+        default_category:    str = '',
+        default_album:       str = '',
+        default_orientation: str = 'auto',
         drive_service=None,
-        drive_folder_id:  str = '',
-        copyright_text:   str = '',
+        drive_folder_id:     str = '',
+        copyright_text:      str = '',
     ) -> PostResult:
         """
         Full workflow for one image. Returns PostResult — never raises.
@@ -269,13 +270,16 @@ class SnapSmackClient:
                 notes.append(f"album \"{album_name}\" not matched")
 
             # ── 5. POST to SnapSmack ──────────────────────────────────
+            orient = entry.orientation if entry.orientation != 'auto' else default_orientation
+
             form_data: Dict[str, str] = {
-                'title':          entry.title,
-                'tags':           entry.tags,
-                'img_status':     'published',
-                'desc':           copyright_str,
-                'allow_download': '1' if drive_url else '0',
-                'download_url':   drive_url,
+                'title':                entry.title,
+                'tags':                 entry.tags,
+                'img_status':           'published',
+                'desc':                 copyright_str,
+                'allow_download':       '1' if drive_url else '0',
+                'download_url':         drive_url,
+                'orientation_override': orient,
             }
             if cat_id is not None:
                 form_data['cat_ids[]'] = str(cat_id)
@@ -311,16 +315,17 @@ class SnapSmackClient:
 # ---------------------------------------------------------------------------
 
 def run_batch(
-    client:           SnapSmackClient,
-    entries:          List[ManifestEntry],
-    image_folder:     str,
-    site_data:        SiteData,
-    default_category: str,
-    default_album:    str,
-    on_progress:      Callable[[int, int, PostResult], None],
+    client:              SnapSmackClient,
+    entries:             List[ManifestEntry],
+    image_folder:        str,
+    site_data:           SiteData,
+    default_category:    str,
+    default_album:       str,
+    default_orientation: str = 'auto',
+    on_progress:         Callable[[int, int, PostResult], None] = None,
     drive_service=None,
-    drive_folder_id:  str = '',
-    copyright_text:   str = '',
+    drive_folder_id:     str = '',
+    copyright_text:      str = '',
 ) -> List[PostResult]:
     results = []
     total   = len(entries)
@@ -332,6 +337,7 @@ def run_batch(
             site_data=site_data,
             default_category=default_category,
             default_album=default_album,
+            default_orientation=default_orientation,
             drive_service=drive_service,
             drive_folder_id=drive_folder_id,
             copyright_text=copyright_text,

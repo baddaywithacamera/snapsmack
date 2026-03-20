@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.4d-16"   # bump this on every rebuild
+BUILD_VERSION = "0.7.4d-17"   # bump this on every rebuild
 
 import os
 import queue
@@ -657,8 +657,9 @@ class App(tk.Tk):
         # ── Box: MANIFEST & DEFAULTS ──────────────────────────────────
         self._folder_var   = tk.StringVar()
         self._manifest_var = tk.StringVar()
-        self._def_cat_var  = tk.StringVar()
-        self._def_alb_var  = tk.StringVar()
+        self._def_cat_var    = tk.StringVar()
+        self._def_alb_var    = tk.StringVar()
+        self._def_orient_var = tk.StringVar(value='auto')
 
         mfst_box  = self._box(cols, "MANIFEST & DEFAULTS")
         mfst_box.grid(row=0, column=1, sticky="nsew", padx=(7, 0))
@@ -671,6 +672,7 @@ class App(tk.Tk):
         dm_cols.pack(fill="x", pady=(0, 8))
         dm_cols.columnconfigure(0, weight=1)
         dm_cols.columnconfigure(1, weight=1)
+        dm_cols.columnconfigure(2, weight=1)
 
         cat_cell = tk.Frame(dm_cols, bg=BG_CARD)
         cat_cell.grid(row=0, column=0, sticky="ew", padx=(0, 6))
@@ -679,10 +681,19 @@ class App(tk.Tk):
         self._def_cat_cb.pack(fill="x", pady=(2, 0))
 
         alb_cell = tk.Frame(dm_cols, bg=BG_CARD)
-        alb_cell.grid(row=0, column=1, sticky="ew")
+        alb_cell.grid(row=0, column=1, sticky="ew", padx=(0, 6))
         tk.Label(alb_cell, text="DEFAULT ALBUM", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w")
         self._def_alb_cb = ttk.Combobox(alb_cell, textvariable=self._def_alb_var, font=FONT_SMALL)
         self._def_alb_cb.pack(fill="x", pady=(2, 0))
+
+        orient_cell = tk.Frame(dm_cols, bg=BG_CARD)
+        orient_cell.grid(row=0, column=2, sticky="ew")
+        tk.Label(orient_cell, text="ORIENTATION", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w")
+        self._def_orient_cb = ttk.Combobox(
+            orient_cell, textvariable=self._def_orient_var, font=FONT_SMALL,
+            values=['Auto', 'Landscape', 'Portrait', 'Square'], state="readonly",
+        )
+        self._def_orient_cb.pack(fill="x", pady=(2, 0))
 
         ttk.Button(mfst_body, text="Load Manifest", style="Ghost.TButton",
                    command=self._on_load).pack(anchor="w")
@@ -883,6 +894,7 @@ class App(tk.Tk):
         self._rem_var.set(c.get('remember', False))
         self._def_cat_var.set(c.get('default_category', ''))
         self._def_alb_var.set(c.get('default_album', ''))
+        self._def_orient_var.set(c.get('default_orientation', 'Auto'))
         self._folder_var.set(c.get('last_image_folder', ''))
         self._manifest_var.set(c.get('last_manifest_file', ''))
         self._goog_creds_var.set(c.get('google_credentials', ''))
@@ -916,8 +928,9 @@ class App(tk.Tk):
             'username':           self._user_var.get().strip(),
             'password':           self._pass_var.get(),
             'remember':           self._rem_var.get(),
-            'default_category':   self._def_cat_var.get().strip(),
-            'default_album':      self._def_alb_var.get().strip(),
+            'default_category':    self._def_cat_var.get().strip(),
+            'default_album':       self._def_alb_var.get().strip(),
+            'default_orientation': self._def_orient_var.get().strip(),
             'last_image_folder':  self._folder_var.get().strip(),
             'last_manifest_file': self._manifest_var.get().strip(),
             'google_credentials': self._goog_creds_var.get().strip(),
@@ -1167,6 +1180,10 @@ class App(tk.Tk):
         def on_progress(current, total, result):
             self._msg_queue.put(('progress', current, total, result))
 
+        # Map display label to API value for orientation
+        orient_map = {'auto': 'auto', 'landscape': '0', 'portrait': '1', 'square': '2'}
+        orient_val = orient_map.get(self._def_orient_var.get().strip().lower(), 'auto')
+
         poster_module.run_batch(
             client=self._client,
             entries=entries,
@@ -1174,6 +1191,7 @@ class App(tk.Tk):
             site_data=self._site_data,
             default_category=self._def_cat_var.get().strip(),
             default_album=self._def_alb_var.get().strip(),
+            default_orientation=orient_val,
             on_progress=on_progress,
             drive_service=self._drive_service,
             drive_folder_id=self._drive_folder_var.get().strip(),

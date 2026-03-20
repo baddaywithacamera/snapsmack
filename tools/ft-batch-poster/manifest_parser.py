@@ -19,13 +19,14 @@ from typing import List, Tuple
 
 @dataclass
 class ManifestEntry:
-    file:     str = ''
-    title:    str = ''
-    tags:     str = ''
-    category: str = ''
-    album:    str = ''
+    file:        str = ''
+    title:       str = ''
+    tags:        str = ''
+    category:    str = ''
+    album:       str = ''
+    orientation: str = 'auto'   # auto | 0 (landscape) | 1 (portrait) | 2 (square)
     # Source line number for error reporting
-    line_num: int = 0
+    line_num:    int = 0
 
 
 @dataclass
