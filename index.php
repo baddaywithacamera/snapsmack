@@ -57,10 +57,18 @@ try {
     $requested_slug = trim($path_info, '/');
     if (empty($requested_slug)) $requested_slug = $_GET['s'] ?? $_GET['name'] ?? null;
 
-    $homepage_mode   = $settings['homepage_mode'] ?? 'latest_post';
+    $homepage_mode    = $settings['homepage_mode'] ?? 'latest_post';
     $homepage_page_id = (int)($settings['homepage_page_id'] ?? 0);
+    $blog_slug        = trim($settings['blog_slug'] ?? 'blog', '/');
 
     $force_blog = !empty($_SERVER['SNAPSMACK_FORCE_BLOG']);
+
+    // If the requested slug matches the blog slug and homepage isn't latest_post,
+    // force-show the image feed (the blog) instead of looking for an image with that slug.
+    if ($requested_slug === $blog_slug && $homepage_mode !== 'latest_post') {
+        $requested_slug = null;
+        $force_blog = true;
+    }
 
     if (!$force_blog && !$requested_slug && $homepage_mode === 'static_page' && $homepage_page_id > 0) {
         // Load the static page from snap_pages
@@ -223,9 +231,9 @@ include __DIR__ . '/' . $skin_path . '/skin-meta.php';
 <div id="page-wrapper">
     <?php
     if ($img && file_exists(__DIR__ . '/' . $skin_path . '/layout.php')) {
-        // Skin landing page: if no explicit slug was requested and the skin provides
-        // a landing.php (e.g. a gallery slider), show that instead of the single image.
-        if (!$requested_slug && file_exists(__DIR__ . '/' . $skin_path . '/landing.php')) {
+        // Skin landing page: if no explicit slug was requested, the blog isn't being
+        // forced, and the skin provides a landing.php, show that instead of the single image.
+        if (!$requested_slug && !$force_blog && file_exists(__DIR__ . '/' . $skin_path . '/landing.php')) {
             include __DIR__ . '/' . $skin_path . '/landing.php';
         } else {
             include __DIR__ . '/' . $skin_path . '/layout.php';

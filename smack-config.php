@@ -267,9 +267,10 @@ include 'core/sidebar.php';
                         <label>HOMEPAGE MODE</label>
                         <select name="settings[homepage_mode]" id="homepage-mode-select">
                             <option value="latest_post" <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'latest_post') ? 'selected' : ''; ?>>LATEST POST (DEFAULT)</option>
+                            <option value="skin_landing" <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'skin_landing') ? 'selected' : ''; ?>>SKIN LANDING PAGE</option>
                             <option value="static_page" <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'static_page') ? 'selected' : ''; ?>>STATIC PAGE</option>
                         </select>
-                        <span class="dim">LATEST POST SHOWS NEWEST IMAGE. STATIC PAGE USES A PAGE AS HOMEPAGE.</span>
+                        <span class="dim">LATEST POST SHOWS NEWEST IMAGE. SKIN LANDING USES THE SKIN'S BUILT-IN SLIDER/GRID. STATIC PAGE USES A CUSTOM PAGE.</span>
                     </div>
 
                     <div class="lens-input-wrapper homepage-page-picker<?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'static_page') ? '' : ' d-none'; ?>" id="homepage-page-picker">
@@ -280,7 +281,12 @@ include 'core/sidebar.php';
                                 <option value="<?php echo $p['id']; ?>" <?php echo (($settings['homepage_page_id'] ?? 0) == $p['id']) ? 'selected' : ''; ?>><?php echo strtoupper(htmlspecialchars($p['title'])); ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <span class="dim">BLOG MOVES TO A SEPARATE /BLOG LINK IN NAVIGATION.</span>
+                    </div>
+
+                    <div class="lens-input-wrapper homepage-blog-slug<?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'latest_post') ? ' d-none' : ''; ?>" id="homepage-blog-slug">
+                        <label>BLOG URL SLUG</label>
+                        <input type="text" name="settings[blog_slug]" value="<?php echo htmlspecialchars($settings['blog_slug'] ?? 'blog'); ?>" placeholder="blog">
+                        <span class="dim">THE URL WHERE VISITORS FIND YOUR IMAGE FEED (E.G. /BLOG, /FEED, /PHOTOS). APPEARS IN NAVIGATION.</span>
                     </div>
                 </div>
             </div>
@@ -529,9 +535,9 @@ var homepageMode = document.getElementById('homepage-mode-select');
 if (homepageMode) {
     homepageMode.addEventListener('change', function() {
         var picker = document.getElementById('homepage-page-picker');
-        if (picker) {
-            picker.style.display = (this.value === 'static_page') ? '' : 'none';
-        }
+        var blogSlug = document.getElementById('homepage-blog-slug');
+        if (picker) picker.style.display = (this.value === 'static_page') ? '' : 'none';
+        if (blogSlug) blogSlug.style.display = (this.value === 'latest_post') ? 'none' : '';
     });
 }
 </script>
