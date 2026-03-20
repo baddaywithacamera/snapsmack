@@ -106,7 +106,6 @@ include 'core/sidebar.php';
 ?>
 
 <div class="main">
-    <div class="box">
 
         <?php if ($editing || isset($_GET['new'])): ?>
         <!-- ============================================================
@@ -119,57 +118,60 @@ include 'core/sidebar.php';
             $mosaic_gap   = $editing['gap'] ?? 4;
         ?>
 
-        <div class="header-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-            <h2><?php echo $mosaic_id ? 'Edit Mosaic #' . $mosaic_id : 'New Mosaic'; ?></h2>
-            <a href="smack-mosaics.php" class="btn-secondary" style="text-decoration:none;padding:8px 16px;border:1px solid var(--border);border-radius:4px;font-size:0.85rem;">&larr; Back to List</a>
-        </div>
-
-        <div class="lens-input-wrapper" style="margin-bottom:16px;">
-            <label>TITLE</label>
-            <input type="text" id="mosaic-title" value="<?php echo $mosaic_title; ?>" placeholder="Give this mosaic a name" style="width:100%;">
-        </div>
-
-        <div style="display:flex;gap:16px;margin-bottom:16px;align-items:center;">
-            <div class="lens-input-wrapper" style="flex:0 0 auto;">
-                <label>GAP (PX)</label>
-                <input type="number" id="mosaic-gap" value="<?php echo $mosaic_gap; ?>" min="0" max="20" style="width:80px;">
+        <div class="header-row header-row--ruled">
+            <h2><?php echo $mosaic_id ? 'EDIT MOSAIC #' . $mosaic_id : 'NEW MOSAIC'; ?></h2>
+            <div class="header-actions">
+                <a href="smack-mosaics.php" class="btn-smack">&larr; BACK TO LIST</a>
             </div>
-            <div style="flex:1;text-align:right;">
-                <span id="mosaic-shortcode" style="font-family:monospace;color:var(--accent);font-size:0.9rem;cursor:pointer;" onclick="navigator.clipboard.writeText(this.textContent)" title="Click to copy">
+        </div>
+
+    <div class="box">
+        <div class="lens-input-wrapper mb-15">
+            <label>TITLE</label>
+            <input type="text" id="mosaic-title" value="<?php echo $mosaic_title; ?>" placeholder="Give this mosaic a name">
+        </div>
+
+        <div class="mosaic-config-row">
+            <div class="lens-input-wrapper mosaic-gap-field">
+                <label>GAP (PX)</label>
+                <input type="number" id="mosaic-gap" value="<?php echo $mosaic_gap; ?>" min="0" max="20">
+            </div>
+            <div class="mosaic-shortcode-display">
+                <span id="mosaic-shortcode" class="mosaic-shortcode-copy" onclick="navigator.clipboard.writeText(this.textContent)" title="Click to copy">
                     <?php echo $mosaic_id ? '[mosaic:' . $mosaic_id . ']' : '(save to get shortcode)'; ?>
                 </span>
             </div>
         </div>
 
         <!-- SELECTED ASSETS (drag to reorder) -->
-        <div style="margin-bottom:16px;">
-            <label style="font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);">SELECTED ASSETS — drag to reorder</label>
-            <div id="mosaic-selected" style="display:flex;flex-wrap:wrap;gap:8px;min-height:80px;padding:12px;border:2px dashed var(--border);border-radius:4px;margin-top:6px;background:var(--bg-input);">
+        <div class="mb-15">
+            <label class="mosaic-section-label">SELECTED ASSETS — drag to reorder</label>
+            <div id="mosaic-selected" class="mosaic-dropzone">
                 <!-- Populated by JS -->
             </div>
         </div>
 
         <!-- LIVE PREVIEW -->
-        <div class="mosaic-preview-container" style="margin-bottom:20px;">
-            <label style="font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:8px;">LIVE PREVIEW</label>
-            <div id="mosaic-preview" class="snap-mosaic" style="min-height:100px;">
-                <div style="color:var(--text-dim);text-align:center;padding:40px;">Add assets to see preview</div>
+        <div class="mb-20">
+            <label class="mosaic-section-label">LIVE PREVIEW</label>
+            <div id="mosaic-preview" class="snap-mosaic mosaic-preview-area">
+                <div class="dim text-center mosaic-empty-preview">Add assets to see preview</div>
             </div>
         </div>
 
         <!-- ACTION BUTTONS -->
-        <div style="display:flex;gap:12px;margin-bottom:24px;">
-            <button onclick="saveMosaic()" style="flex:1;">SAVE MOSAIC</button>
-            <button onclick="document.getElementById('asset-picker').style.display='block'" class="btn-secondary" style="flex:0 0 auto;padding:8px 20px;background:var(--bg-secondary);border:1px solid var(--border);cursor:pointer;">+ ADD ASSETS</button>
+        <div class="mosaic-action-row">
+            <button onclick="saveMosaic()" class="btn-smack mosaic-save-btn">SAVE MOSAIC</button>
+            <button onclick="document.getElementById('asset-picker').classList.toggle('mosaic-picker-open')" class="btn-smack btn-settings">+ ADD ASSETS</button>
         </div>
 
         <!-- ASSET PICKER (hidden by default) -->
-        <div id="asset-picker" style="display:none;border:1px solid var(--border);border-radius:4px;padding:16px;margin-bottom:20px;background:var(--bg-secondary);">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                <h3 style="margin:0;">Media Library</h3>
-                <button onclick="document.getElementById('asset-picker').style.display='none'" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1.2rem;">&times;</button>
+        <div id="asset-picker" class="mosaic-picker">
+            <div class="mosaic-picker-header">
+                <h3>Media Library</h3>
+                <button onclick="document.getElementById('asset-picker').classList.remove('mosaic-picker-open')" class="mosaic-picker-close">&times;</button>
             </div>
-            <div id="asset-picker-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;max-height:400px;overflow-y:auto;">
+            <div id="asset-picker-grid" class="mosaic-picker-grid">
                 <!-- Populated by JS -->
             </div>
         </div>
@@ -390,27 +392,28 @@ include 'core/sidebar.php';
         <!-- ============================================================
              LIST MODE
              ============================================================ -->
-        <div class="header-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-            <h2>Mosaics</h2>
-            <a href="smack-mosaics.php?new=1" style="text-decoration:none;">
-                <button style="padding:8px 20px;">+ NEW MOSAIC</button>
-            </a>
-        </div>
+    </div>
 
+    <div class="header-row header-row--ruled">
+        <h2>MOSAICS</h2>
+        <div class="header-actions">
+            <a href="smack-mosaics.php?new=1" class="btn-smack">+ NEW MOSAIC</a>
+        </div>
+    </div>
+
+    <div class="box">
         <?php if (empty($mosaics)): ?>
-            <p style="color:var(--text-dim);text-align:center;padding:40px 0;">
-                No mosaics yet. Create one to embed tiled image groups in your posts and pages.
-            </p>
+            <p class="dim text-center empty-notice">No mosaics yet. Create one to embed tiled image groups in your posts and pages.</p>
         <?php else: ?>
-            <table style="width:100%;border-collapse:collapse;">
+            <table class="wp-list-table mosaic-list-table">
                 <thead>
-                    <tr style="text-align:left;border-bottom:1px solid var(--border);">
-                        <th style="padding:10px;">ID</th>
-                        <th style="padding:10px;">Title</th>
-                        <th style="padding:10px;">Images</th>
-                        <th style="padding:10px;">Shortcode</th>
-                        <th style="padding:10px;">Updated</th>
-                        <th style="padding:10px;">Actions</th>
+                    <tr>
+                        <th class="mosaic-col-id">ID</th>
+                        <th>Title</th>
+                        <th class="mosaic-col-count">Images</th>
+                        <th class="mosaic-col-shortcode">Shortcode</th>
+                        <th class="mosaic-col-date">Updated</th>
+                        <th class="mosaic-col-actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -418,23 +421,24 @@ include 'core/sidebar.php';
                     $ids = json_decode($m['asset_ids'], true);
                     $count = is_array($ids) ? count($ids) : 0;
                 ?>
-                    <tr style="border-bottom:1px solid var(--border);">
-                        <td style="padding:10px;"><?php echo $m['id']; ?></td>
-                        <td style="padding:10px;"><?php echo htmlspecialchars($m['title']); ?></td>
-                        <td style="padding:10px;"><?php echo $count; ?> image<?php echo $count !== 1 ? 's' : ''; ?></td>
-                        <td style="padding:10px;">
-                            <code style="cursor:pointer;color:var(--accent);" onclick="navigator.clipboard.writeText(this.textContent)">[mosaic:<?php echo $m['id']; ?>]</code>
+                    <tr>
+                        <td><?php echo $m['id']; ?></td>
+                        <td><strong><?php echo htmlspecialchars($m['title']); ?></strong></td>
+                        <td><?php echo $count; ?> image<?php echo $count !== 1 ? 's' : ''; ?></td>
+                        <td>
+                            <code class="mosaic-shortcode-copy" onclick="navigator.clipboard.writeText(this.textContent)" title="Click to copy">[mosaic:<?php echo $m['id']; ?>]</code>
                         </td>
-                        <td style="padding:10px;color:var(--text-dim);font-size:0.85rem;"><?php echo date('M j, Y', strtotime($m['updated_at'])); ?></td>
-                        <td style="padding:10px;">
-                            <a href="smack-mosaics.php?edit=<?php echo $m['id']; ?>" style="margin-right:12px;">Edit</a>
-                            <a href="#" onclick="deleteMosaic(<?php echo $m['id']; ?>);return false;" style="color:var(--danger, #cc4444);">Delete</a>
+                        <td class="dim mosaic-date"><?php echo date('M j, Y', strtotime($m['updated_at'])); ?></td>
+                        <td>
+                            <a href="smack-mosaics.php?edit=<?php echo $m['id']; ?>" class="action-edit">EDIT</a>
+                            <a href="#" onclick="deleteMosaic(<?php echo $m['id']; ?>);return false;" class="action-delete">DELETE</a>
                         </td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
             </table>
         <?php endif; ?>
+    </div>
 
         <script>
         function deleteMosaic(id) {
@@ -450,9 +454,7 @@ include 'core/sidebar.php';
 
         <?php endif; ?>
 
-    </div>
 </div>
 
-<?php include 'core/footer-scripts.php'; ?>
-</body>
+<?php include 'core/admin-footer.php'; ?>
 </html>
