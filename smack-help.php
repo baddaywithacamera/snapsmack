@@ -1185,6 +1185,10 @@ studio tool you need. We won't help you build it but we won't stop you either.</
 
 <p>This software was built by a photographer for photographers who want to own their work
 and their platform. If that's you, welcome.</p>
+
+<p>SnapSmack was built with a wish and a good AI tool (Claude AI) by someone who is not a
+programmer. What didn't stop him won't stop you if you need this and you're determined
+enough. You've even been given a head start. Good luck.</p>
 HTML
 ];
 
