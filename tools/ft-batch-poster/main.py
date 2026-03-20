@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.4d-15"   # bump this on every rebuild
+BUILD_VERSION = "0.7.4d-16"   # bump this on every rebuild
 
 import os
 import queue
@@ -579,6 +579,10 @@ class App(tk.Tk):
         self._conn_dot.pack(side="right", padx=(0, 14))
         self._conn_lbl = tk.Label(header, text="Not connected", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
         self._conn_lbl.pack(side="right")
+        self._session_timer_lbl = tk.Label(header, text="", bg=BG_CARD, fg=FG_DIM, font=("Segoe UI", 8))
+        self._session_timer_lbl.pack(side="right", padx=(0, 10))
+        self._session_remaining = 0
+        self._session_timer_id  = None
         tk.Label(header, text=f"build {BUILD_VERSION}", bg=BG_CARD, fg=FG_DIM,
                  font=("Segoe UI", 8)).pack(side="right", padx=(0, 20))
 
@@ -1018,6 +1022,7 @@ class App(tk.Tk):
             self._conn_dot.configure(fg=FG_OK)
             self._conn_lbl.configure(text=f"Connected — {len(cats)} cats, {len(albums)} albums", fg=FG_OK)
             self._set_status("Connected. Load a manifest to begin.", FG_OK)
+            self._start_session_timer()
             self._save_config()
 
             # Apply the site's active admin theme colors to the UI.
@@ -1232,6 +1237,54 @@ class App(tk.Tk):
 
         self._set_status("Session OK.", FG_OK)
         return True
+
+    # ------------------------------------------------------------------
+    # Session countdown timer
+    # ------------------------------------------------------------------
+    SESSION_LIFETIME = 2880  # 48 minutes in seconds (matches PHP gc_maxlifetime)
+
+    def _start_session_timer(self):
+        """Start or restart the session countdown from full lifetime."""
+        if self._session_timer_id:
+            self.after_cancel(self._session_timer_id)
+        self._session_remaining = self.SESSION_LIFETIME
+        self._tick_session_timer()
+
+    def _stop_session_timer(self):
+        """Stop the timer and clear the label."""
+        if self._session_timer_id:
+            self.after_cancel(self._session_timer_id)
+            self._session_timer_id = None
+        self._session_remaining = 0
+        self._session_timer_lbl.configure(text="", fg=FG_DIM)
+
+    def _tick_session_timer(self):
+        """Called every second. Updates the countdown label and colour."""
+        s = self._session_remaining
+        if s <= 0:
+            self._session_timer_lbl.configure(text="SESSION EXPIRED", fg=FG_ERR)
+            self._conn_dot.configure(fg=FG_ERR)
+            self._conn_lbl.configure(text="Session expired — reconnect", fg=FG_ERR)
+            messagebox.showwarning(
+                "Session Expired",
+                "Your login session has timed out on the server.\n\n"
+                "Click Connect to log in again. Your queue is still here."
+            )
+            return
+
+        mins, secs = divmod(s, 60)
+        self._session_timer_lbl.configure(text=f"{mins:02d}:{secs:02d}")
+
+        # Colour thresholds: green > 10min, amber <= 10min, red <= 2min
+        if s <= 120:
+            self._session_timer_lbl.configure(fg=FG_ERR)
+        elif s <= 600:
+            self._session_timer_lbl.configure(fg=FG_WARN)
+        else:
+            self._session_timer_lbl.configure(fg=FG_DIM)
+
+        self._session_remaining -= 1
+        self._session_timer_id = self.after(1000, self._tick_session_timer)
 
     def _set_status(self, text: str, color: str = FG_DIM):
         self._status_lbl.configure(text=text, fg=color)
