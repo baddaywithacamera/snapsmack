@@ -12,6 +12,10 @@ html, body {
     color-scheme: dark;
 }
 
+/* Global link colours */
+a { color: #FFFFFF; text-decoration: none; }
+a:hover { color: #cccccc; }
+
 /* 02: SIDEBAR NAVIGATION */
 .sidebar {
     background-color: #050505;
