@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - Photogram Engine
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  *
  * Handles all Photogram-specific interactions:
  *   - Lightbox: tap to open, swipe-down or tap backdrop to dismiss

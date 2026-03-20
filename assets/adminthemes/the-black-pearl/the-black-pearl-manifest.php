@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the The Black Pearl admin theme
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  */
 
 return [
