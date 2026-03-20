@@ -36,3 +36,15 @@ registry.json
 
 # Server-side auth file (cPanel / host-generated, not source code)
 auth.php
+
+# PyInstaller build artifacts (Smack Your Batch Up)
+tools/ft-batch-poster/build/
+tools/ft-batch-poster/dist/
+tools/ft-batch-poster/*.spec
+
+# ExifTool legacy (replaced by piexif)
+tools/ft-batch-poster/exiftool.exe
+tools/ft-batch-poster/exiftool_files/
+
+# Plugin builds (not part of SnapSmack core)
+sofobomo-canada.zip
