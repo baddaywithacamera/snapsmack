@@ -15,6 +15,8 @@ html, body {
 /* Global link colours */
 a { color: #ffb000; text-decoration: none; }
 a:hover { color: #cc8d00; }
+.support-link { color: #ffb000; }
+.support-link:hover { color: #cc8d00; }
 
 /* 02: SIDEBAR NAVIGATION */
 .sidebar {
