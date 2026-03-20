@@ -1161,6 +1161,33 @@ outputs a versioned exe to <code>C:\tools\</code>. Requires Python 3.11+ and
 HTML
 ];
 
+// ── WHAT SNAPSMACK IS NOT ─────────────────────────────────────────────────
+
+$help_topics['what-snapsmack-is-not'] = [
+    'section'  => 'System',
+    'title'    => 'What SnapSmack Is Not',
+    'icon'     => '&#x2717;',
+    'content'  => <<<'HTML'
+<h3>What SnapSmack Is Not</h3>
+<p>SnapSmack is a photoblogging platform. It is not a studio management system, a client
+portal, or a commercial photography business tool.</p>
+
+<p>It will never include password-protected client galleries, booking systems, calendar
+integration, proofing workflows, watermarking, print ordering, or e-commerce. Photographers
+who need those features should use Pixieset, HoneyBook, or similar dedicated tools.</p>
+
+<p>SnapSmack is not professionally supported software. It is a personal project maintained
+by one person. It works because it has to work for the person who built it. There is no
+support contract, no SLA, no guaranteed response time.</p>
+
+<p>SnapSmack is GPL v3. The source is yours. Fork it, modify it, build the commercial
+studio tool you need. We won't help you build it but we won't stop you either.</p>
+
+<p>This software was built by a photographer for photographers who want to own their work
+and their platform. If that's you, welcome.</p>
+HTML
+];
+
 // ── INSTALLER ────────────────────────────────────────────────────────────
 
 $help_topics['installer'] = [
