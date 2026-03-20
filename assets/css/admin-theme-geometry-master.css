@@ -2917,6 +2917,112 @@ input[type="range"]:active::-webkit-slider-thumb {
 .recent-item:hover .batch-check-wrap,
 .batch-check-wrap:has(input:checked) { opacity: 1; }
 
+/* ─── CLOUD BACKUP (smack-cloud.php) ───────────────────────────────── */
+.cloud-push-desc { margin: 0 0 16px; }
+.cloud-provider-note { font-size: 11px; margin: 10px 0 0; }
+.cloud-last-push-info { margin: 0 0 6px; font-size: 13px; }
+
+/* Push grid — aligned table of export types vs providers */
+.cloud-push-grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.cloud-push-grid th {
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 8px 12px;
+    border-bottom-width: 2px;
+    border-bottom-style: solid;
+}
+
+.cloud-push-grid th:first-child { text-align: left; }
+
+.cloud-push-type-col { width: 40%; }
+
+.cloud-push-grid td {
+    padding: 8px 12px;
+    vertical-align: middle;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+}
+
+.cloud-push-label {
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.cloud-push-grid td:not(:first-child) { text-align: center; }
+.cloud-push-grid .btn-smack { width: 100%; max-width: 180px; }
+
+/* Progress indicator */
+.cloud-push-progress { margin-top: 16px; }
+
+.cloud-progress-bar {
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.cloud-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+.cloud-progress-label { font-weight: 600; }
+
+.cloud-progress-spinner {
+    animation: cloud-spin 1s linear infinite;
+    font-size: 10px;
+}
+
+.cloud-progress-done {
+    animation: none;
+    font-size: 14px;
+}
+
+.cloud-progress-failed {
+    animation: none;
+    font-size: 14px;
+}
+
+@keyframes cloud-spin {
+    0%   { opacity: 0.3; }
+    50%  { opacity: 1; }
+    100% { opacity: 0.3; }
+}
+
+.cloud-progress-track {
+    height: 3px;
+    overflow: hidden;
+}
+
+.cloud-progress-fill {
+    height: 100%;
+    width: 0;
+    transition: width 0.3s ease;
+}
+
+.cloud-progress-log {
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 8px 14px;
+    font-size: 11px;
+    line-height: 1.6;
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.cloud-progress-line { padding: 1px 0; }
+
 /* ─── COMPANION TOOLS (smack-tools.php) ────────────────────────────── */
 .tool-intro-text   { margin: 0 0 4px; }
 .tool-version-badge { margin-left: 10px; }

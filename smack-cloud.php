@@ -364,41 +364,69 @@ include 'core/sidebar.php';
          ================================================================ -->
     <div class="box">
         <h3>PUSH TO CLOUD</h3>
-        <p class="dim">Select a provider and export type to push. You must be connected to a provider first.</p>
+        <p class="dim cloud-push-desc">Select a provider and export type. You must be connected to a provider first.</p>
+
+        <table class="cloud-push-grid">
+            <thead>
+                <tr>
+                    <th class="cloud-push-type-col">Export Type</th>
+                    <th>Google Drive</th>
+                    <th>OneDrive</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="cloud-push-label">Recovery Kit</td>
+                    <td>
+                        <button type="button" class="btn-smack btn-block push-cloud-btn"
+                                data-provider="google" data-type="recovery_kit"
+                                <?php echo $googleReady ? '' : 'disabled'; ?>>PUSH</button>
+                    </td>
+                    <td>
+                        <button type="button" class="btn-smack btn-block push-cloud-btn"
+                                data-provider="onedrive" data-type="recovery_kit"
+                                <?php echo $onedriveReady ? '' : 'disabled'; ?>>PUSH</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="cloud-push-label">WordPress WXR</td>
+                    <td>
+                        <button type="button" class="btn-smack btn-block push-cloud-btn"
+                                data-provider="google" data-type="wxr"
+                                <?php echo $googleReady ? '' : 'disabled'; ?>>PUSH</button>
+                    </td>
+                    <td>
+                        <button type="button" class="btn-smack btn-block push-cloud-btn"
+                                data-provider="onedrive" data-type="wxr"
+                                <?php echo $onedriveReady ? '' : 'disabled'; ?>>PUSH</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="cloud-push-label">Portable JSON</td>
+                    <td>
+                        <button type="button" class="btn-smack btn-block push-cloud-btn"
+                                data-provider="google" data-type="json"
+                                <?php echo $googleReady ? '' : 'disabled'; ?>>PUSH</button>
+                    </td>
+                    <td>
+                        <button type="button" class="btn-smack btn-block push-cloud-btn"
+                                data-provider="onedrive" data-type="json"
+                                <?php echo $onedriveReady ? '' : 'disabled'; ?>>PUSH</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <?php if (!$googleReady): ?>
+            <p class="dim cloud-provider-note">Google Drive: <?php echo $googleConfigured ? 'Link above to enable.' : 'Configure credentials first.'; ?></p>
+        <?php endif; ?>
+        <?php if (!$onedriveReady): ?>
+            <p class="dim cloud-provider-note">OneDrive: <?php echo $onedriveConfigured ? 'Link above to enable.' : 'Configure credentials first.'; ?></p>
+        <?php endif; ?>
     </div>
 
-    <div class="dash-grid dash-grid-2">
-        <div class="box box-flex">
-            <h4 style="margin-top: 0;">GOOGLE DRIVE</h4>
-            <?php if ($googleReady): ?>
-                <button type="button" class="btn-smack btn-block push-cloud-btn" data-provider="google" data-type="recovery_kit">PUSH RECOVERY KIT</button>
-                <button type="button" class="btn-smack btn-block push-cloud-btn" data-provider="google" data-type="wxr" style="margin-top: 8px;">PUSH WORDPRESS WXR</button>
-                <button type="button" class="btn-smack btn-block push-cloud-btn" data-provider="google" data-type="json" style="margin-top: 8px;">PUSH PORTABLE JSON</button>
-            <?php else: ?>
-                <p class="dim"><?php echo $googleConfigured ? 'Link Google Drive above to enable push.' : 'Configure credentials above first.'; ?></p>
-                <button type="button" class="btn-smack btn-block" disabled>PUSH RECOVERY KIT</button>
-                <button type="button" class="btn-smack btn-block" disabled style="margin-top: 8px;">PUSH WORDPRESS WXR</button>
-                <button type="button" class="btn-smack btn-block" disabled style="margin-top: 8px;">PUSH PORTABLE JSON</button>
-            <?php endif; ?>
-        </div>
-
-        <div class="box box-flex">
-            <h4 style="margin-top: 0;">ONEDRIVE</h4>
-            <?php if ($onedriveReady): ?>
-                <button type="button" class="btn-smack btn-block push-cloud-btn" data-provider="onedrive" data-type="recovery_kit">PUSH RECOVERY KIT</button>
-                <button type="button" class="btn-smack btn-block push-cloud-btn" data-provider="onedrive" data-type="wxr" style="margin-top: 8px;">PUSH WORDPRESS WXR</button>
-                <button type="button" class="btn-smack btn-block push-cloud-btn" data-provider="onedrive" data-type="json" style="margin-top: 8px;">PUSH PORTABLE JSON</button>
-            <?php else: ?>
-                <p class="dim"><?php echo $onedriveConfigured ? 'Link OneDrive above to enable push.' : 'Configure credentials above first.'; ?></p>
-                <button type="button" class="btn-smack btn-block" disabled>PUSH RECOVERY KIT</button>
-                <button type="button" class="btn-smack btn-block" disabled style="margin-top: 8px;">PUSH WORDPRESS WXR</button>
-                <button type="button" class="btn-smack btn-block" disabled style="margin-top: 8px;">PUSH PORTABLE JSON</button>
-            <?php endif; ?>
-        </div>
-    </div>
-
-    <!-- Progress output -->
-    <div id="cloud-push-progress" style="margin-top: 20px;"></div>
+    <!-- Progress indicator -->
+    <div id="cloud-push-progress" class="cloud-push-progress"></div>
 
     <!-- ================================================================
          LAST PUSH STATUS
@@ -412,12 +440,8 @@ include 'core/sidebar.php';
         ?>
 
         <?php if ($lastPush): ?>
-            <div style="margin-bottom: 10px;">
-                <strong>Timestamp:</strong> <?php echo htmlspecialchars($lastPush); ?>
-            </div>
-            <div>
-                <strong>Status:</strong> <?php echo htmlspecialchars($lastStatus ?? 'Unknown'); ?>
-            </div>
+            <p class="cloud-last-push-info"><strong>Timestamp:</strong> <?php echo htmlspecialchars($lastPush); ?></p>
+            <p class="cloud-last-push-info"><strong>Status:</strong> <?php echo htmlspecialchars($lastStatus ?? 'Unknown'); ?></p>
         <?php else: ?>
             <p class="dim">NO PUSH HISTORY</p>
         <?php endif; ?>
@@ -425,18 +449,31 @@ include 'core/sidebar.php';
 </div>
 
 <script>
-// --- PUSH TO CLOUD (streaming progress) ---
+// --- PUSH TO CLOUD (streaming progress with status bar) ---
 document.querySelectorAll('.push-cloud-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
         var provider = this.dataset.provider;
         var type = this.dataset.type;
+        var label = (provider === 'google' ? 'Google Drive' : 'OneDrive') + ' — ' + this.closest('tr').querySelector('.cloud-push-label').textContent;
         var progressDiv = document.getElementById('cloud-push-progress');
 
         // Disable all push buttons during operation
         document.querySelectorAll('.push-cloud-btn').forEach(function(b) { b.disabled = true; });
 
-        progressDiv.innerHTML = '<pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; font-size: 12px; overflow-x: auto; max-height: 400px; line-height: 1.5;"></pre>';
-        var preEl = progressDiv.querySelector('pre');
+        progressDiv.innerHTML =
+            '<div class="cloud-progress-bar">' +
+                '<div class="cloud-progress-header">' +
+                    '<span class="cloud-progress-label">Pushing: ' + label + '</span>' +
+                    '<span class="cloud-progress-spinner">&#x25CF;</span>' +
+                '</div>' +
+                '<div class="cloud-progress-track"><div class="cloud-progress-fill"></div></div>' +
+                '<div class="cloud-progress-log"></div>' +
+            '</div>';
+
+        var logEl = progressDiv.querySelector('.cloud-progress-log');
+        var fillEl = progressDiv.querySelector('.cloud-progress-fill');
+        var spinnerEl = progressDiv.querySelector('.cloud-progress-spinner');
+        var lineCount = 0;
 
         var url = 'smack-cloud.php?action=push_now&provider=' + encodeURIComponent(provider) + '&type=' + encodeURIComponent(type);
 
@@ -449,19 +486,42 @@ document.querySelectorAll('.push-cloud-btn').forEach(function(btn) {
                     if (result.done) return;
 
                     var chunk = decoder.decode(result.value, {stream: true});
-                    preEl.textContent += chunk;
+                    var lines = chunk.split('\n').filter(function(l) { return l.trim(); });
+                    lines.forEach(function(line) {
+                        lineCount++;
+                        var entry = document.createElement('div');
+                        entry.className = 'cloud-progress-line';
+                        if (line.indexOf('ERROR') !== -1 || line.indexOf('FAIL') !== -1) {
+                            entry.className += ' cloud-progress-error';
+                        } else if (line.indexOf('SUCCESS') !== -1 || line.indexOf('DONE') !== -1 || line.indexOf('Complete') !== -1) {
+                            entry.className += ' cloud-progress-success';
+                        }
+                        entry.textContent = line;
+                        logEl.appendChild(entry);
+                    });
+                    logEl.scrollTop = logEl.scrollHeight;
 
-                    // Auto-scroll to bottom
-                    preEl.parentElement.scrollTop = preEl.parentElement.scrollHeight;
+                    // Pulse the progress fill (indeterminate — we don't know total)
+                    var pct = Math.min(90, lineCount * 10);
+                    fillEl.style.width = pct + '%';
 
                     return reader.read().then(process);
                 });
             })
+            .then(function() {
+                fillEl.style.width = '100%';
+                spinnerEl.textContent = '✓';
+                spinnerEl.classList.add('cloud-progress-done');
+            })
             .catch(function(e) {
-                preEl.textContent += '\nERROR: ' + e.message;
+                var errEl = document.createElement('div');
+                errEl.className = 'cloud-progress-line cloud-progress-error';
+                errEl.textContent = 'ERROR: ' + e.message;
+                logEl.appendChild(errEl);
+                spinnerEl.textContent = '✗';
+                spinnerEl.classList.add('cloud-progress-failed');
             })
             .finally(function() {
-                // Re-enable all push buttons
                 document.querySelectorAll('.push-cloud-btn').forEach(function(b) { b.disabled = false; });
             });
     });
