@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Global appearance and theme settings
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  *
  * Manages public and admin theme selection, discovery, and activation.
  * Per-theme customization and CSS overrides are handled in smack-skin.php.

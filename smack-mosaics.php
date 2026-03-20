@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Mosaic Album Builder
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  *
  * Create and manage image mosaics for inline embedding via [mosaic:ID].
  * Pick assets from the media library, drag to reorder, preview the

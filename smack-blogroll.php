@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Blogroll manager
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  *
  * Manages network of independent peers and external photographers.
  * Handles CRUD operations for blogroll entries with category organization.

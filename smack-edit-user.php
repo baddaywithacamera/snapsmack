@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - User account editor
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  *
  * Allows modification of user email, role, and password.
  * Usernames are immutable to preserve database integrity.

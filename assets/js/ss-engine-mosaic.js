@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK — Mosaic Layout Engine
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  *
  * Renders inline image mosaics from [mosaic:ID] shortcodes.
  * Takes a set of images and packs them into rows that form a clean

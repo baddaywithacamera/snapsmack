@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Admin login portal
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  *
  * Authenticates users and initializes administrative sessions.
  * Loads per-user preferences and resolves the active admin theme.
