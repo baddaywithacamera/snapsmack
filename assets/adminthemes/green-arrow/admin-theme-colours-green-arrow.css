@@ -542,3 +542,17 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* ─── COMPANION TOOLS (smack-tools.php) ──────────────────────────── */
 .tool-desc { color: #A8E6A8; }
+
+/* ─── CLOUD BACKUP (smack-cloud.php) ─────────────────────────────── */
+.cloud-push-grid th { border-bottom-color: #0D260D; color: #008E3A; }
+.cloud-push-grid td { border-bottom-color: #081A08; }
+.cloud-push-label { color: #A8E6A8; }
+.cloud-progress-bar { border-color: #0D260D; background-color: #081A08; }
+.cloud-progress-header { color: #A8E6A8; }
+.cloud-progress-track { background-color: #081A08; }
+.cloud-progress-fill { background-color: #00C853; }
+.cloud-progress-done { color: #4EC994; }
+.cloud-progress-failed { color: #E86060; }
+.cloud-progress-log { color: #008E3A; }
+.cloud-progress-error { color: #E86060; }
+.cloud-progress-success { color: #4EC994; }

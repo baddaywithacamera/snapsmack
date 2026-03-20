@@ -131,8 +131,11 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-maintenance.php') ? 'active' : ''; ?>">
                         <a href="smack-maintenance.php">Maintenance</a>
                     </li>
-                    <li class="<?php echo in_array($current_page, ['smack-backup.php','smack-ftp.php','smack-cloud.php','smack-verify.php']) ? 'active' : ''; ?>">
+                    <li class="<?php echo in_array($current_page, ['smack-backup.php','smack-ftp.php','smack-verify.php']) ? 'active' : ''; ?>">
                         <a href="smack-backup.php">Backup &amp; Recovery</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-cloud.php') ? 'active' : ''; ?>">
+                        <a href="smack-cloud.php">Cloud Backup</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-disaster.php') ? 'active' : ''; ?>">
                         <a href="smack-disaster.php">Disaster Recovery</a>
