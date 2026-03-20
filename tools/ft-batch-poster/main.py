@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.4d-13"   # bump this on every rebuild
+BUILD_VERSION = "0.7.4d-14"   # bump this on every rebuild
 
 import os
 import queue
@@ -480,10 +480,12 @@ class App(tk.Tk):
         )
         style.configure("Ghost.TButton", background=bg_input, foreground=fg)
         style.map("Ghost.TButton", background=[("active", bg_card)])
-        # Post button is a Label — always respects bg/fg on Windows.
-        self._post_btn.configure(bg=accent, fg=bg)
-        # Update hover binding to use the new accent
-        self._post_btn.bind("<Leave>", lambda e: self._post_btn.configure(bg=accent))
+        # Post button is a Canvas — recolour the drawn rectangle and text.
+        self._post_canvas.configure(bg=bg)
+        self._post_canvas.itemconfig(self._post_rect, fill=accent)
+        self._post_canvas.itemconfig(self._post_text, fill=bg)
+        self._post_canvas.bind("<Leave>", lambda e: self._post_canvas.itemconfig(
+            self._post_rect, fill=accent))
         style.configure("TCombobox",
             fieldbackground=bg_input, background=bg_input, foreground=fg,
             selectbackground=accent, selectforeground=bg, bordercolor=border,
@@ -501,8 +503,8 @@ class App(tk.Tk):
         fg_map  = {self._t_fg: fg, self._t_dim: fg_dim, self._t_accent: accent}
 
         def _walk(widget):
-            # Skip the post button — it has its own accent colours
-            if widget is self._post_btn:
+            # Skip the post button canvas — it has its own accent colours
+            if widget is self._post_canvas:
                 return
             # bg / background
             for attr in ('bg', 'background'):
@@ -760,19 +762,26 @@ class App(tk.Tk):
                                          command=self._on_validate)
         self._validate_btn.pack(side="left", padx=(14, 6), pady=10)
 
-        # POST BATCH uses a Label with click binding — tk.Button on Windows
-        # ignores bg/fg under certain theme engines even with relief="flat".
-        # Labels always render their colours correctly.
-        self._post_btn = tk.Label(
-            bottom, text="POST BATCH",
-            bg=ACCENT, fg=BG_DEEP,
-            font=("Segoe UI", 11, "bold"),
-            padx=28, pady=10, cursor="hand2",
+        # POST BATCH — drawn on a tk.Canvas because Windows ignores bg/fg
+        # on both tk.Button AND tk.Label under certain DPI / theme combos.
+        # Canvas pixel drawing is the one thing Windows cannot override.
+        self._post_canvas = tk.Canvas(
+            bottom, width=160, height=36,
+            bg=BG_DEEP, highlightthickness=0, cursor="hand2",
         )
-        self._post_btn.pack(side="left", pady=6)
-        self._post_btn.bind("<Button-1>", lambda e: self._on_post())
-        self._post_btn.bind("<Enter>", lambda e: self._post_btn.configure(bg=self._lighten(self._post_btn.cget('bg'))))
-        self._post_btn.bind("<Leave>", lambda e: self._post_btn.configure(bg=self._t_accent))
+        self._post_canvas.pack(side="left", padx=(10, 0), pady=6)
+        self._post_rect = self._post_canvas.create_rectangle(
+            0, 0, 160, 36, fill=ACCENT, outline='', width=0,
+        )
+        self._post_text = self._post_canvas.create_text(
+            80, 18, text="POST BATCH", fill=BG_DEEP,
+            font=("Segoe UI", 11, "bold"),
+        )
+        self._post_canvas.bind("<Button-1>", lambda e: self._on_post())
+        self._post_canvas.bind("<Enter>", lambda e: self._post_canvas.itemconfig(
+            self._post_rect, fill=self._lighten(self._post_canvas.itemcget(self._post_rect, 'fill'))))
+        self._post_canvas.bind("<Leave>", lambda e: self._post_canvas.itemconfig(
+            self._post_rect, fill=self._t_accent))
 
         self._clear_btn = ttk.Button(bottom, text="Clear", style="Ghost.TButton",
                                       command=self._on_clear)
@@ -1214,13 +1223,17 @@ class App(tk.Tk):
     def _set_posting(self, posting: bool):
         self._posting = posting
         state = "disabled" if posting else "normal"
-        # Post button is a Label — simulate disabled by dimming and blocking clicks
+        # Post button is a Canvas — simulate disabled by dimming and blocking clicks
         if posting:
-            self._post_btn.configure(fg=FG_DIM, cursor="")
-            self._post_btn.unbind("<Button-1>")
+            self._post_canvas.itemconfig(self._post_text, fill=FG_DIM)
+            self._post_canvas.itemconfig(self._post_rect, fill=BG_MID)
+            self._post_canvas.configure(cursor="")
+            self._post_canvas.unbind("<Button-1>")
         else:
-            self._post_btn.configure(fg=BG_DEEP, cursor="hand2")
-            self._post_btn.bind("<Button-1>", lambda e: self._on_post())
+            self._post_canvas.itemconfig(self._post_text, fill=BG_DEEP)
+            self._post_canvas.itemconfig(self._post_rect, fill=self._t_accent)
+            self._post_canvas.configure(cursor="hand2")
+            self._post_canvas.bind("<Button-1>", lambda e: self._on_post())
         self._validate_btn.configure(state=state)
         self._connect_btn.configure(state=state)
 
