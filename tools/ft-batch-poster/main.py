@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.4d-14"   # bump this on every rebuild
+BUILD_VERSION = "0.7.4d-15"   # bump this on every rebuild
 
 import os
 import queue
@@ -1211,11 +1211,27 @@ class App(tk.Tk):
     # ------------------------------------------------------------------
 
     def _ensure_connected(self) -> bool:
-        if self._client and self._site_data:
-            return True
-        messagebox.showinfo("Not connected",
-                            "Click Connect first and enter your credentials.")
-        return False
+        if not self._client or not self._site_data:
+            messagebox.showinfo("Not connected",
+                                "Click Connect first and enter your credentials.")
+            return False
+
+        # Verify the server session is still alive
+        self._set_status("Checking session…", FG_WARN)
+        self.update_idletasks()
+
+        if not self._client.is_session_alive():
+            self._set_status("Session expired.", FG_ERR)
+            self._conn_lbl.configure(text="Session expired — reconnect", fg=FG_ERR)
+            messagebox.showwarning(
+                "Session Expired",
+                "Your login session has timed out on the server.\n\n"
+                "Click Connect to log in again. Your queue is still here."
+            )
+            return False
+
+        self._set_status("Session OK.", FG_OK)
+        return True
 
     def _set_status(self, text: str, color: str = FG_DIM):
         self._status_lbl.configure(text=text, fg=color)

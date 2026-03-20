@@ -94,6 +94,23 @@ class SnapSmackClient:
             raise RuntimeError("Login failed — check your username and password.")
         self._logged_in = True
 
+    def is_session_alive(self) -> bool:
+        """
+        Lightweight check: hit an authenticated page and see if we get
+        redirected back to login.php. Returns True if session is still valid.
+        """
+        if not self._logged_in:
+            return False
+        try:
+            resp = self.session.get(
+                f"{self.base_url}/smack-admin.php",
+                timeout=10,
+                allow_redirects=True,
+            )
+            return 'login.php' not in resp.url
+        except Exception:
+            return False
+
     def fetch_site_data(self) -> SiteData:
         if not self._logged_in:
             raise RuntimeError("Not logged in.")
