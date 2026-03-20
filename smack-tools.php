@@ -16,8 +16,8 @@ $tools = [
         'version'      => '0.7.4d',
         'platform'     => 'Windows (64-bit)',
         'download_url' => 'https://snapsmack.ca/tools/smackyourbatchup.zip',
-        'description'  => 'Desktop tool for bulk-posting images to SnapSmack. Loads manifest files, embeds EXIF copyright metadata via piexif (pure Python, no external dependencies), resizes to web dimensions, uploads originals to Google Drive, and posts the batch to SnapSmack. Borrows the active admin colour scheme on connect. Drag to reorder, per-row category and album, accumulate multiple manifests before posting.',
-        'requires'     => 'Windows 10/11 · Google Drive credentials JSON (optional)',
+        'description'  => 'Desktop tool for bulk-posting images to SnapSmack. Loads manifest files, embeds EXIF copyright metadata via piexif (pure Python, no external dependencies), resizes to web dimensions, and posts the batch to SnapSmack. Optionally uploads originals to Google Drive for high-res download links. Borrows the active admin colour scheme on connect. Drag to reorder, per-row category and album, accumulate multiple manifests before posting. OneDrive and Dropbox download links can be added manually via the CMS post editor.',
+        'requires'     => 'Windows 10/11 only (macOS/Linux not currently supported) · Google Drive credentials JSON (optional — not needed if you don\'t use Drive downloads)',
     ],
 ];
 
