@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin Help Topics: 50 Shades of Noah Grey
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  */
 
 return [

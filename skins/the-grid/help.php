@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - The Grid Help Topics
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  *
  * Returns help content for the The Grid skin.
  * Consumed by core/sidebar.php to render the F1 help modal.

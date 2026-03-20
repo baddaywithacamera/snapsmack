@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Meta tags for the true-grit skin
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  *
  * Includes core meta tags and loads the appropriate variant stylesheet.
  */

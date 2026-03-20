@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - AJAX infinite loader for floating gallery
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  *
  * Backend handler that returns HTML fragments for additional image tiles.
  * Matches layout settings from gallery-wall.php to ensure loaded tiles render correctly.

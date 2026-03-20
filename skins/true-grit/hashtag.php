@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - True Grit Hashtag Archive
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  *
  * Displays a grid of all published images tagged with $requested_tag.
  * $requested_tag is set and validated by index.php before this file is included.

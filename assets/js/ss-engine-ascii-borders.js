@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - ASCII Border Engine
- * Alpha v0.7.4d
+ * Alpha v0.7.5
  *
  * Generates text-character borders around images using configurable styles.
  * Measures rendered dimensions and calculates character fit without stretching.
