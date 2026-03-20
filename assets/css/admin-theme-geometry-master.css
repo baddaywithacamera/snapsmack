@@ -2850,7 +2850,7 @@ input[type="range"]:active::-webkit-slider-thumb {
 .batch-bar {
     display: flex;
     align-items: center;
-    padding: 10px 0;
+    padding: 0 0 8px;
     margin-bottom: 4px;
     font-size: 11px;
     letter-spacing: 0.5px;
@@ -2884,20 +2884,12 @@ input[type="range"]:active::-webkit-slider-thumb {
 
 .batch-bar--active .batch-count-label { opacity: 1; }
 
-/* Delete button on the right — hidden until items are checked */
+/* Delete button on the right — always visible, brightens when items checked */
 .batch-delete-btn {
     white-space: nowrap;
     font-size: 10px;
     letter-spacing: 1px;
     padding: 4px 14px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-}
-
-.batch-bar--active .batch-delete-btn {
-    opacity: 1;
-    pointer-events: auto;
 }
 
 /* Row checkbox — proper breathing room between checkbox and drag handle */
