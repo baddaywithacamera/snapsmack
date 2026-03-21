@@ -28,6 +28,10 @@ if (!isset($settings)) {
 $active_tab = $_GET['tab'] ?? 'customize';
 if (!in_array($active_tab, ['customize', 'gallery'])) $active_tab = 'customize';
 
+// Initialise here so modal-building code at the bottom of the page
+// always has a valid array regardless of which tab is active.
+$local_skins = [];
+
 // --- PROTECTED SKINS (cannot be removed) ---
 $protected_skins = ['photogram'];
 
