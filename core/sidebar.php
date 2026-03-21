@@ -25,9 +25,9 @@ if (!empty($settings['active_skin'])) {
 // --- SECTION / PAGE MAP ---
 // Determine which accordion section to auto-open based on the current page.
 $_section_map = [
-    'good-shit'  => ['smack-admin.php','smack-post.php','smack-manage.php','smack-edit.php','smack-cats.php','smack-albums.php','smack-media.php','smack-mosaics.php','smack-comments.php','smack-blogroll.php','smack-pages.php','smack-community-config.php','smack-community-users.php','smack-tools.php'],
+    'good-shit'  => ['smack-admin.php','smack-post.php','smack-manage.php','smack-edit.php','smack-cats.php','smack-albums.php','smack-media.php','smack-mosaics.php','smack-comments.php','smack-blogroll.php','smack-pages.php','smack-community-settings.php','smack-community-users.php','smack-tools.php'],
     'pimp'       => ['smack-globalvibe.php','smack-skin.php','smack-pimpotron.php','smack-social-dock.php','smack-css.php'],
-    'boring'     => ['smack-config.php','smack-users.php','smack-maintenance.php','smack-backup.php','smack-disaster.php','smack-ftp.php','smack-cloud.php','smack-verify.php','smack-update.php'],
+    'boring'     => ['smack-settings.php','smack-users.php','smack-maintenance.php','smack-backup.php','smack-disaster.php','smack-ftp.php','smack-cloud.php','smack-verify.php','smack-update.php'],
     'help'       => ['smack-help.php','smack-forum.php'],
 ];
 $_active_section = 'good-shit'; // default
@@ -79,8 +79,8 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-blogroll.php') ? 'active' : ''; ?>">
                         <a href="smack-blogroll.php">Blogroll</a>
                     </li>
-                    <li class="<?php echo in_array($current_page, ['smack-community-config.php','smack-community-users.php']) ? 'active' : ''; ?>">
-                        <a href="smack-community-config.php">Community</a>
+                    <li class="<?php echo in_array($current_page, ['smack-community-settings.php','smack-community-users.php']) ? 'active' : ''; ?>">
+                        <a href="smack-community-settings.php">Community</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-pages.php') ? 'active' : ''; ?>">
                         <a href="smack-pages.php">Static Pages</a>
@@ -125,8 +125,8 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <span class="nav-section-arrow"></span>
                 </button>
                 <ul class="nav-section-links">
-                    <li class="<?php echo ($current_page == 'smack-config.php') ? 'active' : ''; ?>">
-                        <a href="smack-config.php">Configuration</a>
+                    <li class="<?php echo ($current_page == 'smack-settings.php') ? 'active' : ''; ?>">
+                        <a href="smack-settings.php">Configuration</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-users.php') ? 'active' : ''; ?>">
                         <a href="smack-users.php">User Manager</a>

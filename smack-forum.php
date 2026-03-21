@@ -279,7 +279,7 @@ require 'core/sidebar.php';
       <div class="box-header"><span class="box-title">COMMUNITY FORUM</span></div>
       <div class="box-body forum-empty">
         <strong>Forum Disabled</strong>
-        <p>Enable it under <a href="smack-config.php">Configuration &rarr; Architecture &amp; Interaction</a>.</p>
+        <p>Enable it under <a href="smack-settings.php">Configuration &rarr; Architecture &amp; Interaction</a>.</p>
       </div>
     </div>
 
@@ -289,7 +289,7 @@ require 'core/sidebar.php';
       <div class="box-header"><span class="box-title">COMMUNITY FORUM</span></div>
       <div class="box-body">
         <div class="alert"><?php echo htmlspecialchars($reg_error); ?></div>
-        <p class="dim">Make sure your Site URL is set correctly in <a href="smack-config.php">Configuration</a>, then reload this page to retry.</p>
+        <p class="dim">Make sure your Site URL is set correctly in <a href="smack-settings.php">Configuration</a>, then reload this page to retry.</p>
       </div>
     </div>
 
