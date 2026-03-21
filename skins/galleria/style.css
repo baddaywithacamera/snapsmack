@@ -17,6 +17,7 @@
     --text-secondary: #777777;
     --accent-color: #b8965a;
     --grid-cols: 4;
+    --content-max-width: 1200px;
 }
 
 /* ============================================================================
@@ -248,13 +249,13 @@ a:hover {
         3px 10px 30px rgba(0, 0, 0, 0.10),
         /* ── Moulding profile (inset) ── */
         /* Outermost edge — bright highlight on top/left */
-        inset 2px 2px 0 rgba(255, 255, 255, 0.22),
-        inset 1px 1px 0 rgba(255, 255, 255, 0.14),
+        inset 2px 2px 0 rgba(255, 255, 255, 0.11),
+        inset 1px 1px 0 rgba(255, 255, 255, 0.07),
         /* Outermost edge — deep shadow on bottom/right */
         inset -2px -2px 0 rgba(0, 0, 0, 0.30),
         inset -1px -1px 0 rgba(0, 0, 0, 0.18),
         /* Mid-profile ridge — second highlight band */
-        inset 5px 5px 3px rgba(255, 255, 255, 0.10),
+        inset 5px 5px 3px rgba(255, 255, 255, 0.05),
         /* Mid-profile — second shadow band */
         inset -4px -4px 3px rgba(0, 0, 0, 0.12),
         /* Deep interior — approaching the rabbet */
@@ -431,14 +432,24 @@ a:hover {
    ============================================================================ */
 
 .htbs-single {
-    --footer-bar-height: 3vh;
+    --footer-bar-height: 52px;
     padding-top: var(--header-height, 7vh);
-    padding-bottom: calc(14vh + var(--footer-bar-height));
+    padding-bottom: calc(100px + var(--footer-bar-height));
     height: 100vh;
     overflow: hidden;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+}
+
+/* On single view, fix the footer to the bottom so the filmstrip
+   can sit cleanly above it at --footer-bar-height */
+.htbs-single footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 70;
 }
 
 .htbs-single #infobox {
@@ -484,7 +495,7 @@ a:hover {
 #infobox {
     text-align: center;
     margin: 24px auto;
-    max-width: 960px;
+    max-width: var(--content-max-width);
 }
 
 #infobox .nav-links {

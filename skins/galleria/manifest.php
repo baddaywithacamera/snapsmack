@@ -13,7 +13,7 @@ return [
 
     'features' => [
         'supports_wall' => false,
-        'archive_layouts' => ['square'],
+        'archive_layouts' => ['square', 'cropped', 'masonry'],
         'supports_slider' => true,
         'has_landing'     => true,
         'post_modes'      => ['image'],
@@ -180,6 +180,17 @@ return [
         ],
 
         // LAYOUT section
+        'htbs_content_max_width' => [
+            'section' => 'LAYOUT',
+            'type' => 'range',
+            'label' => 'Content Max Width (px)',
+            'default' => '1200',
+            'min' => '800',
+            'max' => '1800',
+            'selector' => ':root',
+            'property' => '--content-max-width',
+            'unit' => 'px',
+        ],
         'htbs_header_height' => [
             'section' => 'LAYOUT',
             'type' => 'range',

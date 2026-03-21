@@ -50,7 +50,7 @@ html, body {
     font-size: 1.2rem;
     font-weight: 500;
     margin: 0 0 24px 0;
-    padding: 0 0 10px 0;
+    padding: 0 0 15px 0;
     line-height: 1.0;
     border-bottom-width: 2px;
     border-bottom-style: solid;
@@ -278,6 +278,11 @@ h2 {
     border-radius: 6px;
 }
 
+/* Box without an h2 header — tighten the top padding so content doesn't float */
+.box--no-header {
+    padding-top: 20px;
+}
+
 /* Inside grids the gap handles spacing — kill the double margin */
 .dash-grid > .box,
 .dash-grid-2 > .box,
@@ -331,6 +336,19 @@ h2 {
     gap: 30px;
     width: 100%;
     align-items: stretch;
+}
+
+/* Config grid — items flow directly into grid cells (no column wrappers).
+   Zeroes lens-input-wrapper bottom margin so grid rows size cleanly. */
+.config-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    width: 100%;
+    align-items: start;
+}
+.config-grid > .lens-input-wrapper {
+    margin-bottom: 0;
 }
 
 .post-col-left {
@@ -2415,7 +2433,7 @@ input[type="range"]:active::-webkit-slider-thumb {
 .manage-filter-bar {
     display: flex;
     flex-direction: row;
-    align-items: flex-end;
+    align-items: stretch;
     gap: 15px;
     width: 100%;
 }
@@ -2441,13 +2459,13 @@ input[type="range"]:active::-webkit-slider-thumb {
     width: 100%;
 }
 
-/* Inline button row — fixed height to align with 52px inputs */
+/* Inline button row — stretches to match label+input column height,
+   buttons pinned to bottom to align with the 52px inputs */
 .filter-actions-group,
 .filter-actions-row {
     display: flex;
     gap: 10px;
-    height: 52px;
-    align-items: stretch;
+    align-items: flex-end;
     flex-grow: 0;
     flex-shrink: 0;
 }
@@ -2884,12 +2902,16 @@ input[type="range"]:active::-webkit-slider-thumb {
 
 .batch-bar--active .batch-count-label { opacity: 1; }
 
-/* Delete button on the right — always visible, brightens when items checked */
+/* Delete button on the right — compact inline size, overrides btn-smack full-width/52px */
 .batch-delete-btn {
     white-space: nowrap;
     font-size: 10px;
     letter-spacing: 1px;
-    padding: 4px 14px;
+    padding: 0 14px;
+    margin-top: 0;
+    width: auto;
+    height: 32px;
+    flex-shrink: 0;
 }
 
 /* Row checkbox — proper breathing room between checkbox and drag handle */
