@@ -175,103 +175,99 @@ include 'core/sidebar.php';
              ============================================================ -->
         <div class="box">
             <h3>ARCHITECTURE & INTERACTION</h3>
-            <div class="post-layout-grid">
-                <div class="post-col-left">
-                    <div class="lens-input-wrapper">
-                        <label>GLOBAL COMMENTS</label>
-                        <select name="settings[global_comments_enabled]">
-                            <option value="1" <?php echo (($settings['global_comments_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
-                            <option value="0" <?php echo (($settings['global_comments_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
-                        </select>
-                        <span class="dim">MASTER OVERRIDE FOR ALL POSTS.</span>
-                    </div>
-
-                    <div class="lens-input-wrapper">
-                        <label>EXIF / TECHNICAL SPECS</label>
-                        <select name="settings[exif_display_enabled]">
-                            <option value="1" <?php echo (($settings['exif_display_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>SHOW ON PUBLIC POSTS</option>
-                            <option value="0" <?php echo (($settings['exif_display_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>HIDDEN FROM PUBLIC</option>
-                        </select>
-                        <span class="dim">HIDES TECHNICAL SPECIFICATIONS PANEL. DATA IS STILL STORED.</span>
-                    </div>
-
-                    <div class="lens-input-wrapper">
-                        <label>SITE-WIDE SEARCH</label>
-                        <select name="settings[search_enabled]">
-                            <option value="0" <?php echo (($settings['search_enabled'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED (DEFAULT)</option>
-                            <option value="1" <?php echo (($settings['search_enabled'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
-                        </select>
-                        <span class="dim">ENABLES FULL-TEXT SEARCH ON SKINS THAT SUPPORT IT (E.G. PHOTOGRAM).</span>
-                    </div>
-
-                    <div class="lens-input-wrapper">
-                        <label>AI TRAINING CRAWLERS</label>
-                        <select name="settings[ai_training_policy]">
-                            <option value="no_opinion" <?php echo (($settings['ai_training_policy'] ?? 'no_opinion') == 'no_opinion') ? 'selected' : ''; ?>>NO OPINION (DEFAULT)</option>
-                            <option value="allow" <?php echo (($settings['ai_training_policy'] ?? 'no_opinion') == 'allow') ? 'selected' : ''; ?>>ALLOW</option>
-                            <option value="disallow" <?php echo (($settings['ai_training_policy'] ?? 'no_opinion') == 'disallow') ? 'selected' : ''; ?>>DISALLOW</option>
-                        </select>
-                        <span class="dim">CONTROLS ROBOTS.TXT DIRECTIVES FOR GPTBOT, CLAUDEBOT, CCBOT, GOOGLE-EXTENDED, BYTESPIDER. REGENERATED ON SAVE.</span>
-                    </div>
-
-                    <div class="lens-input-wrapper">
-                        <label>COMMUNITY FORUM</label>
-                        <select name="settings[forum_enabled]">
-                            <option value="1" <?php echo (($settings['forum_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED (DEFAULT)</option>
-                            <option value="0" <?php echo (($settings['forum_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED</option>
-                        </select>
-                        <span class="dim">SHOWS THE FORUM CLIENT IN YOUR ADMIN PANEL. CONNECTS TO THE SNAPSMACK COMMUNITY HUB.</span>
-                    </div>
-
-                    <!-- Forum URL is hardcoded to snapsmack.ca. Not user-configurable. -->
+            <div class="config-grid">
+                <div class="lens-input-wrapper">
+                    <label>GLOBAL COMMENTS</label>
+                    <select name="settings[global_comments_enabled]">
+                        <option value="1" <?php echo (($settings['global_comments_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
+                        <option value="0" <?php echo (($settings['global_comments_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
+                    </select>
+                    <span class="dim">MASTER OVERRIDE FOR ALL POSTS.</span>
                 </div>
 
-                <div class="post-col-right">
-                    <div class="lens-input-wrapper">
-                        <label>GLOBAL DOWNLOADS</label>
-                        <select name="settings[global_downloads_enabled]">
-                            <option value="1" <?php echo (($settings['global_downloads_enabled'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
-                            <option value="0" <?php echo (($settings['global_downloads_enabled'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
-                        </select>
-                        <span class="dim">MASTER OVERRIDE. WHEN DISABLED, NO POSTS SHOW DOWNLOAD BUTTONS REGARDLESS OF PER-POST SETTING.</span>
-                    </div>
+                <div class="lens-input-wrapper">
+                    <label>GLOBAL DOWNLOADS</label>
+                    <select name="settings[global_downloads_enabled]">
+                        <option value="1" <?php echo (($settings['global_downloads_enabled'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
+                        <option value="0" <?php echo (($settings['global_downloads_enabled'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
+                    </select>
+                    <span class="dim">MASTER OVERRIDE. WHEN DISABLED, NO POSTS SHOW DOWNLOAD BUTTONS REGARDLESS OF PER-POST SETTING.</span>
+                </div>
 
-                    <div class="lens-input-wrapper">
-                        <label>DOWNLOAD DEFAULT FOR NEW POSTS</label>
-                        <select name="settings[download_default_mode]">
-                            <option value="per_post" <?php echo (($settings['download_default_mode'] ?? 'per_post') == 'per_post') ? 'selected' : ''; ?>>PER-POST (MANUALLY ENABLE EACH POST)</option>
-                            <option value="all_posts" <?php echo (($settings['download_default_mode'] ?? 'per_post') == 'all_posts') ? 'selected' : ''; ?>>ALL POSTS (DOWNLOADS ON BY DEFAULT)</option>
-                        </select>
-                        <span class="dim">WHEN SET TO ALL POSTS, NEW POSTS DEFAULT TO DOWNLOAD-ENABLED. YOU CAN STILL DISABLE PER-POST.</span>
-                    </div>
+                <div class="lens-input-wrapper">
+                    <label>EXIF / TECHNICAL SPECS</label>
+                    <select name="settings[exif_display_enabled]">
+                        <option value="1" <?php echo (($settings['exif_display_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>SHOW ON PUBLIC POSTS</option>
+                        <option value="0" <?php echo (($settings['exif_display_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>HIDDEN FROM PUBLIC</option>
+                    </select>
+                    <span class="dim">HIDES TECHNICAL SPECIFICATIONS PANEL. DATA IS STILL STORED.</span>
+                </div>
 
-                    <div class="lens-input-wrapper">
-                        <label>REQUIRE DOWNLOAD LINK?</label>
-                        <select name="settings[download_link_required]">
-                            <option value="0" <?php echo (($settings['download_link_required'] ?? '0') == '0') ? 'selected' : ''; ?>>NO (OPTIONAL)</option>
-                            <option value="1" <?php echo (($settings['download_link_required'] ?? '0') == '1') ? 'selected' : ''; ?>>YES (BLOCK SAVE IF MISSING)</option>
-                        </select>
-                        <span class="dim">WHEN ENABLED, POSTS WITH DOWNLOADS TURNED ON MUST HAVE A DOWNLOAD LINK OR THE SAVE WILL FAIL.</span>
-                    </div>
+                <div class="lens-input-wrapper">
+                    <label>DOWNLOAD DEFAULT FOR NEW POSTS</label>
+                    <select name="settings[download_default_mode]">
+                        <option value="per_post" <?php echo (($settings['download_default_mode'] ?? 'per_post') == 'per_post') ? 'selected' : ''; ?>>PER-POST (MANUALLY ENABLE EACH POST)</option>
+                        <option value="all_posts" <?php echo (($settings['download_default_mode'] ?? 'per_post') == 'all_posts') ? 'selected' : ''; ?>>ALL POSTS (DOWNLOADS ON BY DEFAULT)</option>
+                    </select>
+                    <span class="dim">WHEN SET TO ALL POSTS, NEW POSTS DEFAULT TO DOWNLOAD-ENABLED. YOU CAN STILL DISABLE PER-POST.</span>
+                </div>
 
-                    <div class="lens-input-wrapper">
-                        <label>PUBLIC BLOGROLL</label>
-                        <select name="settings[blogroll_enabled]">
-                            <option value="1" <?php echo (($settings['blogroll_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
-                            <option value="0" <?php echo (($settings['blogroll_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED</option>
-                        </select>
-                        <span class="dim">CONTROLS NAV LINK AND PUBLIC PAGE ACCESS.</span>
-                    </div>
+                <div class="lens-input-wrapper">
+                    <label>SITE-WIDE SEARCH</label>
+                    <select name="settings[search_enabled]">
+                        <option value="0" <?php echo (($settings['search_enabled'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED (DEFAULT)</option>
+                        <option value="1" <?php echo (($settings['search_enabled'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
+                    </select>
+                    <span class="dim">ENABLES FULL-TEXT SEARCH ON SKINS THAT SUPPORT IT (E.G. PHOTOGRAM).</span>
+                </div>
 
-                    <div class="lens-input-wrapper">
-                        <label>HOMEPAGE MODE</label>
-                        <select name="settings[homepage_mode]" id="homepage-mode-select">
-                            <option value="latest_post" <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'latest_post') ? 'selected' : ''; ?>>LATEST POST (DEFAULT)</option>
-                            <option value="skin_landing" <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'skin_landing') ? 'selected' : ''; ?>>SKIN LANDING PAGE</option>
-                            <option value="static_page" <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'static_page') ? 'selected' : ''; ?>>STATIC PAGE</option>
-                        </select>
-                        <span class="dim">LATEST POST SHOWS NEWEST IMAGE. SKIN LANDING USES THE SKIN'S BUILT-IN SLIDER/GRID. STATIC PAGE USES A CUSTOM PAGE.</span>
-                    </div>
+                <div class="lens-input-wrapper">
+                    <label>REQUIRE DOWNLOAD LINK?</label>
+                    <select name="settings[download_link_required]">
+                        <option value="0" <?php echo (($settings['download_link_required'] ?? '0') == '0') ? 'selected' : ''; ?>>NO (OPTIONAL)</option>
+                        <option value="1" <?php echo (($settings['download_link_required'] ?? '0') == '1') ? 'selected' : ''; ?>>YES (BLOCK SAVE IF MISSING)</option>
+                    </select>
+                    <span class="dim">WHEN ENABLED, POSTS WITH DOWNLOADS TURNED ON MUST HAVE A DOWNLOAD LINK OR THE SAVE WILL FAIL.</span>
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>AI TRAINING CRAWLERS</label>
+                    <select name="settings[ai_training_policy]">
+                        <option value="no_opinion" <?php echo (($settings['ai_training_policy'] ?? 'no_opinion') == 'no_opinion') ? 'selected' : ''; ?>>NO OPINION (DEFAULT)</option>
+                        <option value="allow" <?php echo (($settings['ai_training_policy'] ?? 'no_opinion') == 'allow') ? 'selected' : ''; ?>>ALLOW</option>
+                        <option value="disallow" <?php echo (($settings['ai_training_policy'] ?? 'no_opinion') == 'disallow') ? 'selected' : ''; ?>>DISALLOW</option>
+                    </select>
+                    <span class="dim">CONTROLS ROBOTS.TXT DIRECTIVES FOR GPTBOT, CLAUDEBOT, CCBOT, GOOGLE-EXTENDED, BYTESPIDER. REGENERATED ON SAVE.</span>
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>PUBLIC BLOGROLL</label>
+                    <select name="settings[blogroll_enabled]">
+                        <option value="1" <?php echo (($settings['blogroll_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
+                        <option value="0" <?php echo (($settings['blogroll_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED</option>
+                    </select>
+                    <span class="dim">CONTROLS NAV LINK AND PUBLIC PAGE ACCESS.</span>
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>COMMUNITY FORUM</label>
+                    <select name="settings[forum_enabled]">
+                        <option value="1" <?php echo (($settings['forum_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED (DEFAULT)</option>
+                        <option value="0" <?php echo (($settings['forum_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED</option>
+                    </select>
+                    <span class="dim">SHOWS THE FORUM CLIENT IN YOUR ADMIN PANEL. CONNECTS TO THE SNAPSMACK COMMUNITY HUB.</span>
+                </div>
+
+                <!-- Forum URL is hardcoded to snapsmack.ca. Not user-configurable. -->
+
+                <div class="lens-input-wrapper">
+                    <label>HOMEPAGE MODE</label>
+                    <select name="settings[homepage_mode]" id="homepage-mode-select">
+                        <option value="latest_post" <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'latest_post') ? 'selected' : ''; ?>>LATEST POST (DEFAULT)</option>
+                        <option value="skin_landing" <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'skin_landing') ? 'selected' : ''; ?>>SKIN LANDING PAGE</option>
+                        <option value="static_page" <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'static_page') ? 'selected' : ''; ?>>STATIC PAGE</option>
+                    </select>
+                    <span class="dim">LATEST POST SHOWS NEWEST IMAGE. SKIN LANDING USES THE SKIN'S BUILT-IN SLIDER/GRID. STATIC PAGE USES A CUSTOM PAGE.</span>
 
                     <div class="lens-input-wrapper homepage-page-picker<?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'static_page') ? '' : ' d-none'; ?>" id="homepage-page-picker">
                         <label>HOMEPAGE PAGE</label>

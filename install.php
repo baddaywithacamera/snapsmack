@@ -12,8 +12,8 @@
 
 // --- CONFIGURATION ---
 // The version this installer deploys.
-$installer_version       = '0.7.3';
-$installer_version_label = 'Alpha v0.7.5';
+$installer_version       = '0.7.5';
+$installer_version_label = 'Alpha 0.7.5';
 
 // --- SESSION INIT ---
 session_start();
@@ -631,7 +631,19 @@ try {
 
 define(\'SNAPSMACK_VERSION\', \'' . $installer_version_label . '\');
 define(\'SNAPSMACK_VERSION_SHORT\', \'' . $installer_version . '\');
+define(\'SNAPSMACK_VERSION_CODENAME\', \'Sitz Bath\');
 define(\'SNAPSMACK_TABLE_PREFIX\', \'' . $prefix . '\');
+
+// --- VERSION COMPARISON ---
+function snap_version_compare(string $v1, string $v2, string $op = \'>\'): bool {
+    $normalise = function (string $v): string {
+        if (preg_match(\'/^(\\d+(?:\\.\\d+)*)([a-z])$/i\', $v, $m)) {
+            return $m[1] . \'.\' . (ord(strtolower($m[2])) - ord(\'a\') + 1);
+        }
+        return $v . \'.0\';
+    };
+    return version_compare($normalise($v1), $normalise($v2), $op);
+}
 
 // --- MOBILE SKIN OVERRIDE ---
 // The slug of the skin forced onto mobile devices. This skin is not selectable
@@ -938,7 +950,17 @@ try { $pdo = new PDO($dsn, $user, $pass, $options); } catch (\PDOException $e) {
                             $const_php = '<?php
 define(\'SNAPSMACK_VERSION\', \'' . $installer_version_label . '\');
 define(\'SNAPSMACK_VERSION_SHORT\', \'' . $installer_version . '\');
+define(\'SNAPSMACK_VERSION_CODENAME\', \'Sitz Bath\');
 define(\'SNAPSMACK_TABLE_PREFIX\', \'snap_\');
+function snap_version_compare(string $v1, string $v2, string $op = \'>\'): bool {
+    $normalise = function (string $v): string {
+        if (preg_match(\'/^(\\d+(?:\\.\\d+)*)([a-z])$/i\', $v, $m)) {
+            return $m[1] . \'.\' . (ord(strtolower($m[2])) - ord(\'a\') + 1);
+        }
+        return $v . \'.0\';
+    };
+    return version_compare($normalise($v1), $normalise($v2), $op);
+}
 define(\'SNAPSMACK_MOBILE_SKIN\', \'photogram\');
 function snapsmack_is_mobile(): bool {
     $ua = $_SERVER[\'HTTP_USER_AGENT\'] ?? \'\';

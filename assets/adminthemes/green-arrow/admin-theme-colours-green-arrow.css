@@ -379,10 +379,10 @@ input[type="checkbox"]:checked::after {
     background-color: #020802;
     border-top-color: #0D260D;
 }
-.footer-left { color: #006400; }
-.footer-left a { color: #008E3A; border-bottom-color: #0D260D; }
+.footer-left { color: #2a7a2a; }
+.footer-left a { color: #3a9a3a; border-bottom-color: #1a4a1a; }
 .footer-left a:hover { color: #00C853; border-bottom-color: #00C853; }
-.footer-right { color: #006400; }
+.footer-right { color: #2a7a2a; }
 
 /* 14: APPEARANCE */
 .appearance-controller {

@@ -97,6 +97,12 @@ include 'core/sidebar.php';
                         <textarea name="cat_description" rows="3" placeholder="A short description of this category."><?php echo $edit_mode ? htmlspecialchars($edit_data['cat_description'] ?? '') : ''; ?></textarea>
                     </div>
 
+                    <div class="lens-input-wrapper mt-20">
+                        <button type="submit" class="master-update-btn">
+                            <?php echo $edit_mode ? "UPDATE CATEGORY" : "ADD TO REGISTRY"; ?>
+                        </button>
+                    </div>
+
                     <?php if ($edit_mode): ?>
                         <div class="lens-input-wrapper mt-20">
                             <a href="smack-cats.php" class="btn-smack btn-block">CANCEL EDIT</a>
@@ -135,11 +141,6 @@ include 'core/sidebar.php';
             </div>
         </div>
 
-        <div class="form-action-row">
-            <button type="submit" class="master-update-btn">
-                <?php echo $edit_mode ? "UPDATE CATEGORY" : "ADD TO REGISTRY"; ?>
-            </button>
-        </div>
     </form>
 </div>
 
