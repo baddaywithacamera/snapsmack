@@ -2,17 +2,78 @@
 /**
  * Galleria - Archive Grid Layout
  *
- * Skin-specific archive grid with miniature picture frames.
+ * Skin-specific archive grid with miniature picture frames (square/cropped modes)
+ * or Flickr-style justified row-fill (masonry mode, labelled "Justified" in Global Vibe).
  * Variables available from archive.php: $images, $settings, $all_cats, $all_albums,
  * $cat_filter, $album_filter, $archive_layout
  */
 
-$show_frames = ($settings['htbs_archive_miniframes'] ?? '1') === '1';
-$grid_cols = (int)($settings['htbs_archive_cols'] ?? 4);
+// ── JUSTIFIED (masonry) MODE ──────────────────────────────────────────────────
+// Frames can't coexist with variable-width justified rows so this branch
+// bypasses the frame markup entirely and uses the standard justified engine.
+if ($archive_layout === 'masonry'):
+    $target_row_h = (int)($settings['justified_row_height'] ?? 280);
+    $gap          = (int)($settings['justified_gap'] ?? 4);
+    $ref_w        = (int)($settings['main_canvas_width'] ?? 1280);
 
-// Aspect ratio bounds — clamp between 2:3 (portrait) and 3:2 (landscape)
-$ratio_min = 2 / 3;  // 0.667
-$ratio_max = 3 / 2;  // 1.500
+    // Group images into rows
+    $rows = [];
+    $current_row = [];
+    $current_row_width = 0;
+    foreach ($images as $img) {
+        $iw = (int)($img['img_width'] ?? 400);
+        $ih = (int)($img['img_height'] ?? 400);
+        if ($ih <= 0) $ih = 400;
+        if ($iw <= 0) $iw = 400;
+        $img['_aspect'] = $iw / $ih;
+        $scaled_w = round($img['_aspect'] * $target_row_h);
+        $current_row[] = $img;
+        $current_row_width += $scaled_w + $gap;
+        if ($current_row_width - $gap >= $ref_w) {
+            $rows[] = ['images' => $current_row, 'full' => true];
+            $current_row = [];
+            $current_row_width = 0;
+        }
+    }
+    if (!empty($current_row)) {
+        $rows[] = ['images' => $current_row, 'full' => false];
+    }
+?>
+<div id="justified-grid" style="--justified-gap: <?php echo $gap; ?>px; --justified-row-height: <?php echo $target_row_h; ?>px;">
+    <?php if ($images): ?>
+        <?php foreach ($rows as $row_data):
+            $row = $row_data['images'];
+            $row_class = 'justified-row' . (!$row_data['full'] ? ' justified-row-last' : '');
+        ?>
+            <div class="<?php echo $row_class; ?>">
+                <?php foreach ($row as $img):
+                    $link = BASE_URL . htmlspecialchars($img['img_slug']);
+                    $full_img_path = ltrim($img['img_file'], '/');
+                    $filename = basename($full_img_path);
+                    $folder = str_replace($filename, '', $full_img_path);
+                    $thumb_url = BASE_URL . $folder . 'thumbs/a_' . $filename;
+                    $flex_grow = round($img['_aspect'] * 100);
+                ?>
+                    <a href="<?php echo $link; ?>" class="justified-item" title="<?php echo htmlspecialchars($img['img_title']); ?>" style="flex-grow: <?php echo $flex_grow; ?>; aspect-ratio: <?php echo round($img['_aspect'], 4); ?>;">
+                        <img src="<?php echo $thumb_url; ?>" alt="<?php echo htmlspecialchars($img['img_title']); ?>" loading="lazy">
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <div class="empty-sector-msg">NO TRANSMISSIONS RECORDED IN THIS SECTOR.</div>
+    <?php endif; ?>
+</div>
+
+<?php
+// ── FRAMED GRID (square / cropped) MODES ─────────────────────────────────────
+else:
+    $show_frames = ($settings['htbs_archive_miniframes'] ?? '1') === '1';
+    $grid_cols = (int)($settings['htbs_archive_cols'] ?? 4);
+
+    // Aspect ratio bounds — clamp between 2:3 (portrait) and 3:2 (landscape)
+    $ratio_min = 2 / 3;  // 0.667
+    $ratio_max = 3 / 2;  // 1.500
 ?>
 
 <div class="htbs-archive-grid" style="--grid-cols: <?php echo $grid_cols; ?>;">
@@ -83,3 +144,5 @@ $ratio_max = 3 / 2;  // 1.500
         </div>
     <?php endif; ?>
 </div>
+
+<?php endif; ?>
