@@ -5,7 +5,7 @@
  *
  * AJAX endpoint. Submits a new comment or deletes an existing comment.
  *
- * Comment identity modes (set in smack-community-config.php):
+ * Comment identity modes (set in smack-community-settings.php):
  *   open       — guest name + optional email accepted; no account needed (default)
  *   hybrid     — accounts get full identity; guests still accepted
  *   registered — community account required (original behaviour)
