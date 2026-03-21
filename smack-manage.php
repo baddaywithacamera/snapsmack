@@ -206,7 +206,7 @@ include 'core/sidebar.php';
         <div class="alert alert-success">> <?php echo htmlspecialchars($success_msg); ?></div>
     <?php endif; ?>
 
-    <div class="box">
+    <div class="box box--no-header">
         <form method="GET" class="manage-filter-bar">
             <div class="filter-col-main">
                 <div class="lens-input-wrapper">
@@ -272,7 +272,7 @@ include 'core/sidebar.php';
                         <input type="checkbox" id="select-all-cb"> SELECT ALL
                     </label>
                     <span class="batch-count-label" id="batch-count-label">0 selected</span>
-                    <button type="submit" class="btn-smack action-delete batch-delete-btn" id="batch-delete-btn" disabled>DELETE SELECTED</button>
+                    <button type="submit" class="btn-smack batch-delete-btn" id="batch-delete-btn" disabled>DELETE SELECTED</button>
                 </div>
 
                 <div id="sortable-list" class="<?php echo $filters_active ? 'reorder-disabled' : ''; ?>">
