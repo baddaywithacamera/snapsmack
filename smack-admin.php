@@ -238,7 +238,7 @@ include 'core/sidebar.php';
             <div class="quick-strike-grid">
                 <a href="smack-post.php"><button class="btn-smack">NEW POST</button></a>
                 <a href="smack-backup.php"><button class="btn-smack btn-backup">BACKUP</button></a>
-                <a href="smack-config.php"><button class="btn-smack btn-settings">SETTINGS</button></a>
+                <a href="smack-settings.php"><button class="btn-smack btn-settings">SETTINGS</button></a>
                 <a href="index.php" target="_blank"><button class="btn-smack btn-live">LIVE SITE</button></a>
             </div>
         </div>
