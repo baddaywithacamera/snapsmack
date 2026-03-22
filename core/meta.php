@@ -209,8 +209,15 @@ if (file_exists($inventory_path)) {
 </style>
 <?php endif; ?>
 
-<?php if (!empty($settings['static_content_width'])): ?>
+<?php if (!empty($settings['static_content_width']) || isset($settings['static_content_gutter'])): ?>
 <style id="snapsmack-layout-vars">
-:root { --static-content-width: <?php echo (int)$settings['static_content_width']; ?>px; }
+:root {
+<?php if (!empty($settings['static_content_width'])): ?>
+    --static-content-width: <?php echo (int)$settings['static_content_width']; ?>px;
+<?php endif; ?>
+<?php if (isset($settings['static_content_gutter'])): ?>
+    --static-content-gutter: <?php echo (int)$settings['static_content_gutter']; ?>px;
+<?php endif; ?>
+}
 </style>
 <?php endif; ?>
