@@ -4,6 +4,46 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.5c — "Sitz Bath" (2026-03-21)
+
+### Added
+- **Static content width slider** (Global Vibe → Page Content Width): range control 400–1400 px that sets `--static-content-width` across all skins. Each skin retains its own default as the CSS variable fallback — no change in behaviour until the slider is moved.
+- **Archive disabled option**: Archive Display Mode picker (Global Vibe) now includes *Disabled (Hide Archive View)*. Selecting it removes the ARCHIVE VIEW link from the nav on all skins and redirects any direct visit to `archive.php` back to the homepage.
+- **Landing Page Only mode** (Global Settings → Homepage Mode): toggle available for both Skin Landing Page and Static Page modes. When enabled, the active skin's header and footer are suppressed and only the page content is shown — no nav, no chrome. Designed for coming-soon pages, splash screens, and single-page portfolios. Static page mode uses the full skin CSS (fonts, background, paper texture) with the nav stripped; skin landing page mode hides the header wrapper via CSS.
+
+### Changed
+- **Impact Printer — Fresh Ribbon** ink now substantially heavier and streakier: five-layer `text-shadow` with wider horizontal spread, blur radii, and a slight vertical drip replaces the previous two-layer shadow. Normal Wear also bumped modestly.
+- **Impact Printer — site title** centres automatically when the nav-menu is absent (landing-only mode or any other nav-suppressed state), using `:has()` with a `.landing-only` body class fallback.
+- `smack-config.php` renamed to `smack-settings.php`; `smack-community-config.php` renamed to `smack-community-settings.php`. All internal references updated. Avoids Imunify360 WAF blocks on HostPapa and similar hosts that reject URL paths containing "config".
+- Nav separator logic in `core/header.php` rewritten to prefix-sep pattern — each nav item carries its own leading pipe, so disabling archive (or any other item) never leaves a dangling separator.
+- Homepage page picker in Global Settings now correctly shows/hides using `classList.toggle()` instead of mixing inline style with the `d-none` class (was broken: picker stayed hidden when switching to Static Page mode).
+
+### Fixed
+- `$local_skins` undefined variable in `smack-skin.php` when gallery tab was not active — initialised at tab-routing time so modal-building code always has a valid array.
+- `snap_version_compare()` and `SNAPSMACK_VERSION_CODENAME` now generated in both constants blocks of `install.php` — fresh installs no longer fatal-error on version comparison.
+
+---
+
+## 0.7.5b — "Sitz Bath" (2026-03-21)
+
+### Added
+- **Skin Landing Page** homepage mode: when set, the active skin's `landing.php` is shown as the homepage instead of the latest post. A configurable Blog URL Slug (default: `blog`) moves the image feed to a secondary URL and adds a BLOG link to the nav.
+- **Show N Tell skin**: portfolio/photoblog hybrid with a horizontal image strip, bio panel, and a configurable featured-work grid.
+- Admin footer copyright text visibility improved across all five dark admin themes (Bumblebee, Midnight Lime, The Black Pearl, Green Arrow, Green Phosphorus).
+
+### Fixed
+- **Galleria archive layout**: masonry/justified mode was being bypassed because `archive.php`'s skin-override system always loaded the skin's `archive-layout.php` before checking the layout mode. Fixed by branching on `$archive_layout` inside Galleria's `archive-layout.php` — masonry uses the justified row-fill engine; square/cropped use the framed grid.
+- Blogroll nav link restored in `core/sidebar.php` — had been silently dropped in commit `604ea1d`.
+- Admin UI: batch delete bar now compact (`width: auto`, `height: 32px`) and always visible; filter box top padding removed via `box--no-header` class; sidebar brand border aligns correctly with the ruled header line.
+
+---
+
+## 0.7.5 — "Sitz Bath" (2026-03-21)
+
+_Internal bump. See 0.7.5b for the full feature set._
+
+---
+
 ## Impact Printer v1.1 (2026-03-16)
 
 ### Added
