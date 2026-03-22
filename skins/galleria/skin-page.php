@@ -51,9 +51,9 @@ include __DIR__ . '/skin-meta.php';
         color: #111111;
     }
 
-    /* Hero frame: inside the card, negative side margins bleed to card edges */
+    /* Hero frame: sits within the card padding */
     .htbs-page-hero {
-        margin: 0 calc(-1 * var(--static-content-gutter, 40px)) 48px;
+        margin: 0 0 48px;
     }
     .htbs-page-hero .frame-mount {
         width: 100%;
