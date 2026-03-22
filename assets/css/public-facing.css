@@ -323,3 +323,13 @@
 @media (max-width: 768px) {
     .wall-nav-item { display: none !important; }
 }
+
+/* 10. LANDING-ONLY MODE
+   -------------------------------------------------------------------------
+   When landing_only is active the body gets .landing-only and all skin
+   header wrappers are hidden, leaving a clean full-page landing experience. */
+body.landing-only #header,
+body.landing-only .ge-header,
+body.landing-only .pickup-header,
+body.landing-only .snt-header,
+body.landing-only .tg-topbar { display: none; }
