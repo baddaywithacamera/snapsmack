@@ -123,6 +123,9 @@ if (isset($_GET['edit'])) {
 // Load all pages ordered by menu position.
 $pages = $pdo->query("SELECT * FROM snap_pages ORDER BY menu_order ASC, title ASC")->fetchAll();
 
+// Load media library assets for the picker modal.
+$all_assets = $pdo->query("SELECT id, asset_name, asset_path FROM snap_assets ORDER BY created_at DESC")->fetchAll();
+
 $page_title = "Page Manager";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
@@ -147,8 +150,21 @@ include 'core/sidebar.php';
             <label>Menu Order (Lower numbers first)</label>
             <input type="number" name="menu_order" value="<?php echo htmlspecialchars($edit_page['menu_order'] ?? '0'); ?>">
 
-            <label>Main Header Image (Optional Path)</label>
-            <input type="text" name="image_asset" value="<?php echo htmlspecialchars($edit_page['image_asset'] ?? ''); ?>" placeholder="e.g. media_assets/1706821234.jpg">
+            <label>Main Header Image (Optional)</label>
+            <div class="hero-picker-wrap">
+                <input type="hidden" name="image_asset" id="image_asset_val" value="<?php echo htmlspecialchars($edit_page['image_asset'] ?? ''); ?>">
+                <div id="hero-preview" class="hero-preview">
+                    <?php if (!empty($edit_page['image_asset'])): ?>
+                        <img src="<?php echo htmlspecialchars(BASE_URL . ltrim($edit_page['image_asset'], '/')); ?>" alt="">
+                    <?php else: ?>
+                        <span class="dim">No image selected</span>
+                    <?php endif; ?>
+                </div>
+                <div class="hero-picker-actions">
+                    <button type="button" id="hero-pick-btn" class="sc-btn">SELECT FROM LIBRARY</button>
+                    <button type="button" id="hero-clear-btn" class="sc-btn">CLEAR</button>
+                </div>
+            </div>
 
             <label>Content (Shortcodes and plain text only)</label>
             <div class="sc-toolbar" data-target="page-content">
@@ -204,6 +220,138 @@ include 'core/sidebar.php';
         <?php endforeach; ?>
     </div>
 </div>
+
+<!-- Asset picker modal (hero field + IMG shortcode button) -->
+<div id="ss-asset-picker-overlay" class="asset-picker-overlay d-none">
+    <div class="asset-picker-modal">
+        <div class="asset-picker-header">
+            <span>SELECT IMAGE</span>
+            <button type="button" id="asset-picker-close">&times;</button>
+        </div>
+        <div class="asset-picker-grid" id="asset-picker-grid"></div>
+        <div id="asset-picker-sc-opts" class="asset-picker-sc-opts d-none">
+            <select id="asset-sc-size">
+                <option value="full">Full</option>
+                <option value="wall">Wall</option>
+                <option value="small">Small</option>
+            </select>
+            <select id="asset-sc-align">
+                <option value="center">Center</option>
+                <option value="left">Left</option>
+                <option value="right">Right</option>
+            </select>
+            <button type="button" id="asset-sc-insert" class="sc-btn">INSERT SHORTCODE</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var assets  = <?php echo json_encode(array_values($all_assets)); ?>;
+    var baseUrl = '<?php echo BASE_URL; ?>';
+
+    var overlay  = document.getElementById('ss-asset-picker-overlay');
+    var grid     = document.getElementById('asset-picker-grid');
+    var scOpts   = document.getElementById('asset-picker-sc-opts');
+
+    var pickerMode     = null; // 'hero' | 'shortcode'
+    var pickerTextarea = null;
+    var selectedAsset  = null;
+
+    var imgExts = ['jpg','jpeg','png','gif','webp','svg','avif'];
+
+    // Build the grid once
+    assets.forEach(function (a) {
+        var ext  = a.asset_path.split('.').pop().toLowerCase();
+        var cell = document.createElement('div');
+        cell.className    = 'asset-picker-cell';
+        cell.dataset.id   = a.id;
+        cell.dataset.path = a.asset_path;
+
+        if (imgExts.indexOf(ext) >= 0) {
+            var img = document.createElement('img');
+            img.src = baseUrl + a.asset_path;
+            img.alt = a.asset_name;
+            cell.appendChild(img);
+        }
+
+        var label = document.createElement('span');
+        label.textContent = a.asset_name;
+        cell.appendChild(label);
+
+        cell.addEventListener('click', function () {
+            grid.querySelectorAll('.asset-picker-cell').forEach(function (c) {
+                c.classList.remove('selected');
+            });
+            this.classList.add('selected');
+            selectedAsset = { id: this.dataset.id, path: this.dataset.path };
+
+            if (pickerMode === 'hero') {
+                document.getElementById('image_asset_val').value = selectedAsset.path;
+                var preview = document.getElementById('hero-preview');
+                preview.innerHTML = '<img src="' + baseUrl + selectedAsset.path + '" alt="">';
+                closeAssetPicker();
+            } else if (pickerMode === 'shortcode') {
+                scOpts.classList.remove('d-none');
+            }
+        });
+
+        grid.appendChild(cell);
+    });
+
+    function openAssetPicker(mode, textarea) {
+        pickerMode     = mode;
+        pickerTextarea = textarea || null;
+        selectedAsset  = null;
+        grid.querySelectorAll('.asset-picker-cell').forEach(function (c) {
+            c.classList.remove('selected');
+        });
+        scOpts.classList.add('d-none');
+        overlay.classList.remove('d-none');
+    }
+
+    function closeAssetPicker() {
+        overlay.classList.add('d-none');
+    }
+
+    // Hero field buttons
+    document.getElementById('hero-pick-btn').addEventListener('click', function () {
+        openAssetPicker('hero');
+    });
+    document.getElementById('hero-clear-btn').addEventListener('click', function () {
+        document.getElementById('image_asset_val').value = '';
+        document.getElementById('hero-preview').innerHTML = '<span class="dim">No image selected</span>';
+    });
+
+    // Close
+    document.getElementById('asset-picker-close').addEventListener('click', closeAssetPicker);
+    overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) closeAssetPicker();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeAssetPicker();
+    });
+
+    // Shortcode insert
+    document.getElementById('asset-sc-insert').addEventListener('click', function () {
+        if (!selectedAsset || !pickerTextarea) return;
+        var size  = document.getElementById('asset-sc-size').value;
+        var align = document.getElementById('asset-sc-align').value;
+        var tag   = '[img:' + selectedAsset.id + '|' + size + '|' + align + ']';
+
+        var ta    = pickerTextarea;
+        var start = ta.selectionStart;
+        var end   = ta.selectionEnd;
+        ta.value  = ta.value.substring(0, start) + tag + ta.value.substring(end);
+        ta.selectionStart = ta.selectionEnd = start + tag.length;
+        ta.focus();
+        closeAssetPicker();
+    });
+
+    // Expose for shortcode-toolbar.js
+    window.ssOpenAssetPicker = openAssetPicker;
+}());
+</script>
 
 <script src="assets/js/shortcode-toolbar.js"></script>
 <?php include 'core/admin-footer.php'; ?>
