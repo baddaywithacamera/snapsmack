@@ -771,7 +771,7 @@ img {
 }
 
 .ge-static-page .static-content {
-    max-width: 640px;
+    max-width: var(--static-content-width, 640px);
     margin: 0 auto;
     color: var(--ge-text);
     line-height: 1.8;

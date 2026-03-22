@@ -328,6 +328,26 @@ include 'core/sidebar.php';
 
 
             <div class="box">
+                <h3>PAGE CONTENT WIDTH</h3>
+                <div class="dash-grid">
+                    <div class="lens-input-wrapper">
+                        <label>STATIC PAGE CONTENT WIDTH</label>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <input type="range"
+                                   name="settings[static_content_width]"
+                                   min="400" max="1400" step="10"
+                                   value="<?php echo htmlspecialchars($settings['static_content_width'] ?? '850'); ?>"
+                                   style="flex:1;"
+                                   oninput="this.nextElementSibling.textContent = this.value + 'px'">
+                            <span><?php echo htmlspecialchars($settings['static_content_width'] ?? '850'); ?>px</span>
+                        </div>
+                        <span class="dim">CONTROLS THE MAXIMUM WIDTH OF TEXT CONTENT ON STATIC PAGES ACROSS ALL SKINS. DEFAULT IS EACH SKIN'S OWN WIDTH IF NOT SET.</span>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="box">
                 <h3>STICKY HEADER</h3>
                 <input type="hidden" name="sticky_header_section" value="1">
                 <div class="dash-grid">
