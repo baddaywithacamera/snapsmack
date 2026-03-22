@@ -9,6 +9,11 @@
  * and show_wall_link setting to hide gallery view on mobile.
  */
 
+// --- LANDING-ONLY MODE ---
+// When landing_only is active the entire nav is suppressed; the skin's header
+// wrapper div still renders (so skin-specific CSS framing is intact) but empty.
+if (!empty($landing_only_active)) return;
+
 // --- ENVIRONMENT BOOTSTRAP ---
 if (!defined('BASE_URL')) {
     $db_defined_url = $settings['site_url'] ?? '/';
