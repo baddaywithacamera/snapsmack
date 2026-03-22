@@ -343,6 +343,19 @@ include 'core/sidebar.php';
                         </div>
                         <span class="dim">CONTROLS THE MAXIMUM WIDTH OF TEXT CONTENT ON STATIC PAGES ACROSS ALL SKINS. DEFAULT IS EACH SKIN'S OWN WIDTH IF NOT SET.</span>
                     </div>
+                    <div class="lens-input-wrapper">
+                        <label>STATIC PAGE SIDE GUTTERS</label>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <input type="range"
+                                   name="settings[static_content_gutter]"
+                                   min="0" max="120" step="4"
+                                   value="<?php echo htmlspecialchars($settings['static_content_gutter'] ?? '40'); ?>"
+                                   style="flex:1;"
+                                   oninput="this.nextElementSibling.textContent = this.value + 'px'">
+                            <span><?php echo htmlspecialchars($settings['static_content_gutter'] ?? '40'); ?>px</span>
+                        </div>
+                        <span class="dim">INTERNAL SIDE PADDING OF THE CONTENT COLUMN. CONTROLS HOW FAR TEXT SITS FROM THE EDGE OF THE CONTENT AREA.</span>
+                    </div>
                 </div>
             </div>
 
