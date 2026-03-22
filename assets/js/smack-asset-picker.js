@@ -14,25 +14,20 @@
  *   textarea — the target <textarea> for shortcode insertion (shortcode mode)
  */
 (function () {
-    'use strict';
+    var assets  = JSON.parse(document.getElementById('asset-picker-grid').dataset.assets);
+    var baseUrl = document.getElementById('asset-picker-grid').dataset.baseUrl;
 
     var overlay  = document.getElementById('ss-asset-picker-overlay');
-    if (!overlay) return; // not on a page that uses the picker
-
     var grid     = document.getElementById('asset-picker-grid');
     var scOpts   = document.getElementById('asset-picker-sc-opts');
 
-    // Bootstrap data from attributes set by PHP
-    var assets  = JSON.parse(grid.dataset.assets  || '[]');
-    var baseUrl = grid.dataset.baseUrl || '';
-
-    var pickerMode     = null;
+    var pickerMode     = null; // 'hero' | 'shortcode'
     var pickerTextarea = null;
     var selectedAsset  = null;
 
-    var imgExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'];
+    var imgExts = ['jpg','jpeg','png','gif','webp','svg','avif'];
 
-    // ── Build the grid once ──────────────────────────────────────────────────
+    // Build the grid once
     assets.forEach(function (a) {
         var ext  = a.asset_path.split('.').pop().toLowerCase();
         var cell = document.createElement('div');
@@ -71,7 +66,6 @@
         grid.appendChild(cell);
     });
 
-    // ── Open / close ─────────────────────────────────────────────────────────
     function openAssetPicker(mode, textarea) {
         pickerMode     = mode;
         pickerTextarea = textarea || null;
@@ -87,18 +81,17 @@
         overlay.classList.add('d-none');
     }
 
-    // ── Hero field buttons ────────────────────────────────────────────────────
-    var pickBtn  = document.getElementById('hero-pick-btn');
-    var clearBtn = document.getElementById('hero-clear-btn');
-    if (pickBtn)  pickBtn.addEventListener('click',  function () { openAssetPicker('hero'); });
-    if (clearBtn) clearBtn.addEventListener('click', function () {
+    // Hero field buttons
+    document.getElementById('hero-pick-btn').addEventListener('click', function () {
+        openAssetPicker('hero');
+    });
+    document.getElementById('hero-clear-btn').addEventListener('click', function () {
         document.getElementById('image_asset_val').value = '';
         document.getElementById('hero-preview').innerHTML = '<span class="dim">No image selected</span>';
     });
 
-    // ── Close triggers ───────────────────────────────────────────────────────
-    var closeBtn = document.getElementById('asset-picker-close');
-    if (closeBtn) closeBtn.addEventListener('click', closeAssetPicker);
+    // Close
+    document.getElementById('asset-picker-close').addEventListener('click', closeAssetPicker);
     overlay.addEventListener('click', function (e) {
         if (e.target === overlay) closeAssetPicker();
     });
@@ -106,9 +99,8 @@
         if (e.key === 'Escape') closeAssetPicker();
     });
 
-    // ── Shortcode insert ──────────────────────────────────────────────────────
-    var insertBtn = document.getElementById('asset-sc-insert');
-    if (insertBtn) insertBtn.addEventListener('click', function () {
+    // Shortcode insert
+    document.getElementById('asset-sc-insert').addEventListener('click', function () {
         if (!selectedAsset || !pickerTextarea) return;
         var size  = document.getElementById('asset-sc-size').value;
         var align = document.getElementById('asset-sc-align').value;
@@ -123,6 +115,6 @@
         closeAssetPicker();
     });
 
-    // ── Expose for shortcode-toolbar.js ──────────────────────────────────────
+    // Expose for shortcode-toolbar.js
     window.ssOpenAssetPicker = openAssetPicker;
 }());
