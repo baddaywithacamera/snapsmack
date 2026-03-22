@@ -291,13 +291,14 @@ include 'core/sidebar.php';
                         <span class="dim">THE URL WHERE VISITORS FIND YOUR IMAGE FEED (E.G. /BLOG, /FEED, /PHOTOS). APPEARS IN NAVIGATION.</span>
                     </div>
 
-                    <div class="lens-input-wrapper<?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'skin_landing') ? '' : ' d-none'; ?>" id="homepage-landing-only">
+                    <?php $show_landing_only = in_array(($settings['homepage_mode'] ?? 'latest_post'), ['skin_landing', 'static_page']); ?>
+                    <div class="lens-input-wrapper<?php echo $show_landing_only ? '' : ' d-none'; ?>" id="homepage-landing-only">
                         <label>LANDING PAGE ONLY</label>
                         <label class="toggle-switch">
                             <input type="checkbox" name="settings[landing_only]" value="1" <?php echo (($settings['landing_only'] ?? '0') === '1') ? 'checked' : ''; ?>>
                             <span class="toggle-slider"></span>
                         </label>
-                        <span class="dim">HIDE NAVIGATION AND HEADER — SHOWS ONLY THE SKIN'S LANDING PAGE. USE FOR SINGLE-PAGE PORTFOLIO OR SPLASH SCREEN.</span>
+                        <span class="dim">NO NAVIGATION, NO SKIN, NO CHROME — JUST THE PAGE CONTENT. USE FOR COMING SOON, SPLASH SCREENS, OR SINGLE-PAGE SITES.</span>
                     </div>
                 </div>
             </div>
@@ -550,7 +551,7 @@ if (homepageMode) {
         var landingOnly = document.getElementById('homepage-landing-only');
         if (picker)      picker.classList.toggle('d-none', this.value !== 'static_page');
         if (blogSlug)    blogSlug.classList.toggle('d-none', this.value === 'latest_post');
-        if (landingOnly) landingOnly.classList.toggle('d-none', this.value !== 'skin_landing');
+        if (landingOnly) landingOnly.classList.toggle('d-none', this.value !== 'skin_landing' && this.value !== 'static_page');
     });
 }
 </script>

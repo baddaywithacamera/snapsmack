@@ -63,9 +63,10 @@ try {
 
     $force_blog = !empty($_SERVER['SNAPSMACK_FORCE_BLOG']);
 
-    // Landing-only mode: suppress header/nav on the homepage when the skin landing page is shown.
+    // Landing-only mode: bare homepage with no skin chrome.
+    // Works for both skin_landing (hides nav via CSS) and static_page (full bare render).
     $landing_only_active = ($settings['landing_only'] ?? '0') === '1'
-        && ($settings['homepage_mode'] ?? 'latest_post') === 'skin_landing'
+        && in_array($settings['homepage_mode'] ?? 'latest_post', ['skin_landing', 'static_page'])
         && empty($requested_slug)
         && !$force_blog;
 
@@ -83,10 +84,77 @@ try {
         $page_data = $hp_stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($page_data) {
-            // Render as static page — reuse the page.php template pattern
             $page_title = htmlspecialchars($page_data['title']);
             $skin_path  = 'skins/' . $active_skin;
 
+            // --- BARE / COMING SOON MODE ---
+            // When landing_only is active, render the page content with zero skin chrome:
+            // no header, no footer, no nav, no skin CSS — just the content centred on screen.
+            if ($landing_only_active) {
+                $bare_bg    = $settings['bare_page_bg']    ?? '#ffffff';
+                $bare_fg    = $settings['bare_page_fg']    ?? '#111111';
+                $bare_align = $settings['bare_page_align'] ?? 'center';
+                ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo $page_title; ?></title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            height: 100%;
+            background: <?php echo htmlspecialchars($bare_bg); ?>;
+            color: <?php echo htmlspecialchars($bare_fg); ?>;
+        }
+        .bare-stage {
+            min-height: 100vh;
+            display: flex;
+            align-items: <?php echo $bare_align === 'top' ? 'flex-start' : 'center'; ?>;
+            justify-content: center;
+            padding: 60px 40px;
+        }
+        .bare-content {
+            max-width: 780px;
+            width: 100%;
+            text-align: <?php echo $bare_align === 'center' ? 'center' : 'left'; ?>;
+        }
+        .bare-content h1 {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
+        .bare-content p  { margin-bottom: 1rem; line-height: 1.7; font-size: 1.05rem; }
+        .bare-content a  { color: inherit; text-decoration: underline; }
+        .bare-content s  { opacity: 0.5; }
+        .bare-content em { font-style: italic; }
+        .bare-content strong { font-weight: bold; }
+        @media (max-width: 600px) {
+            .bare-stage   { padding: 40px 24px; }
+            .bare-content h1 { font-size: 1.4rem; }
+        }
+    </style>
+    <?php if (!empty($settings['favicon_url'])): ?>
+        <link rel="icon" href="<?php echo BASE_URL . ltrim($settings['favicon_url'], '/'); ?>">
+    <?php endif; ?>
+</head>
+<body>
+    <div class="bare-stage">
+        <div class="bare-content">
+            <?php if (!empty($page_data['content'])): ?>
+                <?php echo $snapsmack->parseContent($page_data['content']); ?>
+            <?php endif; ?>
+        </div>
+    </div>
+</body>
+</html>
+                <?php
+                exit;
+            }
+
+            // --- NORMAL STATIC PAGE RENDER (with skin chrome) ---
             if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                 include __DIR__ . '/' . $skin_path . '/skin-meta.php';
             }
