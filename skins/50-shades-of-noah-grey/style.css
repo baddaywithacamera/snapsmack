@@ -525,7 +525,7 @@ body {
 .static-transmission #system-footer { background: var(--bg-chrome) !important; border-top: 1px solid var(--border) !important; }
 
 .static-content {
-    max-width: 850px !important;
+    max-width: var(--static-content-width, 850px) !important;
     margin: 40px auto 0 auto !important;
     padding-left: 20px;
     padding-right: 20px;

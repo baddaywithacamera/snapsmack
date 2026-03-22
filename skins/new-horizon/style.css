@@ -558,7 +558,7 @@ img.post-image {
 
 /* THE LANE: Centered 850px container with 20px padding for symmetry */
 .static-content {
-    max-width: 850px !important;
+    max-width: var(--static-content-width, 850px) !important;
     margin: 40px auto 0 auto !important;
     padding-left: 20px;
     padding-right: 20px;
