@@ -66,15 +66,15 @@ DELIMITER ;
 -- ============================================================
 
 CALL _ss_add_column('snap_community_comments', 'edited_at',
-    'DATETIME DEFAULT NULL AFTER created_at');
+    'DATETIME DEFAULT NULL');
 
 CALL _ss_add_column('snap_likes', 'guest_hash',
-    'VARCHAR(64) DEFAULT NULL AFTER user_id');
+    'VARCHAR(64) DEFAULT NULL');
 CALL _ss_add_index('snap_likes', 'idx_likes_guest',
     '(post_id, guest_hash)');
 
 CALL _ss_add_column('snap_reactions', 'guest_hash',
-    'VARCHAR(64) DEFAULT NULL AFTER user_id');
+    'VARCHAR(64) DEFAULT NULL');
 CALL _ss_add_index('snap_reactions', 'idx_reactions_guest',
     '(post_id, guest_hash)');
 
@@ -84,7 +84,7 @@ CALL _ss_add_index('snap_reactions', 'idx_reactions_guest',
 -- ============================================================
 
 CALL _ss_add_column('snap_tags', 'color_family',
-    'VARCHAR(20) DEFAULT NULL AFTER use_count');
+    'VARCHAR(20) DEFAULT NULL');
 CALL _ss_add_index('snap_tags', 'idx_tags_color_family',
     '(color_family)');
 
