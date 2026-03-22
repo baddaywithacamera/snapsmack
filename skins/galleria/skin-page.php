@@ -27,13 +27,8 @@ include __DIR__ . '/skin-meta.php';
 <style>
     /* Page-specific overrides: scrollable, wall background retained */
     body.htbs-page { overflow-y: auto; }
-    /* Cancel flex-column from body.static-transmission #scroll-stage —
-       that rule pushes footer to viewport bottom via margin-top:auto,
-       creating a large empty gap between content and footer. */
-    .htbs-page #scroll-stage { display: block; }
     .htbs-page-stage {
         padding-top: calc(var(--header-height, 60px) + 40px);
-        padding-bottom: 120px;
         min-height: 100vh;
         box-sizing: border-box;
     }
