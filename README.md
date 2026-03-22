@@ -1,6 +1,6 @@
 # SnapSmack
 
-**Alpha v0.7.5 "Sitz Bath"**
+**Alpha v0.7.5c "Sitz Bath"**
 
 A self-hosted photoblog CMS for people who care about their photographs. One image a day, your domain, no algorithm.
 
@@ -13,11 +13,12 @@ SnapSmack is a PHP/MySQL photoblog platform inspired by the classic photolog for
 Key characteristics:
 
 - **One image per post** — single-image publishing with full EXIF display, optional download, and hashtag captions. Carousel posts available for skins that support them.
-- **Swappable skins** — Galleria, Hip to be Square, True Grit, Photogram (Instagram-style), Impact Printer, 50 Shades of Noah Grey, A Grey Reckoning, New Horizon, and more. Each skin has its own CMS-driven appearance settings.
+- **Swappable skins** — Galleria, Hip to be Square, True Grit, Photogram (Instagram-style), Impact Printer, 50 Shades of Noah Grey, A Grey Reckoning, New Horizon, Show N Tell, and more. Each skin has its own CMS-driven appearance settings.
 - **Self-update system** — Ed25519-signed release packages; apply updates through the admin without SSH access.
 - **Community features** — comments, likes, and emoji reactions. Three identity modes: open (no account required), hybrid, or registered-only.
 - **AI training crawler policy** — choose to allow, disallow, or take no position on AI training crawlers. Disallow mode blocks known AI bots (GPTBot, CCBot, ClaudeBot, etc.) via `robots.txt` and injects `noai`/`noimageai` meta tags site-wide. Managed under Global Config.
 - **Inline mosaics** — build tiled image groups from the media library and embed them in posts and pages via `[mosaic:ID]` shortcodes. Automatic row-based layout respects aspect ratios.
+- **Homepage modes** — choose Latest Post, Skin Landing Page (the skin's built-in slider or grid), or a Static Page. A Landing Page Only toggle strips all navigation and chrome for coming-soon or splash screen installs.
 - **No tracking, no ads, no third-party dependencies at runtime.**
 
 ---
