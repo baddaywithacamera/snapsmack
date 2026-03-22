@@ -26,16 +26,23 @@ CREATE PROCEDURE _ss_add_column(
     IN p_def   TEXT
 )
 BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.COLUMNS
+    -- Skip silently if the table doesn't exist on this install
+    IF EXISTS (
+        SELECT 1 FROM information_schema.TABLES
         WHERE TABLE_SCHEMA = DATABASE()
           AND TABLE_NAME   = p_table
-          AND COLUMN_NAME  = p_col
     ) THEN
-        SET @_sql = CONCAT('ALTER TABLE `', p_table, '` ADD COLUMN `', p_col, '` ', p_def);
-        PREPARE _stmt FROM @_sql;
-        EXECUTE _stmt;
-        DEALLOCATE PREPARE _stmt;
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME   = p_table
+              AND COLUMN_NAME  = p_col
+        ) THEN
+            SET @_sql = CONCAT('ALTER TABLE `', p_table, '` ADD COLUMN `', p_col, '` ', p_def);
+            PREPARE _stmt FROM @_sql;
+            EXECUTE _stmt;
+            DEALLOCATE PREPARE _stmt;
+        END IF;
     END IF;
 END //
 
@@ -45,16 +52,23 @@ CREATE PROCEDURE _ss_add_index(
     IN p_def   TEXT
 )
 BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.STATISTICS
+    -- Skip silently if the table doesn't exist on this install
+    IF EXISTS (
+        SELECT 1 FROM information_schema.TABLES
         WHERE TABLE_SCHEMA = DATABASE()
           AND TABLE_NAME   = p_table
-          AND INDEX_NAME   = p_index
     ) THEN
-        SET @_sql = CONCAT('ALTER TABLE `', p_table, '` ADD INDEX `', p_index, '` ', p_def);
-        PREPARE _stmt FROM @_sql;
-        EXECUTE _stmt;
-        DEALLOCATE PREPARE _stmt;
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.STATISTICS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME   = p_table
+              AND INDEX_NAME   = p_index
+        ) THEN
+            SET @_sql = CONCAT('ALTER TABLE `', p_table, '` ADD INDEX `', p_index, '` ', p_def);
+            PREPARE _stmt FROM @_sql;
+            EXECUTE _stmt;
+            DEALLOCATE PREPARE _stmt;
+        END IF;
     END IF;
 END //
 
