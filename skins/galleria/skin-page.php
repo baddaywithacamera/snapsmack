@@ -33,7 +33,7 @@ include __DIR__ . '/skin-meta.php';
     .htbs-page #scroll-stage { display: block; }
     .htbs-page-stage {
         padding-top: calc(var(--header-height, 60px) + 40px);
-        padding-bottom: 80px;
+        padding-bottom: 120px;
         min-height: 100vh;
         box-sizing: border-box;
     }
