@@ -1583,7 +1583,7 @@ footer a:hover {
    Static Pages & Blogroll
    ============================================================================ */
 
-body.static-transmission {
+body.static-transmission:not(.htbs-page) {
     padding-top: var(--header-height, 60px);
     background: #152a35;
     background-image: none;
