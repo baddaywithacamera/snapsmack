@@ -283,6 +283,25 @@ geometric layout (admin-theme-geometry-master.css).</p>
 Dapper Dan, Green Arrow, Green Phosphorus, Inspector Clouseau, Mi Casa Es Su Picasa,
 Midnight Lime (default), Minty Fresh, Peach Melba, Pixelpast, Purple Rain,
 The Black Pearl.</p>
+
+<h4>Archive Display Mode</h4>
+<p>Controls how the public archive grid looks. Options depend on what the active skin
+supports, but all skins offer at least Square. Four options exist:</p>
+<ul>
+    <li><strong>Square Grid</strong> — uniform 1:1 cropped tiles.</li>
+    <li><strong>Cropped Grid</strong> — tiles at a constrained aspect ratio (max 3:2).</li>
+    <li><strong>Justified (Masonry)</strong> — full aspect-ratio images in filled rows,
+    Flickr-style. Only available on skins that declare masonry support.</li>
+    <li><strong>Disabled</strong> — removes the Archive View link from the public navigation
+    entirely. Any direct visit to <code>archive.php</code> redirects to the homepage.
+    Available on all skins regardless of layout support.</li>
+</ul>
+
+<h4>Page Content Width</h4>
+<p>Sets the maximum width of text content on static pages, across all skins. The range
+slider goes from 400 px to 1400 px. Each skin has its own built-in default (typically
+640–850 px) which is used as the fallback if no override is set — move the slider to
+override.</p>
 HTML
 ];
 
@@ -600,6 +619,27 @@ $help_topics['configuration'] = [
     and thumbnails. Higher = better quality, larger files. Default: 85.</li>
 </ul>
 
+<h4>Homepage Mode</h4>
+<p>Controls what visitors see when they hit your root URL. Three modes:</p>
+<ul>
+    <li><strong>Latest Post (default)</strong> — the most recently published transmission
+    is shown via the active skin's single-image layout.</li>
+    <li><strong>Skin Landing Page</strong> — shows the active skin's built-in landing page
+    (slider, grid, or portfolio intro). Not all skins have a landing page; if the active
+    skin doesn't, it falls back to Latest Post behaviour.</li>
+    <li><strong>Static Page</strong> — a page you've built in the Pages section becomes
+    the homepage. A <em>Homepage Page</em> picker appears to choose which page. The image
+    feed moves to a configurable Blog URL Slug (default: <code>blog</code>), and a BLOG
+    link is added to the navigation automatically.</li>
+</ul>
+
+<h4>Landing Page Only</h4>
+<p>Available when Homepage Mode is set to Skin Landing Page or Static Page. When enabled,
+the navigation bar and site header are suppressed entirely — only the page content is shown.
+No nav, no footer, no admin chrome. Designed for coming-soon pages, splash screens, and
+single-page portfolio installs. The active skin's background, fonts, and textures are all
+preserved; only the nav wrapper is removed.</p>
+
 <h4>Navigation</h4>
 <p>Assign static pages to header navigation slots. The number of available slots depends
 on the active skin.</p>
@@ -898,6 +938,23 @@ This uses the media library asset system.</p>
 <h4>Navigation</h4>
 <p>Pages can be assigned to header navigation slots in the Configuration page. The
 number of available slots depends on the active skin.</p>
+
+<h4>Homepage Static Page</h4>
+<p>Any page can be set as the site homepage via Global Settings → Homepage Mode → Static Page.
+When set, that page is served at your root URL. The image feed moves to a configurable
+Blog URL Slug (default: <code>blog</code>).</p>
+
+<h4>Landing Page Only (Coming Soon Mode)</h4>
+<p>When Homepage Mode is Static Page and the Landing Page Only toggle is on, the active
+skin's navigation and footer are suppressed. The page content fills the screen with only
+the skin's background, fonts, and colours — no nav bar, no site header, nothing else.
+This is the intended way to run a coming-soon page or a single-message splash screen.
+Turn it off when you're ready to open the rest of the site.</p>
+
+<h4>Content Width</h4>
+<p>The width of the text column on static pages can be adjusted globally in
+Global Vibe → Page Content Width (400–1400 px). Each skin has its own default;
+the slider overrides it across all skins at once.</p>
 HTML
 ];
 
@@ -944,6 +1001,10 @@ depends heavily on the active skin, but most skins offer multiple layout options
     <li><strong>Cropped</strong> — tiles maintain a constrained aspect ratio (max 3:2 or 2:3).</li>
     <li><strong>Masonry</strong> — full aspect-ratio images in justified rows, similar to
     Flickr or 500px.</li>
+    <li><strong>Disabled</strong> — removes the Archive View link from the public navigation
+    entirely. Direct visits to <code>archive.php</code> redirect to the homepage. Use this
+    on single-page or coming-soon installs where you don't want the archive exposed.
+    Set in Global Vibe → Archive Display Mode.</li>
 </ul>
 
 <h4>Thumbnail Size</h4>
