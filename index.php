@@ -63,6 +63,12 @@ try {
 
     $force_blog = !empty($_SERVER['SNAPSMACK_FORCE_BLOG']);
 
+    // Landing-only mode: suppress header/nav on the homepage when the skin landing page is shown.
+    $landing_only_active = ($settings['landing_only'] ?? '0') === '1'
+        && ($settings['homepage_mode'] ?? 'latest_post') === 'skin_landing'
+        && empty($requested_slug)
+        && !$force_blog;
+
     // If the requested slug matches the blog slug and homepage isn't latest_post,
     // force-show the image feed (the blog) instead of looking for an image with that slug.
     if ($requested_slug === $blog_slug && $homepage_mode !== 'latest_post') {
@@ -227,7 +233,7 @@ if (($_GET['format'] ?? '') === 'json' && ($_GET['pg'] ?? '') !== '') {
 
 include __DIR__ . '/' . $skin_path . '/skin-meta.php';
 ?>
-<body class="is-photo-page">
+<body class="is-photo-page<?php echo $landing_only_active ? ' landing-only' : ''; ?>">
 <div id="page-wrapper">
     <?php
     if ($img && file_exists(__DIR__ . '/' . $skin_path . '/layout.php')) {

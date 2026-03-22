@@ -42,6 +42,12 @@ if (isset($_POST['save_settings'])) {
         }
     }
 
+    // Checkboxes that are unchecked send no POST value; default them to '0' before saving.
+    $checkbox_keys = ['landing_only'];
+    foreach ($checkbox_keys as $ck) {
+        if (!isset($_POST['settings'][$ck])) $_POST['settings'][$ck] = '0';
+    }
+
     // Persist all settings, inserting or updating as needed.
     foreach ($_POST['settings'] as $key => $val) {
         $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
@@ -283,6 +289,15 @@ include 'core/sidebar.php';
                         <label>BLOG URL SLUG</label>
                         <input type="text" name="settings[blog_slug]" value="<?php echo htmlspecialchars($settings['blog_slug'] ?? 'blog'); ?>" placeholder="blog">
                         <span class="dim">THE URL WHERE VISITORS FIND YOUR IMAGE FEED (E.G. /BLOG, /FEED, /PHOTOS). APPEARS IN NAVIGATION.</span>
+                    </div>
+
+                    <div class="lens-input-wrapper<?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'skin_landing') ? '' : ' d-none'; ?>" id="homepage-landing-only">
+                        <label>LANDING PAGE ONLY</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="settings[landing_only]" value="1" <?php echo (($settings['landing_only'] ?? '0') === '1') ? 'checked' : ''; ?>>
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="dim">HIDE NAVIGATION AND HEADER — SHOWS ONLY THE SKIN'S LANDING PAGE. USE FOR SINGLE-PAGE PORTFOLIO OR SPLASH SCREEN.</span>
                     </div>
                 </div>
             </div>
@@ -530,10 +545,12 @@ document.querySelectorAll('.footer-slot-toggle').forEach(function(sel) {
 var homepageMode = document.getElementById('homepage-mode-select');
 if (homepageMode) {
     homepageMode.addEventListener('change', function() {
-        var picker = document.getElementById('homepage-page-picker');
-        var blogSlug = document.getElementById('homepage-blog-slug');
-        if (picker) picker.style.display = (this.value === 'static_page') ? '' : 'none';
-        if (blogSlug) blogSlug.style.display = (this.value === 'latest_post') ? 'none' : '';
+        var picker      = document.getElementById('homepage-page-picker');
+        var blogSlug    = document.getElementById('homepage-blog-slug');
+        var landingOnly = document.getElementById('homepage-landing-only');
+        if (picker)      picker.classList.toggle('d-none', this.value !== 'static_page');
+        if (blogSlug)    blogSlug.classList.toggle('d-none', this.value === 'latest_post');
+        if (landingOnly) landingOnly.classList.toggle('d-none', this.value !== 'skin_landing');
     });
 }
 </script>
