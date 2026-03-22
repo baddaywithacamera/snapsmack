@@ -760,6 +760,16 @@ body.landing-only .ip-header-inside,
     display: none !important;
 }
 
+/* Inline image frames on static pages: strip the outer 1px solid box.
+   The ip-ascii-frame-inner already carries the themed ASCII border —
+   the .snap-inline-frame wrapper border is redundant and looks wrong here. */
+.static-transmission .snap-inline-frame,
+.static-transmission .inline-asset,
+.static-transmission .snapsmack-asset {
+    border: none !important;
+    box-shadow: none !important;
+}
+
 /* ==========================================================================
    INLINE ASSETS (PARSED SHORTCODES)
    ========================================================================= */
