@@ -29,15 +29,16 @@ include __DIR__ . '/skin-meta.php';
     body.htbs-page { overflow-y: auto; }
     .htbs-page-stage {
         padding-top: calc(var(--header-height, 60px) + 40px);
-        padding-bottom: 80px;
+        padding-bottom: 120px;
         min-height: 100vh;
         box-sizing: border-box;
     }
-    /* Hero frame: constrained width, centred on wall */
+
+    /* Hero frame: floats on the wall, centred */
     .htbs-page-hero {
         display: flex;
         justify-content: center;
-        padding: 0 40px 60px;
+        padding: 0 40px 80px;
     }
     .htbs-page-hero .frame-mount {
         max-width: min(780px, 90vw);
@@ -48,27 +49,39 @@ include __DIR__ . '/skin-meta.php';
         height: auto;
         max-width: 100%;
     }
-    /* Content column */
+
+    /* Content card: white page sitting on the wall */
     .htbs-page-content {
         max-width: var(--static-content-width, 720px);
         margin: 0 auto;
-        padding: 0 40px 60px;
+        padding: 60px var(--static-content-gutter, 40px) 80px;
         box-sizing: border-box;
+        background: #ffffff;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.28), 0 8px 40px rgba(0, 0, 0, 0.15);
     }
+
     .htbs-page-content .static-page-title {
-        margin-bottom: 40px;
+        margin-bottom: 36px;
+        color: #111111;
     }
+
     .htbs-page-content .description p {
-        line-height: 1.8;
-        margin-bottom: 1.2em;
-        color: var(--text-primary);
+        font-size: 1.05rem;
+        line-height: 1.9;
+        margin-bottom: 1.4em;
+        color: #1a1a1a;
     }
     .htbs-page-content .description p:first-child {
-        font-size: 1.08em;
+        font-size: 1.1rem;
     }
+
+    .htbs-page-content .description a {
+        color: #333333;
+    }
+
     @media (max-width: 640px) {
-        .htbs-page-hero  { padding: 0 20px 40px; }
-        .htbs-page-content { padding: 0 20px 40px; }
+        .htbs-page-hero  { padding: 0 20px 48px; }
+        .htbs-page-content { padding: 40px 20px 60px; }
     }
 </style>
 <body class="static-transmission htbs-page">
