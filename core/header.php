@@ -63,18 +63,27 @@ try {
 
 <ul class="nav-menu">
     <li>
+        <?php
+        // Each nav item carries its own leading separator so disabling any item
+        // (archive, blogroll, etc.) never leaves a dangling pipe.
+        $archive_enabled = ($settings['archive_layout'] ?? 'square') !== 'none';
+        $sep = '<span class="sep">|</span>';
+        $nav_started = true; // HOME is always first
+        ?>
         <a href="<?php echo BASE_URL; ?>">HOME</a>
-        <span class="sep">|</span>
 
         <?php if ($homepage_mode === 'static_page'): ?>
+            <?php echo $sep; ?>
             <a href="<?php echo BASE_URL; ?>blog.php">BLOG</a>
-            <span class="sep">|</span>
         <?php endif; ?>
 
-        <a href="<?php echo BASE_URL; ?>archive.php">ARCHIVE VIEW</a>
+        <?php if ($archive_enabled): ?>
+            <?php echo $sep; ?>
+            <a href="<?php echo BASE_URL; ?>archive.php">ARCHIVE VIEW</a>
+        <?php endif; ?>
 
         <?php if (($settings['albums_link_enabled'] ?? '0') === '1'): ?>
-            <span class="sep">|</span>
+            <?php echo $sep; ?>
             <a href="<?php echo BASE_URL; ?>albums.php">ALBUMS</a>
         <?php endif; ?>
 
@@ -84,12 +93,12 @@ try {
         <?php endif; ?>
 
         <?php if (($settings['blogroll_enabled'] ?? '1') == '1'): ?>
-            <span class="sep">|</span>
+            <?php echo $sep; ?>
             <a href="<?php echo BASE_URL; ?>blogroll.php">BLOGROLL</a>
         <?php endif; ?>
 
         <?php if (!empty($dynamic_pages)): ?>
-            <span class="sep">|</span>
+            <?php echo $sep; ?>
             <?php
             $count = count($dynamic_pages);
             foreach ($dynamic_pages as $index => $page):
@@ -97,7 +106,7 @@ try {
                 $p_url = BASE_URL . 'page.php?slug=' . htmlspecialchars($page['slug']);
                 echo '<a href="' . $p_url . '">' . $p_title . '</a>';
                 if ($index < $count - 1) {
-                    echo '<span class="sep">|</span>';
+                    echo $sep;
                 }
             endforeach;
             ?>
