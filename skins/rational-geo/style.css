@@ -873,7 +873,7 @@ body.static-transmission #scroll-stage {
 
 /* Static content lane — generous whitespace, centered */
 .static-content {
-  max-width: 720px;
+  max-width: var(--static-content-width, 720px);
   margin: 60px auto 80px auto;
   padding: 0 40px;
   box-sizing: border-box;
