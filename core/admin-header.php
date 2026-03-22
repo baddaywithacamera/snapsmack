@@ -58,7 +58,7 @@ $active_skin_path = $theme_base . $colour_css_file;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $page_title ?? 'Admin'; ?> | SnapSmack</title>
 
-    <link rel="stylesheet" href="assets/css/admin-theme-geometry-master.css">
+    <link rel="stylesheet" href="assets/css/admin-theme-geometry-master.css?v=075c">
     <link rel="stylesheet" href="<?php echo $active_skin_path; ?>">
 </head>
 <body class="admin-body">
