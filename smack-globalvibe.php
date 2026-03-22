@@ -213,16 +213,20 @@ include 'core/sidebar.php';
 
                     <?php
                     // --- ARCHIVE LAYOUT MODE (Gated by Skin Manifest) ---
+                    // 'none' is always available regardless of skin — it disables the archive
+                    // entirely and removes the Archive View link from the nav.
                     $all_layouts = [
                         'square'    => 'Square Grid (1:1 Cropped)',
                         'cropped'   => 'Cropped Grid (Max 3:2 Aspect)',
                         'masonry'   => 'Justified (Flickr-Style Row Fill)',
+                        'none'      => 'Disabled (Hide Archive View)',
                     ];
                     $supported_layouts = $manifest['features']['archive_layouts'] ?? ['square'];
                     $current_layout    = $settings['archive_layout'] ?? 'square';
 
-                    // If current layout isn't supported by this skin, force to first supported
-                    if (!in_array($current_layout, $supported_layouts)) {
+                    // If current layout isn't supported by this skin, force to first supported.
+                    // 'none' is always valid — skip the force-to-first logic for it.
+                    if ($current_layout !== 'none' && !in_array($current_layout, $supported_layouts)) {
                         $current_layout = $supported_layouts[0];
                     }
 
@@ -233,12 +237,16 @@ include 'core/sidebar.php';
                         <label>ARCHIVE DISPLAY MODE</label>
 
                         <?php if ($layout_locked): ?>
-                            <select disabled class="select-locked">
-                                <option><?php echo strtoupper($all_layouts[$supported_layouts[0]]); ?></option>
+                            <select name="settings[archive_layout]">
+                                <option value="<?php echo htmlspecialchars($supported_layouts[0]); ?>" <?php echo ($current_layout === $supported_layouts[0]) ? 'selected' : ''; ?>>
+                                    <?php echo strtoupper($all_layouts[$supported_layouts[0]]); ?>
+                                </option>
+                                <option value="none" <?php echo ($current_layout === 'none') ? 'selected' : ''; ?>>
+                                    <?php echo strtoupper($all_layouts['none']); ?>
+                                </option>
                             </select>
-                            <input type="hidden" name="settings[archive_layout]" value="<?php echo htmlspecialchars($supported_layouts[0]); ?>">
                             <p class="dim field-hint">
-                                ACTIVE SKIN ONLY SUPPORTS THIS LAYOUT MODE.
+                                ACTIVE SKIN ONLY SUPPORTS ONE LAYOUT MODE. DISABLE TO HIDE ARCHIVE FROM NAV.
                             </p>
                         <?php else: ?>
                             <select name="settings[archive_layout]">
@@ -249,6 +257,9 @@ include 'core/sidebar.php';
                                         </option>
                                     <?php endif; ?>
                                 <?php endforeach; ?>
+                                <option value="none" <?php echo ($current_layout === 'none') ? 'selected' : ''; ?>>
+                                    <?php echo strtoupper($all_layouts['none']); ?>
+                                </option>
                             </select>
                         <?php endif; ?>
                     </div>
