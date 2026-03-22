@@ -208,3 +208,9 @@ if (file_exists($inventory_path)) {
 <?php echo $settings['custom_css_public']; ?>
 </style>
 <?php endif; ?>
+
+<?php if (!empty($settings['static_content_width'])): ?>
+<style id="snapsmack-layout-vars">
+:root { --static-content-width: <?php echo (int)$settings['static_content_width']; ?>px; }
+</style>
+<?php endif; ?>
