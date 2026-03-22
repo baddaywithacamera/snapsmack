@@ -250,6 +250,13 @@ CREATE TABLE `snap_users` (
 -- BLOGROLL
 -- =====================================================================
 
+DROP TABLE IF EXISTS `snap_blogroll_cats`;
+CREATE TABLE `snap_blogroll_cats` (
+  `id`       int         NOT NULL AUTO_INCREMENT,
+  `cat_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 DROP TABLE IF EXISTS `snap_blogroll`;
 CREATE TABLE `snap_blogroll` (
   `id` int NOT NULL AUTO_INCREMENT,
