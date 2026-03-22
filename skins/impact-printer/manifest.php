@@ -356,8 +356,8 @@ return [
             'selector' => ':root',
             'property' => '--ip-ink-opacity',
             'options'  => [
-                'fresh'  => ['label' => 'Fresh Ribbon (Heavy / Streaky)', 'css' => '{ --ip-ink-opacity: 1.0; --ip-ink-bleed: 0.4px 0 0 currentColor, -0.2px 0.3px 0 currentColor; --ip-ink-weight: 900; }'],
-                'normal' => ['label' => 'Normal Wear',                    'css' => '{ --ip-ink-opacity: 0.82; --ip-ink-bleed: 0.2px 0 0 currentColor; --ip-ink-weight: bold; }'],
+                'fresh'  => ['label' => 'Fresh Ribbon (Heavy / Streaky)', 'css' => '{ --ip-ink-opacity: 1.0; --ip-ink-bleed: 0.8px 0 1px currentColor, -0.5px 0 1px currentColor, 1.6px 0.1px 0.5px currentColor, -1.1px -0.1px 0.5px currentColor, 0.3px 0.6px 1.2px rgba(0,0,0,0.35); --ip-ink-weight: 900; }'],
+                'normal' => ['label' => 'Normal Wear',                    'css' => '{ --ip-ink-opacity: 0.82; --ip-ink-bleed: 0.4px 0 0.6px currentColor, -0.2px 0 0.6px currentColor; --ip-ink-weight: bold; }'],
                 'faded'  => ['label' => 'Faded Ribbon',                   'css' => '{ --ip-ink-opacity: 0.65; --ip-ink-bleed: none; --ip-ink-weight: normal; }'],
                 'dying'  => ['label' => 'Nearly Dead',                    'css' => '{ --ip-ink-opacity: 0.45; --ip-ink-bleed: none; --ip-ink-weight: normal; }'],
             ]
