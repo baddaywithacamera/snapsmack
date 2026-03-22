@@ -87,69 +87,46 @@ try {
             $page_title = htmlspecialchars($page_data['title']);
             $skin_path  = 'skins/' . $active_skin;
 
-            // --- BARE / COMING SOON MODE ---
-            // When landing_only is active, render the page content with zero skin chrome:
-            // no header, no footer, no nav, no skin CSS — just the content centred on screen.
+            // --- LANDING-ONLY / COMING SOON MODE ---
+            // Skin CSS fully loaded (ledger paper, fonts, colours), but no header or footer.
+            // Page title is centred. Nothing else changes.
             if ($landing_only_active) {
-                $bare_bg    = $settings['bare_page_bg']    ?? '#ffffff';
-                $bare_fg    = $settings['bare_page_fg']    ?? '#111111';
-                $bare_align = $settings['bare_page_align'] ?? 'center';
+                if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
+                    include __DIR__ . '/' . $skin_path . '/skin-meta.php';
+                }
                 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?></title>
-    <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body {
-            height: 100%;
-            background: <?php echo htmlspecialchars($bare_bg); ?>;
-            color: <?php echo htmlspecialchars($bare_fg); ?>;
-        }
-        .bare-stage {
-            min-height: 100vh;
-            display: flex;
-            align-items: <?php echo $bare_align === 'top' ? 'flex-start' : 'center'; ?>;
-            justify-content: center;
-            padding: 60px 40px;
-        }
-        .bare-content {
-            max-width: 780px;
-            width: 100%;
-            text-align: <?php echo $bare_align === 'center' ? 'center' : 'left'; ?>;
-        }
-        .bare-content h1 {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 1.5rem;
-            line-height: 1.2;
-        }
-        .bare-content p  { margin-bottom: 1rem; line-height: 1.7; font-size: 1.05rem; }
-        .bare-content a  { color: inherit; text-decoration: underline; }
-        .bare-content s  { opacity: 0.5; }
-        .bare-content em { font-style: italic; }
-        .bare-content strong { font-weight: bold; }
-        @media (max-width: 600px) {
-            .bare-stage   { padding: 40px 24px; }
-            .bare-content h1 { font-size: 1.4rem; }
-        }
-    </style>
-    <?php if (!empty($settings['favicon_url'])): ?>
-        <link rel="icon" href="<?php echo BASE_URL . ltrim($settings['favicon_url'], '/'); ?>">
-    <?php endif; ?>
-</head>
-<body>
-    <div class="bare-stage">
-        <div class="bare-content">
-            <?php if (!empty($page_data['content'])): ?>
-                <?php echo $snapsmack->parseContent($page_data['content']); ?>
-            <?php endif; ?>
-        </div>
-    </div>
-</body>
-</html>
+                <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css?v=<?php echo time(); ?>">
+                <style>
+                    /* Landing-only overrides: no header gap, title centred */
+                    .static-page-title { text-align: center; }
+                    #page-wrapper { padding-top: 0; }
+                </style>
+                <body class="static-transmission homepage-static landing-only">
+                    <div id="page-wrapper">
+                        <div id="scroll-stage">
+                            <?php if (!empty($page_data['image_asset'])): ?>
+                                <div id="photobox" class="page-hero">
+                                    <div class="main-photo">
+                                        <img src="<?php echo BASE_URL . ltrim($page_data['image_asset'], '/'); ?>"
+                                             class="post-image"
+                                             alt="<?php echo $page_title; ?>">
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                            <div class="static-content">
+                                <h1 class="static-page-title"><?php echo $page_title; ?></h1>
+                                <div class="description">
+                                    <?php
+                                    if (!empty($page_data['content'])) {
+                                        echo $snapsmack->parseContent($page_data['content']);
+                                    }
+                                    ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </body>
+                </html>
                 <?php
                 exit;
             }
