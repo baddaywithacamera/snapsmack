@@ -155,16 +155,19 @@
         });
     }
 
-    // --- Image shortcode: prompt for ID, size, align ---
+    // --- Image shortcode: open asset picker if available, else fallback prompts ---
     function insertImage(textarea) {
-        var id = prompt('Image ID (from Media Library):');
-        if (!id || !id.trim()) return;
-
-        var size  = prompt('Size — full, wall, or small:', 'full') || 'full';
-        var align = prompt('Align — center, left, or right:', 'center') || 'center';
-
-        var tag = '[img:' + id.trim() + '|' + size.trim() + '|' + align.trim() + ']';
-        insertAtCursor(textarea, tag);
+        if (typeof window.ssOpenAssetPicker === 'function') {
+            window.ssOpenAssetPicker('shortcode', textarea);
+        } else {
+            // Fallback for pages that don't load the picker (shouldn't happen)
+            var id = prompt('Image ID (from Media Library):');
+            if (!id || !id.trim()) return;
+            var size  = prompt('Size — full, wall, or small:', 'full') || 'full';
+            var align = prompt('Align — center, left, or right:', 'center') || 'center';
+            var tag   = '[img:' + id.trim() + '|' + size.trim() + '|' + align.trim() + ']';
+            insertAtCursor(textarea, tag);
+        }
     }
 
     // --- List builder: splits selected text into <li> items ---
