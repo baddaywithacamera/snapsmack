@@ -44,8 +44,13 @@ try {
 
     // --- ARCHIVE LAYOUT MODE ---
     // Determines visual presentation: square (1:1), cropped (max 3:2/2:3), or masonry (full aspect).
-    // Loaded from skin manifest via settings. Falls back to 'square' if invalid.
+    // 'none' means archive is disabled — redirect to homepage rather than rendering a broken page.
     $archive_layout = $settings['archive_layout'] ?? 'square';
+    if ($archive_layout === 'none') {
+        $base = rtrim($settings['site_url'] ?? '/', '/') . '/';
+        header('Location: ' . $base);
+        exit;
+    }
     if (!in_array($archive_layout, ['square', 'cropped', 'masonry'])) {
         $archive_layout = 'square';
     }
