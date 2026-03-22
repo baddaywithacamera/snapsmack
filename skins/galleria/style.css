@@ -1616,7 +1616,7 @@ footer a:hover {
    Clears the fixed header and provides a centered content lane.
    ============================================================================ */
 
-body.static-transmission {
+body.static-transmission:not(.htbs-page) {
     padding-top: var(--header-height, 60px);
     background: #ffffff;
     background-image: none;
