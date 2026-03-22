@@ -145,6 +145,13 @@ body {
     display: none !important;
 }
 
+/* Center site title when nav is absent (landing-only mode, or nav hidden by settings).
+   :has() catches the no-nav case dynamically; .landing-only is the guaranteed class. */
+body.landing-only .ip-header-inside,
+.ip-header-inside:not(:has(.nav-menu li)) {
+    justify-content: center;
+}
+
 /* ==========================================================================
    PHOTOBOX
    ========================================================================= */
