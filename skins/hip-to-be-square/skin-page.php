@@ -33,22 +33,6 @@ include __DIR__ . '/skin-meta.php';
         box-sizing: border-box;
     }
 
-    /* Hero frame: floats on the wall, centred */
-    .htbs-page-hero {
-        display: flex;
-        justify-content: center;
-        padding: 0 40px 80px;
-    }
-    .htbs-page-hero .frame-mount {
-        max-width: min(780px, 90vw);
-    }
-    .htbs-page-hero .frame-image img {
-        display: block;
-        width: 100%;
-        height: auto;
-        max-width: 100%;
-    }
-
     /* Content card: white page sitting on the wall */
     .htbs-page-content {
         max-width: var(--static-content-width, 720px);
@@ -59,9 +43,26 @@ include __DIR__ . '/skin-meta.php';
         box-shadow: 0 2px 12px rgba(0, 0, 0, 0.28), 0 8px 40px rgba(0, 0, 0, 0.15);
     }
 
+    /* Title: no separator line — the hero image below it does that job */
     .htbs-page-content .static-page-title {
         margin-bottom: 36px;
+        padding-bottom: 0;
+        border-bottom: none;
         color: #111111;
+    }
+
+    /* Hero frame: inside the card, negative side margins bleed to card edges */
+    .htbs-page-hero {
+        margin: 0 calc(-1 * var(--static-content-gutter, 40px)) 48px;
+    }
+    .htbs-page-hero .frame-mount {
+        width: 100%;
+    }
+    .htbs-page-hero .frame-image img {
+        display: block;
+        width: 100%;
+        height: auto;
+        max-width: 100%;
     }
 
     .htbs-page-content .description p {
@@ -79,7 +80,6 @@ include __DIR__ . '/skin-meta.php';
     }
 
     @media (max-width: 640px) {
-        .htbs-page-hero  { padding: 0 20px 48px; }
         .htbs-page-content { padding: 40px 20px 60px; }
     }
 </style>
@@ -89,25 +89,26 @@ include __DIR__ . '/skin-meta.php';
 
         <?php include __DIR__ . '/skin-header.php'; ?>
 
-        <?php if (!empty($page_data['image_asset'])): ?>
-            <div class="htbs-page-hero">
-                <div class="frame-mount">
-                    <div class="frame-border">
-                        <div class="frame-mat">
-                            <div class="frame-bevel">
-                                <div class="frame-image">
-                                    <img src="<?php echo BASE_URL . ltrim($page_data['image_asset'], '/'); ?>"
-                                         alt="<?php echo $page_title; ?>">
+        <div class="htbs-page-content">
+            <h1 class="static-page-title"><?php echo $page_title; ?></h1>
+
+            <?php if (!empty($page_data['image_asset'])): ?>
+                <div class="htbs-page-hero">
+                    <div class="frame-mount">
+                        <div class="frame-border">
+                            <div class="frame-mat">
+                                <div class="frame-bevel">
+                                    <div class="frame-image">
+                                        <img src="<?php echo BASE_URL . ltrim($page_data['image_asset'], '/'); ?>"
+                                             alt="<?php echo $page_title; ?>">
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        <?php endif; ?>
+            <?php endif; ?>
 
-        <div class="htbs-page-content">
-            <h1 class="static-page-title"><?php echo $page_title; ?></h1>
             <div class="description">
                 <?php
                 if (!empty($page_data['content'])) {
