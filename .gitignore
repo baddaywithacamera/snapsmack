@@ -19,6 +19,9 @@ media_assets/
 # Claude / AI tooling
 CLAUDE.md
 
+# Spec / planning documents — not part of source
+_spec/
+
 # OS junk
 .DS_Store
 Thumbs.db
