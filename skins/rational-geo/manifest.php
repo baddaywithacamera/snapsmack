@@ -32,7 +32,7 @@ return [
         'supports_wall'    => false,
         'supports_slider'  => false,
         'archive_layouts'  => ['cropped', 'masonry'],
-        'has_landing'      => true,
+        'has_landing'      => false,
         'post_modes'       => ['image'],
         'instagram_mode'   => false,
         'carousel'         => false,
