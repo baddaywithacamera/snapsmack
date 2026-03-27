@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Footer scripts for the 50-shades-of-noah-grey skin
- * Alpha v0.7.5
+ * Alpha v0.7.6
  *
  * Reserved for future use. Core scripts load globally.
  */

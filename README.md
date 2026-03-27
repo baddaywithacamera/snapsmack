@@ -1,8 +1,8 @@
 # SnapSmack
 
-**Alpha v0.7.5c "Sitz Bath"**
+**Alpha v0.7.6 "Poäng Thang"**
 
-A self-hosted photoblog CMS for people who care about their photographs. One image a day, your domain, no algorithm.
+A self-hosted photography CMS for people who care about their photographs. Your domain, your archive, no algorithm.
 
 ---
 
@@ -12,13 +12,18 @@ SnapSmack is a PHP/MySQL photoblog platform inspired by the classic photolog for
 
 Key characteristics:
 
-- **One image per post** — single-image publishing with full EXIF display, optional download, and hashtag captions. Carousel posts available for skins that support them.
-- **Swappable skins** — Galleria, Hip to be Square, True Grit, Photogram (Instagram-style), Impact Printer, 50 Shades of Noah Grey, A Grey Reckoning, New Horizon, Show N Tell, and more. Each skin has its own CMS-driven appearance settings.
+SnapSmack installs in one of two editions chosen at setup time:
+
+- **1.0 Photoblog** — one image per post, daily archive. The classic photoblog format: full EXIF display, hashtag captions, optional download, comments and reactions.
+- **2.0 Carousel** — single or multi-image posts in a chronological stream. The way Instagram felt before the algorithm, on your own server.
+
+Key characteristics across both editions:
+
+- **Swappable skins** — Galleria, Hip to be Square, True Grit, Photogram, Impact Printer, A Grey Reckoning, New Horizon, Show N Tell, The Grid, and more. Each skin has its own CMS-driven appearance settings.
 - **Self-update system** — Ed25519-signed release packages; apply updates through the admin without SSH access.
 - **Community features** — comments, likes, and emoji reactions. Three identity modes: open (no account required), hybrid, or registered-only.
-- **AI training crawler policy** — choose to allow, disallow, or take no position on AI training crawlers. Disallow mode blocks known AI bots (GPTBot, CCBot, ClaudeBot, etc.) via `robots.txt` and injects `noai`/`noimageai` meta tags site-wide. Managed under Global Config.
-- **Inline mosaics** — build tiled image groups from the media library and embed them in posts and pages via `[mosaic:ID]` shortcodes. Automatic row-based layout respects aspect ratios.
-- **Homepage modes** — choose Latest Post, Skin Landing Page (the skin's built-in slider or grid), or a Static Page. A Landing Page Only toggle strips all navigation and chrome for coming-soon or splash screen installs.
+- **AI training crawler policy** — choose to allow, disallow, or take no position on AI training crawlers. Disallow mode blocks known AI bots via `robots.txt` and injects `noai`/`noimageai` meta tags site-wide.
+- **Homepage modes** — Latest Post, Skin Landing Page, or a Static Page. A Landing Page Only toggle strips all navigation and chrome for coming-soon or splash installs.
 - **No tracking, no ads, no third-party dependencies at runtime.**
 
 ---

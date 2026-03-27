@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Archive management dashboard
- * Alpha v0.7.5
+ * Alpha v0.7.6
  *
  * Provides searchable listing of all posts with filtering by status, category, and album.
  * Supports deletion of posts with cascading removal of associated data and files.
@@ -315,6 +315,9 @@ include 'core/sidebar.php';
                         <div class="item-actions">
                             <a href="smack-edit.php?id=<?php echo $p['id']; ?>" class="action-edit">EDIT</a>
                             <a href="smack-swap.php?id=<?php echo $p['id']; ?>" class="action-swap">SWAP</a>
+                            <?php if (!$is_draft && !$is_scheduled): ?>
+                            <a href="<?php echo BASE_URL . htmlspecialchars($p['img_slug'] ?? '', ENT_QUOTES); ?>" class="action-view" target="_blank" rel="noopener">VIEW</a>
+                            <?php endif; ?>
                             <a href="?delete=<?php echo $p['id']; ?>" class="action-delete" onclick="return confirm('PERMANENTLY PURGE this transmission?')">DELETE</a>
                         </div>
                     </div>

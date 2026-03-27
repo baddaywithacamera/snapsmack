@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - System Inventory
- * Alpha v0.7.5
+ * Alpha v0.7.6
  *
  * Single source of truth for all available system resources: local fonts,
  * Google Fonts, and JavaScript engines. Skins request assets from this list
@@ -661,12 +661,7 @@ return [
             'css'          => 'assets/css/ss-community.css',
             'has_settings' => false,
         ],
-        'smack-mosaic' => [
-            'label'        => 'Mosaic Layout Engine (Tiled image groups)',
-            'path'         => 'assets/js/ss-engine-mosaic.js',
-            'css'          => 'assets/css/ss-engine-mosaic.css',
-            'has_settings' => false,
-        ],
+
         'smack-photogram' => [
             'label'        => 'Photogram Engine (Bottom sheet, double-tap like, nav)',
             'path'         => 'assets/js/ss-engine-photogram.js',

@@ -775,7 +775,8 @@ button:active,
 .action-swap,
 .action-delete,
 .action-authorize,
-.action-hide {
+.action-hide,
+.action-view {
     width: auto;
     height: 32px;
     padding: 0 12px;
@@ -799,6 +800,16 @@ button:active,
 }
 .action-hide:hover {
     background-color: #FFB347;
+    color: #111;
+}
+
+/* action-view: steel blue — open post in new tab, read-only / non-destructive */
+.action-view {
+    color: #6ab0de;
+    border-color: #6ab0de;
+}
+.action-view:hover {
+    background-color: #6ab0de;
     color: #111;
 }
 
