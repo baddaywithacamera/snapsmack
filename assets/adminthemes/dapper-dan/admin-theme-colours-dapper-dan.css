@@ -562,11 +562,3 @@ input[type="range"]::-webkit-slider-thumb {
 .cloud-progress-error { color: #E86060; }
 .cloud-progress-success { color: #4EC994; }
 
-/* ─── MOSAICS (smack-mosaics.php) ────────────────────────────────── */
-.mosaic-list-table th { border-bottom-color: #222222; color: #888888; }
-.mosaic-list-table td { border-bottom-color: #222222; }
-.mosaic-shortcode-copy { color: #EAB308; }
-.mosaic-section-label { color: #888888; }
-.mosaic-dropzone { border-color: #222222; background-color: #141414; }
-.mosaic-picker { border-color: #222222; background-color: #141414; }
-.mosaic-picker-close { color: #888888; }
