@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - First-Run Installer
- * Alpha v0.7.5
+ * Alpha v0.7.6
  *
  * Single-file setup wizard for fresh SnapSmack deployments. Checks the server
  * environment, creates the database schema, sets up the first admin user, and
@@ -12,8 +12,8 @@
 
 // --- CONFIGURATION ---
 // The version this installer deploys.
-$installer_version       = '0.7.5';
-$installer_version_label = 'Alpha 0.7.5';
+$installer_version       = '0.7.6';
+$installer_version_label = 'Alpha 0.7.6';
 
 // --- SESSION INIT ---
 session_start();
@@ -91,6 +91,14 @@ if ($step === 2 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
         $errors[] = "Too many failed attempts. Please wait {$wait} seconds.";
         $step = 2;
     } else {
+        // Capture install mode choice (set on step 1 form, carried forward here)
+        $posted_mode = $_POST['site_mode'] ?? '';
+        if (in_array($posted_mode, ['photoblog', 'carousel'], true)) {
+            $_SESSION['site_mode'] = $posted_mode;
+        } elseif (empty($_SESSION['site_mode'])) {
+            $_SESSION['site_mode'] = 'photoblog'; // safe default
+        }
+
         $db_host   = trim($_POST['db_host'] ?? 'localhost');
         $db_name   = trim($_POST['db_name'] ?? '');
         $db_user   = trim($_POST['db_user'] ?? '');
@@ -631,7 +639,7 @@ try {
 
 define(\'SNAPSMACK_VERSION\', \'' . $installer_version_label . '\');
 define(\'SNAPSMACK_VERSION_SHORT\', \'' . $installer_version . '\');
-define(\'SNAPSMACK_VERSION_CODENAME\', \'Sitz Bath\');
+define(\'SNAPSMACK_VERSION_CODENAME\', \'Poäng Thang\');
 define(\'SNAPSMACK_TABLE_PREFIX\', \'' . $prefix . '\');
 
 // --- VERSION COMPARISON ---
@@ -682,13 +690,19 @@ function snapsmack_is_mobile(): bool {
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ]);
 
+            $install_mode     = $_SESSION['site_mode'] ?? 'photoblog';
+            $is_carousel      = ($install_mode === 'carousel');
+            $default_skin     = $is_carousel ? 'the-grid'    : 'new-horizon';
+            $default_variant  = $is_carousel ? 'default'     : 'dark';
+
             $defaults = [
                 'site_name'                 => $_SESSION['site_name'] ?? 'My SnapSmack Site',
                 'site_tagline'              => $_SESSION['site_tagline'] ?? '',
                 'site_url'                  => $_SESSION['site_url'] ?? '',
                 'site_email'                => $_SESSION['admin_email'] ?? '',
-                'active_skin'               => 'new-horizon',
-                'active_skin_variant'       => 'dark',
+                'site_mode'                 => $install_mode,
+                'active_skin'               => $default_skin,
+                'active_skin_variant'       => $default_variant,
                 'active_theme'              => 'midnight-lime',
                 'timezone'                  => 'UTC',
                 'date_format'               => 'F j, Y',
@@ -950,7 +964,7 @@ try { $pdo = new PDO($dsn, $user, $pass, $options); } catch (\PDOException $e) {
                             $const_php = '<?php
 define(\'SNAPSMACK_VERSION\', \'' . $installer_version_label . '\');
 define(\'SNAPSMACK_VERSION_SHORT\', \'' . $installer_version . '\');
-define(\'SNAPSMACK_VERSION_CODENAME\', \'Sitz Bath\');
+define(\'SNAPSMACK_VERSION_CODENAME\', \'Poäng Thang\');
 define(\'SNAPSMACK_TABLE_PREFIX\', \'snap_\');
 function snap_version_compare(string $v1, string $v2, string $op = \'>\'): bool {
     $normalise = function (string $v): string {
@@ -1161,6 +1175,66 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             font-size: 0.9rem;
         }
 
+        /* --- EDITION CHOOSER --- */
+        .install-mode-heading {
+            margin: 32px 0 4px;
+            font-size: 1rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #aaa;
+        }
+        .install-mode-cards {
+            display: flex;
+            gap: 16px;
+            margin: 16px 0 28px;
+        }
+        .install-mode-card {
+            flex: 1;
+            cursor: pointer;
+        }
+        .install-mode-card input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .install-mode-card-inner {
+            border: 2px solid #2a2a2a;
+            border-radius: 4px;
+            padding: 20px 18px;
+            transition: border-color 0.15s, background 0.15s;
+            background: #0d0d0d;
+            height: 100%;
+            box-sizing: border-box;
+        }
+        .install-mode-card input[type="radio"]:checked + .install-mode-card-inner {
+            border-color: #a0ff90;
+            background: #081a08;
+        }
+        .install-mode-card:hover .install-mode-card-inner {
+            border-color: #444;
+        }
+        .install-mode-version {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #a0ff90;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+        .install-mode-name {
+            font-size: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 10px;
+            color: #eee;
+        }
+        .install-mode-desc {
+            font-size: 0.85rem;
+            color: #888;
+            line-height: 1.5;
+        }
+
         /* --- TABLE LIST --- */
         .table-list {
             list-style: none;
@@ -1349,6 +1423,29 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             <form method="post">
                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                 <input type="hidden" name="step" value="2">
+
+                <h3 class="install-mode-heading">Choose Your Edition</h3>
+                <p class="install-desc-note">This cannot be changed after installation.</p>
+
+                <div class="install-mode-cards">
+                    <label class="install-mode-card">
+                        <input type="radio" name="site_mode" value="photoblog" checked>
+                        <div class="install-mode-card-inner">
+                            <div class="install-mode-version">1.0</div>
+                            <div class="install-mode-name">Photoblog</div>
+                            <div class="install-mode-desc">Post one photograph a day. A personal archive of images with dates, titles, and your words. No noise, no feed — just your photos.</div>
+                        </div>
+                    </label>
+                    <label class="install-mode-card">
+                        <input type="radio" name="site_mode" value="carousel">
+                        <div class="install-mode-card-inner">
+                            <div class="install-mode-version">2.0</div>
+                            <div class="install-mode-name">Carousel</div>
+                            <div class="install-mode-desc">Post one or several photos at a time, building a scrollable stream of moments. The way Instagram felt in the early days, on your own server.</div>
+                        </div>
+                    </label>
+                </div>
+
                 <button type="submit">Continue</button>
             </form>
         <?php else: ?>

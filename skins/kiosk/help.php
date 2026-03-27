@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin Help Topics: Kiosk
- * Alpha v0.7.5
+ * Alpha v0.7.6
  */
 
 return [

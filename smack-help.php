@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - User Manual
- * Alpha v0.7.5
+ * Alpha v0.7.6
  *
  * In-admin documentation system covering every feature of the CMS.
  * Topics are organised into sections and filtered by user role — editors
@@ -572,15 +572,6 @@ are available: None, Simple Bold, and Tactical Block.</p>
 <p>Adds explicit vertical spacing (1–100px) within your content. Specify the pixel height
 as a number between the colons.</p>
 
-<h4>Mosaic Album Builder</h4>
-<pre>[mosaic:ID]</pre>
-<p>Embeds a tiled image mosaic created via the Mosaics page in the admin (under The Good Shit).
-From the Mosaics editor, pick assets from your media library, drag them to reorder, set the
-gap between tiles, and preview the layout live. The engine automatically packs images into rows
-forming clean rectangles, respecting each image's aspect ratio with no cropping. The layout is
-fully responsive — when the window resizes, the mosaic re-layouts automatically to fit the
-available width. Each mosaic you create gets a unique ID shown in the editor, which you use in
-the <code>[mosaic:ID]</code> shortcode.</p>
 
 <h4>Auto-Paragraph</h4>
 <p>You don't need to type <code>&lt;p&gt;</code> tags. The parser automatically converts
