@@ -396,7 +396,9 @@ include 'core/sidebar.php';
 <div class="main">
     <div class="header-row header-row--ruled">
         <h2>INITIALIZE NEW TRANSMISSION</h2>
-        <span class="dim" style="font-size:12px; letter-spacing:1px;">CAROUSEL / MULTI-IMAGE MODE</span>
+        <div class="header-actions">
+            <span class="dim" style="font-size:12px; letter-spacing:1px;">CAROUSEL / MULTI-IMAGE MODE</span>
+        </div>
     </div>
 
     <?php if (!empty($msg)): ?>
