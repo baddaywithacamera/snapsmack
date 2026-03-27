@@ -1,0 +1,37 @@
+/**
+ * WP Mosaic — Front-end Styles
+ *
+ * Styling for inline [mosaic] shortcode renders.
+ * Originally ss-engine-mosaic.css from SnapSmack.
+ */
+
+.wp-mosaic {
+    width: 100%;
+    margin: 1.5em 0;
+    box-sizing: border-box;
+}
+
+.mosaic-row {
+    display: flex;
+    width: 100%;
+}
+
+.mosaic-item {
+    position: relative;
+    overflow: hidden;
+    background: #111;
+    flex-shrink: 0;
+}
+
+.mosaic-item img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.mosaic-item:hover img {
+    transform: scale(1.03);
+    filter: brightness(1.05);
+}
