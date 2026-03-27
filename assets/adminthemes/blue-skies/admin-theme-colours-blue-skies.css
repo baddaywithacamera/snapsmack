@@ -542,11 +542,3 @@ input[type="range"]::-webkit-slider-thumb {
 .cloud-progress-error { color: #E86060; }
 .cloud-progress-success { color: #4EC994; }
 
-/* ─── MOSAICS (smack-mosaics.php) ────────────────────────────────── */
-.mosaic-list-table th { border-bottom-color: #d6eaf8; color: #5499c7; }
-.mosaic-list-table td { border-bottom-color: #d6eaf8; }
-.mosaic-shortcode-copy { color: #3498db; }
-.mosaic-section-label { color: #5499c7; }
-.mosaic-dropzone { border-color: #d6eaf8; background-color: #ebf5fb; }
-.mosaic-picker { border-color: #d6eaf8; background-color: #ebf5fb; }
-.mosaic-picker-close { color: #5499c7; }
