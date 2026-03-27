@@ -4,6 +4,19 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.6 — "Poäng Thang" (2026-03-26)
+
+### Changed
+- **Bifurcated installer**: Step 1 now presents two edition cards — *1.0 Photoblog* (one image per post, daily archive) and *2.0 Carousel* (multi-image stream). Selection is stored in `site_mode` setting; default skin seeded accordingly (`new-horizon` for 1.0, `the-grid` for 2.0).
+- **Mosaic tool removed**: `smack-mosaics.php`, `ss-engine-mosaic.js`, `ss-engine-mosaic.css`, `migrate-mosaic.sql`, and the `parseMosaics()` parser phase have been stripped. The `[mosaic:ID]` shortcode is no longer supported. Mosaic infrastructure will return in a separate product.
+- **Blabbermouth / Verbose mode shelved**: SnapSmack now ships as two focused editions (Photoblog and Carousel). Long-form blogging tooling has been removed from the core product.
+
+### Fixed
+- **Hyperlink duplication bug**: `insertLink()` in `formatting-toolbar.js` called `_getSelection()` *after* `prompt()`, causing the browser to reset `selectionStart/End` to 0. Selected text was inserted inside the `<a>` tag *and* left in place. Fix: snapshot selection before the dialog opens.
+- **Manage Archive — View Post button**: added between SWAP and DELETE for published posts. Opens in a new tab. Hidden for drafts and scheduled posts (no live URL). `.action-view` style added to master CSS (steel blue, consistent across all admin themes).
+
+---
+
 ## 0.7.5c — "Sitz Bath" (2026-03-21)
 
 ### Added

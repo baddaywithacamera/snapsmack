@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin header for the new-horizon skin
- * Alpha v0.7.5
+ * Alpha v0.7.6
  */
 ?>
 <div id="header">

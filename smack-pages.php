@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Static page editor and manager
- * Alpha v0.7.5
+ * Alpha v0.7.6
  *
  * Provides creation, modification, and deletion of static pages.
  * Automatically converts plain text to HTML with paragraph wrapping.

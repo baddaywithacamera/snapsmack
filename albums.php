@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Public Album Listing Page
- * Alpha v0.7.5
+ * Alpha v0.7.6
  *
  * Displays all albums that contain at least one published image.
  * Each album shows a representative thumbnail (most recent image),

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Companion Tools
- * Alpha v0.7.5
+ * Alpha v0.7.6
  *
  * Lists available companion desktop tools with download links.
  */
@@ -13,7 +13,7 @@ require_once 'core/auth.php';
 $tools = [
     [
         'name'         => 'Smack Your Batch Up',
-        'version'      => '0.7.5',
+        'version'      => '0.7.6',
         'platform'     => 'Windows (64-bit)',
         'download_url' => 'https://snapsmack.ca/tools/smackyourbatchup.zip',
         'description'  => 'Desktop tool for bulk-posting images to SnapSmack. Loads manifest files, embeds EXIF copyright metadata via piexif (pure Python, no external dependencies), resizes to web dimensions, and posts the batch to SnapSmack. Optionally uploads originals to Google Drive for high-res download links. Borrows the active admin colour scheme on connect. Drag to reorder, per-row category and album, accumulate multiple manifests before posting. OneDrive and Dropbox download links can be added manually via the CMS post editor.',

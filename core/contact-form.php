@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Contact Form Shortcode
- * Alpha v0.7.5
+ * Alpha v0.7.6
  *
  * Renders a simple contact form via [snapsmack_contact] shortcode.
  * Fields: name, email, message. Sends email via PHP mail(). No database

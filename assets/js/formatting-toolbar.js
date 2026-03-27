@@ -41,9 +41,11 @@ class FormattingToolbar {
     }
 
     insertLink() {
-        const url = prompt('Enter URL:');
+        // Snapshot selection BEFORE prompt() — the dialog steals focus and
+        // resets selectionStart/selectionEnd to 0 in most browsers.
+        const sel  = this._getSelection();
+        const url  = prompt('Enter URL:');
         if (!url) return;
-        const sel = this._getSelection();
         const text = sel.text || 'link text';
         this._replaceSelection('<a href="' + url + '">' + text + '</a>');
     }

@@ -1,16 +1,16 @@
 <?php
 /**
  * SNAPSMACK - System Constants
- * Alpha v0.7.5
+ * Alpha v0.7.6
  *
  * Defines version strings and system-wide constants. Include this early in
  * the bootstrap chain (e.g., from db.php) to ensure availability throughout
  * the application.
  */
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.5');
-define('SNAPSMACK_VERSION_SHORT', '0.7.5');
-define('SNAPSMACK_VERSION_CODENAME', 'Sitz Bath');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.6');
+define('SNAPSMACK_VERSION_SHORT', '0.7.6');
+define('SNAPSMACK_VERSION_CODENAME', 'Poäng Thang');
 
 // --- VERSION COMPARISON ---
 // PHP's version_compare() treats trailing letters as "alpha" (lower than
