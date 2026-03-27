@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the new-horizon skin
- * Alpha v0.7.5
+ * Alpha v0.7.6
  *
  * Defines layout options, features, and customization controls.
  */

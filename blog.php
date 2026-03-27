@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Blog Feed (Latest Post View)
- * Alpha v0.7.5
+ * Alpha v0.7.6
  *
  * When homepage_mode is 'static_page' or 'skin_landing', the image feed
  * moves to a configurable slug (default: /blog). This file handles the

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Comment submission handler
- * Alpha v0.7.5
+ * Alpha v0.7.6
  *
  * Processes incoming comment submissions, verifies global and per-image permissions,
  * applies optional spam filtering, and stores comments for moderation.
