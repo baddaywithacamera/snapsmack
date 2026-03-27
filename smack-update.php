@@ -705,7 +705,9 @@ include 'core/sidebar.php';
 </style>
 
 <div class="main">
-    <h2>SYSTEM UPDATES</h2>
+    <div class="header-row">
+        <h2>SYSTEM UPDATES</h2>
+    </div>
 
     <?php if ($flash_msg): ?>
     <div class="alert alert-<?php echo $flash_type === 'error' ? 'danger' : ($flash_type === 'warning' ? 'warning' : 'success'); ?> mb-25">
