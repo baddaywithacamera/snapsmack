@@ -457,10 +457,12 @@ include 'core/sidebar.php';
 <div class="main">
     <div class="header-row header-row--ruled">
         <h2>EDIT POST: <?php echo htmlspecialchars($post['title']); ?></h2>
-        <span class="dim" style="font-size:12px; letter-spacing:1px;">
-            <?php echo strtoupper($post['post_type']); ?>
-            &nbsp;·&nbsp; <?php echo count($post_images); ?> IMAGE<?php echo count($post_images) !== 1 ? 'S' : ''; ?>
-        </span>
+        <div class="header-actions">
+            <span class="dim" style="font-size:12px; letter-spacing:1px;">
+                <?php echo strtoupper($post['post_type']); ?>
+                &nbsp;·&nbsp; <?php echo count($post_images); ?> IMAGE<?php echo count($post_images) !== 1 ? 'S' : ''; ?>
+            </span>
+        </div>
     </div>
 
     <?php if ($msg): ?>
