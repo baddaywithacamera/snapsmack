@@ -17,6 +17,7 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/parser.php';
 require_once __DIR__ . '/core/skin-settings.php';
+require_once __DIR__ . '/core/stats-logger.php';
 
 // --- INITIALIZATION ---
 $settings = [];
@@ -91,6 +92,7 @@ try {
             // Skin CSS fully loaded (ledger paper, fonts, colours), but no header or footer.
             // Page title is centred. Nothing else changes.
             if ($landing_only_active) {
+                snapsmack_log_hit($pdo, $settings, ['page_type' => 'landing', 'page_slug' => $page_data['slug'] ?? null]);
                 if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                     include __DIR__ . '/' . $skin_path . '/skin-meta.php';
                 }
@@ -132,6 +134,7 @@ try {
             }
 
             // --- NORMAL STATIC PAGE RENDER (with skin chrome) ---
+            snapsmack_log_hit($pdo, $settings, ['page_type' => 'page', 'page_slug' => $page_data['slug'] ?? null]);
             if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                 include __DIR__ . '/' . $skin_path . '/skin-meta.php';
             }
@@ -201,6 +204,7 @@ try {
         $hashtag_template = __DIR__ . '/skins/' . $active_skin . '/hashtag.php';
         if (file_exists($hashtag_template)) {
             $requested_tag = strtolower($requested_tag); // normalise
+            snapsmack_log_hit($pdo, $settings, ['page_type' => 'hashtag', 'page_slug' => $requested_tag]);
             include __DIR__ . '/skins/' . $active_skin . '/skin-meta.php';
             ?><body class="is-hashtag-page"><div id="page-wrapper"><?php
             include $hashtag_template;
@@ -273,6 +277,15 @@ if (($_GET['format'] ?? '') === 'json' && ($_GET['pg'] ?? '') !== '') {
     if (file_exists($landing_file)) {
         include $landing_file;
         exit;
+    }
+}
+
+// --- STATS LOGGING ---
+if ($img) {
+    if (!$requested_slug && !$force_blog && file_exists(__DIR__ . '/' . $skin_path . '/landing.php')) {
+        snapsmack_log_hit($pdo, $settings, ['page_type' => 'landing', 'page_slug' => $img['img_slug'] ?? null, 'image_id' => $img['id'] ?? null]);
+    } else {
+        snapsmack_log_hit($pdo, $settings, ['page_type' => 'image', 'page_slug' => $img['img_slug'] ?? null, 'image_id' => $img['id'] ?? null]);
     }
 }
 
