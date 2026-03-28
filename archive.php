@@ -13,6 +13,7 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/parser.php';
 require_once __DIR__ . '/core/skin-settings.php';
+require_once __DIR__ . '/core/stats-logger.php';
 
 // --- INITIALIZATION ---
 $settings = [];
@@ -165,6 +166,13 @@ try {
 
 $page_title = "Archive";
 $skin_path  = 'skins/' . $active_skin;
+
+// --- STATS LOGGING ---
+snapsmack_log_hit($pdo, $settings, [
+    'page_type'   => 'archive',
+    'page_slug'   => null,
+    'search_term' => $_GET['search'] ?? null,
+]);
 
 if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
     include __DIR__ . '/' . $skin_path . '/skin-meta.php';
