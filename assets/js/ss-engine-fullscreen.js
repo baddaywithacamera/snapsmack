@@ -69,13 +69,14 @@ function _ssFullscreenInit() {
         btn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>';
 
         // Inline styles — no external CSS needed
+        // Matches dock/download family colours but smaller (overlay on image)
         btn.style.cssText = [
             'position:absolute', 'bottom:12px', 'right:12px',
             'z-index:50', 'width:36px', 'height:36px',
             'display:flex', 'align-items:center', 'justify-content:center',
-            'background:rgba(0,0,0,0.5)', 'border:1px solid rgba(255,255,255,0.2)',
-            'border-radius:4px', 'color:#fff', 'cursor:pointer',
-            'opacity:0', 'transition:opacity 0.2s ease',
+            'background:rgba(0,0,0,0.7)', 'border:2px solid rgba(255,255,255,0.3)',
+            'border-radius:50%', 'color:#fff', 'cursor:pointer',
+            'opacity:0', 'transition:opacity 0.2s ease, transform 0.15s ease',
             'padding:0', 'outline:none',
         ].join(';');
 
@@ -94,9 +95,11 @@ function _ssFullscreenInit() {
         const btn = createToggleBtn();
         wrapper.appendChild(btn);
 
-        // Show on hover
+        // Show on hover (matches dock-link hover pattern)
         wrapper.addEventListener('mouseenter', () => { btn.style.opacity = '1'; });
-        wrapper.addEventListener('mouseleave', () => { btn.style.opacity = '0'; });
+        wrapper.addEventListener('mouseleave', () => { btn.style.opacity = '0'; btn.style.transform = 'scale(1)'; });
+        btn.addEventListener('mouseenter', () => { btn.style.transform = 'scale(1.1)'; btn.style.background = 'rgba(0,0,0,0.9)'; btn.style.borderColor = 'rgba(255,255,255,0.7)'; });
+        btn.addEventListener('mouseleave', () => { btn.style.transform = 'scale(1)'; btn.style.background = 'rgba(0,0,0,0.7)'; btn.style.borderColor = 'rgba(255,255,255,0.3)'; });
 
         // Click toggle
         btn.addEventListener('click', (e) => {
