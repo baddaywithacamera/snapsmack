@@ -13,6 +13,7 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/parser.php';
 require_once __DIR__ . '/core/skin-settings.php';
+require_once __DIR__ . '/core/stats-logger.php';
 
 // --- INITIALIZATION ---
 $settings = [];
@@ -60,6 +61,9 @@ try {
 
 $page_title = htmlspecialchars($page_data['title']);
 $skin_path  = 'skins/' . $active_skin;
+
+// --- STATS LOGGING ---
+snapsmack_log_hit($pdo, $settings, ['page_type' => 'page', 'page_slug' => $slug ?? null]);
 
 // Let the active skin override the page layout entirely.
 // Photogram (and future skins) can ship skin-page.php to render static
