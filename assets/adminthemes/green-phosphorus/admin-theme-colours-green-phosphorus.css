@@ -256,11 +256,11 @@ button:hover {
 }
 
 /* Action Links */
-.action-authorize, .action-edit {
+.action-authorize, .action-edit, .action-swap, .action-view {
     color: #33ff00;
     border-color: #33ff00;
 }
-.action-authorize:hover {
+.action-authorize:hover, .action-edit:hover, .action-swap:hover, .action-view:hover {
     background-color: #33ff00;
     color: #000;
 }

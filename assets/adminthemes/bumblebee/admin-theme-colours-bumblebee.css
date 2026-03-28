@@ -257,11 +257,11 @@ button:hover {
 }
 
 /* Action Links */
-.action-authorize, .action-edit {
+.action-authorize, .action-edit, .action-swap, .action-view {
     color: #FFCC00;
     border-color: #FFCC00;
 }
-.action-authorize:hover, .action-edit:hover {
+.action-authorize:hover, .action-edit:hover, .action-swap:hover, .action-view:hover {
     background-color: #FFCC00;
     color: #000000;
 }
