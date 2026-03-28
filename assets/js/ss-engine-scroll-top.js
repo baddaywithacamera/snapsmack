@@ -36,31 +36,34 @@ function _ssScrollTopInit() {
     btn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>';
 
     // --- INLINE STYLES ---
-    const positionRule = position === 'left' ? 'left:20px' : 'right:20px';
+    // Matches the social dock / download button family:
+    // 48px circles, rgba(0,0,0,0.7), 2px border, scale(1.1) hover
+    const positionRule = position === 'left' ? 'left:16px' : 'right:16px';
     btn.style.cssText = [
-        'position:fixed', 'bottom:24px', positionRule,
-        'z-index:9000', 'width:40px', 'height:40px',
+        'position:fixed', 'bottom:16px', positionRule,
+        'z-index:9000', 'width:48px', 'height:48px',
         'display:flex', 'align-items:center', 'justify-content:center',
-        'background:rgba(0,0,0,0.55)', 'border:1px solid rgba(255,255,255,0.15)',
+        'background:rgba(0,0,0,0.7)', 'border:2px solid rgba(255,255,255,0.3)',
         'border-radius:50%', 'color:#fff', 'cursor:pointer',
         'opacity:0', 'visibility:hidden',
-        'transition:opacity 0.25s ease, visibility 0.25s ease, transform 0.25s ease',
+        'transition:opacity 0.3s ease, visibility 0.3s ease, transform 0.15s ease',
         'transform:translateY(10px)',
         'padding:0', 'outline:none',
-        'box-shadow:0 2px 8px rgba(0,0,0,0.3)',
-        'backdrop-filter:blur(6px)', '-webkit-backdrop-filter:blur(6px)',
     ].join(';');
 
     document.body.appendChild(btn);
 
     // --- HOVER EFFECT ---
+    // Matches .dock-link:hover / .snap-download-btn:hover
     btn.addEventListener('mouseenter', () => {
-        btn.style.background = 'rgba(0,0,0,0.75)';
-        btn.style.borderColor = 'rgba(255,255,255,0.3)';
+        btn.style.background = 'rgba(0,0,0,0.9)';
+        btn.style.borderColor = 'rgba(255,255,255,0.7)';
+        btn.style.transform = visible ? 'scale(1.1)' : 'translateY(10px)';
     });
     btn.addEventListener('mouseleave', () => {
-        btn.style.background = 'rgba(0,0,0,0.55)';
-        btn.style.borderColor = 'rgba(255,255,255,0.15)';
+        btn.style.background = 'rgba(0,0,0,0.7)';
+        btn.style.borderColor = 'rgba(255,255,255,0.3)';
+        btn.style.transform = visible ? 'translateY(0)' : 'translateY(10px)';
     });
 
     // --- CLICK HANDLER ---
