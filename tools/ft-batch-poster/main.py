@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.4d-17"   # bump this on every rebuild
+BUILD_VERSION = "0.7.6a-01"   # bump this on every rebuild
 
 import os
 import queue
@@ -28,26 +28,26 @@ from poster import SnapSmackClient, SiteData
 # Colour palette & typography
 # ---------------------------------------------------------------------------
 
-BG_DEEP   = "#0C0C10"   # window background
-BG_CARD   = "#16161E"   # row / card background
-BG_MID    = "#1E1E2A"   # input fields, alternate rows
-BG_HOVER  = "#252535"   # hover state
-ACCENT    = "#D4872A"   # warm amber — primary accent
-ACCENT2   = "#3AB8CC"   # teal — secondary / info
-BORDER    = "#2A2A3A"   # subtle borders
+BG_DEEP   = "#141414"   # window background (Midnight Lime)
+BG_CARD   = "#1C1C1C"   # row / card background
+BG_MID    = "#050505"   # input fields
+BG_HOVER  = "#252525"   # hover state
+ACCENT    = "#39FF14"   # neon lime
+ACCENT2   = "#2ECC10"   # darker lime
+BORDER    = "#2A2A2A"   # subtle borders
 
-FG_MAIN   = "#E8E8E0"   # primary text
-FG_DIM    = "#6A6A7E"   # muted / placeholder
+FG_MAIN   = "#EEEEEE"   # primary text
+FG_DIM    = "#777777"   # muted / placeholder
 FG_OK     = "#4EC994"   # success
-FG_ERR    = "#E86060"   # error
-FG_WARN   = "#D4872A"   # warning (same as accent)
+FG_ERR    = "#FF3E3E"   # error
+FG_WARN   = "#D4872A"   # warning
 
 STATUS_COLORS = {
-    'pending':  ("#3A3A4A", FG_DIM),
-    'posting':  (ACCENT,    "#0C0C10"),
-    'ok':       (FG_OK,     "#0C0C10"),
-    'error':    (FG_ERR,    "#0C0C10"),
-    'warning':  (FG_WARN,   "#0C0C10"),
+    'pending':  ("#2A2A2A", FG_DIM),
+    'posting':  (ACCENT,    "#000000"),
+    'ok':       (FG_OK,     "#000000"),
+    'error':    (FG_ERR,    "#000000"),
+    'warning':  (FG_WARN,   "#000000"),
 }
 
 THUMB_SIZE  = (72, 72)
@@ -142,12 +142,29 @@ class EntryRow(tk.Frame):
 
         tk.Label(self, text="album", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=568, y=6)
 
+        # ── Orientation combobox ─────────────────────────────────────
+        orient_display = {'auto': 'Auto', '0': 'Landscape', '1': 'Portrait', '2': 'Square'}
+        display_val = orient_display.get(self.entry.orientation, 'Auto')
+        self._orient_var = tk.StringVar(value=display_val)
+        self._orient_cb = ttk.Combobox(
+            self, textvariable=self._orient_var,
+            values=['Auto', 'Landscape', 'Portrait', 'Square'],
+            font=FONT_SMALL, state="readonly", width=9,
+        )
+        self._orient_cb.place(x=758, y=20, width=100)
+        orient_reverse = {'Auto': 'auto', 'Landscape': '0', 'Portrait': '1', 'Square': '2'}
+        self._orient_cb.bind("<<ComboboxSelected>>",
+                      lambda e: setattr(self.entry, 'orientation',
+                                        orient_reverse.get(self._orient_var.get(), 'auto')))
+
+        tk.Label(self, text="orient", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=758, y=6)
+
         # ── Status badge ──────────────────────────────────────────────
         self._status_lbl = tk.Label(
             self, text="PENDING", font=("Segoe UI", 7, "bold"),
             padx=6, pady=2, relief="flat",
         )
-        self._status_lbl.place(x=758, y=32, width=72, height=20)
+        self._status_lbl.place(x=868, y=32, width=72, height=20)
         self._set_status_visual('pending')
 
     def set_thumb(self, img: ImageTk.PhotoImage):
@@ -396,6 +413,20 @@ class App(tk.Tk):
         except Exception:
             return hex_color
 
+    @staticmethod
+    def _contrast_text(hex_bg: str) -> str:
+        """Return '#000000' or '#FFFFFF' for readable text on the given background."""
+        h = hex_bg.lstrip('#')
+        if len(h) == 3:
+            h = ''.join(c * 2 for c in h)
+        try:
+            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+            # Relative luminance (ITU-R BT.709)
+            luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+            return '#000000' if luminance > 0.5 else '#FFFFFF'
+        except Exception:
+            return '#000000'
+
     # ------------------------------------------------------------------
     # TTK style
     # ------------------------------------------------------------------
@@ -457,112 +488,11 @@ class App(tk.Tk):
             foreground=[("disabled", FG_DIM)],
         )
 
-    def _apply_theme(self, theme: dict):
-        """
-        Re-skin the entire UI using colors fetched from the site's active admin theme.
-        Walks the full widget tree replacing any widget whose bg/fg matches our current
-        known theme palette. Safe to call after the UI is fully built.
-        """
-        accent   = theme.get('accent',   self._t_accent)
-        bg       = theme.get('bg',       self._t_bg)
-        bg_card  = theme.get('bg_card',  self._t_card)
-        bg_input = theme.get('bg_input', self._t_input)
-        border   = theme.get('border',   self._t_border)
-        fg       = theme.get('fg',       self._t_fg)
-        fg_dim   = theme.get('fg_dim',   self._t_dim)
-
-        # ttk styles
-        style = ttk.Style(self)
-        style.configure("Accent.TButton", background=accent, foreground=bg)
-        style.map("Accent.TButton",
-            background=[("active", self._lighten(accent)), ("disabled", bg_input)],
-            foreground=[("active", bg), ("disabled", fg_dim)],
-        )
-        style.configure("Ghost.TButton", background=bg_input, foreground=fg)
-        style.map("Ghost.TButton", background=[("active", bg_card)])
-        # Post button is a Canvas — recolour the drawn rectangle and text.
-        self._post_canvas.configure(bg=bg)
-        self._post_canvas.itemconfig(self._post_rect, fill=accent)
-        self._post_canvas.itemconfig(self._post_text, fill=bg)
-        self._post_canvas.bind("<Leave>", lambda e: self._post_canvas.itemconfig(
-            self._post_rect, fill=accent))
-        style.configure("TCombobox",
-            fieldbackground=bg_input, background=bg_input, foreground=fg,
-            selectbackground=accent, selectforeground=bg, bordercolor=border,
-        )
-        style.map("TCombobox",
-            fieldbackground=[("readonly", bg_input), ("!readonly", bg_input)],
-            foreground=[("readonly", fg), ("!readonly", fg)],
-        )
-        style.configure("TScrollbar",
-            background=bg_input, troughcolor=bg, bordercolor=bg, arrowcolor=fg_dim,
-        )
-
-        # Build colour replacement maps from current stored palette.
-        bg_map  = {self._t_bg: bg, self._t_card: bg_card, self._t_input: bg_input}
-        fg_map  = {self._t_fg: fg, self._t_dim: fg_dim, self._t_accent: accent}
-
-        def _walk(widget):
-            # Skip the post button canvas — it has its own accent colours
-            if widget is self._post_canvas:
-                return
-            # bg / background
-            for attr in ('bg', 'background'):
-                try:
-                    cur = widget.cget(attr)
-                    if cur in bg_map:
-                        widget.configure(**{attr: bg_map[cur]})
-                    break
-                except Exception:
-                    pass
-            # fg / foreground
-            for attr in ('fg', 'foreground'):
-                try:
-                    cur = widget.cget(attr)
-                    if cur in fg_map:
-                        widget.configure(**{attr: fg_map[cur]})
-                    break
-                except Exception:
-                    pass
-            # selectcolor (Checkbutton)
-            try:
-                cur = widget.cget('selectcolor')
-                if cur == self._t_input:
-                    widget.configure(selectcolor=bg_input)
-            except Exception:
-                pass
-            # highlightbackground / highlightcolor
-            try:
-                widget.configure(highlightbackground=border)
-            except Exception:
-                pass
-            for child in widget.winfo_children():
-                _walk(child)
-
-        _walk(self)
-
-        # Update stored palette so a second connect picks up fresh values.
-        self._t_bg     = bg
-        self._t_card   = bg_card
-        self._t_input  = bg_input
-        self._t_border = border
-        self._t_fg     = fg
-        self._t_dim    = fg_dim
-        self._t_accent = accent
-
     # ------------------------------------------------------------------
     # UI construction
     # ------------------------------------------------------------------
 
     def _build_ui(self):
-        # Track theme colours so _apply_theme can walk and replace them.
-        self._t_bg     = BG_DEEP
-        self._t_card   = BG_CARD
-        self._t_input  = BG_MID
-        self._t_border = BORDER
-        self._t_fg     = FG_MAIN
-        self._t_dim    = FG_DIM
-        self._t_accent = ACCENT
 
         # ── Header row (mirrors admin header-row--ruled) ──────────────
         header = tk.Frame(self, bg=BG_CARD, height=44)
@@ -796,7 +726,7 @@ class App(tk.Tk):
         self._post_canvas.bind("<Enter>", lambda e: self._post_canvas.itemconfig(
             self._post_rect, fill=self._lighten(self._post_canvas.itemcget(self._post_rect, 'fill'))))
         self._post_canvas.bind("<Leave>", lambda e: self._post_canvas.itemconfig(
-            self._post_rect, fill=self._t_accent))
+            self._post_rect, fill=ACCENT))
 
         self._clear_btn = ttk.Button(bottom, text="Clear", style="Ghost.TButton",
                                       command=self._on_clear)
@@ -1038,10 +968,6 @@ class App(tk.Tk):
             self._start_session_timer()
             self._save_config()
 
-            # Apply the site's active admin theme colors to the UI.
-            theme = client.fetch_theme()
-            if theme:
-                self._apply_theme(theme)
 
         except Exception as e:
             self._conn_dot.configure(fg=FG_ERR)
@@ -1318,7 +1244,7 @@ class App(tk.Tk):
             self._post_canvas.unbind("<Button-1>")
         else:
             self._post_canvas.itemconfig(self._post_text, fill=BG_DEEP)
-            self._post_canvas.itemconfig(self._post_rect, fill=self._t_accent)
+            self._post_canvas.itemconfig(self._post_rect, fill=ACCENT)
             self._post_canvas.configure(cursor="hand2")
             self._post_canvas.bind("<Button-1>", lambda e: self._on_post())
         self._validate_btn.configure(state=state)
