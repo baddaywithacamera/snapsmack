@@ -244,11 +244,11 @@ button:hover {
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-.action-authorize, .action-edit {
+.action-authorize, .action-edit, .action-swap, .action-view {
     color: #00b4b4;
     border-color: #00b4b4;
 }
-.action-authorize:hover {
+.action-authorize:hover, .action-edit:hover, .action-swap:hover, .action-view:hover {
     background-color: #00b4b4;
     color: #1e1e1e;
 }
