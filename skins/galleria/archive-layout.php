@@ -12,7 +12,7 @@
 // Frames can't coexist with variable-width justified rows so this branch
 // bypasses the frame markup entirely and uses the standard justified engine.
 if ($archive_layout === 'masonry'):
-    $target_row_h = (int)($settings['justified_row_height'] ?? 280);
+    $target_row_h = (int)($settings['justified_row_height'] ?? 180);
     $gap          = (int)($settings['justified_gap'] ?? 4);
     $ref_w        = (int)($settings['main_canvas_width'] ?? 1280);
 

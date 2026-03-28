@@ -77,7 +77,7 @@ try {
     $thumb_px = $thumb_size_map[$archive_layout][$thumb_step] ?? $thumb_size_map['square']['m'];
 
     // Justified row target height for masonry layout
-    $justified_row_height = (int)($settings['justified_row_height'] ?? 280);
+    $justified_row_height = (int)($settings['justified_row_height'] ?? 180);
 
     // --- FILTER PARAMETERS ---
     // Extract category or album ID from query string
@@ -253,7 +253,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                  PHP groups images into rows for semantics; CSS flexbox handles sizing.
                  Each item's flex-grow equals its aspect ratio for perfect row alignment. -->
             <?php
-                $target_row_h = (int)($settings['justified_row_height'] ?? 280);
+                $target_row_h = (int)($settings['justified_row_height'] ?? 180);
                 $gap          = (int)($settings['justified_gap'] ?? 4);
                 $ref_w = (int)($settings['main_canvas_width'] ?? 1280);
             ?>
