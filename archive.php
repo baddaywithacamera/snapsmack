@@ -256,15 +256,14 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                 $target_row_h = (int)($settings['justified_row_height'] ?? 180);
                 $gap          = (int)($settings['justified_gap'] ?? 4);
                 $ref_w = (int)($settings['main_canvas_width'] ?? 1280);
-            ?>
-            <div id="justified-grid" style="--justified-gap: <?php echo $gap; ?>px; --justified-row-height: <?php echo $target_row_h; ?>px;">
-                <?php if ($images): ?>
-                    <?php
-                    // Build rows by accumulating images until estimated width reaches reference width
-                    $rows = [];
-                    $current_row = [];
-                    $current_row_width = 0;
 
+                // Build rows before opening the grid div so we can pass
+                // --last-row-ar-sum as a CSS variable on the container.
+                $rows = [];
+                $current_row = [];
+                $current_row_width = 0;
+
+                if ($images) {
                     foreach ($images as $img) {
                         $iw = (int)($img['img_width'] ?? 400);
                         $ih = (int)($img['img_height'] ?? 400);
@@ -283,11 +282,25 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                             $current_row_width = 0;
                         }
                     }
-                    // Last partial row is marked for CSS to avoid over-stretching
                     if (!empty($current_row)) {
                         $rows[] = ['images' => $current_row, 'full' => false];
                     }
-                    ?>
+                }
+
+                // AR sum of last full row — CSS uses this to match last-row height
+                $last_full_ar_sum = 0;
+                for ($i = count($rows) - 1; $i >= 0; $i--) {
+                    if ($rows[$i]['full']) {
+                        foreach ($rows[$i]['images'] as $_img) {
+                            $last_full_ar_sum += $_img['_aspect'];
+                        }
+                        break;
+                    }
+                }
+                if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
+            ?>
+            <div id="justified-grid" style="--justified-gap: <?php echo $gap; ?>px; --justified-row-height: <?php echo $target_row_h; ?>px; --last-row-ar-sum: <?php echo round($last_full_ar_sum, 4); ?>;">
+                <?php if ($rows): ?>
                     <?php foreach ($rows as $row_data):
                         $row = $row_data['images'];
                         $is_full = $row_data['full'];
