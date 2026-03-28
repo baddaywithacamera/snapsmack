@@ -725,5 +725,50 @@ return [
             'path'         => 'assets/js/ss-engine-carousel-view.js',
             'has_settings' => false,
         ],
+        'smack-lazyload' => [
+            'label'        => 'Lazy Loading Engine (Progressive image loading)',
+            'path'         => 'assets/js/ss-engine-lazyload.js',
+            'has_settings' => true,
+            'controls'     => [
+                'lazy_root_margin' => [
+                    'type'    => 'select',
+                    'label'   => 'Preload Distance',
+                    'default' => '200px',
+                    'options' => ['100px' => 'Near (100px)', '200px' => 'Normal (200px)', '400px' => 'Far (400px)', '800px' => 'Very Far (800px)']
+                ],
+                'lazy_fade_duration' => [
+                    'type'    => 'range',
+                    'label'   => 'Fade-In Speed (ms)',
+                    'default' => '300',
+                    'min'     => '0',
+                    'max'     => '800'
+                ]
+            ]
+        ],
+        'smack-fullscreen' => [
+            'label'        => 'Fullscreen Engine (Distraction-free image viewing)',
+            'path'         => 'assets/js/ss-engine-fullscreen.js',
+            'has_settings' => false,
+        ],
+        'smack-scroll-top' => [
+            'label'        => 'Scroll-to-Top Button',
+            'path'         => 'assets/js/ss-engine-scroll-top.js',
+            'has_settings' => true,
+            'controls'     => [
+                'scroll_top_threshold' => [
+                    'type'    => 'range',
+                    'label'   => 'Show After Scrolling (px)',
+                    'default' => '400',
+                    'min'     => '100',
+                    'max'     => '1000'
+                ],
+                'scroll_top_position' => [
+                    'type'    => 'select',
+                    'label'   => 'Button Position',
+                    'default' => 'right',
+                    'options' => ['right' => 'Bottom Right', 'left' => 'Bottom Left']
+                ]
+            ]
+        ],
     ]
 ];
