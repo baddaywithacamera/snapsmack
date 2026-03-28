@@ -287,23 +287,37 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                     if (!empty($current_row)) {
                         $rows[] = ['images' => $current_row, 'full' => false];
                     }
+
+                    // Calculate per-row ideal height so images fill with minimal crop
+                    foreach ($rows as &$_rd) {
+                        $sum_aspects = 0;
+                        foreach ($_rd['images'] as $_img) {
+                            $sum_aspects += $_img['_aspect'];
+                        }
+                        $num_gaps = count($_rd['images']) - 1;
+                        $total_gap_px = $num_gaps * $gap;
+                        if ($sum_aspects > 0 && $_rd['full']) {
+                            $_rd['row_height'] = round(($ref_w - $total_gap_px) / $sum_aspects);
+                        } else {
+                            $_rd['row_height'] = $target_row_h;
+                        }
+                    }
+                    unset($_rd);
                     ?>
                     <?php foreach ($rows as $row_data):
                         $row = $row_data['images'];
+                        $rh  = (int)$row_data['row_height'];
                         $is_full = $row_data['full'];
                         $row_class = 'justified-row' . (!$is_full ? ' justified-row-last' : '');
                     ?>
-                        <div class="<?php echo $row_class; ?>">
+                        <div class="<?php echo $row_class; ?>" style="height: <?php echo $rh; ?>px;">
                             <?php foreach ($row as $img):
                                 $link = BASE_URL . htmlspecialchars($img['img_slug']);
-                                $full_img_path = ltrim($img['img_file'], '/');
-                                $filename = basename($full_img_path);
-                                $folder = str_replace($filename, '', $full_img_path);
-                                $thumb_url = BASE_URL . $folder . 'thumbs/a_' . $filename;
+                                $img_url = BASE_URL . ltrim($img['img_file'], '/');
                                 $flex_grow = round($img['_aspect'] * 100);
                             ?>
                                 <a href="<?php echo $link; ?>" class="justified-item" title="<?php echo htmlspecialchars($img['img_title']); ?>" style="flex-grow: <?php echo $flex_grow; ?>; aspect-ratio: <?php echo round($img['_aspect'], 4); ?>;">
-                                    <img src="<?php echo $thumb_url; ?>" alt="<?php echo htmlspecialchars($img['img_title']); ?>" loading="lazy">
+                                    <img src="<?php echo $img_url; ?>" alt="<?php echo htmlspecialchars($img['img_title']); ?>" loading="lazy">
                                 </a>
                             <?php endforeach; ?>
                         </div>
