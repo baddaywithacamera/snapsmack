@@ -487,15 +487,48 @@ a:hover {
 
 /* On archive pages, #infobox sits above the grid — needs to clear the fixed header */
 .archive-page #infobox {
-    padding-top: calc(var(--header-height, 60px) + 20px);
+    padding-top: calc(var(--header-height, 60px));
     position: relative;
     z-index: 10;
+    max-width: none;
+    margin: 0;
+    background: rgba(0, 0, 0, 0.30);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+    padding-bottom: 0;
 }
 
 #infobox {
     text-align: center;
     margin: 24px auto;
     max-width: var(--content-max-width);
+}
+
+.archive-page #infobox .nav-links {
+    padding: 14px 20px;
+}
+
+.archive-page #infobox .nav-links a {
+    color: rgba(255, 255, 255, 0.70);
+}
+
+.archive-page #infobox .nav-links a:hover {
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.archive-page #infobox .nav-links a.active {
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.archive-page #infobox .nav-links .sep {
+    color: rgba(255, 255, 255, 0.20);
+}
+
+.archive-page #infobox .nav-links .dim {
+    color: rgba(255, 255, 255, 0.40);
 }
 
 #infobox .nav-links {
@@ -540,6 +573,83 @@ a:hover {
     align-items: center;
     gap: 4px;
     white-space: nowrap;
+}
+
+#infobox .nav-links select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--text-secondary, #999);
+    color: var(--text-primary, #333);
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 4px 18px 4px 4px;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23777'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+#infobox .nav-links select:hover,
+#infobox .nav-links select:focus {
+    border-bottom-color: var(--accent-color, #b8965a);
+}
+
+.archive-page #infobox .nav-links select {
+    color: rgba(255, 255, 255, 0.70);
+    border-bottom-color: rgba(255, 255, 255, 0.25);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23aaa'/%3E%3C/svg%3E");
+}
+
+.archive-page #infobox .nav-links select:hover,
+.archive-page #infobox .nav-links select:focus {
+    color: rgba(255, 255, 255, 0.90);
+    border-bottom-color: var(--accent-color, #b8965a);
+}
+
+.archive-page .archive-search-input {
+    color: rgba(255, 255, 255, 0.70);
+    border-bottom-color: rgba(255, 255, 255, 0.25);
+}
+
+.archive-page .archive-search-input:focus {
+    color: rgba(255, 255, 255, 0.90);
+}
+
+.archive-page .archive-search-input::placeholder {
+    color: rgba(255, 255, 255, 0.30);
+}
+
+.archive-search-input {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--text-secondary, #999);
+    color: var(--text-primary, #333);
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    padding: 4px 6px;
+    outline: none;
+    width: 140px;
+    transition: border-color 0.2s ease;
+}
+
+.archive-search-input:focus {
+    border-bottom-color: var(--accent-color, #b8965a);
+}
+
+.archive-search-input::placeholder {
+    color: var(--text-secondary, #999);
+    text-transform: uppercase;
 }
 
 #infobox .nav-links .left,
