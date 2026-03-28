@@ -244,9 +244,19 @@
        proportional to AR means all items in a row naturally resolve to the
        same height at the actual viewport width.  Zero cropping. */
 }
-/* Last/partial row: cap height so 1-2 images don't become absurdly tall. */
+/* Last/partial row: don't stretch to fill — just sit at target height.
+   Even Flickr doesn't try to justify partial rows. */
 #justified-grid .justified-row-last {
-    max-height: calc(var(--justified-row-height, 180px) * 1.4);
+    height: var(--justified-row-height, 180px);
+}
+#justified-grid .justified-row-last .justified-item {
+    flex-grow: 0 !important;
+    flex-basis: auto !important;
+    height: 100%;
+}
+#justified-grid .justified-row-last .justified-item img {
+    width: auto;
+    height: 100%;
 }
 #justified-grid .justified-item {
     display: block;
