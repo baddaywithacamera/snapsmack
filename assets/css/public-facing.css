@@ -240,15 +240,15 @@
     display: flex;
     gap: var(--justified-gap, 4px);
     margin-bottom: var(--justified-gap, 4px);
+    /* Row height is set inline by PHP per-row for accurate justified sizing.
+       Fallback kept as CSS variable for any rows without an inline height. */
     height: var(--justified-row-height, 280px);
     overflow: hidden;
 }
-/* Last/partial row: don't stretch to fill — keep target height */
+/* Last/partial row: use target height (set inline by PHP) with max-height cap
+   so a row with only 1-2 images doesn't become absurdly tall. */
 #justified-grid .justified-row-last {
-    height: var(--justified-row-height, 280px);
-}
-#justified-grid .justified-row-last .justified-item {
-    flex-grow: 0 !important;
+    max-height: calc(var(--justified-row-height, 280px) * 1.4);
 }
 #justified-grid .justified-item {
     display: block;
