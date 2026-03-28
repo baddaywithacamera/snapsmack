@@ -137,54 +137,6 @@ class SnapSmackClient:
 
         return data
 
-    def fetch_theme(self) -> dict:
-        """
-        Fetch the active admin theme colors from the site.
-        Returns a dict with keys: accent, bg, bg_card, bg_input, border, fg, fg_dim.
-        Falls back to empty dict on any failure — caller must handle missing keys.
-        """
-        if not self._logged_in:
-            return {}
-        try:
-            # smack-post.php is already authenticated — reuse its HTML to find the theme CSS link.
-            url  = f"{self.base_url}/smack-post.php"
-            resp = self.session.get(url, timeout=10)
-            resp.raise_for_status()
-
-            soup     = BeautifulSoup(resp.text, 'html.parser')
-            css_link = soup.find('link', rel='stylesheet', href=re.compile(r'adminthemes/'))
-            if not css_link:
-                return {}
-
-            css_url  = f"{self.base_url}/{css_link['href'].lstrip('/')}"
-            css_resp = self.session.get(css_url, timeout=10)
-            css_resp.raise_for_status()
-            css = css_resp.text
-
-            def _first(pattern: str) -> str:
-                m = re.search(pattern, css)
-                return m.group(1).strip() if m else ''
-
-            accent   = _first(r'\.sidebar-brand\s*\{[^}]*\bcolor\s*:\s*(#[0-9a-fA-F]{3,8})')
-            bg       = _first(r'html\s*,\s*body\s*\{[^}]*background-color\s*:\s*(#[0-9a-fA-F]{3,8})')
-            bg_card  = _first(r'\.box\s*\{[^}]*background-color\s*:\s*(#[0-9a-fA-F]{3,8})')
-            bg_input = _first(r'input\[type="text"\][^{]*\{[^}]*background-color\s*:\s*(#[0-9a-fA-F]{3,8})')
-            border   = _first(r'\.sidebar\s*\{[^}]*border-right-color\s*:\s*(#[0-9a-fA-F]{3,8})')
-            fg       = _first(r'html\s*,\s*body\s*\{[^}]*\bcolor\s*:\s*(#[0-9a-fA-F]{3,8})')
-            fg_dim   = _first(r'\.nav-section-links\s+a\s*\{[^}]*\bcolor\s*:\s*(#[0-9a-fA-F]{3,8})')
-
-            result = {}
-            if accent:   result['accent']   = accent
-            if bg:       result['bg']        = bg
-            if bg_card:  result['bg_card']   = bg_card
-            if bg_input: result['bg_input']  = bg_input
-            if border:   result['border']    = border
-            if fg:       result['fg']        = fg
-            if fg_dim:   result['fg_dim']    = fg_dim
-            return result
-        except Exception:
-            return {}
-
     def post_image(
         self,
         entry:               ManifestEntry,
