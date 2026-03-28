@@ -108,6 +108,11 @@ $global_inventory = (function() { return include 'core/manifest-inventory.php'; 
 
 // --- 2. PUBLIC SKIN DISCOVERY ---
 // Scans the skins directory for valid manifests to populate the selector.
+// Skins are filtered by site_mode: photoblog sites only see solo skins,
+// carousel sites only see carousel/grid skins.
+$site_mode       = $settings['site_mode'] ?? 'photoblog';
+$is_carousel_site = ($site_mode === 'carousel');
+
 $skin_dirs       = array_filter(glob('skins/*'), 'is_dir');
 $available_skins = [];
 foreach ($skin_dirs as $dir) {
@@ -119,6 +124,9 @@ foreach ($skin_dirs as $dir) {
         $temp = include $dir . '/manifest.php';
         // Development skins are not selectable in the admin skin picker
         if (($temp['status'] ?? 'stable') === 'development') continue;
+        // Mode filter: carousel sites see only carousel skins, photoblog sites see only solo skins
+        $skin_is_carousel = !empty($temp['features']['carousel']);
+        if ($skin_is_carousel !== $is_carousel_site) continue;
         $available_skins[$slug] = $temp['name'] ?? ucfirst($slug);
     }
 }
@@ -915,7 +923,11 @@ if (!empty($google_families)) {
             <!-- Fallback: show locally installed skins only -->
             <h3 class="mt-24">INSTALLED SKINS</h3>
             <div class="gallery-grid">
-                <?php foreach ($local_skins as $slug => $skin): ?>
+                <?php foreach ($local_skins as $slug => $skin):
+                    // Mode filter: only show skins matching the site's mode
+                    $skin_carousel = !empty($skin['features']['carousel']);
+                    if ($skin_carousel !== $is_carousel_site) continue;
+                ?>
                     <div class="skin-card" style="cursor:pointer;" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
                         <div class="skin-card-screenshot">
                             <?php render_skin_screenshots($slug, $skin['name']); ?>
@@ -977,7 +989,11 @@ if (!empty($google_families)) {
         ?>
 
         <div class="gallery-grid">
-            <?php foreach ($gallery_skins as $slug => $skin): ?>
+            <?php foreach ($gallery_skins as $slug => $skin):
+                // Mode filter: only show skins matching the site's mode
+                $skin_carousel = !empty($skin['features']['carousel']);
+                if ($skin_carousel !== $is_carousel_site) continue;
+            ?>
                 <div class="skin-card" style="cursor:pointer;" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
                     <!-- Screenshot(s) -->
                     <div class="skin-card-screenshot">
@@ -1091,9 +1107,11 @@ if (!empty($google_families)) {
 
             <?php
             // Show locally installed skins that are NOT in the registry
-            // (custom/local-only skins)
+            // (custom/local-only skins), filtered by site mode
             foreach ($local_skins as $slug => $skin):
                 if (isset($gallery_skins[$slug])) continue;
+                $skin_carousel = !empty($skin['features']['carousel']);
+                if ($skin_carousel !== $is_carousel_site) continue;
             ?>
                 <div class="skin-card" style="cursor:pointer;" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
                     <div class="skin-card-screenshot">
