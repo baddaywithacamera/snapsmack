@@ -327,14 +327,46 @@ include 'core/sidebar.php';
 
             <div id="reorder-status" class="reorder-status" style="display:none;"></div>
 
-            <?php if ($total_pages > 1): ?>
+            <?php if ($total_pages > 1):
+                $qs = http_build_query(array_filter([
+                    'search'   => $search,
+                    'cat_id'   => $cat_filter,
+                    'album_id' => $album_filter,
+                    'status'   => $status_filter,
+                ], 'strlen'));
+                $href = function($p) use ($qs) {
+                    return '?page=' . $p . ($qs ? '&' . $qs : '');
+                };
+                // Window: show first, last, and a range around current page
+                $wing = 3;
+                $range_start = max(1, $page - $wing);
+                $range_end   = min($total_pages, $page + $wing);
+            ?>
                 <div class="pagination">
-                    <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                        <a href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&cat_id=<?php echo $cat_filter; ?>&album_id=<?php echo $album_filter; ?>&status=<?php echo $status_filter; ?>"
+                    <?php if ($page > 1): ?>
+                        <a href="<?php echo $href($page - 1); ?>">&laquo; Prev</a>
+                    <?php endif; ?>
+
+                    <?php if ($range_start > 1): ?>
+                        <a href="<?php echo $href(1); ?>">1</a>
+                        <?php if ($range_start > 2): ?><span class="pagination-ellipsis">&hellip;</span><?php endif; ?>
+                    <?php endif; ?>
+
+                    <?php for ($i = $range_start; $i <= $range_end; $i++): ?>
+                        <a href="<?php echo $href($i); ?>"
                            class="<?php echo ($page == $i) ? 'active' : ''; ?>">
                             <?php echo $i; ?>
                         </a>
                     <?php endfor; ?>
+
+                    <?php if ($range_end < $total_pages): ?>
+                        <?php if ($range_end < $total_pages - 1): ?><span class="pagination-ellipsis">&hellip;</span><?php endif; ?>
+                        <a href="<?php echo $href($total_pages); ?>"><?php echo $total_pages; ?></a>
+                    <?php endif; ?>
+
+                    <?php if ($page < $total_pages): ?>
+                        <a href="<?php echo $href($page + 1); ?>">Next &raquo;</a>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
         <?php endif; ?>
