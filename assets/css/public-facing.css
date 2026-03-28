@@ -246,7 +246,7 @@
 }
 /* Last/partial row: cap height so 1-2 images don't become absurdly tall. */
 #justified-grid .justified-row-last {
-    max-height: calc(var(--justified-row-height, 280px) * 1.4);
+    max-height: calc(var(--justified-row-height, 180px) * 1.4);
 }
 #justified-grid .justified-item {
     display: block;
