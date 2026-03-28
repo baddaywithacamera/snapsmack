@@ -961,6 +961,17 @@ button:active,
     transform: translateY(-1px);
 }
 
+.pagination-ellipsis {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    padding: 0 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    opacity: 0.5;
+}
+
 /* --- UPLOAD & PROGRESS BARS --- */
 .file-upload-wrapper {
     position: relative;
