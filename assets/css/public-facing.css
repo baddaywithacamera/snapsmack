@@ -244,10 +244,11 @@
        proportional to AR means all items in a row naturally resolve to the
        same height at the actual viewport width.  Zero cropping. */
 }
-/* Last/partial row: don't stretch to fill — just sit at target height.
-   Even Flickr doesn't try to justify partial rows. */
+/* Last/partial row: don't stretch to fill the width.
+   Height matches the row above via --last-row-ar-sum (the sum of aspect
+   ratios from the last full row).  100vw / ar_sum ≈ that row's height. */
 #justified-grid .justified-row-last {
-    height: var(--justified-row-height, 180px);
+    height: calc(100vw / var(--last-row-ar-sum, 7));
 }
 #justified-grid .justified-row-last .justified-item {
     flex-grow: 0 !important;
