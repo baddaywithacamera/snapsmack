@@ -1278,6 +1278,158 @@ HTML
 ];
 
 // =========================================================================
+//  DESKTOP TOOLS
+// =========================================================================
+
+$help_topics['smack-your-batch-up'] = [
+    'section'  => 'Desktop Tools',
+    'title'    => 'Smack Your Batch Up',
+    'icon'     => '&#x25B6;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Smack Your Batch Up</h3>
+<p>Smack Your Batch Up is a standalone Windows desktop application for posting large batches
+of images to SnapSmack without using the web interface. It handles resizing, EXIF embedding,
+Google Drive upload, and metadata in one workflow.</p>
+
+<h4>Installation</h4>
+<p>The application lives at <code>C:\SmackYourBatchUp\</code>. This folder contains:</p>
+<ul>
+    <li><strong>SmackYourBatchUp.exe</strong> — the application itself</li>
+    <li><strong>credentials.json</strong> — your Google OAuth client credentials (downloaded
+    from Google Cloud Console → APIs &amp; Services → Credentials)</li>
+    <li><strong>token.json</strong> — created automatically after your first Drive
+    authentication. Do not delete this file — it is what allows Drive to reconnect silently
+    on launch.</li>
+    <li><strong>config.ini</strong> — saved settings (site URL, username, folder paths,
+    Drive folder ID). Created automatically on first use.</li>
+</ul>
+<p>To rebuild from source, run <code>tools\ft-batch-poster\build.bat</code> from your
+development environment. The compiled exe is deployed to <code>C:\SmackYourBatchUp\</code>
+automatically.</p>
+
+<h4>Connecting to Your Site</h4>
+<p>Enter your SnapSmack URL, admin username, and password, then click <strong>Connect</strong>.
+The connection status indicator in the top bar turns green when the session is live.
+Your credentials are saved in config.ini and the tool reconnects automatically on the
+next launch.</p>
+
+<h4>Google Drive Authentication</h4>
+<p>Point the <em>Google Credentials</em> field at your <code>credentials.json</code> file
+and click <strong>Auth Drive</strong>. A browser window will open for the standard Google
+OAuth consent screen. After you approve, a <code>token.json</code> is written to
+<code>C:\SmackYourBatchUp\</code> and Drive will reconnect silently every time you launch
+the application from that point on.</p>
+<p><strong>Important:</strong> if Drive is not connected when you start posting, the tool
+will warn you and ask you to confirm before proceeding. Images posted without a Drive
+connection will not have a download link stored in the database. Use Fix Your Batch Up
+to recover those links later.</p>
+
+<h4>Posting Images</h4>
+<ol>
+    <li>Select your image folder — the tool scans it and builds a posting queue.</li>
+    <li>Optionally select a manifest file (.txt) to pre-populate titles and tags.</li>
+    <li>Set default category, album, and orientation for the batch.</li>
+    <li>Review the queue. Each row shows a thumbnail; you can change the category,
+    album, and orientation per image by clicking the row.</li>
+    <li>Click <strong>Post All</strong> to begin. The progress bar shows status per image.</li>
+</ol>
+<p>Each image is automatically resized to web dimensions, EXIF data is embedded into
+both the web copy and the Drive original, the original is uploaded to Drive, and the
+web copy is posted to SnapSmack with the Drive download link attached.</p>
+
+<h4>What Gets Saved to the Database</h4>
+<p>For every image posted via Smack Your Batch Up, the database stores:</p>
+<ul>
+    <li>The generated haiku title</li>
+    <li>Categories and album assignments</li>
+    <li>The Google Drive download link (<code>download_url</code>)</li>
+    <li>The original camera filename (<code>img_source_file</code>) — e.g.
+    <code>20260318_153727.jpg</code> — which is useful for recovery if the
+    Drive link is ever lost</li>
+</ul>
+
+<h4>Keeping Originals</h4>
+<p>Do not delete your original files after posting. The web-sized image on the server
+is a resized copy — the original is the file that gets uploaded to Drive. If you delete
+the originals before Drive authentication was working, use <strong>Fix Your Batch Up</strong>
+to recover the Drive links using SIFT feature matching against the server copies.</p>
+HTML
+];
+
+$help_topics['fix-your-batch-up'] = [
+    'section'  => 'Desktop Tools',
+    'title'    => 'Fix Your Batch Up',
+    'icon'     => '&#x27F3;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Fix Your Batch Up</h3>
+<p>Fix Your Batch Up is a recovery tool for images that were posted to SnapSmack without
+a Google Drive link — for example, if Smack Your Batch Up was used before Drive
+authentication was configured. It matches your local original files against the
+server-side images, uploads them to Drive, and writes the download links back to
+the database one image at a time.</p>
+
+<h4>When to Use It</h4>
+<p>Run this tool if you see images in Smack Manage with the download link column empty,
+or if the batch poster warned you that Drive was not connected when you posted.
+You can check which images are affected: the tool pulls the list automatically from
+the site on connection.</p>
+
+<h4>What You Need</h4>
+<ul>
+    <li><strong>Folder A</strong> — a local folder containing the server-side web images.
+    FTP these from your server's <code>img_uploads/</code> directory.</li>
+    <li><strong>Folder B</strong> — your folder of original camera files.</li>
+    <li>A working Drive connection (same credentials as Smack Your Batch Up).</li>
+</ul>
+<p>The tool does not require the originals to have the same filenames as the server
+images — SnapSmack renames images to haiku titles on upload. It uses image feature
+matching to find the right original.</p>
+
+<h4>Running the Tool</h4>
+<p>Run <code>tools\fix-your-batch-up\run.bat</code> from your development environment.
+On first run it installs Python dependencies automatically, then launches the application.
+The tool is not compiled to an exe — it runs directly from source.</p>
+
+<h4>How Matching Works</h4>
+<p>Matching uses a two-stage pipeline:</p>
+<ol>
+    <li><strong>pHash pre-filter</strong> — computes a perceptual hash for each image and
+    finds the 10 closest candidates in Folder B. Fast — handles hundreds of images
+    in seconds.</li>
+    <li><strong>SIFT feature matching</strong> — runs keypoint matching between the server
+    image and each candidate. Because the server image is a resized copy of the original,
+    they share strong, geometrically consistent SIFT features. Two visually similar but
+    different images (e.g. two rust texture photographs) will score much lower.</li>
+</ol>
+<p>Images are processed in batches of 10 using up to 75% of your CPU cores, so you can
+start reviewing completed rows while the next batch is still being matched.</p>
+
+<h4>The Review Interface</h4>
+<p>Each row shows the server image on the left and the matched original on the right, with
+a confidence score in the middle colour-coded green (high), amber (review recommended),
+or red (low confidence / no match found).</p>
+<ul>
+    <li><strong>Upload</strong> — uploads the right-hand image to Drive and writes the link
+    to the database immediately. The row turns green.</li>
+    <li><strong>Pick Different</strong> — opens a Windows file browser pointed at Folder B.
+    Switch to Extra Large Icons view and sort by Date Taken to find the right image
+    visually, then click Open.</li>
+    <li><strong>Skip</strong> — leaves the record unchanged and moves on.</li>
+</ul>
+<p>You can upload each image as soon as you are satisfied with the match — you do not
+need to wait for all matching to complete before starting uploads.</p>
+
+<h4>Configuration</h4>
+<p>Settings are stored in <code>tools\fix-your-batch-up\config.ini</code> and persist
+between sessions. The <em>SYBU Folder</em> field (default: <code>C:\SmackYourBatchUp</code>)
+tells the tool where to find <code>token.json</code> — it reuses the same Drive
+authentication as Smack Your Batch Up, so no separate Drive login is needed.</p>
+HTML
+];
+
+// =========================================================================
 //  SKIN HELP HOOK
 // =========================================================================
 
