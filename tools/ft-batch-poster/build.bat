@@ -2,7 +2,7 @@
 REM ─────────────────────────────────────────────────────────────────────────
 REM  Smack Your Batch Up — build script
 REM  Requires: Python 3.11+, pip install -r requirements.txt
-REM  Output:   C:\tools\smackyourbatchup-{version}.exe
+REM  Output:   C:\SmackYourBatchUp\smackyourbatchup-{version}.exe
 REM  EXIF is handled by piexif (pure Python) — no external dependencies.
 REM ─────────────────────────────────────────────────────────────────────────
 
@@ -52,9 +52,10 @@ echo.
 if exist dist\%EXE_NAME% (
     echo Build successful: dist\%EXE_NAME%
     echo.
-    echo Deploying to C:\tools...
-    copy /Y dist\%EXE_NAME% C:\tools\%EXE_NAME%
-    echo Done. Launch: C:\tools\%EXE_NAME%
+    echo Deploying to C:\SmackYourBatchUp...
+    if not exist C:\SmackYourBatchUp mkdir C:\SmackYourBatchUp
+    copy /Y dist\%EXE_NAME% C:\SmackYourBatchUp\%EXE_NAME%
+    echo Done. Launch: C:\SmackYourBatchUp\%EXE_NAME%
 ) else (
     echo Build FAILED. Check output above for errors.
 )
