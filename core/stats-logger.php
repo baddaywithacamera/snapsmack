@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Traffic Stats Logger
- * Alpha v0.7.6
+ * Alpha v0.7.7
  *
  * Lightweight hit tracker included at the top of public-facing controllers
  * (index.php, archive.php, page.php, blog.php). Logs one row per page view

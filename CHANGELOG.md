@@ -4,6 +4,21 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.7 — "Muffet's Tuffet" (2026-03-29)
+
+### Added
+- **Smack Your Batch Up v0.7.7a-01**: Auto-reconnect to Google Drive and site on launch (Drive token.json detected silently; site credentials re-loaded from config). Previously required manual reconnect after cold start.
+- **Fix Your Batch Up v0.7.7a-01**: New companion desktop tool for recovering missing Google Drive download links. Accepts a folder of FTP-retrieved server images (A) and a folder of original files (B), uses two-stage matching (pHash pre-filter → SIFT feature matching) to pair them, then lets you review each match and upload individually to Drive. Processes in batches of 10 using up to 75% of available CPU cores. Includes Pick Different (native Windows file dialog, extra-large icons, sort by date) and Skip controls. Available at `snapsmack.ca/tools/fixyourbatchup.zip`.
+- **`smack-backfill.php`**: New JSON API endpoint (GET `?action=list`, POST `?action=update`) used by Fix Your Batch Up to fetch images missing Drive links and write the resolved `download_url` back to the DB. Protected by `core/auth.php` session check.
+- **Desktop Tools help section**: New admin-only section in `smack-help.php` covering Smack Your Batch Up (installation, Drive auth, posting workflow) and Fix Your Batch Up (when to use, two-stage matching, review interface).
+- **`migrate-077.sql`**: Adds `sort_order INT NOT NULL DEFAULT 0` and `img_source_file VARCHAR(255) DEFAULT NULL` columns to `snap_images`. Both use `ADD COLUMN IF NOT EXISTS` for idempotent re-runs.
+
+### Fixed
+- **Justified grid archive invisible**: `ss-engine-justified.js` was using `document.querySelector('.justified-grid')` but `archive.php` only emitted `id="justified-grid"` with no class. fjGallery returned immediately on every page load, leaving full rows with no computed height. Fixed by adding `class="justified-grid"` to the grid container in `archive.php`.
+- **Archive query on fresh installs**: `ORDER BY i.sort_order` now requires the column to exist — run `migrate-077.sql` before deploying this version.
+
+---
+
 ## 0.7.6 — "Poäng Thang" (2026-03-26)
 
 ### Changed
