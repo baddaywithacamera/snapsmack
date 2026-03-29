@@ -57,7 +57,7 @@ if ($q !== '') {
               OR i.img_description LIKE ?
               OR t.slug LIKE ?
           )
-        ORDER BY i.img_date DESC
+        ORDER BY i.sort_order ASC, i.img_date DESC
         LIMIT 60
     ");
     $search_stmt->execute([$now, $search_term, $search_term, $tag_term]);

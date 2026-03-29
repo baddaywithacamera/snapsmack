@@ -13,6 +13,16 @@ set EXE_NAME=smackyourbatchup-%BUILD_VER%.exe
 echo Build version: %BUILD_VER%
 echo Output name:   %EXE_NAME%
 
+REM ── Clean stale build artifacts (prevents OneDrive / AV lock errors) ──────
+if exist build (
+    echo Cleaning previous build folder...
+    rmdir /s /q build
+)
+if exist dist (
+    echo Cleaning previous dist folder...
+    rmdir /s /q dist
+)
+
 echo Installing dependencies...
 pip install -r requirements.txt
 
