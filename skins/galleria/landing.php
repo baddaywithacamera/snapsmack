@@ -14,7 +14,7 @@ $slider_stmt = $pdo->prepare("
     SELECT id, img_title, img_slug, img_file, img_thumb_square, img_date, img_display_options
     FROM snap_images
     WHERE img_status = 'published' AND img_date <= ?
-    ORDER BY img_date DESC
+    ORDER BY sort_order ASC, img_date DESC
     LIMIT ?
 ");
 $slider_stmt->execute([$now_local, $slider_limit]);
