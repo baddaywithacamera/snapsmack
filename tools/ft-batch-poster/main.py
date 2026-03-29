@@ -421,6 +421,7 @@ class App(tk.Tk):
         self._build_ui()
         self._load_config_to_ui()
         self.after(100, self._poll_queue)
+        self.after(200, self._auto_reconnect)
 
     # ------------------------------------------------------------------
     # Colour helpers
@@ -878,26 +879,59 @@ class App(tk.Tk):
         for child in widget.winfo_children():
             self._scroll_entries_for_var(child, var)
 
-        # If we already have a token, silently reconnect Drive in the background
-        if drive_module.is_authenticated():
-            creds_path = c.get('google_credentials', '')
-            if creds_path and os.path.isfile(creds_path):
-                self._drive_dot.configure(fg=FG_WARN)
-                self._drive_lbl.configure(text="Connecting…", fg=FG_WARN)
-                def _auto_connect():
-                    try:
-                        service = drive_module.authenticate(creds_path)
-                        self._drive_service = service
-                        self.after(0, lambda: self._drive_dot.configure(fg=FG_OK))
-                        self.after(0, lambda: self._drive_lbl.configure(text="Authenticated", fg=FG_OK))
-                    except Exception:
-                        self.after(0, lambda: self._drive_dot.configure(fg=FG_DIM))
-                        self.after(0, lambda: self._drive_lbl.configure(text="Not connected", fg=FG_DIM))
-                import threading as _threading
-                _threading.Thread(target=_auto_connect, daemon=True).start()
-            else:
-                self._drive_dot.configure(fg=FG_OK)
-                self._drive_lbl.configure(text="Authenticated", fg=FG_OK)
+    def _auto_reconnect(self):
+        """Silently reconnect Drive and site on launch if credentials are saved."""
+        c = self._config
+
+        # ── Drive ─────────────────────────────────────────────────────
+        creds_path = c.get('google_credentials', '')
+        if drive_module.is_authenticated() and creds_path and os.path.isfile(creds_path):
+            self._drive_dot.configure(fg=FG_WARN)
+            self._drive_lbl.configure(text="Connecting…", fg=FG_WARN)
+            def _drive_thread():
+                try:
+                    service = drive_module.authenticate(creds_path)
+                    self._drive_service = service
+                    self.after(0, lambda: self._drive_dot.configure(fg=FG_OK))
+                    self.after(0, lambda: self._drive_lbl.configure(text="Authenticated", fg=FG_OK))
+                except Exception:
+                    self.after(0, lambda: self._drive_dot.configure(fg=FG_DIM))
+                    self.after(0, lambda: self._drive_lbl.configure(text="Not connected", fg=FG_DIM))
+            threading.Thread(target=_drive_thread, daemon=True).start()
+
+        # ── Site ──────────────────────────────────────────────────────
+        url      = c.get('url', '').strip()
+        username = c.get('username', '').strip()
+        password = c.get('password', '')
+        if url and username and password:
+            self._conn_dot.configure(fg=FG_WARN)
+            self._conn_lbl.configure(text="Connecting…", fg=FG_WARN)
+            def _site_thread():
+                try:
+                    client = SnapSmackClient(url)
+                    client.login(username, password)
+                    site_data = client.fetch_site_data()
+                    self._client    = client
+                    self._site_data = site_data
+                    cats   = sorted(site_data._cat_display.values())
+                    albums = sorted(site_data._album_display.values())
+                    def _done():
+                        self._conn_dot.configure(fg=FG_OK)
+                        self._conn_lbl.configure(
+                            text=f"Connected — {len(cats)} cats, {len(albums)} albums",
+                            fg=FG_OK,
+                        )
+                        self._entry_list.update_combos(cats, albums)
+                        self._def_cat_cb['values'] = [''] + cats
+                        self._def_alb_cb['values'] = [''] + albums
+                        self._start_session_timer()
+                        self._save_config()
+                    self.after(0, _done)
+                except Exception:
+                    self.after(0, lambda: self._conn_dot.configure(fg=FG_DIM))
+                    self.after(0, lambda: self._conn_lbl.configure(
+                        text="Auto-connect failed — connect manually", fg=FG_DIM))
+            threading.Thread(target=_site_thread, daemon=True).start()
 
     def _save_config(self):
         cfg_module.save({
