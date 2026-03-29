@@ -1,4 +1,4 @@
-BUILD_VERSION = "0.7.7a-01"   # bump this on every rebuild
+BUILD_VERSION = "0.7.7a-02"   # bump this on every rebuild
 
 """
 Fix Your Batch Up — main.py
@@ -66,13 +66,25 @@ BATCH_SIZE   = 10     # images matched per batch
 # ---------------------------------------------------------------------------
 # Config helpers
 # ---------------------------------------------------------------------------
-CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.ini')
+# When frozen as an exe, store config next to the executable.
+# When running from source, store it next to this script.
+if getattr(sys, 'frozen', False):
+    _APP_DIR = os.path.dirname(sys.executable)
+else:
+    _APP_DIR = os.path.dirname(os.path.abspath(__file__))
+
+CONFIG_FILE = os.path.join(_APP_DIR, 'config.ini')
+
+# Default SYBU dir: prefer the known SYBU install location, but fall back to
+# the exe's own directory so credentials.json and token.json dropped alongside
+# the exe are picked up automatically on first run.
+_SYBU_DEFAULT = r'C:\SmackYourBatchUp' if os.path.isdir(r'C:\SmackYourBatchUp') else _APP_DIR
 
 _CONFIG_DEFAULTS = {
     'url':                '',
     'username':           '',
     'password':           '',
-    'sybu_dir':           r'C:\SmackYourBatchUp',
+    'sybu_dir':           _SYBU_DEFAULT,
     'google_credentials': '',
     'drive_folder_id':    '',
     'server_folder':      '',
