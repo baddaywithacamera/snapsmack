@@ -1207,7 +1207,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             padding: 20px 18px;
             transition: border-color 0.15s, background 0.15s;
             background: #0d0d0d;
-            height: 100%;
+            flex: 1;
             box-sizing: border-box;
         }
         .install-mode-card input[type="radio"]:checked + .install-mode-card-inner {
