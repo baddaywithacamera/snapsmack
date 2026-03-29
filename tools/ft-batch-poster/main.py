@@ -52,7 +52,7 @@ STATUS_COLORS = {
 
 THUMB_SIZE  = (72, 72)
 ROW_HEIGHT  = 88        # px per entry row
-WIN_W, WIN_H = 1020, 780
+WIN_W, WIN_H = 1020, 920
 FONT_UI      = ("Segoe UI", 9)
 FONT_BOLD    = ("Segoe UI", 9, "bold")
 FONT_SMALL   = ("Segoe UI", 8)
@@ -244,7 +244,15 @@ class EntryList(tk.Frame):
 
         self._inner.bind("<Configure>", self._on_inner_configure)
         self._canvas.bind("<Configure>", self._on_canvas_configure)
+
+        # Bind mousewheel globally so child widgets (rows, combos, labels)
+        # don't swallow scroll events — covers mouse wheel and touchpad swipes
         self._canvas.bind("<MouseWheel>", self._on_mousewheel)
+        self._canvas.bind("<Button-4>",   self._on_mousewheel)   # Linux scroll up
+        self._canvas.bind("<Button-5>",   self._on_mousewheel)   # Linux scroll down
+        self.bind_all("<MouseWheel>",     self._on_mousewheel_global)
+        self.bind_all("<Button-4>",       self._on_mousewheel_global)
+        self.bind_all("<Button-5>",       self._on_mousewheel_global)
 
     def _on_inner_configure(self, _event):
         self._canvas.configure(scrollregion=self._canvas.bbox("all"))
@@ -253,7 +261,23 @@ class EntryList(tk.Frame):
         self._canvas.itemconfig(self._window, width=event.width)
 
     def _on_mousewheel(self, event):
-        self._canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        if event.num == 4:
+            self._canvas.yview_scroll(-3, "units")
+        elif event.num == 5:
+            self._canvas.yview_scroll(3, "units")
+        else:
+            self._canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    def _on_mousewheel_global(self, event):
+        """Route mousewheel from any child widget to the queue canvas."""
+        # Only scroll if the pointer is over the entry list area
+        try:
+            x, y = self._canvas.winfo_rootx(), self._canvas.winfo_rooty()
+            w, h = self._canvas.winfo_width(), self._canvas.winfo_height()
+            if x <= event.x_root <= x + w and y <= event.y_root <= y + h:
+                self._on_mousewheel(event)
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # Population
@@ -873,17 +897,26 @@ class App(tk.Tk):
     # ------------------------------------------------------------------
 
     def _browse_folder(self):
-        p = filedialog.askdirectory(title="Select image folder")
+        init = self._folder_var.get().strip()
+        p = filedialog.askdirectory(
+            title="Select image folder",
+            initialdir=init if init and os.path.isdir(init) else None,
+        )
         if p:
             self._folder_var.set(p)
+            self._save_config()
 
     def _browse_manifest(self):
+        init = self._manifest_var.get().strip()
+        init_dir = os.path.dirname(init) if init and os.path.isfile(init) else None
         p = filedialog.askopenfilename(
             title="Select manifest file",
+            initialdir=init_dir,
             filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
         )
         if p:
             self._manifest_var.set(p)
+            self._save_config()
 
     def _browse_creds(self):
         p = filedialog.askopenfilename(

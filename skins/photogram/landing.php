@@ -66,7 +66,7 @@ $grid_stmt = $pdo->prepare("
         GROUP BY post_id
     ) lk ON lk.post_id = i.id
     WHERE i.img_status = 'published' AND i.img_date <= ?
-    ORDER BY i.img_date DESC
+    ORDER BY i.sort_order ASC, i.img_date DESC
     LIMIT ? OFFSET ?
 ");
 $grid_stmt->execute([$now_local, $per_page, $offset]);

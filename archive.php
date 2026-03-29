@@ -129,7 +129,7 @@ try {
     }
 
     $sql .= " WHERE " . implode(" AND ", $where_clauses);
-    $sql .= " ORDER BY i.img_date DESC, i.id DESC";
+    $sql .= " ORDER BY i.sort_order ASC, i.img_date DESC, i.id DESC";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
