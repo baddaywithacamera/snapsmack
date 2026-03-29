@@ -640,7 +640,7 @@ try {
 
 define(\'SNAPSMACK_VERSION\', \'' . $installer_version_label . '\');
 define(\'SNAPSMACK_VERSION_SHORT\', \'' . $installer_version . '\');
-define(\'SNAPSMACK_VERSION_CODENAME\', "Muffet's Tuffet");
+define(\'SNAPSMACK_VERSION_CODENAME\', "Muffet\'s Tuffet");
 define(\'SNAPSMACK_TABLE_PREFIX\', \'' . $prefix . '\');
 
 // --- VERSION COMPARISON ---
@@ -965,7 +965,7 @@ try { $pdo = new PDO($dsn, $user, $pass, $options); } catch (\PDOException $e) {
                             $const_php = '<?php
 define(\'SNAPSMACK_VERSION\', \'' . $installer_version_label . '\');
 define(\'SNAPSMACK_VERSION_SHORT\', \'' . $installer_version . '\');
-define(\'SNAPSMACK_VERSION_CODENAME\', "Muffet's Tuffet");
+define(\'SNAPSMACK_VERSION_CODENAME\', "Muffet\'s Tuffet");
 define(\'SNAPSMACK_TABLE_PREFIX\', \'snap_\');
 function snap_version_compare(string $v1, string $v2, string $op = \'>\'): bool {
     $normalise = function (string $v): string {
