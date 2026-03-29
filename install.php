@@ -1192,6 +1192,8 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         .install-mode-card {
             flex: 1;
             cursor: pointer;
+            display: flex;
+            flex-direction: column;
         }
         .install-mode-card input[type="radio"] {
             position: absolute;
