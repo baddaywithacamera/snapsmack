@@ -41,7 +41,7 @@ try {
     $stmt = $pdo->prepare("SELECT id, img_title, img_file FROM snap_images
                            WHERE img_status = 'published'
                            AND img_date <= :now_local
-                           ORDER BY img_date DESC LIMIT :limit OFFSET :offset");
+                           ORDER BY sort_order ASC, img_date DESC LIMIT :limit OFFSET :offset");
 
     $stmt->bindValue(':now_local', $now_local, PDO::PARAM_STR);
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
