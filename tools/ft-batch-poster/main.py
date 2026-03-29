@@ -855,6 +855,29 @@ class App(tk.Tk):
         self._drive_folder_var.set(c.get('drive_folder_id', ''))
         self._copyright_var.set(c.get('copyright_text', ''))
 
+        # Scroll long path fields to show the end (filename) instead of
+        # the beginning which is just C:\Users\... and looks empty.
+        self.after(50, self._scroll_path_fields_to_end)
+
+    def _scroll_path_fields_to_end(self):
+        """Scroll all path entry fields to show the rightmost text."""
+        for var in (self._folder_var, self._manifest_var,
+                    self._goog_creds_var, self._drive_folder_var,
+                    self._url_var, self._copyright_var):
+            for widget in self.winfo_children():
+                self._scroll_entries_for_var(widget, var)
+
+    def _scroll_entries_for_var(self, widget, var):
+        """Recursively find Entry widgets bound to var and scroll to end."""
+        if isinstance(widget, tk.Entry):
+            try:
+                if widget.cget('textvariable') and str(widget['textvariable']) == str(var):
+                    widget.xview_moveto(1.0)
+            except Exception:
+                pass
+        for child in widget.winfo_children():
+            self._scroll_entries_for_var(child, var)
+
         # If we already have a token, silently reconnect Drive in the background
         if drive_module.is_authenticated():
             creds_path = c.get('google_credentials', '')
@@ -953,6 +976,7 @@ class App(tk.Tk):
                 self.after(0, lambda: self._drive_dot.configure(fg=FG_OK))
                 self.after(0, lambda: self._drive_lbl.configure(text="Authenticated", fg=FG_OK))
                 self.after(0, lambda: self._set_status("Google Drive connected.", FG_OK))
+                self.after(0, self._save_config)
             except Exception as e:
                 self.after(0, lambda: self._drive_dot.configure(fg=FG_ERR))
                 self.after(0, lambda: self._drive_lbl.configure(text="Auth failed", fg=FG_ERR))
@@ -1112,6 +1136,19 @@ class App(tk.Tk):
         if not entries:
             messagebox.showerror("Nothing loaded", "Load a manifest first.")
             return
+
+        # ── Warn if Drive is not connected ────────────────────────────
+        if self._drive_service is None:
+            proceed = messagebox.askyesno(
+                "Google Drive not connected",
+                "⚠  Google Drive is NOT connected.\n\n"
+                "Images will be posted WITHOUT download links.\n"
+                "You will need to upload them to Drive manually later.\n\n"
+                "Are you sure you want to continue without Drive?",
+                icon="warning",
+            )
+            if not proceed:
+                return
 
         count = len(entries)
         if not messagebox.askyesno(
