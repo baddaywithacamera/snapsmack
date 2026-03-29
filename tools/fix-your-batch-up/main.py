@@ -1,3 +1,5 @@
+BUILD_VERSION = "0.7.6a-01"   # bump this on every rebuild
+
 """
 Fix Your Batch Up — main.py
 SnapSmack Drive link recovery tool.

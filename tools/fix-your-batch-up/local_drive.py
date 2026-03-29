@@ -13,11 +13,16 @@ Usage:
 import os
 import sys
 
-_FT_DIR = os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'ft-batch-poster')
-)
-if _FT_DIR not in sys.path:
-    sys.path.insert(0, _FT_DIR)
+# When running as a PyInstaller frozen exe, drive.py is bundled alongside
+# local_drive.py and is already importable — no path manipulation needed.
+# When running from source, add ft-batch-poster to sys.path so Python
+# can find drive.py.
+if not getattr(sys, 'frozen', False):
+    _FT_DIR = os.path.normpath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'ft-batch-poster')
+    )
+    if _FT_DIR not in sys.path:
+        sys.path.insert(0, _FT_DIR)
 
 import drive as _drive   # noqa: E402 — intentional late import
 
