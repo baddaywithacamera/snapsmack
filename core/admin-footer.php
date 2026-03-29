@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Admin Dashboard Footer
- * Alpha v0.7.6
+ * Alpha v0.7.7
  *
  * Closes the admin HTML structure with credits line. Photoblog mode
  * acknowledges PixelPost, GreyMatter, and Noah Grey; Carousel mode

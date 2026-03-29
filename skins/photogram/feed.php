@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Photogram Feed View
- * Alpha v0.7.6
+ * Alpha v0.7.7
  *
  * Vertical scroll feed of full-width posts. Sits between the landing grid
  * and the solo post page — the missing IG/Pixelfed middle layer.

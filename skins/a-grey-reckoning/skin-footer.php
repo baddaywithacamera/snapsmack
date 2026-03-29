@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Footer for the grey-expectations skin
- * Alpha v0.7.6
+ * Alpha v0.7.7
  *
  * Loads required JavaScript engines from the manifest and closes the document.
  */

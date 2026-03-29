@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - Lazy Loading Engine
- * Alpha v0.7.6
+ * Alpha v0.7.7
  *
  * Progressive image loading via IntersectionObserver. Images start as
  * lightweight placeholders and fade in when they enter (or approach)

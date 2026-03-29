@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin Administration & Gallery
- * Alpha v0.7.6
+ * Alpha v0.7.7
  *
  * Two-tab interface for managing skins:
  *
