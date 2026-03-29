@@ -905,6 +905,9 @@ class App(tk.Tk):
         self.after(0, lambda n=len(orig_paths): self._status_lbl.configure(
             text=f"Hashing {n} originals…", fg=FG_WARN))
 
+        # TODO: add per-image progress bar updates during pHash indexing
+        # (one update per file as phash_file() completes, so the bar fills
+        # across the hashing phase before matching begins)
         orig_pairs = [(p, phash_file(p)) for p in orig_paths]
 
         # ── Build server image path list (matched to records) ─────────────
