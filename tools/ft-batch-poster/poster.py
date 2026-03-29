@@ -232,6 +232,7 @@ class SnapSmackClient:
                 'allow_download':       '1' if drive_url else '0',
                 'download_url':         drive_url,
                 'orientation_override': orient,
+                'source_file':          entry.file,   # original filename — stored in img_source_file
             }
             if cat_id is not None:
                 form_data['cat_ids[]'] = str(cat_id)
