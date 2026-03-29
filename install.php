@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - First-Run Installer
- * Alpha v0.7.6
+ * Alpha v0.7.7
  *
  * Single-file setup wizard for fresh SnapSmack deployments. Checks the server
  * environment, creates the database schema, sets up the first admin user, and
@@ -12,8 +12,8 @@
 
 // --- CONFIGURATION ---
 // The version this installer deploys.
-$installer_version       = '0.7.6';
-$installer_version_label = 'Alpha 0.7.6';
+$installer_version       = '0.7.7';
+$installer_version_label = 'Alpha 0.7.7';
 
 // --- SESSION INIT ---
 session_start();
@@ -198,6 +198,7 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
                 `img_display_options` text DEFAULT NULL COMMENT 'JSON: per-image frame/mat/bevel overrides and extracted colour palette',
                 `post_id` int DEFAULT NULL COMMENT 'FK to snap_posts — populated when image is wrapped in a post',
                 `sort_order` int NOT NULL DEFAULT '0' COMMENT 'Manual display order. Lower = earlier in feed. 0 = unset (falls back to img_date DESC).',
+                `img_source_file` varchar(255) DEFAULT NULL COMMENT 'Original filename from batch upload source, used by Fix Your Batch Up for recovery matching.',
                 PRIMARY KEY (`id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
@@ -639,7 +640,7 @@ try {
 
 define(\'SNAPSMACK_VERSION\', \'' . $installer_version_label . '\');
 define(\'SNAPSMACK_VERSION_SHORT\', \'' . $installer_version . '\');
-define(\'SNAPSMACK_VERSION_CODENAME\', \'Poäng Thang\');
+define(\'SNAPSMACK_VERSION_CODENAME\', "Muffet's Tuffet");
 define(\'SNAPSMACK_TABLE_PREFIX\', \'' . $prefix . '\');
 
 // --- VERSION COMPARISON ---
@@ -964,7 +965,7 @@ try { $pdo = new PDO($dsn, $user, $pass, $options); } catch (\PDOException $e) {
                             $const_php = '<?php
 define(\'SNAPSMACK_VERSION\', \'' . $installer_version_label . '\');
 define(\'SNAPSMACK_VERSION_SHORT\', \'' . $installer_version . '\');
-define(\'SNAPSMACK_VERSION_CODENAME\', \'Poäng Thang\');
+define(\'SNAPSMACK_VERSION_CODENAME\', "Muffet's Tuffet");
 define(\'SNAPSMACK_TABLE_PREFIX\', \'snap_\');
 function snap_version_compare(string $v1, string $v2, string $op = \'>\'): bool {
     $normalise = function (string $v): string {

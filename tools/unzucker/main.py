@@ -8,7 +8,7 @@ shared caption). Transfer & Post pushes everything via FTP then
 creates posts through the SnapSmack admin API.
 """
 
-BUILD_VERSION = "0.7.6a-01"
+BUILD_VERSION = "0.7.7a-01"
 
 import os
 import queue

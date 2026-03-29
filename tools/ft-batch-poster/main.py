@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.6a-01"   # bump this on every rebuild
+BUILD_VERSION = "0.7.7a-01"   # bump this on every rebuild
 
 import os
 import queue
