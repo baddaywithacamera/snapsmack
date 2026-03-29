@@ -1,5 +1,5 @@
 -- ============================================================
--- SnapSmack Migration: 0.7.7 — Traffic Stats ("Blabbermouth")
+-- SnapSmack Migration: 0.7.7
 -- ============================================================
 -- Compatible with MySQL 5.7+ and MariaDB 10.3+.
 -- All statements are idempotent — safe to re-run.
@@ -7,70 +7,37 @@
 
 
 -- ------------------------------------------------------------
--- 1. snap_stats — Raw page-view log
--- One row per hit. Stores hashed IP for unique-visitor counting
--- without retaining PII. Country resolved via lightweight
--- GeoIP at log time.
+-- 1. img_source_file COLUMN on snap_images
+-- Stores the original filename from the local machine at post
+-- time (e.g. 20260318_153727.jpg). Allows matching server
+-- records back to source files for Drive backfill etc.
 -- ------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS `snap_stats` (
-  `id`            bigint UNSIGNED NOT NULL AUTO_INCREMENT,
-  `hit_at`        datetime        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `page_type`     varchar(30)     COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'unknown',
-  `page_slug`     varchar(600)    COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `image_id`      int UNSIGNED    DEFAULT NULL,
-  `referrer`      varchar(1000)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `referrer_host` varchar(255)    COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `user_agent`    varchar(500)    COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `browser`       varchar(60)     COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `os`            varchar(60)     COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `country`       char(2)         COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `ip_hash`       char(64)        COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `is_bot`        tinyint(1)      NOT NULL DEFAULT '0',
-  `search_term`   varchar(255)    COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_stats_hit_at`        (`hit_at`),
-  KEY `idx_stats_page_type`     (`page_type`),
-  KEY `idx_stats_image_id`      (`image_id`),
-  KEY `idx_stats_referrer_host` (`referrer_host`),
-  KEY `idx_stats_country`       (`country`),
-  KEY `idx_stats_ip_hash_day`   (`ip_hash`, `hit_at`),
-  KEY `idx_stats_is_bot`        (`is_bot`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SET @col_exists = (
+  SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME   = 'snap_images'
+    AND COLUMN_NAME  = 'img_source_file'
+);
+SET @q = IF(
+  @col_exists = 0,
+  'ALTER TABLE `snap_images` ADD COLUMN `img_source_file` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT \'Original filename on the posting machine at upload time\' AFTER `img_file`',
+  'SELECT 1'
+);
+PREPARE _stmt FROM @q; EXECUTE _stmt; DEALLOCATE PREPARE _stmt;
 
 
 -- ------------------------------------------------------------
--- 2. snap_stats_daily — Rolled-up daily aggregates
--- Populated by the stats logger once per day for fast dashboard
--- queries. Keeps the raw table from being hammered by reports.
+-- 2. UPDATE INSTALLED VERSION
 -- ------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS `snap_stats_daily` (
-  `id`              int UNSIGNED NOT NULL AUTO_INCREMENT,
-  `stat_date`       date         NOT NULL,
-  `total_views`     int UNSIGNED NOT NULL DEFAULT '0',
-  `unique_visitors` int UNSIGNED NOT NULL DEFAULT '0',
-  `bot_views`       int UNSIGNED NOT NULL DEFAULT '0',
-  `top_image_id`    int UNSIGNED DEFAULT NULL,
-  `top_referrer`    varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_stats_daily_date` (`stat_date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO `snap_settings` (`setting_key`, `setting_val`)
+VALUES ('installed_version', '0.7.7')
+ON DUPLICATE KEY UPDATE `setting_val` = '0.7.7';
 
 
 -- ------------------------------------------------------------
--- 3. SEED STATS SETTINGS
--- ------------------------------------------------------------
-
-INSERT IGNORE INTO `snap_settings` (`setting_key`, `setting_val`)
-VALUES
-  ('stats_enabled',        '1'),
-  ('stats_retention_days', '365'),
-  ('stats_exclude_admin',  '1');
-
-
--- ------------------------------------------------------------
--- 4. RECORD MIGRATION
+-- 3. RECORD MIGRATION
 -- ------------------------------------------------------------
 
 INSERT IGNORE INTO `snap_migrations` (`migration`, `applied_at`)

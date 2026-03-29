@@ -101,7 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
 
     $allow_comments = (int)($_POST['allow_comments'] ?? 1);
     $allow_download = (int)($_POST['allow_download'] ?? 0);
-    $download_url = trim($_POST['download_url'] ?? '');
+    $download_url   = trim($_POST['download_url'] ?? '');
+    $source_file    = trim($_POST['source_file'] ?? '');
 
     // Validate: if downloads are enabled and download link is required, block save
     if ($allow_download && ($settings['download_link_required'] ?? '0') === '1' && empty($download_url)) {
@@ -374,6 +375,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 img_title,
                 img_slug,
                 img_file,
+                img_source_file,
                 img_description,
                 img_film,
                 img_exif,
@@ -389,13 +391,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 img_thumb_aspect,
                 img_checksum,
                 img_display_options
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
             $title,
             $slug,
             $db_path,
+            $source_file ?: null,
             $desc,
             $film_val,
             $exif_json,
