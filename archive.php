@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Archive page with multiple layout modes
- * Alpha v0.7.6
+ * Alpha v0.7.7
  *
  * Displays all published images with support for square, cropped, and
  * masonry layouts. Handles category and album filtering via query parameters.
@@ -307,7 +307,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                 }
                 if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
             ?>
-            <div id="justified-grid" style="--justified-gap: <?php echo $gap; ?>px; --justified-row-height: <?php echo $target_row_h; ?>px; --last-row-ar-sum: <?php echo round($last_full_ar_sum, 4); ?>;">
+            <div id="justified-grid" class="justified-grid" style="--justified-gap: <?php echo $gap; ?>px; --justified-row-height: <?php echo $target_row_h; ?>px; --last-row-ar-sum: <?php echo round($last_full_ar_sum, 4); ?>;">
                 <?php if ($rows): ?>
                     <?php foreach ($rows as $row_data):
                         $row = $row_data['images'];

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK — Social Profile Dock
- * Alpha v0.7.6
+ * Alpha v0.7.7
  *
  * Renders a floating dock of social profile links on public pages.
  * Each icon is styled as an independent circle matching the download
