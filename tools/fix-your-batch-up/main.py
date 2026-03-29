@@ -1,4 +1,4 @@
-BUILD_VERSION = "0.7.7a-03"   # bump this on every rebuild
+BUILD_VERSION = "0.7.7a-04"   # bump this on every rebuild
 
 """
 Fix Your Batch Up — main.py
@@ -92,11 +92,43 @@ _CONFIG_DEFAULTS = {
 }
 
 
+def _load_sybu_config(sybu_dir: str) -> dict:
+    """Read ft-batch-poster's config.ini from sybu_dir and return relevant fields."""
+    import base64
+    sybu_ini = os.path.join(sybu_dir, 'config.ini')
+    if not os.path.isfile(sybu_ini):
+        return {}
+    cp = configparser.ConfigParser()
+    cp.read(sybu_ini)
+    password_raw = cp.get('auth', 'password', fallback='')
+    try:
+        password = base64.b64decode(password_raw.encode()).decode() if password_raw else ''
+    except Exception:
+        password = ''
+    return {
+        'url':                cp.get('site', 'url', fallback=''),
+        'username':           cp.get('auth', 'username', fallback=''),
+        'password':           password,
+        'google_credentials': cp.get('google', 'credentials_path', fallback=''),
+        'drive_folder_id':    cp.get('google', 'drive_folder_id', fallback=''),
+    }
+
+
 def _load_config() -> dict:
     cp = configparser.ConfigParser()
     cp.read(CONFIG_FILE)
     s = cp['fybu'] if 'fybu' in cp else {}
-    return {k: s.get(k, v) for k, v in _CONFIG_DEFAULTS.items()}
+    cfg = {k: s.get(k, v) for k, v in _CONFIG_DEFAULTS.items()}
+
+    # Bootstrap from SYBU config.ini for fields not yet set in our own config.
+    sybu_dir = cfg.get('sybu_dir', '').strip()
+    if sybu_dir:
+        sybu = _load_sybu_config(sybu_dir)
+        for key in ('url', 'username', 'password', 'google_credentials', 'drive_folder_id'):
+            if not cfg.get(key) and sybu.get(key):
+                cfg[key] = sybu[key]
+
+    return cfg
 
 
 def _save_config(data: dict) -> None:
@@ -115,7 +147,7 @@ class BackfillClient:
     def __init__(self, base_url: str):
         self.base_url = base_url.rstrip('/')
         self.session  = requests.Session()
-        self.session.headers['User-Agent'] = 'FixYourBatchUp/0.7.6'
+        self.session.headers['User-Agent'] = 'FixYourBatchUp/0.7.7'
 
     def login(self, username: str, password: str) -> None:
         r = self.session.post(
