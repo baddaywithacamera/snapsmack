@@ -1,4 +1,4 @@
-BUILD_VERSION = "0.7.7a-02"   # bump this on every rebuild
+BUILD_VERSION = "0.7.7a-03"   # bump this on every rebuild
 
 """
 Fix Your Batch Up — main.py
@@ -693,6 +693,15 @@ class App(tk.Tk):
         creds = c.get('google_credentials', '').strip()
         if sybu:
             local_drive.set_token_base(sybu)
+        # If credentials path not saved yet, look for credentials.json in the
+        # sybu dir and the exe dir automatically.
+        if not creds or not os.path.isfile(creds):
+            for _candidate in [sybu, _APP_DIR]:
+                _p = os.path.join(_candidate, 'credentials.json')
+                if os.path.isfile(_p):
+                    creds = _p
+                    self._creds_var.set(creds)
+                    break
         if local_drive.is_authenticated() and creds and os.path.isfile(creds):
             self._drive_dot.configure(fg=FG_WARN)
             self._drive_lbl.configure(text="Drive: Connecting…", fg=FG_WARN)
@@ -736,6 +745,14 @@ class App(tk.Tk):
     def _on_auth_drive(self):
         creds = self._creds_var.get().strip()
         sybu  = self._sybu_var.get().strip()
+        # Auto-locate credentials.json if field left blank
+        if not creds or not os.path.isfile(creds):
+            for _candidate in [sybu, _APP_DIR]:
+                _p = os.path.join(_candidate, 'credentials.json')
+                if os.path.isfile(_p):
+                    creds = _p
+                    self._creds_var.set(creds)
+                    break
         if not creds or not os.path.isfile(creds):
             messagebox.showerror("Credentials missing",
                                  "Select your credentials.json file first.")
