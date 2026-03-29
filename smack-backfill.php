@@ -24,7 +24,7 @@ switch ($action) {
     // ── List ─────────────────────────────────────────────────────────────────
     case 'list':
         $stmt = $pdo->query("
-            SELECT snap_id,
+            SELECT id AS snap_id,
                    img_title,
                    img_file,
                    img_date,
@@ -55,7 +55,7 @@ switch ($action) {
             UPDATE snap_images
             SET    allow_download = 1,
                    download_url   = ?
-            WHERE  snap_id        = ?
+            WHERE  id             = ?
         ");
         $stmt->execute([$download_url, $snap_id]);
         echo json_encode(['ok' => true]);
