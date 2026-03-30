@@ -102,6 +102,7 @@ include __DIR__ . '/skin-meta.php';
                                 <div class="frame-bevel">
                                     <div class="frame-image">
                                         <img src="<?php echo BASE_URL . ltrim($page_data['image_asset'], '/'); ?>"
+                                             class="post-image"
                                              alt="<?php echo $page_title; ?>">
                                     </div>
                                 </div>
