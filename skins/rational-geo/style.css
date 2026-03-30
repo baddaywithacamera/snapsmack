@@ -889,11 +889,13 @@ body.archive-page #scroll-stage {
    are set globally for the snapping engine; static pages need to scroll freely.
    "body.static-transmission html" is an invalid selector (CSS only cascades
    downward, not upward), so html must be unlocked via :has() instead. */
-html:has(body.static-transmission) {
+html:has(body.static-transmission),
+html:has(body.archive-page) {
   overflow: auto !important;
   height: auto !important;
 }
-body.static-transmission {
+body.static-transmission,
+body.archive-page {
   overflow: auto !important;
   height: auto !important;
 }
