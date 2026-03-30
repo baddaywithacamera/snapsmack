@@ -13,7 +13,9 @@
 :root {
   /* Layout Grid */
   --grid-cols: 4;
+  --thumb-width: 210px;
   --justified-row-height: 260px;
+  --infobox-height: 50px;
 
   /* Border Sizing */
   --rg-hero-border: 20px;
@@ -322,7 +324,7 @@ small,
 }
 
 .rg-single #rg-info-drawer {
-  bottom: 50px; /* sit flush above infobox */
+  bottom: var(--infobox-height, 50px); /* sit flush above infobox */
 }
 
 #rg-photobox {
@@ -341,8 +343,8 @@ small,
   flex-shrink: 1;
   min-height: 0;
   /* Explicit height gives max-height:100% on .rg-image a value to resolve against.
-     Formula: 100vh minus fixed header (70px) minus infobox (50px). */
-  height: calc(100vh - 120px);
+     Formula: 100vh minus fixed header (70px) minus infobox (var). */
+  height: calc(100vh - 70px - var(--infobox-height, 50px));
   padding: 0 !important; /* override compiled blob until admin re-saves */
 }
 
@@ -400,7 +402,7 @@ small,
 
 /* Single view: infobox in-flow (not fixed), snaps to bottom via flex layout */
 .rg-single #infobox {
-  height: 50px;
+  height: var(--infobox-height, 50px);
   flex-shrink: 0;
   background-color: var(--rg-bg-chrome);
   border-top: 1px solid var(--rg-border-light);
@@ -416,7 +418,7 @@ small,
 /* Archive/static pages: infobox is inline, not fixed */
 #infobox {
   z-index: var(--z-content);
-  height: 50px;
+  height: var(--infobox-height, 50px);
   background-color: var(--rg-bg-chrome);
   border-top: 1px solid var(--rg-border-light);
   display: flex;
@@ -884,9 +886,14 @@ body.archive-page #scroll-stage {
 
 /* Static pages need scrollable layout — undo the viewport lock applied to
    single-image view. html/body overflow:hidden and #page-wrapper height:100vh
-   are set globally for the snapping engine; static pages need to scroll freely. */
-body.static-transmission,
-body.static-transmission html {
+   are set globally for the snapping engine; static pages need to scroll freely.
+   "body.static-transmission html" is an invalid selector (CSS only cascades
+   downward, not upward), so html must be unlocked via :has() instead. */
+html:has(body.static-transmission) {
+  overflow: auto !important;
+  height: auto !important;
+}
+body.static-transmission {
   overflow: auto !important;
   height: auto !important;
 }
@@ -994,8 +1001,8 @@ body.static-transmission #scroll-stage {
   min-height: auto !important;
   max-width: var(--static-content-width, 720px) !important;
   width: 100% !important;
-  margin: 0 auto 40px auto !important;
-  padding: 0 40px !important;
+  margin: 40px auto 60px auto !important;  /* top: breathing room below header */
+  padding: 30px 40px !important;           /* inner padding so outline has space */
   box-sizing: border-box !important;
   float: none !important;
   background: transparent !important;
@@ -1007,6 +1014,19 @@ body.static-transmission #scroll-stage {
   padding: 0 !important;
   width: 100% !important;
   text-align: center !important;
+  line-height: 0;  /* collapse space below inline image */
+}
+
+/* Apply the RG hero frame to the static page image.
+   The core page.php template uses class="post-image" (not "rg-image post-image"),
+   so .rg-image.post-image never fires. Target it directly here. */
+.static-transmission #photobox.page-hero img.post-image {
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+  border: var(--rg-hero-inner) solid #ffffff;
+  outline: var(--rg-hero-border) solid var(--rg-accent);
+  box-shadow: var(--rg-shadow);
 }
 
 .static-transmission .description .align-left {

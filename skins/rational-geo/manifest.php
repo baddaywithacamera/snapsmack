@@ -102,6 +102,16 @@ return [
             'property' => 'height',
         ],
 
+        'infobox_height' => [
+            'section'  => 'LAYOUT',
+            'type'     => 'range',
+            'label'    => 'Infobox Height (px)',
+            'default'  => '50',
+            'min'      => '30',
+            'max'      => '100',
+            'css_var'  => '--infobox-height',
+        ],
+
         /* ============================================================
            SECTION 2: IMAGE PRESENTATION
            ============================================================ */

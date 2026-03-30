@@ -97,15 +97,27 @@ def upload(service, file_path: str, filename: str,
         body=file_metadata,
         media_body=media,
         fields='id',
-    ).execute()
+    ).execute(num_retries=0)
 
     file_id = file.get('id')
+    if not file_id:
+        raise RuntimeError('Drive did not return a file ID after upload.')
 
-    # Make the file publicly readable (anyone with the link)
-    service.permissions().create(
-        fileId=file_id,
-        body={'type': 'anyone', 'role': 'reader'},
-    ).execute()
+    # Make the file publicly readable (anyone with the link).
+    # num_retries=0 prevents the Google client's exponential-backoff loop
+    # from hanging for minutes on a transient API hiccup.
+    try:
+        service.permissions().create(
+            fileId=file_id,
+            body={'type': 'anyone', 'role': 'reader'},
+        ).execute(num_retries=0)
+    except Exception as perm_exc:
+        raise RuntimeError(
+            f'File uploaded to Drive (ID: {file_id}) but setting public '
+            f'permissions failed: {perm_exc}\n\n'
+            f'Grant "Anyone with the link – Viewer" access manually in Drive, '
+            f'then retry the upload or paste the link directly.'
+        ) from perm_exc
 
     return f"https://drive.google.com/uc?export=download&id={file_id}"
 
