@@ -67,6 +67,10 @@ document.addEventListener('keydown', function(e) {
     // spacebar should control the slider, not navigate between posts.
     var sliderActive = !!document.querySelector('.ss-slider');
 
+    // Spacebar must never scroll the page — preventDefault fires regardless
+    // of whether SNAP_DATA is populated or a slider is active.
+    if (e.key === ' ') e.preventDefault();
+
     // Gallery navigation with arrow keys (single post view only)
     if (window.SNAP_DATA && !sliderActive) {
         if (e.key === 'ArrowLeft' && window.SNAP_DATA.prevUrl) {
@@ -78,12 +82,8 @@ document.addEventListener('keydown', function(e) {
         }
 
         // Spacebar navigates backward through archive (newest to oldest)
-        if (e.key === ' ') {
-            e.preventDefault();
-
-            if (window.SNAP_DATA.prevUrl) {
-                window.location.href = window.SNAP_DATA.prevUrl;
-            }
+        if (e.key === ' ' && window.SNAP_DATA.prevUrl) {
+            window.location.href = window.SNAP_DATA.prevUrl;
         }
     }
 

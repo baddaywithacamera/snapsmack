@@ -42,12 +42,19 @@ class FormattingToolbar {
 
     insertLink() {
         // Snapshot selection BEFORE prompt() — the dialog steals focus and
-        // resets selectionStart/selectionEnd to 0 in most browsers.
-        const sel  = this._getSelection();
-        const url  = prompt('Enter URL:');
+        // collapses selectionStart/selectionEnd to the same point in most browsers.
+        // Use sel.start/sel.end directly; never re-read ta.selectionStart/End after
+        // the prompt returns or the original text won't be replaced (just duplicated).
+        const sel         = this._getSelection();
+        const url         = prompt('Enter URL:');
         if (!url) return;
-        const text = sel.text || 'link text';
-        this._replaceSelection('<a href="' + url + '">' + text + '</a>');
+        const text        = sel.text || 'link text';
+        const replacement = '<a href="' + url + '">' + text + '</a>';
+        const ta          = this.textarea;
+        const val         = ta.value;
+        ta.value          = val.substring(0, sel.start) + replacement + val.substring(sel.end);
+        ta.focus();
+        ta.selectionStart = ta.selectionEnd = sel.start + replacement.length;
     }
 
     insertColumns(count) {
