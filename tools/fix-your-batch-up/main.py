@@ -1,4 +1,4 @@
-BUILD_VERSION = "0.7.7a-12"   # bump this on every rebuild
+BUILD_VERSION = "0.7.7a-13"   # bump this on every rebuild
 
 """
 Fix Your Batch Up — main.py
@@ -383,15 +383,16 @@ class MatchRow(tk.Frame):
         )
         self._upload_btn.pack(side='left', padx=(0, 6))
 
+        # Cancel button stays in layout permanently — invisible until upload starts.
+        # Using pack_forget/pack cycles loses insertion position in tkinter and
+        # causes the button to squish to a thin line at the far right edge.
         self._cancel_btn = tk.Button(
-            btn_row, text="Cancel",
-            bg=BG_MID, fg=FG_DIM, font=FONT_UI,
-            relief='flat', cursor='hand2', width=8,
+            btn_row, text="",
+            bg=BG_CARD, fg=BG_CARD, font=FONT_UI,
+            relief='flat', width=8, state='disabled',
             command=self._on_cancel,
         )
-        # Hidden until an upload is in-flight
         self._cancel_btn.pack(side='left', padx=(0, 6))
-        self._cancel_btn.pack_forget()
 
         tk.Button(
             btn_row, text="Pick Different",
@@ -459,7 +460,8 @@ class MatchRow(tk.Frame):
         self._cancel_evt.clear()
         self._upload_btn.configure(text="Uploading…", state='disabled',
                                    bg=FG_WARN, fg="#000000")
-        self._cancel_btn.pack(side='left', padx=(0, 6))
+        self._cancel_btn.configure(text="Cancel", bg=BG_MID, fg=FG_DIM,
+                                   state='normal', cursor='hand2')
         self.update_idletasks()
 
         snap_id     = int(self.record['snap_id'])
@@ -500,7 +502,7 @@ class MatchRow(tk.Frame):
 
     def _mark_done(self, drive_url: str):
         self.result['_uploaded'] = True
-        self._cancel_btn.pack_forget()
+        self._cancel_btn.configure(text="", bg=BG_CARD, fg=BG_CARD, state='disabled')
         self._restore_done_state()
         self.app._on_row_done()
         self.app._save_recovery()
@@ -513,7 +515,7 @@ class MatchRow(tk.Frame):
 
     def _mark_cancelled(self):
         """Upload completed on Drive side but user cancelled — reset for retry."""
-        self._cancel_btn.pack_forget()
+        self._cancel_btn.configure(text="", bg=BG_CARD, fg=BG_CARD, state='disabled')
         self._upload_btn.configure(text="Upload", bg=ACCENT, fg="#000000",
                                    state='normal')
         self.configure(highlightbackground=BORDER)
@@ -523,7 +525,7 @@ class MatchRow(tk.Frame):
         self._cancel_btn.configure(text="Cancelling…", state='disabled')
 
     def _mark_error(self, msg: str):
-        self._cancel_btn.pack_forget()
+        self._cancel_btn.configure(text="", bg=BG_CARD, fg=BG_CARD, state='disabled')
         self._upload_btn.configure(text="Error — retry", bg=FG_ERR,
                                    fg="#000000", state='normal')
         messagebox.showerror("Upload failed", msg, parent=self)
@@ -1213,33 +1215,4 @@ class App(tk.Tk):
             self.after(0, lambda r=remaining, d=done: self._restore_batch(r, d, total, saved_at))
         else:
             self._status_lbl.configure(
-                text=f"Session restored — {total} images ready to review. "
-                     f"(Delete fybu-recovery.json and click Start Matching for a fresh scan.)",
-                fg=FG_OK)
-            self._start_btn.configure(state='normal', bg=ACCENT)
-
-    # ── Scroll handling ───────────────────────────────────────────────────
-
-    def _on_inner_configure(self, _event):
-        self._canvas.configure(scrollregion=self._canvas.bbox('all'))
-
-    def _on_canvas_configure(self, event):
-        self._canvas.itemconfigure(self._canvas_win, width=event.width)
-
-    def _on_scroll(self, event):
-        if event.num == 4 or event.delta > 0:
-            self._canvas.yview_scroll(-1, 'units')
-        else:
-            self._canvas.yview_scroll(1, 'units')
-
-
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
-if __name__ == '__main__':
-    # Required on Windows for ProcessPoolExecutor with 'spawn' start method
-    import multiprocessing
-    multiprocessing.freeze_support()
-
-    app = App()
-    app.mainloop()
+                text=f"Session res
