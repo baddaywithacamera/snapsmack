@@ -1096,6 +1096,7 @@ button:active,
 
 .multi-cat-item input {
     cursor: pointer;
+    flex-shrink: 0;
 }
 
 /* --- MEDIA LIBRARY --- */
