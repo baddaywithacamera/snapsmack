@@ -58,6 +58,12 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  overflow: hidden; /* Prevent body scroll — spacebar navigates images, not pages */
+  height: 100%;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -289,8 +295,7 @@ small,
   flex-direction: column;
   min-height: 0;
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   scroll-behavior: smooth;
   align-items: stretch;
   position: relative;
@@ -302,9 +307,22 @@ small,
   display: none;
 }
 
-/* Drawers: flex-shrink: 0 so they never collapse */
+/* Drawers: absolute overlays — float over the photobox without compressing it.
+   Comments slide down from below the header; info slides up from above the infobox.
+   z-index sits below the fixed header (z-header: 100) but above photobox content. */
 .rg-single .rg-drawer {
-  flex-shrink: 0;
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: calc(var(--z-header) - 1);
+}
+
+.rg-single #rg-comments-drawer {
+  top: 70px; /* clear fixed header */
+}
+
+.rg-single #rg-info-drawer {
+  bottom: 50px; /* sit flush above infobox */
 }
 
 #rg-photobox {
@@ -315,11 +333,16 @@ small,
   background-color: transparent;
   margin-top: 70px; /* Clear fixed header */
   position: relative;
-  overflow: visible; /* outline lives outside the box — don't clip it */
+  /* overflow: hidden clips image to photobox bounds; outline stays visible
+     because photo-wrap padding (4vh) comfortably exceeds max outline width (20px) */
+  overflow: hidden;
   box-sizing: border-box;
   flex-grow: 1;
-  flex-shrink: 0 !important;
+  flex-shrink: 1;
   min-height: 0;
+  /* Explicit height gives max-height:100% on .rg-image a value to resolve against.
+     Formula: 100vh minus fixed header (70px) minus infobox (50px). */
+  height: calc(100vh - 120px);
   padding: 0 !important; /* override compiled blob until admin re-saves */
 }
 
@@ -859,15 +882,29 @@ body.archive-page #scroll-stage {
    Adapted from Galleria's editorial blogroll with RG colour palette.
    ========================================================================== */
 
+/* Static pages need scrollable layout — undo the viewport lock applied to
+   single-image view. html/body overflow:hidden and #page-wrapper height:100vh
+   are set globally for the snapping engine; static pages need to scroll freely. */
+body.static-transmission,
+body.static-transmission html {
+  overflow: auto !important;
+  height: auto !important;
+}
+
 body.static-transmission {
   padding-top: 70px;
   background-color: var(--rg-bg-page);
 }
 
-body.static-transmission #scroll-stage {
+body.static-transmission #page-wrapper {
+  height: auto !important;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+}
+
+body.static-transmission #scroll-stage {
+  display: block !important; /* kill flex layout — photobox must not fill viewport */
+  min-height: 100vh;
+  overflow: visible !important;
   position: relative;
 }
 
@@ -878,7 +915,6 @@ body.static-transmission #scroll-stage {
   padding: 0 40px;
   box-sizing: border-box;
   text-align: left;
-  flex: 1;
 }
 
 .static-content::after {
@@ -949,14 +985,28 @@ body.static-transmission #scroll-stage {
   border-bottom-color: var(--rg-accent);
 }
 
-/* Hero image on static pages */
+/* Hero image on static pages — the static template uses #photobox.page-hero
+   and .main-photo/.post-image (core generic structure, not #rg-photobox).
+   Mirrors Galleria: centered block, constrained width, image fills it naturally. */
 .static-transmission #photobox.page-hero {
-  display: block;
-  min-height: auto;
-  padding: 0;
-  width: auto;
-  background: transparent;
-  margin: 0;
+  display: block !important;
+  height: auto !important;
+  min-height: auto !important;
+  max-width: var(--static-content-width, 720px) !important;
+  width: 100% !important;
+  margin: 0 auto 40px auto !important;
+  padding: 0 40px !important;
+  box-sizing: border-box !important;
+  float: none !important;
+  background: transparent !important;
+  overflow: visible !important;
+}
+
+.static-transmission .main-photo {
+  height: auto !important;
+  padding: 0 !important;
+  width: 100% !important;
+  text-align: center !important;
 }
 
 .static-transmission .description .align-left {
@@ -1091,6 +1141,12 @@ body.static-transmission #system-footer {
   display: block;
   position: relative;
   z-index: 100;
+}
+
+/* Drawers have no role on static pages — hide them */
+body.static-transmission #rg-info-drawer,
+body.static-transmission #rg-comments-drawer {
+  display: none !important;
 }
 
 #system-footer .inside {
@@ -1278,7 +1334,11 @@ input[type="reset"]:active {
 
   #rg-photobox {
     margin-top: 60px; /* match smaller header */
+    height: calc(100vh - 110px); /* 60px header + 50px infobox */
   }
+
+  .rg-single #rg-comments-drawer { top: 60px; }
+  .rg-single #rg-info-drawer     { bottom: 50px; }
 
   .rg-photo-wrap {
     padding: 2.5vh 2.5vw;
@@ -1344,7 +1404,11 @@ input[type="reset"]:active {
 
   #rg-photobox {
     margin-top: 50px;
+    height: calc(100vh - 95px); /* 50px header + 45px infobox */
   }
+
+  .rg-single #rg-comments-drawer { top: 50px; }
+  .rg-single #rg-info-drawer     { bottom: 45px; }
 
   .rg-photo-wrap {
     padding: 2vh 2vw;
@@ -1453,7 +1517,11 @@ input[type="reset"]:active {
 
   #rg-photobox {
     margin-top: 45px;
+    height: calc(100vh - 90px); /* 45px header + 45px infobox */
   }
+
+  .rg-single #rg-comments-drawer { top: 45px; }
+  .rg-single #rg-info-drawer     { bottom: 40px; }
 
   .rg-photo-wrap {
     padding: 1.5vh 1.5vw;
