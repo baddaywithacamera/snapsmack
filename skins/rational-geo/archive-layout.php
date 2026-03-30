@@ -74,59 +74,63 @@ $show_map_bg = ($settings['show_map_background'] ?? '1') === '1';
     <?php endif; ?>
 </div>
 
-<!-- Justified grid — row-building PHP lifted from archive.php masonry branch.
-     public-facing.css handles the flex layout; we just add RG border overrides. -->
+<!-- Justified grid — mirrors Galleria's masonry branch exactly:
+     full images (not thumbs), flex-basis:0 for zero-crop row fill,
+     --last-row-ar-sum so the partial last row matches the row above it. -->
 <?php
     $target_row_h = (int)($settings['justified_row_height'] ?? 260);
     $gap          = 4;
     $ref_w        = (int)($settings['main_canvas_width'] ?? 1200);
-?>
-<div id="justified-grid" style="--justified-gap: <?php echo $gap; ?>px; --justified-row-height: <?php echo $target_row_h; ?>px; <?php echo $archive_default === 'cropped' ? 'display:none;' : ''; ?>">
-    <?php if (!empty($images)):
-        // Build rows by accumulating images until estimated width reaches reference width
-        $rows = [];
-        $current_row = [];
-        $current_row_width = 0;
 
-        foreach ($images as $img) {
-            $iw = (int)($img['img_width'] ?? 400);
-            $ih = (int)($img['img_height'] ?? 400);
-            if ($ih <= 0) $ih = 400;
-            if ($iw <= 0) $iw = 400;
+    // Build rows
+    $rows = [];
+    $current_row = [];
+    $current_row_width = 0;
+    foreach ($images as $img) {
+        $iw = (int)($img['img_width'] ?? 400);
+        $ih = (int)($img['img_height'] ?? 400);
+        if ($ih <= 0) $ih = 400;
+        if ($iw <= 0) $iw = 400;
+        $img['_aspect'] = $iw / $ih;
+        $scaled_w = round($img['_aspect'] * $target_row_h);
+        $current_row[] = $img;
+        $current_row_width += $scaled_w + $gap;
+        if ($current_row_width - $gap >= $ref_w) {
+            $rows[] = ['images' => $current_row, 'full' => true];
+            $current_row = [];
+            $current_row_width = 0;
+        }
+    }
+    if (!empty($current_row)) {
+        $rows[] = ['images' => $current_row, 'full' => false];
+    }
 
-            $img['_aspect'] = $iw / $ih;
-            $scaled_w = round($img['_aspect'] * $target_row_h);
-
-            $current_row[] = $img;
-            $current_row_width += $scaled_w + $gap;
-
-            if ($current_row_width - $gap >= $ref_w) {
-                $rows[] = ['images' => $current_row, 'full' => true];
-                $current_row = [];
-                $current_row_width = 0;
+    // AR sum of last full row — used by CSS to size the partial last row
+    $last_full_ar_sum = 0;
+    for ($i = count($rows) - 1; $i >= 0; $i--) {
+        if ($rows[$i]['full']) {
+            foreach ($rows[$i]['images'] as $_img) {
+                $last_full_ar_sum += $_img['_aspect'];
             }
+            break;
         }
-        // Last partial row — marked so CSS doesn't over-stretch
-        if (!empty($current_row)) {
-            $rows[] = ['images' => $current_row, 'full' => false];
-        }
-    ?>
+    }
+    if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
+?>
+<div id="justified-grid" style="--justified-gap: <?php echo $gap; ?>px; --justified-row-height: <?php echo $target_row_h; ?>px; --last-row-ar-sum: <?php echo round($last_full_ar_sum, 4); ?>; <?php echo $archive_default === 'cropped' ? 'display:none;' : ''; ?>">
+    <?php if (!empty($images)): ?>
         <?php foreach ($rows as $row_data):
             $row = $row_data['images'];
-            $is_full = $row_data['full'];
-            $row_class = 'justified-row' . (!$is_full ? ' justified-row-last' : '');
+            $row_class = 'justified-row' . (!$row_data['full'] ? ' justified-row-last' : '');
         ?>
             <div class="<?php echo $row_class; ?>">
                 <?php foreach ($row as $img):
-                    $link = BASE_URL . htmlspecialchars($img['img_slug']);
-                    $full_img_path = ltrim($img['img_file'] ?? '', '/');
-                    $filename = basename($full_img_path);
-                    $folder = str_replace($filename, '', $full_img_path);
-                    $thumb_url = BASE_URL . $folder . 'thumbs/a_' . $filename;
+                    $link    = BASE_URL . htmlspecialchars($img['img_slug']);
+                    $img_url = BASE_URL . ltrim($img['img_file'] ?? '', '/');
                     $flex_grow = round($img['_aspect'] * 100);
                 ?>
-                    <a href="<?php echo $link; ?>" class="justified-item" title="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>" style="flex-grow: <?php echo $flex_grow; ?>; aspect-ratio: <?php echo round($img['_aspect'], 4); ?>;">
-                        <img src="<?php echo $thumb_url; ?>" alt="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>" loading="lazy">
+                    <a href="<?php echo $link; ?>" class="justified-item" title="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>" style="flex-grow: <?php echo $flex_grow; ?>; flex-basis: 0; aspect-ratio: <?php echo round($img['_aspect'], 4); ?>;">
+                        <img src="<?php echo $img_url; ?>" alt="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>" loading="lazy">
                     </a>
                 <?php endforeach; ?>
             </div>

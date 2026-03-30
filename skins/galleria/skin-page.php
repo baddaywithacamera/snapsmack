@@ -76,9 +76,17 @@ include __DIR__ . '/skin-meta.php';
         font-size: 1.1rem;
     }
 
-    /* Links inside the card */
+    /* Links inside the card — no underline (matches hero treatment) */
     .htbs-page-content .description a {
         color: #333333;
+        text-decoration: none;
+    }
+
+    /* Hero image link: lightbox wraps img.post-image in <a> — suppress underline/border */
+    .htbs-page-hero a,
+    .htbs-page-hero a:has(img) {
+        text-decoration: none !important;
+        border-bottom: none !important;
     }
 
     @media (max-width: 640px) {

@@ -58,6 +58,15 @@ switch ($action) {
             WHERE  id             = ?
         ");
         $stmt->execute([$download_url, $snap_id]);
+
+        // Ensure the global downloads switch is on so the download button
+        // actually renders in the skin (download-overlay.php checks this).
+        $pdo->exec("
+            INSERT INTO snap_settings (setting_key, setting_val)
+            VALUES ('global_downloads_enabled', '1')
+            ON DUPLICATE KEY UPDATE setting_val = '1'
+        ");
+
         echo json_encode(['ok' => true]);
         break;
 
