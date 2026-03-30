@@ -1,4 +1,4 @@
-BUILD_VERSION = "0.7.7a-04"   # bump this on every rebuild
+BUILD_VERSION = "0.7.7a-10"   # bump this on every rebuild
 
 """
 Fix Your Batch Up — main.py
@@ -14,6 +14,7 @@ working while the next batch is being matched in the background.
 """
 
 import configparser
+import json
 import os
 import sys
 import threading
@@ -73,7 +74,8 @@ if getattr(sys, 'frozen', False):
 else:
     _APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
-CONFIG_FILE = os.path.join(_APP_DIR, 'config.ini')
+CONFIG_FILE   = os.path.join(_APP_DIR, 'config.ini')
+RECOVERY_FILE = os.path.join(_APP_DIR, 'fybu-recovery.json')
 
 # Default SYBU dir: prefer the known SYBU install location, but fall back to
 # the exe's own directory so credentials.json and token.json dropped alongside
@@ -307,9 +309,7 @@ class MatchRow(tk.Frame):
         self._orig_lbl.pack(side='left')
 
         orig_path = self.result.get('match_path')
-        if orig_path:
-            self._set_orig_image(orig_path)
-        else:
+        if not orig_path:
             self._orig_lbl.configure(
                 text="No match found\nClick 'Pick Different'",
                 fg=FG_DIM, font=FONT_UI, compound='center')
@@ -318,6 +318,9 @@ class MatchRow(tk.Frame):
                                        bg=BG_CARD, fg=FG_DIM,
                                        font=FONT_SMALL, anchor='w')
         self._orig_name_lbl.pack(fill='x', pady=(4, 6))
+
+        if orig_path:
+            self._set_orig_image(orig_path)
 
         # Buttons
         btn_row = tk.Frame(right, bg=BG_CARD)
@@ -401,6 +404,9 @@ class MatchRow(tk.Frame):
         orig_path   = match_path
 
         def _worker():
+            import socket
+            _prev_timeout = socket.getdefaulttimeout()
+            socket.setdefaulttimeout(180)   # 3 min cap — prevents indefinite hangs
             try:
                 import local_drive as ld
                 drive_url = ld.upload(drive_svc, orig_path,
@@ -410,6 +416,8 @@ class MatchRow(tk.Frame):
                 self.after(0, lambda: self._mark_done(drive_url))
             except Exception as exc:
                 self.after(0, lambda: self._mark_error(str(exc)))
+            finally:
+                socket.setdefaulttimeout(_prev_timeout)
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -463,6 +471,7 @@ class App(tk.Tk):
         self._drive_service                    = None
         self._records: list  = []      # full list from API
         self._row_widgets: list = []
+        self._all_rows: list = []      # accumulated (rec, result) pairs for recovery
         self._pending_count  = 0
         self._done_count     = 0
         self._matching       = False
@@ -475,6 +484,7 @@ class App(tk.Tk):
         self._build_ui()
         self._load_config_to_ui()
         self.after(200, self._auto_reconnect)
+        self.after(300, self._check_recovery_on_launch)
 
     # ── UI construction ───────────────────────────────────────────────────
 
@@ -856,6 +866,12 @@ class App(tk.Tk):
                     text=f"Pull failed: {exc}", fg=FG_ERR))
         threading.Thread(target=_worker, daemon=True).start()
 
+    # ── Recovery on launch ────────────────────────────────────────────────
+
+    def _check_recovery_on_launch(self):
+        if os.path.isfile(RECOVERY_FILE):
+            self._restore_recovery()
+
     # ── Start matching ────────────────────────────────────────────────────
 
     def _on_start_matching(self):
@@ -880,6 +896,7 @@ class App(tk.Tk):
 
         self._save_config()
         self._matching = True
+        self._all_rows = []
         self._start_btn.configure(state='disabled', bg=FG_DIM)
         self._status_lbl.configure(text="Building pHash index for originals…", fg=FG_WARN)
         self._prog_bar['value'] = 0
@@ -987,6 +1004,7 @@ class App(tk.Tk):
             text=f"Batch done — {processed}/{total} matched",
             fg=FG_DIM,
         )
+        self._all_rows.extend(batch_rows)   # accumulate for recovery
         for rec, result in batch_rows:
             row = MatchRow(self._inner, rec, result, self)
             row.pack(fill='x', pady=2, padx=4)
@@ -997,6 +1015,7 @@ class App(tk.Tk):
         self._canvas.configure(scrollregion=self._canvas.bbox('all'))
 
         if processed >= total:
+            self._save_recovery()
             self._status_lbl.configure(
                 text=f"Matching complete — {total} images ready to review.",
                 fg=FG_OK)
@@ -1011,6 +1030,76 @@ class App(tk.Tk):
             text=f"{self._done_count} uploaded / skipped — {remaining} remaining.",
             fg=FG_DIM,
         )
+
+    # ── Recovery save / restore ───────────────────────────────────────────
+
+    def _save_recovery(self):
+        """Write all matched rows to fybu-recovery.json next to the exe."""
+        data = {
+            'saved_at':     datetime.now().isoformat(timespec='seconds'),
+            'fybu_version': BUILD_VERSION,
+            'site_url':     self._config.get('url', ''),
+            'folder_a':     self._folder_a_var.get().strip(),
+            'folder_b':     self._folder_b_var.get().strip(),
+            'rows': [{'rec': rec, 'result': result}
+                     for rec, result in self._all_rows],
+        }
+        try:
+            with open(RECOVERY_FILE, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2)
+        except Exception:
+            pass   # best-effort; don't crash the UI over a failed save
+
+    def _restore_recovery(self):
+        """Load fybu-recovery.json and rebuild the review queue without re-scanning."""
+        try:
+            with open(RECOVERY_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except Exception as exc:
+            messagebox.showerror("Recovery failed",
+                                 f"Could not read recovery file:\n{exc}")
+            return
+
+        rows = data.get('rows', [])
+        if not rows:
+            messagebox.showinfo("Empty session",
+                                "Recovery file contained no rows.")
+            return
+
+        saved_at = data.get('saved_at', 'unknown')
+        n = len(rows)
+
+        self._prog_bar.configure(maximum=n)
+        self._prog_bar['value'] = 0
+        self._prog_lbl.configure(text=f"Restoring {n} rows…", fg=FG_DIM)
+        self._all_rows = [(r['rec'], r['result']) for r in rows]
+
+        # Build rows in batches via self.after() so the UI stays responsive.
+        self._restore_batch(self._all_rows[:], 0, n, saved_at)
+
+    def _restore_batch(self, remaining: list, done: int, total: int, saved_at: str):
+        """Drip-feed row creation in BATCH_SIZE chunks to keep the UI alive."""
+        batch, remaining = remaining[:BATCH_SIZE], remaining[BATCH_SIZE:]
+        for rec, result in batch:
+            row = MatchRow(self._inner, rec, result, self)
+            row.pack(fill='x', pady=2, padx=4)
+            self._row_widgets.append(row)
+            self._pending_count += 1
+            done += 1
+
+        self._prog_bar['value'] = done
+        self._prog_lbl.configure(text=f"Restoring… {done}/{total}", fg=FG_DIM)
+        self._inner.update_idletasks()
+        self._canvas.configure(scrollregion=self._canvas.bbox('all'))
+
+        if remaining:
+            self.after(0, lambda r=remaining, d=done: self._restore_batch(r, d, total, saved_at))
+        else:
+            self._status_lbl.configure(
+                text=f"Session restored — {total} images ready to review. "
+                     f"(Delete fybu-recovery.json and click Start Matching for a fresh scan.)",
+                fg=FG_OK)
+            self._start_btn.configure(state='normal', bg=ACCENT)
 
     # ── Scroll handling ───────────────────────────────────────────────────
 
