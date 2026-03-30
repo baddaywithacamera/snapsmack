@@ -1,10 +1,11 @@
 /**
  * SNAPSMACK - Dual Drawer Controller
- * Alpha v0.7.5
+ * Alpha v0.7.7
  *
  * Rational Geo drawer engine: comments slide DOWN from below the header
- * (masthead section), info/caption slides UP from above the page footer
- * (magazine caption). Intercepts core nav-bar buttons so ss-engine-footer.js
+ * (masthead section), info/caption slides UP from above the infobox.
+ * Both drawers are position:absolute overlays — they float over the photobox
+ * without compressing it. Intercepts core nav-bar buttons so ss-engine-footer.js
  * is bypassed (no #footer element means it no-ops).
  *
  * Depends on DOM elements:
@@ -35,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (ev.propertyName !== 'max-height') return;
             el.removeEventListener('transitionend', onEnd);
             el.style.maxHeight = 'none';
-            el.style.overflow  = 'visible';
+            el.style.overflow  = 'auto'; /* scrollable if content taller than overlay zone */
         };
         el.addEventListener('transitionend', onEnd);
     }
@@ -71,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 if (isOpen(commDrawer)) closeDrawer(commDrawer);
                 openDrawer(infoDrawer);
-                infoDrawer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                /* No scrollIntoView — drawer is a position:absolute overlay, not in-flow */
             }
         });
     }
@@ -86,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 if (isOpen(infoDrawer)) closeDrawer(infoDrawer);
                 openDrawer(commDrawer);
-                commDrawer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                /* No scrollIntoView — drawer is a position:absolute overlay, not in-flow */
             }
         });
     }
