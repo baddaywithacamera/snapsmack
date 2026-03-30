@@ -1,4 +1,4 @@
-BUILD_VERSION = "0.7.7a-10"   # bump this on every rebuild
+BUILD_VERSION = "0.7.7a-11"   # bump this on every rebuild
 
 """
 Fix Your Batch Up — main.py
@@ -141,15 +141,29 @@ def _save_config(data: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Filename helper — borrowed from SYBU's poster.py haiku_to_filename()
+# ---------------------------------------------------------------------------
+def _haiku_to_filename(title: str, ext: str) -> str:
+    """Sanitize a haiku title into a safe filename, preserving spaces and commas."""
+    invalid = r'\/:*?"<>|'
+    clean = ''.join(c for c in title if c not in invalid).strip()
+    if not clean:
+        clean = 'untitled'
+    return f"{clean}{ext}"
+
+
+# ---------------------------------------------------------------------------
 # Backfill API client
 # ---------------------------------------------------------------------------
 class BackfillClient:
     """Minimal HTTP client for smack-backfill.php."""
 
     def __init__(self, base_url: str):
-        self.base_url = base_url.rstrip('/')
-        self.session  = requests.Session()
+        self.base_url  = base_url.rstrip('/')
+        self.session   = requests.Session()
         self.session.headers['User-Agent'] = 'FixYourBatchUp/0.7.7'
+        self._username = ''
+        self._password = ''
 
     def login(self, username: str, password: str) -> None:
         r = self.session.post(
@@ -161,6 +175,31 @@ class BackfillClient:
         r.raise_for_status()
         if 'login.php' in r.url:
             raise RuntimeError('Login failed — check your username and password.')
+        # Stash credentials so we can silently re-login if the session expires
+        self._username = username
+        self._password = password
+
+    def is_session_alive(self) -> bool:
+        """Lightweight check — mirrors SYBU's poster.py is_session_alive()."""
+        try:
+            r = self.session.get(
+                f'{self.base_url}/smack-admin.php',
+                timeout=10,
+                allow_redirects=True,
+            )
+            return 'login.php' not in r.url
+        except Exception:
+            return False
+
+    def _ensure_session(self) -> None:
+        """Re-login if the PHP session has expired. Raises if credentials are missing."""
+        if not self.is_session_alive():
+            if not self._username:
+                raise RuntimeError(
+                    'Session expired and no credentials are stored — '
+                    'please click Connect + Pull to log in again.'
+                )
+            self.login(self._username, self._password)
 
     def fetch_missing(self) -> list:
         r = self.session.get(
@@ -175,13 +214,22 @@ class BackfillClient:
         return data['images']
 
     def update_link(self, snap_id: int, download_url: str) -> None:
+        # Silently refresh the PHP session if it has expired between
+        # Connect+Pull and the time the user clicks Upload.
+        self._ensure_session()
         r = self.session.post(
             f'{self.base_url}/smack-backfill.php',
             data={'action': 'update', 'snap_id': snap_id, 'download_url': download_url},
             timeout=15,
         )
         r.raise_for_status()
-        data = r.json()
+        try:
+            data = r.json()
+        except Exception:
+            raise RuntimeError(
+                f'Server returned non-JSON (likely a login redirect). '
+                f'Response: {r.text[:200]}'
+            )
         if not data.get('ok'):
             raise RuntimeError(data.get('error', 'API error'))
 
@@ -348,6 +396,10 @@ class MatchRow(tk.Frame):
             command=self._on_skip,
         ).pack(side='left')
 
+        # If this row was already uploaded in a previous session, show it done.
+        if self.result.get('_uploaded'):
+            self.after(0, self._restore_done_state)
+
     # ── Helpers ───────────────────────────────────────────────────────────
 
     def _server_local_path(self) -> Optional[str]:
@@ -403,6 +455,13 @@ class MatchRow(tk.Frame):
         client      = self.app._client
         orig_path   = match_path
 
+        # Build Drive filename from the haiku title + original extension,
+        # using the same sanitizer as SYBU's poster.py haiku_to_filename().
+        raw_title = self.record.get('img_title', '').strip()
+        _, _ext   = os.path.splitext(orig_path)
+        drive_fname = (_haiku_to_filename(raw_title, _ext.lower())
+                       if raw_title else os.path.basename(orig_path))
+
         def _worker():
             import socket
             _prev_timeout = socket.getdefaulttimeout()
@@ -410,7 +469,7 @@ class MatchRow(tk.Frame):
             try:
                 import local_drive as ld
                 drive_url = ld.upload(drive_svc, orig_path,
-                                      os.path.basename(orig_path),
+                                      drive_fname,
                                       folder_id=folder_id)
                 client.update_link(snap_id, drive_url)
                 self.after(0, lambda: self._mark_done(drive_url))
@@ -422,10 +481,16 @@ class MatchRow(tk.Frame):
         threading.Thread(target=_worker, daemon=True).start()
 
     def _mark_done(self, drive_url: str):
+        self.result['_uploaded'] = True
+        self._restore_done_state()
+        self.app._on_row_done()
+        self.app._save_recovery()
+
+    def _restore_done_state(self):
+        """Set row to the Done visual state without touching the done counter."""
         self._upload_btn.configure(text="✓ Done", bg=FG_OK, fg="#000000",
                                    state='disabled')
         self.configure(highlightbackground=FG_OK)
-        self.app._on_row_done()
 
     def _mark_error(self, msg: str):
         self._upload_btn.configure(text="Error — retry", bg=FG_ERR,
@@ -1051,7 +1116,13 @@ class App(tk.Tk):
             pass   # best-effort; don't crash the UI over a failed save
 
     def _restore_recovery(self):
-        """Load fybu-recovery.json and rebuild the review queue without re-scanning."""
+        """Load fybu-recovery.json and rebuild the review queue without re-scanning.
+
+        If the site is already connected, cross-references each row's snap_id
+        against the server's current missing-links list.  Any row that the DB
+        has already resolved is tagged _uploaded=True so it renders as Done
+        without re-uploading.
+        """
         try:
             with open(RECOVERY_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
@@ -1065,6 +1136,21 @@ class App(tk.Tk):
             messagebox.showinfo("Empty session",
                                 "Recovery file contained no rows.")
             return
+
+        # If connected, fetch the IDs still missing from the DB and mark the
+        # rest as already done — no local _uploaded flag required.
+        if self._client:
+            try:
+                still_missing = {
+                    int(img['snap_id'])
+                    for img in self._client.fetch_missing()
+                }
+                for r in rows:
+                    sid = int(r['rec'].get('snap_id', -1))
+                    if sid not in still_missing:
+                        r['result']['_uploaded'] = True
+            except Exception:
+                pass  # fall back to whatever _uploaded flags are in the file
 
         saved_at = data.get('saved_at', 'unknown')
         n = len(rows)
