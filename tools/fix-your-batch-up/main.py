@@ -1,4 +1,4 @@
-BUILD_VERSION = "0.7.7a-11"   # bump this on every rebuild
+BUILD_VERSION = "0.7.7a-12"   # bump this on every rebuild
 
 """
 Fix Your Batch Up — main.py
@@ -281,6 +281,7 @@ class MatchRow(tk.Frame):
         self.app     = app
         self._orig_photo = None   # keep reference
         self._srv_photo  = None
+        self._cancel_evt = threading.Event()
 
         self._build()
 
@@ -382,6 +383,16 @@ class MatchRow(tk.Frame):
         )
         self._upload_btn.pack(side='left', padx=(0, 6))
 
+        self._cancel_btn = tk.Button(
+            btn_row, text="Cancel",
+            bg=BG_MID, fg=FG_DIM, font=FONT_UI,
+            relief='flat', cursor='hand2', width=8,
+            command=self._on_cancel,
+        )
+        # Hidden until an upload is in-flight
+        self._cancel_btn.pack(side='left', padx=(0, 6))
+        self._cancel_btn.pack_forget()
+
         tk.Button(
             btn_row, text="Pick Different",
             bg=BG_HOVER, fg=FG_MAIN, font=FONT_UI,
@@ -445,8 +456,10 @@ class MatchRow(tk.Frame):
             )
             return
 
+        self._cancel_evt.clear()
         self._upload_btn.configure(text="Uploading…", state='disabled',
                                    bg=FG_WARN, fg="#000000")
+        self._cancel_btn.pack(side='left', padx=(0, 6))
         self.update_idletasks()
 
         snap_id     = int(self.record['snap_id'])
@@ -454,6 +467,7 @@ class MatchRow(tk.Frame):
         drive_svc   = self.app._drive_service
         client      = self.app._client
         orig_path   = match_path
+        cancel_evt  = self._cancel_evt
 
         # Build Drive filename from the haiku title + original extension,
         # using the same sanitizer as SYBU's poster.py haiku_to_filename().
@@ -471,6 +485,10 @@ class MatchRow(tk.Frame):
                 drive_url = ld.upload(drive_svc, orig_path,
                                       drive_fname,
                                       folder_id=folder_id)
+                if cancel_evt.is_set():
+                    # Upload finished but user cancelled — skip the DB write
+                    self.after(0, self._mark_cancelled)
+                    return
                 client.update_link(snap_id, drive_url)
                 self.after(0, lambda: self._mark_done(drive_url))
             except Exception as exc:
@@ -482,6 +500,7 @@ class MatchRow(tk.Frame):
 
     def _mark_done(self, drive_url: str):
         self.result['_uploaded'] = True
+        self._cancel_btn.pack_forget()
         self._restore_done_state()
         self.app._on_row_done()
         self.app._save_recovery()
@@ -492,7 +511,19 @@ class MatchRow(tk.Frame):
                                    state='disabled')
         self.configure(highlightbackground=FG_OK)
 
+    def _mark_cancelled(self):
+        """Upload completed on Drive side but user cancelled — reset for retry."""
+        self._cancel_btn.pack_forget()
+        self._upload_btn.configure(text="Upload", bg=ACCENT, fg="#000000",
+                                   state='normal')
+        self.configure(highlightbackground=BORDER)
+
+    def _on_cancel(self):
+        self._cancel_evt.set()
+        self._cancel_btn.configure(text="Cancelling…", state='disabled')
+
     def _mark_error(self, msg: str):
+        self._cancel_btn.pack_forget()
         self._upload_btn.configure(text="Error — retry", bg=FG_ERR,
                                    fg="#000000", state='normal')
         messagebox.showerror("Upload failed", msg, parent=self)
