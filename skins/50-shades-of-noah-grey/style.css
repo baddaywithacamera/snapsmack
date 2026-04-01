@@ -562,12 +562,43 @@ body {
 }
 
 /* ==========================================================================
-   STATIC PAGE OVERRIDES
+   STATIC PAGE & ARCHIVE PAGE OVERRIDES
    ========================================================================= */
 
+/* --- ARCHIVE PAGE: unlock the 100vh viewport prison so the body scrolls ---
+   The snapping engine locks html/body/page-wrapper to 100vh for single-image
+   panning. Archive and static pages must undo this so grids scroll naturally
+   and the footer lands at the actual bottom of content (not mid-page).
+   Same pattern used in Rational Geo. */
+
+html:has(body.archive-page),
+html:has(body.static-transmission) {
+    overflow: auto !important;
+    height: auto !important;
+}
+
+body.archive-page,
+body.static-transmission {
+    overflow-y: auto !important;
+    height: auto !important;
+}
+
+body.archive-page #page-wrapper,
+body.static-transmission #page-wrapper {
+    height: auto !important;
+    min-height: 100vh;
+}
+
+body.archive-page #scroll-stage {
+    overflow: visible;    /* body scrolls — scroll-stage is just a layout wrapper */
+    display: block;
+}
+
+/* --- STATIC PAGE scroll-stage --- */
 .static-transmission #scroll-stage {
     display: block !important;
     text-align: center !important;
+    overflow: visible;
 }
 
 .static-transmission #footer,
