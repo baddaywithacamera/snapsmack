@@ -4,9 +4,8 @@
  * Alpha v0.7.7
  *
  * Renders static pages (page.php) inside the 50 Shades shell.
- * Hero image is capped to 55vh with object-fit:cover so it doesn't
- * swallow the viewport. Content flows in the standard static-content
- * column that matches the archive width.
+ * Hero image sits inside .static-content so it is constrained to the
+ * same column width as the text, not stretched full-bleed.
  */
 
 include __DIR__ . '/skin-meta.php';
@@ -17,18 +16,19 @@ include __DIR__ . '/skin-meta.php';
 
     <?php include __DIR__ . '/skin-header.php'; ?>
 
-    <?php if (!empty($page_data['image_asset'])): ?>
-        <div id="photobox" class="page-hero">
-            <div class="main-photo">
-                <img src="<?php echo BASE_URL . ltrim($page_data['image_asset'], '/'); ?>"
-                     class="post-image"
-                     alt="<?php echo $page_title; ?>">
-            </div>
-        </div>
-    <?php endif; ?>
-
     <div class="static-content">
         <h1 class="static-page-title"><?php echo $page_title; ?></h1>
+
+        <?php if (!empty($page_data['image_asset'])): ?>
+            <div id="photobox" class="page-hero">
+                <div class="main-photo">
+                    <img src="<?php echo BASE_URL . ltrim($page_data['image_asset'], '/'); ?>"
+                         class="post-image"
+                         alt="<?php echo $page_title; ?>">
+                </div>
+            </div>
+        <?php endif; ?>
+
 
         <div class="description">
             <?php
