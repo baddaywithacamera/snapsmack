@@ -867,12 +867,21 @@ body.archive-page #page-wrapper {
   height: auto;
 }
 
-/* Show the filter bar and push it below the fixed header. */
+/* Show the filter bar and push it below the fixed header.
+   Background steps darker than the header (#1a1a1a → #111111) to create
+   a clear visual break between header chrome and page content. */
 body.archive-page #infobox {
-  position: relative;       /* anchor for the docked layout toggle */
-  margin-top: 70px;         /* clear the fixed #rg-header (70px) */
+  position: relative;             /* anchor for the docked layout toggle */
+  margin-top: 70px;               /* clear the fixed #rg-header (70px) */
+  background-color: #111111;      /* --rg-bg-drawer: one step darker than header */
   border-top: none;
-  border-bottom: 1px solid var(--rg-border-light);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;                  /* explicit — ensures align-items applies */
+  align-items: center;
+  justify-content: center;
+  height: 54px;                   /* slightly taller for filter controls */
+  padding: 0;
+  box-sizing: border-box;
 }
 
 body.archive-page #scroll-stage {
@@ -900,11 +909,11 @@ body.archive-page #scroll-stage {
 
 #infobox select,
 #infobox .archive-search-input {
-  background: var(--rg-bg-secondary);
+  background: var(--rg-bg-chrome);
   color: var(--rg-text-primary);
-  border: 1px solid var(--rg-border-light);
+  border: 1px solid var(--rg-border);
   padding: 4px 6px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: Arial, Helvetica, -apple-system, system-ui, sans-serif;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
