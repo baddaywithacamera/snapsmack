@@ -622,6 +622,11 @@ return [
             'path'         => 'assets/js/ss-engine-justified.js',
             'has_settings' => false
         ],
+        'fsog-layout-toggle' => [
+            'label'        => '50 Shades Archive Layout Toggle',
+            'path'         => 'assets/js/ss-engine-fsog-layout-toggle.js',
+            'has_settings' => false
+        ],
         'smack-slider' => [
             'label'        => 'Gallery Slider Engine',
             'path'         => 'assets/js/ss-engine-slider.js',
