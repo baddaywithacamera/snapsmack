@@ -133,8 +133,4 @@ def _mime(path: str) -> str:
     ext = os.path.splitext(path)[1].lower()
     return {
         '.jpg':  'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.png':  'image/png',
-        '.gif':  'image/gif',
-        '.webp': 'image/webp',
-    }.get(ext, 'image/jpeg')
+        '.jpeg':

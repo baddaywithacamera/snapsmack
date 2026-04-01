@@ -290,7 +290,15 @@ include 'core/sidebar.php';
                         <?php endif; ?>
 
                         <div class="item-details">
-                            <img src="/<?php echo ltrim($p['img_file'], '/'); ?>" class="archive-thumb">
+                            <?php
+                                $_af  = $p['img_file'];
+                                $_api = pathinfo($_af);
+                                $_tpath = $_api['dirname'] . '/thumbs/t_' . $_api['basename'];
+                                $_src = file_exists($_tpath)
+                                    ? '/' . ltrim($_tpath, '/')
+                                    : '/' . ltrim($_af, '/');
+                            ?>
+                            <img src="<?php echo htmlspecialchars($_src); ?>" class="archive-thumb">
 
                             <div class="item-text">
                                 <strong>

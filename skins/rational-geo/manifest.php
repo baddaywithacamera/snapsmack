@@ -298,14 +298,4 @@ return [
         ],
 
         'blogroll_max_width' => [
-            'section'  => 'BLOGROLL',
-            'type'     => 'range',
-            'label'    => 'Blogroll Max Width (px)',
-            'default'  => '900',
-            'min'      => '600',
-            'max'      => '1400',
-            'selector' => '.blogroll-canvas',
-            'property' => 'max-width',
-        ],
-    ],
-];
+            'section'  => 'BLOGR
