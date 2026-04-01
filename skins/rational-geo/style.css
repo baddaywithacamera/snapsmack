@@ -880,7 +880,7 @@ body.archive-page #infobox {
   align-items: center;
   justify-content: center;
   height: 54px;                   /* slightly taller for filter controls */
-  padding: 0;
+  padding: 2px 0 0 0;            /* nudge contents 2px down */
   box-sizing: border-box;
 }
 
