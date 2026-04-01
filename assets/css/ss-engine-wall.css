@@ -38,11 +38,13 @@ body, html {
 
 .wall-canvas {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;        /* Single horizontal strip — JS translates to pan */
+    flex-shrink: 0;           /* Must NOT shrink: canvas extends beyond viewport  */
     justify-content: center;
     align-content: center;
+    align-items: center;
     gap: var(--wall-gap, 120px);
-    padding: 20vh 30vw; 
+    padding: 20vh 30vw;
     transform-style: preserve-3d;
     will-change: transform;
     background: transparent;
