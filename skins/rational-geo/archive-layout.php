@@ -181,5 +181,13 @@ $show_map_bg = ($settings['show_map_background'] ?? '1') === '1';
     } else {
         init();
     }
+
+    // Dock the layout toggle into the filter bar (right side).
+    // #infobox is position:relative so the toggle uses position:absolute.
+    var infobox = document.getElementById('infobox');
+    var toggle  = document.querySelector('.rg-layout-toggle');
+    if (infobox && toggle) {
+        infobox.appendChild(toggle);
+    }
 })();
 </script>
