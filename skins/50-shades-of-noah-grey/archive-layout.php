@@ -173,5 +173,13 @@ if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
     }
 
     init();
+
+    // Dock the layout toggle into the filter bar (right side).
+    // #infobox is already position:relative so the toggle uses position:absolute.
+    var infobox = document.getElementById('infobox');
+    var toggle  = document.querySelector('.fsog-layout-toggle');
+    if (infobox && toggle) {
+        infobox.appendChild(toggle);
+    }
 }());
 </script>
