@@ -131,10 +131,4 @@ include __DIR__ . '/skin-meta.php';
             </div>
         </div>
 
-        <?php include __DIR__ . '/skin-footer.php'; ?>
-
-    </div>
-</div>
-<?php include __DIR__ . '/../../core/footer-scripts.php'; ?>
-</body>
-</html>
+        <?php incl

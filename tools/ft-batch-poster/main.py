@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.7a-01"   # bump this on every rebuild
+BUILD_VERSION = "0.7.7a-03"   # bump this on every rebuild
 
 import os
 import queue
@@ -519,27 +519,56 @@ class App(tk.Tk):
 
     def _build_ui(self):
 
-        # ── Header row (mirrors admin header-row--ruled) ──────────────
+        # ── Header row ────────────────────────────────────────────────
         header = tk.Frame(self, bg=BG_CARD, height=44)
         header.pack(fill="x")
         header.pack_propagate(False)
 
+        # Left: title + version
+        title_cluster = tk.Frame(header, bg=BG_CARD)
+        title_cluster.pack(side="left", padx=16, fill="y")
         self._title_lbl = tk.Label(
-            header, text=f"SNAPSMACK  BATCH IMAGE POSTER",
+            title_cluster, text="SMACK YOUR BATCH UP",
             bg=BG_CARD, fg=ACCENT, font=FONT_TITLE,
         )
-        self._title_lbl.pack(side="left", padx=16)
+        self._title_lbl.pack(side="left", anchor="center")
+        tk.Label(title_cluster, text=BUILD_VERSION,
+                 bg=BG_CARD, fg=FG_DIM,
+                 font=("Segoe UI", 8)).pack(side="left", padx=(8, 0), anchor="center")
 
-        self._conn_dot = tk.Label(header, text="●", bg=BG_CARD, fg=FG_DIM, font=("Segoe UI", 11))
-        self._conn_dot.pack(side="right", padx=(0, 14))
-        self._conn_lbl = tk.Label(header, text="Not connected", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
-        self._conn_lbl.pack(side="right")
-        self._session_timer_lbl = tk.Label(header, text="", bg=BG_CARD, fg=FG_DIM, font=("Segoe UI", 8))
-        self._session_timer_lbl.pack(side="right", padx=(0, 10))
+        # Right: Drive status | Site status (dot before text, both groups separated)
         self._session_remaining = 0
         self._session_timer_id  = None
-        tk.Label(header, text=f"build {BUILD_VERSION}", bg=BG_CARD, fg=FG_DIM,
-                 font=("Segoe UI", 8)).pack(side="right", padx=(0, 20))
+
+        status_cluster = tk.Frame(header, bg=BG_CARD)
+        status_cluster.pack(side="right", padx=16, fill="y")
+
+        # Site connection
+        site_grp = tk.Frame(status_cluster, bg=BG_CARD)
+        site_grp.pack(side="right", anchor="center")
+        self._conn_dot = tk.Label(site_grp, text="●", bg=BG_CARD, fg=FG_DIM,
+                                  font=("Segoe UI", 11))
+        self._conn_dot.pack(side="left")
+        self._conn_lbl = tk.Label(site_grp, text="Not connected",
+                                  bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
+        self._conn_lbl.pack(side="left", padx=(3, 0))
+        self._session_timer_lbl = tk.Label(site_grp, text="",
+                                           bg=BG_CARD, fg=FG_DIM, font=("Segoe UI", 8))
+        self._session_timer_lbl.pack(side="left", padx=(4, 0))
+
+        # Thin vertical rule between Drive and Site
+        tk.Frame(status_cluster, bg=BORDER, width=1).pack(
+            side="right", fill="y", pady=10, padx=12)
+
+        # Drive status
+        drive_grp = tk.Frame(status_cluster, bg=BG_CARD)
+        drive_grp.pack(side="right", anchor="center")
+        self._drive_dot = tk.Label(drive_grp, text="●", bg=BG_CARD, fg=FG_DIM,
+                                   font=("Segoe UI", 11))
+        self._drive_dot.pack(side="left")
+        self._drive_lbl = tk.Label(drive_grp, text="Drive: Not connected",
+                                   bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
+        self._drive_lbl.pack(side="left", padx=(3, 0))
 
         tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
 
@@ -569,6 +598,7 @@ class App(tk.Tk):
                 self._cfg_arrow.configure(text="▲  CONFIGURATION")
             self._cfg_visible = not self._cfg_visible
 
+        self._toggle_cfg = _toggle_cfg
         cfg_toggle.bind("<Button-1>", _toggle_cfg)
         self._cfg_arrow.bind("<Button-1>", _toggle_cfg)
 
@@ -690,12 +720,6 @@ class App(tk.Tk):
         self._drive_btn = ttk.Button(drv_btn_cell, text="Auth Drive", style="Ghost.TButton",
                                       command=self._on_auth_drive)
         self._drive_btn.pack(pady=(14, 4))
-        drv_status = tk.Frame(drv_btn_cell, bg=BG_CARD)
-        drv_status.pack()
-        self._drive_dot = tk.Label(drv_status, text="●", bg=BG_CARD, fg=FG_DIM, font=("Segoe UI", 10))
-        self._drive_dot.pack(side="left", padx=(0, 3))
-        self._drive_lbl = tk.Label(drv_status, text="Not connected", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
-        self._drive_lbl.pack(side="left")
 
         # ── Box: COPYRIGHT ────────────────────────────────────────────
         self._copyright_var = tk.StringVar()
@@ -1101,6 +1125,8 @@ class App(tk.Tk):
         self._queue_lbl.configure(text=f"QUEUE — {total} ITEM{'S' if total != 1 else ''}")
         self._set_status(f"+{added} added — {total} total. Drag to reorder.", FG_MAIN)
         self._save_config()
+        if self._cfg_visible:
+            self._toggle_cfg()
 
     # ------------------------------------------------------------------
     # Clear queue
@@ -1255,6 +1281,8 @@ class App(tk.Tk):
                     total = msg[1]
                     self._set_posting(False)
                     self._set_status(f"Batch complete — {total} processed.", FG_OK)
+                    if not self._cfg_visible:
+                        self._toggle_cfg()
         except queue.Empty:
             pass
         self.after(100, self._poll_queue)
