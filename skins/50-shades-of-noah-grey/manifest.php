@@ -20,7 +20,7 @@ return [
 
     'features' => [
         'supports_wall'   => true,
-        'archive_layouts' => ['square', 'cropped', 'masonry'],
+        'archive_layouts' => ['cropped', 'justified'],
         'has_landing'     => false,
         'post_modes'      => ['image'],
         'instagram_mode'  => false,
@@ -43,7 +43,6 @@ return [
         'smack-justified-lib',
         'smack-justified',
         'smack-community',
-        'fsog-layout-toggle',
     ],
 
     'options' => [
@@ -59,7 +58,7 @@ return [
             'default'  => '1280',
             'min'      => '800',
             'max'      => '1920',
-            'selector' => '.fsog-header-inside, .fsog-photo-wrap, #system-footer .inside, #browse-grid, #browse-grid-cropped, #justified-grid',
+            'selector' => '.fsog-header-inside, .fsog-photo-wrap, #system-footer .inside, .fsog-archive-grid, #justified-grid',
             'property' => 'max-width'
         ],
 
@@ -70,7 +69,7 @@ return [
             'default'  => '40',
             'min'      => '0',
             'max'      => '200',
-            'selector' => '.fsog-header-inside, .fsog-photo-wrap, #browse-grid, #browse-grid-cropped',
+            'selector' => '.fsog-header-inside, .fsog-photo-wrap, .fsog-archive-grid',
             'property' => 'padding-left, padding-right'
         ],
 
@@ -95,22 +94,21 @@ return [
             'section'  => 'ARCHIVE GRID',
             'type'     => 'select',
             'label'    => 'Archive Layout Mode',
-            'default'  => 'square',
+            'default'  => 'cropped',
             'options'  => [
-                'square'  => 'Square Grid',
-                'cropped' => 'Cropped Grid (Natural Aspect)',
-                'masonry' => 'Justified / Masonry (Flickr Style)',
+                'cropped'   => 'Cropped Grid (Natural Aspect)',
+                'justified' => 'Justified / Masonry (Flickr Style)',
             ],
         ],
 
         'browse_cols' => [
             'section'  => 'ARCHIVE GRID',
             'type'     => 'range',
-            'label'    => 'Grid Columns (Square & Cropped)',
+            'label'    => 'Grid Columns (Cropped)',
             'default'  => '4',
             'min'      => '2',
             'max'      => '8',
-            'selector' => '#browse-grid, #browse-grid-cropped',
+            'selector' => '.fsog-archive-grid',
             'property' => '--grid-cols'
         ],
 
@@ -282,7 +280,7 @@ return [
             'type'     => 'select',
             'label'    => 'Archive Thumb Frame',
             'default'  => 'border_thin',
-            'selector' => '.square-grid .thumb-link, .cropped-grid .thumb-link, .justified-item',
+            'selector' => '.fsog-archive-item .fsog-thumb, .justified-item',
             'property' => 'custom-framing',
             'options'  => [
                 'border_thin' => [
