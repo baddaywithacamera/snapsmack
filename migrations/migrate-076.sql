@@ -191,4 +191,9 @@ VALUES ('installed_version', '0.7.6')
 ON DUPLICATE KEY UPDATE `setting_val` = '0.7.6';
 
 
--- ---------------------------------------------------------
+-- ------------------------------------------------------------
+-- 10. RECORD MIGRATION
+-- ------------------------------------------------------------
+
+INSERT IGNORE INTO `snap_migrations` (`migration`, `applied_at`)
+VALUES ('migrate-076.sql', NOW());

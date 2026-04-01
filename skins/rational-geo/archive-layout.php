@@ -173,4 +173,13 @@ $show_map_bg = ($settings['show_map_background'] ?? '1') === '1';
     for (var i = 0; i < toggleBtns.length; i++) {
         toggleBtns[i].addEventListener('click', function() {
             setLayout(this.getAttribute('data-layout'));
- 
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
