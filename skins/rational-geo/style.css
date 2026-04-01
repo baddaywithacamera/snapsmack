@@ -856,9 +856,9 @@ small,
 }
 
 /* --- Archive page base ---
-     Copied from Galleria: flex scaffold so the grid fills viewport height.
-     archive.php provides: skin-header, #infobox (filter bar), #scroll-stage.
-     We hide the default #infobox (RG uses its own floating toggle). */
+     archive.php provides: skin-header (#rg-header, fixed 70px), #infobox
+     (filter bar, 50px), #scroll-stage. #page-wrapper is a flex column so the
+     footer always snaps to bottom. */
 
 body.archive-page #page-wrapper {
   display: flex;
@@ -867,16 +867,86 @@ body.archive-page #page-wrapper {
   height: auto;
 }
 
+/* Show the filter bar and push it below the fixed header. */
 body.archive-page #infobox {
-  display: none;
+  position: relative;       /* anchor for the docked layout toggle */
+  margin-top: 70px;         /* clear the fixed #rg-header (70px) */
+  border-top: none;
+  border-bottom: 1px solid var(--rg-border-light);
 }
 
 body.archive-page #scroll-stage {
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-top: 90px;
+  margin-top: 0;            /* #infobox now handles header clearance */
   position: relative;
+}
+
+/* --- Filter bar content: groups, selects, search --- */
+
+#infobox .filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#infobox .filter-group form {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+#infobox select,
+#infobox .archive-search-input {
+  background: var(--rg-bg-secondary);
+  color: var(--rg-text-primary);
+  border: 1px solid var(--rg-border-light);
+  padding: 4px 6px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+}
+
+#infobox select:focus,
+#infobox .archive-search-input:focus {
+  outline: none;
+  border-color: var(--rg-accent);
+}
+
+#infobox .archive-search-input {
+  cursor: text;
+}
+
+/* --- Layout toggle docked in the filter bar --- */
+
+#infobox .rg-layout-toggle {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  opacity: 1;
+  transition: none;
+}
+
+#infobox .rg-layout-toggle-switch {
+  background-color: rgba(0, 0, 0, 0.3);
+  backdrop-filter: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#infobox .rg-layout-toggle-switch button {
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+#infobox .rg-layout-toggle-switch button.active {
+  background-color: var(--rg-accent);
+  color: #000;
 }
 
 /* ============================================================================
