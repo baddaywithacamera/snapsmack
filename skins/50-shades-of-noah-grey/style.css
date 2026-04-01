@@ -646,6 +646,8 @@ body {
 }
 
 .static-transmission #photobox.page-hero .main-photo img {
+    border: none !important;
+    box-shadow: none !important;
     width: 100% !important;
     height: 55vh !important;
     max-width: 100% !important;
