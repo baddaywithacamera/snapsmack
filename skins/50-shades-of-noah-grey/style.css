@@ -443,11 +443,18 @@ body {
 
 .fsog-layout-toggle {
     position: fixed;
-    top: 100px;
+    top: 150px;   /* default: below header only (no filter bar) */
     right: 2vw;
     z-index: 100;
     opacity: 0.12;
     transition: opacity 0.3s ease;
+}
+
+/* When the filter bar (#infobox) is visible, push toggle below it too.
+   Header (~80px) + filter bar (~54px) + small gap = ~150px would clip,
+   so we nudge further down to align with the top of the thumb grid. */
+body.archive-page .fsog-layout-toggle {
+    top: 200px;
 }
 
 .fsog-layout-toggle:hover {
@@ -603,11 +610,20 @@ body.archive-page #page-wrapper,
 body.static-transmission #page-wrapper {
     height: auto !important;
     min-height: 100vh;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
 body.archive-page #scroll-stage {
     overflow: visible;    /* body scrolls — scroll-stage is just a layout wrapper */
-    display: block;
+    display: flex !important;
+    flex-direction: column;
+    flex: 1;              /* grow to fill page-wrapper so footer is always at bottom */
+}
+
+/* Footer snaps to viewport bottom on short pages */
+body.archive-page #system-footer {
+    margin-top: auto !important;
 }
 
 /* --- STATIC PAGE scroll-stage --- */
@@ -695,6 +711,17 @@ body.archive-page #scroll-stage {
     height: auto !important;
     max-width: 100% !important;
     display: block;
+}
+
+/* .description normally has its own 20px side padding for the single-image view
+   where it's a top-level container. Inside .static-content that padding doubles —
+   text ends up 40px narrower than the hero image above it. Zero it out here. */
+.static-content .description {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
 }
 
 .static-transmission .description p:first-of-type {
