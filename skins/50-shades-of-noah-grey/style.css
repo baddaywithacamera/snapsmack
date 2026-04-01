@@ -636,8 +636,8 @@ body.archive-page #scroll-stage {
     width: 100% !important;
     max-width: 850px !important;
     margin: 0 0 40px 0 !important;
-    padding-left: 24px !important;
-    padding-right: 20px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
     text-align: left !important;
     display: block !important;
     box-sizing: border-box !important;
