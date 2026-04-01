@@ -40,5 +40,4 @@ ON DUPLICATE KEY UPDATE `setting_val` = '0.7.7';
 -- 3. RECORD MIGRATION
 -- ------------------------------------------------------------
 
-INSERT IGNORE INTO `snap_migrations` (`migration`, `applied_at`)
-VALUES ('migrate-077.sql', NOW());
+INSERT IGNORE INTO `snap_migrations` (`migration`, `applie

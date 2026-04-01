@@ -1270,13 +1270,13 @@ function openSkinModal(slug) {
     var ssHtml = '';
     if (skin.screenshots.length > 0) {
         skin.screenshots.forEach(function(s) {
-            ssHtml += '<div style="flex:1;position:relative;">' +
-                '<img src="' + s.src + '" alt="' + s.label + '" style="width:100%;height:240px;object-fit:cover;display:block;" loading="lazy">' +
+            ssHtml += '<div style="flex:1;position:relative;aspect-ratio:16/9;overflow:hidden;cursor:pointer;" onclick="openScreenshotLightbox(\'' + s.src.replace(/'/g, "\\'") + '\',\'' + s.label.replace(/'/g, "\\'") + '\')">' +
+                '<img src="' + s.src + '" alt="' + s.label + '" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy">' +
                 '<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);color:#fff;font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;padding:4px 8px;text-align:center;">' + s.label + '</div>' +
                 '</div>';
         });
     } else {
-        ssHtml = '<div style="flex:1;height:160px;display:flex;align-items:center;justify-content:center;color:#555;font-size:0.8rem;text-transform:uppercase;letter-spacing:2px;">No Preview Available</div>';
+        ssHtml = '<div style="flex:1;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:#555;font-size:0.8rem;text-transform:uppercase;letter-spacing:2px;">No Preview Available</div>';
     }
     document.getElementById('sm-screenshots').innerHTML = ssHtml;
 
@@ -1336,6 +1336,30 @@ function closeSkinModal() {
     document.removeEventListener('keydown', skinModalEsc);
 }
 function skinModalEsc(e) { if (e.key === 'Escape') closeSkinModal(); }
+
+function openScreenshotLightbox(src, label) {
+    var lb = document.getElementById('ss-lightbox');
+    if (!lb) {
+        lb = document.createElement('div');
+        lb.id = 'ss-lightbox';
+        lb.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.92);display:flex;align-items:center;justify-content:center;cursor:zoom-out;';
+        lb.innerHTML = '<img id="ss-lightbox-img" style="max-width:95vw;max-height:95vh;object-fit:contain;display:block;box-shadow:0 0 60px rgba(0,0,0,0.8);" src="" alt="">' +
+                       '<div id="ss-lightbox-label" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);color:#fff;font-size:0.7rem;text-transform:uppercase;letter-spacing:2px;background:rgba(0,0,0,0.5);padding:4px 14px;border-radius:3px;pointer-events:none;"></div>';
+        lb.addEventListener('click', closeScreenshotLightbox);
+        document.body.appendChild(lb);
+    }
+    document.getElementById('ss-lightbox-img').src = src;
+    document.getElementById('ss-lightbox-img').alt = label || '';
+    document.getElementById('ss-lightbox-label').textContent = label || '';
+    lb.style.display = 'flex';
+    document.addEventListener('keydown', ssLightboxEsc);
+}
+function closeScreenshotLightbox() {
+    var lb = document.getElementById('ss-lightbox');
+    if (lb) lb.style.display = 'none';
+    document.removeEventListener('keydown', ssLightboxEsc);
+}
+function ssLightboxEsc(e) { if (e.key === 'Escape') closeScreenshotLightbox(); }
 
 // Prevent button/form clicks inside skin cards from opening the modal
 document.querySelectorAll('.skin-card-actions, .skin-card-actions button, .skin-card-actions form, .ss-nav, .ss-dot').forEach(function(el) {
