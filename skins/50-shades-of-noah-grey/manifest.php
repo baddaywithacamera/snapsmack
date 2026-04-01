@@ -42,7 +42,8 @@ return [
         'smack-lightbox',
         'smack-justified-lib',
         'smack-justified',
-        'smack-community'
+        'smack-community',
+        'fsog-layout-toggle',
     ],
 
     'options' => [
@@ -58,7 +59,7 @@ return [
             'default'  => '1280',
             'min'      => '800',
             'max'      => '1920',
-            'selector' => '.fsog-header-inside, .fsog-photo-wrap, #system-footer .inside, #browse-grid, #justified-grid',
+            'selector' => '.fsog-header-inside, .fsog-photo-wrap, #system-footer .inside, #browse-grid, #browse-grid-cropped, #justified-grid',
             'property' => 'max-width'
         ],
 
@@ -69,7 +70,7 @@ return [
             'default'  => '40',
             'min'      => '0',
             'max'      => '200',
-            'selector' => '.fsog-header-inside, .fsog-photo-wrap, #browse-grid',
+            'selector' => '.fsog-header-inside, .fsog-photo-wrap, #browse-grid, #browse-grid-cropped',
             'property' => 'padding-left, padding-right'
         ],
 
@@ -109,7 +110,7 @@ return [
             'default'  => '4',
             'min'      => '2',
             'max'      => '8',
-            'selector' => '#browse-grid',
+            'selector' => '#browse-grid, #browse-grid-cropped',
             'property' => '--grid-cols'
         ],
 
