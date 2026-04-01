@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK — Shortcode Toolbar
- * Alpha v0.7.5
+ * Alpha v0.7.7
  *
  * Provides insert-at-cursor shortcode buttons for textarea editors.
  * Each button inserts the appropriate shortcode tag at the cursor position
@@ -138,10 +138,15 @@
             document.removeEventListener('keydown', onEscape);
             overlay.remove();
 
-            // Restore selection and insert
-            textarea.selectionStart = selStart;
-            textarea.selectionEnd   = selEnd;
-            insertAtCursor(textarea, tag + linkText + closing);
+            // Direct splice using the selStart/selEnd captured before the dialog
+            // opened. Do NOT call insertAtCursor() here — it reads selectionStart/End
+            // from the textarea again and appends the selection text after `before`,
+            // which would duplicate the link text since linkText is already baked in.
+            var replacement = tag + linkText + closing;
+            var val = textarea.value;
+            textarea.value = val.substring(0, selStart) + replacement + val.substring(selEnd);
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = selStart + replacement.length;
         }
 
         document.getElementById('sc-link-insert').addEventListener('click', doInsert);
