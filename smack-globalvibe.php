@@ -323,6 +323,21 @@ include 'core/sidebar.php';
                             </select>
                         <?php endif; ?>
                     </div>
+                    <div class="lens-input-wrapper">
+                        <label>FLOATING GALLERY ROWS</label>
+                        <?php if ($wall_unavailable): ?>
+                            <select disabled class="select-locked">
+                                <option>DISABLED BY SKIN</option>
+                            </select>
+                            <input type="hidden" name="settings[wall_rows]" value="2">
+                        <?php else: ?>
+                            <select name="settings[wall_rows]">
+                                <?php foreach ([2, 3, 4, 5] as $r): ?>
+                                    <option value="<?php echo $r; ?>" <?php echo (($settings['wall_rows'] ?? '2') == $r) ? 'selected' : ''; ?>><?php echo $r; ?> ROWS</option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
 
