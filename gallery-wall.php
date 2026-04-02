@@ -60,8 +60,8 @@ $wall_friction   = (float)($settings['wall_friction']   ?? 0.96);
 $wall_dragweight = (float)($settings['wall_dragweight'] ?? 2.5);
 $wall_theme      = $settings['wall_theme']              ?? '#000000';
 $pinch_power     = (int)($settings['pinch_sensitivity'] ?? 30);
-$wall_limit      = (int)($settings['wall_limit']        ?? 100);
-$wall_rows       = max(1, min(4, (int)($settings['wall_rows'] ?? 1)));
+$wall_limit      = (int)($settings['wall_limit']        ?? 40);
+$wall_rows       = max(1, min(5, (int)($settings['wall_rows'] ?? 2)));
 $wall_gap        = (int)($settings['wall_gap']          ?? 120);
 
 // Typography settings
@@ -82,10 +82,8 @@ switch ($intensity) {
 $text_color = $settings['wall_text_color'] ?? '#808080';
 
 // --- LAYOUT CALCULATIONS ---
-// Calculates tile heights and gaps based on viewport rows
-$vh_share   = 100 / $wall_rows;
-$gap_adjust = ($wall_gap * ($wall_rows + 1)) / $wall_rows;
-$tile_style = "height: calc({$vh_share}vh - {$gap_adjust}px) !important;";
+// Grid rows and gap are set via CSS variables; tiles size themselves via 1fr.
+// No per-tile height calculation needed.
 
 // --- IMAGE FETCH ---
 // Respects publication date and timestamp filtering (timezone set in core/db.php)
@@ -98,7 +96,7 @@ try {
 } catch (Exception $e) { $total_images = 0; }
 
 try {
-    $stmt = $pdo->prepare("SELECT id, img_title, img_file FROM snap_images
+    $stmt = $pdo->prepare("SELECT id, img_title, img_file, img_thumb_aspect FROM snap_images
                            WHERE img_status = 'published'
                            AND img_date <= :now_local
                            ORDER BY sort_order ASC, img_date DESC LIMIT :limit");
@@ -130,7 +128,7 @@ try {
     </script>
 </head>
 <body class="is-wall<?php echo (($settings['show_titles'] ?? '1') != '1') ? ' wall-hide-titles' : ''; ?>"
-      style="--wall-bg:<?php echo htmlspecialchars($wall_theme); ?>; --wall-gap:<?php echo $wall_gap; ?>px; --wall-font:<?php echo $font_css; ?>; --wall-text:<?php echo htmlspecialchars($text_color); ?>; --wall-shadow-string:<?php echo $shadow_css; ?>;">
+      style="--wall-bg:<?php echo htmlspecialchars($wall_theme); ?>; --wall-gap:<?php echo $wall_gap; ?>px; --wall-rows:<?php echo $wall_rows; ?>; --wall-font:<?php echo $font_css; ?>; --wall-text:<?php echo htmlspecialchars($text_color); ?>; --wall-shadow-string:<?php echo $shadow_css; ?>;">
 
 <div class="wall-viewport">
     <div class="wall-canvas" id="wall-canvas"
@@ -140,8 +138,9 @@ try {
          data-total-images="<?php echo $total_images; ?>"
          data-initial-limit="<?php echo $wall_limit; ?>">
         <?php foreach ($images as $img): ?>
-            <div class="wall-tile" style="<?php echo $tile_style; ?>" onclick="zoomImage(this)" data-full="<?php echo htmlspecialchars($img['img_file']); ?>">
-                <img src="<?php echo htmlspecialchars($img['img_file']); ?>" alt="Smack" loading="lazy">
+            <div class="wall-tile" data-full="<?php echo htmlspecialchars($img['img_file']); ?>">
+                <?php $thumb = !empty($img['img_thumb_aspect']) ? $img['img_thumb_aspect'] : $img['img_file']; ?>
+                <img src="<?php echo htmlspecialchars($thumb); ?>" alt="Smack" loading="eager" decoding="async">
                 <div class="tile-meta">
                     <?php
                         $words = explode(' ', htmlspecialchars($img['img_title']));

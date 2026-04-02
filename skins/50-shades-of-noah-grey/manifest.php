@@ -346,6 +346,19 @@ return [
            SECTION 5: WALL SPECIFIC
            ============================================================ */
 
+        'wall_rows' => [
+            'section'  => 'WALL SPECIFIC',
+            'type'     => 'select',
+            'label'    => 'Gallery Wall Rows',
+            'default'  => '2',
+            'options'  => [
+                '2' => '2 Rows',
+                '3' => '3 Rows',
+                '4' => '4 Rows',
+                '5' => '5 Rows',
+            ],
+        ],
+
         'wall_friction' => [
             'section'  => 'WALL SPECIFIC',
             'type'     => 'number',
