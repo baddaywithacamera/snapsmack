@@ -18,15 +18,8 @@ try {
     $settings = [];
 }
 
-$wall_rows = isset($settings['wall_rows']) ? (int)$settings['wall_rows'] : 1;
-$wall_gap  = isset($settings['wall_gap']) ? (int)$settings['wall_gap'] : 120;
-
 // --- LAYOUT GEOMETRY ---
-// Must remain identical to gallery-wall.php to maintain grid integrity when appending new tiles
-$rows_to_render = max(1, min(4, $wall_rows));
-$vh_share = 100 / $rows_to_render;
-$gap_adjust = ($wall_gap * ($rows_to_render + 1)) / $rows_to_render;
-$tile_style_string = "height: calc({$vh_share}vh - {$gap_adjust}px) !important;";
+// Grid handles row sizing via CSS variables; no per-tile height needed.
 
 // --- REQUEST PARAMETERS ---
 // The offset represents how many images are already loaded on the client
@@ -38,7 +31,7 @@ $limit = 20;
 $now_local = date('Y-m-d H:i:s');
 
 try {
-    $stmt = $pdo->prepare("SELECT id, img_title, img_file FROM snap_images
+    $stmt = $pdo->prepare("SELECT id, img_title, img_file, img_thumb_aspect FROM snap_images
                            WHERE img_status = 'published'
                            AND img_date <= :now_local
                            ORDER BY sort_order ASC, img_date DESC LIMIT :limit OFFSET :offset");
@@ -56,10 +49,10 @@ try {
 // --- TILE RENDERING ---
 // Outputs HTML fragments. JavaScript appends these to the wall canvas.
 foreach ($batch as $img) {
-    echo '<div class="wall-tile" style="' . $tile_style_string . '" onclick="zoomImage(this)" data-full="' . htmlspecialchars($img['img_file']) . '">';
-    echo '  <img src="' . htmlspecialchars($img['img_file']) . '" alt="Smack" loading="lazy">';
+    $thumb = !empty($img['img_thumb_aspect']) ? $img['img_thumb_aspect'] : $img['img_file'];
+    echo '<div class="wall-tile" data-full="' . htmlspecialchars($img['img_file']) . '">';
+    echo '  <img src="' . htmlspecialchars($thumb) . '" alt="Smack" loading="lazy" decoding="async">';
     echo '  <div class="tile-meta">';
-    // Renders title with newline support
     echo      nl2br(htmlspecialchars($img['img_title']));
     echo '  </div>';
     echo '</div>';
