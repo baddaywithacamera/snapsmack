@@ -1,434 +1,433 @@
 /**
  * SNAPSMACK - Wall Engine
- * Alpha v0.7.5
+ * Alpha v0.7.7
  *
- * 3D perspective wall gallery with physics-driven panning, touch gestures,
- * infinite scroll, and zoomable image viewer. Keyboard and mouse controls.
+ * Physics-driven horizontal gallery wall. CSS Grid handles multi-row layout;
+ * this engine drives panning, depth zoom, focus tracking, and infinite scroll.
+ *
+ * Key design decisions:
+ *  - Y axis is locked; the grid fills 100vh so vertical panning is meaningless.
+ *  - getBoundingClientRect() is only called when movement has nearly stopped,
+ *    not every animation frame.
+ *  - Wheel zoom uses its own multiplier, independent of touch pinch power.
+ *  - Everything is wrapped in an IIFE to avoid polluting the global scope.
  */
 
-const canvas = document.getElementById('wall-canvas');
-const zoomLayer = document.getElementById('zoom-layer');
-let activeClone = null;
-let originTile = null;
+(function () {
+    'use strict';
 
-// --- CONFIGURATION HANDSHAKE ---
-// Reads data attributes from #wall-canvas; falls back to legacy window.WALL_CONFIG.
-const _wc = canvas ? canvas.dataset : {};
-const _legacy = window.WALL_CONFIG || {};
-const config = {
-    friction:     parseFloat(_wc.friction)      || _legacy.friction     || 0.90,
-    dragWeight:   parseFloat(_wc.dragWeight)     || _legacy.dragWeight   || 1.25,
-    pinchPower:   parseInt(_wc.pinchPower, 10)   || _legacy.pinchPower   || 20,
-    totalImages:  parseInt(_wc.totalImages, 10)  || _legacy.totalImages  || 0,
-    initialLimit: parseInt(_wc.initialLimit, 10) || _legacy.initialLimit || 100,
-};
+    const canvas    = document.getElementById('wall-canvas');
+    const zoomLayer = document.getElementById('zoom-layer');
+    if (!canvas || !zoomLayer) return;
 
-let friction = config.friction;
-let dragWeight = config.dragWeight;
-let pinchPower = config.pinchPower;
-let isDragging = false;
-let lastX = 0;
-let lastY = 0;
+    // ----------------------------------------------------------------
+    // CONFIG  (data attributes on #wall-canvas, with sensible defaults)
+    // ----------------------------------------------------------------
+    const cfg = {
+        friction:     parseFloat(canvas.dataset.friction)     || 0.94,
+        dragWeight:   parseFloat(canvas.dataset.dragWeight)   || 1.2,
+        pinchPower:   parseFloat(canvas.dataset.pinchPower)   || 30,
+        totalImages:  parseInt(canvas.dataset.totalImages, 10) || 0,
+        initialLimit: parseInt(canvas.dataset.initialLimit, 10) || 50,
+    };
 
-// --- PHYSICS STATE ---
-let targetX = 0, currentX = 0;
-let targetY = 0, currentY = 0;
-let targetZ = -600, currentZ = -600;
-let currentTilt = 0;
+    // ----------------------------------------------------------------
+    // PHYSICS STATE  (X pan + Z depth only — Y is always 0)
+    // ----------------------------------------------------------------
+    let aimX = 0, posX = 0, velX = 0;
+    let aimZ = -500, posZ = -500, velZ = 0;
+    let tilt = 0;
 
-// --- VELOCITY ---
-let velocityX = 0;
-let velocityY = 0;
-let velocityZ = 0;
+    // ----------------------------------------------------------------
+    // INTERACTION STATE
+    // ----------------------------------------------------------------
+    let dragging = false, dragX = 0;
+    let pinching = false, pinchD0 = 0, pinchZ0 = 0;
 
-// --- ZOOM STATE ---
-let initialPinchDistance = 0;
-let initialZ = -600;
-let zoomStartY = 0;
-let isZoomDragging = false;
-let zoomBaseScale = 1;
+    // ----------------------------------------------------------------
+    // ZOOM VIEWER STATE
+    // ----------------------------------------------------------------
+    let zoomedTile = null, zoomClone = null, zoomScale = 1, zoomRect = null;
+    let swipeY0 = 0, swipeLive = false;
 
-// --- INFINITE SCROLL STATE ---
-let offset = config.initialLimit || 100;
-let isLoading = false;
-let sentinel = null;
-let hasMore = (offset < config.totalImages);
+    // ----------------------------------------------------------------
+    // FOCUS TRACKING  (throttled — not every frame)
+    // ----------------------------------------------------------------
+    let focusTile  = null;
+    let focusTimer = null;
 
-// --- INITIALIZATION ---
-function initWall() {
-    createHelpUI();
-    setupInfiniteScroll();
+    function updateFocus() {
+        const cx = window.innerWidth  / 2;
+        const cy = window.innerHeight / 2;
+        let best = null, bestD = Infinity;
 
-    setTimeout(() => {
-        const tiles = document.querySelectorAll('.wall-tile');
-        if (tiles.length > 0) {
-            const midIndex = Math.floor((tiles.length - 1) / 2);
-            const midTile = tiles[midIndex];
-            const rect = midTile.getBoundingClientRect();
-
-            targetX = (window.innerWidth / 2) - (rect.left - currentX + rect.width / 2);
-            targetY = (window.innerHeight / 2) - (rect.top - currentY + rect.height / 2);
-
-            currentX = targetX;
-            currentY = targetY;
-        }
-    }, 300);
-}
-
-// --- HELP UI ---
-function createHelpUI() {
-    const toast = document.createElement('div');
-    toast.id = 'help-toast';
-    toast.innerText = "PRESS F1 FOR HELP";
-    toast.style.cssText = "position: fixed; bottom: 20px; left: 20px; color: var(--wall-text); background: var(--wall-bg); padding: 10px 20px; border: 1px solid var(--wall-text); font-family: 'Courier Prime', monospace; font-size: 12px; z-index: 9999999; pointer-events: none; opacity: 0; transition: opacity 1s; box-shadow: 0 5px 15px rgba(0,0,0,0.5);";
-    document.body.appendChild(toast);
-
-    setTimeout(() => toast.style.opacity = '1', 500);
-    setTimeout(() => toast.style.opacity = '0', 5000);
-
-    const modal = document.createElement('div');
-    modal.id = 'help-modal';
-    modal.style.cssText = "display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--wall-bg); border: 2px solid var(--wall-text); padding: 40px; color: var(--wall-text); font-family: 'Courier Prime', monospace; z-index: 10000000; text-align: center; box-shadow: 0 0 50px rgba(0,0,0,0.8); min-width: 300px; border-radius: 4px;";
-    modal.innerHTML = `
-        <h2 style="color: var(--wall-text); margin-top: 0; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid var(--wall-text); padding-bottom: 15px;">System Controls</h2>
-        <ul style="list-style: none; padding: 0; line-height: 2.5; text-align: left; font-size: 0.9rem;">
-            <li><strong>ENTER / SPACE</strong> : Zoom Selected</li>
-            <li><strong>ARROWS</strong> : Pan Wall / Navigate</li>
-            <li><strong>HOME / END</strong> : Jump Start / End</li>
-            <li><strong>1</strong> : Toggle Floating Titles</li>
-            <li><strong>PG UP / DN</strong> : Zoom Wall In/Out</li>
-            <li><strong>F1 / ESC</strong> : Help / Close</li>
-        </ul>
-        <div style="margin-top: 20px; font-size: 0.7rem; opacity: 0.7;">SnapSmack Alpha v0.7.5</div>
-    `;
-    document.body.appendChild(modal);
-}
-
-// --- INFINITE SCROLL ---
-function setupInfiniteScroll() {
-    sentinel = document.getElementById('wall-sentinel');
-    const observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && !isLoading && hasMore && targetZ > -2500) {
-            loadMoreTiles();
-        }
-    }, { rootMargin: '800px' });
-
-    if (sentinel) observer.observe(sentinel);
-}
-
-async function loadMoreTiles() {
-    isLoading = true;
-    try {
-        const response = await fetch(`load-more.php?offset=${offset}`);
-        const html = await response.text();
-
-        if (html.trim().length > 0) {
-            sentinel.insertAdjacentHTML('beforebegin', html);
-            offset += 20;
-            hasMore = (offset < config.totalImages);
-        } else {
-            hasMore = false;
-        }
-    } catch (err) {
-        console.error("Pagination fetch failed:", err);
-    } finally {
-        isLoading = false;
-    }
-}
-
-// --- FOCUS TRACKING ---
-// Determine which tile is closest to viewport center
-function updateCenterFocus() {
-    const tiles = document.querySelectorAll('.wall-tile');
-    const vwC = window.innerWidth / 2;
-    const vhC = window.innerHeight / 2;
-
-    let closestTile = null;
-    let minDistance = Infinity;
-
-    tiles.forEach(tile => {
-        const rect = tile.getBoundingClientRect();
-        const tX = rect.left + (rect.width / 2);
-        const tY = rect.top + (rect.height / 2);
-        const distance = Math.hypot(vwC - tX, vhC - tY);
-
-        tile.classList.remove('is-centered');
-
-        if (distance < minDistance) {
-            minDistance = distance;
-            closestTile = tile;
-        }
-    });
-
-    if (closestTile) {
-        closestTile.classList.add('is-centered');
-    }
-}
-
-// --- LERP UTILITY ---
-function lerp(start, end, factor) { return start + (end - start) * factor; }
-
-// --- ANIMATION LOOP ---
-function animate() {
-    if (!isDragging) {
-        targetX += velocityX;
-        targetY += velocityY;
-        targetZ += velocityZ;
-
-        velocityX *= friction;
-        velocityY *= friction;
-        velocityZ *= friction;
-
-        if (Math.abs(velocityX) < 0.05) velocityX = 0;
-        if (Math.abs(velocityY) < 0.05) velocityY = 0;
-        if (Math.abs(velocityZ) < 0.05) velocityZ = 0;
-
-        targetZ = Math.max(-8000, Math.min(800, targetZ));
-    }
-
-    currentX = lerp(currentX, targetX, 0.15);
-    currentY = lerp(currentY, targetY, 0.15);
-    currentZ = lerp(currentZ, targetZ, 0.15);
-
-    let tiltTarget = velocityX * 0.7;
-    currentTilt = lerp(currentTilt, tiltTarget, 0.1);
-    const cappedTilt = Math.max(-18, Math.min(18, currentTilt));
-
-    canvas.style.transform = `translate3d(${currentX}px, ${currentY}px, ${currentZ}px) rotateY(${-cappedTilt}deg)`;
-    updateCenterFocus();
-    requestAnimationFrame(animate);
-}
-
-// --- KEYBOARD EVENTS ---
-window.addEventListener('keydown', (e) => {
-    const modal = document.getElementById('help-modal');
-    const isModalOpen = (modal && modal.style.display === 'block');
-    const isZoomed = zoomLayer.classList.contains('active');
-
-    if (e.key === 'F1') {
-        e.preventDefault();
-        if (modal) modal.style.display = isModalOpen ? 'none' : 'block';
-    }
-    if (e.key === 'Escape') {
-        if (isModalOpen) {
-            modal.style.display = 'none';
-        } else if (isZoomed) {
-            closeZoom();
-        } else {
-            history.back();
-        }
-    }
-
-    // Toggle metadata visibility
-    if (e.key === '1') {
-        document.querySelectorAll('.tile-meta').forEach(el => {
-            el.style.visibility = (el.style.visibility === 'hidden') ? 'visible' : 'hidden';
+        canvas.querySelectorAll('.wall-tile').forEach(tile => {
+            const r = tile.getBoundingClientRect();
+            const d = Math.hypot(cx - (r.left + r.width  / 2),
+                                 cy - (r.top  + r.height / 2));
+            if (d < bestD) { bestD = d; best = tile; }
         });
+
+        if (best !== focusTile) {
+            if (focusTile) focusTile.classList.remove('is-centered');
+            if (best)      best.classList.add('is-centered');
+            focusTile = best;
+        }
     }
 
-    // Spacebar to advance to next image
-    if (e.key === ' ') {
+    function scheduleFocus() {
+        clearTimeout(focusTimer);
+        focusTimer = setTimeout(updateFocus, 180);
+    }
+
+    // ----------------------------------------------------------------
+    // CENTERING  — snap to mid-tile once layout has settled
+    // ----------------------------------------------------------------
+    function snapToMid() {
+        const tiles = canvas.querySelectorAll('.wall-tile');
+        if (!tiles.length) return;
+        const mid  = tiles[Math.floor(tiles.length / 2)];
+        const cr   = canvas.getBoundingClientRect();
+        const mr   = mid.getBoundingClientRect();
+        aimX = posX = window.innerWidth  / 2 - (mr.left - cr.left + mr.width  / 2);
+        updateFocus();
+    }
+
+    // Two rAFs: first lets the grid paint, second lets images report their widths.
+    requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(snapToMid, 80)));
+
+    // ----------------------------------------------------------------
+    // ANIMATION LOOP  (lerp toward aim; apply friction to velocities)
+    // ----------------------------------------------------------------
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
+    (function tick() {
+        if (!dragging && !pinching) {
+            aimX += velX;   velX *= cfg.friction;   if (Math.abs(velX) < 0.04) velX = 0;
+            aimZ += velZ;   velZ *= cfg.friction;   if (Math.abs(velZ) < 0.04) velZ = 0;
+            aimZ  = Math.max(-7000, Math.min(700, aimZ));
+
+            // Schedule a focus update whenever we're nearly stopped
+            if (velX !== 0 || velZ !== 0) scheduleFocus();
+        }
+
+        posX  = lerp(posX, aimX, 0.10);
+        posZ  = lerp(posZ, aimZ, 0.10);
+        tilt  = lerp(tilt, velX * 0.55, 0.07);
+        const lean = Math.max(-14, Math.min(14, tilt));
+
+        canvas.style.transform =
+            `translate3d(${posX}px, 0px, ${posZ}px) rotateY(${-lean}deg)`;
+
+        requestAnimationFrame(tick);
+    }());
+
+    // ----------------------------------------------------------------
+    // MOUSE PAN
+    // ----------------------------------------------------------------
+    window.addEventListener('mousedown', e => {
+        if (zoomedTile) return;
+        dragging = true;
+        dragX    = e.pageX;
+        velX     = 0;
+        document.body.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mousemove', e => {
+        if (!dragging) return;
+        const dx = (e.pageX - dragX) * cfg.dragWeight;
+        aimX += dx;
+        velX  = dx;
+        dragX = e.pageX;
+    });
+
+    window.addEventListener('mouseup', () => {
+        dragging = false;
+        document.body.style.cursor = '';
+    });
+
+    // ----------------------------------------------------------------
+    // WHEEL ZOOM  (independent of pinchPower; clamped per event)
+    // ----------------------------------------------------------------
+    window.addEventListener('wheel', e => {
+        if (zoomedTile) return;
         e.preventDefault();
-        const sibling = originTile ? originTile.nextElementSibling : document.querySelector('.wall-tile');
-        if (sibling && sibling.classList.contains('wall-tile')) {
-            if (isZoomed) {
-                closeZoom();
-                zoomImage(sibling);
-            } else {
-                // Kick physics left to bring next tile toward center
-                velocityX -= 80;
-            }
-        }
+        const kick = Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY), 100) * 0.32;
+        velZ -= kick;
+    }, { passive: false });
+
+    // ----------------------------------------------------------------
+    // TOUCH — one finger pan, two finger pinch zoom
+    // ----------------------------------------------------------------
+    function touchDist(t) {
+        return Math.hypot(t[0].pageX - t[1].pageX, t[0].pageY - t[1].pageY);
     }
 
-    // Enter to zoom centered image
-    if (e.key === 'Enter') {
-        if (isZoomed) {
-            closeZoom();
+    window.addEventListener('touchstart', e => {
+        if (zoomedTile) return;
+        if (e.touches.length === 2) {
+            pinching = true;
+            dragging = false;
+            pinchD0  = touchDist(e.touches);
+            pinchZ0  = aimZ;
+            velZ     = 0;
         } else {
-            const centered = document.querySelector('.wall-tile.is-centered');
-            if (centered) zoomImage(centered);
+            dragging = true;
+            dragX    = e.touches[0].pageX;
+            velX     = 0;
         }
-    }
+    }, { passive: true });
 
-    if (isZoomed) {
-        if (e.key === 'ArrowLeft') navigateGallery(-1);
-        if (e.key === 'ArrowRight') navigateGallery(1);
-    } else {
-        const pan = 27; const zoom = 45;
-        if (e.key === 'ArrowLeft')  velocityX += pan;
-        if (e.key === 'ArrowRight') velocityX -= pan;
-        if (e.key === 'ArrowUp')    velocityY += pan;
-        if (e.key === 'ArrowDown')  velocityY -= pan;
-        if (e.key === 'PageUp') { e.preventDefault(); velocityZ += zoom; }
-        if (e.key === 'PageDown') { e.preventDefault(); velocityZ -= zoom; }
-
-        // Snap to wall boundaries
-        if (e.key === 'Home') snapToTile('first');
-        if (e.key === 'End') snapToTile('last');
-    }
-});
-
-// Jump to first or last tile
-function snapToTile(pos) {
-    const tiles = document.querySelectorAll('.wall-tile');
-    if (tiles.length === 0) return;
-    const target = (pos === 'first') ? tiles[0] : tiles[tiles.length - 1];
-    const rect = target.getBoundingClientRect();
-    targetX = (window.innerWidth / 2) - (rect.left - currentX + rect.width / 2);
-    targetY = (window.innerHeight / 2) - (rect.top - currentY + rect.height / 2);
-    velocityX = 0; velocityY = 0;
-}
-
-// --- MOUSE GESTURES ---
-window.addEventListener('mousedown', (e) => {
-    if(zoomLayer.classList.contains('active')) return;
-    isDragging = true;
-    lastX = e.pageX;
-    lastY = e.pageY;
-    velocityX = 0; velocityY = 0; velocityZ = 0;
-});
-
-window.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    const dx = (e.pageX - lastX) * dragWeight;
-    const dy = (e.pageY - lastY) * dragWeight;
-    targetX += dx; targetY += dy;
-    velocityX = dx; velocityY = dy;
-    lastX = e.pageX; lastY = e.pageY;
-});
-
-window.addEventListener('mouseup', () => isDragging = false);
-
-// --- WHEEL ZOOM ---
-window.addEventListener('wheel', (e) => {
-    if (zoomLayer.classList.contains('active')) return;
-    velocityZ -= e.deltaY * (pinchPower / 10);
-    e.preventDefault();
-}, { passive: false });
-
-// --- TOUCH GESTURES ---
-function getDistance(t) { return Math.hypot(t[0].pageX - t[1].pageX, t[0].pageY - t[1].pageY); }
-
-window.addEventListener('touchstart', (e) => {
-    if(zoomLayer.classList.contains('active')) return;
-    if (e.touches.length === 2) {
-        initialPinchDistance = getDistance(e.touches);
-        initialZ = targetZ;
-        velocityZ = 0;
-    } else {
-        isDragging = true;
-        lastX = e.touches[0].pageX; lastY = e.touches[0].pageY;
-        velocityX = 0; velocityY = 0; velocityZ = 0;
-    }
-}, { passive: false });
-
-window.addEventListener('touchmove', (e) => {
-    if (e.touches.length === 2) {
-        const d = getDistance(e.touches) - initialPinchDistance;
-        targetZ = Math.max(-8000, Math.min(800, initialZ + (d * pinchPower)));
-    } else if (isDragging) {
-        const dx = (e.touches[0].pageX - lastX) * dragWeight;
-        const dy = (e.touches[0].pageY - lastY) * dragWeight;
-        targetX += dx; targetY += dy;
-        velocityX = dx; velocityY = dy;
-        lastX = e.touches[0].pageX; lastY = e.touches[0].pageY;
-        if (Math.abs(velocityX) > 5) e.preventDefault();
-    }
-}, { passive: false });
-
-window.addEventListener('touchend', () => isDragging = false);
-
-// --- ZOOM AND GALLERY ---
-// Navigate between images in zoomed view
-function navigateGallery(direction) {
-    if (!originTile) return;
-    const sibling = direction === 1 ? originTile.nextElementSibling : originTile.previousElementSibling;
-    if (sibling && sibling.classList.contains('wall-tile')) {
-        if(activeClone && activeClone.parentNode) {
-            document.body.removeChild(activeClone);
-            activeClone = null;
+    window.addEventListener('touchmove', e => {
+        if (pinching && e.touches.length === 2) {
+            const d = touchDist(e.touches) - pinchD0;
+            aimZ = Math.max(-7000, Math.min(700, pinchZ0 + d * cfg.pinchPower));
+            e.preventDefault();
+        } else if (dragging) {
+            const dx = (e.touches[0].pageX - dragX) * cfg.dragWeight;
+            aimX += dx;
+            velX  = dx;
+            dragX = e.touches[0].pageX;
+            if (Math.abs(dx) > 4) e.preventDefault();
         }
+    }, { passive: false });
+
+    window.addEventListener('touchend', () => { dragging = false; pinching = false; });
+
+    // ----------------------------------------------------------------
+    // ZOOM VIEWER
+    // ----------------------------------------------------------------
+    canvas.addEventListener('click', e => {
+        const tile = e.target.closest('.wall-tile');
+        if (tile) openZoom(tile);
+    });
+
+    zoomLayer.addEventListener('click', closeZoom);
+
+    function openZoom(tile) {
+        if (zoomedTile) closeZoom(true);
+        zoomedTile = tile;
+
+        const img  = tile.querySelector('img');
+        zoomRect   = img.getBoundingClientRect();
+
+        zoomClone  = document.createElement('img');
+        zoomClone.className = 'zoom-clone';
+        zoomClone.src       = img.src;
+        zoomClone.style.cssText =
+            `width:${zoomRect.width}px; height:${zoomRect.height}px;` +
+            `left:${zoomRect.left}px;  top:${zoomRect.top}px;`;
+
+        document.body.appendChild(zoomClone);
+        zoomLayer.classList.add('active');
+
+        requestAnimationFrame(() => {
+            const pad  = 0.91;
+            zoomScale  = Math.min(
+                (window.innerWidth  * pad) / zoomRect.width,
+                (window.innerHeight * pad) / zoomRect.height
+            );
+            const tx = window.innerWidth  / 2 - zoomRect.left - zoomRect.width  / 2;
+            const ty = window.innerHeight / 2 - zoomRect.top  - zoomRect.height / 2;
+            zoomClone.style.transform = `translate(${tx}px, ${ty}px) scale(${zoomScale})`;
+
+            const hi  = new Image();
+            hi.src    = tile.dataset.full;
+            hi.onload = () => { if (zoomClone) zoomClone.src = hi.src; };
+        });
+
+        zoomClone.addEventListener('click',      closeZoom);
+        zoomClone.addEventListener('touchstart', onSwipeStart, { passive: true });
+        zoomClone.addEventListener('touchmove',  onSwipeMove,  { passive: true });
+        zoomClone.addEventListener('touchend',   onSwipeEnd,   { passive: true });
+    }
+
+    function closeZoom(instant) {
+        if (!zoomedTile) return;
         zoomLayer.classList.remove('active');
-        zoomImage(sibling);
+        zoomLayer.style.opacity = '1';
+        if (zoomClone) {
+            if (!instant) {
+                zoomClone.style.transform = 'translate(0,0) scale(1)';
+                zoomClone.style.opacity   = '0';
+            }
+            const c = zoomClone; zoomClone = null;
+            setTimeout(() => c.parentNode && c.parentNode.removeChild(c),
+                       instant ? 0 : 380);
+        }
+        zoomedTile = null;
     }
-}
 
-// Open image in fullscreen zoom
-function zoomImage(el) {
-    originTile = el;
-    const img = el.querySelector('img');
-    const rect = img.getBoundingClientRect();
-    const fullRes = el.getAttribute('data-full');
+    function galleryNav(dir) {
+        if (!zoomedTile) return;
+        // Walk siblings, skipping non-tile nodes (e.g. sentinel)
+        let next = dir > 0 ? zoomedTile.nextElementSibling
+                            : zoomedTile.previousElementSibling;
+        while (next && !next.classList.contains('wall-tile')) {
+            next = dir > 0 ? next.nextElementSibling : next.previousElementSibling;
+        }
+        if (!next) return;
+        closeZoom(true);
+        openZoom(next);
+    }
 
-    activeClone = document.createElement('img');
-    activeClone.className = "zoom-clone";
-    activeClone.src = img.src;
-    activeClone.style.cssText = `width:${rect.width}px; height:${rect.height}px; left:${rect.left}px; top:${rect.top}px;`;
+    // Swipe-down-to-dismiss in zoom viewer
+    function onSwipeStart(e) { swipeY0 = e.touches[0].pageY; swipeLive = true; }
+    function onSwipeMove(e) {
+        if (!swipeLive || !zoomClone || !zoomRect) return;
+        const dy = e.touches[0].pageY - swipeY0;
+        if (dy < 0) return;
+        const tx   = window.innerWidth  / 2 - zoomRect.left - zoomRect.width  / 2;
+        const ty   = window.innerHeight / 2 - zoomRect.top  - zoomRect.height / 2;
+        const sc   = Math.max(0.55, zoomScale * (1 - dy / 900));
+        zoomClone.style.transform  = `translate(${tx}px, ${ty + dy}px) scale(${sc})`;
+        zoomLayer.style.opacity    = String(Math.max(0, 1 - dy / 450));
+    }
+    function onSwipeEnd(e) {
+        swipeLive = false;
+        if (!zoomClone || !zoomRect) return;
+        if (e.changedTouches[0].pageY - swipeY0 > 110) { closeZoom(); return; }
+        const tx = window.innerWidth  / 2 - zoomRect.left - zoomRect.width  / 2;
+        const ty = window.innerHeight / 2 - zoomRect.top  - zoomRect.height / 2;
+        zoomClone.style.transform = `translate(${tx}px, ${ty}px) scale(${zoomScale})`;
+        zoomLayer.style.opacity   = '1';
+    }
 
-    document.body.appendChild(activeClone);
-    zoomLayer.classList.add('active');
+    // ----------------------------------------------------------------
+    // KEYBOARD
+    // ----------------------------------------------------------------
+    const helpModal = buildHelpModal();
 
-    requestAnimationFrame(() => {
-        const pad = window.innerWidth > 768 ? 0.95 : 1.0;
-        zoomBaseScale = Math.min((window.innerWidth * pad) / rect.width, (window.innerHeight * pad) / rect.height);
-        const cX = (window.innerWidth / 2) - rect.left - (rect.width / 2);
-        const cY = (window.innerHeight / 2) - rect.top - (rect.height / 2);
-        activeClone.style.transform = `translate(${cX}px, ${cY}px) scale(${zoomBaseScale})`;
+    window.addEventListener('keydown', e => {
+        const modalOpen = helpModal.style.display === 'block';
 
-        const high = new Image();
-        high.src = fullRes;
-        high.onload = () => { if(activeClone) activeClone.src = fullRes; };
-    });
+        if (e.key === 'F1') {
+            e.preventDefault();
+            helpModal.style.display = modalOpen ? 'none' : 'block';
+            return;
+        }
 
-    activeClone.addEventListener('touchstart', (e) => {
-        zoomStartY = e.touches[0].pageY;
-        isZoomDragging = true;
-        activeClone.classList.add('dragging');
-    });
+        if (e.key === 'Escape') {
+            if (modalOpen)  { helpModal.style.display = 'none'; return; }
+            if (zoomedTile) { closeZoom(); return; }
+            history.back();
+            return;
+        }
 
-    activeClone.addEventListener('touchmove', (e) => {
-        if (!isZoomDragging) return;
-        const deltaY = e.touches[0].pageY - zoomStartY;
-        if (deltaY > 0) {
-            const cX = (window.innerWidth / 2) - rect.left - (rect.width / 2);
-            const cY = (window.innerHeight / 2) - rect.top - (rect.height / 2);
-            const dragScale = Math.max(0.6, zoomBaseScale * (1 - deltaY / 1200));
-            activeClone.style.transform = `translate(${cX}px, ${cY + deltaY}px) scale(${dragScale})`;
-            zoomLayer.style.opacity = 1 - (deltaY / 600);
+        if (e.key === '1') {
+            document.body.classList.toggle('wall-hide-titles');
+            return;
+        }
+
+        if (zoomedTile) {
+            if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   galleryNav(-1);
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown')  galleryNav(1);
+            if (e.key === ' ' || e.key === 'Enter') closeZoom();
+            return;
+        }
+
+        const pan = 28, zoom = 48;
+        if (e.key === 'ArrowLeft')  velX += pan;
+        if (e.key === 'ArrowRight') velX -= pan;
+        if (e.key === 'PageUp')   { e.preventDefault(); velZ += zoom; }
+        if (e.key === 'PageDown') { e.preventDefault(); velZ -= zoom; }
+        if (e.key === 'Home') snapToEdge('first');
+        if (e.key === 'End')  snapToEdge('last');
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (focusTile) openZoom(focusTile);
         }
     });
 
-    activeClone.addEventListener('touchend', (e) => {
-        isZoomDragging = false;
-        activeClone.classList.remove('dragging');
-        if ((e.changedTouches[0].pageY - zoomStartY) > 150) {
-            closeZoom();
-        } else {
-            const cX = (window.innerWidth / 2) - rect.left - (rect.width / 2);
-            const cY = (window.innerHeight / 2) - rect.top - (rect.height / 2);
-            activeClone.style.transform = `translate(${cX}px, ${cY}px) scale(${zoomBaseScale})`;
-            zoomLayer.style.opacity = 1;
+    function snapToEdge(pos) {
+        const tiles = canvas.querySelectorAll('.wall-tile');
+        if (!tiles.length) return;
+        const tile = pos === 'first' ? tiles[0] : tiles[tiles.length - 1];
+        const cr   = canvas.getBoundingClientRect();
+        const tr   = tile.getBoundingClientRect();
+        aimX = posX = window.innerWidth / 2 - (tr.left - cr.left + tr.width / 2);
+        velX = 0;
+    }
+
+    // ----------------------------------------------------------------
+    // INFINITE SCROLL
+    // ----------------------------------------------------------------
+    let loadOffset = cfg.initialLimit;
+    let loading    = false;
+    let hasMore    = loadOffset < cfg.totalImages;
+    const sentinel = document.getElementById('wall-sentinel');
+
+    if (sentinel && hasMore) {
+        const io = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && !loading && hasMore) fetchMore();
+        }, { rootMargin: '500px' });
+        io.observe(sentinel);
+    }
+
+    async function fetchMore() {
+        loading = true;
+        try {
+            const r    = await fetch(`load-more.php?offset=${loadOffset}`);
+            const html = await r.text();
+            if (html.trim()) {
+                sentinel.insertAdjacentHTML('beforebegin', html);
+                loadOffset += 20;
+                hasMore = loadOffset < cfg.totalImages;
+                if (!hasMore) sentinel.remove();
+            } else {
+                hasMore = false;
+            }
+        } catch (err) {
+            console.warn('Wall: load-more failed', err);
+        } finally {
+            loading = false;
         }
-    });
+    }
 
-    activeClone.onclick = (e) => { if(!isZoomDragging) closeZoom(); };
-}
+    // ----------------------------------------------------------------
+    // HELP MODAL
+    // ----------------------------------------------------------------
+    function buildHelpModal() {
+        const hint = document.createElement('div');
+        hint.textContent = 'F1 FOR HELP';
+        Object.assign(hint.style, {
+            position: 'fixed', bottom: '18px', left: '18px',
+            color: 'var(--wall-text)', background: 'var(--wall-bg)',
+            padding: '7px 14px', border: '1px solid var(--wall-text)',
+            fontFamily: 'monospace', fontSize: '11px', letterSpacing: '1px',
+            zIndex: '9999999', pointerEvents: 'none',
+            opacity: '0', transition: 'opacity 1.2s',
+        });
+        document.body.appendChild(hint);
+        setTimeout(() => hint.style.opacity = '1', 700);
+        setTimeout(() => hint.style.opacity = '0', 5500);
 
-// Close zoomed view
-function closeZoom() {
-    zoomLayer.classList.remove('active');
-    if (!activeClone) return;
-    activeClone.style.transform = `translate(0, 0) scale(1)`;
-    activeClone.style.opacity = "0";
-    setTimeout(() => {
-        if (activeClone && activeClone.parentNode) {
-            document.body.removeChild(activeClone);
-            activeClone = null;
-        }
-    }, 500);
-}
+        const modal = document.createElement('div');
+        modal.style.display = 'none';
+        Object.assign(modal.style, {
+            position: 'fixed', top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'var(--wall-bg)', border: '1px solid var(--wall-text)',
+            padding: '32px 44px', color: 'var(--wall-text)',
+            fontFamily: 'monospace', fontSize: '12px',
+            zIndex: '10000000', boxShadow: '0 0 60px rgba(0,0,0,0.9)',
+            minWidth: '260px', lineHeight: '2.2',
+        });
+        modal.innerHTML = `
+            <div style="text-transform:uppercase;letter-spacing:2px;font-size:10px;
+                        opacity:.5;margin-bottom:14px;border-bottom:1px solid currentColor;
+                        padding-bottom:10px;">Controls</div>
+            <table style="border-collapse:collapse;width:100%">
+                <tr><td style="opacity:.55;padding-right:20px">Drag / ← →</td><td>Pan wall</td></tr>
+                <tr><td style="opacity:.55">Scroll / PgUp·Dn</td><td>Zoom depth</td></tr>
+                <tr><td style="opacity:.55">Click / Enter</td><td>Open image</td></tr>
+                <tr><td style="opacity:.55">← → (in viewer)</td><td>Navigate</td></tr>
+                <tr><td style="opacity:.55">Home / End</td><td>Jump to start / end</td></tr>
+                <tr><td style="opacity:.55">1</td><td>Toggle titles</td></tr>
+                <tr><td style="opacity:.55">Esc / F1</td><td>Close / Help</td></tr>
+            </table>`;
+        document.body.appendChild(modal);
+        return modal;
+    }
 
-zoomLayer.onclick = closeZoom;
-window.addEventListener('load', initWall);
-animate();
+}());
