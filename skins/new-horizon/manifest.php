@@ -356,6 +356,16 @@ return [
            SECTION 5: WALL SPECIFIC (3D Engine Physics & Visuals)
            --------------------------------------------------------------------- */
 
+        'wall_gap' => [
+            'section'  => 'WALL SPECIFIC',
+            'type'     => 'range',
+            'label'    => 'Image Gap (px)',
+            'default'  => '24',
+            'min'      => '4',
+            'max'      => '120',
+            'unit'     => 'px',
+        ],
+
         'wall_rows' => [
             'section'  => 'WALL SPECIFIC',
             'type'     => 'select',
