@@ -338,6 +338,22 @@ include 'core/sidebar.php';
                             </select>
                         <?php endif; ?>
                     </div>
+                    <div class="lens-input-wrapper">
+                        <label>FLOATING GALLERY IMAGE GAP</label>
+                        <?php if ($wall_unavailable): ?>
+                            <input type="range" disabled min="4" max="120" value="24" class="select-locked">
+                            <input type="hidden" name="settings[wall_gap]" value="24">
+                        <?php else: ?>
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <input type="range"
+                                       name="settings[wall_gap]"
+                                       min="4" max="120" step="2"
+                                       value="<?php echo htmlspecialchars($settings['wall_gap'] ?? '24'); ?>"
+                                       oninput="this.nextElementSibling.textContent = this.value + 'px'">
+                                <span><?php echo htmlspecialchars($settings['wall_gap'] ?? '24'); ?>px</span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
 
