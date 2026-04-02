@@ -245,7 +245,7 @@
     function closeZoom(instant) {
         if (!zoomedTile) return;
         zoomLayer.classList.remove('active');
-        zoomLayer.style.opacity = '1';
+        zoomLayer.style.opacity = '';
         if (zoomClone) {
             if (!instant) {
                 zoomClone.style.transform = 'translate(0,0) scale(1)';

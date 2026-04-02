@@ -551,6 +551,16 @@ return [
            SECTION 7: WALL SPECIFIC (Floating Gallery Physics)
            ============================================================ */
 
+        'wall_gap' => [
+            'section'  => 'WALL SPECIFIC',
+            'type'     => 'range',
+            'label'    => 'Image Gap (px)',
+            'default'  => '24',
+            'min'      => '4',
+            'max'      => '120',
+            'unit'     => 'px',
+        ],
+
         'wall_rows' => [
             'section'  => 'WALL SPECIFIC',
             'type'     => 'select',

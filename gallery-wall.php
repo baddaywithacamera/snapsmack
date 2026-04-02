@@ -62,7 +62,7 @@ $wall_theme      = $settings['wall_theme']              ?? '#000000';
 $pinch_power     = (int)($settings['pinch_sensitivity'] ?? 30);
 $wall_limit      = (int)($settings['wall_limit']        ?? 40);
 $wall_rows       = max(1, min(5, (int)($settings['wall_rows'] ?? 2)));
-$wall_gap        = (int)($settings['wall_gap']          ?? 120);
+$wall_gap        = (int)($settings['wall_gap']          ?? 24);
 
 // Typography settings
 $font_ref   = $settings['wall_font_ref']   ?? 'Playfair Display';
