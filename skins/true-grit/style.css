@@ -680,9 +680,15 @@ body::before {
 .static-transmission #photobox.page-hero--right .main-photo { text-align: right; }
 .static-transmission #photobox.page-hero--right .main-photo img { margin: 0 0 0 auto; float: right; }
 
-/* Shadow modifier (off by default — opt in per page) */
+/* Base: explicitly kill any shadow from the compiled CSS blob or other sources */
+.static-transmission #photobox.page-hero .main-photo img {
+    box-shadow: none !important;
+}
+
+/* Shadow modifier — opt in per page. !important needed to win over the none
+   rule above when both selectors match (same specificity, this comes later). */
 .static-transmission #photobox.page-hero--shadow .main-photo img {
-    box-shadow: 0 6px 30px rgba(0,0,0,0.25);
+    box-shadow: 0 6px 30px rgba(0,0,0,0.25) !important;
 }
 
 .static-transmission #photobox.page-hero .post-image {
