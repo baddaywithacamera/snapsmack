@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the Dapper Dan admin theme
- * Alpha v0.7.7
+ * Alpha v0.7.8
  */
 
 return [

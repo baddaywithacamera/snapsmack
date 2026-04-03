@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin header for the impact-printer skin
- * Alpha v0.7.7
+ * Alpha v0.7.8
  */
 ?>
 <div id="ip-header">
