@@ -124,7 +124,7 @@ return [
         ],
 
         /* ============================================================
-           SECTION 3: TYPOGRAPHY
+           SECTION 3: TYPOGRAPHY (Fonts Only)
            ============================================================ */
 
         'header_font_family' => [
@@ -136,62 +136,6 @@ return [
             'selector' => '.site-title-text, .logo-area a',
             'property' => 'font-family'
         ],
-
-        'header_font_size' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'range',
-            'label'    => 'Header Font Size (px)',
-            'default'  => '50',
-            'min'      => '12',
-            'max'      => '120',
-            'selector' => '.site-title-text',
-            'property' => 'font-size'
-        ],
-
-        'header_text_transform' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'select',
-            'label'    => 'Header Text Case',
-            'default'  => 'uppercase',
-            'options'  => [
-                'uppercase'  => 'UPPERCASE',
-                'lowercase'  => 'lowercase',
-                'capitalize' => 'Capitalize Each Word',
-                'none'       => 'As Entered (No Transform)',
-            ],
-            'selector' => '.site-title-text',
-            'property' => 'text-transform'
-        ],
-
-        'header_letter_spacing' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'range',
-            'label'    => 'Header Letter Spacing (px)',
-            'default'  => '3',
-            'min'      => '-2',
-            'max'      => '15',
-            'selector' => '.site-title-text',
-            'property' => 'letter-spacing'
-        ],
-
-        'header_font_weight' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'select',
-            'label'    => 'Header Font Weight',
-            'default'  => '400',
-            'options'  => [
-                '300' => 'Light (300)',
-                '400' => 'Regular (400)',
-                '500' => 'Medium (500)',
-                '600' => 'Semi-Bold (600)',
-                '700' => 'Bold (700)',
-                '900' => 'Black (900)',
-            ],
-            'selector' => '.site-title-text',
-            'property' => 'font-weight'
-        ],
-
-        /* STATIC PAGE FONTS */
 
         'static_heading_font' => [
             'section'  => 'TYPOGRAPHY',
@@ -213,8 +157,6 @@ return [
             'property' => 'font-family'
         ],
 
-        /* FOOTER FONTS */
-
         'footer_font_family' => [
             'section'  => 'TYPOGRAPHY',
             'type'     => 'select',
@@ -225,8 +167,83 @@ return [
             'property' => 'font-family'
         ],
 
+        /* ============================================================
+           SECTION 4: COLOURS
+           ============================================================ */
+
+        'page_bg_color' => [
+            'section'  => 'COLOURS',
+            'type'     => 'color',
+            'label'    => 'Static Page Background',
+            'default'  => '#1a1a1a',
+            'selector' => '.static-content, .static-transmission #scroll-stage',
+            'property' => 'background-color'
+        ],
+
+        /* ============================================================
+           SECTION 5: HEADER & NAV
+           ============================================================ */
+
+        'header_font_size' => [
+            'section'  => 'HEADER & NAV',
+            'type'     => 'range',
+            'label'    => 'Header Font Size (px)',
+            'default'  => '50',
+            'min'      => '12',
+            'max'      => '120',
+            'selector' => '.site-title-text',
+            'property' => 'font-size'
+        ],
+
+        'header_text_transform' => [
+            'section'  => 'HEADER & NAV',
+            'type'     => 'select',
+            'label'    => 'Header Text Case',
+            'default'  => 'uppercase',
+            'options'  => [
+                'uppercase'  => 'UPPERCASE',
+                'lowercase'  => 'lowercase',
+                'capitalize' => 'Capitalize Each Word',
+                'none'       => 'As Entered (No Transform)',
+            ],
+            'selector' => '.site-title-text',
+            'property' => 'text-transform'
+        ],
+
+        'header_letter_spacing' => [
+            'section'  => 'HEADER & NAV',
+            'type'     => 'range',
+            'label'    => 'Header Letter Spacing (px)',
+            'default'  => '3',
+            'min'      => '-2',
+            'max'      => '15',
+            'selector' => '.site-title-text',
+            'property' => 'letter-spacing'
+        ],
+
+        'header_font_weight' => [
+            'section'  => 'HEADER & NAV',
+            'type'     => 'select',
+            'label'    => 'Header Font Weight',
+            'default'  => '400',
+            'options'  => [
+                '300' => 'Light (300)',
+                '400' => 'Regular (400)',
+                '500' => 'Medium (500)',
+                '600' => 'Semi-Bold (600)',
+                '700' => 'Bold (700)',
+                '900' => 'Black (900)',
+            ],
+            'selector' => '.site-title-text',
+            'property' => 'font-weight'
+        ],
+
+        /* ============================================================
+           SECTION 6: FOOTER
+           ============================================================ */
+
         'footer_font_size' => [
-            'section'  => 'TYPOGRAPHY',
+            'section'  => 'FOOTER',
             'type'     => 'range',
             'label'    => 'Footer Font Size (px)',
             'default'  => '11',
