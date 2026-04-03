@@ -406,7 +406,7 @@ include 'core/sidebar.php';
                                 <option value="1" <?php echo (($settings['wall_reflect'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
                                 <option value="0" <?php echo (($settings['wall_reflect'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED</option>
                             </select>
-                            <span class="dim">ADDS A SUBTLE REFLECTION BELOW EACH TILE. CHROMIUM & SAFARI ONLY.</span>
+                            <span class="dim">REFLECTS THE GALLERY OFF THE FLOOR FOR A POLISHED SHOWROOM LOOK.</span>
                         <?php endif; ?>
                     </div>
                     <div class="lens-input-wrapper">

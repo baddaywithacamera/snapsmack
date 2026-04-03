@@ -142,6 +142,54 @@
     });
 
     // ----------------------------------------------------------------
+    // FLOOR REFLECTION  (JS-driven, works in all browsers)
+    // ----------------------------------------------------------------
+    // When body.wall-reflect is set, clone the canvas into a reflection
+    // container that sits below the viewport.  The clone is flipped via
+    // CSS scaleY(-1) and masked with a gradient fade.  The animation
+    // loop syncs the translation every frame.
+    let reflectCanvas = null;
+    const doReflect = document.body.classList.contains('wall-reflect');
+
+    if (doReflect) {
+        const viewport   = document.querySelector('.wall-viewport');
+        const reflectBox = document.createElement('div');
+        reflectBox.className = 'wall-reflection';
+
+        reflectCanvas = canvas.cloneNode(true);
+        reflectCanvas.removeAttribute('id');
+        // Mark all cloned images as loaded immediately (they share
+        // the same src so the browser serves them from cache).
+        reflectCanvas.querySelectorAll('img').forEach(img => {
+            img.classList.add('loaded');
+            img.removeAttribute('loading');
+        });
+        // Remove the sentinel from the clone — it's not needed
+        const cloneSentinel = reflectCanvas.querySelector('#wall-sentinel');
+        if (cloneSentinel) cloneSentinel.remove();
+
+        reflectBox.appendChild(reflectCanvas);
+        viewport.appendChild(reflectBox);
+    }
+
+    /** Keep the reflection clone in sync after fetchMore adds tiles. */
+    function syncReflectionTiles() {
+        if (!reflectCanvas) return;
+        // Rebuild the clone's children from the live canvas.
+        const frag = document.createDocumentFragment();
+        canvas.querySelectorAll('.wall-tile').forEach(tile => {
+            const clone = tile.cloneNode(true);
+            clone.querySelectorAll('img').forEach(img => {
+                img.classList.add('loaded');
+                img.removeAttribute('loading');
+            });
+            frag.appendChild(clone);
+        });
+        reflectCanvas.innerHTML = '';
+        reflectCanvas.appendChild(frag);
+    }
+
+    // ----------------------------------------------------------------
     // ANIMATION LOOP  (lerp toward aim; apply friction to velocities)
     // ----------------------------------------------------------------
     function lerp(a, b, t) { return a + (b - a) * t; }
@@ -161,8 +209,10 @@
         tilt  = lerp(tilt, velX * 0.55, 0.07);
         const lean = Math.max(-14, Math.min(14, tilt));
 
-        canvas.style.transform =
-            `translate3d(${posX}px, 0px, ${posZ}px) rotateY(${-lean}deg)`;
+        const xform = `translate3d(${posX}px, 0px, ${posZ}px) rotateY(${-lean}deg)`;
+        canvas.style.transform = xform;
+        // Mirror the movement to the reflection clone (CSS handles the flip)
+        if (reflectCanvas) reflectCanvas.style.transform = `scaleY(-1) ${xform}`;
 
         requestAnimationFrame(tick);
     }());
@@ -435,6 +485,7 @@
                 loadOffset += 20;
                 hasMore = loadOffset < cfg.totalImages;
                 if (!hasMore) sentinel.remove();
+                syncReflectionTiles();
             } else {
                 hasMore = false;
             }
