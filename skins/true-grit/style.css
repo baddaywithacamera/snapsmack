@@ -608,7 +608,7 @@ body::before {
 .static-content {
     max-width: var(--static-content-width, 850px) !important;
     margin: 0 auto 0 auto !important;
-    padding: 20px 40px 50px 40px;
+    padding: 40px 40px 50px 40px;
     box-sizing: border-box;
     background: var(--page-bg, var(--bg-primary)) !important;
     text-align: left;
@@ -635,7 +635,8 @@ body::before {
     width: 100% !important;
     max-width: 850px !important;
     margin: 0 0 10px 0 !important;
-    padding: 40px 0 0 0 !important;
+    padding: 0 !important;
+    margin: 0 0 10px 0 !important;
     text-align: left !important;
     display: block !important;
     box-sizing: border-box !important;
@@ -645,7 +646,6 @@ body::before {
     letter-spacing: 1px;
     font-size: 2rem;
     font-weight: 300;
-    background: var(--page-bg, var(--bg-primary));
 }
 
 .static-transmission .description .align-left {
@@ -665,7 +665,7 @@ body::before {
     width: 100% !important;
     float: none !important;
     background: transparent !important;
-    margin: 20px 0 !important;
+    margin: 20px 0 30px 0 !important;
 }
 
 .static-transmission #photobox.page-hero .post-image {
@@ -674,9 +674,8 @@ body::before {
     display: block;
 }
 
-.static-transmission .description p:first-of-type {
-    margin-top: 0 !important;
-    padding-top: 0 !important;
+.static-transmission .description {
+    margin-top: 10px;
 }
 
 .static-transmission .description img + br {
