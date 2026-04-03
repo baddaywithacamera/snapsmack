@@ -300,6 +300,32 @@ if ($action === 'cancel_update') {
     $flash_type  = 'info';
 }
 
+// ── RESET UPDATE STATE ────────────────────────────────────────────────────────
+// Clears all cached update state from session and snap_settings so the update
+// check runs fresh. Resets installed_version to match the running constants.php
+// value, which is the ground truth on shared hosts where the update can fail
+// after file extraction but before finalisation.
+if ($action === 'reset_update_state') {
+    // Clear session
+    unset($_SESSION['update_state'], $_SESSION['update_complete_log'],
+          $_SESSION['update_chunk_state'], $_SESSION['update_backup_file']);
+    $stage_state = null;
+
+    // Clear cached check results
+    $pdo->exec("DELETE FROM snap_settings WHERE setting_key IN ('update_check_result', 'last_update_check')");
+
+    // Reset installed_version to what constants.php says — the protected file
+    // is the reliable source of truth when an update has partially applied.
+    $canonical = SNAPSMACK_VERSION_SHORT;
+    $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('installed_version', ?)
+                           ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)");
+    $stmt->execute([$canonical]);
+    $installed_version = $canonical;
+
+    $flash_msg  = 'UPDATE STATE RESET. INSTALLED VERSION SET TO ' . $canonical . '.';
+    $flash_type = 'success';
+}
+
 // ── STAGED UPDATE: STAGE 1 — DOWNLOAD ────────────────────────────────────────
 if ($action === 'stage_download' && !empty($cached_result['core_update'])) {
     $update       = $cached_result['core_update'];
@@ -736,6 +762,12 @@ include 'core/sidebar.php';
         <form method="POST" class="mt-25">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
             <button type="submit" name="action" value="check" class="btn-smack">CHECK FOR UPDATES NOW</button>
+        </form>
+        <form method="POST" class="mt-10">
+            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+            <button type="submit" name="action" value="reset_update_state" class="btn-smack btn-secondary"
+                    onclick="return confirm('Reset all update state and re-sync installed version from constants.php?');"
+                    style="font-size:0.75rem;opacity:0.6;">RESET UPDATE STATE</button>
         </form>
     </div>
 
