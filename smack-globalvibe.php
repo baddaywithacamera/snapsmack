@@ -354,6 +354,21 @@ include 'core/sidebar.php';
                             </div>
                         <?php endif; ?>
                     </div>
+                    <div class="lens-input-wrapper">
+                        <label>FLOATING GALLERY REFLECTION</label>
+                        <?php if ($wall_unavailable): ?>
+                            <select disabled class="select-locked">
+                                <option>DISABLED BY SKIN</option>
+                            </select>
+                            <input type="hidden" name="settings[wall_reflect]" value="0">
+                        <?php else: ?>
+                            <select name="settings[wall_reflect]">
+                                <option value="1" <?php echo (($settings['wall_reflect'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
+                                <option value="0" <?php echo (($settings['wall_reflect'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED</option>
+                            </select>
+                            <span class="dim">ADDS A SUBTLE REFLECTION BELOW EACH TILE. CHROMIUM & SAFARI ONLY.</span>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
 
