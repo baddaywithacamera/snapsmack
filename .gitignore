@@ -26,6 +26,10 @@ _spec/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# PHP error logs
+error_log
+*.log
 HIP-TO-BE-SQUARE-SPEC.docx
 PICASA-WEB-ALBUMS-SPEC.docx
 
