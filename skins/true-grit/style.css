@@ -577,7 +577,16 @@ body::before {
 
 /* ==========================================================================
    STATIC PAGE OVERRIDES
+   Wall texture is for the photo gallery; static pages use a solid
+   background controlled by page_bg_color in the manifest.
    ========================================================================= */
+
+body.static-transmission {
+    background-image: none !important;
+}
+body.static-transmission::before {
+    display: none !important;
+}
 
 .static-transmission #scroll-stage {
     display: block !important;
