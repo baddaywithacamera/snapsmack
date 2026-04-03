@@ -260,6 +260,7 @@ include 'core/sidebar.php';
                     </div>
                 </div>
                 <div class="item-actions">
+                    <a href="<?php echo BASE_URL . 'page.php?slug=' . urlencode($p['slug']); ?>" class="action-view" target="_blank" rel="noopener">VIEW</a>
                     <a href="?edit=<?php echo $p['id']; ?>" class="action-edit">EDIT</a>
                     <a href="?delete=<?php echo $p['id']; ?>" class="action-delete" onclick="return confirm('Purge this transmission?')">DELETE</a>
                 </div>

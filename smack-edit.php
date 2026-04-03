@@ -431,9 +431,10 @@ include 'core/sidebar.php';
             </div>
         </div>
 
+        <?php if (($settings['exif_display_enabled'] ?? '1') !== '0'): ?>
         <div class="box">
             <h3>TECHNICAL SPECIFICATIONS (EXIF OVERRIDES)</h3>
-            
+
             <div class="meta-grid">
                 <div class="lens-input-wrapper">
                     <label>CAMERA MODEL</label>
@@ -487,6 +488,7 @@ include 'core/sidebar.php';
 
             <button type="submit" class="master-update-btn">SAVE CHANGES</button>
         </div>
+        <?php endif; ?>
     </form>
 </div>
 
