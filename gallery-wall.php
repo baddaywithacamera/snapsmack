@@ -64,23 +64,6 @@ $wall_limit      = (int)($settings['wall_limit']        ?? 40);
 $wall_rows       = max(1, min(5, (int)($settings['wall_rows'] ?? 2)));
 $wall_gap        = (int)($settings['wall_gap']          ?? 24);
 
-// Typography settings
-$font_ref   = $settings['wall_font_ref']   ?? 'Playfair Display';
-$font_css   = "'{$font_ref}', sans-serif";
-
-// Shadow configuration based on intensity level
-$shad_color = $settings['wall_shadow_color']     ?? '#000000';
-$intensity  = $settings['wall_shadow_intensity']  ?? 'heavy';
-
-switch ($intensity) {
-    case 'none':  $shadow_css = 'none'; break;
-    case 'light': $shadow_css = "0 1px 3px {$shad_color}"; break;
-    case 'heavy':
-    default:      $shadow_css = "0 0 10px {$shad_color}, 0 0 20px {$shad_color}, 0 4px 8px {$shad_color}"; break;
-}
-
-$text_color = $settings['wall_text_color'] ?? '#808080';
-
 // --- LAYOUT CALCULATIONS ---
 // Grid rows and gap are set via CSS variables; tiles size themselves via 1fr.
 // No per-tile height calculation needed.
@@ -127,8 +110,8 @@ try {
     }
     </script>
 </head>
-<body class="is-wall<?php echo (($settings['show_titles'] ?? '1') != '1') ? ' wall-hide-titles' : ''; ?>"
-      style="--wall-bg:<?php echo htmlspecialchars($wall_theme); ?>; --wall-gap:<?php echo $wall_gap; ?>px; --wall-rows:<?php echo $wall_rows; ?>; --wall-font:<?php echo $font_css; ?>; --wall-text:<?php echo htmlspecialchars($text_color); ?>; --wall-shadow-string:<?php echo $shadow_css; ?>;">
+<body class="is-wall"
+      style="--wall-bg:<?php echo htmlspecialchars($wall_theme); ?>; --wall-gap:<?php echo $wall_gap; ?>px; --wall-rows:<?php echo $wall_rows; ?>;">
 
 <div class="wall-viewport">
     <div class="wall-canvas" id="wall-canvas"
@@ -138,17 +121,9 @@ try {
          data-total-images="<?php echo $total_images; ?>"
          data-initial-limit="<?php echo $wall_limit; ?>">
         <?php foreach ($images as $img): ?>
-            <div class="wall-tile" data-full="<?php echo htmlspecialchars($img['img_file']); ?>" data-title="<?php echo htmlspecialchars($img['img_title']); ?>">
+            <div class="wall-tile" data-full="<?php echo htmlspecialchars($img['img_file']); ?>">
                 <?php $thumb = !empty($img['img_thumb_aspect']) ? $img['img_thumb_aspect'] : $img['img_file']; ?>
                 <img src="<?php echo htmlspecialchars($thumb); ?>" alt="Smack" loading="eager" decoding="async">
-                <div class="tile-meta">
-                    <?php
-                        $words = explode(' ', htmlspecialchars($img['img_title']));
-                        foreach ($words as $word) {
-                            if (!empty($word)) echo "<span>" . ucfirst(strtolower($word)) . "</span> ";
-                        }
-                    ?>
-                </div>
             </div>
         <?php endforeach; ?>
         <div id="wall-sentinel" class="wall-sentinel"></div>
