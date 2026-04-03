@@ -632,20 +632,18 @@ body::before {
 }
 
 .static-page-title {
-    width: 100% !important;
-    max-width: 850px !important;
-    margin: 0 0 10px 0 !important;
-    padding: 0 !important;
-    margin: 0 0 10px 0 !important;
-    text-align: left !important;
-    display: block !important;
-    box-sizing: border-box !important;
+    margin: 0 0 20px 0;
+    padding: 0;
     font-family: 'Raleway', sans-serif;
     color: var(--text-primary);
     text-transform: uppercase;
     letter-spacing: 1px;
     font-size: 2rem;
     font-weight: 300;
+}
+/* Landing-only: centre the title on the homepage */
+.landing-only .static-page-title {
+    text-align: center;
 }
 
 .static-transmission .description .align-left {
@@ -662,14 +660,32 @@ body::before {
     display: block !important;
     min-height: auto !important;
     padding: 0 !important;
-    width: 100% !important;
     float: none !important;
     background: transparent !important;
     margin: 20px 0 30px 0 !important;
+    width: 100% !important;
+    box-sizing: border-box;
+}
+
+/* Size modifiers */
+.static-transmission #photobox.page-hero--full  .main-photo img { max-width: 100%; }
+.static-transmission #photobox.page-hero--medium .main-photo img { max-width: 60%; min-width: 200px; }
+.static-transmission #photobox.page-hero--small  .main-photo img { max-width: 35%; min-width: 120px; }
+
+/* Alignment modifiers */
+.static-transmission #photobox.page-hero--center .main-photo { text-align: center; }
+.static-transmission #photobox.page-hero--center .main-photo img { margin: 0 auto; display: block; }
+.static-transmission #photobox.page-hero--left .main-photo { text-align: left; }
+.static-transmission #photobox.page-hero--left .main-photo img { margin: 0; float: left; }
+.static-transmission #photobox.page-hero--right .main-photo { text-align: right; }
+.static-transmission #photobox.page-hero--right .main-photo img { margin: 0 0 0 auto; float: right; }
+
+/* Shadow modifier (off by default — opt in per page) */
+.static-transmission #photobox.page-hero--shadow .main-photo img {
+    box-shadow: 0 6px 30px rgba(0,0,0,0.25);
 }
 
 .static-transmission #photobox.page-hero .post-image {
-    max-width: 100%;
     height: auto;
     display: block;
 }
@@ -691,9 +707,9 @@ body::before {
     height: auto;
     box-sizing: border-box;
     border: none !important;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4) !important;
-    margin-top: 40px;
-    margin-bottom: 60px !important;
+    box-shadow: none !important;
+    margin-top: 30px;
+    margin-bottom: 40px !important;
 }
 
 .asset-full   { width: 100% !important; margin-left: auto; margin-right: auto; }
