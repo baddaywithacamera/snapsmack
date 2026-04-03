@@ -79,8 +79,6 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
 }
 ?>
 
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css?v=<?php echo time(); ?>">
-
 <body class="static-transmission">
     <div id="page-wrapper">
 
