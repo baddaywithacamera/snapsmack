@@ -296,6 +296,12 @@ include 'core/sidebar.php';
                         <label>BROWSE COLUMNS</label>
                         <input type="number" name="settings[browse_cols]" value="<?php echo htmlspecialchars($settings['browse_cols'] ?? 4); ?>">
                     </div>
+                </div>
+            </div>
+
+            <div class="box">
+                <h3>FLOATING GALLERY</h3>
+                <div class="dash-grid">
                     <div class="lens-input-wrapper">
                         <label>FLOATING GALLERY LINK</label>
 
