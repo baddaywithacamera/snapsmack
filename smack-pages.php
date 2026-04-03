@@ -83,15 +83,18 @@ if (isset($_POST['save_page'])) {
 
     // Convert plain text to HTML before storing.
     $content = smack_autop($_POST['content']);
-    $asset = $_POST['image_asset'];
-    $order = (int)$_POST['menu_order'];
+    $asset        = $_POST['image_asset'];
+    $order        = (int)$_POST['menu_order'];
+    $image_size   = in_array($_POST['image_size']  ?? 'full',   ['full','medium','small'])   ? $_POST['image_size']  : 'full';
+    $image_align  = in_array($_POST['image_align'] ?? 'center', ['center','left','right'])   ? $_POST['image_align'] : 'center';
+    $image_shadow = ($_POST['image_shadow'] ?? '0') === '1' ? 1 : 0;
 
     if ($id) {
-        $stmt = $pdo->prepare("UPDATE snap_pages SET title = ?, slug = ?, content = ?, image_asset = ?, menu_order = ? WHERE id = ?");
-        $stmt->execute([$title, $slug, $content, $asset, $order, $id]);
+        $stmt = $pdo->prepare("UPDATE snap_pages SET title = ?, slug = ?, content = ?, image_asset = ?, menu_order = ?, image_size = ?, image_align = ?, image_shadow = ? WHERE id = ?");
+        $stmt->execute([$title, $slug, $content, $asset, $order, $image_size, $image_align, $image_shadow, $id]);
     } else {
-        $stmt = $pdo->prepare("INSERT INTO snap_pages (title, slug, content, image_asset, menu_order) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$title, $slug, $content, $asset, $order]);
+        $stmt = $pdo->prepare("INSERT INTO snap_pages (title, slug, content, image_asset, menu_order, image_size, image_align, image_shadow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$title, $slug, $content, $asset, $order, $image_size, $image_align, $image_shadow]);
     }
 
     $msg = "Static transmission synchronized. HTML hidden in interface.";
@@ -165,6 +168,34 @@ include 'core/sidebar.php';
                     <button type="button" id="hero-clear-btn" class="sc-btn">CLEAR</button>
                 </div>
             </div>
+
+            <?php if (!empty($edit_page['image_asset'])): ?>
+            <div class="dash-grid" style="margin-top:12px;">
+                <div class="lens-input-wrapper">
+                    <label>IMAGE SIZE</label>
+                    <select name="image_size">
+                        <option value="full"   <?php echo ($edit_page['image_size'] ?? 'full')   === 'full'   ? 'selected' : ''; ?>>FULL WIDTH</option>
+                        <option value="medium" <?php echo ($edit_page['image_size'] ?? 'full')   === 'medium' ? 'selected' : ''; ?>>MEDIUM (60%)</option>
+                        <option value="small"  <?php echo ($edit_page['image_size'] ?? 'full')   === 'small'  ? 'selected' : ''; ?>>SMALL (35%)</option>
+                    </select>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>IMAGE ALIGNMENT</label>
+                    <select name="image_align">
+                        <option value="center" <?php echo ($edit_page['image_align'] ?? 'center') === 'center' ? 'selected' : ''; ?>>CENTRE</option>
+                        <option value="left"   <?php echo ($edit_page['image_align'] ?? 'center') === 'left'   ? 'selected' : ''; ?>>LEFT</option>
+                        <option value="right"  <?php echo ($edit_page['image_align'] ?? 'center') === 'right'  ? 'selected' : ''; ?>>RIGHT</option>
+                    </select>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>IMAGE SHADOW</label>
+                    <select name="image_shadow">
+                        <option value="0" <?php echo !($edit_page['image_shadow'] ?? 0) ? 'selected' : ''; ?>>NONE</option>
+                        <option value="1" <?php echo  ($edit_page['image_shadow'] ?? 0) ? 'selected' : ''; ?>>SUBTLE DROP SHADOW</option>
+                    </select>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <label>Content (Shortcodes and plain text only)</label>
             <div class="sc-toolbar" data-target="page-content">
