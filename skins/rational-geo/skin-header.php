@@ -11,7 +11,7 @@ $border_color = $settings['image_border_color'] ?? 'yellow';
 $site_display_name = $site_name ?? 'SNAPSMACK';
 $show_map_bg = ($settings['show_map_background'] ?? '1') === '1';
 
-// RG doesn't use Gallery View — manifest defaults show_wall_link to '0'
+// RG doesn't use Floating Gallery — manifest defaults show_wall_link to '0'
 // but the DB may not have a row yet, so enforce it here.
 if (!isset($settings['show_wall_link'])) {
     $settings['show_wall_link'] = '0';

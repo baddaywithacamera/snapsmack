@@ -62,7 +62,7 @@ return [
         'show_wall_link' => [
             'section'  => 'LAYOUT',
             'type'     => 'select',
-            'label'    => 'Show Gallery Wall Link',
+            'label'    => 'Show Floating Gallery Link',
             'default'  => '0',
             'options'  => ['1' => 'Enabled', '0' => 'Disabled'],
         ],
