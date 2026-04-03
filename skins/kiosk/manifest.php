@@ -237,44 +237,24 @@ return [
 
         'wall_friction' => [
             'section'  => 'FLOATING GALLERY',
-            'type'     => 'number',
-            'label'    => 'Wall Friction (0.1 - 0.99)',
+            'type'     => 'range',
+            'label'    => 'Scroll Friction',
             'default'  => '0.96',
-            'selector' => ':root',
-            'property' => '--wall-friction'
+            'min'      => '0.80',
+            'max'      => '0.99',
+            'step'     => '0.01',
+            'unit'     => '',
         ],
 
         'wall_dragweight' => [
             'section'  => 'FLOATING GALLERY',
-            'type'     => 'number',
+            'type'     => 'range',
             'label'    => 'Drag Weight',
             'default'  => '2.5',
-            'selector' => ':root',
-            'property' => '--wall-drag-weight'
-        ],
-
-        'wall_shadow_intensity' => [
-            'section'  => 'FLOATING GALLERY',
-            'type'     => 'select',
-            'label'    => 'Shadow Intensity',
-            'default'  => 'heavy',
-            'options'  => [
-                'none'  => 'No Shadow',
-                'light' => 'Light / Subtle',
-                'heavy' => 'Heavy / Deep Glow'
-            ],
-            'selector' => '.wall-item img',
-            'property' => 'filter'
-        ],
-
-        'wall_font_ref' => [
-            'section'  => 'FLOATING GALLERY',
-            'type'     => 'select',
-            'label'    => 'Title Typography',
-            'default'  => 'Playfair Display',
-            'options'  => $fonts,
-            'selector' => '.wall-title',
-            'property' => 'font-family'
+            'min'      => '0.5',
+            'max'      => '5.0',
+            'step'     => '0.1',
+            'unit'     => '',
         ],
 
         'wall_theme' => [
@@ -284,24 +264,6 @@ return [
             'default'  => '#000000',
             'selector' => 'body.is-wall',
             'property' => 'background-color'
-        ],
-
-        'wall_text_color' => [
-            'section'  => 'FLOATING GALLERY',
-            'type'     => 'color',
-            'label'    => 'Floating Title Color',
-            'default'  => '#808080',
-            'selector' => '.wall-title',
-            'property' => 'color'
-        ],
-
-        'wall_shadow_color' => [
-            'section'  => 'FLOATING GALLERY',
-            'type'     => 'color',
-            'label'    => 'Shadow/Glow Color',
-            'default'  => '#000000',
-            'selector' => '.wall-item img',
-            'property' => '--glow-color'
         ],
 
         /* ---------------------------------------------------------------------
