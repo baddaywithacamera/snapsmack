@@ -346,28 +346,6 @@ return [
            SECTION 5: FLOATING GALLERY
            ============================================================ */
 
-        'wall_friction' => [
-            'section'  => 'FLOATING GALLERY',
-            'type'     => 'range',
-            'label'    => 'Scroll Friction',
-            'default'  => '0.96',
-            'min'      => '0.80',
-            'max'      => '0.99',
-            'step'     => '0.01',
-            'unit'     => '',
-        ],
-
-        'wall_dragweight' => [
-            'section'  => 'FLOATING GALLERY',
-            'type'     => 'range',
-            'label'    => 'Drag Weight',
-            'default'  => '2.5',
-            'min'      => '0.5',
-            'max'      => '5.0',
-            'step'     => '0.1',
-            'unit'     => '',
-        ],
-
         'wall_theme' => [
             'section'  => 'FLOATING GALLERY',
             'type'     => 'color',
