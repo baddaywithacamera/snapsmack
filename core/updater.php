@@ -757,6 +757,11 @@ function updater_run_migrations(PDO $pdo, array $migration_files): array {
 
             $result['applied'][] = $migration_name;
 
+            // Delete the SQL file — it has been applied and recorded.
+            // This prevents ghost files from accumulating and being picked up
+            // as pending on future updates.
+            @unlink($file);
+
         } catch (\PDOException $e) {
             $result['errors'][] = $migration_name . ': ' . $e->getMessage();
             $result['success'] = false;
