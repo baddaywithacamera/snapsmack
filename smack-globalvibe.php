@@ -355,6 +355,40 @@ include 'core/sidebar.php';
                         <?php endif; ?>
                     </div>
                     <div class="lens-input-wrapper">
+                        <label>FLOATING GALLERY SCROLL FRICTION</label>
+                        <?php if ($wall_unavailable): ?>
+                            <input type="range" disabled min="0.80" max="0.99" value="0.96" class="select-locked">
+                            <input type="hidden" name="settings[wall_friction]" value="0.96">
+                        <?php else: ?>
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <input type="range"
+                                       name="settings[wall_friction]"
+                                       min="0.80" max="0.99" step="0.01"
+                                       value="<?php echo htmlspecialchars($settings['wall_friction'] ?? '0.96'); ?>"
+                                       oninput="this.nextElementSibling.textContent = this.value">
+                                <span><?php echo htmlspecialchars($settings['wall_friction'] ?? '0.96'); ?></span>
+                            </div>
+                            <span class="dim">HIGHER = MORE COAST. LOWER = STOPS FASTER.</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="lens-input-wrapper">
+                        <label>FLOATING GALLERY DRAG WEIGHT</label>
+                        <?php if ($wall_unavailable): ?>
+                            <input type="range" disabled min="0.5" max="5.0" value="2.5" class="select-locked">
+                            <input type="hidden" name="settings[wall_dragweight]" value="2.5">
+                        <?php else: ?>
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <input type="range"
+                                       name="settings[wall_dragweight]"
+                                       min="0.5" max="5.0" step="0.1"
+                                       value="<?php echo htmlspecialchars($settings['wall_dragweight'] ?? '2.5'); ?>"
+                                       oninput="this.nextElementSibling.textContent = this.value">
+                                <span><?php echo htmlspecialchars($settings['wall_dragweight'] ?? '2.5'); ?></span>
+                            </div>
+                            <span class="dim">HOW HEAVY THE DRAG FEELS. HIGHER = MORE SLUGGISH.</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="lens-input-wrapper">
                         <label>FLOATING GALLERY REFLECTION</label>
                         <?php if ($wall_unavailable): ?>
                             <select disabled class="select-locked">
