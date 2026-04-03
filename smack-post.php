@@ -613,6 +613,7 @@ include 'core/sidebar.php';
             </div>
         </div>
 
+        <?php if (($settings['exif_display_enabled'] ?? '1') !== '0'): ?>
         <div class="box">
             <h3>TECHNICAL SPECIFICATIONS (EXIF OVERRIDES)</h3>
             <p class="dim exif-hint">JPEG EXIF is auto-extracted on upload. Manual entries below override auto-detected values. Leave blank to use auto-detected data.</p>
@@ -669,6 +670,7 @@ include 'core/sidebar.php';
                 </div>
             </div>
         </div>
+        <?php endif; ?>
 
         <div id="progress-container" class="progress-container">
             <div id="progress-bar" class="progress-bar"></div>
