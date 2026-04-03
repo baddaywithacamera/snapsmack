@@ -302,6 +302,17 @@ supports, but all skins offer at least Square. Four options exist:</p>
 slider goes from 400 px to 1400 px. Each skin has its own built-in default (typically
 640–850 px) which is used as the fallback if no override is set — move the slider to
 override.</p>
+
+<h4>Floating Gallery Controls</h4>
+<p>All floating gallery engine settings live here, not in Smooth Your Skin:</p>
+<ul>
+    <li><strong>Reflection</strong> — toggle a subtle below-tile reflection (Chromium and Safari only; Firefox degrades gracefully).</li>
+    <li><strong>Scroll Friction</strong> — how quickly the wall decelerates after a drag (0.80 = ice, 0.99 = molasses).</li>
+    <li><strong>Drag Weight</strong> — resistance when dragging (0.5 = featherlight, 5.0 = heavy).</li>
+    <li><strong>Gallery Link</strong> — show or hide the Floating Gallery link in the public nav.</li>
+</ul>
+<p>These are global because they control engine physics, not aesthetics. The wall background
+colour stays in Smooth Your Skin since it's part of each skin's visual palette.</p>
 HTML
 ];
 
@@ -389,6 +400,37 @@ save skin settings. Write your overrides below it.</p>
     to target only the public content area.</li>
     <li>Test changes before saving — there's no undo.</li>
 </ul>
+HTML
+];
+
+$help_topics['scripts'] = [
+    'section'  => 'Pimp Your Ride',
+    'title'    => 'Smack Your Scripts Up!',
+    'icon'     => '&#x26A1;',
+    'content'  => <<<'HTML'
+<h3>Third-Party Script Manager</h3>
+<p>Paste tracking scripts, analytics pixels, and newsletter loaders into the database
+instead of the codebase. Each site has its own scripts — nothing touches git.</p>
+
+<h4>Head Scripts</h4>
+<p>Anything you paste here is injected before <code>&lt;/head&gt;</code> on every public
+page. Use it for universal loaders like MailerLite, Google Analytics, or any script
+that needs to run site-wide. The scripts load after all CSS so they don't block rendering.</p>
+
+<h4>Embed Codes</h4>
+<p>Define reusable HTML snippets with named keys. Each block starts with a key line:</p>
+<pre>[key:mailerlite]
+&lt;div class="ml-embedded" data-form="Ixs8uR"&gt;&lt;/div&gt;
+
+[key:youtube-subscribe]
+&lt;div class="g-ytsubscribe" data-channelid="UC..."&gt;&lt;/div&gt;</pre>
+<p>Then place them on any static page with the <code>[embed:mailerlite]</code> shortcode.
+You can define as many keys as you need.</p>
+
+<h4>Typical Setup</h4>
+<p>For a MailerLite newsletter form: paste the universal script tag in <strong>Head Scripts</strong>,
+define the form div in <strong>Embed Codes</strong> with a key, then drop
+<code>[embed:mailerlite]</code> into your About page or wherever you want the form.</p>
 HTML
 ];
 
@@ -510,6 +552,12 @@ will wrap your selection.</p>
     decorative first-letter display.</li>
 </ul>
 
+<h4>Data Shortcodes</h4>
+<p>The <strong>&lsaquo;SC&rsaquo;</strong> button opens a dropdown of data shortcodes — dynamic
+values like post count, current year, years-since calculations, and embed codes.
+Click any item to insert it at the cursor. See the <em>Shortcodes</em> topic for the
+full list.</p>
+
 <h4>Preview</h4>
 <p>The <strong>PREVIEW</strong> button (far right of the toolbar) opens a new browser tab
 showing your content rendered through the active skin, exactly as it will appear on
@@ -572,6 +620,31 @@ are available: None, Simple Bold, and Tactical Block.</p>
 <p>Adds explicit vertical spacing (1–100px) within your content. Specify the pixel height
 as a number between the colons.</p>
 
+
+<h4>Data Shortcodes</h4>
+<p>Dynamic values pulled from the database or server at render time. Use the
+<strong>&lsaquo;SC&rsaquo;</strong> dropdown on the static page toolbar to insert these.</p>
+<ul>
+    <li><code>[post_count]</code> — total number of published images.</li>
+    <li><code>[site_name]</code> — your site name from Configuration.</li>
+    <li><code>[site_url]</code> — your site URL.</li>
+    <li><code>[current_year]</code> — four-digit current year.</li>
+    <li><code>[years_since year="1970" month="6" day="15"]</code> — years elapsed since a
+    specific date. Ticks over on the exact day, not January 1. Month and day are optional
+    (default to 1 if omitted).</li>
+    <li><code>[newest_post]</code> — formatted date of the most recent published image.</li>
+    <li><code>[oldest_post]</code> — formatted date of the first published image.</li>
+    <li><code>[archive_link]</code> — clickable link to the archive (blank if archive is disabled).</li>
+    <li><code>[gallery_link]</code> — clickable link to the floating gallery (blank if disabled).</li>
+    <li><code>[random_image]</code> — displays a random published image with lightbox.</li>
+    <li><code>[latest_image]</code> — displays the most recent published image with lightbox.</li>
+</ul>
+
+<h4>Embed Shortcode</h4>
+<pre>[embed:mailerlite]</pre>
+<p>Inserts a named HTML snippet defined in <strong>Pimp Your Ride &rarr; Smack Your Scripts Up!</strong>.
+Use this for newsletter forms, subscribe buttons, chat widgets, or any third-party embed
+that you want to place on specific pages without hardcoding HTML into your content.</p>
 
 <h4>Auto-Paragraph</h4>
 <p>You don't need to type <code>&lt;p&gt;</code> tags. The parser automatically converts
@@ -963,17 +1036,19 @@ redirected to the standard archive view.</p>
 <p>The floating gallery only appears when the active skin declares <code>supports_wall</code>
 in its manifest. Not all skins include floating gallery support.</p>
 
-<h4>Physics</h4>
-<p>The wall uses simulated physics for dragging and momentum. You can tune:</p>
+<h4>Physics &amp; Engine Settings</h4>
+<p>The wall uses simulated physics for dragging and momentum. All engine settings live in
+<strong>Global Vibe</strong> (not Smooth Your Skin) because they control behaviour, not aesthetics:</p>
 <ul>
-    <li><strong>Friction</strong> — how quickly the wall decelerates after a drag (0.1 = ice, 0.99 = molasses).</li>
-    <li><strong>Drag Weight</strong> — resistance when dragging.</li>
-    <li><strong>Pinch Sensitivity</strong> — zoom responsiveness on trackpads.</li>
+    <li><strong>Reflection</strong> — toggle a below-tile reflection effect (Chromium/Safari only).</li>
+    <li><strong>Scroll Friction</strong> — how quickly the wall decelerates after a drag (0.80 = ice, 0.99 = molasses).</li>
+    <li><strong>Drag Weight</strong> — resistance when dragging (0.5 = featherlight, 5.0 = heavy).</li>
+    <li><strong>Gallery Link</strong> — show or hide the Floating Gallery nav link.</li>
 </ul>
 
 <h4>Visual Settings</h4>
-<p>Configure in Smooth Your Skin: wall background colour, tile gap, shadow style,
-title font, number of rows (1–4), and maximum tile count.</p>
+<p>The wall background colour is the only gallery setting that stays in Smooth Your Skin,
+since it's part of each skin's visual palette.</p>
 HTML
 ];
 
