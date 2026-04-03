@@ -608,7 +608,7 @@ body::before {
 .static-content {
     max-width: var(--static-content-width, 850px) !important;
     margin: 0 auto 0 auto !important;
-    padding: 40px 40px 50px 40px;
+    padding: 40px 40px 50px 40px !important;
     box-sizing: border-box;
     background: var(--page-bg, var(--bg-primary)) !important;
     text-align: left;
@@ -698,6 +698,11 @@ body::before {
 
 .static-transmission .description {
     margin-top: 10px;
+    /* .static-content already provides 40px padding on all sides.
+       Zero out the general .description side padding so text, title, and
+       hero image all align at the same left edge within the container. */
+    padding-left: 0 !important;
+    padding-right: 0 !important;
 }
 
 .static-transmission .description img + br {
