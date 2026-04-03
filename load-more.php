@@ -50,10 +50,7 @@ try {
 // Outputs HTML fragments. JavaScript appends these to the wall canvas.
 foreach ($batch as $img) {
     $thumb = !empty($img['img_thumb_aspect']) ? $img['img_thumb_aspect'] : $img['img_file'];
-    echo '<div class="wall-tile" data-full="' . htmlspecialchars($img['img_file']) . '" data-title="' . htmlspecialchars($img['img_title']) . '">';
+    echo '<div class="wall-tile" data-full="' . htmlspecialchars($img['img_file']) . '">';
     echo '  <img src="' . htmlspecialchars($thumb) . '" alt="Smack" loading="lazy" decoding="async">';
-    echo '  <div class="tile-meta">';
-    echo      nl2br(htmlspecialchars($img['img_title']));
-    echo '  </div>';
     echo '</div>';
 }
