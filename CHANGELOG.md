@@ -4,6 +4,24 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.7b — "Muffet's Tuffet" (2026-04-03)
+
+### Added
+- **Floating gallery enhancements**: smooth zoom close animation, image fade-in on load, and reflection toggle (Chromium/Safari, graceful fallback on Firefox). Reflection controlled from Global Vibe.
+- **Global Vibe consolidation**: wall friction and drag weight sliders moved from skin manifests to Global Vibe. All floating gallery engine settings now live in one place.
+- **Data shortcodes**: 11 new shortcodes for static pages and post content — `[post_count]`, `[site_name]`, `[site_url]`, `[current_year]`, `[years_since year="" month="" day=""]`, `[newest_post]`, `[oldest_post]`, `[archive_link]`, `[gallery_link]`, `[random_image]`, `[latest_image]`.
+- **Shortcode insert dropdown**: `‹SC›` button on the static page toolbar opens a dropdown menu for inserting data shortcodes at the cursor.
+- **Smack Your Scripts Up!**: New admin page under Pimp Your Ride for third-party scripts (analytics, tracking pixels) and named embed codes. Head scripts stored in DB and injected via `meta.php`; embed codes placed on any page via `[embed:key]` shortcode. Zero git footprint — each site has its own scripts.
+- **Static page background colour**: New `page_bg_color` setting added to True Grit, 50 Shades, New Horizon, Galleria, and Hip to be Square. Targets `.static-content` and `#scroll-stage`.
+- **Manifest reorganization**: Typography sections cleaned across six skins — fonts-only in Typography, colours split to Colours, header controls to Header & Nav, footer size to Footer.
+
+### Fixed
+- **Landing page CSS load order**: `public-facing.css` was loading after dynamic skin CSS on the landing-only path, overriding `page_bg_color` and other skin customizations. Removed duplicate `public-facing.css` loads from both static page paths (`meta.php` already handles it).
+- **`$global_only` blocklist typo**: `archive_display_mode` corrected to `archive_layout` — the setting was unprotected since the blocklist entry didn't match the actual key.
+- **Orphaned skin control**: removed `show_wall_link` toggle from rational-geo manifest (Global Vibe owns it).
+
+---
+
 ## 0.7.7 — "Muffet's Tuffet" (2026-03-29)
 
 ### Added
