@@ -577,20 +577,19 @@ body::before {
 
 /* ==========================================================================
    STATIC PAGE OVERRIDES
-   Wall texture is for the photo gallery; static pages use a solid
-   background controlled by page_bg_color in the manifest.
+   Wall texture is for the photo gallery; static pages use the variant's
+   --bg-primary (or admin-overridden --page-bg) for a clean solid background.
+   The body::before overlay is kept so the variant colour scheme applies.
    ========================================================================= */
 
 body.static-transmission {
     background-image: none !important;
 }
-body.static-transmission::before {
-    display: none !important;
-}
 
 .static-transmission #scroll-stage {
     display: block !important;
     text-align: center !important;
+    background: transparent !important;
 }
 
 .static-transmission #footer,
@@ -612,7 +611,7 @@ body.static-transmission::before {
     margin: 0 auto 0 auto !important;
     padding: 20px 40px 50px 40px;
     box-sizing: border-box;
-    background: var(--bg-primary);
+    background: var(--page-bg, var(--bg-primary)) !important;
     text-align: left;
     overflow-x: hidden;
 }
@@ -647,7 +646,7 @@ body.static-transmission::before {
     letter-spacing: 1px;
     font-size: 2rem;
     font-weight: 300;
-    background: var(--bg-primary);
+    background: var(--page-bg, var(--bg-primary));
 }
 
 .static-transmission .description .align-left {
