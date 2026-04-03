@@ -641,6 +641,14 @@ body::before {
     font-size: 2rem;
     font-weight: 300;
 }
+/* On static pages the title must align with the description text column
+   (max-width: 850px, centred). Without this it spans the full padded
+   static-content box (970px) while the text sits in a narrower column. */
+.static-transmission .static-page-title {
+    max-width: 850px;
+    margin-left: auto;
+    margin-right: auto;
+}
 /* Landing-only: centre the title on the homepage */
 .landing-only .static-page-title {
     text-align: center;
@@ -662,7 +670,10 @@ body::before {
     padding: 0 !important;
     float: none !important;
     background: transparent !important;
-    margin: 20px 0 30px 0 !important;
+    /* auto left/right so the photobox centres within static-content to
+       align with the 850px description column below it. */
+    margin: 20px auto 30px auto !important;
+    max-width: 850px;
     width: 100% !important;
     box-sizing: border-box;
 }
