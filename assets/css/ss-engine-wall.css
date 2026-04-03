@@ -7,9 +7,6 @@
 
 :root {
     --wall-bg: #000;
-    --wall-font: 'Playfair Display', serif;
-    --wall-text: #808080;
-    --wall-shadow-string: 0 0 10px #000;
 }
 
 body, html {
@@ -44,7 +41,8 @@ body, html {
     grid-auto-flow: column;
     grid-auto-columns: min-content;
     height: 86vh;                  /* smaller than viewport so flex can centre it */
-    gap: var(--wall-gap, 24px);
+    row-gap: var(--wall-gap, 24px);
+    column-gap: calc(var(--wall-gap, 24px) * 0.6);
     padding: 0 15vw;
     align-items: stretch;
     transform-style: preserve-3d;
@@ -91,22 +89,6 @@ body, html {
 }
 
 /* ── Zoom layer ────────────────────────────────────────────────────── */
-.zoom-title {
-    position: fixed;
-    bottom: 6vh;
-    left: 50%;
-    transform: translateX(-50%);
-    color: var(--wall-text);
-    font-family: var(--wall-font);
-    font-size: 1.1rem;
-    text-align: center;
-    text-shadow: var(--wall-shadow-string);
-    pointer-events: none;
-    z-index: 999999;
-    max-width: 80vw;
-    white-space: normal;
-}
-
 #zoom-layer {
     position: fixed;
     top: 0; left: 0;
@@ -141,11 +123,6 @@ body, html {
         padding: 0 10vw;
         --wall-rows: 1;
     }
-}
-
-/* Title visibility controlled by body class */
-.wall-hide-titles .tile-meta {
-    visibility: hidden;
 }
 
 /* ── Infinite scroll sentinel ──────────────────────────────────────── */

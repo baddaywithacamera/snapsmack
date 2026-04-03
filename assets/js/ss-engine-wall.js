@@ -218,16 +218,6 @@
             `width:${zoomRect.width}px; height:${zoomRect.height}px;` +
             `left:${zoomRect.left}px;  top:${zoomRect.top}px;`;
 
-        // Title in zoom layer
-        const existingTitle = zoomLayer.querySelector('.zoom-title');
-        if (existingTitle) existingTitle.remove();
-        if (tile.dataset.title) {
-            const t = document.createElement('div');
-            t.className   = 'zoom-title';
-            t.textContent = tile.dataset.title;
-            zoomLayer.appendChild(t);
-        }
-
         document.body.appendChild(zoomClone);
         zoomLayer.classList.add('active');
 
