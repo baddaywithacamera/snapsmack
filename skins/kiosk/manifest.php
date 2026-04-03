@@ -119,27 +119,6 @@ return [
             ]
         ],
 
-        'header_font_family' => [
-            'section'  => 'VERTICAL LOCKS',
-            'type'     => 'select',
-            'label'    => 'Header Typography (Text Logo)',
-            'default'  => 'Playfair Display',
-            'options'  => $fonts, 
-            'selector' => '.logo-area a', 
-            'property' => 'font-family'
-        ],
-
-        'header_font_size' => [
-            'section'  => 'VERTICAL LOCKS',
-            'type'     => 'range',
-            'label'    => 'Header Font Size (px)',
-            'default'  => '50',
-            'min'      => '40',
-            'max'      => '100',
-            'selector' => '.site-title-text',
-            'property' => 'font-size'
-        ],
-
         'optical_lift' => [
             'section'  => 'VERTICAL LOCKS',
             'type'     => 'range',
@@ -174,13 +153,23 @@ return [
         ],
 
         /* ---------------------------------------------------------------------
-           SECTION 3: STATIC PAGE STYLING
+           SECTION 3: TYPOGRAPHY
            --------------------------------------------------------------------- */
 
-        'static_heading_font' => [
-            'section'  => 'STATIC PAGE STYLING',
+        'header_font_family' => [
+            'section'  => 'TYPOGRAPHY',
             'type'     => 'select',
-            'label'    => 'Heading Typography',
+            'label'    => 'Header Font (Text Logo)',
+            'default'  => 'Playfair Display',
+            'options'  => $fonts,
+            'selector' => '.logo-area a',
+            'property' => 'font-family'
+        ],
+
+        'static_heading_font' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'Heading Font',
             'default'  => 'Helvetica Neue',
             'options'  => $fonts,
             'selector' => '.static-page-title, .photo-title-footer',
@@ -188,30 +177,17 @@ return [
         ],
 
         'static_body_font' => [
-            'section'  => 'STATIC PAGE STYLING',
+            'section'  => 'TYPOGRAPHY',
             'type'     => 'select',
-            'label'    => 'Body Typography',
+            'label'    => 'Body Font',
             'default'  => 'Georgia',
             'options'  => $fonts,
             'selector' => '.static-content, .description',
             'property' => 'font-family'
         ],
 
-        'static_section_spacing' => [
-            'section'  => 'STATIC PAGE STYLING',
-            'type'     => 'range',
-            'label'    => 'Vertical Section Spacing (px)',
-            'default'  => '40',
-            'min'      => '10',
-            'max'      => '120',
-            'selector' => '.static-content',
-            'property' => 'margin-top'
-        ],
-
-        /* FOOTER FONTS */
-
         'footer_font_family' => [
-            'section'  => 'STATIC PAGE STYLING',
+            'section'  => 'TYPOGRAPHY',
             'type'     => 'select',
             'label'    => 'Footer Font',
             'default'  => 'Inter',
@@ -220,8 +196,42 @@ return [
             'property' => 'font-family'
         ],
 
+        /* ---------------------------------------------------------------------
+           SECTION 4: HEADER & NAV
+           --------------------------------------------------------------------- */
+
+        'header_font_size' => [
+            'section'  => 'HEADER & NAV',
+            'type'     => 'range',
+            'label'    => 'Header Font Size (px)',
+            'default'  => '50',
+            'min'      => '40',
+            'max'      => '100',
+            'selector' => '.site-title-text',
+            'property' => 'font-size'
+        ],
+
+        /* ---------------------------------------------------------------------
+           SECTION 5: VERTICAL LOCKS
+           --------------------------------------------------------------------- */
+
+        'static_section_spacing' => [
+            'section'  => 'VERTICAL LOCKS',
+            'type'     => 'range',
+            'label'    => 'Static Page Top Spacing (px)',
+            'default'  => '40',
+            'min'      => '10',
+            'max'      => '120',
+            'selector' => '.static-content',
+            'property' => 'margin-top'
+        ],
+
+        /* ---------------------------------------------------------------------
+           SECTION 6: FOOTER
+           --------------------------------------------------------------------- */
+
         'footer_font_size' => [
-            'section'  => 'STATIC PAGE STYLING',
+            'section'  => 'FOOTER',
             'type'     => 'range',
             'label'    => 'Footer Font Size (px)',
             'default'  => '11',

@@ -333,6 +333,14 @@ return [
         ],
 
         // COLOURS section — global palette
+        'page_bg_color' => [
+            'section' => 'COLOURS',
+            'type' => 'color',
+            'label' => 'Static Page Background',
+            'default' => '#f5f0eb',
+            'selector' => '.static-content, .static-transmission #scroll-stage',
+            'property' => 'background-color',
+        ],
         'htbs_text_primary' => [
             'section' => 'COLOURS',
             'type' => 'color',
