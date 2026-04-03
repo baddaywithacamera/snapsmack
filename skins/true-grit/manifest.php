@@ -326,7 +326,7 @@ return [
         ],
 
         /* ============================================================
-           SECTION 5: TYPOGRAPHY
+           SECTION 5: TYPOGRAPHY (Fonts Only)
            ============================================================ */
 
         'header_font_family' => [
@@ -337,96 +337,6 @@ return [
             'options'  => $fonts,
             'selector' => '.site-title-text, .logo-area a',
             'property' => 'font-family'
-        ],
-
-        'header_font_size' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'range',
-            'label'    => 'Header Font Size (px)',
-            'default'  => '50',
-            'min'      => '12',
-            'max'      => '120',
-            'selector' => '.site-title-text',
-            'property' => 'font-size'
-        ],
-
-        'header_text_transform' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'select',
-            'label'    => 'Header Text Case',
-            'default'  => 'uppercase',
-            'options'  => [
-                'uppercase'  => 'UPPERCASE',
-                'lowercase'  => 'lowercase',
-                'capitalize' => 'Capitalize Each Word',
-                'none'       => 'As Entered (No Transform)',
-            ],
-            'selector' => '.site-title-text',
-            'property' => 'text-transform'
-        ],
-
-        'header_letter_spacing' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'range',
-            'label'    => 'Header Letter Spacing (px)',
-            'default'  => '3',
-            'min'      => '-2',
-            'max'      => '15',
-            'selector' => '.site-title-text',
-            'property' => 'letter-spacing'
-        ],
-
-        'header_font_weight' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'select',
-            'label'    => 'Header Font Weight',
-            'default'  => '300',
-            'options'  => [
-                '300' => 'Light (300)',
-                '400' => 'Regular (400)',
-                '500' => 'Medium (500)',
-                '600' => 'Semi-Bold (600)',
-                '700' => 'Bold (700)',
-                '900' => 'Black (900)',
-            ],
-            'selector' => '.site-title-text',
-            'property' => 'font-weight'
-        ],
-
-        'header_nav_color' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'color',
-            'label'    => 'Header / Nav Font Colour',
-            'default'  => '#cccccc',
-            'selector' => '.nav-menu a, .site-title-text, .logo-area a',
-            'property' => 'color'
-        ],
-
-        'header_nav_hover_color' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'color',
-            'label'    => 'Header / Nav Hover Colour',
-            'default'  => '#ffffff',
-            'selector' => '.nav-menu a:hover, .nav-menu a.active, .logo-area a:hover',
-            'property' => 'color'
-        ],
-
-        'accent_color' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'color',
-            'label'    => 'Link / Accent Colour',
-            'default'  => '#888888',
-            'selector' => ':root',
-            'property' => '--accent'
-        ],
-
-        'accent_hover_color' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'color',
-            'label'    => 'Link / Accent Hover Colour',
-            'default'  => '#ffffff',
-            'selector' => ':root',
-            'property' => '--accent-hover'
         ],
 
         'static_heading_font' => [
@@ -459,8 +369,137 @@ return [
             'property' => 'font-family'
         ],
 
+        /* ============================================================
+           SECTION 6: COLOURS
+           ============================================================ */
+
+        'page_bg_color' => [
+            'section'  => 'COLOURS',
+            'type'     => 'color',
+            'label'    => 'Static Page Background',
+            'default'  => '#2a2a2a',
+            'selector' => '.static-content, .static-transmission #scroll-stage',
+            'property' => 'background-color'
+        ],
+
+        'accent_color' => [
+            'section'  => 'COLOURS',
+            'type'     => 'color',
+            'label'    => 'Link / Accent Colour',
+            'default'  => '#888888',
+            'selector' => ':root',
+            'property' => '--accent'
+        ],
+
+        'accent_hover_color' => [
+            'section'  => 'COLOURS',
+            'type'     => 'color',
+            'label'    => 'Link / Accent Hover Colour',
+            'default'  => '#ffffff',
+            'selector' => ':root',
+            'property' => '--accent-hover'
+        ],
+
+        'footer_font_color' => [
+            'section'  => 'COLOURS',
+            'type'     => 'color',
+            'label'    => 'Footer Font Colour',
+            'default'  => '#888888',
+            'selector' => '#system-footer p, #sig-text, #system-footer .sep, #system-footer a',
+            'property' => 'color'
+        ],
+
+        'footer_link_hover_color' => [
+            'section'  => 'COLOURS',
+            'type'     => 'color',
+            'label'    => 'Footer Link Hover Colour',
+            'default'  => '#cccccc',
+            'selector' => '#system-footer a:hover',
+            'property' => 'color'
+        ],
+
+        /* ============================================================
+           SECTION 7: HEADER & NAV
+           ============================================================ */
+
+        'header_font_size' => [
+            'section'  => 'HEADER & NAV',
+            'type'     => 'range',
+            'label'    => 'Header Font Size (px)',
+            'default'  => '50',
+            'min'      => '12',
+            'max'      => '120',
+            'selector' => '.site-title-text',
+            'property' => 'font-size'
+        ],
+
+        'header_text_transform' => [
+            'section'  => 'HEADER & NAV',
+            'type'     => 'select',
+            'label'    => 'Header Text Case',
+            'default'  => 'uppercase',
+            'options'  => [
+                'uppercase'  => 'UPPERCASE',
+                'lowercase'  => 'lowercase',
+                'capitalize' => 'Capitalize Each Word',
+                'none'       => 'As Entered (No Transform)',
+            ],
+            'selector' => '.site-title-text',
+            'property' => 'text-transform'
+        ],
+
+        'header_letter_spacing' => [
+            'section'  => 'HEADER & NAV',
+            'type'     => 'range',
+            'label'    => 'Header Letter Spacing (px)',
+            'default'  => '3',
+            'min'      => '-2',
+            'max'      => '15',
+            'selector' => '.site-title-text',
+            'property' => 'letter-spacing'
+        ],
+
+        'header_font_weight' => [
+            'section'  => 'HEADER & NAV',
+            'type'     => 'select',
+            'label'    => 'Header Font Weight',
+            'default'  => '300',
+            'options'  => [
+                '300' => 'Light (300)',
+                '400' => 'Regular (400)',
+                '500' => 'Medium (500)',
+                '600' => 'Semi-Bold (600)',
+                '700' => 'Bold (700)',
+                '900' => 'Black (900)',
+            ],
+            'selector' => '.site-title-text',
+            'property' => 'font-weight'
+        ],
+
+        'header_nav_color' => [
+            'section'  => 'HEADER & NAV',
+            'type'     => 'color',
+            'label'    => 'Header / Nav Font Colour',
+            'default'  => '#cccccc',
+            'selector' => '.nav-menu a, .site-title-text, .logo-area a',
+            'property' => 'color'
+        ],
+
+        'header_nav_hover_color' => [
+            'section'  => 'HEADER & NAV',
+            'type'     => 'color',
+            'label'    => 'Header / Nav Hover Colour',
+            'default'  => '#ffffff',
+            'selector' => '.nav-menu a:hover, .nav-menu a.active, .logo-area a:hover',
+            'property' => 'color'
+        ],
+
+        /* ============================================================
+           SECTION 8: FOOTER
+           ============================================================ */
+
         'footer_font_size' => [
-            'section'  => 'TYPOGRAPHY',
+            'section'  => 'FOOTER',
             'type'     => 'range',
             'label'    => 'Footer Font Size (px)',
             'default'  => '11',
@@ -470,26 +509,8 @@ return [
             'property' => 'font-size'
         ],
 
-        'footer_font_color' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'color',
-            'label'    => 'Footer Font Colour',
-            'default'  => '#888888',
-            'selector' => '#system-footer p, #sig-text, #system-footer .sep, #system-footer a',
-            'property' => 'color'
-        ],
-
-        'footer_link_hover_color' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'color',
-            'label'    => 'Footer Link Hover Colour',
-            'default'  => '#cccccc',
-            'selector' => '#system-footer a:hover',
-            'property' => 'color'
-        ],
-
         /* ============================================================
-           SECTION 6: VERTICAL LOCKS
+           SECTION 9: VERTICAL LOCKS
            ============================================================ */
 
         'optical_lift' => [
@@ -548,7 +569,7 @@ return [
         ],
 
         /* ============================================================
-           SECTION 8: BLOGROLL
+           SECTION 10: BLOGROLL
            ============================================================ */
 
         'blogroll_columns' => [
