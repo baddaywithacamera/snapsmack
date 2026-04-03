@@ -611,7 +611,7 @@ body.static-transmission {
     margin: 0 auto 0 auto !important;
     padding: 20px 40px 50px 40px;
     box-sizing: border-box;
-    background: var(--page-bg, var(--bg-primary)) !important;
+    background: var(--bg-primary) !important;
     text-align: left;
     overflow-x: hidden;
 }
@@ -646,7 +646,7 @@ body.static-transmission {
     letter-spacing: 1px;
     font-size: 2rem;
     font-weight: 300;
-    background: var(--page-bg, var(--bg-primary));
+    background: var(--bg-primary);
 }
 
 .static-transmission .description .align-left {
