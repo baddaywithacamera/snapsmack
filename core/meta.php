@@ -219,3 +219,15 @@ if (file_exists($inventory_path)) {
 }
 </style>
 <?php endif; ?>
+
+<?php
+/**
+ * THIRD-PARTY HEAD SCRIPTS
+ * Injected from Smack Your Scripts Up! admin page.
+ * Loads after all CSS so tracking/analytics scripts don't block rendering.
+ */
+if (!empty($settings['custom_head_scripts'])):
+?>
+<?php echo $settings['custom_head_scripts']; ?>
+
+<?php endif; ?>
