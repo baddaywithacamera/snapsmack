@@ -97,6 +97,17 @@
     requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(snapToMid, 80)));
 
     // ----------------------------------------------------------------
+    // IMAGE FADE-IN — add .loaded class when each image finishes loading
+    // ----------------------------------------------------------------
+    canvas.querySelectorAll('.wall-tile img').forEach(img => {
+        if (img.complete && img.naturalWidth) {
+            img.classList.add('loaded');
+        } else {
+            img.addEventListener('load', () => img.classList.add('loaded'), { once: true });
+        }
+    });
+
+    // ----------------------------------------------------------------
     // ANIMATION LOOP  (lerp toward aim; apply friction to velocities)
     // ----------------------------------------------------------------
     function lerp(a, b, t) { return a + (b - a) * t; }
@@ -248,12 +259,12 @@
         zoomLayer.style.opacity = '';
         if (zoomClone) {
             if (!instant) {
+                // Animate back to original tile position
                 zoomClone.style.transform = 'translate(0,0) scale(1)';
-                zoomClone.style.opacity   = '0';
             }
             const c = zoomClone; zoomClone = null;
             setTimeout(() => c.parentNode && c.parentNode.removeChild(c),
-                       instant ? 0 : 380);
+                       instant ? 0 : 500);
         }
         zoomedTile = null;
     }
@@ -371,6 +382,14 @@
             const html = await r.text();
             if (html.trim()) {
                 sentinel.insertAdjacentHTML('beforebegin', html);
+                // Fade in newly loaded images
+                canvas.querySelectorAll('.wall-tile img:not(.loaded)').forEach(img => {
+                    if (img.complete && img.naturalWidth) {
+                        img.classList.add('loaded');
+                    } else {
+                        img.addEventListener('load', () => img.classList.add('loaded'), { once: true });
+                    }
+                });
                 loadOffset += 20;
                 hasMore = loadOffset < cfg.totalImages;
                 if (!hasMore) sentinel.remove();

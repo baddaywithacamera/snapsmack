@@ -63,6 +63,7 @@ $pinch_power     = (int)($settings['pinch_sensitivity'] ?? 30);
 $wall_limit      = (int)($settings['wall_limit']        ?? 40);
 $wall_rows       = max(1, min(5, (int)($settings['wall_rows'] ?? 2)));
 $wall_gap        = (int)($settings['wall_gap']          ?? 24);
+$wall_reflect    = ($settings['wall_reflect']           ?? '0') === '1';
 
 // --- LAYOUT CALCULATIONS ---
 // Grid rows and gap are set via CSS variables; tiles size themselves via 1fr.
@@ -110,7 +111,7 @@ try {
     }
     </script>
 </head>
-<body class="is-wall"
+<body class="is-wall<?php echo $wall_reflect ? ' wall-reflect' : ''; ?>"
       style="--wall-bg:<?php echo htmlspecialchars($wall_theme); ?>; --wall-gap:<?php echo $wall_gap; ?>px; --wall-rows:<?php echo $wall_rows; ?>;">
 
 <div class="wall-viewport">
