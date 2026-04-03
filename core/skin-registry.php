@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin Registry Helper
- * Alpha v0.7.7
+ * Alpha v0.7.8
  *
  * Backend functions for the skin gallery system. Handles fetching the remote
  * skin registry, comparing against locally installed skins, downloading and

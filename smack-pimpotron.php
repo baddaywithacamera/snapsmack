@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Slideshow (Pimpotron) configuration
- * Alpha v0.7.7
+ * Alpha v0.7.8
  *
  * Manages creation and editing of promotional slideshows.
  * Configures global settings and individual slides with text and styling options.

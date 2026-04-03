@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - 50 Shades of Noah Grey Archive Layout
- * Alpha v0.7.7
+ * Alpha v0.7.8
  *
  * Two-mode toggle: natural-aspect cropped grid / justified (Flickr-style) rows.
  * Visitor preference persists via localStorage (consent-gated).
