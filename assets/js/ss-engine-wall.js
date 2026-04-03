@@ -35,7 +35,7 @@
     // PHYSICS STATE  (X pan + Z depth only — Y is always 0)
     // ----------------------------------------------------------------
     let aimX = 0, posX = 0, velX = 0;
-    let aimZ = -500, posZ = -500, velZ = 0;
+    let aimZ = -1500, posZ = -1500, velZ = 0;
     let tilt = 0;
 
     // ----------------------------------------------------------------
@@ -302,6 +302,13 @@
     function openZoom(tile) {
         if (zoomedTile) closeZoom(true);
         zoomedTile = tile;
+
+        // Freeze wall physics so the canvas doesn't drift during the zoom
+        // animation. Any velX accumulated during the click (from mousemove
+        // between mousedown and mouseup) would otherwise shift the wall left
+        // or right while the overlay is open.
+        velX = 0;
+        aimX = posX;
 
         const img  = tile.querySelector('img');
         zoomRect   = img.getBoundingClientRect();
