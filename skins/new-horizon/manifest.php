@@ -353,11 +353,11 @@ return [
         ],
 
         /* ---------------------------------------------------------------------
-           SECTION 5: WALL SPECIFIC (3D Engine Physics & Visuals)
+           SECTION 5: FLOATING GALLERY (3D Engine Physics & Visuals)
            --------------------------------------------------------------------- */
 
         'wall_friction' => [
-            'section'  => 'WALL SPECIFIC',
+            'section'  => 'FLOATING GALLERY',
             'type'     => 'number',
             'label'    => 'Wall Friction (0.1 - 0.99)',
             'default'  => '0.96',
@@ -366,7 +366,7 @@ return [
         ],
 
         'wall_dragweight' => [
-            'section'  => 'WALL SPECIFIC',
+            'section'  => 'FLOATING GALLERY',
             'type'     => 'number',
             'label'    => 'Drag Weight',
             'default'  => '2.5',
@@ -375,7 +375,7 @@ return [
         ],
 
         'wall_shadow_intensity' => [
-            'section'  => 'WALL SPECIFIC',
+            'section'  => 'FLOATING GALLERY',
             'type'     => 'select',
             'label'    => 'Shadow Intensity',
             'default'  => 'heavy',
@@ -389,7 +389,7 @@ return [
         ],
 
         'wall_font_ref' => [
-            'section'  => 'WALL SPECIFIC',
+            'section'  => 'FLOATING GALLERY',
             'type'     => 'select',
             'label'    => 'Title Typography',
             'default'  => 'Playfair Display',
@@ -399,7 +399,7 @@ return [
         ],
 
         'wall_theme' => [
-            'section'  => 'WALL SPECIFIC',
+            'section'  => 'FLOATING GALLERY',
             'type'     => 'color',
             'label'    => 'Wall Background Color',
             'default'  => '#000000',
@@ -408,7 +408,7 @@ return [
         ],
 
         'wall_text_color' => [
-            'section'  => 'WALL SPECIFIC',
+            'section'  => 'FLOATING GALLERY',
             'type'     => 'color',
             'label'    => 'Floating Title Color',
             'default'  => '#808080',
@@ -417,7 +417,7 @@ return [
         ],
 
         'wall_shadow_color' => [
-            'section'  => 'WALL SPECIFIC',
+            'section'  => 'FLOATING GALLERY',
             'type'     => 'color',
             'label'    => 'Shadow/Glow Color',
             'default'  => '#000000',

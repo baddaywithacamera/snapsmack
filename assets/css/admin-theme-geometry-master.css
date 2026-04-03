@@ -1503,7 +1503,7 @@ input[type="range"]:active::-webkit-slider-thumb {
 /* Hidden file input — positioned inside .file-upload-wrapper */
 .file-input-hidden { display: none; }
 
-/* Scroll sentinel (gallery wall infinite-scroll trigger) */
+/* Scroll sentinel (floating gallery infinite-scroll trigger) */
 .wall-sentinel {
     width: 1px;
     height: 1px;
