@@ -377,9 +377,9 @@ return [
             'section'  => 'COLOURS',
             'type'     => 'color',
             'label'    => 'Static Page Background',
-            'default'  => '#2a2a2a',
-            'selector' => '.static-content, .static-transmission #scroll-stage',
-            'property' => 'background-color'
+            'default'  => '',
+            'selector' => ':root',
+            'property' => '--page-bg'
         ],
 
         'accent_color' => [
