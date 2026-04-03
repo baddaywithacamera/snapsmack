@@ -187,11 +187,19 @@ if (isset($_POST['save_skin_settings'])) {
 
     // Map manifest options to CSS properties or custom payloads.
     foreach ($manifest['options'] as $key => $meta) {
-        $val = ($all_settings[$key] ?? '') !== '' ? $all_settings[$key] : $meta['default'];
+        $val = ($all_settings[$key] ?? '') !== '' ? $all_settings[$key] : ($meta['default'] ?? '');
         $prop = $meta['property'] ?? '';
 
         // Skip options with no CSS property — handled by PHP (e.g. bevel style, wood grain)
         if ($prop === '') {
+            continue;
+        }
+
+        // Skip options with no resolved value (empty default, nothing in DB).
+        // This lets manifest options that target CSS variables use an empty
+        // default so the skin's style.css fallback (e.g. var(--page-bg, var(--bg-primary)))
+        // remains in control until the admin explicitly sets a value.
+        if ($val === '') {
             continue;
         }
 
