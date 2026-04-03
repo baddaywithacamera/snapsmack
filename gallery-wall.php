@@ -138,7 +138,7 @@ try {
          data-total-images="<?php echo $total_images; ?>"
          data-initial-limit="<?php echo $wall_limit; ?>">
         <?php foreach ($images as $img): ?>
-            <div class="wall-tile" data-full="<?php echo htmlspecialchars($img['img_file']); ?>">
+            <div class="wall-tile" data-full="<?php echo htmlspecialchars($img['img_file']); ?>" data-title="<?php echo htmlspecialchars($img['img_title']); ?>">
                 <?php $thumb = !empty($img['img_thumb_aspect']) ? $img['img_thumb_aspect'] : $img['img_file']; ?>
                 <img src="<?php echo htmlspecialchars($thumb); ?>" alt="Smack" loading="eager" decoding="async">
                 <div class="tile-meta">
