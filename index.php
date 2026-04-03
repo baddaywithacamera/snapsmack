@@ -125,6 +125,7 @@ try {
                                 </div>
                             </div>
                         </div>
+                        <?php include __DIR__ . '/core/footer.php'; ?>
                     </div>
                 </body>
                 </html>
