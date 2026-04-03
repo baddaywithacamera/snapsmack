@@ -75,29 +75,24 @@ HTML
         'content'  => <<<'HTML'
 <h3>Floating Gallery Configuration</h3>
 <p>The floating gallery is a 3D interactive experience unique to skins that support it.
-Configure it in Smooth Your Skin under "Wall Specific".</p>
+Engine settings live in <strong>Global Vibe</strong>; visual settings stay in Smooth Your Skin.</p>
 
-<h4>Physics</h4>
+<h4>Engine Settings (Global Vibe)</h4>
 <ul>
-    <li><strong>Friction</strong> (0.1–0.99) — controls how quickly the wall decelerates
-    after dragging. Low values make it feel like ice; high values feel heavy and controlled.
-    Default: 0.92.</li>
-    <li><strong>Drag Weight</strong> — multiplier for drag resistance. Higher values require
-    more effort to move the wall.</li>
+    <li><strong>Reflection</strong> — toggle a below-tile reflection effect (Chromium/Safari).</li>
+    <li><strong>Scroll Friction</strong> (0.80–0.99) — controls how quickly the wall decelerates
+    after dragging. Low values feel like ice; high values feel heavy and controlled.</li>
+    <li><strong>Drag Weight</strong> (0.5–5.0) — multiplier for drag resistance.</li>
+    <li><strong>Gallery Link</strong> — show or hide the nav link.</li>
 </ul>
 
-<h4>Visual</h4>
+<h4>Visual Settings (Smooth Your Skin)</h4>
 <ul>
     <li><strong>Wall Background</strong> — the colour behind the tiles. Pure black by default.</li>
     <li><strong>Text Colour</strong> — title text that appears on hover.</li>
-    <li><strong>Shadow Colour &amp; Intensity</strong> — the glow or shadow behind each tile.
-    Options: none, light, heavy.</li>
+    <li><strong>Shadow Colour &amp; Intensity</strong> — the glow or shadow behind each tile.</li>
     <li><strong>Font</strong> — the typeface used for tile titles on the wall.</li>
 </ul>
-
-<h4>Layout</h4>
-<p>Wall rows (1–4), tile gap, and maximum tile count are configured in the global
-Configuration page, not the skin customizer. These affect all wall-capable skins.</p>
 HTML
     ],
 

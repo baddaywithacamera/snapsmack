@@ -1,6 +1,6 @@
 # SnapSmack
 
-**Alpha v0.7.7 "Poäng Thang"**
+**Alpha v0.7.7b "Muffet's Tuffet"**
 
 A self-hosted photography CMS for people who care about their photographs. Your domain, your archive, no algorithm.
 

@@ -189,6 +189,24 @@ include 'core/sidebar.php';
                     <button type="button" class="sc-btn" data-action="dropcap" title="Dropcap">DROP</button>
                     <button type="button" class="sc-btn" data-action="spacer" title="Vertical Spacer (1-100px)">SPACER</button>
                     <button type="button" class="sc-btn sc-btn-preview" data-action="preview" title="Preview in New Tab">PREVIEW</button>
+                    <span class="sc-sep"></span>
+                    <div class="sc-dropdown-wrap">
+                        <button type="button" class="sc-btn" data-action="shortcode-menu" title="Insert Data Shortcode">&#x2039;SC&#x203A;</button>
+                        <div class="sc-dropdown" id="sc-shortcode-dropdown">
+                            <button type="button" data-sc="[post_count]">Post Count</button>
+                            <button type="button" data-sc="[site_name]">Site Name</button>
+                            <button type="button" data-sc="[site_url]">Site URL</button>
+                            <button type="button" data-sc="[current_year]">Current Year</button>
+                            <button type="button" data-sc='[years_since year="" month="" day=""]'>Years Since&hellip;</button>
+                            <button type="button" data-sc="[newest_post]">Newest Post Date</button>
+                            <button type="button" data-sc="[oldest_post]">Oldest Post Date</button>
+                            <button type="button" data-sc="[archive_link]">Archive Link</button>
+                            <button type="button" data-sc="[gallery_link]">Gallery Link</button>
+                            <button type="button" data-sc="[random_image]">Random Image</button>
+                            <button type="button" data-sc="[latest_image]">Latest Image</button>
+                            <button type="button" data-sc='[embed:]'>Embed&hellip;</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <textarea id="page-content" name="content" rows="20"><?php echo htmlspecialchars($edit_page['content'] ?? ''); ?></textarea>
