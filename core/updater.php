@@ -30,6 +30,25 @@ define('UPDATER_MIGRATIONS_DIR', dirname(__DIR__) . '/migrations');
 define('UPDATER_TEMP_DIR', sys_get_temp_dir() . '/snapsmack_update');
 define('UPDATER_PROTECTED_PATHS_FILE', dirname(__DIR__) . '/protected_paths.json');
 
+// ─── KNOWN MIGRATIONS ───────────────────────────────────────────────────────
+
+/**
+ * Canonical list of every migration filename ever shipped in an official release.
+ *
+ * Any .sql file in /migrations/ that is NOT in this list is a "ghost" — a
+ * leftover from a previous install, a manually placed file, or a file that was
+ * deleted from the repo but not from the server.  updater_find_migrations()
+ * skips ghost files automatically so they can never cause an update failure.
+ *
+ * Add each new migration filename here when you create it.
+ */
+const UPDATER_KNOWN_MIGRATIONS = [
+    'migrate-076.sql',
+    'migrate-077.sql',
+    'migrate-078.sql',
+    'migrate-comment-identity.sql',
+];
+
 // ─── VERSION CHECK ──────────────────────────────────────────────────────────
 
 /**
@@ -647,14 +666,83 @@ function updater_find_migrations(PDO $pdo): array {
     $files = glob("{$dir}/migrate*.sql") ?: [];
     sort($files);
 
+    $known   = array_flip(UPDATER_KNOWN_MIGRATIONS);
     $pending = [];
     foreach ($files as $f) {
-        if (!isset($applied[basename($f)])) {
+        $name = basename($f);
+        if (!isset($known[$name])) {
+            // Ghost file — not part of any official release. Skip silently so
+            // it can never block an update. The recovery panel in smack-update.php
+            // surfaces these to the admin via updater_migration_status().
+            error_log("SnapSmack updater: skipping ghost migration '{$name}' (not in UPDATER_KNOWN_MIGRATIONS)");
+            continue;
+        }
+        if (!isset($applied[$name])) {
             $pending[] = $f;
         }
     }
 
     return $pending;
+}
+
+/**
+ * Return a summary of migration state for the Schema Recovery panel.
+ *
+ * Returns:
+ *   'applied' => [ ['migration' => name, 'applied_at' => datetime], ... ]
+ *   'pending' => [ filename, ... ]   — known but not yet applied
+ *   'ghosts'  => [ filename, ... ]   — on disk, not in known list
+ */
+function updater_migration_status(PDO $pdo): array {
+    $dir   = UPDATER_MIGRATIONS_DIR;
+    $known = UPDATER_KNOWN_MIGRATIONS;
+
+    // Fetch applied migrations — table may not exist yet on very old installs
+    $applied     = [];
+    $applied_map = [];
+    try {
+        $ps = $pdo->query("
+            CREATE TABLE IF NOT EXISTS snap_migrations (
+                migration  VARCHAR(100) NOT NULL,
+                applied_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (migration)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+        if ($ps !== false) $ps->closeCursor();
+
+        $rows = $pdo->query("SELECT migration, applied_at FROM snap_migrations ORDER BY applied_at ASC")
+                    ->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as $r) {
+            $applied[]              = $r;
+            $applied_map[$r['migration']] = true;
+        }
+    } catch (\Exception $e) {
+        // DB not reachable or table creation failed — return empty state
+    }
+
+    // Pending = known but not recorded as applied
+    $pending = [];
+    foreach ($known as $name) {
+        if (!isset($applied_map[$name])) {
+            $pending[] = $name;
+        }
+    }
+
+    // Ghosts = files on disk that are not in the known list and not already applied
+    $known_map  = array_flip($known);
+    $disk_files = array_map('basename', glob("{$dir}/migrate*.sql") ?: []);
+    $ghosts     = [];
+    foreach ($disk_files as $name) {
+        if (!isset($known_map[$name]) && !isset($applied_map[$name])) {
+            $ghosts[] = $name;
+        }
+    }
+
+    return [
+        'applied' => $applied,
+        'pending' => $pending,
+        'ghosts'  => $ghosts,
+    ];
 }
 
 /**

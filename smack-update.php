@@ -648,6 +648,57 @@ if ($action === 'rollback' && !empty($_SESSION['update_backup_file'])) {
     }
 }
 
+// ── ACTION: SCHEMA RESYNC ─────────────────────────────────────────────────────
+// Runs schema-sync directly, outside of the update flow. Safe to run on any
+// install at any time — creates missing tables and columns idempotently.
+if ($action === 'schema_resync') {
+    if (!function_exists('snap_schema_sync')) {
+        require_once __DIR__ . '/core/schema-sync.php';
+    }
+    $sync = snap_schema_sync($pdo);
+    $summary = [];
+    if (!empty($sync['created']))  $summary[] = count($sync['created'])  . ' table(s) created';
+    if (!empty($sync['altered']))  $summary[] = count($sync['altered'])  . ' column(s) added';
+    if (!empty($sync['skipped']))  $summary[] = count($sync['skipped'])  . ' already current';
+    if (!empty($sync['errors']))   $summary[] = count($sync['errors'])   . ' error(s)';
+    $_SESSION['schema_resync_result'] = $sync;
+    $flash_msg  = 'SCHEMA SYNC COMPLETE: ' . (implode(', ', $summary) ?: 'nothing to do') . '.';
+    $flash_type = empty($sync['errors']) ? 'success' : 'warning';
+}
+
+// ── ACTION: MARK ALL MIGRATIONS APPLIED ──────────────────────────────────────
+// Records every known migration in snap_migrations without executing its SQL.
+// Use after manually applying a recovery SQL file so the updater sees a clean
+// migration state.
+if ($action === 'mark_migrations_applied') {
+    try {
+        $ps = $pdo->query("
+            CREATE TABLE IF NOT EXISTS snap_migrations (
+                migration  VARCHAR(100) NOT NULL,
+                applied_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (migration)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+        if ($ps !== false) $ps->closeCursor();
+
+        $stmt = $pdo->prepare(
+            "INSERT IGNORE INTO snap_migrations (migration, applied_at) VALUES (?, NOW())"
+        );
+        $marked = 0;
+        foreach (UPDATER_KNOWN_MIGRATIONS as $name) {
+            $stmt->execute([$name]);
+            if ($stmt->rowCount() > 0) $marked++;
+        }
+        $flash_msg  = $marked > 0
+            ? "MARKED {$marked} MIGRATION(S) AS APPLIED. DATABASE STATE IS NOW CLEAN."
+            : 'ALL MIGRATIONS WERE ALREADY RECORDED AS APPLIED. NOTHING CHANGED.';
+        $flash_type = 'success';
+    } catch (\PDOException $e) {
+        $flash_msg  = 'FAILED TO MARK MIGRATIONS: ' . $e->getMessage();
+        $flash_type = 'error';
+    }
+}
+
 // Retrieve completed update log (if we just finalized)
 $complete_log = null;
 if (!empty($_SESSION['update_complete_log'])) {
@@ -728,6 +779,16 @@ include 'core/sidebar.php';
         margin-top: 20px; padding: 12px 18px; border-radius: 3px;
         background: rgba(255,255,255,0.03); font-family: monospace; font-size: 0.75rem; line-height: 1.6;
     }
+
+    /* Schema Recovery panel */
+    .recovery-table { width: 100%; border-collapse: collapse; font-family: monospace; font-size: 0.8rem; margin: 12px 0; }
+    .recovery-table th { text-align: left; padding: 6px 10px; opacity: 0.5; font-size: 0.7rem; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .recovery-table td { padding: 5px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .recovery-table tr:last-child td { border-bottom: none; }
+    .migration-ok    { color: #5a5; }
+    .migration-pending { opacity: 0.6; }
+    .migration-ghost { color: #c74; }
+    .recovery-actions { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; align-items: center; }
 </style>
 
 <div class="main">
@@ -769,6 +830,110 @@ include 'core/sidebar.php';
                     onclick="return confirm('Reset all update state and re-sync installed version from constants.php?');"
                     style="font-size:0.75rem;opacity:0.6;">RESET UPDATE STATE</button>
         </form>
+    </div>
+
+    <!-- SCHEMA RECOVERY PANEL -->
+    <?php
+    $migration_status   = updater_migration_status($pdo);
+    $schema_resync_result = null;
+    if (!empty($_SESSION['schema_resync_result'])) {
+        $schema_resync_result = $_SESSION['schema_resync_result'];
+        unset($_SESSION['schema_resync_result']);
+    }
+    $has_ghosts  = !empty($migration_status['ghosts']);
+    $has_pending = !empty($migration_status['pending']);
+    ?>
+    <div class="box update-section">
+        <h3>SCHEMA RECOVERY</h3>
+        <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
+            Run a schema sync or inspect migration state without running a full update.
+            Use these tools after a failed update or when bringing an older install current manually.
+        </p>
+
+        <?php if ($schema_resync_result): ?>
+        <div style="margin-bottom:16px;">
+            <?php if (!empty($schema_resync_result['created'])): ?>
+                <div style="font-family:monospace;font-size:0.78rem;margin-bottom:6px;">TABLES CREATED:</div>
+                <?php foreach ($schema_resync_result['created'] as $t): ?>
+                    <code style="display:block;padding:2px 10px;font-size:0.75rem;opacity:0.85;">+ <?php echo htmlspecialchars($t); ?></code>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            <?php if (!empty($schema_resync_result['altered'])): ?>
+                <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;">COLUMNS ADDED:</div>
+                <?php foreach ($schema_resync_result['altered'] as $c): ?>
+                    <code style="display:block;padding:2px 10px;font-size:0.75rem;opacity:0.85;">+ <?php echo htmlspecialchars($c); ?></code>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            <?php if (!empty($schema_resync_result['errors'])): ?>
+                <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;color:#c44;">ERRORS:</div>
+                <?php foreach ($schema_resync_result['errors'] as $e): ?>
+                    <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#c44;">✗ <?php echo htmlspecialchars($e); ?></code>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($has_ghosts): ?>
+        <div class="update-warning" style="margin-bottom:16px;">
+            <strong>GHOST FILES DETECTED</strong> — The following migration files are on disk but are not part of any official release.
+            The updater will skip them automatically. Delete them from <code>/migrations/</code> via FTP to keep the directory clean.<br><br>
+            <?php foreach ($migration_status['ghosts'] as $g): ?>
+                <code style="display:block;margin-top:4px;font-size:0.8rem;" class="migration-ghost">⚠ <?php echo htmlspecialchars($g); ?></code>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+
+        <table class="recovery-table">
+            <thead>
+                <tr><th>MIGRATION</th><th>STATUS</th><th>APPLIED AT</th></tr>
+            </thead>
+            <tbody>
+            <?php
+            $applied_map = [];
+            foreach ($migration_status['applied'] as $row) {
+                $applied_map[$row['migration']] = $row['applied_at'];
+            }
+            foreach (UPDATER_KNOWN_MIGRATIONS as $name):
+                $is_applied = isset($applied_map[$name]);
+            ?>
+                <tr>
+                    <td><?php echo htmlspecialchars($name); ?></td>
+                    <td class="<?php echo $is_applied ? 'migration-ok' : 'migration-pending'; ?>">
+                        <?php echo $is_applied ? '✓ APPLIED' : '— PENDING'; ?>
+                    </td>
+                    <td><?php echo $is_applied ? htmlspecialchars($applied_map[$name]) : '—'; ?></td>
+                </tr>
+            <?php endforeach; ?>
+            <?php foreach ($migration_status['ghosts'] as $name): ?>
+                <tr>
+                    <td><?php echo htmlspecialchars($name); ?></td>
+                    <td class="migration-ghost">⚠ GHOST</td>
+                    <td>—</td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <div class="recovery-actions">
+            <form method="POST">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="schema_resync" class="btn-smack">RUN SCHEMA SYNC</button>
+            </form>
+            <?php if ($has_pending): ?>
+            <form method="POST">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="mark_migrations_applied" class="btn-smack btn-secondary"
+                        onclick="return confirm('Mark all known migrations as applied without running them?\n\nOnly do this if you have already applied the schema changes manually (e.g. via cPanel SQL).');"
+                        style="font-size:0.75rem;">MARK ALL MIGRATIONS APPLIED</button>
+            </form>
+            <?php endif; ?>
+        </div>
+        <?php if ($has_pending): ?>
+        <p class="dim" style="font-size:0.72rem;margin-top:10px;">
+            &ldquo;Mark All Applied&rdquo; records all known migrations without running their SQL.
+            Use this after running a manual recovery SQL file in cPanel.
+        </p>
+        <?php endif; ?>
     </div>
 
     <!-- COMPLETED UPDATE LOG -->
