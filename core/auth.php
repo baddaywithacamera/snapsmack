@@ -22,9 +22,31 @@ if (!defined('BASE_URL')) {
 // Start the session if it hasn't been started yet. Keep the admin
 // logged in for a full day (86 400 seconds) so sessions don't expire
 // mid-workflow.
+//
+// Why not just ini_set? On shared cPanel hosting the host runs its own
+// cron job that purges /tmp/sess_* files every ~24 minutes regardless of
+// PHP's gc_maxlifetime. We work around this by storing sessions in a
+// private directory inside the SnapSmack install that the host cron never
+// touches. session_set_cookie_params() is also more reliable than
+// ini_set('session.cookie_lifetime') on shared hosts.
 if (session_status() === PHP_SESSION_NONE) {
+    $ss_session_dir = dirname(__DIR__) . '/data/sessions';
+    if (!is_dir($ss_session_dir)) {
+        @mkdir($ss_session_dir, 0700, true);
+        // Drop a deny-all .htaccess so session files aren't web-accessible
+        @file_put_contents($ss_session_dir . '/.htaccess', "Order deny,allow\nDeny from all\n");
+    }
+    if (is_dir($ss_session_dir) && is_writable($ss_session_dir)) {
+        session_save_path($ss_session_dir);
+    }
+    session_set_cookie_params([
+        'lifetime' => 86400,
+        'path'     => '/',
+        'secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
     ini_set('session.gc_maxlifetime', 86400);
-    ini_set('session.cookie_lifetime', 86400);
     session_start();
 }
 
@@ -78,4 +100,19 @@ if (isset($_SESSION['user_login'])) {
     } catch (PDOException $e) {
         // Silent fail: a database hiccup should not lock the entire admin interface
     }
+
+    // Refresh the session cookie expiry on every authenticated page load.
+    // Without this the cookie (and therefore the session) ages from login
+    // time. With this, it's always "24 hours from last activity".
+    setcookie(
+        session_name(),
+        session_id(),
+        [
+            'expires'  => time() + 86400,
+            'path'     => '/',
+            'secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]
+    );
 }
