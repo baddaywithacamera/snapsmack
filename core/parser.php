@@ -10,6 +10,17 @@
  *   [columns=N] ... [col] ... [/columns] — multi-column grid layout
  *   [dropcap]X[/dropcap]            — decorative first-letter dropcap
  *   [spacer:N]                       — vertical gap (1–100 pixels)
+ *   [post_count]                     — total published images
+ *   [site_name]                      — site name from settings
+ *   [site_url]                       — site URL from settings
+ *   [current_year]                   — four-digit current year
+ *   [years_since year="" month="" day=""] — years elapsed since a date
+ *   [random_image]                   — renders a random published image
+ *   [latest_image]                   — renders the most recent published image
+ *   [archive_link]                   — anchor to archive (blank if disabled)
+ *   [gallery_link]                   — anchor to floating gallery (blank if disabled)
+ *   [newest_post]                    — date of most recent post
+ *   [oldest_post]                    — date of first post
  *
  * Auto-paragraph: double newlines (\n\n) become <p> tags automatically.
  * Single newlines within a paragraph become <br>.
@@ -68,10 +79,14 @@ class SnapSmack {
         // --- PHASE 4: IMAGE SHORTCODES ---
         $content = $this->parseImages($content);
 
-        // --- PHASE 5: SPACER SHORTCODES ---
+        // --- PHASE 5: DATA SHORTCODES ---
+        // Simple value shortcodes ([post_count], [site_name], etc.)
+        $content = $this->parseDataShortcodes($content);
+
+        // --- PHASE 6: SPACER SHORTCODES ---
         $content = $this->parseSpacers($content);
 
-        // --- PHASE 6: BLOCK NESTING CLEANUP ---
+        // --- PHASE 7: BLOCK NESTING CLEANUP ---
         // When [img:] shortcodes sit inside the same <p> as text (either from
         // old saves or same-line authoring), Phase 2 wraps everything in <p>
         // and Phase 4 converts the shortcode to a <div>, creating invalid
@@ -284,6 +299,117 @@ class SnapSmack {
             },
             $content
         );
+    }
+
+    // =========================================================================
+    //  DATA SHORTCODES
+    // =========================================================================
+
+    /**
+     * Parse data shortcodes that insert dynamic values into page content.
+     *
+     * Simple replacements ([post_count], [site_name], etc.) plus a few
+     * that need DB queries ([random_image], [latest_image], date lookups).
+     */
+    private function parseDataShortcodes($content) {
+        $base = defined('BASE_URL') ? BASE_URL : (rtrim($this->config['site_url'] ?? '/', '/') . '/');
+
+        // --- [post_count] ---
+        $content = preg_replace_callback('/\[post_count\]/i', function () {
+            try {
+                $stmt = $this->pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'");
+                return (string) $stmt->fetchColumn();
+            } catch (PDOException $e) { return '0'; }
+        }, $content);
+
+        // --- [site_name] ---
+        $content = str_ireplace('[site_name]', htmlspecialchars($this->config['site_name'] ?? ''), $content);
+
+        // --- [site_url] ---
+        $content = str_ireplace('[site_url]', htmlspecialchars($this->config['site_url'] ?? ''), $content);
+
+        // --- [current_year] ---
+        $content = str_ireplace('[current_year]', date('Y'), $content);
+
+        // --- [years_since year="YYYY" month="M" day="D"] ---
+        $content = preg_replace_callback(
+            '/\[years_since\s+year=["\']?(\d{4})["\']?(?:\s+month=["\']?(\d{1,2})["\']?)?(?:\s+day=["\']?(\d{1,2})["\']?)?\s*\]/i',
+            function ($m) {
+                $year  = (int) $m[1];
+                $month = isset($m[2]) && $m[2] !== '' ? (int) $m[2] : 1;
+                $day   = isset($m[3]) && $m[3] !== '' ? (int) $m[3] : 1;
+                $origin = new DateTime(sprintf('%04d-%02d-%02d', $year, $month, $day));
+                $now    = new DateTime();
+                return (string) $origin->diff($now)->y;
+            },
+            $content
+        );
+
+        // --- [newest_post] ---
+        $content = preg_replace_callback('/\[newest_post\]/i', function () {
+            try {
+                $stmt = $this->pdo->query("SELECT img_date FROM snap_images WHERE img_status = 'published' ORDER BY img_date DESC LIMIT 1");
+                $date = $stmt->fetchColumn();
+                return $date ? date('F j, Y', strtotime($date)) : '';
+            } catch (PDOException $e) { return ''; }
+        }, $content);
+
+        // --- [oldest_post] ---
+        $content = preg_replace_callback('/\[oldest_post\]/i', function () {
+            try {
+                $stmt = $this->pdo->query("SELECT img_date FROM snap_images WHERE img_status = 'published' ORDER BY img_date ASC LIMIT 1");
+                $date = $stmt->fetchColumn();
+                return $date ? date('F j, Y', strtotime($date)) : '';
+            } catch (PDOException $e) { return ''; }
+        }, $content);
+
+        // --- [archive_link] ---
+        $content = preg_replace_callback('/\[archive_link\]/i', function () use ($base) {
+            $layout = $this->config['archive_layout'] ?? 'square';
+            if ($layout === 'none') return '';
+            return '<a href="' . htmlspecialchars($base . 'archive.php') . '">Archive</a>';
+        }, $content);
+
+        // --- [gallery_link] ---
+        $content = preg_replace_callback('/\[gallery_link\]/i', function () use ($base) {
+            $enabled = ($this->config['show_wall_link'] ?? '0') === '1';
+            if (!$enabled) return '';
+            return '<a href="' . htmlspecialchars($base . 'gallery-wall.php') . '">Floating Gallery</a>';
+        }, $content);
+
+        // --- [random_image] ---
+        $content = preg_replace_callback('/\[random_image\]/i', function () use ($base) {
+            try {
+                $stmt = $this->pdo->query("SELECT id, img_file, img_title, img_thumb_aspect FROM snap_images WHERE img_status = 'published' ORDER BY RAND() LIMIT 1");
+                $img = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$img) return '';
+                $src = !empty($img['img_thumb_aspect']) ? $img['img_thumb_aspect'] : $img['img_file'];
+                return sprintf(
+                    '<div class="snap-inline-frame align-center"><div class="ip-ascii-frame-inner"><img src="%s" alt="%s" loading="lazy" data-lightbox-src="%s" style="cursor:zoom-in"></div></div>',
+                    htmlspecialchars($base . ltrim($src, '/')),
+                    htmlspecialchars($img['img_title'] ?? 'Random image'),
+                    htmlspecialchars($base . ltrim($img['img_file'], '/'))
+                );
+            } catch (PDOException $e) { return ''; }
+        }, $content);
+
+        // --- [latest_image] ---
+        $content = preg_replace_callback('/\[latest_image\]/i', function () use ($base) {
+            try {
+                $stmt = $this->pdo->query("SELECT id, img_file, img_title, img_thumb_aspect FROM snap_images WHERE img_status = 'published' ORDER BY img_date DESC LIMIT 1");
+                $img = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$img) return '';
+                $src = !empty($img['img_thumb_aspect']) ? $img['img_thumb_aspect'] : $img['img_file'];
+                return sprintf(
+                    '<div class="snap-inline-frame align-center"><div class="ip-ascii-frame-inner"><img src="%s" alt="%s" loading="lazy" data-lightbox-src="%s" style="cursor:zoom-in"></div></div>',
+                    htmlspecialchars($base . ltrim($src, '/')),
+                    htmlspecialchars($img['img_title'] ?? 'Latest image'),
+                    htmlspecialchars($base . ltrim($img['img_file'], '/'))
+                );
+            } catch (PDOException $e) { return ''; }
+        }, $content);
+
+        return $content;
     }
 
     // =========================================================================
