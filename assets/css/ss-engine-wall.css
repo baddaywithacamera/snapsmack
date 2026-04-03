@@ -1,12 +1,12 @@
 /**
- * SNAPSMACK - 3D wall gallery engine
- * Alpha v0.7.5
+ * SNAPSMACK - Floating Gallery Engine
+ * Alpha v0.7.7
  *
- * 3D perspective gallery with zoom and metadata display.
+ * 3D perspective gallery with zoom, smooth physics, and metadata display.
  */
 
 :root {
-    --wall-bg: #000; 
+    --wall-bg: #000;
     --wall-font: 'Playfair Display', serif;
     --wall-text: #808080;
     --wall-shadow-string: 0 0 10px #000;
@@ -19,14 +19,15 @@ body, html {
     overflow: hidden;
 }
 
+/* ── Viewport: full-screen container with perspective ──────────────── */
 .wall-viewport {
     width: 100vw;
     height: 100vh;
     background: var(--wall-bg) !important;
     overflow: hidden;
-    perspective: 1200px; 
+    perspective: 1200px;
     display: flex;
-    align-items: center;
+    align-items: center;       /* centres the canvas band vertically */
     justify-content: center;
     position: relative;
     touch-action: none;
@@ -36,26 +37,25 @@ body, html {
     user-select: none;
 }
 
+/* ── Canvas: CSS Grid, horizontal scroll via JS transform ──────────── */
 .wall-canvas {
     display: grid;
     grid-template-rows: repeat(var(--wall-rows, 2), 1fr);
     grid-auto-flow: column;
-    grid-auto-columns: auto;
-    height: 100vh;
-    box-sizing: border-box;
-    padding: 3vh 15vw;
+    grid-auto-columns: min-content;
+    height: 86vh;                  /* smaller than viewport so flex can centre it */
     gap: var(--wall-gap, 24px);
+    padding: 0 15vw;
     align-items: stretch;
     transform-style: preserve-3d;
     will-change: transform;
     background: transparent;
 }
 
+/* ── Tiles ──────────────────────────────────────────────────────────── */
 .wall-tile {
-    height: 100%;
-    min-width: 160px;
-    width: auto;
-    flex: 0 0 auto;
+    min-width: 80px;
+    overflow: hidden;
     cursor: pointer;
     position: relative;
     transform-style: preserve-3d;
@@ -64,6 +64,12 @@ body, html {
     align-items: center;
     justify-content: center;
     transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), filter 0.4s ease;
+    opacity: 0;
+    animation: wallTileIn 0.5s ease forwards;
+}
+
+@keyframes wallTileIn {
+    to { opacity: 1; }
 }
 
 .wall-tile:hover {
@@ -76,15 +82,15 @@ body, html {
 }
 
 .wall-tile img {
-    max-height: 100%;
+    height: 100%;
     width: auto;
-    height: auto;
     display: block;
     box-shadow: 0 20px 50px rgba(0,0,0,0.8);
     pointer-events: none;
     -webkit-user-drag: none;
 }
 
+/* ── Zoom layer ────────────────────────────────────────────────────── */
 .zoom-title {
     position: fixed;
     bottom: 6vh;
@@ -103,7 +109,7 @@ body, html {
 
 #zoom-layer {
     position: fixed;
-    top: 0; left: 0; 
+    top: 0; left: 0;
     width: 100%; height: 100%;
     z-index: 999990;
     background: var(--wall-bg);
@@ -113,7 +119,7 @@ body, html {
 }
 
 #zoom-layer.active {
-    opacity: 1; 
+    opacity: 1;
     pointer-events: auto;
 }
 
@@ -127,27 +133,25 @@ body, html {
     will-change: transform;
 }
 
+/* ── Mobile ────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
     .wall-canvas {
+        height: 90vh;
         gap: 12px;
         padding: 0 10vw;
         --wall-rows: 1;
     }
-
-    .tile-meta {
-        font-size: 0.95rem;
-        width: 80vw;
-    }
 }
 
-/* Title visibility controlled by body class instead of inline PHP style */
+/* Title visibility controlled by body class */
 .wall-hide-titles .tile-meta {
     visibility: hidden;
 }
 
+/* ── Infinite scroll sentinel ──────────────────────────────────────── */
 #wall-sentinel {
     width: 1px;
     height: 1px;
-    align-self: start;  /* Don't stretch to fill grid row */
+    align-self: start;
     pointer-events: none;
 }
