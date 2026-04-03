@@ -380,20 +380,7 @@ return [
         ],
 
         /* ---------------------------------------------------------------------
-           SECTION 5: FLOATING GALLERY (3D Engine Physics & Visuals)
-           --------------------------------------------------------------------- */
-
-        'wall_theme' => [
-            'section'  => 'FLOATING GALLERY',
-            'type'     => 'color',
-            'label'    => 'Wall Background Color',
-            'default'  => '#000000',
-            'selector' => 'body.is-wall',
-            'property' => 'background-color'
-        ],
-
-        /* ---------------------------------------------------------------------
-           SECTION 6: BLOGROLL (Layout, Columns & Display Toggles)
+           SECTION 5: BLOGROLL (Layout, Columns & Display Toggles)
            --------------------------------------------------------------------- */
 
         'blogroll_columns' => [

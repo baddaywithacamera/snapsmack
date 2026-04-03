@@ -409,6 +409,17 @@ include 'core/sidebar.php';
                             <span class="dim">ADDS A SUBTLE REFLECTION BELOW EACH TILE. CHROMIUM & SAFARI ONLY.</span>
                         <?php endif; ?>
                     </div>
+                    <div class="lens-input-wrapper">
+                        <label>WALL BACKGROUND COLOUR</label>
+                        <?php if ($wall_unavailable): ?>
+                            <input type="color" disabled value="#000000">
+                        <?php else: ?>
+                            <div class="color-picker-container">
+                                <input type="color" name="settings[wall_theme]" value="<?php echo htmlspecialchars($settings['wall_theme'] ?? '#000000'); ?>">
+                                <span class="hex-display"><?php echo strtoupper(htmlspecialchars($settings['wall_theme'] ?? '#000000')); ?></span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
 

@@ -360,20 +360,7 @@ return [
         ],
 
         /* ============================================================
-           SECTION 5: FLOATING GALLERY
-           ============================================================ */
-
-        'wall_theme' => [
-            'section'  => 'FLOATING GALLERY',
-            'type'     => 'color',
-            'label'    => 'Wall Background Color',
-            'default'  => '#000000',
-            'selector' => 'body.is-wall',
-            'property' => 'background-color'
-        ],
-
-        /* ============================================================
-           SECTION 6: BLOGROLL
+           SECTION 5: BLOGROLL
            ============================================================ */
 
         'blogroll_columns' => [
