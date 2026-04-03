@@ -21,6 +21,7 @@
  *   [gallery_link]                   — anchor to floating gallery (blank if disabled)
  *   [newest_post]                    — date of most recent post
  *   [oldest_post]                    — date of first post
+ *   [embed:key]                      — named HTML embed from Smack Your Scripts Up!
  *
  * Auto-paragraph: double newlines (\n\n) become <p> tags automatically.
  * Single newlines within a paragraph become <br>.
@@ -407,6 +408,24 @@ class SnapSmack {
                     htmlspecialchars($base . ltrim($img['img_file'], '/'))
                 );
             } catch (PDOException $e) { return ''; }
+        }, $content);
+
+        // --- [embed:key] ---
+        // Pulls named HTML snippets from the custom_embed_codes setting.
+        // Blocks are defined in Smack Your Scripts Up! as [key:name] ... HTML ...
+        $content = preg_replace_callback('/\[embed:([a-zA-Z0-9_-]+)\]/i', function ($m) {
+            $key = strtolower($m[1]);
+            $raw = $this->config['custom_embed_codes'] ?? '';
+            if ($raw === '') return '';
+
+            // Parse [key:name] blocks from the stored blob.
+            $blocks = preg_split('/^\[key:([a-zA-Z0-9_-]+)\]\s*$/mi', $raw, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+            $embeds = [];
+            for ($i = 0, $len = count($blocks); $i < $len - 1; $i += 2) {
+                $embeds[strtolower(trim($blocks[$i]))] = trim($blocks[$i + 1]);
+            }
+
+            return $embeds[$key] ?? '';
         }, $content);
 
         return $content;
