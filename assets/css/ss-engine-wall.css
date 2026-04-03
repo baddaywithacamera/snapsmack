@@ -126,12 +126,13 @@ body, html {
 }
 
 /* ── Reflection effect (toggled via body.wall-reflect) ────────────── */
-body.wall-reflect .wall-tile {
-    overflow: visible;             /* let the reflection paint outside the tile */
-}
-body.wall-reflect .wall-tile img.loaded {
-    -webkit-box-reflect: below 4px
-        linear-gradient(to bottom, transparent 70%, rgba(0,0,0,0.25) 100%);
+/* Reflects the entire wall canvas off the "floor" — a subtle mirrored
+   fade beneath the gallery band.  Uses -webkit-box-reflect on the
+   viewport so the whole composition (tiles, gaps, depth) mirrors as
+   one unit.  Chromium & Safari only. */
+body.wall-reflect .wall-viewport {
+    -webkit-box-reflect: below 0px
+        linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.35) 100%);
 }
 
 /* ── Infinite scroll sentinel ──────────────────────────────────────── */
