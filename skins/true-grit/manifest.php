@@ -378,8 +378,8 @@ return [
             'type'     => 'color',
             'label'    => 'Static Page Background',
             'default'  => '',
-            'selector' => ':root',
-            'property' => '--page-bg'
+            'selector' => '',
+            'property' => ''
         ],
 
         'accent_color' => [
