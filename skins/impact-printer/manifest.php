@@ -284,8 +284,6 @@ return [
             'property' => 'font-family'
         ],
 
-        /* FOOTER FONTS */
-
         'footer_font_family' => [
             'section'  => 'TYPOGRAPHY',
             'type'     => 'select',
@@ -296,8 +294,12 @@ return [
             'property' => 'font-family'
         ],
 
+        /* ============================================================
+           SECTION 5: FOOTER
+           ============================================================ */
+
         'footer_font_size' => [
-            'section'  => 'TYPOGRAPHY',
+            'section'  => 'FOOTER',
             'type'     => 'range',
             'label'    => 'Footer Font Size (px)',
             'default'  => '10',
