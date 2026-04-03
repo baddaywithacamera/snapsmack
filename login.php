@@ -10,12 +10,25 @@
 require_once 'core/db.php';
 
 // --- SESSION INITIALIZATION ---
-// Ensure session is active before processing login or redirects.
-// Lifetime must be set BEFORE session_start() or the cookie gets the
-// server default (often 24 min), which is why sessions were expiring.
+// Must use the same session save path as auth.php so the session file
+// created at login is found on subsequent authenticated requests.
 if (session_status() === PHP_SESSION_NONE) {
+    $ss_session_dir = __DIR__ . '/data/sessions';
+    if (!is_dir($ss_session_dir)) {
+        @mkdir($ss_session_dir, 0700, true);
+        @file_put_contents($ss_session_dir . '/.htaccess', "Order deny,allow\nDeny from all\n");
+    }
+    if (is_dir($ss_session_dir) && is_writable($ss_session_dir)) {
+        session_save_path($ss_session_dir);
+    }
+    session_set_cookie_params([
+        'lifetime' => 86400,
+        'path'     => '/',
+        'secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
     ini_set('session.gc_maxlifetime', 86400);
-    ini_set('session.cookie_lifetime', 86400);
     session_start();
 }
 
