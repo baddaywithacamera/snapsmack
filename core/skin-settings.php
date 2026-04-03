@@ -25,6 +25,7 @@ function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): voi
         'wall_reflect',
         'wall_friction',
         'wall_dragweight',
+        'wall_theme',
         'active_skin',
         'site_url',
         'site_name',
