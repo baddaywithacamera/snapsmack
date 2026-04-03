@@ -15,13 +15,30 @@
 
 function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): void
 {
+    // Keys owned exclusively by Global Vibe — skin-scoped copies must never
+    // override these, even if a stale prefixed DB row exists from a previous
+    // manifest version.
+    $global_only = [
+        'show_wall_link',
+        'wall_rows',
+        'wall_gap',
+        'active_skin',
+        'site_url',
+        'site_name',
+        'archive_display_mode',
+        'thumb_size',
+        'browse_cols',
+    ];
+
     $prefix     = $skin_slug . '__';
     $prefix_len = strlen($prefix);
 
     foreach ($settings as $key => $val) {
         if (strpos($key, $prefix) === 0) {
             $bare_key = substr($key, $prefix_len);
-            $settings[$bare_key] = $val;
+            if (!in_array($bare_key, $global_only, true)) {
+                $settings[$bare_key] = $val;
+            }
         }
     }
 }
