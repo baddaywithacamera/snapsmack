@@ -313,6 +313,14 @@ return [
         // NO IMAGE CROP section — always square, enforced in skin-header.php
 
         // COLOURS section — global palette
+        'page_bg_color' => [
+            'section' => 'COLOURS',
+            'type' => 'color',
+            'label' => 'Static Page Background',
+            'default' => '#1f3845',
+            'selector' => '.static-content, .static-transmission #scroll-stage',
+            'property' => 'background-color',
+        ],
         'htbs_text_primary' => [
             'section' => 'COLOURS',
             'type' => 'color',

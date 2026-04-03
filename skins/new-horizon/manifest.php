@@ -125,11 +125,11 @@ return [
         ],
 
         /* ---------------------------------------------------------------------
-           SECTION 3: VERTICAL LOCKS & FRAMING
+           SECTION 3: FRAMING
            --------------------------------------------------------------------- */
-           
+
         'image_frame_style' => [
-            'section'  => 'VERTICAL LOCKS',
+            'section'  => 'FRAMING',
             'type'     => 'select',
             'label'    => 'Main Image Frame Style',
             'default'  => 'revival_double',
@@ -160,7 +160,7 @@ return [
         ],
 
         'archive_frame_style' => [
-            'section'  => 'VERTICAL LOCKS',
+            'section'  => 'FRAMING',
             'type'     => 'select',
             'label'    => 'Archive Thumbnail Frame',
             'default'  => 'thin_grey',
@@ -194,18 +194,69 @@ return [
             ]
         ],
 
+        /* ---------------------------------------------------------------------
+           SECTION 4: TYPOGRAPHY (Fonts Only)
+           --------------------------------------------------------------------- */
+
         'header_font_family' => [
-            'section'  => 'VERTICAL LOCKS',
+            'section'  => 'TYPOGRAPHY',
             'type'     => 'select',
-            'label'    => 'Header Typography (Text Logo)',
+            'label'    => 'Header Font (Text Logo)',
             'default'  => 'Playfair Display',
-            'options'  => $fonts, 
-            'selector' => '.logo-area a', 
+            'options'  => $fonts,
+            'selector' => '.logo-area a',
             'property' => 'font-family'
         ],
 
+        'static_heading_font' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'Heading Font',
+            'default'  => 'Helvetica Neue',
+            'options'  => $fonts,
+            'selector' => '.static-page-title, .photo-title-footer',
+            'property' => 'font-family'
+        ],
+
+        'static_body_font' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'Body Font',
+            'default'  => 'Georgia',
+            'options'  => $fonts,
+            'selector' => '.static-content, .description',
+            'property' => 'font-family'
+        ],
+
+        'footer_font_family' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'Footer Font',
+            'default'  => 'Inter',
+            'options'  => $fonts,
+            'selector' => '#system-footer .inside, #system-footer p, #sig-text',
+            'property' => 'font-family'
+        ],
+
+        /* ---------------------------------------------------------------------
+           SECTION 5: COLOURS
+           --------------------------------------------------------------------- */
+
+        'page_bg_color' => [
+            'section'  => 'COLOURS',
+            'type'     => 'color',
+            'label'    => 'Static Page Background',
+            'default'  => '#111111',
+            'selector' => '.static-content, .static-transmission #scroll-stage',
+            'property' => 'background-color'
+        ],
+
+        /* ---------------------------------------------------------------------
+           SECTION 6: HEADER & NAV
+           --------------------------------------------------------------------- */
+
         'header_font_size' => [
-            'section'  => 'VERTICAL LOCKS',
+            'section'  => 'HEADER & NAV',
             'type'     => 'range',
             'label'    => 'Header Font Size (px)',
             'default'  => '50',
@@ -214,6 +265,60 @@ return [
             'selector' => '.site-title-text',
             'property' => 'font-size'
         ],
+
+        /* ---------------------------------------------------------------------
+           SECTION 7: CONTENT STYLING
+           --------------------------------------------------------------------- */
+
+        'content_line_height' => [
+            'section'  => 'CONTENT STYLING',
+            'type'     => 'range',
+            'label'    => 'Leading (Line Spacing)',
+            'default'  => '1.6',
+            'min'      => '1',
+            'max'      => '3',
+            'step'     => '0.1',
+            'selector' => ':root',
+            'property' => '--content-lh'
+        ],
+
+        'content_letter_spacing' => [
+            'section'  => 'CONTENT STYLING',
+            'type'     => 'range',
+            'label'    => 'Tracking (Letter Spacing)',
+            'default'  => '0',
+            'min'      => '-2',
+            'max'      => '10',
+            'selector' => '.static-content, .description',
+            'property' => 'letter-spacing'
+        ],
+
+        'dropcap_style' => [
+            'section'  => 'CONTENT STYLING',
+            'type'     => 'select',
+            'label'    => 'First Letter Dropcap',
+            'default'  => 'none',
+            'selector' => '.description p:first-of-type::first-letter, .static-content p:first-of-type::first-letter, span.dropcap',
+            'property' => 'custom-framing',
+            'options'  => [
+                'none' => [
+                    'label' => 'None',
+                    'css'   => '{ float: none; font-size: inherit; margin: 0; padding: 0; line-height: inherit; }'
+                ],
+                'simple' => [
+                    'label' => 'Simple Bold (Large)',
+                    'css'   => '{ float: left; font-size: 3.5em; line-height: 0.8; padding-top: 4px; padding-right: 8px; font-weight: bold; }'
+                ],
+                'tactical' => [
+                    'label' => 'Tactical Block (White on Grey)',
+                    'css'   => '{ float: left; font-size: 2.2em; line-height: 1; margin: 4px 10px 0 0; padding: 10px 15px; background: #333; color: #fff; font-family: monospace; }'
+                ]
+            ]
+        ],
+
+        /* ---------------------------------------------------------------------
+           SECTION 8: VERTICAL LOCKS
+           --------------------------------------------------------------------- */
 
         'optical_lift' => [
             'section'  => 'VERTICAL LOCKS',
@@ -248,80 +353,10 @@ return [
             'property' => 'height'
         ],
 
-        /* ---------------------------------------------------------------------
-           SECTION 4: CONTENT & TYPOGRAPHY (Static Pages & Post Info)
-           --------------------------------------------------------------------- */
-
-        'static_heading_font' => [
-            'section'  => 'CONTENT & TYPOGRAPHY',
-            'type'     => 'select',
-            'label'    => 'Heading Typography',
-            'default'  => 'Helvetica Neue',
-            'options'  => $fonts,
-            'selector' => '.static-page-title, .photo-title-footer',
-            'property' => 'font-family'
-        ],
-
-        'static_body_font' => [
-            'section'  => 'CONTENT & TYPOGRAPHY',
-            'type'     => 'select',
-            'label'    => 'Body Typography',
-            'default'  => 'Georgia',
-            'options'  => $fonts,
-            'selector' => '.static-content, .description',
-            'property' => 'font-family'
-        ],
-
-        'content_line_height' => [
-            'section'  => 'CONTENT & TYPOGRAPHY',
-            'type'     => 'range',
-            'label'    => 'Leading (Line Spacing)',
-            'default'  => '1.6',
-            'min'      => '1',
-            'max'      => '3',
-            'step'     => '0.1',
-            'selector' => ':root',
-            'property' => '--content-lh'
-        ],
-
-        'content_letter_spacing' => [
-            'section'  => 'CONTENT & TYPOGRAPHY',
-            'type'     => 'range',
-            'label'    => 'Tracking (Letter Spacing)',
-            'default'  => '0',
-            'min'      => '-2',
-            'max'      => '10',
-            'selector' => '.static-content, .description',
-            'property' => 'letter-spacing'
-        ],
-
-        'dropcap_style' => [
-            'section'  => 'CONTENT & TYPOGRAPHY',
-            'type'     => 'select',
-            'label'    => 'First Letter Dropcap',
-            'default'  => 'none',
-            'selector' => '.description p:first-of-type::first-letter, .static-content p:first-of-type::first-letter, span.dropcap',
-            'property' => 'custom-framing',
-            'options'  => [
-                'none' => [
-                    'label' => 'None',
-                    'css'   => '{ float: none; font-size: inherit; margin: 0; padding: 0; line-height: inherit; }'
-                ],
-                'simple' => [
-                    'label' => 'Simple Bold (Large)',
-                    'css'   => '{ float: left; font-size: 3.5em; line-height: 0.8; padding-top: 4px; padding-right: 8px; font-weight: bold; }'
-                ],
-                'tactical' => [
-                    'label' => 'Tactical Block (White on Grey)',
-                    'css'   => '{ float: left; font-size: 2.2em; line-height: 1; margin: 4px 10px 0 0; padding: 10px 15px; background: #333; color: #fff; font-family: monospace; }'
-                ]
-            ]
-        ],
-
         'static_section_spacing' => [
-            'section'  => 'CONTENT & TYPOGRAPHY',
+            'section'  => 'VERTICAL LOCKS',
             'type'     => 'range',
-            'label'    => 'Vertical Section Spacing (px)',
+            'label'    => 'Static Page Top Spacing (px)',
             'default'  => '40',
             'min'      => '10',
             'max'      => '120',
@@ -329,20 +364,12 @@ return [
             'property' => 'margin-top'
         ],
 
-        /* FOOTER FONTS */
-
-        'footer_font_family' => [
-            'section'  => 'CONTENT & TYPOGRAPHY',
-            'type'     => 'select',
-            'label'    => 'Footer Font',
-            'default'  => 'Inter',
-            'options'  => $fonts,
-            'selector' => '#system-footer .inside, #system-footer p, #sig-text',
-            'property' => 'font-family'
-        ],
+        /* ---------------------------------------------------------------------
+           SECTION 9: FOOTER
+           --------------------------------------------------------------------- */
 
         'footer_font_size' => [
-            'section'  => 'CONTENT & TYPOGRAPHY',
+            'section'  => 'FOOTER',
             'type'     => 'range',
             'label'    => 'Footer Font Size (px)',
             'default'  => '11',
