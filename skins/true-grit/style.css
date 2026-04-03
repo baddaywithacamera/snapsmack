@@ -664,10 +664,17 @@ body.static-transmission::before {
     display: block !important;
     min-height: auto !important;
     padding: 0 !important;
-    width: auto !important;
-    float: left !important;
+    width: 100% !important;
+    max-width: var(--static-content-width, 850px) !important;
+    float: none !important;
     background: transparent !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
+}
+
+.static-transmission #photobox.page-hero .post-image {
+    max-width: 100%;
+    height: auto;
+    display: block;
 }
 
 .static-transmission .description p:first-of-type {
