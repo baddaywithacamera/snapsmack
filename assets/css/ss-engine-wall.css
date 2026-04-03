@@ -25,7 +25,7 @@ body, html {
     perspective: 1200px;
     display: flex;
     align-items: center;       /* centres the canvas band vertically */
-    justify-content: center;
+    justify-content: flex-start; /* horizontal position controlled by JS transform */
     position: relative;
     touch-action: none;
     -webkit-user-select: none;

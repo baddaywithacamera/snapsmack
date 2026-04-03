@@ -97,6 +97,40 @@
     requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(snapToMid, 80)));
 
     // ----------------------------------------------------------------
+    // GRID RESIZE COMPENSATION  — keep viewport stable when grid reflows
+    // ----------------------------------------------------------------
+    // When images load or new tiles are inserted, CSS Grid columns may
+    // change width.  Without compensation the currently-viewed region
+    // shifts because posX is relative to the canvas origin.
+    //
+    // Strategy: track the canvas scrollWidth.  On every resize, shift
+    // posX/aimX so that whatever the user is looking at stays put.
+    // New tiles append to the right edge, so growth there needs no
+    // compensation.  Growth from existing images loading widens
+    // columns distributed across the grid, so we compensate by half
+    // the delta (statistically half the growth is left of viewport).
+    let lastCanvasW = 0;
+    function initCanvasW() { lastCanvasW = canvas.scrollWidth; }
+    // Set initial width after snapToMid settles
+    requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(initCanvasW, 120)));
+
+    if (typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(() => {
+            if (lastCanvasW === 0) return;       // not initialised yet
+            const w = canvas.scrollWidth;
+            const delta = w - lastCanvasW;
+            // Only compensate for small-ish deltas (image loads).
+            // Large jumps (> 2000px) are bulk tile insertions that grow
+            // rightward past the viewport — no compensation needed.
+            if (delta !== 0 && Math.abs(delta) < 2000) {
+                posX -= delta / 2;
+                aimX -= delta / 2;
+            }
+            lastCanvasW = w;
+        }).observe(canvas);
+    }
+
+    // ----------------------------------------------------------------
     // IMAGE FADE-IN — add .loaded class when each image finishes loading
     // ----------------------------------------------------------------
     canvas.querySelectorAll('.wall-tile img').forEach(img => {
@@ -387,6 +421,9 @@
             const html = await r.text();
             if (html.trim()) {
                 sentinel.insertAdjacentHTML('beforebegin', html);
+                // Update tracked width so ResizeObserver treats the
+                // bulk insertion as a new baseline, not a shift to fix.
+                lastCanvasW = canvas.scrollWidth;
                 // Fade in newly loaded images
                 canvas.querySelectorAll('.wall-tile img:not(.loaded)').forEach(img => {
                     if (img.complete && img.naturalWidth) {
