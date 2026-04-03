@@ -12,6 +12,9 @@ backups/
 # Updater temp files
 /tmp/snapsmack_update/
 
+# Session files stored in-app to avoid shared-host GC cron purges
+data/sessions/
+
 # User uploads (too large, site-specific)
 img_uploads/
 media_assets/
