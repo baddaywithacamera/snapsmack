@@ -582,9 +582,8 @@ body::before {
    The body::before overlay is kept so the variant colour scheme applies.
    ========================================================================= */
 
-body.static-transmission {
-    background-image: none !important;
-}
+/* body keeps its wall texture on static pages — the texture is visible
+   on either side of the centred .static-content box. */
 
 .static-transmission #scroll-stage {
     display: block !important;
