@@ -302,27 +302,8 @@
             case 'preview':
                 previewInNewTab(textarea);
                 break;
-            case 'shortcode-menu':
-                toggleShortcodeDropdown();
-                break;
         }
     }
-
-    // --- Shortcode dropdown: toggle visibility, insert on click ---
-    function toggleShortcodeDropdown() {
-        var dd = document.getElementById('sc-shortcode-dropdown');
-        if (dd) dd.classList.toggle('open');
-    }
-
-    // Close dropdown on outside click
-    document.addEventListener('click', function (e) {
-        var dd = document.getElementById('sc-shortcode-dropdown');
-        if (!dd) return;
-        var wrap = dd.closest('.sc-dropdown-wrap');
-        if (wrap && !wrap.contains(e.target)) {
-            dd.classList.remove('open');
-        }
-    });
 
     // --- Bind toolbar buttons ---
     // Called on DOMContentLoaded. Finds all .sc-toolbar containers
@@ -342,14 +323,15 @@
                 });
             });
 
-            // --- Shortcode dropdown items ---
-            toolbar.querySelectorAll('[data-sc]').forEach(function (btn) {
-                btn.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    var sc = this.getAttribute('data-sc');
-                    insertAtCursor(textarea, sc);
-                    var dd = document.getElementById('sc-shortcode-dropdown');
-                    if (dd) dd.classList.remove('open');
+            // --- Shortcode select: insert on change, reset to placeholder ---
+            toolbar.querySelectorAll('.sc-shortcode-select').forEach(function (sel) {
+                sel.addEventListener('change', function () {
+                    var sc = this.value;
+                    if (sc) {
+                        insertAtCursor(textarea, sc);
+                        this.value = '';
+                        textarea.focus();
+                    }
                 });
             });
 
