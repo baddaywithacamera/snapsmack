@@ -4,17 +4,18 @@
  * Alpha v0.7.7
  *
  * Includes core meta tags and loads the appropriate variant stylesheet.
+ * Sets $skin_variant_url BEFORE including meta.php so the variant loads
+ * between style.css and dynamic compiled CSS (admin overrides always win).
  */
 
-// Include core meta tags for SEO and CSS
-include(dirname(__DIR__, 2) . '/core/meta.php');
-
-// Load the appropriate variant stylesheet
+// Resolve variant stylesheet URL before meta.php loads
 $allowed_variants = ['dark', 'light'];
 $active_variant   = $settings['active_skin_variant'] ?? 'dark';
 if (!in_array($active_variant, $allowed_variants)) {
     $active_variant = 'dark';
 }
-$variant_url = BASE_URL . 'skins/' . ($settings['active_skin'] ?? 'true-grit') . '/variant-' . $active_variant . '.css';
-?>
-<link rel="stylesheet" href="<?php echo $variant_url; ?>?v=<?php echo time(); ?>">
+$skin_variant_url = BASE_URL . 'skins/' . ($settings['active_skin'] ?? 'true-grit') . '/variant-' . $active_variant . '.css';
+
+// Include core meta tags for SEO and CSS
+// meta.php will insert the variant stylesheet at the correct cascade position
+include(dirname(__DIR__, 2) . '/core/meta.php');

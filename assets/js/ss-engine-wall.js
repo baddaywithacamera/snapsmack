@@ -213,7 +213,7 @@
         if (tile) openZoom(tile);
     });
 
-    zoomLayer.addEventListener('click', closeZoom);
+    zoomLayer.addEventListener('click', () => closeZoom());
 
     function openZoom(tile) {
         if (zoomedTile) closeZoom(true);
@@ -247,7 +247,7 @@
             hi.onload = () => { if (zoomClone) zoomClone.src = hi.src; };
         });
 
-        zoomClone.addEventListener('click',      closeZoom);
+        zoomClone.addEventListener('click',      () => closeZoom());
         zoomClone.addEventListener('touchstart', onSwipeStart, { passive: true });
         zoomClone.addEventListener('touchmove',  onSwipeMove,  { passive: true });
         zoomClone.addEventListener('touchend',   onSwipeEnd,   { passive: true });
@@ -368,11 +368,16 @@
     let hasMore    = loadOffset < cfg.totalImages;
     const sentinel = document.getElementById('wall-sentinel');
 
+    // Pre-load all remaining tiles in the background so the wall feels
+    // like it grows seamlessly as the user scrolls right.
     if (sentinel && hasMore) {
-        const io = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting && !loading && hasMore) fetchMore();
-        }, { rootMargin: '500px' });
-        io.observe(sentinel);
+        setTimeout(function preloadChain() {
+            if (!loading && hasMore) {
+                fetchMore().then(() => {
+                    if (hasMore) setTimeout(preloadChain, 300);
+                });
+            }
+        }, 600);
     }
 
     async function fetchMore() {

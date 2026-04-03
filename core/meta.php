@@ -201,6 +201,17 @@ if (file_exists($inventory_path)) {
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>skins/<?php echo $active_skin ?? 'new-horizon'; ?>/style.css?v=<?php echo time(); ?>">
 
+<?php
+/**
+ * SKIN VARIANT STYLESHEET HOOK
+ * If a skin sets $skin_variant_url before including meta.php, the variant
+ * loads here — after style.css but BEFORE the dynamic compiled CSS.
+ * This ensures admin customizations in dynamic CSS always override variants.
+ */
+if (!empty($skin_variant_url)): ?>
+<link rel="stylesheet" href="<?php echo $skin_variant_url; ?>?v=<?php echo time(); ?>">
+<?php endif; ?>
+
 <?php if (!empty($settings['custom_css_public'])): ?>
 <style id="snapsmack-dynamic-css">
 <?php echo $settings['custom_css_public']; ?>
