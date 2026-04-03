@@ -260,7 +260,7 @@ return [
             'type'     => 'select',
             'label'    => 'Hero Image Frame',
             'default'  => 'shadow_float',
-            'selector' => 'img.post-image, img.tg-image, .inline-asset, .snap-inline-frame, .static-transmission .description .align-left',
+            'selector' => '.is-photo-page img.post-image, img.tg-image, .inline-asset, .snap-inline-frame, .static-transmission .description .align-left',
             'property' => 'custom-framing',
             'options'  => [
                 'shadow_float' => [
