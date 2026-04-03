@@ -114,19 +114,25 @@
     // Set initial width after snapToMid settles
     requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(initCanvasW, 120)));
 
+    // When fetchMore inserts new tiles their images load one by one, each
+    // expanding the canvas rightward.  Because all new tiles are off to the
+    // RIGHT of the current view, none of their growth should shift the wall.
+    // This flag suppresses compensation while a batch is still loading.
+    let suppressResizeCompensation = false;
+
     if (typeof ResizeObserver !== 'undefined') {
         new ResizeObserver(() => {
             if (lastCanvasW === 0) return;       // not initialised yet
             const w = canvas.scrollWidth;
             const delta = w - lastCanvasW;
-            // Only compensate for small-ish deltas (image loads).
-            // Large jumps (> 2000px) are bulk tile insertions that grow
-            // rightward past the viewport — no compensation needed.
+            lastCanvasW = w;
+            if (suppressResizeCompensation) return;  // new-tile batch still loading
+            // Only compensate for small-ish deltas (existing image loads that
+            // widen columns distributed across the current view).
             if (delta !== 0 && Math.abs(delta) < 2000) {
                 posX -= delta / 2;
                 aimX -= delta / 2;
             }
-            lastCanvasW = w;
         }).observe(canvas);
     }
 
@@ -488,17 +494,35 @@
             const html = await r.text();
             if (html.trim()) {
                 sentinel.insertAdjacentHTML('beforebegin', html);
-                // Update tracked width so ResizeObserver treats the
-                // bulk insertion as a new baseline, not a shift to fix.
+                // Update tracked width baseline immediately.
                 lastCanvasW = canvas.scrollWidth;
-                // Fade in newly loaded images
+
+                // Suppress resize compensation while this batch's images load.
+                // New tiles are always to the right of the viewport, so their
+                // growth should never shift the wall left.
+                suppressResizeCompensation = true;
+                let pendingLoads = 0;
+
+                const settle = () => {
+                    pendingLoads--;
+                    if (pendingLoads <= 0) {
+                        suppressResizeCompensation = false;
+                        lastCanvasW = canvas.scrollWidth; // re-baseline after settle
+                    }
+                };
+
                 canvas.querySelectorAll('.wall-tile img:not(.loaded)').forEach(img => {
                     if (img.complete && img.naturalWidth) {
                         img.classList.add('loaded');
                     } else {
-                        img.addEventListener('load', () => img.classList.add('loaded'), { once: true });
+                        pendingLoads++;
+                        img.addEventListener('load',  () => { img.classList.add('loaded'); settle(); }, { once: true });
+                        img.addEventListener('error', () => settle(), { once: true });
                     }
                 });
+
+                // No pending images (e.g. all cached) — release immediately
+                if (pendingLoads === 0) suppressResizeCompensation = false;
                 loadOffset += 20;
                 hasMore = loadOffset < cfg.totalImages;
                 if (!hasMore) sentinel.remove();
