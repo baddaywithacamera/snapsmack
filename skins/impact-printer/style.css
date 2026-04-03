@@ -140,7 +140,7 @@ body {
     opacity: var(--ip-ink-opacity, 0.65);
 }
 
-/* Hide gallery wall link — skin doesn't support it */
+/* Hide floating gallery link — skin doesn't support it */
 .wall-nav-item {
     display: none !important;
 }

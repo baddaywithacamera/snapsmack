@@ -4,9 +4,9 @@
  * Alpha v0.7.7
  *
  * Renders the site logo and main navigation bar. Navigation items are: HOME,
- * BLOG (when homepage is a static page), ARCHIVE VIEW, GALLERY VIEW (conditional),
+ * BLOG (when homepage is a static page), ARCHIVE VIEW, FLOATING GALLERY (conditional),
  * BLOGROLL (conditional), and any dynamic pages. Respects homepage_mode setting
- * and show_wall_link setting to hide gallery view on mobile.
+ * and show_wall_link setting to hide floating gallery on mobile.
  */
 
 // --- LANDING-ONLY MODE ---
@@ -89,7 +89,7 @@ try {
 
         <?php if (($settings['show_wall_link'] ?? '0') === '1'): ?>
             <span class="sep wall-nav-item">|</span>
-            <a href="<?php echo BASE_URL; ?>gallery-wall.php" class="wall-nav-item">GALLERY VIEW</a>
+            <a href="<?php echo BASE_URL; ?>gallery-wall.php" class="wall-nav-item">FLOATING GALLERY</a>
         <?php endif; ?>
 
         <?php if (($settings['blogroll_enabled'] ?? '1') == '1'): ?>

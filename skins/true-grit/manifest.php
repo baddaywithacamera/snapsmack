@@ -548,11 +548,11 @@ return [
         ],
 
         /* ============================================================
-           SECTION 7: WALL SPECIFIC (Floating Gallery Physics)
+           SECTION 7: FLOATING GALLERY (Floating Gallery Physics)
            ============================================================ */
 
         'wall_friction' => [
-            'section'  => 'WALL SPECIFIC',
+            'section'  => 'FLOATING GALLERY',
             'type'     => 'number',
             'label'    => 'Wall Friction (0.1 - 0.99)',
             'default'  => '0.96',
@@ -561,7 +561,7 @@ return [
         ],
 
         'wall_dragweight' => [
-            'section'  => 'WALL SPECIFIC',
+            'section'  => 'FLOATING GALLERY',
             'type'     => 'number',
             'label'    => 'Drag Weight',
             'default'  => '2.5',
@@ -570,7 +570,7 @@ return [
         ],
 
         'wall_shadow_intensity' => [
-            'section'  => 'WALL SPECIFIC',
+            'section'  => 'FLOATING GALLERY',
             'type'     => 'select',
             'label'    => 'Shadow Intensity',
             'default'  => 'heavy',
@@ -584,7 +584,7 @@ return [
         ],
 
         'wall_font_ref' => [
-            'section'  => 'WALL SPECIFIC',
+            'section'  => 'FLOATING GALLERY',
             'type'     => 'select',
             'label'    => 'Title Typography',
             'default'  => 'Raleway',
@@ -594,7 +594,7 @@ return [
         ],
 
         'wall_text_color' => [
-            'section'  => 'WALL SPECIFIC',
+            'section'  => 'FLOATING GALLERY',
             'type'     => 'color',
             'label'    => 'Floating Title Color',
             'default'  => '#808080',
@@ -603,7 +603,7 @@ return [
         ],
 
         'wall_shadow_color' => [
-            'section'  => 'WALL SPECIFIC',
+            'section'  => 'FLOATING GALLERY',
             'type'     => 'color',
             'label'    => 'Shadow/Glow Color',
             'default'  => '#000000',

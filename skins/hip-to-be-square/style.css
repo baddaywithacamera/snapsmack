@@ -83,7 +83,7 @@ a:hover {
    Gallery Header
    ============================================================================ */
 
-/* This skin IS the gallery — hide the Gallery View nav link */
+/* This skin IS the gallery — hide the Floating Gallery nav link */
 .htbs-header .wall-nav-item {
     display: none !important;
 }
