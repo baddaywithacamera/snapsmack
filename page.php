@@ -94,18 +94,17 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             }
             ?>
 
-            <?php if (!empty($page_data['image_asset'])): ?>
-                <div id="photobox" class="page-hero">
-                    <div class="main-photo">
-                        <img src="<?php echo BASE_URL . ltrim($page_data['image_asset'], '/'); ?>"
-                             class="post-image"
-                             alt="<?php echo $page_title; ?>">
-                    </div>
-                </div>
-            <?php endif; ?>
-
             <div class="static-content">
                 <h1 class="static-page-title"><?php echo $page_title; ?></h1>
+                <?php if (!empty($page_data['image_asset'])): ?>
+                    <div id="photobox" class="page-hero">
+                        <div class="main-photo">
+                            <img src="<?php echo BASE_URL . ltrim($page_data['image_asset'], '/'); ?>"
+                                 class="post-image"
+                                 alt="<?php echo $page_title; ?>">
+                        </div>
+                    </div>
+                <?php endif; ?>
 
                 <div class="description">
                     <?php
