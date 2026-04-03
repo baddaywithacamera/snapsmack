@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Thumbnail regeneration utility
- * Alpha v0.7.7
+ * Alpha v0.7.8
  *
  * Generates two thumbnail variants per image:
  *   t_ — 400x400 center-cropped square (for square grid layout)

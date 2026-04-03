@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin Help Topics: Impact Printer
- * Alpha v0.7.7
+ * Alpha v0.7.8
  */
 
 return [

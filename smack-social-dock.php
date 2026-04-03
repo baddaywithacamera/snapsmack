@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Social Profile Dock Configuration
- * Alpha v0.7.7
+ * Alpha v0.7.8
  *
  * Admin page for configuring the floating social profile links dock.
  * Toggle on/off, pick a position, customise colours, enter profile URLs.

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the impact-printer skin
- * Alpha v0.7.7
+ * Alpha v0.7.8
  *
  * Defines layout options, features, dot-matrix typography, and customization controls.
  */

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Galleria static page template
- * Alpha v0.7.7
+ * Alpha v0.7.8
  *
  * Renders static pages (page.php) inside the Galleria shell: wall background,
  * sticky header, hero image wrapped in the full frame system, proper content
