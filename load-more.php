@@ -51,6 +51,6 @@ try {
 foreach ($batch as $img) {
     $thumb = !empty($img['img_thumb_aspect']) ? $img['img_thumb_aspect'] : $img['img_file'];
     echo '<div class="wall-tile" data-full="' . htmlspecialchars($img['img_file']) . '">';
-    echo '  <img src="' . htmlspecialchars($thumb) . '" alt="Smack" loading="lazy" decoding="async">';
+    echo '  <img src="' . htmlspecialchars($thumb) . '" alt="Smack" loading="eager" decoding="async">';
     echo '</div>';
 }

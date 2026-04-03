@@ -569,7 +569,20 @@ return [
         ],
 
         /* ============================================================
-           SECTION 10: BLOGROLL
+           SECTION 10: FLOATING GALLERY
+           ============================================================ */
+
+        'wall_theme' => [
+            'section'  => 'FLOATING GALLERY',
+            'type'     => 'color',
+            'label'    => 'Wall Background Colour',
+            'default'  => '#000000',
+            'selector' => 'body.is-wall',
+            'property' => 'background-color'
+        ],
+
+        /* ============================================================
+           SECTION 11: BLOGROLL
            ============================================================ */
 
         'blogroll_columns' => [
