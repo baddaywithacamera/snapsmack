@@ -379,6 +379,87 @@ function snap_schema_sync(PDO $pdo): array {
           KEY `idx_reactions_guest` (`post_id`, `guest_hash`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+        'snap_stats' => "CREATE TABLE IF NOT EXISTS `snap_stats` (
+          `id`            int unsigned  NOT NULL AUTO_INCREMENT,
+          `hit_at`        datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          `page_type`     varchar(50)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'unknown',
+          `page_slug`     varchar(600)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `image_id`      int unsigned  DEFAULT NULL,
+          `referrer`      varchar(500)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `referrer_host` varchar(255)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `user_agent`    varchar(500)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `browser`       varchar(100)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `os`            varchar(100)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `country`       varchar(10)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `ip_hash`       varchar(64)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `is_bot`        tinyint(1)    NOT NULL DEFAULT 0,
+          `search_term`   varchar(255)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          PRIMARY KEY (`id`),
+          KEY `idx_hit_at`   (`hit_at`),
+          KEY `idx_is_bot`   (`is_bot`),
+          KEY `idx_image_id` (`image_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+        'snap_stats_daily' => "CREATE TABLE IF NOT EXISTS `snap_stats_daily` (
+          `id`              int unsigned NOT NULL AUTO_INCREMENT,
+          `stat_date`       date         NOT NULL,
+          `total_views`     int unsigned NOT NULL DEFAULT 0,
+          `unique_visitors` int unsigned NOT NULL DEFAULT 0,
+          `bot_views`       int unsigned NOT NULL DEFAULT 0,
+          `top_image_id`    int unsigned DEFAULT NULL,
+          `top_referrer`    varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          PRIMARY KEY (`id`),
+          UNIQUE KEY `uq_stat_date` (`stat_date`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+        'snap_pimpotron_slideshows' => "CREATE TABLE IF NOT EXISTS `snap_pimpotron_slideshows` (
+          `id`                  int unsigned NOT NULL AUTO_INCREMENT,
+          `name`                varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+          `slug`                varchar(300) COLLATE utf8mb4_unicode_ci NOT NULL,
+          `default_speed_ms`    int          NOT NULL DEFAULT 5000,
+          `glitch_frequency`    varchar(30)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'occasional',
+          `glitch_intensity`    varchar(30)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'normal',
+          `stage_shift_enabled` tinyint(1)   NOT NULL DEFAULT 0,
+          `stage_shift_max_px`  int          NOT NULL DEFAULT 8,
+          `stage_scale_max`     float        NOT NULL DEFAULT 1.015,
+          `slideshow_font`      varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Stalinist One',
+          `is_active`           tinyint(1)   NOT NULL DEFAULT 1,
+          `created_at`          datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (`id`),
+          UNIQUE KEY `uq_slug` (`slug`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+        'snap_pimpotron_slides' => "CREATE TABLE IF NOT EXISTS `snap_pimpotron_slides` (
+          `id`                   int unsigned NOT NULL AUTO_INCREMENT,
+          `slideshow_id`         int unsigned NOT NULL,
+          `slide_type`           varchar(30)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'image',
+          `snap_image_id`        int unsigned DEFAULT NULL,
+          `external_image_url`   varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `video_url`            varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `video_autoplay`       tinyint(1)   NOT NULL DEFAULT 0,
+          `video_loop`           tinyint(1)   NOT NULL DEFAULT 0,
+          `video_muted`          tinyint(1)   NOT NULL DEFAULT 1,
+          `bg_color_hex`         char(7)      COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '#000000',
+          `rain_speed`           int          DEFAULT NULL,
+          `rain_density`         int          DEFAULT NULL,
+          `rain_color_hex`       char(7)      COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `image_glitch_enabled` tinyint(1)   NOT NULL DEFAULT 0,
+          `overlay_text`         text         COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `text_animation_type`  varchar(30)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'staccato',
+          `word_delay_ms`        int          NOT NULL DEFAULT 200,
+          `font_color_hex`       char(7)      COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '#FFFFFF',
+          `pos_x_pct`            int          NOT NULL DEFAULT 50,
+          `pos_y_pct`            int          NOT NULL DEFAULT 50,
+          `display_duration_ms`  int          DEFAULT NULL,
+          `glitch_frequency`     varchar(30)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `glitch_intensity`     varchar(30)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `stage_shift_enabled`  tinyint(1)   NOT NULL DEFAULT 0,
+          `is_active`            tinyint(1)   NOT NULL DEFAULT 1,
+          `sort_order`           int          NOT NULL DEFAULT 0,
+          PRIMARY KEY (`id`),
+          KEY `idx_slideshow_id` (`slideshow_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
     ];
 
     foreach ($create_tables as $table => $ddl) {

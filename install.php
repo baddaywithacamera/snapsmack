@@ -237,14 +237,17 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
 
             // --- STATIC PAGES ---
             "{$prefix}pages" => "CREATE TABLE IF NOT EXISTS `{$prefix}pages` (
-                `id` int NOT NULL AUTO_INCREMENT,
-                `slug` varchar(100) NOT NULL,
-                `title` varchar(255) NOT NULL,
-                `content` longtext,
-                `image_asset` varchar(255) DEFAULT '',
-                `is_active` tinyint(1) DEFAULT '1',
-                `menu_order` int DEFAULT '0',
-                `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `id`           int          NOT NULL AUTO_INCREMENT,
+                `slug`         varchar(100) NOT NULL,
+                `title`        varchar(255) NOT NULL,
+                `content`      longtext,
+                `image_asset`  varchar(255) DEFAULT '',
+                `image_size`   varchar(20)  NOT NULL DEFAULT 'full',
+                `image_align`  varchar(20)  NOT NULL DEFAULT 'center',
+                `image_shadow` tinyint(1)   NOT NULL DEFAULT 0,
+                `is_active`    tinyint(1)   DEFAULT '1',
+                `menu_order`   int          DEFAULT '0',
+                `created_at`   timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (`id`),
                 UNIQUE KEY `slug` (`slug`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
@@ -417,6 +420,7 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
                 `status`       enum('visible','hidden','deleted') NOT NULL DEFAULT 'visible',
                 `ip`           varchar(45)  NULL DEFAULT NULL,
                 `created_at`   datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `edited_at`    datetime     DEFAULT NULL,
                 PRIMARY KEY (`id`),
                 KEY `idx_post_status` (`post_id`, `status`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
@@ -591,6 +595,17 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
                 `sort_order`           int          NOT NULL DEFAULT 0,
                 PRIMARY KEY (`id`),
                 KEY `idx_slideshow_id` (`slideshow_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- PASSWORD RESETS ---
+            "{$prefix}password_resets" => "CREATE TABLE IF NOT EXISTS `{$prefix}password_resets` (
+                `id`     int          NOT NULL AUTO_INCREMENT,
+                `email`  varchar(255) NOT NULL,
+                `token`  varchar(64)  NOT NULL,
+                `expiry` datetime     NOT NULL,
+                PRIMARY KEY (`id`),
+                KEY `idx_password_resets_email` (`email`),
+                KEY `idx_password_resets_token` (`token`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ];
 
