@@ -35,7 +35,7 @@
     // PHYSICS STATE  (X pan + Z depth only — Y is always 0)
     // ----------------------------------------------------------------
     let aimX = 0, posX = 0, velX = 0;
-    let aimZ = -1500, posZ = -1500, velZ = 0;
+    let aimZ = -1000, posZ = -1000, velZ = 0;
     let tilt = 0;
 
     // ----------------------------------------------------------------
@@ -206,13 +206,23 @@
 
         posX  = lerp(posX, aimX, 0.10);
         posZ  = lerp(posZ, aimZ, 0.10);
-        tilt  = lerp(tilt, velX * 0.55, 0.07);
-        const lean = Math.max(-14, Math.min(14, tilt));
+        // Lean multiplier kept low (0.15) and capped at ±6° so that at
+        // deeper Z positions the rotateY doesn't create a fly-in/out effect
+        // while panning.
+        tilt  = lerp(tilt, velX * 0.15, 0.07);
+        const lean = Math.max(-6, Math.min(6, tilt));
 
         const xform = `translate3d(${posX}px, 0px, ${posZ}px) rotateY(${-lean}deg)`;
         canvas.style.transform = xform;
-        // Mirror the movement to the reflection clone (CSS handles the flip)
-        if (reflectCanvas) reflectCanvas.style.transform = `scaleY(-1) ${xform}`;
+
+        // Reflection: apply a -canvasHeight Y offset so the bottom rows of the
+        // wall (closest to the floor) appear at the top of the reflection box.
+        // Without the offset, scaleY(-1) puts the top rows at y=0 (wrong).
+        if (reflectCanvas) {
+            const rh = canvas.clientHeight;
+            reflectCanvas.style.transform =
+                `scaleY(-1) translate3d(${posX}px, ${-rh}px, ${posZ}px) rotateY(${-lean}deg)`;
+        }
 
         requestAnimationFrame(tick);
     }());
