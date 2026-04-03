@@ -10,8 +10,12 @@
 require_once 'core/db.php';
 
 // --- SESSION INITIALIZATION ---
-// Ensure session is active before processing login or redirects
+// Ensure session is active before processing login or redirects.
+// Lifetime must be set BEFORE session_start() or the cookie gets the
+// server default (often 24 min), which is why sessions were expiring.
 if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.gc_maxlifetime', 86400);
+    ini_set('session.cookie_lifetime', 86400);
     session_start();
 }
 
