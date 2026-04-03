@@ -97,7 +97,6 @@ try {
                     include __DIR__ . '/' . $skin_path . '/skin-meta.php';
                 }
                 ?>
-                <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css?v=<?php echo time(); ?>">
                 <style>
                     /* Landing-only overrides: no header gap, title centred */
                     .static-page-title { text-align: center; }
@@ -139,7 +138,6 @@ try {
                 include __DIR__ . '/' . $skin_path . '/skin-meta.php';
             }
             ?>
-            <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css?v=<?php echo time(); ?>">
             <body class="static-transmission homepage-static">
                 <div id="page-wrapper">
                     <div id="scroll-stage">

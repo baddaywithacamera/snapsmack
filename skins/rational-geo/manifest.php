@@ -59,14 +59,6 @@ return [
            SECTION 1: LAYOUT
            ============================================================ */
 
-        'show_wall_link' => [
-            'section'  => 'LAYOUT',
-            'type'     => 'select',
-            'label'    => 'Show Floating Gallery Link',
-            'default'  => '0',
-            'options'  => ['1' => 'Enabled', '0' => 'Disabled'],
-        ],
-
         'main_canvas_width' => [
             'section'  => 'LAYOUT',
             'type'     => 'range',

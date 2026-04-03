@@ -28,7 +28,7 @@ function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): voi
         'active_skin',
         'site_url',
         'site_name',
-        'archive_display_mode',
+        'archive_layout',
         'thumb_size',
         'browse_cols',
     ];
