@@ -19,12 +19,12 @@ if (!defined('BASE_URL')) {
 }
 
 // --- SESSION INITIALIZATION ---
-// Start the session if it hasn't been started yet. Double the default
-// PHP session lifetime from 24 minutes to 48 minutes so the admin
-// doesn't time out while composing posts.
+// Start the session if it hasn't been started yet. Keep the admin
+// logged in for a full day (86 400 seconds) so sessions don't expire
+// mid-workflow.
 if (session_status() === PHP_SESSION_NONE) {
-    ini_set('session.gc_maxlifetime', 2880);
-    ini_set('session.cookie_lifetime', 2880);
+    ini_set('session.gc_maxlifetime', 86400);
+    ini_set('session.cookie_lifetime', 86400);
     session_start();
 }
 
