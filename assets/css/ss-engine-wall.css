@@ -85,30 +85,20 @@ body, html {
     -webkit-user-drag: none;
 }
 
-.tile-meta {
-    position: absolute;
-    top: 100%; 
+.zoom-title {
+    position: fixed;
+    bottom: 6vh;
     left: 50%;
-    transform: translateX(-50%) translateY(10px);
-    width: 500px;
-    max-width: 85vw;
-    margin-top: 20px;
-    text-align: center;
-    color: var(--wall-text); 
+    transform: translateX(-50%);
+    color: var(--wall-text);
     font-family: var(--wall-font);
     font-size: 1.1rem;
-    line-height: 1.5;
-    opacity: 0;
-    transition: opacity 0.4s ease, transform 0.4s ease;
-    white-space: normal; 
-    pointer-events: none; 
+    text-align: center;
     text-shadow: var(--wall-shadow-string);
-}
-
-.wall-tile.is-centered .tile-meta,
-.tile-meta.meta-forced {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    pointer-events: none;
+    z-index: 999999;
+    max-width: 80vw;
+    white-space: normal;
 }
 
 #zoom-layer {
