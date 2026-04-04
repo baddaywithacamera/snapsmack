@@ -81,11 +81,15 @@ if (!isset($_SESSION['user_login'])) {
 // --- FORCED PASSWORD CHANGE INTERCEPT ---
 // Belt-and-suspenders: if the session flag was set (e.g. after a recovery code
 // login) redirect to the change-password screen on every authenticated page load
-// until the user completes the reset. Exempt smack-change-password.php itself
-// and the logout handler so we don't create a redirect loop.
+// until the user completes the reset. Critical system pages are exempt so an
+// in-progress update or other system operation is never interrupted mid-flight.
 if (isset($_SESSION['force_password_change'])) {
     $current_script = basename($_SERVER['SCRIPT_FILENAME'] ?? '');
-    if ($current_script !== 'smack-change-password.php') {
+    $exempt = [
+        'smack-change-password.php', // destination page — must not loop
+        'smack-update.php',           // never interrupt a live update mid-extraction
+    ];
+    if (!in_array($current_script, $exempt, true)) {
         header("Location: " . BASE_URL . "smack-change-password.php");
         exit;
     }
