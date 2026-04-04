@@ -4,6 +4,41 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.8c — "Raised Toilet Seat" (2026-04-04)
+
+### Added
+- **Tablet responsiveness — touch targets**: Nav links across all stable skins now meet WCAG 2.5.5 minimum touch target height (44px) on touch devices via `@media (pointer: coarse)`. Desktop mouse users see no change. Common selectors handled in `public-facing.css`; skin-specific selectors (A Grey Reckoning, Rational Geo) added per-skin.
+- **Tablet responsiveness — 50 Shades archive grid**: Added `@media (max-width: 1400px)` breakpoint switching the cropped grid from fixed pixel columns to `1fr` units. Prevents horizontal scroll at the 1200px tablet floor while leaving the desktop layout (>1400px) unchanged.
+- **50 Shades skin — split static page colour pickers**: The single `page_bg_color` picker (which applied one colour to both the content card and the stage behind it) has been replaced with two independent pickers — `stage_bg_color` and `card_bg_color` — so the card can be visually distinct from the background. Re-save skin settings once after deploying to regenerate the compiled CSS.
+- **Skin gallery — Photogram hidden**: Photogram was already excluded from the skin configurator tab but was still appearing in both the registry and local-only loops on the gallery tab. Now filtered from all three locations.
+- **50 Shades screenshots**: All three skin gallery screenshots (landing, archive, text page) are present and auto-detected.
+- **Tablet responsiveness audit**: `docs/tablet-responsiveness-audit.md` added — documents responsive gaps across all stable skins for the 1200px+ tablet range.
+
+### Fixed
+- **`100vh` → `100dvh` (all stable skins)**: Dynamic viewport height units replace static `100vh` across 40 instances in 8 skins. Prevents layout jump on tablet browsers (iPadOS Safari, Chrome Android) where the toolbar collapses on scroll. Equivalent to `100vh` on desktop — no visual change there.
+- **Static page 500 error on new page without hero image**: `image_size` and `image_align` POST fields are only rendered when a hero image is selected. On new pages the fields were absent; the validation ternary read the undefined key, passed `null` to a `NOT NULL` MySQL column, and MySQL strict mode killed it. Fixed by reading raw POST values with `??` fallback before validation.
+- **Admin shortcode picker rendered full-width**: The `sc-shortcode-select` element in the formatting toolbar was being overridden by the global `select { width: 100%; height: 52px; }` rule. Added `!important` to the toolbar-scoped override so the picker renders inline at the intended 155px alongside the other buttons.
+- **Static page bottom padding (50 Shades)**: The `.description` container's `margin-bottom: 40px` was adding dead space between the last paragraph and the card edge, on top of the card's own 52px padding. Zeroed out inside `.static-content`.
+- **Static page footer gap (50 Shades)**: `padding-bottom: 40px` on `#scroll-stage` created a gap after the footer (footer lives inside scroll-stage). Removed; replaced with `margin-bottom: 40px` on `.static-content` so the gap sits correctly between the card and the footer.
+- **Static page heading-to-paragraph gap (True Grit, Galleria)**: `margin-bottom: 0.4em` on headings was correct but CSS margin collapsing let the adjacent `<p>` element's default `margin-top: 1em` win. Fixed by zeroing `margin-top` on paragraphs inside `.static-content .description`.
+- **One-time recovery code intercepting live updates**: `smack-update.php` was not in the `force_password_change` exempt list, so an admin with a forced password change was kicked to the password form mid-extraction. Added to exempt list.
+- **`force_password_change` silently unenforced at login**: The `SELECT` query in `login.php` did not include the `force_password_change` column, so the enforcement check always read `null`. Column added to the query.
+
+### Changed
+- **Static page card background (50 Shades)**: Card now uses `--static-card-bg` CSS variable (defined per variant) rather than the compiled blob value, with `background` (not `!important`) so the new `card_bg_color` skin picker drives it correctly after a settings save.
+- **50 Shades variant files**: `--static-card-bg` token added to all three variants (dark: `#212121`, medium: `#404040`, light: `#ffffff`). Adjust via the new card colour picker in Skin Admin rather than editing these directly.
+
+## 0.7.8b — "Raised Toilet Seat" (2026-04-04)
+
+### Added
+- **One-time recovery codes**: Admins can generate a single-use recovery code for any user account from the User Manager or Edit User page. Codes are displayed once and stored as bcrypt hashes. Logging in with a recovery code sets a `force_password_change` flag that redirects the user to the password change screen before they can access anything else.
+- **Schema sync — Purge Ghost Files**: New button in the Schema Recovery panel that deletes migration files present on disk but not listed in the updater's known migration registry. Ghost files are skipped automatically during updates but now they can be cleared from the UI.
+
+### Fixed
+- **Schema column placement**: `recovery_code_hash` and `force_password_change` columns were initially placed in a migration file. Corrected — DDL column additions belong in `schema-sync.php` `$column_additions` array, not in `.sql` migration files (which are for data-only changes). Migration file deleted; `snapsmack_canonical.sql` updated.
+
+---
+
 ## 0.7.7b — "Muffet's Tuffet" (2026-04-03)
 
 ### Added
