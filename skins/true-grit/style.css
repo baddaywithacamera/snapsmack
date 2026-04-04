@@ -626,6 +626,12 @@ body::before {
 .static-content .description > h3:first-child {
     margin-top: 0.5em;
 }
+/* Zero paragraph top margin so heading margin-bottom is the only gap between
+   a heading and its following text. Para-to-para spacing is handled by
+   the paragraph's own margin-bottom (browser default ~1em). */
+.static-content .description p {
+    margin-top: 0;
+}
 
 /* Lists: consistent with paragraph line-height and spacing */
 .static-content .description ul,
