@@ -1139,6 +1139,7 @@ form.ml-block-form {
     align-items: stretch !important;
     gap: 10px !important;
     width: 100% !important;
+    height: 46px !important;
 }
 
 .ml-form-fieldRow {
@@ -1146,10 +1147,15 @@ form.ml-block-form {
     margin: 0 !important;
     padding: 0 !important;
     min-width: 0 !important;
+    height: 100% !important;
 }
 
 .ml-form-fieldRow .ml-field-group {
     height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 /* Extra selector chain beats MailerLite's dynamically-loaded !important rules */
@@ -1179,6 +1185,7 @@ form.ml-block-form {
 /* Button — flush right, balanced width */
 .ml-form-embedSubmit {
     flex: 0 0 180px !important;
+    height: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
 }
