@@ -998,6 +998,8 @@ if (!empty($google_families)) {
 
         <div class="gallery-grid">
             <?php foreach ($gallery_skins as $slug => $skin):
+                // Mobile skin is auto-assigned — never user-selectable or visible
+                if (defined('SNAPSMACK_MOBILE_SKIN') && $slug === SNAPSMACK_MOBILE_SKIN) continue;
                 // Mode filter: only show skins matching the site's mode
                 $skin_carousel = !empty($skin['features']['carousel']);
                 if ($skin_carousel !== $is_carousel_site) continue;
@@ -1118,6 +1120,8 @@ if (!empty($google_families)) {
             // (custom/local-only skins), filtered by site mode
             foreach ($local_skins as $slug => $skin):
                 if (isset($gallery_skins[$slug])) continue;
+                // Mobile skin is auto-assigned — never user-selectable or visible
+                if (defined('SNAPSMACK_MOBILE_SKIN') && $slug === SNAPSMACK_MOBILE_SKIN) continue;
                 $skin_carousel = !empty($skin['features']['carousel']);
                 if ($skin_carousel !== $is_carousel_site) continue;
             ?>
