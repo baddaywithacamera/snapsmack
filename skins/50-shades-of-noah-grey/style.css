@@ -1018,35 +1018,41 @@ body.archive-page #system-footer {
 
 /* ==========================================================================
    MAILERLITE EMBED OVERRIDES
-   Boxed layout: 1px light border, inline email+button, site typography.
+   Full-width box, inline email+button, site typography.
    ========================================================================= */
 
-/* Outer wrapper — full container width, bordered box */
-.ml-embedded {
+/* Kill MailerLite's own centering/width constraints so the box fills the
+   text container exactly like the paragraphs above it. */
+.ml-embedded,
+.ml-form-align-center {
     width: 100% !important;
+    max-width: 100% !important;
     box-sizing: border-box !important;
+    text-align: left !important;
 }
 
+/* Bordered box — full width, no card chrome */
 .ml-form-embedWrapper {
     background: transparent !important;
     border: 1px solid var(--border) !important;
     box-shadow: none !important;
     border-radius: 0 !important;
-    padding: 30px !important;
+    padding: 28px 32px !important;
     box-sizing: border-box !important;
     width: 100% !important;
+    max-width: 100% !important;
 }
 
-.ml-form-embedBody,
-.ml-subscribe-form {
+.ml-form-embedBody {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
     padding: 0 !important;
     border-radius: 0 !important;
+    width: 100% !important;
 }
 
-/* Title — matches H3 (Raleway, uppercase, light weight) */
+/* Title — Raleway uppercase, matches H3 */
 .ml-form-embedContent h4,
 .ml-form-embedContent h3,
 .ml-form-embedContent h2 {
@@ -1057,30 +1063,44 @@ body.archive-page #system-footer {
     text-transform: uppercase !important;
     color: var(--text-primary) !important;
     margin: 0 0 10px 0 !important;
+    padding: 0 !important;
 }
 
-/* Description — matches page body font */
+/* Description — DM Sans, matches page body */
 .ml-form-embedContent p {
     font-family: 'DM Sans', sans-serif !important;
     font-size: 0.9rem !important;
     line-height: 1.7 !important;
     color: var(--text-secondary) !important;
     margin: 0 0 20px 0 !important;
+    padding: 0 !important;
 }
 
-/* Inline row: email input + button side by side */
-.ml-form-embedBody .ml-form-fieldRow,
-.ml-subscribe-form .ml-form-fieldRow {
+/* The form itself is the flex row — fieldRow (input) + embedSubmit (button)
+   are direct siblings inside the form, so flex goes here. */
+form.ml-block-form {
     display: flex !important;
-    gap: 0 !important;
+    flex-direction: row !important;
     align-items: stretch !important;
+    gap: 0 !important;
+    width: 100% !important;
+}
+
+.ml-form-fieldRow {
+    flex: 1 1 auto !important;
     margin: 0 !important;
     padding: 0 !important;
+    min-width: 0 !important;
+}
+
+.ml-form-fieldRow .ml-field-group {
+    height: 100% !important;
 }
 
 .ml-form-fieldRow input[type="email"],
 .ml-form-fieldRow input[type="text"] {
-    flex: 1 1 auto !important;
+    width: 100% !important;
+    height: 100% !important;
     background: var(--bg-secondary) !important;
     color: var(--text-primary) !important;
     border: 1px solid var(--border) !important;
@@ -1088,8 +1108,8 @@ body.archive-page #system-footer {
     border-radius: 0 !important;
     font-family: 'DM Sans', sans-serif !important;
     font-size: 0.9rem !important;
-    padding: 10px 14px !important;
-    height: auto !important;
+    padding: 11px 16px !important;
+    box-sizing: border-box !important;
     min-width: 0 !important;
 }
 
@@ -1097,33 +1117,34 @@ body.archive-page #system-footer {
     color: var(--text-dim) !important;
 }
 
-/* Submit sits flush against the input */
+/* Button — flush right, balanced width */
 .ml-form-embedSubmit {
-    flex: 0 0 auto !important;
+    flex: 0 0 160px !important;
     margin: 0 !important;
     padding: 0 !important;
 }
 
 .ml-form-embedSubmit button,
 .ml-form-embedSubmit button.primary {
-    background: #444444 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: #3a3a3a !important;
     color: #ffffff !important;
-    border: 1px solid #444444 !important;
+    border: 1px solid #3a3a3a !important;
     border-radius: 0 !important;
     font-family: 'Raleway', sans-serif !important;
-    font-size: 0.75rem !important;
+    font-size: 0.72rem !important;
     letter-spacing: 1.5px !important;
     text-transform: uppercase !important;
-    padding: 10px 22px !important;
-    height: 100% !important;
+    padding: 11px 0 !important;
     cursor: pointer !important;
     white-space: nowrap !important;
-    transition: background 0.2s ease !important;
+    transition: background 0.2s ease, border-color 0.2s ease !important;
 }
 
 .ml-form-embedSubmit button:hover {
-    background: #222222 !important;
-    border-color: #222222 !important;
+    background: #1e1e1e !important;
+    border-color: #1e1e1e !important;
 }
 
 /* Success message */
@@ -1131,5 +1152,4 @@ body.archive-page #system-footer {
 .ml-form-successContent p {
     color: var(--text-primary) !important;
     font-family: 'DM Sans', sans-serif !important;
-    text-align: center !important;
 }
