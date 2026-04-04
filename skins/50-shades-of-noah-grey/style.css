@@ -1031,10 +1031,12 @@ body.archive-page #system-footer {
     text-align: left !important;
 }
 
-/* Bordered box — full width, no card chrome */
+/* Bordered box — full width, no card chrome.
+   Use an explicit mid-grey rather than --border (#383838) which is too
+   dark to read as a border on the dark background. */
 .ml-form-embedWrapper {
     background: transparent !important;
-    border: 1px solid var(--border) !important;
+    border: 1px solid #666666 !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     padding: 28px 32px !important;
@@ -1097,6 +1099,9 @@ form.ml-block-form {
     height: 100% !important;
 }
 
+/* Extra selector chain beats MailerLite's dynamically-loaded !important rules */
+.ml-embedded .ml-form-embedBody .ml-form-fieldRow input[type="email"],
+.ml-embedded .ml-form-embedBody .ml-form-fieldRow input[type="text"],
 .ml-form-fieldRow input[type="email"],
 .ml-form-fieldRow input[type="text"] {
     width: 100% !important;
@@ -1113,8 +1118,10 @@ form.ml-block-form {
     min-width: 0 !important;
 }
 
+.ml-embedded .ml-form-embedBody .ml-form-fieldRow input::placeholder,
 .ml-form-fieldRow input::placeholder {
     color: var(--text-dim) !important;
+    opacity: 1 !important;
 }
 
 /* Button — flush right, balanced width */
