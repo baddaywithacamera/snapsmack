@@ -171,12 +171,21 @@ return [
            SECTION 4: COLOURS
            ============================================================ */
 
-        'page_bg_color' => [
+        'stage_bg_color' => [
             'section'  => 'COLOURS',
             'type'     => 'color',
-            'label'    => 'Static Page Background',
+            'label'    => 'Static Page Stage (Behind Card)',
             'default'  => '#1a1a1a',
-            'selector' => '.static-content, .static-transmission #scroll-stage',
+            'selector' => '.static-transmission #scroll-stage',
+            'property' => 'background-color'
+        ],
+
+        'card_bg_color' => [
+            'section'  => 'COLOURS',
+            'type'     => 'color',
+            'label'    => 'Static Page Card (Content Area)',
+            'default'  => '#242424',
+            'selector' => '.static-content',
             'property' => 'background-color'
         ],
 
