@@ -85,8 +85,10 @@ if (isset($_POST['save_page'])) {
     $content = smack_autop($_POST['content']);
     $asset        = $_POST['image_asset'];
     $order        = (int)$_POST['menu_order'];
-    $image_size   = in_array($_POST['image_size']  ?? 'full',   ['full','medium','small'])   ? $_POST['image_size']  : 'full';
-    $image_align  = in_array($_POST['image_align'] ?? 'center', ['center','left','right'])   ? $_POST['image_align'] : 'center';
+    $raw_size     = $_POST['image_size']  ?? 'full';
+    $raw_align    = $_POST['image_align'] ?? 'center';
+    $image_size   = in_array($raw_size,  ['full','medium','small'])  ? $raw_size  : 'full';
+    $image_align  = in_array($raw_align, ['center','left','right'])  ? $raw_align : 'center';
     $image_shadow = ($_POST['image_shadow'] ?? '0') === '1' ? 1 : 0;
 
     if ($id) {
