@@ -117,8 +117,11 @@
     // When fetchMore inserts new tiles their images load one by one, each
     // expanding the canvas rightward.  Because all new tiles are off to the
     // RIGHT of the current view, none of their growth should shift the wall.
-    // This flag suppresses compensation while a batch is still loading.
-    let suppressResizeCompensation = false;
+    // pendingBatchLoads counts images from fetchMore batches that are still
+    // loading.  ResizeObserver suppresses compensation while > 0.
+    // A WeakSet prevents duplicate registration when batches overlap.
+    let pendingBatchLoads = 0;
+    const batchTracked = new WeakSet();
 
     if (typeof ResizeObserver !== 'undefined') {
         new ResizeObserver(() => {
@@ -126,7 +129,7 @@
             const w = canvas.scrollWidth;
             const delta = w - lastCanvasW;
             lastCanvasW = w;
-            if (suppressResizeCompensation) return;  // new-tile batch still loading
+            if (pendingBatchLoads > 0) return;   // new-tile images still loading
             // Only compensate for small-ish deltas (existing image loads that
             // widen columns distributed across the current view).
             if (delta !== 0 && Math.abs(delta) < 2000) {
@@ -497,32 +500,26 @@
                 // Update tracked width baseline immediately.
                 lastCanvasW = canvas.scrollWidth;
 
-                // Suppress resize compensation while this batch's images load.
-                // New tiles are always to the right of the viewport, so their
-                // growth should never shift the wall left.
-                suppressResizeCompensation = true;
-                let pendingLoads = 0;
-
-                const settle = () => {
-                    pendingLoads--;
-                    if (pendingLoads <= 0) {
-                        suppressResizeCompensation = false;
-                        lastCanvasW = canvas.scrollWidth; // re-baseline after settle
-                    }
-                };
-
+                // Track new-batch images with a global counter + WeakSet so
+                // concurrent batches don't interfere.  Each image is counted
+                // exactly once; the ResizeObserver skips compensation until
+                // all tracked images have settled.
                 canvas.querySelectorAll('.wall-tile img:not(.loaded)').forEach(img => {
                     if (img.complete && img.naturalWidth) {
                         img.classList.add('loaded');
-                    } else {
-                        pendingLoads++;
+                    } else if (!batchTracked.has(img)) {
+                        batchTracked.add(img);
+                        pendingBatchLoads++;
+                        const settle = () => {
+                            pendingBatchLoads--;
+                            if (pendingBatchLoads === 0) {
+                                lastCanvasW = canvas.scrollWidth; // re-baseline after all settled
+                            }
+                        };
                         img.addEventListener('load',  () => { img.classList.add('loaded'); settle(); }, { once: true });
                         img.addEventListener('error', () => settle(), { once: true });
                     }
                 });
-
-                // No pending images (e.g. all cached) — release immediately
-                if (pendingLoads === 0) suppressResizeCompensation = false;
                 loadOffset += 20;
                 hasMore = loadOffset < cfg.totalImages;
                 if (!hasMore) sentinel.remove();
