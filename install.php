@@ -1145,6 +1145,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             line-height: 1.6;
             min-height: 100vh;
             display: flex;
+            align-items: center;
             justify-content: center;
             padding: 40px 20px;
         }

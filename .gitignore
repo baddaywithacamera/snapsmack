@@ -63,3 +63,6 @@ tools/ft-batch-poster/exiftool_files/
 sofobomo-canada.zip
 IG_export/
 email-test.php
+
+# Greymatter port (work in progress — not part of SnapSmack)
+greymatter/
