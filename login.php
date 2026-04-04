@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user_input = trim($_POST['username'] ?? '');
         $pass_input = $_POST['password'] ?? '';
 
-        $stmt = $pdo->prepare("SELECT id, username, password_hash, user_role, preferred_skin FROM snap_users WHERE username = ?");
+        $stmt = $pdo->prepare("SELECT id, username, password_hash, user_role, preferred_skin, force_password_change FROM snap_users WHERE username = ?");
         $stmt->execute([$user_input]);
         $user = $stmt->fetch();
 
