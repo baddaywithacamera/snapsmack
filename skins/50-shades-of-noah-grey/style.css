@@ -654,7 +654,7 @@ body.archive-page #system-footer {
     text-align: center !important;
     overflow: visible;
     background: var(--bg-primary);
-    padding-bottom: 60px;
+    padding-bottom: 40px;
 }
 
 .static-transmission #footer,
@@ -677,7 +677,7 @@ body.archive-page #system-footer {
 .static-content {
     max-width: var(--static-content-width, 850px) !important;
     margin: 40px auto 0 auto !important;
-    padding: 52px 48px 64px !important;
+    padding: 52px 48px 52px !important;
     box-sizing: border-box;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
