@@ -749,8 +749,7 @@ body.archive-page #system-footer {
     padding-left: 0 !important;
     padding-right: 0 !important;
     max-width: none !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
+    margin: 0 !important;
 }
 
 .static-transmission .description p:first-of-type {
