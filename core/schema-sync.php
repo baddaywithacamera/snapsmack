@@ -226,12 +226,14 @@ function snap_schema_sync(PDO $pdo): array {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
         'snap_users' => "CREATE TABLE IF NOT EXISTS `snap_users` (
-          `id`             int          NOT NULL AUTO_INCREMENT,
-          `username`       varchar(50)  COLLATE utf8mb4_unicode_ci NOT NULL,
-          `password_hash`  varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-          `user_role`      varchar(20)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'editor',
-          `email`          varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-          `preferred_skin` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT 'default-dark',
+          `id`                    int          NOT NULL AUTO_INCREMENT,
+          `username`              varchar(50)  COLLATE utf8mb4_unicode_ci NOT NULL,
+          `password_hash`         varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+          `user_role`             varchar(20)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'editor',
+          `email`                 varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `preferred_skin`        varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT 'default-dark',
+          `recovery_code_hash`    varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `force_password_change` tinyint(1)   NOT NULL DEFAULT 0,
           PRIMARY KEY (`id`),
           UNIQUE KEY `username` (`username`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
@@ -518,6 +520,15 @@ function snap_schema_sync(PDO $pdo): array {
             "ALTER TABLE `snap_images`
              ADD COLUMN `sort_order` int NOT NULL DEFAULT 0
              COMMENT 'Manual display order. Lower = earlier in feed. 0 = unset (falls back to img_date DESC).' AFTER `post_id`"],
+
+        // 0.7.8b — snap_users (recovery code + forced password change)
+        ['snap_users', 'recovery_code_hash',
+            "ALTER TABLE `snap_users`
+             ADD COLUMN `recovery_code_hash` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL AFTER `preferred_skin`"],
+
+        ['snap_users', 'force_password_change',
+            "ALTER TABLE `snap_users`
+             ADD COLUMN `force_password_change` tinyint(1) NOT NULL DEFAULT 0 AFTER `recovery_code_hash`"],
 
         // 0.7.8 — snap_pages
         ['snap_pages', 'image_size',
