@@ -47,7 +47,6 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-077.sql',
     'migrate-078.sql',
     'migrate-comment-identity.sql',
-    'migrate-078b.sql',
 ];
 
 // ─── VERSION CHECK ──────────────────────────────────────────────────────────
