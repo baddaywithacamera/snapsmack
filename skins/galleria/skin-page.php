@@ -76,6 +76,34 @@ include __DIR__ . '/skin-meta.php';
         font-size: 1.1rem;
     }
 
+    /* Headings inside the card: generous top space to signal a new section,
+       tight bottom space so the heading stays close to its own content. */
+    .htbs-page-content .description h2,
+    .htbs-page-content .description h3,
+    .htbs-page-content .description h4 {
+        margin-top: 1.8em;
+        margin-bottom: 0.4em;
+        color: #111111;
+    }
+    .htbs-page-content .description h2:first-child,
+    .htbs-page-content .description h3:first-child,
+    .htbs-page-content .description h4:first-child { margin-top: 0; }
+
+    /* Lists: match paragraph line-height and bottom spacing */
+    .htbs-page-content .description ul,
+    .htbs-page-content .description ol {
+        margin-top: 0;
+        margin-bottom: 1.4em;
+        padding-left: 1.4em;
+    }
+    .htbs-page-content .description li {
+        font-size: 1.05rem;
+        line-height: 1.9;
+        color: #1a1a1a;
+        margin-bottom: 0.3em;
+    }
+    .htbs-page-content .description li:last-child { margin-bottom: 0; }
+
     /* Links inside the card — no underline (matches hero treatment) */
     .htbs-page-content .description a {
         color: #333333;
