@@ -78,6 +78,19 @@ if (!isset($_SESSION['user_login'])) {
     exit;
 }
 
+// --- FORCED PASSWORD CHANGE INTERCEPT ---
+// Belt-and-suspenders: if the session flag was set (e.g. after a recovery code
+// login) redirect to the change-password screen on every authenticated page load
+// until the user completes the reset. Exempt smack-change-password.php itself
+// and the logout handler so we don't create a redirect loop.
+if (isset($_SESSION['force_password_change'])) {
+    $current_script = basename($_SERVER['SCRIPT_FILENAME'] ?? '');
+    if ($current_script !== 'smack-change-password.php') {
+        header("Location: " . BASE_URL . "smack-change-password.php");
+        exit;
+    }
+}
+
 // --- USER PREFERENCE SYNC ---
 // Fetch the user's preferred skin from the database so theme switching
 // persists. Store both user_id and preferred_skin in the session.

@@ -234,8 +234,10 @@ CREATE TABLE IF NOT EXISTS `snap_users` (
   `username`       varchar(50)  COLLATE utf8mb4_unicode_ci NOT NULL,
   `password_hash`  varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `user_role`      varchar(20)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'editor',
-  `email`          varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `preferred_skin` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT 'default-dark',
+  `email`                varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `preferred_skin`       varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT 'default-dark',
+  `recovery_code_hash`   varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `force_password_change` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
