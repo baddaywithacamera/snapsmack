@@ -1068,3 +1068,148 @@ body::before {
 .tg-page-info {
     color: var(--text-dim);
 }
+
+/* ==========================================================================
+   MAILERLITE EMBED OVERRIDES
+   Full-width box, inline email+button, site typography.
+   ========================================================================= */
+
+/* Kill MailerLite's own centering/width constraints so the box fills the
+   text container exactly like the paragraphs above it. */
+.ml-embedded,
+.ml-form-align-center {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    text-align: left !important;
+}
+
+/* Bordered box — full width, no card chrome.
+   Use an explicit mid-grey rather than --border (#333333) which is too
+   dark to read as a border on the dark background. */
+.ml-form-embedWrapper {
+    background: transparent !important;
+    border: 1px solid #666666 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 28px 32px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.ml-form-embedBody {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    width: 100% !important;
+}
+
+/* Title — Raleway uppercase weight 300, matches site headings */
+.ml-form-embedContent h4,
+.ml-form-embedContent h3,
+.ml-form-embedContent h2 {
+    font-family: 'Raleway', sans-serif !important;
+    font-weight: 300 !important;
+    font-size: 1rem !important;
+    letter-spacing: 1.5px !important;
+    text-transform: uppercase !important;
+    color: var(--text-primary) !important;
+    margin: 0 0 10px 0 !important;
+    padding: 0 !important;
+}
+
+/* Description — DM Sans, matches page body */
+.ml-form-embedContent p {
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.9rem !important;
+    line-height: 1.7 !important;
+    color: var(--text-secondary) !important;
+    margin: 0 0 20px 0 !important;
+    padding: 0 !important;
+}
+
+/* The form itself is the flex row — fieldRow (input) + embedSubmit (button)
+   are direct siblings inside the form, so flex goes here. */
+form.ml-block-form {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    width: 100% !important;
+}
+
+.ml-form-fieldRow {
+    flex: 1 1 auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-width: 0 !important;
+}
+
+.ml-form-fieldRow .ml-field-group {
+    height: 100% !important;
+}
+
+/* Extra selector chain beats MailerLite's dynamically-loaded !important rules */
+.ml-embedded .ml-form-embedBody .ml-form-fieldRow input[type="email"],
+.ml-embedded .ml-form-embedBody .ml-form-fieldRow input[type="text"],
+.ml-form-fieldRow input[type="email"],
+.ml-form-fieldRow input[type="text"] {
+    width: 100% !important;
+    height: 100% !important;
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border) !important;
+    border-right: none !important;
+    border-radius: 0 !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.9rem !important;
+    padding: 11px 16px !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+}
+
+.ml-embedded .ml-form-embedBody .ml-form-fieldRow input::placeholder,
+.ml-form-fieldRow input::placeholder {
+    color: var(--text-dim) !important;
+    opacity: 1 !important;
+}
+
+/* Button — flush right, balanced width */
+.ml-form-embedSubmit {
+    flex: 0 0 160px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.ml-form-embedSubmit button,
+.ml-form-embedSubmit button.primary {
+    width: 100% !important;
+    height: 100% !important;
+    background: #3a3a3a !important;
+    color: #ffffff !important;
+    border: 1px solid #3a3a3a !important;
+    border-radius: 0 !important;
+    font-family: 'Raleway', sans-serif !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 1.5px !important;
+    text-transform: uppercase !important;
+    padding: 11px 0 !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    transition: background 0.2s ease, border-color 0.2s ease !important;
+}
+
+.ml-form-embedSubmit button:hover {
+    background: #1a1a1a !important;
+    border-color: #1a1a1a !important;
+}
+
+/* Success message */
+.ml-form-successBody,
+.ml-form-successContent p {
+    color: var(--text-primary) !important;
+    font-family: 'DM Sans', sans-serif !important;
+}
