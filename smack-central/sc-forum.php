@@ -89,6 +89,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'demote_mod' && !empty($_POST['id'])) {
         $db->prepare("UPDATE ss_forum_installs SET is_moderator = 0 WHERE id = ?")->execute([(int)$_POST['id']]);
         $flash = 'Moderator privileges removed.';
+    } elseif ($action === 'rename_install' && !empty($_POST['id']) && isset($_POST['display_name'])) {
+        $new_name = trim($_POST['display_name']);
+        if ($new_name !== '' && mb_strlen($new_name) <= 100) {
+            $db->prepare("UPDATE ss_forum_installs SET display_name = ? WHERE id = ?")->execute([$new_name, (int)$_POST['id']]);
+            $flash = 'Display name updated.';
+        } else {
+            $flash = 'Display name must be 1–100 characters.';
+        }
 
     // Category management
     } elseif ($action === 'toggle_category' && !empty($_POST['id'])) {
@@ -796,7 +804,12 @@ $installs = $db->query("
       <?php foreach ($installs as $row): ?>
         <tr class="<?php echo $row['is_banned'] ? 'sc-row--muted' : ''; ?>">
           <td><?php echo htmlspecialchars($row['domain']); ?></td>
-          <td><?php echo htmlspecialchars($row['display_name']); ?></td>
+          <td>
+            <span class="sc-inline-name" onclick="scEditName(this,<?php echo (int)$row['id']; ?>,<?php echo htmlspecialchars(json_encode($row['display_name'])); ?>)"
+                  title="Click to rename" style="cursor:pointer; border-bottom:1px dashed rgba(255,255,255,.3);">
+              <?php echo htmlspecialchars($row['display_name']); ?>
+            </span>
+          </td>
           <td><?php echo htmlspecialchars($row['ss_version']); ?></td>
           <td class="sc-dim"><?php echo htmlspecialchars(substr($row['registered_at'], 0, 10)); ?></td>
           <td class="sc-dim"><?php echo htmlspecialchars(substr($row['last_seen_at'], 0, 10)); ?></td>
@@ -817,6 +830,23 @@ $installs = $db->query("
     <?php endif; ?>
   </div>
 </div>
+
+<form id="sc-rename-form" method="post" style="display:none">
+  <input type="hidden" name="action" value="rename_install">
+  <input type="hidden" name="id"    id="sc-rename-id">
+  <input type="hidden" name="display_name" id="sc-rename-val">
+</form>
+<script>
+function scEditName(el, id, current) {
+    var name = prompt('Display name for this install:', current);
+    if (name === null) return;
+    name = name.trim();
+    if (!name) return;
+    document.getElementById('sc-rename-id').value  = id;
+    document.getElementById('sc-rename-val').value = name;
+    document.getElementById('sc-rename-form').submit();
+}
+</script>
 
 <?php elseif ($section === 'manage'): ?>
 <!-- ══════════════════════════════════════════════════════════════════════════ -->
