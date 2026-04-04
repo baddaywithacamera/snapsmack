@@ -680,7 +680,7 @@ body.archive-page #system-footer {
     margin: 40px auto 40px auto !important;
     padding: 52px 48px 52px !important;
     box-sizing: border-box;
-    background: var(--static-card-bg, var(--bg-secondary)) !important;
+    background: var(--static-card-bg, var(--bg-secondary));
     border: 1px solid var(--border);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18), 0 8px 36px rgba(0, 0, 0, 0.10);
     text-align: left;
