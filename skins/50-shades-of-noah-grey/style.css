@@ -654,7 +654,6 @@ body.archive-page #system-footer {
     text-align: center !important;
     overflow: visible;
     background: var(--bg-primary);
-    padding-bottom: 40px;
 }
 
 .static-transmission #footer,
@@ -676,7 +675,7 @@ body.archive-page #system-footer {
    themselves: dark/medium get a raised panel, light gets a white sheet. */
 .static-content {
     max-width: var(--static-content-width, 850px) !important;
-    margin: 40px auto 0 auto !important;
+    margin: 40px auto 40px auto !important;
     padding: 52px 48px 52px !important;
     box-sizing: border-box;
     background: var(--bg-secondary);
@@ -757,6 +756,12 @@ body.archive-page #system-footer {
 .static-transmission .description p:first-of-type {
     margin-top: 0 !important;
     padding-top: 0 !important;
+}
+
+/* Collapse trailing margin so the last paragraph doesn't add ghost space
+   at the bottom of the card on top of the card's own padding. */
+.static-content .description > :last-child {
+    margin-bottom: 0 !important;
 }
 
 .static-transmission .description img + br {
