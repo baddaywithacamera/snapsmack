@@ -946,6 +946,19 @@ cron.</p>
 directories, .htaccess, robots.txt, and the signing public key. These are listed in
 <code>protected_paths.json</code>.</p>
 
+<h4>Schema Recovery</h4>
+<p>The Schema Recovery panel lets you run a schema sync or inspect migration state
+without triggering a full update. Use it after a failed update or when bringing an
+older installation current manually. Schema sync compares your live database against
+the reference schema and adds any missing columns — it never removes or modifies
+existing data.</p>
+
+<h4>Ghost Migration Files</h4>
+<p>A ghost file is a <code>.sql</code> file present in <code>/migrations/</code> that is not
+listed in the updater's known migration registry. These appear when a migration is
+renamed or removed. The <strong>Purge Ghost Files</strong> button deletes them from disk.
+Ghost files are harmless but can clutter the Schema Recovery panel.</p>
+
 <h4>Skin Updates</h4>
 <p>The update page also shows notifications about new or updated skins available in the
 registry. These are installed separately from core updates via the Skin Gallery.</p>
@@ -997,7 +1010,27 @@ and assign a menu order if you want the page in the navigation.</p>
 
 <h4>Featured Image</h4>
 <p>Optionally assign a featured image (hero) that appears at the top of the page.
-This uses the media library asset system.</p>
+This uses the media library asset system. When a hero image is set, three additional
+controls appear:</p>
+<ul>
+    <li><strong>Image Size</strong> — Full Width, Medium (60%), or Small (35%).</li>
+    <li><strong>Image Alignment</strong> — Centre, Left, or Right. Applies when size is Medium or Small.</li>
+    <li><strong>Image Shadow</strong> — adds a subtle drop shadow under the hero image.</li>
+</ul>
+
+<h4>Data Shortcodes</h4>
+<p>The content toolbar includes a shortcode picker (— INSERT SHORTCODE —) for inserting
+live site data into your page text. Available shortcodes:</p>
+<ul>
+    <li><code>[post_count]</code> — total number of published posts</li>
+    <li><code>[site_name]</code>, <code>[site_url]</code> — site identity values from settings</li>
+    <li><code>[current_year]</code> — the current four-digit year (updates automatically)</li>
+    <li><code>[years_since year="" month="" day=""]</code> — years elapsed since a given date</li>
+    <li><code>[newest_post]</code>, <code>[oldest_post]</code> — dates of first and last posts</li>
+    <li><code>[archive_link]</code>, <code>[gallery_link]</code> — auto-generated URLs</li>
+    <li><code>[random_image]</code>, <code>[latest_image]</code> — inline image from your archive</li>
+    <li><code>[embed:key]</code> — inserts a named embed code from Smack Your Scripts Up!</li>
+</ul>
 
 <h4>Navigation</h4>
 <p>Pages can be assigned to header navigation slots in the Configuration page. The

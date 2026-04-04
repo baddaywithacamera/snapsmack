@@ -2,7 +2,7 @@
 
 ## Version & Headers
 
-Current version: **Alpha v0.7.8 "Raised Toilet Seat"**. Every PHP file opens with a standardised doc-block:
+Current version: **Alpha v0.7.8c "Raised Toilet Seat"**. Every PHP file opens with a standardised doc-block:
 
 ```php
 <?php
