@@ -956,11 +956,12 @@ include 'core/sidebar.php';
                         style="font-size:0.75rem;">MARK ALL MIGRATIONS APPLIED</button>
             </form>
             <?php endif; ?>
-            <?php if ($has_ghosts): ?>
+            <?php if ($has_ghosts):
+                $ghost_count = count($migration_status['ghosts']); ?>
             <form method="POST">
                 <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
                 <button type="submit" name="action" value="purge_ghosts" class="btn-smack btn-secondary"
-                        onclick="return confirm('Permanently delete <?php echo count($migration_status[\'ghosts\']); ?> ghost migration file(s) from disk?\n\nThese files are not part of any official release and will never be run by the updater.');"
+                        onclick="return confirm('Permanently delete <?php echo $ghost_count; ?> ghost migration file(s) from disk?\n\nThese files are not part of any official release and will never be run by the updater.');"
                         style="font-size:0.75rem;">PURGE GHOST FILES</button>
             </form>
             <?php endif; ?>
