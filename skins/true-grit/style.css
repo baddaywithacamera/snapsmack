@@ -1137,7 +1137,7 @@ form.ml-block-form {
     display: flex !important;
     flex-direction: row !important;
     align-items: stretch !important;
-    gap: 0 !important;
+    gap: 10px !important;
     width: 100% !important;
 }
 
@@ -1162,7 +1162,6 @@ form.ml-block-form {
     background: var(--bg-secondary) !important;
     color: var(--text-primary) !important;
     border: 1px solid var(--border) !important;
-    border-right: none !important;
     border-radius: 0 !important;
     font-family: 'DM Sans', sans-serif !important;
     font-size: 0.9rem !important;
@@ -1179,7 +1178,7 @@ form.ml-block-form {
 
 /* Button — flush right, balanced width */
 .ml-form-embedSubmit {
-    flex: 0 0 160px !important;
+    flex: 0 0 180px !important;
     margin: 0 !important;
     padding: 0 !important;
 }
