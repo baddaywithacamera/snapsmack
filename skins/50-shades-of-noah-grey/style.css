@@ -1083,10 +1083,9 @@ body.archive-page #system-footer {
 form.ml-block-form {
     display: flex !important;
     flex-direction: row !important;
-    align-items: stretch !important;
+    align-items: flex-start !important;
     gap: 10px !important;
     width: 100% !important;
-    height: 46px !important;
 }
 
 .ml-form-fieldRow {
@@ -1094,13 +1093,9 @@ form.ml-block-form {
     margin: 0 !important;
     padding: 0 !important;
     min-width: 0 !important;
-    height: 100% !important;
 }
 
 .ml-form-fieldRow .ml-field-group {
-    height: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
     margin: 0 !important;
     padding: 0 !important;
 }
@@ -1111,14 +1106,14 @@ form.ml-block-form {
 .ml-form-fieldRow input[type="email"],
 .ml-form-fieldRow input[type="text"] {
     width: 100% !important;
-    height: 100% !important;
+    height: 46px !important;
     background: var(--bg-secondary) !important;
     color: var(--text-primary) !important;
     border: 1px solid var(--border) !important;
     border-radius: 0 !important;
     font-family: 'DM Sans', sans-serif !important;
     font-size: 0.9rem !important;
-    padding: 11px 16px !important;
+    padding: 0 16px !important;
     box-sizing: border-box !important;
     min-width: 0 !important;
 }
@@ -1132,7 +1127,6 @@ form.ml-block-form {
 /* Button — flush right, balanced width */
 .ml-form-embedSubmit {
     flex: 0 0 180px !important;
-    height: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
 }
@@ -1140,7 +1134,7 @@ form.ml-block-form {
 .ml-form-embedSubmit button,
 .ml-form-embedSubmit button.primary {
     width: 100% !important;
-    height: 100% !important;
+    height: 46px !important;
     background: #3a3a3a !important;
     color: #ffffff !important;
     border: 1px solid #3a3a3a !important;
@@ -1149,7 +1143,7 @@ form.ml-block-form {
     font-size: 0.72rem !important;
     letter-spacing: 1.5px !important;
     text-transform: uppercase !important;
-    padding: 11px 0 !important;
+    padding: 0 !important;
     cursor: pointer !important;
     white-space: nowrap !important;
     transition: background 0.2s ease, border-color 0.2s ease !important;
