@@ -564,11 +564,14 @@ textarea,
 }
 
 /* --- Shortcode insert select --- */
+/* Global `select` rule sets width:100% and height:52px — override both
+   so the shortcode picker sits inline with the other sc-btn buttons. */
 .sc-toolbar .sc-shortcode-select {
-    flex: 0 0 auto;
-    width: 155px;
-    height: 26px;
-    padding: 0 4px;
+    flex: 0 0 auto !important;
+    width: 155px !important;
+    height: 26px !important;
+    min-height: unset !important;
+    padding: 0 4px !important;
     font-family: inherit;
     font-size: 0.62rem;
     font-weight: 700;
@@ -581,6 +584,8 @@ textarea,
     color: var(--admin-text, #ccc);
     outline: none;
     overflow: hidden;
+    display: inline-flex !important;
+    align-items: center !important;
 }
 
 input[readonly],
