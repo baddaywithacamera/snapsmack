@@ -1086,6 +1086,7 @@ form.ml-block-form {
     align-items: flex-start !important;
     gap: 10px !important;
     width: 100% !important;
+    margin-bottom: 0 !important;
 }
 
 .ml-form-fieldRow {
