@@ -699,6 +699,35 @@ if ($action === 'mark_migrations_applied') {
     }
 }
 
+// ── ACTION: PURGE GHOST MIGRATION FILES ──────────────────────────────────────
+// Deletes any .sql files in /migrations/ that are not in UPDATER_KNOWN_MIGRATIONS
+// and have not been recorded in snap_migrations. Safe to run at any time.
+if ($action === 'purge_ghosts') {
+    $status  = updater_migration_status($pdo);
+    $ghosts  = $status['ghosts'] ?? [];
+    $deleted = 0;
+    $failed  = [];
+    foreach ($ghosts as $name) {
+        $path = UPDATER_MIGRATIONS_DIR . '/' . $name;
+        if (file_exists($path)) {
+            if (@unlink($path)) {
+                $deleted++;
+            } else {
+                $failed[] = $name;
+            }
+        }
+    }
+    if (!empty($failed)) {
+        $flash_msg  = "PURGE INCOMPLETE: could not delete " . implode(', ', $failed) . ". Check file permissions.";
+        $flash_type = 'warning';
+    } else {
+        $flash_msg  = $deleted > 0
+            ? "PURGED {$deleted} GHOST FILE(S). MIGRATIONS DIRECTORY IS CLEAN."
+            : 'NO GHOST FILES FOUND ON DISK. NOTHING TO DELETE.';
+        $flash_type = 'success';
+    }
+}
+
 // Retrieve completed update log (if we just finalized)
 $complete_log = null;
 if (!empty($_SESSION['update_complete_log'])) {
@@ -876,7 +905,7 @@ include 'core/sidebar.php';
         <?php if ($has_ghosts): ?>
         <div class="update-warning" style="margin-bottom:16px;">
             <strong>GHOST FILES DETECTED</strong> — The following migration files are on disk but are not part of any official release.
-            The updater will skip them automatically. Delete them from <code>/migrations/</code> via FTP to keep the directory clean.<br><br>
+            The updater will skip them automatically, but they should be removed to keep the directory clean.<br><br>
             <?php foreach ($migration_status['ghosts'] as $g): ?>
                 <code style="display:block;margin-top:4px;font-size:0.8rem;" class="migration-ghost">⚠ <?php echo htmlspecialchars($g); ?></code>
             <?php endforeach; ?>
@@ -925,6 +954,14 @@ include 'core/sidebar.php';
                 <button type="submit" name="action" value="mark_migrations_applied" class="btn-smack btn-secondary"
                         onclick="return confirm('Mark all known migrations as applied without running them?\n\nOnly do this if you have already applied the schema changes manually (e.g. via cPanel SQL).');"
                         style="font-size:0.75rem;">MARK ALL MIGRATIONS APPLIED</button>
+            </form>
+            <?php endif; ?>
+            <?php if ($has_ghosts): ?>
+            <form method="POST">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="purge_ghosts" class="btn-smack btn-secondary"
+                        onclick="return confirm('Permanently delete <?php echo count($migration_status[\'ghosts\']); ?> ghost migration file(s) from disk?\n\nThese files are not part of any official release and will never be run by the updater.');"
+                        style="font-size:0.75rem;">PURGE GHOST FILES</button>
             </form>
             <?php endif; ?>
         </div>
