@@ -653,6 +653,8 @@ body.archive-page #system-footer {
     display: block !important;
     text-align: center !important;
     overflow: visible;
+    background: var(--bg-primary);
+    padding-bottom: 60px;
 }
 
 .static-transmission #footer,
@@ -669,13 +671,17 @@ body.archive-page #system-footer {
 .static-transmission #footer { background: var(--bg-secondary) !important; }
 .static-transmission #system-footer { background: var(--bg-chrome) !important; border-top: 1px solid var(--border) !important; }
 
+/* Card sitting on the --bg-primary stage — mirrors Galleria's card-on-wall
+   treatment but uses FSOG's greyscale token set. All three variants handle
+   themselves: dark/medium get a raised panel, light gets a white sheet. */
 .static-content {
     max-width: var(--static-content-width, 850px) !important;
     margin: 40px auto 0 auto !important;
-    padding-left: 20px;
-    padding-right: 20px;
+    padding: 52px 48px 64px !important;
     box-sizing: border-box;
-    background: transparent;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18), 0 8px 36px rgba(0, 0, 0, 0.10);
     text-align: left;
     overflow-x: hidden;
 }
@@ -688,7 +694,7 @@ body.archive-page #system-footer {
 
 .static-page-title {
     width: 100% !important;
-    max-width: 850px !important;
+    max-width: 100% !important;
     margin: 0 0 40px 0 !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
@@ -701,6 +707,8 @@ body.archive-page #system-footer {
     letter-spacing: 1px;
     font-size: 2rem;
     font-weight: 300;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px !important;
 }
 
 .static-transmission .description .align-left {
