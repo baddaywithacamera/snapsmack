@@ -519,9 +519,10 @@ include 'core/sidebar.php';
                 </div>
             </div>
 
-            <button type="submit" class="master-update-btn">SAVE CHANGES</button>
         </div>
         <?php endif; ?>
+
+            <button type="submit" class="master-update-btn">SAVE CHANGES</button>
     </form>
 </div>
 
