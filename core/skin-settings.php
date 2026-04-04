@@ -32,6 +32,7 @@ function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): voi
         'archive_layout',
         'thumb_size',
         'browse_cols',
+        'exif_display_enabled',
     ];
 
     $prefix     = $skin_slug . '__';
