@@ -149,6 +149,26 @@ if ($forum_enabled && $forum_api_key === '') {
     }
 }
 
+// ── Display-Name Sync ─────────────────────────────────────────────────────────
+// If the site name has changed since registration, push the update to the forum
+// server via PATCH /installs/me. We compare against the last-synced name stored
+// in snap_settings ('forum_display_name') to avoid hitting the API every load.
+if ($forum_enabled && $forum_api_key !== '') {
+    $current_name   = $settings['site_name']        ?? '';
+    $synced_name    = $settings['forum_display_name'] ?? '';
+
+    if ($current_name !== '' && $current_name !== $synced_name) {
+        $patch = forum_api('PATCH', 'installs/me', ['display_name' => $current_name], $forum_api_key);
+        if (!$patch['_error']) {
+            $pdo->prepare(
+                "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('forum_display_name', ?)
+                 ON DUPLICATE KEY UPDATE setting_val = ?"
+            )->execute([$current_name, $current_name]);
+            $settings['forum_display_name'] = $current_name;
+        }
+    }
+}
+
 // ── POST Action Handlers ──────────────────────────────────────────────────────
 // All mutations are processed before HTML output so we can redirect cleanly.
 $action = $_POST['action'] ?? '';
