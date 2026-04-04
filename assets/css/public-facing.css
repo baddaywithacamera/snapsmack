@@ -343,3 +343,18 @@ body.landing-only .ge-header,
 body.landing-only .pickup-header,
 body.landing-only .snt-header,
 body.landing-only .tg-topbar { display: none; }
+
+/* 11. TABLET TOUCH TARGETS (pointer: coarse)
+   -------------------------------------------------------------------------
+   On touch devices (tablets, touchscreens) nav links are too small for
+   reliable finger tapping. This rule enlarges the tap area to meet the
+   WCAG 2.5.5 recommended minimum of 44px without changing visual layout.
+   pointer: coarse = touch/stylus input; no effect on desktop mouse users. */
+@media (pointer: coarse) {
+    .nav-menu a,
+    .nav-links a {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+    }
+}

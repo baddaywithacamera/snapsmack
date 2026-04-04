@@ -34,7 +34,7 @@ body {
 #page-wrapper {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100dvh;
 }
 
 #scroll-stage {
@@ -135,7 +135,7 @@ body {
 #fsog-photobox {
     background: var(--bg-primary);
     width: 100%;
-    height: calc(100vh - 140px);
+    height: calc(100dvh - 140px);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -610,8 +610,8 @@ body {
    STATIC PAGE & ARCHIVE PAGE OVERRIDES
    ========================================================================= */
 
-/* --- ARCHIVE PAGE: unlock the 100vh viewport prison so the body scrolls ---
-   The snapping engine locks html/body/page-wrapper to 100vh for single-image
+/* --- ARCHIVE PAGE: unlock the 100dvh viewport prison so the body scrolls ---
+   The snapping engine locks html/body/page-wrapper to 100dvh for single-image
    panning. Archive and static pages must undo this so grids scroll naturally
    and the footer lands at the actual bottom of content (not mid-page).
    Same pattern used in Rational Geo. */
@@ -631,7 +631,7 @@ body.static-transmission {
 body.archive-page #page-wrapper,
 body.static-transmission #page-wrapper {
     height: auto !important;
-    min-height: 100vh;
+    min-height: 100dvh;
     display: flex !important;
     flex-direction: column !important;
 }
@@ -1175,3 +1175,22 @@ form.ml-block-form {
     color: var(--text-primary) !important;
     font-family: 'DM Sans', sans-serif !important;
 }
+
+/* ==========================================================================
+   TABLET — ARCHIVE GRID & TOUCH TARGETS
+   ========================================================================= */
+
+/* Cropped grid uses fixed pixel column widths. At defaults (4 cols × 250px
+   + 60px side padding) the minimum width is ~1210px — overflows at 1200px.
+   Switch to 1fr at 1400px so columns are fluid but count stays user-set.
+   Justified grid is unaffected. Desktop (>1400px) sees no change. */
+@media (max-width: 1400px) {
+    .fsog-archive-grid {
+        grid-template-columns: repeat(var(--grid-cols, 4), 1fr);
+        padding-left: 30px;
+        padding-right: 30px;
+    }
+}
+
+/* Touch targets: skins sharing .nav-menu a / .nav-links a are handled by
+   public-facing.css. No additional selectors needed here. */
