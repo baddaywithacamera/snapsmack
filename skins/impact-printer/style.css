@@ -35,7 +35,7 @@ body {
 #page-wrapper {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100dvh;
     /* Left/right padding clears the sprocket holes in the texture.
        Adjustable via margin_left / margin_right sliders in skin admin. */
     padding-left: 55px;
@@ -158,7 +158,7 @@ body.landing-only .ip-header-inside,
 
 #ip-photobox {
     width: 100%;
-    height: calc(100vh - 150px);
+    height: calc(100dvh - 150px);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -238,7 +238,7 @@ body.landing-only .ip-header-inside,
 /* The image */
 .ip-image {
     max-width: 100%;
-    max-height: calc(100vh - 280px);
+    max-height: calc(100dvh - 280px);
     width: auto;
     height: auto;
     box-sizing: border-box;

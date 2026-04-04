@@ -75,7 +75,7 @@ html {
 #page-wrapper {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
   position: relative;
   z-index: 1;
 }
@@ -343,8 +343,8 @@ small,
   flex-shrink: 1;
   min-height: 0;
   /* Explicit height gives max-height:100% on .rg-image a value to resolve against.
-     Formula: 100vh minus fixed header (70px) minus infobox (var). */
-  height: calc(100vh - 70px - var(--infobox-height, 50px));
+     Formula: 100dvh minus fixed header (70px) minus infobox (var). */
+  height: calc(100dvh - 70px - var(--infobox-height, 50px));
   padding: 0 !important; /* override compiled blob until admin re-saves */
 }
 
@@ -863,7 +863,7 @@ small,
 body.archive-page #page-wrapper {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 100dvh;
   height: auto;
 }
 
@@ -964,7 +964,7 @@ body.archive-page #scroll-stage {
    ========================================================================== */
 
 /* Static pages need scrollable layout — undo the viewport lock applied to
-   single-image view. html/body overflow:hidden and #page-wrapper height:100vh
+   single-image view. html/body overflow:hidden and #page-wrapper height:100dvh
    are set globally for the snapping engine; static pages need to scroll freely.
    "body.static-transmission html" is an invalid selector (CSS only cascades
    downward, not upward), so html must be unlocked via :has() instead. */
@@ -986,12 +986,12 @@ body.static-transmission {
 
 body.static-transmission #page-wrapper {
   height: auto !important;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 body.static-transmission #scroll-stage {
   display: block !important; /* kill flex layout — photobox must not fill viewport */
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow: visible !important;
   position: relative;
 }
@@ -1435,7 +1435,7 @@ input[type="reset"]:active {
 
   #rg-photobox {
     margin-top: 60px; /* match smaller header */
-    height: calc(100vh - 110px); /* 60px header + 50px infobox */
+    height: calc(100dvh - 110px); /* 60px header + 50px infobox */
   }
 
   .rg-single #rg-comments-drawer { top: 60px; }
@@ -1505,7 +1505,7 @@ input[type="reset"]:active {
 
   #rg-photobox {
     margin-top: 50px;
-    height: calc(100vh - 95px); /* 50px header + 45px infobox */
+    height: calc(100dvh - 95px); /* 50px header + 45px infobox */
   }
 
   .rg-single #rg-comments-drawer { top: 50px; }
@@ -1618,7 +1618,7 @@ input[type="reset"]:active {
 
   #rg-photobox {
     margin-top: 45px;
-    height: calc(100vh - 90px); /* 45px header + 45px infobox */
+    height: calc(100dvh - 90px); /* 45px header + 45px infobox */
   }
 
   .rg-single #rg-comments-drawer { top: 45px; }
@@ -1768,7 +1768,7 @@ input[type="reset"]:active {
 
 .rg-landing {
   width: 100%;
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -2078,4 +2078,15 @@ input[type="reset"]:active {
     max-width: 100%;
     page-break-inside: avoid;
   }
+}
+
+/* ==========================================================================
+   TABLET — TOUCH TARGETS
+   ========================================================================= */
+@media (pointer: coarse) {
+    .rg-header-nav a {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+    }
 }
