@@ -615,8 +615,10 @@ body::before {
     overflow-x: hidden;
 }
 .static-content h2,
-.static-content h3 {
+.static-content h3,
+.static-content h4 {
     margin-top: 2em;
+    margin-bottom: 0.4em;
 }
 .static-content .description > :first-child h2,
 .static-content .description > :first-child h3,
@@ -624,6 +626,19 @@ body::before {
 .static-content .description > h3:first-child {
     margin-top: 0.5em;
 }
+
+/* Lists: consistent with paragraph line-height and spacing */
+.static-content .description ul,
+.static-content .description ol {
+    margin-top: 0;
+    margin-bottom: 1.4em;
+    padding-left: 1.4em;
+}
+.static-content .description li {
+    line-height: 1.8;
+    margin-bottom: 0.3em;
+}
+.static-content .description li:last-child { margin-bottom: 0; }
 
 .static-content::after {
     content: "";
