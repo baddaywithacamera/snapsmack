@@ -9,6 +9,17 @@
 
 require_once 'core/auth.php';
 require_once 'core/snap-tags.php';
+require_once 'core/skin-settings.php';
+
+// Load and apply skin-aware settings early so the frame save handler and
+// form rendering both use the actual skin defaults, not hardcoded fallbacks.
+// admin-header.php checks isset($settings) and skips its own load if set.
+$settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+$_edit_active_skin = $settings['active_skin'] ?? '';
+if ($_edit_active_skin) {
+    snapsmack_apply_skin_settings($settings, $_edit_active_skin);
+}
+unset($_edit_active_skin);
 
 // --- REQUEST VALIDATION ---
 // Requires an image ID parameter to load the correct record.
@@ -108,21 +119,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $display_opts['palette'] = $existing_display['palette'];
         }
     } else {
+        // Skin defaults — only save a per-image override when the submitted
+        // value actually differs from the skin's configured default.
+        // This keeps img_display_options clean after a reset and prevents
+        // the form from silently locking in stale hardcoded values.
+        $sk_frame_color  = $settings['htbs_frame_color']  ?? '#2c2017';
+        $sk_frame_width  = (int)($settings['htbs_frame_width']  ?? 8);
+        $sk_mat_color    = $settings['htbs_mat_color']    ?? '#f5f0eb';
+        $sk_mat_width    = (int)($settings['htbs_mat_width']    ?? 24);
+        $sk_bevel_style  = $settings['htbs_bevel_style']  ?? 'single';
+
         $display_opts = $existing_display;
-        if (isset($_POST['frame_color']) && $_POST['frame_color'] !== '') {
+
+        if (isset($_POST['frame_color']) && $_POST['frame_color'] !== '' && $_POST['frame_color'] !== $sk_frame_color) {
             $display_opts['frame_color'] = $_POST['frame_color'];
+        } else {
+            unset($display_opts['frame_color']);
         }
-        if (isset($_POST['frame_width']) && $_POST['frame_width'] !== '') {
+        if (isset($_POST['frame_width']) && $_POST['frame_width'] !== '' && (int)$_POST['frame_width'] !== $sk_frame_width) {
             $display_opts['frame_width'] = (int)$_POST['frame_width'];
+        } else {
+            unset($display_opts['frame_width']);
         }
-        if (isset($_POST['mat_color']) && $_POST['mat_color'] !== '') {
+        if (isset($_POST['mat_color']) && $_POST['mat_color'] !== '' && $_POST['mat_color'] !== $sk_mat_color) {
             $display_opts['mat_color'] = $_POST['mat_color'];
+        } else {
+            unset($display_opts['mat_color']);
         }
-        if (isset($_POST['mat_width']) && $_POST['mat_width'] !== '') {
+        if (isset($_POST['mat_width']) && $_POST['mat_width'] !== '' && (int)$_POST['mat_width'] !== $sk_mat_width) {
             $display_opts['mat_width'] = (int)$_POST['mat_width'];
+        } else {
+            unset($display_opts['mat_width']);
         }
-        if (isset($_POST['bevel_style'])) {
+        if (isset($_POST['bevel_style']) && $_POST['bevel_style'] !== $sk_bevel_style) {
             $display_opts['bevel_style'] = $_POST['bevel_style'];
+        } else {
+            unset($display_opts['bevel_style']);
         }
     }
     $display_json = !empty($display_opts) ? json_encode($display_opts) : null;
@@ -368,7 +400,7 @@ include 'core/sidebar.php';
                 <div class="lens-input-wrapper">
                     <label>FRAME COLOUR</label>
                     <div class="frame-color-row">
-                        <input type="color" name="frame_color" value="<?php echo htmlspecialchars($display_opts['frame_color'] ?? '#2c2017'); ?>" class="color-picker-input">
+                        <input type="color" name="frame_color" value="<?php echo htmlspecialchars($display_opts['frame_color'] ?? ($settings['htbs_frame_color'] ?? '#2c2017')); ?>" class="color-picker-input">
                         <?php if (!empty($palette)): ?>
                             <div class="palette-swatches" data-target="frame_color">
                                 <?php foreach ($palette as $hex): ?>
@@ -380,14 +412,14 @@ include 'core/sidebar.php';
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>FRAME WIDTH <span class="range-val" id="frame-width-val"><?php echo (int)($display_opts['frame_width'] ?? 8); ?>px</span></label>
-                    <input type="range" name="frame_width" min="3" max="20" value="<?php echo (int)($display_opts['frame_width'] ?? 8); ?>" oninput="document.getElementById('frame-width-val').textContent=this.value+'px'">
+                    <label>FRAME WIDTH <span class="range-val" id="frame-width-val"><?php echo (int)($display_opts['frame_width'] ?? ($settings['htbs_frame_width'] ?? 8)); ?>px</span></label>
+                    <input type="range" name="frame_width" min="3" max="20" value="<?php echo (int)($display_opts['frame_width'] ?? ($settings['htbs_frame_width'] ?? 8)); ?>" oninput="document.getElementById('frame-width-val').textContent=this.value+'px'">
                 </div>
 
                 <div class="lens-input-wrapper">
                     <label>MAT COLOUR</label>
                     <div class="frame-color-row">
-                        <input type="color" name="mat_color" value="<?php echo htmlspecialchars($display_opts['mat_color'] ?? '#f5f0eb'); ?>" class="color-picker-input">
+                        <input type="color" name="mat_color" value="<?php echo htmlspecialchars($display_opts['mat_color'] ?? ($settings['htbs_mat_color'] ?? '#f5f0eb')); ?>" class="color-picker-input">
                         <?php if (!empty($palette)): ?>
                             <div class="palette-swatches" data-target="mat_color">
                                 <?php foreach ($palette as $hex): ?>
@@ -399,16 +431,17 @@ include 'core/sidebar.php';
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>MAT WIDTH <span class="range-val" id="mat-width-val"><?php echo (int)($display_opts['mat_width'] ?? 24); ?>px</span></label>
-                    <input type="range" name="mat_width" min="8" max="60" value="<?php echo (int)($display_opts['mat_width'] ?? 24); ?>" oninput="document.getElementById('mat-width-val').textContent=this.value+'px'">
+                    <label>MAT WIDTH <span class="range-val" id="mat-width-val"><?php echo (int)($display_opts['mat_width'] ?? ($settings['htbs_mat_width'] ?? 24)); ?>px</span></label>
+                    <input type="range" name="mat_width" min="8" max="60" value="<?php echo (int)($display_opts['mat_width'] ?? ($settings['htbs_mat_width'] ?? 24)); ?>" oninput="document.getElementById('mat-width-val').textContent=this.value+'px'">
                 </div>
 
                 <div class="lens-input-wrapper">
                     <label>BEVEL STYLE</label>
                     <select name="bevel_style" class="full-width-select">
-                        <option value="none" <?php echo ($display_opts['bevel_style'] ?? 'single') === 'none' ? 'selected' : ''; ?>>None</option>
-                        <option value="single" <?php echo ($display_opts['bevel_style'] ?? 'single') === 'single' ? 'selected' : ''; ?>>Single</option>
-                        <option value="double" <?php echo ($display_opts['bevel_style'] ?? 'single') === 'double' ? 'selected' : ''; ?>>Double</option>
+                        <?php $cur_bevel = $display_opts['bevel_style'] ?? ($settings['htbs_bevel_style'] ?? 'single'); ?>
+                        <option value="none" <?php echo $cur_bevel === 'none' ? 'selected' : ''; ?>>None</option>
+                        <option value="single" <?php echo $cur_bevel === 'single' ? 'selected' : ''; ?>>Single</option>
+                        <option value="double" <?php echo $cur_bevel === 'double' ? 'selected' : ''; ?>>Double</option>
                     </select>
                 </div>
 
