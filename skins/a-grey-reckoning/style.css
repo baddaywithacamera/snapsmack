@@ -653,7 +653,7 @@ img {
 
 .ge-landing-split {
     display: flex;
-    min-height: 100vh;
+    min-height: 100dvh;
 }
 
 .ge-landing-menu {
@@ -732,7 +732,7 @@ img {
 
 .ge-landing-hero {
     position: relative;
-    min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -866,5 +866,17 @@ img {
 
     .ge-landing-menu {
         padding: 24px 16px;
+    }
+}
+
+/* ==========================================================================
+   TABLET — TOUCH TARGETS
+   ========================================================================= */
+@media (pointer: coarse) {
+    .ge-nav a,
+    .ge-landing-nav-item a {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
     }
 }

@@ -58,7 +58,7 @@ body::before {
 #page-wrapper {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100dvh;
     position: relative;
     z-index: 1;
 }
@@ -176,7 +176,7 @@ body::before {
 #tg-photobox {
     background: transparent;
     width: 100%;
-    height: calc(100vh - 140px);
+    height: calc(100dvh - 140px);
     display: flex;
     justify-content: center;
     align-items: center;

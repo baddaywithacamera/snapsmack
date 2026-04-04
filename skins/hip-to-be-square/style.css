@@ -40,7 +40,7 @@ body {
     color: var(--text-primary);
     font-size: 13px;
     line-height: 1.6;
-    min-height: 100vh;
+    min-height: 100dvh;
 }
 
 /* ============================================================================
@@ -434,7 +434,7 @@ a:hover {
     --footer-bar-height: 3vh;
     padding-top: var(--header-height, 7vh);
     padding-bottom: calc(11vh + var(--footer-bar-height));
-    height: 100vh;
+    height: 100dvh;
     overflow: hidden;
     box-sizing: border-box;
     display: flex;
@@ -593,12 +593,12 @@ a:hover {
    ============================================================================ */
 
 .htbs-slider-landing {
-    height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     box-sizing: border-box;
-    /* Header is fixed/60px — padding-top clears it, box-sizing keeps 100vh honest */
+    /* Header is fixed/60px — padding-top clears it, box-sizing keeps 100dvh honest */
     padding-top: var(--header-height, 60px);
 }
 
@@ -697,7 +697,7 @@ a:hover {
 body.archive-page #page-wrapper {
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
+    min-height: 100dvh;
 }
 
 body.archive-page #scroll-stage {
@@ -1112,7 +1112,7 @@ footer a:hover {
     top: 0;
     left: 0;
     width: 100vw;
-    height: 100vh;
+    height: 100dvh;
     z-index: 500;
     display: flex;
     align-items: center;
@@ -1590,7 +1590,7 @@ body.static-transmission:not(.htbs-page) {
 }
 
 body.static-transmission #scroll-stage {
-    min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
 }

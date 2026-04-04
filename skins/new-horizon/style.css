@@ -34,7 +34,7 @@ body {
 #page-wrapper {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100dvh;
 }
 
 #scroll-stage {
@@ -134,8 +134,8 @@ body {
 #photobox {
     background: var(--bg-page);
     width: 100%;
-    /* 1. Calculate Full Available Void: 100vh - 80px (Header) - 60px (Infobox) */
-    height: calc(100vh - 140px);
+    /* 1. Calculate Full Available Void: 100dvh - 80px (Header) - 60px (Infobox) */
+    height: calc(100dvh - 140px);
     display: flex;
     justify-content: center;
     align-items: center;
