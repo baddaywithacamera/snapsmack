@@ -87,6 +87,9 @@ include 'core/sidebar.php';
                 <?php if (($import_result['checksum_fail'] ?? 0) > 0): ?>
                     Checksum failures: <?php echo $import_result['checksum_fail']; ?><br>
                 <?php endif; ?>
+                <?php if (($import_result['not_bundled'] ?? 0) > 0): ?>
+                    Not bundled (restore via FTP/Cloud): <?php echo $import_result['not_bundled']; ?><br>
+                <?php endif; ?>
                 <?php if (($import_result['missing'] ?? 0) > 0): ?>
                     Missing files: <?php echo $import_result['missing']; ?><br>
                 <?php endif; ?>
@@ -108,8 +111,10 @@ include 'core/sidebar.php';
         <div class="box box-flex">
             <h3>EXPORT RECOVERY KIT</h3>
             <p class="skin-desc-text">
-                Complete backup — database, media library, branding assets, active skin.
-                Everything needed to rebuild from scratch.
+                Full SQL dump plus a complete file manifest with SHA-256 checksums
+                for every media file, branding asset, and skin file. Media files are
+                inventoried (path, size, hash) but not bundled — use FTP or Cloud
+                Backup to push actual files separately.
             </p>
             <form method="POST">
                 <input type="hidden" name="action" value="export">
@@ -121,8 +126,10 @@ include 'core/sidebar.php';
         <div class="box box-flex">
             <h3>IMPORT RECOVERY KIT</h3>
             <p class="skin-desc-text">
-                Upload a previously exported .tar.gz to restore your entire site.
-                Overwrites the database and restores all files.
+                Upload a previously exported .tar.gz to restore your database
+                and verify your file inventory. The SQL dump is imported directly;
+                media files listed in the manifest must be restored separately
+                via FTP or Cloud Backup.
             </p>
             <form method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="import_recovery">

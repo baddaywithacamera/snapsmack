@@ -4,6 +4,17 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.8e — "Raised Toilet Seat" (2026-04-07)
+
+### Added
+- **Smack Up Your Backup**: New companion tool listed on the Companion Tools page. Backup and restore tool for SnapSmack sites — pulls the recovery kit, packages versioned ZIPs, pushes to Google Drive or OneDrive, supports cold-start cloud recovery and three-way file auditing.
+- **Release builder — auto changelog**: `tools/build-release.php` now parses `CHANGELOG.md` and automatically populates the `changelog` array in the generated `latest.json` template. No more manual editing between build and publish.
+
+### Changed
+- **Smack Your Batch Up version badge**: Updated to v0.7.7a-04 on the Companion Tools page (session keepalive fix, snap-to-top queue fix).
+
+---
+
 ## 0.7.8c — "Raised Toilet Seat" (2026-04-04)
 
 ### Added
