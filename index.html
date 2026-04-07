@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SnapSmack — Photo Blogging is Back, Bitchez</title>
+<meta name="description" content="SnapSmack is a no-nonsense self-hosted photo blogging platform. Own your images. Own your archive. No algorithms. No ads. Currently in Alpha — accepting beta testers.">
+<meta property="og:title" content="SnapSmack — Photo Blogging is Back">
+<meta property="og:description" content="Self-hosted photo blogging. Own your images. No algorithms. Currently in Alpha.">
+<meta property="og:image" content="img/og-card.jpg">
+<style>
+/* ─── RESET & BASE ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --red:       #D40000;
+    --black:     #111111;
+    --dark-grey: #333333;
+    --mid-grey:  #666666;
+    --light-grey:#f4f4f4;
+    --border:    #ddd;
+    --white:     #ffffff;
+    --max:       1100px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 17px;
+    line-height: 1.7;
+    color: var(--dark-grey);
+    background: var(--white);
+}
+
+a {
+    color: var(--dark-grey);
+    text-decoration: none;
+    transition: color 0.15s;
+}
+a:hover {
+    color: var(--black);
+    text-decoration: underline;
+}
+
+img { display: block; max-width: 100%; height: auto; }
+
+/* ─── LAYOUT ────────────────────────────────────────────────────────────── */
+.wrap {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 32px;
+}
+
+section {
+    padding: 72px 0;
+}
+
+section + section {
+    border-top: 1px solid var(--border);
+}
+
+/* ─── TYPOGRAPHY ────────────────────────────────────────────────────────── */
+h1, h2, h3 {
+    font-family: Arial Black, Arial, sans-serif;
+    line-height: 1.1;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+}
+
+h2 {
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    color: var(--red);
+    margin-bottom: 24px;
+}
+
+h3 {
+    font-size: 1.05rem;
+    color: var(--black);
+    margin-bottom: 8px;
+    letter-spacing: 0.03em;
+}
+
+p { margin-bottom: 1em; }
+p:last-child { margin-bottom: 0; }
+
+.lede {
+    font-size: 1.15rem;
+    color: var(--mid-grey);
+    max-width: 680px;
+}
+
+/* ─── HEADER ────────────────────────────────────────────────────────────── */
+#site-header {
+    background: var(--white);
+    border-bottom: 3px solid var(--red);
+    padding: 28px 0 24px;
+}
+
+.header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.logo-lockup {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.logo-lockup img {
+    width: 90px;
+    height: auto;
+    flex-shrink: 0;
+}
+
+.logo-text .snap {
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: clamp(2rem, 5vw, 3.4rem);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.03em;
+    line-height: 1;
+}
+
+.logo-text .snap em {
+    color: var(--red);
+    font-style: normal;
+}
+
+.logo-text .snap strong {
+    color: var(--black);
+    font-weight: 900;
+}
+
+.logo-text .tagline {
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: clamp(0.65rem, 1.5vw, 0.85rem);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--dark-grey);
+    margin-top: 4px;
+}
+
+.logo-text .tagline em {
+    color: var(--red);
+    font-style: normal;
+}
+
+.alpha-badge {
+    display: inline-block;
+    background: var(--black);
+    color: var(--white);
+    font-family: 'Courier New', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 5px 12px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* ─── HERO ──────────────────────────────────────────────────────────────── */
+#hero {
+    background: var(--white);
+    padding: 80px 0 72px;
+    border-bottom: 1px solid var(--border);
+}
+
+.hero-inner {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 32px;
+}
+
+.hero-kicker {
+    font-family: 'Courier New', monospace;
+    font-size: 0.82rem;
+    color: var(--mid-grey);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+}
+
+.hero-headline {
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: clamp(2rem, 5vw, 3.6rem);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    color: var(--black);
+    line-height: 1.05;
+    margin-bottom: 24px;
+    max-width: 820px;
+}
+
+.hero-headline span { color: var(--red); }
+
+.hero-sub {
+    font-size: 1.2rem;
+    color: var(--dark-grey);
+    max-width: 620px;
+    margin-bottom: 36px;
+    line-height: 1.65;
+}
+
+.hero-actions {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.btn {
+    display: inline-block;
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 14px 28px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+}
+
+.btn:hover { text-decoration: none; }
+
+.btn-primary {
+    background: var(--red);
+    color: var(--white);
+}
+.btn-primary:hover {
+    background: #a80000;
+    color: var(--white);
+}
+
+.btn-secondary {
+    background: var(--black);
+    color: var(--white);
+}
+.btn-secondary:hover {
+    background: #333;
+    color: var(--white);
+}
+
+.hero-note {
+    font-family: 'Courier New', monospace;
+    font-size: 0.78rem;
+    color: var(--mid-grey);
+    margin-top: 20px;
+    letter-spacing: 0.02em;
+}
+
+/* ─── WHAT IS IT ────────────────────────────────────────────────────────── */
+#what {
+    background: var(--white);
+}
+
+.two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 56px;
+    align-items: start;
+}
+
+.feature-list {
+    list-style: none;
+    margin-top: 8px;
+}
+
+.feature-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    padding-left: 20px;
+    position: relative;
+    font-size: 0.97rem;
+}
+
+.feature-list li::before {
+    content: '→';
+    color: var(--red);
+    position: absolute;
+    left: 0;
+    font-style: normal;
+}
+
+/* ─── WORKING NOW ───────────────────────────────────────────────────────── */
+#working {
+    background: var(--light-grey);
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 24px;
+    margin-top: 8px;
+}
+
+.status-card {
+    background: var(--white);
+    border-top: 3px solid var(--red);
+    padding: 20px 22px;
+}
+
+.status-card h3 {
+    font-size: 0.88rem;
+    margin-bottom: 6px;
+}
+
+.status-card p {
+    font-size: 0.88rem;
+    color: var(--mid-grey);
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* ─── THEMES IN THE WILD ────────────────────────────────────────────────── */
+#themes {
+    background: var(--white);
+}
+
+.theme-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 40px;
+    margin-top: 8px;
+}
+
+.theme-card {
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.theme-main-shot {
+    background: var(--light-grey);
+    height: 210px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Courier New', monospace;
+    font-size: 0.78rem;
+    color: var(--mid-grey);
+    letter-spacing: 0.04em;
+}
+
+.theme-main-shot img {
+    width: 100%;
+    height: 210px;
+    object-fit: cover;
+    object-position: top;
+    display: block;
+}
+
+.theme-thumbs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    background: var(--border);
+}
+
+.theme-thumbs a {
+    display: block;
+    overflow: hidden;
+    height: 80px;
+    background: var(--light-grey);
+}
+
+.theme-thumbs a img {
+    width: 100%;
+    height: 80px;
+    object-fit: cover;
+    object-position: top;
+    display: block;
+    transition: opacity 0.15s;
+}
+
+.theme-thumbs a:hover img { opacity: 0.8; }
+
+.theme-info {
+    padding: 16px 18px;
+}
+
+.theme-info h3 {
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+}
+
+.theme-info p {
+    font-size: 0.84rem;
+    color: var(--mid-grey);
+    margin-bottom: 10px;
+}
+
+.theme-link {
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--red);
+}
+
+.theme-link:hover {
+    color: var(--black);
+    text-decoration: underline;
+}
+
+/* ─── TOOLS ─────────────────────────────────────────────────────────────── */
+#tools {
+    background: var(--light-grey);
+}
+
+.tool-block {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 56px;
+    align-items: center;
+}
+
+.tool-screenshot {
+    background: var(--white);
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.tool-screenshot-placeholder {
+    height: 320px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Courier New', monospace;
+    font-size: 0.78rem;
+    color: var(--mid-grey);
+    letter-spacing: 0.04em;
+    background: #1a1a1a;
+    color: #39FF14;
+}
+
+.tool-screenshot img {
+    width: 100%;
+    display: block;
+}
+
+.tool-copy h3 {
+    font-size: 0.75rem;
+    color: var(--mid-grey);
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+}
+
+.tool-copy h2 {
+    margin-bottom: 16px;
+}
+
+.tool-copy p {
+    font-size: 0.97rem;
+    color: var(--dark-grey);
+}
+
+.tool-copy .dl-note {
+    margin-top: 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.78rem;
+    color: var(--mid-grey);
+    letter-spacing: 0.02em;
+}
+
+/* ─── COMING SOON ───────────────────────────────────────────────────────── */
+#coming {
+    background: var(--white);
+}
+
+.coming-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 24px;
+    margin-top: 8px;
+}
+
+.coming-item {
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.coming-item h3 {
+    font-size: 0.88rem;
+    color: var(--black);
+    margin-bottom: 6px;
+}
+
+.coming-item p {
+    font-size: 0.87rem;
+    color: var(--mid-grey);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.coming-item .tag {
+    display: inline-block;
+    font-family: 'Courier New', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 8px;
+}
+
+/* ─── BETA SIGNUP ───────────────────────────────────────────────────────── */
+#beta {
+    background: var(--black);
+    color: var(--white);
+}
+
+#beta h2 {
+    color: var(--red);
+}
+
+#beta .lede {
+    color: #aaa;
+    margin-bottom: 36px;
+}
+
+.mailerlite-placeholder {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    padding: 32px;
+    max-width: 560px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.82rem;
+    color: #666;
+    letter-spacing: 0.04em;
+}
+
+/* ─── FOOTER ────────────────────────────────────────────────────────────── */
+#site-footer {
+    background: var(--black);
+    border-top: 3px solid var(--red);
+    padding: 32px 0;
+}
+
+.footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.footer-copy {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    color: #555;
+    letter-spacing: 0.04em;
+}
+
+.footer-links {
+    display: flex;
+    gap: 24px;
+}
+
+.footer-links a {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    color: #555;
+    text-transform: uppercase;
+}
+
+.footer-links a:hover {
+    color: var(--white);
+}
+
+/* ─── RESPONSIVE ────────────────────────────────────────────────────────── */
+@media (max-width: 760px) {
+    section { padding: 48px 0; }
+    .wrap { padding: 0 20px; }
+    .hero-inner { padding: 0 20px; }
+    .two-col { grid-template-columns: 1fr; gap: 32px; }
+    .tool-block { grid-template-columns: 1fr; gap: 32px; }
+    .header-inner { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .logo-lockup img { width: 64px; }
+    .footer-inner { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────────────────────────── -->
+<header id="site-header">
+    <div class="wrap">
+        <div class="header-inner">
+            <div class="logo-lockup">
+                <img src="img/logo.png" alt="SnapSmack">
+                <div class="logo-text">
+                    <div class="snap"><em>SNAP</em><strong>SMACK</strong></div>
+                    <div class="tagline">PHOTO <em>BLOGGING</em> IS BACK, BITCHEZ</div>
+                </div>
+            </div>
+            <span class="alpha-badge">Alpha v0.7.8e</span>
+        </div>
+    </div>
+</header>
+
+<!-- ── HERO ───────────────────────────────────────────────────────────────── -->
+<section id="hero">
+    <div class="hero-inner">
+        <p class="hero-kicker">[ Self-hosted · No algorithms · No ads · Your images ]</p>
+        <h1 class="hero-headline">A photo blog platform that doesn't treat you like a <span>product.</span></h1>
+        <p class="hero-sub">SnapSmack is a self-hosted CMS built for photographers who got tired of Instagram, Flickr, and every other platform deciding what happens to their work. Own your archive. Own your audience. No middleman.</p>
+        <div class="hero-actions">
+            <a href="#beta" class="btn btn-primary">Apply for Beta Access</a>
+            <a href="#what" class="btn btn-secondary">See What It Does</a>
+        </div>
+        <p class="hero-note">[ Currently in Alpha — stable enough to run a real site, rough around a few edges ]</p>
+    </div>
+</section>
+
+<!-- ── WHAT IS IT ──────────────────────────────────────────────────────────── -->
+<section id="what">
+    <div class="wrap">
+        <div class="two-col">
+            <div>
+                <h2>What Is SnapSmack?</h2>
+                <p>It's a photo blogging platform you install on your own server. Every image you post is yours — sitting on your own hosting, in your own database, under your own domain. SnapSmack doesn't have an app to delete, a policy to change, or a feed to bury you in.</p>
+                <p>Post one image at a time with a title, description, and tags. Pick a skin. Done. It's deliberately not trying to be everything.</p>
+            </div>
+            <div>
+                <h3>Built-in from day one</h3>
+                <ul class="feature-list">
+                    <li>Self-hosted on any PHP/MySQL server</li>
+                    <li>Multiple skins with full theme customization</li>
+                    <li>EXIF data extraction and copyright embedding</li>
+                    <li>Google Drive high-res download links</li>
+                    <li>Static pages, albums, blogroll</li>
+                    <li>Community features — reactions, comments, following</li>
+                    <li>Bulk posting via companion desktop tool</li>
+                    <li>Full backup and restore tools</li>
+                    <li>2FA login protection</li>
+                    <li>AI writing assistant in the post editor</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── WORKING NOW ─────────────────────────────────────────────────────────── -->
+<section id="working">
+    <div class="wrap">
+        <h2>Working Right Now</h2>
+        <p class="lede">Alpha v0.7.8e is running production sites today. Here's what's solid.</p>
+        <div class="status-grid">
+            <div class="status-card">
+                <h3>Core CMS</h3>
+                <p>Post, edit, publish, draft. Full image pipeline with EXIF extraction, auto-thumbnails, and palette detection.</p>
+            </div>
+            <div class="status-card">
+                <h3>Skin System</h3>
+                <p>Multiple stable skins. Full colour, font, layout, and texture customization from the admin panel.</p>
+            </div>
+            <div class="status-card">
+                <h3>Smack Your Batch Up</h3>
+                <p>Desktop tool for bulk posting. Batch manifests, EXIF embedding, Drive uploads, session keepalive.</p>
+            </div>
+            <div class="status-card">
+                <h3>Community</h3>
+                <p>Reactions, comments, user following, and a community dock. Opt in or leave it off.</p>
+            </div>
+            <div class="status-card">
+                <h3>Albums & Archives</h3>
+                <p>Date archives, custom albums, blogroll, and static pages with full shortcode support.</p>
+            </div>
+            <div class="status-card">
+                <h3>Updates</h3>
+                <p>One-click in-admin updates. Signed releases, migration runner, schema sync, rollback support.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── THEMES IN THE WILD ──────────────────────────────────────────────────── -->
+<section id="themes">
+    <div class="wrap">
+        <h2>Skins in the Wild</h2>
+        <p class="lede">Five skins, five live sites. Click through to see them running real work.</p>
+        <div class="theme-grid">
+
+            <div class="theme-card">
+                <div class="theme-main-shot">
+                    <img src="img/50shades-landing.jpg" alt="50 Shades of Noah Grey — landing">
+                </div>
+                <div class="theme-thumbs">
+                    <a href="https://photowalk.ing" target="_blank">
+                        <img src="img/50shades-archive.jpg" alt="50 Shades — archive">
+                    </a>
+                    <a href="https://photowalk.ing" target="_blank">
+                        <img src="img/50shades-pages.jpg" alt="50 Shades — pages">
+                    </a>
+                </div>
+                <div class="theme-info">
+                    <h3>50 Shades of Noah Grey</h3>
+                    <p>Moody, dark, and atmospheric. Three tone variants — dark, medium, light. Cropped grid archive, heavy typographic contrast.</p>
+                    <a href="https://photowalk.ing" target="_blank" class="theme-link">photowalk.ing →</a>
+                </div>
+            </div>
+
+            <div class="theme-card">
+                <div class="theme-main-shot">
+                    <img src="img/galleria-landing.jpg" alt="Galleria — landing">
+                </div>
+                <div class="theme-thumbs">
+                    <a href="https://hekeepsdroningon.ca" target="_blank">
+                        <img src="img/galleria-archive.jpg" alt="Galleria — archive">
+                    </a>
+                    <a href="https://hekeepsdroningon.ca" target="_blank">
+                        <img src="img/galleria-pages.jpg" alt="Galleria — pages">
+                    </a>
+                </div>
+                <div class="theme-info">
+                    <h3>Galleria</h3>
+                    <p>Clean editorial layout. Full-width images, minimal chrome, maximum photograph. Best for single-image focus work.</p>
+                    <a href="https://hekeepsdroningon.ca" target="_blank" class="theme-link">hekeepsdroningon.ca →</a>
+                </div>
+            </div>
+
+            <div class="theme-card">
+                <div class="theme-main-shot">
+                    <img src="img/impact-landing.jpg" alt="Impact Printer — landing">
+                </div>
+                <div class="theme-thumbs">
+                    <a href="https://pixhellated.ca" target="_blank">
+                        <img src="img/impact-archive.jpg" alt="Impact Printer — archive">
+                    </a>
+                    <a href="https://pixhellated.ca" target="_blank">
+                        <img src="img/impact-pages.jpg" alt="Impact Printer — pages">
+                    </a>
+                </div>
+                <div class="theme-info">
+                    <h3>Impact Printer</h3>
+                    <p>High-contrast monochromatic layout with a mechanical print aesthetic. Designed for photography that hits hard.</p>
+                    <a href="https://pixhellated.ca" target="_blank" class="theme-link">pixhellated.ca →</a>
+                </div>
+            </div>
+
+            <div class="theme-card">
+                <div class="theme-main-shot">
+                    <img src="img/rationalgeo-landing.jpg" alt="Rational Geo — landing">
+                </div>
+                <div class="theme-thumbs">
+                    <a href="https://wateronthebrain.ca" target="_blank">
+                        <img src="img/rationalgeo-archive.jpg" alt="Rational Geo — archive">
+                    </a>
+                    <a href="https://wateronthebrain.ca" target="_blank">
+                        <img src="img/rationalgeo-pages.jpg" alt="Rational Geo — pages">
+                    </a>
+                </div>
+                <div class="theme-info">
+                    <h3>Rational Geo</h3>
+                    <p>Bold geometric layout with strong structural typography. Full colour customization. Makes the image the undisputed lead.</p>
+                    <a href="https://wateronthebrain.ca" target="_blank" class="theme-link">wateronthebrain.ca →</a>
+                </div>
+            </div>
+
+            <div class="theme-card">
+                <div class="theme-main-shot">
+                    <img src="img/truegrit-landing.jpg" alt="True Grit — landing">
+                </div>
+                <div class="theme-thumbs">
+                    <a href="https://foundtextures.ca" target="_blank">
+                        <img src="img/truegrit-archive.jpg" alt="True Grit — archive">
+                    </a>
+                    <a href="https://foundtextures.ca" target="_blank">
+                        <img src="img/truegrit-pages.jpg" alt="True Grit — pages">
+                    </a>
+                </div>
+                <div class="theme-info">
+                    <h3>True Grit</h3>
+                    <p>Textured, tactile, analogue in feel. Wood grain panels, bevel options, warm tones. Built for film shooters and texture hunters.</p>
+                    <a href="https://foundtextures.ca" target="_blank" class="theme-link">foundtextures.ca →</a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- ── TOOLS ───────────────────────────────────────────────────────────────── -->
+<section id="tools">
+    <div class="wrap">
+        <h2>Companion Tools</h2>
+        <p class="lede" style="margin-bottom: 48px;">Desktop apps that do the heavy lifting alongside SnapSmack.</p>
+
+        <div class="tool-block">
+            <div class="tool-screenshot">
+                <!-- Replace with: <img src="img/sybu-screenshot.png" alt="Smack Your Batch Up"> -->
+                <div class="tool-screenshot-placeholder">[ SMACK YOUR BATCH UP SCREENSHOT ]</div>
+            </div>
+            <div class="tool-copy">
+                <h3>Companion Tool — Windows</h3>
+                <h2>Smack Your<br>Batch Up</h2>
+                <p>Bulk-post an entire shoot in one go. Load a manifest, drag to reorder, assign categories and albums per image, embed EXIF copyright metadata, upload to Google Drive for high-res download links, and post the batch to your site — all without touching the browser.</p>
+                <p>Connects directly to your SnapSmack admin. Borrows your active colour scheme on login. Keeps the session alive through long jobs.</p>
+                <p class="dl-note">[ Available for Windows 10/11 · Free download from the admin tools page after install ]</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── COMING SOON ─────────────────────────────────────────────────────────── -->
+<section id="coming">
+    <div class="wrap">
+        <h2>Coming Next</h2>
+        <p class="lede">What's in the pipeline for the Beta release.</p>
+        <div class="coming-grid">
+            <div class="coming-item">
+                <span class="tag">Security</span>
+                <h3>Two-Factor Authentication</h3>
+                <p>TOTP-based 2FA compatible with any authenticator app. Because password-only isn't enough anymore.</p>
+            </div>
+            <div class="coming-item">
+                <span class="tag">Tools</span>
+                <h3>Smack Up Your Backup</h3>
+                <p>Automated backup and restore. Differential FTP sync, cloud storage push, three-way file audit, cold-start recovery.</p>
+            </div>
+            <div class="coming-item">
+                <span class="tag">Skins</span>
+                <h3>More Themes</h3>
+                <p>New skins in development: Kiosk, Pocket Rocket, The Grid. Plus boutique skins available separately.</p>
+            </div>
+            <div class="coming-item">
+                <span class="tag">AI</span>
+                <h3>AI Writing Assistant</h3>
+                <p>Spell check, grammar, rephrasing, and a full chat assistant in the post editor. Your API key, your provider.</p>
+            </div>
+            <div class="coming-item">
+                <span class="tag">Mobile</span>
+                <h3>Mobile Skin</h3>
+                <p>Photogram — a dedicated mobile skin that kicks in automatically on phones without touching the desktop layout.</p>
+            </div>
+            <div class="coming-item">
+                <span class="tag">Install</span>
+                <h3>One-Click Installer</h3>
+                <p>Guided web installer for new installs. Database setup, config file generation, initial admin account — done in minutes.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── BETA SIGNUP ─────────────────────────────────────────────────────────── -->
+<section id="beta">
+    <div class="wrap">
+        <h2>Get In Early</h2>
+        <p class="lede">SnapSmack is in Alpha. It's real, it runs, and it's already hosting live sites — but it's not open to the public yet. Sign up and we'll let you know when Beta opens.</p>
+
+        <!-- REPLACE THIS BLOCK WITH YOUR MAILERLITE EMBED CODE -->
+        <div class="mailerlite-placeholder">
+            [ MailerLite signup form goes here ]
+        </div>
+        <!-- END MAILERLITE -->
+
+    </div>
+</section>
+
+<!-- ── FOOTER ──────────────────────────────────────────────────────────────── -->
+<footer id="site-footer">
+    <div class="wrap">
+        <div class="footer-inner">
+            <p class="footer-copy">© <span id="yr"></span> SnapSmack · Alpha v0.7.8e · Built for photographers who give a damn</p>
+            <nav class="footer-links">
+                <a href="smack-login.php">Admin Login</a>
+                <a href="https://github.com/baddaywithacamera/snapsmack" target="_blank">GitHub</a>
+            </nav>
+        </div>
+    </div>
+</footer>
+
+<script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+</body>
+</html>
