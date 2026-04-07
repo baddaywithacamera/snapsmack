@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Companion Tools
- * Alpha v0.7.8
+ * Alpha v0.7.8e
  *
  * Lists available companion desktop tools with download links.
  */
@@ -21,11 +21,19 @@ $tools = [
     ],
     [
         'name'         => 'Smack Your Batch Up',
-        'version'      => '0.7.6',
+        'version'      => '0.7.7a-04',
         'platform'     => 'Windows (64-bit)',
         'download_url' => 'https://snapsmack.ca/tools/smackyourbatchup.zip',
         'description'  => 'Desktop tool for bulk-posting images to SnapSmack. Loads manifest files, embeds EXIF copyright metadata via piexif (pure Python, no external dependencies), resizes to web dimensions, and posts the batch to SnapSmack. Optionally uploads originals to Google Drive for high-res download links. Borrows the active admin colour scheme on connect. Drag to reorder, per-row category and album, accumulate multiple manifests before posting. OneDrive and Dropbox download links can be added manually via the CMS post editor.',
         'requires'     => 'Windows 10/11 only (macOS/Linux not currently supported) · Google Drive credentials JSON (optional — not needed if you don\'t use Drive downloads)',
+    ],
+    [
+        'name'         => 'Smack Up Your Backup',
+        'version'      => '0.1.0',
+        'platform'     => 'Windows / macOS / Linux (64-bit)',
+        'download_url' => 'https://snapsmack.ca/tools/smackupyourbackup.zip',
+        'description'  => 'Backup and restore tool for SnapSmack sites. Pulls the full recovery kit from your site on a schedule, packages it as a versioned ZIP, and pushes it to Google Drive or OneDrive. Restore from any saved backup — locally, from cloud, or directly from a recovery kit. Includes a three-way audit that cross-references the manifest, live FTP filesystem, and database image records to surface missing, orphaned, and misplaced files. Profiles store all connection details for each site; cloud state files enable cold-start recovery on a new machine with no local config.',
+        'requires'     => 'Windows 10/11 · macOS 12+ · Linux · Python 3.11+ (source) or standalone exe · FTP access to your server · Google Drive or OneDrive credentials (optional)',
     ],
 ];
 
