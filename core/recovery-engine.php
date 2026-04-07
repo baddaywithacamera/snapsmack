@@ -423,7 +423,7 @@ class SnapSmackRecovery {
      * documented locations. Full round-trip with the export engine.
      *
      * @param string $archivePath  Path to .tar.gz file OR extracted directory
-     * @return array{sql_imported: int, files_restored: int, checksum_ok: int, checksum_fail: int, missing: int, errors: string[]}
+     * @return array{sql_imported: int, files_restored: int, checksum_ok: int, checksum_fail: int, missing: int, not_bundled: int, errors: string[]}
      */
     public function importRecoveryKit(string $archivePath): array {
         $result = [
@@ -432,6 +432,7 @@ class SnapSmackRecovery {
             'checksum_ok'    => 0,
             'checksum_fail'  => 0,
             'missing'        => 0,
+            'not_bundled'    => 0,
             'errors'         => [],
         ];
 
@@ -498,6 +499,14 @@ class SnapSmackRecovery {
             $restoreTo = $meta['restores_to'] ?? null;
             if (!$restoreTo) continue;
 
+            // Manifest-only entries: files inventoried but not bundled in the
+            // archive (media, branding, skins). These need to be restored via
+            // FTP, Cloud Backup, or manual upload — not from this kit.
+            if (isset($meta['bundled']) && $meta['bundled'] === false) {
+                $result['not_bundled']++;
+                continue;
+            }
+
             $sourcePath = $kitRoot . '/' . $manifestKey;
             $targetPath = $this->baseDir . '/' . $restoreTo;
 
@@ -550,6 +559,10 @@ class SnapSmackRecovery {
         $this->streamProgress("Recovery complete. Files: {$result['files_restored']} restored, "
             . "{$result['checksum_ok']} verified, {$result['checksum_fail']} checksum failures, "
             . "{$result['missing']} missing.", 'info');
+
+        if ($result['not_bundled'] > 0) {
+            $this->streamProgress("{$result['not_bundled']} files inventoried but not bundled — restore via FTP or Cloud Backup.", 'info');
+        }
 
         return $result;
     }

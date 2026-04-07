@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.7a-03"   # bump this on every rebuild
+BUILD_VERSION = "0.7.7a-04"   # bump this on every rebuild
 
 import os
 import queue
@@ -303,6 +303,11 @@ class EntryList(tk.Frame):
             # Load thumbnail in background
             self._load_thumb_async(row, os.path.join(image_folder, entry.file))
 
+        # Flush pending geometry events so the scrollregion is correct before
+        # snapping to the top — without this, yview_moveto(0) fires before
+        # tkinter has laid out the new rows and the snap has no effect.
+        self._inner.update_idletasks()
+        self._canvas.configure(scrollregion=self._canvas.bbox("all"))
         self._canvas.yview_moveto(0)
 
     def update_combos(self, cats: List[str], albums: List[str]):
@@ -414,7 +419,8 @@ class App(tk.Tk):
         self._client:       Optional[SnapSmackClient] = None
         self._site_data:    Optional[SiteData]        = None
         self._drive_service = None
-        self._posting       = False
+        self._posting           = False
+        self._keepalive_running = False
         self._msg_queue:    queue.Queue               = queue.Queue()
 
         self._apply_ttk_style()
@@ -1240,19 +1246,23 @@ class App(tk.Tk):
         orient_map = {'auto': 'auto', 'landscape': '0', 'portrait': '1', 'square': '2'}
         orient_val = orient_map.get(self._def_orient_var.get().strip().lower(), 'auto')
 
-        poster_module.run_batch(
-            client=self._client,
-            entries=entries,
-            image_folder=image_folder,
-            site_data=self._site_data,
-            default_category=self._def_cat_var.get().strip(),
-            default_album=self._def_alb_var.get().strip(),
-            default_orientation=orient_val,
-            on_progress=on_progress,
-            drive_service=self._drive_service,
-            drive_folder_id=self._drive_folder_var.get().strip(),
-            copyright_text=self._copyright_var.get().strip(),
-        )
+        self._start_keepalive()
+        try:
+            poster_module.run_batch(
+                client=self._client,
+                entries=entries,
+                image_folder=image_folder,
+                site_data=self._site_data,
+                default_category=self._def_cat_var.get().strip(),
+                default_album=self._def_alb_var.get().strip(),
+                default_orientation=orient_val,
+                on_progress=on_progress,
+                drive_service=self._drive_service,
+                drive_folder_id=self._drive_folder_var.get().strip(),
+                copyright_text=self._copyright_var.get().strip(),
+            )
+        finally:
+            self._stop_keepalive()
         self._msg_queue.put(('done', total))
 
     def _poll_queue(self):
@@ -1283,6 +1293,21 @@ class App(tk.Tk):
                     self._set_status(f"Batch complete — {total} processed.", FG_OK)
                     if not self._cfg_visible:
                         self._toggle_cfg()
+
+                elif msg[0] == 'session_renewed':
+                    # Keepalive ping succeeded (or silent re-login worked) —
+                    # reset the session countdown so it reflects the renewed lifetime.
+                    self._start_session_timer()
+                    self._conn_dot.configure(fg=FG_OK)
+
+                elif msg[0] == 'session_renewal_failed':
+                    # Keepalive and re-login both failed.  The next post_image
+                    # call will fail and surface the error in the queue normally;
+                    # flag the session indicator so the user knows what happened.
+                    self._conn_lbl.configure(
+                        text="Session renewal failed — reconnect", fg=FG_ERR
+                    )
+                    self._conn_dot.configure(fg=FG_ERR)
         except queue.Empty:
             pass
         self.after(100, self._poll_queue)
@@ -1361,6 +1386,44 @@ class App(tk.Tk):
 
         self._session_remaining -= 1
         self._session_timer_id = self.after(1000, self._tick_session_timer)
+
+    # ------------------------------------------------------------------
+    # Session keepalive
+    # ------------------------------------------------------------------
+    KEEPALIVE_INTERVAL = 1200  # Ping every 20 minutes during active operations
+
+    def _start_keepalive(self):
+        """Start background daemon thread that keeps the PHP session alive."""
+        self._keepalive_running = True
+        t = threading.Thread(target=self._keepalive_worker, daemon=True)
+        t.start()
+
+    def _stop_keepalive(self):
+        """Signal the keepalive thread to exit on its next tick."""
+        self._keepalive_running = False
+
+    def _keepalive_worker(self):
+        """
+        Runs in a background thread while a batch is in progress.
+        Every KEEPALIVE_INTERVAL seconds it calls client.keepalive(), which
+        hits smack-admin.php to extend the PHP session.  If the session has
+        already expired it silently re-logs in with stored credentials.
+        Posts the result back to the UI via _msg_queue so the countdown
+        timer can be reset without touching tkinter from this thread.
+        """
+        import time
+        elapsed = 0
+        while self._keepalive_running:
+            time.sleep(1)
+            elapsed += 1
+            if elapsed >= self.KEEPALIVE_INTERVAL:
+                elapsed = 0
+                client = self._client
+                if client:
+                    renewed = client.keepalive()
+                    self._msg_queue.put(
+                        ('session_renewed',) if renewed else ('session_renewal_failed',)
+                    )
 
     def _set_status(self, text: str, color: str = FG_DIM):
         self._status_lbl.configure(text=text, fg=color)

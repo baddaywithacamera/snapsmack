@@ -30,37 +30,159 @@ if ($q !== '' && $q[0] === '#') {
 if ($q !== '') {
     $now = date('Y-m-d H:i:s');
 
+    // ── Colour-name resolution ─────────────────────────────────────────
+    // Map common colour words to the color_family values used in snap_tags.
+    // This lets someone search "pink" or "fuchsia" and find images tagged
+    // with hex codes belonging to that colour family.
+    $color_aliases = [
+        'red'       => 'red',
+        'scarlet'   => 'red',
+        'crimson'   => 'red',
+        'maroon'    => 'red',
+        'cherry'    => 'red',
+        'ruby'      => 'red',
+        'vermillion'=> 'red',
+        'orange'    => 'orange',
+        'tangerine' => 'orange',
+        'amber'     => 'orange',
+        'rust'      => 'orange',
+        'copper'    => 'orange',
+        'peach'     => 'orange',
+        'apricot'   => 'orange',
+        'yellow'    => 'yellow',
+        'gold'      => 'yellow',
+        'golden'    => 'yellow',
+        'lemon'     => 'yellow',
+        'mustard'   => 'yellow',
+        'blonde'    => 'yellow',
+        'green'     => 'green',
+        'lime'      => 'green',
+        'olive'     => 'green',
+        'emerald'   => 'green',
+        'forest'    => 'green',
+        'sage'      => 'green',
+        'moss'      => 'green',
+        'mint'      => 'green',
+        'jade'      => 'green',
+        'teal'      => 'teal',
+        'cyan'      => 'teal',
+        'turquoise' => 'teal',
+        'aqua'      => 'teal',
+        'aquamarine'=> 'teal',
+        'blue'      => 'blue',
+        'navy'      => 'blue',
+        'cobalt'    => 'blue',
+        'azure'     => 'blue',
+        'indigo'    => 'blue',
+        'cerulean'  => 'blue',
+        'sapphire'  => 'blue',
+        'royal'     => 'blue',
+        'sky'       => 'blue',
+        'purple'    => 'purple',
+        'violet'    => 'purple',
+        'lavender'  => 'purple',
+        'plum'      => 'purple',
+        'mauve'     => 'purple',
+        'lilac'     => 'purple',
+        'amethyst'  => 'purple',
+        'magenta'   => 'purple',
+        'pink'      => 'pink',
+        'fuchsia'   => 'pink',
+        'fuschia'   => 'pink',
+        'rose'      => 'pink',
+        'coral'     => 'pink',
+        'salmon'    => 'pink',
+        'blush'     => 'pink',
+        'hot pink'  => 'pink',
+        'grey'      => 'grey',
+        'gray'      => 'grey',
+        'silver'    => 'grey',
+        'charcoal'  => 'grey',
+        'slate'     => 'grey',
+        'ash'       => 'grey',
+        'pewter'    => 'grey',
+        'black'     => 'black',
+        'ebony'     => 'black',
+        'onyx'      => 'black',
+        'jet'       => 'black',
+        'white'     => 'white',
+        'ivory'     => 'white',
+        'cream'     => 'white',
+        'snow'      => 'white',
+        'pearl'     => 'white',
+        'bone'      => 'white',
+        'beige'     => 'white',
+    ];
+
+    $q_lower      = strtolower(trim($q));
+    $color_family = $color_aliases[$q_lower] ?? null;
+
     // ── Find matching tags ──────────────────────────────────────────────
+    // Include colour-family matches so "teal" surfaces #007a8b etc.
     $tag_term = '%' . strtolower($q) . '%';
-    $tag_stmt = $pdo->prepare("
-        SELECT id, tag, slug, use_count
-        FROM snap_tags
-        WHERE slug LIKE ?
-          AND use_count > 0
-        ORDER BY use_count DESC
-        LIMIT 10
-    ");
-    $tag_stmt->execute([$tag_term]);
+    if ($color_family) {
+        $tag_stmt = $pdo->prepare("
+            SELECT id, tag, slug, use_count
+            FROM snap_tags
+            WHERE (slug LIKE ? OR color_family = ?)
+              AND use_count > 0
+            ORDER BY
+                CASE WHEN color_family = ? THEN 0 ELSE 1 END,
+                use_count DESC
+            LIMIT 10
+        ");
+        $tag_stmt->execute([$tag_term, $color_family, $color_family]);
+    } else {
+        $tag_stmt = $pdo->prepare("
+            SELECT id, tag, slug, use_count
+            FROM snap_tags
+            WHERE slug LIKE ?
+              AND use_count > 0
+            ORDER BY use_count DESC
+            LIMIT 10
+        ");
+        $tag_stmt->execute([$tag_term]);
+    }
     $matched_tags = $tag_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ── Image search: title + description + tagged images ───────────────
+    // ── Image search: title + description + tags + colour family ────────
     $search_term = '%' . $q . '%';
-    $search_stmt = $pdo->prepare("
-        SELECT DISTINCT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_square
-        FROM snap_images i
-        LEFT JOIN snap_image_tags it ON it.image_id = i.id
-        LEFT JOIN snap_tags t ON t.id = it.tag_id
-        WHERE i.img_status = 'published'
-          AND i.img_date   <= ?
-          AND (
-              i.img_title LIKE ?
-              OR i.img_description LIKE ?
-              OR t.slug LIKE ?
-          )
-        ORDER BY i.sort_order ASC, i.img_date DESC
-        LIMIT 60
-    ");
-    $search_stmt->execute([$now, $search_term, $search_term, $tag_term]);
+    if ($color_family) {
+        $search_stmt = $pdo->prepare("
+            SELECT DISTINCT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_square
+            FROM snap_images i
+            LEFT JOIN snap_image_tags it ON it.image_id = i.id
+            LEFT JOIN snap_tags t ON t.id = it.tag_id
+            WHERE i.img_status = 'published'
+              AND i.img_date   <= ?
+              AND (
+                  i.img_title LIKE ?
+                  OR i.img_description LIKE ?
+                  OR t.slug LIKE ?
+                  OR t.color_family = ?
+              )
+            ORDER BY i.sort_order ASC, i.img_date DESC
+            LIMIT 60
+        ");
+        $search_stmt->execute([$now, $search_term, $search_term, $tag_term, $color_family]);
+    } else {
+        $search_stmt = $pdo->prepare("
+            SELECT DISTINCT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_square
+            FROM snap_images i
+            LEFT JOIN snap_image_tags it ON it.image_id = i.id
+            LEFT JOIN snap_tags t ON t.id = it.tag_id
+            WHERE i.img_status = 'published'
+              AND i.img_date   <= ?
+              AND (
+                  i.img_title LIKE ?
+                  OR i.img_description LIKE ?
+                  OR t.slug LIKE ?
+              )
+            ORDER BY i.sort_order ASC, i.img_date DESC
+            LIMIT 60
+        ");
+        $search_stmt->execute([$now, $search_term, $search_term, $tag_term]);
+    }
     $results      = $search_stmt->fetchAll(PDO::FETCH_ASSOC);
     $result_count = count($results);
 }
@@ -172,7 +294,7 @@ $site_title = $settings['site_title'] ?? $site_name ?? 'Photogram';
                 <circle cx="11" cy="11" r="8"/>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
-            <p>Search titles, descriptions, and #hashtags</p>
+            <p>Search titles, descriptions, #hashtags, or colours</p>
         </div>
     <?php endif; ?>
 

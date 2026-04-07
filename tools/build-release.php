@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Release Builder
- * Alpha v0.7.4d
+ * Alpha v0.7.8e
  *
  * Builds a core update package between two git tags. Uses git diff to
  * determine added/modified/deleted files, filters out protected paths,
@@ -270,7 +270,7 @@ $template = [
     'requires_php'    => '8.0',
     'requires_mysql'  => '5.7',
     'schema_changes'  => $has_migration,
-    'changelog'       => ['EDIT — Describe changes here'],
+    'changelog'       => parse_changelog($project_root . '/CHANGELOG.md', $to_ver),
     'file_changes'    => [
         'added'    => $added,
         'modified' => $modified,
@@ -282,7 +282,7 @@ echo json_encode($template, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
 
 echo "\nNEXT STEPS:\n";
 echo "  1. php tools/sign-release.php {$zip_name} --version {$to_ver}\n";
-echo "  2. Edit the changelog in latest.json\n";
+echo "  2. Review changelog entries above (auto-pulled from CHANGELOG.md)\n";
 echo "  3. Upload {$zip_name} to https://snapsmack.ca/releases/\n";
 echo "  4. Upload latest.json to https://snapsmack.ca/releases/\n";
 echo "  5. Test: Admin → System Updates → Check for Updates\n";
@@ -291,6 +291,63 @@ exit($errors > 0 ? 1 : 0);
 
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
+
+/**
+ * Parse CHANGELOG.md and return changelog entries for the given version as a
+ * flat array of strings, prefixed with the section heading (Added/Fixed/etc.)
+ * so the updater can display them without needing the full document.
+ *
+ * Looks for a heading matching "## {version}" (with any trailing text) and
+ * collects every bullet point up to the next "## " heading.
+ *
+ * Falls back to a prompt string if the version section isn't found.
+ */
+function parse_changelog(string $changelog_path, string $version): array
+{
+    if (!file_exists($changelog_path)) {
+        return ["See CHANGELOG.md for details (file not found during build)"];
+    }
+
+    $lines   = file($changelog_path, FILE_IGNORE_NEW_LINES);
+    $entries = [];
+    $in_ver  = false;
+    $section = '';
+
+    foreach ($lines as $line) {
+        // Detect version heading: "## 0.7.8e — ..." or "## 0.7.8e"
+        if (preg_match('/^## ' . preg_quote($version, '/') . '(\s|$)/', $line)) {
+            $in_ver = true;
+            continue;
+        }
+
+        // Stop at the next version heading
+        if ($in_ver && preg_match('/^## /', $line)) {
+            break;
+        }
+
+        if (!$in_ver) {
+            continue;
+        }
+
+        // Track sub-section (### Added, ### Fixed, etc.)
+        if (preg_match('/^### (.+)$/', $line, $m)) {
+            $section = trim($m[1]);
+            continue;
+        }
+
+        // Collect bullet points
+        if (preg_match('/^[-*] (.+)$/', $line, $m)) {
+            $text      = trim($m[1]);
+            $entries[] = $section ? "{$section}: {$text}" : $text;
+        }
+    }
+
+    if (empty($entries)) {
+        return ["No CHANGELOG.md entry found for {$version} — add one before publishing"];
+    }
+
+    return $entries;
+}
 
 /**
  * Check whether a path is protected using the same logic as core/updater.php.

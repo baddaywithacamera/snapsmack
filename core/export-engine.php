@@ -28,11 +28,13 @@ class SnapSmackExport {
 
     /**
      * Builds a .tar.gz recovery kit containing:
-     * - manifest.json (file inventory with checksums and restore paths)
+     * - manifest.json (complete file inventory with checksums, sizes, and restore paths)
      * - database.sql (full SQL dump)
-     * - branding/ (assets/img/ contents)
-     * - media/ (media_assets/ contents)
-     * - skin/ (active skin directory)
+     *
+     * Media files are NOT bundled — only inventoried in the manifest with SHA-256
+     * checksums and byte-exact sizes so they can be verified or restored from the
+     * live filesystem or a separate media backup. This keeps the kit small enough
+     * to download, email, push to cloud, or FTP even on large media libraries.
      *
      * @return string Path to the generated .tar.gz file
      * @throws Exception on failure
@@ -56,23 +58,28 @@ class SnapSmackExport {
             'active_skin'       => $this->settings['active_skin'] ?? 'new-horizon',
             'active_variant'    => $this->settings['active_skin_variant'] ?? 'dark',
             'php_version'       => PHP_VERSION,
-            'files'             => [],
-            'stats'             => [
+            'files'               => [],
+            'directory_structure' => [],
+            'database_images'    => [],
+            'stats'              => [
                 'total_images'   => 0,
                 'total_comments' => 0,
                 'total_pages'    => 0,
                 'branding_files' => 0,
                 'media_files'    => 0,
                 'skin_files'     => 0,
+                'upload_files'   => 0,
+                'total_media_bytes' => 0,
             ],
         ];
 
-        // --- 1. SQL DUMP ---
+        // --- 1. SQL DUMP (only file actually bundled) ---
         $sqlContent = $this->generateSqlDump();
         $archive->addFromString("{$prefix}/database.sql", $sqlContent);
         $manifest['files']['database.sql'] = [
             'size'     => strlen($sqlContent),
             'checksum' => 'sha256:' . hash('sha256', $sqlContent),
+            'bundled'  => true,
         ];
 
         // Gather stats from the SQL data
@@ -80,42 +87,81 @@ class SnapSmackExport {
         try { $manifest['stats']['total_comments'] = (int) $this->pdo->query("SELECT COUNT(*) FROM snap_comments")->fetchColumn(); } catch (Exception $e) {}
         try { $manifest['stats']['total_pages']    = (int) $this->pdo->query("SELECT COUNT(*) FROM snap_pages")->fetchColumn(); } catch (Exception $e) {}
 
-        // --- 2. BRANDING ASSETS (assets/img/) ---
+        // --- 2. BRANDING ASSETS inventory (assets/img/) ---
         $brandingDir = $this->baseDir . '/assets/img';
         if (is_dir($brandingDir)) {
-            $manifest = $this->addDirectoryToArchive(
-                $archive, $brandingDir,
-                "{$prefix}/branding", 'assets/img',
+            $manifest = $this->inventoryDirectory(
+                $brandingDir, 'assets/img',
                 $manifest, 'branding_files'
             );
         }
 
-        // --- 3. MEDIA LIBRARY (media_assets/) ---
+        // --- 3. MEDIA LIBRARY inventory (media_assets/) ---
         $mediaDir = $this->baseDir . '/media_assets';
         if (is_dir($mediaDir)) {
-            $manifest = $this->addDirectoryToArchive(
-                $archive, $mediaDir,
-                "{$prefix}/media", 'media_assets',
+            $manifest = $this->inventoryDirectory(
+                $mediaDir, 'media_assets',
                 $manifest, 'media_files'
             );
         }
 
-        // --- 4. ACTIVE SKIN ---
+        // --- 4. ACTIVE SKIN inventory ---
         $skinSlug = $this->settings['active_skin'] ?? 'new-horizon';
         $skinDir  = $this->baseDir . '/skins/' . $skinSlug;
         if (is_dir($skinDir)) {
-            $manifest = $this->addDirectoryToArchive(
-                $archive, $skinDir,
-                "{$prefix}/skin/{$skinSlug}", "skins/{$skinSlug}",
+            $manifest = $this->inventoryDirectory(
+                $skinDir, "skins/{$skinSlug}",
                 $manifest, 'skin_files'
             );
         }
 
-        // --- 5. WRITE MANIFEST ---
+        // --- 5. IMAGE UPLOADS inventory (img_uploads/) ---
+        $uploadsDir = $this->baseDir . '/img_uploads';
+        if (is_dir($uploadsDir)) {
+            $manifest = $this->inventoryDirectory(
+                $uploadsDir, 'img_uploads',
+                $manifest, 'upload_files'
+            );
+        }
+
+        // --- 6. DATABASE IMAGE MAP ---
+        // Every img_file path from snap_images so the restore tool can cross-reference
+        // FTP files against what the database actually expects, without parsing SQL.
+        try {
+            $rows = $this->pdo->query(
+                "SELECT id, img_file, img_title, img_slug FROM snap_images ORDER BY id"
+            )->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rows as $row) {
+                $manifest['database_images'][] = [
+                    'id'    => (int) $row['id'],
+                    'file'  => $row['img_file'],
+                    'title' => $row['img_title'],
+                    'slug'  => $row['img_slug'],
+                ];
+            }
+        } catch (Exception $e) {
+            // snap_images may not exist on a fresh schema
+        }
+
+        // --- 7. DIRECTORY STRUCTURE ---
+        // Deduplicate directory paths from the file inventory so the restore tool
+        // can pre-create the full tree before uploading any files.
+        $dirs = [];
+        foreach ($manifest['files'] as $key => $meta) {
+            $restoreTo = $meta['restores_to'] ?? $key;
+            $dir = dirname($restoreTo);
+            if ($dir !== '.' && !isset($dirs[$dir])) {
+                $dirs[$dir] = true;
+            }
+        }
+        ksort($dirs);
+        $manifest['directory_structure'] = array_keys($dirs);
+
+        // --- 8. WRITE MANIFEST ---
         $manifestJson = json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         $archive->addFromString("{$prefix}/manifest.json", $manifestJson);
 
-        // --- 6. COMPRESS ---
+        // --- 9. COMPRESS ---
         $gzPath = $archive->compress(Phar::GZ)->getPath();
         unset($archive);
         @unlink($tarPath);
@@ -524,20 +570,18 @@ class SnapSmackExport {
     // =================================================================
 
     /**
-     * Adds all files from a directory to the tar archive, updating the manifest.
+     * Inventory all files in a directory WITHOUT bundling them into the archive.
+     * Records path, size, SHA-256 checksum, and restore location in the manifest.
+     * This keeps recovery kits lightweight — only the SQL dump is bundled.
      *
-     * @param PharData $archive      The tar archive
-     * @param string   $sourceDir    Absolute path to source directory
-     * @param string   $archivePrefix  Path prefix inside the archive
+     * @param string   $sourceDir      Absolute path to source directory
      * @param string   $restorePrefix  Path prefix for restores_to (relative to site root)
-     * @param array    $manifest     Current manifest array (modified in place)
-     * @param string   $statKey      Key in manifest.stats to increment
+     * @param array    $manifest       Current manifest array (modified in place)
+     * @param string   $statKey        Key in manifest.stats to increment
      * @return array Updated manifest
      */
-    private function addDirectoryToArchive(
-        PharData $archive,
+    private function inventoryDirectory(
         string $sourceDir,
-        string $archivePrefix,
         string $restorePrefix,
         array $manifest,
         string $statKey
@@ -557,23 +601,17 @@ class SnapSmackExport {
             // Skip hidden files and temp files
             if (str_starts_with(basename($relativePath), '.')) continue;
 
-            $archivePath = $archivePrefix . '/' . $relativePath;
-            $restorePath = $restorePrefix . '/' . $relativePath;
+            $restorePath  = $restorePrefix . '/' . $relativePath;
+            $fileSize     = $file->getSize();
 
-            $archive->addFile($realPath, $archivePath);
-
-            // Strip the archive prefix to get the manifest key
-            $manifestKey = substr($archivePath, strpos($archivePath, '/') + 1);
-            // Actually, find after the first prefix/
-            $parts = explode('/', $archivePath, 2);
-            $manifestKey = $parts[1] ?? $archivePath;
-
-            $manifest['files'][$manifestKey] = [
-                'size'        => $file->getSize(),
+            $manifest['files'][$restorePath] = [
+                'size'        => $fileSize,
                 'checksum'    => 'sha256:' . hash_file('sha256', $realPath),
                 'restores_to' => $restorePath,
+                'bundled'     => false,
             ];
             $manifest['stats'][$statKey]++;
+            $manifest['stats']['total_media_bytes'] += $fileSize;
         }
 
         return $manifest;
