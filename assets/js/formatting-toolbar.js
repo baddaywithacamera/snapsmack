@@ -1,10 +1,11 @@
 /**
  * SNAPSMACK — Formatting Toolbar
- * Alpha v0.7.5
+ * Alpha v0.7.8e
  *
  * Lightweight vanilla JS toolbar for the transmission editor.
  * Wraps selected text in HTML / shortcodes, provides live preview
  * via AJAX calls to smack-preview-ajax.php.
+ * AI Assist and Spell/Grammar check via smack-ai-assist.php.
  */
 
 class FormattingToolbar {
@@ -228,5 +229,130 @@ document.addEventListener('DOMContentLoaded', function() {
     var ta = document.getElementById('desc');
     if (ta) {
         window.toolbar = new FormattingToolbar('desc', 'smack-preview-ajax.php');
+    }
+
+    // ── Spell / Grammar check ─────────────────────────────────────────
+    var spellBtn = document.getElementById('btn-spellcheck');
+    if (spellBtn && ta) {
+        spellBtn.addEventListener('click', function () {
+            var selected = ta.value.substring(ta.selectionStart, ta.selectionEnd);
+            var payload  = new FormData();
+            payload.append('mode',     'spellcheck');
+            payload.append('content',  ta.value);
+            payload.append('selected', selected);
+
+            spellBtn.textContent = '…';
+            spellBtn.disabled    = true;
+
+            fetch('smack-ai-assist.php', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: payload,
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.ok) {
+                    if (selected) {
+                        // Replace only the selection
+                        var start = ta.selectionStart;
+                        var end   = ta.selectionEnd;
+                        ta.value  = ta.value.substring(0, start) + d.text + ta.value.substring(end);
+                        ta.selectionStart = start;
+                        ta.selectionEnd   = start + d.text.length;
+                    } else {
+                        ta.value = d.text;
+                    }
+                } else {
+                    alert('Spell check failed: ' + d.error);
+                }
+            })
+            .catch(function () { alert('Spell check request failed.'); })
+            .finally(function () {
+                spellBtn.textContent = 'SP/GR';
+                spellBtn.disabled    = false;
+            });
+        });
+    }
+
+    // ── AI Assist panel ───────────────────────────────────────────────
+    var assistBtn   = document.getElementById('btn-ai-assist');
+    var panel       = document.getElementById('ai-assist-panel');
+    var closeBtn    = document.getElementById('ai-assist-close');
+    var sendBtn     = document.getElementById('ai-assist-send');
+    var inputEl     = document.getElementById('ai-assist-input');
+    var messagesEl  = document.getElementById('ai-assist-messages');
+    var dumpBtn     = document.getElementById('ai-assist-dump');
+    var _lastResponse = '';
+
+    if (assistBtn && panel) {
+        assistBtn.addEventListener('click', function () {
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            if (panel.style.display === 'block' && inputEl) inputEl.focus();
+        });
+    }
+
+    if (closeBtn && panel) {
+        closeBtn.addEventListener('click', function () { panel.style.display = 'none'; });
+    }
+
+    function _appendMessage(role, text) {
+        if (!messagesEl) return;
+        var div = document.createElement('div');
+        div.className = 'ai-msg ai-msg--' + role;
+        div.textContent = text;
+        messagesEl.appendChild(div);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function _sendAssist() {
+        if (!inputEl || !ta) return;
+        var msg = inputEl.value.trim();
+        if (!msg) return;
+
+        _appendMessage('user', msg);
+        inputEl.value   = '';
+        sendBtn.disabled = true;
+        if (dumpBtn) dumpBtn.style.display = 'none';
+
+        var payload = new FormData();
+        payload.append('mode',    'chat');
+        payload.append('message', msg);
+        payload.append('content', ta.value);
+
+        fetch('smack-ai-assist.php', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: payload,
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (d.ok) {
+                _lastResponse = d.text;
+                _appendMessage('ai', d.text);
+                if (dumpBtn) dumpBtn.style.display = 'inline-block';
+            } else {
+                _appendMessage('error', 'Error: ' + d.error);
+            }
+        })
+        .catch(function () { _appendMessage('error', 'Request failed — check your connection.'); })
+        .finally(function () { sendBtn.disabled = false; });
+    }
+
+    if (sendBtn)  sendBtn.addEventListener('click', _sendAssist);
+    if (inputEl)  inputEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _sendAssist(); }
+    });
+
+    if (dumpBtn && ta) {
+        dumpBtn.addEventListener('click', function () {
+            if (!_lastResponse) return;
+            var pos = ta.selectionStart;
+            var val = ta.value;
+            var insert = (pos > 0 && val[pos - 1] !== '\n') ? '\n\n' + _lastResponse : _lastResponse;
+            ta.value = val.substring(0, pos) + insert + val.substring(pos);
+            ta.focus();
+            ta.selectionStart = ta.selectionEnd = pos + insert.length;
+            panel.style.display = 'none';
+        });
     }
 });

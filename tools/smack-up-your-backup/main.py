@@ -855,6 +855,29 @@ class SettingsTab(tk.Frame):
                   relief="flat", font=FONT_HEAD, padx=14, pady=6,
                   command=self._save).pack(anchor="w", padx=24, pady=12)
 
+        # ── AI Matcher ───────────────────────────────────────────────────────
+        tk.Label(self, text="AI File Matching", bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w", padx=24, pady=(16, 4))
+
+        ai_frame = tk.Frame(self, bg=BG_DEEP)
+        ai_frame.pack(fill="x", padx=24, pady=4)
+
+        self._ai_status_var = tk.StringVar(value="Checking…")
+        tk.Label(ai_frame, textvariable=self._ai_status_var,
+                 bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL,
+                 wraplength=480, justify="left").pack(anchor="w")
+
+        tk.Label(ai_frame,
+                 text="When installed, ambiguous file matches are resolved using\n"
+                      "semantic path similarity (all-MiniLM-L6-v2, ~90 MB, CPU only).",
+                 bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL,
+                 justify="left").pack(anchor="w", pady=(4, 8))
+
+        tk.Button(ai_frame, text="Install  (pip install sentence-transformers)",
+                  bg=BG_INPUT, fg=FG_MAIN, relief="flat", font=FONT_SMALL,
+                  padx=10, pady=4,
+                  command=self._install_ai).pack(anchor="w")
+
         # Version
         tk.Label(self, text=f"Smack Up Your Backup  v{BUILD_VERSION}",
                  bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL).pack(
@@ -863,6 +886,25 @@ class SettingsTab(tk.Frame):
     def load(self, cfg) -> None:
         self._delay_var.set(cfg.get("pacing", "transfer_delay", fallback="2"))
         self._batch_var.set(cfg.get("pacing", "batch_size",     fallback="0"))
+        self._refresh_ai_status()
+
+    def _refresh_ai_status(self):
+        import ai_matcher
+        self._ai_status_var.set(ai_matcher.status_string())
+
+    def _install_ai(self):
+        import subprocess, sys, threading
+        self._ai_status_var.set("Installing…")
+        def _run():
+            try:
+                subprocess.check_call(
+                    [sys.executable, "-m", "pip", "install", "sentence-transformers"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                )
+            except Exception:
+                pass
+            self.after(0, self._refresh_ai_status)
+        threading.Thread(target=_run, daemon=True).start()
 
     def _save(self):
         cfg = self._app._cfg
