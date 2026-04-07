@@ -595,7 +595,7 @@ require __DIR__ . '/sc-layout-top.php';
             </div>
             <div class="sc-field">
               <label>Codename <span class="sc-dim" style="font-weight:400;text-transform:none;">(optional)</span></label>
-              <input type="text" name="codename" placeholder="Sitzfleisch">
+              <input type="text" name="codename" id="codename-input" placeholder="Sitzfleisch">
             </div>
           </div>
 
@@ -625,11 +625,14 @@ require __DIR__ . '/sc-layout-top.php';
           </p>
 
           <div class="sc-field">
-            <label>Changelog</label>
-            <textarea name="changelog" rows="8"
+            <label>
+              Changelog
+              <span id="changelog-status" style="font-weight:400; font-size:var(--sc-size-label); margin-left:8px;"></span>
+            </label>
+            <textarea name="changelog" id="changelog-textarea" rows="8"
                       placeholder="One changelog entry per line. Plain text — will be presented to admins in the update notification."
                       style="font-family:var(--sc-font-mono); font-size:0.78rem;"></textarea>
-            <span class="sc-hint">One item per line. No bullets or markdown — just the text.</span>
+            <span class="sc-hint">Auto-populated from CHANGELOG.md when a tag is selected. Edit freely — one item per line, no bullets or markdown.</span>
           </div>
 
           <div class="sc-btn-row" style="justify-content:flex-end; margin-top:8px;">
@@ -737,20 +740,106 @@ require __DIR__ . '/sc-layout-top.php';
 </div><!-- /.sc-grid-2 -->
 
 <script>
-// Auto-fill version fields when tag selection changes.
+// Auto-fill version, codename, and changelog fields when tag selection changes.
 (function () {
-    var sel  = document.getElementById('tag-select');
-    var vinp = document.getElementById('version-input');
-    var vfull = document.getElementById('version-full-input');
+    var repo    = <?php echo json_encode(SNAPSMACK_GITHUB_REPO); ?>;
+    var sel     = document.getElementById('tag-select');
+    var vinp    = document.getElementById('version-input');
+    var vfull   = document.getElementById('version-full-input');
+    var codeinp = document.getElementById('codename-input');
+    var clta    = document.getElementById('changelog-textarea');
+    var clstat  = document.getElementById('changelog-status');
     if (!sel) return;
+
+    // Mark fields as user-edited so auto-fill stops overwriting them.
+    [vinp, vfull, codeinp].forEach(function (el) {
+        if (el) el.addEventListener('input', function () { el.dataset.userEdited = '1'; });
+    });
+    if (clta) clta.addEventListener('input', function () { clta.dataset.userEdited = '1'; });
+
+    // Parse CHANGELOG.md text for a specific version string.
+    // Returns an array of plain-text entries (no bullets, no markdown).
+    function parseChangelog(text, version) {
+        var lines   = text.split('\n');
+        var entries = [];
+        var inVer   = false;
+        var section = '';
+        var re      = new RegExp('^## ' + version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(\\s|$)');
+
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+            if (re.test(line)) {
+                // Extract codename from heading: ## 0.7.8e — "Codename" (date)
+                var cnMatch = line.match(/—\s+"([^"]+)"/);
+                if (cnMatch && codeinp && !codeinp.dataset.userEdited) {
+                    codeinp.value = cnMatch[1];
+                }
+                inVer = true;
+                continue;
+            }
+            if (inVer && /^## /.test(line)) break;
+            if (!inVer) continue;
+
+            // Sub-section heading (### Added, ### Fixed, etc.)
+            var secMatch = line.match(/^### (.+)$/);
+            if (secMatch) { section = secMatch[1].trim(); continue; }
+
+            // Bullet point
+            var bulletMatch = line.match(/^[-*] (.+)$/);
+            if (bulletMatch) {
+                // Strip markdown bold (**text**) — leave plain text
+                var text = bulletMatch[1].replace(/\*\*([^*]+)\*\*/g, '$1').trim();
+                entries.push(section ? section + ': ' + text : text);
+            }
+        }
+        return entries;
+    }
+
+    function fetchChangelog(tag, version) {
+        if (!clta) return;
+        if (clta.dataset.userEdited) return;
+        var url = 'https://raw.githubusercontent.com/' + repo + '/refs/tags/' + encodeURIComponent(tag) + '/CHANGELOG.md';
+        if (clstat) { clstat.textContent = '⟳ loading…'; clstat.style.color = 'var(--sc-color-dim, #888)'; }
+        fetch(url)
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.text();
+            })
+            .then(function (text) {
+                var entries = parseChangelog(text, version);
+                if (!clta.dataset.userEdited) {
+                    if (entries.length) {
+                        clta.value = entries.join('\n');
+                        if (clstat) { clstat.textContent = '✓ ' + entries.length + ' entries from CHANGELOG.md'; clstat.style.color = 'var(--sc-color-ok, #4caf50)'; }
+                    } else {
+                        clta.value = '';
+                        if (clstat) { clstat.textContent = '⚠ No entry found for ' + version + ' in CHANGELOG.md'; clstat.style.color = 'var(--sc-color-warn, #e6a817)'; }
+                    }
+                }
+            })
+            .catch(function (err) {
+                if (clstat) { clstat.textContent = '✗ Could not fetch CHANGELOG.md'; clstat.style.color = 'var(--sc-color-err, #e05252)'; }
+            });
+    }
+
     sel.addEventListener('change', function () {
         var opt = sel.options[sel.selectedIndex];
         var v   = opt.dataset.version || '';
+        var tag = opt.value;
         if (vinp  && !vinp.dataset.userEdited)  vinp.value  = v;
         if (vfull && !vfull.dataset.userEdited)  vfull.value = 'Alpha ' + v;
+        if (v && tag) fetchChangelog(tag, v);
     });
-    if (vinp)  vinp.addEventListener('input',  function () { vinp.dataset.userEdited  = '1'; });
-    if (vfull) vfull.addEventListener('input', function () { vfull.dataset.userEdited = '1'; });
+
+    // Fire on page load for the default-selected tag.
+    if (sel.options.length) {
+        var opt = sel.options[sel.selectedIndex];
+        var v   = opt.dataset.version || '';
+        var tag = opt.value;
+        if (vinp  && !vinp.value) vinp.value  = v;
+        if (vfull && !vfull.value) vfull.value = 'Alpha ' + v;
+        if (v && tag) fetchChangelog(tag, v);
+    }
 }());
 </script>
 
