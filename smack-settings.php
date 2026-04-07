@@ -525,6 +525,70 @@ include 'core/sidebar.php';
             </div>
         </div>
 
+        <!-- ============================================================
+             AI ASSISTANT
+             ============================================================ -->
+        <div class="box box-flush-bottom">
+            <h3>AI ASSISTANT</h3>
+            <p class="dim" style="margin:0 0 16px;">
+                Powers the Spell/Grammar check and AI Assist panel in the post editor.
+                Your API key is stored in the database and never exposed publicly.
+            </p>
+
+            <div class="dash-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="lens-input-wrapper">
+                    <label>PROVIDER</label>
+                    <select name="settings[ai_provider]" id="ai-provider-select">
+                        <?php
+                        $ai_provider = $settings['ai_provider'] ?? 'none';
+                        $ai_providers = [
+                            'none'   => 'None (disabled)',
+                            'claude' => 'Claude (Anthropic)',
+                            'gemini' => 'Gemini (Google)',
+                            'openai' => 'ChatGPT (OpenAI)',
+                        ];
+                        foreach ($ai_providers as $val => $label):
+                            $sel = $ai_provider === $val ? 'selected' : '';
+                        ?>
+                        <option value="<?php echo $val; ?>" <?php echo $sel; ?>><?php echo htmlspecialchars($label); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+
+            <div id="ai-key-fields">
+                <div class="lens-input-wrapper ai-key-field" data-provider="claude" <?php echo ($ai_provider !== 'claude') ? 'style="display:none;"' : ''; ?>>
+                    <label>CLAUDE API KEY</label>
+                    <input type="password" name="settings[ai_key_claude]"
+                           value="<?php echo htmlspecialchars($settings['ai_key_claude'] ?? ''); ?>"
+                           placeholder="sk-ant-…" autocomplete="off">
+                    <span class="field-hint">Get yours at <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a></span>
+                </div>
+                <div class="lens-input-wrapper ai-key-field" data-provider="gemini" <?php echo ($ai_provider !== 'gemini') ? 'style="display:none;"' : ''; ?>>
+                    <label>GEMINI API KEY</label>
+                    <input type="password" name="settings[ai_key_gemini]"
+                           value="<?php echo htmlspecialchars($settings['ai_key_gemini'] ?? ''); ?>"
+                           placeholder="AIza…" autocomplete="off">
+                    <span class="field-hint">Get yours at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a></span>
+                </div>
+                <div class="lens-input-wrapper ai-key-field" data-provider="openai" <?php echo ($ai_provider !== 'openai') ? 'style="display:none;"' : ''; ?>>
+                    <label>OPENAI API KEY</label>
+                    <input type="password" name="settings[ai_key_openai]"
+                           value="<?php echo htmlspecialchars($settings['ai_key_openai'] ?? ''); ?>"
+                           placeholder="sk-…" autocomplete="off">
+                    <span class="field-hint">Get yours at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a></span>
+                </div>
+            </div>
+
+            <div style="margin-top:12px;">
+                <button type="button" class="btn-smack btn-smack--sm" id="ai-test-btn"
+                        style="display:<?php echo $ai_provider !== 'none' ? 'inline-block' : 'none'; ?>;">
+                    TEST CONNECTION
+                </button>
+                <span id="ai-test-result" style="margin-left:12px; font-size:0.85em;"></span>
+            </div>
+        </div>
+
         <button type="submit" name="save_settings" class="master-update-btn">SAVE GLOBAL ENGINE CONFIGURATION</button>
 
     </form>
@@ -556,5 +620,39 @@ if (homepageMode) {
 }
 </script>
 
+<script>
+// Show/hide API key field based on provider selection.
+(function () {
+    var sel    = document.getElementById('ai-provider-select');
+    var testBtn = document.getElementById('ai-test-btn');
+    var testRes = document.getElementById('ai-test-result');
+    if (!sel) return;
+
+    sel.addEventListener('change', function () {
+        document.querySelectorAll('.ai-key-field').forEach(function (el) {
+            el.style.display = (el.dataset.provider === sel.value) ? '' : 'none';
+        });
+        if (testBtn) testBtn.style.display = sel.value !== 'none' ? 'inline-block' : 'none';
+        if (testRes) testRes.textContent = '';
+    });
+
+    if (testBtn) {
+        testBtn.addEventListener('click', function () {
+            testRes.textContent = 'Testing…';
+            testRes.style.color = '';
+            fetch('smack-ai-test.php', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    testRes.textContent = d.ok ? '✓ ' + d.message : '✗ ' + d.error;
+                    testRes.style.color = d.ok ? 'var(--color-ok, #4caf50)' : 'var(--color-danger, #e05252)';
+                })
+                .catch(function () {
+                    testRes.textContent = '✗ Request failed';
+                    testRes.style.color = 'var(--color-danger, #e05252)';
+                });
+        });
+    }
+}());
+</script>
 <script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
 <?php include 'core/admin-footer.php'; ?>
