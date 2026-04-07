@@ -429,17 +429,29 @@ p:last-child { margin-bottom: 0; }
     overflow: hidden;
 }
 
-.tool-screenshot-placeholder {
-    height: 320px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Courier New', monospace;
-    font-size: 0.78rem;
-    color: var(--mid-grey);
-    letter-spacing: 0.04em;
-    background: #1a1a1a;
-    color: #39FF14;
+.tool-screenshot-duo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+}
+
+.tool-screenshot-duo img {
+    width: 100%;
+    display: block;
+}
+
+.admin-shots {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 48px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.admin-shots img {
+    width: 100%;
+    display: block;
 }
 
 .tool-screenshot img {
@@ -583,6 +595,8 @@ p:last-child { margin-bottom: 0; }
     .hero-inner { padding: 0 20px; }
     .two-col { grid-template-columns: 1fr; gap: 32px; }
     .tool-block { grid-template-columns: 1fr; gap: 32px; }
+    .tool-screenshot-duo { grid-template-columns: 1fr; }
+    .admin-shots { grid-template-columns: 1fr; gap: 4px; }
     .header-inner { flex-direction: column; align-items: flex-start; gap: 12px; }
     .logo-lockup img { width: 64px; }
     .footer-inner { flex-direction: column; align-items: flex-start; }
@@ -596,7 +610,7 @@ p:last-child { margin-bottom: 0; }
     <div class="wrap">
         <div class="header-inner">
             <div class="logo-lockup">
-                <img src="img/logo.png" alt="SnapSmack">
+                <img src="snapsmack_site/img/logo.png" alt="SnapSmack">
                 <div class="logo-text">
                     <div class="snap"><em>SNAP</em><strong>SMACK</strong></div>
                     <div class="tagline">PHOTO <em>BLOGGING</em> IS BACK, BITCHEZ</div>
@@ -680,6 +694,11 @@ p:last-child { margin-bottom: 0; }
                 <p>One-click in-admin updates. Signed releases, migration runner, schema sync, rollback support.</p>
             </div>
         </div>
+        <div class="admin-shots">
+            <img src="snapsmack_site/img/admin-dashboard.png" alt="SnapSmack admin — dashboard">
+            <img src="snapsmack_site/img/admin-newpost.png" alt="SnapSmack admin — new post">
+            <img src="snapsmack_site/img/admin-global.png" alt="SnapSmack admin — global settings">
+        </div>
     </div>
 </section>
 
@@ -692,14 +711,14 @@ p:last-child { margin-bottom: 0; }
 
             <div class="theme-card">
                 <div class="theme-main-shot">
-                    <img src="img/50shades-landing.jpg" alt="50 Shades of Noah Grey — landing">
+                    <img src="snapsmack_site/img/0shades-landing.png" alt="50 Shades of Noah Grey — landing">
                 </div>
                 <div class="theme-thumbs">
                     <a href="https://photowalk.ing" target="_blank">
-                        <img src="img/50shades-archive.jpg" alt="50 Shades — archive">
+                        <img src="snapsmack_site/img/50shades-archive.png" alt="50 Shades — archive">
                     </a>
                     <a href="https://photowalk.ing" target="_blank">
-                        <img src="img/50shades-pages.jpg" alt="50 Shades — pages">
+                        <img src="snapsmack_site/img/50shades-page.png" alt="50 Shades — pages">
                     </a>
                 </div>
                 <div class="theme-info">
@@ -711,14 +730,14 @@ p:last-child { margin-bottom: 0; }
 
             <div class="theme-card">
                 <div class="theme-main-shot">
-                    <img src="img/galleria-landing.jpg" alt="Galleria — landing">
+                    <img src="snapsmack_site/img/galleria-landing.png" alt="Galleria — landing">
                 </div>
                 <div class="theme-thumbs">
                     <a href="https://hekeepsdroningon.ca" target="_blank">
-                        <img src="img/galleria-archive.jpg" alt="Galleria — archive">
+                        <img src="snapsmack_site/img/galleria-archive.png" alt="Galleria — archive">
                     </a>
                     <a href="https://hekeepsdroningon.ca" target="_blank">
-                        <img src="img/galleria-pages.jpg" alt="Galleria — pages">
+                        <img src="snapsmack_site/img/galleria-page.png" alt="Galleria — pages">
                     </a>
                 </div>
                 <div class="theme-info">
@@ -730,14 +749,14 @@ p:last-child { margin-bottom: 0; }
 
             <div class="theme-card">
                 <div class="theme-main-shot">
-                    <img src="img/impact-landing.jpg" alt="Impact Printer — landing">
+                    <img src="snapsmack_site/img/impact-landing.png" alt="Impact Printer — landing">
                 </div>
                 <div class="theme-thumbs">
                     <a href="https://pixhellated.ca" target="_blank">
-                        <img src="img/impact-archive.jpg" alt="Impact Printer — archive">
+                        <img src="snapsmack_site/img/impact-archive.png" alt="Impact Printer — archive">
                     </a>
                     <a href="https://pixhellated.ca" target="_blank">
-                        <img src="img/impact-pages.jpg" alt="Impact Printer — pages">
+                        <img src="snapsmack_site/img/impact-page.png" alt="Impact Printer — pages">
                     </a>
                 </div>
                 <div class="theme-info">
@@ -749,14 +768,14 @@ p:last-child { margin-bottom: 0; }
 
             <div class="theme-card">
                 <div class="theme-main-shot">
-                    <img src="img/rationalgeo-landing.jpg" alt="Rational Geo — landing">
+                    <img src="snapsmack_site/img/rationalgeo-landing.png" alt="Rational Geo — landing">
                 </div>
                 <div class="theme-thumbs">
                     <a href="https://wateronthebrain.ca" target="_blank">
-                        <img src="img/rationalgeo-archive.jpg" alt="Rational Geo — archive">
+                        <img src="snapsmack_site/img/rationalgeo-archive.png" alt="Rational Geo — archive">
                     </a>
                     <a href="https://wateronthebrain.ca" target="_blank">
-                        <img src="img/rationalgeo-pages.jpg" alt="Rational Geo — pages">
+                        <img src="snapsmack_site/img/rationalgeo-page.png" alt="Rational Geo — pages">
                     </a>
                 </div>
                 <div class="theme-info">
@@ -768,14 +787,14 @@ p:last-child { margin-bottom: 0; }
 
             <div class="theme-card">
                 <div class="theme-main-shot">
-                    <img src="img/truegrit-landing.jpg" alt="True Grit — landing">
+                    <img src="snapsmack_site/img/truegrit-landing.png" alt="True Grit — landing">
                 </div>
                 <div class="theme-thumbs">
                     <a href="https://foundtextures.ca" target="_blank">
-                        <img src="img/truegrit-archive.jpg" alt="True Grit — archive">
+                        <img src="snapsmack_site/img/truegrit-archive.png" alt="True Grit — archive">
                     </a>
                     <a href="https://foundtextures.ca" target="_blank">
-                        <img src="img/truegrit-pages.jpg" alt="True Grit — pages">
+                        <img src="snapsmack_site/img/truegrit-page.png" alt="True Grit — pages">
                     </a>
                 </div>
                 <div class="theme-info">
@@ -797,8 +816,10 @@ p:last-child { margin-bottom: 0; }
 
         <div class="tool-block">
             <div class="tool-screenshot">
-                <!-- Replace with: <img src="img/sybu-screenshot.png" alt="Smack Your Batch Up"> -->
-                <div class="tool-screenshot-placeholder">[ SMACK YOUR BATCH UP SCREENSHOT ]</div>
+                <div class="tool-screenshot-duo">
+                    <img src="snapsmack_site/img/sybu-credentials.png" alt="Smack Your Batch Up — credentials screen">
+                    <img src="snapsmack_site/img/sybu-uploading.png" alt="Smack Your Batch Up — uploading in progress">
+                </div>
             </div>
             <div class="tool-copy">
                 <h3>Companion Tool — Windows</h3>
