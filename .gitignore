@@ -66,3 +66,6 @@ email-test.php
 
 # Greymatter port (work in progress — not part of SnapSmack)
 greymatter/
+
+# snapsmack.ca landing page — separate site, deployed independently
+snapsmack_site/
