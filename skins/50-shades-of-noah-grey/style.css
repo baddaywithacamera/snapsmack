@@ -58,8 +58,9 @@ body {
     padding: 0;
     flex-shrink: 0;
     z-index: 20;
-    position: sticky;
-    top: 0;
+    /* position: sticky removed — the global sticky-header JS engine handles
+       pinning + glass-morphism when the setting is enabled. Keeping native
+       sticky here caused the engine to skip this header entirely. */
     display: flex;
     align-items: center;
 }
