@@ -4,7 +4,7 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
-## 0.7.8f — "Raised Toilet Seat" (2026-04-07)
+## 0.7.8g — "Raised Toilet Seat" (2026-04-07)
 
 ### Added
 - **EXIF copyright embedding on web upload**: `snap_exif_write_copyright()` — pure PHP binary IFD0 writer, no external dependencies. Handles both Intel (LE) and Motorola (BE) byte orders. Uses "relocate IFD0 to end of TIFF" strategy so all existing offsets (Exif SubIFD, GPS, thumbnail) remain valid. New `exif_artist` and `exif_copyright` settings in the Image Engine box of Global Settings; leave blank to opt out.
