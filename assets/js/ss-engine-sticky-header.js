@@ -3,8 +3,8 @@
  * ss-engine-sticky-header.js
  *
  * Auto-detects the site header and pins it to the top on scroll.
- * While scrolling the header goes transparent (glass-morphism);
- * hovering the header snaps it back to full opacity.
+ * Transparent glass-morphism kicks in the instant the header
+ * sticks and stays transparent while scrolling — solid only on hover.
  *
  * Detection order:
  *   1. [data-sticky-header]    explicit opt-in attribute
@@ -47,9 +47,7 @@
         header.parentNode.insertBefore(spacer, header.nextSibling);
 
         // --- STATE ---
-        var isStuck  = false;
-        var scrollTimeout = null;
-        var idleDelay = 600; // ms after scroll stops → go transparent
+        var isStuck = false;
 
         // --- SCROLL HANDLER ---
         function onScroll() {
@@ -58,24 +56,12 @@
             if (scrollY > headerTop) {
                 if (!isStuck) {
                     isStuck = true;
-                    header.classList.add('ss-sticky-active');
-                    // Brief delay before transparency kicks in
-                    clearTimeout(scrollTimeout);
-                    scrollTimeout = setTimeout(function () {
-                        header.classList.add('ss-sticky-transparent');
-                    }, idleDelay);
-                } else {
-                    // Still scrolling — reset idle timer
-                    header.classList.remove('ss-sticky-transparent');
-                    clearTimeout(scrollTimeout);
-                    scrollTimeout = setTimeout(function () {
-                        header.classList.add('ss-sticky-transparent');
-                    }, idleDelay);
+                    header.classList.add('ss-sticky-active', 'ss-sticky-transparent');
                 }
+                // Stays transparent the whole time — solid only on :hover (CSS)
             } else {
                 if (isStuck) {
                     isStuck = false;
-                    clearTimeout(scrollTimeout);
                     header.classList.remove('ss-sticky-active', 'ss-sticky-transparent');
                 }
             }
