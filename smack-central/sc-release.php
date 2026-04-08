@@ -402,31 +402,43 @@ if ($action === 'build' && $preflight_ok) {
                 // even when an update failed mid-extraction and the on-disk copy
                 // is stale. The signature lets the updater verify the SQL is
                 // authentic before running any DDL against the database.
-                $canonical_src  = dirname(__DIR__) . '/database/schema/snapsmack_canonical.sql';
-                $canonical_dst  = rtrim(RELEASES_DIR, '/') . '/snapsmack_canonical.sql';
+                //
+                // We read the canonical SQL from inside the release zip that was
+                // just built rather than from a disk path — Smack Central is itself
+                // a SnapSmack install and does not have a local checkout of the repo,
+                // so there is no database/schema/ folder on this server.
+                $canonical_dst     = rtrim(RELEASES_DIR, '/') . '/snapsmack_canonical.sql';
                 $canonical_sig_dst = rtrim(RELEASES_DIR, '/') . '/snapsmack_canonical.sql.sig';
-                $canonical_url  = '';
-                $canonical_sig  = '';
-                if (file_exists($canonical_src)) {
-                    if (@copy($canonical_src, $canonical_dst)) {
+                $canonical_url     = '';
+                $canonical_sig     = '';
+                $schema_content    = false;
+                $zip_reader = new ZipArchive();
+                if ($zip_reader->open($zip_dest) === true) {
+                    // GitHub zips nest everything under a directory named {repo}-{tag}/
+                    // sc_build_release_zip() strips that prefix, so the entry is at
+                    // database/schema/snapsmack_canonical.sql directly.
+                    $schema_content = $zip_reader->getFromName('database/schema/snapsmack_canonical.sql');
+                    $zip_reader->close();
+                }
+                if ($schema_content !== false && $schema_content !== '') {
+                    if (file_put_contents($canonical_dst, $schema_content) !== false) {
                         $canonical_url = rtrim(RELEASES_URL, '/') . '/snapsmack_canonical.sql';
                         // Sign the canonical SQL with the same private key as the zip
                         try {
-                            $schema_content  = file_get_contents($canonical_src);
                             $schema_checksum = hash('sha256', $schema_content);
                             $schema_sig_bin  = sodium_crypto_sign_detached($schema_checksum, sodium_hex2bin(SMACK_RELEASE_PRIVKEY));
                             $schema_sig_hex  = sodium_bin2hex($schema_sig_bin);
                             file_put_contents($canonical_sig_dst, $schema_sig_hex);
                             $canonical_sig  = rtrim(RELEASES_URL, '/') . '/snapsmack_canonical.sql.sig';
-                            $build_log[]    = "→ snapsmack_canonical.sql published + signed";
+                            $build_log[]    = "→ snapsmack_canonical.sql published + signed (from zip)";
                         } catch (SodiumException $e) {
                             $build_log[] = "→ WARNING: canonical SQL published but signing failed: " . $e->getMessage();
                         }
                     } else {
-                        $build_log[] = "→ WARNING: could not copy snapsmack_canonical.sql to releases dir";
+                        $build_log[] = "→ WARNING: could not write snapsmack_canonical.sql to releases dir";
                     }
                 } else {
-                    $build_log[] = "→ WARNING: database/schema/snapsmack_canonical.sql not found in repo";
+                    $build_log[] = "→ WARNING: database/schema/snapsmack_canonical.sql not found in release zip";
                 }
 
                 // Step 5: Write latest.json
