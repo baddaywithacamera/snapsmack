@@ -951,6 +951,229 @@ function updater_rollback(string $backup_file, string &$error = ''): bool {
  * Remove temporary update files.
  */
 /**
+ * Diff the live database against the canonical schema published by the release server.
+ *
+ * Fetches snapsmack_canonical.sql from the URL in the cached release manifest
+ * (canonical_schema_url from latest.json) so the comparison is always against
+ * the current release, not whatever happens to be on disk — which may be stale
+ * if a previous update failed mid-extraction.
+ *
+ * Falls back to the on-disk copy at database/schema/snapsmack_canonical.sql if
+ * no URL is available or the fetch fails.
+ *
+ * Returns:
+ *   'canonical_tables'  => int   — number of tables declared in canonical SQL
+ *   'missing_tables'    => []    — table names present in canonical but absent from live DB
+ *   'missing_columns'   => []    — [ ['table'=>, 'column'=>, 'definition'=>], ... ]
+ *   'all_ok'            => bool  — true when no differences found
+ *   'source'            => string — 'remote' | 'disk' | 'none'
+ *   'error'             => string — set on fatal failure (no SQL available)
+ *
+ * @param PDO    $pdo          Live database connection
+ * @param string $canonical_url URL from latest.json (empty string to skip remote fetch)
+ */
+function updater_canonical_diff(PDO $pdo, string $canonical_url = ''): array {
+
+    // ── 1. Obtain canonical SQL ───────────────────────────────────────────────
+    $sql    = '';
+    $source = 'none';
+
+    // Try remote first — authoritative even when on-disk copy is from a failed update
+    if ($canonical_url !== '') {
+        $fetched = _updater_http_get($canonical_url);
+        if ($fetched !== false && strlen($fetched) > 256 && str_contains($fetched, 'CREATE TABLE')) {
+            $sql    = $fetched;
+            $source = 'remote';
+        }
+    }
+
+    // Fall back to on-disk copy
+    if ($sql === '') {
+        $disk_path = dirname(__DIR__) . '/database/schema/snapsmack_canonical.sql';
+        if (is_file($disk_path)) {
+            $sql    = (string) file_get_contents($disk_path);
+            $source = 'disk';
+        }
+    }
+
+    if ($sql === '') {
+        return ['error' => 'Canonical schema SQL not available — remote fetch failed and no on-disk copy found.'];
+    }
+
+    // ── 2. Parse canonical SQL into table → column definitions ───────────────
+    // Each CREATE TABLE block is matched in its entirety so the full column
+    // definition (including multi-line COMMENT continuations) is preserved for
+    // ALTER TABLE use.
+    $canonical = []; // [ table_name => [ col_name => full_definition_string ] ]
+
+    preg_match_all(
+        '/CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`(\w+)`\s*\((.*?)\)\s*ENGINE\s*=/si',
+        $sql,
+        $table_matches,
+        PREG_SET_ORDER
+    );
+
+    foreach ($table_matches as $tm) {
+        $table = $tm[1];
+        $body  = $tm[2];
+        $cols  = [];
+
+        $lines       = explode("\n", $body);
+        $col_name    = null;
+        $col_def     = [];
+
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            if ($trimmed === '') continue;
+
+            if (preg_match('/^`(\w+)`/', $trimmed, $cm)) {
+                // Save the previous column
+                if ($col_name !== null && !empty($col_def)) {
+                    $cols[$col_name] = implode(' ', $col_def);
+                }
+                $keyword = strtoupper($cm[1]);
+                // Lines starting with a backtick-enclosed word that is a SQL keyword
+                // are index/key lines (e.g. `PRIMARY`, though usually bare). Skip them.
+                if (in_array($keyword, ['PRIMARY', 'UNIQUE', 'KEY', 'INDEX', 'FULLTEXT', 'SPATIAL', 'CONSTRAINT'], true)) {
+                    $col_name = null;
+                    $col_def  = [];
+                    continue;
+                }
+                $col_name = $cm[1];
+                $clean    = rtrim(preg_replace('/\s*--.*$/', '', $trimmed), ',');
+                $col_def  = [$clean];
+
+            } elseif ($col_name !== null) {
+                // Continuation line (e.g. COMMENT '...' on next line)
+                if (preg_match('/^\s*(PRIMARY|UNIQUE|KEY|INDEX|CONSTRAINT)\s/i', $trimmed)) {
+                    // Hit a key definition — save column and stop
+                    if (!empty($col_def)) {
+                        $cols[$col_name] = implode(' ', $col_def);
+                    }
+                    $col_name = null;
+                    $col_def  = [];
+                    continue;
+                }
+                $clean = rtrim(preg_replace('/\s*--.*$/', '', $trimmed), ',');
+                if ($clean !== '') {
+                    $col_def[] = $clean;
+                }
+            }
+        }
+        // Save the last column in the block
+        if ($col_name !== null && !empty($col_def)) {
+            $cols[$col_name] = implode(' ', $col_def);
+        }
+
+        $canonical[$table] = $cols;
+    }
+
+    // ── 3. Query live database ────────────────────────────────────────────────
+    $live_tables = array_flip(
+        $pdo->query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES
+                     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'")
+            ->fetchAll(PDO::FETCH_COLUMN)
+    );
+
+    $live_columns = [];
+    foreach ($pdo->query("SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+                          WHERE TABLE_SCHEMA = DATABASE()")->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $live_columns[$row['TABLE_NAME']][$row['COLUMN_NAME']] = true;
+    }
+
+    // ── 4. Build diff ─────────────────────────────────────────────────────────
+    $missing_tables  = [];
+    $missing_columns = [];
+
+    foreach ($canonical as $table => $cols) {
+        if (!isset($live_tables[$table])) {
+            $missing_tables[] = $table;
+            continue; // No point checking columns on a missing table
+        }
+        foreach ($cols as $col => $def) {
+            if (!isset($live_columns[$table][$col])) {
+                $missing_columns[] = ['table' => $table, 'column' => $col, 'definition' => $def];
+            }
+        }
+    }
+
+    return [
+        'canonical_tables' => count($canonical),
+        'missing_tables'   => $missing_tables,
+        'missing_columns'  => $missing_columns,
+        'all_ok'           => empty($missing_tables) && empty($missing_columns),
+        'source'           => $source,
+        'raw_sql'          => $sql, // Retained for apply step; not stored in session
+    ];
+}
+
+/**
+ * Apply the differences found by updater_canonical_diff().
+ *
+ * Missing tables are created by running their full CREATE TABLE IF NOT EXISTS
+ * statement extracted from the canonical SQL.  Missing columns are added via
+ * ALTER TABLE ... ADD COLUMN.  Both operations are idempotent.
+ *
+ * Returns [ 'created' => [], 'columns_added' => [], 'errors' => [] ]
+ *
+ * @param PDO   $pdo  Live database connection
+ * @param array $diff Return value of updater_canonical_diff() — must include 'raw_sql'
+ */
+function updater_apply_canonical_diff(PDO $pdo, array $diff): array {
+    $result  = ['created' => [], 'columns_added' => [], 'errors' => []];
+    $raw_sql = $diff['raw_sql'] ?? '';
+
+    if ($raw_sql === '') {
+        $result['errors'][] = 'No canonical SQL available — run the diff again.';
+        return $result;
+    }
+
+    // ── Apply missing tables ──────────────────────────────────────────────────
+    foreach ($diff['missing_tables'] ?? [] as $table) {
+        // Extract the full CREATE TABLE block for this table
+        if (preg_match(
+            '/CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`' . preg_quote($table, '/') . '`\s*\(.*?\)\s*ENGINE\s*=[^;]+;/si',
+            $raw_sql,
+            $m
+        )) {
+            try {
+                $pdo->exec($m[0]);
+                $result['created'][] = $table;
+            } catch (\PDOException $e) {
+                if ((int)$e->getCode() === 1050) { // Table already exists
+                    $result['created'][] = $table . ' (already existed)';
+                } else {
+                    $result['errors'][] = "CREATE TABLE `{$table}` failed: " . $e->getMessage();
+                }
+            }
+        } else {
+            $result['errors'][] = "Could not extract CREATE TABLE statement for `{$table}`.";
+        }
+    }
+
+    // ── Apply missing columns ─────────────────────────────────────────────────
+    foreach ($diff['missing_columns'] ?? [] as $item) {
+        $table = $item['table'];
+        $col   = $item['column'];
+        $def   = $item['definition']; // Full definition starting with `col_name`
+
+        $sql_stmt = "ALTER TABLE `{$table}` ADD COLUMN {$def}";
+        try {
+            $pdo->exec($sql_stmt);
+            $result['columns_added'][] = "{$table}.{$col}";
+        } catch (\PDOException $e) {
+            if ((int)$e->getCode() === 1060) { // Duplicate column
+                $result['columns_added'][] = "{$table}.{$col} (already existed)";
+            } else {
+                $result['errors'][] = "ADD COLUMN `{$table}`.`{$col}` failed: " . $e->getMessage();
+            }
+        }
+    }
+
+    return $result;
+}
+
+/**
  * Repair a mismatched or rotated Ed25519 public key in core/release-pubkey.php.
  *
  * When the release signing keypair is rotated, installed instances will fail
