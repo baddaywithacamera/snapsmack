@@ -969,10 +969,11 @@ function updater_rollback(string $backup_file, string &$error = ''): bool {
  *   'source'            => string — 'remote' | 'disk' | 'none'
  *   'error'             => string — set on fatal failure (no SQL available)
  *
- * @param PDO    $pdo          Live database connection
- * @param string $canonical_url URL from latest.json (empty string to skip remote fetch)
+ * @param PDO    $pdo              Live database connection
+ * @param string $canonical_url     URL from latest.json (empty string to skip remote fetch)
+ * @param string $canonical_sig_url URL of detached Ed25519 signature file (hex-encoded SHA-256 sig)
  */
-function updater_canonical_diff(PDO $pdo, string $canonical_url = ''): array {
+function updater_canonical_diff(PDO $pdo, string $canonical_url = '', string $canonical_sig_url = ''): array {
 
     // ── 1. Obtain canonical SQL ───────────────────────────────────────────────
     $sql    = '';
@@ -982,8 +983,32 @@ function updater_canonical_diff(PDO $pdo, string $canonical_url = ''): array {
     if ($canonical_url !== '') {
         $fetched = _updater_http_get($canonical_url);
         if ($fetched !== false && strlen($fetched) > 256 && str_contains($fetched, 'CREATE TABLE')) {
-            $sql    = $fetched;
-            $source = 'remote';
+            // Verify signature when available
+            if ($canonical_sig_url !== '') {
+                $sig_hex = trim((string) _updater_http_get($canonical_sig_url));
+                if ($sig_hex !== '' && function_exists('sodium_crypto_sign_verify_detached')) {
+                    try {
+                        $checksum = hash('sha256', $fetched);
+                        $verified = sodium_crypto_sign_verify_detached(
+                            sodium_hex2bin($sig_hex),
+                            $checksum,
+                            sodium_hex2bin(SNAPSMACK_RELEASE_PUBKEY)
+                        );
+                        if (!$verified) {
+                            // Signature mismatch — reject remote copy, fall through to disk
+                            error_log('SnapSmack updater: canonical schema signature verification failed — using on-disk fallback');
+                            $fetched = false;
+                        }
+                    } catch (\SodiumException $e) {
+                        error_log('SnapSmack updater: canonical schema sig verify error — ' . $e->getMessage());
+                        $fetched = false;
+                    }
+                }
+            }
+            if ($fetched !== false) {
+                $sql    = $fetched;
+                $source = 'remote';
+            }
         }
     }
 
