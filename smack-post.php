@@ -40,6 +40,140 @@ function snap_exif_extract(string $path): ?string {
 }
 
 /**
+ * Write Artist and Copyright tags into an EXIF APP1 binary segment.
+ *
+ * Strategy: "relocate IFD0 to end of TIFF". The TIFF spec allows IFD0 to
+ * live anywhere in the file — we copy all existing IFD0 entries verbatim
+ * (their inline values and offset-based values all remain valid since we
+ * never touch the original TIFF body), append the new Artist/Copyright
+ * strings after the new IFD0, then update the TIFF header's IFD0 pointer.
+ * The old IFD0 becomes unreferenced but harmless.
+ *
+ * Handles both Intel (little-endian) and Motorola (big-endian) byte orders.
+ * Returns the original APP1 unchanged on any parse error.
+ */
+function snap_exif_write_copyright(string $app1, string $artist, string $copyright): string {
+    if ($artist === '' && $copyright === '') return $app1;
+    if (strlen($app1) < 10) return $app1;
+    if (substr($app1, 0, 2) !== "\xFF\xE1") return $app1;
+    if (substr($app1, 4, 6) !== "Exif\x00\x00") return $app1;
+
+    $tiff = substr($app1, 10); // TIFF data (from II/MM byte-order mark onward)
+    $bo   = substr($tiff, 0, 2);
+    if ($bo !== 'II' && $bo !== 'MM') return $app1;
+    $le = ($bo === 'II');
+
+    // Unpack/pack helpers that respect the image's byte order.
+    $u16 = function(string $d, int $o) use ($le): int {
+        if (strlen($d) < $o + 2) return 0;
+        return $le
+            ? (ord($d[$o]) | (ord($d[$o+1]) << 8))
+            : ((ord($d[$o]) << 8) | ord($d[$o+1]));
+    };
+    $u32 = function(string $d, int $o) use ($le): int {
+        if (strlen($d) < $o + 4) return 0;
+        return $le
+            ? (ord($d[$o]) | (ord($d[$o+1]) << 8) | (ord($d[$o+2]) << 16) | (ord($d[$o+3]) << 24))
+            : ((ord($d[$o]) << 24) | (ord($d[$o+1]) << 16) | (ord($d[$o+2]) << 8) | ord($d[$o+3]));
+    };
+    $p16 = function(int $v) use ($le): string {
+        return $le
+            ? chr($v & 0xFF) . chr(($v >> 8) & 0xFF)
+            : chr(($v >> 8) & 0xFF) . chr($v & 0xFF);
+    };
+    $p32 = function(int $v) use ($le): string {
+        return $le
+            ? chr($v & 0xFF) . chr(($v >> 8) & 0xFF) . chr(($v >> 16) & 0xFF) . chr(($v >> 24) & 0xFF)
+            : chr(($v >> 24) & 0xFF) . chr(($v >> 16) & 0xFF) . chr(($v >> 8) & 0xFF) . chr($v & 0xFF);
+    };
+
+    // Read IFD0.
+    $ifd0_off   = $u32($tiff, 4);
+    if ($ifd0_off + 2 > strlen($tiff)) return $app1;
+    $entry_cnt  = $u16($tiff, $ifd0_off);
+    $entries    = []; // keyed by tag — [tag, type, count, raw_4_bytes]
+
+    for ($i = 0; $i < $entry_cnt; $i++) {
+        $ep  = $ifd0_off + 2 + ($i * 12);
+        if ($ep + 12 > strlen($tiff)) break;
+        $tag = $u16($tiff, $ep);
+        $entries[$tag] = [
+            'tag'  => $tag,
+            'type' => $u16($tiff, $ep + 2),
+            'cnt'  => $u32($tiff, $ep + 4),
+            'raw'  => substr($tiff, $ep + 8, 4), // either inline value or offset bytes, keep as-is
+        ];
+    }
+
+    // Keep next-IFD pointer (usually 0x00000000 for single-image JPEGs).
+    $next_ifd_raw = substr($tiff, $ifd0_off + 2 + ($entry_cnt * 12), 4) ?: "\x00\x00\x00\x00";
+
+    // Prepare our new string values (null-terminated per EXIF/ASCII spec).
+    $TAG_ARTIST    = 0x013B;
+    $TAG_COPYRIGHT = 0x8298;
+    $new_strings   = [];
+
+    if ($artist !== '') {
+        $str = $artist . "\x00";
+        $entries[$TAG_ARTIST] = ['tag' => $TAG_ARTIST, 'type' => 2, 'cnt' => strlen($str), 'raw' => null];
+        $new_strings[$TAG_ARTIST] = $str;
+    }
+    if ($copyright !== '') {
+        $str = $copyright . "\x00";
+        $entries[$TAG_COPYRIGHT] = ['tag' => $TAG_COPYRIGHT, 'type' => 2, 'cnt' => strlen($str), 'raw' => null];
+        $new_strings[$TAG_COPYRIGHT] = $str;
+    }
+
+    // Sort IFD0 entries by tag (EXIF/TIFF spec requirement).
+    ksort($entries);
+    $new_entry_cnt  = count($entries);
+
+    // New IFD0 lives at the end of the original TIFF data.
+    $new_ifd0_pos   = strlen($tiff);
+    $new_ifd0_size  = 2 + ($new_entry_cnt * 12) + 4; // count + entries + next_ifd
+
+    // Value strings start immediately after the new IFD0.
+    $val_cursor     = $new_ifd0_pos + $new_ifd0_size;
+
+    // Build IFD0 entry bytes and collect value data to append.
+    $ifd0_bytes     = $p16($new_entry_cnt);
+    $val_data       = '';
+
+    foreach ($entries as $e) {
+        $tag  = $e['tag'];
+        $type = $e['type'];
+        $cnt  = $e['cnt'];
+        $raw  = $e['raw'];
+
+        if (isset($new_strings[$tag])) {
+            // Our new string: value > 4 bytes goes at $val_cursor; <= 4 fits inline.
+            $str = $new_strings[$tag];
+            if (strlen($str) <= 4) {
+                $raw = str_pad($str, 4, "\x00");
+            } else {
+                $raw = $p32($val_cursor);
+                $val_data  .= $str;
+                $val_cursor += strlen($str);
+            }
+        }
+
+        $ifd0_bytes .= $p16($tag) . $p16($type) . $p32($cnt) . $raw;
+    }
+
+    $ifd0_bytes .= $next_ifd_raw;
+
+    // Rebuild TIFF: updated 8-byte header + original body + new IFD0 + value strings.
+    $magic  = $le ? "\x2A\x00" : "\x00\x2A";
+    $header = $bo . $magic . $p32($new_ifd0_pos);
+    $new_tiff = $header . substr($tiff, 8) . $ifd0_bytes . $val_data;
+
+    // Rewrap into APP1 segment: \xFF\xE1 + 2-byte-length + "Exif\x00\x00" + TIFF.
+    $payload    = "Exif\x00\x00" . $new_tiff;
+    $seg_len    = strlen($payload) + 2; // length field includes itself
+    return "\xFF\xE1" . chr(($seg_len >> 8) & 0xFF) . chr($seg_len & 0xFF) . $payload;
+}
+
+/**
  * Inject a raw EXIF APP1 segment into a JPEG, replacing any existing APP1.
  * Call this after imagejpeg() to restore EXIF that GD stripped.
  */
@@ -285,7 +419,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             }
 
             // Restore EXIF that GD stripped during orientation correction / resize.
+            // If copyright embedding is configured, write Artist and Copyright tags
+            // into the preserved APP1 before injecting it back.
             if ($preserved_exif !== null) {
+                $exif_artist    = trim($settings['exif_artist']    ?? '');
+                $exif_copyright = trim($settings['exif_copyright'] ?? '');
+                if ($exif_artist !== '' || $exif_copyright !== '') {
+                    $preserved_exif = snap_exif_write_copyright($preserved_exif, $exif_artist, $exif_copyright);
+                }
                 snap_exif_inject($target_path, $preserved_exif);
             }
 

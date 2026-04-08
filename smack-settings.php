@@ -449,7 +449,7 @@ include 'core/sidebar.php';
 
         <!-- ============================================================
              IMAGE ENGINE — post-layout-grid (2-col)
-             Left: dimensions. Right: quality + uploads.
+             Left: dimensions + copyright. Right: quality + uploads.
              ============================================================ -->
         <div class="box">
             <h3>IMAGE ENGINE (SERVER-SIDE PROCESSING)</h3>
@@ -457,12 +457,20 @@ include 'core/sidebar.php';
                 <div class="post-col-left">
                     <label>LANDSCAPE MAX WIDTH (PX)</label>
                     <input type="number" name="settings[max_width_landscape]" value="<?php echo htmlspecialchars($settings['max_width_landscape'] ?? 2500); ?>">
-                    
+
                     <label>PORTRAIT MAX HEIGHT (PX)</label>
                     <input type="number" name="settings[max_height_portrait]" value="<?php echo htmlspecialchars($settings['max_height_portrait'] ?? 1850); ?>">
 
                     <label>JPEG COMPRESSION (1-100)</label>
                     <input type="number" name="settings[jpeg_quality]" value="<?php echo htmlspecialchars($settings['jpeg_quality'] ?? 85); ?>">
+
+                    <label>EXIF ARTIST TAG</label>
+                    <input type="text" name="settings[exif_artist]" value="<?php echo htmlspecialchars($settings['exif_artist'] ?? ''); ?>" placeholder="e.g. Sean McCormick">
+                    <span class="dim">WRITTEN INTO THE ARTIST FIELD OF EVERY JPEG UPLOAD. LEAVE BLANK TO SKIP.</span>
+
+                    <label>EXIF COPYRIGHT TAG</label>
+                    <input type="text" name="settings[exif_copyright]" value="<?php echo htmlspecialchars($settings['exif_copyright'] ?? ''); ?>" placeholder="e.g. © 2026 Sean McCormick. All rights reserved.">
+                    <span class="dim">WRITTEN INTO THE COPYRIGHT FIELD OF EVERY JPEG UPLOAD. LEAVE BLANK TO SKIP.</span>
                 </div>
                 <div class="post-col-right">
                     <label>HEADER LOGO ASSET</label>
