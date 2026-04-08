@@ -305,6 +305,23 @@ if ($action === 'cancel_update') {
 // check runs fresh. Resets installed_version to match the running constants.php
 // value, which is the ground truth on shared hosts where the update can fail
 // after file extraction but before finalisation.
+// ── REPAIR SIGNING KEY ────────────────────────────────────────────────────────
+if ($action === 'repair_pubkey') {
+    $new_key = trim($_POST['new_pubkey'] ?? '');
+    $repair_error = '';
+    if (updater_repair_pubkey($new_key, $repair_error)) {
+        // Reset update state so the page re-downloads and verifies with new key
+        unset($_SESSION['update_state'], $_SESSION['update_complete_log'],
+              $_SESSION['update_chunk_state']);
+        $stage_state = null;
+        $flash_msg  = 'SIGNING KEY UPDATED. RESET UPDATE STATE AND TRY AGAIN.';
+        $flash_type = 'success';
+    } else {
+        $flash_msg  = 'KEY UPDATE FAILED: ' . strtoupper($repair_error);
+        $flash_type = 'error';
+    }
+}
+
 if ($action === 'reset_update_state') {
     // Clear session
     unset($_SESSION['update_state'], $_SESSION['update_complete_log'],
@@ -860,6 +877,37 @@ include 'core/sidebar.php';
                     style="font-size:0.75rem;opacity:0.6;">RESET UPDATE STATE</button>
         </form>
     </div>
+
+    <!-- REPAIR SIGNING KEY PANEL — shown when a signature failure has just occurred -->
+    <?php
+    $sig_failure = isset($flash_msg) && stripos($flash_msg, 'SIGNATURE VERIFICATION FAILED') !== false;
+    ?>
+    <?php if ($sig_failure || isset($_GET['repair_key'])): ?>
+    <div class="box update-section" id="repair-key-panel" style="border-color:#c00;">
+        <h3 style="color:#c00;">&#9888; REPAIR SIGNING KEY</h3>
+        <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
+            The installed public key does not match the key used to sign this release.
+            This happens when the release keypair is rotated. Paste the new 64-character
+            hex public key below (from <code>core/release-pubkey.php</code> in the repo,
+            or the SIGNING KEY box in Smack Central) to repair the mismatch.
+        </p>
+        <p style="font-size:0.75rem;margin-bottom:12px;opacity:0.6;">
+            Current key: <code><?php echo htmlspecialchars(SNAPSMACK_RELEASE_PUBKEY); ?></code>
+        </p>
+        <form method="POST">
+            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+            <input type="text" name="new_pubkey" placeholder="64-char hex Ed25519 public key"
+                   style="width:100%;font-family:monospace;font-size:0.8rem;padding:8px;
+                          background:#111;color:#0f0;border:1px solid #c00;margin-bottom:10px;"
+                   maxlength="64" autocomplete="off" spellcheck="false">
+            <button type="submit" name="action" value="repair_pubkey" class="btn-smack"
+                    style="background:#c00;"
+                    onclick="return confirm('Update the signing public key? Only do this if you rotated the keypair.');">
+                UPDATE SIGNING KEY
+            </button>
+        </form>
+    </div>
+    <?php endif; ?>
 
     <!-- SCHEMA RECOVERY PANEL -->
     <?php
