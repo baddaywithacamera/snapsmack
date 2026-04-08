@@ -4,6 +4,15 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.8f — "Raised Toilet Seat" (2026-04-07)
+
+### Added
+- **EXIF copyright embedding on web upload**: `snap_exif_write_copyright()` — pure PHP binary IFD0 writer, no external dependencies. Handles both Intel (LE) and Motorola (BE) byte orders. Uses "relocate IFD0 to end of TIFF" strategy so all existing offsets (Exif SubIFD, GPS, thumbnail) remain valid. New `exif_artist` and `exif_copyright` settings in the Image Engine box of Global Settings; leave blank to opt out.
+- **True Grit — lightbox backdrop opacity**: New `lightbox_bg_opacity` range slider in the LIGHTBOX section of the True Grit skin manifest. Wired to `window.SMACK_CONFIG.lightbox.opacity` via `core/meta.php`; `ss-engine-lightbox.js` picks it up automatically.
+- **`window.SMACK_CONFIG` system**: `core/meta.php` now emits a `<script>window.SMACK_CONFIG = {...};</script>` block when any JS-configurable setting is present. Pattern is extensible for future engine settings without touching JS files.
+
+---
+
 ## 0.7.8e — "Raised Toilet Seat" (2026-04-07)
 
 ### Added
