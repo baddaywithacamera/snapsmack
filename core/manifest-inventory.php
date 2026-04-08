@@ -206,13 +206,9 @@ return [
             'weight' => 'normal',
             'style'  => 'normal',
         ],
-        'DotMatrix-Var-UltraCondensed' => [
-            'label'  => 'DotMatrix Var (Ultra Condensed)',
-            'file'   => 'assets/fonts/DotMatrix/DotMatrixVar-UltraCondensedRegular.ttf',
-            'format' => 'truetype',
-            'weight' => 'normal',
-            'style'  => 'normal',
-        ],
+        // DotMatrix Var UltraCondensed intentionally omitted — the font
+        // package does not include that width for the non-Duo variant.
+        // Use DotMatrix-VarDuo-UltraCondensed instead.
 
         // ---- DotMatrix VarDuo -------------------------------------------
         'DotMatrix-VarDuo' => [
