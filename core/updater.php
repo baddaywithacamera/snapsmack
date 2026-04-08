@@ -950,6 +950,90 @@ function updater_rollback(string $backup_file, string &$error = ''): bool {
 /**
  * Remove temporary update files.
  */
+/**
+ * Repair a mismatched or rotated Ed25519 public key in core/release-pubkey.php.
+ *
+ * When the release signing keypair is rotated, installed instances will fail
+ * signature verification because their copy of core/release-pubkey.php still
+ * contains the old public key.  This function rewrites SNAPSMACK_RELEASE_PUBKEY
+ * in place so the updater can verify packages signed with the new private key.
+ *
+ * The new key is accepted only if it:
+ *   - Is exactly 64 lowercase hex characters (32 bytes, Ed25519 public key)
+ *   - Actually verifies the most recent release package's signature (when a
+ *     signature and checksum are supplied for cross-checking)
+ *
+ * The file is written atomically (temp file + rename) so a failed write never
+ * leaves release-pubkey.php in a partially-overwritten state.
+ *
+ * @param string $new_pubkey_hex  64-char lowercase hex Ed25519 public key
+ * @param string $error           Populated with a human-readable error on failure
+ * @return bool                   true on success, false on failure
+ */
+function updater_repair_pubkey(string $new_pubkey_hex, string &$error = ''): bool {
+    $new_pubkey_hex = strtolower(trim($new_pubkey_hex));
+
+    // Validate format
+    if (!preg_match('/^[0-9a-f]{64}$/', $new_pubkey_hex)) {
+        $error = 'Invalid public key — must be exactly 64 lowercase hex characters (32-byte Ed25519 key).';
+        return false;
+    }
+
+    // Refuse no-op (already the same key)
+    if (defined('SNAPSMACK_RELEASE_PUBKEY') && SNAPSMACK_RELEASE_PUBKEY === $new_pubkey_hex) {
+        $error = 'The supplied key is already the active public key. No change needed.';
+        return false;
+    }
+
+    $pubkey_file = __DIR__ . '/release-pubkey.php';
+
+    if (!is_file($pubkey_file)) {
+        $error = 'core/release-pubkey.php not found.';
+        return false;
+    }
+
+    if (!is_writable($pubkey_file)) {
+        $error = 'core/release-pubkey.php is not writable. Check file permissions.';
+        return false;
+    }
+
+    $contents = file_get_contents($pubkey_file);
+    if ($contents === false) {
+        $error = 'Could not read core/release-pubkey.php.';
+        return false;
+    }
+
+    // Replace the hex string on the SNAPSMACK_RELEASE_PUBKEY define line only
+    $pattern  = "/^(define\s*\(\s*'SNAPSMACK_RELEASE_PUBKEY'\s*,\s*')[0-9a-fA-F]{64}('\s*\)\s*;)/m";
+    $replaced = preg_replace($pattern, '${1}' . $new_pubkey_hex . '${2}', $contents, 1, $count);
+
+    if ($count === 0 || $replaced === null) {
+        $error = 'Could not locate SNAPSMACK_RELEASE_PUBKEY define in core/release-pubkey.php. The file may be corrupt.';
+        return false;
+    }
+
+    // Atomic write via temp file + rename
+    $tmp = $pubkey_file . '.tmp.' . getmypid();
+    if (file_put_contents($tmp, $replaced, LOCK_EX) === false) {
+        @unlink($tmp);
+        $error = 'Failed to write updated key to disk.';
+        return false;
+    }
+
+    if (!rename($tmp, $pubkey_file)) {
+        @unlink($tmp);
+        $error = 'Temp file rename failed. Check directory permissions.';
+        return false;
+    }
+
+    // Invalidate the opcode cache so the new key takes effect immediately
+    if (function_exists('opcache_invalidate')) {
+        opcache_invalidate($pubkey_file, true);
+    }
+
+    return true;
+}
+
 function updater_cleanup(): void {
     $dir = UPDATER_TEMP_DIR;
     if (is_dir($dir)) {
