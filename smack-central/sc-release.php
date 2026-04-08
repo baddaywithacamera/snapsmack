@@ -397,21 +397,40 @@ if ($action === 'build' && $preflight_ok) {
                     }
                 }
 
+                // Step 4c: Publish canonical schema SQL alongside the zip.
+                // Installed instances fetch this to diff against their live DB,
+                // even when an update failed mid-extraction and the on-disk copy
+                // is stale.
+                $canonical_src = dirname(__DIR__) . '/database/schema/snapsmack_canonical.sql';
+                $canonical_dst = rtrim(RELEASES_DIR, '/') . '/snapsmack_canonical.sql';
+                $canonical_url = '';
+                if (file_exists($canonical_src)) {
+                    if (@copy($canonical_src, $canonical_dst)) {
+                        $canonical_url = rtrim(RELEASES_URL, '/') . '/snapsmack_canonical.sql';
+                        $build_log[]   = "→ snapsmack_canonical.sql published";
+                    } else {
+                        $build_log[]   = "→ WARNING: could not copy snapsmack_canonical.sql to releases dir";
+                    }
+                } else {
+                    $build_log[] = "→ WARNING: database/schema/snapsmack_canonical.sql not found in repo";
+                }
+
                 // Step 5: Write latest.json
                 $manifest = [
-                    'version'         => $version,
-                    'version_full'    => $version_full,
-                    'codename'        => $codename,
-                    'released'        => $released,
-                    'download_url'    => $download_url,
-                    'checksum_sha256' => $checksum,
-                    'signature'       => $sig_hex,
-                    'changelog'       => $changelog,
-                    'file_changes'    => $file_changes,
-                    'schema_changes'  => $schema_changes,
-                    'requires_php'    => $requires_php,
-                    'requires_mysql'  => $requires_mysql,
-                    'download_size'   => $file_size,
+                    'version'            => $version,
+                    'version_full'       => $version_full,
+                    'codename'           => $codename,
+                    'released'           => $released,
+                    'download_url'       => $download_url,
+                    'checksum_sha256'    => $checksum,
+                    'signature'          => $sig_hex,
+                    'changelog'          => $changelog,
+                    'file_changes'       => $file_changes,
+                    'schema_changes'     => $schema_changes,
+                    'requires_php'       => $requires_php,
+                    'requires_mysql'     => $requires_mysql,
+                    'download_size'      => $file_size,
+                    'canonical_schema_url' => $canonical_url,
                 ];
                 $json_path = rtrim(RELEASES_DIR, '/') . '/latest.json';
                 file_put_contents($json_path, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
