@@ -1237,4 +1237,10 @@ include 'core/sidebar.php';
     </div>
 </div>
 
+<script>
+(function () {
+    var log = document.querySelector('.step-log');
+    if (log) { log.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+})();
+</script>
 <?php include 'core/admin-footer.php'; ?>
