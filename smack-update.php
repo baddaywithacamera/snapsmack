@@ -687,6 +687,18 @@ if ($action === 'schema_resync') {
 // Fetches the canonical SQL from the release server (or falls back to on-disk)
 // and diffs it against the live database. Results stored in session for display.
 if ($action === 'canonical_diff') {
+    // If the cached update check pre-dates canonical_schema_url being added to
+    // latest.json (or there is no cached check at all), fetch latest.json now
+    // rather than forcing the user to run a check-for-updates first.
+    if (empty($cached_result['canonical_schema_url'])) {
+        $fresh_manifest = _updater_http_get(UPDATER_API_URL);
+        if ($fresh_manifest !== false) {
+            $decoded = json_decode($fresh_manifest, true);
+            if (is_array($decoded)) {
+                $cached_result = $decoded;
+            }
+        }
+    }
     $canonical_url     = $cached_result['canonical_schema_url'] ?? '';
     $canonical_sig_url = $cached_result['canonical_schema_sig'] ?? '';
     $diff = updater_canonical_diff($pdo, $canonical_url, $canonical_sig_url);
@@ -711,7 +723,17 @@ if ($action === 'apply_canonical_diff') {
         $flash_msg  = 'NO DIFF RESULT IN SESSION — RUN CHECK FIRST.';
         $flash_type = 'error';
     } else {
-        // Re-fetch canonical SQL for the apply step (not stored in session)
+        // Re-fetch canonical SQL for the apply step (not stored in session).
+        // Also resolve URL from latest.json if the cached result is stale.
+        if (empty($cached_result['canonical_schema_url'])) {
+            $fresh_manifest = _updater_http_get(UPDATER_API_URL);
+            if ($fresh_manifest !== false) {
+                $decoded = json_decode($fresh_manifest, true);
+                if (is_array($decoded)) {
+                    $cached_result = $decoded;
+                }
+            }
+        }
         $canonical_url     = $cached_result['canonical_schema_url'] ?? '';
         $canonical_sig_url = $cached_result['canonical_schema_sig'] ?? '';
         $fresh_diff        = updater_canonical_diff($pdo, $canonical_url, $canonical_sig_url);
