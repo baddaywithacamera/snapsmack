@@ -45,5 +45,7 @@ include __DIR__ . '/skin-meta.php';
 
 </div>
 </div>
+
+<?php include dirname(__DIR__, 2) . '/core/footer-scripts.php'; ?>
 </body>
 </html>
