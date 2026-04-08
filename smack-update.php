@@ -687,8 +687,9 @@ if ($action === 'schema_resync') {
 // Fetches the canonical SQL from the release server (or falls back to on-disk)
 // and diffs it against the live database. Results stored in session for display.
 if ($action === 'canonical_diff') {
-    $canonical_url = $cached_result['canonical_schema_url'] ?? '';
-    $diff = updater_canonical_diff($pdo, $canonical_url);
+    $canonical_url     = $cached_result['canonical_schema_url'] ?? '';
+    $canonical_sig_url = $cached_result['canonical_schema_sig'] ?? '';
+    $diff = updater_canonical_diff($pdo, $canonical_url, $canonical_sig_url);
     if (!empty($diff['error'])) {
         $flash_msg  = 'CANONICAL DIFF FAILED: ' . strtoupper($diff['error']);
         $flash_type = 'error';
@@ -711,8 +712,9 @@ if ($action === 'apply_canonical_diff') {
         $flash_type = 'error';
     } else {
         // Re-fetch canonical SQL for the apply step (not stored in session)
-        $canonical_url = $cached_result['canonical_schema_url'] ?? '';
-        $fresh_diff    = updater_canonical_diff($pdo, $canonical_url);
+        $canonical_url     = $cached_result['canonical_schema_url'] ?? '';
+        $canonical_sig_url = $cached_result['canonical_schema_sig'] ?? '';
+        $fresh_diff        = updater_canonical_diff($pdo, $canonical_url, $canonical_sig_url);
         if (!empty($fresh_diff['error'])) {
             $flash_msg  = 'COULD NOT FETCH CANONICAL SQL FOR APPLY: ' . strtoupper($fresh_diff['error']);
             $flash_type = 'error';
@@ -1084,6 +1086,7 @@ include 'core/sidebar.php';
         unset($_SESSION['canonical_apply_result']);
     }
     $has_canonical_url = !empty($cached_result['canonical_schema_url']);
+    $has_canonical_sig = !empty($cached_result['canonical_schema_sig']);
     ?>
     <div class="box update-section">
         <h3>CANONICAL SCHEMA DIFF</h3>
@@ -1092,8 +1095,10 @@ include 'core/sidebar.php';
             against your live database. Catches missing tables or columns that
             <em>schema-sync.php</em> may not know about yet — including cases where
             an update failed before the on-disk copy was replaced.
-            <?php if ($has_canonical_url): ?>
-                <span style="color:#0f0;"> &mdash; Remote URL available.</span>
+            <?php if ($has_canonical_url && $has_canonical_sig): ?>
+                <span style="color:#0f0;"> &mdash; Remote URL + signature available.</span>
+            <?php elseif ($has_canonical_url): ?>
+                <span style="color:#fa0;"> &mdash; Remote URL available (no signature).</span>
             <?php else: ?>
                 <span style="opacity:0.5;"> &mdash; No remote URL in manifest; will use on-disk copy.</span>
             <?php endif; ?>

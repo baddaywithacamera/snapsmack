@@ -397,19 +397,33 @@ if ($action === 'build' && $preflight_ok) {
                     }
                 }
 
-                // Step 4c: Publish canonical schema SQL alongside the zip.
-                // Installed instances fetch this to diff against their live DB,
+                // Step 4c: Publish canonical schema SQL + detached Ed25519 signature.
+                // Installed instances fetch these to diff against their live DB,
                 // even when an update failed mid-extraction and the on-disk copy
-                // is stale.
-                $canonical_src = dirname(__DIR__) . '/database/schema/snapsmack_canonical.sql';
-                $canonical_dst = rtrim(RELEASES_DIR, '/') . '/snapsmack_canonical.sql';
-                $canonical_url = '';
+                // is stale. The signature lets the updater verify the SQL is
+                // authentic before running any DDL against the database.
+                $canonical_src  = dirname(__DIR__) . '/database/schema/snapsmack_canonical.sql';
+                $canonical_dst  = rtrim(RELEASES_DIR, '/') . '/snapsmack_canonical.sql';
+                $canonical_sig_dst = rtrim(RELEASES_DIR, '/') . '/snapsmack_canonical.sql.sig';
+                $canonical_url  = '';
+                $canonical_sig  = '';
                 if (file_exists($canonical_src)) {
                     if (@copy($canonical_src, $canonical_dst)) {
                         $canonical_url = rtrim(RELEASES_URL, '/') . '/snapsmack_canonical.sql';
-                        $build_log[]   = "→ snapsmack_canonical.sql published";
+                        // Sign the canonical SQL with the same private key as the zip
+                        try {
+                            $schema_content  = file_get_contents($canonical_src);
+                            $schema_checksum = hash('sha256', $schema_content);
+                            $schema_sig_bin  = sodium_crypto_sign_detached($schema_checksum, sodium_hex2bin(SMACK_RELEASE_PRIVKEY));
+                            $schema_sig_hex  = sodium_bin2hex($schema_sig_bin);
+                            file_put_contents($canonical_sig_dst, $schema_sig_hex);
+                            $canonical_sig  = rtrim(RELEASES_URL, '/') . '/snapsmack_canonical.sql.sig';
+                            $build_log[]    = "→ snapsmack_canonical.sql published + signed";
+                        } catch (SodiumException $e) {
+                            $build_log[] = "→ WARNING: canonical SQL published but signing failed: " . $e->getMessage();
+                        }
                     } else {
-                        $build_log[]   = "→ WARNING: could not copy snapsmack_canonical.sql to releases dir";
+                        $build_log[] = "→ WARNING: could not copy snapsmack_canonical.sql to releases dir";
                     }
                 } else {
                     $build_log[] = "→ WARNING: database/schema/snapsmack_canonical.sql not found in repo";
@@ -431,6 +445,7 @@ if ($action === 'build' && $preflight_ok) {
                     'requires_mysql'     => $requires_mysql,
                     'download_size'      => $file_size,
                     'canonical_schema_url' => $canonical_url,
+                    'canonical_schema_sig' => $canonical_sig,
                 ];
                 $json_path = rtrim(RELEASES_DIR, '/') . '/latest.json';
                 file_put_contents($json_path, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
