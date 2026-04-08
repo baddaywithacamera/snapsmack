@@ -824,6 +824,8 @@ function snapsmack_is_mobile(): bool {
                 'jpeg_quality'              => '85',
                 'max_width_landscape'       => '2500',
                 'max_height_portrait'       => '1850',
+                'exif_artist'               => '',
+                'exif_copyright'            => '',
                 'footer_slot_copyright'         => 'on',
                 'footer_slot_copyright_custom'  => '',
                 'footer_slot_email'             => 'on',

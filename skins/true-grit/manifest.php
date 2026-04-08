@@ -633,6 +633,22 @@ return [
                 'none'  => 'No — Hide URL',
             ]
         ],
+
+        /* ============================================================
+           SECTION: LIGHTBOX
+           ============================================================ */
+
+        'lightbox_bg_opacity' => [
+            'section'  => 'LIGHTBOX',
+            'type'     => 'range',
+            'label'    => 'Backdrop Opacity (%)',
+            'default'  => '80',
+            'min'      => '10',
+            'max'      => '100',
+            'step'     => '5',
+            // No selector/property — value emitted to window.SMACK_CONFIG by core/meta.php
+        ],
+
     ],
 
     'admin_styling' => "
