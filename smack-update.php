@@ -683,6 +683,55 @@ if ($action === 'schema_resync') {
     $flash_type = empty($sync['errors']) ? 'success' : 'warning';
 }
 
+// ── ACTION: CANONICAL SCHEMA DIFF ────────────────────────────────────────────
+// Fetches the canonical SQL from the release server (or falls back to on-disk)
+// and diffs it against the live database. Results stored in session for display.
+if ($action === 'canonical_diff') {
+    $canonical_url = $cached_result['canonical_schema_url'] ?? '';
+    $diff = updater_canonical_diff($pdo, $canonical_url);
+    if (!empty($diff['error'])) {
+        $flash_msg  = 'CANONICAL DIFF FAILED: ' . strtoupper($diff['error']);
+        $flash_type = 'error';
+    } else {
+        unset($diff['raw_sql']); // Don't bloat the session — re-fetched on apply
+        $_SESSION['canonical_diff_result'] = $diff;
+        $missing = count($diff['missing_tables']) + count($diff['missing_columns']);
+        $flash_msg  = $diff['all_ok']
+            ? 'CANONICAL DIFF: DATABASE IS IN SYNC WITH ' . strtoupper($diff['source']) . ' SCHEMA. NOTHING MISSING.'
+            : "CANONICAL DIFF: {$missing} ITEM(S) MISSING — SEE BELOW.";
+        $flash_type = $diff['all_ok'] ? 'success' : 'warning';
+    }
+}
+
+// ── ACTION: APPLY CANONICAL DIFF ─────────────────────────────────────────────
+if ($action === 'apply_canonical_diff') {
+    $stored_diff = $_SESSION['canonical_diff_result'] ?? null;
+    if (!$stored_diff) {
+        $flash_msg  = 'NO DIFF RESULT IN SESSION — RUN CHECK FIRST.';
+        $flash_type = 'error';
+    } else {
+        // Re-fetch canonical SQL for the apply step (not stored in session)
+        $canonical_url = $cached_result['canonical_schema_url'] ?? '';
+        $fresh_diff    = updater_canonical_diff($pdo, $canonical_url);
+        if (!empty($fresh_diff['error'])) {
+            $flash_msg  = 'COULD NOT FETCH CANONICAL SQL FOR APPLY: ' . strtoupper($fresh_diff['error']);
+            $flash_type = 'error';
+        } else {
+            // Merge stored diff structure with fresh raw_sql
+            $stored_diff['raw_sql'] = $fresh_diff['raw_sql'];
+            $apply = updater_apply_canonical_diff($pdo, $stored_diff);
+            unset($_SESSION['canonical_diff_result']);
+            $parts = [];
+            if (!empty($apply['created']))       $parts[] = count($apply['created'])       . ' table(s) created';
+            if (!empty($apply['columns_added'])) $parts[] = count($apply['columns_added']) . ' column(s) added';
+            if (!empty($apply['errors']))        $parts[] = count($apply['errors'])        . ' error(s)';
+            $_SESSION['canonical_apply_result'] = $apply;
+            $flash_msg  = 'CANONICAL SCHEMA APPLIED: ' . (implode(', ', $parts) ?: 'nothing to do') . '.';
+            $flash_type = empty($apply['errors']) ? 'success' : 'warning';
+        }
+    }
+}
+
 // ── ACTION: MARK ALL MIGRATIONS APPLIED ──────────────────────────────────────
 // Records every known migration in snap_migrations without executing its SQL.
 // Use after manually applying a recovery SQL file so the updater sees a clean
@@ -1020,6 +1069,106 @@ include 'core/sidebar.php';
             Use this after running a manual recovery SQL file in cPanel.
         </p>
         <?php endif; ?>
+    </div>
+
+    <!-- CANONICAL SCHEMA DIFF PANEL -->
+    <?php
+    $canonical_diff   = null;
+    $canonical_apply  = null;
+    if (!empty($_SESSION['canonical_diff_result'])) {
+        $canonical_diff = $_SESSION['canonical_diff_result'];
+        // Keep in session until user applies or navigates away
+    }
+    if (!empty($_SESSION['canonical_apply_result'])) {
+        $canonical_apply = $_SESSION['canonical_apply_result'];
+        unset($_SESSION['canonical_apply_result']);
+    }
+    $has_canonical_url = !empty($cached_result['canonical_schema_url']);
+    ?>
+    <div class="box update-section">
+        <h3>CANONICAL SCHEMA DIFF</h3>
+        <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
+            Fetches the canonical schema SQL from the release server and compares it
+            against your live database. Catches missing tables or columns that
+            <em>schema-sync.php</em> may not know about yet — including cases where
+            an update failed before the on-disk copy was replaced.
+            <?php if ($has_canonical_url): ?>
+                <span style="color:#0f0;"> &mdash; Remote URL available.</span>
+            <?php else: ?>
+                <span style="opacity:0.5;"> &mdash; No remote URL in manifest; will use on-disk copy.</span>
+            <?php endif; ?>
+        </p>
+
+        <?php if ($canonical_apply): ?>
+        <div style="margin-bottom:16px;">
+            <?php if (!empty($canonical_apply['created'])): ?>
+                <div style="font-family:monospace;font-size:0.78rem;margin-bottom:6px;">TABLES CREATED:</div>
+                <?php foreach ($canonical_apply['created'] as $t): ?>
+                    <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#0f0;">+ <?php echo htmlspecialchars($t); ?></code>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            <?php if (!empty($canonical_apply['columns_added'])): ?>
+                <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;">COLUMNS ADDED:</div>
+                <?php foreach ($canonical_apply['columns_added'] as $c): ?>
+                    <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#0f0;">+ <?php echo htmlspecialchars($c); ?></code>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            <?php if (!empty($canonical_apply['errors'])): ?>
+                <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;color:#c44;">ERRORS:</div>
+                <?php foreach ($canonical_apply['errors'] as $e): ?>
+                    <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#c44;">✗ <?php echo htmlspecialchars($e); ?></code>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($canonical_diff && !$canonical_diff['all_ok']): ?>
+        <div style="margin-bottom:16px;">
+            <div style="font-family:monospace;font-size:0.75rem;opacity:0.6;margin-bottom:10px;">
+                SOURCE: <?php echo strtoupper(htmlspecialchars($canonical_diff['source'])); ?>
+                &nbsp;&mdash;&nbsp;
+                <?php echo (int)$canonical_diff['canonical_tables']; ?> TABLE(S) IN CANONICAL SCHEMA
+            </div>
+            <?php if (!empty($canonical_diff['missing_tables'])): ?>
+                <div style="font-family:monospace;font-size:0.78rem;margin-bottom:6px;color:#fa0;">MISSING TABLES:</div>
+                <?php foreach ($canonical_diff['missing_tables'] as $t): ?>
+                    <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#fa0;">✗ <?php echo htmlspecialchars($t); ?></code>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            <?php if (!empty($canonical_diff['missing_columns'])): ?>
+                <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;color:#fa0;">MISSING COLUMNS:</div>
+                <?php foreach ($canonical_diff['missing_columns'] as $item): ?>
+                    <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#fa0;">
+                        ✗ <?php echo htmlspecialchars($item['table'] . '.' . $item['column']); ?>
+                    </code>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+        <?php elseif ($canonical_diff && $canonical_diff['all_ok']): ?>
+        <div style="font-family:monospace;font-size:0.78rem;color:#0f0;margin-bottom:16px;">
+            ✓ DATABASE MATCHES CANONICAL SCHEMA
+            (<?php echo (int)$canonical_diff['canonical_tables']; ?> tables,
+            source: <?php echo strtoupper(htmlspecialchars($canonical_diff['source'])); ?>)
+        </div>
+        <?php endif; ?>
+
+        <div class="recovery-actions">
+            <form method="POST">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="canonical_diff" class="btn-smack">
+                    CHECK CANONICAL SCHEMA
+                </button>
+            </form>
+            <?php if ($canonical_diff && !$canonical_diff['all_ok']): ?>
+            <form method="POST">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="apply_canonical_diff" class="btn-smack"
+                        onclick="return confirm('Apply all missing tables and columns from the canonical schema?\nThis is safe — operations are idempotent.');">
+                    APPLY ALL MISSING
+                </button>
+            </form>
+            <?php endif; ?>
+        </div>
     </div>
 
     <!-- COMPLETED UPDATE LOG -->
