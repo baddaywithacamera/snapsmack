@@ -233,6 +233,26 @@ if (!empty($skin_variant_url)): ?>
 
 <?php
 /**
+ * SMACK_CONFIG — JS engine configuration object.
+ * Emitted before body scripts so engines can read settings at init time.
+ * Add keys here as new engine options are introduced.
+ */
+$_smack_js_config = [];
+
+// Lightbox backdrop opacity (set via skin manifest 'lightbox_bg_opacity' option)
+if (!empty($settings['lightbox_bg_opacity'])) {
+    $_smack_js_config['lightbox'] = [
+        'opacity' => (string) round(intval($settings['lightbox_bg_opacity']) / 100, 2)
+    ];
+}
+
+if (!empty($_smack_js_config)):
+?>
+<script>window.SMACK_CONFIG = <?php echo json_encode($_smack_js_config, JSON_UNESCAPED_UNICODE); ?>;</script>
+<?php endif; ?>
+
+<?php
+/**
  * THIRD-PARTY HEAD SCRIPTS
  * Injected from Smack Your Scripts Up! admin page.
  * Loads after all CSS so tracking/analytics scripts don't block rendering.
