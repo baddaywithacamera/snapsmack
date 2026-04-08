@@ -1,6 +1,6 @@
 # SnapSmack
 
-**Alpha v0.7.8f "Raised Toilet Seat"**
+**Alpha v0.7.8g "Raised Toilet Seat"**
 
 A self-hosted photography CMS for people who care about their photographs. Your domain, your archive, no algorithm.
 
