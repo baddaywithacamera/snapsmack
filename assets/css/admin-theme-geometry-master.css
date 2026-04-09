@@ -3829,13 +3829,11 @@ input[type="range"]:active::-webkit-slider-thumb {
 /* ── Interaction page (smack-community-settings.php) ─────────────────────── */
 
 .box-desc {
-    color: var(--text-muted, #888);
     font-size: 0.85rem;
     margin: -0.25rem 0 1.25rem;
     line-height: 1.5;
 }
 
-/* Toggle rows */
 .option-group { display: flex; flex-direction: column; gap: 0; }
 .toggle-row {
     display: grid;
@@ -3844,7 +3842,8 @@ input[type="range"]:active::-webkit-slider-thumb {
     gap: 0.15rem 1.25rem;
     cursor: pointer;
     padding: 0.9rem 0;
-    border-bottom: 1px solid var(--border, #333);
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
     align-items: center;
 }
 .toggle-row:last-child { border-bottom: none; }
@@ -3854,10 +3853,9 @@ input[type="range"]:active::-webkit-slider-thumb {
 }
 .toggle-desc {
     grid-column: 1; grid-row: 2;
-    font-size: 0.8rem; color: var(--text-muted, #888); line-height: 1.4;
+    font-size: 0.8rem; line-height: 1.4;
 }
 
-/* Toggle switch widget */
 .toggle-row input[type="hidden"]   { display: none; }
 .toggle-row input[type="checkbox"] {
     grid-column: 2; grid-row: 1 / 3;
@@ -3865,8 +3863,8 @@ input[type="range"]:active::-webkit-slider-thumb {
     appearance: none; -webkit-appearance: none;
     position: relative;
     width: 44px; height: 24px;
-    background: var(--bg-tertiary, #2a2a2a);
-    border: 1px solid var(--border, #444);
+    border-width: 1px;
+    border-style: solid;
     border-radius: 24px;
     cursor: pointer;
     transition: background 0.2s, border-color 0.2s;
@@ -3878,19 +3876,12 @@ input[type="range"]:active::-webkit-slider-thumb {
     top: 3px; left: 3px;
     width: 16px; height: 16px;
     border-radius: 50%;
-    background: var(--text-muted, #666);
     transition: transform 0.2s, background 0.2s;
-}
-.toggle-row input[type="checkbox"]:checked {
-    background: var(--accent, #9dff00);
-    border-color: var(--accent, #9dff00);
 }
 .toggle-row input[type="checkbox"]:checked::before {
     transform: translateX(20px);
-    background: #000;
 }
 
-/* Dock position radio grid */
 .radio-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -3899,21 +3890,15 @@ input[type="range"]:active::-webkit-slider-thumb {
 .radio-option {
     display: flex; align-items: center; gap: 0.5rem;
     padding: 0.5rem 0.75rem;
-    border: 1px solid var(--border, #444);
+    border-width: 1px;
+    border-style: solid;
     border-radius: 4px;
     font-size: 0.78rem; font-weight: 600; letter-spacing: 0.04em;
     cursor: pointer;
     transition: border-color 0.15s, background 0.15s;
 }
-.radio-option:hover      { border-color: var(--accent, #9dff00); }
-.radio-option input:checked ~ * { /* fallback */ }
 .radio-option input[type="radio"] { margin: 0; }
-.radio-option:has(input:checked) {
-    border-color: var(--accent, #9dff00);
-    background: color-mix(in srgb, var(--accent, #9dff00) 8%, transparent);
-}
 
-/* Reaction picker grid */
 .reaction-picker-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -3922,18 +3907,11 @@ input[type="range"]:active::-webkit-slider-thumb {
 .reaction-option {
     display: flex; align-items: center; gap: 0.5rem;
     padding: 0.6rem 0.75rem;
-    border: 1px solid var(--border, #444);
+    border-width: 1px;
+    border-style: solid;
     border-radius: 6px;
     cursor: pointer;
     transition: border-color 0.15s, background 0.15s, opacity 0.15s;
-}
-.reaction-option:hover {
-    border-color: var(--accent, #9dff00);
-}
-.reaction-option.is-active,
-.reaction-option:has(input:checked) {
-    border-color: var(--accent, #9dff00);
-    background: color-mix(in srgb, var(--accent, #9dff00) 10%, transparent);
 }
 .reaction-option input[type="checkbox"] { display: none; }
 .rx-emoji  { font-size: 1.3rem; line-height: 1; flex-shrink: 0; }
@@ -3942,10 +3920,8 @@ input[type="range"]:active::-webkit-slider-thumb {
 .reaction-count-note {
     margin-top: 0.75rem;
     font-size: 0.82rem;
-    color: var(--text-muted, #888);
 }
 
-/* Field rows (text/number inputs within interaction settings) */
 .field-row {
     display: grid;
     grid-template-columns: 200px 1fr;
@@ -3962,15 +3938,15 @@ input[type="range"]:active::-webkit-slider-thumb {
 .field-row select {
     width: 100%; max-width: 420px;
     padding: 0.4rem 0.6rem;
-    background: var(--input-bg, #111);
-    border: 1px solid var(--border, #444);
-    color: var(--text, #eee);
+    border-width: 1px;
+    border-style: solid;
     border-radius: 3px;
     font-size: 0.82rem;
 }
 .identity-row {
     padding: 0.4rem 0 0.75rem;
-    border-bottom: 1px solid var(--border, #333);
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
 }
 .rate-limit-grid {
     display: grid;
