@@ -106,14 +106,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_community'])) {
 $active_reactions_raw = $settings['community_active_reactions'] ?? '["fire","chef-kiss","wow","moody","sharp","golden-hour"]';
 $active_reactions     = json_decode($active_reactions_raw, true) ?: [];
 
-$page_title = "Community Settings";
+$page_title = "Interaction";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
 <div class="main">
     <div class="header-row">
-        <h2>COMMUNITY SETTINGS</h2>
+        <h2>INTERACTION</h2>
         <div class="header-actions">
             <a href="smack-community-users.php" class="btn-smack">MANAGE MEMBERS</a>
         </div>
@@ -359,16 +359,17 @@ include 'core/sidebar.php';
     line-height: 1.5;
 }
 
-/* Toggle rows (checkbox settings) */
-.option-group { display: flex; flex-direction: column; gap: 1rem; }
+/* Toggle rows */
+.option-group { display: flex; flex-direction: column; gap: 0; }
 .toggle-row {
     display: grid;
     grid-template-columns: 1fr auto;
     grid-template-rows: auto auto;
-    gap: 0.15rem 1rem;
+    gap: 0.15rem 1.25rem;
     cursor: pointer;
-    padding: 0.75rem 0;
+    padding: 0.9rem 0;
     border-bottom: 1px solid var(--border, #333);
+    align-items: center;
 }
 .toggle-row:last-child { border-bottom: none; }
 .toggle-label {
@@ -379,11 +380,38 @@ include 'core/sidebar.php';
     grid-column: 1; grid-row: 2;
     font-size: 0.8rem; color: var(--text-muted, #888); line-height: 1.4;
 }
+
+/* Toggle switch widget */
+.toggle-row input[type="hidden"]   { display: none; }
 .toggle-row input[type="checkbox"] {
     grid-column: 2; grid-row: 1 / 3;
     align-self: center;
-    width: 1.1rem; height: 1.1rem;
+    appearance: none; -webkit-appearance: none;
+    position: relative;
+    width: 44px; height: 24px;
+    background: var(--bg-tertiary, #2a2a2a);
+    border: 1px solid var(--border, #444);
+    border-radius: 24px;
     cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    flex-shrink: 0;
+}
+.toggle-row input[type="checkbox"]::before {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--text-muted, #666);
+    transition: transform 0.2s, background 0.2s;
+}
+.toggle-row input[type="checkbox"]:checked {
+    background: var(--accent, #9dff00);
+    border-color: var(--accent, #9dff00);
+}
+.toggle-row input[type="checkbox"]:checked::before {
+    transform: translateX(20px);
+    background: #000;
 }
 
 /* Dock position radio grid */
