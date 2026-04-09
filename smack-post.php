@@ -855,4 +855,7 @@ include 'core/sidebar.php';
 
 <script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
 <script src="assets/js/shortcode-toolbar.js"></script>
+<?php if (snap_ai_configured()): ?>
+<script src="assets/js/ss-engine-ai.js?v=<?php echo time(); ?>"></script>
+<?php endif; ?>
 <?php include 'core/admin-footer.php'; ?>
