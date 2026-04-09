@@ -173,8 +173,9 @@ include 'core/sidebar.php';
                 <a href="smack-multisite.php"          class="btn-clear">DASHBOARD</a>
                 <a href="smack-multisite-comments.php" class="btn-clear active">SIGNALS</a>
                 <a href="smack-multisite-posts.php"    class="btn-clear">POSTS</a>
-                <a href="smack-multisite-backup.php"   class="btn-clear">BACKUP DOCK</a>
-                <a href="smack-multisite-stats.php"    class="btn-clear">STATS</a>
+                <a href="smack-multisite-backup.php"      class="btn-clear">BACKUP DOCK</a>
+                <a href="smack-multisite-stats.php"       class="btn-clear">STATS</a>
+                <a href="smack-multisite-crosspost.php"   class="btn-clear">CROSS-POST</a>
             </div>
         </div>
 

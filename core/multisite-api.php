@@ -13,6 +13,7 @@
  *   multisite/comments/pending
  *   multisite/comments/action
  *   multisite/posts/recent
+ *   multisite/posts/create
  *   multisite/stats/daily
  *   multisite/updates/status
  *   multisite/backup/status
@@ -335,6 +336,109 @@ if ($resource === 'backup' && $sub_action === 'log' && $method === 'GET') {
         $log = [];   // table doesn't exist yet
     }
     ms_ok(['log' => $log]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/posts/create
+// Cross-post: create a new image record from a hub-originated post.
+// The hub sends metadata + a publicly accessible URL for the image file.
+// This satellite fetches the image, saves it locally, and creates the record.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'posts' && $sub_action === 'create' && $method === 'POST') {
+    $title      = trim($_POST['title']      ?? '');
+    $img_url    = trim($_POST['img_url']    ?? '');
+    $img_ext    = strtolower(trim($_POST['img_ext'] ?? 'jpg'));
+    $img_status = in_array($_POST['img_status'] ?? '', ['published', 'draft']) ? $_POST['img_status'] : 'draft';
+    $description = trim($_POST['description'] ?? '');
+    $img_date   = trim($_POST['img_date']   ?? date('Y-m-d'));
+    $film_val   = trim($_POST['film']       ?? '');
+
+    if (!$title) ms_err('title is required');
+    if (!$img_url || !filter_var($img_url, FILTER_VALIDATE_URL)) ms_err('valid img_url is required');
+
+    $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'];
+    if (!in_array($img_ext, $allowed_exts)) ms_err('unsupported image format');
+
+    // Fetch the image from the hub
+    $fetch_ch = curl_init();
+    curl_setopt_array($fetch_ch, [
+        CURLOPT_URL            => $img_url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 30,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_MAXREDIRS      => 3,
+    ]);
+    $img_binary = curl_exec($fetch_ch);
+    $fetch_code = curl_getinfo($fetch_ch, CURLINFO_HTTP_CODE);
+    curl_close($fetch_ch);
+
+    if (!$img_binary || $fetch_code !== 200) {
+        ms_err('Could not fetch image from hub: HTTP ' . $fetch_code);
+    }
+
+    // Save the image
+    $rel_dir  = 'img_uploads/' . date('Y') . '/' . date('m');
+    $full_dir = __DIR__ . '/../' . $rel_dir;
+    if (!is_dir($full_dir)) {
+        @mkdir($full_dir, 0755, true);
+    }
+
+    $slug     = strtolower(preg_replace('/[^A-Za-z0-9-]+/', '-', $title)) . '-' . time();
+    $filename = $slug . '.' . $img_ext;
+    $db_path  = $rel_dir . '/' . $filename;
+    $filepath = $full_dir . '/' . $filename;
+
+    if (file_put_contents($filepath, $img_binary) === false) {
+        ms_err('Could not save image to disk');
+    }
+
+    // Get image dimensions
+    $img_w = $img_h = 0;
+    $size = @getimagesize($filepath);
+    if ($size) { $img_w = $size[0]; $img_h = $size[1]; }
+
+    // Build EXIF from JPEG if possible
+    $img_exif = null;
+    if (in_array($img_ext, ['jpg', 'jpeg'])) {
+        $exif_raw = @exif_read_data($filepath);
+        if ($exif_raw) {
+            $img_exif = json_encode([
+                'camera'   => $exif_raw['Model']                       ?? '',
+                'iso'      => $exif_raw['ISOSpeedRatings']             ?? '',
+                'aperture' => $exif_raw['COMPUTED']['ApertureFNumber'] ?? '',
+                'shutter'  => $exif_raw['ExposureTime']                ?? '',
+                'focal'    => $exif_raw['FocalLength']                 ?? '',
+            ]);
+        }
+    }
+
+    // Create the image record
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO snap_images (
+                img_title, img_slug, img_file, img_description,
+                img_film, img_exif, img_status, img_date,
+                img_width, img_height, allow_comments, allow_download
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0)
+        ");
+        $stmt->execute([
+            $title, $slug, $db_path, $description,
+            $film_val, $img_exif, $img_status, $img_date,
+            $img_w, $img_h,
+        ]);
+        $new_id = $pdo->lastInsertId();
+    } catch (\PDOException $e) {
+        @unlink($filepath);  // Clean up saved image on DB failure
+        ms_err('Database error: ' . $e->getMessage());
+    }
+
+    ms_ok([
+        'img_id'     => (int)$new_id,
+        'slug'       => $slug,
+        'img_status' => $img_status,
+        'post_url'   => BASE_URL . $slug,
+    ]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
