@@ -310,6 +310,7 @@ include 'core/sidebar.php';
                 <a href="smack-multisite-backup.php"      class="btn-clear">BACKUP DOCK</a>
                 <a href="smack-multisite-stats.php"       class="btn-clear">STATS</a>
                 <a href="smack-multisite-crosspost.php"   class="btn-clear">CROSS-POST</a>
+                <a href="smack-multisite-blogroll.php"    class="btn-clear">BLOGROLL</a>
             </div>
         </div>
 
@@ -396,6 +397,13 @@ include 'core/sidebar.php';
                                         ?>
                                     </td>
                                     <td style="padding:10px; text-align:center;">
+                                        <?php if ($n['status'] === 'active'): ?>
+                                            <a href="smack-multisite-sso.php?sat=<?php echo $n['id']; ?>"
+                                               target="_blank"
+                                               class="action-authorize"
+                                               style="margin-right:6px;"
+                                               title="Open satellite admin as primary admin user">REMOTE LOGIN</a>
+                                        <?php endif; ?>
                                         <a href="?disconnect=<?php echo $n['id']; ?>" class="action-delete" onclick="return confirm('Disconnect this satellite?');">DISCONNECT</a>
                                     </td>
                                 </tr>

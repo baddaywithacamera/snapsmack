@@ -18,6 +18,9 @@
  *   multisite/updates/status
  *   multisite/backup/status
  *   multisite/backup/log
+ *   multisite/auth/sso-token
+ *   multisite/blogroll/list
+ *   multisite/blogroll/sync
  *   multisite/disconnect
  */
 
@@ -439,6 +442,94 @@ if ($resource === 'posts' && $sub_action === 'create' && $method === 'POST') {
         'img_status' => $img_status,
         'post_url'   => BASE_URL . $slug,
     ]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/auth/sso-token
+// Generates a short-lived one-time SSO token so the hub can launch a
+// browser session on this satellite without knowing its admin password.
+// Token is single-use and expires in 5 minutes.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'auth' && $sub_action === 'sso-token' && $method === 'POST') {
+    $token   = bin2hex(random_bytes(32));   // 64-char hex
+    $expires = time() + 300;               // 5 minutes
+
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
+        ->execute(['multisite_sso_token', $token, $token]);
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
+        ->execute(['multisite_sso_token_expires', $expires, $expires]);
+
+    ms_ok(['sso_token' => $token, 'expires_at' => $expires]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: GET multisite/blogroll/list
+// Returns all active blogroll entries with their category names.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'blogroll' && $sub_action === 'list' && $method === 'GET') {
+    try {
+        $rows = $pdo->query("
+            SELECT b.id, b.peer_name, b.peer_url, b.peer_rss, b.peer_desc,
+                   c.cat_name AS category
+            FROM snap_blogroll b
+            LEFT JOIN snap_blogroll_cats c ON b.cat_id = c.id
+            ORDER BY c.cat_name ASC, b.peer_name ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+    } catch (\Exception $e) {
+        $rows = [];
+    }
+    ms_ok(['entries' => $rows, 'count' => count($rows)]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/blogroll/sync
+// Hub pushes its blogroll to this satellite. Entries are tagged with
+// the hub's site_url as their source and managed as a group: any prior
+// hub-synced entries are removed before the new set is inserted.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'blogroll' && $sub_action === 'sync' && $method === 'POST') {
+    $hub_url     = trim($_POST['hub_url']   ?? '');
+    $entries_raw = trim($_POST['entries']   ?? '');
+
+    if (!$hub_url) ms_err('hub_url required');
+
+    $entries = json_decode($entries_raw, true);
+    if (!is_array($entries)) ms_err('entries must be a JSON array');
+
+    // Find or create a "Hub Sync" category for this hub
+    $cat_name = 'Hub: ' . preg_replace('~^https?://~i', '', rtrim($hub_url, '/'));
+    $cat_stmt = $pdo->prepare("SELECT id FROM snap_blogroll_cats WHERE cat_name = ?");
+    $cat_stmt->execute([$cat_name]);
+    $cat_id = $cat_stmt->fetchColumn();
+
+    if (!$cat_id) {
+        $pdo->prepare("INSERT INTO snap_blogroll_cats (cat_name) VALUES (?)")->execute([$cat_name]);
+        $cat_id = $pdo->lastInsertId();
+    }
+
+    // Remove old entries in this hub's category
+    $pdo->prepare("DELETE FROM snap_blogroll WHERE cat_id = ?")->execute([$cat_id]);
+
+    // Insert fresh entries
+    $inserted = 0;
+    $insert = $pdo->prepare("
+        INSERT INTO snap_blogroll (peer_name, peer_url, peer_rss, peer_desc, cat_id)
+        VALUES (?, ?, ?, ?, ?)
+    ");
+    foreach ($entries as $e) {
+        $url = trim($e['peer_url'] ?? '');
+        if (!$url || !filter_var($url, FILTER_VALIDATE_URL)) continue;
+        $insert->execute([
+            substr(trim($e['peer_name'] ?? ''), 0, 255) ?: parse_url($url, PHP_URL_HOST),
+            $url,
+            substr(trim($e['peer_rss'] ?? ''), 0, 500),
+            substr(trim($e['peer_desc'] ?? ''), 0, 500),
+            $cat_id,
+        ]);
+        $inserted++;
+    }
+
+    ms_ok(['inserted' => $inserted, 'category' => $cat_name, 'cat_id' => (int)$cat_id]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
