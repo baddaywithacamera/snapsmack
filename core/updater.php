@@ -773,22 +773,19 @@ function updater_migration_status(PDO $pdo): array {
 function updater_run_migrations(PDO $pdo, array $migration_files): array {
     $result = ['success' => true, 'applied' => [], 'errors' => [], 'schema' => []];
 
-    // Run schema sync first — creates missing tables and columns idempotently
-    // before any migration files execute. This is the primary defence against
-    // migrations failing because a prerequisite table or column is absent.
-    if (!function_exists('snap_schema_sync')) {
-        $sync_path = __DIR__ . '/schema-sync.php';
-        if (file_exists($sync_path)) {
-            require_once $sync_path;
-        }
-    }
-    if (function_exists('snap_schema_sync')) {
-        $sync = snap_schema_sync($pdo);
-        $result['schema'] = $sync;
-        if (!empty($sync['errors'])) {
-            // Schema errors are non-fatal — log them but continue with migrations.
-            foreach ($sync['errors'] as $e) {
-                $result['errors'][] = '[schema-sync] ' . $e;
+    // Diff the live database against snapsmack_canonical.sql and apply anything
+    // missing before migration files run. This is the authoritative schema source —
+    // schema-sync.php (a hardcoded PHP duplicate) is no longer consulted here.
+    $diff = updater_canonical_diff($pdo);
+    if (isset($diff['error'])) {
+        // Canonical SQL unavailable — non-fatal, log and continue.
+        $result['errors'][] = '[canonical-diff] ' . $diff['error'];
+    } else {
+        $apply = updater_apply_canonical_diff($pdo, $diff);
+        $result['schema'] = $apply;
+        if (!empty($apply['errors'])) {
+            foreach ($apply['errors'] as $e) {
+                $result['errors'][] = '[canonical-diff] ' . $e;
             }
         }
     }
