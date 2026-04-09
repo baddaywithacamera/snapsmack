@@ -307,6 +307,8 @@ include 'core/sidebar.php';
                     SIGNALS<?php echo $total_pending_fleet > 0 ? ' (' . $total_pending_fleet . ')' : ''; ?>
                 </a>
                 <a href="smack-multisite-posts.php"    class="btn-clear">POSTS</a>
+                <a href="smack-multisite-backup.php"   class="btn-clear">BACKUP DOCK</a>
+                <a href="smack-multisite-stats.php"    class="btn-clear">STATS</a>
             </div>
         </div>
 

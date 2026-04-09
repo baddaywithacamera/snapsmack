@@ -127,6 +127,17 @@ include 'core/sidebar.php';
         </div>
     <?php else: ?>
 
+        <!-- QUICK NAV -->
+        <div class="signal-control-header" style="margin-bottom:20px;">
+            <div class="signal-nav-group">
+                <a href="smack-multisite.php"          class="btn-clear">DASHBOARD</a>
+                <a href="smack-multisite-comments.php" class="btn-clear">SIGNALS</a>
+                <a href="smack-multisite-posts.php"    class="btn-clear active">POSTS</a>
+                <a href="smack-multisite-backup.php"   class="btn-clear">BACKUP DOCK</a>
+                <a href="smack-multisite-stats.php"    class="btn-clear">STATS</a>
+            </div>
+        </div>
+
         <!-- FILTER BAR -->
         <div class="signal-control-header">
             <div class="signal-nav-group">
