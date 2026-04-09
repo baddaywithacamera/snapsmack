@@ -2,13 +2,13 @@
 
 ## Version & Headers
 
-Current version: **Alpha v0.7.9 "Electric Chair"**. Every PHP file opens with a standardised doc-block:
+Current version: **Alpha v0.7.9a "Electric Chair"**. Every PHP file opens with a standardised doc-block:
 
 ```php
 <?php
 /**
  * SNAPSMACK - [Module Name]
- * Alpha v0.7.9
+ * Alpha v0.7.9a
  *
  * [Description of what this file does.]
  */

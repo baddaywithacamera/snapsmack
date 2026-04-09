@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - User Manual
- * Alpha v0.7.9
+ * Alpha v0.7.9a
  *
  * In-admin documentation system covering every feature of the CMS.
  * Topics are organised into sections and filtered by user role — editors

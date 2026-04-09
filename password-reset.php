@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Password Reset
- * Alpha v0.7.9
+ * Alpha v0.7.9a
  *
  * Two-step email-based password reset.
  * Step 1: Enter email address → receive reset link.

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - AI Connection Test
- * Alpha v0.7.9
+ * Alpha v0.7.9a
  *
  * AJAX endpoint called by the Settings page to verify the configured
  * AI provider and API key are working. Returns JSON.

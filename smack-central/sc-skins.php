@@ -1,7 +1,7 @@
 <?php
 /**
  * SMACK CENTRAL - Skin Packager
- * Alpha v0.7.9
+ * Alpha v0.7.9a
  *
  * Reads skins from SNAPSMACK_REPO_PATH/skins/, lets you pick which ones to
  * package, zips each one, signs the zip with Ed25519, saves it to

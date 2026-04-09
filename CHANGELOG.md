@@ -4,6 +4,19 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.9a — "Electric Chair" (2026-04-08)
+
+### Added
+- **Smack Central skin packager** (`sc-skins.php`): Web UI for packaging skins from the repo — select skins, zip them, Ed25519-sign the zips, and publish to `registry.json` without touching a command line. Screenshot URLs persist across re-packages. Added to Smack Central sidebar.
+
+### Changed
+- **Core ships with two skins only**: Removed 12 skins from the repo (`galleria`, `hip-to-be-square`, `photogram`, `true-grit`, `a-grey-reckoning`, `impact-printer`, `new-horizon`, `the-grid`, `kiosk`, `52-card-pickup`, `show-n-tell`, `in-stereo-where-available`). All are available via the skin gallery. Core default is now `50-shades-of-noah-grey`.
+- **`SNAPSMACK_MOBILE_SKIN` cleared**: Was hardcoded to `photogram`; now empty string. Mobile visitors get the desktop skin until Photogram is installed from the gallery.
+- **AI test connection no longer requires saving first**: TEST CONNECTION now passes the current form values directly to the test endpoint so you can verify a key before committing it to the database.
+- **Gemini model updated**: `gemini-1.5-flash` → `gemini-2.0-flash` (1.5-flash deprecated on the v1beta endpoint).
+
+---
+
 ## 0.7.9 — "Electric Chair" (2026-04-08)
 
 ### Added
