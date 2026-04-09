@@ -27,7 +27,7 @@ if (!empty($settings['active_skin'])) {
 $_section_map = [
     'good-shit'  => ['smack-admin.php','smack-post.php','smack-manage.php','smack-edit.php','smack-cats.php','smack-albums.php','smack-media.php','smack-comments.php','smack-blogroll.php','smack-pages.php','smack-community-settings.php','smack-community-users.php','smack-tools.php'],
     'pimp'       => ['smack-globalvibe.php','smack-skin.php','smack-pimpotron.php','smack-social-dock.php','smack-css.php','smack-scripts.php'],
-    'boring'     => ['smack-settings.php','smack-users.php','smack-maintenance.php','smack-backup.php','smack-disaster.php','smack-ftp.php','smack-cloud.php','smack-verify.php','smack-update.php','smack-stats.php','smack-multisite.php'],
+    'boring'     => ['smack-settings.php','smack-users.php','smack-maintenance.php','smack-backup.php','smack-disaster.php','smack-ftp.php','smack-cloud.php','smack-verify.php','smack-update.php','smack-stats.php','smack-multisite.php','smack-multisite-comments.php','smack-multisite-posts.php'],
     'help'       => ['smack-help.php','smack-forum.php'],
 ];
 $_active_section = 'good-shit'; // default
@@ -152,6 +152,12 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     </li>
                     <li class="<?php echo ($current_page == 'smack-multisite.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite.php">Multisite Management</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-multisite-comments.php') ? 'active' : ''; ?>">
+                        <a href="smack-multisite-comments.php">Satellite Signals</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-multisite-posts.php') ? 'active' : ''; ?>">
+                        <a href="smack-multisite-posts.php">Satellite Posts</a>
                     </li>
                 </ul>
             </div>
