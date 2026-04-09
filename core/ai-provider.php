@@ -8,9 +8,9 @@
  * and returns a plain text response.
  *
  * Usage:
- *   $result = snap_ai_complete($system_prompt, $user_prompt);
- *   if ($result['ok']) echo $result['text'];
- *   else echo $result['error'];
+ * $result = snap_ai_complete($system_prompt, $user_prompt);
+ * if ($result['ok']) echo $result['text'];
+ * else echo $result['error'];
  */
 
 // ── Configuration helpers ────────────────────────────────────────────────────
@@ -95,7 +95,8 @@ function _snap_ai_claude(string $key, string $system, string $user, int $max_tok
 }
 
 function _snap_ai_gemini(string $key, string $system, string $user, int $max_tokens): array {
-    $url     = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . urlencode($key);
+    // Corrected to gemini-3-flash-preview for the 2026 v1beta API
+    $url     = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=' . urlencode($key);
     $payload = json_encode([
         'system_instruction' => ['parts' => [['text' => $system]]],
         'contents'           => [['parts' => [['text' => $user]]]],
@@ -110,8 +111,9 @@ function _snap_ai_gemini(string $key, string $system, string $user, int $max_tok
 }
 
 function _snap_ai_openai(string $key, string $system, string $user, int $max_tokens): array {
+    // Updated to gpt-5.4-mini (released March 2026)
     $payload = json_encode([
-        'model'      => 'gpt-4o-mini',
+        'model'      => 'gpt-5.4-mini',
         'max_tokens' => $max_tokens,
         'messages'   => [
             ['role' => 'system',  'content' => $system],
