@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - System Update Manager
- * Alpha v0.7.9b
+ * Alpha v0.7.9c
  *
  * Admin interface for the self-update system. Displays current version info,
  * checks for updates, shows changelogs and file changes, forces a backup

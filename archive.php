@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Archive page with multiple layout modes
- * Alpha v0.7.9b
+ * Alpha v0.7.9c
  *
  * Displays all published images with support for square, cropped, and
  * masonry layouts. Handles category and album filtering via query parameters.

@@ -4,6 +4,23 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.9c — "Electric Chair" (2026-04-09)
+
+### Added
+- **AI Writing Assistant engine** (`assets/js/ss-engine-ai.js`): Wires the SP/GR and AI ASSIST buttons in the post editor to `smack-ai-assist.php`. SP/GR checks spelling and grammar on selected text or full content and presents a replace-or-discard overlay. AI ASSIST opens a chat panel with full conversation threading and a Dump to Editor button.
+- **Thomas the Bear easter egg** on snapsmack.ca: Ctrl+Shift+Y spawns bears, Ctrl+Shift+Z opens the Noah Grey story modal. Mirrors the Picasa easter egg.
+
+### Changed
+- **Gemini model** updated to `gemini-3-flash-preview` in `core/ai-provider.php`.
+- **EXIF fields hidden on swap page** when `exif_display_enabled` is off — `smack-swap.php` now respects the same setting as `smack-post.php`.
+
+### Fixed
+- **`smack-swap.php` missing `$settings` load**: Page had no access to snap_settings, which would have caused issues with any settings-conditional logic.
+- **`core/admin-footer.php` truncated**: Missing `</script></body></html>` restored.
+- **`core/ai-provider.php` truncated**: Missing closing return and brace of `_snap_ai_post()` restored.
+
+---
+
 ## 0.7.9b — "Electric Chair" (2026-04-08)
 
 ### Added

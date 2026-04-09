@@ -1,6 +1,6 @@
 # SnapSmack
 
-**Alpha v0.7.9b "Electric Chair"**
+**Alpha v0.7.9c "Electric Chair"**
 
 A self-hosted photography CMS for people who care about their photographs. Your domain, your archive, no algorithm.
 
