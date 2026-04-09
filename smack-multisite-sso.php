@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Multisite SSO Redirector
- * Alpha v0.7.9a
+ * Alpha v0.7.9b
  *
  * Hub-side. Receives ?sat=NODE_ID from the admin clicking "Remote Login"
  * on the multisite dashboard. Calls the satellite's sso-token API endpoint,

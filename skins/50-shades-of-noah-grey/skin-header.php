@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin header for the 50-shades-of-noah-grey skin
- * Alpha v0.7.9a
+ * Alpha v0.7.9b
  */
 ?>
 <div id="fsog-header" data-sticky-header>
