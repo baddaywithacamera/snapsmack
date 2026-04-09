@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Drive Link Backfill Endpoint
- * Alpha v0.7.9b
+ * Alpha v0.7.9c
  *
  * JSON API for the Fix Your Batch Up desktop tool.
  * Requires an active admin session (auth.php).

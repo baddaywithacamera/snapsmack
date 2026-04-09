@@ -1,6 +1,6 @@
 /**
  * SNAPSMACK - AI Writing Assistant Engine
- * Alpha v0.7.9b
+ * Alpha v0.7.9c
  *
  * Powers the SP/GR and AI ASSIST buttons in the post editor.
  * Talks to smack-ai-assist.php (mode: spellcheck | chat).

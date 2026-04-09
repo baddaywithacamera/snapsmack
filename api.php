@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - API Router
- * Alpha v0.7.9b
+ * Alpha v0.7.9c
  *
  * Public API entry point. Routes /api/* requests to appropriate handlers.
  * Supports query parameter routing for shared hosting compatibility:
