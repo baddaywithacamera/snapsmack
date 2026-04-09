@@ -314,7 +314,7 @@ $msg = $_GET['msg'] ?? '';
 ?>
 
 <div class="main">
-    <h2>Traffic Stats</h2>
+    <h2>TRAFFIC STATS</h2>
 
     <?php if ($msg === 'rollup_ok'): ?>
         <div class="notice notice-success">Daily rollup complete.</div>
