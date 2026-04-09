@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Multisite Stats Rollup
- * Alpha v0.7.9b
+ * Alpha v0.7.9c
  *
  * Hub-only page. Fetches daily stats from all active satellites via the
  * multisite/stats/daily API endpoint, aggregates them into a fleet-wide

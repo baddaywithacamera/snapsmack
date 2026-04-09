@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Companion Tools
- * Alpha v0.7.9b
+ * Alpha v0.7.9c
  *
  * Lists available companion desktop tools with download links.
  */
