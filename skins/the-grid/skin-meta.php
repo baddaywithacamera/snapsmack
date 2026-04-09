@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - The Grid Skin Meta
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Page title tag. Included by core/meta.php.
  */

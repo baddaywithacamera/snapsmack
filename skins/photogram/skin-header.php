@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Photogram Skin Header
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Photogram has no traditional site header bar — each screen renders its
  * own top bar inline. This file exists for convention compliance and to

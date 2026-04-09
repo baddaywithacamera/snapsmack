@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Migration Runner
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Standalone admin tool for applying schema sync and pending SQL migrations
  * without SSH or phpMyAdmin access. FTP this file to the site root, load it

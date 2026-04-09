@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the show-n-tell skin
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Portfolio & photoblog hybrid skin. Clean hero slider (media library source),
  * justified grid, pixel frame and Galleria frame options, optional contact form.

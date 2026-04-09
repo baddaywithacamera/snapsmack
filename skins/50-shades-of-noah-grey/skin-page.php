@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - 50 Shades of Noah Grey static page template
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Renders static pages (page.php) inside the 50 Shades shell.
  * Hero image sits inside .static-content so it is constrained to the

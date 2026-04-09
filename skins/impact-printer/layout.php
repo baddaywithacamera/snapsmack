@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Main layout template for the impact-printer skin
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Renders the photo display with ASCII frame borders, navigation, metadata, and comments sections.
  */

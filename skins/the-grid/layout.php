@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - The Grid Post View
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Single post view. For single-image posts, renders the full image with
  * EXIF and caption below. For carousel posts (image_count > 1), wraps all

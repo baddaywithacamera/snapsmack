@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Skin Help Topics: True Grit
- * Alpha v0.7.8
+ * Alpha v0.7.9
  */
 
 return [

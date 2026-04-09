@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Cron Version Checker
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Scheduled task that checks for both core software updates AND new/updated
  * skins from the remote registry. Stores results in snap_settings so the
