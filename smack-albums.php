@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Album (mission) management
- * Alpha v0.7.9a
+ * Alpha v0.7.9b
  *
  * Provides creation, editing, and deletion of photo album collections.
  * Maintains associations between albums and their contained images.

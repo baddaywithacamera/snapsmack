@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Meta tags for the 50-shades-of-noah-grey skin
- * Alpha v0.7.9a
+ * Alpha v0.7.9b
  *
  * Includes core meta tags and loads the appropriate greyscale variant stylesheet.
  */

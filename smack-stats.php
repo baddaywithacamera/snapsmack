@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Traffic Stats Dashboard
- * Alpha v0.7.9a
+ * Alpha v0.7.9b
  *
  * Three-tier analytics dashboard for SnapSmack photoblogs.
  *
