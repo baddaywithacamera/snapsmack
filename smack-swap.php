@@ -10,6 +10,9 @@
 require_once 'core/auth.php';
 require_once 'core/fix-exif.php';
 
+// --- SETTINGS ---
+$settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+
 // --- SIGNAL VALIDATION ---
 // Identify the target record and verify its existence in the archive.
 $id = (int)($_GET['id'] ?? 0);
@@ -186,6 +189,7 @@ include 'core/sidebar.php';
                     </div>
                 </div>
             </div>
+            <?php if (($settings['exif_display_enabled'] ?? '1') !== '0'): ?>
             <h3>TECHNICAL OVERRIDES (OPTIONAL)</h3>
             <div class="meta-grid">
                 <div class="lens-input-wrapper">
@@ -234,6 +238,7 @@ include 'core/sidebar.php';
                     </select>
                 </div>
             </div>
+            <?php endif; ?>
         </div>
         <div class="form-action-row">
             <button type="submit" class="master-update-btn">PERFORM SWAP</button>
