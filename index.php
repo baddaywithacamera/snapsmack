@@ -22,7 +22,7 @@ require_once __DIR__ . '/core/stats-logger.php';
 // --- INITIALIZATION ---
 $settings = [];
 $site_name = 'ISWA.CA';
-$active_skin = 'new-horizon';
+$active_skin = '50-shades-of-noah-grey';
 $prev_slug = $next_slug = $first_slug = $last_slug = "";
 $comment_count = 0;
 
