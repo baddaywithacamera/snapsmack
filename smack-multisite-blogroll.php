@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Multisite Blogroll Sync
- * Alpha v0.7.9
+ * Alpha v0.7.9a
  *
  * Hub-only page. Two modes:
  *
