@@ -1,0 +1,417 @@
+<?php
+/**
+ * SNAPSMACK - Multisite Management
+ * Alpha v0.7.8
+ *
+ * Hub and satellite site management interface. Allows admins to set up
+ * multi-site configurations, register new satellites, and monitor their status.
+ */
+
+require_once 'core/auth.php';
+
+// --- FORM SUBMISSION HANDLERS ---
+
+// Enable as Hub
+if (isset($_POST['enable_hub'])) {
+    $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
+    $stmt->execute(['multisite_role', 'hub', 'hub']);
+    $msg = "Enabled as Hub. You can now register satellite sites.";
+}
+
+// Connect to Hub (satellite mode)
+if (isset($_POST['enable_satellite'])) {
+    $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
+    $stmt->execute(['multisite_role', 'satellite', 'satellite']);
+    $msg = "Enabled as Satellite. You can now generate a registration token.";
+}
+
+// Generate registration token
+if (isset($_POST['gen_reg_token'])) {
+    $token = bin2hex(random_bytes(16)); // 32-char hex
+    $expires = time() + 900; // 15 minutes
+
+    $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
+    $stmt->execute(['multisite_reg_token', $token, $token]);
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
+        ->execute(['multisite_reg_token_expires', $expires, $expires]);
+
+    $_SESSION['multisite_reg_token'] = $token;
+    $_SESSION['multisite_reg_token_expires'] = $expires;
+    $msg = "Registration token generated. Valid for 15 minutes.";
+}
+
+// Register satellite (hub mode)
+if (isset($_POST['register_satellite'])) {
+    $satellite_url = trim($_POST['satellite_url'] ?? '');
+    $satellite_token = trim($_POST['satellite_token'] ?? '');
+    $satellite_name = trim($_POST['satellite_name'] ?? '');
+
+    if (empty($satellite_url) || empty($satellite_token)) {
+        $err = "Satellite URL and registration token are required.";
+    } else {
+        // Normalize URL
+        if (!preg_match('~^https?://~i', $satellite_url)) {
+            $satellite_url = 'https://' . $satellite_url;
+        }
+        $satellite_url = rtrim($satellite_url, '/');
+
+        // Call the satellite's handshake endpoint
+        $handshake_data = [
+            'site_url' => BASE_URL,
+            'site_name' => $settings['site_name'] ?? 'SnapSmack Hub',
+            'token' => $satellite_token
+        ];
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $satellite_url . '/api.php?route=multisite/handshake',
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => http_build_query($handshake_data),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_HTTPHEADER => [
+                'Accept: application/json'
+            ]
+        ]);
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_err = curl_error($ch);
+        curl_close($ch);
+
+        if (!$response || $http_code !== 200) {
+            $err = "Failed to contact satellite: " . ($curl_err ?: "HTTP $http_code");
+        } else {
+            $response_data = json_decode($response, true);
+
+            if ($response_data['status'] !== 'success' || empty($response_data['data']['api_key'])) {
+                $err = "Handshake failed: " . ($response_data['data']['message'] ?? 'Unknown error');
+            } else {
+                $api_key_remote = $response_data['data']['api_key'];
+
+                // Store the satellite
+                $stmt = $pdo->prepare("
+                    INSERT INTO snap_multisite_nodes
+                    (role, site_url, site_name, api_key_local, api_key_remote, status, connected_at)
+                    VALUES (?, ?, ?, ?, ?, 'active', NOW())
+                    ON DUPLICATE KEY UPDATE
+                        api_key_remote = VALUES(api_key_remote),
+                        status = 'active',
+                        site_name = VALUES(site_name)
+                ");
+
+                try {
+                    $api_key_local = bin2hex(random_bytes(32));
+                    $stmt->execute(['satellite', $satellite_url, $satellite_name, $api_key_local, $api_key_remote]);
+                    $msg = "Satellite registered successfully: {$satellite_name}";
+                } catch (PDOException $e) {
+                    $err = "Database error: " . $e->getMessage();
+                }
+            }
+        }
+    }
+}
+
+// Disconnect satellite
+if (isset($_GET['disconnect'])) {
+    $node_id = (int)$_GET['disconnect'];
+
+    // Get the satellite info
+    $stmt = $pdo->prepare("SELECT site_url, api_key_local FROM snap_multisite_nodes WHERE id = ? AND role = 'satellite'");
+    $stmt->execute([$node_id]);
+    $node = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($node) {
+        // Notify satellite to disconnect
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $node['site_url'] . '/api.php?route=multisite/disconnect',
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $node['api_key_local'],
+                'Accept: application/json'
+            ],
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_SSL_VERIFYPEER => true
+        ]);
+        curl_exec($ch);
+        curl_close($ch);
+
+        // Update status
+        $pdo->prepare("UPDATE snap_multisite_nodes SET status = 'disconnected' WHERE id = ?")->execute([$node_id]);
+        $msg = "Satellite disconnected.";
+    }
+}
+
+// Disconnect from hub
+if (isset($_POST['disconnect_hub'])) {
+    $pdo->prepare("DELETE FROM snap_multisite_nodes WHERE role = 'hub' LIMIT 1")->execute();
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
+        ->execute(['multisite_reg_token', '', '']);
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
+        ->execute(['multisite_reg_token_expires', '0', '0']);
+    $msg = "Disconnected from hub.";
+}
+
+// --- DATA LOADING ---
+$settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+$multisite_role = $settings['multisite_role'] ?? '';
+
+// Load connected nodes
+$nodes = $pdo->query("SELECT * FROM snap_multisite_nodes ORDER BY role ASC, connected_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+
+// Get registration token if it exists and is still valid
+$reg_token = $_SESSION['multisite_reg_token'] ?? '';
+$reg_token_expires = $_SESSION['multisite_reg_token_expires'] ?? 0;
+$reg_token_valid = $reg_token && time() < $reg_token_expires;
+
+$page_title = "Multisite Management";
+include 'core/admin-header.php';
+include 'core/sidebar.php';
+?>
+
+<div class="main">
+    <div class="header-row">
+        <h2>MULTISITE MANAGEMENT</h2>
+    </div>
+
+    <?php if(isset($msg)): ?>
+        <div class="msg">> <?php echo htmlspecialchars($msg); ?></div>
+    <?php endif; ?>
+
+    <?php if(isset($err)): ?>
+        <div class="alert alert-error">> <?php echo htmlspecialchars($err); ?></div>
+    <?php endif; ?>
+
+    <?php if (empty($multisite_role)): ?>
+        <!-- INITIAL CHOICE: Neither hub nor satellite -->
+        <div class="box">
+            <h3>ENABLE MULTISITE MANAGEMENT</h3>
+            <p style="margin-bottom:20px; color:var(--text-muted,#888);">
+                This installation can operate as a Hub (manage multiple sites) or as a Satellite (managed by a hub).
+                Choose your role to get started.
+            </p>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+                <div style="padding:20px; border:1px solid var(--border,#333); background:var(--input-bg,#111);">
+                    <h4>HUB MODE</h4>
+                    <p style="font-size:0.9rem; color:var(--text-muted,#888); margin-bottom:15px;">
+                        Manage and monitor multiple SnapSmack installations from a central dashboard.
+                    </p>
+                    <form method="POST" style="margin:0;">
+                        <button type="submit" name="enable_hub" class="master-update-btn" style="width:100%;">
+                            ENABLE AS HUB
+                        </button>
+                    </form>
+                </div>
+
+                <div style="padding:20px; border:1px solid var(--border,#333); background:var(--input-bg,#111);">
+                    <h4>SATELLITE MODE</h4>
+                    <p style="font-size:0.9rem; color:var(--text-muted,#888); margin-bottom:15px;">
+                        Connect this site to a central hub for remote monitoring and management.
+                    </p>
+                    <form method="POST" style="margin:0;">
+                        <button type="submit" name="enable_satellite" class="master-update-btn" style="width:100%;">
+                            ENABLE AS SATELLITE
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    <?php elseif ($multisite_role === 'hub'): ?>
+        <!-- HUB MODE: Manage satellites -->
+        <div class="box">
+            <h3>CONNECTED SATELLITES</h3>
+
+            <?php if (empty($nodes) || count(array_filter($nodes, fn($n) => $n['role'] === 'satellite')) === 0): ?>
+                <p style="color:var(--text-muted,#888);">No satellites connected yet. Register one below.</p>
+            <?php else: ?>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+                        <thead>
+                            <tr style="border-bottom:1px solid var(--border,#333);">
+                                <th style="text-align:left; padding:10px; color:var(--text-muted,#888);">NAME</th>
+                                <th style="text-align:left; padding:10px; color:var(--text-muted,#888);">URL</th>
+                                <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">VERSION</th>
+                                <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">LAST SEEN</th>
+                                <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">POSTS</th>
+                                <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">PENDING</th>
+                                <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">BACKUP</th>
+                                <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($nodes as $n): ?>
+                                <?php if ($n['role'] !== 'satellite') continue; ?>
+                                <tr style="border-bottom:1px solid var(--border,#333);">
+                                    <td style="padding:10px;"><strong><?php echo htmlspecialchars($n['site_name'] ?? 'Unknown'); ?></strong></td>
+                                    <td style="padding:10px; font-size:0.85rem; color:var(--text-muted,#888);">
+                                        <a href="<?php echo htmlspecialchars($n['site_url']); ?>" target="_blank" style="color:var(--accent,#aaa);">
+                                            <?php echo htmlspecialchars(preg_replace('~^https?://~i', '', $n['site_url'])); ?>
+                                        </a>
+                                    </td>
+                                    <td style="padding:10px; text-align:center; color:var(--text-muted,#888);">
+                                        <?php echo htmlspecialchars($n['software_version'] ?? 'Unknown'); ?>
+                                    </td>
+                                    <td style="padding:10px; text-align:center; color:var(--text-muted,#888);">
+                                        <?php
+                                            if ($n['last_seen_at']) {
+                                                $last_seen = strtotime($n['last_seen_at']);
+                                                $diff = time() - $last_seen;
+                                                if ($diff < 60) {
+                                                    echo "now";
+                                                } elseif ($diff < 3600) {
+                                                    echo floor($diff / 60) . "m ago";
+                                                } elseif ($diff < 86400) {
+                                                    echo floor($diff / 3600) . "h ago";
+                                                } else {
+                                                    echo floor($diff / 86400) . "d ago";
+                                                }
+                                            } else {
+                                                echo "never";
+                                            }
+                                        ?>
+                                    </td>
+                                    <td style="padding:10px; text-align:center;">
+                                        <?php echo (int)$n['post_count']; ?>
+                                    </td>
+                                    <td style="padding:10px; text-align:center;">
+                                        <?php echo (int)$n['pending_comments']; ?>
+                                    </td>
+                                    <td style="padding:10px; text-align:center;">
+                                        <?php
+                                            $backup_status = $n['last_backup_status'] ?? 'unknown';
+                                            $backup_color = $backup_status === 'ok' ? '#4CAF50' : ($backup_status === 'failed' ? '#f44336' : '#FF9800');
+                                            echo "<span style='display:inline-block; width:12px; height:12px; border-radius:50%; background-color:{$backup_color};' title='{$backup_status}'></span>";
+                                        ?>
+                                    </td>
+                                    <td style="padding:10px; text-align:center;">
+                                        <a href="?disconnect=<?php echo $n['id']; ?>" class="action-delete" onclick="return confirm('Disconnect this satellite?');">DISCONNECT</a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- REGISTER NEW SATELLITE -->
+        <div class="box">
+            <h3>REGISTER NEW SATELLITE</h3>
+            <form method="POST">
+                <label>SATELLITE NAME</label>
+                <input type="text" name="satellite_name" placeholder="e.g., Travel Blog" required>
+
+                <label>SATELLITE URL</label>
+                <input type="url" name="satellite_url" placeholder="https://example.com" required>
+
+                <label>REGISTRATION TOKEN</label>
+                <input type="text" name="satellite_token" placeholder="Obtained from the satellite's dashboard" required>
+
+                <p style="font-size:0.85rem; color:var(--text-muted,#888); margin:10px 0;">
+                    Ask the satellite admin to generate a token at their Multisite Management page and give it to you.
+                </p>
+
+                <button type="submit" name="register_satellite" class="master-update-btn">REGISTER SATELLITE</button>
+            </form>
+        </div>
+
+    <?php elseif ($multisite_role === 'satellite'): ?>
+        <!-- SATELLITE MODE: Connected to a hub -->
+
+        <?php $hub_node = array_filter($nodes, fn($n) => $n['role'] === 'hub'); ?>
+
+        <div class="box">
+            <h3>HUB CONNECTION STATUS</h3>
+
+            <?php if (empty($hub_node)): ?>
+                <p style="color:var(--text-muted,#888); margin-bottom:20px;">
+                    Not connected to a hub. Generate a registration token below and share it with your hub administrator.
+                </p>
+
+                <?php if ($reg_token_valid): ?>
+                    <div style="padding:15px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; margin-bottom:20px;">
+                        <p style="font-size:0.85rem; color:var(--text-muted,#888); margin-bottom:10px;">
+                            <strong>Active Registration Token (valid for <?php echo max(1, ceil(($reg_token_expires - time()) / 60)); ?> more minutes):</strong>
+                        </p>
+                        <div style="font-family:monospace; font-size:1.1rem; letter-spacing:2px; padding:10px;
+                                    background:var(--bg,#000); border:1px solid var(--border,#333); word-break:break-all;">
+                            <?php echo htmlspecialchars($reg_token); ?>
+                        </div>
+                        <p style="font-size:0.8rem; color:var(--accent,#aaa); margin-top:10px;">
+                            Give this token to your hub administrator. It expires at <?php echo date('H:i:s', $reg_token_expires); ?>.
+                        </p>
+                    </div>
+                <?php else: ?>
+                    <form method="POST" style="margin-bottom:20px;">
+                        <button type="submit" name="gen_reg_token" class="master-update-btn">
+                            GENERATE REGISTRATION TOKEN
+                        </button>
+                    </form>
+                <?php endif; ?>
+
+            <?php else: ?>
+                <?php $hub = current($hub_node); ?>
+                <div style="padding:15px; background:var(--input-bg,#111); border-left:4px solid #4CAF50;">
+                    <p><strong>Connected to Hub:</strong> <?php echo htmlspecialchars($hub['site_name']); ?></p>
+                    <p style="color:var(--text-muted,#888); font-size:0.9rem;">
+                        URL: <a href="<?php echo htmlspecialchars($hub['site_url']); ?>" target="_blank" style="color:var(--accent,#aaa);">
+                            <?php echo htmlspecialchars($hub['site_url']); ?>
+                        </a>
+                    </p>
+                    <p style="color:var(--text-muted,#888); font-size:0.9rem;">
+                        Connected at: <?php echo date('Y-m-d H:i:s', strtotime($hub['connected_at'])); ?>
+                    </p>
+                </div>
+
+                <form method="POST" style="margin-top:20px;">
+                    <button type="submit" name="disconnect_hub" class="action-delete" onclick="return confirm('Disconnect from hub? The hub will no longer be able to monitor this site.');">
+                        DISCONNECT FROM HUB
+                    </button>
+                </form>
+            <?php endif; ?>
+        </div>
+
+        <!-- API ACCESS LOG -->
+        <div class="box">
+            <h3>API ACCESS LOG (Last 50 Calls)</h3>
+            <?php
+                $log = $pdo->query("
+                    SELECT created_at FROM snap_multisite_queue
+                    ORDER BY created_at DESC
+                    LIMIT 50
+                ")->fetchAll(PDO::FETCH_ASSOC);
+            ?>
+            <?php if (empty($log)): ?>
+                <p style="color:var(--text-muted,#888);">No API calls recorded yet.</p>
+            <?php else: ?>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                        <thead>
+                            <tr style="border-bottom:1px solid var(--border,#333);">
+                                <th style="text-align:left; padding:8px; color:var(--text-muted,#888);">TIMESTAMP</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($log as $entry): ?>
+                                <tr style="border-bottom:1px solid var(--border,#333);">
+                                    <td style="padding:8px;">
+                                        <?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($entry['created_at']))); ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+
+    <?php endif; ?>
+
+</div>
+
+<?php include 'core/admin-footer.php'; ?>
