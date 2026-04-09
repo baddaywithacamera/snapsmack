@@ -484,3 +484,44 @@ CREATE TABLE IF NOT EXISTS `snap_pimpotron_slides` (
   PRIMARY KEY (`id`),
   KEY `idx_slideshow_id` (`slideshow_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ─── MULTISITE MANAGEMENT ─────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
+  `id`                  int unsigned   NOT NULL AUTO_INCREMENT,
+  `role`                enum('hub','satellite') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `site_url`            varchar(500)   COLLATE utf8mb4_unicode_ci NOT NULL,
+  `site_name`           varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `api_key_local`       varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL
+                        COMMENT 'Our key that the remote site uses to call us',
+  `api_key_remote`      varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL
+                        COMMENT 'Key we use to call the remote site',
+  `software_version`    varchar(50)    COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `last_seen_at`        datetime       DEFAULT NULL,
+  `post_count`          int unsigned   DEFAULT 0,
+  `image_count`         int unsigned   DEFAULT 0,
+  `pending_comments`    int unsigned   DEFAULT 0,
+  `last_backup_at`      datetime       DEFAULT NULL,
+  `last_backup_size`    bigint unsigned DEFAULT NULL,
+  `last_backup_dest`    varchar(100)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `last_backup_status`  enum('ok','failed','unknown') COLLATE utf8mb4_unicode_ci DEFAULT 'unknown',
+  `disk_usage_bytes`    bigint unsigned DEFAULT NULL,
+  `status`              enum('active','offline','disconnected') COLLATE utf8mb4_unicode_ci DEFAULT 'active',
+  `connected_at`        datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_site_url` (`site_url`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `snap_multisite_queue` (
+  `id`                  int unsigned   NOT NULL AUTO_INCREMENT,
+  `node_id`             int unsigned   NOT NULL,
+  `action`              varchar(50)    COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payload`             text           COLLATE utf8mb4_unicode_ci,
+  `status`              enum('pending','processing','completed','failed') COLLATE utf8mb4_unicode_ci DEFAULT 'pending',
+  `attempts`            tinyint unsigned DEFAULT 0,
+  `created_at`          datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `processed_at`        datetime       DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_node_status` (`node_id`, `status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
