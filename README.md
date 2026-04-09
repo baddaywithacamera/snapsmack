@@ -1,6 +1,6 @@
 # SnapSmack
 
-**Alpha v0.7.8g "Raised Toilet Seat"**
+**Alpha v0.7.9b "Electric Chair"**
 
 A self-hosted photography CMS for people who care about their photographs. Your domain, your archive, no algorithm.
 
@@ -24,6 +24,7 @@ Key characteristics across both editions:
 - **Community features** — comments, likes, and emoji reactions. Three identity modes: open (no account required), hybrid, or registered-only.
 - **AI training crawler policy** — choose to allow, disallow, or take no position on AI training crawlers. Disallow mode blocks known AI bots via `robots.txt` and injects `noai`/`noimageai` meta tags site-wide.
 - **Homepage modes** — Latest Post, Skin Landing Page, or a Static Page. A Landing Page Only toggle strips all navigation and chrome for coming-soon or splash installs.
+- **Multisite management** — designate one install as the hub and connect satellite sites. Monitor heartbeat, cross-post images, moderate comments from a single dashboard, sync blogrolls, aggregate traffic stats, and SSO drill-through so you log in once and move freely between sites.
 - **No tracking, no ads, no third-party dependencies at runtime.**
 
 ---
