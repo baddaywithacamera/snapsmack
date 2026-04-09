@@ -551,3 +551,18 @@ input[type="range"]::-webkit-slider-thumb {
 .cloud-progress-error { color: #E86060; }
 .cloud-progress-success { color: #4EC994; }
 
+/* Interaction page */
+.box-desc, .toggle-desc, .reaction-count-note { color: #666666; }
+.toggle-row, .identity-row { border-bottom-color: #1A1A1A; }
+.toggle-row input[type="checkbox"]::before { background-color: #505050; }
+.toggle-row input[type="checkbox"]:checked::before { background-color: #FFFFFF; }
+.radio-option, .reaction-option { border-color: #1A1A1A; }
+.radio-option:hover,
+.radio-option:has(input:checked),
+.reaction-option:hover,
+.reaction-option.is-active,
+.reaction-option:has(input:checked) { border-color: #FFFFFF; }
+.radio-option:has(input:checked),
+.reaction-option.is-active,
+.reaction-option:has(input:checked) { background-color: #202020; }
+
