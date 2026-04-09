@@ -78,7 +78,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                         <a href="smack-blogroll.php">Blogroll</a>
                     </li>
                     <li class="<?php echo in_array($current_page, ['smack-community-settings.php','smack-community-users.php']) ? 'active' : ''; ?>">
-                        <a href="smack-community-settings.php">Community</a>
+                        <a href="smack-community-settings.php">Interaction</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-pages.php') ? 'active' : ''; ?>">
                         <a href="smack-pages.php">Static Pages</a>
