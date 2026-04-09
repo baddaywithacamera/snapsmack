@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Forced Password Change
- * Alpha v0.7.9a
+ * Alpha v0.7.9b
  *
  * Shown after a recovery code login. The session flag force_password_change
  * must be set. Clears the flag and the DB column on successful save.

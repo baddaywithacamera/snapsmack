@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Migration 027: Multisite Tables
- * Alpha v0.7.9a
+ * Alpha v0.7.9b
  *
  * Creates snap_multisite_nodes and snap_multisite_queue tables to support
  * hub-and-satellite architecture. Also adds multisite-related settings keys

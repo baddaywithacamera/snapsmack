@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Schema Sync Engine
- * Alpha v0.7.9a
+ * Alpha v0.7.9b
  *
  * Declares the canonical database schema for the current version and applies
  * any missing tables or columns against a live database. All operations are

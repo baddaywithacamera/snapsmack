@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Like Toggle Handler
- * Alpha v0.7.9a
+ * Alpha v0.7.9b
  *
  * AJAX endpoint. Toggles a like on a post. Supports both authenticated
  * community users (tracked by user_id) and anonymous visitors (tracked
