@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Auth Recovery Engine
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Shared functions for one-time recovery codes and email-based password
  * reset tokens. Used by login.php, smack-users.php, smack-edit-user.php,
