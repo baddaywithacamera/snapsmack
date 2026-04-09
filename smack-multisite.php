@@ -85,10 +85,10 @@ if (isset($_POST['register_satellite'])) {
         } else {
             $response_data = json_decode($response, true);
 
-            if ($response_data['status'] !== 'success' || empty($response_data['data']['api_key'])) {
-                $err = "Handshake failed: " . ($response_data['data']['message'] ?? 'Unknown error');
+            if (empty($response_data['ok']) || empty($response_data['api_key'])) {
+                $err = "Handshake failed: " . ($response_data['error'] ?? 'Unknown error');
             } else {
-                $api_key_remote = $response_data['data']['api_key'];
+                $api_key_remote = $response_data['api_key'];
 
                 // Store the satellite
                 $stmt = $pdo->prepare("
@@ -162,10 +162,80 @@ $multisite_role = $settings['multisite_role'] ?? '';
 // Load connected nodes
 $nodes = $pdo->query("SELECT * FROM snap_multisite_nodes ORDER BY role ASC, connected_at DESC")->fetchAll(PDO::FETCH_ASSOC);
 
-// Get registration token if it exists and is still valid
-$reg_token = $_SESSION['multisite_reg_token'] ?? '';
-$reg_token_expires = $_SESSION['multisite_reg_token_expires'] ?? 0;
-$reg_token_valid = $reg_token && time() < $reg_token_expires;
+// --- HEARTBEAT SWEEP (hub only, once per page load) ---
+// Calls each active satellite's heartbeat endpoint and caches the stats locally.
+if ($multisite_role === 'hub') {
+    foreach ($nodes as &$n) {
+        if ($n['role'] !== 'satellite' || $n['status'] !== 'active') continue;
+
+        $url = rtrim($n['site_url'], '/') . '/api.php?route=multisite/heartbeat';
+        $hb_ch = curl_init();
+        curl_setopt_array($hb_ch, [
+            CURLOPT_URL            => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 5,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_HTTPHEADER     => [
+                'Authorization: Bearer ' . $n['api_key_local'],
+                'Accept: application/json',
+            ],
+        ]);
+        $hb_raw  = curl_exec($hb_ch);
+        $hb_code = curl_getinfo($hb_ch, CURLINFO_HTTP_CODE);
+        curl_close($hb_ch);
+
+        if ($hb_raw && $hb_code === 200) {
+            $hb = json_decode($hb_raw, true);
+            if (!empty($hb['ok'])) {
+                $pdo->prepare("
+                    UPDATE snap_multisite_nodes SET
+                        software_version   = ?,
+                        post_count         = ?,
+                        image_count        = ?,
+                        pending_comments   = ?,
+                        last_backup_at     = ?,
+                        last_backup_size   = ?,
+                        last_backup_dest   = ?,
+                        last_backup_status = ?,
+                        disk_usage_bytes   = ?,
+                        last_seen_at       = NOW(),
+                        status             = 'active'
+                    WHERE id = ?
+                ")->execute([
+                    $hb['version']            ?? null,
+                    $hb['post_count']         ?? 0,
+                    $hb['image_count']        ?? 0,
+                    $hb['pending_comments']   ?? 0,
+                    $hb['last_backup_at']     ?? null,
+                    $hb['last_backup_size']   ?? null,
+                    $hb['last_backup_dest']   ?? null,
+                    $hb['last_backup_status'] ?? 'unknown',
+                    $hb['disk_usage_bytes']   ?? null,
+                    $n['id'],
+                ]);
+                // Update local array so the table renders fresh data without a reload
+                $n['software_version']   = $hb['version']            ?? $n['software_version'];
+                $n['post_count']         = $hb['post_count']         ?? $n['post_count'];
+                $n['image_count']        = $hb['image_count']        ?? $n['image_count'];
+                $n['pending_comments']   = $hb['pending_comments']   ?? $n['pending_comments'];
+                $n['last_backup_status'] = $hb['last_backup_status'] ?? $n['last_backup_status'];
+            }
+        } else {
+            // Mark offline if unreachable
+            $pdo->prepare("UPDATE snap_multisite_nodes SET status = 'offline' WHERE id = ?")->execute([$n['id']]);
+            $n['status'] = 'offline';
+        }
+    }
+    unset($n);
+
+    // Reload nodes so status changes are reflected
+    $nodes = $pdo->query("SELECT * FROM snap_multisite_nodes ORDER BY role ASC, connected_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Get registration token if it exists and is still valid (read from DB, not session)
+$reg_token         = $settings['multisite_reg_token']         ?? '';
+$reg_token_expires = (int)($settings['multisite_reg_token_expires'] ?? 0);
+$reg_token_valid   = $reg_token && time() < $reg_token_expires;
 
 $page_title = "Multisite Management";
 include 'core/admin-header.php';
@@ -222,6 +292,24 @@ include 'core/sidebar.php';
         </div>
 
     <?php elseif ($multisite_role === 'hub'): ?>
+
+        <!-- HUB QUICK NAV -->
+        <?php
+            $total_pending_fleet = array_sum(array_column(
+                array_filter($nodes, fn($n) => $n['role'] === 'satellite' && $n['status'] === 'active'),
+                'pending_comments'
+            ));
+        ?>
+        <div class="signal-control-header" style="margin-bottom:20px;">
+            <div class="signal-nav-group">
+                <a href="smack-multisite.php"          class="btn-clear active">DASHBOARD</a>
+                <a href="smack-multisite-comments.php" class="btn-clear">
+                    SIGNALS<?php echo $total_pending_fleet > 0 ? ' (' . $total_pending_fleet . ')' : ''; ?>
+                </a>
+                <a href="smack-multisite-posts.php"    class="btn-clear">POSTS</a>
+            </div>
+        </div>
+
         <!-- HUB MODE: Manage satellites -->
         <div class="box">
             <h3>CONNECTED SATELLITES</h3>
@@ -236,6 +324,7 @@ include 'core/sidebar.php';
                                 <th style="text-align:left; padding:10px; color:var(--text-muted,#888);">NAME</th>
                                 <th style="text-align:left; padding:10px; color:var(--text-muted,#888);">URL</th>
                                 <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">VERSION</th>
+                                <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">STATUS</th>
                                 <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">LAST SEEN</th>
                                 <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">POSTS</th>
                                 <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">PENDING</th>
@@ -253,8 +342,23 @@ include 'core/sidebar.php';
                                             <?php echo htmlspecialchars(preg_replace('~^https?://~i', '', $n['site_url'])); ?>
                                         </a>
                                     </td>
-                                    <td style="padding:10px; text-align:center; color:var(--text-muted,#888);">
-                                        <?php echo htmlspecialchars($n['software_version'] ?? 'Unknown'); ?>
+                                    <td style="padding:10px; text-align:center; color:var(--text-muted,#888); font-family:monospace; font-size:0.85rem;">
+                                        <?php
+                                            $sat_ver = $n['software_version'] ?? '';
+                                            echo $sat_ver ? htmlspecialchars($sat_ver) : '—';
+                                            // Flag if behind current hub version
+                                            if ($sat_ver && defined('SNAPSMACK_VERSION') && $sat_ver !== SNAPSMACK_VERSION) {
+                                                echo ' <span style="color:#FF9800; font-size:0.75rem;" title="Behind hub version ' . htmlspecialchars(SNAPSMACK_VERSION) . '">&#x25B2;</span>';
+                                            }
+                                        ?>
+                                    </td>
+                                    <td style="padding:10px; text-align:center;">
+                                        <?php
+                                            $node_status = $n['status'] ?? 'unknown';
+                                            $status_color = $node_status === 'active' ? '#4CAF50' : ($node_status === 'offline' ? '#f44336' : '#888');
+                                            echo '<span style="display:inline-block; width:10px; height:10px; border-radius:50%; background-color:' . $status_color . '; margin-right:5px;" title="' . htmlspecialchars($node_status) . '"></span>';
+                                            echo '<span style="color:' . $status_color . '; font-size:0.8rem;">' . strtoupper($node_status) . '</span>';
+                                        ?>
                                     </td>
                                     <td style="padding:10px; text-align:center; color:var(--text-muted,#888);">
                                         <?php

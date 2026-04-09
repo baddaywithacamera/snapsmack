@@ -47,22 +47,37 @@
         header.parentNode.insertBefore(spacer, header.nextSibling);
 
         // --- STATE ---
-        var isStuck = false;
+        var isStuck   = false;
+        var releasing = false;  // true while fade-out transition is playing
 
         // --- SCROLL HANDLER ---
         function onScroll() {
             var scrollY = window.pageYOffset;
 
             if (scrollY > headerTop) {
+                if (releasing) {
+                    // User scrolled back down during fade-out — cancel release
+                    releasing = false;
+                    header.classList.add('ss-sticky-transparent');
+                }
                 if (!isStuck) {
                     isStuck = true;
                     header.classList.add('ss-sticky-active', 'ss-sticky-transparent');
                 }
                 // Stays transparent the whole time — solid only on :hover (CSS)
             } else {
-                if (isStuck) {
-                    isStuck = false;
-                    header.classList.remove('ss-sticky-active', 'ss-sticky-transparent');
+                if (isStuck && !releasing) {
+                    // Fade to opaque first, then unpin after transition ends
+                    releasing = true;
+                    header.classList.remove('ss-sticky-transparent');
+                    header.addEventListener('transitionend', function handler() {
+                        header.removeEventListener('transitionend', handler);
+                        if (releasing) {
+                            releasing = false;
+                            isStuck   = false;
+                            header.classList.remove('ss-sticky-active');
+                        }
+                    });
                 }
             }
         }
