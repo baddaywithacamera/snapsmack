@@ -161,10 +161,12 @@ include 'core/sidebar.php';
     <!-- QUICK NAV -->
     <div class="signal-control-header" style="margin-bottom:20px;">
         <div class="signal-nav-group">
-            <a href="smack-multisite.php"          class="btn-clear">DASHBOARD</a>
-            <a href="smack-multisite-comments.php" class="btn-clear">SIGNALS</a>
-            <a href="smack-multisite-posts.php"    class="btn-clear">POSTS</a>
-            <a href="smack-multisite-backup.php"   class="btn-clear active">BACKUP DOCK</a>
+            <a href="smack-multisite.php"             class="btn-clear">DASHBOARD</a>
+            <a href="smack-multisite-comments.php"    class="btn-clear">SIGNALS</a>
+            <a href="smack-multisite-posts.php"       class="btn-clear">POSTS</a>
+            <a href="smack-multisite-backup.php"      class="btn-clear active">BACKUP DOCK</a>
+            <a href="smack-multisite-stats.php"       class="btn-clear">STATS</a>
+            <a href="smack-multisite-crosspost.php"   class="btn-clear">CROSS-POST</a>
         </div>
     </div>
 
