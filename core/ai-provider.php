@@ -95,7 +95,7 @@ function _snap_ai_claude(string $key, string $system, string $user, int $max_tok
 }
 
 function _snap_ai_gemini(string $key, string $system, string $user, int $max_tokens): array {
-    $url     = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' . urlencode($key);
+    $url     = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . urlencode($key);
     $payload = json_encode([
         'system_instruction' => ['parts' => [['text' => $system]]],
         'contents'           => [['parts' => [['text' => $user]]]],
