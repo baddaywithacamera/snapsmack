@@ -4,6 +4,32 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.9 — "Electric Chair" (2026-04-08)
+
+### Added
+- **Multisite Management — full hub/satellite architecture**: New admin suite for managing a fleet of SnapSmack installations from a central hub. Includes hub/satellite mode selection, one-time registration token handshake, Bearer API key authentication, and a public API router (`api.php`). Database migration 027 creates `snap_multisite_nodes` and `snap_multisite_queue` tables.
+- **Multisite — live heartbeat sweep**: Hub dashboard polls every active satellite on each page load, caching version, post count, pending comments, backup state, and disk usage to `snap_multisite_nodes`. Marks unresponsive satellites offline automatically.
+- **Multisite — Satellite Signal Control** (`smack-multisite-comments.php`): Unified pending comment queue pulling from all satellites. Per-satellite filter tabs with live counts. AUTHORIZE/TERMINATE actions proxied back to the originating satellite.
+- **Multisite — Satellite Post Feed** (`smack-multisite-posts.php`): Aggregated reverse-chronological post feed across all satellites. Filter by site or post type, with load-more control.
+- **Multisite — Backup Dock** (`smack-multisite-backup.php`): Fleet-wide backup health matrix (healthy/stale/failed/unknown). Per-satellite table with health indicator, last backup time, size, destination, and disk usage. Inline drill-down fetches the satellite's `snap_backup_log` on demand. Stale = status ok but older than 7 days.
+- **Multisite — Fleet Stats Rollup** (`smack-multisite-stats.php`): Aggregated traffic across all satellites. Fleet-wide daily sparkline, per-satellite share bars, top 10 referrers across the network. 7d/30d/90d toggle.
+- **Multisite — Cross-Post** (`smack-multisite-crosspost.php`): Push hub images to satellite sites. Grid picker with search and pagination. Satellite fetches the image server-to-server from the hub URL (no POST size limits), saves locally, reads EXIF, and creates a draft or published record. Per-post/per-satellite results with direct VIEW link.
+- **Multisite — SSO drill-through**: REMOTE LOGIN button on hub satellite table. Hub calls `multisite/auth/sso-token` on the satellite, satellite generates a 64-char one-time token (5-minute TTL). Hub bounces admin's browser to `satellite/sso.php?token=...`. Satellite validates via `hash_equals()`, invalidates token immediately, creates a session for the primary admin user, and redirects to the satellite dashboard. `sso.php` added as satellite-side handler.
+- **Multisite — Blogroll Sync** (`smack-multisite-blogroll.php`): PUSH mode sends the hub's full blogroll to selected satellites (placed in a dedicated "Hub:" category, replacing prior hub-synced entries without touching the satellite's own blogroll). PULL mode fetches all satellite blogrolls for review with per-entry IMPORT buttons and duplicate detection.
+- **Multisite API endpoints** (`core/multisite-api.php`): `handshake`, `heartbeat`, `comments/pending`, `comments/action`, `posts/recent`, `posts/create`, `stats/daily`, `updates/status`, `backup/status`, `backup/log`, `auth/sso-token`, `blogroll/list`, `blogroll/sync`, `disconnect`.
+
+### Fixed
+- **Sticky header smooth unpin (50 Shades)**: Header was snapping back to opaque instantly when scrolling to the top. `transitionend` listener now removes `ss-sticky-active` only after the CSS fade completes.
+- **Sticky header transparent-first**: Header goes transparent immediately on stick and stays transparent while scrolling; solid state only on CSS `:hover`.
+- **Sticky header not loading on about page**: `skin-page.php` for 50 Shades was exiting before `core/footer-scripts.php` was included, so the sticky header JS/CSS never loaded on static pages. Fixed.
+- **Phantom font entry**: Removed `DotMatrix-Var-UltraCondensed` from `core/manifest-inventory.php` — the TTF file doesn't exist (UltraCondensed only exists in the VarDuo subfamily).
+- **Multisite API wrong column names**: Phase 1 agent-generated API used `is_active`, `commenter_name`, `post_id` on comments, and a non-existent `is_spam` column. Phase 2 rewrite uses correct schema column names throughout.
+- **Multisite API wrong route parsing**: Nested routes like `multisite/comments/pending` were incorrectly parsed with `$action = $parts[1]`. Fixed with `$resource = $parts[1]`, `$sub_action = $parts[2]`.
+- **Multisite handshake response parsing**: Hub was checking `response_data['status'] !== 'success'` but API returns `ok: true`. Fixed to check `ok` key.
+- **Multisite registration token**: Was reading from `$_SESSION` which could expire or not persist. Now reads from `snap_settings` (where it was already stored).
+
+---
+
 ## 0.7.8g — "Raised Toilet Seat" (2026-04-07)
 
 ### Added
