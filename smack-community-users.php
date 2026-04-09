@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Community User Management
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Admin panel for viewing, suspending, and removing community (visitor)
  * accounts. Shows signup date, last seen, comment count, like count,

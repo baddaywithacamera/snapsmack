@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Hip to be Square static page template
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Renders static pages (page.php) inside the Galleria shell: wall background,
  * sticky header, hero image wrapped in the full frame system, proper content

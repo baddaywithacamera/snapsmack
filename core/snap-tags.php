@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Hashtag Extraction and Sync
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Provides functions:
  *   snap_extract_tags($text)                   — returns array of tag slugs found in text

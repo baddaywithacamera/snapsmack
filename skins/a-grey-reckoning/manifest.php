@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the grey-expectations skin
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Recreates the quiet, reverent aesthetic of Noah Grey's 2006-era photography
  * websites: greyexpectations.com and noahgrey.com. Solid dark backgrounds,

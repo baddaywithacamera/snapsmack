@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - The Grid Skin Footer
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Renders the minimal site footer, loads required JS engines from the
  * manifest, and includes core/footer.php to close </body></html>.

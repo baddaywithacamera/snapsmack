@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Multisite API Handler
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Handles inbound API requests from hub installations. Endpoints are routed
  * by api.php. All write endpoints require a valid Bearer API key. The
