@@ -49,6 +49,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-comment-identity.sql',
     'migrate-multisite-tables.sql',
     'migrate-pages-image-cols.sql',
+    'migrate-users-recovery-columns.sql',
 ];
 
 // ─── VERSION CHECK ──────────────────────────────────────────────────────────
