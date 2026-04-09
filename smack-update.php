@@ -557,57 +557,87 @@ if ($action === 'upload_zip' && !empty($_FILES['update_zip']['tmp_name'])) {
                     $flash_msg  = 'EXTRACTION FAILED. ERRORS: ' . implode('; ', $extract['errors']);
                     $flash_type = 'error';
                 } else {
-                    $migrations = updater_find_migrations($pdo);
-                    if (!empty($migrations)) {
-                        $migrate_result = updater_run_migrations($pdo, $migrations);
-                        $upload_steps[] = [
-                            'label'  => 'Schema migrations',
-                            'status' => $migrate_result['success'] ? 'ok' : 'fail',
-                            'detail' => implode(', ', $migrate_result['applied'])
-                        ];
-                        if (!$migrate_result['success']) {
-                            $rb_error = '';
-                            updater_rollback($backup_file, $rb_error);
-                            $flash_msg  = 'MIGRATION FAILED. SYSTEM ROLLED BACK.';
-                            $flash_type = 'error';
-                            $upload_steps[] = ['label' => 'Rollback', 'status' => 'ok', 'detail' => 'Restored from backup'];
-                            updater_cleanup();
-                        }
-                    }
-
-                    if ($flash_type !== 'error') {
-                        if ($target_version) {
-                            $target_codename = $cached_result['core_update']['codename'] ?? '';
-                            updater_set_version($pdo, $target_version, $target_version_full ?: "Alpha {$target_version}", $target_codename);
-                            $upload_steps[] = ['label' => 'Version updated', 'status' => 'ok', 'detail' => "v{$installed_version} → v{$target_version}"];
-                        }
-                        $pdo->exec("DELETE FROM snap_settings WHERE setting_key = 'update_check_result'");
-                        $cached_result = null;
-                        updater_cleanup();
-                        updater_prune_backups(3);
-
-                        // Asset sync: fetch any missing fonts or JS engines.
-                        require_once __DIR__ . '/core/asset-sync.php';
-                        asset_sync_bust_cache();
-                        $sync_msg = asset_sync_run();
-                        if ($sync_msg !== null) {
-                            $upload_steps[] = ['label' => 'Asset sync', 'status' => 'ok', 'detail' => $sync_msg];
-                        }
-
-                        // Backfill color_family for any pre-existing hex-colour tags.
-                        require_once __DIR__ . '/core/snap-tags.php';
-                        $backfilled = snap_backfill_color_families($pdo);
-                        if ($backfilled > 0) {
-                            $upload_steps[] = ['label' => 'Colour tag backfill', 'status' => 'ok', 'detail' => "{$backfilled} hex tag(s) classified"];
-                        }
-
-                        $flash_msg  = $target_version ? "UPDATE COMPLETE VIA UPLOAD. NOW RUNNING v{$target_version}." : "PACKAGE EXTRACTED SUCCESSFULLY.";
-                        $flash_type = 'success';
-                    }
+                    // Files are on disk. Save pending state and redirect so that
+                    // the migration step runs in a fresh request — loading the
+                    // newly extracted updater code rather than the old copy that
+                    // is still in memory for this request.
+                    $_SESSION['upload_migrate_pending'] = [
+                        'target_version'      => $target_version,
+                        'target_version_full' => $target_version_full,
+                        'target_codename'     => $cached_result['core_update']['codename'] ?? '',
+                        'backup_file'         => $backup_file,
+                        'installed_version'   => $installed_version,
+                        'log'                 => $upload_steps,
+                    ];
+                    header('Location: smack-update.php?action=stage_migrate_upload');
+                    exit;
                 }
             }
         }
     }
+    $update_result = $upload_steps;
+}
+
+// ── ACTION: MIGRATE + FINALIZE AFTER MANUAL ZIP UPLOAD ───────────────────────
+// Runs in a fresh request AFTER upload_zip has extracted the package, so the
+// newly written updater code is loaded rather than the pre-update copy.
+if ($action === 'stage_migrate_upload' && !empty($_SESSION['upload_migrate_pending'])) {
+    $pending             = $_SESSION['upload_migrate_pending'];
+    unset($_SESSION['upload_migrate_pending']);
+    $target_version      = $pending['target_version']      ?? '';
+    $target_version_full = $pending['target_version_full'] ?? '';
+    $target_codename     = $pending['target_codename']     ?? '';
+    $backup_file         = $pending['backup_file']         ?? '';
+    $installed_version   = $pending['installed_version']   ?? '';
+    $upload_steps        = $pending['log']                 ?? [];
+
+    $migration_ok = true;
+
+    $migrations = updater_find_migrations($pdo);
+    if (!empty($migrations)) {
+        $migrate_result = updater_run_migrations($pdo, $migrations);
+        $upload_steps[] = [
+            'label'  => 'Schema migrations',
+            'status' => $migrate_result['success'] ? 'ok' : 'fail',
+            'detail' => implode(', ', $migrate_result['applied']),
+        ];
+        if (!$migrate_result['success']) {
+            $migration_ok = false;
+            $rb_error = '';
+            updater_rollback($backup_file, $rb_error);
+            $flash_msg  = 'MIGRATION FAILED. SYSTEM ROLLED BACK.';
+            $flash_type = 'error';
+            $upload_steps[] = ['label' => 'Rollback', 'status' => 'ok', 'detail' => 'Restored from backup'];
+            updater_cleanup();
+        }
+    }
+
+    if ($migration_ok) {
+        if ($target_version) {
+            updater_set_version($pdo, $target_version, $target_version_full ?: "Alpha {$target_version}", $target_codename);
+            $upload_steps[] = ['label' => 'Version updated', 'status' => 'ok', 'detail' => "v{$installed_version} → v{$target_version}"];
+        }
+        $pdo->exec("DELETE FROM snap_settings WHERE setting_key = 'update_check_result'");
+        updater_cleanup();
+        updater_prune_backups(3);
+
+        require_once __DIR__ . '/core/asset-sync.php';
+        asset_sync_bust_cache();
+        $sync_msg = asset_sync_run();
+        if ($sync_msg !== null) {
+            $upload_steps[] = ['label' => 'Asset sync', 'status' => 'ok', 'detail' => $sync_msg];
+        }
+
+        require_once __DIR__ . '/core/snap-tags.php';
+        $backfilled = snap_backfill_color_families($pdo);
+        if ($backfilled > 0) {
+            $upload_steps[] = ['label' => 'Colour tag backfill', 'status' => 'ok', 'detail' => "{$backfilled} hex tag(s) classified"];
+        }
+
+        $flash_msg  = $target_version ? "UPDATE COMPLETE VIA UPLOAD. NOW RUNNING v{$target_version}." : "PACKAGE EXTRACTED SUCCESSFULLY.";
+        $flash_type = 'success';
+    }
+
     $update_result = $upload_steps;
 }
 
