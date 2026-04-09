@@ -764,7 +764,7 @@ function snap_version_compare(string $v1, string $v2, string $op = \'>\'): bool 
 // --- MOBILE SKIN OVERRIDE ---
 // The slug of the skin forced onto mobile devices. This skin is not selectable
 // in the admin skin picker — it is served automatically when a phone is detected.
-define(\'SNAPSMACK_MOBILE_SKIN\', \'photogram\');
+define(\'SNAPSMACK_MOBILE_SKIN\', \'\');
 
 /**
  * Detect mobile devices via User-Agent string.
@@ -800,8 +800,8 @@ function snapsmack_is_mobile(): bool {
 
             $install_mode     = $_SESSION['site_mode'] ?? 'photoblog';
             $is_carousel      = ($install_mode === 'carousel');
-            $default_skin     = $is_carousel ? 'the-grid'    : 'new-horizon';
-            $default_variant  = $is_carousel ? 'default'     : 'dark';
+            $default_skin     = '50-shades-of-noah-grey';
+            $default_variant  = 'dark';
 
             $defaults = [
                 'site_name'                 => $_SESSION['site_name'] ?? 'My SnapSmack Site',
@@ -973,16 +973,13 @@ HTACCESS;
     }
 
     // --- VERIFY SHIPPED SKINS ---
-    // The installer ships with two skins: New Horizon (desktop) and Pocket Rocket (mobile).
-    // New Horizon is a hard requirement — the public site will 404 without it.
-    // Pocket Rocket is a soft warning — mobile users just get the desktop skin instead.
+    // The installer ships with two skins: 50 Shades of Noah Grey and Rational Geo.
+    // 50 Shades is the default and a hard requirement — the public site will 404 without it.
+    // Additional skins can be installed from the skin gallery after setup.
     $skin_warning = '';
-    if (!is_dir(__DIR__ . '/skins/new-horizon')) {
-        $errors[] = 'Default skin "New Horizon" not found in skins/. The public site cannot load without it. Make sure the full SnapSmack codebase (including the skins/ directory) is uploaded before running the installer.';
+    if (!is_dir(__DIR__ . '/skins/50-shades-of-noah-grey')) {
+        $errors[] = 'Default skin "50 Shades of Noah Grey" not found in skins/. The public site cannot load without it. Make sure the full SnapSmack codebase (including the skins/ directory) is uploaded before running the installer.';
         $skin_warning = $errors[count($errors) - 1];
-    }
-    if (!is_dir(__DIR__ . '/skins/photogram')) {
-        $skin_warning .= ($skin_warning ? ' ' : '') . 'Mobile skin "Photogram" not found in skins/. Mobile visitors will see the desktop skin until Photogram is installed from the gallery.';
     }
 
     // --- SELF-DELETE ---
@@ -1085,7 +1082,7 @@ function snap_version_compare(string $v1, string $v2, string $op = \'>\'): bool 
     };
     return version_compare($normalise($v1), $normalise($v2), $op);
 }
-define(\'SNAPSMACK_MOBILE_SKIN\', \'photogram\');
+define(\'SNAPSMACK_MOBILE_SKIN\', \'\');
 function snapsmack_is_mobile(): bool {
     $ua = $_SERVER[\'HTTP_USER_AGENT\'] ?? \'\';
     if (empty($ua)) return false;
