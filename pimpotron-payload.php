@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Pimpotron slideshow JSON payload API
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Generates the JSON manifest consumed by the frontend slideshow engine.
  * Resolves glitch inheritance from slideshow defaults and constructs asset URLs

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Disaster Recovery
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Serious-business recovery operations: full Recovery Kit export/import
  * and User Credentials export. Separated from routine backup tools so

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - System dashboard and administrative hub
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Displays content statistics, system vitals, and provides centralized access
  * to administrative tools. Manages cron job registration for RSS fetching.

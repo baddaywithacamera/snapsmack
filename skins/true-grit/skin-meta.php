@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Meta tags for the true-grit skin
- * Alpha v0.7.8
+ * Alpha v0.7.9
  *
  * Includes core meta tags and loads the appropriate variant stylesheet.
  * Sets $skin_variant_url BEFORE including meta.php so the variant loads
