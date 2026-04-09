@@ -137,7 +137,8 @@ include 'core/sidebar.php';
             <a href="smack-multisite-comments.php" class="btn-clear">SIGNALS</a>
             <a href="smack-multisite-posts.php"    class="btn-clear">POSTS</a>
             <a href="smack-multisite-backup.php"   class="btn-clear">BACKUP DOCK</a>
-            <a href="smack-multisite-stats.php"    class="btn-clear active">STATS</a>
+            <a href="smack-multisite-stats.php"       class="btn-clear active">STATS</a>
+            <a href="smack-multisite-crosspost.php"   class="btn-clear">CROSS-POST</a>
             <span class="sep">|</span>
             <a href="?days=7"  class="btn-clear <?php echo $period === 7  ? 'active' : ''; ?>">7D</a>
             <a href="?days=30" class="btn-clear <?php echo $period === 30 ? 'active' : ''; ?>">30D</a>
