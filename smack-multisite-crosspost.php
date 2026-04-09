@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Multisite Cross-Post
- * Alpha v0.7.9b
+ * Alpha v0.7.9c
  *
  * Hub-only page. Browse the hub's published image library, select one or
  * more posts, choose target satellites, and push the content across. The hub

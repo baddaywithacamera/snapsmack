@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Community Authentication
- * Alpha v0.7.9b
+ * Alpha v0.7.9c
  *
  * Public-facing signup, login, logout, and password reset for community
  * (visitor) accounts. Uses snap_community_users and snap_community_sessions.

@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Custom stylesheet override editor
- * Alpha v0.7.9b
+ * Alpha v0.7.9c
  *
  * Manages CSS customizations for both the public site and admin panel.
  * Preserves generated skin styles while allowing safe manual overrides.
