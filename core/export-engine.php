@@ -55,7 +55,7 @@ class SnapSmackExport {
             'export_type'       => 'recovery-kit',
             'site_name'         => $this->settings['site_name'] ?? '',
             'site_url'          => $this->settings['site_url'] ?? '',
-            'active_skin'       => $this->settings['active_skin'] ?? 'new-horizon',
+            'active_skin'       => $this->settings['active_skin'] ?? '50-shades-of-noah-grey',
             'active_variant'    => $this->settings['active_skin_variant'] ?? 'dark',
             'php_version'       => PHP_VERSION,
             'files'               => [],
@@ -106,7 +106,7 @@ class SnapSmackExport {
         }
 
         // --- 4. ACTIVE SKIN inventory ---
-        $skinSlug = $this->settings['active_skin'] ?? 'new-horizon';
+        $skinSlug = $this->settings['active_skin'] ?? '50-shades-of-noah-grey';
         $skinDir  = $this->baseDir . '/skins/' . $skinSlug;
         if (is_dir($skinDir)) {
             $manifest = $this->inventoryDirectory(

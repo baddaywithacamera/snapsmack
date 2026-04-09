@@ -34,7 +34,9 @@ function snap_version_compare(string $v1, string $v2, string $op = '>'): bool {
 // --- MOBILE SKIN OVERRIDE ---
 // The slug of the skin forced onto mobile devices. This skin is not selectable
 // in the admin skin picker — it is served automatically when a phone is detected.
-define('SNAPSMACK_MOBILE_SKIN', 'photogram');
+// Empty string = mobile visitors get the active desktop skin.
+// Install Photogram from the skin gallery for a dedicated mobile experience.
+define('SNAPSMACK_MOBILE_SKIN', '');
 
 /**
  * Detect mobile devices via User-Agent string.

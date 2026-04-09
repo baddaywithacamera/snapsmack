@@ -33,7 +33,8 @@ if (!in_array($active_tab, ['customize', 'gallery'])) $active_tab = 'customize';
 $local_skins = [];
 
 // --- PROTECTED SKINS (cannot be removed) ---
-$protected_skins = ['photogram'];
+// No skins are hard-protected — all can be reinstalled from the gallery.
+$protected_skins = [];
 
 // --- GALLERY ACTION HANDLERS ---
 // Process install/remove requests before any output is sent.
