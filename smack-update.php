@@ -666,21 +666,18 @@ if ($action === 'rollback' && !empty($_SESSION['update_backup_file'])) {
 }
 
 // ── ACTION: SCHEMA RESYNC ─────────────────────────────────────────────────────
-// Runs schema-sync directly, outside of the update flow. Safe to run on any
-// install at any time — creates missing tables and columns idempotently.
+// Diffs the live database against snapsmack_canonical.sql and applies anything
+// missing. Uses the same canonical-diff pipeline as the auto-updater.
 if ($action === 'schema_resync') {
-    if (!function_exists('snap_schema_sync')) {
-        require_once __DIR__ . '/core/schema-sync.php';
-    }
-    $sync = snap_schema_sync($pdo);
+    $diff  = updater_canonical_diff($pdo);
+    $apply = isset($diff['error']) ? ['created' => [], 'columns_added' => [], 'errors' => [$diff['error']]] : updater_apply_canonical_diff($pdo, $diff);
     $summary = [];
-    if (!empty($sync['created']))  $summary[] = count($sync['created'])  . ' table(s) created';
-    if (!empty($sync['altered']))  $summary[] = count($sync['altered'])  . ' column(s) added';
-    if (!empty($sync['skipped']))  $summary[] = count($sync['skipped'])  . ' already current';
-    if (!empty($sync['errors']))   $summary[] = count($sync['errors'])   . ' error(s)';
-    $_SESSION['schema_resync_result'] = $sync;
+    if (!empty($apply['created']))       $summary[] = count($apply['created'])       . ' table(s) created';
+    if (!empty($apply['columns_added'])) $summary[] = count($apply['columns_added']) . ' column(s) added';
+    if (!empty($apply['errors']))        $summary[] = count($apply['errors'])         . ' error(s)';
+    $_SESSION['schema_resync_result'] = $apply;
     $flash_msg  = 'SCHEMA SYNC COMPLETE: ' . (implode(', ', $summary) ?: 'nothing to do') . '.';
-    $flash_type = empty($sync['errors']) ? 'success' : 'warning';
+    $flash_type = empty($apply['errors']) ? 'success' : 'warning';
 }
 
 // ── ACTION: CANONICAL SCHEMA DIFF ────────────────────────────────────────────
@@ -1008,9 +1005,9 @@ include 'core/sidebar.php';
                     <code style="display:block;padding:2px 10px;font-size:0.75rem;opacity:0.85;">+ <?php echo htmlspecialchars($t); ?></code>
                 <?php endforeach; ?>
             <?php endif; ?>
-            <?php if (!empty($schema_resync_result['altered'])): ?>
+            <?php if (!empty($schema_resync_result['columns_added'])): ?>
                 <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;">COLUMNS ADDED:</div>
-                <?php foreach ($schema_resync_result['altered'] as $c): ?>
+                <?php foreach ($schema_resync_result['columns_added'] as $c): ?>
                     <code style="display:block;padding:2px 10px;font-size:0.75rem;opacity:0.85;">+ <?php echo htmlspecialchars($c); ?></code>
                 <?php endforeach; ?>
             <?php endif; ?>
@@ -1113,10 +1110,10 @@ include 'core/sidebar.php';
     <div class="box update-section">
         <h3>CANONICAL SCHEMA DIFF</h3>
         <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
-            Fetches the canonical schema SQL from the release server and compares it
-            against your live database. Catches missing tables or columns that
-            <em>schema-sync.php</em> may not know about yet — including cases where
-            an update failed before the on-disk copy was replaced.
+            Fetches <em>snapsmack_canonical.sql</em> from the release server and
+            compares it against your live database. This is the same check the
+            auto-updater runs — catches missing tables or columns including cases
+            where an update failed before the on-disk copy was replaced.
             <?php if ($has_canonical_url && $has_canonical_sig): ?>
                 <span style="color:#0f0;"> &mdash; Remote URL + signature available.</span>
             <?php elseif ($has_canonical_url): ?>
