@@ -567,21 +567,21 @@ include 'core/sidebar.php';
             <div id="ai-key-fields">
                 <div class="lens-input-wrapper ai-key-field" data-provider="claude" <?php echo ($ai_provider !== 'claude') ? 'style="display:none;"' : ''; ?>>
                     <label>CLAUDE API KEY</label>
-                    <input type="password" name="settings[ai_key_claude]"
+                    <input type="password" id="ai_key_claude_input" name="settings[ai_key_claude]"
                            value="<?php echo htmlspecialchars($settings['ai_key_claude'] ?? ''); ?>"
                            placeholder="sk-ant-…" autocomplete="off">
                     <span class="field-hint">Get yours at <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a></span>
                 </div>
                 <div class="lens-input-wrapper ai-key-field" data-provider="gemini" <?php echo ($ai_provider !== 'gemini') ? 'style="display:none;"' : ''; ?>>
                     <label>GEMINI API KEY</label>
-                    <input type="password" name="settings[ai_key_gemini]"
+                    <input type="password" id="ai_key_gemini_input" name="settings[ai_key_gemini]"
                            value="<?php echo htmlspecialchars($settings['ai_key_gemini'] ?? ''); ?>"
                            placeholder="AIza…" autocomplete="off">
                     <span class="field-hint">Get yours at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a></span>
                 </div>
                 <div class="lens-input-wrapper ai-key-field" data-provider="openai" <?php echo ($ai_provider !== 'openai') ? 'style="display:none;"' : ''; ?>>
                     <label>OPENAI API KEY</label>
-                    <input type="password" name="settings[ai_key_openai]"
+                    <input type="password" id="ai_key_openai_input" name="settings[ai_key_openai]"
                            value="<?php echo htmlspecialchars($settings['ai_key_openai'] ?? ''); ?>"
                            placeholder="sk-…" autocomplete="off">
                     <span class="field-hint">Get yours at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a></span>
@@ -648,7 +648,18 @@ if (homepageMode) {
         testBtn.addEventListener('click', function () {
             testRes.textContent = 'Testing…';
             testRes.style.color = '';
-            fetch('smack-ai-test.php', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+
+            // Gather current form values so the test works before saving
+            var provider   = sel.value;
+            var keyFieldId = { claude: 'ai_key_claude_input', gemini: 'ai_key_gemini_input', openai: 'ai_key_openai_input' }[provider] || '';
+            var keyField   = keyFieldId ? document.getElementById(keyFieldId) : null;
+            var apiKey     = keyField ? keyField.value.trim() : '';
+
+            var fd = new FormData();
+            fd.append('provider', provider);
+            fd.append('api_key',  apiKey);
+
+            fetch('smack-ai-test.php', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
                 .then(function (r) { return r.json(); })
                 .then(function (d) {
                     testRes.textContent = d.ok ? '✓ ' + d.message : '✗ ' + d.error;
