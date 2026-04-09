@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK — Preview Endpoint
- * Alpha v0.7.9
+ * Alpha v0.7.9a
  *
  * Two modes:
  *   Default (AJAX)  — returns JSON with rendered HTML for inline use.

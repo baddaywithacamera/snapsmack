@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Community Dock
- * Alpha v0.7.9
+ * Alpha v0.7.9a
  *
  * Floating FAB (floating action button) for likes and reactions.
  * Renders as a fixed-position button cluster in a configurable corner,

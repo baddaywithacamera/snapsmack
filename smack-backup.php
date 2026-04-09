@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - System backup and recovery
- * Alpha v0.7.9
+ * Alpha v0.7.9a
  *
  * Comprehensive backup & recovery system with Recovery Kit, Data Liberation exports,
  * and integration with FTP remote backup capabilities.
