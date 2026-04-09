@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Image swap utility
- * Alpha v0.7.9a
+ * Alpha v0.7.9b
  *
  * Replaces physical assets for an existing record while maintaining data integrity.
  * Handles old asset purging, new thumbnail generation, and EXIF/specification updates.

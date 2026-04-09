@@ -4,6 +4,21 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.9b — "Electric Chair" (2026-04-08)
+
+### Added
+- **Migration 028** (`migrations/028_pages_image_columns.php`): Idempotent migration adds `image_size`, `image_align`, and `image_shadow` columns to `snap_pages`. These were added to the schema in 0.7.8 but the migration was never written, causing server errors on any install that hadn't manually patched the table.
+
+### Changed
+- **Interaction page (formerly Community Settings)**: Renamed nav label and page title from "Community Settings" → "INTERACTION" to avoid confusion with the community/forum features. Checkbox toggles replaced with CSS left/right toggle switches (no JS).
+- **CSS architecture compliance**: All inline and PHP-injected CSS from `smack-community-settings.php` moved to the correct architecture files — structural rules to `assets/css/admin-theme-geometry-master.css`, per-theme hex colours to each of the 16 `admin-theme-colours-*.css` files. No hex codes in geometry, no structure in colour files.
+- **Traffic Stats page title**: `Traffic Stats` → `TRAFFIC STATS` (all admin page titles are ALL CAPS).
+
+### Fixed
+- **Server error: `image_size` column not found** (`smack-pages.php`): `snap_pages` was missing the `image_size`, `image_align`, and `image_shadow` columns on production. Run `migrations/028_pages_image_columns.php` to resolve.
+
+---
+
 ## 0.7.9a — "Electric Chair" (2026-04-08)
 
 ### Added

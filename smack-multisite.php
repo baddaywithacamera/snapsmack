@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Multisite Management
- * Alpha v0.7.9a
+ * Alpha v0.7.9b
  *
  * Hub and satellite site management interface. Allows admins to set up
  * multi-site configurations, register new satellites, and monitor their status.
