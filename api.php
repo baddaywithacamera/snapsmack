@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - API Router
- * Alpha v0.7.9c
+ * Alpha v0.7.9d
  *
  * Public API entry point. Routes /api/* requests to appropriate handlers.
  * Supports query parameter routing for shared hosting compatibility:
@@ -26,6 +26,13 @@ if (isset($_GET['route'])) {
 // Route all /api/multisite/* requests to the multisite API handler
 if (strpos($route, 'multisite') === 0) {
     require_once 'core/multisite-api.php';
+    exit;
+}
+
+// --- OH SNAP! ROUTES ---
+// Route all /api/ohsnap/* requests to the Oh Snap! skin designer API handler
+if (strpos($route, 'ohsnap') === 0) {
+    require_once 'core/ohsnap-api.php';
     exit;
 }
 

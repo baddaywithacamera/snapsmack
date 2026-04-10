@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Admin Sidebar Navigation
- * Alpha v0.7.9c
+ * Alpha v0.7.9d
  *
  * Accordion-style sidebar with four collapsible sections.
  * "The Good Shit" opens by default; whichever section contains
@@ -27,7 +27,7 @@ if (!empty($settings['active_skin'])) {
 $_section_map = [
     'good-shit'  => ['smack-admin.php','smack-post.php','smack-manage.php','smack-edit.php','smack-cats.php','smack-albums.php','smack-media.php','smack-comments.php','smack-blogroll.php','smack-pages.php','smack-community-settings.php','smack-community-users.php','smack-tools.php'],
     'pimp'       => ['smack-globalvibe.php','smack-skin.php','smack-pimpotron.php','smack-social-dock.php','smack-css.php','smack-scripts.php'],
-    'boring'     => ['smack-settings.php','smack-users.php','smack-maintenance.php','smack-backup.php','smack-disaster.php','smack-ftp.php','smack-cloud.php','smack-verify.php','smack-update.php','smack-stats.php','smack-multisite.php','smack-multisite-comments.php','smack-multisite-posts.php','smack-multisite-backup.php','smack-multisite-stats.php','smack-multisite-crosspost.php','smack-multisite-blogroll.php'],
+    'boring'     => ['smack-settings.php','smack-users.php','smack-maintenance.php','smack-backup.php','smack-disaster.php','smack-ftp.php','smack-cloud.php','smack-verify.php','smack-update.php','smack-stats.php','smack-api-keys.php','smack-multisite.php','smack-multisite-comments.php','smack-multisite-posts.php','smack-multisite-backup.php','smack-multisite-stats.php','smack-multisite-crosspost.php','smack-multisite-blogroll.php'],
     'help'       => ['smack-help.php','smack-forum.php'],
 ];
 $_active_section = 'good-shit'; // default
@@ -149,6 +149,9 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     </li>
                     <li class="<?php echo ($current_page == 'smack-stats.php') ? 'active' : ''; ?>">
                         <a href="smack-stats.php">Traffic Stats</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-api-keys.php') ? 'active' : ''; ?>">
+                        <a href="smack-api-keys.php">Oh Snap! API Keys</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-multisite.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite.php">Multisite Management</a>
