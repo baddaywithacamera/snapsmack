@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Oh Snap! API Key Management
- * Alpha v0.7.9d
+ * Alpha v0.7.9e
  *
  * Generates and revokes API keys for the Oh Snap! desktop skin designer.
  * Keys are shown once at creation and stored as SHA-256 hashes — there is
