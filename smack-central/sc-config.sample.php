@@ -37,19 +37,18 @@ define('FORUM_MOD_KEY',  'mod_your_mod_key_here');
 //   // Paste $sec below. Never commit it.
 define('SMACK_RELEASE_PRIVKEY', 'your_ed25519_secret_key_hex_here_128_hex_chars');
 
-// ── Git & Release Paths ───────────────────────────────────────────────────────
-// Absolute path to a local clone of the SnapSmack repo on this server.
-// First-time setup: git clone https://github.com/you/snapsmack.git /path/to/repo
-define('SNAPSMACK_REPO_PATH', '/home/youruser/snapsmack-repo');
+// ── GitHub ────────────────────────────────────────────────────────────────────
+// Used by the Release Packager and Skin Packager to pull from GitHub.
+// Token is optional but raises the API rate limit from 60 → 5000 req/hour.
+define('SNAPSMACK_GITHUB_REPO',  'baddaywithacamera/snapsmack');
+define('SNAPSMACK_GITHUB_TOKEN', '');
 
+// ── Release Paths ─────────────────────────────────────────────────────────────
 // Absolute path to the releases output directory (must be web-accessible).
 define('RELEASES_DIR', '/home/youruser/public_html/releases/');
 
 // Public URL of the releases directory (trailing slash).
 define('RELEASES_URL', 'https://snapsmack.ca/releases/');
-
-// Path to the git binary. 'git' works if git is in PATH; use full path if not.
-define('GIT_BIN', 'git');
 
 // ── Asset Repository ─────────────────────────────────────────────────────────
 // SC_ASSETS_DIR: absolute path to the directory that hosts font and JS files.
