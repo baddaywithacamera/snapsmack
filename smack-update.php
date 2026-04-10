@@ -446,21 +446,31 @@ if ($action === 'stage_migrate'
     $update     = $stage_state['update'];
     $migrations = updater_find_migrations($pdo);
 
-    if (!empty($migrations)) {
-        $migrate_result = updater_run_migrations($pdo, $migrations);
+    // Always run migrations — even with no .sql files, updater_run_migrations()
+    // opens with a canonical schema diff that creates any missing tables or columns.
+    // Skipping this when $migrations is empty was causing new tables (e.g.
+    // snap_ohsnap_keys) to never be created on installs that had no pending SQL files.
+    $migrate_result = updater_run_migrations($pdo, $migrations);
 
-        if (!$migrate_result['success']) {
-            $rb_error = '';
-            updater_rollback($stage_state['backup_file'] ?? '', $rb_error);
-            $flash_msg  = 'MIGRATION FAILED. SYSTEM ROLLED BACK. Errors: ' . implode('; ', $migrate_result['errors']);
-            $flash_type = 'error';
-            $_SESSION['update_state']['log'][] = ['label' => 'Migrations failed — rolled back', 'status' => 'fail', 'detail' => implode('; ', $migrate_result['errors'])];
-            $stage_state = $_SESSION['update_state'];
-        } else {
-            $_SESSION['update_state']['log'][] = ['label' => 'Migrations run', 'status' => 'ok', 'detail' => implode(', ', $migrate_result['applied'])];
-        }
+    if (!$migrate_result['success']) {
+        $rb_error = '';
+        updater_rollback($stage_state['backup_file'] ?? '', $rb_error);
+        $flash_msg  = 'MIGRATION FAILED. SYSTEM ROLLED BACK. Errors: ' . implode('; ', $migrate_result['errors']);
+        $flash_type = 'error';
+        $_SESSION['update_state']['log'][] = ['label' => 'Migrations failed — rolled back', 'status' => 'fail', 'detail' => implode('; ', $migrate_result['errors'])];
+        $stage_state = $_SESSION['update_state'];
     } else {
-        $_SESSION['update_state']['log'][] = ['label' => 'No migrations needed', 'status' => 'ok', 'detail' => ''];
+        $schema_detail = !empty($migrate_result['schema']['created'])
+            ? 'Tables created: ' . implode(', ', $migrate_result['schema']['created'])
+            : '';
+        $mig_detail = !empty($migrate_result['applied'])
+            ? implode(', ', $migrate_result['applied'])
+            : 'none';
+        $_SESSION['update_state']['log'][] = [
+            'label'  => 'Schema sync + migrations',
+            'status' => 'ok',
+            'detail' => trim("Schema: {$schema_detail} | SQL files: {$mig_detail}", ' |'),
+        ];
     }
 
     if ($flash_type !== 'error') {
