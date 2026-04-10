@@ -119,6 +119,13 @@ a:hover { filter: brightness(1.2); }
     letter-spacing: 0.5px;
 }
 .sc-sidebar-bottom a:hover { filter: brightness(1.2); }
+.sc-sidebar-version {
+    display: block;
+    font-size: 0.68rem;
+    color: var(--sc-text-muted, #555);
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
 
 /* Main content area */
 .sc-main {
