@@ -19,13 +19,12 @@ return [
     'status'        => 'stable',
 
     'features' => [
-        'supports_wall'   => true,
-        'archive_layouts' => ['cropped', 'justified'],
-        'has_landing'     => false,
-        'post_modes'      => ['image'],
-        'instagram_mode'  => false,
-        'carousel'        => false,
-        'community'       => ['likes', 'comments'],
+        'supports_wall'  => true,
+        'has_landing'    => false,
+        'post_modes'     => ['image'],
+        'instagram_mode' => false,
+        'carousel'       => false,
+        'community'      => ['likes', 'comments'],
     ],
 
     // Variant system for different greyscale themes
@@ -87,44 +86,7 @@ return [
         ],
 
         /* ============================================================
-           SECTION 2: ARCHIVE GRID
-           ============================================================ */
-
-        'archive_layout' => [
-            'section'  => 'ARCHIVE GRID',
-            'type'     => 'select',
-            'label'    => 'Archive Layout Mode',
-            'default'  => 'cropped',
-            'options'  => [
-                'cropped'   => 'Cropped Grid (Natural Aspect)',
-                'justified' => 'Justified / Masonry (Flickr Style)',
-            ],
-        ],
-
-        'browse_cols' => [
-            'section'  => 'ARCHIVE GRID',
-            'type'     => 'range',
-            'label'    => 'Grid Columns (Cropped)',
-            'default'  => '4',
-            'min'      => '2',
-            'max'      => '8',
-            'selector' => '.fsog-archive-grid',
-            'property' => '--grid-cols'
-        ],
-
-        'justified_row_height' => [
-            'section'  => 'ARCHIVE GRID',
-            'type'     => 'range',
-            'label'    => 'Justified Row Height (px)',
-            'default'  => '280',
-            'min'      => '150',
-            'max'      => '500',
-            'selector' => '#justified-grid',
-            'property' => '--justified-row-height'
-        ],
-
-        /* ============================================================
-           SECTION 3: TYPOGRAPHY (Fonts Only)
+           SECTION 2: TYPOGRAPHY (Fonts Only)
            ============================================================ */
 
         'header_font_family' => [

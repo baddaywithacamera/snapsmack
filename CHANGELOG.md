@@ -4,6 +4,20 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.9g — "Lumbar Support" (2026-04-10)
+
+### Changed
+- **Archive layout ownership moved to site owner.** Skin manifests no longer gate which layouts are available. The Archive Appearance page shows all three modes (Square, Cropped, Masonry) unconditionally; the owner picks the default and which modes to offer visitors as a toggle.
+- **Visitor layout toggle.** When the owner enables multiple modes, toggle buttons (Grid / Crop / Flow) appear on the public archive. Visitor preference persists in `localStorage`. The `?layout=` URL param is the mechanism; only owner-approved modes are accepted.
+- **`justified_row_height` and `browse_cols` moved to Archive Appearance.** Previously per-skin options in Smooth Your Skin; now global owner settings. Owner sets columns 2–8 and row height 120–500px.
+- **`archive_crop_style` removed.** The separate crop-style pill toggle from 0.7.9f is dropped — layout mode and crop style are the same concept.
+- **Both skin manifests cleaned** (50 Shades of Noah Grey, Rational Geo): removed `features['archive_layouts']` and the entire ARCHIVE GRID options section (`archive_layout`, `browse_cols`, `justified_row_height`, `archive_default_layout`).
+
+### New setting key
+- `archive_layouts_available` — comma-separated list of modes offered to visitors (e.g. `"square,masonry"`). Defaults to the current `archive_layout` (single mode, no toggle shown).
+
+---
+
 ## 0.7.9f — "Footrest" (2026-04-10)
 
 ### Added
