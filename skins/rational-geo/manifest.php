@@ -29,14 +29,13 @@ return [
     'default_variant' => 'light',
 
     'features' => [
-        'supports_wall'    => false,
-        'supports_slider'  => false,
-        'archive_layouts'  => ['cropped', 'masonry'],
-        'has_landing'      => false,
-        'post_modes'       => ['image'],
-        'instagram_mode'   => false,
-        'carousel'         => false,
-        'community'        => ['likes', 'comments'],
+        'supports_wall'   => false,
+        'supports_slider' => false,
+        'has_landing'     => false,
+        'post_modes'      => ['image'],
+        'instagram_mode'  => false,
+        'carousel'        => false,
+        'community'       => ['likes', 'comments'],
     ],
 
     'require_scripts' => [
@@ -164,54 +163,7 @@ return [
         ],
 
         /* ============================================================
-           SECTION 3: ARCHIVE GRID
-           ============================================================ */
-
-        'archive_layout' => [
-            'section'  => 'ARCHIVE GRID',
-            'type'     => 'select',
-            'label'    => 'Archive Layout Mode',
-            'default'  => 'cropped',
-            'options'  => [
-                'cropped' => 'Cropped Grid (Natural Aspect)',
-                'masonry' => 'Justified / Masonry (Flickr Style)',
-            ],
-        ],
-
-        'browse_cols' => [
-            'section'  => 'ARCHIVE GRID',
-            'type'     => 'range',
-            'label'    => 'Grid Columns',
-            'default'  => '4',
-            'min'      => '2',
-            'max'      => '6',
-            'selector' => '#browse-grid',
-            'css_var'  => '--grid-cols',
-        ],
-
-        'justified_row_height' => [
-            'section'  => 'ARCHIVE GRID',
-            'type'     => 'range',
-            'label'    => 'Justified Row Height (px)',
-            'default'  => '260',
-            'min'      => '150',
-            'max'      => '500',
-            'css_var'  => '--justified-row-height',
-        ],
-
-        'archive_default_layout' => [
-            'section'  => 'ARCHIVE GRID',
-            'type'     => 'select',
-            'label'    => 'Default Gallery Layout',
-            'default'  => 'cropped',
-            'options'  => [
-                'cropped'  => 'Cropped Thumbnails',
-                'masonry'  => 'Justified / Masonry',
-            ],
-        ],
-
-        /* ============================================================
-           SECTION 4: TYPOGRAPHY
+           SECTION 3: TYPOGRAPHY
            ============================================================ */
 
         'masthead_font' => [

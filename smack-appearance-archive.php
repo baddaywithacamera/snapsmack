@@ -1,19 +1,19 @@
 <?php
 /**
  * SNAPSMACK - Archive Appearance
- * Alpha v0.7.9f
+ * Alpha v0.7.9g
  *
  * Controls all visual and structural settings for the public archive page.
- * Grid layout, crop style, thumbnail size, columns, gutter, border/shadow,
- * and the floating gallery — everything that affects how the image library
- * is presented to visitors.
+ * Grid layout mode and visitor switching options are set here by the site
+ * owner — skins no longer gate which modes are available.
  *
  * Moved here from smack-globalvibe.php in v0.7.9f.
+ * Archive mode ownership moved from skin manifests to site owner in v0.7.9g.
  */
 
 require_once 'core/auth.php';
 
-// --- MANIFEST (for skin-gated options) ---
+// --- MANIFEST (for wall/pimpotron detection only — no longer gates grid options) ---
 $active_skin = $settings['active_skin'] ?? '';
 $manifest    = [];
 if ($active_skin && file_exists("skins/{$active_skin}/manifest.php")) {
@@ -26,6 +26,15 @@ $wall_unavailable = $pimpotron_active || !$supports_wall;
 // --- POST HANDLER ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearance'])) {
     if (isset($_POST['settings']) && is_array($_POST['settings'])) {
+        // archive_layouts_available arrives as an array of checkboxes; serialise it.
+        if (isset($_POST['settings']['archive_layouts_available']) && is_array($_POST['settings']['archive_layouts_available'])) {
+            $avail = array_intersect($_POST['settings']['archive_layouts_available'], ['square', 'cropped', 'masonry']);
+            // Always include the default layout in the available set.
+            $default_layout = $_POST['settings']['archive_layout'] ?? 'square';
+            if (!in_array($default_layout, $avail)) $avail[] = $default_layout;
+            $_POST['settings']['archive_layouts_available'] = implode(',', $avail);
+        }
+
         $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
         foreach ($_POST['settings'] as $k => $v) {
             $stmt->execute([$k, $v, $v]);
@@ -39,29 +48,24 @@ $page_title = "Archive Appearance";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 
-// Layout options gated by skin manifest
+// All layout modes — always available to the owner regardless of skin.
 $all_layouts = [
     'square'  => 'Square Grid (1:1 Cropped)',
-    'cropped' => 'Cropped Grid (Max 3:2 Aspect)',
-    'masonry' => 'Justified (Flickr-Style Row Fill)',
-    'none'    => 'Disabled (Hide Archive View)',
-];
-$supported_layouts = $manifest['features']['archive_layouts'] ?? ['square'];
-$current_layout    = $settings['archive_layout'] ?? 'square';
-if ($current_layout !== 'none' && !in_array($current_layout, $supported_layouts)) {
-    $current_layout = $supported_layouts[0];
-}
-$layout_locked = (count($supported_layouts) === 1);
-
-// Crop styles gated by manifest (new in 0.7.9f)
-$supported_crops   = $manifest['archive_options']['crop_styles'] ?? $supported_layouts;
-$all_crop_labels   = [
-    'square'  => 'Square (1:1)',
-    'natural' => 'Natural (Preserve Aspect)',
-    'flickr'  => 'Flickr (Justified Row Fill)',
+    'cropped' => 'Cropped Grid (Natural Aspect)',
+    'masonry' => 'Masonry / Justified (Flickr-Style)',
 ];
 
-// Border styles
+$current_layout = $settings['archive_layout'] ?? 'square';
+if (!isset($all_layouts[$current_layout])) $current_layout = 'square';
+
+// Which modes are offered to visitors as a switch.
+// Stored as comma-separated: "square,masonry". Default = just the current layout.
+$available_raw    = $settings['archive_layouts_available'] ?? $current_layout;
+$available_modes  = array_filter(explode(',', $available_raw), fn($m) => isset($all_layouts[$m]));
+if (empty($available_modes)) $available_modes = [$current_layout];
+$available_modes  = array_values($available_modes);
+
+// Border/shadow
 $border_styles = [
     'none'          => 'None',
     'hairline'      => 'Hairline',
@@ -72,19 +76,28 @@ $border_styles = [
 $current_border = $settings['archive_border_style'] ?? 'none';
 $current_shadow = (int)($settings['archive_shadow_depth'] ?? 2);
 
-// Columns range from manifest
-$col_min = (int)($manifest['archive_options']['columns_range'][0] ?? 2);
-$col_max = (int)($manifest['archive_options']['columns_range'][1] ?? 4);
-$current_cols = (int)($settings['browse_cols'] ?? 4);
-$current_cols = max($col_min, min($col_max, $current_cols));
-
-// Gutter
+// Grid sizing
+$current_cols   = max(2, min(8, (int)($settings['browse_cols'] ?? 4)));
 $current_gutter = (int)($settings['archive_gutter'] ?? 4);
+$current_row_h  = (int)($settings['justified_row_height'] ?? 220);
+
+// Thumbnail size — backwards-compat with old pixel values
+$size_steps   = ['xs' => 'XS — Extra Small', 's' => 'S — Small', 'm' => 'M — Medium', 'l' => 'L — Large', 'xl' => 'XL — Extra Large'];
+$current_size = $settings['thumb_size'] ?? 'm';
+if (is_numeric($current_size)) {
+    $px = (int)$current_size;
+    if ($px <= 130) $current_size = 'xs';
+    elseif ($px <= 170) $current_size = 's';
+    elseif ($px <= 230) $current_size = 'm';
+    elseif ($px <= 290) $current_size = 'l';
+    else $current_size = 'xl';
+}
+if (!isset($size_steps[$current_size])) $current_size = 'm';
 ?>
 
 <div class="main">
     <h2>ARCHIVE APPEARANCE</h2>
-    <p class="dim" style="margin-bottom:20px;">Controls how your image library looks to visitors. Grid layout, crop style, spacing, and the floating gallery.</p>
+    <p class="dim" style="margin-bottom:20px;">Controls how your image library looks to visitors. Layout mode, spacing, borders, and the floating gallery — your call, not the skin's.</p>
 
     <?php if (isset($_GET['msg'])): ?>
         <div class="alert alert-success">> ARCHIVE APPEARANCE SAVED</div>
@@ -99,87 +112,60 @@ $current_gutter = (int)($settings['archive_gutter'] ?? 4);
             <div class="dash-grid">
 
                 <div class="lens-input-wrapper">
-                    <label>ARCHIVE DISPLAY MODE</label>
-                    <?php if ($layout_locked): ?>
-                        <select name="settings[archive_layout]">
-                            <option value="<?php echo htmlspecialchars($supported_layouts[0]); ?>" <?php echo ($current_layout === $supported_layouts[0]) ? 'selected' : ''; ?>>
-                                <?php echo strtoupper($all_layouts[$supported_layouts[0]] ?? $supported_layouts[0]); ?>
+                    <label>DEFAULT LAYOUT</label>
+                    <select name="settings[archive_layout]" id="default-layout-select"
+                            onchange="syncAvailableCheckbox(this.value)">
+                        <?php foreach ($all_layouts as $lk => $ll): ?>
+                            <option value="<?php echo $lk; ?>" <?php echo ($current_layout === $lk) ? 'selected' : ''; ?>>
+                                <?php echo strtoupper($ll); ?>
                             </option>
-                            <option value="none" <?php echo ($current_layout === 'none') ? 'selected' : ''; ?>>
-                                <?php echo strtoupper($all_layouts['none']); ?>
-                            </option>
-                        </select>
-                        <span class="dim">ACTIVE SKIN SUPPORTS ONE LAYOUT MODE. DISABLE TO HIDE ARCHIVE FROM NAV.</span>
-                    <?php else: ?>
-                        <select name="settings[archive_layout]">
-                            <?php foreach ($supported_layouts as $lk): ?>
-                                <?php if (isset($all_layouts[$lk])): ?>
-                                    <option value="<?php echo htmlspecialchars($lk); ?>" <?php echo ($current_layout === $lk) ? 'selected' : ''; ?>>
-                                        <?php echo strtoupper($all_layouts[$lk]); ?>
-                                    </option>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                            <option value="none" <?php echo ($current_layout === 'none') ? 'selected' : ''; ?>>
-                                <?php echo strtoupper($all_layouts['none']); ?>
-                            </option>
-                        </select>
-                    <?php endif; ?>
+                        <?php endforeach; ?>
+                        <option value="none" <?php echo ($current_layout === 'none') ? 'selected' : ''; ?>>
+                            DISABLED (HIDE ARCHIVE FROM NAV)
+                        </option>
+                    </select>
+                    <span class="dim">THE LAYOUT VISITORS SEE WHEN THEY FIRST ARRIVE. IF THEY HAVE PREVIOUSLY CHANGED IT, THEIR PREFERENCE WINS.</span>
                 </div>
 
-                <?php if (count($supported_crops) > 1): ?>
                 <div class="lens-input-wrapper">
-                    <label>CROP STYLE</label>
-                    <div class="toggle-row">
-                        <?php foreach ($supported_crops as $crop_key): ?>
-                            <?php if (!isset($all_crop_labels[$crop_key])) continue; ?>
-                            <label class="toggle-pill">
-                                <input type="radio" name="settings[archive_crop_style]" value="<?php echo htmlspecialchars($crop_key); ?>"
-                                    <?php echo (($settings['archive_crop_style'] ?? $supported_crops[0]) === $crop_key) ? 'checked' : ''; ?>>
-                                <span><?php echo strtoupper($all_crop_labels[$crop_key]); ?></span>
+                    <label>OFFER VISITORS A LAYOUT SWITCH?</label>
+                    <div style="display:flex; flex-direction:column; gap:6px; margin-top:4px;">
+                        <?php foreach ($all_layouts as $lk => $ll): ?>
+                            <label style="display:flex; align-items:center; gap:8px; font-size:0.85em; cursor:pointer;">
+                                <input type="checkbox"
+                                       name="settings[archive_layouts_available][]"
+                                       value="<?php echo $lk; ?>"
+                                       id="avail-<?php echo $lk; ?>"
+                                       <?php echo in_array($lk, $available_modes) ? 'checked' : ''; ?>>
+                                <?php echo strtoupper($ll); ?>
                             </label>
                         <?php endforeach; ?>
                     </div>
-                    <span class="dim">ACTIVE SKIN MUST DECLARE SUPPORTED CROP STYLES IN ITS MANIFEST.</span>
+                    <span class="dim">CHECKED MODES APPEAR AS TOGGLE BUTTONS ON THE PUBLIC ARCHIVE. THE DEFAULT LAYOUT IS ALWAYS INCLUDED AUTOMATICALLY.</span>
                 </div>
-                <?php endif; ?>
 
                 <div class="lens-input-wrapper">
                     <label>THUMBNAIL SIZE</label>
                     <select name="settings[thumb_size]">
-                        <?php
-                        $size_steps   = ['xs' => 'XS — Extra Small', 's' => 'S — Small', 'm' => 'M — Medium', 'l' => 'L — Large', 'xl' => 'XL — Extra Large'];
-                        $current_size = $settings['thumb_size'] ?? 'm';
-                        if (is_numeric($current_size)) {
-                            $px = (int)$current_size;
-                            if ($px <= 130) $current_size = 'xs';
-                            elseif ($px <= 170) $current_size = 's';
-                            elseif ($px <= 230) $current_size = 'm';
-                            elseif ($px <= 290) $current_size = 'l';
-                            else $current_size = 'xl';
-                        }
-                        foreach ($size_steps as $key => $label): ?>
+                        <?php foreach ($size_steps as $key => $label): ?>
                             <option value="<?php echo $key; ?>" <?php echo ($current_size === $key) ? 'selected' : ''; ?>>
                                 <?php echo $label; ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <span class="dim">APPLIES TO SQUARE AND CROPPED GRID MODES.</span>
                 </div>
 
                 <div class="lens-input-wrapper">
                     <label>COLUMNS</label>
-                    <?php if ($col_min === $col_max): ?>
-                        <input type="number" name="settings[browse_cols]" value="<?php echo $current_cols; ?>" min="<?php echo $col_min; ?>" max="<?php echo $col_max; ?>" readonly>
-                        <span class="dim">ACTIVE SKIN FIXES COLUMNS AT <?php echo $col_min; ?>.</span>
-                    <?php else: ?>
-                        <div style="display:flex; align-items:center; gap:12px;">
-                            <input type="range" name="settings[browse_cols]"
-                                   min="<?php echo $col_min; ?>" max="<?php echo $col_max; ?>" step="1"
-                                   value="<?php echo $current_cols; ?>"
-                                   oninput="this.nextElementSibling.textContent = this.value">
-                            <span style="min-width:24px; font-family:monospace;"><?php echo $current_cols; ?></span>
-                        </div>
-                        <span class="dim">HOW MANY COLUMNS ACROSS ON DESKTOP. SKIN SETS ALLOWED RANGE.</span>
-                    <?php endif; ?>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <input type="range" name="settings[browse_cols]"
+                               min="2" max="8" step="1"
+                               value="<?php echo $current_cols; ?>"
+                               oninput="this.nextElementSibling.textContent = this.value">
+                        <span style="min-width:24px; font-family:monospace;"><?php echo $current_cols; ?></span>
+                    </div>
+                    <span class="dim">HOW MANY COLUMNS ACROSS ON DESKTOP. APPLIES TO SQUARE AND CROPPED GRID MODES.</span>
                 </div>
 
                 <div class="lens-input-wrapper">
@@ -194,10 +180,22 @@ $current_gutter = (int)($settings['archive_gutter'] ?? 4);
                     <span class="dim">GAP BETWEEN GRID TILES.</span>
                 </div>
 
+                <div class="lens-input-wrapper">
+                    <label>JUSTIFIED ROW HEIGHT</label>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <input type="range" name="settings[justified_row_height]"
+                               min="120" max="500" step="10"
+                               value="<?php echo $current_row_h; ?>"
+                               oninput="this.nextElementSibling.textContent = this.value + 'px'">
+                        <span style="min-width:44px; font-family:monospace;"><?php echo $current_row_h; ?>px</span>
+                    </div>
+                    <span class="dim">TARGET ROW HEIGHT FOR MASONRY / JUSTIFIED MODE. ROWS EXPAND SLIGHTLY TO FILL WIDTH.</span>
+                </div>
+
             </div>
         </div>
 
-        <!-- ── BORDER & SHADOW ───────────────────────────────────────── -->
+        <!-- ── TILE BORDER & SHADOW ──────────────────────────────────── -->
         <div class="box">
             <h3>TILE BORDER &amp; SHADOW</h3>
             <div class="dash-grid">
@@ -211,7 +209,7 @@ $current_gutter = (int)($settings['archive_gutter'] ?? 4);
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <span class="dim">APPLIED TO EVERY TILE IN THE ARCHIVE GRID. SKIN CSS HANDLES THE ACTUAL RENDERING.</span>
+                    <span class="dim">APPLIED TO EVERY TILE IN THE ARCHIVE GRID.</span>
                 </div>
                 <div class="lens-input-wrapper<?php echo in_array($current_border, ['shadow','double_shadow']) ? '' : ' d-none'; ?>" id="shadow-depth-row">
                     <label>SHADOW DEPTH</label>
@@ -237,9 +235,7 @@ $current_gutter = (int)($settings['archive_gutter'] ?? 4);
                     <?php if ($wall_unavailable): ?>
                         <select disabled class="select-locked"><option>DISABLED BY SKIN</option></select>
                         <input type="hidden" name="settings[show_wall_link]" value="0">
-                        <span class="dim">
-                            <?php echo $pimpotron_active ? 'PIMPOTRON IS ACTIVE &mdash; FLOATING GALLERY IS INCOMPATIBLE.' : 'ACTIVE SKIN DOES NOT SUPPORT THE FLOATING GALLERY.'; ?>
-                        </span>
+                        <span class="dim"><?php echo $pimpotron_active ? 'PIMPOTRON IS ACTIVE &mdash; FLOATING GALLERY IS INCOMPATIBLE.' : 'ACTIVE SKIN DOES NOT SUPPORT THE FLOATING GALLERY.'; ?></span>
                     <?php else: ?>
                         <select name="settings[show_wall_link]">
                             <option value="1" <?php echo (($settings['show_wall_link'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
@@ -346,26 +342,23 @@ $current_gutter = (int)($settings['archive_gutter'] ?? 4);
     </form>
 </div>
 
-<style>
-.toggle-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-.toggle-pill input[type="radio"] { display: none; }
-.toggle-pill span {
-    display: inline-block;
-    padding: 5px 14px;
-    border: 1px solid var(--lens-border, #333);
-    border-radius: 3px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    cursor: pointer;
-    color: var(--text-dim, #888);
-    transition: all 0.15s;
+<script>
+// Keep the default layout's checkbox always ticked and disabled so the owner
+// can't accidentally remove the current default from the available set.
+function syncAvailableCheckbox(defaultVal) {
+    ['square','cropped','masonry'].forEach(function(m) {
+        var cb = document.getElementById('avail-' + m);
+        if (!cb) return;
+        if (m === defaultVal) {
+            cb.checked  = true;
+            cb.disabled = true;
+        } else {
+            cb.disabled = false;
+        }
+    });
 }
-.toggle-pill input[type="radio"]:checked + span {
-    background: var(--accent, #5b9bd5);
-    border-color: var(--accent, #5b9bd5);
-    color: #fff;
-}
-</style>
+// Run once on load to lock the current default.
+syncAvailableCheckbox(document.getElementById('default-layout-select').value);
+</script>
 
 <?php include 'core/admin-footer.php'; ?>
