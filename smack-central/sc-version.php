@@ -7,5 +7,5 @@
  * to determine whether an update is available.
  */
 
-define('SC_VERSION',    '0.7.9e');
-define('SC_CODENAME',   'Recliner');
+define('SC_VERSION',    '0.7.9f');
+define('SC_CODENAME',   'Footrest');
