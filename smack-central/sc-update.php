@@ -2,8 +2,8 @@
 /**
  * SMACK CENTRAL - Self-updater
  *
- * Pulls the latest smack-central/ files directly from GitHub master,
- * runs sc-schema.sql idempotently, and records the installed commit ref.
+ * Pulls the latest tagged release of smack-central/ from GitHub,
+ * runs sc-schema.sql idempotently, and records the installed tag.
  *
  * Safe to run repeatedly. sc-config.php is never touched.
  */
@@ -57,28 +57,24 @@ $sc_db = $pdo;  // sc-auth.php provides $pdo
 $settings = $sc_db->query("SELECT setting_key, setting_val FROM sc_settings")
                    ->fetchAll(PDO::FETCH_KEY_PAIR);
 
-$installed_ref = $settings['sc_installed_ref'] ?? '';
+$installed_ref = $settings['sc_installed_ref'] ?? '';  // stores tag name, e.g. "0.7.9e"
 
-// ── Check latest commit on master ─────────────────────────────────────────────
+// ── Check latest tag on GitHub ────────────────────────────────────────────────
 
-$latest_commit  = null;
-$latest_ref     = '';
-$latest_message = '';
-$check_error    = '';
+$latest_tag      = '';
+$latest_tag_sha  = '';
+$check_error     = '';
 
-$commit_data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/commits/master');
-if (is_array($commit_data)) {
-    $latest_ref     = $commit_data['sha'] ?? '';
-    $latest_message = $commit_data['commit']['message'] ?? '';
-    $latest_message = strtok($latest_message, "\n");  // first line only
-    $latest_commit  = $commit_data;
+$tags_data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/tags?per_page=10');
+if (is_array($tags_data) && !empty($tags_data)) {
+    // GitHub returns tags newest-first by creation date
+    $latest_tag     = $tags_data[0]['name']             ?? '';
+    $latest_tag_sha = $tags_data[0]['commit']['sha']    ?? '';
 } else {
     $check_error = 'Could not reach GitHub API. Check your token and network.';
 }
 
-$up_to_date = $latest_ref && $installed_ref && ($installed_ref === $latest_ref);
-$short_installed = $installed_ref ? substr($installed_ref, 0, 7) : 'unknown';
-$short_latest    = $latest_ref    ? substr($latest_ref,    0, 7) : '—';
+$up_to_date = $latest_tag && $installed_ref && ($installed_ref === $latest_tag);
 
 // ── Handle update POST ────────────────────────────────────────────────────────
 
@@ -87,8 +83,13 @@ $result_ok   = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull') {
 
+    if (!$latest_tag) {
+        $result_log[] = ['err', 'No tags found on GitHub — cannot pull.'];
+        $result_ok    = false;
+    } else {
+
     $repo    = SNAPSMACK_GITHUB_REPO;
-    $zip_url = "https://github.com/{$repo}/archive/master.zip";
+    $zip_url = "https://github.com/{$repo}/archive/refs/tags/{$latest_tag}.zip";
     $tmp_zip = sys_get_temp_dir() . '/sc_update_' . bin2hex(random_bytes(8)) . '.zip';
     $tmp_dir = sys_get_temp_dir() . '/sc_update_' . bin2hex(random_bytes(8)) . '/';
 
@@ -103,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull'
             throw new RuntimeException('Failed to download repo zip from GitHub.');
         }
         file_put_contents($tmp_zip, $zip_bytes);
-        $result_log[] = ['ok', 'Downloaded repo zip (' . round(strlen($zip_bytes) / 1024) . ' KB)'];
+        $result_log[] = ['ok', "Downloaded {$latest_tag} zip (" . round(strlen($zip_bytes) / 1024) . ' KB)'];
 
         // 2. Extract ──────────────────────────────────────────────────────────
         mkdir($tmp_dir, 0755, true);
@@ -164,19 +165,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull'
             $result_log[] = ['ok', 'Schema sync complete'];
         }
 
-        // 5. Record installed ref ─────────────────────────────────────────────
-        $new_ref = $latest_ref ?: 'unknown';
+        // 5. Record installed tag ─────────────────────────────────────────────
         $sc_db->prepare("
             INSERT INTO sc_settings (setting_key, setting_val)
             VALUES ('sc_installed_ref', ?)
             ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)
-        ")->execute([$new_ref]);
-        $result_log[] = ['ok', 'Recorded installed ref: ' . substr($new_ref, 0, 7)];
+        ")->execute([$latest_tag]);
+        $result_log[] = ['ok', "Recorded installed tag: {$latest_tag}"];
 
-        $result_ok       = true;
-        $installed_ref   = $new_ref;
-        $short_installed = substr($new_ref, 0, 7);
-        $up_to_date      = ($new_ref === $latest_ref);
+        $result_ok     = true;
+        $installed_ref = $latest_tag;
+        $up_to_date    = true;
 
     } catch (RuntimeException $e) {
         $result_log[] = ['err', $e->getMessage()];
@@ -195,6 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull'
             rmdir($tmp_dir);
         }
     }
+    } // end else ($latest_tag)
 }
 
 // ── Schema helper ─────────────────────────────────────────────────────────────
@@ -237,7 +237,7 @@ include __DIR__ . '/sc-layout-top.php';
 
 <div class="sc-page-header">
     <h1 class="sc-page-title">Update Smack Central</h1>
-    <p class="sc-page-sub">Pulls directly from GitHub master. sc-config.php is never touched.</p>
+    <p class="sc-page-sub">Pulls the latest tagged release from GitHub. sc-config.php is never touched.</p>
 </div>
 
 <?php if ($result_log): ?>
@@ -266,23 +266,22 @@ include __DIR__ . '/sc-layout-top.php';
             </td>
         </tr>
         <tr>
-            <th>Installed commit</th>
+            <th>Installed</th>
             <td>
                 <?php if ($installed_ref): ?>
-                    <code><?php echo htmlspecialchars($short_installed); ?></code>
+                    <code><?php echo htmlspecialchars($installed_ref); ?></code>
                 <?php else: ?>
                     <span class="sc-muted">Not recorded — run an update to set baseline.</span>
                 <?php endif; ?>
             </td>
         </tr>
         <tr>
-            <th>Latest on master</th>
+            <th>Latest release</th>
             <td>
                 <?php if ($check_error): ?>
                     <span class="sc-warn"><?php echo htmlspecialchars($check_error); ?></span>
-                <?php elseif ($latest_ref): ?>
-                    <code><?php echo htmlspecialchars($short_latest); ?></code>
-                    <span class="sc-muted" style="margin-left:8px;"><?php echo htmlspecialchars($latest_message); ?></span>
+                <?php elseif ($latest_tag): ?>
+                    <code><?php echo htmlspecialchars($latest_tag); ?></code>
                 <?php endif; ?>
             </td>
         </tr>
@@ -300,12 +299,12 @@ include __DIR__ . '/sc-layout-top.php';
         </tr>
     </table>
 
-    <?php if (!$check_error): ?>
+    <?php if (!$check_error && $latest_tag): ?>
         <form method="post" action="sc-update.php" style="margin-top:20px;"
-              onsubmit="return confirm('Pull latest from GitHub master and apply?\n\nsc-config.php will not be touched.');">
+              onsubmit="return confirm('Pull <?php echo htmlspecialchars($latest_tag, ENT_QUOTES); ?> from GitHub and apply?\n\nsc-config.php will not be touched.');">
             <input type="hidden" name="action" value="pull">
             <button type="submit" class="sc-btn sc-btn-primary">
-                <?php echo $up_to_date ? 'Re-pull from master' : 'Pull Update'; ?>
+                <?php echo $up_to_date ? 'Re-pull ' . htmlspecialchars($latest_tag) : 'Pull ' . htmlspecialchars($latest_tag); ?>
             </button>
         </form>
     <?php endif; ?>
