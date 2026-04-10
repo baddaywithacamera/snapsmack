@@ -1,0 +1,14 @@
+{
+  "name": "oh-snap",
+  "version": "0.1.0",
+  "description": "Oh Snap! — SnapSmack skin designer",
+  "license": "GPL-3.0",
+  "scripts": {
+    "tauri": "tauri",
+    "dev":   "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}
