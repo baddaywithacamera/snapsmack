@@ -4,7 +4,7 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
-## 0.7.9d — "Dark Room" (2026-04-10)
+## 0.7.9d — "Hot Seat" (2026-04-10)
 
 ### Added
 - **Oh Snap! API layer**: Six authenticated REST endpoints for the Oh Snap! desktop skin designer (`core/ohsnap-api.php`, routed via `api.php`). Endpoints: `GET ohsnap/ping` (connection test), `GET ohsnap/config` (site name, tagline, active skin), `GET ohsnap/posts` (recent 20 posts with cover images), `GET ohsnap/media` (recent 60 images with thumbnail URLs), `GET ohsnap/skin` (active skin manifest, CSS, and CSS variable map), `POST ohsnap/skin/push` (upload and optionally activate a skin zip).
