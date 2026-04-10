@@ -358,3 +358,29 @@ body.landing-only .tg-topbar { display: none; }
         align-items: center;
     }
 }
+
+/* 12. ARCHIVE LAYOUT TOGGLE
+   -------------------------------------------------------------------------
+   Visitor-facing layout switcher shown when the site owner has enabled
+   multiple archive modes. Skins can override via their own style.css. */
+.archive-layout-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 0 4px;
+}
+.archive-layout-toggle .alt-btn {
+    display: inline-block;
+    padding: 4px 14px;
+    font-size: 0.72em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    opacity: 0.45;
+    transition: opacity 0.15s;
+}
+.archive-layout-toggle .alt-btn:hover   { opacity: 0.85; }
+.archive-layout-toggle .alt-btn--active { opacity: 1; }

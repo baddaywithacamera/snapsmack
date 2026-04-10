@@ -7,5 +7,5 @@
  * to determine whether an update is available.
  */
 
-define('SC_VERSION',    '0.7.9f');
-define('SC_CODENAME',   'Footrest');
+define('SC_VERSION',    '0.7.9g');
+define('SC_CODENAME',   'Lumbar Support');
