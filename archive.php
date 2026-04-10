@@ -85,6 +85,9 @@ try {
     $cat_filter    = isset($_GET['cat']) ? (int)$_GET['cat'] : null;
     $album_filter  = isset($_GET['album']) ? (int)$_GET['album'] : null;
     $search_query  = trim($_GET['q'] ?? '');
+    // Calendar date filter: YYYY-MM-DD — shows all posts on that specific date.
+    $date_filter   = (isset($_GET['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date']))
+                     ? $_GET['date'] : null;
 
     // If search query looks like a hashtag, redirect to tag archive
     if ($search_query !== '' && $search_query[0] === '#') {
@@ -118,7 +121,13 @@ try {
         $params[] = $like;
         $params[] = $tag_like;
         $params[] = $family_exact;
+    } elseif ($date_filter) {
+        // Calendar day browse — all posts published on a specific date.
+        $where_clauses[] = "DATE(i.img_date) = ?";
+        $params[] = $date_filter;
     } elseif ($cat_filter) {
+        // Direct category browse — show images for this specific category
+        // regardless of its show_in_archive flag (URL is direct, not surfaced in UI).
         $sql .= "INNER JOIN snap_image_cat_map c ON i.id = c.image_id ";
         $where_clauses[] = "c.cat_id = ?";
         $params[] = $cat_filter;
@@ -126,6 +135,18 @@ try {
         $sql .= "INNER JOIN snap_image_album_map a ON i.id = a.image_id ";
         $where_clauses[] = "a.album_id = ?";
         $params[] = $album_filter;
+    } else {
+        // Unfiltered browse: exclude images that belong exclusively to hidden categories.
+        // Images with no category (uncategorized) always show.
+        // Images in at least one visible category show even if also in a hidden one.
+        $where_clauses[] = "
+            (NOT EXISTS (SELECT 1 FROM snap_image_cat_map _cm WHERE _cm.image_id = i.id)
+             OR EXISTS (
+                SELECT 1 FROM snap_image_cat_map _cm2
+                INNER JOIN snap_categories _sc ON _sc.id = _cm2.cat_id
+                WHERE _cm2.image_id = i.id AND _sc.show_in_archive = 1
+             )
+            )";
     }
 
     $sql .= " WHERE " . implode(" AND ", $where_clauses);
@@ -137,7 +158,8 @@ try {
 
     // --- METADATA FOR FILTERS ---
     // Fetch all categories and albums for filter dropdowns
-    $all_cats   = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
+    // Only surface categories that are set to visible in the archive.
+    $all_cats   = $pdo->query("SELECT * FROM snap_categories WHERE show_in_archive = 1 ORDER BY cat_name ASC")->fetchAll();
     $all_albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
 
     // Matching tags (shown when searching)
