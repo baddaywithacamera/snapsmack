@@ -44,17 +44,37 @@ try {
     snapsmack_apply_skin_settings($settings, $active_skin);
 
     // --- ARCHIVE LAYOUT MODE ---
-    // Determines visual presentation: square (1:1), cropped (max 3:2/2:3), or masonry (full aspect).
-    // 'none' means archive is disabled — redirect to homepage rather than rendering a broken page.
-    $archive_layout = $settings['archive_layout'] ?? 'square';
-    if ($archive_layout === 'none') {
+    // Owner sets the default in Archive Appearance. Visitor can override via ?layout=
+    // URL param if the owner has enabled multiple modes. Preference persists via JS/localStorage.
+    $archive_layout_default = $settings['archive_layout'] ?? 'square';
+    if ($archive_layout_default === 'none') {
         $base = rtrim($settings['site_url'] ?? '/', '/') . '/';
         header('Location: ' . $base);
         exit;
     }
-    if (!in_array($archive_layout, ['square', 'cropped', 'masonry'])) {
-        $archive_layout = 'square';
+    if (!in_array($archive_layout_default, ['square', 'cropped', 'masonry'])) {
+        $archive_layout_default = 'square';
     }
+
+    // Which modes the owner has offered to visitors.
+    $available_raw    = $settings['archive_layouts_available'] ?? $archive_layout_default;
+    $available_modes  = array_filter(
+        array_map('trim', explode(',', $available_raw)),
+        fn($m) => in_array($m, ['square', 'cropped', 'masonry'])
+    );
+    if (empty($available_modes)) $available_modes = [$archive_layout_default];
+    $available_modes = array_values($available_modes);
+    if (!in_array($archive_layout_default, $available_modes)) {
+        $available_modes[] = $archive_layout_default;
+    }
+
+    // Accept visitor ?layout= override only if it's in the allowed set.
+    $layout_override = $_GET['layout'] ?? '';
+    $archive_layout  = (in_array($layout_override, $available_modes))
+                       ? $layout_override
+                       : $archive_layout_default;
+
+    $offer_toggle = (count($available_modes) > 1);
 
     // --- THUMBNAIL SIZE RESOLUTION ---
     // Maps abstract 5-step scale (xs, s, m, l, xl) to pixel values.
@@ -254,6 +274,42 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                 </div>
             </div>
         </div>
+
+        <?php if ($offer_toggle): ?>
+        <div class="archive-layout-toggle" role="group" aria-label="Layout">
+            <?php
+            $toggle_labels = ['square' => 'Grid', 'cropped' => 'Crop', 'masonry' => 'Flow'];
+            foreach ($available_modes as $mode):
+                $is_active = ($mode === $archive_layout);
+                // Build URL preserving existing query params except layout.
+                $qp = $_GET;
+                $qp['layout'] = $mode;
+                unset($qp['q']); // don't conflict with search — reset to all on layout switch
+                unset($qp['cat']); unset($qp['album']); unset($qp['date']);
+                $qs = http_build_query($qp);
+            ?>
+                <a href="archive.php?<?php echo $qs; ?>"
+                   class="alt-btn<?php echo $is_active ? ' alt-btn--active' : ''; ?>"
+                   data-layout="<?php echo htmlspecialchars($mode); ?>">
+                    <?php echo $toggle_labels[$mode] ?? strtoupper($mode); ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
+        <script>
+        // Persist layout preference in localStorage so it survives navigation.
+        (function() {
+            var pref = localStorage.getItem('smack_archive_layout');
+            var avail = <?php echo json_encode($available_modes); ?>;
+            var current = <?php echo json_encode($archive_layout); ?>;
+            // If no explicit ?layout= in URL but a pref exists, redirect to it.
+            if (pref && pref !== current && avail.indexOf(pref) !== -1 && !location.search.match(/layout=/)) {
+                location.replace('archive.php?layout=' + encodeURIComponent(pref));
+            } else {
+                localStorage.setItem('smack_archive_layout', current);
+            }
+        }());
+        </script>
+        <?php endif; ?>
 
         <?php if ($search_query !== ''): ?>
         <div class="archive-search-status">
