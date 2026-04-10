@@ -4,6 +4,13 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.9e — "Recliner" (2026-04-10)
+
+### Fixed
+- **Schema sync skipped on updates with no SQL migration files**: `smack-update.php` was guarding `updater_run_migrations()` behind `!empty($migrations)`. Releases that ship no new `.sql` files (like 0.7.9d) silently skipped the canonical schema diff, leaving new tables uncreated on existing installs. Fix: always call `updater_run_migrations()` — the canonical diff runs regardless, the SQL loop is a no-op when the array is empty. Update log now shows which tables were created.
+
+---
+
 ## 0.7.9d — "Hot Seat" (2026-04-10)
 
 ### Added
