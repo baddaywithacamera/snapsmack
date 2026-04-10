@@ -192,48 +192,12 @@ include 'core/sidebar.php';
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>GLOBAL DOWNLOADS</label>
-                    <select name="settings[global_downloads_enabled]">
-                        <option value="1" <?php echo (($settings['global_downloads_enabled'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
-                        <option value="0" <?php echo (($settings['global_downloads_enabled'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
-                    </select>
-                    <span class="dim">MASTER OVERRIDE. WHEN DISABLED, NO POSTS SHOW DOWNLOAD BUTTONS REGARDLESS OF PER-POST SETTING.</span>
-                </div>
-
-                <div class="lens-input-wrapper">
-                    <label>EXIF / TECHNICAL SPECS</label>
-                    <select name="settings[exif_display_enabled]">
-                        <option value="1" <?php echo (($settings['exif_display_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>SHOW ON PUBLIC POSTS</option>
-                        <option value="0" <?php echo (($settings['exif_display_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>HIDDEN FROM PUBLIC</option>
-                    </select>
-                    <span class="dim">HIDES TECHNICAL SPECIFICATIONS PANEL. DATA IS STILL STORED.</span>
-                </div>
-
-                <div class="lens-input-wrapper">
-                    <label>DOWNLOAD DEFAULT FOR NEW POSTS</label>
-                    <select name="settings[download_default_mode]">
-                        <option value="per_post" <?php echo (($settings['download_default_mode'] ?? 'per_post') == 'per_post') ? 'selected' : ''; ?>>PER-POST (MANUALLY ENABLE EACH POST)</option>
-                        <option value="all_posts" <?php echo (($settings['download_default_mode'] ?? 'per_post') == 'all_posts') ? 'selected' : ''; ?>>ALL POSTS (DOWNLOADS ON BY DEFAULT)</option>
-                    </select>
-                    <span class="dim">WHEN SET TO ALL POSTS, NEW POSTS DEFAULT TO DOWNLOAD-ENABLED. YOU CAN STILL DISABLE PER-POST.</span>
-                </div>
-
-                <div class="lens-input-wrapper">
                     <label>SITE-WIDE SEARCH</label>
                     <select name="settings[search_enabled]">
                         <option value="0" <?php echo (($settings['search_enabled'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED (DEFAULT)</option>
                         <option value="1" <?php echo (($settings['search_enabled'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
                     </select>
                     <span class="dim">ENABLES FULL-TEXT SEARCH ON SKINS THAT SUPPORT IT (E.G. PHOTOGRAM).</span>
-                </div>
-
-                <div class="lens-input-wrapper">
-                    <label>REQUIRE DOWNLOAD LINK?</label>
-                    <select name="settings[download_link_required]">
-                        <option value="0" <?php echo (($settings['download_link_required'] ?? '0') == '0') ? 'selected' : ''; ?>>NO (OPTIONAL)</option>
-                        <option value="1" <?php echo (($settings['download_link_required'] ?? '0') == '1') ? 'selected' : ''; ?>>YES (BLOCK SAVE IF MISSING)</option>
-                    </select>
-                    <span class="dim">WHEN ENABLED, POSTS WITH DOWNLOADS TURNED ON MUST HAVE A DOWNLOAD LINK OR THE SAVE WILL FAIL.</span>
                 </div>
 
                 <div class="lens-input-wrapper">

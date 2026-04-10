@@ -4,6 +4,24 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.9f — "Footrest" (2026-04-10)
+
+### Added
+- **Settings restructure**: Appearance settings split into three dedicated pages — Archive Appearance (`smack-appearance-archive.php`), Solo Image Appearance (`smack-appearance-solo.php`), and Static Page Appearance (`smack-appearance-static.php`). All three appear under Pimp Your Ride in the sidebar.
+- **Archive Appearance page**: Grid layout, crop style (new pill toggle, skin-gated), thumbnail size, columns slider, gutter slider, tile border/shadow controls, and floating gallery settings — all moved from Global Vibe.
+- **Solo Image Appearance page**: EXIF display toggle, download controls (global kill-switch, per-post default, require link enforcement), and stub typography section (drop caps and pull quotes — skin-gated, appear when skin manifest declares support).
+- **Static Page Appearance page**: Content width and side gutter sliders — moved from Global Vibe.
+- **Crop style toggle**: New `archive_crop_style` setting with radio pill UI. Only shown when active skin declares multiple crop styles in `manifest['archive_options']['crop_styles']`.
+- **Archive gutter control**: New `archive_gutter` setting (0–24 px, step 2) on the Archive Appearance page.
+- **Archive border/shadow controls**: New `archive_border_style` and `archive_shadow_depth` settings. Shadow depth row shows/hides via JS based on border style selection.
+- **Release Systems Reference** (`smack-central/sc-help-release.php`): Internal help page covering version numbering, release script, git workflow, the Release Packager, the Smack Central self-updater, and bootstrapping a new server. Linked from the SC sidebar as System → Release Guide.
+
+### Removed
+- Archive grid, floating gallery, and page content width controls removed from Global Vibe — now live on their respective appearance pages.
+- EXIF, download default, and require-download-link controls removed from Configuration — now live on Solo Image Appearance.
+
+---
+
 ## 0.7.9e — "Recliner" (2026-04-10)
 
 ### Added
