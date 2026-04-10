@@ -246,6 +246,17 @@ if (!empty($settings['lightbox_bg_opacity'])) {
     ];
 }
 
+// Calendar sidebar settings — injected when the smack-calendar engine is active.
+$_smack_skin_manifest = file_exists($skin_manifest_path) ? (include $skin_manifest_path) : [];
+if (in_array('smack-calendar', $_smack_skin_manifest['require_scripts'] ?? [])) {
+    $_smack_js_config['calendar'] = [
+        'side'      => $settings['calendar_side']       ?? 'left',
+        'months'    => (int)($settings['calendar_months']     ?? 1),
+        'postCount' => (int)($settings['calendar_post_count'] ?? 10),
+        'endpoint'  => BASE_URL . 'api-calendar.php',
+    ];
+}
+
 if (!empty($_smack_js_config)):
 ?>
 <script>window.SMACK_CONFIG = <?php echo json_encode($_smack_js_config, JSON_UNESCAPED_UNICODE); ?>;</script>
