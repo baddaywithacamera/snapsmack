@@ -130,6 +130,8 @@ function snap_schema_sync(PDO $pdo): array {
           `cat_slug`        varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
           `cat_description` text  COLLATE utf8mb4_unicode_ci,
           `cover_image_id`  int   DEFAULT NULL,
+          `show_in_archive` tinyint(1) NOT NULL DEFAULT 1
+                            COMMENT '1 = visible in public archive; 0 = hidden',
           PRIMARY KEY (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
@@ -556,6 +558,12 @@ function snap_schema_sync(PDO $pdo): array {
         ['snap_pages', 'image_shadow',
             "ALTER TABLE `snap_pages`
              ADD COLUMN `image_shadow` tinyint(1) NOT NULL DEFAULT 0 AFTER `image_align`"],
+
+        // 0.7.9f — snap_categories (archive visibility toggle)
+        ['snap_categories', 'show_in_archive',
+            "ALTER TABLE `snap_categories`
+             ADD COLUMN `show_in_archive` tinyint(1) NOT NULL DEFAULT 1
+             COMMENT '1 = visible in public archive; 0 = hidden'"],
 
     ];
 

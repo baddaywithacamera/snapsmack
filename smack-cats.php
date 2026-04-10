@@ -31,8 +31,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Update an existing category.
     if (isset($_POST['update_cat']) && !empty($name)) {
         $id = (int)$_POST['cat_id'];
-        $stmt = $pdo->prepare("UPDATE snap_categories SET cat_name = ?, cat_description = ? WHERE id = ?");
-        $stmt->execute([$name, $description, $id]);
+        $show_in_archive = isset($_POST['show_in_archive']) ? 1 : 0;
+        $stmt = $pdo->prepare("UPDATE snap_categories SET cat_name = ?, cat_description = ?, show_in_archive = ? WHERE id = ?");
+        $stmt->execute([$name, $description, $show_in_archive, $id]);
         header("Location: smack-cats.php?msg=REGISTRY+ENTRY+MODIFIED");
         exit;
     }
@@ -98,6 +99,15 @@ include 'core/sidebar.php';
                     </div>
 
                     <div class="lens-input-wrapper mt-20">
+                        <label>
+                            <input type="checkbox" name="show_in_archive" value="1"
+                                <?php echo (!$edit_mode || ($edit_data['show_in_archive'] ?? 1)) ? 'checked' : ''; ?>>
+                            SHOW IN ARCHIVE
+                        </label>
+                        <span class="dim">UNCHECK TO HIDE THIS CATEGORY AND ITS IMAGES FROM THE PUBLIC ARCHIVE GRID. IMAGES ARE NOT DELETED.</span>
+                    </div>
+
+                    <div class="lens-input-wrapper mt-20">
                         <button type="submit" class="master-update-btn">
                             <?php echo $edit_mode ? "UPDATE CATEGORY" : "ADD TO REGISTRY"; ?>
                         </button>
@@ -123,6 +133,9 @@ include 'core/sidebar.php';
                                 <div class="item-details">
                                     <div class="item-text">
                                         <strong><?php echo htmlspecialchars($c['cat_name']); ?></strong>
+                                        <?php if (!($c['show_in_archive'] ?? 1)): ?>
+                                            <code class="slug-display" style="color:#c0392b;">HIDDEN FROM ARCHIVE</code>
+                                        <?php endif; ?>
                                         <code class="slug-display">TRANSMISSIONS: <?php echo (int)$c['img_count']; ?></code>
                                         <?php if (!empty($c['cat_description'])): ?>
                                             <span class="dim" style="display:block;margin-top:4px;font-size:0.85em;"><?php echo htmlspecialchars($c['cat_description']); ?></span>
