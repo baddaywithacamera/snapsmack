@@ -118,6 +118,8 @@ CREATE TABLE IF NOT EXISTS `snap_categories` (
   `cat_description` text  COLLATE utf8mb4_unicode_ci,
   `cover_image_id`  int   DEFAULT NULL
                     COMMENT 'Optional manual cover override — FK to snap_images',
+  `show_in_archive` tinyint(1) NOT NULL DEFAULT 1
+                    COMMENT '1 = visible in public archive; 0 = hidden (added 0.7.9f)',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

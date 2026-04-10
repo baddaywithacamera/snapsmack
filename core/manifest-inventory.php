@@ -726,6 +726,34 @@ return [
             'path'         => 'assets/js/ss-engine-carousel-view.js',
             'has_settings' => false,
         ],
+        'smack-calendar' => [
+            'label'        => 'Archive Calendar Sidebar (Sliding date panel)',
+            'path'         => 'assets/js/ss-engine-calendar.js',
+            'css'          => 'assets/css/ss-engine-calendar.css',
+            'has_settings' => true,
+            'controls'     => [
+                'calendar_months' => [
+                    'type'    => 'select',
+                    'label'   => 'Months to Show',
+                    'default' => '1',
+                    'options' => ['1' => '1 Month', '2' => '2 Months', '3' => '3 Months']
+                ],
+                'calendar_post_count' => [
+                    'type'    => 'range',
+                    'label'   => 'Recent Posts Listed',
+                    'default' => '10',
+                    'min'     => '5',
+                    'max'     => '20',
+                    'step'    => '1'
+                ],
+                'calendar_side' => [
+                    'type'    => 'select',
+                    'label'   => 'Panel Side',
+                    'default' => 'left',
+                    'options' => ['left' => 'Slide From Left', 'right' => 'Slide From Right']
+                ],
+            ]
+        ],
         'smack-lazyload' => [
             'label'        => 'Lazy Loading Engine (Progressive image loading)',
             'path'         => 'assets/js/ss-engine-lazyload.js',

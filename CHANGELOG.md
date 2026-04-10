@@ -16,6 +16,11 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - **Archive border/shadow controls**: New `archive_border_style` and `archive_shadow_depth` settings. Shadow depth row shows/hides via JS based on border style selection.
 - **Release Systems Reference** (`smack-central/sc-help-release.php`): Internal help page covering version numbering, release script, git workflow, the Release Packager, the Smack Central self-updater, and bootstrapping a new server. Linked from the SC sidebar as System → Release Guide.
 
+### Added (continued)
+- **Category visibility** (`smack-cats.php`): Show/hide toggle on each category. Hidden categories are excluded from the archive filter list and their images are hidden from the unfiltered archive grid (images in at least one visible category still show). Schema: `snap_categories.show_in_archive` tinyint(1) default 1. Added to `schema-sync.php` and `snapsmack_canonical.sql`.
+- **Archive date filter** (`archive.php`): Accepts `?date=YYYY-MM-DD` to show all posts from a specific day. Used by the calendar engine day-click links.
+- **Archive Calendar Engine** (`ss-engine-calendar.js`, `ss-engine-calendar.css`, `api-calendar.php`): Sliding fixed sidebar panel with monthly calendar view and recent post list. Opt-in via `require_scripts[] = 'smack-calendar'` in skin manifest. User controls: months to show (1-3), recent posts listed (5-20), panel side (left/right). Settings passed to JS via `window.SMACK_CONFIG.calendar`. Days with posts highlighted as links into `archive.php?date=`. Month navigation via AJAX. Escape key closes panel.
+
 ### Removed
 - Archive grid, floating gallery, and page content width controls removed from Global Vibe — now live on their respective appearance pages.
 - EXIF, download default, and require-download-link controls removed from Configuration — now live on Solo Image Appearance.
