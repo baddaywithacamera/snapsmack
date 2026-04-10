@@ -89,7 +89,7 @@ a:hover { filter: brightness(1.2); }
     font-size: 0.6rem;
     letter-spacing: 1.5px;
     text-transform: uppercase;
-    color: var(--sc-text-dim);
+    color: #909090;
 }
 .sc-nav a {
     display: block;
