@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Schema Sync Engine
- * Alpha v0.7.9c
+ * Alpha v0.7.9d
  *
  * Declares the canonical database schema for the current version and applies
  * any missing tables or columns against a live database. All operations are
@@ -460,6 +460,20 @@ function snap_schema_sync(PDO $pdo): array {
           `sort_order`           int          NOT NULL DEFAULT 0,
           PRIMARY KEY (`id`),
           KEY `idx_slideshow_id` (`slideshow_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+        'snap_ohsnap_keys' => "CREATE TABLE IF NOT EXISTS `snap_ohsnap_keys` (
+          `id`           int            NOT NULL AUTO_INCREMENT,
+          `label`        varchar(100)   COLLATE utf8mb4_unicode_ci NOT NULL,
+          `key_hash`     varchar(64)    COLLATE utf8mb4_unicode_ci NOT NULL
+                         COMMENT 'SHA-256 hex digest of the raw key',
+          `key_prefix`   varchar(8)     COLLATE utf8mb4_unicode_ci NOT NULL
+                         COMMENT 'First 8 chars of raw key for UI display',
+          `is_active`    tinyint(1)     NOT NULL DEFAULT 1,
+          `created_at`   datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          `last_used_at` datetime       DEFAULT NULL,
+          PRIMARY KEY (`id`),
+          UNIQUE KEY `uq_key_hash` (`key_hash`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
     ];
