@@ -6,8 +6,14 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ## 0.7.9e — "Recliner" (2026-04-10)
 
+### Added
+- **Release script** (`tools/release.py`): Single command bumps version across `core/constants.php`, `smack-central/sc-version.php`, and `CHANGELOG.md`. Usage: `python3 tools/release.py 0.7.9f "Codename"`. Idempotent — re-running the same version is safe.
+- **Smack Central self-updater** (`smack-central/sc-update.php`): Pulls latest tagged release from GitHub, extracts `smack-central/` subtree, runs `sc-schema.sql` idempotently, records installed tag in `sc_settings`. `sc-config.php` is never touched.
+- **Oh Snap! spec expanded**: Sections 7.1–7.3 added covering solo vs carousel preview modes, sample content strategy (live site preferred, local drop-in fallback, carousel padding to 12 images), and Oh Snap! readiness (full design mode vs import mode).
+
 ### Fixed
 - **Schema sync skipped on updates with no SQL migration files**: `smack-update.php` was guarding `updater_run_migrations()` behind `!empty($migrations)`. Releases that ship no new `.sql` files (like 0.7.9d) silently skipped the canonical schema diff, leaving new tables uncreated on existing installs. Fix: always call `updater_run_migrations()` — the canonical diff runs regardless, the SQL loop is a no-op when the array is empty. Update log now shows which tables were created.
+- **Smack Central updater pulls from latest tag, not master**: Swapped `commits/master` SHA lookup for `tags` endpoint. Zip URL now uses `archive/refs/tags/{tag}.zip`. Prevents pulling half-finished commits from a live working branch.
 
 ---
 
