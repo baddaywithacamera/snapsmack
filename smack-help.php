@@ -1420,11 +1420,10 @@ is deployed to <code>C:\SmackYourBatchUp\</code> automatically.</p>
 doing anything else — they tell you whether everything is connected and how long your session
 has left.</p>
 <ul>
-    <li><strong>SITE CONNECTION</strong> — green means you are logged in. The large countdown
-    shows how long your session has remaining (48 minutes from last login). It turns amber at
-    10 minutes, red at 2 minutes, and flashes at 5 minutes. The keepalive system extends your
-    session automatically while the app is open, but if you leave it idle and return to a
-    flashing display, click Connect again before posting — your queue is not lost.</li>
+    <li><strong>SITE CONNECTION</strong> — green means you are logged in. The countdown shows
+    the 48-minute PHP session window. SYBU pings the server every 10 minutes to keep the session
+    alive and resets the countdown automatically, so it should never reach zero while the app is
+    open. If you lose network and it expires, click Connect again — your queue is not lost.</li>
     <li><strong>CLOUD DRIVE</strong> — green means Google Drive is authenticated and download
     links will be attached to every post. If this is red when you post, images will be uploaded
     to SnapSmack but will not have download links. Use Fix Your Batch Up to recover those links.</li>
