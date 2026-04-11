@@ -10,6 +10,7 @@
  */
 
 require_once 'core/auth.php';
+require_once 'core/ban-check.php';
 
 // --- GLOBAL COMMENT SETTINGS ---
 $s_rows = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -18,12 +19,43 @@ $global_comments_active = (($s_rows['global_comments_enabled'] ?? '1') == '1');
 // --- SYSTEM TAB ---
 // 'legacy'    = snap_comments (anonymous, moderation queue)
 // 'community' = snap_community_comments (account/guest, visible/hidden)
+// 'bans'      = snap_ban_list management
 $system = $_GET['system'] ?? 'legacy';
 
 // --- MODERATION ACTIONS ---
 if (isset($_GET['action']) && isset($_GET['id'])) {
     $id = (int)$_GET['id'];
-    if ($system === 'community') {
+
+    // ── Ban actions (work regardless of system tab) ───────────────────────────
+    if ($_GET['action'] === 'ban_fp' || $_GET['action'] === 'ban_ip') {
+        // Fetch the comment to get its fingerprint / IP
+        $tbl   = ($system === 'community') ? 'snap_community_comments' : 'snap_comments';
+        $ip_col = ($system === 'community') ? 'ip' : 'comment_ip';
+        $row = $pdo->prepare("SELECT fp_hash, $ip_col AS ip FROM $tbl WHERE id = ? LIMIT 1");
+        $row->execute([$id]);
+        $cmt = $row->fetch(PDO::FETCH_ASSOC);
+        if ($cmt) {
+            $admin_id = (int)($_SESSION['user_id'] ?? 0) ?: null;
+            if ($_GET['action'] === 'ban_fp' && !empty($cmt['fp_hash'])) {
+                add_ban($pdo, 'fingerprint', $cmt['fp_hash'], 'Banned via comment moderation', $admin_id);
+                $msg = "Browser fingerprint banned. Future submissions from this device will be silently discarded.";
+            } elseif ($_GET['action'] === 'ban_ip' && !empty($cmt['ip'])) {
+                add_ban($pdo, 'ip', $cmt['ip'], 'Banned via comment moderation', $admin_id);
+                $msg = "IP address banned.";
+            } else {
+                $msg = "No fingerprint or IP available for this comment — nothing to ban.";
+            }
+        }
+    }
+
+    // ── Remove ban ────────────────────────────────────────────────────────────
+    elseif ($_GET['action'] === 'unban' && $system === 'bans') {
+        remove_ban($pdo, $id);
+        $msg = "Ban removed.";
+    }
+
+    // ── Standard comment actions ──────────────────────────────────────────────
+    elseif ($system === 'community') {
         if ($_GET['action'] === 'hide') {
             $pdo->prepare("UPDATE snap_community_comments SET status = 'hidden' WHERE id = ?")->execute([$id]);
             $msg = "Comment hidden.";
@@ -43,6 +75,21 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
             $pdo->prepare("DELETE FROM snap_comments WHERE id = ?")->execute([$id]);
             $msg = "Signal terminated.";
         }
+    }
+}
+
+// --- BAN LIST DATA (for bans tab) ---
+$ban_rows = [];
+if ($system === 'bans') {
+    try {
+        $ban_rows = $pdo->query("
+            SELECT b.*, u.username AS banned_by_name
+            FROM snap_ban_list b
+            LEFT JOIN snap_users u ON u.id = b.banned_by
+            ORDER BY b.banned_at DESC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        $ban_rows = [];
     }
 }
 
@@ -229,11 +276,50 @@ include 'core/sidebar.php';
             <span class="sep">|</span>
             <a href="?system=community" class="btn-clear <?php echo $system === 'community' ? 'active' : ''; ?>">COMMUNITY</a>
             <a href="?system=legacy"    class="btn-clear <?php echo $system === 'legacy'    ? 'active' : ''; ?>">LEGACY</a>
+            <a href="?system=bans"      class="btn-clear <?php echo $system === 'bans'      ? 'active' : ''; ?>">BAN LIST (<?php echo count($ban_rows); ?>)</a>
         </div>
     </div>
 
     <?php if (isset($msg)) echo "<div class='msg'>> $msg</div>"; ?>
 
+    <?php if ($system === 'bans'): ?>
+    <div class="box">
+        <h3>BAN LIST</h3>
+        <p style="color:var(--fg-dim);font-size:0.85em;margin-bottom:1rem;">
+            Banned submissions are silently discarded — the sender sees a normal success response and never knows they are blocked.
+        </p>
+        <?php if ($ban_rows): ?>
+            <div class="recent-list">
+                <?php foreach ($ban_rows as $b): ?>
+                    <div class="recent-item">
+                        <div class="item-text">
+                            <div class="signal-sender">
+                                <?php echo htmlspecialchars(strtoupper($b['ban_type'])); ?>:
+                                <code><?php echo htmlspecialchars($b['ban_value']); ?></code>
+                            </div>
+                            <div class="signal-meta">
+                                Banned <?php echo htmlspecialchars($b['banned_at']); ?>
+                                <?php if ($b['banned_by_name']): ?>
+                                    by <?php echo htmlspecialchars($b['banned_by_name']); ?>
+                                <?php endif; ?>
+                                <?php if ($b['reason']): ?>
+                                    — <?php echo htmlspecialchars($b['reason']); ?>
+                                <?php endif; ?>
+                            </div>
+                            <div class="item-actions">
+                                <a href="?system=bans&action=unban&id=<?php echo $b['id']; ?>"
+                                   class="action-authorize"
+                                   onclick="return confirm('Remove this ban?');">UNBAN</a>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <div class="read-only-display text-center no-border">NO ACTIVE BANS.</div>
+        <?php endif; ?>
+    </div>
+    <?php else: ?>
     <div class="box">
         <h3><?php echo $section_heading; ?></h3>
 
@@ -261,6 +347,11 @@ include 'core/sidebar.php';
                                         <span class="alert-text">[FREQUENCY MUTED]</span>
                                     <?php endif; ?>
                                     | IP: <?php echo htmlspecialchars($c['display_ip'] ?: '—'); ?>
+                                    <?php if (!empty($c['fp_hash'])): ?>
+                                        | FP: <span title="<?php echo htmlspecialchars($c['fp_hash']); ?>" class="fp-indicator">&#x2022;&#x2022;&#x2022;<?php echo substr($c['fp_hash'], -6); ?></span>
+                                    <?php else: ?>
+                                        | FP: <span class="fp-none" title="No fingerprint — submitted before fingerprinting was enabled, or JavaScript was disabled">—</span>
+                                    <?php endif; ?>
                                     | <?php echo htmlspecialchars($c['display_date']); ?>
                                 </div>
 
@@ -284,6 +375,13 @@ include 'core/sidebar.php';
                                         }
                                         echo '<a href="' . $base . '&action=delete" class="action-delete" onclick="return confirm(\'Terminate signal?\');">TERMINATE</a>';
                                     }
+                                    // Ban controls — shown when a fingerprint or IP is available
+                                    if (!empty($c['fp_hash'])) {
+                                        echo '<a href="' . $base . '&action=ban_fp" class="action-delete" onclick="return confirm(\'Ban this browser fingerprint? Future submissions from this device will be silently discarded.\');">BAN DEVICE</a>';
+                                    }
+                                    if (!empty($c['display_ip'])) {
+                                        echo '<a href="' . $base . '&action=ban_ip" class="action-delete" onclick="return confirm(\'Ban this IP address?\');">BAN IP</a>';
+                                    }
                                     ?>
                                 </div>
                             </div>
@@ -305,6 +403,7 @@ include 'core/sidebar.php';
             <div class="read-only-display text-center no-border">NO SIGNALS DETECTED.</div>
         <?php endif; ?>
     </div>
+    <?php endif; ?>
 </div>
 
 <?php include 'core/admin-footer.php'; ?>
