@@ -765,7 +765,8 @@ class App(tk.Tk):
         self._drive_btn.pack(pady=(14, 4))
 
         # ── Box: GEMINI AI ────────────────────────────────────────────
-        self._gemini_key_var = tk.StringVar()
+        self._gemini_key_var    = tk.StringVar()
+        self._gemini_prompt_var = tk.StringVar()
 
         gem_box  = self._box(cfg, "GEMINI AI (OPTIONAL)")
         gem_box.pack(fill="x", pady=(10, 0))
@@ -776,10 +777,30 @@ class App(tk.Tk):
             bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL,
         ).pack(anchor="w", pady=(0, 6))
 
-        gem_row = tk.Frame(gem_body, bg=BG_CARD)
-        gem_row.pack(fill="x")
-        tk.Label(gem_row, text="API KEY", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w")
-        self._entry(gem_row, self._gemini_key_var, width=0).pack(fill="x", pady=(2, 0))
+        # Key + Test button on same row
+        gem_key_row = tk.Frame(gem_body, bg=BG_CARD)
+        gem_key_row.pack(fill="x")
+        tk.Label(gem_key_row, text="API KEY", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w")
+        gem_key_inner = tk.Frame(gem_key_row, bg=BG_CARD)
+        gem_key_inner.pack(fill="x", pady=(2, 0))
+        self._entry(gem_key_inner, self._gemini_key_var, width=0).pack(side="left", fill="x", expand=True, padx=(0, 6))
+        self._gem_test_btn = ttk.Button(gem_key_inner, text="Test Connection",
+                                         style="Ghost.TButton", command=self._on_gemini_test)
+        self._gem_test_btn.pack(side="left")
+        self._gem_test_lbl = tk.Label(gem_key_inner, text="", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
+        self._gem_test_lbl.pack(side="left", padx=(6, 0))
+
+        # Custom prompt
+        tk.Label(gem_body, text="PROMPT (optional — leave blank for default)",
+                 bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w", pady=(10, 2))
+        self._gem_prompt_txt = tk.Text(
+            gem_body, height=5,
+            bg=BG_MID, fg=FG_DIM, insertbackground=ACCENT,
+            relief="flat", font=FONT_SMALL, bd=0,
+            highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT,
+            wrap="word",
+        )
+        self._gem_prompt_txt.pack(fill="x")
 
         # ── Box: COPYRIGHT ────────────────────────────────────────────
         self._copyright_var = tk.StringVar()
@@ -1194,6 +1215,27 @@ class App(tk.Tk):
     # Gemini Enrich
     # ------------------------------------------------------------------
 
+    def _on_gemini_test(self):
+        api_key = self._gemini_key_var.get().strip()
+        if not api_key:
+            self._gem_test_lbl.configure(text="No key entered.", fg=FG_ERR)
+            return
+        if not gemini_module.is_available():
+            self._gem_test_lbl.configure(text="Library not installed.", fg=FG_ERR)
+            return
+        self._gem_test_btn.configure(state="disabled")
+        self._gem_test_lbl.configure(text="Testing…", fg=FG_WARN)
+
+        def _test_thread():
+            ok, msg = gemini_module.test_connection(api_key)
+            def _update():
+                self._gem_test_btn.configure(state="normal")
+                self._gem_test_lbl.configure(text=msg, fg=FG_OK if ok else FG_ERR)
+                self._save_config()
+            self.after(0, _update)
+
+        threading.Thread(target=_test_thread, daemon=True).start()
+
     def _on_enrich(self):
         api_key = self._gemini_key_var.get().strip()
         if not api_key:
@@ -1217,9 +1259,10 @@ class App(tk.Tk):
             )
             return
 
-        site_data = self._site_data
-        cats   = list(site_data.categories.keys()) if site_data else []
-        albums = list(site_data.albums.keys())     if site_data else []
+        site_data     = self._site_data
+        cats          = list(site_data.categories.keys()) if site_data else []
+        albums        = list(site_data.albums.keys())     if site_data else []
+        custom_prompt = self._gem_prompt_txt.get("1.0", "end").strip()
 
         self._enrich_btn.configure(state="disabled")
         self._set_status(f"Enriching with Gemini — 0 / {len(entries)}…", FG_WARN)
@@ -1231,7 +1274,6 @@ class App(tk.Tk):
                         self._set_status(
                             f"Gemini: {entry.file} — {error}", FG_ERR)
                     else:
-                        # Push values into the live row widget
                         row = self._entry_list.get_row(idx - 1)
                         if row:
                             row.fill_from_ai(
@@ -1252,6 +1294,7 @@ class App(tk.Tk):
                 albums=albums,
                 on_progress=_progress,
                 skip_filled=True,
+                custom_prompt=custom_prompt,
             )
 
             def _done():
