@@ -35,15 +35,12 @@ pip install -r requirements.txt
 
 echo.
 echo Building %EXE_NAME%...
-pyinstaller %SPEC_FILE%
+if not exist C:\SmackYourBatchUp mkdir C:\SmackYourBatchUp
+pyinstaller %SPEC_FILE% --distpath "C:\SmackYourBatchUp"
 
 echo.
-if exist dist\%EXE_NAME% (
-    echo Build successful: dist\%EXE_NAME%
-    echo.
-    echo Deploying to C:\SmackYourBatchUp...
-    if not exist C:\SmackYourBatchUp mkdir C:\SmackYourBatchUp
-    copy /Y dist\%EXE_NAME% C:\SmackYourBatchUp\%EXE_NAME%
+if exist C:\SmackYourBatchUp\%EXE_NAME% (
+    echo Build successful: C:\SmackYourBatchUp\%EXE_NAME%
     echo Done. Launch: C:\SmackYourBatchUp\%EXE_NAME%
 ) else (
     echo Build FAILED. Check output above for errors.
