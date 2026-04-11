@@ -55,22 +55,57 @@ def test_connection(api_key: str) -> tuple[bool, str]:
         return False, str(e)
 
 
-def _build_prompt(categories: List[str], albums: List[str]) -> str:
-    cats_str   = ", ".join(categories) if categories else "(none)"
-    albums_str = ", ".join(albums)     if albums     else "(none)"
+def _build_prompt(
+    categories:        List[str],
+    albums:            List[str],
+    cat_descriptions:  Optional[dict] = None,
+    album_descriptions: Optional[dict] = None,
+    existing_tags:     Optional[List[str]] = None,
+) -> str:
+    # Build category list with optional descriptions
+    if categories:
+        cat_lines = []
+        for c in categories:
+            desc = (cat_descriptions or {}).get(c.lower(), '').strip()
+            cat_lines.append(f"  - {c}" + (f" ({desc})" if desc else ""))
+        cats_str = "\n" + "\n".join(cat_lines)
+    else:
+        cats_str = " (none)"
+
+    # Build album list with optional descriptions
+    if albums:
+        album_lines = []
+        for a in albums:
+            desc = (album_descriptions or {}).get(a.lower(), '').strip()
+            album_lines.append(f"  - {a}" + (f" ({desc})" if desc else ""))
+        albums_str = "\n" + "\n".join(album_lines)
+    else:
+        albums_str = " (none)"
+
+    # Build tag guidance
+    if existing_tags:
+        tag_sample = " ".join(existing_tags[:80])
+        tags_guidance = (
+            f"Prefer tags from this existing list where they fit: {tag_sample}\n"
+            "Invent new tags only when nothing in the list applies."
+        )
+    else:
+        tags_guidance = "Use descriptive hashtags for subject, texture, colour, and mood."
+
     return f"""You are generating metadata for a photo blog post on a site called SnapSmack.
 
 Analyse the image carefully and respond ONLY in this exact format — no extra text:
 
 TITLE: <a haiku-style title: three phrases separated by commas, e.g. "Dark stone holds the rain, rust bleeds through the ancient wall, time carves out the mark">
 TAGS: <5 to 8 space-separated hashtags, e.g. #stone #rust #texture #macro #urban>
-CATEGORY: <pick the single best match from this list, or leave blank: {cats_str}>
-ALBUM: <pick the single best match from this list, or leave blank: {albums_str}>
+CATEGORY: <pick the single best match from this list, or leave blank:{cats_str}>
+ALBUM: <pick the single best match from this list, or leave blank:{albums_str}>
 COLORS: <the three most visually prominent colors in the image as uppercase hex codes separated by spaces, e.g. #A3724B #2E1F0D #8C6B3A>
 
 Rules:
 - TITLE must be evocative and descriptive of what is literally in the image
-- TAGS should describe subject, texture, colour, mood — lowercase, no spaces within a tag
+- {tags_guidance}
+- Tags must be lowercase with no spaces within a tag
 - CATEGORY must exactly match one of the options provided, or be left completely blank
 - ALBUM must exactly match one of the options provided, or be left completely blank
 - COLORS must be exactly 3 hex codes in #RRGGBB format, uppercase, space-separated
@@ -95,29 +130,39 @@ def _parse_response(text: str) -> dict:
 
 
 def enrich_batch(
-    api_key:       str,
-    entries:       List[ManifestEntry],
-    image_folder:  str,
-    categories:    List[str],
-    albums:        List[str],
-    on_progress:   Optional[Callable[[int, int, ManifestEntry, Optional[str]], None]] = None,
-    skip_filled:   bool = True,
-    custom_prompt: str  = '',
+    api_key:            str,
+    entries:            List[ManifestEntry],
+    image_folder:       str,
+    categories:         List[str],
+    albums:             List[str],
+    on_progress:        Optional[Callable[[int, int, ManifestEntry, Optional[str]], None]] = None,
+    skip_filled:        bool = True,
+    custom_prompt:      str  = '',
+    cat_descriptions:   Optional[dict] = None,
+    album_descriptions: Optional[dict] = None,
+    existing_tags:      Optional[List[str]] = None,
 ) -> List[ManifestEntry]:
     """
     Process a list of ManifestEntry objects, sending each image to Gemini
-    and updating title/tags/category/album in place.
+    and updating title/tags/category/album/colors in place.
 
     on_progress(index, total, entry, error_or_None) is called after each image.
     skip_filled=True skips any entry that already has a non-blank title.
     custom_prompt overrides the default prompt if provided.
+    cat_descriptions / album_descriptions: dicts of lower_name → description text.
+    existing_tags: list of hashtags already in use on the site (soft matching).
 
     Returns the (mutated) list of entries.
     """
     genai = _import_genai()
     genai.configure(api_key=api_key)
     model  = genai.GenerativeModel(MODEL_NAME)
-    prompt = custom_prompt.strip() if custom_prompt.strip() else _build_prompt(categories, albums)
+    prompt = custom_prompt.strip() if custom_prompt.strip() else _build_prompt(
+        categories, albums,
+        cat_descriptions=cat_descriptions,
+        album_descriptions=album_descriptions,
+        existing_tags=existing_tags,
+    )
     total  = len(entries)
 
     for i, entry in enumerate(entries, start=1):
