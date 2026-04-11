@@ -23,12 +23,19 @@ if exist dist (
     rmdir /s /q dist
 )
 
+REM ── Auto-generate spec if it doesn't exist for this version ─────────────
+set SPEC_FILE=smackyourbatchup-%BUILD_VER%.spec
+if not exist %SPEC_FILE% (
+    echo Spec file not found -- generating from template...
+    python -c "import re,sys; src=open('smackyourbatchup-0.7.7a-04.spec').read(); out=re.sub(r'0\.7\.7a-04',sys.argv[1],src); open(sys.argv[2],'w').write(out); print('Generated',sys.argv[2])" %BUILD_VER% %SPEC_FILE%
+)
+
 echo Installing dependencies...
 pip install -r requirements.txt
 
 echo.
 echo Building %EXE_NAME%...
-pyinstaller smackyourbatchup-%BUILD_VER%.spec
+pyinstaller %SPEC_FILE%
 
 echo.
 if exist dist\%EXE_NAME% (
