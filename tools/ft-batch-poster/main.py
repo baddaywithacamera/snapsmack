@@ -1182,6 +1182,7 @@ class App(tk.Tk):
                         self._def_cat_cb['values'] = [''] + cats
                         self._def_alb_cb['values'] = [''] + albums
                         self._start_session_timer()
+                        self._start_keepalive()
                         self._save_config()
                     self.after(0, _done)
                 except Exception:
@@ -1326,6 +1327,7 @@ class App(tk.Tk):
             self._conn_lbl.configure(text=f"CONNECTED  {len(cats)} CATS  {len(albums)} ALBUMS", fg=LED_OK)
             self._set_status("Connected. Load a manifest to begin.", FG_OK)
             self._start_session_timer()
+            self._start_keepalive()
             self._save_config()
 
         except Exception as e:
@@ -1698,10 +1700,11 @@ class App(tk.Tk):
               "credentials are cached and you won't need to re-auth unless revoked.")
 
         _section("SESSION MANAGEMENT")
-        _para("Your SnapSmack login session lasts 48 minutes. SYBU runs a keepalive "
-              "ping in the background to extend it automatically while you're working. "
-              "If the app is idle too long and the session expires, just click Connect "
-              "again — the queue, settings, and credentials are all preserved.")
+        _para("The SITE panel shows a countdown from 48 minutes — that's the PHP session "
+              "window on the server. SYBU pings the server every 10 minutes to keep it "
+              "alive, so the countdown resets automatically and the session stays open "
+              "indefinitely. If you lose network and the session expires, just click "
+              "Connect again — the queue, settings, and credentials are all preserved.")
 
         _section("SETTINGS & CONFIG")
         _para("All settings are saved automatically to config.ini next to the exe. "
@@ -1808,23 +1811,19 @@ class App(tk.Tk):
         orient_map = {'auto': 'auto', 'landscape': '0', 'portrait': '1', 'square': '2'}
         orient_val = orient_map.get(self._def_orient_var.get().strip().lower(), 'auto')
 
-        self._start_keepalive()
-        try:
-            poster_module.run_batch(
-                client=self._client,
-                entries=entries,
-                image_folder=image_folder,
-                site_data=self._site_data,
-                default_category=self._def_cat_var.get().strip(),
-                default_album=self._def_alb_var.get().strip(),
-                default_orientation=orient_val,
-                on_progress=on_progress,
-                drive_service=self._drive_service,
-                drive_folder_id=self._drive_folder_var.get().strip(),
-                copyright_text=self._copyright_var.get().strip(),
-            )
-        finally:
-            self._stop_keepalive()
+        poster_module.run_batch(
+            client=self._client,
+            entries=entries,
+            image_folder=image_folder,
+            site_data=self._site_data,
+            default_category=self._def_cat_var.get().strip(),
+            default_album=self._def_alb_var.get().strip(),
+            default_orientation=orient_val,
+            on_progress=on_progress,
+            drive_service=self._drive_service,
+            drive_folder_id=self._drive_folder_var.get().strip(),
+            copyright_text=self._copyright_var.get().strip(),
+        )
         self._msg_queue.put(('done', total))
 
     def _poll_queue(self):
@@ -1977,10 +1976,12 @@ class App(tk.Tk):
     # ------------------------------------------------------------------
     # Session keepalive
     # ------------------------------------------------------------------
-    KEEPALIVE_INTERVAL = 1200  # Ping every 20 minutes during active operations
+    KEEPALIVE_INTERVAL = 600  # Ping every 10 minutes — well inside PHP's 48-min window
 
     def _start_keepalive(self):
-        """Start background daemon thread that keeps the PHP session alive."""
+        """Start background keepalive thread. Idempotent — no-op if already running."""
+        if self._keepalive_running:
+            return
         self._keepalive_running = True
         t = threading.Thread(target=self._keepalive_worker, daemon=True)
         t.start()
