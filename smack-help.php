@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - User Manual
- * Alpha v0.7.9c
+ * Alpha v0.7.9g
  *
  * In-admin documentation system covering every feature of the CMS.
  * Topics are organised into sections and filtered by user role — editors
@@ -1396,72 +1396,111 @@ $help_topics['smack-your-batch-up'] = [
     'role'     => 'admin',
     'content'  => <<<'HTML'
 <h3>Smack Your Batch Up</h3>
-<p>Smack Your Batch Up is a standalone Windows desktop application for posting large batches
-of images to SnapSmack without using the web interface. It handles resizing, EXIF embedding,
-Google Drive upload, and metadata in one workflow.</p>
+<p>Smack Your Batch Up (SYBU) is a standalone Windows desktop application for posting large
+batches of images to SnapSmack. It handles EXIF embedding, Gemini AI metadata enrichment,
+Google Drive upload, and bulk posting in one workflow — without touching the web interface.</p>
 
 <h4>Installation</h4>
-<p>The application lives at <code>C:\SmackYourBatchUp\</code>. This folder contains:</p>
+<p>The application lives at <code>C:\SmackYourBatchUp\</code>. That folder contains:</p>
 <ul>
-    <li><strong>SmackYourBatchUp.exe</strong> — the application itself</li>
-    <li><strong>credentials.json</strong> — your Google OAuth client credentials (downloaded
-    from Google Cloud Console → APIs &amp; Services → Credentials)</li>
-    <li><strong>token.json</strong> — created automatically after your first Drive
-    authentication. Do not delete this file — it is what allows Drive to reconnect silently
-    on launch.</li>
-    <li><strong>config.ini</strong> — saved settings (site URL, username, folder paths,
+    <li><strong>smackyourbatchup-{version}.exe</strong> — the application</li>
+    <li><strong>config.ini</strong> — saved settings (site URL, username, folder paths, Gemini key,
     Drive folder ID). Created automatically on first use.</li>
+    <li><strong>gemini_prompts.json</strong> — your saved AI prompt presets.</li>
+    <li><strong>credentials.json</strong> — your Google OAuth client file (downloaded separately
+    from Google Cloud Console; see Google Drive section below).</li>
+    <li><strong>token.json</strong> — written automatically after first Drive auth. Do not delete —
+    it allows silent reconnection on every subsequent launch.</li>
 </ul>
-<p>To rebuild from source, run <code>tools\ft-batch-poster\build.bat</code> from your
-development environment. The compiled exe is deployed to <code>C:\SmackYourBatchUp\</code>
-automatically.</p>
+<p>To rebuild from source, run <code>tools\ft-batch-poster\build.bat</code>. The compiled exe
+is deployed to <code>C:\SmackYourBatchUp\</code> automatically.</p>
 
-<h4>Connecting to Your Site</h4>
-<p>Enter your SnapSmack URL, admin username, and password, then click <strong>Connect</strong>.
-The connection status indicator in the top bar turns green when the session is live.
-Your credentials are saved in config.ini and the tool reconnects automatically on the
-next launch.</p>
+<h4>The Status Bar</h4>
+<p>Three panels run across the top of the window in a dot-matrix display. Read these before
+doing anything else — they tell you whether everything is connected and how long your session
+has left.</p>
+<ul>
+    <li><strong>SITE CONNECTION</strong> — green means you are logged in. The large countdown
+    shows how long your session has remaining (48 minutes from last login). It turns amber at
+    10 minutes, red at 2 minutes, and flashes at 5 minutes. The keepalive system extends your
+    session automatically while the app is open, but if you leave it idle and return to a
+    flashing display, click Connect again before posting — your queue is not lost.</li>
+    <li><strong>CLOUD DRIVE</strong> — green means Google Drive is authenticated and download
+    links will be attached to every post. If this is red when you post, images will be uploaded
+    to SnapSmack but will not have download links. Use Fix Your Batch Up to recover those links.</li>
+    <li><strong>AI ENGINE</strong> — green means a Gemini API key is saved. Without a key
+    the Enrich button will prompt you to add one in the configuration panel.</li>
+</ul>
 
-<h4>Google Drive Authentication</h4>
-<p>Point the <em>Google Credentials</em> field at your <code>credentials.json</code> file
-and click <strong>Auth Drive</strong>. A browser window will open for the standard Google
-OAuth consent screen. After you approve, a <code>token.json</code> is written to
-<code>C:\SmackYourBatchUp\</code> and Drive will reconnect silently every time you launch
-the application from that point on.</p>
-<p><strong>Important:</strong> if Drive is not connected when you start posting, the tool
-will warn you and ask you to confirm before proceeding. Images posted without a Drive
-connection will not have a download link stored in the database. Use Fix Your Batch Up
-to recover those links later.</p>
-
-<h4>Posting Images</h4>
+<h4>Basic Workflow</h4>
 <ol>
-    <li>Select your image folder — the tool scans it and builds a posting queue.</li>
-    <li>Optionally select a manifest file (.txt) to pre-populate titles and tags.</li>
-    <li>Set default category, album, and orientation for the batch.</li>
-    <li>Review the queue. Each row shows a thumbnail; you can change the category,
-    album, and orientation per image by clicking the row.</li>
-    <li>Click <strong>Post All</strong> to begin. The progress bar shows status per image.</li>
+    <li><strong>Connect</strong> — enter your site URL, username, and password, then click
+    Connect. SYBU logs in and loads your categories and albums. Credentials are saved and
+    reconnection happens automatically on the next launch.</li>
+    <li><strong>Set image folder</strong> — click the <code>…</code> button next to Image Folder
+    and choose the folder containing the images you want to post.</li>
+    <li><strong>Scan Folder</strong> — click Scan Folder to load every JPG, PNG, and WebP in
+    that folder into the queue. Default category, album, and orientation (set in the Manifest
+    &amp; Defaults panel) are applied to all rows.</li>
+    <li><strong>Enrich with Gemini</strong> — click this button to send each image to Gemini AI.
+    Gemini examines the photo and fills in a title, tags, category, and album for each row.
+    Rows that already have a title are skipped automatically.</li>
+    <li><strong>Review the queue</strong> — collapse the configuration panel to see the queue.
+    Click any field in a row to edit it directly. Drag rows to reorder them.</li>
+    <li><strong>Post Batch</strong> — click Post Batch to upload and publish everything.
+    Progress is shown row by row; failed rows stay red and can be retried.</li>
 </ol>
-<p>Each image is automatically resized to web dimensions, EXIF data is embedded into
-both the web copy and the Drive original, the original is uploaded to Drive, and the
-web copy is posted to SnapSmack with the Drive download link attached.</p>
+
+<h4>Gemini AI Enrichment</h4>
+<p>Gemini looks at each image and returns a haiku-style title, 5–8 descriptive hashtags,
+and picks the best matching category and album from your site's actual lists.</p>
+<p>Configure it in the <em>Gemini AI (Optional)</em> section of the configuration panel:</p>
+<ul>
+    <li><strong>API Key</strong> — paste your Gemini API key and click Test Connection to verify.</li>
+    <li><strong>Prompt</strong> — leave blank to use the built-in default, or write your own to
+    control the style, tone, or output format. Click Save As… to name and store a prompt preset
+    for reuse.</li>
+</ul>
+<p>Your API key and last-used prompt are saved in <code>config.ini</code>. Named presets are
+stored in <code>gemini_prompts.json</code>.</p>
+
+<h4>Load Manifest (Advanced)</h4>
+<p>A manifest is a plain text file that lists images with optional pre-filled metadata. Use
+Load Manifest instead of Scan Folder if you have already prepared one. Each image block looks
+like this:</p>
+<pre><code>FILE: photo.jpg
+TITLE: Dark stone holds the rain
+TAGS: #stone #texture #macro #urban
+CATEGORY: Feeling Knotty
+ALBUM: Morning Wood</code></pre>
+<p>Blank fields are filled in from the defaults. You can run Gemini enrichment after loading a
+manifest to fill in any missing titles or tags.</p>
+
+<h4>Google Drive</h4>
+<p>Drive support attaches a permanent public download link to every post so visitors can
+download the original-quality file. It requires a one-time OAuth setup:</p>
+<ol>
+    <li>Go to Google Cloud Console → APIs &amp; Services → Credentials.</li>
+    <li>Create an OAuth 2.0 client ID (Desktop application type) and download the JSON file.</li>
+    <li>In SYBU, point the Credentials File field at that JSON file.</li>
+    <li>Enter the ID from the end of your Google Drive folder URL in the Folder ID field.</li>
+    <li>Click Auth Drive — a browser tab opens for consent. After approval, <code>token.json</code>
+    is written and Drive reconnects silently from then on.</li>
+</ol>
+<p><strong>Do not delete <code>token.json</code></strong> — it is what keeps Drive connected
+without re-authorising every session.</p>
 
 <h4>What Gets Saved to the Database</h4>
-<p>For every image posted via Smack Your Batch Up, the database stores:</p>
-<ul>
-    <li>The generated haiku title</li>
-    <li>Categories and album assignments</li>
-    <li>The Google Drive download link (<code>download_url</code>)</li>
-    <li>The original camera filename (<code>img_source_file</code>) — e.g.
-    <code>20260318_153727.jpg</code> — which is useful for recovery if the
-    Drive link is ever lost</li>
-</ul>
+<p>For every image posted via SYBU, SnapSmack stores the title, tags, category, album,
+orientation, the Google Drive download URL, and the original source filename. The source
+filename is particularly useful for recovery — if Drive links are ever lost,
+Fix Your Batch Up can re-match originals to server copies using visual feature matching.</p>
 
 <h4>Keeping Originals</h4>
-<p>Do not delete your original files after posting. The web-sized image on the server
-is a resized copy — the original is the file that gets uploaded to Drive. If you delete
-the originals before Drive authentication was working, use <strong>Fix Your Batch Up</strong>
-to recover the Drive links using SIFT feature matching against the server copies.</p>
+<p>Do not delete your source image files after posting. The copy on the server is
+web-optimised and resized. The original in your folder is what gets uploaded to Drive.
+If originals are deleted before Drive was connected, use <strong>Fix Your Batch Up</strong>
+to recover the links.</p>
 HTML
 ];
 
