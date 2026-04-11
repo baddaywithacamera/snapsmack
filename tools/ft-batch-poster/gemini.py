@@ -14,7 +14,7 @@ from manifest_parser import ManifestEntry
 # even if the library isn't installed yet.
 _genai = None
 
-MODEL_NAME = "gemini-1.5-flash"
+MODEL_NAME = "gemini-2.0-flash"
 
 
 def _import_genai():
