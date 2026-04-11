@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - Admin Sidebar Navigation
- * Alpha v0.7.9d
+ * Alpha v0.7.9c
  *
  * Accordion-style sidebar with four collapsible sections.
  * "The Good Shit" opens by default; whichever section contains
@@ -165,6 +165,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-multisite.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite.php">Multisite Management</a>
                     </li>
+                    <?php if (!empty($settings['multisite_role'])) : ?>
                     <li class="<?php echo ($current_page == 'smack-multisite-comments.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite-comments.php">Satellite Signals</a>
                     </li>
@@ -183,6 +184,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-multisite-blogroll.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite-blogroll.php">Blogroll Sync</a>
                     </li>
+                    <?php endif; ?>
                 </ul>
             </div>
 
