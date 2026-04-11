@@ -1539,6 +1539,9 @@ class App(tk.Tk):
                 on_progress=_progress,
                 skip_filled=True,
                 custom_prompt=custom_prompt,
+                cat_descriptions=self._site_data.cat_descriptions if self._site_data else None,
+                album_descriptions=self._site_data.album_descriptions if self._site_data else None,
+                existing_tags=self._site_data.tags if self._site_data else None,
             )
 
             def _done():
