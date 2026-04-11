@@ -28,25 +28,7 @@ pip install -r requirements.txt
 
 echo.
 echo Building %EXE_NAME%...
-pyinstaller ^
-    --onefile ^
-    --windowed ^
-    --clean ^
-    --name smackyourbatchup-%BUILD_VER% ^
-    --hidden-import=tkinter ^
-    --hidden-import=tkinter.ttk ^
-    --hidden-import=PIL ^
-    --hidden-import=PIL.Image ^
-    --hidden-import=PIL.ImageTk ^
-    --hidden-import=piexif ^
-    --hidden-import=googleapiclient ^
-    --hidden-import=google.auth ^
-    --hidden-import=google.auth.transport.requests ^
-    --hidden-import=google.oauth2.credentials ^
-    --hidden-import=google_auth_oauthlib.flow ^
-    --hidden-import=googleapiclient.discovery ^
-    --hidden-import=googleapiclient.http ^
-    main.py
+pyinstaller smackyourbatchup-%BUILD_VER%.spec
 
 echo.
 if exist dist\%EXE_NAME% (
