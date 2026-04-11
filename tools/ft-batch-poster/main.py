@@ -11,7 +11,7 @@ import os
 import queue
 import threading
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import List, Optional
 
 from PIL import Image, ImageTk
@@ -790,9 +790,21 @@ class App(tk.Tk):
         self._gem_test_lbl = tk.Label(gem_key_inner, text="", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
         self._gem_test_lbl.pack(side="left", padx=(6, 0))
 
-        # Custom prompt
-        tk.Label(gem_body, text="PROMPT (optional — leave blank for default)",
-                 bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w", pady=(10, 2))
+        # Prompt presets row
+        gem_preset_row = tk.Frame(gem_body, bg=BG_CARD)
+        gem_preset_row.pack(fill="x", pady=(10, 2))
+        tk.Label(gem_preset_row, text="PROMPT PRESETS",
+                 bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(side="left")
+        self._gem_preset_cb = ttk.Combobox(gem_preset_row, font=FONT_SMALL,
+                                            state="readonly", width=22)
+        self._gem_preset_cb.pack(side="left", padx=(6, 0))
+        self._gem_preset_cb.bind("<<ComboboxSelected>>", self._on_gem_preset_load)
+        self._mini_btn(gem_preset_row, "Save As…", self._on_gem_preset_save).pack(side="left", padx=(6, 0))
+        self._mini_btn(gem_preset_row, "Delete",   self._on_gem_preset_delete).pack(side="left", padx=(4, 0))
+
+        # Prompt textarea
+        tk.Label(gem_body, text="PROMPT (leave blank to use built-in default)",
+                 bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w", pady=(4, 2))
         self._gem_prompt_txt = tk.Text(
             gem_body, height=5,
             bg=BG_MID, fg=FG_DIM, insertbackground=ACCENT,
@@ -801,6 +813,7 @@ class App(tk.Tk):
             wrap="word",
         )
         self._gem_prompt_txt.pack(fill="x")
+        self._gem_prompts: dict = {}   # name → text, loaded at startup
 
         # ── Box: COPYRIGHT ────────────────────────────────────────────
         self._copyright_var = tk.StringVar()
@@ -960,6 +973,12 @@ class App(tk.Tk):
         self._goog_creds_var.set(c.get('google_credentials', ''))
         self._drive_folder_var.set(c.get('drive_folder_id', ''))
         self._gemini_key_var.set(c.get('gemini_api_key', ''))
+        last_prompt = c.get('gemini_last_prompt', '')
+        self._gem_prompt_txt.delete('1.0', 'end')
+        if last_prompt:
+            self._gem_prompt_txt.insert('1.0', last_prompt)
+        self._gem_prompts = cfg_module.load_prompts()
+        self._refresh_preset_dropdown()
         self._copyright_var.set(c.get('copyright_text', ''))
 
         # Scroll long path fields to show the end (filename) instead of
@@ -1053,6 +1072,7 @@ class App(tk.Tk):
             'google_credentials': self._goog_creds_var.get().strip(),
             'drive_folder_id':    self._drive_folder_var.get().strip(),
             'gemini_api_key':     self._gemini_key_var.get().strip(),
+            'gemini_last_prompt': self._gem_prompt_txt.get('1.0', 'end').strip(),
             'copyright_text':     self._copyright_var.get().strip(),
         })
 
@@ -1214,6 +1234,44 @@ class App(tk.Tk):
     # ------------------------------------------------------------------
     # Gemini Enrich
     # ------------------------------------------------------------------
+
+    def _refresh_preset_dropdown(self):
+        names = sorted(self._gem_prompts.keys())
+        self._gem_preset_cb['values'] = names
+        if names and self._gem_preset_cb.get() not in names:
+            self._gem_preset_cb.set('')
+
+    def _on_gem_preset_load(self, _event=None):
+        name = self._gem_preset_cb.get()
+        if name and name in self._gem_prompts:
+            self._gem_prompt_txt.delete('1.0', 'end')
+            self._gem_prompt_txt.insert('1.0', self._gem_prompts[name])
+
+    def _on_gem_preset_save(self):
+        current = self._gem_prompt_txt.get('1.0', 'end').strip()
+        if not current:
+            messagebox.showerror("Empty prompt", "Write a prompt before saving it as a preset.")
+            return
+        name = tk.simpledialog.askstring("Save Preset", "Preset name:", parent=self)
+        if not name:
+            return
+        name = name.strip()
+        if not name:
+            return
+        self._gem_prompts[name] = current
+        cfg_module.save_prompts(self._gem_prompts)
+        self._refresh_preset_dropdown()
+        self._gem_preset_cb.set(name)
+
+    def _on_gem_preset_delete(self):
+        name = self._gem_preset_cb.get()
+        if not name or name not in self._gem_prompts:
+            return
+        if not messagebox.askyesno("Delete Preset", f"Delete preset \"{name}\"?"):
+            return
+        del self._gem_prompts[name]
+        cfg_module.save_prompts(self._gem_prompts)
+        self._refresh_preset_dropdown()
 
     def _on_gemini_test(self):
         api_key = self._gemini_key_var.get().strip()
