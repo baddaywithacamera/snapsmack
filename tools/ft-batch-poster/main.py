@@ -60,6 +60,45 @@ FONT_SMALL   = ("Segoe UI", 8)
 FONT_MONO    = ("Consolas", 9)
 FONT_TITLE   = ("Segoe UI", 13, "bold")
 
+BG_SBAR      = "#0c0c0c"   # LED status bar background
+
+# LED display colours (high contrast on near-black)
+LED_OK       = "#39FF14"   # neon green — good
+LED_ERR      = "#FF3E3E"   # red — error
+LED_WARN     = "#FFB300"   # bright amber — warning / flash
+LED_OFF      = "#2A2A2A"   # unlit segment
+
+# ---------------------------------------------------------------------------
+# Font helpers
+# ---------------------------------------------------------------------------
+
+def _resource_path(relative: str) -> str:
+    """Resolve path to a bundled asset (works in dev and PyInstaller exe)."""
+    import sys
+    base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, relative)
+
+
+def _load_dotmatrix_font() -> str:
+    """
+    Register DotMatrix-Bold from the bundled assets folder on Windows using
+    AddFontResourceExW (no admin rights required, private to this process).
+    Returns the tkinter family name to use, falling back to Consolas.
+    """
+    import sys
+    if sys.platform != 'win32':
+        return 'Consolas'
+    try:
+        import ctypes
+        path = _resource_path(os.path.join('assets', 'fonts', 'DotMatrix-Bold.ttf'))
+        if not os.path.isfile(path):
+            return 'Consolas'
+        FR_PRIVATE = 0x10
+        ctypes.windll.gdi32.AddFontResourceExW(path, FR_PRIVATE, 0)
+        return 'DotMatrix'
+    except Exception:
+        return 'Consolas'
+
 
 # ---------------------------------------------------------------------------
 # Entry row widget
@@ -455,6 +494,7 @@ class App(tk.Tk):
         self._keepalive_running = False
         self._msg_queue:    queue.Queue               = queue.Queue()
 
+        self._led_font = _load_dotmatrix_font()
         self._apply_ttk_style()
         self._build_ui()
         self._load_config_to_ui()
@@ -579,49 +619,75 @@ class App(tk.Tk):
         self._conn_flash_state  = False
         self._conn_flash_id     = None
 
+        lf = self._led_font   # shorthand
+
         tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
 
-        # ── Prominent status bar (always visible) ─────────────────────
-        sbar = tk.Frame(self, bg=BG_DEEP, height=38)
+        # ── LED status bar — always visible ───────────────────────────
+        sbar = tk.Frame(self, bg=BG_SBAR, height=120)
         sbar.pack(fill="x")
         sbar.pack_propagate(False)
 
-        # Site section
-        site_grp = tk.Frame(sbar, bg=BG_DEEP)
-        site_grp.pack(side="left", padx=(16, 0), fill="y")
-        self._conn_dot = tk.Label(site_grp, text="●", bg=BG_DEEP, fg=FG_DIM,
-                                  font=("Segoe UI", 13))
-        self._conn_dot.pack(side="left", anchor="center")
-        self._conn_lbl = tk.Label(site_grp, text="Not connected",
-                                  bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL)
-        self._conn_lbl.pack(side="left", padx=(4, 0), anchor="center")
-        self._session_timer_lbl = tk.Label(site_grp, text="",
-                                           bg=BG_DEEP, fg=FG_DIM, font=("Segoe UI", 9, "bold"))
-        self._session_timer_lbl.pack(side="left", padx=(6, 0), anchor="center")
+        # ── SITE panel (left, expands) ────────────────────────────────
+        site_panel = tk.Frame(sbar, bg=BG_SBAR)
+        site_panel.pack(side="left", fill="both", expand=True, padx=(18, 0), pady=(10, 10))
 
-        tk.Frame(sbar, bg=BORDER, width=1).pack(side="left", fill="y", pady=8, padx=14)
+        tk.Label(site_panel, text="SITE CONNECTION",
+                 bg=BG_SBAR, fg="#333333", font=(lf, 7)).pack(anchor="w")
 
-        # Drive section
-        drive_grp = tk.Frame(sbar, bg=BG_DEEP)
-        drive_grp.pack(side="left", fill="y")
-        self._drive_dot = tk.Label(drive_grp, text="●", bg=BG_DEEP, fg=FG_DIM,
-                                   font=("Segoe UI", 13))
-        self._drive_dot.pack(side="left", anchor="center")
-        self._drive_lbl = tk.Label(drive_grp, text="Drive: Not connected",
-                                   bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL)
-        self._drive_lbl.pack(side="left", padx=(4, 0), anchor="center")
+        conn_row = tk.Frame(site_panel, bg=BG_SBAR)
+        conn_row.pack(anchor="w", pady=(2, 0))
+        self._conn_dot = tk.Label(conn_row, text="■", bg=BG_SBAR, fg=LED_OFF,
+                                  font=(lf, 16))
+        self._conn_dot.pack(side="left", anchor="w")
+        self._conn_lbl = tk.Label(conn_row, text="NOT CONNECTED",
+                                  bg=BG_SBAR, fg=LED_OFF, font=(lf, 16))
+        self._conn_lbl.pack(side="left", padx=(6, 0), anchor="w")
 
-        tk.Frame(sbar, bg=BORDER, width=1).pack(side="left", fill="y", pady=8, padx=14)
+        self._session_timer_lbl = tk.Label(site_panel, text="--:--",
+                                           bg=BG_SBAR, fg=LED_OFF,
+                                           font=(lf, 38, "bold"))
+        self._session_timer_lbl.pack(anchor="w", pady=(2, 0))
 
-        # AI section
-        ai_grp = tk.Frame(sbar, bg=BG_DEEP)
-        ai_grp.pack(side="left", fill="y")
-        self._ai_dot = tk.Label(ai_grp, text="●", bg=BG_DEEP, fg=FG_DIM,
-                                font=("Segoe UI", 13))
-        self._ai_dot.pack(side="left", anchor="center")
-        self._ai_lbl = tk.Label(ai_grp, text="AI: No key",
-                                bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL)
-        self._ai_lbl.pack(side="left", padx=(4, 0), anchor="center")
+        # ── separator ─────────────────────────────────────────────────
+        tk.Frame(sbar, bg="#222222", width=1).pack(side="left", fill="y", pady=10)
+
+        # ── DRIVE panel (fixed width) ─────────────────────────────────
+        drive_panel = tk.Frame(sbar, bg=BG_SBAR, width=260)
+        drive_panel.pack(side="left", fill="y", padx=(18, 0), pady=(10, 10))
+        drive_panel.pack_propagate(False)
+
+        tk.Label(drive_panel, text="CLOUD DRIVE",
+                 bg=BG_SBAR, fg="#333333", font=(lf, 7)).pack(anchor="w")
+
+        drive_row = tk.Frame(drive_panel, bg=BG_SBAR)
+        drive_row.pack(anchor="w", pady=(6, 0))
+        self._drive_dot = tk.Label(drive_row, text="■", bg=BG_SBAR, fg=LED_OFF,
+                                   font=(lf, 16))
+        self._drive_dot.pack(side="left", anchor="w")
+        self._drive_lbl = tk.Label(drive_row, text="NOT CONNECTED",
+                                   bg=BG_SBAR, fg=LED_OFF, font=(lf, 16))
+        self._drive_lbl.pack(side="left", padx=(6, 0), anchor="w")
+
+        # ── separator ─────────────────────────────────────────────────
+        tk.Frame(sbar, bg="#222222", width=1).pack(side="left", fill="y", pady=10)
+
+        # ── AI panel (fixed width) ────────────────────────────────────
+        ai_panel = tk.Frame(sbar, bg=BG_SBAR, width=260)
+        ai_panel.pack(side="left", fill="y", padx=(18, 18), pady=(10, 10))
+        ai_panel.pack_propagate(False)
+
+        tk.Label(ai_panel, text="AI ENGINE",
+                 bg=BG_SBAR, fg="#333333", font=(lf, 7)).pack(anchor="w")
+
+        ai_row = tk.Frame(ai_panel, bg=BG_SBAR)
+        ai_row.pack(anchor="w", pady=(6, 0))
+        self._ai_dot = tk.Label(ai_row, text="■", bg=BG_SBAR, fg=LED_OFF,
+                                font=(lf, 16))
+        self._ai_dot.pack(side="left", anchor="w")
+        self._ai_lbl = tk.Label(ai_row, text="NO KEY",
+                                bg=BG_SBAR, fg=LED_OFF, font=(lf, 16))
+        self._ai_lbl.pack(side="left", padx=(6, 0), anchor="w")
 
         # ── Config collapse toggle bar ────────────────────────────────
         self._cfg_visible = True
@@ -1033,17 +1099,17 @@ class App(tk.Tk):
         # ── Drive ─────────────────────────────────────────────────────
         creds_path = c.get('google_credentials', '')
         if drive_module.is_authenticated() and creds_path and os.path.isfile(creds_path):
-            self._drive_dot.configure(fg=FG_WARN)
-            self._drive_lbl.configure(text="Connecting…", fg=FG_WARN)
+            self._drive_dot.configure(fg=LED_WARN)
+            self._drive_lbl.configure(text="CONNECTING...", fg=LED_WARN)
             def _drive_thread():
                 try:
                     service = drive_module.authenticate(creds_path)
                     self._drive_service = service
-                    self.after(0, lambda: self._drive_dot.configure(fg=FG_OK))
-                    self.after(0, lambda: self._drive_lbl.configure(text="Authenticated", fg=FG_OK))
+                    self.after(0, lambda: self._drive_dot.configure(fg=LED_OK))
+                    self.after(0, lambda: self._drive_lbl.configure(text="AUTHENTICATED", fg=LED_OK))
                 except Exception:
-                    self.after(0, lambda: self._drive_dot.configure(fg=FG_DIM))
-                    self.after(0, lambda: self._drive_lbl.configure(text="Not connected", fg=FG_DIM))
+                    self.after(0, lambda: self._drive_dot.configure(fg=LED_OFF))
+                    self.after(0, lambda: self._drive_lbl.configure(text="NOT CONNECTED", fg=LED_OFF))
             threading.Thread(target=_drive_thread, daemon=True).start()
 
         # ── Site ──────────────────────────────────────────────────────
@@ -1051,8 +1117,8 @@ class App(tk.Tk):
         username = c.get('username', '').strip()
         password = c.get('password', '')
         if url and username and password:
-            self._conn_dot.configure(fg=FG_WARN)
-            self._conn_lbl.configure(text="Connecting…", fg=FG_WARN)
+            self._conn_dot.configure(fg=LED_WARN)
+            self._conn_lbl.configure(text="CONNECTING...", fg=LED_WARN)
             def _site_thread():
                 try:
                     client = SnapSmackClient(url)
@@ -1063,10 +1129,10 @@ class App(tk.Tk):
                     cats   = sorted(site_data._cat_display.values())
                     albums = sorted(site_data._album_display.values())
                     def _done():
-                        self._conn_dot.configure(fg=FG_OK)
+                        self._conn_dot.configure(fg=LED_OK)
                         self._conn_lbl.configure(
-                            text=f"Connected — {len(cats)} cats, {len(albums)} albums",
-                            fg=FG_OK,
+                            text=f"CONNECTED  {len(cats)} CATS  {len(albums)} ALBUMS",
+                            fg=LED_OK,
                         )
                         self._entry_list.update_combos(cats, albums)
                         self._def_cat_cb['values'] = [''] + cats
@@ -1075,9 +1141,9 @@ class App(tk.Tk):
                         self._save_config()
                     self.after(0, _done)
                 except Exception:
-                    self.after(0, lambda: self._conn_dot.configure(fg=FG_DIM))
+                    self.after(0, lambda: self._conn_dot.configure(fg=LED_OFF))
                     self.after(0, lambda: self._conn_lbl.configure(
-                        text="Auto-connect failed — connect manually", fg=FG_DIM))
+                        text="AUTO-CONNECT FAILED", fg=LED_OFF))
             threading.Thread(target=_site_thread, daemon=True).start()
 
     def _save_config(self):
@@ -1102,11 +1168,11 @@ class App(tk.Tk):
     def _update_ai_dot(self):
         """Reflect AI key presence in the status bar dot."""
         if self._gemini_key_var.get().strip():
-            self._ai_dot.configure(fg=FG_OK)
-            self._ai_lbl.configure(text="AI: Gemini ready", fg=FG_OK)
+            self._ai_dot.configure(fg=LED_OK)
+            self._ai_lbl.configure(text="GEMINI READY", fg=LED_OK)
         else:
-            self._ai_dot.configure(fg=FG_DIM)
-            self._ai_lbl.configure(text="AI: No key", fg=FG_DIM)
+            self._ai_dot.configure(fg=LED_OFF)
+            self._ai_lbl.configure(text="NO KEY", fg=LED_OFF)
 
     # ------------------------------------------------------------------
     # Browse
@@ -1157,8 +1223,8 @@ class App(tk.Tk):
             )
             return
 
-        self._drive_dot.configure(fg=FG_WARN)
-        self._drive_lbl.configure(text="Opening browser…", fg=FG_WARN)
+        self._drive_dot.configure(fg=LED_WARN)
+        self._drive_lbl.configure(text="OPENING BROWSER...", fg=LED_WARN)
         self._drive_btn.configure(state="disabled")
         self.update_idletasks()
 
@@ -1166,13 +1232,13 @@ class App(tk.Tk):
             try:
                 service = drive_module.authenticate(creds_path)
                 self._drive_service = service
-                self.after(0, lambda: self._drive_dot.configure(fg=FG_OK))
-                self.after(0, lambda: self._drive_lbl.configure(text="Authenticated", fg=FG_OK))
+                self.after(0, lambda: self._drive_dot.configure(fg=LED_OK))
+                self.after(0, lambda: self._drive_lbl.configure(text="AUTHENTICATED", fg=LED_OK))
                 self.after(0, lambda: self._set_status("Google Drive connected.", FG_OK))
                 self.after(0, self._save_config)
             except Exception as e:
-                self.after(0, lambda: self._drive_dot.configure(fg=FG_ERR))
-                self.after(0, lambda: self._drive_lbl.configure(text="Auth failed", fg=FG_ERR))
+                self.after(0, lambda: self._drive_dot.configure(fg=LED_ERR))
+                self.after(0, lambda: self._drive_lbl.configure(text="AUTH FAILED", fg=LED_ERR))
                 self.after(0, lambda: messagebox.showerror("Drive auth failed", str(e)))
             finally:
                 self.after(0, lambda: self._drive_btn.configure(state="normal"))
@@ -1193,8 +1259,8 @@ class App(tk.Tk):
             return
 
         self._set_status("Connecting…", FG_WARN)
-        self._conn_dot.configure(fg=FG_WARN)
-        self._conn_lbl.configure(text="Connecting…", fg=FG_WARN)
+        self._conn_dot.configure(fg=LED_WARN)
+        self._conn_lbl.configure(text="CONNECTING...", fg=LED_WARN)
         self.update_idletasks()
 
         try:
@@ -1212,16 +1278,15 @@ class App(tk.Tk):
             self._def_alb_cb['values'] = [''] + albums
             self._entry_list.update_combos(cats, albums)
 
-            self._conn_dot.configure(fg=FG_OK)
-            self._conn_lbl.configure(text=f"Connected — {len(cats)} cats, {len(albums)} albums", fg=FG_OK)
+            self._conn_dot.configure(fg=LED_OK)
+            self._conn_lbl.configure(text=f"CONNECTED  {len(cats)} CATS  {len(albums)} ALBUMS", fg=LED_OK)
             self._set_status("Connected. Load a manifest to begin.", FG_OK)
             self._start_session_timer()
             self._save_config()
 
-
         except Exception as e:
-            self._conn_dot.configure(fg=FG_ERR)
-            self._conn_lbl.configure(text="Connection failed", fg=FG_ERR)
+            self._conn_dot.configure(fg=LED_ERR)
+            self._conn_lbl.configure(text="CONNECTION FAILED", fg=LED_ERR)
             self._set_status(f"Error: {e}", FG_ERR)
             messagebox.showerror("Connection failed", str(e))
 
@@ -1608,16 +1673,16 @@ class App(tk.Tk):
                     # Keepalive ping succeeded (or silent re-login worked) —
                     # reset the session countdown so it reflects the renewed lifetime.
                     self._start_session_timer()
-                    self._conn_dot.configure(fg=FG_OK)
+                    self._conn_dot.configure(fg=LED_OK)
 
                 elif msg[0] == 'session_renewal_failed':
                     # Keepalive and re-login both failed.  The next post_image
                     # call will fail and surface the error in the queue normally;
                     # flag the session indicator so the user knows what happened.
                     self._conn_lbl.configure(
-                        text="Session renewal failed — reconnect", fg=FG_ERR
+                        text="SESSION RENEWAL FAILED", fg=LED_ERR
                     )
-                    self._conn_dot.configure(fg=FG_ERR)
+                    self._conn_dot.configure(fg=LED_ERR)
         except queue.Empty:
             pass
         self.after(100, self._poll_queue)
@@ -1638,7 +1703,8 @@ class App(tk.Tk):
 
         if not self._client.is_session_alive():
             self._set_status("Session expired.", FG_ERR)
-            self._conn_lbl.configure(text="Session expired — reconnect", fg=FG_ERR)
+            self._conn_lbl.configure(text="SESSION EXPIRED", fg=LED_ERR)
+            self._conn_dot.configure(fg=LED_ERR)
             messagebox.showwarning(
                 "Session Expired",
                 "Your login session has timed out on the server.\n\n"
@@ -1668,16 +1734,16 @@ class App(tk.Tk):
             self._session_timer_id = None
         self._stop_conn_flash()
         self._session_remaining = 0
-        self._session_timer_lbl.configure(text="", fg=FG_DIM)
+        self._session_timer_lbl.configure(text="--:--", fg=LED_OFF)
 
     def _tick_session_timer(self):
         """Called every second. Updates the countdown label and colour."""
         s = self._session_remaining
         if s <= 0:
             self._stop_conn_flash()
-            self._session_timer_lbl.configure(text="SESSION EXPIRED", fg=FG_ERR)
-            self._conn_dot.configure(fg=FG_ERR)
-            self._conn_lbl.configure(text="Session expired — reconnect", fg=FG_ERR)
+            self._session_timer_lbl.configure(text="EXPIRED", fg=LED_ERR)
+            self._conn_dot.configure(fg=LED_ERR)
+            self._conn_lbl.configure(text="SESSION EXPIRED", fg=LED_ERR)
             messagebox.showwarning(
                 "Session Expired",
                 "Your login session has timed out on the server.\n\n"
@@ -1688,20 +1754,20 @@ class App(tk.Tk):
         mins, secs = divmod(s, 60)
         self._session_timer_lbl.configure(text=f"{mins:02d}:{secs:02d}")
 
-        # Colour thresholds on timer label: green > 10min, amber <= 10min, red <= 2min
+        # Colour thresholds on timer label: green > 10min, amber ≤ 10min, red ≤ 2min
         if s <= 120:
-            self._session_timer_lbl.configure(fg=FG_ERR)
+            self._session_timer_lbl.configure(fg=LED_ERR)
         elif s <= 600:
-            self._session_timer_lbl.configure(fg=FG_WARN)
+            self._session_timer_lbl.configure(fg=LED_WARN)
         else:
-            self._session_timer_lbl.configure(fg=FG_DIM)
+            self._session_timer_lbl.configure(fg=LED_OK)
 
-        # Flash the site dot yellow when ≤ 5 minutes
+        # Flash the site dot amber when ≤ 5 minutes
         if s <= 300 and not self._conn_flash_id:
             self._start_conn_flash()
         elif s > 300 and self._conn_flash_id:
             self._stop_conn_flash()
-            self._conn_dot.configure(fg=FG_OK)
+            self._conn_dot.configure(fg=LED_OK)
 
         self._session_remaining -= 1
         self._session_timer_id = self.after(1000, self._tick_session_timer)
@@ -1713,7 +1779,7 @@ class App(tk.Tk):
 
     def _conn_flash_tick(self):
         self._conn_flash_state = not self._conn_flash_state
-        self._conn_dot.configure(fg=FG_WARN if self._conn_flash_state else BG_DEEP)
+        self._conn_dot.configure(fg=LED_WARN if self._conn_flash_state else BG_SBAR)
         self._conn_flash_id = self.after(500, self._conn_flash_tick)
 
     def _stop_conn_flash(self):
