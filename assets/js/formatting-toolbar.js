@@ -274,9 +274,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ── AI Assist panel ───────────────────────────────────────────────
+    // ── AI Assist modal ───────────────────────────────────────────────
     var assistBtn   = document.getElementById('btn-ai-assist');
-    var panel       = document.getElementById('ai-assist-panel');
+    var overlay     = document.getElementById('ai-assist-overlay');
     var closeBtn    = document.getElementById('ai-assist-close');
     var sendBtn     = document.getElementById('ai-assist-send');
     var inputEl     = document.getElementById('ai-assist-input');
@@ -284,16 +284,23 @@ document.addEventListener('DOMContentLoaded', function() {
     var dumpBtn     = document.getElementById('ai-assist-dump');
     var _lastResponse = '';
 
-    if (assistBtn && panel) {
-        assistBtn.addEventListener('click', function () {
-            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-            if (panel.style.display === 'block' && inputEl) inputEl.focus();
+    function _openModal()  { if (overlay) { overlay.style.display = 'flex'; if (inputEl) inputEl.focus(); } }
+    function _closeModal() { if (overlay) overlay.style.display = 'none'; }
+
+    if (assistBtn) assistBtn.addEventListener('click', _openModal);
+    if (closeBtn)  closeBtn.addEventListener('click', _closeModal);
+
+    // Click backdrop to dismiss
+    if (overlay) {
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) _closeModal();
         });
     }
 
-    if (closeBtn && panel) {
-        closeBtn.addEventListener('click', function () { panel.style.display = 'none'; });
-    }
+    // Esc key to dismiss
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && overlay && overlay.style.display !== 'none') _closeModal();
+    });
 
     function _appendMessage(role, text) {
         if (!messagesEl) return;
@@ -352,7 +359,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ta.value = val.substring(0, pos) + insert + val.substring(pos);
             ta.focus();
             ta.selectionStart = ta.selectionEnd = pos + insert.length;
-            panel.style.display = 'none';
+            _closeModal();
         });
     }
 });
