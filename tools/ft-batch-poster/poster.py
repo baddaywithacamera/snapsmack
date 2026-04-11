@@ -263,6 +263,7 @@ class SnapSmackClient:
                 'download_url':         drive_url,
                 'orientation_override': orient,
                 'source_file':          entry.file,   # original filename — stored in img_source_file
+                'img_ai_colors':        entry.colors, # space-separated hex codes from Gemini
             }
             if cat_id is not None:
                 form_data['cat_ids[]'] = str(cat_id)
