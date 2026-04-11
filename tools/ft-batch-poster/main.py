@@ -860,15 +860,18 @@ class App(tk.Tk):
         # ── Box: GOOGLE DRIVE ─────────────────────────────────────────
         self._goog_creds_var   = tk.StringVar()
         self._drive_folder_var = tk.StringVar()
+        self._drive_enabled_var = tk.BooleanVar(value=True)
 
         drv_box  = self._box(cfg, "GOOGLE DRIVE (OPTIONAL)")
         drv_box.pack(fill="x", pady=(10, 0))
         drv_body = self._box_body(drv_box)
 
-        tk.Label(
-            drv_body, text="Leave blank to post without download links.",
-            bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL,
-        ).pack(anchor="w", pady=(0, 6))
+        drv_toggle_row = tk.Frame(drv_body, bg=BG_CARD)
+        drv_toggle_row.pack(anchor="w", pady=(0, 6))
+        ttk.Checkbutton(
+            drv_toggle_row, text="Enable Google Drive", variable=self._drive_enabled_var,
+            command=self._on_drive_toggle,
+        ).pack(side="left")
 
         drv_row = tk.Frame(drv_body, bg=BG_CARD)
         drv_row.pack(fill="x")
@@ -1103,6 +1106,7 @@ class App(tk.Tk):
         self._manifest_var.set(c.get('last_manifest_file', ''))
         self._goog_creds_var.set(c.get('google_credentials', ''))
         self._drive_folder_var.set(c.get('drive_folder_id', ''))
+        self._drive_enabled_var.set(c.get('drive_enabled', True))
         self._gemini_key_var.set(c.get('gemini_api_key', ''))
         last_prompt = c.get('gemini_last_prompt', '')
         self._gem_prompt_txt.delete('1.0', 'end')
@@ -1141,20 +1145,24 @@ class App(tk.Tk):
         c = self._config
 
         # ── Drive ─────────────────────────────────────────────────────
-        creds_path = c.get('google_credentials', '')
-        if drive_module.is_authenticated() and creds_path and os.path.isfile(creds_path):
-            self._drive_dot.configure(fg=LED_WARN)
-            self._drive_lbl.configure(text="CONNECTING...", fg=LED_WARN)
-            def _drive_thread():
-                try:
-                    service = drive_module.authenticate(creds_path)
-                    self._drive_service = service
-                    self.after(0, lambda: self._drive_dot.configure(fg=LED_OK))
-                    self.after(0, lambda: self._drive_lbl.configure(text="AUTHENTICATED", fg=LED_OK))
-                except Exception:
-                    self.after(0, lambda: self._drive_dot.configure(fg=LED_OFF))
-                    self.after(0, lambda: self._drive_lbl.configure(text="NOT CONNECTED", fg=LED_OFF))
-            threading.Thread(target=_drive_thread, daemon=True).start()
+        if not self._drive_enabled_var.get():
+            self._drive_dot.configure(fg=LED_OFF)
+            self._drive_lbl.configure(text="DISABLED", fg=LED_OFF)
+        else:
+            creds_path = c.get('google_credentials', '')
+            if drive_module.is_authenticated() and creds_path and os.path.isfile(creds_path):
+                self._drive_dot.configure(fg=LED_WARN)
+                self._drive_lbl.configure(text="CONNECTING...", fg=LED_WARN)
+                def _drive_thread():
+                    try:
+                        service = drive_module.authenticate(creds_path)
+                        self._drive_service = service
+                        self.after(0, lambda: self._drive_dot.configure(fg=LED_OK))
+                        self.after(0, lambda: self._drive_lbl.configure(text="AUTHENTICATED", fg=LED_OK))
+                    except Exception:
+                        self.after(0, lambda: self._drive_dot.configure(fg=LED_OFF))
+                        self.after(0, lambda: self._drive_lbl.configure(text="NOT CONNECTED", fg=LED_OFF))
+                threading.Thread(target=_drive_thread, daemon=True).start()
 
         # ── Site ──────────────────────────────────────────────────────
         url      = c.get('url', '').strip()
@@ -1202,6 +1210,7 @@ class App(tk.Tk):
             'default_orientation': self._def_orient_var.get().strip(),
             'last_image_folder':  self._folder_var.get().strip(),
             'last_manifest_file': self._manifest_var.get().strip(),
+            'drive_enabled':      self._drive_enabled_var.get(),
             'google_credentials': self._goog_creds_var.get().strip(),
             'drive_folder_id':    self._drive_folder_var.get().strip(),
             'gemini_api_key':     self._gemini_key_var.get().strip(),
@@ -1253,6 +1262,21 @@ class App(tk.Tk):
         if p:
             self._goog_creds_var.set(p)
             self._save_config()
+
+    def _on_drive_toggle(self):
+        """Called when the Enable Google Drive checkbox is toggled."""
+        enabled = self._drive_enabled_var.get()
+        if enabled:
+            # Re-show the normal not-connected state; auto-reconnect will
+            # pick it up if credentials are already saved.
+            self._drive_dot.configure(fg=LED_OFF)
+            self._drive_lbl.configure(text="NOT CONNECTED", fg=LED_OFF)
+            self._auto_reconnect()
+        else:
+            self._drive_service = None
+            self._drive_dot.configure(fg=LED_OFF)
+            self._drive_lbl.configure(text="DISABLED", fg=LED_OFF)
+        self._save_config()
 
     # ------------------------------------------------------------------
     # Google Drive auth
@@ -1768,8 +1792,8 @@ class App(tk.Tk):
             messagebox.showerror("Nothing loaded", "Load a manifest first.")
             return
 
-        # ── Warn if Drive is not connected ────────────────────────────
-        if self._drive_service is None:
+        # ── Warn if Drive is enabled but not connected ─────────────────
+        if self._drive_enabled_var.get() and self._drive_service is None:
             proceed = messagebox.askyesno(
                 "Google Drive not connected",
                 "⚠  Google Drive is NOT connected.\n\n"
