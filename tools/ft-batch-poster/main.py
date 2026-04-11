@@ -45,6 +45,7 @@ FG_WARN   = "#D4872A"   # warning
 
 STATUS_COLORS = {
     'pending':  ("#2A2A2A", FG_DIM),
+    'enriched': ("#0D2B3E", "#00BFFF"),  # dark teal bg, bright blue text
     'posting':  (ACCENT,    "#000000"),
     'ok':       (FG_OK,     "#000000"),
     'error':    (FG_ERR,    "#000000"),
@@ -140,10 +141,11 @@ class EntryRow(tk.Frame):
         self._thumb_lbl.place(x=30, y=18, width=THUMB_SIZE[0], height=THUMB_SIZE[1])
 
         # ── File name ─────────────────────────────────────────────────
-        tk.Label(
+        self._fname_lbl = tk.Label(
             self, text=self.entry.file, bg=BG_CARD, fg=FG_MAIN,
             font=FONT_BOLD, anchor="w",
-        ).place(x=110, y=6, width=830, height=16)
+        )
+        self._fname_lbl.place(x=110, y=6, width=830, height=16)
 
         # ── Inline title entry ────────────────────────────────────────
         tk.Label(self, text="title", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=110, y=24)
@@ -232,6 +234,27 @@ class EntryRow(tk.Frame):
         self._status_lbl.place(x=868, y=42, width=72, height=20)
         self._set_status_visual('pending')
 
+        # Bind resize so fields stretch to fill the row width
+        self.bind("<Configure>", self._on_resize)
+
+    # ── Responsive layout ─────────────────────────────────────────────
+    _BADGE_W   = 72
+    _RIGHT_PAD = 4   # px clearance from right edge
+    _BADGE_GAP = 28  # gap between entry right edge and status badge
+
+    def _on_resize(self, event):
+        """Recalculate place() widths when the row frame is resized."""
+        w = event.width
+        if w < 400:
+            return
+        badge_x  = w - self._BADGE_W - self._RIGHT_PAD
+        entry_w  = badge_x - 145 - self._BADGE_GAP
+        fname_w  = badge_x - 110 - 10
+        self._title_entry.place(width=max(entry_w, 50))
+        self._tags_entry.place(width=max(entry_w, 50))
+        self._fname_lbl.place(width=max(fname_w, 50))
+        self._status_lbl.place(x=badge_x)
+
     def set_thumb(self, img: ImageTk.PhotoImage):
         self._thumb_img = img
         self._thumb_lbl.configure(image=img, text="")
@@ -246,11 +269,12 @@ class EntryRow(tk.Frame):
     def _set_status_visual(self, status: str):
         bg, fg = STATUS_COLORS.get(status, (BG_MID, FG_DIM))
         labels = {
-            'pending': "PENDING",
-            'posting': "POSTING",
-            'ok':      "  POSTED",
-            'error':   "  ERROR",
-            'warning': "  WARN",
+            'pending':  "PENDING",
+            'enriched': "ENRICHED",
+            'posting':  "POSTING",
+            'ok':       "  POSTED",
+            'error':    "  ERROR",
+            'warning':  "  WARN",
         }
         self._status_lbl.configure(
             text=labels.get(status, status.upper()),
@@ -292,6 +316,8 @@ class EntryRow(tk.Frame):
         if colors:
             self.entry.colors = colors
             self._update_swatches(colors)
+        # Force immediate repaint so fields appear filled before the next image starts
+        self.update_idletasks()
 
     def set_highlight(self, on: bool):
         self.configure(
@@ -1555,6 +1581,7 @@ class App(tk.Tk):
                                 album=entry.album,
                                 colors=entry.colors,
                             )
+                            row.set_status('enriched')
                         self._set_status(
                             f"Gemini: enriched {idx} / {total} — {entry.file}", FG_OK)
                 self.after(0, _ui_update)
