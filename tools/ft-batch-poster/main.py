@@ -574,41 +574,54 @@ class App(tk.Tk):
                  bg=BG_CARD, fg=FG_DIM,
                  font=("Segoe UI", 8)).pack(side="left", padx=(8, 0), anchor="center")
 
-        # Right: Drive status | Site status (dot before text, both groups separated)
         self._session_remaining = 0
         self._session_timer_id  = None
-
-        status_cluster = tk.Frame(header, bg=BG_CARD)
-        status_cluster.pack(side="right", padx=16, fill="y")
-
-        # Site connection
-        site_grp = tk.Frame(status_cluster, bg=BG_CARD)
-        site_grp.pack(side="right", anchor="center")
-        self._conn_dot = tk.Label(site_grp, text="●", bg=BG_CARD, fg=FG_DIM,
-                                  font=("Segoe UI", 11))
-        self._conn_dot.pack(side="left")
-        self._conn_lbl = tk.Label(site_grp, text="Not connected",
-                                  bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
-        self._conn_lbl.pack(side="left", padx=(3, 0))
-        self._session_timer_lbl = tk.Label(site_grp, text="",
-                                           bg=BG_CARD, fg=FG_DIM, font=("Segoe UI", 8))
-        self._session_timer_lbl.pack(side="left", padx=(4, 0))
-
-        # Thin vertical rule between Drive and Site
-        tk.Frame(status_cluster, bg=BORDER, width=1).pack(
-            side="right", fill="y", pady=10, padx=12)
-
-        # Drive status
-        drive_grp = tk.Frame(status_cluster, bg=BG_CARD)
-        drive_grp.pack(side="right", anchor="center")
-        self._drive_dot = tk.Label(drive_grp, text="●", bg=BG_CARD, fg=FG_DIM,
-                                   font=("Segoe UI", 11))
-        self._drive_dot.pack(side="left")
-        self._drive_lbl = tk.Label(drive_grp, text="Drive: Not connected",
-                                   bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
-        self._drive_lbl.pack(side="left", padx=(3, 0))
+        self._conn_flash_state  = False
+        self._conn_flash_id     = None
 
         tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
+
+        # ── Prominent status bar (always visible) ─────────────────────
+        sbar = tk.Frame(self, bg=BG_DEEP, height=38)
+        sbar.pack(fill="x")
+        sbar.pack_propagate(False)
+
+        # Site section
+        site_grp = tk.Frame(sbar, bg=BG_DEEP)
+        site_grp.pack(side="left", padx=(16, 0), fill="y")
+        self._conn_dot = tk.Label(site_grp, text="●", bg=BG_DEEP, fg=FG_DIM,
+                                  font=("Segoe UI", 13))
+        self._conn_dot.pack(side="left", anchor="center")
+        self._conn_lbl = tk.Label(site_grp, text="Not connected",
+                                  bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL)
+        self._conn_lbl.pack(side="left", padx=(4, 0), anchor="center")
+        self._session_timer_lbl = tk.Label(site_grp, text="",
+                                           bg=BG_DEEP, fg=FG_DIM, font=("Segoe UI", 9, "bold"))
+        self._session_timer_lbl.pack(side="left", padx=(6, 0), anchor="center")
+
+        tk.Frame(sbar, bg=BORDER, width=1).pack(side="left", fill="y", pady=8, padx=14)
+
+        # Drive section
+        drive_grp = tk.Frame(sbar, bg=BG_DEEP)
+        drive_grp.pack(side="left", fill="y")
+        self._drive_dot = tk.Label(drive_grp, text="●", bg=BG_DEEP, fg=FG_DIM,
+                                   font=("Segoe UI", 13))
+        self._drive_dot.pack(side="left", anchor="center")
+        self._drive_lbl = tk.Label(drive_grp, text="Drive: Not connected",
+                                   bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL)
+        self._drive_lbl.pack(side="left", padx=(4, 0), anchor="center")
+
+        tk.Frame(sbar, bg=BORDER, width=1).pack(side="left", fill="y", pady=8, padx=14)
+
+        # AI section
+        ai_grp = tk.Frame(sbar, bg=BG_DEEP)
+        ai_grp.pack(side="left", fill="y")
+        self._ai_dot = tk.Label(ai_grp, text="●", bg=BG_DEEP, fg=FG_DIM,
+                                font=("Segoe UI", 13))
+        self._ai_dot.pack(side="left", anchor="center")
+        self._ai_lbl = tk.Label(ai_grp, text="AI: No key",
+                                bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL)
+        self._ai_lbl.pack(side="left", padx=(4, 0), anchor="center")
 
         # ── Config collapse toggle bar ────────────────────────────────
         self._cfg_visible = True
@@ -628,11 +641,20 @@ class App(tk.Tk):
 
         def _toggle_cfg(e=None):
             if self._cfg_visible:
+                # Collapse config → show queue
                 self._cfg_frame.pack_forget()
                 self._cfg_arrow.configure(text="▼  CONFIGURATION")
+                self._queue_rule.pack(fill="x")
+                self._queue_hdr.pack(fill="x")
+                self._queue_sep.pack(fill="x")
+                self._entry_list.pack(fill="both", expand=True)
             else:
-                self._cfg_frame.pack(fill="x", padx=14, pady=10,
-                                     before=self._queue_rule)
+                # Expand config → hide queue
+                self._entry_list.pack_forget()
+                self._queue_sep.pack_forget()
+                self._queue_hdr.pack_forget()
+                self._queue_rule.pack_forget()
+                self._cfg_frame.pack(fill="x", padx=14, pady=10)
                 self._cfg_arrow.configure(text="▲  CONFIGURATION")
             self._cfg_visible = not self._cfg_visible
 
@@ -824,20 +846,20 @@ class App(tk.Tk):
 
         # ── Queue header (ruled like admin h2) ────────────────────────
         self._queue_rule = tk.Frame(self, bg=BORDER, height=1)
-        self._queue_rule.pack(fill="x")
-        q_hdr = tk.Frame(self, bg=BG_DEEP, height=30)
-        q_hdr.pack(fill="x")
-        q_hdr.pack_propagate(False)
+        self._queue_hdr  = tk.Frame(self, bg=BG_DEEP, height=30)
+        self._queue_hdr.pack_propagate(False)
         self._queue_lbl = tk.Label(
-            q_hdr, text="QUEUE — 0 ITEMS",
+            self._queue_hdr, text="QUEUE — 0 ITEMS",
             bg=BG_DEEP, fg=FG_DIM, font=FONT_BOLD,
         )
         self._queue_lbl.pack(side="left", padx=14, pady=6)
-        tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
+        self._queue_sep  = tk.Frame(self, bg=BORDER, height=1)
 
         # ── Entry list ────────────────────────────────────────────────
         self._entry_list = EntryList(self)
-        self._entry_list.pack(fill="both", expand=True)
+
+        # Queue section is hidden while config is open; shown when config collapses
+        # (pack() calls intentionally omitted — _toggle_cfg manages visibility)
 
         # ── Bottom action bar ─────────────────────────────────────────
         tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
@@ -979,6 +1001,7 @@ class App(tk.Tk):
         self._gem_prompts = cfg_module.load_prompts()
         self._refresh_preset_dropdown()
         self._copyright_var.set(c.get('copyright_text', ''))
+        self._update_ai_dot()
 
         # Scroll long path fields to show the end (filename) instead of
         # the beginning which is just C:\Users\... and looks empty.
@@ -1074,6 +1097,16 @@ class App(tk.Tk):
             'gemini_last_prompt': self._gem_prompt_txt.get('1.0', 'end').strip(),
             'copyright_text':     self._copyright_var.get().strip(),
         })
+        self._update_ai_dot()
+
+    def _update_ai_dot(self):
+        """Reflect AI key presence in the status bar dot."""
+        if self._gemini_key_var.get().strip():
+            self._ai_dot.configure(fg=FG_OK)
+            self._ai_lbl.configure(text="AI: Gemini ready", fg=FG_OK)
+        else:
+            self._ai_dot.configure(fg=FG_DIM)
+            self._ai_lbl.configure(text="AI: No key", fg=FG_DIM)
 
     # ------------------------------------------------------------------
     # Browse
@@ -1633,6 +1666,7 @@ class App(tk.Tk):
         if self._session_timer_id:
             self.after_cancel(self._session_timer_id)
             self._session_timer_id = None
+        self._stop_conn_flash()
         self._session_remaining = 0
         self._session_timer_lbl.configure(text="", fg=FG_DIM)
 
@@ -1640,6 +1674,7 @@ class App(tk.Tk):
         """Called every second. Updates the countdown label and colour."""
         s = self._session_remaining
         if s <= 0:
+            self._stop_conn_flash()
             self._session_timer_lbl.configure(text="SESSION EXPIRED", fg=FG_ERR)
             self._conn_dot.configure(fg=FG_ERR)
             self._conn_lbl.configure(text="Session expired — reconnect", fg=FG_ERR)
@@ -1653,7 +1688,7 @@ class App(tk.Tk):
         mins, secs = divmod(s, 60)
         self._session_timer_lbl.configure(text=f"{mins:02d}:{secs:02d}")
 
-        # Colour thresholds: green > 10min, amber <= 10min, red <= 2min
+        # Colour thresholds on timer label: green > 10min, amber <= 10min, red <= 2min
         if s <= 120:
             self._session_timer_lbl.configure(fg=FG_ERR)
         elif s <= 600:
@@ -1661,8 +1696,30 @@ class App(tk.Tk):
         else:
             self._session_timer_lbl.configure(fg=FG_DIM)
 
+        # Flash the site dot yellow when ≤ 5 minutes
+        if s <= 300 and not self._conn_flash_id:
+            self._start_conn_flash()
+        elif s > 300 and self._conn_flash_id:
+            self._stop_conn_flash()
+            self._conn_dot.configure(fg=FG_OK)
+
         self._session_remaining -= 1
         self._session_timer_id = self.after(1000, self._tick_session_timer)
+
+    def _start_conn_flash(self):
+        """Begin flashing the site dot yellow."""
+        self._conn_flash_state = False
+        self._conn_flash_tick()
+
+    def _conn_flash_tick(self):
+        self._conn_flash_state = not self._conn_flash_state
+        self._conn_dot.configure(fg=FG_WARN if self._conn_flash_state else BG_DEEP)
+        self._conn_flash_id = self.after(500, self._conn_flash_tick)
+
+    def _stop_conn_flash(self):
+        if self._conn_flash_id:
+            self.after_cancel(self._conn_flash_id)
+            self._conn_flash_id = None
 
     # ------------------------------------------------------------------
     # Session keepalive
