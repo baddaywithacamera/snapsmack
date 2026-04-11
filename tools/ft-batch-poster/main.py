@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.7a-04"   # bump this on every rebuild
+BUILD_VERSION = "0.7.7a-05"   # bump this on every rebuild
 
 import os
 import queue
@@ -765,8 +765,7 @@ class App(tk.Tk):
         self._drive_btn.pack(pady=(14, 4))
 
         # ── Box: GEMINI AI ────────────────────────────────────────────
-        self._gemini_key_var    = tk.StringVar()
-        self._gemini_prompt_var = tk.StringVar()
+        self._gemini_key_var = tk.StringVar()
 
         gem_box  = self._box(cfg, "GEMINI AI (OPTIONAL)")
         gem_box.pack(fill="x", pady=(10, 0))
@@ -777,11 +776,9 @@ class App(tk.Tk):
             bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL,
         ).pack(anchor="w", pady=(0, 6))
 
-        # Key + Test button on same row
-        gem_key_row = tk.Frame(gem_body, bg=BG_CARD)
-        gem_key_row.pack(fill="x")
-        tk.Label(gem_key_row, text="API KEY", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w")
-        gem_key_inner = tk.Frame(gem_key_row, bg=BG_CARD)
+        # API key row
+        tk.Label(gem_body, text="API KEY", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w")
+        gem_key_inner = tk.Frame(gem_body, bg=BG_CARD)
         gem_key_inner.pack(fill="x", pady=(2, 0))
         self._entry(gem_key_inner, self._gemini_key_var, width=0).pack(side="left", fill="x", expand=True, padx=(0, 6))
         self._gem_test_btn = ttk.Button(gem_key_inner, text="Test Connection",
@@ -790,24 +787,24 @@ class App(tk.Tk):
         self._gem_test_lbl = tk.Label(gem_key_inner, text="", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
         self._gem_test_lbl.pack(side="left", padx=(6, 0))
 
-        # Prompt presets row
+        # Prompt label + preset controls on separate rows
+        tk.Label(gem_body, text="PROMPT", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w", pady=(12, 0))
         gem_preset_row = tk.Frame(gem_body, bg=BG_CARD)
-        gem_preset_row.pack(fill="x", pady=(10, 2))
-        tk.Label(gem_preset_row, text="PROMPT PRESETS",
+        gem_preset_row.pack(fill="x", pady=(4, 4))
+        tk.Label(gem_preset_row, text="Saved presets:",
                  bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(side="left")
         self._gem_preset_cb = ttk.Combobox(gem_preset_row, font=FONT_SMALL,
-                                            state="readonly", width=22)
+                                            state="readonly", width=24)
         self._gem_preset_cb.pack(side="left", padx=(6, 0))
         self._gem_preset_cb.bind("<<ComboboxSelected>>", self._on_gem_preset_load)
-        self._mini_btn(gem_preset_row, "Save As…", self._on_gem_preset_save).pack(side="left", padx=(6, 0))
+        self._mini_btn(gem_preset_row, "Save As…", self._on_gem_preset_save).pack(side="left", padx=(8, 0))
         self._mini_btn(gem_preset_row, "Delete",   self._on_gem_preset_delete).pack(side="left", padx=(4, 0))
 
-        # Prompt textarea
-        tk.Label(gem_body, text="PROMPT (leave blank to use built-in default)",
-                 bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w", pady=(4, 2))
+        tk.Label(gem_body, text="Leave blank to use the built-in default.",
+                 bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w", pady=(0, 4))
         self._gem_prompt_txt = tk.Text(
             gem_body, height=5,
-            bg=BG_MID, fg=FG_DIM, insertbackground=ACCENT,
+            bg=BG_MID, fg=FG_MAIN, insertbackground=ACCENT,
             relief="flat", font=FONT_SMALL, bd=0,
             highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT,
             wrap="word",
