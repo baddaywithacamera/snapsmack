@@ -40,6 +40,21 @@ def is_available() -> bool:
         return False
 
 
+def test_connection(api_key: str) -> tuple[bool, str]:
+    """
+    Send a minimal text-only request to Gemini to verify the key works.
+    Returns (True, model_name) on success, (False, error_message) on failure.
+    """
+    try:
+        genai = _import_genai()
+        genai.configure(api_key=api_key)
+        model    = genai.GenerativeModel(MODEL_NAME)
+        response = model.generate_content("Reply with only the word: OK")
+        return True, f"Connected — {MODEL_NAME}"
+    except Exception as e:
+        return False, str(e)
+
+
 def _build_prompt(categories: List[str], albums: List[str]) -> str:
     cats_str   = ", ".join(categories) if categories else "(none)"
     albums_str = ", ".join(albums)     if albums     else "(none)"
@@ -74,13 +89,14 @@ def _parse_response(text: str) -> dict:
 
 
 def enrich_batch(
-    api_key:    str,
-    entries:    List[ManifestEntry],
-    image_folder: str,
-    categories: List[str],
-    albums:     List[str],
-    on_progress: Optional[Callable[[int, int, ManifestEntry, Optional[str]], None]] = None,
-    skip_filled: bool = True,
+    api_key:       str,
+    entries:       List[ManifestEntry],
+    image_folder:  str,
+    categories:    List[str],
+    albums:        List[str],
+    on_progress:   Optional[Callable[[int, int, ManifestEntry, Optional[str]], None]] = None,
+    skip_filled:   bool = True,
+    custom_prompt: str  = '',
 ) -> List[ManifestEntry]:
     """
     Process a list of ManifestEntry objects, sending each image to Gemini
@@ -88,13 +104,14 @@ def enrich_batch(
 
     on_progress(index, total, entry, error_or_None) is called after each image.
     skip_filled=True skips any entry that already has a non-blank title.
+    custom_prompt overrides the default prompt if provided.
 
     Returns the (mutated) list of entries.
     """
     genai = _import_genai()
     genai.configure(api_key=api_key)
     model  = genai.GenerativeModel(MODEL_NAME)
-    prompt = _build_prompt(categories, albums)
+    prompt = custom_prompt.strip() if custom_prompt.strip() else _build_prompt(categories, albums)
     total  = len(entries)
 
     for i, entry in enumerate(entries, start=1):
