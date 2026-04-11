@@ -614,6 +614,10 @@ class App(tk.Tk):
                  bg=BG_CARD, fg=FG_DIM,
                  font=("Segoe UI", 8)).pack(side="left", padx=(8, 0), anchor="center")
 
+        # Right: Help button
+        ttk.Button(header, text="?  Help", style="Ghost.TButton",
+                   command=self._show_help).pack(side="right", padx=14, pady=6)
+
         self._session_remaining = 0
         self._session_timer_id  = None
         self._conn_flash_state  = False
@@ -627,67 +631,69 @@ class App(tk.Tk):
         sbar = tk.Frame(self, bg=BG_SBAR, height=120)
         sbar.pack(fill="x")
         sbar.pack_propagate(False)
+        sbar.columnconfigure(0, weight=1)
+        sbar.columnconfigure(1, weight=0)   # separator
+        sbar.columnconfigure(2, weight=1)
+        sbar.columnconfigure(3, weight=0)   # separator
+        sbar.columnconfigure(4, weight=1)
+        sbar.rowconfigure(0, weight=1)
 
-        # ── SITE panel (left, expands) ────────────────────────────────
-        site_panel = tk.Frame(sbar, bg=BG_SBAR)
-        site_panel.pack(side="left", fill="both", expand=True, padx=(18, 0), pady=(10, 10))
+        def _led_panel(col, header):
+            """Create a padded panel cell and return it."""
+            f = tk.Frame(sbar, bg=BG_SBAR)
+            f.grid(row=0, column=col, sticky="nsew", padx=18, pady=10)
+            tk.Label(f, text=header, bg=BG_SBAR, fg="#333333",
+                     font=(lf, 7)).pack(anchor="w")
+            return f
 
-        tk.Label(site_panel, text="SITE CONNECTION",
-                 bg=BG_SBAR, fg="#333333", font=(lf, 7)).pack(anchor="w")
+        def _led_sep(col):
+            tk.Frame(sbar, bg="#222222", width=1).grid(
+                row=0, column=col, sticky="ns", pady=10)
+
+        # ── SITE panel ────────────────────────────────────────────────
+        site_panel = _led_panel(0, "SITE CONNECTION")
 
         conn_row = tk.Frame(site_panel, bg=BG_SBAR)
-        conn_row.pack(anchor="w", pady=(2, 0))
+        conn_row.pack(anchor="w", pady=(4, 0))
         self._conn_dot = tk.Label(conn_row, text="■", bg=BG_SBAR, fg=LED_OFF,
-                                  font=(lf, 16))
+                                  font=(lf, 14))
         self._conn_dot.pack(side="left", anchor="w")
         self._conn_lbl = tk.Label(conn_row, text="NOT CONNECTED",
-                                  bg=BG_SBAR, fg=LED_OFF, font=(lf, 16))
-        self._conn_lbl.pack(side="left", padx=(6, 0), anchor="w")
+                                  bg=BG_SBAR, fg=LED_OFF, font=(lf, 14))
+        self._conn_lbl.pack(side="left", padx=(5, 0), anchor="w")
 
         self._session_timer_lbl = tk.Label(site_panel, text="--:--",
                                            bg=BG_SBAR, fg=LED_OFF,
-                                           font=(lf, 38, "bold"))
+                                           font=(lf, 32, "bold"))
         self._session_timer_lbl.pack(anchor="w", pady=(2, 0))
 
-        # ── separator ─────────────────────────────────────────────────
-        tk.Frame(sbar, bg="#222222", width=1).pack(side="left", fill="y", pady=10)
+        _led_sep(1)
 
-        # ── DRIVE panel (fixed width) ─────────────────────────────────
-        drive_panel = tk.Frame(sbar, bg=BG_SBAR, width=260)
-        drive_panel.pack(side="left", fill="y", padx=(18, 0), pady=(10, 10))
-        drive_panel.pack_propagate(False)
-
-        tk.Label(drive_panel, text="CLOUD DRIVE",
-                 bg=BG_SBAR, fg="#333333", font=(lf, 7)).pack(anchor="w")
+        # ── DRIVE panel ───────────────────────────────────────────────
+        drive_panel = _led_panel(2, "CLOUD DRIVE")
 
         drive_row = tk.Frame(drive_panel, bg=BG_SBAR)
-        drive_row.pack(anchor="w", pady=(6, 0))
+        drive_row.pack(anchor="w", pady=(4, 0))
         self._drive_dot = tk.Label(drive_row, text="■", bg=BG_SBAR, fg=LED_OFF,
-                                   font=(lf, 16))
+                                   font=(lf, 14))
         self._drive_dot.pack(side="left", anchor="w")
         self._drive_lbl = tk.Label(drive_row, text="NOT CONNECTED",
-                                   bg=BG_SBAR, fg=LED_OFF, font=(lf, 16))
-        self._drive_lbl.pack(side="left", padx=(6, 0), anchor="w")
+                                   bg=BG_SBAR, fg=LED_OFF, font=(lf, 14))
+        self._drive_lbl.pack(side="left", padx=(5, 0), anchor="w")
 
-        # ── separator ─────────────────────────────────────────────────
-        tk.Frame(sbar, bg="#222222", width=1).pack(side="left", fill="y", pady=10)
+        _led_sep(3)
 
-        # ── AI panel (fixed width) ────────────────────────────────────
-        ai_panel = tk.Frame(sbar, bg=BG_SBAR, width=260)
-        ai_panel.pack(side="left", fill="y", padx=(18, 18), pady=(10, 10))
-        ai_panel.pack_propagate(False)
-
-        tk.Label(ai_panel, text="AI ENGINE",
-                 bg=BG_SBAR, fg="#333333", font=(lf, 7)).pack(anchor="w")
+        # ── AI panel ──────────────────────────────────────────────────
+        ai_panel = _led_panel(4, "AI ENGINE")
 
         ai_row = tk.Frame(ai_panel, bg=BG_SBAR)
-        ai_row.pack(anchor="w", pady=(6, 0))
+        ai_row.pack(anchor="w", pady=(4, 0))
         self._ai_dot = tk.Label(ai_row, text="■", bg=BG_SBAR, fg=LED_OFF,
-                                font=(lf, 16))
+                                font=(lf, 14))
         self._ai_dot.pack(side="left", anchor="w")
         self._ai_lbl = tk.Label(ai_row, text="NO KEY",
-                                bg=BG_SBAR, fg=LED_OFF, font=(lf, 16))
-        self._ai_lbl.pack(side="left", padx=(6, 0), anchor="w")
+                                bg=BG_SBAR, fg=LED_OFF, font=(lf, 14))
+        self._ai_lbl.pack(side="left", padx=(5, 0), anchor="w")
 
         # ── Config collapse toggle bar ────────────────────────────────
         self._cfg_visible = True
@@ -1522,6 +1528,145 @@ class App(tk.Tk):
         self._set_status("Queue cleared. Load a manifest to begin.", FG_DIM)
         if not self._cfg_visible:
             self._toggle_cfg()
+
+    # ------------------------------------------------------------------
+    # Help
+    # ------------------------------------------------------------------
+
+    def _show_help(self):
+        """Open the in-app help window."""
+        win = tk.Toplevel(self)
+        win.title("Smack Your Batch Up — Help")
+        win.geometry("720x620")
+        win.minsize(560, 400)
+        win.configure(bg=BG_DEEP)
+        win.grab_set()
+
+        # Header
+        hdr = tk.Frame(win, bg=BG_CARD, height=44)
+        hdr.pack(fill="x")
+        hdr.pack_propagate(False)
+        tk.Label(hdr, text="SMACK YOUR BATCH UP  —  USER GUIDE",
+                 bg=BG_CARD, fg=ACCENT, font=FONT_TITLE).pack(side="left", padx=16, anchor="center")
+        ttk.Button(hdr, text="Close", style="Ghost.TButton",
+                   command=win.destroy).pack(side="right", padx=14, pady=6)
+
+        tk.Frame(win, bg=BORDER, height=1).pack(fill="x")
+
+        # Scrollable content
+        canvas  = tk.Canvas(win, bg=BG_DEEP, highlightthickness=0)
+        scrollb = ttk.Scrollbar(win, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollb.set)
+        scrollb.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+
+        body = tk.Frame(canvas, bg=BG_DEEP)
+        body_id = canvas.create_window((0, 0), window=body, anchor="nw")
+
+        def _on_resize(e):
+            canvas.itemconfig(body_id, width=e.width)
+        canvas.bind("<Configure>", _on_resize)
+        body.bind("<Configure>", lambda e: canvas.configure(
+            scrollregion=canvas.bbox("all")))
+        canvas.bind_all("<MouseWheel>",
+            lambda e: canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"))
+
+        def _section(title):
+            tk.Frame(body, bg=BORDER, height=1).pack(fill="x", padx=20, pady=(18, 0))
+            tk.Label(body, text=title, bg=BG_DEEP, fg=ACCENT,
+                     font=FONT_BOLD, anchor="w").pack(fill="x", padx=20, pady=(6, 2))
+
+        def _para(text):
+            tk.Label(body, text=text, bg=BG_DEEP, fg=FG_MAIN,
+                     font=FONT_UI, wraplength=640, justify="left",
+                     anchor="w").pack(fill="x", padx=20, pady=(2, 0))
+
+        def _item(label, detail):
+            row = tk.Frame(body, bg=BG_DEEP)
+            row.pack(fill="x", padx=28, pady=(3, 0))
+            tk.Label(row, text=f"▸  {label}", bg=BG_DEEP, fg=FG_OK,
+                     font=FONT_BOLD, anchor="w", width=22).pack(side="left", anchor="n")
+            tk.Label(row, text=detail, bg=BG_DEEP, fg=FG_MAIN,
+                     font=FONT_UI, wraplength=480, justify="left",
+                     anchor="w").pack(side="left", fill="x", expand=True)
+
+        # ── Content ────────────────────────────────────────────────────
+        tk.Label(body, text="", bg=BG_DEEP).pack()   # top padding
+
+        _section("OVERVIEW")
+        _para("Smack Your Batch Up posts large batches of images to a SnapSmack site. "
+              "Connect to your site, point it at a folder of images, let Gemini AI write "
+              "the titles and tags, then post everything in one click.")
+
+        _section("STATUS BAR")
+        _para("The three panels at the top tell you everything important at a glance.")
+        _item("SITE CONNECTION", "Green = connected and session active. The countdown "
+              "shows how long your login session has left. It turns amber at 10 minutes, "
+              "red at 2 minutes, and flashes at 5 minutes. If it expires, click Connect again — "
+              "your queue is not lost.")
+        _item("CLOUD DRIVE", "Shows whether Google Drive authentication is active. "
+              "Required only if you want download links attached to posts.")
+        _item("AI ENGINE", "Green = a Gemini API key is saved and ready. "
+              "Without a key the Enrich button still appears but will ask for one.")
+
+        _section("BASIC WORKFLOW")
+        _item("1.  Connect", "Enter your site URL, username, and password, then click Connect. "
+              "SYBU logs in and loads your categories and albums.")
+        _item("2.  Set image folder", "Click … next to Image Folder and pick the folder "
+              "containing your images.")
+        _item("3.  Scan Folder", "Click Scan Folder to load every JPG / PNG / WebP in the "
+              "folder into the queue. Default category, album, and orientation are applied "
+              "to all rows.")
+        _item("4.  Enrich with Gemini", "Gemini looks at each image and fills in a title, "
+              "tags, category, and album. Rows that already have a title are skipped. "
+              "Edit any row by clicking its fields directly.")
+        _item("5.  Post Batch", "Validates then posts every item in the queue. Progress is "
+              "shown row by row. Failed posts stay red so you can retry.")
+
+        _section("LOAD MANIFEST (ADVANCED)")
+        _para("A manifest is a plain text file listing images with optional pre-filled metadata. "
+              "Use Load Manifest instead of Scan Folder if you have one. "
+              "Each entry block looks like:")
+        tk.Label(body,
+                 text="FILE: photo.jpg\nTITLE: Dark stone holds the rain\n"
+                      "TAGS: #stone #texture #macro\nCATEGORY: Feeling Knotty\nALBUM: Morning Wood",
+                 bg=BG_MID, fg=FG_OK, font=FONT_MONO,
+                 justify="left", anchor="w", padx=12, pady=8
+                 ).pack(fill="x", padx=28, pady=(6, 0))
+
+        _section("GEMINI AI")
+        _item("API Key", "Paste your Gemini API key in the config panel. Click Test Connection "
+              "to verify it works. The key is saved locally in config.ini next to the exe.")
+        _item("Custom Prompt", "Leave the prompt blank to use the built-in default, which "
+              "generates haiku-style titles and descriptive hashtags. Write your own prompt "
+              "to change the tone, style, or output format.")
+        _item("Saved Presets", "Type a name and click Save As… to store a prompt for reuse. "
+              "Delete removes the selected preset.")
+        _item("Skip Filled", "Gemini skips any row that already has a title, so you can "
+              "run enrichment multiple times without overwriting manual edits.")
+
+        _section("GOOGLE DRIVE")
+        _para("Google Drive support adds a public download link to each post. "
+              "You need a credentials.json file from Google Cloud Console.")
+        _item("Credentials file", "Download from Google Cloud Console → APIs & Services → "
+              "Credentials → your OAuth 2.0 client → Download JSON.")
+        _item("Folder ID", "The ID at the end of your Google Drive folder URL. "
+              "e.g. drive.google.com/drive/folders/1pztAN2j… → copy the last segment.")
+        _item("Auth Drive", "Opens a browser tab for OAuth consent. Once approved, "
+              "credentials are cached and you won't need to re-auth unless revoked.")
+
+        _section("SESSION MANAGEMENT")
+        _para("Your SnapSmack login session lasts 48 minutes. SYBU runs a keepalive "
+              "ping in the background to extend it automatically while you're working. "
+              "If the app is idle too long and the session expires, just click Connect "
+              "again — the queue, settings, and credentials are all preserved.")
+
+        _section("SETTINGS & CONFIG")
+        _para("All settings are saved automatically to config.ini next to the exe. "
+              "Gemini prompts are stored in gemini_prompts.json in the same folder. "
+              "You can delete either file to reset to defaults.")
+
+        tk.Label(body, text="", bg=BG_DEEP).pack()   # bottom padding
 
     # ------------------------------------------------------------------
     # Validate
