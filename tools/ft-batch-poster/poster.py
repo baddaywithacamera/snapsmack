@@ -62,11 +62,14 @@ class PostResult:
 
 @dataclass
 class SiteData:
-    """Category and album name→ID lookups fetched from smack-post.php."""
-    categories:    Dict[str, int] = field(default_factory=dict)
-    albums:        Dict[str, int] = field(default_factory=dict)
-    _cat_display:  Dict[str, str] = field(default_factory=dict)
-    _album_display: Dict[str, str] = field(default_factory=dict)
+    """Category and album name→ID lookups, descriptions, and tag list from the site."""
+    categories:      Dict[str, int] = field(default_factory=dict)
+    albums:          Dict[str, int] = field(default_factory=dict)
+    _cat_display:    Dict[str, str] = field(default_factory=dict)
+    _album_display:  Dict[str, str] = field(default_factory=dict)
+    cat_descriptions:   Dict[str, str] = field(default_factory=dict)  # lower_name → description
+    album_descriptions: Dict[str, str] = field(default_factory=dict)  # lower_name → description
+    tags:            List[str]          = field(default_factory=list)  # existing hashtags
 
 
 # ---------------------------------------------------------------------------
@@ -144,26 +147,49 @@ class SnapSmackClient:
     def fetch_site_data(self) -> SiteData:
         if not self._logged_in:
             raise RuntimeError("Not logged in.")
+
+        data = SiteData()
+
+        # ── Rich metadata from sybu-data.php (categories + descriptions + tags) ──
+        try:
+            api_resp = self.session.get(
+                f"{self.base_url}/sybu-data.php", timeout=15)
+            if api_resp.status_code == 200:
+                payload = api_resp.json()
+                for cat in payload.get('categories', []):
+                    key = cat['name'].lower()
+                    data.categories[key]        = cat['id']
+                    data._cat_display[key]       = cat['name']
+                    data.cat_descriptions[key]   = cat.get('description', '')
+                for album in payload.get('albums', []):
+                    key = album['name'].lower()
+                    data.albums[key]              = album['id']
+                    data._album_display[key]       = album['name']
+                    data.album_descriptions[key]   = album.get('description', '')
+                data.tags = payload.get('tags', [])
+                return data
+        except Exception:
+            pass  # Fall through to HTML scrape if endpoint unavailable
+
+        # ── Fallback: scrape smack-post.php HTML (older server versions) ─────────
         url  = f"{self.base_url}/smack-post.php"
         resp = self.session.get(url, timeout=15)
         resp.raise_for_status()
-
         soup = BeautifulSoup(resp.text, 'html.parser')
-        data = SiteData()
 
         for inp in soup.find_all('input', {'name': 'cat_ids[]'}):
             cat_id = int(inp.get('value', 0))
             span   = inp.find_next_sibling('span') or inp.find_next('span')
             name   = span.get_text(strip=True) if span else f'Category {cat_id}'
-            data.categories[name.lower()] = cat_id
-            data._cat_display[name.lower()] = name
+            data.categories[name.lower()]      = cat_id
+            data._cat_display[name.lower()]     = name
 
         for inp in soup.find_all('input', {'name': 'album_ids[]'}):
             album_id = int(inp.get('value', 0))
             span     = inp.find_next_sibling('span') or inp.find_next('span')
             name     = span.get_text(strip=True) if span else f'Album {album_id}'
-            data.albums[name.lower()] = album_id
-            data._album_display[name.lower()] = name
+            data.albums[name.lower()]           = album_id
+            data._album_display[name.lower()]    = name
 
         return data
 
