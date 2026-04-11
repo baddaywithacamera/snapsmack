@@ -223,9 +223,11 @@ CREATE TABLE IF NOT EXISTS `snap_comments` (
   `comment_text`   text         COLLATE utf8mb4_unicode_ci,
   `comment_date`   datetime     DEFAULT CURRENT_TIMESTAMP,
   `comment_ip`     varchar(45)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `fp_hash`        varchar(64)  COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'SHA-256 browser fingerprint',
   `is_approved`    tinyint(1)   DEFAULT '0',
   PRIMARY KEY (`id`),
-  KEY `img_id` (`img_id`)
+  KEY `img_id` (`img_id`),
+  KEY `idx_fp_hash` (`fp_hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -367,10 +369,12 @@ CREATE TABLE IF NOT EXISTS `snap_community_comments` (
   `comment_text` text         COLLATE utf8mb4_unicode_ci NOT NULL,
   `status`       enum('visible','hidden','deleted') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'visible',
   `ip`           varchar(45)  COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `fp_hash`      varchar(64)  COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'SHA-256 browser fingerprint',
   `created_at`   datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `edited_at`    datetime     DEFAULT NULL,                                   -- 0.7.6
   PRIMARY KEY (`id`),
-  KEY `idx_post_status` (`post_id`, `status`)
+  KEY `idx_post_status` (`post_id`, `status`),
+  KEY `idx_fp_hash` (`fp_hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `snap_likes` (
@@ -400,6 +404,22 @@ CREATE TABLE IF NOT EXISTS `snap_reactions` (
   KEY `idx_reactions_guest` (`post_id`, `guest_hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+-- ─── BAN LIST ─────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS `snap_ban_list` (
+  `id`          int unsigned     NOT NULL AUTO_INCREMENT,
+  `ban_type`    enum('fingerprint','ip','email_hash')
+                COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ban_value`   varchar(255)     COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reason`      varchar(500)     COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `banned_at`   datetime         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `banned_by`   int unsigned     DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY  `uq_ban`       (`ban_type`, `ban_value`),
+  KEY         `idx_type_val` (`ban_type`, `ban_value`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Centralised ban list: fingerprint, IP, and email-hash bans';
 
 -- ─── STATS ────────────────────────────────────────────────────────────────────
 
