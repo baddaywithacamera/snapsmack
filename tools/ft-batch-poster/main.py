@@ -722,6 +722,8 @@ class App(tk.Tk):
         mfst_btn_row.pack(anchor="w", fill="x", pady=(6, 0))
         ttk.Button(mfst_btn_row, text="Load Manifest", style="Ghost.TButton",
                    command=self._on_load).pack(side="left")
+        ttk.Button(mfst_btn_row, text="Scan Folder", style="Ghost.TButton",
+                   command=self._on_scan_folder).pack(side="left", padx=(8, 0))
         self._enrich_btn = ttk.Button(mfst_btn_row, text="✦ Enrich with Gemini",
                                        style="Ghost.TButton", command=self._on_enrich)
         self._enrich_btn.pack(side="left", padx=(8, 0))
@@ -1224,6 +1226,53 @@ class App(tk.Tk):
         self._prog_lbl.configure(text=f"0 / {total}")
         self._queue_lbl.configure(text=f"QUEUE — {total} ITEM{'S' if total != 1 else ''}")
         self._set_status(f"+{added} added — {total} total. Drag to reorder.", FG_MAIN)
+        self._save_config()
+        if self._cfg_visible:
+            self._toggle_cfg()
+
+    def _on_scan_folder(self):
+        """Populate the queue from image files in the image folder — no manifest needed."""
+        image_folder = self._folder_var.get().strip()
+        if not image_folder:
+            messagebox.showerror("No folder", "Select an image folder first.")
+            return
+        if not os.path.isdir(image_folder):
+            messagebox.showerror("Folder not found", f"Cannot find:\n{image_folder}")
+            return
+
+        EXTS = {'.jpg', '.jpeg', '.png', '.webp'}
+        files = sorted(
+            f for f in os.listdir(image_folder)
+            if os.path.splitext(f)[1].lower() in EXTS
+        )
+
+        if not files:
+            messagebox.showinfo("Nothing found", "No JPG / PNG / WebP files found in that folder.")
+            return
+
+        default_cat    = self._def_cat_cb.get()  if hasattr(self, '_def_cat_cb')    else ''
+        default_album  = self._def_album_cb.get() if hasattr(self, '_def_album_cb')  else ''
+        default_orient = self._def_orient_cb.get() if hasattr(self, '_def_orient_cb') else 'auto'
+
+        entries = []
+        for fname in files:
+            e = manifest_parser.ManifestEntry()
+            e.file        = fname
+            e.category    = default_cat
+            e.album       = default_album
+            e.orientation = default_orient
+            entries.append(e)
+
+        cats   = sorted(self._site_data._cat_display.values()) if self._site_data else []
+        albums = sorted(self._site_data._album_display.values()) if self._site_data else []
+
+        self._entry_list.load(entries, image_folder, cats, albums)
+        total = len(entries)
+        self._progress['maximum'] = total
+        self._prog_var.set(0)
+        self._prog_lbl.configure(text=f"0 / {total}")
+        self._queue_lbl.configure(text=f"QUEUE — {total} ITEM{'S' if total != 1 else ''}")
+        self._set_status(f"Scanned {total} image{'s' if total != 1 else ''} from folder. Enrich with Gemini or edit manually.", FG_MAIN)
         self._save_config()
         if self._cfg_visible:
             self._toggle_cfg()
