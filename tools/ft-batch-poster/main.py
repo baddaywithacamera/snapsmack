@@ -18,6 +18,7 @@ from PIL import Image, ImageTk
 
 import config as cfg_module
 import drive as drive_module
+import gemini as gemini_module
 import manifest_parser
 import poster as poster_module
 from manifest_parser import ManifestEntry
@@ -51,7 +52,7 @@ STATUS_COLORS = {
 }
 
 THUMB_SIZE  = (72, 72)
-ROW_HEIGHT  = 88        # px per entry row
+ROW_HEIGHT  = 108       # px per entry row (taller to fit inline editing)
 WIN_W, WIN_H = 1020, 920
 FONT_UI      = ("Segoe UI", 9)
 FONT_BOLD    = ("Segoe UI", 9, "bold")
@@ -97,22 +98,37 @@ class EntryRow(tk.Frame):
             self, bg="#0A0A0E", relief="flat",
             text="…", fg=FG_DIM, font=FONT_SMALL,
         )
-        self._thumb_lbl.place(x=30, y=8, width=THUMB_SIZE[0], height=THUMB_SIZE[1])
+        self._thumb_lbl.place(x=30, y=18, width=THUMB_SIZE[0], height=THUMB_SIZE[1])
 
-        # ── File name + title ─────────────────────────────────────────
-        name_frame = tk.Frame(self, bg=BG_CARD)
-        name_frame.place(x=110, y=8, width=260, height=THUMB_SIZE[1])
-
+        # ── File name ─────────────────────────────────────────────────
         tk.Label(
-            name_frame, text=self.entry.file, bg=BG_CARD, fg=FG_MAIN,
+            self, text=self.entry.file, bg=BG_CARD, fg=FG_MAIN,
             font=FONT_BOLD, anchor="w",
-        ).pack(fill="x")
+        ).place(x=110, y=6, width=830, height=16)
 
-        title_text = self.entry.title or "(no title)"
-        tk.Label(
-            name_frame, text=title_text, bg=BG_CARD, fg=FG_DIM,
-            font=FONT_SMALL, anchor="w", wraplength=255, justify="left",
-        ).pack(fill="x")
+        # ── Inline title entry ────────────────────────────────────────
+        tk.Label(self, text="title", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=110, y=24)
+        self._title_var = tk.StringVar(value=self.entry.title)
+        self._title_entry = tk.Entry(
+            self, textvariable=self._title_var,
+            bg=BG_MID, fg=FG_MAIN, insertbackground=ACCENT,
+            relief="flat", font=FONT_SMALL, bd=0,
+            highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT,
+        )
+        self._title_entry.place(x=145, y=22, width=695, height=20)
+        self._title_var.trace_add("write", lambda *a: setattr(self.entry, 'title', self._title_var.get()))
+
+        # ── Inline tags entry ─────────────────────────────────────────
+        tk.Label(self, text="tags", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=110, y=50)
+        self._tags_var = tk.StringVar(value=self.entry.tags)
+        self._tags_entry = tk.Entry(
+            self, textvariable=self._tags_var,
+            bg=BG_MID, fg=FG_DIM, insertbackground=ACCENT,
+            relief="flat", font=FONT_SMALL, bd=0,
+            highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT,
+        )
+        self._tags_entry.place(x=145, y=48, width=695, height=20)
+        self._tags_var.trace_add("write", lambda *a: setattr(self.entry, 'tags', self._tags_var.get()))
 
         # ── Category combobox ─────────────────────────────────────────
         self._cat_var = tk.StringVar(value=self.entry.category)
@@ -120,13 +136,13 @@ class EntryRow(tk.Frame):
             self, textvariable=self._cat_var, values=[''] + cats,
             font=FONT_SMALL, state="normal",
         )
-        self._cat_cb.place(x=378, y=20, width=180)
+        self._cat_cb.place(x=110, y=78, width=180)
         self._cat_cb.bind("<<ComboboxSelected>>",
                     lambda e: setattr(self.entry, 'category', self._cat_var.get()))
         self._cat_var.trace_add("write",
                     lambda *a: setattr(self.entry, 'category', self._cat_var.get()))
 
-        tk.Label(self, text="cat", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=378, y=6)
+        tk.Label(self, text="cat", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=110, y=66)
 
         # ── Album combobox ────────────────────────────────────────────
         self._album_var = tk.StringVar(value=self.entry.album)
@@ -134,13 +150,13 @@ class EntryRow(tk.Frame):
             self, textvariable=self._album_var, values=[''] + albums,
             font=FONT_SMALL, state="normal",
         )
-        self._album_cb.place(x=568, y=20, width=180)
+        self._album_cb.place(x=300, y=78, width=180)
         self._album_cb.bind("<<ComboboxSelected>>",
                       lambda e: setattr(self.entry, 'album', self._album_var.get()))
         self._album_var.trace_add("write",
                       lambda *a: setattr(self.entry, 'album', self._album_var.get()))
 
-        tk.Label(self, text="album", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=568, y=6)
+        tk.Label(self, text="album", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=300, y=66)
 
         # ── Orientation combobox ─────────────────────────────────────
         orient_display = {'auto': 'Auto', '0': 'Landscape', '1': 'Portrait', '2': 'Square'}
@@ -151,20 +167,20 @@ class EntryRow(tk.Frame):
             values=['Auto', 'Landscape', 'Portrait', 'Square'],
             font=FONT_SMALL, state="readonly", width=9,
         )
-        self._orient_cb.place(x=758, y=20, width=100)
+        self._orient_cb.place(x=490, y=78, width=100)
         orient_reverse = {'Auto': 'auto', 'Landscape': '0', 'Portrait': '1', 'Square': '2'}
         self._orient_cb.bind("<<ComboboxSelected>>",
                       lambda e: setattr(self.entry, 'orientation',
                                         orient_reverse.get(self._orient_var.get(), 'auto')))
 
-        tk.Label(self, text="orient", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=758, y=6)
+        tk.Label(self, text="orient", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=490, y=66)
 
         # ── Status badge ──────────────────────────────────────────────
         self._status_lbl = tk.Label(
             self, text="PENDING", font=("Segoe UI", 7, "bold"),
             padx=6, pady=2, relief="flat",
         )
-        self._status_lbl.place(x=868, y=32, width=72, height=20)
+        self._status_lbl.place(x=868, y=42, width=72, height=20)
         self._set_status_visual('pending')
 
     def set_thumb(self, img: ImageTk.PhotoImage):
@@ -191,6 +207,17 @@ class EntryRow(tk.Frame):
             text=labels.get(status, status.upper()),
             bg=bg, fg=fg,
         )
+
+    def fill_from_ai(self, title: str = '', tags: str = '', category: str = '', album: str = ''):
+        """Push Gemini-generated values into the live fields. Skips blank values."""
+        if title:
+            self._title_var.set(title)
+        if tags:
+            self._tags_var.set(tags)
+        if category:
+            self._cat_var.set(category)
+        if album:
+            self._album_var.set(album)
 
     def set_highlight(self, on: bool):
         self.configure(
@@ -323,6 +350,11 @@ class EntryList(tk.Frame):
 
     def get_entries(self) -> List[ManifestEntry]:
         return [r.entry for r in self._rows]
+
+    def get_row(self, index: int) -> Optional['EntryRow']:
+        if 0 <= index < len(self._rows):
+            return self._rows[index]
+        return None
 
     def set_row_status(self, index: int, status: str, message: str = ""):
         if 0 <= index < len(self._rows):
@@ -686,8 +718,13 @@ class App(tk.Tk):
         )
         self._def_orient_cb.pack(fill="x", pady=(2, 0))
 
-        ttk.Button(mfst_body, text="Load Manifest", style="Ghost.TButton",
-                   command=self._on_load).pack(anchor="w")
+        mfst_btn_row = tk.Frame(mfst_body, bg=BG_CARD)
+        mfst_btn_row.pack(anchor="w", fill="x", pady=(6, 0))
+        ttk.Button(mfst_btn_row, text="Load Manifest", style="Ghost.TButton",
+                   command=self._on_load).pack(side="left")
+        self._enrich_btn = ttk.Button(mfst_btn_row, text="✦ Enrich with Gemini",
+                                       style="Ghost.TButton", command=self._on_enrich)
+        self._enrich_btn.pack(side="left", padx=(8, 0))
 
         # ── Box: GOOGLE DRIVE ─────────────────────────────────────────
         self._goog_creds_var   = tk.StringVar()
@@ -726,6 +763,23 @@ class App(tk.Tk):
         self._drive_btn = ttk.Button(drv_btn_cell, text="Auth Drive", style="Ghost.TButton",
                                       command=self._on_auth_drive)
         self._drive_btn.pack(pady=(14, 4))
+
+        # ── Box: GEMINI AI ────────────────────────────────────────────
+        self._gemini_key_var = tk.StringVar()
+
+        gem_box  = self._box(cfg, "GEMINI AI (OPTIONAL)")
+        gem_box.pack(fill="x", pady=(10, 0))
+        gem_body = self._box_body(gem_box)
+
+        tk.Label(
+            gem_body, text="Paste your Gemini API key to enable one-click metadata enrichment.",
+            bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL,
+        ).pack(anchor="w", pady=(0, 6))
+
+        gem_row = tk.Frame(gem_body, bg=BG_CARD)
+        gem_row.pack(fill="x")
+        tk.Label(gem_row, text="API KEY", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w")
+        self._entry(gem_row, self._gemini_key_var, width=0).pack(fill="x", pady=(2, 0))
 
         # ── Box: COPYRIGHT ────────────────────────────────────────────
         self._copyright_var = tk.StringVar()
@@ -884,6 +938,7 @@ class App(tk.Tk):
         self._manifest_var.set(c.get('last_manifest_file', ''))
         self._goog_creds_var.set(c.get('google_credentials', ''))
         self._drive_folder_var.set(c.get('drive_folder_id', ''))
+        self._gemini_key_var.set(c.get('gemini_api_key', ''))
         self._copyright_var.set(c.get('copyright_text', ''))
 
         # Scroll long path fields to show the end (filename) instead of
@@ -976,6 +1031,7 @@ class App(tk.Tk):
             'last_manifest_file': self._manifest_var.get().strip(),
             'google_credentials': self._goog_creds_var.get().strip(),
             'drive_folder_id':    self._drive_folder_var.get().strip(),
+            'gemini_api_key':     self._gemini_key_var.get().strip(),
             'copyright_text':     self._copyright_var.get().strip(),
         })
 
@@ -1135,6 +1191,78 @@ class App(tk.Tk):
             self._toggle_cfg()
 
     # ------------------------------------------------------------------
+    # Gemini Enrich
+    # ------------------------------------------------------------------
+
+    def _on_enrich(self):
+        api_key = self._gemini_key_var.get().strip()
+        if not api_key:
+            messagebox.showerror("No API Key", "Enter your Gemini API key in the configuration panel.")
+            return
+
+        entries = self._entry_list.get_entries()
+        if not entries:
+            messagebox.showerror("Nothing loaded", "Load images or a manifest first.")
+            return
+
+        image_folder = self._folder_var.get().strip()
+        if not image_folder:
+            messagebox.showerror("No folder", "Select an image folder first.")
+            return
+
+        if not gemini_module.is_available():
+            messagebox.showerror(
+                "Missing library",
+                "google-generativeai is not installed.\n\nRun: pip install google-generativeai",
+            )
+            return
+
+        site_data = self._site_data
+        cats   = list(site_data.categories.keys()) if site_data else []
+        albums = list(site_data.albums.keys())     if site_data else []
+
+        self._enrich_btn.configure(state="disabled")
+        self._set_status(f"Enriching with Gemini — 0 / {len(entries)}…", FG_WARN)
+
+        def _enrich_thread():
+            def _progress(idx, total, entry, error):
+                def _ui_update():
+                    if error:
+                        self._set_status(
+                            f"Gemini: {entry.file} — {error}", FG_ERR)
+                    else:
+                        # Push values into the live row widget
+                        row = self._entry_list.get_row(idx - 1)
+                        if row:
+                            row.fill_from_ai(
+                                title=entry.title,
+                                tags=entry.tags,
+                                category=entry.category,
+                                album=entry.album,
+                            )
+                        self._set_status(
+                            f"Gemini: enriched {idx} / {total} — {entry.file}", FG_OK)
+                self.after(0, _ui_update)
+
+            gemini_module.enrich_batch(
+                api_key=api_key,
+                entries=entries,
+                image_folder=image_folder,
+                categories=cats,
+                albums=albums,
+                on_progress=_progress,
+                skip_filled=True,
+            )
+
+            def _done():
+                self._enrich_btn.configure(state="normal")
+                self._set_status("Gemini enrichment complete. Review and post.", FG_OK)
+                self._save_config()
+            self.after(0, _done)
+
+        threading.Thread(target=_enrich_thread, daemon=True).start()
+
+    # ------------------------------------------------------------------
     # Clear queue
     # ------------------------------------------------------------------
 
@@ -1147,6 +1275,8 @@ class App(tk.Tk):
         self._prog_lbl.configure(text="")
         self._queue_lbl.configure(text="QUEUE — 0 ITEMS")
         self._set_status("Queue cleared. Load a manifest to begin.", FG_DIM)
+        if not self._cfg_visible:
+            self._toggle_cfg()
 
     # ------------------------------------------------------------------
     # Validate

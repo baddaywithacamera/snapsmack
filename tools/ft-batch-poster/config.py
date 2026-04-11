@@ -41,6 +41,7 @@ def load() -> dict:
         'last_manifest_file': cfg.get('paths', 'last_manifest_file', fallback=''),
         'google_credentials': cfg.get('google', 'credentials_path', fallback=''),
         'drive_folder_id':    cfg.get('google', 'drive_folder_id', fallback=''),
+        'gemini_api_key':     cfg.get('gemini', 'api_key', fallback=''),
         'copyright_text':     cfg.get('metadata', 'copyright_text', fallback=(
             '\u00a9 Sean McCormick / foundtextures.ca. '
             'Free for personal and commercial use. '
@@ -78,6 +79,10 @@ def save(data: dict) -> None:
     cfg['google'] = {
         'credentials_path': data.get('google_credentials', ''),
         'drive_folder_id':  data.get('drive_folder_id', ''),
+    }
+
+    cfg['gemini'] = {
+        'api_key': data.get('gemini_api_key', ''),
     }
 
     cfg['metadata'] = {
