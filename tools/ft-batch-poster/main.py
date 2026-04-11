@@ -663,7 +663,7 @@ class App(tk.Tk):
         tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
 
         # ── LED status bar — always visible ───────────────────────────
-        sbar = tk.Frame(self, bg=BG_SBAR, height=120)
+        sbar = tk.Frame(self, bg=BG_SBAR, height=90)
         sbar.pack(fill="x")
         sbar.pack_propagate(False)
         sbar.columnconfigure(0, weight=1)
@@ -689,18 +689,17 @@ class App(tk.Tk):
         site_panel = _led_panel(0, "SITE CONNECTION")
 
         conn_row = tk.Frame(site_panel, bg=BG_SBAR)
-        conn_row.pack(anchor="w", pady=(4, 0))
+        conn_row.pack(fill="x", pady=(4, 0))
         self._conn_dot = tk.Label(conn_row, text="■", bg=BG_SBAR, fg=LED_OFF,
-                                  font=(lf, 14))
+                                  font=(lf, 20, "bold"))
         self._conn_dot.pack(side="left", anchor="w")
         self._conn_lbl = tk.Label(conn_row, text="NOT CONNECTED",
-                                  bg=BG_SBAR, fg=LED_OFF, font=(lf, 14))
+                                  bg=BG_SBAR, fg=LED_OFF, font=(lf, 20, "bold"))
         self._conn_lbl.pack(side="left", padx=(5, 0), anchor="w")
-
-        self._session_timer_lbl = tk.Label(site_panel, text="--:--",
+        self._session_timer_lbl = tk.Label(conn_row, text="--:--",
                                            bg=BG_SBAR, fg=LED_OFF,
-                                           font=(lf, 32, "bold"))
-        self._session_timer_lbl.pack(anchor="w", pady=(2, 0))
+                                           font=(lf, 20, "bold"))
+        self._session_timer_lbl.pack(side="right", anchor="e", padx=(10, 4))
 
         _led_sep(1)
 
@@ -708,12 +707,12 @@ class App(tk.Tk):
         drive_panel = _led_panel(2, "CLOUD DRIVE")
 
         drive_row = tk.Frame(drive_panel, bg=BG_SBAR)
-        drive_row.pack(anchor="w", pady=(4, 0))
+        drive_row.pack(fill="x", pady=(4, 0))
         self._drive_dot = tk.Label(drive_row, text="■", bg=BG_SBAR, fg=LED_OFF,
-                                   font=(lf, 14))
+                                   font=(lf, 20, "bold"))
         self._drive_dot.pack(side="left", anchor="w")
         self._drive_lbl = tk.Label(drive_row, text="NOT CONNECTED",
-                                   bg=BG_SBAR, fg=LED_OFF, font=(lf, 14))
+                                   bg=BG_SBAR, fg=LED_OFF, font=(lf, 20, "bold"))
         self._drive_lbl.pack(side="left", padx=(5, 0), anchor="w")
 
         _led_sep(3)
@@ -722,12 +721,12 @@ class App(tk.Tk):
         ai_panel = _led_panel(4, "AI ENGINE")
 
         ai_row = tk.Frame(ai_panel, bg=BG_SBAR)
-        ai_row.pack(anchor="w", pady=(4, 0))
+        ai_row.pack(fill="x", pady=(4, 0))
         self._ai_dot = tk.Label(ai_row, text="■", bg=BG_SBAR, fg=LED_OFF,
-                                font=(lf, 14))
+                                font=(lf, 20, "bold"))
         self._ai_dot.pack(side="left", anchor="w")
         self._ai_lbl = tk.Label(ai_row, text="NO KEY",
-                                bg=BG_SBAR, fg=LED_OFF, font=(lf, 14))
+                                bg=BG_SBAR, fg=LED_OFF, font=(lf, 20, "bold"))
         self._ai_lbl.pack(side="left", padx=(5, 0), anchor="w")
 
         # ── Config collapse toggle bar ────────────────────────────────
@@ -749,12 +748,13 @@ class App(tk.Tk):
         def _toggle_cfg(e=None):
             if self._cfg_visible:
                 # Collapse config → show queue
+                # Insert queue items BEFORE the bottom bar so it stays anchored.
                 self._cfg_frame.pack_forget()
                 self._cfg_arrow.configure(text="▼  CONFIGURATION")
-                self._queue_rule.pack(fill="x")
-                self._queue_hdr.pack(fill="x")
-                self._queue_sep.pack(fill="x")
-                self._entry_list.pack(fill="both", expand=True)
+                self._queue_rule.pack(fill="x", before=self._bottom_sep)
+                self._queue_hdr.pack(fill="x", before=self._bottom_sep)
+                self._queue_sep.pack(fill="x", before=self._bottom_sep)
+                self._entry_list.pack(fill="both", expand=True, before=self._bottom_sep)
             else:
                 # Expand config → hide queue
                 self._entry_list.pack_forget()
@@ -969,9 +969,12 @@ class App(tk.Tk):
         # (pack() calls intentionally omitted — _toggle_cfg manages visibility)
 
         # ── Bottom action bar ─────────────────────────────────────────
-        tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
-        bottom = tk.Frame(self, bg=BG_CARD, height=52)
-        bottom.pack(fill="x")
+        # Stored as instance vars so _toggle_cfg can insert queue items before them.
+        self._bottom_sep = tk.Frame(self, bg=BORDER, height=1)
+        self._bottom_sep.pack(fill="x")
+        self._bottom_bar = tk.Frame(self, bg=BG_CARD, height=52)
+        self._bottom_bar.pack(fill="x")
+        bottom = self._bottom_bar
         bottom.pack_propagate(False)
 
         self._validate_btn = ttk.Button(bottom, text="Validate", style="Ghost.TButton",
