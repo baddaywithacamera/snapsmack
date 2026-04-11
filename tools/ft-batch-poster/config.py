@@ -6,17 +6,44 @@ Password is stored base64-obfuscated (not encrypted — just not plaintext at a 
 
 import base64
 import configparser
+import json
 import os
 import sys
 
 
+def _base_dir() -> str:
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+
 def _config_path() -> str:
     """Return the path to config.ini next to the exe (or script in dev)."""
-    if getattr(sys, 'frozen', False):
-        base = os.path.dirname(sys.executable)
-    else:
-        base = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base, 'config.ini')
+    return os.path.join(_base_dir(), 'config.ini')
+
+
+def _prompts_path() -> str:
+    """Return the path to gemini_prompts.json next to the exe."""
+    return os.path.join(_base_dir(), 'gemini_prompts.json')
+
+
+def load_prompts() -> dict:
+    """Load saved Gemini prompt presets. Returns {name: prompt_text}."""
+    path = _prompts_path()
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def save_prompts(prompts: dict) -> None:
+    """Persist the full prompts dict to disk."""
+    with open(_prompts_path(), 'w', encoding='utf-8') as f:
+        json.dump(prompts, f, indent=2, ensure_ascii=False)
 
 
 def load() -> dict:
@@ -42,6 +69,7 @@ def load() -> dict:
         'google_credentials': cfg.get('google', 'credentials_path', fallback=''),
         'drive_folder_id':    cfg.get('google', 'drive_folder_id', fallback=''),
         'gemini_api_key':     cfg.get('gemini', 'api_key', fallback=''),
+        'gemini_last_prompt': cfg.get('gemini', 'last_prompt', fallback=''),
         'copyright_text':     cfg.get('metadata', 'copyright_text', fallback=(
             '\u00a9 Sean McCormick / foundtextures.ca. '
             'Free for personal and commercial use. '
@@ -82,7 +110,8 @@ def save(data: dict) -> None:
     }
 
     cfg['gemini'] = {
-        'api_key': data.get('gemini_api_key', ''),
+        'api_key':     data.get('gemini_api_key', ''),
+        'last_prompt': data.get('gemini_last_prompt', ''),
     }
 
     cfg['metadata'] = {
