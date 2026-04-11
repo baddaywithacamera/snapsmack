@@ -7,7 +7,19 @@ Includes original code by the aforementioned with code contributed by Google Gem
 This software is provided free of charge for both commercial and non-commercial use. 
 
 2. MODIFICATIONS AND REDISTRIBUTION
-You are permitted to fork and modify the code. However, any redistributed versions of this software, modified or otherwise, must be made available for free under these exact license terms.
+You are permitted to fork and modify the code. However, any redistributed versions of this software, modified or otherwise, must satisfy all of the following conditions:
+
+  a) The complete corresponding source code must be made publicly available,
+     in a location accessible to anyone who receives the software, at no charge.
+
+  b) The software must be made available for free, under these exact license terms.
+
+  c) No technical measures may be applied that restrict a recipient's ability
+     to read, inspect, or modify the source code.
+
+Transparency is a security requirement: people have the right to see the code
+they are running. Distributing SnapSmack without its source, in whole or in part,
+is not permitted under any circumstances.
 
 3. CONTRIBUTIONS
 The main branch of SNAPSMACK remains closed to direct public contributions. Suggestions, bug reports, or fixes should be submitted via email to the address listed above.
