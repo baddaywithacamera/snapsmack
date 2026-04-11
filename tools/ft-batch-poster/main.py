@@ -214,6 +214,16 @@ class EntryRow(tk.Frame):
 
         tk.Label(self, text="orient", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=490, y=66)
 
+        # ── Colour swatches (filled by Gemini) ────────────────────────
+        tk.Label(self, text="colors", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=610, y=66)
+        self._swatch_labels = []
+        for i in range(3):
+            sw = tk.Label(self, bg=BG_CARD, relief="flat", width=4,
+                          cursor="hand2", font=FONT_SMALL)
+            sw.place(x=610 + i * 46, y=78, width=40, height=20)
+            self._swatch_labels.append(sw)
+        self._update_swatches(self.entry.colors)
+
         # ── Status badge ──────────────────────────────────────────────
         self._status_lbl = tk.Label(
             self, text="PENDING", font=("Segoe UI", 7, "bold"),
@@ -247,7 +257,29 @@ class EntryRow(tk.Frame):
             bg=bg, fg=fg,
         )
 
-    def fill_from_ai(self, title: str = '', tags: str = '', category: str = '', album: str = ''):
+    def _update_swatches(self, colors_str: str):
+        """Repaint the three colour swatch labels from a space-separated hex string."""
+        hexes = colors_str.split() if colors_str else []
+        for i, sw in enumerate(self._swatch_labels):
+            if i < len(hexes):
+                h = hexes[i]
+                sw.configure(bg=h, text=h, fg=self._contrast_fg(h))
+            else:
+                sw.configure(bg=BG_CARD, text="", fg=FG_DIM)
+
+    @staticmethod
+    def _contrast_fg(hex_color: str) -> str:
+        """Return black or white text depending on background luminance."""
+        try:
+            h = hex_color.lstrip('#')
+            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+            luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+            return '#000000' if luminance > 0.5 else '#FFFFFF'
+        except Exception:
+            return FG_MAIN
+
+    def fill_from_ai(self, title: str = '', tags: str = '', category: str = '',
+                     album: str = '', colors: str = ''):
         """Push Gemini-generated values into the live fields. Skips blank values."""
         if title:
             self._title_var.set(title)
@@ -257,6 +289,9 @@ class EntryRow(tk.Frame):
             self._cat_var.set(category)
         if album:
             self._album_var.set(album)
+        if colors:
+            self.entry.colors = colors
+            self._update_swatches(colors)
 
     def set_highlight(self, on: bool):
         self.configure(
@@ -1489,6 +1524,7 @@ class App(tk.Tk):
                                 tags=entry.tags,
                                 category=entry.category,
                                 album=entry.album,
+                                colors=entry.colors,
                             )
                         self._set_status(
                             f"Gemini: enriched {idx} / {total} — {entry.file}", FG_OK)

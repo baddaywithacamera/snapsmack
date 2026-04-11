@@ -66,25 +66,31 @@ TITLE: <a haiku-style title: three phrases separated by commas, e.g. "Dark stone
 TAGS: <5 to 8 space-separated hashtags, e.g. #stone #rust #texture #macro #urban>
 CATEGORY: <pick the single best match from this list, or leave blank: {cats_str}>
 ALBUM: <pick the single best match from this list, or leave blank: {albums_str}>
+COLORS: <the three most visually prominent colors in the image as uppercase hex codes separated by spaces, e.g. #A3724B #2E1F0D #8C6B3A>
 
 Rules:
 - TITLE must be evocative and descriptive of what is literally in the image
 - TAGS should describe subject, texture, colour, mood — lowercase, no spaces within a tag
 - CATEGORY must exactly match one of the options provided, or be left completely blank
 - ALBUM must exactly match one of the options provided, or be left completely blank
+- COLORS must be exactly 3 hex codes in #RRGGBB format, uppercase, space-separated
 - Do not add any explanation, preamble, or extra lines"""
 
 
 def _parse_response(text: str) -> dict:
-    """Extract TITLE/TAGS/CATEGORY/ALBUM from the model response."""
-    result = {'title': '', 'tags': '', 'category': '', 'album': ''}
+    """Extract TITLE/TAGS/CATEGORY/ALBUM/COLORS from the model response."""
+    result = {'title': '', 'tags': '', 'category': '', 'album': '', 'colors': ''}
     for line in text.strip().splitlines():
-        m = re.match(r'^(TITLE|TAGS|CATEGORY|ALBUM):\s*(.*)', line.strip(), re.IGNORECASE)
+        m = re.match(r'^(TITLE|TAGS|CATEGORY|ALBUM|COLORS):\s*(.*)', line.strip(), re.IGNORECASE)
         if m:
             key = m.group(1).lower()
             val = m.group(2).strip()
             if key in result:
                 result[key] = val
+    # Normalise colors: ensure valid hex codes only
+    if result['colors']:
+        hexes = re.findall(r'#[0-9A-Fa-f]{6}', result['colors'])
+        result['colors'] = ' '.join(h.upper() for h in hexes[:3])
     return result
 
 
@@ -139,6 +145,8 @@ def enrich_batch(
                 entry.category = parsed['category']
             if parsed['album']:
                 entry.album = parsed['album']
+            if parsed['colors']:
+                entry.colors = parsed['colors']
 
             if on_progress:
                 on_progress(i, total, entry, None)

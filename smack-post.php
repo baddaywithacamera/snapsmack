@@ -492,7 +492,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             // --- COLOUR PALETTE EXTRACTION ---
             // Extract dominant colours from the image for Galleria frame customisation.
             $palette = snapsmack_extract_palette($target_path, 5);
-            $display_options_json = !empty($palette) ? json_encode(['palette' => $palette]) : null;
+            $display_opts = !empty($palette) ? ['palette' => $palette] : [];
+
+            // Merge AI-supplied hex codes (from Smack Your Batch Up / Gemini) if present.
+            $ai_colors_raw = trim($_POST['img_ai_colors'] ?? '');
+            if ($ai_colors_raw !== '') {
+                $ai_hexes = array_values(array_filter(
+                    explode(' ', $ai_colors_raw),
+                    fn($h) => preg_match('/^#[0-9A-Fa-f]{6}$/', $h)
+                ));
+                if (!empty($ai_hexes)) {
+                    $display_opts['ai_colors'] = $ai_hexes;
+                }
+            }
+
+            $display_options_json = !empty($display_opts) ? json_encode($display_opts) : null;
         }
 
         // --- ORIENTATION DETECTION ---
