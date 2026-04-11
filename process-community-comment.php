@@ -32,6 +32,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/community-session.php';
+require_once __DIR__ . '/core/ban-check.php';
 
 // --- METHOD ---
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -188,19 +189,44 @@ if (!community_rate_limit('comments')) {
     exit;
 }
 
+// --- BAN CHECK ---
+// Collect fingerprint hash from payload (injected by ss-engine-fingerprint.js).
+$fp_hash = preg_match('/^[0-9a-f]{64}$/', $_POST['fp_hash'] ?? '')
+           ? $_POST['fp_hash'] : '';
+
+$check_email = $guest_email ?? ($user['email'] ?? '');
+
+// Silent rejection: banned submissions get a valid-looking success response
+// so the submitter doesn't know they've been blocked and won't probe further.
+if (is_banned($pdo, $fp_hash, $_SERVER['REMOTE_ADDR'] ?? '', $check_email)) {
+    // Return a plausible-looking fake comment ID so the JS renders normally
+    echo json_encode([
+        'comment_id'   => rand(10000, 99999),
+        'is_guest'     => $is_guest,
+        'guest_name'   => $guest_name,
+        'username'     => $user['username'] ?? null,
+        'display_name' => $guest_name ?? ($user['display_name'] ?? ($user['username'] ?? null)),
+        'avatar_url'   => $user['avatar_url'] ?? null,
+        'comment_text' => $comment_text,
+        'created_at'   => date('Y-m-d H:i:s'),
+        'date_label'   => date('Y-m-d'),
+    ]);
+    exit;
+}
+
 // --- INSERT ---
 $ip = $_SERVER['REMOTE_ADDR'] ?? null;
 
 if ($is_guest) {
     $pdo->prepare("
-        INSERT INTO snap_community_comments (post_id, user_id, comment_text, guest_name, guest_email, ip)
-        VALUES (?, NULL, ?, ?, ?, ?)
-    ")->execute([$post_id, $comment_text, $guest_name, $guest_email, $ip]);
+        INSERT INTO snap_community_comments (post_id, user_id, comment_text, guest_name, guest_email, ip, fp_hash)
+        VALUES (?, NULL, ?, ?, ?, ?, ?)
+    ")->execute([$post_id, $comment_text, $guest_name, $guest_email, $ip, $fp_hash ?: null]);
 } else {
     $pdo->prepare("
-        INSERT INTO snap_community_comments (post_id, user_id, comment_text, ip)
-        VALUES (?, ?, ?, ?)
-    ")->execute([$post_id, (int)$user['id'], $comment_text, $ip]);
+        INSERT INTO snap_community_comments (post_id, user_id, comment_text, ip, fp_hash)
+        VALUES (?, ?, ?, ?, ?)
+    ")->execute([$post_id, (int)$user['id'], $comment_text, $ip, $fp_hash ?: null]);
 }
 
 $comment_id = (int)$pdo->lastInsertId();

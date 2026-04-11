@@ -4,7 +4,7 @@
  * Alpha v0.7.9c
  *
  * Processes incoming comment submissions, verifies global and per-image permissions,
- * applies optional spam filtering, and stores comments for moderation.
+ * applies optional spam filtering, checks the ban list, and stores comments for moderation.
  */
 
 error_reporting(E_ALL);
@@ -20,6 +20,7 @@ if (!file_exists($db_path)) {
 }
 
 require_once $db_path;
+require_once __DIR__ . '/core/ban-check.php';
 
 if (file_exists($spam_path)) {
     require_once $spam_path;
@@ -30,11 +31,13 @@ if (file_exists($spam_path)) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // --- INPUT PARSING ---
-    $img_id = (int)($_POST['img_id'] ?? 0);
-    $author = trim($_POST['author'] ?? 'Anonymous');
-    $email  = trim($_POST['email'] ?? '');
-    $text   = trim($_POST['comment_text'] ?? '');
-    $ip     = $_SERVER['REMOTE_ADDR'];
+    $img_id  = (int)($_POST['img_id'] ?? 0);
+    $author  = trim($_POST['author'] ?? 'Anonymous');
+    $email   = trim($_POST['email'] ?? '');
+    $text    = trim($_POST['comment_text'] ?? '');
+    $ip      = $_SERVER['REMOTE_ADDR'];
+    $fp_hash = preg_match('/^[0-9a-f]{64}$/', $_POST['fp_hash'] ?? '')
+               ? $_POST['fp_hash'] : '';
 
     // Validation: Image ID and comment text are required
     if ($img_id === 0 || empty($text)) {
@@ -61,6 +64,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             die("SIGNAL REJECTED: Comments are disabled for this frequency.");
         }
 
+        // --- BAN CHECK ---
+        // Silent rejection: banned submissions appear to succeed but are discarded.
+        // The submitter sees the normal redirect; nothing is stored.
+        if (is_banned($pdo, $fp_hash, $ip, $email)) {
+            $target = "/index.php" . ($slug ? "/" . $slug : "");
+            header("Location: " . $target . "?status=received");
+            exit;
+        }
+
         // --- SPAM FILTERING ---
         // Optional Akismet check. If flagged, currently allows storage for manual review.
         if (function_exists('is_spam')) {
@@ -71,8 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // --- DATABASE INSERTION ---
         // Store comment with is_approved = 0 for moderation queue
-        $stmt = $pdo->prepare("INSERT INTO snap_comments (img_id, comment_author, comment_email, comment_text, comment_ip) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$img_id, $author, $email, $text, $ip]);
+        $stmt = $pdo->prepare("INSERT INTO snap_comments (img_id, comment_author, comment_email, comment_text, comment_ip, fp_hash) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$img_id, $author, $email, $text, $ip, $fp_hash ?: null]);
 
         // --- REDIRECT ---
         // Send user back to the post with success status

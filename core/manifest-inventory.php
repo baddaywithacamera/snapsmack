@@ -656,6 +656,11 @@ return [
                 ]
             ]
         ],
+        'smack-fingerprint' => [
+            'label'        => 'Browser Fingerprint Engine (passive — required for ban system)',
+            'path'         => 'assets/js/ss-engine-fingerprint.js',
+            'has_settings' => false,
+        ],
         'smack-community' => [
             'label'        => 'Community Engine (Likes, Comments, Reactions)',
             'path'         => 'assets/js/ss-engine-community.js',

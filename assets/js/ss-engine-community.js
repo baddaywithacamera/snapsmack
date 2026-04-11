@@ -226,6 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const payload = { post_id: postId, comment_text: text };
                 if (guestNameInput)  payload.guest_name  = guestNameInput.value.trim();
                 if (guestEmailInput) payload.guest_email = guestEmailInput.value.trim();
+                if (window.__ssFpHash) payload.fp_hash   = window.__ssFpHash;
 
                 post('/process-community-comment.php', payload)
                 .then(data => {
