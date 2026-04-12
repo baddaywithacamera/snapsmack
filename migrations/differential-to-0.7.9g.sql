@@ -1,5 +1,5 @@
--- SnapSmack — Schema Differential to Alpha 0.7.9c
--- Apply to any site running a schema older than 0.7.9c.
+-- SnapSmack — Schema Differential to Alpha 0.7.9g
+-- Apply to any site running a schema older than 0.7.9g.
 -- Safe to run multiple times: ALTER TABLE will error on duplicate column
 -- (errno 1060 / ER_DUP_FIELDNAME) which can be ignored.
 --
