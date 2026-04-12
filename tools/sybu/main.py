@@ -52,8 +52,8 @@ STATUS_COLORS = {
     'warning':  (FG_WARN,   "#000000"),
 }
 
-THUMB_SIZE  = (72, 72)
-ROW_HEIGHT  = 108       # px per entry row (taller to fit inline editing)
+THUMB_SIZE  = (144, 144)
+ROW_HEIGHT  = 168       # px per entry row (taller to fit inline editing)
 WIN_W, WIN_H = 1020, 920
 FONT_UI      = ("Segoe UI", 9)
 FONT_BOLD    = ("Segoe UI", 9, "bold")
@@ -134,21 +134,23 @@ class EntryRow(tk.Frame):
         self._handle.bind("<ButtonRelease-1>", on_drag_end)
 
         # ── Thumbnail ─────────────────────────────────────────────────
+        # Centred vertically: (ROW_HEIGHT - THUMB_SIZE[1]) // 2 = (168-144)//2 = 12
         self._thumb_lbl = tk.Label(
             self, bg="#0A0A0E", relief="flat",
             text="…", fg=FG_DIM, font=FONT_SMALL,
         )
-        self._thumb_lbl.place(x=30, y=18, width=THUMB_SIZE[0], height=THUMB_SIZE[1])
+        self._thumb_lbl.place(x=30, y=12, width=THUMB_SIZE[0], height=THUMB_SIZE[1])
 
         # ── File name ─────────────────────────────────────────────────
+        # Content area starts at x=190 (28 handle + 144 thumb + 18 gap)
         self._fname_lbl = tk.Label(
             self, text=self.entry.file, bg=BG_CARD, fg=FG_MAIN,
             font=FONT_BOLD, anchor="w",
         )
-        self._fname_lbl.place(x=110, y=6, width=830, height=16)
+        self._fname_lbl.place(x=190, y=8, width=760, height=16)
 
         # ── Inline title entry ────────────────────────────────────────
-        tk.Label(self, text="title", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=110, y=24)
+        tk.Label(self, text="title", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=190, y=30)
         self._title_var = tk.StringVar(value=self.entry.title)
         self._title_entry = tk.Entry(
             self, textvariable=self._title_var,
@@ -156,11 +158,11 @@ class EntryRow(tk.Frame):
             relief="flat", font=FONT_SMALL, bd=0,
             highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT,
         )
-        self._title_entry.place(x=145, y=22, width=695, height=20)
+        self._title_entry.place(x=226, y=28, width=695, height=20)
         self._title_var.trace_add("write", lambda *a: setattr(self.entry, 'title', self._title_var.get()))
 
         # ── Inline tags entry ─────────────────────────────────────────
-        tk.Label(self, text="tags", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=110, y=50)
+        tk.Label(self, text="tags", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=190, y=56)
         self._tags_var = tk.StringVar(value=self.entry.tags)
         self._tags_entry = tk.Entry(
             self, textvariable=self._tags_var,
@@ -168,38 +170,37 @@ class EntryRow(tk.Frame):
             relief="flat", font=FONT_SMALL, bd=0,
             highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT,
         )
-        self._tags_entry.place(x=145, y=48, width=695, height=20)
+        self._tags_entry.place(x=226, y=54, width=695, height=20)
         self._tags_var.trace_add("write", lambda *a: setattr(self.entry, 'tags', self._tags_var.get()))
 
         # ── Category combobox ─────────────────────────────────────────
+        tk.Label(self, text="cat", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=190, y=88)
         self._cat_var = tk.StringVar(value=self.entry.category)
         self._cat_cb = ttk.Combobox(
             self, textvariable=self._cat_var, values=[''] + cats,
             font=FONT_SMALL, state="normal",
         )
-        self._cat_cb.place(x=110, y=78, width=180)
+        self._cat_cb.place(x=190, y=100, width=200)
         self._cat_cb.bind("<<ComboboxSelected>>",
                     lambda e: setattr(self.entry, 'category', self._cat_var.get()))
         self._cat_var.trace_add("write",
                     lambda *a: setattr(self.entry, 'category', self._cat_var.get()))
 
-        tk.Label(self, text="cat", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=110, y=66)
-
         # ── Album combobox ────────────────────────────────────────────
+        tk.Label(self, text="album", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=402, y=88)
         self._album_var = tk.StringVar(value=self.entry.album)
         self._album_cb = ttk.Combobox(
             self, textvariable=self._album_var, values=[''] + albums,
             font=FONT_SMALL, state="normal",
         )
-        self._album_cb.place(x=300, y=78, width=180)
+        self._album_cb.place(x=402, y=100, width=200)
         self._album_cb.bind("<<ComboboxSelected>>",
                       lambda e: setattr(self.entry, 'album', self._album_var.get()))
         self._album_var.trace_add("write",
                       lambda *a: setattr(self.entry, 'album', self._album_var.get()))
 
-        tk.Label(self, text="album", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=300, y=66)
-
         # ── Orientation combobox ─────────────────────────────────────
+        tk.Label(self, text="orient", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=614, y=88)
         orient_display = {'auto': 'Auto', '0': 'Landscape', '1': 'Portrait', '2': 'Square'}
         display_val = orient_display.get(self.entry.orientation, 'Auto')
         self._orient_var = tk.StringVar(value=display_val)
@@ -208,21 +209,19 @@ class EntryRow(tk.Frame):
             values=['Auto', 'Landscape', 'Portrait', 'Square'],
             font=FONT_SMALL, state="readonly", width=9,
         )
-        self._orient_cb.place(x=490, y=78, width=100)
+        self._orient_cb.place(x=614, y=100, width=110)
         orient_reverse = {'Auto': 'auto', 'Landscape': '0', 'Portrait': '1', 'Square': '2'}
         self._orient_cb.bind("<<ComboboxSelected>>",
                       lambda e: setattr(self.entry, 'orientation',
                                         orient_reverse.get(self._orient_var.get(), 'auto')))
 
-        tk.Label(self, text="orient", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=490, y=66)
-
         # ── Colour swatches (filled by Gemini) ────────────────────────
-        tk.Label(self, text="colors", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=610, y=66)
+        tk.Label(self, text="colors", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=736, y=88)
         self._swatch_labels = []
         for i in range(3):
             sw = tk.Label(self, bg=BG_CARD, relief="flat", width=4,
                           cursor="hand2", font=FONT_SMALL)
-            sw.place(x=610 + i * 46, y=78, width=40, height=20)
+            sw.place(x=736 + i * 50, y=100, width=44, height=20)
             self._swatch_labels.append(sw)
         self._update_swatches(self.entry.colors)
 
@@ -231,7 +230,8 @@ class EntryRow(tk.Frame):
             self, text="PENDING", font=("Segoe UI", 7, "bold"),
             padx=6, pady=2, relief="flat",
         )
-        self._status_lbl.place(x=868, y=42, width=72, height=20)
+        # Centred vertically: (ROW_HEIGHT - 20) // 2 = 74
+        self._status_lbl.place(x=868, y=74, width=72, height=20)
         self._set_status_visual('pending')
 
         # Bind resize so fields stretch to fill the row width
@@ -248,8 +248,8 @@ class EntryRow(tk.Frame):
         if w < 400:
             return
         badge_x  = w - self._BADGE_W - self._RIGHT_PAD
-        entry_w  = badge_x - 145 - self._BADGE_GAP
-        fname_w  = badge_x - 110 - 10
+        entry_w  = badge_x - 226 - self._BADGE_GAP   # entries start at x=226
+        fname_w  = badge_x - 190 - 10                 # filename starts at x=190
         self._title_entry.place(width=max(entry_w, 50))
         self._tags_entry.place(width=max(entry_w, 50))
         self._fname_lbl.place(width=max(fname_w, 50))
@@ -1010,6 +1010,25 @@ class App(tk.Tk):
                                          command=self._on_validate)
         self._validate_btn.pack(side="left", padx=(14, 6), pady=10)
 
+        # ENRICH WITH GEMINI — canvas button matching POST BATCH style
+        self._bottom_enrich_canvas = tk.Canvas(
+            bottom, width=180, height=36,
+            bg=BG_DEEP, highlightthickness=0, cursor="hand2",
+        )
+        self._bottom_enrich_canvas.pack(side="left", padx=(4, 0), pady=6)
+        self._bottom_enrich_rect = self._bottom_enrich_canvas.create_rectangle(
+            0, 0, 180, 36, fill="#0D2B3E", outline=FG_OK, width=1,
+        )
+        self._bottom_enrich_text = self._bottom_enrich_canvas.create_text(
+            90, 18, text="✦ ENRICH", fill="#00BFFF",
+            font=("Segoe UI", 10, "bold"),
+        )
+        self._bottom_enrich_canvas.bind("<Button-1>", lambda e: self._on_enrich())
+        self._bottom_enrich_canvas.bind("<Enter>", lambda e: self._bottom_enrich_canvas.itemconfig(
+            self._bottom_enrich_rect, fill="#143D55"))
+        self._bottom_enrich_canvas.bind("<Leave>", lambda e: self._bottom_enrich_canvas.itemconfig(
+            self._bottom_enrich_rect, fill="#0D2B3E"))
+
         # POST BATCH — drawn on a tk.Canvas because Windows ignores bg/fg
         # on both tk.Button AND tk.Label under certain DPI / theme combos.
         # Canvas pixel drawing is the one thing Windows cannot override.
@@ -1563,6 +1582,10 @@ class App(tk.Tk):
         custom_prompt = self._gem_prompt_txt.get("1.0", "end").strip()
 
         self._enrich_btn.configure(state="disabled")
+        self._bottom_enrich_canvas.configure(cursor="")
+        self._bottom_enrich_canvas.unbind("<Button-1>")
+        self._bottom_enrich_canvas.itemconfig(self._bottom_enrich_rect, fill="#1A1A1A")
+        self._bottom_enrich_canvas.itemconfig(self._bottom_enrich_text, fill=FG_DIM)
         self._set_status(f"Enriching with Gemini — 0 / {len(entries)}…", FG_WARN)
 
         def _enrich_thread():
@@ -1602,6 +1625,10 @@ class App(tk.Tk):
 
             def _done():
                 self._enrich_btn.configure(state="normal")
+                self._bottom_enrich_canvas.configure(cursor="hand2")
+                self._bottom_enrich_canvas.bind("<Button-1>", lambda e: self._on_enrich())
+                self._bottom_enrich_canvas.itemconfig(self._bottom_enrich_rect, fill="#0D2B3E")
+                self._bottom_enrich_canvas.itemconfig(self._bottom_enrich_text, fill="#00BFFF")
                 self._set_status("Gemini enrichment complete. Review and post.", FG_OK)
                 self._save_config()
             self.after(0, _done)
