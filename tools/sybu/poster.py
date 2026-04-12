@@ -280,9 +280,16 @@ class SnapSmackClient:
             # ── 5. POST to SnapSmack ──────────────────────────────────
             orient = entry.orientation if entry.orientation != 'auto' else default_orientation
 
+            # Merge colour hex codes into hashtags so they become searchable tags
+            post_tags = entry.tags
+            if entry.colors:
+                hex_tags = ' '.join(entry.colors.split())
+                if hex_tags:
+                    post_tags = f"{post_tags} {hex_tags}" if post_tags else hex_tags
+
             form_data: Dict[str, str] = {
                 'title':                entry.title,
-                'tags':                 entry.tags,
+                'tags':                 post_tags,
                 'img_status':           'published',
                 'desc':                 copyright_str,
                 'allow_download':       '1' if drive_url else '0',
