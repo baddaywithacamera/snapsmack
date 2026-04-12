@@ -62,6 +62,7 @@ Follow the existing header and commenting style exactly. Do not invent new forma
 - Settings stored in `snap_settings` as key-value pairs.
 - `INSERT IGNORE` for initial seeding; `ON DUPLICATE KEY UPDATE` for saves.
 - Changing a skin's defaults in the manifest does NOT require a migration — the manifest `default` is used as fallback when no DB value exists.
+- **Every new table or column added to `snapsmack_canonical.sql` must have a corresponding numbered migration file in `/migrations/`.** Name it `NNN_description.php` using the next available number. The migration must be idempotent (check before applying). This is what the in-admin update runner uses — schema changes without a migration file will not reach existing installs.
 
 ## CSS Architecture
 
