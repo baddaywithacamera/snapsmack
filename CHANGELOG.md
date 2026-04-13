@@ -4,6 +4,20 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.9j — "Is This Seat Taken" (2026-04-13)
+
+### Fixed
+- **Multisite status indicators use CSS classes, not hardcoded colours.** `#4CAF50`, `#f44336`, and `#FF9800` removed from PHP. All status dots, labels, backup indicators, version-behind flags, and hub connection border now use `.status-dot--*`, `.status-label--*`, `.version-behind`, and `.hub-connected-border` classes.
+- **Phosphor themes no longer bleed non-theme colours.** Green Phosphorus and Amber Phosphorus now override all multisite status classes with brightness-only shades of their respective colours. No reds, oranges, or Material Design colours appear on monochrome displays.
+- **Black Pearl disconnect button was invisible** (`#333` text on dark background). Now `#CC4444` with white hover.
+- **Heartbeat sweep was skipping offline spokes** — once a spoke went offline it could never recover. Now skips only `disconnected` nodes.
+- **Crosspost inline `<style>` and `<script>` blocks eliminated.** CSS moved to `admin-theme-geometry-master.css`; JS moved to `assets/js/ss-engine-crosspost.js`.
+
+### Added
+- **Verify Connection button on spoke's multisite page.** Spoke can now actively ping the hub and get immediate confirmation rather than waiting passively for the hub's next heartbeat sweep.
+
+---
+
 ## 0.7.9i — "Is This Seat Taken" (2026-04-13)
 
 ### Fixed
