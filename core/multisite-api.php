@@ -342,6 +342,29 @@ if ($resource === 'backup' && $sub_action === 'log' && $method === 'GET') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: GET multisite/backup/config
+// Returns this site's cloud provider, folder target, and site metadata so that
+// SUYB can auto-populate profile fields without manual entry. Never exposes
+// secrets (client_secret, refresh_token) — only the provider type and folder.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'backup' && $sub_action === 'config' && $method === 'GET') {
+    $cloud_provider = 'none';
+    if (!empty($settings['google_client_id']) && !empty($settings['google_refresh_token'])) {
+        $cloud_provider = 'google_drive';
+    } elseif (!empty($settings['onedrive_client_id']) && !empty($settings['onedrive_refresh_token'])) {
+        $cloud_provider = 'onedrive';
+    }
+
+    ms_ok([
+        'site_url'       => BASE_URL,
+        'site_name'      => $settings['site_name'] ?? 'SnapSmack',
+        'cloud_provider' => $cloud_provider,
+        'cloud_folder_id'=> $settings['google_drive_folder_id'] ?? $settings['onedrive_folder_id'] ?? '',
+        'version'        => SNAPSMACK_VERSION,
+    ]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: POST multisite/posts/create
 // Cross-post: create a new image record from a hub-originated post.
 // The hub sends metadata + a publicly accessible URL for the image file.
