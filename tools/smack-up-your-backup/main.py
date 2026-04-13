@@ -1160,22 +1160,67 @@ class AuditTab(tk.Frame):
 # ---------------------------------------------------------------------------
 
 class SettingsTab(tk.Frame):
+    """Scrollable two-column settings panel."""
+
+    # Field width constants — keep compact
+    _W_ENTRY = 28          # Standard text entry (characters)
+    _W_SHORT = 8           # Short numeric entry
+    _W_PATH  = 32          # File path / folder ID entry
+    _PAD     = 12          # Horizontal section padding
+
     def __init__(self, parent, app, **kwargs):
         super().__init__(parent, bg=BG_DEEP, **kwargs)
         self._app = app
         self._build()
 
     def _build(self):
-        pad = {"padx": 24, "pady": 6}
         self._profile_vars: dict[str, tk.StringVar] = {}
 
-        # ── Site Connection ──────────────────────────────────────────────────
-        tk.Label(self, text="Site Connection", bg=BG_DEEP, fg=ACCENT,
-                 font=FONT_HEAD).pack(anchor="w", padx=24, pady=(20, 4))
+        # ── Scrollable canvas wrapper ────────────────────────────────────────
+        canvas = tk.Canvas(self, bg=BG_DEEP, highlightthickness=0)
+        sb     = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
 
-        site_frame = tk.Frame(self, bg=BG_DEEP)
-        site_frame.pack(fill="x", **pad)
-        site_frame.columnconfigure(1, weight=1)
+        inner = tk.Frame(canvas, bg=BG_DEEP)
+        win_id = canvas.create_window((0, 0), window=inner, anchor="nw")
+
+        def _on_configure(_e):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            canvas.itemconfigure(win_id, width=canvas.winfo_width())
+
+        inner.bind("<Configure>", _on_configure)
+        canvas.bind("<Configure>", _on_configure)
+
+        # Mouse-wheel scrolling
+        def _on_mousewheel(e):
+            canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        pad = self._PAD
+        W   = self._W_ENTRY
+        WP  = self._W_PATH
+        WS  = self._W_SHORT
+
+        # ── Two-column top container ─────────────────────────────────────────
+        cols = tk.Frame(inner, bg=BG_DEEP)
+        cols.pack(fill="x", padx=pad, pady=(10, 0))
+        cols.columnconfigure(0, weight=1)
+        cols.columnconfigure(1, weight=1)
+
+        # =====================================================================
+        # LEFT COLUMN — Profile settings
+        # =====================================================================
+        left = tk.Frame(cols, bg=BG_DEEP)
+        left.grid(row=0, column=0, sticky="nsew", padx=(0, pad))
+
+        # ── Site Connection ─────────────────────────────────────────────
+        tk.Label(left, text="Site Connection", bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w", pady=(0, 4))
+
+        site_frame = tk.Frame(left, bg=BG_DEEP)
+        site_frame.pack(fill="x")
         for row, (label, key, show) in enumerate([
             ("Blog name",       "name",            ""),
             ("Site URL",        "site_url",        ""),
@@ -1183,26 +1228,26 @@ class SettingsTab(tk.Frame):
             ("Admin password",  "snap_admin_pass", "●"),
         ]):
             tk.Label(site_frame, text=label, bg=BG_DEEP, fg=FG_DIM,
-                     font=FONT_SMALL, anchor="w").grid(row=row, column=0, sticky="w", padx=(0, 12), pady=3)
+                     font=FONT_SMALL, anchor="w").grid(row=row, column=0, sticky="w", padx=(0, 8), pady=2)
             var = tk.StringVar()
             tk.Entry(site_frame, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
                      insertbackground=ACCENT, relief="flat",
-                     font=FONT_MONO, width=38, show=show).grid(row=row, column=1, sticky="ew", pady=3)
+                     font=FONT_MONO, width=W, show=show).grid(row=row, column=1, sticky="w", pady=2)
             self._profile_vars[key] = var
 
-        # ── Backup Method ────────────────────────────────────────────────────
-        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=24, pady=(12, 8))
-        tk.Label(self, text="Backup Method", bg=BG_DEEP, fg=ACCENT,
-                 font=FONT_HEAD).pack(anchor="w", padx=24, pady=(4, 6))
+        # ── Backup Method ───────────────────────────────────────────────
+        tk.Frame(left, bg=BORDER, height=1).pack(fill="x", pady=(8, 6))
+        tk.Label(left, text="Backup Method", bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w", pady=(0, 4))
 
-        method_frame = tk.Frame(self, bg=BG_DEEP)
-        method_frame.pack(fill="x", padx=24)
+        method_frame = tk.Frame(left, bg=BG_DEEP)
+        method_frame.pack(anchor="w")
 
         self._method_var = tk.StringVar(value="ftp")
         for val, label in [
-            ("ftp",   "FTP — differential sync from server"),
-            ("cloud", "Cloud — push backup to Google Drive / OneDrive"),
-            ("local", "Local only — save to disk, no upload"),
+            ("ftp",   "FTP — differential sync"),
+            ("cloud", "Cloud — Google Drive / OneDrive"),
+            ("local", "Local only — no upload"),
         ]:
             tk.Radiobutton(
                 method_frame, text=label, variable=self._method_var, value=val,
@@ -1211,44 +1256,39 @@ class SettingsTab(tk.Frame):
                 command=self._on_method_change,
             ).pack(anchor="w", pady=1)
 
-        # ── FTP fields (shown when method = ftp) ────────────────────────────
-        self._ftp_frame = tk.Frame(self, bg=BG_DEEP)
-        self._ftp_frame.columnconfigure(1, weight=1)
-        for row, (label, key, show) in enumerate([
-            ("FTP host",       "ftp_host",       ""),
-            ("FTP port",       "ftp_port",       ""),
-            ("FTP username",   "ftp_user",       ""),
-            ("FTP password",   "ftp_pass",       "●"),
-            ("Remote directory","ftp_remote_dir", ""),
+        # ── FTP fields (shown when method = ftp) ───────────────────────
+        self._ftp_frame = tk.Frame(left, bg=BG_DEEP)
+        for row, (label, key, show, w) in enumerate([
+            ("FTP host",        "ftp_host",       "", W),
+            ("FTP port",        "ftp_port",       "", WS),
+            ("FTP username",    "ftp_user",       "", W),
+            ("FTP password",    "ftp_pass",       "●", W),
+            ("Remote directory","ftp_remote_dir", "", W),
         ]):
             tk.Label(self._ftp_frame, text=label, bg=BG_DEEP, fg=FG_DIM,
-                     font=FONT_SMALL, anchor="w").grid(row=row, column=0, sticky="w", padx=(0, 12), pady=3)
+                     font=FONT_SMALL, anchor="w").grid(row=row, column=0, sticky="w", padx=(0, 8), pady=2)
             var = tk.StringVar()
             tk.Entry(self._ftp_frame, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
                      insertbackground=ACCENT, relief="flat",
-                     font=FONT_MONO, width=38, show=show).grid(row=row, column=1, sticky="ew", pady=3)
+                     font=FONT_MONO, width=w, show=show).grid(row=row, column=1, sticky="w", pady=2)
             self._profile_vars[key] = var
 
-        # FTP TLS checkbox
         self._ftp_ssl_var = tk.BooleanVar(value=True)
         tk.Checkbutton(self._ftp_frame, text="Use FTP_TLS", variable=self._ftp_ssl_var,
                        bg=BG_DEEP, fg=FG_MAIN, selectcolor=BG_INPUT,
                        activebackground=BG_DEEP, font=FONT_BODY).grid(
-            row=5, column=0, columnspan=2, sticky="w", pady=3)
+            row=5, column=0, columnspan=2, sticky="w", pady=2)
         self._profile_vars["ftp_ssl"] = self._ftp_ssl_var
 
-        # ── Cloud fields (shown when method = cloud) ─────────────────────────
-        self._cloud_frame = tk.Frame(self, bg=BG_DEEP)
-        self._cloud_frame.columnconfigure(1, weight=1)
+        # ── Cloud fields (shown when method = cloud) ────────────────────
+        self._cloud_frame = tk.Frame(left, bg=BG_DEEP)
 
-        # Cloud provider dropdown
-        tk.Label(self._cloud_frame, text="Cloud provider", bg=BG_DEEP, fg=FG_DIM,
-                 font=FONT_SMALL, anchor="w").grid(row=0, column=0, sticky="w", padx=(0, 12), pady=3)
+        tk.Label(self._cloud_frame, text="Provider", bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").grid(row=0, column=0, sticky="w", padx=(0, 8), pady=2)
         cloud_prov_var = tk.StringVar()
-        cloud_cb = ttk.Combobox(self._cloud_frame, textvariable=cloud_prov_var,
-                                values=["google_drive", "onedrive", "none"],
-                                font=FONT_MONO, state="readonly", width=20)
-        cloud_cb.grid(row=0, column=1, sticky="w", pady=3)
+        ttk.Combobox(self._cloud_frame, textvariable=cloud_prov_var,
+                     values=["google_drive", "onedrive", "none"],
+                     font=FONT_MONO, state="readonly", width=16).grid(row=0, column=1, sticky="w", pady=2)
         self._profile_vars["cloud_provider"] = cloud_prov_var
 
         for row, (label, key) in enumerate([
@@ -1256,193 +1296,166 @@ class SettingsTab(tk.Frame):
             ("Cloud folder ID",  "cloud_folder_id"),
         ], start=1):
             tk.Label(self._cloud_frame, text=label, bg=BG_DEEP, fg=FG_DIM,
-                     font=FONT_SMALL, anchor="w").grid(row=row, column=0, sticky="w", padx=(0, 12), pady=3)
+                     font=FONT_SMALL, anchor="w").grid(row=row, column=0, sticky="w", padx=(0, 8), pady=2)
             var = tk.StringVar()
             tk.Entry(self._cloud_frame, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
                      insertbackground=ACCENT, relief="flat",
-                     font=FONT_MONO, width=38).grid(row=row, column=1, sticky="ew", pady=3)
+                     font=FONT_MONO, width=W).grid(row=row, column=1, sticky="w", pady=2)
             self._profile_vars[key] = var
 
-        cred_btn_row = tk.Frame(self._cloud_frame, bg=BG_DEEP)
-        cred_btn_row.grid(row=3, column=0, columnspan=2, sticky="w", pady=4)
-        tk.Button(cred_btn_row, text="Browse credentials…", bg=BG_CARD, fg=FG_MAIN,
-                  relief="flat", font=FONT_BODY, padx=10, pady=4,
-                  command=self._browse_credentials).pack(side="left")
+        tk.Button(self._cloud_frame, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_SMALL, padx=8, pady=2,
+                  command=self._browse_credentials).grid(row=3, column=0, columnspan=2, sticky="w", pady=4)
 
-        # ── Local backup directory (always shown) ────────────────────────────
-        self._local_frame = tk.Frame(self, bg=BG_DEEP)
-        self._local_frame.columnconfigure(1, weight=1)
+        # ── Local backup directory (always shown) ───────────────────────
+        self._local_frame = tk.Frame(left, bg=BG_DEEP)
         tk.Label(self._local_frame, text="Backup directory", bg=BG_DEEP, fg=FG_DIM,
-                 font=FONT_SMALL, anchor="w").grid(row=0, column=0, sticky="w", padx=(0, 12), pady=3)
+                 font=FONT_SMALL, anchor="w").grid(row=0, column=0, sticky="w", padx=(0, 8), pady=2)
         bkdir_var = tk.StringVar()
         tk.Entry(self._local_frame, textvariable=bkdir_var, bg=BG_INPUT, fg=FG_MAIN,
                  insertbackground=ACCENT, relief="flat",
-                 font=FONT_MONO, width=38).grid(row=0, column=1, sticky="ew", pady=3)
+                 font=FONT_MONO, width=W).grid(row=0, column=1, sticky="w", pady=2)
         self._profile_vars["backup_dir"] = bkdir_var
         tk.Button(self._local_frame, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
-                  relief="flat", font=FONT_BODY, padx=10, pady=4,
-                  command=self._browse_backup_dir).grid(row=0, column=2, padx=(6, 0), pady=3)
+                  relief="flat", font=FONT_SMALL, padx=8, pady=2,
+                  command=self._browse_backup_dir).grid(row=0, column=2, padx=(4, 0), pady=2)
 
-        # ── Save button ─────────────────────────────────────────────────────
-        prof_btn_row = tk.Frame(self, bg=BG_DEEP)
-        prof_btn_row.pack(anchor="w", padx=24, pady=(8, 4))
-        tk.Button(prof_btn_row, text="Save Profile", bg=ACCENT, fg=BG_DEEP,
+        # ── Save Profile button ─────────────────────────────────────────
+        tk.Button(left, text="Save Profile", bg=ACCENT, fg=BG_DEEP,
                   relief="flat", font=FONT_HEAD, padx=14, pady=6,
-                  command=self._save_profile).pack(side="left")
+                  command=self._save_profile).pack(anchor="w", pady=(8, 4))
 
-        self._no_profile_lbl = tk.Label(self, text="No profile selected — use the dropdown at top-right.",
+        self._no_profile_lbl = tk.Label(left, text="No profile selected.",
                                          bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL)
 
         # Show FTP fields by default
         self._on_method_change()
 
-        # ── Separator ────────────────────────────────────────────────────────
-        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=24, pady=(8, 12))
+        # =====================================================================
+        # RIGHT COLUMN — Global settings
+        # =====================================================================
+        right = tk.Frame(cols, bg=BG_DEEP)
+        right.grid(row=0, column=1, sticky="nsew", padx=(pad, 0))
 
-        # ── Global Defaults ──────────────────────────────────────────────────
-        tk.Label(self, text="Global Defaults", bg=BG_DEEP, fg=ACCENT,
-                 font=FONT_HEAD).pack(anchor="w", padx=24, pady=(4, 4))
+        # ── Global Defaults ─────────────────────────────────────────────
+        tk.Label(right, text="Global Defaults", bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w", pady=(0, 4))
 
-        frame = tk.Frame(self, bg=BG_DEEP)
-        frame.pack(fill="x", **pad)
-        frame.columnconfigure(1, weight=1)
+        gd_frame = tk.Frame(right, bg=BG_DEEP)
+        gd_frame.pack(fill="x")
 
         self._delay_var = tk.StringVar()
         self._batch_var = tk.StringVar()
 
         for row, (label, var) in enumerate([
-            ("Default pacing delay (sec)", self._delay_var),
-            ("Default batch size (0=unlimited)", self._batch_var),
+            ("Pacing delay (sec)", self._delay_var),
+            ("Batch size (0=all)", self._batch_var),
         ]):
-            tk.Label(frame, text=label, bg=BG_DEEP, fg=FG_DIM,
-                     font=FONT_SMALL, anchor="w").grid(row=row, column=0, sticky="w", padx=(0, 12), pady=3)
-            tk.Entry(frame, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
+            tk.Label(gd_frame, text=label, bg=BG_DEEP, fg=FG_DIM,
+                     font=FONT_SMALL, anchor="w").grid(row=row, column=0, sticky="w", padx=(0, 8), pady=2)
+            tk.Entry(gd_frame, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
                      insertbackground=ACCENT, relief="flat",
-                     font=FONT_MONO, width=10).grid(row=row, column=1, sticky="w", pady=3)
+                     font=FONT_MONO, width=WS).grid(row=row, column=1, sticky="w", pady=2)
 
-        # ── Global Cloud Config ─────────────────────────────────────────────
-        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=24, pady=(8, 8))
-        tk.Label(self, text="Global Cloud Config", bg=BG_DEEP, fg=ACCENT,
-                 font=FONT_HEAD).pack(anchor="w", padx=24, pady=(4, 4))
-        tk.Label(self, text="Shared cloud settings used by all profiles unless\n"
-                            "overridden per-profile above. Service account JSON\n"
-                            "key stays on this machine — never uploaded.",
+        # ── Global Cloud Config ─────────────────────────────────────────
+        tk.Frame(right, bg=BORDER, height=1).pack(fill="x", pady=(8, 6))
+        tk.Label(right, text="Global Cloud Config", bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w", pady=(0, 2))
+        tk.Label(right, text="Shared by all profiles unless overridden.\n"
+                            "Service account key stays local — never uploaded.",
                  bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL,
-                 justify="left").pack(anchor="w", padx=24, pady=(0, 6))
+                 justify="left").pack(anchor="w", pady=(0, 4))
 
-        gc_frame = tk.Frame(self, bg=BG_DEEP)
-        gc_frame.pack(fill="x", **pad)
-        gc_frame.columnconfigure(1, weight=1)
+        gc_frame = tk.Frame(right, bg=BG_DEEP)
+        gc_frame.pack(fill="x")
 
-        # Provider dropdown
-        tk.Label(gc_frame, text="Cloud provider", bg=BG_DEEP, fg=FG_DIM,
-                 font=FONT_SMALL, anchor="w").grid(row=0, column=0, sticky="w", padx=(0, 12), pady=3)
+        tk.Label(gc_frame, text="Provider", bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").grid(row=0, column=0, sticky="w", padx=(0, 8), pady=2)
         self._gc_provider_var = tk.StringVar()
-        gc_prov_cb = ttk.Combobox(gc_frame, textvariable=self._gc_provider_var,
-                                  values=["google_drive", "onedrive", "none"],
-                                  font=FONT_MONO, state="readonly", width=20)
-        gc_prov_cb.grid(row=0, column=1, sticky="w", pady=3)
+        ttk.Combobox(gc_frame, textvariable=self._gc_provider_var,
+                     values=["google_drive", "onedrive", "none"],
+                     font=FONT_MONO, state="readonly", width=16).grid(row=0, column=1, sticky="w", pady=2)
 
-        # Service account key file
-        tk.Label(gc_frame, text="Service account key", bg=BG_DEEP, fg=FG_DIM,
-                 font=FONT_SMALL, anchor="w").grid(row=1, column=0, sticky="w", padx=(0, 12), pady=3)
+        tk.Label(gc_frame, text="SA key file", bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").grid(row=1, column=0, sticky="w", padx=(0, 8), pady=2)
         self._gc_creds_var = tk.StringVar()
         tk.Entry(gc_frame, textvariable=self._gc_creds_var, bg=BG_INPUT, fg=FG_MAIN,
                  insertbackground=ACCENT, relief="flat",
-                 font=FONT_MONO, width=38).grid(row=1, column=1, sticky="ew", pady=3)
-        tk.Button(gc_frame, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
-                  relief="flat", font=FONT_SMALL, padx=8, pady=2,
-                  command=self._browse_global_key).grid(row=1, column=2, padx=(6, 0), pady=3)
+                 font=FONT_MONO, width=W).grid(row=1, column=1, sticky="w", pady=2)
+        tk.Button(gc_frame, text="…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_SMALL, padx=6, pady=1,
+                  command=self._browse_global_key).grid(row=1, column=2, padx=(4, 0), pady=2)
 
-        # Key status label
         self._gc_key_status_var = tk.StringVar(value="")
         tk.Label(gc_frame, textvariable=self._gc_key_status_var,
                  bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL,
-                 anchor="w").grid(row=2, column=1, sticky="w", pady=(0, 3))
+                 anchor="w").grid(row=2, column=1, sticky="w", pady=(0, 2))
 
-        # Folder ID
-        tk.Label(gc_frame, text="Drive folder ID", bg=BG_DEEP, fg=FG_DIM,
-                 font=FONT_SMALL, anchor="w").grid(row=3, column=0, sticky="w", padx=(0, 12), pady=3)
+        tk.Label(gc_frame, text="Folder ID", bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").grid(row=3, column=0, sticky="w", padx=(0, 8), pady=2)
         self._gc_folder_var = tk.StringVar()
         tk.Entry(gc_frame, textvariable=self._gc_folder_var, bg=BG_INPUT, fg=FG_MAIN,
                  insertbackground=ACCENT, relief="flat",
-                 font=FONT_MONO, width=38).grid(row=3, column=1, sticky="ew", pady=3)
+                 font=FONT_MONO, width=W).grid(row=3, column=1, sticky="w", pady=2)
 
-        tk.Button(self, text="Save Defaults", bg=ACCENT, fg=BG_DEEP,
+        tk.Button(right, text="Save Defaults", bg=ACCENT, fg=BG_DEEP,
                   relief="flat", font=FONT_HEAD, padx=14, pady=6,
-                  command=self._save).pack(anchor="w", padx=24, pady=12)
+                  command=self._save).pack(anchor="w", pady=(8, 4))
 
-        # ── AI Matcher ───────────────────────────────────────────────────────
-        tk.Label(self, text="AI File Matching", bg=BG_DEEP, fg=ACCENT,
-                 font=FONT_HEAD).pack(anchor="w", padx=24, pady=(16, 4))
-
-        ai_frame = tk.Frame(self, bg=BG_DEEP)
-        ai_frame.pack(fill="x", padx=24, pady=4)
+        # ── AI File Matching ────────────────────────────────────────────
+        tk.Frame(right, bg=BORDER, height=1).pack(fill="x", pady=(8, 6))
+        tk.Label(right, text="AI File Matching", bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w", pady=(0, 2))
 
         self._ai_status_var = tk.StringVar(value="Checking…")
-        tk.Label(ai_frame, textvariable=self._ai_status_var,
-                 bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL,
-                 wraplength=480, justify="left").pack(anchor="w")
-
-        tk.Label(ai_frame,
-                 text="When installed, ambiguous file matches are resolved using\n"
-                      "semantic path similarity (all-MiniLM-L6-v2, ~90 MB, CPU only).",
-                 bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL,
-                 justify="left").pack(anchor="w", pady=(4, 8))
-
-        tk.Button(ai_frame, text="Install  (pip install sentence-transformers)",
+        tk.Label(right, textvariable=self._ai_status_var,
+                 bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w")
+        tk.Button(right, text="Install  (pip install sentence-transformers)",
                   bg=BG_INPUT, fg=FG_MAIN, relief="flat", font=FONT_SMALL,
-                  padx=10, pady=4,
-                  command=self._install_ai).pack(anchor="w")
+                  padx=8, pady=3,
+                  command=self._install_ai).pack(anchor="w", pady=(4, 0))
 
-        # ── Hub / Spoke Discovery ────────────────────────────────────────────
-        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=24, pady=(16, 8))
-        tk.Label(self, text="Hub / Spoke Discovery", bg=BG_DEEP, fg=ACCENT,
-                 font=FONT_HEAD).pack(anchor="w", padx=24, pady=(4, 4))
-
-        tk.Label(self, text="Connect to a hub blog to auto-discover all spokes and\n"
-                            "create profiles for the entire network. Cloud config is\n"
-                            "pulled from each spoke automatically when available.",
+        # ── Hub / Spoke Discovery ───────────────────────────────────────
+        tk.Frame(right, bg=BORDER, height=1).pack(fill="x", pady=(8, 6))
+        tk.Label(right, text="Hub / Spoke Discovery", bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w", pady=(0, 2))
+        tk.Label(right, text="Auto-discover spokes from a hub blog\n"
+                            "and create profiles for each.",
                  bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL,
-                 justify="left").pack(anchor="w", padx=24, pady=(0, 8))
+                 justify="left").pack(anchor="w", pady=(0, 4))
 
-        disc_row = tk.Frame(self, bg=BG_DEEP)
-        disc_row.pack(anchor="w", padx=24, pady=(0, 4))
+        disc_row = tk.Frame(right, bg=BG_DEEP)
+        disc_row.pack(anchor="w", pady=(0, 2))
         tk.Button(disc_row, text="Discover from Hub…", bg=BG_CARD, fg=FG_MAIN,
-                  relief="flat", font=FONT_BODY, padx=12, pady=6,
+                  relief="flat", font=FONT_BODY, padx=10, pady=4,
                   command=self._discover_from_hub).pack(side="left")
         tk.Button(disc_row, text="Pull Cloud Config", bg=BG_CARD, fg=FG_MAIN,
-                  relief="flat", font=FONT_BODY, padx=12, pady=6,
-                  command=self._pull_cloud_config).pack(side="left", padx=(10, 0))
+                  relief="flat", font=FONT_BODY, padx=10, pady=4,
+                  command=self._pull_cloud_config).pack(side="left", padx=(6, 0))
 
         self._disc_status_var = tk.StringVar(value="")
-        tk.Label(self, textvariable=self._disc_status_var,
+        tk.Label(right, textvariable=self._disc_status_var,
                  bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL,
-                 wraplength=480, justify="left").pack(anchor="w", padx=24, pady=(0, 8))
+                 wraplength=380, justify="left").pack(anchor="w")
 
-        # ── Export / Import ──────────────────────────────────────────────────
-        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=24, pady=(16, 8))
-        tk.Label(self, text="Export / Import Settings", bg=BG_DEEP, fg=ACCENT,
-                 font=FONT_HEAD).pack(anchor="w", padx=24, pady=(4, 4))
+        # ── Export / Import ─────────────────────────────────────────────
+        tk.Frame(right, bg=BORDER, height=1).pack(fill="x", pady=(8, 6))
+        tk.Label(right, text="Export / Import Settings", bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w", pady=(0, 4))
 
-        tk.Label(self, text="Export all profiles and global settings to a single JSON file,\n"
-                            "or restore from a previously exported file.",
-                 bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL,
-                 justify="left").pack(anchor="w", padx=24, pady=(0, 8))
-
-        xp_row = tk.Frame(self, bg=BG_DEEP)
-        xp_row.pack(anchor="w", padx=24, pady=(0, 12))
-        tk.Button(xp_row, text="Export All Settings…", bg=BG_CARD, fg=FG_MAIN,
-                  relief="flat", font=FONT_BODY, padx=12, pady=6,
+        xp_row = tk.Frame(right, bg=BG_DEEP)
+        xp_row.pack(anchor="w", pady=(0, 8))
+        tk.Button(xp_row, text="Export All…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY, padx=10, pady=4,
                   command=self._export_settings).pack(side="left")
-        tk.Button(xp_row, text="Import Settings…", bg=BG_CARD, fg=FG_MAIN,
-                  relief="flat", font=FONT_BODY, padx=12, pady=6,
-                  command=self._import_settings).pack(side="left", padx=(10, 0))
+        tk.Button(xp_row, text="Import…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY, padx=10, pady=4,
+                  command=self._import_settings).pack(side="left", padx=(6, 0))
 
-        # Version
-        tk.Label(self, text=f"Smack Up Your Backup  v{BUILD_VERSION}",
+        # ── Version footer (bottom of scrollable area) ──────────────────
+        tk.Label(inner, text=f"Smack Up Your Backup  v{BUILD_VERSION}",
                  bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL).pack(
-            side="bottom", anchor="e", padx=24, pady=12)
+            anchor="e", padx=pad, pady=(8, 12))
 
     def load(self, cfg) -> None:
         self._delay_var.set(cfg.get("pacing", "transfer_delay", fallback="2"))
@@ -1465,11 +1478,11 @@ class SettingsTab(tk.Frame):
 
         # Re-pack in order: method-specific → local dir (always)
         if method == "ftp":
-            self._ftp_frame.pack(fill="x", padx=24, pady=(8, 0))
+            self._ftp_frame.pack(fill="x", pady=(6, 0))
         elif method == "cloud":
-            self._cloud_frame.pack(fill="x", padx=24, pady=(8, 0))
+            self._cloud_frame.pack(fill="x", pady=(6, 0))
         # Local backup directory is always shown
-        self._local_frame.pack(fill="x", padx=24, pady=(8, 0))
+        self._local_frame.pack(fill="x", pady=(6, 0))
 
     def _browse_credentials(self) -> None:
         path = filedialog.askopenfilename(
