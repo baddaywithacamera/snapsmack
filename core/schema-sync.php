@@ -477,6 +477,44 @@ function snap_schema_sync(PDO $pdo): array {
           UNIQUE KEY `uq_key_hash` (`key_hash`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+        'snap_multisite_nodes' => "CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
+          `id`                  int unsigned   NOT NULL AUTO_INCREMENT,
+          `role`                enum('hub','spoke') COLLATE utf8mb4_unicode_ci NOT NULL,
+          `site_url`            varchar(500)   COLLATE utf8mb4_unicode_ci NOT NULL,
+          `site_name`           varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `api_key_local`       varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL
+                                COMMENT 'Our key that the remote site uses to call us',
+          `api_key_remote`      varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL
+                                COMMENT 'Key we use to call the remote site',
+          `software_version`    varchar(50)    COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `last_seen_at`        datetime       DEFAULT NULL,
+          `post_count`          int unsigned   DEFAULT 0,
+          `image_count`         int unsigned   DEFAULT 0,
+          `pending_comments`    int unsigned   DEFAULT 0,
+          `last_backup_at`      datetime       DEFAULT NULL,
+          `last_backup_size`    bigint unsigned DEFAULT NULL,
+          `last_backup_dest`    varchar(100)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+          `last_backup_status`  enum('ok','failed','unknown') COLLATE utf8mb4_unicode_ci DEFAULT 'unknown',
+          `disk_usage_bytes`    bigint unsigned DEFAULT NULL,
+          `status`              enum('active','offline','disconnected') COLLATE utf8mb4_unicode_ci DEFAULT 'active',
+          `connected_at`        datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (`id`),
+          UNIQUE KEY `uq_site_url` (`site_url`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+        'snap_multisite_queue' => "CREATE TABLE IF NOT EXISTS `snap_multisite_queue` (
+          `id`                  int unsigned   NOT NULL AUTO_INCREMENT,
+          `node_id`             int unsigned   NOT NULL,
+          `action`              varchar(50)    COLLATE utf8mb4_unicode_ci NOT NULL,
+          `payload`             text           COLLATE utf8mb4_unicode_ci,
+          `status`              enum('pending','processing','completed','failed') COLLATE utf8mb4_unicode_ci DEFAULT 'pending',
+          `attempts`            tinyint unsigned DEFAULT 0,
+          `created_at`          datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          `processed_at`        datetime       DEFAULT NULL,
+          PRIMARY KEY (`id`),
+          KEY `idx_node_status` (`node_id`, `status`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
     ];
 
     foreach ($create_tables as $table => $ddl) {
@@ -624,6 +662,79 @@ function snap_schema_sync(PDO $pdo): array {
 
         } catch (\PDOException $e) {
             $report['errors'][] = "ADD INDEX {$table}.{$index}: " . $e->getMessage();
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 4. ENUM REPAIRS — fix enum columns on existing tables
+    //    CREATE TABLE IF NOT EXISTS cannot update an existing column type.
+    //    This section detects stale enum values and ALTERs them to match the
+    //    canonical schema. Each entry checks COLUMN_TYPE before acting.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    $enum_repairs = [
+
+        // Migration 032: satellite → spoke rename. If the table existed before
+        // that migration, the enum may still say ('hub','satellite').
+        [
+            'table'    => 'snap_multisite_nodes',
+            'column'   => 'role',
+            'bad'      => "'satellite'",                     // substring present in stale enum
+            'good'     => "'spoke'",                         // substring expected in repaired enum
+            'alter'    => "ALTER TABLE `snap_multisite_nodes`
+                           MODIFY COLUMN `role` enum('hub','satellite','spoke') COLLATE utf8mb4_unicode_ci NOT NULL",
+            'update'   => "UPDATE `snap_multisite_nodes` SET `role` = 'spoke' WHERE `role` = 'satellite'",
+            'fix_blank'=> "UPDATE `snap_multisite_nodes` SET `role` = 'spoke' WHERE `role` = '' AND `site_url` != ''",
+            'finalise' => "ALTER TABLE `snap_multisite_nodes`
+                           MODIFY COLUMN `role` enum('hub','spoke') COLLATE utf8mb4_unicode_ci NOT NULL",
+        ],
+
+    ];
+
+    $col_type_check = $pdo->prepare(
+        "SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME   = ?
+           AND COLUMN_NAME  = ?"
+    );
+
+    foreach ($enum_repairs as $repair) {
+        try {
+            $col_type_check->execute([$repair['table'], $repair['column']]);
+            $col_type = $col_type_check->fetchColumn();
+
+            if ($col_type === false) {
+                // Table or column doesn't exist yet — nothing to repair.
+                $report['skipped'][] = "ENUM {$repair['table']}.{$repair['column']} (column absent)";
+                continue;
+            }
+
+            if (str_contains($col_type, $repair['good']) && !str_contains($col_type, $repair['bad'])) {
+                // Already correct.
+                $report['skipped'][] = "ENUM {$repair['table']}.{$repair['column']}";
+                continue;
+            }
+
+            // Widen enum to include both old and new values
+            $pdo->exec($repair['alter']);
+
+            // Migrate rows from old value to new
+            $changed = $pdo->exec($repair['update']);
+            $report['columns_added'][] = "ENUM {$repair['table']}.{$repair['column']}: migrated {$changed} row(s)";
+
+            // Fix any blank rows left by MySQL silent-fail inserts
+            if (!empty($repair['fix_blank'])) {
+                $blank_fixed = $pdo->exec($repair['fix_blank']);
+                if ($blank_fixed > 0) {
+                    $report['columns_added'][] = "ENUM {$repair['table']}.{$repair['column']}: fixed {$blank_fixed} blank row(s)";
+                }
+            }
+
+            // Shrink enum to canonical set
+            $pdo->exec($repair['finalise']);
+
+        } catch (\PDOException $e) {
+            $report['errors'][] = "ENUM REPAIR {$repair['table']}.{$repair['column']}: " . $e->getMessage();
         }
     }
 
