@@ -364,6 +364,36 @@ if ($resource === 'backup' && $sub_action === 'config' && $method === 'GET') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: GET multisite/backup/export
+// Serves a SQL dump (schema or full) so SUYB on the hub can pull database
+// exports from spokes without needing direct DB credentials.
+//   ?dump=schema  — DDL only
+//   ?dump=full    — schema + data (default)
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'backup' && $sub_action === 'export' && $method === 'GET') {
+    require_once __DIR__ . '/export-engine.php';
+
+    $dump_type = $_GET['dump'] ?? 'full';
+    if (!in_array($dump_type, ['schema', 'full'], true)) {
+        ms_err('dump must be "schema" or "full"');
+    }
+
+    $exporter = new SnapSmackExport($pdo, dirname(__DIR__));
+    $sql = $exporter->generateSqlDump($dump_type);
+
+    $siteName = $settings['site_name'] ?? 'snapsmack';
+    $siteSlug = preg_replace('/[^A-Za-z0-9_-]+/', '_', trim($siteName));
+    $siteSlug = trim($siteSlug, '_') ?: 'snapsmack';
+    $timestamp = date('Y-m-d_H-i');
+
+    header('Content-Type: application/sql; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . "{$siteSlug}_{$dump_type}_{$timestamp}.sql" . '"');
+    header('Content-Length: ' . strlen($sql));
+    echo $sql;
+    exit;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: POST multisite/posts/create
 // Cross-post: create a new image record from a hub-originated post.
 // The hub sends metadata + a publicly accessible URL for the image file.
