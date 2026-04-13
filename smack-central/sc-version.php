@@ -7,5 +7,5 @@
  * to determine whether an update is available.
  */
 
-define('SC_VERSION',    '0.7.9i');
+define('SC_VERSION',    '0.7.9j');
 define('SC_CODENAME',   'Is This Seat Taken');
