@@ -831,8 +831,56 @@ class SettingsTab(tk.Frame):
 
     def _build(self):
         pad = {"padx": 24, "pady": 6}
-        tk.Label(self, text="Global Defaults", bg=BG_DEEP, fg=ACCENT,
+
+        # ── Active Profile — connection details ──────────────────────────────
+        tk.Label(self, text="Active Profile", bg=BG_DEEP, fg=ACCENT,
                  font=FONT_HEAD).pack(anchor="w", padx=24, pady=(20, 4))
+
+        self._profile_frame = tk.Frame(self, bg=BG_DEEP)
+        self._profile_frame.pack(fill="x", **pad)
+        self._profile_frame.columnconfigure(1, weight=1)
+
+        self._profile_vars: dict[str, tk.StringVar] = {}
+        profile_fields = [
+            ("Blog name",        "name",            ""),
+            ("Site URL",         "site_url",         ""),
+            ("FTP host",         "ftp_host",         ""),
+            ("FTP port",         "ftp_port",         ""),
+            ("FTP username",     "ftp_user",         ""),
+            ("FTP password",     "ftp_pass",         "●"),
+            ("FTP remote dir",   "ftp_remote_dir",   ""),
+            ("Admin username",   "snap_admin_user",  ""),
+            ("Admin password",   "snap_admin_pass",  "●"),
+            ("Backup directory", "backup_dir",       ""),
+        ]
+        for row, (label, key, show) in enumerate(profile_fields):
+            tk.Label(self._profile_frame, text=label, bg=BG_DEEP, fg=FG_DIM,
+                     font=FONT_SMALL, anchor="w").grid(row=row, column=0, sticky="w", padx=(0, 12), pady=3)
+            var = tk.StringVar()
+            entry = tk.Entry(self._profile_frame, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
+                             insertbackground=ACCENT, relief="flat",
+                             font=FONT_MONO, width=38, show=show)
+            entry.grid(row=row, column=1, sticky="ew", pady=3)
+            self._profile_vars[key] = var
+
+        prof_btn_row = tk.Frame(self, bg=BG_DEEP)
+        prof_btn_row.pack(anchor="w", padx=24, pady=(4, 12))
+        tk.Button(prof_btn_row, text="Save Profile", bg=ACCENT, fg=BG_DEEP,
+                  relief="flat", font=FONT_HEAD, padx=14, pady=6,
+                  command=self._save_profile).pack(side="left")
+        tk.Button(prof_btn_row, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY, padx=10, pady=4,
+                  command=self._browse_backup_dir).pack(side="left", padx=(10, 0))
+
+        self._no_profile_lbl = tk.Label(self, text="No profile selected — use the dropdown at top-right.",
+                                         bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL)
+
+        # ── Separator ────────────────────────────────────────────────────────
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=24, pady=(4, 12))
+
+        # ── Global Defaults ──────────────────────────────────────────────────
+        tk.Label(self, text="Global Defaults", bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w", padx=24, pady=(4, 4))
 
         frame = tk.Frame(self, bg=BG_DEEP)
         frame.pack(fill="x", **pad)
@@ -887,6 +935,42 @@ class SettingsTab(tk.Frame):
         self._delay_var.set(cfg.get("pacing", "transfer_delay", fallback="2"))
         self._batch_var.set(cfg.get("pacing", "batch_size",     fallback="0"))
         self._refresh_ai_status()
+        self.load_profile(self._app._current_profile)
+
+    def load_profile(self, profile: Optional[dict]) -> None:
+        """Populate the active profile fields from a profile dict, or clear them."""
+        if profile:
+            for key, var in self._profile_vars.items():
+                var.set(str(profile.get(key, "")))
+            self._no_profile_lbl.pack_forget()
+        else:
+            for var in self._profile_vars.values():
+                var.set("")
+            # Show hint if no profile selected
+            # (placed above Global Defaults, but below the profile fields)
+
+    def _save_profile(self) -> None:
+        """Write the profile fields back to disk."""
+        profile = self._app._current_profile
+        if not profile:
+            messagebox.showwarning("No profile", "Select a profile first.", parent=self)
+            return
+        for key, var in self._profile_vars.items():
+            val = var.get()
+            # Preserve int types for port/delay/batch
+            if key in ("ftp_port", "pacing_delay", "batch_size"):
+                try:
+                    val = int(val)
+                except ValueError:
+                    pass
+            profile[key] = val
+        profile_manager.save_profile(profile)
+        messagebox.showinfo("Saved", f"Profile \"{profile['name']}\" saved.", parent=self)
+
+    def _browse_backup_dir(self) -> None:
+        d = filedialog.askdirectory(title="Choose local backup folder")
+        if d and "backup_dir" in self._profile_vars:
+            self._profile_vars["backup_dir"].set(d)
 
     def _refresh_ai_status(self):
         import ai_matcher
@@ -1061,6 +1145,7 @@ class App(tk.Tk):
         if p:
             self._current_profile = p
             self._tab_backup.refresh(p)
+            self._tab_settings.load_profile(p)
             self.title(f"Smack Up Your Backup  —  {p['name']}  (v{BUILD_VERSION})")
 
     def _on_profile_selected(self, _event=None) -> None:
@@ -1083,6 +1168,8 @@ class App(tk.Tk):
         self.wait_window(dlg)
         if dlg.result:
             profile_manager.save_profile(dlg.result)
+            self._current_profile = dlg.result
+            self._tab_settings.load_profile(dlg.result)
             self._refresh_profile_list(dlg.result["name"])
 
     def _dup_profile(self) -> None:
