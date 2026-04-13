@@ -95,9 +95,12 @@ if (isset($_POST['register_spoke'])) {
                     (role, site_url, site_name, api_key_local, api_key_remote, status, connected_at)
                     VALUES (?, ?, ?, ?, ?, 'active', NOW())
                     ON DUPLICATE KEY UPDATE
+                        role           = VALUES(role),
+                        api_key_local  = VALUES(api_key_local),
                         api_key_remote = VALUES(api_key_remote),
-                        status = 'active',
-                        site_name = VALUES(site_name)
+                        status         = 'active',
+                        site_name      = VALUES(site_name),
+                        connected_at   = NOW()
                 ");
 
                 try {
