@@ -34,6 +34,12 @@ try {
     $updated = $pdo->exec("UPDATE snap_multisite_nodes SET role = 'spoke' WHERE role = 'satellite'");
     echo "032: Updated {$updated} node(s) from 'satellite' to 'spoke'.\n";
 
+    // ── 3b. Fix any rows with empty/blank role (inserted before enum was expanded)
+    $fixed = $pdo->exec("UPDATE snap_multisite_nodes SET role = 'spoke' WHERE role = '' AND site_url != ''");
+    if ($fixed > 0) {
+        echo "032: Fixed {$fixed} node(s) with blank role → 'spoke'.\n";
+    }
+
     // ── 4. DROP the old value from the enum ────────────────────────────────
     $pdo->exec("ALTER TABLE snap_multisite_nodes MODIFY COLUMN `role` enum('hub','spoke') NOT NULL");
 
