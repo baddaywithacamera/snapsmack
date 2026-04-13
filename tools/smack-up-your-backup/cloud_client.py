@@ -1,8 +1,13 @@
 """
 Smack Up Your Backup — cloud_client.py
-Google Drive and OneDrive OAuth + chunked upload/download.
-Each blog profile has its own credential file so different accounts
-can coexist across blogs.
+Google Drive and OneDrive cloud upload/download.
+
+Two Google Drive auth modes:
+  1. Service account JSON key (headless, no browser flow — preferred)
+  2. OAuth client-secret + interactive browser flow (legacy)
+
+Each blog profile can set its own credentials or fall back to the
+global cloud config (service account key + folder ID).
 """
 
 import json
@@ -15,7 +20,39 @@ CHUNK_SIZE = 5 * 1024 * 1024   # 5 MB
 
 
 # ---------------------------------------------------------------------------
-# Google Drive
+# Google Drive — service account (headless, preferred)
+# ---------------------------------------------------------------------------
+
+def _get_service_account_drive_service(key_file: str):
+    """Build a Drive service from a service account JSON key file."""
+    try:
+        from google.oauth2.service_account import Credentials
+        from googleapiclient.discovery import build
+    except ImportError:
+        raise RuntimeError(
+            "google-api-python-client and google-auth are required "
+            "for Google Drive support.  pip install google-api-python-client google-auth"
+        )
+
+    SCOPES = ["https://www.googleapis.com/auth/drive"]
+    creds  = Credentials.from_service_account_file(key_file, scopes=SCOPES)
+    return build("drive", "v3", credentials=creds)
+
+
+def _is_service_account_key(path: str) -> bool:
+    """Return True if the file looks like a service account JSON key."""
+    if not path or not os.path.isfile(path):
+        return False
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        return data.get("type") == "service_account"
+    except Exception:
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Google Drive — OAuth (interactive browser flow, legacy)
 # ---------------------------------------------------------------------------
 
 def _get_drive_service(credentials_file: str):
@@ -55,10 +92,14 @@ class DriveClient:
         self.credentials_file = credentials_file
         self.folder_id        = folder_id
         self._service         = None
+        self._is_sa           = _is_service_account_key(credentials_file)
 
     def _svc(self):
         if not self._service:
-            self._service = _get_drive_service(self.credentials_file)
+            if self._is_sa:
+                self._service = _get_service_account_drive_service(self.credentials_file)
+            else:
+                self._service = _get_drive_service(self.credentials_file)
         return self._service
 
     def upload_file(
@@ -333,11 +374,22 @@ class OneDriveClient:
 # Factory
 # ---------------------------------------------------------------------------
 
-def get_cloud_client(profile: dict):
-    """Return the appropriate cloud client for a profile, or None."""
-    provider = profile.get("cloud_provider", "none")
-    creds    = profile.get("cloud_credentials_file", "")
-    folder   = profile.get("cloud_folder_id", "")
+def get_cloud_client(profile: dict, global_cloud: Optional[dict] = None):
+    """Return the appropriate cloud client for a profile, or None.
+
+    Resolution order for each field:
+      1. Profile-level value (if non-empty)
+      2. Global cloud config (if provided)
+      3. None / empty → skip
+
+    This lets the user configure a single service account key and
+    Drive folder in global settings while still allowing per-profile
+    overrides for client isolation.
+    """
+    gc       = global_cloud or {}
+    provider = profile.get("cloud_provider") or gc.get("cloud_provider") or "none"
+    creds    = profile.get("cloud_credentials_file") or gc.get("cloud_credentials_file") or ""
+    folder   = profile.get("cloud_folder_id") or gc.get("cloud_folder_id") or ""
 
     if provider == "google_drive" and creds:
         return DriveClient(creds, folder)

@@ -20,14 +20,16 @@ ProgressCallback = Callable[[str, str, float], None]
 class RestoreEngine:
     def __init__(
         self,
-        profile:     dict,
-        on_progress: Optional[ProgressCallback] = None,
-        on_log:      Optional[Callable[[str], None]] = None,
+        profile:      dict,
+        on_progress:  Optional[ProgressCallback] = None,
+        on_log:       Optional[Callable[[str], None]] = None,
+        global_cloud: Optional[dict] = None,
     ):
-        self.profile     = profile
-        self.on_progress = on_progress or (lambda s, m, p: None)
-        self.on_log      = on_log or print
-        self._cancelled  = False
+        self.profile      = profile
+        self.on_progress  = on_progress or (lambda s, m, p: None)
+        self.on_log       = on_log or print
+        self.global_cloud = global_cloud or {}
+        self._cancelled   = False
 
     def cancel(self) -> None:
         self._cancelled = True
@@ -68,7 +70,7 @@ class RestoreEngine:
     def restore_from_cloud(self, file_id: str, local_download_dir: str) -> dict:
         """Download a backup ZIP from cloud then restore from it."""
         self._progress("cloud_dl", "Connecting to cloud…", 0.01)
-        cloud = cloud_module.get_cloud_client(self.profile)
+        cloud = cloud_module.get_cloud_client(self.profile, global_cloud=self.global_cloud)
         if not cloud:
             return self._fail("No cloud provider configured for this profile.")
 
