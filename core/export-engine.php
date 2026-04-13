@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK — Export Engine
- * Alpha v0.7.9c
+ * Alpha v0.7.9h
  *
  * All export logic: Recovery Kit, WordPress WXR, Portable JSON.
  * Called by smack-backup.php to generate downloadable archives.
@@ -41,7 +41,13 @@ class SnapSmackExport {
      */
     public function exportRecoveryKit(): string {
         $timestamp = date('Y-m-d_H-i');
-        $prefix = "snapsmack_recovery_{$timestamp}";
+        // Sanitise site name for use in a filename — strip non-alphanum chars
+        $siteName  = $this->settings['site_name'] ?? '';
+        $siteSlug  = preg_replace('/[^A-Za-z0-9_-]+/', '_', trim($siteName));
+        $siteSlug  = trim($siteSlug, '_');
+        $prefix    = $siteSlug
+            ? "snapsmack_{$siteSlug}_{$timestamp}"
+            : "snapsmack_recovery_{$timestamp}";
         $tarPath = sys_get_temp_dir() . "/{$prefix}.tar";
 
         // Clean up any stale temp files
