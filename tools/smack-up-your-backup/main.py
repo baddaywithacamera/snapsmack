@@ -170,6 +170,197 @@ class ProfileDialog(tk.Toplevel):
 
 
 # ---------------------------------------------------------------------------
+# Hub discovery dialog
+# ---------------------------------------------------------------------------
+
+class HubDiscoveryDialog(tk.Toplevel):
+    """Dialog for connecting to a hub blog and discovering all its spokes."""
+
+    def __init__(self, parent, app, title: str = "Discover from Hub"):
+        super().__init__(parent)
+        self.title(title)
+        self.configure(bg=BG_MID)
+        self.resizable(False, False)
+        self.grab_set()
+        self._app = app
+        self.created_count = 0
+        self._build()
+        self.transient(parent)
+        self.wait_visibility()
+        self.lift()
+
+    def _build(self):
+        pad = {"padx": 20, "pady": 6}
+        f = tk.Frame(self, bg=BG_MID)
+        f.pack(fill="both", expand=True, **pad)
+        f.columnconfigure(1, weight=1)
+
+        tk.Label(f, text="Hub Connection", bg=BG_MID, fg=ACCENT,
+                 font=FONT_HEAD).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
+
+        tk.Label(f, text="Enter the hub blog's URL and admin credentials.\n"
+                         "SUYB will discover all spokes and create profiles.",
+                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL,
+                 justify="left").grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 8))
+
+        self._vars = {}
+        for row, (label, key, show) in enumerate([
+            ("Hub URL",         "site_url",        ""),
+            ("Admin username",  "admin_user",      ""),
+            ("Admin password",  "admin_pass",      "●"),
+        ], start=2):
+            tk.Label(f, text=label, bg=BG_MID, fg=FG_DIM,
+                     font=FONT_SMALL, anchor="w").grid(
+                row=row, column=0, sticky="w", padx=(0, 12), pady=3)
+            var = tk.StringVar()
+            tk.Entry(f, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
+                     insertbackground=ACCENT, relief="flat",
+                     font=FONT_MONO, show=show, width=38).grid(
+                row=row, column=1, sticky="ew", pady=3)
+            self._vars[key] = var
+
+        # Pre-fill from current profile if available
+        cp = self._app._current_profile
+        if cp:
+            self._vars["site_url"].set(cp.get("site_url", ""))
+            self._vars["admin_user"].set(cp.get("snap_admin_user", ""))
+            self._vars["admin_pass"].set(cp.get("snap_admin_pass", ""))
+
+        # Backup directory for new profiles
+        tk.Label(f, text="Backup base dir", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").grid(
+            row=5, column=0, sticky="w", padx=(0, 12), pady=3)
+        self._dir_var = tk.StringVar()
+        dir_row = tk.Frame(f, bg=BG_MID)
+        dir_row.grid(row=5, column=1, sticky="ew", pady=3)
+        tk.Entry(dir_row, textvariable=self._dir_var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=30).pack(side="left", fill="x", expand=True)
+        tk.Button(dir_row, text="…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY,
+                  command=self._browse_dir).pack(side="left", padx=(4, 0))
+
+        # Status label
+        self._status_var = tk.StringVar(value="")
+        tk.Label(f, textvariable=self._status_var, bg=BG_MID, fg=FG_DIM,
+                 font=FONT_SMALL, wraplength=400,
+                 justify="left").grid(row=6, column=0, columnspan=2, sticky="w", pady=(8, 4))
+
+        # Buttons
+        btn_frame = tk.Frame(self, bg=BG_MID)
+        btn_frame.pack(fill="x", padx=20, pady=(0, 16))
+
+        tk.Button(btn_frame, text="Cancel", bg=BG_CARD, fg=FG_DIM,
+                  relief="flat", font=FONT_BODY,
+                  command=self.destroy).pack(side="right", padx=(8, 0))
+        self._go_btn = tk.Button(
+            btn_frame, text="Discover", bg=ACCENT, fg=BG_DEEP,
+            relief="flat", font=FONT_HEAD,
+            command=self._discover)
+        self._go_btn.pack(side="right")
+
+    def _browse_dir(self):
+        d = filedialog.askdirectory(title="Choose backup base directory")
+        if d:
+            self._dir_var.set(d)
+
+    def _discover(self):
+        url  = self._vars["site_url"].get().strip()
+        user = self._vars["admin_user"].get().strip()
+        pw   = self._vars["admin_pass"].get().strip()
+
+        if not url or not user or not pw:
+            messagebox.showerror("Required", "All three fields are required.", parent=self)
+            return
+
+        self._go_btn.configure(state="disabled")
+        self._status_var.set("Connecting to hub…")
+        self.update_idletasks()
+
+        import threading
+        threading.Thread(target=self._run_discovery,
+                         args=(url, user, pw), daemon=True).start()
+
+    def _run_discovery(self, url: str, user: str, pw: str):
+        try:
+            from hub_discovery import HubDiscovery, build_profiles_from_spokes
+
+            disc = HubDiscovery(url, user, pw)
+            self.after(0, lambda: self._status_var.set("Logged in. Fetching spoke list…"))
+
+            hub_info, spokes = disc.discover_spokes()
+
+            # Query each spoke for its backup config
+            spoke_configs = {}
+            for i, spoke in enumerate(spokes):
+                spoke_url = spoke.get("site_url", "").rstrip("/")
+                api_key   = spoke.get("api_key_remote", "")
+                self.after(0, lambda s=spoke.get("site_name", "?"), n=i+1, t=len(spokes):
+                           self._status_var.set(f"Querying spoke {n}/{t}: {s}…"))
+                if spoke_url and api_key:
+                    cfg = disc.fetch_spoke_backup_config(spoke_url, api_key)
+                    if cfg:
+                        spoke_configs[spoke_url] = cfg
+
+            disc.close()
+
+            # Build profile dicts
+            base_dir = self._dir_var.get().strip()
+            profiles = build_profiles_from_spokes(
+                hub_info, spokes, spoke_configs, base_dir,
+            )
+
+            # Also populate hub profile with admin credentials
+            if profiles:
+                profiles[0]["snap_admin_user"] = user
+                profiles[0]["snap_admin_pass"] = pw
+
+            self.after(0, lambda: self._on_discovery_done(profiles))
+
+        except Exception as e:
+            self.after(0, lambda: self._on_discovery_error(str(e)))
+
+    def _on_discovery_done(self, profiles: list):
+        if not profiles:
+            self._status_var.set("No blogs found.")
+            self._go_btn.configure(state="normal")
+            return
+
+        # Check for existing profiles to avoid duplicates
+        existing = set(profile_manager.list_profiles())
+        created = 0
+        skipped = 0
+
+        for p in profiles:
+            name = p.get("name", "")
+            if name in existing:
+                skipped += 1
+                continue
+            profile_manager.save_profile(p)
+            created += 1
+            existing.add(name)
+
+        self.created_count = created
+        msg = f"Done! Created {created} profile(s)."
+        if skipped:
+            msg += f" Skipped {skipped} existing."
+        self._status_var.set(msg)
+        self._go_btn.configure(state="normal")
+
+        if created > 0:
+            messagebox.showinfo(
+                "Discovery complete",
+                f"{msg}\n\nYou'll still need to enter FTP credentials and backup\n"
+                "directories for each spoke if they weren't auto-populated.",
+                parent=self,
+            )
+
+    def _on_discovery_error(self, err: str):
+        self._status_var.set(f"Error: {err}")
+        self._go_btn.configure(state="normal")
+
+
+# ---------------------------------------------------------------------------
 # Log widget
 # ---------------------------------------------------------------------------
 
@@ -1153,6 +1344,31 @@ class SettingsTab(tk.Frame):
                   padx=10, pady=4,
                   command=self._install_ai).pack(anchor="w")
 
+        # ── Hub / Spoke Discovery ────────────────────────────────────────────
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=24, pady=(16, 8))
+        tk.Label(self, text="Hub / Spoke Discovery", bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w", padx=24, pady=(4, 4))
+
+        tk.Label(self, text="Connect to a hub blog to auto-discover all spokes and\n"
+                            "create profiles for the entire network. Cloud config is\n"
+                            "pulled from each spoke automatically when available.",
+                 bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL,
+                 justify="left").pack(anchor="w", padx=24, pady=(0, 8))
+
+        disc_row = tk.Frame(self, bg=BG_DEEP)
+        disc_row.pack(anchor="w", padx=24, pady=(0, 4))
+        tk.Button(disc_row, text="Discover from Hub…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY, padx=12, pady=6,
+                  command=self._discover_from_hub).pack(side="left")
+        tk.Button(disc_row, text="Pull Cloud Config", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY, padx=12, pady=6,
+                  command=self._pull_cloud_config).pack(side="left", padx=(10, 0))
+
+        self._disc_status_var = tk.StringVar(value="")
+        tk.Label(self, textvariable=self._disc_status_var,
+                 bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL,
+                 wraplength=480, justify="left").pack(anchor="w", padx=24, pady=(0, 8))
+
         # ── Export / Import ──────────────────────────────────────────────────
         tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=24, pady=(16, 8))
         tk.Label(self, text="Export / Import Settings", bg=BG_DEEP, fg=ACCENT,
@@ -1383,6 +1599,80 @@ class SettingsTab(tk.Frame):
         messagebox.showinfo("Imported",
             f"Imported {imported} profile(s) and global settings from:\n{path}",
             parent=self)
+
+    # ── Hub / Spoke Discovery ───────────────────────────────────────────────
+
+    def _discover_from_hub(self):
+        """Open a dialog to enter hub credentials, then discover all spokes."""
+        dlg = HubDiscoveryDialog(self, self._app)
+        self.wait_window(dlg)
+        if dlg.created_count > 0:
+            self._disc_status_var.set(
+                f"Created {dlg.created_count} profile(s) from hub discovery."
+            )
+            self._app._profiles = profile_manager.list_profiles()
+            self._app._refresh_profile_list()
+
+    def _pull_cloud_config(self):
+        """Pull cloud config from the current profile's blog and update fields."""
+        profile = self._app._current_profile
+        if not profile:
+            messagebox.showwarning("No profile", "Select a profile first.", parent=self)
+            return
+
+        site_url   = profile.get("site_url", "").strip()
+        admin_user = profile.get("snap_admin_user", "").strip()
+        admin_pass = profile.get("snap_admin_pass", "").strip()
+
+        if not site_url or not admin_user or not admin_pass:
+            messagebox.showwarning(
+                "Missing credentials",
+                "Fill in the site URL and admin credentials first, then save the profile.",
+                parent=self,
+            )
+            return
+
+        self._disc_status_var.set("Connecting to blog…")
+        self.update_idletasks()
+
+        def _run():
+            try:
+                from hub_discovery import HubDiscovery
+                disc = HubDiscovery(site_url, admin_user, admin_pass)
+                data = disc.fetch_suyb_data()
+                disc.close()
+                self.after(0, lambda: self._apply_cloud_config(data))
+            except Exception as e:
+                self.after(0, lambda: self._disc_status_var.set(f"Error: {e}"))
+
+        import threading
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _apply_cloud_config(self, data: dict):
+        """Apply fetched cloud config to the current profile fields."""
+        cloud = data.get("cloud_config", {})
+        provider  = cloud.get("provider", "none")
+        folder_id = cloud.get("folder_id", "")
+
+        updated = []
+        if provider and provider != "none":
+            self._profile_vars["cloud_provider"].set(provider)
+            self._method_var.set("cloud")
+            self._on_method_change()
+            updated.append(f"provider={provider}")
+        if folder_id:
+            self._profile_vars["cloud_folder_id"].set(folder_id)
+            updated.append(f"folder={folder_id}")
+
+        site_name = data.get("site_name", "")
+        if site_name and not self._profile_vars["name"].get().strip():
+            self._profile_vars["name"].set(site_name)
+            updated.append(f"name={site_name}")
+
+        if updated:
+            self._disc_status_var.set(f"Pulled: {', '.join(updated)}")
+        else:
+            self._disc_status_var.set("No cloud configuration found on this blog.")
 
     def _save(self):
         cfg = self._app._cfg
