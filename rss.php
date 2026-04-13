@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - RSS 2.0 feed generator
- * Alpha v0.7.9c
  *
  * Dynamically generates an RSS feed of the most recently published images.
  * Formatted for compatibility with standard feed readers and the blogroll network.

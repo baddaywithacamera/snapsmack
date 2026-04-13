@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Solo Image Appearance
- * Alpha v0.7.9f
  *
  * Controls appearance and behaviour on individual post/image pages.
  * Covers EXIF display, download settings, and typography options

@@ -1,6 +1,5 @@
 /**
  * SNAPSMACK - Lightbox Engine
- * Alpha v0.7.5
  *
  * Full-screen image viewer with fade-in overlay. Handles:
  *   - Single post image (.post-image / .pg-post-image) on layout/archive views

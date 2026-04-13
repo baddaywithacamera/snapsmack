@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Multisite Management
- * Alpha v0.7.9c
  *
  * Hub and spoke site management interface. Allows admins to set up
  * multi-site configurations, register new spokes, and monitor their status.

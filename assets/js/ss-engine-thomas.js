@@ -1,6 +1,5 @@
 /**
  * SNAPSMACK - Thomas the Bear Engine
- * Alpha v0.7.5
  *
  * Easter egg: Ctrl+Shift+Y spawns dancing bears on the page. Click, press X,
  * or press ESC to clear them. Ctrl+Shift+Z opens the story of Noah and Thomas.

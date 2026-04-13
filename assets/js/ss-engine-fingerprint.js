@@ -1,6 +1,5 @@
 /**
  * SNAPSMACK - Browser Fingerprint Engine
- * Alpha v0.7.9c
  *
  * Passively collects browser signals and derives a stable 64-character
  * SHA-256 fingerprint. Requires no user interaction.

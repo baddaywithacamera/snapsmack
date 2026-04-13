@@ -76,8 +76,6 @@ def main():
     # --- core/constants.php ---
     constants_path = REPO_ROOT / "core" / "constants.php"
     patch_file(constants_path, [
-        # Doc-block version line:  * Alpha v0.7.9e
-        (r"( \* Alpha v)[\d.]+[a-z]?", rf"\g<1>{version}"),
         # define('SNAPSMACK_VERSION', 'Alpha 0.7.9e');
         (r"(define\('SNAPSMACK_VERSION',\s*'Alpha )[^']+(')", rf"\g<1>{version}\2"),
         # define('SNAPSMACK_VERSION_SHORT', '0.7.9e');

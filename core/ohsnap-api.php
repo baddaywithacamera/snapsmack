@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Oh Snap! API Handler
- * Alpha v0.7.9e
  *
  * Authenticated REST endpoints for the Oh Snap! desktop skin designer.
  * All endpoints require a valid Bearer token from snap_ohsnap_keys.

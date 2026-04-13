@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Reaction Toggle Handler
- * Alpha v0.7.9c
  *
  * AJAX endpoint. Sets or clears a reaction on a post. Supports both
  * authenticated community users (tracked by user_id) and anonymous
