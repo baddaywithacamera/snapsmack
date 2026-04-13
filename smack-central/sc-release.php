@@ -213,6 +213,15 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         'skins/pocket-rocket/',
         'skins/impact-printer/',
         'skins/the-grid/',
+        'tools/',
+        'snapsmack-ca/',
+        'snapsmack_site/',
+        'smack-central/',
+        '_spec/',
+        'CLAUDE.md',
+        'CHANGELOG.md',
+        'README.md',
+        '.gitignore',
     ];
 
     $differential = !empty($include_files);
