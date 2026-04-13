@@ -529,6 +529,7 @@ class BackupTab(tk.Frame):
             force_full=force_full,
             include_settings=include_settings,
             global_config=self._global_config_dict() if include_settings else None,
+            global_cloud=self._app.global_cloud_config(),
         )
         self._all_queue = []  # clear any multi-blog queue
         t = threading.Thread(target=self._run_engine, daemon=True)
@@ -591,6 +592,7 @@ class BackupTab(tk.Frame):
             force_full=force_full,
             include_settings=include_settings,
             global_config=self._global_config_dict() if include_settings else None,
+            global_cloud=self._app.global_cloud_config(),
         )
         t = threading.Thread(target=self._run_engine_queued, args=(profile,), daemon=True)
         t.start()
@@ -802,9 +804,9 @@ class RestoreTab(tk.Frame):
         if not profile:
             messagebox.showinfo("No profile", "Select a blog profile first.")
             return
-        cloud = cloud_module.get_cloud_client(profile)
+        cloud = cloud_module.get_cloud_client(profile, global_cloud=self._app.global_cloud_config())
         if not cloud:
-            messagebox.showerror("No cloud", "No cloud provider configured for this profile.")
+            messagebox.showerror("No cloud", "No cloud provider configured for this profile or global settings.")
             return
         backups = cloud_manifest_module.list_available_backups(cloud)
         if not backups:
@@ -834,6 +836,7 @@ class RestoreTab(tk.Frame):
             profile,
             on_progress=lambda s, m, p: self._app.queue_msg(("restore_progress", m, p)),
             on_log=lambda m: self._app.queue_msg(("restore_log", m)),
+            global_cloud=self._app.global_cloud_config(),
         )
 
         if src == "local":
@@ -1317,6 +1320,54 @@ class SettingsTab(tk.Frame):
                      insertbackground=ACCENT, relief="flat",
                      font=FONT_MONO, width=10).grid(row=row, column=1, sticky="w", pady=3)
 
+        # ── Global Cloud Config ─────────────────────────────────────────────
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=24, pady=(8, 8))
+        tk.Label(self, text="Global Cloud Config", bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w", padx=24, pady=(4, 4))
+        tk.Label(self, text="Shared cloud settings used by all profiles unless\n"
+                            "overridden per-profile above. Service account JSON\n"
+                            "key stays on this machine — never uploaded.",
+                 bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL,
+                 justify="left").pack(anchor="w", padx=24, pady=(0, 6))
+
+        gc_frame = tk.Frame(self, bg=BG_DEEP)
+        gc_frame.pack(fill="x", **pad)
+        gc_frame.columnconfigure(1, weight=1)
+
+        # Provider dropdown
+        tk.Label(gc_frame, text="Cloud provider", bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").grid(row=0, column=0, sticky="w", padx=(0, 12), pady=3)
+        self._gc_provider_var = tk.StringVar()
+        gc_prov_cb = ttk.Combobox(gc_frame, textvariable=self._gc_provider_var,
+                                  values=["google_drive", "onedrive", "none"],
+                                  font=FONT_MONO, state="readonly", width=20)
+        gc_prov_cb.grid(row=0, column=1, sticky="w", pady=3)
+
+        # Service account key file
+        tk.Label(gc_frame, text="Service account key", bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").grid(row=1, column=0, sticky="w", padx=(0, 12), pady=3)
+        self._gc_creds_var = tk.StringVar()
+        tk.Entry(gc_frame, textvariable=self._gc_creds_var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=38).grid(row=1, column=1, sticky="ew", pady=3)
+        tk.Button(gc_frame, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_SMALL, padx=8, pady=2,
+                  command=self._browse_global_key).grid(row=1, column=2, padx=(6, 0), pady=3)
+
+        # Key status label
+        self._gc_key_status_var = tk.StringVar(value="")
+        tk.Label(gc_frame, textvariable=self._gc_key_status_var,
+                 bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL,
+                 anchor="w").grid(row=2, column=1, sticky="w", pady=(0, 3))
+
+        # Folder ID
+        tk.Label(gc_frame, text="Drive folder ID", bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").grid(row=3, column=0, sticky="w", padx=(0, 12), pady=3)
+        self._gc_folder_var = tk.StringVar()
+        tk.Entry(gc_frame, textvariable=self._gc_folder_var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=38).grid(row=3, column=1, sticky="ew", pady=3)
+
         tk.Button(self, text="Save Defaults", bg=ACCENT, fg=BG_DEEP,
                   relief="flat", font=FONT_HEAD, padx=14, pady=6,
                   command=self._save).pack(anchor="w", padx=24, pady=12)
@@ -1396,6 +1447,11 @@ class SettingsTab(tk.Frame):
     def load(self, cfg) -> None:
         self._delay_var.set(cfg.get("pacing", "transfer_delay", fallback="2"))
         self._batch_var.set(cfg.get("pacing", "batch_size",     fallback="0"))
+        # Global cloud config
+        self._gc_provider_var.set(cfg.get("cloud", "provider", fallback="google_drive"))
+        self._gc_creds_var.set(cfg.get("cloud", "credentials_file", fallback=""))
+        self._gc_folder_var.set(cfg.get("cloud", "folder_id", fallback=""))
+        self._validate_global_key()
         self._refresh_ai_status()
         self.load_profile(self._app._current_profile)
 
@@ -1674,12 +1730,50 @@ class SettingsTab(tk.Frame):
         else:
             self._disc_status_var.set("No cloud configuration found on this blog.")
 
+    def _browse_global_key(self) -> None:
+        """File picker for the global service account JSON key."""
+        path = filedialog.askopenfilename(
+            title="Select service account JSON key",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+        )
+        if path:
+            self._gc_creds_var.set(path)
+            self._validate_global_key()
+
+    def _validate_global_key(self) -> None:
+        """Check whether the global key file is a valid service account key."""
+        import cloud_client as cc
+        path = self._gc_creds_var.get().strip()
+        if not path:
+            self._gc_key_status_var.set("")
+            return
+        if cc._is_service_account_key(path):
+            self._gc_key_status_var.set("Valid service account key")
+        elif os.path.isfile(path):
+            self._gc_key_status_var.set("Not a service account key — OAuth will be used")
+        else:
+            self._gc_key_status_var.set("File not found")
+
+    def global_cloud_config(self) -> dict:
+        """Return the current global cloud config as a dict for the factory."""
+        return {
+            "cloud_provider":         self._gc_provider_var.get() or "none",
+            "cloud_credentials_file": self._gc_creds_var.get().strip(),
+            "cloud_folder_id":        self._gc_folder_var.get().strip(),
+        }
+
     def _save(self):
         cfg = self._app._cfg
         if not cfg.has_section("pacing"):
             cfg.add_section("pacing")
         cfg.set("pacing", "transfer_delay", self._delay_var.get())
         cfg.set("pacing", "batch_size",     self._batch_var.get())
+        # Global cloud config
+        if not cfg.has_section("cloud"):
+            cfg.add_section("cloud")
+        cfg.set("cloud", "provider",         self._gc_provider_var.get())
+        cfg.set("cloud", "credentials_file", self._gc_creds_var.get().strip())
+        cfg.set("cloud", "folder_id",        self._gc_folder_var.get().strip())
         cfg_module.save(cfg)
         messagebox.showinfo("Saved", "Global defaults saved.")
 
@@ -1715,6 +1809,21 @@ class App(tk.Tk):
 
     def current_profile(self) -> Optional[dict]:
         return self._current_profile
+
+    def global_cloud_config(self) -> dict:
+        """Return the global cloud config dict for the cloud client factory.
+
+        If the SettingsTab is available, pull live values from the UI;
+        otherwise fall back to config.ini on disk."""
+        try:
+            return self._tab_settings.global_cloud_config()
+        except Exception:
+            cfg = self._cfg
+            return {
+                "cloud_provider":         cfg.get("cloud", "provider", fallback="none"),
+                "cloud_credentials_file": cfg.get("cloud", "credentials_file", fallback=""),
+                "cloud_folder_id":        cfg.get("cloud", "folder_id", fallback=""),
+            }
 
     def queue_msg(self, msg: tuple) -> None:
         self._msg_queue.put(msg)
