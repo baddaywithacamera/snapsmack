@@ -555,3 +555,15 @@ input[type="range"]::-webkit-slider-thumb {
 .reaction-option.is-active,
 .reaction-option:has(input:checked) { background-color: #081904; }
 
+/* MULTISITE STATUS — monochrome green: brightness encodes severity */
+.status-dot--active, .status-dot--ok       { background-color: #33ff00; }
+.status-label--active, .status-label--ok   { color: #33ff00; }
+.status-dot--offline, .status-dot--failed  { background-color: #0a3300; }
+.status-label--offline, .status-label--failed { color: #197700; }
+.status-dot--unknown                       { background-color: #197700; }
+.status-label--unknown                     { color: #197700; }
+.version-behind                            { color: #197700; }
+.hub-connected-border                      { border-left-color: #33ff00; }
+.multisite-table tr                        { border-bottom-color: #0a3300; }
+.multisite-table th                        { color: #197700; }
+
