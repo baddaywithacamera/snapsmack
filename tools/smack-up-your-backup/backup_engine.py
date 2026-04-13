@@ -204,10 +204,12 @@ class BackupEngine:
         profile:     dict,
         on_progress: Optional[ProgressCallback] = None,
         on_log:      Optional[Callable[[str], None]] = None,
+        force_full:  bool = False,
     ):
         self.profile     = profile
         self.on_progress = on_progress or (lambda stage, msg, pct: None)
         self.on_log      = on_log or print
+        self.force_full  = force_full
         self._cancelled  = False
 
     def cancel(self) -> None:
@@ -312,7 +314,11 @@ class BackupEngine:
             return result
 
         self._progress("stage3", "Checking previous backup state…", 0.20)
-        prev_state = load_backup_state(ftp)
+        if self.force_full:
+            prev_state = {}   # Empty state → every file counts as new
+            self._log("Full backup mode — ignoring previous backup state.")
+        else:
+            prev_state = load_backup_state(ftp)
 
         local_media_dir = os.path.join(backup_dir, f"{blog_name}_media_{timestamp}")
         os.makedirs(local_media_dir, exist_ok=True)
