@@ -225,6 +225,8 @@ class BackupTab(tk.Frame):
         self._app  = app
         self._busy = False
         self._engine: Optional[BackupEngine] = None
+        self._all_queue: list   = []
+        self._all_results: list = []
         self._build()
 
     def _build(self):
@@ -250,19 +252,27 @@ class BackupTab(tk.Frame):
         self._log = LogPane(self)
         self._log.pack(fill="both", expand=True, padx=16, pady=8)
 
-        # Backup mode toggle
-        mode_row = tk.Frame(self, bg=BG_DEEP)
-        mode_row.pack(fill="x", padx=16, pady=(4, 4))
+        # Options row: backup mode + include settings
+        opts_row = tk.Frame(self, bg=BG_DEEP)
+        opts_row.pack(fill="x", padx=16, pady=(4, 4))
+
         self._backup_mode_var = tk.StringVar(value="differential")
         for val, label in [
             ("differential", "Differential — skip unchanged files"),
             ("full",         "Full — re-download everything"),
         ]:
             tk.Radiobutton(
-                mode_row, text=label, variable=self._backup_mode_var, value=val,
+                opts_row, text=label, variable=self._backup_mode_var, value=val,
                 bg=BG_DEEP, fg=FG_MAIN, selectcolor=BG_INPUT,
                 activebackground=BG_DEEP, font=FONT_BODY,
             ).pack(side="left", padx=(0, 16))
+
+        self._include_settings_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(
+            opts_row, text="Include SUYB settings", variable=self._include_settings_var,
+            bg=BG_DEEP, fg=FG_MAIN, selectcolor=BG_INPUT,
+            activebackground=BG_DEEP, font=FONT_BODY,
+        ).pack(side="left", padx=(16, 0))
 
         # Bottom buttons
         btn_row = tk.Frame(self, bg=BG_DEEP)
@@ -274,6 +284,13 @@ class BackupTab(tk.Frame):
             command=self._start,
         )
         self._start_btn.pack(side="left")
+        self._all_btn = tk.Button(
+            btn_row, text="▶  BACKUP ALL BLOGS",
+            bg=BG_CARD, fg=ACCENT, font=FONT_HEAD, relief="flat",
+            padx=20, pady=8, cursor="hand2",
+            command=self._start_all,
+        )
+        self._all_btn.pack(side="left", padx=(10, 0))
         self._cancel_btn = tk.Button(
             btn_row, text="Cancel", bg=BG_CARD, fg=FG_DIM,
             font=FONT_BODY, relief="flat", padx=12, pady=8,
@@ -290,6 +307,11 @@ class BackupTab(tk.Frame):
             self._last_backup_lbl.configure(text="Last backup: —")
             self._file_count_lbl.configure(text="")
 
+    def _global_config_dict(self) -> dict:
+        """Return global config as a plain dict for bundling into backups."""
+        cfg = self._app._cfg
+        return {section: dict(cfg[section]) for section in cfg.sections()}
+
     def _start(self):
         profile = self._app.current_profile()
         if not profile:
@@ -301,20 +323,105 @@ class BackupTab(tk.Frame):
 
         self._busy = True
         self._start_btn.configure(state="disabled")
+        self._all_btn.configure(state="disabled")
         self._cancel_btn.configure(state="normal")
         self._prog_bar.reset()
         self._log.clear()
         self._log.append("Starting backup…")
 
-        force_full = self._backup_mode_var.get() == "full"
+        force_full       = self._backup_mode_var.get() == "full"
+        include_settings = self._include_settings_var.get()
         self._engine = BackupEngine(
             profile,
             on_progress=lambda s, m, p: self._app.queue_msg(("backup_progress", m, p)),
             on_log=lambda m: self._app.queue_msg(("backup_log", m)),
             force_full=force_full,
+            include_settings=include_settings,
+            global_config=self._global_config_dict() if include_settings else None,
         )
+        self._all_queue = []  # clear any multi-blog queue
         t = threading.Thread(target=self._run_engine, daemon=True)
         t.start()
+
+    def _start_all(self):
+        """Queue backups for every profile, one after the other."""
+        profiles = self._app._profiles
+        if not profiles:
+            messagebox.showinfo("No profiles", "Create at least one blog profile first.")
+            return
+
+        # Load all profiles and check they have backup dirs
+        loaded = []
+        missing = []
+        for name in profiles:
+            p = profile_manager.load_profile(name)
+            if p and p.get("backup_dir"):
+                loaded.append(p)
+            elif p:
+                missing.append(p.get("name", name))
+
+        if missing:
+            msg = "These profiles have no backup directory and will be skipped:\n• " + "\n• ".join(missing)
+            if not loaded:
+                messagebox.showerror("No valid profiles", msg)
+                return
+            messagebox.showwarning("Skipping profiles", msg)
+
+        if not loaded:
+            return
+
+        self._busy = True
+        self._start_btn.configure(state="disabled")
+        self._all_btn.configure(state="disabled")
+        self._cancel_btn.configure(state="normal")
+        self._prog_bar.reset()
+        self._log.clear()
+        self._log.append(f"Backing up {len(loaded)} blog(s)…")
+
+        self._all_queue = loaded
+        self._all_results = []
+        self._run_next_in_queue()
+
+    def _run_next_in_queue(self):
+        """Pop the next profile from the all-blogs queue and start its backup."""
+        if not self._all_queue or self._cancelled():
+            self._finish_all()
+            return
+
+        profile = self._all_queue.pop(0)
+        force_full       = self._backup_mode_var.get() == "full"
+        include_settings = self._include_settings_var.get()
+
+        self._log.append(f"\n── {profile['name']} ──")
+        self._engine = BackupEngine(
+            profile,
+            on_progress=lambda s, m, p: self._app.queue_msg(("backup_progress", m, p)),
+            on_log=lambda m: self._app.queue_msg(("backup_log", m)),
+            force_full=force_full,
+            include_settings=include_settings,
+            global_config=self._global_config_dict() if include_settings else None,
+        )
+        t = threading.Thread(target=self._run_engine_queued, args=(profile,), daemon=True)
+        t.start()
+
+    def _run_engine_queued(self, profile):
+        result = self._engine.run()
+        result["_profile_name"] = profile.get("name", "")
+        self._app.queue_msg(("backup_done_queued", result))
+
+    def _cancelled(self) -> bool:
+        return self._engine and self._engine._cancelled
+
+    def _finish_all(self):
+        ok    = sum(1 for r in self._all_results if r.get("success"))
+        total = len(self._all_results)
+        self._log.append(f"\n{'─' * 40}")
+        self._log.append(f"All blogs done: {ok}/{total} succeeded.")
+        self._busy = False
+        self._start_btn.configure(state="normal")
+        self._all_btn.configure(state="normal")
+        self._cancel_btn.configure(state="disabled")
+        self._engine = None
 
     def _run_engine(self):
         result = self._engine.run()
@@ -335,6 +442,7 @@ class BackupTab(tk.Frame):
     def on_done(self, result: dict) -> None:
         self._busy = False
         self._start_btn.configure(state="normal")
+        self._all_btn.configure(state="normal")
         self._cancel_btn.configure(state="disabled")
         self._engine = None
         if result["success"]:
@@ -348,6 +456,24 @@ class BackupTab(tk.Frame):
             self._prog_lbl.configure(text="Backup failed.", fg=FG_ERR)
             for err in result.get("errors", []):
                 self._log.append(f"✗ {err}")
+
+    def on_done_queued(self, result: dict) -> None:
+        """Handle completion of one blog in a multi-blog run."""
+        name = result.get("_profile_name", "?")
+        self._all_results.append(result)
+        if result["success"]:
+            self._log.append(
+                f"✓ {name} — {result['files_downloaded']} downloaded, "
+                f"{result['files_skipped']} skipped."
+            )
+        else:
+            self._log.append(f"✗ {name} — failed: {'; '.join(result.get('errors', []))}")
+
+        # Kick off the next blog or finish
+        if self._all_queue:
+            self._run_next_in_queue()
+        else:
+            self._finish_all()
 
 
 # ---------------------------------------------------------------------------
@@ -1478,6 +1604,18 @@ class App(tk.Tk):
                             datetime.now(timezone.utc).isoformat()
                         profile_manager.save_profile(self._current_profile)
                         self._tab_backup.refresh(self._current_profile)
+
+                elif kind == "backup_done_queued":
+                    result = msg[1]
+                    self._tab_backup.on_done_queued(result)
+                    # Update last_backup_date for this profile
+                    if result.get("success"):
+                        pname = result.get("_profile_name", "")
+                        p = profile_manager.load_profile(pname)
+                        if p:
+                            from datetime import datetime, timezone
+                            p["last_backup_date"] = datetime.now(timezone.utc).isoformat()
+                            profile_manager.save_profile(p)
 
                 elif kind == "restore_progress":
                     self._tab_restore.on_progress(msg[1], msg[2])
