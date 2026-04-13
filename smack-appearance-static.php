@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Static Page Appearance
- * Alpha v0.7.9f
  *
  * Controls layout and spacing for static pages (About, Contact, Blogroll, etc.).
  * Content width and gutter are skin-agnostic overrides — each skin has its own

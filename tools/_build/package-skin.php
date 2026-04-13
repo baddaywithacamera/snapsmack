@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Skin Packager
- * Alpha v0.7.4d
  *
  * Packages a skin directory into a distributable zip for the skin registry.
  * Creates {slug}-{version}.zip with {slug}/ as the top-level folder,

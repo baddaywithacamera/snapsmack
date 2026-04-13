@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Asset Sync Engine
- * Alpha v0.7.9c
  *
  * Checks that all local fonts and JS engines declared in manifest-inventory.php
  * are present on disk. Any that are missing are fetched from the Smack Central

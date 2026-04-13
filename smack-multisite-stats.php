@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Multisite Stats Rollup
- * Alpha v0.7.9c
  *
  * Hub-only page. Fetches daily stats from all active spokes via the
  * multisite/stats/daily API endpoint, aggregates them into a fleet-wide

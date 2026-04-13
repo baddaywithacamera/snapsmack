@@ -1,6 +1,5 @@
 /**
  * SNAPSMACK - Fullscreen Engine
- * Alpha v0.7.7
  *
  * True browser fullscreen (requestFullscreen API) for distraction-free
  * image viewing. Works alongside the lightbox engine or standalone.
