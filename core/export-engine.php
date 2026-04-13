@@ -533,40 +533,66 @@ class SnapSmackExport {
      * @param string $type  'full', 'schema', or 'keys'
      * @return string SQL content
      */
+    /**
+     * Generate a SQL dump of all snap_* tables.
+     *
+     * @param string $type  'full' = schema + data (default)
+     *                      'schema' = DDL only (CREATE TABLE statements)
+     *                      'keys' = snap_users table only (for emergency recovery)
+     * @return string  SQL dump as a string
+     */
     public function generateSqlDump(string $type = 'full'): string {
         $output = "-- SnapSmack Backup Service\n";
         $output .= "-- Type: " . strtoupper($type) . "\n";
-        $output .= "-- Date: " . date('Y-m-d H:i:s') . "\n\n";
+        $output .= "-- Version: " . (defined('SNAPSMACK_VERSION') ? SNAPSMACK_VERSION : 'unknown') . "\n";
+        $output .= "-- Date: " . date('Y-m-d H:i:s') . "\n";
+        $output .= "-- Site: " . ($this->settings['site_name'] ?? '') . "\n\n";
+        $output .= "SET NAMES utf8mb4;\n";
+        $output .= "SET FOREIGN_KEY_CHECKS = 0;\n\n";
 
-        $tables = ($type === 'keys')
-            ? ['snap_users']
-            : ['snap_images', 'snap_categories', 'snap_image_cat_map',
-               'snap_image_album_map', 'snap_albums', 'snap_comments',
-               'snap_users', 'snap_settings', 'snap_pages', 'snap_blogroll',
-               'snap_assets'];
+        if ($type === 'keys') {
+            $tables = ['snap_users'];
+        } else {
+            // Discover all snap_* tables dynamically — never falls behind the schema
+            $tables = [];
+            $res = $this->pdo->query("SHOW TABLES");
+            while ($row = $res->fetch(PDO::FETCH_NUM)) {
+                if (str_starts_with($row[0], 'snap_')) {
+                    $tables[] = $row[0];
+                }
+            }
+            sort($tables);
+        }
 
         foreach ($tables as $table) {
             try {
-                $res = $this->pdo->query("SHOW CREATE TABLE {$table}")->fetch(PDO::FETCH_ASSOC);
+                $ddl = $this->pdo->query("SHOW CREATE TABLE `{$table}`")->fetch(PDO::FETCH_ASSOC);
             } catch (PDOException $e) {
-                // Table might not exist on older schemas — skip gracefully
                 continue;
             }
 
+            $output .= "-- ── {$table} ──\n";
             $output .= "DROP TABLE IF EXISTS `{$table}`;\n";
-            $output .= $res['Create Table'] . ";\n\n";
+            $output .= $ddl['Create Table'] . ";\n\n";
 
             if ($type !== 'schema') {
-                $rows = $this->pdo->query("SELECT * FROM {$table}")->fetchAll(PDO::FETCH_ASSOC);
-                foreach ($rows as $row) {
-                    $keys = array_map(fn($k) => "`{$k}`", array_keys($row));
-                    $vals = array_map(fn($v) => $v === null ? "NULL" : $this->pdo->quote($v), array_values($row));
-                    $output .= "INSERT INTO `{$table}` (" . implode(', ', $keys) . ") VALUES (" . implode(', ', $vals) . ");\n";
+                $rows = $this->pdo->query("SELECT * FROM `{$table}`")->fetchAll(PDO::FETCH_ASSOC);
+                if ($rows) {
+                    foreach ($rows as $row) {
+                        $keys = array_map(fn($k) => "`{$k}`", array_keys($row));
+                        $vals = array_map(
+                            fn($v) => $v === null ? "NULL" : $this->pdo->quote($v),
+                            array_values($row)
+                        );
+                        $output .= "INSERT INTO `{$table}` (" . implode(', ', $keys)
+                                 . ") VALUES (" . implode(', ', $vals) . ");\n";
+                    }
+                    $output .= "\n";
                 }
-                $output .= "\n";
             }
         }
 
+        $output .= "SET FOREIGN_KEY_CHECKS = 1;\n";
         return $output;
     }
 
