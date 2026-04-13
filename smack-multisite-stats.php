@@ -3,9 +3,9 @@
  * SNAPSMACK - Multisite Stats Rollup
  * Alpha v0.7.9c
  *
- * Hub-only page. Fetches daily stats from all active satellites via the
+ * Hub-only page. Fetches daily stats from all active spokes via the
  * multisite/stats/daily API endpoint, aggregates them into a fleet-wide
- * view, and presents traffic trends, per-satellite breakdowns, and top
+ * view, and presents traffic trends, per-spoke breakdowns, and top
  * referrers across the entire network.
  */
 
@@ -18,11 +18,11 @@ if ($multisite_role !== 'hub') {
     exit;
 }
 
-// --- ACTIVE SATELLITES ---
-$satellites = $pdo->query("
+// --- ACTIVE SPOKES ---
+$spokes = $pdo->query("
     SELECT id, site_url, site_name, api_key_local, post_count, image_count, status
     FROM snap_multisite_nodes
-    WHERE role = 'satellite'
+    WHERE role = 'spoke'
     ORDER BY site_name ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -30,16 +30,16 @@ $satellites = $pdo->query("
 $period = in_array((int)($_GET['days'] ?? 30), [7, 30, 90]) ? (int)$_GET['days'] : 30;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FETCH daily stats from each active satellite
+// FETCH daily stats from each active spoke
 // ─────────────────────────────────────────────────────────────────────────────
-$sat_stats    = [];   // keyed by node_id → ['site_name' => ..., 'rows' => [...]]
+$spoke_stats  = [];   // keyed by node_id → ['site_name' => ..., 'rows' => [...]]
 $fetch_errors = [];
 $fleet_daily  = [];   // date → ['views' => N, 'unique' => N]
 
-foreach ($satellites as $sat) {
-    if ($sat['status'] !== 'active') continue;
+foreach ($spokes as $spoke) {
+    if ($spoke['status'] !== 'active') continue;
 
-    $url = rtrim($sat['site_url'], '/') . '/api.php?route=multisite/stats/daily&days=' . $period;
+    $url = rtrim($spoke['site_url'], '/') . '/api.php?route=multisite/stats/daily&days=' . $period;
     $ch  = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL            => $url,
@@ -47,7 +47,7 @@ foreach ($satellites as $sat) {
         CURLOPT_TIMEOUT        => 8,
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_HTTPHEADER     => [
-            'Authorization: Bearer ' . $sat['api_key_local'],
+            'Authorization: Bearer ' . $spoke['api_key_local'],
             'Accept: application/json',
         ],
     ]);
@@ -56,24 +56,24 @@ foreach ($satellites as $sat) {
     curl_close($ch);
 
     if (!$raw || $code !== 200) {
-        $fetch_errors[] = $sat['site_name'];
-        $sat_stats[$sat['id']] = ['site_name' => $sat['site_name'], 'rows' => [], 'total_views' => 0, 'total_unique' => 0];
+        $fetch_errors[] = $spoke['site_name'];
+        $spoke_stats[$spoke['id']] = ['site_name' => $spoke['site_name'], 'rows' => [], 'total_views' => 0, 'total_unique' => 0];
         continue;
     }
 
     $resp = json_decode($raw, true);
     $rows = ($resp['ok'] ?? false) ? ($resp['stats'] ?? []) : [];
 
-    $sat_total_views  = array_sum(array_column($rows, 'total_views'));
-    $sat_total_unique = array_sum(array_column($rows, 'unique_visitors'));
+    $spoke_total_views  = array_sum(array_column($rows, 'total_views'));
+    $spoke_total_unique = array_sum(array_column($rows, 'unique_visitors'));
 
-    $sat_stats[$sat['id']] = [
-        'site_name'    => $sat['site_name'],
-        'site_url'     => $sat['site_url'],
+    $spoke_stats[$spoke['id']] = [
+        'site_name'    => $spoke['site_name'],
+        'site_url'     => $spoke['site_url'],
         'rows'         => $rows,
-        'total_views'  => $sat_total_views,
-        'total_unique' => $sat_total_unique,
-        'post_count'   => $sat['post_count'],
+        'total_views'  => $spoke_total_views,
+        'total_unique' => $spoke_total_unique,
+        'post_count'   => $spoke['post_count'],
     ];
 
     // Merge into fleet daily totals
@@ -109,8 +109,8 @@ foreach ($fleet_daily as $day) {
 arsort($all_referrers);
 $top_referrers = array_slice($all_referrers, 0, 10, true);
 
-// Satellite ranking by views
-uasort($sat_stats, fn($a, $b) => $b['total_views'] - $a['total_views']);
+// Spoke ranking by views
+uasort($spoke_stats, fn($a, $b) => $b['total_views'] - $a['total_views']);
 
 // Sparkline max for scaling
 $max_daily_views = $fleet_daily ? max(array_column(array_values($fleet_daily), 'views')) : 0;
@@ -148,12 +148,12 @@ include 'core/sidebar.php';
     </div>
 
     <?php if (!empty($fetch_errors)): ?>
-        <div class="alert alert-error">> OFFLINE SATELLITES (no stats): <?php echo htmlspecialchars(implode(', ', $fetch_errors)); ?></div>
+        <div class="alert alert-error">> OFFLINE SPOKES (no stats): <?php echo htmlspecialchars(implode(', ', $fetch_errors)); ?></div>
     <?php endif; ?>
 
-    <?php if (empty($satellites)): ?>
+    <?php if (empty($spokes)): ?>
         <div class="box">
-            <p style="color:var(--text-muted,#888);">No satellites connected. <a href="smack-multisite.php" style="color:var(--accent,#aaa);">Register a satellite</a> first.</p>
+            <p style="color:var(--text-muted,#888);">No spokes connected. <a href="smack-multisite.php" style="color:var(--accent,#aaa);">Register a spoke</a> first.</p>
         </div>
     <?php else: ?>
 
@@ -163,8 +163,8 @@ include 'core/sidebar.php';
 
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:15px; margin-bottom:25px;">
             <?php
-                $fleet_posts  = array_sum(array_column($sat_stats, 'post_count'));
-                $active_sats  = count(array_filter($satellites, fn($s) => $s['status'] === 'active'));
+                $fleet_posts  = array_sum(array_column($spoke_stats, 'post_count'));
+                $active_spokes  = count(array_filter($spokes, fn($s) => $s['status'] === 'active'));
             ?>
             <div style="padding:20px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
                 <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_total_views); ?></div>
@@ -175,7 +175,7 @@ include 'core/sidebar.php';
                 <div style="font-size:0.75rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">UNIQUE VISITORS</div>
             </div>
             <div style="padding:20px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo $active_sats; ?> / <?php echo count($satellites); ?></div>
+                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo $active_spokes; ?> / <?php echo count($spokes); ?></div>
                 <div style="font-size:0.75rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">SITES REPORTING</div>
             </div>
         </div>
@@ -207,17 +207,17 @@ include 'core/sidebar.php';
         <?php endif; ?>
     </div>
 
-    <!-- PER-SATELLITE BREAKDOWN -->
+    <!-- PER-SPOKE BREAKDOWN -->
     <div class="box">
-        <h3>SATELLITE BREAKDOWN</h3>
+        <h3>SPOKE BREAKDOWN</h3>
 
-        <?php if (!empty($sat_stats)):
-            $max_sat_views = max(1, max(array_column($sat_stats, 'total_views')));
+        <?php if (!empty($spoke_stats)):
+            $max_spoke_views = max(1, max(array_column($spoke_stats, 'total_views')));
         ?>
             <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
                 <thead>
                     <tr style="border-bottom:1px solid var(--border,#333);">
-                        <th style="text-align:left;   padding:10px; color:var(--text-muted,#888);">SATELLITE</th>
+                        <th style="text-align:left;   padding:10px; color:var(--text-muted,#888);">SPOKE</th>
                         <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">VIEWS</th>
                         <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">UNIQUE</th>
                         <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">AVG/DAY</th>
@@ -225,14 +225,14 @@ include 'core/sidebar.php';
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($sat_stats as $node_id => $sd):
+                    <?php foreach ($spoke_stats as $node_id => $sd):
                         $share_pct = $fleet_total_views > 0 ? ($sd['total_views'] / $fleet_total_views) * 100 : 0;
                         $avg_day   = $period > 0 ? round($sd['total_views'] / $period) : 0;
                     ?>
                         <tr style="border-bottom:1px solid var(--border,#333);">
                             <td style="padding:10px;">
                                 <strong><?php echo htmlspecialchars($sd['site_name']); ?></strong>
-                                <?php if (in_array($node_id, array_column(array_filter($satellites, fn($s) => $s['status'] !== 'active'), 'id'))): ?>
+                                <?php if (in_array($node_id, array_column(array_filter($spokes, fn($s) => $s['status'] !== 'active'), 'id'))): ?>
                                     <span style="font-size:0.75rem; color:#f44336; margin-left:5px;">OFFLINE</span>
                                 <?php endif; ?>
                             </td>
@@ -260,7 +260,7 @@ include 'core/sidebar.php';
                 </tbody>
             </table>
         <?php else: ?>
-            <p style="color:var(--text-muted,#888);">No stats returned from any satellite for this period.</p>
+            <p style="color:var(--text-muted,#888);">No stats returned from any spoke for this period.</p>
         <?php endif; ?>
     </div>
 

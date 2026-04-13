@@ -6,7 +6,7 @@
  * Hub-only page. Fleet-wide backup health matrix. Reads cached backup state
  * from snap_multisite_nodes (populated by the heartbeat sweep in
  * smack-multisite.php) and optionally fetches full backup logs from
- * individual satellites on demand.
+ * individual spokes on demand.
  *
  * Colour coding:
  *   GREEN  = last_backup_status 'ok' AND backed up within the last 7 days
@@ -25,32 +25,32 @@ if ($multisite_role !== 'hub') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Load satellites (use cached data from heartbeat — no extra cURL here)
+// Load spokes (use cached data from heartbeat — no extra cURL here)
 // ─────────────────────────────────────────────────────────────────────────────
-$satellites = $pdo->query("
+$spokes = $pdo->query("
     SELECT id, site_url, site_name,
            api_key_local,
            last_backup_at, last_backup_size, last_backup_dest, last_backup_status,
            disk_usage_bytes, status, last_seen_at
     FROM snap_multisite_nodes
-    WHERE role = 'satellite'
+    WHERE role = 'spoke'
     ORDER BY site_name ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Drill-down: fetch backup log from a specific satellite on demand
+// Drill-down: fetch backup log from a specific spoke on demand
 // ─────────────────────────────────────────────────────────────────────────────
 $drill_node    = isset($_GET['node']) ? (int)$_GET['node'] : 0;
 $drill_log     = [];
-$drill_sat     = null;
+$drill_spoke   = null;
 $drill_err     = null;
 
 if ($drill_node > 0) {
-    foreach ($satellites as $sat) {
-        if ($sat['id'] === $drill_node) { $drill_sat = $sat; break; }
+    foreach ($spokes as $spoke) {
+        if ($spoke['id'] === $drill_node) { $drill_spoke = $spoke; break; }
     }
-    if ($drill_sat) {
-        $url = rtrim($drill_sat['site_url'], '/') . '/api.php?route=multisite/backup/log';
+    if ($drill_spoke) {
+        $url = rtrim($drill_spoke['site_url'], '/') . '/api.php?route=multisite/backup/log';
         $ch  = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL            => $url,
@@ -58,7 +58,7 @@ if ($drill_node > 0) {
             CURLOPT_TIMEOUT        => 8,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_HTTPHEADER     => [
-                'Authorization: Bearer ' . $drill_sat['api_key_local'],
+                'Authorization: Bearer ' . $drill_spoke['api_key_local'],
                 'Accept: application/json',
             ],
         ]);
@@ -70,21 +70,21 @@ if ($drill_node > 0) {
             $resp = json_decode($raw, true);
             $drill_log = ($resp['ok'] ?? false) ? ($resp['log'] ?? []) : [];
         } else {
-            $drill_err = "Could not reach satellite.";
+            $drill_err = "Could not reach spoke.";
         }
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helper: classify a satellite's backup health
+// Helper: classify a spoke's backup health
 // Returns: 'ok' | 'stale' | 'failed' | 'unknown'
 // ─────────────────────────────────────────────────────────────────────────────
-function backup_health(array $sat): string {
-    $status = $sat['last_backup_status'] ?? 'unknown';
+function backup_health(array $spoke): string {
+    $status = $spoke['last_backup_status'] ?? 'unknown';
     if ($status === 'failed') return 'failed';
     if ($status !== 'ok')    return 'unknown';
-    if (!$sat['last_backup_at']) return 'unknown';
-    $age_days = (time() - strtotime($sat['last_backup_at'])) / 86400;
+    if (!$spoke['last_backup_at']) return 'unknown';
+    $age_days = (time() - strtotime($spoke['last_backup_at'])) / 86400;
     return $age_days > 7 ? 'stale' : 'ok';
 }
 
@@ -107,10 +107,10 @@ $health_label = [
 // ─────────────────────────────────────────────────────────────────────────────
 $fleet_counts = ['ok' => 0, 'stale' => 0, 'failed' => 0, 'unknown' => 0];
 $fleet_total_bytes = 0;
-foreach ($satellites as $sat) {
-    $h = backup_health($sat);
+foreach ($spokes as $spoke) {
+    $h = backup_health($spoke);
     $fleet_counts[$h]++;
-    $fleet_total_bytes += (int)($sat['disk_usage_bytes'] ?? 0);
+    $fleet_total_bytes += (int)($spoke['disk_usage_bytes'] ?? 0);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -171,9 +171,9 @@ include 'core/sidebar.php';
         </div>
     </div>
 
-    <?php if (empty($satellites)): ?>
+    <?php if (empty($spokes)): ?>
         <div class="box">
-            <p style="color:var(--text-muted,#888);">No satellites connected. <a href="smack-multisite.php" style="color:var(--accent,#aaa);">Register a satellite</a> first.</p>
+            <p style="color:var(--text-muted,#888);">No spokes connected. <a href="smack-multisite.php" style="color:var(--accent,#aaa);">Register a spoke</a> first.</p>
         </div>
     <?php else: ?>
 
@@ -202,15 +202,15 @@ include 'core/sidebar.php';
         <?php endif; ?>
     </div>
 
-    <!-- PER-SATELLITE BACKUP STATUS -->
+    <!-- PER-SPOKE BACKUP STATUS -->
     <div class="box">
-        <h3>SATELLITE BACKUP STATUS</h3>
+        <h3>SPOKE BACKUP STATUS</h3>
 
         <div style="overflow-x:auto;">
             <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
                 <thead>
                     <tr style="border-bottom:1px solid var(--border,#333);">
-                        <th style="text-align:left;   padding:10px; color:var(--text-muted,#888);">SATELLITE</th>
+                        <th style="text-align:left;   padding:10px; color:var(--text-muted,#888);">SPOKE</th>
                         <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">HEALTH</th>
                         <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">LAST BACKUP</th>
                         <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">SIZE</th>
@@ -220,18 +220,18 @@ include 'core/sidebar.php';
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($satellites as $sat):
-                        $health      = backup_health($sat);
+                    <?php foreach ($spokes as $spoke):
+                        $health      = backup_health($spoke);
                         $color       = $health_color[$health];
-                        $is_offline  = $sat['status'] === 'offline';
-                        $is_drilling = $drill_node === $sat['id'];
+                        $is_offline  = $spoke['status'] === 'offline';
+                        $is_drilling = $drill_node === $spoke['id'];
                     ?>
                         <tr style="border-bottom:1px solid var(--border,#333); <?php echo $is_drilling ? 'background:var(--hover-bg,rgba(255,255,255,0.03));' : ''; ?>">
                             <td style="padding:10px;">
-                                <strong><?php echo htmlspecialchars($sat['site_name'] ?? 'Unknown'); ?></strong>
+                                <strong><?php echo htmlspecialchars($spoke['site_name'] ?? 'Unknown'); ?></strong>
                                 <div style="font-size:0.8rem; color:var(--text-muted,#888);">
-                                    <a href="<?php echo htmlspecialchars($sat['site_url']); ?>" target="_blank" style="color:inherit; text-decoration:none;">
-                                        <?php echo htmlspecialchars(preg_replace('~^https?://~i', '', $sat['site_url'])); ?>
+                                    <a href="<?php echo htmlspecialchars($spoke['site_url']); ?>" target="_blank" style="color:inherit; text-decoration:none;">
+                                        <?php echo htmlspecialchars(preg_replace('~^https?://~i', '', $spoke['site_url'])); ?>
                                     </a>
                                 </div>
                                 <?php if ($is_offline): ?>
@@ -250,9 +250,9 @@ include 'core/sidebar.php';
 
                             <td style="padding:10px; text-align:center; color:var(--text-muted,#888);">
                                 <?php
-                                    if ($sat['last_backup_at']) {
-                                        echo '<span title="' . htmlspecialchars($sat['last_backup_at']) . '">';
-                                        echo htmlspecialchars(rel_time($sat['last_backup_at']));
+                                    if ($spoke['last_backup_at']) {
+                                        echo '<span title="' . htmlspecialchars($spoke['last_backup_at']) . '">';
+                                        echo htmlspecialchars(rel_time($spoke['last_backup_at']));
                                         echo '</span>';
                                     } else {
                                         echo '<span style="color:#666;">never</span>';
@@ -261,12 +261,12 @@ include 'core/sidebar.php';
                             </td>
 
                             <td style="padding:10px; text-align:center; color:var(--text-muted,#888); font-family:monospace;">
-                                <?php echo human_bytes((int)($sat['last_backup_size'] ?? 0)); ?>
+                                <?php echo human_bytes((int)($spoke['last_backup_size'] ?? 0)); ?>
                             </td>
 
                             <td style="padding:10px; text-align:center;">
                                 <?php
-                                    $dest = $sat['last_backup_dest'] ?? '';
+                                    $dest = $spoke['last_backup_dest'] ?? '';
                                     $dest_icons = [
                                         'local' => '&#x1F4BE;', 'cloud' => '&#x2601;', 'ftp' => '&#x1F4E1;',
                                         's3'    => '&#x2601;', 'b2' => '&#x2601;',
@@ -279,12 +279,12 @@ include 'core/sidebar.php';
                             </td>
 
                             <td style="padding:10px; text-align:center; color:var(--text-muted,#888); font-family:monospace;">
-                                <?php echo human_bytes((int)($sat['disk_usage_bytes'] ?? 0)); ?>
+                                <?php echo human_bytes((int)($spoke['disk_usage_bytes'] ?? 0)); ?>
                             </td>
 
                             <td style="padding:10px; text-align:center;">
-                                <?php if ($sat['status'] === 'active'): ?>
-                                    <a href="smack-multisite-backup.php?node=<?php echo $sat['id']; ?>#drill"
+                                <?php if ($spoke['status'] === 'active'): ?>
+                                    <a href="smack-multisite-backup.php?node=<?php echo $spoke['id']; ?>#drill"
                                        class="btn-clear <?php echo $is_drilling ? 'active' : ''; ?>"
                                        style="font-size:0.75rem; padding:4px 10px;">
                                         <?php echo $is_drilling ? 'VIEWING' : 'VIEW'; ?>
@@ -301,14 +301,14 @@ include 'core/sidebar.php';
                                 <td colspan="7" style="padding:0 10px 20px 10px;" id="drill">
                                     <div style="border:1px solid var(--border,#333); border-top:none; padding:15px; background:var(--input-bg,#111);">
                                         <h4 style="margin:0 0 12px; font-size:0.85rem; color:var(--text-muted,#888); letter-spacing:2px;">
-                                            BACKUP LOG — <?php echo htmlspecialchars(strtoupper($sat['site_name'])); ?>
+                                            BACKUP LOG — <?php echo htmlspecialchars(strtoupper($spoke['site_name'])); ?>
                                         </h4>
 
                                         <?php if ($drill_err): ?>
                                             <p style="color:#f44336; font-size:0.85rem;"><?php echo htmlspecialchars($drill_err); ?></p>
 
                                         <?php elseif (empty($drill_log)): ?>
-                                            <p style="color:var(--text-muted,#666); font-size:0.85rem;">No backup log entries found. Requires snap_backup_log table on the satellite.</p>
+                                            <p style="color:var(--text-muted,#666); font-size:0.85rem;">No backup log entries found. Requires snap_backup_log table on the spoke.</p>
 
                                         <?php else: ?>
                                             <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">

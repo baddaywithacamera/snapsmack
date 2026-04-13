@@ -167,10 +167,10 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     </li>
                     <?php if (!empty($settings['multisite_role'])) : ?>
                     <li class="<?php echo ($current_page == 'smack-multisite-comments.php') ? 'active' : ''; ?>">
-                        <a href="smack-multisite-comments.php">Satellite Signals</a>
+                        <a href="smack-multisite-comments.php">Spoke Signals</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-multisite-posts.php') ? 'active' : ''; ?>">
-                        <a href="smack-multisite-posts.php">Satellite Posts</a>
+                        <a href="smack-multisite-posts.php">Spoke Posts</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-multisite-backup.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite-backup.php">Backup Dock</a>
