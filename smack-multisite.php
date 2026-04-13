@@ -173,9 +173,9 @@ if (isset($_POST['verify_hub'])) {
                 'Accept: application/json',
             ],
         ]);
-        $raw  = curl_exec($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $err  = curl_error($ch);
+        $raw       = curl_exec($ch);
+        $code      = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_err  = curl_error($ch);
         curl_close($ch);
 
         if ($raw && $code === 200) {
@@ -188,7 +188,7 @@ if (isset($_POST['verify_hub'])) {
                 $msg = "Hub responded but returned an error: " . htmlspecialchars($hb['error'] ?? 'unknown');
             }
         } else {
-            $msg = "Could not reach hub — HTTP {$code}" . ($err ? " ({$err})" : "") . ".";
+            $msg = "Could not reach hub — HTTP {$code}" . ($curl_err ? " ({$curl_err})" : "") . ".";
         }
     } else {
         $msg = "No hub configured.";
