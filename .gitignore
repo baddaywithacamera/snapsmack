@@ -17,7 +17,6 @@ data/sessions/
 
 # User uploads (too large, site-specific)
 img_uploads/
-media_assets/
 
 # Claude / AI tooling
 CLAUDE.md
@@ -70,6 +69,3 @@ email-test.php
 
 # Greymatter port (work in progress — not part of SnapSmack)
 greymatter/
-
-# snapsmack.ca landing page — separate site, deployed independently
-snapsmack_site/
