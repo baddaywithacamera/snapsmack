@@ -27,6 +27,8 @@ Follow the existing header and commenting style exactly. Do not invent new forma
 
 ## Directory Structure
 
+Everything that deploys to a web server lives at **repo root**. Non-web projects live under `projects/` or `tools/`. Nothing else belongs in the root.
+
 ```
 /assets/css/          — Global and engine CSS (ss-engine-*.css, public-facing.css)
 /assets/js/           — All JavaScript (ss-engine-*.js, formatting-toolbar.js, etc.)
@@ -45,6 +47,19 @@ Follow the existing header and commenting style exactly. Do not invent new forma
     help.php
     assets/           — Skin-specific images (wall textures, etc.)
 /migrations/          — SQL migration files
+/smack-central/       — Hub admin system (deploys to hub only, not standard installs)
+
+/tools/               — Companion desktop applications (NOT deployed to web servers)
+    oh-snap/          — Tauri skin designer desktop app
+    sybu/             — Sync your blog up
+    smack-some-shit-up/
+    fix-your-batch-up/
+    smack-up-your-backup/
+    unzucker/
+
+/projects/            — Separate web projects (NOT part of blog install)
+    forum-server/     — SnapSmack community forum server
+    snapsmack-ca/     — snapsmack.ca landing page site
 ```
 
 ## Manifest System
