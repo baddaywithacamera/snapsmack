@@ -774,8 +774,8 @@ function updater_run_migrations(PDO $pdo, array $migration_files): array {
     $result = ['success' => true, 'applied' => [], 'errors' => [], 'schema' => []];
 
     // Diff the live database against snapsmack_canonical.sql and apply anything
-    // missing before migration files run. This is the authoritative schema source —
-    // schema-sync.php (a hardcoded PHP duplicate) is no longer consulted here.
+    // missing before migration files run. This is the authoritative schema source.
+    // schema-sync.php is called AFTER migrations for enum repairs (Section 4).
     $diff = updater_canonical_diff($pdo);
     if (isset($diff['error'])) {
         // Canonical SQL unavailable — non-fatal, log and continue.
@@ -853,6 +853,27 @@ function updater_run_migrations(PDO $pdo, array $migration_files): array {
             $result['errors'][] = $migration_name . ': ' . $e->getMessage();
             $result['success'] = false;
             break; // Stop on first real failure — caller handles rollback
+        }
+    }
+
+    // ── Enum repairs via schema-sync ─────────────────────────────────────────
+    // The canonical diff above handles missing tables and columns but cannot
+    // detect type mismatches on existing columns (e.g. a stale enum).
+    // schema-sync.php Section 4 detects and repairs these.  Idempotent — safe
+    // to call on every update.
+    $sync_path = dirname(__FILE__) . '/schema-sync.php';
+    if (is_file($sync_path)) {
+        require_once $sync_path;
+        $sync_report = snap_schema_sync($pdo);
+        if (!empty($sync_report['columns_added'])) {
+            foreach ($sync_report['columns_added'] as $fix) {
+                $result['applied'][] = '[schema-sync] ' . $fix;
+            }
+        }
+        if (!empty($sync_report['errors'])) {
+            foreach ($sync_report['errors'] as $e) {
+                $result['errors'][] = '[schema-sync] ' . $e;
+            }
         }
     }
 
