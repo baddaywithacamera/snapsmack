@@ -68,14 +68,10 @@ $exclude_dirs = [
     '.git',
     '.well-known',
     'backups',
-    'cgi-bin',
     'database',
-    'docs',
     'img_uploads',         // Created by installer
-    'media_assets',        // Created by installer
     'node_modules',
-    'public',
-    'screenshots',
+    'projects',
     'tools',               // Dev-only tools
     // Additional skins are available via the skin gallery — none excluded here.
 ];
