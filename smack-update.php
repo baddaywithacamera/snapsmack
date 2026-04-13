@@ -83,9 +83,55 @@ try {
     $last_check = $stmt->fetchColumn();
 } catch (PDOException $e) {}
 
+// Normalise cached result — stale JSON from older versions may be missing keys
+// added in later releases.  Backfill with safe defaults so the rest of the page
+// never hits an undefined-key fatal.
+if (is_array($cached_result)) {
+    $cached_result += [
+        'checked_at'          => '',
+        'installed_version'   => '',
+        'core_status'         => '',
+        'core_update'         => null,
+        'new_skins'           => [],
+        'updated_skins'       => [],
+        'skin_notifications'  => 0,
+        'total_notifications' => 0,
+        'canonical_schema_url' => '',
+        'canonical_schema_sig' => '',
+    ];
+    if (is_array($cached_result['core_update'])) {
+        $cached_result['core_update'] = _normalise_update_array($cached_result['core_update']);
+    }
+}
+
+/**
+ * Backfill safe defaults into an update array so no key is ever undefined.
+ * Uses += (union) — existing keys are never overwritten.
+ */
+function _normalise_update_array(array $u): array {
+    return $u + [
+        'version'         => '',
+        'version_full'    => '',
+        'codename'        => '',
+        'released'        => '',
+        'changelog'       => [],
+        'file_changes'    => [],
+        'schema_changes'  => false,
+        'download_size'   => 0,
+        'requires_php'    => '8.0',
+        'download_url'    => '',
+        'checksum_sha256' => '',
+        'signature'       => '',
+    ];
+}
+
 // --- STAGED UPDATE STATE ---
 // Persists between stages via session.
 $stage_state = $_SESSION['update_state'] ?? null;
+if (is_array($stage_state) && is_array($stage_state['update'] ?? null)) {
+    $stage_state['update'] = _normalise_update_array($stage_state['update']);
+    $_SESSION['update_state'] = $stage_state;
+}
 
 // --- ACTION HANDLER ---
 $action     = $_POST['action'] ?? $_GET['action'] ?? '';
