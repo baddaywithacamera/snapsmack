@@ -1121,25 +1121,26 @@ include 'core/sidebar.php';
         </div>
         <?php endif; ?>
 
+        <?php
+        $applied_map = [];
+        foreach ($migration_status['applied'] as $row) {
+            $applied_map[$row['migration']] = $row['applied_at'];
+        }
+        $pending_rows = array_filter(UPDATER_KNOWN_MIGRATIONS, fn($n) => !isset($applied_map[$n]));
+        $show_table   = !empty($pending_rows) || !empty($migration_status['ghosts']);
+        ?>
+
+        <?php if ($show_table): ?>
         <table class="recovery-table">
             <thead>
                 <tr><th>MIGRATION</th><th>STATUS</th><th>APPLIED AT</th></tr>
             </thead>
             <tbody>
-            <?php
-            $applied_map = [];
-            foreach ($migration_status['applied'] as $row) {
-                $applied_map[$row['migration']] = $row['applied_at'];
-            }
-            foreach (UPDATER_KNOWN_MIGRATIONS as $name):
-                $is_applied = isset($applied_map[$name]);
-            ?>
+            <?php foreach ($pending_rows as $name): ?>
                 <tr>
                     <td><?php echo htmlspecialchars($name); ?></td>
-                    <td class="<?php echo $is_applied ? 'migration-ok' : 'migration-pending'; ?>">
-                        <?php echo $is_applied ? '✓ APPLIED' : '— PENDING'; ?>
-                    </td>
-                    <td><?php echo $is_applied ? htmlspecialchars($applied_map[$name]) : '—'; ?></td>
+                    <td class="migration-pending">— PENDING</td>
+                    <td>—</td>
                 </tr>
             <?php endforeach; ?>
             <?php foreach ($migration_status['ghosts'] as $name): ?>
@@ -1151,6 +1152,9 @@ include 'core/sidebar.php';
             <?php endforeach; ?>
             </tbody>
         </table>
+        <?php else: ?>
+        <p class="migration-ok" style="font-size:0.85rem; margin-bottom:16px;">✓ All <?php echo count($migration_status['applied']); ?> migrations applied. No pending work.</p>
+        <?php endif; ?>
 
         <div class="recovery-actions">
             <form method="POST">

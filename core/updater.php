@@ -730,12 +730,19 @@ function updater_migration_status(PDO $pdo): array {
         }
     }
 
-    // Ghosts = files on disk that are not in the known list and not already applied
+    // Ghosts = files on disk that are not in the known list and not already applied.
+    // Also silently delete any on-disk files that are already recorded as applied —
+    // they were applied before @unlink was introduced and are just clutter now.
     $known_map  = array_flip($known);
     $disk_files = array_map('basename', glob("{$dir}/migrate*.sql") ?: []);
     $ghosts     = [];
     foreach ($disk_files as $name) {
-        if (!isset($known_map[$name]) && !isset($applied_map[$name])) {
+        if (isset($applied_map[$name])) {
+            // Already applied — safe to delete from disk
+            @unlink("{$dir}/{$name}");
+            continue;
+        }
+        if (!isset($known_map[$name])) {
             $ghosts[] = $name;
         }
     }
