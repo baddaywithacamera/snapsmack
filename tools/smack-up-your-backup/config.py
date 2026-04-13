@@ -24,6 +24,11 @@ DEFAULTS = {
         "batch_size":          "0",
         "keepalive_interval":  "60",
     },
+    "cloud": {
+        "provider":         "google_drive",
+        "credentials_file": "",
+        "folder_id":        "",
+    },
 }
 
 

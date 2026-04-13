@@ -261,6 +261,7 @@ class BackupEngine:
         force_full:       bool = False,
         include_settings: bool = False,
         global_config:    Optional[dict] = None,
+        global_cloud:     Optional[dict] = None,
     ):
         self.profile          = profile
         self.on_progress      = on_progress or (lambda stage, msg, pct: None)
@@ -268,6 +269,7 @@ class BackupEngine:
         self.force_full       = force_full
         self.include_settings = include_settings
         self.global_config    = global_config or {}
+        self.global_cloud     = global_cloud or {}
         self._cancelled       = False
 
     def cancel(self) -> None:
@@ -514,7 +516,7 @@ class BackupEngine:
 
         # ── Stage 5: Cloud push ──────────────────────────────────────
         self._progress("stage5", "Pushing to cloud…", 0.72)
-        cloud = cloud_module.get_cloud_client(self.profile)
+        cloud = cloud_module.get_cloud_client(self.profile, global_cloud=self.global_cloud)
         cloud_id = ""
 
         if cloud:
