@@ -146,7 +146,7 @@ if ($resource === 'ping' && $method === 'GET') {
     // Mark spoke as active — ping is the recovery path for offline spokes.
     $pdo->prepare("
         UPDATE snap_multisite_nodes
-        SET status = 'active', last_seen = NOW()
+        SET status = 'active', last_seen_at = NOW()
         WHERE id = ?
     ")->execute([$spoke_row['id']]);
 
