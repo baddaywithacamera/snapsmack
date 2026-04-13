@@ -250,6 +250,20 @@ class BackupTab(tk.Frame):
         self._log = LogPane(self)
         self._log.pack(fill="both", expand=True, padx=16, pady=8)
 
+        # Backup mode toggle
+        mode_row = tk.Frame(self, bg=BG_DEEP)
+        mode_row.pack(fill="x", padx=16, pady=(4, 4))
+        self._backup_mode_var = tk.StringVar(value="differential")
+        for val, label in [
+            ("differential", "Differential — skip unchanged files"),
+            ("full",         "Full — re-download everything"),
+        ]:
+            tk.Radiobutton(
+                mode_row, text=label, variable=self._backup_mode_var, value=val,
+                bg=BG_DEEP, fg=FG_MAIN, selectcolor=BG_INPUT,
+                activebackground=BG_DEEP, font=FONT_BODY,
+            ).pack(side="left", padx=(0, 16))
+
         # Bottom buttons
         btn_row = tk.Frame(self, bg=BG_DEEP)
         btn_row.pack(fill="x", padx=16, pady=(0, 16))
@@ -292,10 +306,12 @@ class BackupTab(tk.Frame):
         self._log.clear()
         self._log.append("Starting backup…")
 
+        force_full = self._backup_mode_var.get() == "full"
         self._engine = BackupEngine(
             profile,
             on_progress=lambda s, m, p: self._app.queue_msg(("backup_progress", m, p)),
             on_log=lambda m: self._app.queue_msg(("backup_log", m)),
+            force_full=force_full,
         )
         t = threading.Thread(target=self._run_engine, daemon=True)
         t.start()
@@ -831,55 +847,137 @@ class SettingsTab(tk.Frame):
 
     def _build(self):
         pad = {"padx": 24, "pady": 6}
+        self._profile_vars: dict[str, tk.StringVar] = {}
 
-        # ── Active Profile — connection details ──────────────────────────────
-        tk.Label(self, text="Active Profile", bg=BG_DEEP, fg=ACCENT,
+        # ── Site Connection ──────────────────────────────────────────────────
+        tk.Label(self, text="Site Connection", bg=BG_DEEP, fg=ACCENT,
                  font=FONT_HEAD).pack(anchor="w", padx=24, pady=(20, 4))
 
-        self._profile_frame = tk.Frame(self, bg=BG_DEEP)
-        self._profile_frame.pack(fill="x", **pad)
-        self._profile_frame.columnconfigure(1, weight=1)
-
-        self._profile_vars: dict[str, tk.StringVar] = {}
-        profile_fields = [
-            ("Blog name",        "name",            ""),
-            ("Site URL",         "site_url",         ""),
-            ("FTP host",         "ftp_host",         ""),
-            ("FTP port",         "ftp_port",         ""),
-            ("FTP username",     "ftp_user",         ""),
-            ("FTP password",     "ftp_pass",         "●"),
-            ("FTP remote dir",   "ftp_remote_dir",   ""),
-            ("Admin username",   "snap_admin_user",      ""),
-            ("Admin password",   "snap_admin_pass",     "●"),
-            ("Cloud provider",   "cloud_provider",      ""),
-            ("Credentials JSON", "cloud_credentials_file", ""),
-            ("Cloud folder ID",  "cloud_folder_id",     ""),
-            ("Backup directory", "backup_dir",          ""),
-        ]
-        for row, (label, key, show) in enumerate(profile_fields):
-            tk.Label(self._profile_frame, text=label, bg=BG_DEEP, fg=FG_DIM,
+        site_frame = tk.Frame(self, bg=BG_DEEP)
+        site_frame.pack(fill="x", **pad)
+        site_frame.columnconfigure(1, weight=1)
+        for row, (label, key, show) in enumerate([
+            ("Blog name",       "name",            ""),
+            ("Site URL",        "site_url",        ""),
+            ("Admin username",  "snap_admin_user", ""),
+            ("Admin password",  "snap_admin_pass", "●"),
+        ]):
+            tk.Label(site_frame, text=label, bg=BG_DEEP, fg=FG_DIM,
                      font=FONT_SMALL, anchor="w").grid(row=row, column=0, sticky="w", padx=(0, 12), pady=3)
             var = tk.StringVar()
-            entry = tk.Entry(self._profile_frame, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
-                             insertbackground=ACCENT, relief="flat",
-                             font=FONT_MONO, width=38, show=show)
-            entry.grid(row=row, column=1, sticky="ew", pady=3)
+            tk.Entry(site_frame, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
+                     insertbackground=ACCENT, relief="flat",
+                     font=FONT_MONO, width=38, show=show).grid(row=row, column=1, sticky="ew", pady=3)
             self._profile_vars[key] = var
 
+        # ── Backup Method ────────────────────────────────────────────────────
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=24, pady=(12, 8))
+        tk.Label(self, text="Backup Method", bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w", padx=24, pady=(4, 6))
+
+        method_frame = tk.Frame(self, bg=BG_DEEP)
+        method_frame.pack(fill="x", padx=24)
+
+        self._method_var = tk.StringVar(value="ftp")
+        for val, label in [
+            ("ftp",   "FTP — differential sync from server"),
+            ("cloud", "Cloud — push backup to Google Drive / OneDrive"),
+            ("local", "Local only — save to disk, no upload"),
+        ]:
+            tk.Radiobutton(
+                method_frame, text=label, variable=self._method_var, value=val,
+                bg=BG_DEEP, fg=FG_MAIN, selectcolor=BG_INPUT,
+                activebackground=BG_DEEP, font=FONT_BODY,
+                command=self._on_method_change,
+            ).pack(anchor="w", pady=1)
+
+        # ── FTP fields (shown when method = ftp) ────────────────────────────
+        self._ftp_frame = tk.Frame(self, bg=BG_DEEP)
+        self._ftp_frame.columnconfigure(1, weight=1)
+        for row, (label, key, show) in enumerate([
+            ("FTP host",       "ftp_host",       ""),
+            ("FTP port",       "ftp_port",       ""),
+            ("FTP username",   "ftp_user",       ""),
+            ("FTP password",   "ftp_pass",       "●"),
+            ("Remote directory","ftp_remote_dir", ""),
+        ]):
+            tk.Label(self._ftp_frame, text=label, bg=BG_DEEP, fg=FG_DIM,
+                     font=FONT_SMALL, anchor="w").grid(row=row, column=0, sticky="w", padx=(0, 12), pady=3)
+            var = tk.StringVar()
+            tk.Entry(self._ftp_frame, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
+                     insertbackground=ACCENT, relief="flat",
+                     font=FONT_MONO, width=38, show=show).grid(row=row, column=1, sticky="ew", pady=3)
+            self._profile_vars[key] = var
+
+        # FTP TLS checkbox
+        self._ftp_ssl_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(self._ftp_frame, text="Use FTP_TLS", variable=self._ftp_ssl_var,
+                       bg=BG_DEEP, fg=FG_MAIN, selectcolor=BG_INPUT,
+                       activebackground=BG_DEEP, font=FONT_BODY).grid(
+            row=5, column=0, columnspan=2, sticky="w", pady=3)
+        self._profile_vars["ftp_ssl"] = self._ftp_ssl_var
+
+        # ── Cloud fields (shown when method = cloud) ─────────────────────────
+        self._cloud_frame = tk.Frame(self, bg=BG_DEEP)
+        self._cloud_frame.columnconfigure(1, weight=1)
+
+        # Cloud provider dropdown
+        tk.Label(self._cloud_frame, text="Cloud provider", bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").grid(row=0, column=0, sticky="w", padx=(0, 12), pady=3)
+        cloud_prov_var = tk.StringVar()
+        cloud_cb = ttk.Combobox(self._cloud_frame, textvariable=cloud_prov_var,
+                                values=["google_drive", "onedrive", "none"],
+                                font=FONT_MONO, state="readonly", width=20)
+        cloud_cb.grid(row=0, column=1, sticky="w", pady=3)
+        self._profile_vars["cloud_provider"] = cloud_prov_var
+
+        for row, (label, key) in enumerate([
+            ("Credentials JSON", "cloud_credentials_file"),
+            ("Cloud folder ID",  "cloud_folder_id"),
+        ], start=1):
+            tk.Label(self._cloud_frame, text=label, bg=BG_DEEP, fg=FG_DIM,
+                     font=FONT_SMALL, anchor="w").grid(row=row, column=0, sticky="w", padx=(0, 12), pady=3)
+            var = tk.StringVar()
+            tk.Entry(self._cloud_frame, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
+                     insertbackground=ACCENT, relief="flat",
+                     font=FONT_MONO, width=38).grid(row=row, column=1, sticky="ew", pady=3)
+            self._profile_vars[key] = var
+
+        cred_btn_row = tk.Frame(self._cloud_frame, bg=BG_DEEP)
+        cred_btn_row.grid(row=3, column=0, columnspan=2, sticky="w", pady=4)
+        tk.Button(cred_btn_row, text="Browse credentials…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY, padx=10, pady=4,
+                  command=self._browse_credentials).pack(side="left")
+
+        # ── Local backup directory (always shown) ────────────────────────────
+        self._local_frame = tk.Frame(self, bg=BG_DEEP)
+        self._local_frame.columnconfigure(1, weight=1)
+        tk.Label(self._local_frame, text="Backup directory", bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").grid(row=0, column=0, sticky="w", padx=(0, 12), pady=3)
+        bkdir_var = tk.StringVar()
+        tk.Entry(self._local_frame, textvariable=bkdir_var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=38).grid(row=0, column=1, sticky="ew", pady=3)
+        self._profile_vars["backup_dir"] = bkdir_var
+        tk.Button(self._local_frame, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY, padx=10, pady=4,
+                  command=self._browse_backup_dir).grid(row=0, column=2, padx=(6, 0), pady=3)
+
+        # ── Save button ─────────────────────────────────────────────────────
         prof_btn_row = tk.Frame(self, bg=BG_DEEP)
-        prof_btn_row.pack(anchor="w", padx=24, pady=(4, 12))
+        prof_btn_row.pack(anchor="w", padx=24, pady=(8, 4))
         tk.Button(prof_btn_row, text="Save Profile", bg=ACCENT, fg=BG_DEEP,
                   relief="flat", font=FONT_HEAD, padx=14, pady=6,
                   command=self._save_profile).pack(side="left")
-        tk.Button(prof_btn_row, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
-                  relief="flat", font=FONT_BODY, padx=10, pady=4,
-                  command=self._browse_backup_dir).pack(side="left", padx=(10, 0))
 
         self._no_profile_lbl = tk.Label(self, text="No profile selected — use the dropdown at top-right.",
                                          bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL)
 
+        # Show FTP fields by default
+        self._on_method_change()
+
         # ── Separator ────────────────────────────────────────────────────────
-        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=24, pady=(4, 12))
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=24, pady=(8, 12))
 
         # ── Global Defaults ──────────────────────────────────────────────────
         tk.Label(self, text="Global Defaults", bg=BG_DEEP, fg=ACCENT,
@@ -940,17 +1038,56 @@ class SettingsTab(tk.Frame):
         self._refresh_ai_status()
         self.load_profile(self._app._current_profile)
 
+    def _on_method_change(self) -> None:
+        """Show/hide FTP and Cloud field groups based on the selected method."""
+        method = self._method_var.get()
+        # Hide all conditional frames
+        self._ftp_frame.pack_forget()
+        self._cloud_frame.pack_forget()
+        self._local_frame.pack_forget()
+
+        # Re-pack in order: method-specific → local dir (always)
+        if method == "ftp":
+            self._ftp_frame.pack(fill="x", padx=24, pady=(8, 0))
+        elif method == "cloud":
+            self._cloud_frame.pack(fill="x", padx=24, pady=(8, 0))
+        # Local backup directory is always shown
+        self._local_frame.pack(fill="x", padx=24, pady=(8, 0))
+
+    def _browse_credentials(self) -> None:
+        path = filedialog.askopenfilename(
+            title="Select credentials JSON",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+        )
+        if path and "cloud_credentials_file" in self._profile_vars:
+            self._profile_vars["cloud_credentials_file"].set(path)
+
     def load_profile(self, profile: Optional[dict]) -> None:
         """Populate the active profile fields from a profile dict, or clear them."""
         if profile:
             for key, var in self._profile_vars.items():
-                var.set(str(profile.get(key, "")))
+                if key == "ftp_ssl":
+                    var.set(bool(profile.get(key, True)))
+                else:
+                    var.set(str(profile.get(key, "")))
+            # Set method radio based on what's filled in
+            cloud_prov = profile.get("cloud_provider", "none")
+            if cloud_prov and cloud_prov != "none":
+                self._method_var.set("cloud")
+            elif profile.get("ftp_host"):
+                self._method_var.set("ftp")
+            else:
+                self._method_var.set("local")
+            self._on_method_change()
             self._no_profile_lbl.pack_forget()
         else:
-            for var in self._profile_vars.values():
-                var.set("")
-            # Show hint if no profile selected
-            # (placed above Global Defaults, but below the profile fields)
+            for key, var in self._profile_vars.items():
+                if key == "ftp_ssl":
+                    var.set(True)
+                else:
+                    var.set("")
+            self._method_var.set("ftp")
+            self._on_method_change()
 
     def _save_profile(self) -> None:
         """Write the profile fields back to disk."""
@@ -966,7 +1103,15 @@ class SettingsTab(tk.Frame):
                     val = int(val)
                 except ValueError:
                     pass
+            elif key == "ftp_ssl":
+                val = bool(val)
             profile[key] = val
+
+        # If method is "local", clear cloud provider so engine skips cloud push
+        method = self._method_var.get()
+        if method == "local":
+            profile["cloud_provider"] = "none"
+
         profile_manager.save_profile(profile)
         messagebox.showinfo("Saved", f"Profile \"{profile['name']}\" saved.", parent=self)
 
