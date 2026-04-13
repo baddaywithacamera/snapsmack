@@ -4006,7 +4006,7 @@ input[type="range"]:active::-webkit-slider-thumb {
 .hub-connected-border { border-left: 4px solid #4CAF50; }
 
 /* Multisite spoke table                                                       */
-.multisite-table       { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.multisite-table       { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 15px; }
 .multisite-table th    { text-align: left; padding: 10px; }
 .multisite-table td    { padding: 10px; }
 .multisite-table tr    { border-bottom-width: 1px; border-bottom-style: solid; }
