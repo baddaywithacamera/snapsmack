@@ -4,6 +4,22 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.9i — "Is This Seat Taken" (2026-04-13)
+
+### Fixed
+- **Schema sync now covers multisite tables.** `snap_multisite_nodes` and `snap_multisite_queue` were missing from `schema-sync.php`, so the schema check always reported "up to date" even when the `role` enum was still `enum('hub','satellite')`. Fresh installs now get both tables automatically; existing installs get the enum repaired.
+- **Enum repair engine (new Section 4 in schema-sync.php).** Detects stale enum values on existing tables, widens the enum, migrates rows, fixes blanks left by MySQL silent-fail inserts, then shrinks to the canonical definition. First use: `snap_multisite_nodes.role` satellite → spoke.
+- **Spoke registration persisting blank role.** `ON DUPLICATE KEY UPDATE` in both `smack-multisite.php` and `core/multisite-api.php` was not updating the `role` column on re-registration. Fixed both handlers.
+- **Migration 032 blank-role catch-all.** Added step 3b to fix rows where MySQL silently stored an empty string instead of 'spoke' (non-strict mode behaviour when inserting a value not in the enum).
+- **SUYB settings tab layout.** Settings panel ran off-screen with no scrollbar and fields stretched full width. Rewritten with Canvas+Scrollbar wrapper and two-column layout (profile left, global config right).
+- **Release package size (49 MB → ~15 MB).** `snapsmack-ca/` (34 MB of screenshots), `tools/`, `smack-central/`, and other dev-only directories now excluded from release builds via `$always_exclude` in `sc-release.php`.
+
+### Added
+- **SUYB v0.2.0.** Database SQL dump stage added to backup pipeline (full + schema dumps bundled into ZIP). Google Drive service account integration with global cloud config and per-profile overrides.
+- **SUYB Google Drive service account auth.** Auto-detects service account vs OAuth key files. Global cloud config (`[cloud]` section in config) with per-profile override support.
+
+---
+
 ## 0.7.9h — "Hub Spoke" (2026-04-13)
 
 ### Changed
