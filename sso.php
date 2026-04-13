@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Single Sign-On Handler
- * Alpha v0.7.9c
  *
  * Spoke-side SSO endpoint. Validates a one-time token issued by the hub
  * via the multisite/auth/sso-token API, creates an admin session for the

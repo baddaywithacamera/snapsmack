@@ -1,6 +1,5 @@
 /**
  * SNAPSMACK - Wall Engine
- * Alpha v0.7.5
  *
  * 3D perspective wall gallery with physics-driven panning, touch gestures,
  * infinite scroll, and zoomable image viewer. Keyboard and mouse controls.

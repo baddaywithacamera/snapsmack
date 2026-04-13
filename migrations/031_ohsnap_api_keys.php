@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Migration 031: Oh Snap! API Keys
- * Alpha v0.7.9g
  *
  * Creates snap_ohsnap_keys table for storing hashed API keys used by
  * the Oh Snap! remote posting endpoint.

@@ -1,6 +1,5 @@
 /**
  * SNAPSMACK - Asset Picker
- * Alpha v0.7.5
  *
  * Visual media library picker shared between the static-page hero field
  * (smack-pages.php) and the shortcode toolbar image button.

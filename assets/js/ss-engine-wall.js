@@ -1,6 +1,5 @@
 /**
  * SNAPSMACK - Wall Engine
- * Alpha v0.7.7
  *
  * Physics-driven horizontal gallery wall. CSS Grid handles multi-row layout;
  * this engine drives panning, depth zoom, focus tracking, and infinite scroll.

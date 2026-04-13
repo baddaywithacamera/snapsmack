@@ -1,6 +1,5 @@
 /**
  * SNAPSMACK — Shortcode Toolbar
- * Alpha v0.7.7
  *
  * Provides insert-at-cursor shortcode buttons for textarea editors.
  * Each button inserts the appropriate shortcode tag at the cursor position

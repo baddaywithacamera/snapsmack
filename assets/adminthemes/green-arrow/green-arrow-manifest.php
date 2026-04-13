@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the Green Arrow admin theme
- * Alpha v0.7.9c
  */
 
 return [

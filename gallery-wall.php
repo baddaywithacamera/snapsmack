@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Floating Gallery 3D experience
- * Alpha v0.7.9c
  *
  * Desktop-only interactive 3D gallery. Redirects to archive on mobile devices
  * or if the skin doesn't support the floating gallery feature. Integrates typography,

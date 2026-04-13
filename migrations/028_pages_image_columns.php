@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Migration 028: Pages Image Display Columns
- * Alpha v0.7.9b
  *
  * Adds image_size, image_align, and image_shadow columns to snap_pages.
  * These were added to the canonical schema in 0.7.8 but lacked a migration.

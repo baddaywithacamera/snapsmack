@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - AI Provider
- * Alpha v0.7.9c
  *
  * Thin abstraction over Claude, Gemini, and OpenAI chat APIs.
  * Routes a prompt to whichever provider is configured in snap_settings

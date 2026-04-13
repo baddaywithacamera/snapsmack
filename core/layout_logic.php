@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Photo Layout Support Logic
- * Alpha v0.7.9c
  *
  * Centralizes EXIF processing and comment fetching for skin layouts. Ensures
  * that all skins have access to consistently formatted EXIF data and approved

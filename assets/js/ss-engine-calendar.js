@@ -1,6 +1,5 @@
 /**
  * SNAPSMACK - Archive Calendar Engine
- * Alpha v0.7.9f
  *
  * Renders a fixed sidebar calendar panel that slides in from the left or right.
  * Days with published images are highlighted as clickable links into the archive.

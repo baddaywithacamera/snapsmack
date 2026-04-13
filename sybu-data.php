@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - SYBU Data Endpoint
- * Alpha v0.7.9g
  *
  * JSON endpoint consumed by Smack Your Batch Up at connect time.
  * Returns categories (with descriptions), albums (with descriptions),
