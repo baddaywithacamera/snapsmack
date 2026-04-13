@@ -1,6 +1,5 @@
 /**
  * SNAPSMACK - Storage Consent Engine
- * Alpha v0.7.5
  *
  * Manages user consent for browser storage (localStorage, sessionStorage)
  * under EU ePrivacy Directive / GDPR. Exposes a global snapConsent object

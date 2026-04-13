@@ -1,6 +1,5 @@
 /**
  * SNAPSMACK - Scroll-to-Top Engine
- * Alpha v0.7.7
  *
  * Injects a floating back-to-top button that appears after scrolling
  * past a configurable threshold. Styled to blend with any skin via

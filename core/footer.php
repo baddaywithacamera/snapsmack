@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Public Footer Engine
- * Alpha v0.7.9c
  *
  * Renders a configurable footer with 5 slots: copyright, email, theme name,
  * powered by, and RSS (always visible). Each slot can be ON (default content),

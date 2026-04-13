@@ -1,7 +1,6 @@
 <?php
 /**
  * SMACK CENTRAL - Release Systems Reference
- * Alpha v0.7.9e
  *
  * Documents the full release pipeline: version bumping, git tagging,
  * the SnapSmack release packager, and the Smack Central self-updater.

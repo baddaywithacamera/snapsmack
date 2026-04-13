@@ -1,6 +1,5 @@
 /**
  * SNAPSMACK - Community Engine
- * Alpha v0.7.5
  *
  * Handles all client-side behaviour for the community system:
  *   - Like button toggle (AJAX, optimistic UI) — both inline bar and floating dock

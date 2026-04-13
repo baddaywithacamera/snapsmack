@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - AI Writing Assistant
- * Alpha v0.7.9c
  *
  * AJAX endpoint for the post editor AI Assist panel and Spell/Grammar button.
  * Accepts a mode ('chat' or 'spellcheck'), the user's message, and the current

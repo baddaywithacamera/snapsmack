@@ -1,6 +1,5 @@
 /**
  * SNAPSMACK - Hotkey Engine
- * Alpha v0.7.5
  *
  * Keyboard navigation and shortcuts. F1 opens help menu, ESC closes overlays,
  * arrow keys navigate gallery (or control slider when present), number keys

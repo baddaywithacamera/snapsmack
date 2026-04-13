@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Calendar Engine AJAX Endpoint
- * Alpha v0.7.9f
  *
  * Returns JSON for the archive calendar sidebar engine.
  * Called by ss-engine-calendar.js when the panel opens or the user

@@ -2,13 +2,14 @@
 
 ## Version & Headers
 
-Current version: **Alpha v0.7.9g "Electric Chair"**. Every PHP file opens with a standardised doc-block:
+Version is defined once in `core/constants.php` (`SNAPSMACK_VERSION`, `SNAPSMACK_VERSION_SHORT`, `SNAPSMACK_VERSION_CODENAME`) and `smack-central/sc-version.php`. Git handles per-file versioning — **do not put version numbers in doc-block headers**.
+
+Every PHP file opens with a standardised doc-block:
 
 ```php
 <?php
 /**
  * SNAPSMACK - [Module Name]
- * Alpha v0.7.9c
  *
  * [Description of what this file does.]
  */

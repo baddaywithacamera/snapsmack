@@ -1,7 +1,6 @@
 <?php
 /**
  * SMACK CENTRAL - Skin Packager
- * Alpha v0.7.9c
  *
  * Downloads the SnapSmack repo zip from GitHub for a given branch or tag,
  * extracts the skins/ directory, lets you pick which skins to package,

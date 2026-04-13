@@ -1,7 +1,6 @@
 <?php
 /**
  * SMACK CENTRAL - Bootstrap Installer
- * Alpha v0.7.4d
  *
  * Upload THIS FILE ALONE to your target directory on snapsmack.ca.
  * Navigate to it in a browser. It does everything else:

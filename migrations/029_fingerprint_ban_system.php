@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Migration 029: Browser Fingerprint + Ban System
- * Alpha v0.7.9c
  *
  * Adds browser fingerprint storage to both comment tables and creates the
  * centralised ban list used to block persistent harassers who evade IP bans

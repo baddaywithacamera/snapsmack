@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Multisite Signal Control
- * Alpha v0.7.9c
  *
  * Hub-only page. Pulls pending comments from all active spokes via the
  * multisite API and presents a unified moderation queue. Approve/delete

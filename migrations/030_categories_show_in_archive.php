@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Migration 030: Category archive visibility
- * Alpha v0.7.9g
  *
  * Adds show_in_archive column to snap_categories so individual categories
  * can be hidden from the public archive view while remaining in admin.
