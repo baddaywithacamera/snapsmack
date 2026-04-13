@@ -47,6 +47,14 @@ registry.json
 # Server-side auth file (cPanel / host-generated, not source code)
 auth.php
 
+# Service account keys / credentials — NEVER commit
+*-drive-key*.json
+tools/*/config.json
+
+# Desktop tool runtime config (contains key paths, folder IDs)
+tools/*/config.ini
+tools/*/profiles/
+
 # PyInstaller build artifacts — all tools
 tools/*/build/
 tools/*/dist/
