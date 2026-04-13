@@ -352,20 +352,26 @@ if ($action === 'stage_download' && !empty($cached_result['core_update'])) {
         $flash_msg  = "UPDATE REQUIRES PHP {$required_php}+. YOU ARE RUNNING " . PHP_VERSION . ".";
         $flash_type = 'error';
     } else {
-        $dl_error = '';
-        $zip_path = updater_download($update['download_url'], $dl_error);
-        if ($zip_path === false) {
-            $flash_msg  = "DOWNLOAD FAILED: {$dl_error}";
+        $dl_error     = '';
+        $download_url = $update['download_url'] ?? '';
+        if ($download_url === '') {
+            $flash_msg  = 'NO DOWNLOAD URL — RUN "CHECK FOR UPDATES" AGAIN.';
             $flash_type = 'error';
         } else {
-            $size_mb = number_format(filesize($zip_path) / 1048576, 1);
-            $_SESSION['update_state'] = [
-                'stage'    => 'downloaded',
-                'zip_path' => $zip_path,
-                'update'   => $update,
-                'log'      => [['label' => 'Package downloaded', 'status' => 'ok', 'detail' => "{$size_mb} MB"]],
-            ];
-            $stage_state = $_SESSION['update_state'];
+            $zip_path = updater_download($download_url, $dl_error);
+            if ($zip_path === false) {
+                $flash_msg  = "DOWNLOAD FAILED: {$dl_error}";
+                $flash_type = 'error';
+            } else {
+                $size_mb = number_format(filesize($zip_path) / 1048576, 1);
+                $_SESSION['update_state'] = [
+                    'stage'    => 'downloaded',
+                    'zip_path' => $zip_path,
+                    'update'   => $update,
+                    'log'      => [['label' => 'Package downloaded', 'status' => 'ok', 'detail' => "{$size_mb} MB"]],
+                ];
+                $stage_state = $_SESSION['update_state'];
+            }
         }
     }
 }
