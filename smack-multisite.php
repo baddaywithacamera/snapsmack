@@ -161,7 +161,7 @@ if (isset($_POST['disconnect_hub'])) {
 if (isset($_POST['verify_hub'])) {
     $hub = $pdo->query("SELECT * FROM snap_multisite_nodes WHERE role = 'hub' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
     if ($hub) {
-        $url = rtrim($hub['site_url'], '/') . '/api.php?route=multisite/heartbeat';
+        $url = rtrim($hub['site_url'], '/') . '/api.php?route=multisite/ping';
         $ch  = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL            => $url,
@@ -513,12 +513,12 @@ include 'core/sidebar.php';
 
                 <div style="margin-top:20px; display:flex; gap:10px; align-items:center;">
                     <form method="POST">
-                        <button type="submit" name="verify_hub" class="master-update-btn">
+                        <button type="submit" name="verify_hub" class="btn-smack btn-mt-0">
                             VERIFY CONNECTION
                         </button>
                     </form>
                     <form method="POST">
-                        <button type="submit" name="disconnect_hub" class="action-delete" onclick="return confirm('Disconnect from hub? The hub will no longer be able to monitor this site.');">
+                        <button type="submit" name="disconnect_hub" class="btn-smack btn-mt-0 btn-danger" onclick="return confirm('Disconnect from hub? The hub will no longer be able to monitor this site.');">
                             DISCONNECT FROM HUB
                         </button>
                     </form>
