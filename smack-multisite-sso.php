@@ -4,9 +4,9 @@
  * Alpha v0.7.9c
  *
  * Hub-side. Receives ?sat=NODE_ID from the admin clicking "Remote Login"
- * on the multisite dashboard. Calls the satellite's sso-token API endpoint,
- * then redirects the admin's browser to the satellite's sso.php with the
- * one-time token. The satellite validates the token and creates a session.
+ * on the multisite dashboard. Calls the spoke's sso-token API endpoint,
+ * then redirects the admin's browser to the spoke's sso.php with the
+ * one-time token. The spoke validates the token and creates a session.
  */
 
 require_once 'core/auth.php';
@@ -24,17 +24,17 @@ if (!$node_id) {
     exit;
 }
 
-// Load the satellite record
-$sat_stmt = $pdo->prepare("SELECT site_url, site_name, api_key_local FROM snap_multisite_nodes WHERE id = ? AND role = 'satellite' AND status = 'active'");
-$sat_stmt->execute([$node_id]);
-$sat = $sat_stmt->fetch(PDO::FETCH_ASSOC);
+// Load the spoke record
+$spoke_stmt = $pdo->prepare("SELECT site_url, site_name, api_key_local FROM snap_multisite_nodes WHERE id = ? AND role = 'spoke' AND status = 'active'");
+$spoke_stmt->execute([$node_id]);
+$spoke = $spoke_stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$sat) {
-    sso_hub_fail("Satellite not found or not active.", null);
+if (!$spoke) {
+    sso_hub_fail("Spoke not found or not active.", null);
 }
 
-// Call satellite to get a one-time SSO token
-$url = rtrim($sat['site_url'], '/') . '/api.php?route=multisite/auth/sso-token';
+// Call spoke to get a one-time SSO token
+$url = rtrim($spoke['site_url'], '/') . '/api.php?route=multisite/auth/sso-token';
 $ch  = curl_init();
 curl_setopt_array($ch, [
     CURLOPT_URL            => $url,
@@ -44,7 +44,7 @@ curl_setopt_array($ch, [
     CURLOPT_TIMEOUT        => 8,
     CURLOPT_SSL_VERIFYPEER => true,
     CURLOPT_HTTPHEADER     => [
-        'Authorization: Bearer ' . $sat['api_key_local'],
+        'Authorization: Bearer ' . $spoke['api_key_local'],
         'Accept: application/json',
     ],
 ]);
@@ -54,24 +54,24 @@ $cerr = curl_error($ch);
 curl_close($ch);
 
 if (!$raw || $code !== 200) {
-    sso_hub_fail("Could not reach satellite" . ($cerr ? ": $cerr" : " (HTTP $code)") . ".", $sat);
+    sso_hub_fail("Could not reach spoke" . ($cerr ? ": $cerr" : " (HTTP $code)") . ".", $spoke);
 }
 
 $resp = json_decode($raw, true);
 if (empty($resp['ok']) || empty($resp['sso_token'])) {
-    $err_detail = $resp['error'] ?? 'Unknown response from satellite.';
-    sso_hub_fail("Satellite refused SSO request: $err_detail", $sat);
+    $err_detail = $resp['error'] ?? 'Unknown response from spoke.';
+    sso_hub_fail("Spoke refused SSO request: $err_detail", $spoke);
 }
 
-// Bounce the admin's browser to the satellite's SSO handler
-$sso_url = rtrim($sat['site_url'], '/') . '/sso.php?token=' . urlencode($resp['sso_token']);
+// Bounce the admin's browser to the spoke's SSO handler
+$sso_url = rtrim($spoke['site_url'], '/') . '/sso.php?token=' . urlencode($resp['sso_token']);
 header('Location: ' . $sso_url);
 exit;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FAIL HANDLER — renders a clean error page
 // ─────────────────────────────────────────────────────────────────────────────
-function sso_hub_fail(string $reason, ?array $sat): void {
+function sso_hub_fail(string $reason, ?array $spoke): void {
     global $settings;
     $page_title = "Remote Login Failed";
     include 'core/admin-header.php';
@@ -80,24 +80,24 @@ function sso_hub_fail(string $reason, ?array $sat): void {
     <div class="main">
         <div class="header-row"><h2>REMOTE LOGIN FAILED</h2></div>
         <div class="box">
-            <?php if ($sat): ?>
-                <h3><?php echo htmlspecialchars(strtoupper($sat['site_name'])); ?></h3>
+            <?php if ($spoke): ?>
+                <h3><?php echo htmlspecialchars(strtoupper($spoke['site_name'])); ?></h3>
                 <p style="color:var(--text-muted,#888); margin-bottom:5px;">
-                    <a href="<?php echo htmlspecialchars($sat['site_url']); ?>" target="_blank"
-                       style="color:var(--accent,#aaa);"><?php echo htmlspecialchars($sat['site_url']); ?></a>
+                    <a href="<?php echo htmlspecialchars($spoke['site_url']); ?>" target="_blank"
+                       style="color:var(--accent,#aaa);"><?php echo htmlspecialchars($spoke['site_url']); ?></a>
                 </p>
             <?php endif; ?>
             <div class="alert alert-error" style="margin-top:20px;">> <?php echo htmlspecialchars($reason); ?></div>
             <p style="color:var(--text-muted,#888); font-size:0.9rem; margin-top:15px;">
-                The satellite may be offline, or it may be running an older version of SnapSmack that doesn't
+                The spoke may be offline, or it may be running an older version of SnapSmack that doesn't
                 support SSO. You can still log in manually at
-                <?php if ($sat): ?>
-                    <a href="<?php echo htmlspecialchars(rtrim($sat['site_url'],'/') . '/login.php'); ?>"
+                <?php if ($spoke): ?>
+                    <a href="<?php echo htmlspecialchars(rtrim($spoke['site_url'],'/') . '/login.php'); ?>"
                        target="_blank" style="color:var(--accent,#aaa);">
-                        <?php echo htmlspecialchars(rtrim($sat['site_url'],'/') . '/login.php'); ?>
+                        <?php echo htmlspecialchars(rtrim($spoke['site_url'],'/') . '/login.php'); ?>
                     </a>
                 <?php else: ?>
-                    the satellite's login page.
+                    the spoke's login page.
                 <?php endif; ?>
             </p>
             <p style="margin-top:20px;">
