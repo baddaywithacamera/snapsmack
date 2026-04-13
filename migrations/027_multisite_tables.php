@@ -4,7 +4,7 @@
  * Alpha v0.7.9b
  *
  * Creates snap_multisite_nodes and snap_multisite_queue tables to support
- * hub-and-satellite architecture. Also adds multisite-related settings keys
+ * hub-and-spoke architecture. Also adds multisite-related settings keys
  * to snap_settings.
  *
  * USAGE: Run via the system updates or migration runner.
@@ -28,11 +28,11 @@ try {
 // --- CREATE TABLES ---
 try {
     // --- MULTISITE NODES TABLE ---
-    // Stores information about connected hub or satellite sites
+    // Stores information about connected hub or spoke sites
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
             `id` int unsigned NOT NULL AUTO_INCREMENT,
-            `role` enum('hub','satellite') NOT NULL COMMENT 'hub=we manage this satellite, satellite=we are managed by this hub',
+            `role` enum('hub','spoke') NOT NULL COMMENT 'hub=we manage this spoke, spoke=we are managed by this hub',
             `site_url` varchar(500) NOT NULL COMMENT 'Full base URL of the remote site',
             `site_name` varchar(255) DEFAULT NULL COMMENT 'Display name of the site',
             `api_key_local` varchar(255) NOT NULL COMMENT 'Key that the remote site uses to authenticate requests to us',
@@ -54,7 +54,7 @@ try {
             KEY `idx_role_status` (`role`, `status`),
             KEY `idx_last_seen` (`last_seen_at`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        COMMENT='Hub-and-satellite multisite management nodes'
+        COMMENT='Hub-and-spoke multisite management nodes'
     ");
 
     echo "Created snap_multisite_nodes table.\n";
@@ -91,10 +91,10 @@ try {
 // --- SEED SETTINGS ---
 try {
     // These settings will be created with empty/default values
-    // Actual values are set when the user chooses hub/satellite mode
+    // Actual values are set when the user chooses hub/spoke mode
 
     $settings_to_seed = [
-        'multisite_role' => '',           // 'hub', 'satellite', or empty
+        'multisite_role' => '',           // 'hub', 'spoke', or empty
         'multisite_reg_token' => '',      // One-time registration token
         'multisite_reg_token_expires' => '0', // Unix timestamp of expiry
     ];

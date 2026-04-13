@@ -3,9 +3,9 @@
  * SNAPSMACK - Multisite Post Feed
  * Alpha v0.7.9c
  *
- * Hub-only page. Pulls recent published posts from all active satellites via
+ * Hub-only page. Pulls recent published posts from all active spokes via
  * the multisite API and presents a unified reverse-chronological feed.
- * Per-satellite filtering and limit control are supported.
+ * Per-spoke filtering and limit control are supported.
  */
 
 require_once 'core/auth.php';
@@ -17,16 +17,16 @@ if ($multisite_role !== 'hub') {
     exit;
 }
 
-// --- ACTIVE SATELLITES ---
-$satellites = $pdo->query("
+// --- ACTIVE SPOKES ---
+$spokes = $pdo->query("
     SELECT id, site_url, site_name, api_key_local
     FROM snap_multisite_nodes
-    WHERE role = 'satellite' AND status = 'active'
+    WHERE role = 'spoke' AND status = 'active'
     ORDER BY site_name ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// cURL helper: call a satellite API endpoint
+// cURL helper: call a spoke API endpoint
 // ─────────────────────────────────────────────────────────────────────────────
 function ms_post_call(string $site_url, string $api_key, string $route): ?array {
     $url = rtrim($site_url, '/') . '/api.php?route=' . $route;
@@ -51,28 +51,28 @@ function ms_post_call(string $site_url, string $api_key, string $route): ?array 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FETCH: Pull recent posts from all active satellites
+// FETCH: Pull recent posts from all active spokes
 // ─────────────────────────────────────────────────────────────────────────────
-$per_satellite = min((int)($_GET['limit'] ?? 20), 50);
+$per_spoke = min((int)($_GET['limit'] ?? 20), 50);
 $all_posts     = [];
 $fetch_errors  = [];
 
-foreach ($satellites as $sat) {
+foreach ($spokes as $spoke) {
     $result = ms_post_call(
-        $sat['site_url'],
-        $sat['api_key_local'],
-        'multisite/posts/recent?limit=' . $per_satellite
+        $spoke['site_url'],
+        $spoke['api_key_local'],
+        'multisite/posts/recent?limit=' . $per_spoke
     );
 
     if ($result && !empty($result['posts'])) {
         foreach ($result['posts'] as $p) {
-            $p['_node_id']   = $sat['id'];
-            $p['_site_name'] = $sat['site_name'];
-            $p['_site_url']  = $sat['site_url'];
+            $p['_node_id']   = $spoke['id'];
+            $p['_site_name'] = $spoke['site_name'];
+            $p['_site_url']  = $spoke['site_url'];
             $all_posts[]     = $p;
         }
     } elseif ($result === null) {
-        $fetch_errors[] = $sat['site_name'];
+        $fetch_errors[] = $spoke['site_name'];
     }
 }
 
@@ -82,7 +82,7 @@ usort($all_posts, function($a, $b) {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Satellite filter
+// Spoke filter
 // ─────────────────────────────────────────────────────────────────────────────
 $filter_node = isset($_GET['node']) ? (int)$_GET['node'] : 0;
 if ($filter_node > 0) {
@@ -102,14 +102,14 @@ if ($filter_type !== 'all') {
 
 $total_posts = count($all_posts);
 
-$page_title = "Satellite Posts";
+$page_title = "Spoke Posts";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
 <div class="main">
     <div class="header-row">
-        <h2>SATELLITE POST FEED</h2>
+        <h2>SPOKE POST FEED</h2>
         <div class="header-actions">
             <div class="status-pill status-online">
                 <?php echo $total_posts; ?> POST<?php echo $total_posts !== 1 ? 'S' : ''; ?>
@@ -118,12 +118,12 @@ include 'core/sidebar.php';
     </div>
 
     <?php if (!empty($fetch_errors)): ?>
-        <div class="alert alert-error">> OFFLINE SATELLITES (could not fetch): <?php echo htmlspecialchars(implode(', ', $fetch_errors)); ?></div>
+        <div class="alert alert-error">> OFFLINE SPOKES (could not fetch): <?php echo htmlspecialchars(implode(', ', $fetch_errors)); ?></div>
     <?php endif; ?>
 
-    <?php if (empty($satellites)): ?>
+    <?php if (empty($spokes)): ?>
         <div class="box">
-            <p style="color:var(--text-muted,#888);">No active satellites connected. <a href="smack-multisite.php" style="color:var(--accent,#aaa);">Register a satellite</a> first.</p>
+            <p style="color:var(--text-muted,#888);">No active spokes connected. <a href="smack-multisite.php" style="color:var(--accent,#aaa);">Register a spoke</a> first.</p>
         </div>
     <?php else: ?>
 
@@ -148,11 +148,11 @@ include 'core/sidebar.php';
                    class="btn-clear <?php echo $filter_node === 0 ? 'active' : ''; ?>">
                     ALL SITES
                 </a>
-                <?php foreach ($satellites as $sat): ?>
-                    <a href="smack-multisite-posts.php?node=<?php echo $sat['id']; ?><?php echo $filter_type !== 'all' ? '&type=' . urlencode($filter_type) : ''; ?>"
-                       class="btn-clear <?php echo $filter_node === $sat['id'] ? 'active' : ''; ?>">
-                        <?php echo htmlspecialchars(strtoupper($sat['site_name'])); ?>
-                        <?php if (in_array($sat['site_name'], $fetch_errors)): ?>
+                <?php foreach ($spokes as $spoke): ?>
+                    <a href="smack-multisite-posts.php?node=<?php echo $spoke['id']; ?><?php echo $filter_type !== 'all' ? '&type=' . urlencode($filter_type) : ''; ?>"
+                       class="btn-clear <?php echo $filter_node === $spoke['id'] ? 'active' : ''; ?>">
+                        <?php echo htmlspecialchars(strtoupper($spoke['site_name'])); ?>
+                        <?php if (in_array($spoke['site_name'], $fetch_errors)): ?>
                             (OFFLINE)
                         <?php endif; ?>
                     </a>
@@ -177,8 +177,8 @@ include 'core/sidebar.php';
             <h3>RECENT POSTS<?php
                 $labels = [];
                 if ($filter_node > 0) {
-                    $sat_names = array_column($satellites, 'site_name', 'id');
-                    $labels[] = htmlspecialchars(strtoupper($sat_names[$filter_node] ?? ''));
+                    $spoke_names = array_column($spokes, 'site_name', 'id');
+                    $labels[] = htmlspecialchars(strtoupper($spoke_names[$filter_node] ?? ''));
                 }
                 if ($filter_type !== 'all') $labels[] = htmlspecialchars(strtoupper($filter_type));
                 if (!empty($labels)) echo ' — ' . implode(' / ', $labels);
@@ -199,7 +199,7 @@ include 'core/sidebar.php';
                                 <?php endif; ?>
 
                                 <div class="item-text">
-                                    <!-- SATELLITE SOURCE BADGE -->
+                                    <!-- SPOKE SOURCE BADGE -->
                                     <div style="font-size:0.75rem; color:var(--accent,#aaa); margin-bottom:4px; letter-spacing:1px;">
                                         &#x25BA;&nbsp;<a href="<?php echo htmlspecialchars($p['_site_url']); ?>" target="_blank" style="color:inherit; text-decoration:none;">
                                             <?php echo htmlspecialchars(strtoupper($p['_site_name'])); ?>
@@ -229,10 +229,10 @@ include 'core/sidebar.php';
                     <?php endforeach; ?>
                 </div>
 
-                <?php if (count($all_posts) >= ($per_satellite * count($satellites))): ?>
+                <?php if (count($all_posts) >= ($per_spoke * count($spokes))): ?>
                     <div style="text-align:center; padding:15px; color:var(--text-muted,#888); font-size:0.85rem;">
-                        Showing <?php echo $per_satellite; ?> posts per satellite.
-                        <a href="?<?php echo http_build_query(array_merge($_GET, ['limit' => min($per_satellite + 20, 50)])); ?>"
+                        Showing <?php echo $per_spoke; ?> posts per spoke.
+                        <a href="?<?php echo http_build_query(array_merge($_GET, ['limit' => min($per_spoke + 20, 50)])); ?>"
                            style="color:var(--accent,#aaa);">LOAD MORE</a>
                     </div>
                 <?php endif; ?>
