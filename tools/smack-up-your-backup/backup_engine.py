@@ -201,16 +201,20 @@ def needs_download(record: manifest_reader.FileRecord, state: dict) -> bool:
 class BackupEngine:
     def __init__(
         self,
-        profile:     dict,
-        on_progress: Optional[ProgressCallback] = None,
-        on_log:      Optional[Callable[[str], None]] = None,
-        force_full:  bool = False,
+        profile:          dict,
+        on_progress:      Optional[ProgressCallback] = None,
+        on_log:           Optional[Callable[[str], None]] = None,
+        force_full:       bool = False,
+        include_settings: bool = False,
+        global_config:    Optional[dict] = None,
     ):
-        self.profile     = profile
-        self.on_progress = on_progress or (lambda stage, msg, pct: None)
-        self.on_log      = on_log or print
-        self.force_full  = force_full
-        self._cancelled  = False
+        self.profile          = profile
+        self.on_progress      = on_progress or (lambda stage, msg, pct: None)
+        self.on_log           = on_log or print
+        self.force_full       = force_full
+        self.include_settings = include_settings
+        self.global_config    = global_config or {}
+        self._cancelled       = False
 
     def cancel(self) -> None:
         self._cancelled = True
@@ -395,6 +399,16 @@ class BackupEngine:
                         full = os.path.join(dirpath, fname)
                         arc  = os.path.relpath(full, local_media_dir)
                         zf.write(full, arc)
+                # Optionally include SUYB settings (profile + global config)
+                if self.include_settings:
+                    settings_bundle = {
+                        "export_version": 1,
+                        "profile":        {k: v for k, v in self.profile.items()
+                                           if k not in ("ftp_pass", "snap_admin_pass")},
+                        "global_config":  self.global_config,
+                    }
+                    zf.writestr("suyb-settings.json", json.dumps(settings_bundle, indent=2))
+                    self._log("SUYB settings bundled into backup.")
         except Exception as e:
             result["errors"].append(f"Packaging failed: {e}")
             ftp.disconnect()
