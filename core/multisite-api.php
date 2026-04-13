@@ -120,6 +120,32 @@ if ($resource === 'handshake' && $method === 'POST') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: GET multisite/ping
+// Spoke-initiated connectivity check. Uses api_key_remote auth (the key the
+// spoke generated during handshake, stored on the hub as api_key_remote).
+// Normal Bearer auth uses api_key_local which is hub→spoke only.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'ping' && $method === 'GET') {
+    $ping_key = '';
+    if (preg_match('/^Bearer\s+(\S+)$/i', $_SERVER['HTTP_AUTHORIZATION'] ?? '', $pm)) {
+        $ping_key = $pm[1];
+    }
+    if (!$ping_key) ms_err('Authorization header required', 401);
+
+    $spoke_stmt = $pdo->prepare("
+        SELECT id FROM snap_multisite_nodes
+        WHERE api_key_remote = ? AND role = 'spoke' AND status = 'active'
+        LIMIT 1
+    ");
+    $spoke_stmt->execute([$ping_key]);
+    if (!$spoke_stmt->fetch()) {
+        ms_err('Invalid key or spoke not active', 401);
+    }
+
+    ms_ok(['version' => SNAPSMACK_VERSION]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // BEARER TOKEN AUTH — all endpoints below require this
 // ─────────────────────────────────────────────────────────────────────────────
 $auth_header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';

@@ -232,6 +232,17 @@ input:focus, textarea:focus, select:focus {
     box-shadow: 0 0 16px rgba(51, 255, 0, 0.5);
 }
 
+/* Danger button modifier — destructive/disconnect actions */
+.btn-smack.btn-danger {
+    background-color: #24b300;
+    color: #000;
+}
+.btn-smack.btn-danger:hover {
+    background-color: #0a3300;
+    color: #33ff00;
+    box-shadow: 0 0 16px rgba(51, 255, 0, 0.4);
+}
+
 /* All other buttons */
 button:hover {
     box-shadow: 0 0 16px rgba(51, 255, 0, 0.4);

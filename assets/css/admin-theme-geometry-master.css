@@ -781,6 +781,20 @@ button:active,
     filter: brightness(0.9);
 }
 
+/* Danger button modifier — destructive actions (disconnect, delete) */
+.btn-smack.btn-danger {
+    background-color: #CC4444;
+    color: #fff;
+}
+.btn-smack.btn-danger:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+.btn-smack.btn-danger:active {
+    transform: translateY(1px);
+    filter: brightness(0.9);
+}
+
 /* Two-button side-by-side grid */
 .action-grid-dual {
     display: grid;
