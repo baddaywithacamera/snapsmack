@@ -157,6 +157,44 @@ if (isset($_POST['disconnect_hub'])) {
     $msg = "Disconnected from hub.";
 }
 
+// --- VERIFY CONNECTION (spoke → hub heartbeat) ---
+if (isset($_POST['verify_hub'])) {
+    $hub = $pdo->query("SELECT * FROM snap_multisite_nodes WHERE role = 'hub' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    if ($hub) {
+        $url = rtrim($hub['site_url'], '/') . '/api.php?route=multisite/heartbeat';
+        $ch  = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL            => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_HTTPHEADER     => [
+                'Authorization: Bearer ' . $hub['api_key_remote'],
+                'Accept: application/json',
+            ],
+        ]);
+        $raw  = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
+
+        if ($raw && $code === 200) {
+            $hb = json_decode($raw, true);
+            if (!empty($hb['ok'])) {
+                $pdo->prepare("UPDATE snap_multisite_nodes SET last_seen_at = NOW(), status = 'active' WHERE id = ?")
+                    ->execute([$hub['id']]);
+                $msg = "Connection verified — hub responded OK (version " . htmlspecialchars($hb['version'] ?? 'unknown') . ").";
+            } else {
+                $msg = "Hub responded but returned an error: " . htmlspecialchars($hb['error'] ?? 'unknown');
+            }
+        } else {
+            $msg = "Could not reach hub — HTTP {$code}" . ($err ? " ({$err})" : "") . ".";
+        }
+    } else {
+        $msg = "No hub configured.";
+    }
+}
+
 // --- DATA LOADING ---
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $multisite_role = $settings['multisite_role'] ?? '';
@@ -168,7 +206,7 @@ $nodes = $pdo->query("SELECT * FROM snap_multisite_nodes ORDER BY role ASC, conn
 // Calls each active spoke's heartbeat endpoint and caches the stats locally.
 if ($multisite_role === 'hub') {
     foreach ($nodes as &$n) {
-        if ($n['role'] !== 'spoke' || $n['status'] !== 'active') continue;
+        if ($n['role'] !== 'spoke' || $n['status'] === 'disconnected') continue;
 
         $url = rtrim($n['site_url'], '/') . '/api.php?route=multisite/heartbeat';
         $hb_ch = curl_init();
@@ -324,49 +362,46 @@ include 'core/sidebar.php';
                 <p style="color:var(--text-muted,#888);">No spokes connected yet. Register one below.</p>
             <?php else: ?>
                 <div style="overflow-x:auto;">
-                    <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+                    <table class="multisite-table">
                         <thead>
-                            <tr style="border-bottom:1px solid var(--border,#333);">
-                                <th style="text-align:left; padding:10px; color:var(--text-muted,#888);">NAME</th>
-                                <th style="text-align:left; padding:10px; color:var(--text-muted,#888);">URL</th>
-                                <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">VERSION</th>
-                                <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">STATUS</th>
-                                <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">LAST SEEN</th>
-                                <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">POSTS</th>
-                                <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">PENDING</th>
-                                <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">BACKUP</th>
-                                <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">ACTION</th>
+                            <tr>
+                                <th>NAME</th>
+                                <th>URL</th>
+                                <th class="col-center">VERSION</th>
+                                <th class="col-center">STATUS</th>
+                                <th class="col-center">LAST SEEN</th>
+                                <th class="col-center">POSTS</th>
+                                <th class="col-center">PENDING</th>
+                                <th class="col-center">BACKUP</th>
+                                <th class="col-center">ACTION</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($nodes as $n): ?>
                                 <?php if ($n['role'] !== 'spoke') continue; ?>
-                                <tr style="border-bottom:1px solid var(--border,#333);">
-                                    <td style="padding:10px;"><strong><?php echo htmlspecialchars($n['site_name'] ?? 'Unknown'); ?></strong></td>
-                                    <td style="padding:10px; font-size:0.85rem; color:var(--text-muted,#888);">
-                                        <a href="<?php echo htmlspecialchars($n['site_url']); ?>" target="_blank" style="color:var(--accent,#aaa);">
+                                <?php $node_status   = $n['status'] ?? 'unknown'; ?>
+                                <?php $backup_status = $n['last_backup_status'] ?? 'unknown'; ?>
+                                <tr>
+                                    <td><strong><?php echo htmlspecialchars($n['site_name'] ?? 'Unknown'); ?></strong></td>
+                                    <td>
+                                        <a href="<?php echo htmlspecialchars($n['site_url']); ?>" target="_blank">
                                             <?php echo htmlspecialchars(preg_replace('~^https?://~i', '', $n['site_url'])); ?>
                                         </a>
                                     </td>
-                                    <td style="padding:10px; text-align:center; color:var(--text-muted,#888); font-family:monospace; font-size:0.85rem;">
+                                    <td class="col-center" style="font-family:monospace; font-size:0.85rem;">
                                         <?php
                                             $spoke_ver = $n['software_version'] ?? '';
                                             echo $spoke_ver ? htmlspecialchars($spoke_ver) : '—';
-                                            // Flag if behind current hub version
                                             if ($spoke_ver && defined('SNAPSMACK_VERSION') && $spoke_ver !== SNAPSMACK_VERSION) {
-                                                echo ' <span style="color:#FF9800; font-size:0.75rem;" title="Behind hub version ' . htmlspecialchars(SNAPSMACK_VERSION) . '">&#x25B2;</span>';
+                                                echo ' <span class="version-behind" title="Behind hub version ' . htmlspecialchars(SNAPSMACK_VERSION) . '">&#x25B2;</span>';
                                             }
                                         ?>
                                     </td>
-                                    <td style="padding:10px; text-align:center;">
-                                        <?php
-                                            $node_status = $n['status'] ?? 'unknown';
-                                            $status_color = $node_status === 'active' ? '#4CAF50' : ($node_status === 'offline' ? '#f44336' : '#888');
-                                            echo '<span style="display:inline-block; width:10px; height:10px; border-radius:50%; background-color:' . $status_color . '; margin-right:5px;" title="' . htmlspecialchars($node_status) . '"></span>';
-                                            echo '<span style="color:' . $status_color . '; font-size:0.8rem;">' . strtoupper($node_status) . '</span>';
-                                        ?>
+                                    <td class="col-center">
+                                        <span class="status-dot status-dot--<?php echo htmlspecialchars($node_status); ?>" title="<?php echo htmlspecialchars($node_status); ?>"></span>
+                                        <span class="status-label status-label--<?php echo htmlspecialchars($node_status); ?>"><?php echo strtoupper($node_status); ?></span>
                                     </td>
-                                    <td style="padding:10px; text-align:center; color:var(--text-muted,#888);">
+                                    <td class="col-center">
                                         <?php
                                             if ($n['last_seen_at']) {
                                                 $last_seen = strtotime($n['last_seen_at']);
@@ -385,25 +420,16 @@ include 'core/sidebar.php';
                                             }
                                         ?>
                                     </td>
-                                    <td style="padding:10px; text-align:center;">
-                                        <?php echo (int)$n['post_count']; ?>
+                                    <td class="col-center"><?php echo (int)$n['post_count']; ?></td>
+                                    <td class="col-center"><?php echo (int)$n['pending_comments']; ?></td>
+                                    <td class="col-center">
+                                        <span class="status-dot status-dot--lg status-dot--<?php echo htmlspecialchars($backup_status); ?>" title="<?php echo htmlspecialchars($backup_status); ?>"></span>
                                     </td>
-                                    <td style="padding:10px; text-align:center;">
-                                        <?php echo (int)$n['pending_comments']; ?>
-                                    </td>
-                                    <td style="padding:10px; text-align:center;">
-                                        <?php
-                                            $backup_status = $n['last_backup_status'] ?? 'unknown';
-                                            $backup_color = $backup_status === 'ok' ? '#4CAF50' : ($backup_status === 'failed' ? '#f44336' : '#FF9800');
-                                            echo "<span style='display:inline-block; width:12px; height:12px; border-radius:50%; background-color:{$backup_color};' title='{$backup_status}'></span>";
-                                        ?>
-                                    </td>
-                                    <td style="padding:10px; text-align:center;">
+                                    <td class="col-center">
                                         <?php if ($n['status'] === 'active'): ?>
                                             <a href="smack-multisite-sso.php?spoke=<?php echo $n['id']; ?>"
                                                target="_blank"
                                                class="action-authorize"
-                                               style="margin-right:6px;"
                                                title="Open spoke admin as primary admin user">REMOTE LOGIN</a>
                                         <?php endif; ?>
                                         <a href="?disconnect=<?php echo $n['id']; ?>" class="action-delete" onclick="return confirm('Disconnect this spoke?');">DISCONNECT</a>
@@ -473,7 +499,7 @@ include 'core/sidebar.php';
 
             <?php else: ?>
                 <?php $hub = current($hub_node); ?>
-                <div style="padding:15px; background:var(--input-bg,#111); border-left:4px solid #4CAF50;">
+                <div class="hub-connected-border" style="padding:15px; background:var(--input-bg,#111);">
                     <p><strong>Connected to Hub:</strong> <?php echo htmlspecialchars($hub['site_name']); ?></p>
                     <p style="color:var(--text-muted,#888); font-size:0.9rem;">
                         URL: <a href="<?php echo htmlspecialchars($hub['site_url']); ?>" target="_blank" style="color:var(--accent,#aaa);">
@@ -485,11 +511,18 @@ include 'core/sidebar.php';
                     </p>
                 </div>
 
-                <form method="POST" style="margin-top:20px;">
-                    <button type="submit" name="disconnect_hub" class="action-delete" onclick="return confirm('Disconnect from hub? The hub will no longer be able to monitor this site.');">
-                        DISCONNECT FROM HUB
-                    </button>
-                </form>
+                <div style="margin-top:20px; display:flex; gap:10px; align-items:center;">
+                    <form method="POST">
+                        <button type="submit" name="verify_hub" class="master-update-btn">
+                            VERIFY CONNECTION
+                        </button>
+                    </form>
+                    <form method="POST">
+                        <button type="submit" name="disconnect_hub" class="action-delete" onclick="return confirm('Disconnect from hub? The hub will no longer be able to monitor this site.');">
+                            DISCONNECT FROM HUB
+                        </button>
+                    </form>
+                </div>
             <?php endif; ?>
         </div>
 
