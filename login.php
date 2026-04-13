@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Admin login portal
- * Alpha v0.7.9c
  *
  * Authenticates users and initializes administrative sessions.
  * Supports password login, one-time recovery codes, and links to

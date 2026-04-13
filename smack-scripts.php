@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Third-Party Script Manager
- * Alpha v0.7.9c
  *
  * Manages external scripts and embed codes that live in the database,
  * not in the codebase. Two zones:

@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Ban Check
- * Alpha v0.7.9c
  *
  * Centralised ban lookup used by both comment processors.
  * Checks a submission against the snap_ban_list table by:

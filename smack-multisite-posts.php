@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Multisite Post Feed
- * Alpha v0.7.9c
  *
  * Hub-only page. Pulls recent published posts from all active spokes via
  * the multisite API and presents a unified reverse-chronological feed.

@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Configuration manifest for the Peach Melba admin theme
- * Alpha v0.7.9c
  */
 
 return [

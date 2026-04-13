@@ -1,6 +1,5 @@
 /**
  * SnapSmack Carousel Edit Engine
- * Alpha v0.7.5
  *
  * Manages the image strip UI on smack-edit-carousel.php.
  * Responsibilities:

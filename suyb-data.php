@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - SUYB Data Endpoint
- * Alpha v0.7.9g
  *
  * JSON endpoint consumed by Smack Up Your Backup at connect time.
  * Returns cloud backup config, multisite node list, and site metadata

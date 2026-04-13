@@ -1,6 +1,5 @@
 /**
  * SNAPSMACK - 50 Shades of Noah Grey: Archive Layout Toggle Engine
- * Alpha v0.7.7
  *
  * Handles three-way archive toggle: square / cropped / justified.
  * Reads configuration from data attributes on the toggle widget so no

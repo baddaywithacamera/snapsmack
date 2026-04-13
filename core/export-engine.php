@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK — Export Engine
- * Alpha v0.7.9h
  *
  * All export logic: Recovery Kit, WordPress WXR, Portable JSON.
  * Called by smack-backup.php to generate downloadable archives.

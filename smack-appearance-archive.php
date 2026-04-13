@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Archive Appearance
- * Alpha v0.7.9g
  *
  * Controls all visual and structural settings for the public archive page.
  * Grid layout mode and visitor switching options are set here by the site

@@ -1,7 +1,6 @@
 <?php
 /**
  * SNAPSMACK - Consent Banner Partial
- * Alpha v0.7.9c
  *
  * Renders the storage consent banner on public pages. The banner only appears
  * if the visitor has not yet made a choice (no snap_consent cookie).
