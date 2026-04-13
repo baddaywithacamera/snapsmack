@@ -86,6 +86,60 @@ class SnapSmackSession:
         except Exception:
             return False
 
+    def download_sql_dump(self, local_path: str, dump_type: str = "full",
+                         on_progress: Optional[Callable] = None) -> None:
+        """Download a SQL dump via the suyb-export.php endpoint.
+
+        dump_type: 'schema', 'full', 'keys'
+        """
+        url = f"{self.site_url}/suyb-export.php?type={dump_type}"
+        resp = self.session.get(url, stream=True, timeout=120)
+        resp.raise_for_status()
+
+        content_type = resp.headers.get("Content-Type", "")
+        if "application/sql" not in content_type and "text/" not in content_type:
+            # Might be a JSON error response
+            try:
+                data = resp.json()
+                raise RuntimeError(data.get("error", "Unknown export error"))
+            except (ValueError, KeyError):
+                raise RuntimeError(
+                    f"Unexpected response from suyb-export.php "
+                    f"(Content-Type: {content_type})"
+                )
+
+        self._stream_to_file(resp, local_path, on_progress)
+
+    def download_spoke_sql_dump(self, spoke_url: str, api_key: str,
+                                local_path: str, dump_type: str = "full",
+                                on_progress: Optional[Callable] = None) -> None:
+        """Download a SQL dump from a spoke via the multisite/backup/export
+        API endpoint using Bearer token authentication."""
+        url = f"{spoke_url.rstrip('/')}/multisite-api.php?resource=backup&sub_action=export&dump={dump_type}"
+        resp = requests.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "User-Agent": "smack-up-your-backup/1.0",
+            },
+            stream=True,
+            timeout=120,
+        )
+        resp.raise_for_status()
+
+        content_type = resp.headers.get("Content-Type", "")
+        if "application/sql" not in content_type and "text/" not in content_type:
+            try:
+                data = resp.json()
+                raise RuntimeError(data.get("error", "Unknown export error"))
+            except (ValueError, KeyError):
+                raise RuntimeError(
+                    f"Unexpected response from spoke export endpoint "
+                    f"(Content-Type: {content_type})"
+                )
+
+        self._stream_to_file(resp, local_path, on_progress)
+
     def download_recovery_kit(self, local_path: str, on_progress: Optional[Callable] = None) -> None:
         """Trigger recovery kit export and download the .tar.gz."""
         # Trigger export
@@ -283,6 +337,42 @@ class BackupEngine:
         result["kit_path"] = kit_path
         self._log(f"Recovery kit saved: {kit_path}")
 
+        # ── Stage 1b: Pull SQL dumps ────────────────────────────────
+        if self._cancelled:
+            return result
+        self._progress("stage1", "Downloading SQL dumps…", 0.12)
+
+        sql_full_path   = os.path.join(backup_dir, f"{blog_name}_full_{timestamp}.sql")
+        sql_schema_path = os.path.join(backup_dir, f"{blog_name}_schema_{timestamp}.sql")
+        result["sql_full_path"]   = ""
+        result["sql_schema_path"] = ""
+
+        try:
+            http.download_sql_dump(
+                sql_full_path, dump_type="full",
+                on_progress=lambda r, t: self._progress(
+                    "stage1", f"SQL dump (full)… {r // 1024}KB", 0.12
+                ),
+            )
+            result["sql_full_path"] = sql_full_path
+            self._log(f"Full SQL dump saved: {sql_full_path}")
+        except Exception as e:
+            self._log(f"Full SQL dump failed (non-fatal): {e}")
+            result["errors"].append(f"SQL dump (full) failed: {e}")
+
+        try:
+            http.download_sql_dump(
+                sql_schema_path, dump_type="schema",
+                on_progress=lambda r, t: self._progress(
+                    "stage1", f"SQL dump (schema)… {r // 1024}KB", 0.14
+                ),
+            )
+            result["sql_schema_path"] = sql_schema_path
+            self._log(f"Schema SQL dump saved: {sql_schema_path}")
+        except Exception as e:
+            self._log(f"Schema SQL dump failed (non-fatal): {e}")
+            result["errors"].append(f"SQL dump (schema) failed: {e}")
+
         # ── Stage 2: Parse manifest ──────────────────────────────────
         if self._cancelled:
             return result
@@ -391,6 +481,11 @@ class BackupEngine:
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 # Include the recovery kit
                 zf.write(kit_path, os.path.basename(kit_path))
+                # Include SQL dumps (if available)
+                if result.get("sql_full_path") and os.path.exists(result["sql_full_path"]):
+                    zf.write(result["sql_full_path"], f"database/{os.path.basename(result['sql_full_path'])}")
+                if result.get("sql_schema_path") and os.path.exists(result["sql_schema_path"]):
+                    zf.write(result["sql_schema_path"], f"database/{os.path.basename(result['sql_schema_path'])}")
                 # Include backup-state.json
                 zf.writestr("backup-state.json", json.dumps(new_state, indent=2))
                 # Include all downloaded media files
