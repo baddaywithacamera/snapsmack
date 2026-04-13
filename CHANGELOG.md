@@ -4,6 +4,20 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.9h — "Hub Spoke" (2026-04-13)
+
+### Changed
+- **Multisite terminology: satellite → spoke.** The entire codebase now uses "hub/spoke" instead of "hub/satellite". Database enum, PHP admin pages, API comments, sidebar nav labels, help docs, CHANGELOG, README, and landing page copy all updated. Migration 032 alters the `snap_multisite_nodes.role` enum and updates existing rows.
+
+### Added
+- **Backup filenames include site title.** Recovery kits exported from the admin panel now use the format `snapsmack_{SiteName}_{timestamp}.tar.gz` instead of the generic `snapsmack_recovery_{timestamp}.tar.gz`. Falls back to the old format when no site name is configured.
+- **SUYB hub/spoke discovery.** Smack Up Your Backup can now connect to a hub blog, discover all spokes from `snap_multisite_nodes`, and auto-create profiles for the entire network. Cloud provider and folder ID are pulled from each spoke's `multisite/backup/config` endpoint.
+- **SUYB auto-populate cloud config.** "Pull Cloud Config" button on the Settings tab connects to the current profile's blog and pre-fills cloud provider and folder ID from its existing SnapSmack cloud settings.
+- **`suyb-data.php` endpoint.** Session-authed JSON endpoint returning cloud config, backup status, and multisite node list for SUYB consumption.
+- **`multisite/backup/config` API endpoint.** Bearer-authed endpoint on each spoke returning cloud provider, folder ID, site name, and version (no secrets exposed).
+
+---
+
 ## 0.7.9g — "Lumbar Support" (2026-04-10)
 
 ### Changed
