@@ -1027,6 +1027,25 @@ class SettingsTab(tk.Frame):
                   padx=10, pady=4,
                   command=self._install_ai).pack(anchor="w")
 
+        # ── Export / Import ──────────────────────────────────────────────────
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=24, pady=(16, 8))
+        tk.Label(self, text="Export / Import Settings", bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w", padx=24, pady=(4, 4))
+
+        tk.Label(self, text="Export all profiles and global settings to a single JSON file,\n"
+                            "or restore from a previously exported file.",
+                 bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL,
+                 justify="left").pack(anchor="w", padx=24, pady=(0, 8))
+
+        xp_row = tk.Frame(self, bg=BG_DEEP)
+        xp_row.pack(anchor="w", padx=24, pady=(0, 12))
+        tk.Button(xp_row, text="Export All Settings…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY, padx=12, pady=6,
+                  command=self._export_settings).pack(side="left")
+        tk.Button(xp_row, text="Import Settings…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY, padx=12, pady=6,
+                  command=self._import_settings).pack(side="left", padx=(10, 0))
+
         # Version
         tk.Label(self, text=f"Smack Up Your Backup  v{BUILD_VERSION}",
                  bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL).pack(
@@ -1137,6 +1156,107 @@ class SettingsTab(tk.Frame):
                 pass
             self.after(0, self._refresh_ai_status)
         threading.Thread(target=_run, daemon=True).start()
+
+    def _export_settings(self):
+        """Export all profiles + global config to a single JSON file."""
+        import json
+        path = filedialog.asksaveasfilename(
+            title="Export settings",
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json")],
+            initialfile="suyb-settings-export.json",
+        )
+        if not path:
+            return
+
+        # Collect all profiles
+        profiles = []
+        for name in profile_manager.list_profiles():
+            p = profile_manager.load_profile(name)
+            if p:
+                # Remove deobfuscated passwords from export — keep encoded versions
+                export_p = dict(p)
+                export_p.pop("ftp_pass", None)
+                export_p.pop("snap_admin_pass", None)
+                profiles.append(export_p)
+
+        # Collect global config as dict
+        cfg = self._app._cfg
+        global_cfg = {}
+        for section in cfg.sections():
+            global_cfg[section] = dict(cfg[section])
+
+        bundle = {
+            "export_version": 1,
+            "app_version":    BUILD_VERSION,
+            "exported_at":    __import__("datetime").datetime.now(
+                                  __import__("datetime").timezone.utc).isoformat(),
+            "global_config":  global_cfg,
+            "profiles":       profiles,
+        }
+
+        try:
+            with open(path, "w") as f:
+                json.dump(bundle, f, indent=2)
+            messagebox.showinfo("Exported",
+                f"Settings exported to:\n{path}\n\n"
+                f"{len(profiles)} profile(s) saved.\n"
+                "Passwords are base64-encoded, not plain text.",
+                parent=self)
+        except Exception as e:
+            messagebox.showerror("Export failed", str(e), parent=self)
+
+    def _import_settings(self):
+        """Import profiles + global config from a previously exported JSON file."""
+        import json
+        path = filedialog.askopenfilename(
+            title="Import settings",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+        )
+        if not path:
+            return
+
+        try:
+            with open(path) as f:
+                bundle = json.load(f)
+        except Exception as e:
+            messagebox.showerror("Import failed", f"Could not read file:\n{e}", parent=self)
+            return
+
+        if not isinstance(bundle, dict) or "profiles" not in bundle:
+            messagebox.showerror("Invalid file", "This doesn't look like a SUYB settings export.", parent=self)
+            return
+
+        # Restore global config
+        global_cfg = bundle.get("global_config", {})
+        cfg = self._app._cfg
+        for section, values in global_cfg.items():
+            if not cfg.has_section(section):
+                cfg.add_section(section)
+            for key, val in values.items():
+                cfg.set(section, key, val)
+        cfg_module.save(cfg)
+
+        # Restore profiles
+        imported = 0
+        for p in bundle.get("profiles", []):
+            if not p.get("name"):
+                continue
+            # Re-create passwords from encoded versions for save_profile
+            # (save_profile will re-encode them)
+            p["ftp_pass"]        = profile_manager._deobfuscate(p.get("ftp_pass_enc", ""))
+            p["snap_admin_pass"] = profile_manager._deobfuscate(p.get("snap_admin_pass_enc", ""))
+            profile_manager.save_profile(p)
+            imported += 1
+
+        # Refresh UI
+        self._app._profiles = profile_manager.list_profiles()
+        self._app._refresh_profile_list()
+        self.load(cfg)
+
+        messagebox.showinfo("Imported",
+            f"Imported {imported} profile(s) and global settings from:\n{path}",
+            parent=self)
 
     def _save(self):
         cfg = self._app._cfg
