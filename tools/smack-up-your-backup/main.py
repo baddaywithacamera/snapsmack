@@ -849,9 +849,12 @@ class SettingsTab(tk.Frame):
             ("FTP username",     "ftp_user",         ""),
             ("FTP password",     "ftp_pass",         "●"),
             ("FTP remote dir",   "ftp_remote_dir",   ""),
-            ("Admin username",   "snap_admin_user",  ""),
-            ("Admin password",   "snap_admin_pass",  "●"),
-            ("Backup directory", "backup_dir",       ""),
+            ("Admin username",   "snap_admin_user",      ""),
+            ("Admin password",   "snap_admin_pass",     "●"),
+            ("Cloud provider",   "cloud_provider",      ""),
+            ("Credentials JSON", "cloud_credentials_file", ""),
+            ("Cloud folder ID",  "cloud_folder_id",     ""),
+            ("Backup directory", "backup_dir",          ""),
         ]
         for row, (label, key, show) in enumerate(profile_fields):
             tk.Label(self._profile_frame, text=label, bg=BG_DEEP, fg=FG_DIM,
