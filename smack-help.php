@@ -1585,52 +1585,52 @@ $help_topics['multisite'] = [
     'content'  => <<<'HTML'
 <h3>Multisite Management</h3>
 <p>Multisite lets you run a fleet of SnapSmack installations from a single hub. One site
-acts as the hub; every other site connects as a satellite. Once connected, the hub can
-monitor all satellites, push content to them, and moderate their comments — all from
+acts as the hub; every other site connects as a spoke. Once connected, the hub can
+monitor all spokes, push content to them, and moderate their comments — all from
 one admin panel.</p>
 
 <h4>Getting Started</h4>
 <p>Open <strong>Multisite Management</strong> in the sidebar. Choose whether this install
-is the <strong>Hub</strong> (the command centre) or a <strong>Satellite</strong> (a spoke
+is the <strong>Hub</strong> (the command centre) or a <strong>Spoke</strong> (a spoke
 site that reports back to the hub).</p>
 
-<h4>Connecting a Satellite</h4>
+<h4>Connecting a Spoke</h4>
 <ol>
-    <li>On the <strong>satellite</strong>, click <em>Enable as Satellite</em>, then
+    <li>On the <strong>spoke</strong>, click <em>Enable as Spoke</em>, then
     <em>Generate Registration Token</em>. A 32-character token appears, valid for
     15 minutes.</li>
-    <li>On the <strong>hub</strong>, click <em>Register Satellite</em>. Paste the
-    satellite's URL, its registration token, and give it a friendly name.</li>
-    <li>The hub performs an API handshake — if successful the satellite appears in
+    <li>On the <strong>hub</strong>, click <em>Register Spoke</em>. Paste the
+    spoke's URL, its registration token, and give it a friendly name.</li>
+    <li>The hub performs an API handshake — if successful the spoke appears in
     your fleet list with an active status.</li>
 </ol>
 
 <h4>Hub Features</h4>
 <ul>
-    <li><strong>Satellite Signals</strong> — unified moderation queue for pending comments
-    across every satellite. Approve, trash, or reply without leaving the hub.</li>
-    <li><strong>Satellite Posts</strong> — aggregated post feed from all satellites so you
+    <li><strong>Spoke Signals</strong> — unified moderation queue for pending comments
+    across every spoke. Approve, trash, or reply without leaving the hub.</li>
+    <li><strong>Spoke Posts</strong> — aggregated post feed from all spokes so you
     can see what's been published across the fleet.</li>
-    <li><strong>Cross-Post</strong> — push an image from the hub to one or more satellites
+    <li><strong>Cross-Post</strong> — push an image from the hub to one or more spokes
     in a single action.</li>
-    <li><strong>Fleet Stats</strong> — traffic statistics rolled up from every satellite
+    <li><strong>Fleet Stats</strong> — traffic statistics rolled up from every spoke
     into a combined dashboard.</li>
     <li><strong>Backup Dock</strong> — backup health overview for every site in the fleet.
     See last backup date, size, and any sites that are overdue.</li>
     <li><strong>Blogroll Sync</strong> — keep blogrolls in sync across the fleet with push
     or pull modes.</li>
     <li><strong>SSO Drill-Through</strong> — log in to the hub once, then click through to
-    any satellite without re-authenticating.</li>
+    any spoke without re-authenticating.</li>
 </ul>
 
 <h4>Heartbeat Monitoring</h4>
-<p>The hub pings each satellite on a regular schedule. If a satellite goes unresponsive, its
+<p>The hub pings each spoke on a regular schedule. If a spoke goes unresponsive, its
 status changes to <em>unreachable</em> so you can investigate. Heartbeat data includes
 software version, PHP version, and disk usage — giving you a quick health check for
 the entire fleet.</p>
 
 <h4>API Communication</h4>
-<p>Hub and satellite communicate through a JSON API at <code>api.php?route=multisite/*</code>.
+<p>Hub and spoke communicate through a JSON API at <code>api.php?route=multisite/*</code>.
 All requests are authenticated with per-node API keys exchanged during the initial handshake.
 Communication uses HTTPS and keys are stored server-side — nothing is exposed to visitors.</p>
 HTML

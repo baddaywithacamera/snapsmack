@@ -3,8 +3,8 @@
  * SNAPSMACK - Multisite Management
  * Alpha v0.7.9c
  *
- * Hub and satellite site management interface. Allows admins to set up
- * multi-site configurations, register new satellites, and monitor their status.
+ * Hub and spoke site management interface. Allows admins to set up
+ * multi-site configurations, register new spokes, and monitor their status.
  */
 
 require_once 'core/auth.php';
@@ -15,14 +15,14 @@ require_once 'core/auth.php';
 if (isset($_POST['enable_hub'])) {
     $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
     $stmt->execute(['multisite_role', 'hub', 'hub']);
-    $msg = "Enabled as Hub. You can now register satellite sites.";
+    $msg = "Enabled as Hub. You can now register spoke sites.";
 }
 
-// Connect to Hub (satellite mode)
-if (isset($_POST['enable_satellite'])) {
+// Connect to Hub (spoke mode)
+if (isset($_POST['enable_spoke'])) {
     $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
-    $stmt->execute(['multisite_role', 'satellite', 'satellite']);
-    $msg = "Enabled as Satellite. You can now generate a registration token.";
+    $stmt->execute(['multisite_role', 'spoke', 'spoke']);
+    $msg = "Enabled as Spoke. You can now generate a registration token.";
 }
 
 // Generate registration token
@@ -40,31 +40,31 @@ if (isset($_POST['gen_reg_token'])) {
     $msg = "Registration token generated. Valid for 15 minutes.";
 }
 
-// Register satellite (hub mode)
-if (isset($_POST['register_satellite'])) {
-    $satellite_url = trim($_POST['satellite_url'] ?? '');
-    $satellite_token = trim($_POST['satellite_token'] ?? '');
-    $satellite_name = trim($_POST['satellite_name'] ?? '');
+// Register spoke (hub mode)
+if (isset($_POST['register_spoke'])) {
+    $spoke_url = trim($_POST['spoke_url'] ?? '');
+    $spoke_token = trim($_POST['spoke_token'] ?? '');
+    $spoke_name = trim($_POST['spoke_name'] ?? '');
 
-    if (empty($satellite_url) || empty($satellite_token)) {
-        $err = "Satellite URL and registration token are required.";
+    if (empty($spoke_url) || empty($spoke_token)) {
+        $err = "Spoke URL and registration token are required.";
     } else {
         // Normalize URL
-        if (!preg_match('~^https?://~i', $satellite_url)) {
-            $satellite_url = 'https://' . $satellite_url;
+        if (!preg_match('~^https?://~i', $spoke_url)) {
+            $spoke_url = 'https://' . $spoke_url;
         }
-        $satellite_url = rtrim($satellite_url, '/');
+        $spoke_url = rtrim($spoke_url, '/');
 
-        // Call the satellite's handshake endpoint
+        // Call the spoke's handshake endpoint
         $handshake_data = [
             'site_url' => BASE_URL,
             'site_name' => $settings['site_name'] ?? 'SnapSmack Hub',
-            'token' => $satellite_token
+            'token' => $spoke_token
         ];
 
         $ch = curl_init();
         curl_setopt_array($ch, [
-            CURLOPT_URL => $satellite_url . '/api.php?route=multisite/handshake',
+            CURLOPT_URL => $spoke_url . '/api.php?route=multisite/handshake',
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => http_build_query($handshake_data),
             CURLOPT_RETURNTRANSFER => true,
@@ -81,7 +81,7 @@ if (isset($_POST['register_satellite'])) {
         curl_close($ch);
 
         if (!$response || $http_code !== 200) {
-            $err = "Failed to contact satellite: " . ($curl_err ?: "HTTP $http_code");
+            $err = "Failed to contact spoke: " . ($curl_err ?: "HTTP $http_code");
         } else {
             $response_data = json_decode($response, true);
 
@@ -90,7 +90,7 @@ if (isset($_POST['register_satellite'])) {
             } else {
                 $api_key_remote = $response_data['api_key'];
 
-                // Store the satellite
+                // Store the spoke
                 $stmt = $pdo->prepare("
                     INSERT INTO snap_multisite_nodes
                     (role, site_url, site_name, api_key_local, api_key_remote, status, connected_at)
@@ -103,8 +103,8 @@ if (isset($_POST['register_satellite'])) {
 
                 try {
                     $api_key_local = bin2hex(random_bytes(32));
-                    $stmt->execute(['satellite', $satellite_url, $satellite_name, $api_key_local, $api_key_remote]);
-                    $msg = "Satellite registered successfully: {$satellite_name}";
+                    $stmt->execute(['spoke', $spoke_url, $spoke_name, $api_key_local, $api_key_remote]);
+                    $msg = "Spoke registered successfully: {$spoke_name}";
                 } catch (PDOException $e) {
                     $err = "Database error: " . $e->getMessage();
                 }
@@ -113,17 +113,17 @@ if (isset($_POST['register_satellite'])) {
     }
 }
 
-// Disconnect satellite
+// Disconnect spoke
 if (isset($_GET['disconnect'])) {
     $node_id = (int)$_GET['disconnect'];
 
-    // Get the satellite info
-    $stmt = $pdo->prepare("SELECT site_url, api_key_local FROM snap_multisite_nodes WHERE id = ? AND role = 'satellite'");
+    // Get the spoke info
+    $stmt = $pdo->prepare("SELECT site_url, api_key_local FROM snap_multisite_nodes WHERE id = ? AND role = 'spoke'");
     $stmt->execute([$node_id]);
     $node = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($node) {
-        // Notify satellite to disconnect
+        // Notify spoke to disconnect
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL => $node['site_url'] . '/api.php?route=multisite/disconnect',
@@ -141,7 +141,7 @@ if (isset($_GET['disconnect'])) {
 
         // Update status
         $pdo->prepare("UPDATE snap_multisite_nodes SET status = 'disconnected' WHERE id = ?")->execute([$node_id]);
-        $msg = "Satellite disconnected.";
+        $msg = "Spoke disconnected.";
     }
 }
 
@@ -163,10 +163,10 @@ $multisite_role = $settings['multisite_role'] ?? '';
 $nodes = $pdo->query("SELECT * FROM snap_multisite_nodes ORDER BY role ASC, connected_at DESC")->fetchAll(PDO::FETCH_ASSOC);
 
 // --- HEARTBEAT SWEEP (hub only, once per page load) ---
-// Calls each active satellite's heartbeat endpoint and caches the stats locally.
+// Calls each active spoke's heartbeat endpoint and caches the stats locally.
 if ($multisite_role === 'hub') {
     foreach ($nodes as &$n) {
-        if ($n['role'] !== 'satellite' || $n['status'] !== 'active') continue;
+        if ($n['role'] !== 'spoke' || $n['status'] !== 'active') continue;
 
         $url = rtrim($n['site_url'], '/') . '/api.php?route=multisite/heartbeat';
         $hb_ch = curl_init();
@@ -256,11 +256,11 @@ include 'core/sidebar.php';
     <?php endif; ?>
 
     <?php if (empty($multisite_role)): ?>
-        <!-- INITIAL CHOICE: Neither hub nor satellite -->
+        <!-- INITIAL CHOICE: Neither hub nor spoke -->
         <div class="box">
             <h3>ENABLE MULTISITE MANAGEMENT</h3>
             <p style="margin-bottom:20px; color:var(--text-muted,#888);">
-                This installation can operate as a Hub (manage multiple sites) or as a Satellite (managed by a hub).
+                This installation can operate as a Hub (manage multiple sites) or as a Spoke (managed by a hub).
                 Choose your role to get started.
             </p>
 
@@ -278,13 +278,13 @@ include 'core/sidebar.php';
                 </div>
 
                 <div style="padding:20px; border:1px solid var(--border,#333); background:var(--input-bg,#111);">
-                    <h4>SATELLITE MODE</h4>
+                    <h4>SPOKE MODE</h4>
                     <p style="font-size:0.9rem; color:var(--text-muted,#888); margin-bottom:15px;">
                         Connect this site to a central hub for remote monitoring and management.
                     </p>
                     <form method="POST" style="margin:0;">
-                        <button type="submit" name="enable_satellite" class="master-update-btn" style="width:100%;">
-                            ENABLE AS SATELLITE
+                        <button type="submit" name="enable_spoke" class="master-update-btn" style="width:100%;">
+                            ENABLE AS SPOKE
                         </button>
                     </form>
                 </div>
@@ -296,7 +296,7 @@ include 'core/sidebar.php';
         <!-- HUB QUICK NAV -->
         <?php
             $total_pending_fleet = array_sum(array_column(
-                array_filter($nodes, fn($n) => $n['role'] === 'satellite' && $n['status'] === 'active'),
+                array_filter($nodes, fn($n) => $n['role'] === 'spoke' && $n['status'] === 'active'),
                 'pending_comments'
             ));
         ?>
@@ -314,12 +314,12 @@ include 'core/sidebar.php';
             </div>
         </div>
 
-        <!-- HUB MODE: Manage satellites -->
+        <!-- HUB MODE: Manage spokes -->
         <div class="box">
-            <h3>CONNECTED SATELLITES</h3>
+            <h3>CONNECTED SPOKES</h3>
 
-            <?php if (empty($nodes) || count(array_filter($nodes, fn($n) => $n['role'] === 'satellite')) === 0): ?>
-                <p style="color:var(--text-muted,#888);">No satellites connected yet. Register one below.</p>
+            <?php if (empty($nodes) || count(array_filter($nodes, fn($n) => $n['role'] === 'spoke')) === 0): ?>
+                <p style="color:var(--text-muted,#888);">No spokes connected yet. Register one below.</p>
             <?php else: ?>
                 <div style="overflow-x:auto;">
                     <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
@@ -338,7 +338,7 @@ include 'core/sidebar.php';
                         </thead>
                         <tbody>
                             <?php foreach ($nodes as $n): ?>
-                                <?php if ($n['role'] !== 'satellite') continue; ?>
+                                <?php if ($n['role'] !== 'spoke') continue; ?>
                                 <tr style="border-bottom:1px solid var(--border,#333);">
                                     <td style="padding:10px;"><strong><?php echo htmlspecialchars($n['site_name'] ?? 'Unknown'); ?></strong></td>
                                     <td style="padding:10px; font-size:0.85rem; color:var(--text-muted,#888);">
@@ -348,10 +348,10 @@ include 'core/sidebar.php';
                                     </td>
                                     <td style="padding:10px; text-align:center; color:var(--text-muted,#888); font-family:monospace; font-size:0.85rem;">
                                         <?php
-                                            $sat_ver = $n['software_version'] ?? '';
-                                            echo $sat_ver ? htmlspecialchars($sat_ver) : '—';
+                                            $spoke_ver = $n['software_version'] ?? '';
+                                            echo $spoke_ver ? htmlspecialchars($spoke_ver) : '—';
                                             // Flag if behind current hub version
-                                            if ($sat_ver && defined('SNAPSMACK_VERSION') && $sat_ver !== SNAPSMACK_VERSION) {
+                                            if ($spoke_ver && defined('SNAPSMACK_VERSION') && $spoke_ver !== SNAPSMACK_VERSION) {
                                                 echo ' <span style="color:#FF9800; font-size:0.75rem;" title="Behind hub version ' . htmlspecialchars(SNAPSMACK_VERSION) . '">&#x25B2;</span>';
                                             }
                                         ?>
@@ -398,13 +398,13 @@ include 'core/sidebar.php';
                                     </td>
                                     <td style="padding:10px; text-align:center;">
                                         <?php if ($n['status'] === 'active'): ?>
-                                            <a href="smack-multisite-sso.php?sat=<?php echo $n['id']; ?>"
+                                            <a href="smack-multisite-sso.php?spoke=<?php echo $n['id']; ?>"
                                                target="_blank"
                                                class="action-authorize"
                                                style="margin-right:6px;"
-                                               title="Open satellite admin as primary admin user">REMOTE LOGIN</a>
+                                               title="Open spoke admin as primary admin user">REMOTE LOGIN</a>
                                         <?php endif; ?>
-                                        <a href="?disconnect=<?php echo $n['id']; ?>" class="action-delete" onclick="return confirm('Disconnect this satellite?');">DISCONNECT</a>
+                                        <a href="?disconnect=<?php echo $n['id']; ?>" class="action-delete" onclick="return confirm('Disconnect this spoke?');">DISCONNECT</a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -414,29 +414,29 @@ include 'core/sidebar.php';
             <?php endif; ?>
         </div>
 
-        <!-- REGISTER NEW SATELLITE -->
+        <!-- REGISTER NEW SPOKE -->
         <div class="box">
-            <h3>REGISTER NEW SATELLITE</h3>
+            <h3>REGISTER NEW SPOKE</h3>
             <form method="POST">
-                <label>SATELLITE NAME</label>
-                <input type="text" name="satellite_name" placeholder="e.g., Travel Blog" required>
+                <label>SPOKE NAME</label>
+                <input type="text" name="spoke_name" placeholder="e.g., Travel Blog" required>
 
-                <label>SATELLITE URL</label>
-                <input type="url" name="satellite_url" placeholder="https://example.com" required>
+                <label>SPOKE URL</label>
+                <input type="url" name="spoke_url" placeholder="https://example.com" required>
 
                 <label>REGISTRATION TOKEN</label>
-                <input type="text" name="satellite_token" placeholder="Obtained from the satellite's dashboard" required>
+                <input type="text" name="spoke_token" placeholder="Obtained from the spoke's dashboard" required>
 
                 <p style="font-size:0.85rem; color:var(--text-muted,#888); margin:10px 0;">
-                    Ask the satellite admin to generate a token at their Multisite Management page and give it to you.
+                    Ask the spoke admin to generate a token at their Multisite Management page and give it to you.
                 </p>
 
-                <button type="submit" name="register_satellite" class="master-update-btn">REGISTER SATELLITE</button>
+                <button type="submit" name="register_spoke" class="master-update-btn">REGISTER SPOKE</button>
             </form>
         </div>
 
-    <?php elseif ($multisite_role === 'satellite'): ?>
-        <!-- SATELLITE MODE: Connected to a hub -->
+    <?php elseif ($multisite_role === 'spoke'): ?>
+        <!-- SPOKE MODE: Connected to a hub -->
 
         <?php $hub_node = array_filter($nodes, fn($n) => $n['role'] === 'hub'); ?>
 

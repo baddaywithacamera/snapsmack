@@ -1,10 +1,10 @@
--- Migration: Multisite hub/satellite tables
+-- Migration: Multisite hub/spoke tables
 -- Introduced: Alpha 0.7.9
 -- Safe to run multiple times (CREATE TABLE IF NOT EXISTS, INSERT IGNORE)
 
 CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
     `id`                  int unsigned NOT NULL AUTO_INCREMENT,
-    `role`                enum('hub','satellite') NOT NULL,
+    `role`                enum('hub','spoke') NOT NULL,
     `site_url`            varchar(500) NOT NULL,
     `site_name`           varchar(255) DEFAULT NULL,
     `api_key_local`       varchar(255) NOT NULL,

@@ -88,8 +88,8 @@ if ($resource === 'handshake' && $method === 'POST') {
 
     // Generate a persistent key pair: hub calls us with api_key_local,
     // we call the hub with api_key_remote.
-    $api_key_local  = bin2hex(random_bytes(32));  // hub → satellite auth
-    $api_key_remote = bin2hex(random_bytes(32));  // satellite → hub auth (returned to hub)
+    $api_key_local  = bin2hex(random_bytes(32));  // hub → spoke auth
+    $api_key_remote = bin2hex(random_bytes(32));  // spoke → hub auth (returned to hub)
 
     try {
         $pdo->prepare("
@@ -300,7 +300,7 @@ if ($resource === 'stats' && $sub_action === 'daily' && $method === 'GET') {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: GET multisite/updates/status
-// Current version. Hub uses this to flag stale satellites.
+// Current version. Hub uses this to flag stale spokes.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'updates' && $sub_action === 'status' && $method === 'GET') {
     ms_ok([
@@ -368,7 +368,7 @@ if ($resource === 'backup' && $sub_action === 'config' && $method === 'GET') {
 // ENDPOINT: POST multisite/posts/create
 // Cross-post: create a new image record from a hub-originated post.
 // The hub sends metadata + a publicly accessible URL for the image file.
-// This satellite fetches the image, saves it locally, and creates the record.
+// This spoke fetches the image, saves it locally, and creates the record.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'posts' && $sub_action === 'create' && $method === 'POST') {
     $title      = trim($_POST['title']      ?? '');
@@ -470,7 +470,7 @@ if ($resource === 'posts' && $sub_action === 'create' && $method === 'POST') {
 // ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: POST multisite/auth/sso-token
 // Generates a short-lived one-time SSO token so the hub can launch a
-// browser session on this satellite without knowing its admin password.
+// browser session on this spoke without knowing its admin password.
 // Token is single-use and expires in 5 minutes.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'auth' && $sub_action === 'sso-token' && $method === 'POST') {
@@ -506,7 +506,7 @@ if ($resource === 'blogroll' && $sub_action === 'list' && $method === 'GET') {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: POST multisite/blogroll/sync
-// Hub pushes its blogroll to this satellite. Entries are tagged with
+// Hub pushes its blogroll to this spoke. Entries are tagged with
 // the hub's site_url as their source and managed as a group: any prior
 // hub-synced entries are removed before the new set is inserted.
 // ─────────────────────────────────────────────────────────────────────────────

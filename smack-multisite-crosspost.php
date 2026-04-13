@@ -4,9 +4,9 @@
  * Alpha v0.7.9c
  *
  * Hub-only page. Browse the hub's published image library, select one or
- * more posts, choose target satellites, and push the content across. The hub
- * sends each satellite the post metadata and a public URL for the image —
- * the satellite fetches the image itself and creates a local draft/published
+ * more posts, choose target spokes, and push the content across. The hub
+ * sends each spoke the post metadata and a public URL for the image —
+ * the spoke fetches the image itself and creates a local draft/published
  * record via the multisite/posts/create API endpoint.
  */
 
@@ -19,16 +19,16 @@ if ($multisite_role !== 'hub') {
     exit;
 }
 
-// --- ACTIVE SATELLITES ---
-$satellites = $pdo->query("
+// --- ACTIVE SPOKES ---
+$spokes = $pdo->query("
     SELECT id, site_url, site_name, api_key_local
     FROM snap_multisite_nodes
-    WHERE role = 'satellite' AND status = 'active'
+    WHERE role = 'spoke' AND status = 'active'
     ORDER BY site_name ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// cURL helper: call a satellite API endpoint (POST)
+// cURL helper: call a spoke API endpoint (POST)
 // ─────────────────────────────────────────────────────────────────────────────
 function ms_crosspost_call(string $site_url, string $api_key, string $route, array $post_data): array {
     $url = rtrim($site_url, '/') . '/api.php?route=' . $route;
@@ -38,7 +38,7 @@ function ms_crosspost_call(string $site_url, string $api_key, string $route, arr
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => http_build_query($post_data),
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 30,    // Give satellite time to fetch the image
+        CURLOPT_TIMEOUT        => 30,    // Give spoke time to fetch the image
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_HTTPHEADER     => [
             'Authorization: Bearer ' . $api_key,
@@ -52,7 +52,7 @@ function ms_crosspost_call(string $site_url, string $api_key, string $route, arr
 
     if (!$raw) return ['ok' => false, 'error' => $cerr ?: 'No response'];
     $decoded = json_decode($raw, true);
-    if (!is_array($decoded)) return ['ok' => false, 'error' => 'Invalid JSON from satellite'];
+    if (!is_array($decoded)) return ['ok' => false, 'error' => 'Invalid JSON from spoke'];
     return $decoded;
 }
 
@@ -63,13 +63,13 @@ $xp_results = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['xp_submit'])) {
     $selected_img_ids = array_map('intval', (array)($_POST['img_ids'] ?? []));
-    $selected_sat_ids = array_map('intval', (array)($_POST['sat_ids'] ?? []));
+    $selected_spoke_ids = array_map('intval', (array)($_POST['spoke_ids'] ?? []));
     $xp_status        = in_array($_POST['xp_status'] ?? '', ['draft', 'published']) ? $_POST['xp_status'] : 'draft';
 
     if (empty($selected_img_ids)) {
         $err = "Select at least one post to cross-post.";
-    } elseif (empty($selected_sat_ids)) {
-        $err = "Select at least one satellite to post to.";
+    } elseif (empty($selected_spoke_ids)) {
+        $err = "Select at least one spoke to post to.";
     } else {
         // Load selected images from hub DB
         $placeholders = implode(',', array_fill(0, count($selected_img_ids), '?'));
@@ -86,11 +86,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['xp_submit'])) {
         if (empty($hub_images)) {
             $err = "None of the selected posts were found or are published.";
         } else {
-            // Build map of selected satellites
-            $sat_map = [];
-            foreach ($satellites as $sat) {
-                if (in_array($sat['id'], $selected_sat_ids)) {
-                    $sat_map[$sat['id']] = $sat;
+            // Build map of selected spokes
+            $spoke_map = [];
+            foreach ($spokes as $spoke) {
+                if (in_array($spoke['id'], $selected_spoke_ids)) {
+                    $spoke_map[$spoke['id']] = $spoke;
                 }
             }
 
@@ -99,10 +99,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['xp_submit'])) {
                 $img_ext = strtolower(pathinfo($img['img_file'], PATHINFO_EXTENSION));
 
                 $row_results = [];
-                foreach ($sat_map as $sat_id => $sat) {
+                foreach ($spoke_map as $spoke_id => $spoke) {
                     $resp = ms_crosspost_call(
-                        $sat['site_url'],
-                        $sat['api_key_local'],
+                        $spoke['site_url'],
+                        $spoke['api_key_local'],
                         'multisite/posts/create',
                         [
                             'title'       => $img['img_title'],
@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['xp_submit'])) {
                         ]
                     );
 
-                    $row_results[$sat['site_name']] = [
+                    $row_results[$spoke['site_name']] = [
                         'ok'      => !empty($resp['ok']),
                         'img_id'  => $resp['img_id']  ?? null,
                         'post_url'=> $resp['post_url'] ?? null,
@@ -165,7 +165,7 @@ include 'core/sidebar.php';
         <h2>CROSS-POST</h2>
         <div class="header-actions">
             <div class="status-pill status-online">
-                <?php echo count($satellites); ?> SATELLITE<?php echo count($satellites) !== 1 ? 'S' : ''; ?> AVAILABLE
+                <?php echo count($spokes); ?> SPOKE<?php echo count($spokes) !== 1 ? 'S' : ''; ?> AVAILABLE
             </div>
         </div>
     </div>
@@ -191,17 +191,17 @@ include 'core/sidebar.php';
     <?php if (!empty($xp_results)): ?>
         <div class="box">
             <h3>CROSS-POST RESULTS</h3>
-            <?php foreach ($xp_results as $img_title => $sat_results): ?>
+            <?php foreach ($xp_results as $img_title => $spoke_results): ?>
                 <div style="margin-bottom:15px; padding-bottom:15px; border-bottom:1px solid var(--border,#333);">
                     <div style="font-weight:700; margin-bottom:8px;"><?php echo htmlspecialchars($img_title); ?></div>
                     <div style="display:flex; flex-wrap:wrap; gap:10px;">
-                        <?php foreach ($sat_results as $sat_name => $result): ?>
+                        <?php foreach ($spoke_results as $spoke_name => $result): ?>
                             <div style="padding:8px 14px; border:1px solid <?php echo $result['ok'] ? '#4CAF50' : '#f44336'; ?>;
                                         border-radius:3px; font-size:0.8rem; display:flex; align-items:center; gap:8px;">
                                 <span style="color:<?php echo $result['ok'] ? '#4CAF50' : '#f44336'; ?>; font-weight:700;">
                                     <?php echo $result['ok'] ? '&#x2713;' : '&#x2717;'; ?>
                                 </span>
-                                <span style="color:var(--text-muted,#888);"><?php echo htmlspecialchars($sat_name); ?></span>
+                                <span style="color:var(--text-muted,#888);"><?php echo htmlspecialchars($spoke_name); ?></span>
                                 <?php if ($result['ok'] && $result['post_url']): ?>
                                     <a href="<?php echo htmlspecialchars($result['post_url']); ?>" target="_blank"
                                        style="color:var(--accent,#aaa); font-size:0.75rem;">VIEW</a>
@@ -216,9 +216,9 @@ include 'core/sidebar.php';
         </div>
     <?php endif; ?>
 
-    <?php if (empty($satellites)): ?>
+    <?php if (empty($spokes)): ?>
         <div class="box">
-            <p style="color:var(--text-muted,#888);">No active satellites connected. <a href="smack-multisite.php" style="color:var(--accent,#aaa);">Register a satellite</a> first.</p>
+            <p style="color:var(--text-muted,#888);">No active spokes connected. <a href="smack-multisite.php" style="color:var(--accent,#aaa);">Register a spoke</a> first.</p>
         </div>
     <?php else: ?>
 
@@ -228,15 +228,15 @@ include 'core/sidebar.php';
         <div class="box" style="position:sticky; top:0; z-index:50; background:var(--bg,#0a0a0a);">
             <div style="display:flex; flex-wrap:wrap; align-items:center; gap:20px;">
                 <div>
-                    <div style="font-size:0.75rem; color:var(--text-muted,#888); letter-spacing:1px; margin-bottom:8px;">TARGET SATELLITES</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted,#888); letter-spacing:1px; margin-bottom:8px;">TARGET SPOKES</div>
                     <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                        <?php foreach ($satellites as $sat): ?>
+                        <?php foreach ($spokes as $spoke): ?>
                             <label style="display:flex; align-items:center; gap:6px; cursor:pointer;
                                           padding:6px 12px; border:1px solid var(--border,#333);
                                           border-radius:3px; font-size:0.85rem;">
-                                <input type="checkbox" name="sat_ids[]" value="<?php echo $sat['id']; ?>"
+                                <input type="checkbox" name="spoke_ids[]" value="<?php echo $spoke['id']; ?>"
                                        class="tactical-checkbox" style="margin:0;">
-                                <?php echo htmlspecialchars($sat['site_name']); ?>
+                                <?php echo htmlspecialchars($spoke['site_name']); ?>
                             </label>
                         <?php endforeach; ?>
                     </div>
@@ -343,13 +343,13 @@ include 'core/sidebar.php';
 <script>
 function confirmCrossPost() {
     var checked = document.querySelectorAll('input[name="img_ids[]"]:checked');
-    var sats    = document.querySelectorAll('input[name="sat_ids[]"]:checked');
+    var spokes  = document.querySelectorAll('input[name="spoke_ids[]"]:checked');
     if (checked.length === 0) { alert('Select at least one post.'); return false; }
-    if (sats.length === 0)    { alert('Select at least one satellite.'); return false; }
+    if (spokes.length === 0)  { alert('Select at least one spoke.'); return false; }
     var status = document.querySelector('input[name="xp_status"]:checked').value;
     return confirm(
         'Cross-post ' + checked.length + ' post' + (checked.length > 1 ? 's' : '') +
-        ' to ' + sats.length + ' satellite' + (sats.length > 1 ? 's' : '') +
+        ' to ' + spokes.length + ' spoke' + (spokes.length > 1 ? 's' : '') +
         ' as ' + status.toUpperCase() + '?'
     );
 }

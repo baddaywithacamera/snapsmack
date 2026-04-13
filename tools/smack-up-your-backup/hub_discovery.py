@@ -94,7 +94,7 @@ class HubDiscovery:
         """Connect to a hub, return (hub_info, spoke_list).
 
         hub_info is a dict with: site_url, site_name, cloud_config, backup_status
-        spoke_list is a list of dicts from multisite.nodes with role='satellite'
+        spoke_list is a list of dicts from multisite.nodes with role='spoke'
         """
         data = self.fetch_suyb_data()
 
@@ -107,8 +107,8 @@ class HubDiscovery:
 
         ms = data.get("multisite", {})
         all_nodes = ms.get("nodes", [])
-        # Filter to satellites only — the hub itself is not a "spoke"
-        spokes = [n for n in all_nodes if n.get("role") == "satellite"]
+        # Filter to spokes only — the hub itself is not a "spoke"
+        spokes = [n for n in all_nodes if n.get("role") == "spoke"]
 
         return hub_info, spokes
 

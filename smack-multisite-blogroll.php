@@ -5,12 +5,12 @@
  *
  * Hub-only page. Two modes:
  *
- * PUSH — sends the hub's own blogroll to selected satellites. Each satellite
+ * PUSH — sends the hub's own blogroll to selected spokes. Each spoke
  *        receives entries in a dedicated "Hub: {domain}" category, replacing
  *        any previously synced entries from this hub.
  *
- * PULL — fetches each satellite's blogroll (read-only view on the hub).
- *        Allows the hub admin to discover what satellites are linking and
+ * PULL — fetches each spoke's blogroll (read-only view on the hub).
+ *        Allows the hub admin to discover what spokes are linking and
  *        optionally import entries into the hub's own blogroll.
  */
 
@@ -23,11 +23,11 @@ if ($multisite_role !== 'hub') {
     exit;
 }
 
-// --- ACTIVE SATELLITES ---
-$satellites = $pdo->query("
+// --- ACTIVE SPOKES ---
+$spokes = $pdo->query("
     SELECT id, site_url, site_name, api_key_local
     FROM snap_multisite_nodes
-    WHERE role = 'satellite' AND status = 'active'
+    WHERE role = 'spoke' AND status = 'active'
     ORDER BY site_name ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -61,15 +61,15 @@ function ms_blogroll_call(string $site_url, string $api_key, string $route, stri
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST: PUSH hub blogroll to satellites
+// POST: PUSH hub blogroll to spokes
 // ─────────────────────────────────────────────────────────────────────────────
 $push_results = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['push_blogroll'])) {
-    $selected_sat_ids = array_map('intval', (array)($_POST['sat_ids'] ?? []));
+    $selected_spoke_ids = array_map('intval', (array)($_POST['spoke_ids'] ?? []));
 
-    if (empty($selected_sat_ids)) {
-        $err = "Select at least one satellite to push to.";
+    if (empty($selected_spoke_ids)) {
+        $err = "Select at least one spoke to push to.";
     } else {
         // Load hub's blogroll
         $hub_entries = $pdo->query("
@@ -83,25 +83,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['push_blogroll'])) {
         } else {
             $entries_json = json_encode($hub_entries, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-            foreach ($satellites as $sat) {
-                if (!in_array($sat['id'], $selected_sat_ids)) continue;
+            foreach ($spokes as $spoke) {
+                if (!in_array($spoke['id'], $selected_spoke_ids)) continue;
                 $result = ms_blogroll_call(
-                    $sat['site_url'],
-                    $sat['api_key_local'],
+                    $spoke['site_url'],
+                    $spoke['api_key_local'],
                     'multisite/blogroll/sync',
                     'POST',
                     ['hub_url' => BASE_URL, 'entries' => $entries_json]
                 );
-                $push_results[$sat['site_name']] = $result
+                $push_results[$spoke['site_name']] = $result
                     ? ['ok' => true, 'inserted' => $result['inserted'] ?? 0, 'category' => $result['category'] ?? '']
-                    : ['ok' => false, 'error' => 'Satellite unreachable or refused the sync.'];
+                    : ['ok' => false, 'error' => 'Spoke unreachable or refused the sync.'];
             }
-            $msg = "Push complete. " . count($push_results) . " satellite" . (count($push_results) !== 1 ? 's' : '') . " contacted.";
+            $msg = "Push complete. " . count($push_results) . " spoke" . (count($push_results) !== 1 ? 's' : '') . " contacted.";
         }
     }
 }
 
-// POST: Import a satellite entry into the hub's own blogroll
+// POST: Import a spoke entry into the hub's own blogroll
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_entry'])) {
     $peer_name = trim($_POST['peer_name'] ?? '');
     $peer_url  = trim($_POST['peer_url']  ?? '');
@@ -110,12 +110,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_entry'])) {
     $from_sat  = trim($_POST['from_sat']  ?? '');
 
     if ($peer_url && filter_var($peer_url, FILTER_VALIDATE_URL)) {
-        // Find or create "Satellites" category for imports
-        $cat_stmt = $pdo->prepare("SELECT id FROM snap_blogroll_cats WHERE cat_name = 'Satellites'");
+        // Find or create "Spokes" category for imports
+        $cat_stmt = $pdo->prepare("SELECT id FROM snap_blogroll_cats WHERE cat_name = 'Spokes'");
         $cat_stmt->execute();
         $cat_id = $cat_stmt->fetchColumn();
         if (!$cat_id) {
-            $pdo->prepare("INSERT INTO snap_blogroll_cats (cat_name) VALUES ('Satellites')")->execute();
+            $pdo->prepare("INSERT INTO snap_blogroll_cats (cat_name) VALUES ('Spokes')")->execute();
             $cat_id = $pdo->lastInsertId();
         }
 
@@ -133,24 +133,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_entry'])) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PULL: Fetch satellite blogrolls (always, on every page load — used for display)
+// PULL: Fetch spoke blogrolls (always, on every page load — used for display)
 // ─────────────────────────────────────────────────────────────────────────────
 $mode = $_GET['mode'] ?? 'push';   // 'push' or 'pull'
 
-$satellite_blogrolls = [];
+$spoke_blogrolls = [];
 $fetch_errors        = [];
 
 if ($mode === 'pull') {
-    foreach ($satellites as $sat) {
-        $result = ms_blogroll_call($sat['site_url'], $sat['api_key_local'], 'multisite/blogroll/list');
+    foreach ($spokes as $spoke) {
+        $result = ms_blogroll_call($spoke['site_url'], $spoke['api_key_local'], 'multisite/blogroll/list');
         if ($result) {
-            $satellite_blogrolls[$sat['id']] = [
-                'site_name' => $sat['site_name'],
-                'site_url'  => $sat['site_url'],
+            $spoke_blogrolls[$spoke['id']] = [
+                'site_name' => $spoke['site_name'],
+                'site_url'  => $spoke['site_url'],
                 'entries'   => $result['entries'] ?? [],
             ];
         } else {
-            $fetch_errors[] = $sat['site_name'];
+            $fetch_errors[] = $spoke['site_name'];
         }
     }
 }
@@ -204,12 +204,12 @@ include 'core/sidebar.php';
         <div class="alert alert-error">> <?php echo htmlspecialchars($err); ?></div>
     <?php endif; ?>
     <?php if (!empty($fetch_errors)): ?>
-        <div class="alert alert-error">> OFFLINE SATELLITES: <?php echo htmlspecialchars(implode(', ', $fetch_errors)); ?></div>
+        <div class="alert alert-error">> OFFLINE SPOKES: <?php echo htmlspecialchars(implode(', ', $fetch_errors)); ?></div>
     <?php endif; ?>
 
-    <?php if (empty($satellites)): ?>
+    <?php if (empty($spokes)): ?>
         <div class="box">
-            <p style="color:var(--text-muted,#888);">No active satellites. <a href="smack-multisite.php" style="color:var(--accent,#aaa);">Register one first.</a></p>
+            <p style="color:var(--text-muted,#888);">No active spokes. <a href="smack-multisite.php" style="color:var(--accent,#aaa);">Register one first.</a></p>
         </div>
 
     <?php elseif ($mode === 'push'): ?>
@@ -241,24 +241,24 @@ include 'core/sidebar.php';
 
         <!-- PUSH FORM -->
         <div class="box">
-            <h3>PUSH HUB BLOGROLL TO SATELLITES</h3>
+            <h3>PUSH HUB BLOGROLL TO SPOKES</h3>
             <p style="color:var(--text-muted,#888); font-size:0.9rem; margin-bottom:20px;">
-                Sends all <?php echo count($hub_blogroll); ?> entries from the hub's blogroll to the selected satellites.
-                On each satellite, entries are placed in a dedicated "Hub:" category and replace any previously
-                synced entries from this hub. Satellites' own existing blogroll entries are untouched.
+                Sends all <?php echo count($hub_blogroll); ?> entries from the hub's blogroll to the selected spokes.
+                On each spoke, entries are placed in a dedicated "Hub:" category and replace any previously
+                synced entries from this hub. Spokes' own existing blogroll entries are untouched.
             </p>
 
             <form method="POST">
                 <div style="margin-bottom:15px;">
-                    <div style="font-size:0.75rem; color:var(--text-muted,#888); letter-spacing:1px; margin-bottom:10px;">TARGET SATELLITES</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted,#888); letter-spacing:1px; margin-bottom:10px;">TARGET SPOKES</div>
                     <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                        <?php foreach ($satellites as $sat): ?>
+                        <?php foreach ($spokes as $spoke): ?>
                             <label style="display:flex; align-items:center; gap:6px; cursor:pointer;
                                           padding:7px 14px; border:1px solid var(--border,#333);
                                           border-radius:3px; font-size:0.85rem;">
-                                <input type="checkbox" name="sat_ids[]" value="<?php echo $sat['id']; ?>"
+                                <input type="checkbox" name="spoke_ids[]" value="<?php echo $spoke['id']; ?>"
                                        class="tactical-checkbox" style="margin:0;" checked>
-                                <?php echo htmlspecialchars($sat['site_name']); ?>
+                                <?php echo htmlspecialchars($spoke['site_name']); ?>
                             </label>
                         <?php endforeach; ?>
                     </div>
@@ -268,7 +268,7 @@ include 'core/sidebar.php';
                     <p style="color:#f44336; font-size:0.9rem;">Hub blogroll is empty. <a href="smack-blogroll.php" style="color:var(--accent,#aaa);">Add entries first.</a></p>
                 <?php else: ?>
                     <button type="submit" name="push_blogroll" value="1" class="master-update-btn"
-                            onclick="return confirm('Push <?php echo count($hub_blogroll); ?> entries to selected satellites?');">
+                            onclick="return confirm('Push <?php echo count($hub_blogroll); ?> entries to selected spokes?');">
                         PUSH <?php echo count($hub_blogroll); ?> ENTRIES
                     </button>
                 <?php endif; ?>
@@ -307,22 +307,22 @@ include 'core/sidebar.php';
 
     <?php else: // mode === 'pull' ?>
 
-        <!-- PULL: Per-satellite blogroll view with import buttons -->
-        <?php if (empty($satellite_blogrolls) && empty($fetch_errors)): ?>
-            <div class="box"><p style="color:var(--text-muted,#888);">No blogroll data returned from any satellite.</p></div>
+        <!-- PULL: Per-spoke blogroll view with import buttons -->
+        <?php if (empty($spoke_blogrolls) && empty($fetch_errors)): ?>
+            <div class="box"><p style="color:var(--text-muted,#888);">No blogroll data returned from any spoke.</p></div>
         <?php endif; ?>
 
-        <?php foreach ($satellite_blogrolls as $node_id => $sat_data): ?>
+        <?php foreach ($spoke_blogrolls as $node_id => $spoke_data): ?>
         <div class="box">
             <h3>
-                <?php echo htmlspecialchars(strtoupper($sat_data['site_name'])); ?>
+                <?php echo htmlspecialchars(strtoupper($spoke_data['site_name'])); ?>
                 <span style="font-weight:400; font-size:0.8rem; color:var(--text-muted,#666);">
-                    &mdash; <?php echo count($sat_data['entries']); ?> ENTRIES
+                    &mdash; <?php echo count($spoke_data['entries']); ?> ENTRIES
                 </span>
             </h3>
 
-            <?php if (empty($sat_data['entries'])): ?>
-                <p style="color:var(--text-muted,#666); font-size:0.85rem;">No blogroll entries on this satellite.</p>
+            <?php if (empty($spoke_data['entries'])): ?>
+                <p style="color:var(--text-muted,#666); font-size:0.85rem;">No blogroll entries on this spoke.</p>
             <?php else: ?>
                 <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
                     <thead>
@@ -334,7 +334,7 @@ include 'core/sidebar.php';
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($sat_data['entries'] as $entry):
+                        <?php foreach ($spoke_data['entries'] as $entry):
                             $already_have = in_array($entry['peer_url'], $hub_urls);
                         ?>
                             <tr style="border-bottom:1px solid var(--border,#222);">
@@ -355,7 +355,7 @@ include 'core/sidebar.php';
                                             <input type="hidden" name="peer_url"  value="<?php echo htmlspecialchars($entry['peer_url']); ?>">
                                             <input type="hidden" name="peer_rss"  value="<?php echo htmlspecialchars($entry['peer_rss'] ?? ''); ?>">
                                             <input type="hidden" name="peer_desc" value="<?php echo htmlspecialchars($entry['peer_desc'] ?? ''); ?>">
-                                            <input type="hidden" name="from_sat"  value="<?php echo htmlspecialchars($sat_data['site_name']); ?>">
+                                            <input type="hidden" name="from_sat"  value="<?php echo htmlspecialchars($spoke_data['site_name']); ?>">
                                             <input type="hidden" name="mode"      value="pull">
                                             <button type="submit" name="import_entry" value="1" class="action-authorize"
                                                     style="font-size:0.75rem; padding:3px 10px;">IMPORT</button>
