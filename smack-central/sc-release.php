@@ -214,6 +214,7 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         'skins/impact-printer/',
         'skins/the-grid/',
         'tools/',
+        'oh-snap/',
         'snapsmack-ca/',
         'snapsmack_site/',
         'smack-central/',
