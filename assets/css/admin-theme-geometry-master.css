@@ -3954,3 +3954,52 @@ input[type="range"]:active::-webkit-slider-thumb {
 }
 
 .btn-large { padding: 0.6rem 2rem; font-size: 0.9rem; }
+
+
+/* ─── MULTISITE STATUS INDICATORS ─────────────────────────────────────────── */
+/* Status dot: small circle rendered inline next to text                       */
+.status-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+}
+.status-dot--lg { width: 12px; height: 12px; }
+
+/* Status text label beside the dot                                            */
+.status-label { font-size: 0.8rem; text-transform: uppercase; }
+
+/* State colours — theme CSS overrides these for monochrome palettes           */
+.status-dot--active,
+.status-dot--ok        { background-color: #4CAF50; }
+.status-label--active,
+.status-label--ok      { color: #4CAF50; }
+
+.status-dot--offline,
+.status-dot--failed    { background-color: #f44336; }
+.status-label--offline,
+.status-label--failed  { color: #f44336; }
+
+.status-dot--unknown   { background-color: #FF9800; }
+.status-label--unknown { color: #FF9800; }
+
+/* Version-behind indicator                                                    */
+.version-behind { color: #FF9800; font-size: 0.75rem; }
+
+/* Hub connection indicator (spoke page left-border accent)                    */
+.hub-connected-border { border-left: 4px solid #4CAF50; }
+
+/* Multisite spoke table                                                       */
+.multisite-table       { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.multisite-table th    { text-align: left; padding: 10px; }
+.multisite-table td    { padding: 10px; }
+.multisite-table tr    { border-bottom-width: 1px; border-bottom-style: solid; }
+.multisite-table .col-center { text-align: center; }
+
+/* Cross-post image picker selection highlight                                 */
+.img-picker-cb:checked ~ .img-picker-card {
+    border-color: var(--accent-primary, #fff) !important;
+    box-shadow: 0 0 0 2px var(--accent-primary, #fff);
+}

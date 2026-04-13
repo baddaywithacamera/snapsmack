@@ -262,11 +262,11 @@ button:hover {
 }
 
 .action-delete {
-    color: #333333;
-    border-color: #333333;
+    color: #CC4444;
+    border-color: #CC4444;
 }
 .action-delete:hover {
-    background-color: #333333;
+    background-color: #CC4444;
     color: #FFFFFF;
 }
 
@@ -564,4 +564,16 @@ input[type="range"]::-webkit-slider-thumb {
 .radio-option:has(input:checked),
 .reaction-option.is-active,
 .reaction-option:has(input:checked) { background-color: #202020; }
+
+/* MULTISITE STATUS — Black Pearl: muted gold/silver palette */
+.status-dot--active, .status-dot--ok       { background-color: #C9A84C; }
+.status-label--active, .status-label--ok   { color: #C9A84C; }
+.status-dot--offline, .status-dot--failed  { background-color: #666666; }
+.status-label--offline, .status-label--failed { color: #666666; }
+.status-dot--unknown                       { background-color: #888888; }
+.status-label--unknown                     { color: #888888; }
+.version-behind                            { color: #888888; }
+.hub-connected-border                      { border-left-color: #C9A84C; }
+.multisite-table tr                        { border-bottom-color: #1A1A1A; }
+.multisite-table th                        { color: #888888; }
 
