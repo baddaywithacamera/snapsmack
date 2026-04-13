@@ -530,7 +530,7 @@ CREATE TABLE IF NOT EXISTS `snap_ohsnap_keys` (
 
 CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
   `id`                  int unsigned   NOT NULL AUTO_INCREMENT,
-  `role`                enum('hub','satellite') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `role`                enum('hub','spoke') COLLATE utf8mb4_unicode_ci NOT NULL,
   `site_url`            varchar(500)   COLLATE utf8mb4_unicode_ci NOT NULL,
   `site_name`           varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `api_key_local`       varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL

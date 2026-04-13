@@ -3,9 +3,9 @@
  * SNAPSMACK - Multisite Signal Control
  * Alpha v0.7.9c
  *
- * Hub-only page. Pulls pending comments from all active satellites via the
+ * Hub-only page. Pulls pending comments from all active spokes via the
  * multisite API and presents a unified moderation queue. Approve/delete
- * actions are proxied back to the originating satellite.
+ * actions are proxied back to the originating spoke.
  */
 
 require_once 'core/auth.php';
@@ -17,18 +17,18 @@ if ($multisite_role !== 'hub') {
     exit;
 }
 
-// --- ACTIVE SATELLITES ---
-$satellites = $pdo->query("
+// --- ACTIVE SPOKES ---
+$spokes = $pdo->query("
     SELECT id, site_url, site_name, api_key_local
     FROM snap_multisite_nodes
-    WHERE role = 'satellite' AND status = 'active'
+    WHERE role = 'spoke' AND status = 'active'
     ORDER BY site_name ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// cURL helper: call a satellite API endpoint
+// cURL helper: call a spoke API endpoint
 // ─────────────────────────────────────────────────────────────────────────────
-function ms_satellite_call(string $site_url, string $api_key, string $route, string $method = 'GET', array $post_data = []): ?array {
+function ms_spoke_call(string $site_url, string $api_key, string $route, string $method = 'GET', array $post_data = []): ?array {
     $url = rtrim($site_url, '/') . '/api.php?route=' . $route;
     $ch = curl_init();
     $opts = [
@@ -56,7 +56,7 @@ function ms_satellite_call(string $site_url, string $api_key, string $route, str
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST: Proxy an approve/delete action to the originating satellite
+// POST: Proxy an approve/delete action to the originating spoke
 // ─────────────────────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['comment_id'], $_POST['action'], $_POST['node_id'])) {
     $comment_id = (int)$_POST['comment_id'];
@@ -64,15 +64,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['comment_id'], $_POST[
     $node_id    = (int)$_POST['node_id'];
 
     if ($comment_id > 0 && in_array($action, ['approve', 'delete'], true)) {
-        // Find the satellite this comment belongs to
-        $sat_stmt = $pdo->prepare("SELECT site_url, api_key_local FROM snap_multisite_nodes WHERE id = ? AND role = 'satellite' AND status = 'active'");
-        $sat_stmt->execute([$node_id]);
-        $sat = $sat_stmt->fetch(PDO::FETCH_ASSOC);
+        // Find the spoke this comment belongs to
+        $spoke_stmt = $pdo->prepare("SELECT site_url, api_key_local FROM snap_multisite_nodes WHERE id = ? AND role = 'spoke' AND status = 'active'");
+        $spoke_stmt->execute([$node_id]);
+        $spoke = $spoke_stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($sat) {
-            $result = ms_satellite_call(
-                $sat['site_url'],
-                $sat['api_key_local'],
+        if ($spoke) {
+            $result = ms_spoke_call(
+                $spoke['site_url'],
+                $spoke['api_key_local'],
                 'multisite/comments/action',
                 'POST',
                 ['comment_id' => $comment_id, 'action' => $action]
@@ -80,37 +80,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['comment_id'], $_POST[
 
             if ($result) {
                 $msg = ($action === 'approve')
-                    ? "Signal authorized on " . htmlspecialchars($sat['site_url']) . "."
-                    : "Signal terminated on " . htmlspecialchars($sat['site_url']) . ".";
+                    ? "Signal authorized on " . htmlspecialchars($spoke['site_url']) . "."
+                    : "Signal terminated on " . htmlspecialchars($spoke['site_url']) . ".";
             } else {
-                $err = "Failed to proxy action to satellite. It may be offline.";
+                $err = "Failed to proxy action to spoke. It may be offline.";
             }
         } else {
-            $err = "Satellite not found or no longer active.";
+            $err = "Spoke not found or no longer active.";
         }
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FETCH: Pull pending comments from all active satellites
+// FETCH: Pull pending comments from all active spokes
 // ─────────────────────────────────────────────────────────────────────────────
 $all_comments  = [];
 $fetch_errors  = [];
 $total_pending = 0;
 
-foreach ($satellites as $sat) {
-    $result = ms_satellite_call($sat['site_url'], $sat['api_key_local'], 'multisite/comments/pending');
+foreach ($spokes as $spoke) {
+    $result = ms_spoke_call($spoke['site_url'], $spoke['api_key_local'], 'multisite/comments/pending');
 
     if ($result && !empty($result['comments'])) {
         foreach ($result['comments'] as $c) {
-            $c['_node_id']    = $sat['id'];
-            $c['_site_name']  = $sat['site_name'];
-            $c['_site_url']   = $sat['site_url'];
+            $c['_node_id']    = $spoke['id'];
+            $c['_site_name']  = $spoke['site_name'];
+            $c['_site_url']   = $spoke['site_url'];
             $all_comments[]   = $c;
             $total_pending++;
         }
     } elseif ($result === null) {
-        $fetch_errors[] = $sat['site_name'];
+        $fetch_errors[] = $spoke['site_name'];
     }
     // result with count:0 is fine — no comments, no error
 }
@@ -120,28 +120,28 @@ usort($all_comments, function($a, $b) {
     return strcmp($b['comment_date'] ?? '', $a['comment_date'] ?? '');
 });
 
-// Count per satellite BEFORE applying the filter (so nav tabs show correct totals)
+// Count per spoke BEFORE applying the filter (so nav tabs show correct totals)
 $counts_by_node = [];
 foreach ($all_comments as $c) {
     $counts_by_node[$c['_node_id']] = ($counts_by_node[$c['_node_id']] ?? 0) + 1;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Satellite filter (sidebar drill-down)
+// Spoke filter (sidebar drill-down)
 // ─────────────────────────────────────────────────────────────────────────────
 $filter_node = isset($_GET['node']) ? (int)$_GET['node'] : 0;
 if ($filter_node > 0) {
     $all_comments = array_values(array_filter($all_comments, fn($c) => $c['_node_id'] === $filter_node));
 }
 
-$page_title = "Satellite Signals";
+$page_title = "Spoke Signals";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
 <div class="main">
     <div class="header-row">
-        <h2>SATELLITE SIGNAL CONTROL</h2>
+        <h2>SPOKE SIGNAL CONTROL</h2>
         <div class="header-actions">
             <div class="status-pill <?php echo $total_pending > 0 ? 'status-warning' : 'status-online'; ?>">
                 <?php echo $total_pending; ?> INCOMING
@@ -150,7 +150,7 @@ include 'core/sidebar.php';
     </div>
 
     <?php if (!empty($fetch_errors)): ?>
-        <div class="alert alert-error">> OFFLINE SATELLITES (could not fetch): <?php echo htmlspecialchars(implode(', ', $fetch_errors)); ?></div>
+        <div class="alert alert-error">> OFFLINE SPOKES (could not fetch): <?php echo htmlspecialchars(implode(', ', $fetch_errors)); ?></div>
     <?php endif; ?>
 
     <?php if (isset($msg)): ?>
@@ -161,9 +161,9 @@ include 'core/sidebar.php';
         <div class="alert alert-error">> <?php echo htmlspecialchars($err); ?></div>
     <?php endif; ?>
 
-    <?php if (empty($satellites)): ?>
+    <?php if (empty($spokes)): ?>
         <div class="box">
-            <p style="color:var(--text-muted,#888);">No active satellites connected. <a href="smack-multisite.php" style="color:var(--accent,#aaa);">Register a satellite</a> first.</p>
+            <p style="color:var(--text-muted,#888);">No active spokes connected. <a href="smack-multisite.php" style="color:var(--accent,#aaa);">Register a spoke</a> first.</p>
         </div>
     <?php else: ?>
 
@@ -180,20 +180,20 @@ include 'core/sidebar.php';
             </div>
         </div>
 
-        <!-- SATELLITE FILTER BAR -->
+        <!-- SPOKE FILTER BAR -->
         <div class="signal-control-header">
             <div class="signal-nav-group">
                 <a href="smack-multisite-comments.php" class="btn-clear <?php echo $filter_node === 0 ? 'active' : ''; ?>">
                     ALL SITES (<?php echo $total_pending; ?>)
                 </a>
-                <?php foreach ($satellites as $sat):
-                    $sat_count = $counts_by_node[$sat['id']] ?? 0;
-                    $sat_offline = in_array($sat['site_name'], $fetch_errors);
+                <?php foreach ($spokes as $spoke):
+                    $spoke_count = $counts_by_node[$spoke['id']] ?? 0;
+                    $spoke_offline = in_array($spoke['site_name'], $fetch_errors);
                 ?>
-                    <a href="smack-multisite-comments.php?node=<?php echo $sat['id']; ?>"
-                       class="btn-clear <?php echo $filter_node === $sat['id'] ? 'active' : ''; ?>">
-                        <?php echo htmlspecialchars(strtoupper($sat['site_name'])); ?>
-                        <?php echo $sat_offline ? ' (OFFLINE)' : ' (' . $sat_count . ')'; ?>
+                    <a href="smack-multisite-comments.php?node=<?php echo $spoke['id']; ?>"
+                       class="btn-clear <?php echo $filter_node === $spoke['id'] ? 'active' : ''; ?>">
+                        <?php echo htmlspecialchars(strtoupper($spoke['site_name'])); ?>
+                        <?php echo $spoke_offline ? ' (OFFLINE)' : ' (' . $spoke_count . ')'; ?>
                     </a>
                 <?php endforeach; ?>
             </div>
@@ -204,8 +204,8 @@ include 'core/sidebar.php';
             <?php
                 $section_label = '';
                 if ($filter_node > 0) {
-                    foreach ($satellites as $sat) {
-                        if ($sat['id'] === $filter_node) { $section_label = ' — ' . htmlspecialchars(strtoupper($sat['site_name'])); break; }
+                    foreach ($spokes as $spoke) {
+                        if ($spoke['id'] === $filter_node) { $section_label = ' — ' . htmlspecialchars(strtoupper($spoke['site_name'])); break; }
                     }
                 }
             ?>
@@ -217,7 +217,7 @@ include 'core/sidebar.php';
                         <div class="recent-item">
                             <div class="item-details">
                                 <div class="item-text">
-                                    <!-- SATELLITE SOURCE BADGE -->
+                                    <!-- SPOKE SOURCE BADGE -->
                                     <div style="font-size:0.75rem; color:var(--accent,#aaa); margin-bottom:6px; letter-spacing:1px;">
                                         &#x25BA;&nbsp;<a href="<?php echo htmlspecialchars($c['_site_url']); ?>" target="_blank" style="color:inherit; text-decoration:none;">
                                             <?php echo htmlspecialchars(strtoupper($c['_site_name'])); ?>
@@ -263,7 +263,7 @@ include 'core/sidebar.php';
                     <?php endforeach; ?>
                 </div>
             <?php else: ?>
-                <div class="read-only-display text-center no-border">NO INCOMING SIGNALS<?php echo $filter_node > 0 ? ' FROM THIS SATELLITE' : ''; ?>.</div>
+                <div class="read-only-display text-center no-border">NO INCOMING SIGNALS<?php echo $filter_node > 0 ? ' FROM THIS SPOKE' : ''; ?>.</div>
             <?php endif; ?>
         </div>
 
