@@ -134,13 +134,21 @@ if ($resource === 'ping' && $method === 'GET') {
 
     $spoke_stmt = $pdo->prepare("
         SELECT id FROM snap_multisite_nodes
-        WHERE api_key_remote = ? AND role = 'spoke' AND status = 'active'
+        WHERE api_key_remote = ? AND role = 'spoke'
         LIMIT 1
     ");
     $spoke_stmt->execute([$ping_key]);
-    if (!$spoke_stmt->fetch()) {
-        ms_err('Invalid key or spoke not active', 401);
+    $spoke_row = $spoke_stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$spoke_row) {
+        ms_err('Invalid key or spoke not registered', 401);
     }
+
+    // Mark spoke as active — ping is the recovery path for offline spokes.
+    $pdo->prepare("
+        UPDATE snap_multisite_nodes
+        SET status = 'active', last_seen = NOW()
+        WHERE id = ?
+    ")->execute([$spoke_row['id']]);
 
     ms_ok(['version' => SNAPSMACK_VERSION]);
 }
