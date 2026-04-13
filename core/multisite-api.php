@@ -96,6 +96,7 @@ if ($resource === 'handshake' && $method === 'POST') {
                 (role, site_url, site_name, api_key_local, api_key_remote, status, connected_at)
             VALUES ('hub', ?, ?, ?, ?, 'active', NOW())
             ON DUPLICATE KEY UPDATE
+                role           = VALUES(role),
                 api_key_local  = VALUES(api_key_local),
                 api_key_remote = VALUES(api_key_remote),
                 site_name      = VALUES(site_name),
