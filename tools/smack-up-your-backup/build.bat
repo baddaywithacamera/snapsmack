@@ -25,29 +25,18 @@ if exist dist (
 echo Installing dependencies...
 pip install -r requirements.txt
 
+REM ── Use versioned spec file (sets recursion limit + all hidden imports) ──────
+set SPEC_FILE=smackupyourbackup-%BUILD_VER%.spec
+if not exist %SPEC_FILE% (
+    echo ERROR: Spec file %SPEC_FILE% not found.
+    echo Make sure the spec file exists for this version.
+    pause
+    exit /b 1
+)
+
 echo.
-echo Building %EXE_NAME%...
-pyinstaller ^
-    --onefile ^
-    --windowed ^
-    --clean ^
-    --name smackupyourbackup-%BUILD_VER% ^
-    --hidden-import=tkinter ^
-    --hidden-import=tkinter.ttk ^
-    --hidden-import=tkinter.filedialog ^
-    --hidden-import=tkinter.messagebox ^
-    --hidden-import=requests ^
-    --hidden-import=googleapiclient ^
-    --hidden-import=google.auth ^
-    --hidden-import=google.auth.transport.requests ^
-    --hidden-import=google.oauth2.credentials ^
-    --hidden-import=google_auth_oauthlib.flow ^
-    --hidden-import=googleapiclient.discovery ^
-    --hidden-import=googleapiclient.http ^
-    --hidden-import=msal ^
-    --hidden-import=msal.authority ^
-    --hidden-import=msal.application ^
-    main.py
+echo Building %EXE_NAME% using %SPEC_FILE%...
+pyinstaller --clean %SPEC_FILE%
 
 echo.
 if exist dist\%EXE_NAME% (
