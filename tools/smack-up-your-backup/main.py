@@ -807,10 +807,18 @@ class LogPane(tk.Frame):
         self._text = tk.Text(self, bg=BG_DEEP, fg=FG_DIM, font=FONT_MONO,
                              state="disabled", relief="flat", wrap="word",
                              height=6, bd=0)
-        sb = ttk.Scrollbar(self, command=self._text.yview)
-        self._text.configure(yscrollcommand=sb.set)
-        sb.pack(side="right", fill="y")
+        self._sb = ttk.Scrollbar(self, command=self._text.yview)
+        self._text.configure(yscrollcommand=self._on_scroll)
+        # Scrollbar hidden until there's content to scroll
         self._text.pack(side="left", fill="both", expand=True)
+
+    def _on_scroll(self, first, last):
+        """Show scrollbar only when content overflows."""
+        self._sb.set(first, last)
+        if float(first) <= 0.0 and float(last) >= 1.0:
+            self._sb.pack_forget()
+        else:
+            self._sb.pack(side="right", fill="y")
 
     def append(self, msg: str) -> None:
         self._text.configure(state="normal")
