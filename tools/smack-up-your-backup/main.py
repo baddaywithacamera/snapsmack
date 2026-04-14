@@ -53,153 +53,93 @@ TAB_SETTINGS= "settings"
 
 
 # ---------------------------------------------------------------------------
-# File dialog helpers — Win32 direct on Windows, tkinter fallback elsewhere
+# File dialog helpers — PowerShell subprocess on Windows, tkinter elsewhere
 # ---------------------------------------------------------------------------
 # tkinter's filedialog silently fails inside --windowed PyInstaller exes when
-# the calling widget is a Frame embedded in a notebook tab.  On Windows we
-# bypass tkinter entirely and call the native Win32 APIs (GetOpenFileNameW,
-# GetSaveFileNameW, SHBrowseForFolderW) via ctypes.  No extra packages needed.
-#
-# The whole Win32 block is wrapped in try/except: if ctypes setup ever fails
-# (shouldn't on Windows 7+) _HAVE_WIN32 stays False and we fall through to
-# tkinter.  Every dialog call also has its own try/except that shows a
-# messagebox on error so failures are never silently swallowed.
+# the calling widget is a Frame in a notebook tab, and ctypes Win32 calls also
+# fail silently.  The nuclear option: spawn the dialog in a separate PowerShell
+# process using .NET System.Windows.Forms.  This runs in its own process with
+# its own window, so tkinter's window hierarchy is irrelevant.  The 1-2 second
+# PowerShell startup is the only downside.  Non-Windows keeps tkinter.
 
 import sys as _sys
+import subprocess as _sp
 
-_HAVE_WIN32 = False
+_CREATE_NO_WINDOW = 0x08000000  # prevents PowerShell console flash
 
-try:
-    if _sys.platform == 'win32':
-        import ctypes as _ct
-        import ctypes.wintypes as _wt
 
-        # OPENFILENAME structure (Unicode variant, 64-bit layout)
-        class _OFN(_ct.Structure):
-            _fields_ = [
-                ("lStructSize",       _ct.c_uint32),
-                ("hwndOwner",         _ct.c_void_p),
-                ("hInstance",         _ct.c_void_p),
-                ("lpstrFilter",       _ct.c_wchar_p),
-                ("lpstrCustomFilter", _ct.c_void_p),
-                ("nMaxCustFilter",    _ct.c_uint32),
-                ("nFilterIndex",      _ct.c_uint32),
-                ("lpstrFile",         _ct.c_void_p),   # mutable output buffer
-                ("nMaxFile",          _ct.c_uint32),
-                ("lpstrFileTitle",    _ct.c_void_p),
-                ("nMaxFileTitle",     _ct.c_uint32),
-                ("lpstrInitialDir",   _ct.c_wchar_p),
-                ("lpstrTitle",        _ct.c_wchar_p),
-                ("Flags",             _ct.c_uint32),
-                ("nFileOffset",       _ct.c_uint16),
-                ("nFileExtension",    _ct.c_uint16),
-                ("lpstrDefExt",       _ct.c_wchar_p),
-                ("lCustData",         _ct.c_void_p),
-                ("lpfnHook",          _ct.c_void_p),
-                ("lpTemplateName",    _ct.c_void_p),
-            ]
+def _ps_filter(filetypes):
+    """Convert [('Desc', '*.ext'), …] to .NET dialog filter format."""
+    if not filetypes:
+        return "All Files (*.*)|*.*"
+    return "|".join(f"{d} ({e})|{e}" for d, e in filetypes)
 
-        # BROWSEINFO structure for SHBrowseForFolderW
-        class _BROWSEINFO(_ct.Structure):
-            _fields_ = [
-                ("hwndOwner",      _ct.c_void_p),
-                ("pidlRoot",       _ct.c_void_p),
-                ("pszDisplayName", _ct.c_void_p),
-                ("lpszTitle",      _ct.c_wchar_p),
-                ("ulFlags",        _ct.c_uint),
-                ("lpfn",           _ct.c_void_p),
-                ("lParam",         _ct.c_void_p),
-                ("iImage",         _ct.c_int),
-            ]
 
-        def _win32_filter(filetypes):
-            if not filetypes:
-                return "All Files\0*.*\0\0"
-            return "".join(f"{d}\0{e}\0" for d, e in filetypes) + "\0"
+def _ps_open(title, filetypes):
+    filt = _ps_filter(filetypes).replace("'", "''")
+    title = title.replace("'", "''")
+    cmd = (
+        "Add-Type -AssemblyName System.Windows.Forms;"
+        "$d = New-Object System.Windows.Forms.OpenFileDialog;"
+        f"$d.Title = '{title}';"
+        f"$d.Filter = '{filt}';"
+        "if ($d.ShowDialog() -eq 'OK') { $d.FileName }"
+    )
+    r = _sp.run(['powershell', '-noprofile', '-command', cmd],
+                capture_output=True, text=True, timeout=120,
+                creationflags=_CREATE_NO_WINDOW)
+    return r.stdout.strip()
 
-        def _win32_open(title, filetypes):
-            buf = _ct.create_unicode_buffer(32768)
-            ofn = _OFN()
-            ofn.lStructSize = _ct.sizeof(_OFN)
-            ofn.lpstrFilter = _win32_filter(filetypes)
-            ofn.lpstrFile   = _ct.addressof(buf)
-            ofn.nMaxFile    = 32768
-            ofn.lpstrTitle  = title
-            ofn.Flags       = 0x1800  # OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST
-            if _ct.windll.comdlg32.GetOpenFileNameW(_ct.byref(ofn)):
-                return buf.value
-            err = _ct.windll.comdlg32.CommDlgExtendedError()
-            if err:
-                raise RuntimeError(f"GetOpenFileNameW error 0x{err:04X}")
-            return ""  # user cancelled
 
-        def _win32_save(title, filetypes, ext, initialfile):
-            buf = _ct.create_unicode_buffer(32768)
-            if initialfile:
-                buf.value = initialfile
-            ofn = _OFN()
-            ofn.lStructSize = _ct.sizeof(_OFN)
-            ofn.lpstrFilter = _win32_filter(filetypes)
-            ofn.lpstrFile   = _ct.addressof(buf)
-            ofn.nMaxFile    = 32768
-            ofn.lpstrTitle  = title
-            ofn.lpstrDefExt = ext.lstrip('.')
-            ofn.Flags       = 0x0002  # OFN_OVERWRITEPROMPT
-            if _ct.windll.comdlg32.GetSaveFileNameW(_ct.byref(ofn)):
-                return buf.value
-            err = _ct.windll.comdlg32.CommDlgExtendedError()
-            if err:
-                raise RuntimeError(f"GetSaveFileNameW error 0x{err:04X}")
-            return ""
+def _ps_save(title, filetypes, ext, initialfile):
+    filt = _ps_filter(filetypes).replace("'", "''")
+    title = title.replace("'", "''")
+    initialfile = (initialfile or "").replace("'", "''")
+    cmd = (
+        "Add-Type -AssemblyName System.Windows.Forms;"
+        "$d = New-Object System.Windows.Forms.SaveFileDialog;"
+        f"$d.Title = '{title}';"
+        f"$d.Filter = '{filt}';"
+        f"$d.DefaultExt = '{ext.lstrip('.')}';"
+        f"$d.FileName = '{initialfile}';"
+        "if ($d.ShowDialog() -eq 'OK') { $d.FileName }"
+    )
+    r = _sp.run(['powershell', '-noprofile', '-command', cmd],
+                capture_output=True, text=True, timeout=120,
+                creationflags=_CREATE_NO_WINDOW)
+    return r.stdout.strip()
 
-        def _win32_folder(title):
-            path_buf = _ct.create_unicode_buffer(32768)
-            disp_buf = _ct.create_unicode_buffer(260)
-            bi = _BROWSEINFO()
-            bi.lpszTitle      = title
-            bi.pszDisplayName = _ct.addressof(disp_buf)
-            bi.ulFlags        = 0x0050  # BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE
-            _ct.windll.shell32.SHBrowseForFolderW.restype = _ct.c_void_p
-            pidl = _ct.windll.shell32.SHBrowseForFolderW(_ct.byref(bi))
-            if pidl:
-                _ct.windll.shell32.SHGetPathFromIDListW(_ct.c_void_p(pidl), path_buf)
-                _ct.windll.ole32.CoTaskMemFree(_ct.c_void_p(pidl))
-                return path_buf.value
-            return ""
 
-        _HAVE_WIN32 = True
-
-except Exception as _win32_setup_err:
-    # Win32 setup failed — will fall through to tkinter dialogs
-    pass
+def _ps_folder(title):
+    title = title.replace("'", "''")
+    cmd = (
+        "Add-Type -AssemblyName System.Windows.Forms;"
+        "$d = New-Object System.Windows.Forms.FolderBrowserDialog;"
+        f"$d.Description = '{title}';"
+        "$d.ShowNewFolderButton = $true;"
+        "if ($d.ShowDialog() -eq 'OK') { $d.SelectedPath }"
+    )
+    r = _sp.run(['powershell', '-noprofile', '-command', cmd],
+                capture_output=True, text=True, timeout=120,
+                creationflags=_CREATE_NO_WINDOW)
+    return r.stdout.strip()
 
 
 def _dlg_open(widget, title="Open", filetypes=None, **kwargs) -> str:
-    # DEBUG — remove after diagnosis
-    messagebox.showinfo("DEBUG _dlg_open",
-                        f"Called!  _HAVE_WIN32={_HAVE_WIN32}\nplatform={_sys.platform}")
     try:
-        if _HAVE_WIN32:
-            result = _win32_open(title, filetypes or [("All Files", "*.*")])
-            messagebox.showinfo("DEBUG result", f"win32 returned: '{result}'")
-            return result
-        result = filedialog.askopenfilename(
+        if _sys.platform == 'win32':
+            return _ps_open(title, filetypes or [("All Files", "*.*")])
+        return filedialog.askopenfilename(
             parent=widget.winfo_toplevel(), title=title, filetypes=filetypes, **kwargs) or ""
-        messagebox.showinfo("DEBUG result", f"tkinter returned: '{result}'")
-        return result
     except Exception as e:
         messagebox.showerror("Browse error", f"{type(e).__name__}: {e}")
         return ""
 
 
 def _dlg_dir(widget, title="Select Folder", **kwargs) -> str:
-    # DEBUG — remove after diagnosis
-    messagebox.showinfo("DEBUG _dlg_dir",
-                        f"Called!  _HAVE_WIN32={_HAVE_WIN32}\nplatform={_sys.platform}")
     try:
-        if _HAVE_WIN32:
-            result = _win32_folder(title)
-            return result
+        if _sys.platform == 'win32':
+            return _ps_folder(title)
         return filedialog.askdirectory(
             parent=widget.winfo_toplevel(), title=title, **kwargs) or ""
     except Exception as e:
@@ -210,9 +150,9 @@ def _dlg_dir(widget, title="Select Folder", **kwargs) -> str:
 def _dlg_save(widget, title="Save As", filetypes=None, defaultextension="",
               initialfile="", **kwargs) -> str:
     try:
-        if _HAVE_WIN32:
-            return _win32_save(title, filetypes or [("All Files", "*.*")],
-                               defaultextension, initialfile)
+        if _sys.platform == 'win32':
+            return _ps_save(title, filetypes or [("All Files", "*.*")],
+                            defaultextension, initialfile)
         return filedialog.asksaveasfilename(
             parent=widget.winfo_toplevel(), title=title, filetypes=filetypes,
             defaultextension=defaultextension, initialfile=initialfile, **kwargs) or ""
