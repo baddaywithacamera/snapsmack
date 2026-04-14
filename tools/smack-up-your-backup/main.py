@@ -1720,6 +1720,17 @@ class SettingsTab(tk.Frame):
         self._row(site_g, 2, "Admin username",  "snap_admin_user")
         self._row(site_g, 3, "Admin password",  "snap_admin_pass", show="●")
 
+        test_row = tk.Frame(c, bg=BG_MID)
+        test_row.pack(anchor="w", pady=(6, 0))
+        self._action_btn(test_row, "Test Login",
+                         self._test_login).pack(side="left")
+        self._action_btn(test_row, "Test FTP",
+                         self._test_ftp).pack(side="left", padx=(8, 0))
+        self._conn_status_var = tk.StringVar(value="")
+        tk.Label(test_row, textvariable=self._conn_status_var,
+                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL).pack(
+            side="left", padx=(12, 0))
+
         # ── Backup Method card ──────────────────────────────────────────
         c = self._card(left)
         c.pack(fill="x", pady=(0, G))
@@ -1968,6 +1979,66 @@ class SettingsTab(tk.Frame):
             self._local_dir_label.configure(text="Backup directory")
         # Local directory is always shown — cloud uses it as staging
         self._local_frame.pack(fill="x", pady=(6, 0))
+
+    def _test_login(self) -> None:
+        """Test admin login against the blog."""
+        url  = self._profile_vars["site_url"].get().strip().rstrip("/")
+        user = self._profile_vars["snap_admin_user"].get().strip()
+        pw   = self._profile_vars["snap_admin_pass"].get()
+        if not url or not user or not pw:
+            self._conn_status_var.set("Fill in URL, username, and password first")
+            return
+        self._conn_status_var.set("Testing login…")
+        self.update_idletasks()
+
+        import threading
+        def _run():
+            try:
+                import requests
+                r = requests.post(
+                    f"{url}/snap-login.php",
+                    data={"username": user, "password": pw, "ajax": "1"},
+                    timeout=15, allow_redirects=False,
+                )
+                if r.status_code == 200 and "success" in r.text.lower():
+                    msg = "✓ Login successful"
+                elif r.status_code < 400:
+                    msg = f"✓ Site reachable (HTTP {r.status_code})"
+                else:
+                    msg = f"⚠ HTTP {r.status_code}"
+            except Exception as e:
+                msg = f"✗ {e}"
+            self.after(0, lambda: self._conn_status_var.set(msg))
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _test_ftp(self) -> None:
+        """Test FTP connection with current profile fields."""
+        host = self._profile_vars["ftp_host"].get().strip()
+        if not host:
+            self._conn_status_var.set("Fill in FTP host first")
+            return
+        self._conn_status_var.set("Connecting FTP…")
+        self.update_idletasks()
+
+        import threading
+        def _run():
+            try:
+                from ftp_client import FTPClient
+                ftp = FTPClient(
+                    host=host,
+                    user=self._profile_vars["ftp_user"].get(),
+                    password=self._profile_vars["ftp_pass"].get(),
+                    remote_dir=self._profile_vars["ftp_remote_dir"].get() or "/",
+                    port=int(self._profile_vars["ftp_port"].get() or 21),
+                    use_tls=bool(self._profile_vars["ftp_ssl"].get()),
+                )
+                ftp.connect()
+                ftp.disconnect()
+                msg = "✓ FTP connected successfully"
+            except Exception as e:
+                msg = f"✗ {e}"
+            self.after(0, lambda: self._conn_status_var.set(msg))
+        threading.Thread(target=_run, daemon=True).start()
 
     def _browse_credentials(self) -> None:
         path = _dlg_open(self,
