@@ -345,6 +345,17 @@ class FTPClient:
         except Exception:
             return -1
 
+    def get_remote_size(self, remote_path: str) -> Optional[int]:
+        """Return the size of a remote file in bytes via FTP SIZE command.
+        Returns None if the command is not supported or the file doesn't exist."""
+        if not self._ftp:
+            return None
+        try:
+            self._keepalive()
+            return self._ftp.size(remote_path)
+        except Exception:
+            return None
+
     # ------------------------------------------------------------------
     # Checksum helpers
     # ------------------------------------------------------------------
