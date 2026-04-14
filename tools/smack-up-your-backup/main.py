@@ -146,7 +146,7 @@ class ProfileDialog(tk.Toplevel):
                   command=self._save).pack(side="right")
 
     def _browse_backup_dir(self):
-        d = filedialog.askdirectory(parent=self, title="Choose local backup folder")
+        d = filedialog.askdirectory(parent=self.winfo_toplevel(), title="Choose local backup folder")
         if d and "backup_dir" in self._vars:
             self._vars["backup_dir"].set(d)
 
@@ -260,7 +260,7 @@ class HubDiscoveryDialog(tk.Toplevel):
         self._go_btn.pack(side="right")
 
     def _browse_dir(self):
-        d = filedialog.askdirectory(parent=self, title="Choose backup base directory")
+        d = filedialog.askdirectory(parent=self.winfo_toplevel(), title="Choose backup base directory")
         if d:
             self._dir_var.set(d)
 
@@ -352,7 +352,7 @@ class HubDiscoveryDialog(tk.Toplevel):
                 "Discovery complete",
                 f"{msg}\n\nYou'll still need to enter FTP credentials and backup\n"
                 "directories for each spoke if they weren't auto-populated.",
-                parent=self,
+                parent=self.winfo_toplevel(),
             )
 
     def _on_discovery_error(self, err: str):
@@ -779,7 +779,7 @@ class RestoreTab(tk.Frame):
             self._manual_frame.pack(fill="x", pady=4)
 
     def _browse_zip(self):
-        p = filedialog.askopenfilename(parent=self, 
+        p = filedialog.askopenfilename(parent=self.winfo_toplevel(), 
             title="Select backup package",
             filetypes=[("ZIP backup", "*.zip"), ("All files", "*.*")],
         )
@@ -787,7 +787,7 @@ class RestoreTab(tk.Frame):
             self._zip_var.set(p)
 
     def _browse_kit(self):
-        p = filedialog.askopenfilename(parent=self, 
+        p = filedialog.askopenfilename(parent=self.winfo_toplevel(), 
             title="Select recovery kit",
             filetypes=[("Recovery kit", "*.tar.gz"), ("All files", "*.*")],
         )
@@ -795,7 +795,7 @@ class RestoreTab(tk.Frame):
             self._kit_var.set(p)
 
     def _browse_media_dir(self):
-        d = filedialog.askdirectory(parent=self, title="Select media folder")
+        d = filedialog.askdirectory(parent=self.winfo_toplevel(), title="Select media folder")
         if d:
             self._mdir_var.set(d)
 
@@ -1138,7 +1138,7 @@ class AuditTab(tk.Frame):
             messagebox.showinfo("No report", "Run an audit first.")
             return
         filetypes = [("HTML report", "*.html")] if fmt == "html" else [("Text report", "*.txt")]
-        path = filedialog.asksaveasfilename(parent=self, 
+        path = filedialog.asksaveasfilename(parent=self.winfo_toplevel(), 
             title="Save audit report",
             defaultextension=f".{fmt}",
             filetypes=filetypes,
@@ -1485,7 +1485,7 @@ class SettingsTab(tk.Frame):
         self._local_frame.pack(fill="x", pady=(6, 0))
 
     def _browse_credentials(self) -> None:
-        path = filedialog.askopenfilename(parent=self, 
+        path = filedialog.askopenfilename(parent=self.winfo_toplevel(), 
             title="Select credentials JSON",
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
         )
@@ -1546,7 +1546,7 @@ class SettingsTab(tk.Frame):
         messagebox.showinfo("Saved", f"Profile \"{profile['name']}\" saved.", parent=self)
 
     def _browse_backup_dir(self) -> None:
-        d = filedialog.askdirectory(parent=self, title="Choose local backup folder")
+        d = filedialog.askdirectory(parent=self.winfo_toplevel(), title="Choose local backup folder")
         if d and "backup_dir" in self._profile_vars:
             self._profile_vars["backup_dir"].set(d)
 
@@ -1571,7 +1571,7 @@ class SettingsTab(tk.Frame):
     def _export_settings(self):
         """Export all profiles + global config to a single JSON file."""
         import json
-        path = filedialog.asksaveasfilename(parent=self, 
+        path = filedialog.asksaveasfilename(parent=self.winfo_toplevel(), 
             title="Export settings",
             defaultextension=".json",
             filetypes=[("JSON files", "*.json")],
@@ -1620,7 +1620,7 @@ class SettingsTab(tk.Frame):
     def _import_settings(self):
         """Import profiles + global config from a previously exported JSON file."""
         import json
-        path = filedialog.askopenfilename(parent=self, 
+        path = filedialog.askopenfilename(parent=self.winfo_toplevel(), 
             title="Import settings",
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
         )
@@ -1697,7 +1697,7 @@ class SettingsTab(tk.Frame):
             messagebox.showwarning(
                 "Missing credentials",
                 "Fill in the site URL and admin credentials first, then save the profile.",
-                parent=self,
+                parent=self.winfo_toplevel(),
             )
             return
 
@@ -1745,7 +1745,7 @@ class SettingsTab(tk.Frame):
 
     def _browse_global_key(self) -> None:
         """File picker for the global service account JSON key."""
-        path = filedialog.askopenfilename(parent=self, 
+        path = filedialog.askopenfilename(parent=self.winfo_toplevel(), 
             title="Select service account JSON key",
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
         )
