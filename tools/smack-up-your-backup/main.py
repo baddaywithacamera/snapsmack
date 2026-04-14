@@ -2193,21 +2193,51 @@ class SettingsTab(tk.Frame):
             self._profile_vars["backup_dir"].set(d)
 
     def _refresh_ai_status(self):
-        import ai_matcher
-        self._ai_status_var.set(ai_matcher.status_string())
+        try:
+            import ai_matcher
+            self._ai_status_var.set(ai_matcher.status_string())
+        except Exception:
+            self._ai_status_var.set("Not installed — pip install sentence-transformers")
 
     def _install_ai(self):
-        import subprocess, sys, threading
-        self._ai_status_var.set("Installing…")
+        import subprocess, sys, threading, shutil
+
+        # In a PyInstaller build sys.executable is the compiled exe, not Python.
+        # Running it with -m pip would launch a second instance of SUYB.
+        # Find the real Python interpreter instead.
+        if getattr(sys, 'frozen', False):
+            python = shutil.which("python") or shutil.which("python3")
+            if not python:
+                messagebox.showinfo(
+                    "Manual install required",
+                    "SUYB is running as a compiled exe and can't run pip directly.\n\n"
+                    "To enable AI file matching, open a terminal and run:\n\n"
+                    "    pip install sentence-transformers\n\n"
+                    "Then restart SUYB.",
+                    parent=self.winfo_toplevel(),
+                )
+                return
+        else:
+            python = sys.executable
+
+        self._ai_status_var.set("Installing — this may take a minute…")
+
         def _run():
             try:
-                subprocess.check_call(
-                    [sys.executable, "-m", "pip", "install", "sentence-transformers"],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                result = subprocess.run(
+                    [python, "-m", "pip", "install", "sentence-transformers"],
+                    capture_output=True, text=True, timeout=300,
                 )
-            except Exception:
-                pass
-            self.after(0, self._refresh_ai_status)
+                if result.returncode == 0:
+                    self.after(0, self._refresh_ai_status)
+                else:
+                    err = (result.stderr or result.stdout or "Unknown error").strip()[-200:]
+                    self.after(0, lambda: self._ai_status_var.set(f"Install failed: {err}"))
+            except subprocess.TimeoutExpired:
+                self.after(0, lambda: self._ai_status_var.set("Install timed out — try manually"))
+            except Exception as e:
+                self.after(0, lambda: self._ai_status_var.set(f"Error: {e}"))
+
         threading.Thread(target=_run, daemon=True).start()
 
     def _export_settings(self):
