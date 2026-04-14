@@ -1279,7 +1279,7 @@ class App(tk.Tk):
 
     def _browse_folder(self):
         init = self._folder_var.get().strip()
-        p = filedialog.askdirectory(parent=self, 
+        p = filedialog.askdirectory(parent=self.winfo_toplevel(), 
             title="Select image folder",
             initialdir=init if init and os.path.isdir(init) else None,
         )
@@ -1290,7 +1290,7 @@ class App(tk.Tk):
     def _browse_manifest(self):
         init = self._manifest_var.get().strip()
         init_dir = os.path.dirname(init) if init and os.path.isfile(init) else None
-        p = filedialog.askopenfilename(parent=self, 
+        p = filedialog.askopenfilename(parent=self.winfo_toplevel(), 
             title="Select manifest file",
             initialdir=init_dir,
             filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
@@ -1300,7 +1300,7 @@ class App(tk.Tk):
             self._save_config()
 
     def _browse_creds(self):
-        p = filedialog.askopenfilename(parent=self, 
+        p = filedialog.askopenfilename(parent=self.winfo_toplevel(), 
             title="Select Google credentials.json",
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
         )
