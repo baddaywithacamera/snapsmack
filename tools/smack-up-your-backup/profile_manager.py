@@ -111,6 +111,7 @@ def new_profile_template() -> Dict:
         "ftp_pass":              "",
         "ftp_remote_dir":        "/public_html",
         "ftp_ssl":               True,
+        "ftp_verify_cert":       False,
         "snap_admin_user":       "",
         "snap_admin_pass":       "",
         "cloud_provider":        "none",        # "google_drive" | "onedrive" | "none"
