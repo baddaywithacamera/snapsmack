@@ -185,6 +185,24 @@ class RestoreEngine:
                 done += 1
                 continue
 
+            # ── Pre-upload checksum: verify local file matches manifest ─
+            if record.checksum:
+                actual = ftp_module.FTPClient.sha256_file(match.local_path)
+                if actual != record.checksum:
+                    self._log(
+                        f"✗ Local file checksum mismatch, will not upload: {record.restores_to}\n"
+                        f"  Expected: {record.checksum}\n"
+                        f"  Got:      {actual}\n"
+                        f"  Source:   {match.local_path}"
+                    )
+                    result["failed"] += 1
+                    result["failed_files"].append(record.restores_to)
+                    result["errors"].append(
+                        f"Checksum mismatch (corrupt local file): {record.restores_to}"
+                    )
+                    done += 1
+                    continue
+
             self._progress("upload", f"Uploading: {record.restores_to}", pct)
             ok = ftp.upload_file(
                 match.local_path,
@@ -201,11 +219,29 @@ class RestoreEngine:
 
             done += 1
 
-        # ── Verify uploads ───────────────────────────────────────────
+        # ── Verify uploads: size check via FTP SIZE command ──────────
         self._progress("verify", "Verifying uploads…", 0.94)
         verify_failures = []
-        for path in result.get("failed_files", []):
-            pass  # Verification via FTP SIZE done inline if needed
+        for key, record in media_files.items():
+            if self._cancelled:
+                break
+            match = matches.get(key)
+            if not match or match.strategy == "unmatched":
+                continue
+            # Check remote size matches manifest expected size
+            remote_size = ftp.get_remote_size(record.restores_to)
+            if remote_size is not None and remote_size != record.size:
+                verify_failures.append(record.restores_to)
+                self._log(
+                    f"✗ Size mismatch after upload: {record.restores_to} "
+                    f"(expected {record.size}B, server has {remote_size}B)"
+                )
+
+        if verify_failures:
+            result["errors"].append(
+                f"{len(verify_failures)} file(s) failed post-upload size verification."
+            )
+            self._log(f"WARNING: {len(verify_failures)} upload(s) failed size verification.")
 
         ftp.disconnect()
 
