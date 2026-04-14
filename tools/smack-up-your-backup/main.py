@@ -26,25 +26,26 @@ from report_writer import write_txt, write_html
 
 
 # ---------------------------------------------------------------------------
-# Palette — neon-lime-on-dark, same family as SYBU
+# Palette — warm dark with soft green accents
 # ---------------------------------------------------------------------------
-BG_DEEP   = "#141414"
-BG_MID    = "#1e1e1e"
-BG_CARD   = "#242424"
-BG_INPUT  = "#2a2a2a"
-ACCENT    = "#39FF14"
-FG_MAIN   = "#e0e0e0"
-FG_DIM    = "#666666"
-FG_OK     = "#39FF14"
-FG_WARN   = "#f0a500"
-FG_ERR    = "#e05050"
-BORDER    = "#333333"
+BG_DEEP   = "#1a1a22"       # deepest background (main window)
+BG_MID    = "#22222c"       # card / section background
+BG_CARD   = "#2c2c38"       # elevated surface (buttons, hover areas)
+BG_INPUT  = "#2a2a34"       # text input fields
+ACCENT    = "#5dea5d"       # primary accent — softer leaf green
+ACCENT2   = "#4ac34a"       # secondary accent — pressed / active states
+FG_MAIN   = "#e8e8ec"       # primary text
+FG_DIM    = "#888890"       # secondary / muted text
+FG_OK     = "#5dea5d"       # success
+FG_WARN   = "#f0b030"       # warning — slightly warmer
+FG_ERR    = "#e86060"       # error
+BORDER    = "#3a3a46"       # card borders, dividers
 
-FONT_TITLE = ("Segoe UI", 13, "bold")
-FONT_HEAD  = ("Segoe UI", 10, "bold")
-FONT_BODY  = ("Segoe UI", 9)
-FONT_SMALL = ("Segoe UI", 8)
-FONT_MONO  = ("Consolas", 9)
+FONT_TITLE = ("Segoe UI", 14, "bold")
+FONT_HEAD  = ("Segoe UI", 11, "bold")
+FONT_BODY  = ("Segoe UI", 10)
+FONT_SMALL = ("Segoe UI", 9)
+FONT_MONO  = ("Consolas", 10)
 
 TAB_BACKUP  = "backup"
 TAB_RESTORE = "restore"
@@ -159,6 +160,324 @@ def _dlg_save(widget, title="Save As", filetypes=None, defaultextension="",
     except Exception as e:
         messagebox.showerror("Browse error", f"{type(e).__name__}: {e}")
         return ""
+
+
+# ---------------------------------------------------------------------------
+# First-run setup wizard
+# ---------------------------------------------------------------------------
+
+class SetupWizard(tk.Toplevel):
+    """Friendly multi-step wizard for first-time users."""
+
+    STEPS = [
+        "Welcome",
+        "Blog Details",
+        "Admin Login",
+        "FTP Setup",
+        "Backup Destination",
+        "Ready!",
+    ]
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title("Welcome to Smack Up Your Backup")
+        self.configure(bg=BG_DEEP)
+        self.resizable(False, False)
+        self.geometry("620x520")
+        self.transient(parent)
+        self.grab_set()
+        self.result: Optional[dict] = None
+        self._step = 0
+        self._data = profile_manager.new_profile_template()
+        self._frames: list[tk.Frame] = []
+        self._vars: dict[str, tk.Variable] = {}
+
+        # ── Layout skeleton ─────────────────────────────────────────────
+        # Progress dots
+        self._dots_frame = tk.Frame(self, bg=BG_DEEP)
+        self._dots_frame.pack(fill="x", padx=30, pady=(20, 0))
+
+        # Content area
+        self._content = tk.Frame(self, bg=BG_DEEP)
+        self._content.pack(fill="both", expand=True, padx=30, pady=10)
+
+        # Navigation buttons
+        nav = tk.Frame(self, bg=BG_DEEP)
+        nav.pack(fill="x", padx=30, pady=(0, 20))
+
+        self._back_btn = tk.Button(nav, text="← Back", bg=BG_CARD, fg=FG_MAIN,
+                                    relief="flat", font=FONT_BODY, padx=14, pady=6,
+                                    command=self._back)
+        self._back_btn.pack(side="left")
+
+        self._skip_btn = tk.Button(nav, text="Skip Setup", bg=BG_CARD, fg=FG_DIM,
+                                    relief="flat", font=FONT_SMALL, padx=10, pady=6,
+                                    command=self.destroy)
+        self._skip_btn.pack(side="left", padx=(10, 0))
+
+        self._next_btn = tk.Button(nav, text="Next →", bg=ACCENT, fg=BG_DEEP,
+                                    relief="flat", font=FONT_HEAD, padx=18, pady=6,
+                                    command=self._next)
+        self._next_btn.pack(side="right")
+
+        self._build_steps()
+        self._show_step(0)
+
+    # ── Step builders ───────────────────────────────────────────────────
+    def _make_frame(self):
+        f = tk.Frame(self._content, bg=BG_DEEP)
+        self._frames.append(f)
+        return f
+
+    def _heading(self, parent, text, sub=""):
+        tk.Label(parent, text=text, bg=BG_DEEP, fg=FG_MAIN,
+                 font=FONT_TITLE, anchor="w").pack(anchor="w", pady=(0, 4))
+        if sub:
+            tk.Label(parent, text=sub, bg=BG_DEEP, fg=FG_DIM,
+                     font=FONT_BODY, anchor="w", wraplength=540,
+                     justify="left").pack(anchor="w", pady=(0, 12))
+
+    def _field(self, parent, label, key, show="", width=40):
+        row = tk.Frame(parent, bg=BG_DEEP)
+        row.pack(fill="x", pady=4)
+        tk.Label(row, text=label, bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_BODY, width=18, anchor="w").pack(side="left")
+        var = tk.StringVar(value=str(self._data.get(key, "")))
+        tk.Entry(row, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=width, show=show).pack(
+            side="left", fill="x", expand=True)
+        self._vars[key] = var
+        return var
+
+    def _status_label(self, parent):
+        var = tk.StringVar(value="")
+        tk.Label(parent, textvariable=var, bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").pack(anchor="w", pady=(8, 0))
+        return var
+
+    def _build_steps(self):
+        # Step 0: Welcome
+        f = self._make_frame()
+        self._heading(f,
+            "Welcome to Smack Up Your Backup",
+            "This wizard will walk you through connecting to your SnapSmack blog "
+            "and setting up your first backup profile.\n\n"
+            "Here's what SUYB does for you:")
+        features = tk.Frame(f, bg=BG_MID, padx=16, pady=12,
+                            highlightbackground=BORDER, highlightthickness=1)
+        features.pack(fill="x", pady=(0, 10))
+        for icon, text in [
+            ("📦", "Downloads your blog's recovery kit, database, and media files"),
+            ("🔄", "Differential backups — only grabs what changed since last time"),
+            ("☁️",  "Optionally uploads to Google Drive or OneDrive"),
+            ("🔍", "Audit mode checks your server for missing or orphaned files"),
+            ("⏪", "Restore mode puts everything back if disaster strikes"),
+        ]:
+            row = tk.Frame(features, bg=BG_MID)
+            row.pack(fill="x", pady=3)
+            tk.Label(row, text=icon, bg=BG_MID, font=FONT_BODY).pack(side="left", padx=(0, 10))
+            tk.Label(row, text=text, bg=BG_MID, fg=FG_MAIN,
+                     font=FONT_BODY, anchor="w").pack(side="left")
+
+        # Step 1: Blog details
+        f = self._make_frame()
+        self._heading(f,
+            "Blog Details",
+            "Enter your blog's name and URL. The name is just a label — "
+            "pick whatever helps you identify this site.")
+        self._field(f, "Blog name", "name")
+        self._field(f, "Site URL", "site_url")
+
+        # Step 2: Admin login
+        f = self._make_frame()
+        self._heading(f,
+            "SnapSmack Admin Login",
+            "SUYB logs into your blog's admin panel to download the recovery kit "
+            "and SQL backups. Use the same credentials you log in with.")
+        self._field(f, "Admin username", "snap_admin_user")
+        self._field(f, "Admin password", "snap_admin_pass", show="●")
+        self._admin_status = self._status_label(f)
+
+        test_row = tk.Frame(f, bg=BG_DEEP)
+        test_row.pack(anchor="w", pady=(4, 0))
+        tk.Button(test_row, text="Test Connection", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY, padx=12, pady=4,
+                  command=self._test_admin).pack(side="left")
+
+        # Step 3: FTP
+        f = self._make_frame()
+        self._heading(f,
+            "FTP Connection",
+            "SUYB uses FTP to download and upload media files. "
+            "Your web host provides these credentials.")
+        self._field(f, "FTP host", "ftp_host")
+        self._field(f, "Port", "ftp_port", width=8)
+        self._field(f, "Username", "ftp_user")
+        self._field(f, "Password", "ftp_pass", show="●")
+        self._field(f, "Remote directory", "ftp_remote_dir")
+
+        ssl_var = tk.BooleanVar(value=True)
+        self._vars["ftp_ssl"] = ssl_var
+        tk.Checkbutton(f, text="Use FTP_TLS (recommended)", variable=ssl_var,
+                       bg=BG_DEEP, fg=FG_MAIN, selectcolor=BG_INPUT,
+                       activebackground=BG_DEEP, font=FONT_BODY).pack(
+            anchor="w", pady=(6, 0))
+
+        self._ftp_status = self._status_label(f)
+        test_row2 = tk.Frame(f, bg=BG_DEEP)
+        test_row2.pack(anchor="w", pady=(4, 0))
+        tk.Button(test_row2, text="Test FTP", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY, padx=12, pady=4,
+                  command=self._test_ftp).pack(side="left")
+
+        # Step 4: Backup destination
+        f = self._make_frame()
+        self._heading(f,
+            "Backup Destination",
+            "Choose where to store backup files on this computer. "
+            "Cloud upload is optional — you can configure it later in Settings.")
+        self._field(f, "Local folder", "backup_dir")
+        browse_row = tk.Frame(f, bg=BG_DEEP)
+        browse_row.pack(anchor="w", pady=(0, 10))
+        tk.Button(browse_row, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY, padx=12, pady=4,
+                  command=self._browse_dir).pack(side="left")
+
+        # Step 5: Summary / ready
+        f = self._make_frame()
+        self._heading(f,
+            "You're all set!",
+            "Your profile is ready. Click Finish to save it and "
+            "jump to the Backup tab where you can run your first backup.")
+        self._summary_var = tk.StringVar()
+        tk.Label(f, textvariable=self._summary_var, bg=BG_MID, fg=FG_MAIN,
+                 font=FONT_BODY, padx=16, pady=12, justify="left", anchor="nw",
+                 highlightbackground=BORDER, highlightthickness=1,
+                 wraplength=520).pack(fill="x", pady=(0, 10))
+
+        tour_lbl = tk.Frame(f, bg=BG_DEEP)
+        tour_lbl.pack(fill="x", pady=(4, 0))
+        tk.Label(tour_lbl, text="Quick tour:", bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w")
+        for tab, desc in [
+            ("Backup", "Run backups — differential or full, one blog or all at once"),
+            ("Restore", "Upload files back to your server from a backup package"),
+            ("Audit", "Scan your server for missing, orphaned, or mismatched files"),
+            ("Settings", "Manage profiles, cloud config, and global defaults"),
+        ]:
+            r = tk.Frame(f, bg=BG_DEEP)
+            r.pack(fill="x", pady=1)
+            tk.Label(r, text=f"{tab}:", bg=BG_DEEP, fg=ACCENT,
+                     font=FONT_BODY, width=10, anchor="w").pack(side="left")
+            tk.Label(r, text=desc, bg=BG_DEEP, fg=FG_DIM,
+                     font=FONT_BODY, anchor="w").pack(side="left")
+
+    # ── Navigation ──────────────────────────────────────────────────────
+    def _show_step(self, idx):
+        self._step = idx
+        for f in self._frames:
+            f.pack_forget()
+        self._frames[idx].pack(fill="both", expand=True)
+
+        # Update dots
+        for w in self._dots_frame.winfo_children():
+            w.destroy()
+        for i, name in enumerate(self.STEPS):
+            color = ACCENT if i == idx else (FG_DIM if i > idx else ACCENT2)
+            tk.Label(self._dots_frame, text=f"● {name}" if i == idx else "●",
+                     bg=BG_DEEP, fg=color, font=FONT_SMALL).pack(side="left", padx=3)
+
+        # Button states
+        self._back_btn.configure(state="normal" if idx > 0 else "disabled")
+        if idx == len(self.STEPS) - 1:
+            self._next_btn.configure(text="Finish ✓")
+        else:
+            self._next_btn.configure(text="Next →")
+
+    def _collect(self):
+        """Pull all StringVar values into self._data."""
+        for key, var in self._vars.items():
+            val = var.get()
+            if key in ("ftp_port", "pacing_delay", "batch_size"):
+                try:
+                    val = int(val)
+                except ValueError:
+                    pass
+            elif key == "ftp_ssl":
+                val = bool(var.get())
+            self._data[key] = val
+
+    def _next(self):
+        self._collect()
+
+        # Validate current step
+        if self._step == 1:  # Blog details
+            if not self._data.get("name", "").strip():
+                messagebox.showwarning("Blog name required",
+                    "Enter a name for this blog profile.", parent=self)
+                return
+        elif self._step == 4:  # Backup destination
+            if not self._data.get("backup_dir", "").strip():
+                messagebox.showwarning("Folder required",
+                    "Pick a local folder for backup storage.", parent=self)
+                return
+
+        if self._step < len(self.STEPS) - 2:
+            self._show_step(self._step + 1)
+        elif self._step == len(self.STEPS) - 2:
+            # Moving to summary — populate it
+            d = self._data
+            self._summary_var.set(
+                f"Blog:   {d.get('name', '')}\n"
+                f"URL:    {d.get('site_url', '')}\n"
+                f"FTP:    {d.get('ftp_user', '')}@{d.get('ftp_host', '')}:{d.get('ftp_port', 21)}\n"
+                f"Folder: {d.get('backup_dir', '')}"
+            )
+            self._show_step(self._step + 1)
+        else:
+            # Finish
+            self.result = dict(self._data)
+            self.destroy()
+
+    def _back(self):
+        if self._step > 0:
+            self._collect()
+            self._show_step(self._step - 1)
+
+    # ── Actions ─────────────────────────────────────────────────────────
+    def _test_admin(self):
+        self._collect()
+        self._admin_status.set("Testing…")
+        self.update_idletasks()
+        import requests
+        try:
+            url = self._data.get("site_url", "").rstrip("/")
+            r = requests.get(f"{url}/snap-login.php", timeout=10,
+                             allow_redirects=False)
+            if r.status_code < 400:
+                self._admin_status.set("✓ Blog is reachable")
+            else:
+                self._admin_status.set(f"⚠ HTTP {r.status_code}")
+        except Exception as e:
+            self._admin_status.set(f"✗ {e}")
+
+    def _test_ftp(self):
+        self._collect()
+        self._ftp_status.set("Connecting…")
+        self.update_idletasks()
+        try:
+            from ftp_client import connect_ftp
+            ftp = connect_ftp(self._data)
+            ftp.quit()
+            self._ftp_status.set("✓ FTP connected successfully")
+        except Exception as e:
+            self._ftp_status.set(f"✗ {e}")
+
+    def _browse_dir(self):
+        d = _dlg_dir(self, title="Choose backup folder")
+        if d and "backup_dir" in self._vars:
+            self._vars["backup_dir"].set(d)
 
 
 # ---------------------------------------------------------------------------
@@ -2123,6 +2442,11 @@ class App(tk.Tk):
     # ------------------------------------------------------------------
 
     def _load_last_profile(self) -> None:
+        # First run — no profiles exist → launch setup wizard
+        if not self._profiles:
+            self.after(200, self._run_wizard)
+            return
+
         last = self._cfg.get("app", "last_profile", fallback="")
         if last and last in self._profiles:
             self._profile_var.set(last)
@@ -2130,6 +2454,13 @@ class App(tk.Tk):
         elif self._profiles:
             self._profile_var.set(self._profiles[0])
             self._load_profile(self._profiles[0])
+
+    def _run_wizard(self) -> None:
+        dlg = SetupWizard(self)
+        self.wait_window(dlg)
+        if dlg.result:
+            profile_manager.save_profile(dlg.result)
+            self._refresh_profile_list(dlg.result["name"])
 
     def _load_profile(self, name: str) -> None:
         p = profile_manager.load_profile(name)
