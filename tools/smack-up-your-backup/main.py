@@ -1475,9 +1475,18 @@ class SettingsTab(tk.Frame):
         self._profile_vars["backup_dir"] = bkdir_var
         self._browse_btn(local_g, 0, self._browse_backup_dir)
 
-        # Save Profile
-        self._action_btn(c, "Save Profile", self._save_profile,
-                         primary=True).pack(anchor="w", pady=(10, 0))
+        # Profile buttons row
+        prof_btns = tk.Frame(c, bg=BG_MID)
+        prof_btns.pack(anchor="w", pady=(10, 0))
+        self._action_btn(prof_btns, "Save Profile", self._save_profile,
+                         primary=True).pack(side="left")
+        self._action_btn(prof_btns, "New Profile",
+                         self._new_from_settings).pack(side="left", padx=(8, 0))
+
+        # Shows which profile is loaded
+        self._profile_status_var = tk.StringVar(value="")
+        tk.Label(c, textvariable=self._profile_status_var,
+                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w", pady=(4, 0))
 
         self._no_profile_lbl = tk.Label(c, text="",
                                          bg=BG_MID, fg=FG_DIM, font=FONT_SMALL)
@@ -1664,6 +1673,7 @@ class SettingsTab(tk.Frame):
                 self._method_var.set("local")
             self._on_method_change()
             self._no_profile_lbl.pack_forget()
+            self._profile_status_var.set(f"Editing: {profile.get('name', '')}")
         else:
             for key, var in self._profile_vars.items():
                 if key == "ftp_ssl":
@@ -1672,25 +1682,32 @@ class SettingsTab(tk.Frame):
                     var.set("")
             self._method_var.set("ftp")
             self._on_method_change()
+            self._profile_status_var.set("New profile — fill in details and Save")
+
+    def _new_from_settings(self) -> None:
+        """Clear the form to start a new profile."""
+        self._app._current_profile = None
+        self.load_profile(None)
 
     def _save_profile(self) -> None:
-        """Write the profile fields back to disk, or create a new one."""
-        profile = self._app._current_profile
+        """Save the form.  Creates or updates based on name matching."""
+        form_name = self._profile_vars["name"].get().strip()
+        if not form_name:
+            messagebox.showwarning("Blog name required",
+                "Enter a blog name before saving.", parent=self)
+            return
 
-        # No profile selected — create from scratch if a name was entered
-        if not profile:
-            name = self._profile_vars.get("name")
-            if not name or not name.get().strip():
-                messagebox.showwarning("No profile",
-                    "Enter a blog name and fill in the connection details,\n"
-                    "then press Save Profile to create a new profile.",
-                    parent=self)
-                return
+        current = self._app._current_profile
+        # Decide: update existing or create new
+        if current and current.get("name") == form_name:
+            # Same name — update in place
+            profile = current
+        else:
+            # Different name (or no profile loaded) — create new
             profile = profile_manager.new_profile_template()
 
         for key, var in self._profile_vars.items():
             val = var.get()
-            # Preserve int types for port/delay/batch
             if key in ("ftp_port", "pacing_delay", "batch_size"):
                 try:
                     val = int(val)
@@ -1701,16 +1718,14 @@ class SettingsTab(tk.Frame):
             profile[key] = val
 
         # If method is "local", clear cloud provider so engine skips cloud push
-        method = self._method_var.get()
-        if method == "local":
+        if self._method_var.get() == "local":
             profile["cloud_provider"] = "none"
 
         profile_manager.save_profile(profile)
-        # If this was a new profile, wire it up as the current selection
-        if not self._app._current_profile:
-            self._app._current_profile = profile
-            self._app._refresh_profile_list(profile["name"])
-        messagebox.showinfo("Saved", f"Profile \"{profile['name']}\" saved.", parent=self)
+        self._app._current_profile = profile
+        self._app._refresh_profile_list(profile["name"])
+        self._profile_status_var.set(f"Editing: {form_name}")
+        messagebox.showinfo("Saved", f"Profile \"{form_name}\" saved.", parent=self)
 
     def _browse_backup_dir(self) -> None:
         d = _dlg_dir(self, title="Choose local backup folder")
