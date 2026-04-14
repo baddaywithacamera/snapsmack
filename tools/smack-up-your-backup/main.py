@@ -884,13 +884,12 @@ class BackupTab(tk.Frame):
                                    font=FONT_SMALL, anchor="w")
         self._prog_lbl.pack(fill="x", padx=16)
 
-        # Options row: backup mode + include settings (BEFORE log so it stays visible)
-        opts_row = tk.Frame(self, bg=BG_DEEP)
-        opts_row.pack(fill="x", padx=16, pady=(4, 4), side="bottom")
-
-        # Bottom buttons (pack from bottom so they're always visible)
+        # Pack from bottom: buttons first (lowest), then options above them
         btn_row = tk.Frame(self, bg=BG_DEEP)
         btn_row.pack(fill="x", padx=16, pady=(0, 16), side="bottom")
+
+        opts_row = tk.Frame(self, bg=BG_DEEP)
+        opts_row.pack(fill="x", padx=16, pady=(4, 4), side="bottom")
 
         # Log fills remaining space
         self._log = LogPane(self)
@@ -1678,11 +1677,18 @@ class SettingsTab(tk.Frame):
     def _build(self):
         self._profile_vars: dict[str, tk.StringVar] = {}
 
-        # Scrollable canvas wrapper
+        # Scrollable canvas wrapper with auto-hiding scrollbar
         canvas = tk.Canvas(self, bg=BG_DEEP, highlightthickness=0)
         sb     = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
-        canvas.configure(yscrollcommand=sb.set)
-        sb.pack(side="right", fill="y")
+
+        def _on_scroll(first, last):
+            sb.set(first, last)
+            if float(first) <= 0.0 and float(last) >= 1.0:
+                sb.pack_forget()
+            else:
+                sb.pack(side="right", fill="y", before=canvas)
+
+        canvas.configure(yscrollcommand=_on_scroll)
         canvas.pack(side="left", fill="both", expand=True)
 
         inner = tk.Frame(canvas, bg=BG_DEEP)
@@ -1774,12 +1780,22 @@ class SettingsTab(tk.Frame):
         ]):
             self._row(ftp_g, row, label, key, width=w, show=show)
 
+        checks_row = tk.Frame(self._ftp_frame, bg=BG_MID)
+        checks_row.pack(anchor="w", pady=(4, 0))
+
         self._ftp_ssl_var = tk.BooleanVar(value=True)
-        tk.Checkbutton(self._ftp_frame, text="Use FTP_TLS", variable=self._ftp_ssl_var,
+        tk.Checkbutton(checks_row, text="Use FTP_TLS", variable=self._ftp_ssl_var,
                        bg=BG_MID, fg=FG_MAIN, selectcolor=BG_INPUT,
                        activebackground=BG_MID, font=FONT_BODY).pack(
-            anchor="w", pady=(4, 0))
+            side="left", padx=(0, 16))
         self._profile_vars["ftp_ssl"] = self._ftp_ssl_var
+
+        self._ftp_verify_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(checks_row, text="Verify certificate",
+                       variable=self._ftp_verify_var,
+                       bg=BG_MID, fg=FG_MAIN, selectcolor=BG_INPUT,
+                       activebackground=BG_MID, font=FONT_BODY).pack(side="left")
+        self._profile_vars["ftp_verify_cert"] = self._ftp_verify_var
 
         # Cloud fields (shown when method = cloud)
         self._cloud_frame = tk.Frame(c, bg=BG_MID)
