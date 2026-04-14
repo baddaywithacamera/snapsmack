@@ -57,7 +57,15 @@ class FTPClient:
     def connect(self) -> None:
         """Open connection and authenticate."""
         if self.use_tls:
-            ftp = ftplib.FTP_TLS(timeout=self.connect_timeout)
+            import ssl
+            # Shared hosting certs often don't match the domain (they use
+            # the server's hostname like sh-cp17.yyz2.servername.online).
+            # Disable hostname check but keep encryption — same as clicking
+            # "Trust this certificate" in FileZilla.
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            ftp = ftplib.FTP_TLS(context=ctx, timeout=self.connect_timeout)
             ftp.connect(self.host, self.port)
             ftp.auth()
             ftp.login(self.user, self.password)
