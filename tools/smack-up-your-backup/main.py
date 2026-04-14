@@ -2041,7 +2041,8 @@ class SettingsTab(tk.Frame):
         if not host:
             self._conn_status_var.set("Fill in FTP host first")
             return
-        self._conn_status_var.set("Connecting FTP…")
+        port = int(self._profile_vars["ftp_port"].get() or 21)
+        self._conn_status_var.set(f"Connecting to {host}:{port}…")
         self.update_idletasks()
 
         import threading
@@ -2053,14 +2054,14 @@ class SettingsTab(tk.Frame):
                     user=self._profile_vars["ftp_user"].get(),
                     password=self._profile_vars["ftp_pass"].get(),
                     remote_dir=self._profile_vars["ftp_remote_dir"].get() or "/",
-                    port=int(self._profile_vars["ftp_port"].get() or 21),
+                    port=port,
                     use_tls=bool(self._profile_vars["ftp_ssl"].get()),
                 )
                 ftp.connect()
                 ftp.disconnect()
-                msg = "✓ FTP connected successfully"
+                msg = f"✓ Connected to {host}"
             except Exception as e:
-                msg = f"✗ {e}"
+                msg = f"✗ {host}:{port} — {e}"
             self.after(0, lambda: self._conn_status_var.set(msg))
         threading.Thread(target=_run, daemon=True).start()
 
@@ -2084,14 +2085,19 @@ class SettingsTab(tk.Frame):
                     var.set(bool(val) if val != "" else default)
                 else:
                     var.set(str(profile.get(key, "")))
-            # Set method radio based on what's filled in
-            cloud_prov = profile.get("cloud_provider", "none")
-            if cloud_prov and cloud_prov != "none":
-                self._method_var.set("cloud")
-            elif profile.get("ftp_host"):
-                self._method_var.set("ftp")
+            # Restore backup method — explicit key preferred over inference
+            saved_method = profile.get("backup_method", "")
+            if saved_method in ("ftp", "cloud", "local"):
+                self._method_var.set(saved_method)
             else:
-                self._method_var.set("local")
+                # Legacy profiles: infer from cloud_provider / ftp_host
+                cloud_prov = profile.get("cloud_provider", "none")
+                if cloud_prov and cloud_prov != "none":
+                    self._method_var.set("cloud")
+                elif profile.get("ftp_host"):
+                    self._method_var.set("ftp")
+                else:
+                    self._method_var.set("local")
             self._on_method_change()
             self._no_profile_lbl.pack_forget()
             self._profile_status_var.set(f"Editing: {profile.get('name', '')}")
@@ -2139,8 +2145,10 @@ class SettingsTab(tk.Frame):
                 val = bool(val)
             profile[key] = val
 
-        # If method is "local", clear cloud provider so engine skips cloud push
-        if self._method_var.get() == "local":
+        # Save the method explicitly so it round-trips correctly
+        method = self._method_var.get()
+        profile["backup_method"] = method
+        if method == "local":
             profile["cloud_provider"] = "none"
 
         profile_manager.save_profile(profile)

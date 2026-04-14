@@ -114,6 +114,7 @@ def new_profile_template() -> Dict:
         "ftp_verify_cert":       False,
         "snap_admin_user":       "",
         "snap_admin_pass":       "",
+        "backup_method":         "ftp",          # "ftp" | "cloud" | "local"
         "cloud_provider":        "none",        # "google_drive" | "onedrive" | "none"
         "cloud_credentials_file":"",
         "cloud_folder_id":       "",
