@@ -386,10 +386,18 @@ def get_cloud_client(profile: dict, global_cloud: Optional[dict] = None):
     Drive folder in global settings while still allowing per-profile
     overrides for client isolation.
     """
-    gc       = global_cloud or {}
-    provider = profile.get("cloud_provider") or gc.get("cloud_provider") or "none"
-    creds    = profile.get("cloud_credentials_file") or gc.get("cloud_credentials_file") or ""
-    folder   = profile.get("cloud_folder_id") or gc.get("cloud_folder_id") or ""
+    gc = global_cloud or {}
+
+    def _pick(*vals):
+        """Return first non-empty, non-'none' value."""
+        for v in vals:
+            if v and v != "none":
+                return v
+        return ""
+
+    provider = _pick(profile.get("cloud_provider"), gc.get("cloud_provider")) or "none"
+    creds    = _pick(profile.get("cloud_credentials_file"), gc.get("cloud_credentials_file"))
+    folder   = _pick(profile.get("cloud_folder_id"), gc.get("cloud_folder_id"))
 
     if provider == "google_drive" and creds:
         return DriveClient(creds, folder)
