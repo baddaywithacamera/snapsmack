@@ -510,13 +510,35 @@ class BackupEngine:
                 record.restores_to, local_path,
                 on_progress=lambda fn, r, t, s: None,
             )
+
+            # ── Post-download checksum verification ──────────────────
+            if ok and record.checksum and os.path.exists(local_path):
+                actual = ftp_module.FTPClient.sha256_file(local_path)
+                if actual != record.checksum:
+                    self._log(f"✗ Checksum mismatch: {record.restores_to} — retrying once")
+                    ok = ftp.download_file(
+                        record.restores_to, local_path,
+                        on_progress=lambda fn, r, t, s: None,
+                    )
+                    if ok:
+                        actual = ftp_module.FTPClient.sha256_file(local_path)
+                        if actual != record.checksum:
+                            self._log(
+                                f"✗ Checksum wrong after retry: {record.restores_to}\n"
+                                f"  Expected: {record.checksum}\n"
+                                f"  Got:      {actual}"
+                            )
+                            ok = False
+                        else:
+                            self._log(f"✓ Checksum OK on retry: {record.restores_to}")
+
             if ok:
                 result["files_downloaded"] += 1
-                cp.record(key, downloaded=True)   # ← checkpoint written after every file
+                cp.record(key, downloaded=True)
             else:
                 result["files_failed"] += 1
                 cp.record(key, failed=True)
-                result["errors"].append(f"Download failed: {record.restores_to}")
+                result["errors"].append(f"Download/verify failed: {record.restores_to}")
             done += 1
 
         # ── Stage 4: Package ─────────────────────────────────────────
