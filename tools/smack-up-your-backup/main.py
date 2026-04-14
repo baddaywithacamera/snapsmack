@@ -453,7 +453,7 @@ class SetupWizard(tk.Toplevel):
         import requests
         try:
             url = self._data.get("site_url", "").rstrip("/")
-            r = requests.get(f"{url}/snap-login.php", timeout=10,
+            r = requests.get(f"{url}/login.php", timeout=10,
                              allow_redirects=False)
             if r.status_code < 400:
                 self._admin_status.set("✓ Blog is reachable")
@@ -1996,7 +1996,7 @@ class SettingsTab(tk.Frame):
             try:
                 import requests
                 r = requests.post(
-                    f"{url}/snap-login.php",
+                    f"{url}/login.php",
                     data={"username": user, "password": pw, "ajax": "1"},
                     timeout=15, allow_redirects=False,
                 )
