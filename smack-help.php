@@ -1574,6 +1574,80 @@ authentication as Smack Your Batch Up, so no separate Drive login is needed.</p>
 HTML
 ];
 
+// ── SMACK UP YOUR BACKUP ─────────────────────────────────────────────────
+
+$help_topics['smack-up-your-backup'] = [
+    'section'  => 'Desktop Tools',
+    'title'    => 'Smack Up Your Backup',
+    'icon'     => '&#x25BC;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Smack Up Your Backup</h3>
+<p>Smack Up Your Backup (SUYB) is a standalone Windows/Linux desktop app that performs
+complete, verifiable backups of your SnapSmack blog. It downloads your recovery kit,
+SQL database exports, and all media files via FTP, packages everything into a dated
+ZIP, and optionally uploads it to Google Drive or OneDrive.</p>
+
+<h4>What It Backs Up</h4>
+<ul>
+    <li><strong>Recovery kit</strong> — a .tar.gz archive containing the manifest (a
+    complete inventory of every media file with paths, sizes, and SHA-256 checksums),
+    branding assets, skin files, and a bundled database export.</li>
+    <li><strong>SQL dumps</strong> — full database export and schema-only export.</li>
+    <li><strong>Media files</strong> — every image and asset tracked in the manifest,
+    downloaded via FTP. Differential mode skips files that haven't changed since the
+    last backup (verified by checksum).</li>
+</ul>
+
+<h4>Setting Up</h4>
+<p>Download SUYB from the <a href="smack-tools.php">Companion Tools</a> page. On first
+launch the setup wizard walks you through creating a profile: site URL, admin credentials
+(same ones you use to log into this panel), FTP connection details, and a local folder
+for backup storage.</p>
+<p>Use the <strong>Test Login</strong> and <strong>Test FTP</strong> buttons in the app's
+Settings tab to verify your credentials before running a backup.</p>
+
+<h4>Running a Backup</h4>
+<p>Select a blog profile from the dropdown, choose Differential (fast — skips unchanged
+files) or Full (re-downloads everything), and click <strong>START BACKUP</strong>. The log
+shows every stage in real time. Each downloaded file's SHA-256 is verified against the
+manifest — a mismatch triggers an automatic retry.</p>
+
+<h4>Crash Recovery</h4>
+<p>If a backup is interrupted mid-run (power cut, Windows Update reboot), SUYB writes
+a checkpoint file after every downloaded file using an atomic rename so even a power
+cut during the write itself can't corrupt it. The next time you click Start Backup,
+SUYB detects the checkpoint and offers to resume from where it stopped — no need to
+re-download files already verified.</p>
+
+<h4>Cloud Upload</h4>
+<p>SUYB supports Google Drive (service account key or OAuth) and OneDrive (MSAL). Configure
+your cloud credentials in Settings → Global Cloud Config. After a successful backup the ZIP
+is uploaded automatically and the cloud state index is updated so SUYB can browse and restore
+from cloud directly.</p>
+
+<h4>Scheduled Backups</h4>
+<p>Each profile can have its own backup schedule — daily or weekly at a configured time.
+Enable "Minimize to system tray instead of closing" and "Launch SUYB when Windows starts"
+in Settings so it runs in the background without any manual intervention.</p>
+
+<h4>Oh Snap! API Keys</h4>
+<p>SUYB uses the standard SnapSmack admin login for authentication — no API key is needed.
+The <strong>Oh Snap! API Keys</strong> page (Boring Ass Stuff → Oh Snap! API Keys) is for
+the Oh Snap skin designer desktop app, not for SUYB.</p>
+
+<h4>Restoring From Backup</h4>
+<p>Open the Restore tab in SUYB, select your backup ZIP (local or from cloud), and click
+Restore. Before uploading each file SUYB verifies its checksum against the manifest — a
+corrupt local file is rejected rather than uploaded to overwrite a good server copy.</p>
+
+<h4>Audit Mode</h4>
+<p>The Audit tab compares the manifest against your live server filesystem via FTP,
+identifying missing files, orphaned files not tracked by the CMS, size mismatches, and
+files found in the wrong location. Save the report as HTML for your records.</p>
+HTML
+];
+
 // ── MULTISITE MANAGEMENT ─────────────────────────────────────────────────
 
 $help_topics['multisite'] = [
