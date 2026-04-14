@@ -1639,11 +1639,20 @@ class SettingsTab(tk.Frame):
             self._on_method_change()
 
     def _save_profile(self) -> None:
-        """Write the profile fields back to disk."""
+        """Write the profile fields back to disk, or create a new one."""
         profile = self._app._current_profile
+
+        # No profile selected — create from scratch if a name was entered
         if not profile:
-            messagebox.showwarning("No profile", "Select a profile first.", parent=self)
-            return
+            name = self._profile_vars.get("name")
+            if not name or not name.get().strip():
+                messagebox.showwarning("No profile",
+                    "Enter a blog name and fill in the connection details,\n"
+                    "then press Save Profile to create a new profile.",
+                    parent=self)
+                return
+            profile = profile_manager.new_profile_template()
+
         for key, var in self._profile_vars.items():
             val = var.get()
             # Preserve int types for port/delay/batch
@@ -1662,6 +1671,10 @@ class SettingsTab(tk.Frame):
             profile["cloud_provider"] = "none"
 
         profile_manager.save_profile(profile)
+        # If this was a new profile, wire it up as the current selection
+        if not self._app._current_profile:
+            self._app._current_profile = profile
+            self._app._refresh_profile_list(profile["name"])
         messagebox.showinfo("Saved", f"Profile \"{profile['name']}\" saved.", parent=self)
 
     def _browse_backup_dir(self) -> None:
