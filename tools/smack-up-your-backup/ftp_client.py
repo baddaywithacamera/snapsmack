@@ -29,6 +29,7 @@ class FTPClient:
         remote_dir:         str  = "/",
         port:               int  = 21,
         use_tls:            bool = True,
+        verify_cert:        bool = False,
         transfer_delay:     float = 2.0,
         batch_size:         int   = 0,
         keepalive_interval: int   = 60,
@@ -41,6 +42,7 @@ class FTPClient:
         self.remote_dir         = remote_dir.rstrip("/") or "/"
         self.port               = port
         self.use_tls            = use_tls
+        self.verify_cert        = verify_cert
         self.transfer_delay     = transfer_delay
         self.batch_size         = batch_size
         self.keepalive_interval = keepalive_interval
@@ -58,13 +60,15 @@ class FTPClient:
         """Open connection and authenticate."""
         if self.use_tls:
             import ssl
-            # Shared hosting certs often don't match the domain (they use
-            # the server's hostname like sh-cp17.yyz2.servername.online).
-            # Disable hostname check but keep encryption — same as clicking
-            # "Trust this certificate" in FileZilla.
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
+            if self.verify_cert:
+                ctx = ssl.create_default_context()
+            else:
+                # Shared hosting certs often don't match the domain.
+                # Skip verification but keep encryption — same as clicking
+                # "Trust this certificate" in FileZilla.
+                ctx = ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
             ftp = ftplib.FTP_TLS(context=ctx, timeout=self.connect_timeout)
             ftp.connect(self.host, self.port)
             ftp.auth()
