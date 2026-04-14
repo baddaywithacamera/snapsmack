@@ -7,9 +7,18 @@ Passwords are base64-obfuscated (not encrypted) — matches SYBU convention.
 import base64
 import json
 import os
+import sys
 from typing import Dict, List, Optional
 
-PROFILES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "profiles")
+
+def _app_dir() -> str:
+    """Persistent app directory — next to the .exe when frozen, source dir otherwise."""
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+PROFILES_DIR = os.path.join(_app_dir(), "profiles")
 
 
 def _obfuscate(plain: str) -> str:
