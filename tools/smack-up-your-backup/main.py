@@ -67,6 +67,7 @@ TAB_HELP      = "help"
 
 import sys as _sys
 import subprocess as _sp
+import threading as _threading
 
 _CREATE_NO_WINDOW = 0x08000000  # prevents PowerShell console flash
 
@@ -78,7 +79,36 @@ def _ps_filter(filetypes):
     return "|".join(f"{d} ({e})|{e}" for d, e in filetypes)
 
 
-def _ps_open(title, filetypes):
+def _ps_run(widget, cmd: str) -> str:
+    """
+    Run a PowerShell dialog command in a background thread and wait for it
+    using tkinter's wait_variable so the event loop stays alive (no freeze,
+    no 'not responding', no timeout).
+    """
+    result_holder = [""]
+    done_var = tk.StringVar(widget.winfo_toplevel(), value="")
+
+    def _run():
+        try:
+            r = _sp.run(
+                ['powershell', '-noprofile', '-command', cmd],
+                capture_output=True, text=True,
+                creationflags=_CREATE_NO_WINDOW,
+                # No timeout — user may browse slowly
+            )
+            result_holder[0] = r.stdout.strip()
+        except Exception:
+            pass
+        # Signal completion from the main thread via after()
+        widget.after(0, lambda: done_var.set("done"))
+
+    _threading.Thread(target=_run, daemon=True).start()
+    # wait_variable keeps tkinter's event loop running while we wait
+    widget.winfo_toplevel().wait_variable(done_var)
+    return result_holder[0]
+
+
+def _ps_open(widget, title, filetypes):
     filt = _ps_filter(filetypes).replace("'", "''")
     title = title.replace("'", "''")
     cmd = (
@@ -88,13 +118,10 @@ def _ps_open(title, filetypes):
         f"$d.Filter = '{filt}';"
         "if ($d.ShowDialog() -eq 'OK') { $d.FileName }"
     )
-    r = _sp.run(['powershell', '-noprofile', '-command', cmd],
-                capture_output=True, text=True, timeout=120,
-                creationflags=_CREATE_NO_WINDOW)
-    return r.stdout.strip()
+    return _ps_run(widget, cmd)
 
 
-def _ps_save(title, filetypes, ext, initialfile):
+def _ps_save(widget, title, filetypes, ext, initialfile):
     filt = _ps_filter(filetypes).replace("'", "''")
     title = title.replace("'", "''")
     initialfile = (initialfile or "").replace("'", "''")
@@ -107,13 +134,10 @@ def _ps_save(title, filetypes, ext, initialfile):
         f"$d.FileName = '{initialfile}';"
         "if ($d.ShowDialog() -eq 'OK') { $d.FileName }"
     )
-    r = _sp.run(['powershell', '-noprofile', '-command', cmd],
-                capture_output=True, text=True, timeout=120,
-                creationflags=_CREATE_NO_WINDOW)
-    return r.stdout.strip()
+    return _ps_run(widget, cmd)
 
 
-def _ps_folder(title):
+def _ps_folder(widget, title):
     title = title.replace("'", "''")
     cmd = (
         "Add-Type -AssemblyName System.Windows.Forms;"
@@ -122,16 +146,13 @@ def _ps_folder(title):
         "$d.ShowNewFolderButton = $true;"
         "if ($d.ShowDialog() -eq 'OK') { $d.SelectedPath }"
     )
-    r = _sp.run(['powershell', '-noprofile', '-command', cmd],
-                capture_output=True, text=True, timeout=120,
-                creationflags=_CREATE_NO_WINDOW)
-    return r.stdout.strip()
+    return _ps_run(widget, cmd)
 
 
 def _dlg_open(widget, title="Open", filetypes=None, **kwargs) -> str:
     try:
         if _sys.platform == 'win32':
-            return _ps_open(title, filetypes or [("All Files", "*.*")])
+            return _ps_open(widget, title, filetypes or [("All Files", "*.*")])
         return filedialog.askopenfilename(
             parent=widget.winfo_toplevel(), title=title, filetypes=filetypes, **kwargs) or ""
     except Exception as e:
@@ -142,7 +163,7 @@ def _dlg_open(widget, title="Open", filetypes=None, **kwargs) -> str:
 def _dlg_dir(widget, title="Select Folder", **kwargs) -> str:
     try:
         if _sys.platform == 'win32':
-            return _ps_folder(title)
+            return _ps_folder(widget, title)
         return filedialog.askdirectory(
             parent=widget.winfo_toplevel(), title=title, **kwargs) or ""
     except Exception as e:
@@ -154,7 +175,7 @@ def _dlg_save(widget, title="Save As", filetypes=None, defaultextension="",
               initialfile="", **kwargs) -> str:
     try:
         if _sys.platform == 'win32':
-            return _ps_save(title, filetypes or [("All Files", "*.*")],
+            return _ps_save(widget, title, filetypes or [("All Files", "*.*")],
                             defaultextension, initialfile)
         return filedialog.asksaveasfilename(
             parent=widget.winfo_toplevel(), title=title, filetypes=filetypes,
