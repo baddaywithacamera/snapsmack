@@ -961,6 +961,30 @@ class BackupTab(tk.Frame):
             messagebox.showerror("No backup dir", "Set a local backup directory in the profile.")
             return
 
+        # ── Pre-flight: validate cloud config if method is cloud ──────
+        if profile.get("backup_method") == "cloud":
+            import cloud_client as _cc
+            gc = self._app.global_cloud_config()
+            test_client = _cc.get_cloud_client(profile, global_cloud=gc)
+            if not test_client:
+                def _pick(*vals):
+                    for v in vals:
+                        if v and v != "none":
+                            return v
+                    return ""
+                provider = _pick(profile.get("cloud_provider"), gc.get("cloud_provider")) or "none"
+                if provider in ("google_drive", "onedrive"):
+                    msg = (f"Cloud provider is set to '{provider}' but no credentials "
+                           f"file is configured.\n\nGo to Settings → Global Cloud Config, "
+                           f"set the SA key file or Credentials JSON and click Save Defaults.\n\n"
+                           f"Continue with local-only backup instead?")
+                else:
+                    msg = ("No cloud provider is configured.\n\n"
+                           "Go to Settings → Global Cloud Config and set a provider.\n\n"
+                           "Continue with local-only backup instead?")
+                if not messagebox.askyesno("Cloud not configured", msg):
+                    return
+
         # ── Check for an interrupted backup checkpoint ────────────────
         from checkpoint import BackupCheckpoint
         backup_dir = profile.get("backup_dir", "")
