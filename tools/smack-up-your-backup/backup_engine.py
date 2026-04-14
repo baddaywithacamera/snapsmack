@@ -142,11 +142,11 @@ class SnapSmackSession:
 
     def download_recovery_kit(self, local_path: str, on_progress: Optional[Callable] = None) -> None:
         """Trigger recovery kit export and download the .tar.gz."""
-        # Trigger export
+        # Trigger export — smack-disaster.php expects action=export&type=recovery_kit
         trigger_url = f"{self.site_url}/smack-disaster.php"
         resp = self.session.post(
             trigger_url,
-            data={"action": "export_recovery_kit"},
+            data={"action": "export", "type": "recovery_kit"},
             timeout=60,
             allow_redirects=True,
         )
