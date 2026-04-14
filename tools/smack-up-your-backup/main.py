@@ -59,123 +59,155 @@ TAB_SETTINGS= "settings"
 # the calling widget is a Frame embedded in a notebook tab.  On Windows we
 # bypass tkinter entirely and call the native Win32 APIs (GetOpenFileNameW,
 # GetSaveFileNameW, SHBrowseForFolderW) via ctypes.  No extra packages needed.
+#
+# The whole Win32 block is wrapped in try/except: if ctypes setup ever fails
+# (shouldn't on Windows 7+) _HAVE_WIN32 stays False and we fall through to
+# tkinter.  Every dialog call also has its own try/except that shows a
+# messagebox on error so failures are never silently swallowed.
 
 import sys as _sys
 
-if _sys.platform == 'win32':
-    import ctypes as _ct
-    import ctypes.wintypes as _wt
+_HAVE_WIN32 = False
 
-    # OPENFILENAME structure (ANSI-compatible field ordering, Unicode variant)
-    class _OFN(_ct.Structure):
-        _fields_ = [
-            ("lStructSize",       _ct.c_uint32),
-            ("hwndOwner",         _ct.c_void_p),
-            ("hInstance",         _ct.c_void_p),
-            ("lpstrFilter",       _ct.c_wchar_p),
-            ("lpstrCustomFilter", _ct.c_void_p),
-            ("nMaxCustFilter",    _ct.c_uint32),
-            ("nFilterIndex",      _ct.c_uint32),
-            ("lpstrFile",         _ct.c_void_p),   # mutable output buffer
-            ("nMaxFile",          _ct.c_uint32),
-            ("lpstrFileTitle",    _ct.c_void_p),
-            ("nMaxFileTitle",     _ct.c_uint32),
-            ("lpstrInitialDir",   _ct.c_wchar_p),
-            ("lpstrTitle",        _ct.c_wchar_p),
-            ("Flags",             _ct.c_uint32),
-            ("nFileOffset",       _ct.c_uint16),
-            ("nFileExtension",    _ct.c_uint16),
-            ("lpstrDefExt",       _ct.c_wchar_p),
-            ("lCustData",         _ct.c_void_p),
-            ("lpfnHook",          _ct.c_void_p),
-            ("lpTemplateName",    _ct.c_void_p),
-        ]
+try:
+    if _sys.platform == 'win32':
+        import ctypes as _ct
+        import ctypes.wintypes as _wt
 
-    # BROWSEINFO structure for SHBrowseForFolderW
-    class _BROWSEINFO(_ct.Structure):
-        _fields_ = [
-            ("hwndOwner",      _ct.c_void_p),
-            ("pidlRoot",       _ct.c_void_p),
-            ("pszDisplayName", _ct.c_void_p),
-            ("lpszTitle",      _ct.c_wchar_p),
-            ("ulFlags",        _ct.c_uint),
-            ("lpfn",           _ct.c_void_p),
-            ("lParam",         _ct.c_void_p),
-            ("iImage",         _ct.c_int),
-        ]
+        # OPENFILENAME structure (Unicode variant, 64-bit layout)
+        class _OFN(_ct.Structure):
+            _fields_ = [
+                ("lStructSize",       _ct.c_uint32),
+                ("hwndOwner",         _ct.c_void_p),
+                ("hInstance",         _ct.c_void_p),
+                ("lpstrFilter",       _ct.c_wchar_p),
+                ("lpstrCustomFilter", _ct.c_void_p),
+                ("nMaxCustFilter",    _ct.c_uint32),
+                ("nFilterIndex",      _ct.c_uint32),
+                ("lpstrFile",         _ct.c_void_p),   # mutable output buffer
+                ("nMaxFile",          _ct.c_uint32),
+                ("lpstrFileTitle",    _ct.c_void_p),
+                ("nMaxFileTitle",     _ct.c_uint32),
+                ("lpstrInitialDir",   _ct.c_wchar_p),
+                ("lpstrTitle",        _ct.c_wchar_p),
+                ("Flags",             _ct.c_uint32),
+                ("nFileOffset",       _ct.c_uint16),
+                ("nFileExtension",    _ct.c_uint16),
+                ("lpstrDefExt",       _ct.c_wchar_p),
+                ("lCustData",         _ct.c_void_p),
+                ("lpfnHook",          _ct.c_void_p),
+                ("lpTemplateName",    _ct.c_void_p),
+            ]
 
-    def _win32_filter(filetypes):
-        if not filetypes:
-            return "All Files\0*.*\0\0"
-        return "".join(f"{d}\0{e}\0" for d, e in filetypes) + "\0"
+        # BROWSEINFO structure for SHBrowseForFolderW
+        class _BROWSEINFO(_ct.Structure):
+            _fields_ = [
+                ("hwndOwner",      _ct.c_void_p),
+                ("pidlRoot",       _ct.c_void_p),
+                ("pszDisplayName", _ct.c_void_p),
+                ("lpszTitle",      _ct.c_wchar_p),
+                ("ulFlags",        _ct.c_uint),
+                ("lpfn",           _ct.c_void_p),
+                ("lParam",         _ct.c_void_p),
+                ("iImage",         _ct.c_int),
+            ]
 
-    def _win32_open(title, filetypes):
-        buf = _ct.create_unicode_buffer(32768)
-        ofn = _OFN()
-        ofn.lStructSize = _ct.sizeof(_OFN)
-        ofn.lpstrFilter = _win32_filter(filetypes)
-        ofn.lpstrFile   = _ct.addressof(buf)
-        ofn.nMaxFile    = 32768
-        ofn.lpstrTitle  = title
-        ofn.Flags       = 0x1800  # OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST
-        if _ct.windll.comdlg32.GetOpenFileNameW(_ct.byref(ofn)):
-            return buf.value
-        return ""
+        def _win32_filter(filetypes):
+            if not filetypes:
+                return "All Files\0*.*\0\0"
+            return "".join(f"{d}\0{e}\0" for d, e in filetypes) + "\0"
 
-    def _win32_save(title, filetypes, ext, initialfile):
-        buf = _ct.create_unicode_buffer(32768)
-        if initialfile:
-            buf.value = initialfile
-        ofn = _OFN()
-        ofn.lStructSize = _ct.sizeof(_OFN)
-        ofn.lpstrFilter = _win32_filter(filetypes)
-        ofn.lpstrFile   = _ct.addressof(buf)
-        ofn.nMaxFile    = 32768
-        ofn.lpstrTitle  = title
-        ofn.lpstrDefExt = ext.lstrip('.')
-        ofn.Flags       = 0x0002  # OFN_OVERWRITEPROMPT
-        if _ct.windll.comdlg32.GetSaveFileNameW(_ct.byref(ofn)):
-            return buf.value
-        return ""
+        def _win32_open(title, filetypes):
+            buf = _ct.create_unicode_buffer(32768)
+            ofn = _OFN()
+            ofn.lStructSize = _ct.sizeof(_OFN)
+            ofn.lpstrFilter = _win32_filter(filetypes)
+            ofn.lpstrFile   = _ct.addressof(buf)
+            ofn.nMaxFile    = 32768
+            ofn.lpstrTitle  = title
+            ofn.Flags       = 0x1800  # OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST
+            if _ct.windll.comdlg32.GetOpenFileNameW(_ct.byref(ofn)):
+                return buf.value
+            err = _ct.windll.comdlg32.CommDlgExtendedError()
+            if err:
+                raise RuntimeError(f"GetOpenFileNameW error 0x{err:04X}")
+            return ""  # user cancelled
 
-    def _win32_folder(title):
-        path_buf = _ct.create_unicode_buffer(32768)
-        disp_buf = _ct.create_unicode_buffer(260)
-        bi = _BROWSEINFO()
-        bi.lpszTitle      = title
-        bi.pszDisplayName = _ct.addressof(disp_buf)
-        bi.ulFlags        = 0x0050  # BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE
-        _ct.windll.shell32.SHBrowseForFolderW.restype = _ct.c_void_p
-        pidl = _ct.windll.shell32.SHBrowseForFolderW(_ct.byref(bi))
-        if pidl:
-            _ct.windll.shell32.SHGetPathFromIDListW(_ct.c_void_p(pidl), path_buf)
-            _ct.windll.ole32.CoTaskMemFree(_ct.c_void_p(pidl))
-            return path_buf.value
-        return ""
+        def _win32_save(title, filetypes, ext, initialfile):
+            buf = _ct.create_unicode_buffer(32768)
+            if initialfile:
+                buf.value = initialfile
+            ofn = _OFN()
+            ofn.lStructSize = _ct.sizeof(_OFN)
+            ofn.lpstrFilter = _win32_filter(filetypes)
+            ofn.lpstrFile   = _ct.addressof(buf)
+            ofn.nMaxFile    = 32768
+            ofn.lpstrTitle  = title
+            ofn.lpstrDefExt = ext.lstrip('.')
+            ofn.Flags       = 0x0002  # OFN_OVERWRITEPROMPT
+            if _ct.windll.comdlg32.GetSaveFileNameW(_ct.byref(ofn)):
+                return buf.value
+            err = _ct.windll.comdlg32.CommDlgExtendedError()
+            if err:
+                raise RuntimeError(f"GetSaveFileNameW error 0x{err:04X}")
+            return ""
+
+        def _win32_folder(title):
+            path_buf = _ct.create_unicode_buffer(32768)
+            disp_buf = _ct.create_unicode_buffer(260)
+            bi = _BROWSEINFO()
+            bi.lpszTitle      = title
+            bi.pszDisplayName = _ct.addressof(disp_buf)
+            bi.ulFlags        = 0x0050  # BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE
+            _ct.windll.shell32.SHBrowseForFolderW.restype = _ct.c_void_p
+            pidl = _ct.windll.shell32.SHBrowseForFolderW(_ct.byref(bi))
+            if pidl:
+                _ct.windll.shell32.SHGetPathFromIDListW(_ct.c_void_p(pidl), path_buf)
+                _ct.windll.ole32.CoTaskMemFree(_ct.c_void_p(pidl))
+                return path_buf.value
+            return ""
+
+        _HAVE_WIN32 = True
+
+except Exception as _win32_setup_err:
+    # Win32 setup failed — will fall through to tkinter dialogs
+    pass
 
 
 def _dlg_open(widget, title="Open", filetypes=None, **kwargs) -> str:
-    if _sys.platform == 'win32':
-        return _win32_open(title, filetypes or [("All Files", "*.*")])
-    return filedialog.askopenfilename(
-        parent=widget.winfo_toplevel(), title=title, filetypes=filetypes, **kwargs) or ""
+    try:
+        if _HAVE_WIN32:
+            return _win32_open(title, filetypes or [("All Files", "*.*")])
+        return filedialog.askopenfilename(
+            parent=widget.winfo_toplevel(), title=title, filetypes=filetypes, **kwargs) or ""
+    except Exception as e:
+        messagebox.showerror("Browse error", f"{type(e).__name__}: {e}")
+        return ""
 
 
 def _dlg_dir(widget, title="Select Folder", **kwargs) -> str:
-    if _sys.platform == 'win32':
-        return _win32_folder(title)
-    return filedialog.askdirectory(
-        parent=widget.winfo_toplevel(), title=title, **kwargs) or ""
+    try:
+        if _HAVE_WIN32:
+            return _win32_folder(title)
+        return filedialog.askdirectory(
+            parent=widget.winfo_toplevel(), title=title, **kwargs) or ""
+    except Exception as e:
+        messagebox.showerror("Browse error", f"{type(e).__name__}: {e}")
+        return ""
 
 
 def _dlg_save(widget, title="Save As", filetypes=None, defaultextension="",
               initialfile="", **kwargs) -> str:
-    if _sys.platform == 'win32':
-        return _win32_save(title, filetypes or [("All Files", "*.*")],
-                           defaultextension, initialfile)
-    return filedialog.asksaveasfilename(
-        parent=widget.winfo_toplevel(), title=title, filetypes=filetypes,
-        defaultextension=defaultextension, initialfile=initialfile, **kwargs) or ""
+    try:
+        if _HAVE_WIN32:
+            return _win32_save(title, filetypes or [("All Files", "*.*")],
+                               defaultextension, initialfile)
+        return filedialog.asksaveasfilename(
+            parent=widget.winfo_toplevel(), title=title, filetypes=filetypes,
+            defaultextension=defaultextension, initialfile=initialfile, **kwargs) or ""
+    except Exception as e:
+        messagebox.showerror("Browse error", f"{type(e).__name__}: {e}")
+        return ""
 
 
 # ---------------------------------------------------------------------------
