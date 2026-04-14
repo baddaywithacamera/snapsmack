@@ -5,8 +5,17 @@ Global config persistence (window geometry, last-used profile, defaults).
 
 import configparser
 import os
+import sys
 
-CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.ini")
+
+def _app_dir() -> str:
+    """Persistent app directory — next to the .exe when frozen, source dir otherwise."""
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+CONFIG_FILE = os.path.join(_app_dir(), "config.ini")
 
 DEFAULTS = {
     "window": {
