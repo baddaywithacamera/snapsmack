@@ -175,20 +175,31 @@ except Exception as _win32_setup_err:
 
 
 def _dlg_open(widget, title="Open", filetypes=None, **kwargs) -> str:
+    # DEBUG — remove after diagnosis
+    messagebox.showinfo("DEBUG _dlg_open",
+                        f"Called!  _HAVE_WIN32={_HAVE_WIN32}\nplatform={_sys.platform}")
     try:
         if _HAVE_WIN32:
-            return _win32_open(title, filetypes or [("All Files", "*.*")])
-        return filedialog.askopenfilename(
+            result = _win32_open(title, filetypes or [("All Files", "*.*")])
+            messagebox.showinfo("DEBUG result", f"win32 returned: '{result}'")
+            return result
+        result = filedialog.askopenfilename(
             parent=widget.winfo_toplevel(), title=title, filetypes=filetypes, **kwargs) or ""
+        messagebox.showinfo("DEBUG result", f"tkinter returned: '{result}'")
+        return result
     except Exception as e:
         messagebox.showerror("Browse error", f"{type(e).__name__}: {e}")
         return ""
 
 
 def _dlg_dir(widget, title="Select Folder", **kwargs) -> str:
+    # DEBUG — remove after diagnosis
+    messagebox.showinfo("DEBUG _dlg_dir",
+                        f"Called!  _HAVE_WIN32={_HAVE_WIN32}\nplatform={_sys.platform}")
     try:
         if _HAVE_WIN32:
-            return _win32_folder(title)
+            result = _win32_folder(title)
+            return result
         return filedialog.askdirectory(
             parent=widget.winfo_toplevel(), title=title, **kwargs) or ""
     except Exception as e:
