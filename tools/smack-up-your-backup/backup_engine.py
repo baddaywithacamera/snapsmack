@@ -24,6 +24,7 @@ import requests
 
 import cloud_client as cloud_module
 import cloud_manifest
+import checkpoint as checkpoint_module
 import ftp_client as ftp_module
 import manifest_reader
 
@@ -262,15 +263,17 @@ class BackupEngine:
         include_settings: bool = False,
         global_config:    Optional[dict] = None,
         global_cloud:     Optional[dict] = None,
+        resume_checkpoint: Optional["checkpoint_module.BackupCheckpoint"] = None,
     ):
-        self.profile          = profile
-        self.on_progress      = on_progress or (lambda stage, msg, pct: None)
-        self.on_log           = on_log or print
-        self.force_full       = force_full
-        self.include_settings = include_settings
-        self.global_config    = global_config or {}
-        self.global_cloud     = global_cloud or {}
-        self._cancelled       = False
+        self.profile           = profile
+        self.on_progress       = on_progress or (lambda stage, msg, pct: None)
+        self.on_log            = on_log or print
+        self.force_full        = force_full
+        self.include_settings  = include_settings
+        self.global_config     = global_config or {}
+        self.global_cloud      = global_cloud or {}
+        self._cancelled        = False
+        self._resume_cp        = resume_checkpoint
 
     def cancel(self) -> None:
         self._cancelled = True
@@ -288,6 +291,9 @@ class BackupEngine:
         Execute all six stages.  Returns a result dict with keys:
           success, kit_path, zip_path, cloud_id, files_downloaded,
           files_skipped, files_failed, errors
+
+        If self._resume_cp is set, stages 1-2 are skipped (kit already
+        on disk) and Stage 3 skips files already recorded in the checkpoint.
         """
         result = {
             "success":          False,
@@ -306,74 +312,99 @@ class BackupEngine:
             return result
         os.makedirs(backup_dir, exist_ok=True)
 
-        blog_name  = self.profile.get("name", "blog")
-        timestamp  = datetime.now().strftime("%Y-%m-%d_%H-%M")
-        kit_path   = os.path.join(backup_dir, f"{blog_name}_recovery_kit_{timestamp}.tar.gz")
+        blog_name = self.profile.get("name", "blog")
+        cp        = self._resume_cp  # None for fresh run, populated for resume
+        resuming  = cp is not None
 
-        # ── Stage 1: Pull recovery kit ───────────────────────────────
-        if self._cancelled:
-            return result
-        self._progress("stage1", "Connecting to site…", 0.02)
-        http = SnapSmackSession(self.profile["site_url"])
-        try:
-            http.login(
-                self.profile.get("snap_admin_user", ""),
-                self.profile.get("snap_admin_pass", ""),
-            )
-        except Exception as e:
-            result["errors"].append(f"Login failed: {e}")
-            return result
+        if resuming:
+            # ── Restore state from checkpoint ────────────────────────
+            timestamp       = cp.data["timestamp"]
+            kit_path        = cp.data["kit_path"]
+            sql_full_path   = cp.data.get("sql_full_path", "")
+            sql_schema_path = cp.data.get("sql_schema_path", "")
+            local_media_dir = cp.data["local_media_dir"]
+            zip_name        = cp.data["zip_name"]
+            prev_state      = cp.data.get("prev_state", {})
+            already_done    = cp.already_downloaded()
+            result["files_downloaded"] = cp.data.get("files_downloaded", 0)
+            result["files_skipped"]    = cp.data.get("files_skipped", 0)
+            result["files_failed"]     = cp.data.get("files_failed", 0)
+            self._log(f"Resuming interrupted backup from {cp.data.get('created_at', 'unknown time')}.")
+            self._log(f"Already downloaded: {len(already_done)} files — skipping those.")
+        else:
+            timestamp       = datetime.now().strftime("%Y-%m-%d_%H-%M")
+            kit_path        = os.path.join(backup_dir, f"{blog_name}_recovery_kit_{timestamp}.tar.gz")
+            sql_full_path   = ""
+            sql_schema_path = ""
+            local_media_dir = ""
+            zip_name        = ""
+            prev_state      = {}
+            already_done    = set()
 
-        self._progress("stage1", "Downloading recovery kit…", 0.05)
-        try:
-            http.download_recovery_kit(
-                kit_path,
-                on_progress=lambda r, t: self._progress(
-                    "stage1", f"Downloading kit… {r // 1024}KB", 0.05 + 0.10 * (r / max(t, 1))
-                ),
-            )
-        except Exception as e:
-            result["errors"].append(f"Recovery kit download failed: {e}")
-            return result
+            # ── Stage 1: Pull recovery kit ───────────────────────────
+            if self._cancelled:
+                return result
+            self._progress("stage1", "Connecting to site…", 0.02)
+            http = SnapSmackSession(self.profile["site_url"])
+            try:
+                http.login(
+                    self.profile.get("snap_admin_user", ""),
+                    self.profile.get("snap_admin_pass", ""),
+                )
+            except Exception as e:
+                result["errors"].append(f"Login failed: {e}")
+                return result
 
-        result["kit_path"] = kit_path
-        self._log(f"Recovery kit saved: {kit_path}")
+            self._progress("stage1", "Downloading recovery kit…", 0.05)
+            try:
+                http.download_recovery_kit(
+                    kit_path,
+                    on_progress=lambda r, t: self._progress(
+                        "stage1", f"Downloading kit… {r // 1024}KB", 0.05 + 0.10 * (r / max(t, 1))
+                    ),
+                )
+            except Exception as e:
+                result["errors"].append(f"Recovery kit download failed: {e}")
+                return result
 
-        # ── Stage 1b: Pull SQL dumps ────────────────────────────────
-        if self._cancelled:
-            return result
-        self._progress("stage1", "Downloading SQL dumps…", 0.12)
+            result["kit_path"] = kit_path
+            self._log(f"Recovery kit saved: {kit_path}")
 
-        sql_full_path   = os.path.join(backup_dir, f"{blog_name}_full_{timestamp}.sql")
-        sql_schema_path = os.path.join(backup_dir, f"{blog_name}_schema_{timestamp}.sql")
-        result["sql_full_path"]   = ""
-        result["sql_schema_path"] = ""
+            # ── Stage 1b: Pull SQL dumps ─────────────────────────────
+            if self._cancelled:
+                return result
+            self._progress("stage1", "Downloading SQL dumps…", 0.12)
 
-        try:
-            http.download_sql_dump(
-                sql_full_path, dump_type="full",
-                on_progress=lambda r, t: self._progress(
-                    "stage1", f"SQL dump (full)… {r // 1024}KB", 0.12
-                ),
-            )
-            result["sql_full_path"] = sql_full_path
-            self._log(f"Full SQL dump saved: {sql_full_path}")
-        except Exception as e:
-            self._log(f"Full SQL dump failed (non-fatal): {e}")
-            result["errors"].append(f"SQL dump (full) failed: {e}")
+            sql_full_path   = os.path.join(backup_dir, f"{blog_name}_full_{timestamp}.sql")
+            sql_schema_path = os.path.join(backup_dir, f"{blog_name}_schema_{timestamp}.sql")
+            result["sql_full_path"]   = ""
+            result["sql_schema_path"] = ""
 
-        try:
-            http.download_sql_dump(
-                sql_schema_path, dump_type="schema",
-                on_progress=lambda r, t: self._progress(
-                    "stage1", f"SQL dump (schema)… {r // 1024}KB", 0.14
-                ),
-            )
-            result["sql_schema_path"] = sql_schema_path
-            self._log(f"Schema SQL dump saved: {sql_schema_path}")
-        except Exception as e:
-            self._log(f"Schema SQL dump failed (non-fatal): {e}")
-            result["errors"].append(f"SQL dump (schema) failed: {e}")
+            try:
+                http.download_sql_dump(
+                    sql_full_path, dump_type="full",
+                    on_progress=lambda r, t: self._progress(
+                        "stage1", f"SQL dump (full)… {r // 1024}KB", 0.12
+                    ),
+                )
+                result["sql_full_path"] = sql_full_path
+                self._log(f"Full SQL dump saved: {sql_full_path}")
+            except Exception as e:
+                self._log(f"Full SQL dump failed (non-fatal): {e}")
+                result["errors"].append(f"SQL dump (full) failed: {e}")
+
+            try:
+                http.download_sql_dump(
+                    sql_schema_path, dump_type="schema",
+                    on_progress=lambda r, t: self._progress(
+                        "stage1", f"SQL dump (schema)… {r // 1024}KB", 0.14
+                    ),
+                )
+                result["sql_schema_path"] = sql_schema_path
+                self._log(f"Schema SQL dump saved: {sql_schema_path}")
+            except Exception as e:
+                self._log(f"Schema SQL dump failed (non-fatal): {e}")
+                result["errors"].append(f"SQL dump (schema) failed: {e}")
 
         # ── Stage 2: Parse manifest ──────────────────────────────────
         if self._cancelled:
@@ -391,34 +422,64 @@ class BackupEngine:
         # ── Stage 3: Differential download ──────────────────────────
         if self._cancelled:
             return result
-        self._progress("stage3", "Connecting via FTP…", 0.18)
 
-        ftp = ftp_module.FTPClient(
-            host            = self.profile.get("ftp_host", ""),
-            user            = self.profile.get("ftp_user", ""),
-            password        = self.profile.get("ftp_pass", ""),
-            remote_dir      = self.profile.get("ftp_remote_dir", "/public_html"),
-            port            = int(self.profile.get("ftp_port", 21)),
-            use_tls         = bool(self.profile.get("ftp_ssl", True)),
-            verify_cert     = bool(self.profile.get("ftp_verify_cert", False)),
-            transfer_delay  = float(self.profile.get("pacing_delay", 2)),
-            batch_size      = int(self.profile.get("batch_size", 0)),
-        )
-        try:
-            ftp.connect()
-        except Exception as e:
-            result["errors"].append(f"FTP connection failed: {e}")
-            return result
+        # Set up paths for a fresh run (resuming already has these)
+        if not resuming:
+            local_media_dir = os.path.join(backup_dir, f"{blog_name}_media_{timestamp}")
+            zip_name        = f"{blog_name}_backup_{timestamp}.zip"
 
-        self._progress("stage3", "Checking previous backup state…", 0.20)
-        if self.force_full:
-            prev_state = {}   # Empty state → every file counts as new
-            self._log("Full backup mode — ignoring previous backup state.")
-        else:
-            prev_state = load_backup_state(ftp)
-
-        local_media_dir = os.path.join(backup_dir, f"{blog_name}_media_{timestamp}")
         os.makedirs(local_media_dir, exist_ok=True)
+
+        # Check if all files are already done (crash during packaging)
+        remaining = {k: v for k, v in media_files.items() if k not in already_done}
+        need_ftp  = bool(remaining)
+
+        if need_ftp:
+            self._progress("stage3", "Connecting via FTP…", 0.18)
+            ftp = ftp_module.FTPClient(
+                host            = self.profile.get("ftp_host", ""),
+                user            = self.profile.get("ftp_user", ""),
+                password        = self.profile.get("ftp_pass", ""),
+                remote_dir      = self.profile.get("ftp_remote_dir", "/public_html"),
+                port            = int(self.profile.get("ftp_port", 21)),
+                use_tls         = bool(self.profile.get("ftp_ssl", True)),
+                verify_cert     = bool(self.profile.get("ftp_verify_cert", False)),
+                transfer_delay  = float(self.profile.get("pacing_delay", 2)),
+                batch_size      = int(self.profile.get("batch_size", 0)),
+            )
+            try:
+                ftp.connect()
+            except Exception as e:
+                result["errors"].append(f"FTP connection failed: {e}")
+                return result
+        else:
+            ftp = None
+            self._log("All files already downloaded — skipping FTP stage.")
+
+        # Load prev_state for fresh runs (resuming already has it from checkpoint)
+        if not resuming and need_ftp:
+            self._progress("stage3", "Checking previous backup state…", 0.20)
+            if self.force_full:
+                prev_state = {}
+                self._log("Full backup mode — ignoring previous backup state.")
+            else:
+                prev_state = load_backup_state(ftp)
+
+        # Create checkpoint for this run (fresh only — resume uses existing cp)
+        if not resuming:
+            cp_path = checkpoint_module.BackupCheckpoint.path_for(backup_dir, blog_name)
+            cp = checkpoint_module.BackupCheckpoint(cp_path)
+            cp.start(
+                blog_name       = blog_name,
+                timestamp       = timestamp,
+                kit_path        = kit_path,
+                sql_full_path   = sql_full_path,
+                sql_schema_path = sql_schema_path,
+                local_media_dir = local_media_dir,
+                zip_name        = zip_name,
+                prev_state      = prev_state,
+                force_full      = self.force_full,
+            )
 
         total_files = len(media_files)
         done        = 0
@@ -429,9 +490,16 @@ class BackupEngine:
 
             pct = 0.20 + 0.45 * (done / max(total_files, 1))
 
+            # Skip files already confirmed downloaded in a previous run
+            if key in already_done:
+                done += 1
+                self._progress("stage3", f"Resume skip: {record.restores_to}", pct)
+                continue
+
             if not needs_download(record, prev_state):
                 result["files_skipped"] += 1
                 done += 1
+                cp.record(key, skipped=True)
                 self._progress("stage3", f"Skip (unchanged): {record.restores_to}", pct)
                 continue
 
@@ -440,22 +508,24 @@ class BackupEngine:
 
             ok = ftp.download_file(
                 record.restores_to, local_path,
-                on_progress=lambda fn, r, t, s: None,  # per-file byte progress ignored at this level
+                on_progress=lambda fn, r, t, s: None,
             )
             if ok:
                 result["files_downloaded"] += 1
+                cp.record(key, downloaded=True)   # ← checkpoint written after every file
             else:
                 result["files_failed"] += 1
+                cp.record(key, failed=True)
                 result["errors"].append(f"Download failed: {record.restores_to}")
             done += 1
 
         # ── Stage 4: Package ─────────────────────────────────────────
         if self._cancelled:
-            ftp.disconnect()
+            if ftp:
+                ftp.disconnect()
             return result
 
         self._progress("stage4", "Packaging backup ZIP…", 0.66)
-        zip_name = f"{blog_name}_backup_{timestamp}.zip"
         zip_path = os.path.join(backup_dir, zip_name)
 
         # Build new backup state
@@ -509,7 +579,8 @@ class BackupEngine:
                     self._log("SUYB settings bundled into backup.")
         except Exception as e:
             result["errors"].append(f"Packaging failed: {e}")
-            ftp.disconnect()
+            if ftp:
+                ftp.disconnect()
             return result
 
         result["zip_path"] = zip_path
@@ -575,16 +646,19 @@ class BackupEngine:
 
         # Upload updated backup-state.json to server
         self._progress("stage6", "Updating server state…", 0.96)
-        state_ok = save_backup_state(ftp, new_state)
-        if not state_ok:
-            result["errors"].append("Could not upload backup-state.json to server (non-fatal).")
-
-        ftp.disconnect()
+        if ftp:
+            state_ok = save_backup_state(ftp, new_state)
+            if not state_ok:
+                result["errors"].append("Could not upload backup-state.json to server (non-fatal).")
+            ftp.disconnect()
 
         if verify_ok:
             result["success"] = True
             self._progress("done", f"Backup complete — {result['files_downloaded']} downloaded, {result['files_skipped']} skipped.", 1.0)
             self._log("Backup successful.")
+            # ── Clean up checkpoint on success ───────────────────────
+            cp.delete()
+            self._log("Checkpoint cleared.")
         else:
             self._progress("done", "Backup completed with errors.", 1.0)
 
