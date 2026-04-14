@@ -551,9 +551,15 @@ include 'core/sidebar.php';
                         <p style="font-size:0.85rem; color:var(--text-muted,#888); margin-bottom:10px;">
                             <strong>Active Registration Token (valid for <?php echo max(1, ceil(($reg_token_expires - time()) / 60)); ?> more minutes):</strong>
                         </p>
-                        <div style="font-family:monospace; font-size:1.1rem; letter-spacing:2px; padding:10px;
-                                    background:var(--bg,#000); border:1px solid var(--border,#333); word-break:break-all;">
-                            <?php echo htmlspecialchars($reg_token); ?>
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                            <div id="reg-token-display" style="flex:1; font-family:monospace; font-size:1.1rem; letter-spacing:2px; padding:10px;
+                                        background:var(--bg,#000); border:1px solid var(--border,#333); word-break:break-all;">
+                                <?php echo htmlspecialchars($reg_token); ?>
+                            </div>
+                            <button type="button" class="action-view" id="copy-token-btn"
+                                    onclick="navigator.clipboard.writeText(document.getElementById('reg-token-display').innerText.trim()).then(function(){ var b=document.getElementById('copy-token-btn'); b.textContent='COPIED'; setTimeout(function(){ b.textContent='COPY'; }, 2000); });">
+                                COPY
+                            </button>
                         </div>
                         <p style="font-size:0.8rem; color:var(--accent,#aaa); margin-top:10px;">
                             Give this token to your hub administrator. It expires at <?php echo date('H:i:s', $reg_token_expires); ?>.
