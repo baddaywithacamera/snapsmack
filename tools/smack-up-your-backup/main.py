@@ -2390,11 +2390,13 @@ class App(tk.Tk):
         self._current_profile: Optional[dict] = None
         self._msg_queue: queue.Queue = queue.Queue()
 
-        # Restore window geometry
+        # Restore window geometry and state
         try:
             w = int(self._cfg.get("window", "width",  fallback="1100"))
             h = int(self._cfg.get("window", "height", fallback="920"))
             self.geometry(f"{w}x{h}")
+            if self._cfg.get("window", "state", fallback="") == "zoomed":
+                self.state("zoomed")
         except Exception:
             self.geometry("1100x920")
 
@@ -2654,8 +2656,13 @@ class App(tk.Tk):
             self._cfg.set("app", "last_profile", name)
         if not self._cfg.has_section("window"):
             self._cfg.add_section("window")
-        self._cfg.set("window", "width",  str(self.winfo_width()))
-        self._cfg.set("window", "height", str(self.winfo_height()))
+        win_state = self.state()
+        self._cfg.set("window", "state", win_state)
+        if win_state != "zoomed":
+            # Only save size when not maximized — otherwise we'd save
+            # the full-screen dimensions and lose the normal size
+            self._cfg.set("window", "width",  str(self.winfo_width()))
+            self._cfg.set("window", "height", str(self.winfo_height()))
         cfg_module.save(self._cfg)
         self.destroy()
 
