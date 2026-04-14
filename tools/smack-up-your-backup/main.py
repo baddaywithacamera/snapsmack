@@ -2075,9 +2075,13 @@ class SettingsTab(tk.Frame):
     def load_profile(self, profile: Optional[dict]) -> None:
         """Populate the active profile fields from a profile dict, or clear them."""
         if profile:
+            # Keys that are BooleanVars — must not pass empty string
+            _bool_keys = {"ftp_ssl", "ftp_verify_cert"}
             for key, var in self._profile_vars.items():
-                if key == "ftp_ssl":
-                    var.set(bool(profile.get(key, True)))
+                if key in _bool_keys:
+                    default = True if key == "ftp_ssl" else False
+                    val = profile.get(key, default)
+                    var.set(bool(val) if val != "" else default)
                 else:
                     var.set(str(profile.get(key, "")))
             # Set method radio based on what's filled in
@@ -2092,9 +2096,10 @@ class SettingsTab(tk.Frame):
             self._no_profile_lbl.pack_forget()
             self._profile_status_var.set(f"Editing: {profile.get('name', '')}")
         else:
+            _bool_defaults = {"ftp_ssl": True, "ftp_verify_cert": False}
             for key, var in self._profile_vars.items():
-                if key == "ftp_ssl":
-                    var.set(True)
+                if key in _bool_defaults:
+                    var.set(_bool_defaults[key])
                 else:
                     var.set("")
             self._method_var.set("ftp")
