@@ -5,7 +5,7 @@ Dark UI palette, tkinter, PyInstaller single-exe build chain.
 Same visual family as Smack Your Batch Up.
 """
 
-BUILD_VERSION = "0.2.1"
+BUILD_VERSION = "0.2.2"
 
 import os
 import queue
@@ -959,13 +959,42 @@ class BackupTab(tk.Frame):
             messagebox.showerror("No backup dir", "Set a local backup directory in the profile.")
             return
 
+        # ── Check for an interrupted backup checkpoint ────────────────
+        from checkpoint import BackupCheckpoint
+        backup_dir = profile.get("backup_dir", "")
+        blog_name  = profile.get("name", "blog")
+        resume_cp  = BackupCheckpoint.load(backup_dir, blog_name)
+
+        if resume_cp:
+            import datetime as _dt
+            created = resume_cp.data.get("created_at", "")[:16].replace("T", " ")
+            done    = resume_cp.data.get("files_downloaded", 0)
+            skipped = resume_cp.data.get("files_skipped", 0)
+            answer  = messagebox.askyesnocancel(
+                "Interrupted backup found",
+                f"A backup of '{blog_name}' was interrupted on {created}.\n\n"
+                f"  Downloaded so far: {done} files\n"
+                f"  Skipped (unchanged): {skipped} files\n\n"
+                "Yes  — Resume from where it stopped\n"
+                "No   — Delete checkpoint and start fresh\n"
+                "Cancel — Do nothing",
+            )
+            if answer is None:
+                return
+            if answer is False:
+                resume_cp.delete()
+                resume_cp = None
+            # answer is True → resume using the checkpoint
+        else:
+            resume_cp = None
+
         self._busy = True
         self._start_btn.configure(state="disabled")
         self._all_btn.configure(state="disabled")
         self._cancel_btn.configure(state="normal")
         self._prog_bar.reset()
         self._log.clear()
-        self._log.append("Starting backup…")
+        self._log.append("Resuming backup…" if resume_cp else "Starting backup…")
 
         force_full       = self._backup_mode_var.get() == "full"
         include_settings = self._include_settings_var.get()
@@ -977,8 +1006,9 @@ class BackupTab(tk.Frame):
             include_settings=include_settings,
             global_config=self._global_config_dict() if include_settings else None,
             global_cloud=self._app.global_cloud_config(),
+            resume_checkpoint=resume_cp,
         )
-        self._all_queue = []  # clear any multi-blog queue
+        self._all_queue = []
         t = threading.Thread(target=self._run_engine, daemon=True)
         t.start()
 
