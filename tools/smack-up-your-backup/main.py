@@ -47,11 +47,12 @@ FONT_BODY  = ("Segoe UI", 10)
 FONT_SMALL = ("Segoe UI", 9)
 FONT_MONO  = ("Consolas", 10)
 
-TAB_BACKUP  = "backup"
-TAB_RESTORE = "restore"
-TAB_AUDIT   = "audit"
-TAB_SETTINGS= "settings"
-TAB_HELP    = "help"
+TAB_BACKUP    = "backup"
+TAB_RESTORE   = "restore"
+TAB_AUDIT     = "audit"
+TAB_SCHEDULER = "scheduler"
+TAB_SETTINGS  = "settings"
+TAB_HELP      = "help"
 
 
 # ---------------------------------------------------------------------------
@@ -2793,6 +2794,198 @@ Backup runs but produces no log output — if SUYB was previously interrupted, t
 ]
 
 
+# ---------------------------------------------------------------------------
+# Scheduler tab
+# ---------------------------------------------------------------------------
+
+class SchedulerTab(tk.Frame):
+    """Dedicated tab showing all profiles and their schedule status."""
+
+    DAYS = ["monday", "tuesday", "wednesday", "thursday",
+            "friday", "saturday", "sunday"]
+
+    def __init__(self, parent, app, **kwargs):
+        super().__init__(parent, bg=BG_DEEP, **kwargs)
+        self._app   = app
+        self._rows: dict[str, dict] = {}   # profile_name → {vars, widgets}
+        self._build()
+
+    # ── Layout ──────────────────────────────────────────────────────────
+    def _build(self):
+        PAD = 16
+
+        # Header
+        hdr = tk.Frame(self, bg=BG_MID, padx=PAD, pady=12)
+        hdr.pack(fill="x", padx=PAD, pady=(PAD, 0))
+        tk.Label(hdr, text="Backup Schedule", bg=BG_MID, fg=ACCENT,
+                 font=FONT_TITLE).pack(side="left")
+        tk.Label(hdr,
+                 text="Enable, configure, and monitor automatic backups per blog.",
+                 bg=BG_MID, fg=FG_DIM, font=FONT_BODY).pack(side="left", padx=(14, 0))
+        tk.Button(hdr, text="↻  Refresh", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY, padx=10, pady=4,
+                  command=self.refresh).pack(side="right")
+
+        # Column headings
+        cols = tk.Frame(self, bg=BG_DEEP)
+        cols.pack(fill="x", padx=PAD, pady=(8, 2))
+        for text, width, anchor in [
+            ("Blog",            22, "w"),
+            ("Enabled",          7, "center"),
+            ("Frequency",       10, "w"),
+            ("Day",             10, "w"),
+            ("Time",             8, "w"),
+            ("Last run",        22, "w"),
+            ("Next run",        22, "w"),
+            ("",                 8, "w"),   # Run Now button
+        ]:
+            tk.Label(cols, text=text, bg=BG_DEEP, fg=FG_DIM,
+                     font=FONT_SMALL, width=width, anchor=anchor).pack(side="left")
+
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=PAD)
+
+        # Scrollable profile list
+        canvas = tk.Canvas(self, bg=BG_DEEP, highlightthickness=0)
+        sb     = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+
+        def _on_scroll(first, last):
+            sb.set(first, last)
+            if float(first) <= 0.0 and float(last) >= 1.0:
+                sb.pack_forget()
+            else:
+                sb.pack(side="right", fill="y", before=canvas)
+
+        canvas.configure(yscrollcommand=_on_scroll)
+        canvas.pack(side="left", fill="both", expand=True, padx=PAD, pady=4)
+
+        self._inner = tk.Frame(canvas, bg=BG_DEEP)
+        self._win_id = canvas.create_window((0, 0), window=self._inner, anchor="nw")
+
+        def _resize(_e):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            canvas.itemconfigure(self._win_id, width=canvas.winfo_width())
+        self._inner.bind("<Configure>", _resize)
+        canvas.bind("<Configure>", _resize)
+        canvas.bind_all("<MouseWheel>",
+                        lambda e: canvas.yview_scroll(int(-1*(e.delta/120)), "units"))
+
+        self.refresh()
+
+    # ── Data ────────────────────────────────────────────────────────────
+    def refresh(self) -> None:
+        """Rebuild the profile rows from disk."""
+        for w in self._inner.winfo_children():
+            w.destroy()
+        self._rows.clear()
+
+        profiles = []
+        for name in profile_manager.list_profiles():
+            p = profile_manager.load_profile(name)
+            if p:
+                profiles.append(p)
+
+        if not profiles:
+            tk.Label(self._inner, text="No profiles configured yet.\nGo to Settings to add a blog.",
+                     bg=BG_DEEP, fg=FG_DIM, font=FONT_BODY, justify="center").pack(
+                pady=40)
+            return
+
+        for p in profiles:
+            self._add_row(p)
+
+    def _add_row(self, profile: dict) -> None:
+        name = profile.get("name", "")
+        row  = tk.Frame(self._inner, bg=BG_MID, padx=8, pady=8,
+                        highlightbackground=BORDER, highlightthickness=1)
+        row.pack(fill="x", pady=(0, 4))
+
+        vars_ = {}
+
+        # Blog name + URL
+        info = tk.Frame(row, bg=BG_MID, width=176)
+        info.pack(side="left")
+        info.pack_propagate(False)
+        tk.Label(info, text=name, bg=BG_MID, fg=FG_MAIN,
+                 font=FONT_HEAD, anchor="w").pack(anchor="w")
+        tk.Label(info, text=profile.get("site_url", ""),
+                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL, anchor="w").pack(anchor="w")
+
+        # Enabled checkbox
+        enabled_var = tk.BooleanVar(value=bool(profile.get("schedule_enabled", False)))
+        vars_["schedule_enabled"] = enabled_var
+        tk.Checkbutton(row, variable=enabled_var, bg=BG_MID,
+                       selectcolor=BG_INPUT, activebackground=BG_MID,
+                       command=lambda n=name, v=enabled_var: self._save_field(n, "schedule_enabled", v.get())
+                       ).pack(side="left", padx=(8, 16))
+
+        # Frequency
+        freq_var = tk.StringVar(value=profile.get("schedule_type", "daily"))
+        vars_["schedule_type"] = freq_var
+        ttk.Combobox(row, textvariable=freq_var, values=["daily", "weekly"],
+                     state="readonly", font=FONT_BODY, width=8).pack(side="left", padx=(0, 8))
+        freq_var.trace_add("write", lambda *a, n=name, v=freq_var: self._save_field(n, "schedule_type", v.get()))
+
+        # Day (weekly)
+        day_var = tk.StringVar(value=profile.get("schedule_day", "monday"))
+        vars_["schedule_day"] = day_var
+        ttk.Combobox(row, textvariable=day_var, values=self.DAYS,
+                     state="readonly", font=FONT_BODY, width=10).pack(side="left", padx=(0, 8))
+        day_var.trace_add("write", lambda *a, n=name, v=day_var: self._save_field(n, "schedule_day", v.get()))
+
+        # Time
+        time_var = tk.StringVar(value=profile.get("schedule_time", "02:00"))
+        vars_["schedule_time"] = time_var
+        tk.Entry(row, textvariable=time_var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=6).pack(side="left", padx=(0, 8))
+        time_var.trace_add("write", lambda *a, n=name, v=time_var: self._save_field(n, "schedule_time", v.get()))
+
+        # Last run
+        last = profile.get("last_scheduled_run", "") or "Never"
+        if len(last) > 16:
+            last = last[:16].replace("T", " ")
+        tk.Label(row, text=last, bg=BG_MID, fg=FG_DIM,
+                 font=FONT_SMALL, width=20, anchor="w").pack(side="left", padx=(0, 8))
+
+        # Next run
+        from scheduler import BackupScheduler
+        next_lbl = tk.Label(row, text=BackupScheduler.next_run_str(profile),
+                            bg=BG_MID, fg=ACCENT if profile.get("schedule_enabled") else FG_DIM,
+                            font=FONT_SMALL, width=20, anchor="w")
+        next_lbl.pack(side="left", padx=(0, 8))
+        vars_["_next_lbl"] = next_lbl
+
+        # Run Now button
+        tk.Button(row, text="Run Now", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_SMALL, padx=8, pady=2,
+                  command=lambda p=profile: self._run_now(p)).pack(side="left")
+
+        self._rows[name] = {"vars": vars_, "profile": profile}
+
+    # ── Actions ─────────────────────────────────────────────────────────
+    def _save_field(self, name: str, key: str, value) -> None:
+        """Persist a single field change to the profile JSON."""
+        p = profile_manager.load_profile(name)
+        if not p:
+            return
+        p[key] = value
+        profile_manager.save_profile(p)
+        # Update next-run label
+        row = self._rows.get(name, {})
+        lbl = row.get("vars", {}).get("_next_lbl")
+        if lbl:
+            from scheduler import BackupScheduler
+            lbl.configure(
+                text=BackupScheduler.next_run_str(p),
+                fg=ACCENT if p.get("schedule_enabled") else FG_DIM,
+            )
+
+    def _run_now(self, profile: dict) -> None:
+        """Immediately queue a backup for this profile."""
+        self._app.queue_msg(("scheduled_backup", profile))
+        self._app._switch_tab(TAB_BACKUP)
+
+
 class HelpTab(tk.Frame):
     """In-app documentation — topic list on left, content on right."""
 
@@ -2978,11 +3171,12 @@ class App(tk.Tk):
         self._tab_btns = {}
         self._active_tab = TAB_BACKUP
         for key, label in [
-            (TAB_BACKUP,   "Backup"),
-            (TAB_RESTORE,  "Restore"),
-            (TAB_AUDIT,    "Audit"),
-            (TAB_SETTINGS, "Settings"),
-            (TAB_HELP,     "Help"),
+            (TAB_BACKUP,    "Backup"),
+            (TAB_RESTORE,   "Restore"),
+            (TAB_AUDIT,     "Audit"),
+            (TAB_SCHEDULER, "Schedule"),
+            (TAB_SETTINGS,  "Settings"),
+            (TAB_HELP,      "Help"),
         ]:
             btn = tk.Button(
                 tab_bar, text=label, bg=BG_MID, fg=FG_DIM,
@@ -2993,12 +3187,13 @@ class App(tk.Tk):
             self._tab_btns[key] = btn
 
         # Tab content frames
-        self._tab_backup   = BackupTab(self,  self)
-        self._tab_restore  = RestoreTab(self, self)
-        self._tab_audit    = AuditTab(self,   self)
-        self._tab_settings = SettingsTab(self, self)
+        self._tab_backup    = BackupTab(self,    self)
+        self._tab_restore   = RestoreTab(self,   self)
+        self._tab_audit     = AuditTab(self,     self)
+        self._tab_scheduler = SchedulerTab(self, self)
+        self._tab_settings  = SettingsTab(self,  self)
         self._tab_settings.load(self._cfg)
-        self._tab_help     = HelpTab(self)
+        self._tab_help      = HelpTab(self)
 
         self._switch_tab(TAB_BACKUP)
 
@@ -3008,19 +3203,23 @@ class App(tk.Tk):
                 bg=BG_DEEP if k == key else BG_MID,
                 fg=ACCENT   if k == key else FG_DIM,
             )
-        for frame in (self._tab_backup, self._tab_restore,
-                      self._tab_audit, self._tab_settings, self._tab_help):
+        for frame in (self._tab_backup, self._tab_restore, self._tab_audit,
+                      self._tab_scheduler, self._tab_settings, self._tab_help):
             frame.pack_forget()
 
         tab_map = {
-            TAB_BACKUP:   self._tab_backup,
-            TAB_RESTORE:  self._tab_restore,
-            TAB_AUDIT:    self._tab_audit,
-            TAB_SETTINGS: self._tab_settings,
-            TAB_HELP:     self._tab_help,
+            TAB_BACKUP:    self._tab_backup,
+            TAB_RESTORE:   self._tab_restore,
+            TAB_AUDIT:     self._tab_audit,
+            TAB_SCHEDULER: self._tab_scheduler,
+            TAB_SETTINGS:  self._tab_settings,
+            TAB_HELP:      self._tab_help,
         }
         tab_map[key].pack(fill="both", expand=True)
         self._active_tab = key
+        # Refresh scheduler view when switching to it
+        if key == TAB_SCHEDULER:
+            self._tab_scheduler.refresh()
 
     # ------------------------------------------------------------------
     # Profile management
@@ -3117,11 +3316,11 @@ class App(tk.Tk):
                             datetime.now(timezone.utc).isoformat()
                         profile_manager.save_profile(self._current_profile)
                         self._tab_backup.refresh(self._current_profile)
+                    self._tab_scheduler.refresh()
 
                 elif kind == "backup_done_queued":
                     result = msg[1]
                     self._tab_backup.on_done_queued(result)
-                    # Update last_backup_date for this profile
                     if result.get("success"):
                         pname = result.get("_profile_name", "")
                         p = profile_manager.load_profile(pname)
@@ -3129,6 +3328,7 @@ class App(tk.Tk):
                             from datetime import datetime, timezone
                             p["last_backup_date"] = datetime.now(timezone.utc).isoformat()
                             profile_manager.save_profile(p)
+                    self._tab_scheduler.refresh()
 
                 elif kind == "restore_progress":
                     self._tab_restore.on_progress(msg[1], msg[2])
