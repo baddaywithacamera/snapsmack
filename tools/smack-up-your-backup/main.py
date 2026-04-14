@@ -1400,21 +1400,26 @@ class SettingsTab(tk.Frame):
                      font=FONT_MONO, state="readonly", width=16).grid(row=0, column=1, sticky="w", pady=2)
         self._profile_vars["cloud_provider"] = cloud_prov_var
 
-        for row, (label, key) in enumerate([
-            ("Credentials JSON", "cloud_credentials_file"),
-            ("Cloud folder ID",  "cloud_folder_id"),
-        ], start=1):
-            tk.Label(self._cloud_frame, text=label, bg=BG_DEEP, fg=FG_DIM,
-                     font=FONT_SMALL, anchor="w").grid(row=row, column=0, sticky="w", padx=(0, 8), pady=2)
-            var = tk.StringVar()
-            tk.Entry(self._cloud_frame, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
-                     insertbackground=ACCENT, relief="flat",
-                     font=FONT_MONO, width=W).grid(row=row, column=1, sticky="w", pady=2)
-            self._profile_vars[key] = var
-
+        # Credentials JSON — with Browse button
+        tk.Label(self._cloud_frame, text="Credentials JSON", bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").grid(row=1, column=0, sticky="w", padx=(0, 8), pady=2)
+        cred_var = tk.StringVar()
+        tk.Entry(self._cloud_frame, textvariable=cred_var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=W).grid(row=1, column=1, sticky="w", pady=2)
+        self._profile_vars["cloud_credentials_file"] = cred_var
         tk.Button(self._cloud_frame, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
                   relief="flat", font=FONT_SMALL, padx=8, pady=2,
-                  command=self._browse_credentials).grid(row=3, column=0, columnspan=2, sticky="w", pady=4)
+                  command=self._browse_credentials).grid(row=1, column=2, padx=(4, 0), pady=2)
+
+        # Cloud folder ID — text only
+        tk.Label(self._cloud_frame, text="Cloud folder ID", bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").grid(row=2, column=0, sticky="w", padx=(0, 8), pady=2)
+        cfid_var = tk.StringVar()
+        tk.Entry(self._cloud_frame, textvariable=cfid_var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=W).grid(row=2, column=1, sticky="w", pady=2)
+        self._profile_vars["cloud_folder_id"] = cfid_var
 
         # ── Local backup directory (always shown) ───────────────────────
         self._local_frame = tk.Frame(left, bg=BG_DEEP)
