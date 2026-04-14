@@ -557,14 +557,19 @@ class BackupTab(tk.Frame):
                                    font=FONT_SMALL, anchor="w")
         self._prog_lbl.pack(fill="x", padx=16)
 
-        # Log
+        # Options row: backup mode + include settings (BEFORE log so it stays visible)
+        opts_row = tk.Frame(self, bg=BG_DEEP)
+        opts_row.pack(fill="x", padx=16, pady=(4, 4), side="bottom")
+
+        # Bottom buttons (pack from bottom so they're always visible)
+        btn_row = tk.Frame(self, bg=BG_DEEP)
+        btn_row.pack(fill="x", padx=16, pady=(0, 16), side="bottom")
+
+        # Log fills remaining space
         self._log = LogPane(self)
         self._log.pack(fill="both", expand=True, padx=16, pady=8)
 
-        # Options row: backup mode + include settings
-        opts_row = tk.Frame(self, bg=BG_DEEP)
-        opts_row.pack(fill="x", padx=16, pady=(4, 4))
-
+        # Populate the options row
         self._backup_mode_var = tk.StringVar(value="differential")
         for val, label in [
             ("differential", "Differential — skip unchanged files"),
@@ -583,9 +588,7 @@ class BackupTab(tk.Frame):
             activebackground=BG_DEEP, font=FONT_BODY,
         ).pack(side="left", padx=(16, 0))
 
-        # Bottom buttons
-        btn_row = tk.Frame(self, bg=BG_DEEP)
-        btn_row.pack(fill="x", padx=16, pady=(0, 16))
+        # Populate the button row
         self._start_btn = tk.Button(
             btn_row, text="▶  START BACKUP",
             bg=ACCENT, fg=BG_DEEP, font=FONT_HEAD, relief="flat",
