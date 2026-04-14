@@ -229,14 +229,20 @@ class ProfileDialog(tk.Toplevel):
         self._field(f, 12, "Admin password",       "snap_admin_pass", show="●")
 
         tk.Label(f, text="Cloud", bg=BG_MID, fg=ACCENT,
-                 font=FONT_HEAD).grid(row=13, column=0, columnspan=2, sticky="w", pady=(12, 4))
-        self._field(f, 14, "Provider (google_drive / onedrive / none)", "cloud_provider")
+                 font=FONT_HEAD).grid(row=13, column=0, columnspan=3, sticky="w", pady=(12, 4))
+        self._field(f, 14, "Provider", "cloud_provider")
         self._field(f, 15, "Credentials JSON",     "cloud_credentials_file")
+        tk.Button(f, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_SMALL, padx=8, pady=2,
+                  command=self._browse_credentials).grid(row=15, column=2, padx=(4, 0), pady=3)
         self._field(f, 16, "Cloud folder ID",      "cloud_folder_id")
 
         tk.Label(f, text="Backup", bg=BG_MID, fg=ACCENT,
-                 font=FONT_HEAD).grid(row=17, column=0, columnspan=2, sticky="w", pady=(12, 4))
+                 font=FONT_HEAD).grid(row=17, column=0, columnspan=3, sticky="w", pady=(12, 4))
         self._field(f, 18, "Local backup directory", "backup_dir")
+        tk.Button(f, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_SMALL, padx=8, pady=2,
+                  command=self._browse_backup_dir).grid(row=18, column=2, padx=(4, 0), pady=3)
         self._field(f, 19, "Pacing delay (sec)",    "pacing_delay")
         self._field(f, 20, "Batch size (0=unlimited)", "batch_size")
 
@@ -244,9 +250,6 @@ class ProfileDialog(tk.Toplevel):
         btn_frame = tk.Frame(self, bg=BG_MID)
         btn_frame.pack(fill="x", padx=20, pady=(0, 16))
 
-        tk.Button(btn_frame, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
-                  relief="flat", font=FONT_BODY,
-                  command=self._browse_backup_dir).pack(side="left")
         tk.Button(btn_frame, text="Cancel", bg=BG_CARD, fg=FG_DIM,
                   relief="flat", font=FONT_BODY,
                   command=self.destroy).pack(side="right", padx=(8, 0))
@@ -254,8 +257,14 @@ class ProfileDialog(tk.Toplevel):
                   relief="flat", font=FONT_HEAD,
                   command=self._save).pack(side="right")
 
+    def _browse_credentials(self):
+        p = _dlg_open(self, title="Select credentials JSON",
+                      filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
+        if p and "cloud_credentials_file" in self._vars:
+            self._vars["cloud_credentials_file"].set(p)
+
     def _browse_backup_dir(self):
-        d = filedialog.askdirectory(parent=self.winfo_toplevel(), title="Choose local backup folder")
+        d = _dlg_dir(self, title="Choose local backup folder")
         if d and "backup_dir" in self._vars:
             self._vars["backup_dir"].set(d)
 
