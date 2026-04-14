@@ -51,6 +51,7 @@ TAB_BACKUP  = "backup"
 TAB_RESTORE = "restore"
 TAB_AUDIT   = "audit"
 TAB_SETTINGS= "settings"
+TAB_HELP    = "help"
 
 
 # ---------------------------------------------------------------------------
@@ -2653,6 +2654,217 @@ class SettingsTab(tk.Frame):
 
 
 # ---------------------------------------------------------------------------
+# Help tab
+# ---------------------------------------------------------------------------
+
+HELP_TOPICS = [
+    ("What does SUYB do?", """
+Smack Up Your Backup downloads a complete backup of your SnapSmack blog and packages it into a single dated ZIP file. Each backup run performs six stages:
+
+1. Login — authenticates to your blog's admin panel via HTTP.
+2. Recovery kit — downloads the manifest (.tar.gz) which lists every media file on your site with its path, size, and SHA-256 checksum.
+3. SQL dumps — downloads a full database export and a schema-only export.
+4. Media download — connects via FTP and downloads every media file. In differential mode, unchanged files (same checksum as last run) are skipped. In full mode, everything is re-downloaded.
+5. Package — bundles the kit, SQL dumps, and media into a dated ZIP.
+6. Cloud push — uploads the ZIP to Google Drive or OneDrive if configured.
+7. Verify — checks the ZIP for CRC errors, verifies the cloud upload size, and uploads an updated backup-state.json to your server.
+
+Every downloaded file is SHA-256 verified against the manifest. A mismatch triggers one automatic retry. If it fails again, the file is logged as failed but the rest of the backup continues.
+"""),
+    ("First-time setup", """
+If no profiles exist, SUYB opens the Setup Wizard automatically. You can also run it by deleting the profiles/ folder next to the exe.
+
+To set up manually:
+1. Go to the Settings tab.
+2. Fill in Site Connection — blog name, site URL, admin username and password. Click Test Login to confirm.
+3. Choose a Backup Method — FTP (downloads media), Cloud (FTP + cloud upload), or Local (kit and SQL only, no FTP).
+4. If using FTP or Cloud, fill in FTP Setup and click Test FTP.
+5. Set Local working folder — where ZIP files are staged on this computer.
+6. Click Save Profile.
+
+Your profile is stored as a JSON file in the profiles/ folder next to the exe, one file per blog.
+"""),
+    ("Backup tab", """
+Select a blog from the dropdown at the top right, then click START BACKUP.
+
+Options:
+— Differential (default): downloads only files that changed since the last backup. Fast.
+— Full: re-downloads everything regardless of what changed. Use this after a major site change or if you suspect the backup state is out of date.
+— Include SUYB settings: bundles your profile config into the ZIP so you can restore SUYB itself on a new machine.
+
+BACKUP ALL BLOGS runs a differential backup for every profile in order, one at a time.
+
+If a backup is interrupted (power cut, Windows Update reboot), the next run detects the checkpoint and offers to Resume or Start Fresh. Resuming skips every file that was already successfully downloaded and verified.
+"""),
+    ("Restore tab", """
+Restore uploads files from a backup package back to your server via FTP.
+
+Sources:
+— Local ZIP: pick a backup package (.zip) from your computer.
+— Cloud: browse your configured cloud storage and select a backup.
+— Recovery kit + media folder: use a bare .tar.gz kit and a folder of media files if you have them separately.
+
+Before uploading each file, SUYB verifies its SHA-256 checksum against the manifest. A corrupt local file is rejected — it will not overwrite a good copy on the server.
+
+After uploading, SUYB issues a FTP SIZE command for each file to confirm the server received the correct number of bytes.
+"""),
+    ("Audit tab", """
+Audit performs a three-way comparison between:
+— The manifest (what the blog database says should exist)
+— The server filesystem (what FTP can actually see)
+— The database image records (what the CMS knows about)
+
+Results are categorised:
+✓ Healthy — file exists, size matches, database record present
+✗ Missing from server — in the manifest but not on FTP
+✗ Orphaned on server — on FTP but not in the manifest
+✗ Size mismatch — file exists but wrong size
+✗ Wrong location — file found by name but in a different path
+✗ Not in database — on server but no database record
+
+Save the report as HTML or plain text for reference.
+"""),
+    ("Settings tab", """
+Site Connection — blog URL and admin credentials. Use Test Login and Test FTP to verify before running a backup.
+
+Backup Method — FTP, Cloud, or Local. This is saved per-profile.
+
+FTP Setup — host, port, credentials, remote directory. "Verify certificate" is off by default because shared hosting servers present certs for the server hostname, not your domain — same as clicking Trust in FileZilla.
+
+Local working folder — where SUYB stages files during a backup. For cloud backups this is a temporary staging area; for local backups this is the final destination.
+
+Automatic Backup Schedule — per-profile. Set frequency (daily or weekly), the day (for weekly), and the time in 24-hour format. Enable the checkbox and save the profile.
+
+Automatic Backups (global) — enable the system tray so closing minimizes SUYB instead of quitting, and optionally launch SUYB at Windows startup so scheduled backups run without manual intervention.
+"""),
+    ("Cloud setup", """
+SUYB supports Google Drive and OneDrive.
+
+Google Drive — two authentication methods:
+— Service Account (SA key): a JSON file from Google Cloud Console under IAM → Service Accounts. The app authenticates silently, no browser popup. Set in Settings → Global Cloud Config → SA key file.
+— OAuth credentials: a different JSON file from Google Cloud Console. First run opens a browser to authorize. Set in your profile's Credentials JSON field.
+
+To tell which you have: open the JSON file. "type": "service_account" is an SA key. "type": "authorized_user" or "installed" is OAuth.
+
+OneDrive — uses MSAL. Set your credentials JSON in the profile's Credentials JSON field.
+
+Set the Cloud Folder ID to the Google Drive folder ID (from the URL) or OneDrive folder path where backups should be stored.
+
+After configuring cloud, click Save Defaults (for global config) or Save Profile (for per-profile). Run a backup and check the log for "Cloud upload complete".
+"""),
+    ("Scheduled backups", """
+Schedules are configured per profile in Settings → the profile's Schedule section.
+
+1. Enable the "Enable scheduled backups" checkbox.
+2. Set Frequency to daily or weekly.
+3. For weekly, choose the day.
+4. Set the Time in HH:MM 24-hour format (e.g. 02:00 for 2am).
+5. Click Save Profile.
+
+SUYB must be running for scheduled backups to fire. Enable "Minimize to system tray instead of closing" and "Launch SUYB when Windows starts" in Settings → Automatic Backups so it's always running in the background.
+
+Scheduled backups always run in differential mode. The last scheduled run time is saved to the profile so SUYB won't double-fire if you have multiple instances (it checks the profile timestamp on disk).
+"""),
+    ("Crash recovery", """
+SUYB writes a checkpoint file to your local working folder after every successfully downloaded and verified file. The checkpoint uses an atomic rename (write to temp, rename to final) so even a power cut during the write cannot corrupt it.
+
+If SUYB is interrupted mid-backup:
+— The recovery kit and SQL dumps already on disk are kept.
+— Every media file already downloaded is recorded in the checkpoint.
+— On next launch, clicking Start Backup detects the checkpoint and shows a dialog: Resume, Start Fresh, or Cancel.
+— Resuming skips Stages 1-2 (kit/SQL on disk), skips every file already in the checkpoint, and continues from where it stopped.
+— If the crash happened after all files were downloaded but before packaging, SUYB skips FTP entirely and just repackages what's on disk.
+
+The checkpoint is deleted after a successful, verified backup completion.
+"""),
+    ("Troubleshooting", """
+"Recovery kit download failed" — your admin login may have failed, or smack-disaster.php is inaccessible. Check that you can log into your blog manually, then use Test Login in Settings to confirm credentials are correct.
+
+"FTP connection failed: getaddrinfo failed" — DNS lookup failed for the FTP hostname. Check the Host field in Settings for typos (the field may scroll and hide the last character).
+
+"Checksum mismatch" — a downloaded file's SHA-256 didn't match the manifest. SUYB retries automatically. If it keeps failing, the source file on the server may be corrupt.
+
+"Cloud upload skipped — no cloud provider configured" — check Settings → Global Cloud Config: Provider should be google_drive or onedrive, and the SA key file or Credentials JSON path should be filled in. Click Save Defaults after making changes.
+
+"Cloud upload skipped — provider configured but no credentials" — the provider is set but the credentials file path is empty or wrong. Check the file exists at the path shown.
+
+Backup runs but produces no log output — if SUYB was previously interrupted, the checkpoint may be causing it to skip to packaging immediately. Check the local working folder for a file ending in _checkpoint.json and delete it, then try again.
+"""),
+]
+
+
+class HelpTab(tk.Frame):
+    """In-app documentation — topic list on left, content on right."""
+
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent, bg=BG_DEEP, **kwargs)
+        self._build()
+
+    def _build(self):
+        PAD = 16
+
+        # ── Left: topic list ────────────────────────────────────────────
+        sidebar = tk.Frame(self, bg=BG_MID, width=200)
+        sidebar.pack(side="left", fill="y", padx=(PAD, 0), pady=PAD)
+        sidebar.pack_propagate(False)
+
+        tk.Label(sidebar, text="Topics", bg=BG_MID, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w", padx=12, pady=(12, 6))
+
+        self._topic_btns = []
+        for i, (title, _content) in enumerate(HELP_TOPICS):
+            btn = tk.Button(
+                sidebar, text=title, bg=BG_MID, fg=FG_DIM,
+                relief="flat", font=FONT_BODY, anchor="w", padx=12, pady=4,
+                wraplength=176, justify="left",
+                command=lambda idx=i: self._show(idx),
+            )
+            btn.pack(fill="x")
+            self._topic_btns.append(btn)
+
+        # ── Right: content area ─────────────────────────────────────────
+        content_frame = tk.Frame(self, bg=BG_DEEP)
+        content_frame.pack(side="left", fill="both", expand=True,
+                           padx=PAD, pady=PAD)
+
+        self._title_lbl = tk.Label(content_frame, text="", bg=BG_DEEP,
+                                    fg=ACCENT, font=FONT_TITLE, anchor="w",
+                                    wraplength=700, justify="left")
+        self._title_lbl.pack(anchor="w", pady=(0, 10))
+
+        tk.Frame(content_frame, bg=BORDER, height=1).pack(fill="x", pady=(0, 10))
+
+        text_frame = tk.Frame(content_frame, bg=BG_DEEP)
+        text_frame.pack(fill="both", expand=True)
+
+        self._text = tk.Text(
+            text_frame, bg=BG_DEEP, fg=FG_MAIN, font=FONT_BODY,
+            relief="flat", wrap="word", state="disabled",
+            padx=4, pady=4, spacing1=4, spacing3=4,
+        )
+        sb = ttk.Scrollbar(text_frame, command=self._text.yview)
+        self._text.configure(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        self._text.pack(side="left", fill="both", expand=True)
+
+        self._show(0)
+
+    def _show(self, idx: int) -> None:
+        for i, btn in enumerate(self._topic_btns):
+            btn.configure(
+                bg=BG_CARD if i == idx else BG_MID,
+                fg=ACCENT  if i == idx else FG_DIM,
+            )
+        title, content = HELP_TOPICS[idx]
+        self._title_lbl.configure(text=title)
+        self._text.configure(state="normal")
+        self._text.delete("1.0", "end")
+        self._text.insert("1.0", content.strip())
+        self._text.configure(state="disabled")
+        self._text.yview_moveto(0)
+
+
+# ---------------------------------------------------------------------------
 # Main application window
 # ---------------------------------------------------------------------------
 
@@ -2770,6 +2982,7 @@ class App(tk.Tk):
             (TAB_RESTORE,  "Restore"),
             (TAB_AUDIT,    "Audit"),
             (TAB_SETTINGS, "Settings"),
+            (TAB_HELP,     "Help"),
         ]:
             btn = tk.Button(
                 tab_bar, text=label, bg=BG_MID, fg=FG_DIM,
@@ -2785,6 +2998,7 @@ class App(tk.Tk):
         self._tab_audit    = AuditTab(self,   self)
         self._tab_settings = SettingsTab(self, self)
         self._tab_settings.load(self._cfg)
+        self._tab_help     = HelpTab(self)
 
         self._switch_tab(TAB_BACKUP)
 
@@ -2795,7 +3009,7 @@ class App(tk.Tk):
                 fg=ACCENT   if k == key else FG_DIM,
             )
         for frame in (self._tab_backup, self._tab_restore,
-                      self._tab_audit, self._tab_settings):
+                      self._tab_audit, self._tab_settings, self._tab_help):
             frame.pack_forget()
 
         tab_map = {
@@ -2803,6 +3017,7 @@ class App(tk.Tk):
             TAB_RESTORE:  self._tab_restore,
             TAB_AUDIT:    self._tab_audit,
             TAB_SETTINGS: self._tab_settings,
+            TAB_HELP:     self._tab_help,
         }
         tab_map[key].pack(fill="both", expand=True)
         self._active_tab = key
