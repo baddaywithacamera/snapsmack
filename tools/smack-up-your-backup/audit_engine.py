@@ -82,12 +82,13 @@ class AuditEngine:
         # ── Connect FTP ──────────────────────────────────────────────
         self.on_progress("ftp", "Connecting via FTP…", 0.02)
         ftp = ftp_module.FTPClient(
-            host       = self.profile.get("ftp_host", ""),
-            user       = self.profile.get("ftp_user", ""),
-            password   = self.profile.get("ftp_pass", ""),
-            remote_dir = self.profile.get("ftp_remote_dir", "/public_html"),
-            port       = int(self.profile.get("ftp_port", 21)),
-            use_tls    = bool(self.profile.get("ftp_ssl", True)),
+            host        = self.profile.get("ftp_host", ""),
+            user        = self.profile.get("ftp_user", ""),
+            password    = self.profile.get("ftp_pass", ""),
+            remote_dir  = self.profile.get("ftp_remote_dir", "/public_html"),
+            port        = int(self.profile.get("ftp_port", 21)),
+            use_tls     = bool(self.profile.get("ftp_ssl", True)),
+            verify_cert = bool(self.profile.get("ftp_verify_cert", False)),
             transfer_delay = 0,     # No pacing during audit reads
         )
         try:

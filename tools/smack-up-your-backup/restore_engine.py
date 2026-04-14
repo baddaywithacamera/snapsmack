@@ -138,6 +138,7 @@ class RestoreEngine:
             remote_dir     = self.profile.get("ftp_remote_dir", "/public_html"),
             port           = int(self.profile.get("ftp_port", 21)),
             use_tls        = bool(self.profile.get("ftp_ssl", True)),
+            verify_cert    = bool(self.profile.get("ftp_verify_cert", False)),
             transfer_delay = float(self.profile.get("pacing_delay", 2)),
             batch_size     = int(self.profile.get("batch_size", 0)),
         )
