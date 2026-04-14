@@ -55,39 +55,42 @@ TAB_SETTINGS= "settings"
 # ---------------------------------------------------------------------------
 # Windows-safe file dialog helpers
 # ---------------------------------------------------------------------------
-# On Windows, parenting a filedialog to a tk.Frame (or even the root tk.Tk)
-# can cause the native dialog to appear behind the main window or silently
-# fail.  Using a short-lived hidden Toplevel as the parent is the reliable fix:
-# it gives Windows a concrete top-level window to hang the dialog off, and the
-# dialog always appears in front.
+# On Windows, the native file dialog can silently fail to appear when the
+# parent widget is a tk.Frame embedded in a notebook tab.  The reliable fix is
+# to momentarily force the root Tk window to the foreground (topmost + focus)
+# before handing off to the native dialog, then restore topmost afterwards.
+
+def _prep_root(widget):
+    """Bring the root window to the front so native dialogs don't get buried."""
+    root = widget.winfo_toplevel()
+    root.lift()
+    root.focus_force()
+    root.attributes('-topmost', True)
+    root.update_idletasks()
+    return root
+
 
 def _dlg_open(widget, **kwargs) -> str:
-    """filedialog.askopenfilename with a safe Toplevel parent."""
-    root = widget.winfo_toplevel()
-    tmp = tk.Toplevel(root)
-    tmp.withdraw()
-    result = filedialog.askopenfilename(parent=tmp, **kwargs)
-    tmp.destroy()
+    """filedialog.askopenfilename that reliably appears on Windows."""
+    root = _prep_root(widget)
+    result = filedialog.askopenfilename(parent=root, **kwargs)
+    root.attributes('-topmost', False)
     return result
 
 
 def _dlg_dir(widget, **kwargs) -> str:
-    """filedialog.askdirectory with a safe Toplevel parent."""
-    root = widget.winfo_toplevel()
-    tmp = tk.Toplevel(root)
-    tmp.withdraw()
-    result = filedialog.askdirectory(parent=tmp, **kwargs)
-    tmp.destroy()
+    """filedialog.askdirectory that reliably appears on Windows."""
+    root = _prep_root(widget)
+    result = filedialog.askdirectory(parent=root, **kwargs)
+    root.attributes('-topmost', False)
     return result
 
 
 def _dlg_save(widget, **kwargs) -> str:
-    """filedialog.asksaveasfilename with a safe Toplevel parent."""
-    root = widget.winfo_toplevel()
-    tmp = tk.Toplevel(root)
-    tmp.withdraw()
-    result = filedialog.asksaveasfilename(parent=tmp, **kwargs)
-    tmp.destroy()
+    """filedialog.asksaveasfilename that reliably appears on Windows."""
+    root = _prep_root(widget)
+    result = filedialog.asksaveasfilename(parent=root, **kwargs)
+    root.attributes('-topmost', False)
     return result
 
 
