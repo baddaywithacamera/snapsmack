@@ -115,6 +115,72 @@ if (isset($_POST['register_spoke'])) {
     }
 }
 
+// Manual ping a spoke (hub-initiated heartbeat for a single node)
+if (isset($_GET['ping'])) {
+    $node_id = (int)$_GET['ping'];
+    $stmt = $pdo->prepare("SELECT * FROM snap_multisite_nodes WHERE id = ? AND role = 'spoke' LIMIT 1");
+    $stmt->execute([$node_id]);
+    $n = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($n) {
+        $url = rtrim($n['site_url'], '/') . '/api.php?route=multisite/heartbeat';
+        $ch  = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL            => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_HTTPHEADER     => [
+                'Authorization: Bearer ' . $n['api_key_local'],
+                'Accept: application/json',
+            ],
+        ]);
+        $hb_raw  = curl_exec($ch);
+        $hb_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($hb_raw && $hb_code === 200) {
+            $hb = json_decode($hb_raw, true);
+            if (!empty($hb['ok'])) {
+                $pdo->prepare("
+                    UPDATE snap_multisite_nodes SET
+                        software_version   = ?,
+                        post_count         = ?,
+                        image_count        = ?,
+                        pending_comments   = ?,
+                        last_backup_at     = ?,
+                        last_backup_size   = ?,
+                        last_backup_dest   = ?,
+                        last_backup_status = ?,
+                        disk_usage_bytes   = ?,
+                        last_seen_at       = NOW(),
+                        status             = 'active'
+                    WHERE id = ?
+                ")->execute([
+                    $hb['version']            ?? null,
+                    $hb['post_count']         ?? 0,
+                    $hb['image_count']        ?? 0,
+                    $hb['pending_comments']   ?? 0,
+                    $hb['last_backup_at']     ?? null,
+                    $hb['last_backup_size']   ?? null,
+                    $hb['last_backup_dest']   ?? null,
+                    $hb['last_backup_status'] ?? 'unknown',
+                    $hb['disk_usage_bytes']   ?? null,
+                    $n['id'],
+                ]);
+                $msg = "Ping OK — {$n['site_name']} is online (HTTP {$hb_code}).";
+            } else {
+                $msg = "Ping reached {$n['site_name']} but got an error response.";
+            }
+        } else {
+            $pdo->prepare("UPDATE snap_multisite_nodes SET status = 'offline' WHERE id = ?")->execute([$node_id]);
+            $msg = "Could not reach {$n['site_name']} — HTTP {$hb_code}.";
+        }
+    } else {
+        $err = "Spoke not found.";
+    }
+}
+
 // Disconnect spoke
 if (isset($_GET['disconnect'])) {
     $node_id = (int)$_GET['disconnect'];
@@ -431,6 +497,8 @@ include 'core/sidebar.php';
                                                target="_blank"
                                                class="action-authorize"
                                                title="Open spoke admin as primary admin user">REMOTE LOGIN</a>
+                                        <?php else: ?>
+                                            <a href="?ping=<?php echo $n['id']; ?>" class="action-view" title="Manually ping this spoke">PING</a>
                                         <?php endif; ?>
                                         <a href="?disconnect=<?php echo $n['id']; ?>" class="action-delete" onclick="return confirm('Disconnect this spoke?');">DISCONNECT</a>
                                     </td>
