@@ -53,6 +53,45 @@ TAB_SETTINGS= "settings"
 
 
 # ---------------------------------------------------------------------------
+# Windows-safe file dialog helpers
+# ---------------------------------------------------------------------------
+# On Windows, parenting a filedialog to a tk.Frame (or even the root tk.Tk)
+# can cause the native dialog to appear behind the main window or silently
+# fail.  Using a short-lived hidden Toplevel as the parent is the reliable fix:
+# it gives Windows a concrete top-level window to hang the dialog off, and the
+# dialog always appears in front.
+
+def _dlg_open(widget, **kwargs) -> str:
+    """filedialog.askopenfilename with a safe Toplevel parent."""
+    root = widget.winfo_toplevel()
+    tmp = tk.Toplevel(root)
+    tmp.withdraw()
+    result = filedialog.askopenfilename(parent=tmp, **kwargs)
+    tmp.destroy()
+    return result
+
+
+def _dlg_dir(widget, **kwargs) -> str:
+    """filedialog.askdirectory with a safe Toplevel parent."""
+    root = widget.winfo_toplevel()
+    tmp = tk.Toplevel(root)
+    tmp.withdraw()
+    result = filedialog.askdirectory(parent=tmp, **kwargs)
+    tmp.destroy()
+    return result
+
+
+def _dlg_save(widget, **kwargs) -> str:
+    """filedialog.asksaveasfilename with a safe Toplevel parent."""
+    root = widget.winfo_toplevel()
+    tmp = tk.Toplevel(root)
+    tmp.withdraw()
+    result = filedialog.asksaveasfilename(parent=tmp, **kwargs)
+    tmp.destroy()
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Profile editor dialog
 # ---------------------------------------------------------------------------
 
@@ -779,7 +818,7 @@ class RestoreTab(tk.Frame):
             self._manual_frame.pack(fill="x", pady=4)
 
     def _browse_zip(self):
-        p = filedialog.askopenfilename(parent=self.winfo_toplevel(), 
+        p = _dlg_open(self,
             title="Select backup package",
             filetypes=[("ZIP backup", "*.zip"), ("All files", "*.*")],
         )
@@ -787,7 +826,7 @@ class RestoreTab(tk.Frame):
             self._zip_var.set(p)
 
     def _browse_kit(self):
-        p = filedialog.askopenfilename(parent=self.winfo_toplevel(), 
+        p = _dlg_open(self,
             title="Select recovery kit",
             filetypes=[("Recovery kit", "*.tar.gz"), ("All files", "*.*")],
         )
@@ -795,7 +834,7 @@ class RestoreTab(tk.Frame):
             self._kit_var.set(p)
 
     def _browse_media_dir(self):
-        d = filedialog.askdirectory(parent=self.winfo_toplevel(), title="Select media folder")
+        d = _dlg_dir(self, title="Select media folder")
         if d:
             self._mdir_var.set(d)
 
@@ -1138,7 +1177,7 @@ class AuditTab(tk.Frame):
             messagebox.showinfo("No report", "Run an audit first.")
             return
         filetypes = [("HTML report", "*.html")] if fmt == "html" else [("Text report", "*.txt")]
-        path = filedialog.asksaveasfilename(parent=self.winfo_toplevel(), 
+        path = _dlg_save(self,
             title="Save audit report",
             defaultextension=f".{fmt}",
             filetypes=filetypes,
@@ -1485,7 +1524,7 @@ class SettingsTab(tk.Frame):
         self._local_frame.pack(fill="x", pady=(6, 0))
 
     def _browse_credentials(self) -> None:
-        path = filedialog.askopenfilename(parent=self.winfo_toplevel(), 
+        path = _dlg_open(self,
             title="Select credentials JSON",
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
         )
@@ -1546,7 +1585,7 @@ class SettingsTab(tk.Frame):
         messagebox.showinfo("Saved", f"Profile \"{profile['name']}\" saved.", parent=self)
 
     def _browse_backup_dir(self) -> None:
-        d = filedialog.askdirectory(parent=self.winfo_toplevel(), title="Choose local backup folder")
+        d = _dlg_dir(self, title="Choose local backup folder")
         if d and "backup_dir" in self._profile_vars:
             self._profile_vars["backup_dir"].set(d)
 
@@ -1571,7 +1610,7 @@ class SettingsTab(tk.Frame):
     def _export_settings(self):
         """Export all profiles + global config to a single JSON file."""
         import json
-        path = filedialog.asksaveasfilename(parent=self.winfo_toplevel(), 
+        path = _dlg_save(self,
             title="Export settings",
             defaultextension=".json",
             filetypes=[("JSON files", "*.json")],
@@ -1620,7 +1659,7 @@ class SettingsTab(tk.Frame):
     def _import_settings(self):
         """Import profiles + global config from a previously exported JSON file."""
         import json
-        path = filedialog.askopenfilename(parent=self.winfo_toplevel(), 
+        path = _dlg_open(self,
             title="Import settings",
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
         )
@@ -1745,7 +1784,7 @@ class SettingsTab(tk.Frame):
 
     def _browse_global_key(self) -> None:
         """File picker for the global service account JSON key."""
-        path = filedialog.askopenfilename(parent=self.winfo_toplevel(), 
+        path = _dlg_open(self,
             title="Select service account JSON key",
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
         )
