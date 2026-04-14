@@ -193,25 +193,26 @@ if (isset($_GET['disconnect'])) {
     $node = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($node) {
-        // Notify spoke to disconnect
+        // Best-effort notify spoke to wipe its hub record.
+        // Fire and forget — we delete our side regardless of whether the spoke responds.
         $ch = curl_init();
         curl_setopt_array($ch, [
-            CURLOPT_URL => $node['site_url'] . '/api.php?route=multisite/disconnect',
-            CURLOPT_POST => true,
+            CURLOPT_URL            => rtrim($node['site_url'], '/') . '/api.php?route=multisite/disconnect',
+            CURLOPT_POST           => true,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => [
+            CURLOPT_HTTPHEADER     => [
                 'Authorization: Bearer ' . $node['api_key_local'],
-                'Accept: application/json'
+                'Accept: application/json',
             ],
-            CURLOPT_TIMEOUT => 10,
-            CURLOPT_SSL_VERIFYPEER => true
+            CURLOPT_TIMEOUT        => 5,
+            CURLOPT_SSL_VERIFYPEER => true,
         ]);
         curl_exec($ch);
         curl_close($ch);
 
-        // Update status
-        $pdo->prepare("UPDATE snap_multisite_nodes SET status = 'disconnected' WHERE id = ?")->execute([$node_id]);
-        $msg = "Spoke disconnected.";
+        // Delete our spoke record — clean slate for re-registration.
+        $pdo->prepare("DELETE FROM snap_multisite_nodes WHERE id = ?")->execute([$node_id]);
+        $msg = "Spoke disconnected and removed.";
     }
 }
 
