@@ -115,6 +115,11 @@ def new_profile_template() -> Dict:
         "snap_admin_user":       "",
         "snap_admin_pass":       "",
         "backup_method":         "ftp",          # "ftp" | "cloud" | "local"
+        "schedule_enabled":      False,
+        "schedule_type":         "daily",        # "daily" | "weekly"
+        "schedule_day":          "monday",       # weekday for weekly schedule
+        "schedule_time":         "02:00",        # HH:MM 24-hour local time
+        "last_scheduled_run":    "",
         "cloud_provider":        "none",        # "google_drive" | "onedrive" | "none"
         "cloud_credentials_file":"",
         "cloud_folder_id":       "",
