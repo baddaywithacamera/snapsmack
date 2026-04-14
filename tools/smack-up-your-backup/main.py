@@ -5,7 +5,7 @@ Dark UI palette, tkinter, PyInstaller single-exe build chain.
 Same visual family as Smack Your Batch Up.
 """
 
-BUILD_VERSION = "0.2.2"
+BUILD_VERSION = "0.2.3"
 
 import os
 import queue
@@ -1097,6 +1097,30 @@ class BackupTab(tk.Frame):
         result = self._engine.run()
         self._app.queue_msg(("backup_done", result))
 
+    def _start_scheduled(self, profile: dict) -> None:
+        """Called by the scheduler — runs a silent differential backup for profile."""
+        if self._busy:
+            return  # backup already running, skip this tick
+        self._busy = True
+        self._start_btn.configure(state="disabled")
+        self._all_btn.configure(state="disabled")
+        self._cancel_btn.configure(state="normal")
+        self._prog_bar.reset()
+        self._log.clear()
+        self._log.append(f"Scheduled backup starting: {profile.get('name', '')}…")
+
+        self._engine = BackupEngine(
+            profile,
+            on_progress=lambda s, m, p: self._app.queue_msg(("backup_progress", m, p)),
+            on_log=lambda m: self._app.queue_msg(("backup_log", m)),
+            force_full=False,
+            include_settings=True,
+            global_config=None,
+            global_cloud=self._app.global_cloud_config(),
+        )
+        import threading
+        threading.Thread(target=self._run_engine, daemon=True).start()
+
     def _cancel(self):
         if self._engine:
             self._engine.cancel()
@@ -1862,6 +1886,56 @@ class SettingsTab(tk.Frame):
         self._profile_vars["backup_dir"] = bkdir_var
         self._browse_btn(local_g, 0, self._browse_backup_dir)
 
+        # ── Schedule section ────────────────────────────────────────────
+        tk.Frame(c, bg=BORDER, height=1).pack(fill="x", pady=(10, 6))
+        tk.Label(c, text="Automatic Backup Schedule", bg=BG_MID, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w", pady=(0, 6))
+
+        sched_g = tk.Frame(c, bg=BG_MID)
+        sched_g.pack(fill="x")
+
+        self._sched_enabled_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(sched_g, text="Enable scheduled backups for this profile",
+                       variable=self._sched_enabled_var,
+                       bg=BG_MID, fg=FG_MAIN, selectcolor=BG_INPUT,
+                       activebackground=BG_MID, font=FONT_BODY).pack(anchor="w", pady=2)
+        self._profile_vars["schedule_enabled"] = self._sched_enabled_var
+
+        sched_row1 = tk.Frame(sched_g, bg=BG_MID)
+        sched_row1.pack(anchor="w", pady=2)
+        tk.Label(sched_row1, text="Frequency", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY, width=12, anchor="w").pack(side="left")
+        self._sched_type_var = tk.StringVar(value="daily")
+        ttk.Combobox(sched_row1, textvariable=self._sched_type_var,
+                     values=["daily", "weekly"], state="readonly",
+                     font=FONT_BODY, width=10).pack(side="left")
+        self._profile_vars["schedule_type"] = self._sched_type_var
+
+        sched_row2 = tk.Frame(sched_g, bg=BG_MID)
+        sched_row2.pack(anchor="w", pady=2)
+        tk.Label(sched_row2, text="Day (weekly)", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY, width=12, anchor="w").pack(side="left")
+        self._sched_day_var = tk.StringVar(value="monday")
+        ttk.Combobox(sched_row2, textvariable=self._sched_day_var,
+                     values=["monday","tuesday","wednesday","thursday",
+                             "friday","saturday","sunday"],
+                     state="readonly", font=FONT_BODY, width=12).pack(side="left")
+        self._profile_vars["schedule_day"] = self._sched_day_var
+
+        sched_row3 = tk.Frame(sched_g, bg=BG_MID)
+        sched_row3.pack(anchor="w", pady=2)
+        tk.Label(sched_row3, text="Time (HH:MM)", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY, width=12, anchor="w").pack(side="left")
+        self._sched_time_var = tk.StringVar(value="02:00")
+        tk.Entry(sched_row3, textvariable=self._sched_time_var,
+                 bg=BG_INPUT, fg=FG_MAIN, insertbackground=ACCENT,
+                 relief="flat", font=FONT_MONO, width=8).pack(side="left")
+        self._profile_vars["schedule_time"] = self._sched_time_var
+
+        self._sched_next_var = tk.StringVar(value="")
+        tk.Label(sched_g, textvariable=self._sched_next_var,
+                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w", pady=(2, 0))
+
         # Profile buttons row
         prof_btns = tk.Frame(c, bg=BG_MID)
         prof_btns.pack(anchor="w", pady=(10, 0))
@@ -1986,6 +2060,29 @@ class SettingsTab(tk.Frame):
                  bg=BG_MID, fg=FG_DIM, font=FONT_SMALL,
                  wraplength=380, justify="left").pack(anchor="w", pady=(4, 0))
 
+        # ── Schedule card ───────────────────────────────────────────────
+        c = self._card(right)
+        c.pack(fill="x", pady=(0, G))
+        self._heading(c, "Automatic Backups")
+        self._sub(c, "Schedule is per-profile — set it in each profile's Schedule section below.")
+
+        app_opts = tk.Frame(c, bg=BG_MID)
+        app_opts.pack(anchor="w", fill="x")
+
+        self._tray_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(app_opts, text="Minimize to system tray instead of closing",
+                       variable=self._tray_var,
+                       bg=BG_MID, fg=FG_MAIN, selectcolor=BG_INPUT,
+                       activebackground=BG_MID, font=FONT_BODY,
+                       command=self._on_tray_toggle).pack(anchor="w", pady=2)
+
+        self._startup_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(app_opts, text="Launch SUYB when Windows starts",
+                       variable=self._startup_var,
+                       bg=BG_MID, fg=FG_MAIN, selectcolor=BG_INPUT,
+                       activebackground=BG_MID, font=FONT_BODY,
+                       command=self._on_startup_toggle).pack(anchor="w", pady=2)
+
         # ── Export / Import card ────────────────────────────────────────
         c = self._card(right)
         c.pack(fill="x", pady=(0, G))
@@ -2010,6 +2107,9 @@ class SettingsTab(tk.Frame):
         self._gc_provider_var.set(cfg.get("cloud", "provider", fallback="google_drive"))
         self._gc_creds_var.set(cfg.get("cloud", "credentials_file", fallback=""))
         self._gc_folder_var.set(cfg.get("cloud", "folder_id", fallback=""))
+        # App options
+        self._tray_var.set(cfg.getboolean("app", "tray_enabled", fallback=False))
+        self._startup_var.set(cfg.getboolean("app", "startup_enabled", fallback=False))
         self._validate_global_key()
         self._refresh_ai_status()
         self.load_profile(self._app._current_profile)
@@ -2107,10 +2207,11 @@ class SettingsTab(tk.Frame):
         """Populate the active profile fields from a profile dict, or clear them."""
         if profile:
             # Keys that are BooleanVars — must not pass empty string
-            _bool_keys = {"ftp_ssl", "ftp_verify_cert"}
+            _bool_defaults = {"ftp_ssl": True, "ftp_verify_cert": False,
+                              "schedule_enabled": False}
             for key, var in self._profile_vars.items():
-                if key in _bool_keys:
-                    default = True if key == "ftp_ssl" else False
+                if key in _bool_defaults:
+                    default = _bool_defaults[key]
                     val = profile.get(key, default)
                     var.set(bool(val) if val != "" else default)
                 else:
@@ -2132,20 +2233,108 @@ class SettingsTab(tk.Frame):
             self._no_profile_lbl.pack_forget()
             self._profile_status_var.set(f"Editing: {profile.get('name', '')}")
         else:
-            _bool_defaults = {"ftp_ssl": True, "ftp_verify_cert": False}
+            _bool_defaults = {"ftp_ssl": True, "ftp_verify_cert": False,
+                              "schedule_enabled": False}
+            _str_defaults  = {"schedule_type": "daily", "schedule_day": "monday",
+                              "schedule_time": "02:00"}
             for key, var in self._profile_vars.items():
                 if key in _bool_defaults:
                     var.set(_bool_defaults[key])
+                elif key in _str_defaults:
+                    var.set(_str_defaults[key])
                 else:
                     var.set("")
             self._method_var.set("ftp")
             self._on_method_change()
             self._profile_status_var.set("New profile — fill in details and Save")
+        self._update_schedule_next()
 
     def _new_from_settings(self) -> None:
         """Clear the form to start a new profile."""
         self._app._current_profile = None
         self.load_profile(None)
+
+    def _on_tray_toggle(self) -> None:
+        enabled = self._tray_var.get()
+        cfg = self._app._cfg
+        if not cfg.has_section("app"):
+            cfg.add_section("app")
+        cfg.set("app", "tray_enabled", str(enabled).lower())
+        cfg_module.save(cfg)
+        if enabled and not self._app._tray_icon:
+            self._app.after(0, self._app._start_tray)
+        elif not enabled and self._app._tray_icon:
+            try:
+                self._app._tray_icon.stop()
+                self._app._tray_icon = None
+            except Exception:
+                pass
+
+    def _on_startup_toggle(self) -> None:
+        import sys, os
+        enabled = self._startup_var.get()
+        if sys.platform == "win32":
+            self._set_windows_startup(enabled)
+        else:
+            self._set_linux_autostart(enabled)
+        cfg = self._app._cfg
+        if not cfg.has_section("app"):
+            cfg.add_section("app")
+        cfg.set("app", "startup_enabled", str(enabled).lower())
+        cfg_module.save(cfg)
+
+    @staticmethod
+    def _set_windows_startup(enabled: bool) -> None:
+        import sys
+        try:
+            import winreg
+            key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
+            exe = sys.executable
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path,
+                                0, winreg.KEY_SET_VALUE) as key:
+                if enabled:
+                    winreg.SetValueEx(key, "SmackUpYourBackup", 0,
+                                      winreg.REG_SZ, f'"{exe}"')
+                else:
+                    try:
+                        winreg.DeleteValue(key, "SmackUpYourBackup")
+                    except FileNotFoundError:
+                        pass
+        except Exception as e:
+            messagebox.showerror("Startup error", f"Could not set startup entry:\n{e}")
+
+    @staticmethod
+    def _set_linux_autostart(enabled: bool) -> None:
+        import os, sys
+        autostart_dir = os.path.expanduser("~/.config/autostart")
+        desktop_path  = os.path.join(autostart_dir, "smackupyourbackup.desktop")
+        if enabled:
+            os.makedirs(autostart_dir, exist_ok=True)
+            exe = sys.executable
+            content = (
+                "[Desktop Entry]\n"
+                "Type=Application\n"
+                "Name=Smack Up Your Backup\n"
+                f"Exec={exe}\n"
+                "Hidden=false\n"
+                "NoDisplay=false\n"
+                "X-GNOME-Autostart-enabled=true\n"
+            )
+            with open(desktop_path, "w") as f:
+                f.write(content)
+        else:
+            try:
+                os.unlink(desktop_path)
+            except FileNotFoundError:
+                pass
+
+    def _update_schedule_next(self) -> None:
+        try:
+            from scheduler import BackupScheduler
+            profile = {k: v.get() for k, v in self._profile_vars.items()}
+            self._sched_next_var.set(BackupScheduler.next_run_str(profile))
+        except Exception:
+            pass
 
     def _save_profile(self) -> None:
         """Save the form.  Creates or updates based on name matching."""
@@ -2478,6 +2667,8 @@ class App(tk.Tk):
         self._profiles = profile_manager.list_profiles()
         self._current_profile: Optional[dict] = None
         self._msg_queue: queue.Queue = queue.Queue()
+        self._tray_icon = None
+        self._quitting  = False
 
         # Restore window geometry and state
         try:
@@ -2493,6 +2684,15 @@ class App(tk.Tk):
         self._load_last_profile()
         self.after(100, self._poll)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+
+        # Start scheduler
+        from scheduler import BackupScheduler
+        self._scheduler = BackupScheduler(on_trigger=self._on_schedule_trigger)
+        self._scheduler.start(self._get_all_profiles_for_scheduler)
+
+        # Start tray icon if enabled
+        if self._cfg.getboolean("app", "tray_enabled", fallback=False):
+            self.after(500, self._start_tray)
 
     def current_profile(self) -> Optional[dict]:
         return self._current_profile
@@ -2729,15 +2929,105 @@ class App(tk.Tk):
                 elif kind == "audit_done":
                     self._tab_audit.on_done(msg[1])
 
+                elif kind == "scheduled_backup":
+                    # Triggered by scheduler thread — queue profile for backup
+                    profile = msg[1]
+                    self._tab_backup._start_scheduled(profile)
+
+                elif kind == "tray_notify":
+                    # Show a tray notification if available
+                    if self._tray_icon:
+                        try:
+                            self._tray_icon.notify(msg[1], "Smack Up Your Backup")
+                        except Exception:
+                            pass
+
         except queue.Empty:
             pass
         self.after(100, self._poll)
 
     # ------------------------------------------------------------------
+    # Scheduler
+    # ------------------------------------------------------------------
+
+    def _get_all_profiles_for_scheduler(self) -> list:
+        """Return all loaded profiles for the scheduler to iterate."""
+        profiles = []
+        for name in profile_manager.list_profiles():
+            p = profile_manager.load_profile(name)
+            if p:
+                profiles.append(p)
+        return profiles
+
+    def _on_schedule_trigger(self, profile: dict) -> None:
+        """Called by scheduler thread when a backup is due — queues it safely."""
+        self.queue_msg(("scheduled_backup", profile))
+
+    # ------------------------------------------------------------------
+    # System tray
+    # ------------------------------------------------------------------
+
+    def _make_tray_image(self):
+        """Create a simple tray icon using Pillow."""
+        from PIL import Image, ImageDraw
+        size = 64
+        img  = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        d    = ImageDraw.Draw(img)
+        # Green circle background
+        d.ellipse([2, 2, size - 2, size - 2], fill=(93, 234, 93))
+        # Dark "S" — simplified as two arcs suggesting the letter
+        d.rectangle([18, 14, 46, 26], fill=(26, 26, 34))
+        d.rectangle([18, 28, 46, 40], fill=(26, 26, 34))
+        d.rectangle([18, 42, 46, 54], fill=(26, 26, 34))
+        return img
+
+    def _start_tray(self) -> None:
+        """Initialise the system tray icon in its own thread."""
+        try:
+            import pystray
+        except ImportError:
+            return
+
+        import threading
+
+        def _show(_icon=None, _item=None):
+            self.after(0, self._show_window)
+
+        def _run_now(_icon=None, _item=None):
+            self.after(0, lambda: self._tab_backup._start())
+
+        def _quit(_icon=None, _item=None):
+            self._quitting = True
+            if self._tray_icon:
+                self._tray_icon.stop()
+            self.after(0, self._do_quit)
+
+        menu = pystray.Menu(
+            pystray.MenuItem("Open SUYB", _show, default=True),
+            pystray.MenuItem("Back Up Now", _run_now),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Quit", _quit),
+        )
+        self._tray_icon = pystray.Icon(
+            "suyb", self._make_tray_image(),
+            f"Smack Up Your Backup  v{BUILD_VERSION}", menu,
+        )
+        threading.Thread(target=self._tray_icon.run, daemon=True).start()
+
+    def _show_window(self) -> None:
+        self.deiconify()
+        self.lift()
+        self.focus_force()
+
+    def _hide_to_tray(self) -> None:
+        self._save_window_state()
+        self.withdraw()
+
+    # ------------------------------------------------------------------
     # Close
     # ------------------------------------------------------------------
 
-    def _on_close(self) -> None:
+    def _save_window_state(self) -> None:
         name = self._profile_var.get()
         if name:
             if not self._cfg.has_section("app"):
@@ -2746,14 +3036,23 @@ class App(tk.Tk):
         if not self._cfg.has_section("window"):
             self._cfg.add_section("window")
         win_state = self.state()
-        self._cfg.set("window", "state", win_state)
-        if win_state != "zoomed":
-            # Only save size when not maximized — otherwise we'd save
-            # the full-screen dimensions and lose the normal size
+        self._cfg.set("window", "state", win_state if win_state != "withdrawn" else "normal")
+        if win_state not in ("zoomed", "withdrawn"):
             self._cfg.set("window", "width",  str(self.winfo_width()))
             self._cfg.set("window", "height", str(self.winfo_height()))
         cfg_module.save(self._cfg)
+
+    def _do_quit(self) -> None:
+        self._scheduler.stop()
         self.destroy()
+
+    def _on_close(self) -> None:
+        # If tray is active and user didn't explicitly quit, minimise to tray
+        if self._tray_icon and not self._quitting:
+            self._hide_to_tray()
+            return
+        self._save_window_state()
+        self._do_quit()
 
 
 # ---------------------------------------------------------------------------
