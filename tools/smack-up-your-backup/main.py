@@ -1421,10 +1421,11 @@ class SettingsTab(tk.Frame):
                  font=FONT_MONO, width=W).grid(row=2, column=1, sticky="w", pady=2)
         self._profile_vars["cloud_folder_id"] = cfid_var
 
-        # ── Local backup directory (always shown) ───────────────────────
+        # ── Local working / backup directory (always shown) ──────────────
         self._local_frame = tk.Frame(left, bg=BG_DEEP)
-        tk.Label(self._local_frame, text="Backup directory", bg=BG_DEEP, fg=FG_DIM,
-                 font=FONT_SMALL, anchor="w").grid(row=0, column=0, sticky="w", padx=(0, 8), pady=2)
+        self._local_dir_label = tk.Label(self._local_frame, text="Backup directory",
+                 bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL, anchor="w")
+        self._local_dir_label.grid(row=0, column=0, sticky="w", padx=(0, 8), pady=2)
         bkdir_var = tk.StringVar()
         tk.Entry(self._local_frame, textvariable=bkdir_var, bg=BG_INPUT, fg=FG_MAIN,
                  insertbackground=ACCENT, relief="flat",
@@ -1496,8 +1497,8 @@ class SettingsTab(tk.Frame):
         tk.Entry(gc_frame, textvariable=self._gc_creds_var, bg=BG_INPUT, fg=FG_MAIN,
                  insertbackground=ACCENT, relief="flat",
                  font=FONT_MONO, width=W).grid(row=1, column=1, sticky="w", pady=2)
-        tk.Button(gc_frame, text="…", bg=BG_CARD, fg=FG_MAIN,
-                  relief="flat", font=FONT_SMALL, padx=6, pady=1,
+        tk.Button(gc_frame, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_SMALL, padx=8, pady=2,
                   command=self._browse_global_key).grid(row=1, column=2, padx=(4, 0), pady=2)
 
         self._gc_key_status_var = tk.StringVar(value="")
@@ -1593,9 +1594,13 @@ class SettingsTab(tk.Frame):
         # Re-pack in order: method-specific → local dir (always)
         if method == "ftp":
             self._ftp_frame.pack(fill="x", pady=(6, 0))
+            self._local_dir_label.configure(text="Backup directory")
         elif method == "cloud":
             self._cloud_frame.pack(fill="x", pady=(6, 0))
-        # Local backup directory is always shown
+            self._local_dir_label.configure(text="Local working folder")
+        else:
+            self._local_dir_label.configure(text="Backup directory")
+        # Local directory is always shown — cloud uses it as staging
         self._local_frame.pack(fill="x", pady=(6, 0))
 
     def _browse_credentials(self) -> None:
