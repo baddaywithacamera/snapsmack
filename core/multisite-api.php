@@ -109,10 +109,11 @@ if ($resource === 'handshake' && $method === 'POST') {
         $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, '0') ON DUPLICATE KEY UPDATE setting_val = '0'")->execute(['multisite_reg_token_expires']);
 
         ms_ok([
-            'api_key'   => $api_key_remote,   // hub stores this, uses it to call us
-            'site_url'  => BASE_URL,
-            'site_name' => $settings['site_name'] ?? 'SnapSmack',
-            'version'   => SNAPSMACK_VERSION,
+            'api_key'          => $api_key_local,   // hub presents this when calling us (hub→spoke)
+            'api_key_outbound' => $api_key_remote,  // we present this when calling hub (spoke→hub)
+            'site_url'         => BASE_URL,
+            'site_name'        => $settings['site_name'] ?? 'SnapSmack',
+            'version'          => SNAPSMACK_VERSION,
         ]);
     } catch (\PDOException $e) {
         ms_err('Registration failed: ' . $e->getMessage());

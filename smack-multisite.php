@@ -87,7 +87,10 @@ if (isset($_POST['register_spoke'])) {
             if (empty($response_data['ok']) || empty($response_data['api_key'])) {
                 $err = "Handshake failed: " . ($response_data['error'] ?? 'Unknown error');
             } else {
-                $api_key_remote = $response_data['api_key'];
+                // api_key     = key hub presents when calling spoke (hub→spoke auth)
+                // api_key_outbound = key spoke presents when calling hub (spoke→hub auth)
+                $api_key_local  = $response_data['api_key'];
+                $api_key_remote = $response_data['api_key_outbound'] ?? '';
 
                 // Store the spoke
                 $stmt = $pdo->prepare("
@@ -104,7 +107,6 @@ if (isset($_POST['register_spoke'])) {
                 ");
 
                 try {
-                    $api_key_local = bin2hex(random_bytes(32));
                     $stmt->execute(['spoke', $spoke_url, $spoke_name, $api_key_local, $api_key_remote]);
                     $msg = "Spoke registered successfully: {$spoke_name}";
                 } catch (PDOException $e) {
