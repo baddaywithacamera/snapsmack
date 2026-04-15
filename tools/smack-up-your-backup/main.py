@@ -1538,6 +1538,11 @@ class AuditTab(tk.Frame):
         tk.Button(ctrl, text="Save .html", bg=BG_CARD, fg=FG_MAIN,
                   relief="flat", font=FONT_BODY, padx=10, pady=6,
                   command=lambda: self._save("html")).pack(side="left", padx=(4, 0))
+        tk.Label(ctrl,
+                 text="Compares manifest vs server filesystem vs database.  "
+                      "Uses SHA-256 checksums from the manifest to detect size mismatches.",
+                 bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL).pack(
+            side="left", padx=(16, 0))
 
         self._prog_bar = ProgressBar(self)
         self._prog_bar.pack(fill="x", padx=16, pady=(0, 2))
@@ -1933,55 +1938,21 @@ class SettingsTab(tk.Frame):
         self._profile_vars["backup_dir"] = bkdir_var
         self._browse_btn(local_g, 0, self._browse_backup_dir)
 
-        # ── Schedule section ────────────────────────────────────────────
-        tk.Frame(c, bg=BORDER, height=1).pack(fill="x", pady=(10, 6))
-        tk.Label(c, text="Automatic Backup Schedule", bg=BG_MID, fg=ACCENT,
-                 font=FONT_HEAD).pack(anchor="w", pady=(0, 6))
+        # Schedule fields still in _profile_vars so they load/save correctly —
+        # but the UI is in the dedicated Schedule tab, not here.
+        for key, default in [
+            ("schedule_enabled", tk.BooleanVar),
+            ("schedule_type",    tk.StringVar),
+            ("schedule_day",     tk.StringVar),
+            ("schedule_time",    tk.StringVar),
+        ]:
+            if key not in self._profile_vars:
+                self._profile_vars[key] = (tk.BooleanVar if key == "schedule_enabled"
+                                           else tk.StringVar)()
 
-        sched_g = tk.Frame(c, bg=BG_MID)
-        sched_g.pack(fill="x")
-
-        self._sched_enabled_var = tk.BooleanVar(value=False)
-        tk.Checkbutton(sched_g, text="Enable scheduled backups for this profile",
-                       variable=self._sched_enabled_var,
-                       bg=BG_MID, fg=FG_MAIN, selectcolor=BG_INPUT,
-                       activebackground=BG_MID, font=FONT_BODY).pack(anchor="w", pady=2)
-        self._profile_vars["schedule_enabled"] = self._sched_enabled_var
-
-        sched_row1 = tk.Frame(sched_g, bg=BG_MID)
-        sched_row1.pack(anchor="w", pady=2)
-        tk.Label(sched_row1, text="Frequency", bg=BG_MID, fg=FG_DIM,
-                 font=FONT_BODY, width=12, anchor="w").pack(side="left")
-        self._sched_type_var = tk.StringVar(value="daily")
-        ttk.Combobox(sched_row1, textvariable=self._sched_type_var,
-                     values=["daily", "weekly"], state="readonly",
-                     font=FONT_BODY, width=10).pack(side="left")
-        self._profile_vars["schedule_type"] = self._sched_type_var
-
-        sched_row2 = tk.Frame(sched_g, bg=BG_MID)
-        sched_row2.pack(anchor="w", pady=2)
-        tk.Label(sched_row2, text="Day (weekly)", bg=BG_MID, fg=FG_DIM,
-                 font=FONT_BODY, width=12, anchor="w").pack(side="left")
-        self._sched_day_var = tk.StringVar(value="monday")
-        ttk.Combobox(sched_row2, textvariable=self._sched_day_var,
-                     values=["monday","tuesday","wednesday","thursday",
-                             "friday","saturday","sunday"],
-                     state="readonly", font=FONT_BODY, width=12).pack(side="left")
-        self._profile_vars["schedule_day"] = self._sched_day_var
-
-        sched_row3 = tk.Frame(sched_g, bg=BG_MID)
-        sched_row3.pack(anchor="w", pady=2)
-        tk.Label(sched_row3, text="Time (HH:MM)", bg=BG_MID, fg=FG_DIM,
-                 font=FONT_BODY, width=12, anchor="w").pack(side="left")
-        self._sched_time_var = tk.StringVar(value="02:00")
-        tk.Entry(sched_row3, textvariable=self._sched_time_var,
-                 bg=BG_INPUT, fg=FG_MAIN, insertbackground=ACCENT,
-                 relief="flat", font=FONT_MONO, width=8).pack(side="left")
-        self._profile_vars["schedule_time"] = self._sched_time_var
-
-        self._sched_next_var = tk.StringVar(value="")
-        tk.Label(sched_g, textvariable=self._sched_next_var,
-                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w", pady=(2, 0))
+        tk.Label(c, text="Use the Schedule tab to configure automatic backups.",
+                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL).pack(
+            anchor="w", pady=(8, 0))
 
         # Profile buttons row
         prof_btns = tk.Frame(c, bg=BG_MID)
@@ -2865,7 +2836,7 @@ class SchedulerTab(tk.Frame):
         tk.Label(hdr, text="Backup Schedule", bg=BG_MID, fg=ACCENT,
                  font=FONT_TITLE).pack(side="left")
         tk.Label(hdr,
-                 text="Enable, configure, and monitor automatic backups per blog.",
+                 text="Changes save automatically. SUYB must be running for schedules to fire.",
                  bg=BG_MID, fg=FG_DIM, font=FONT_BODY).pack(side="left", padx=(14, 0))
         tk.Button(hdr, text="↻  Refresh", bg=BG_CARD, fg=FG_MAIN,
                   relief="flat", font=FONT_BODY, padx=10, pady=4,
@@ -2946,12 +2917,12 @@ class SchedulerTab(tk.Frame):
 
         vars_ = {}
 
-        # Blog name + URL
-        info = tk.Frame(row, bg=BG_MID, width=176)
+        # Blog name + URL — wider so names don't get clipped
+        info = tk.Frame(row, bg=BG_MID, width=220)
         info.pack(side="left")
         info.pack_propagate(False)
         tk.Label(info, text=name, bg=BG_MID, fg=FG_MAIN,
-                 font=FONT_HEAD, anchor="w").pack(anchor="w")
+                 font=FONT_HEAD, anchor="w", wraplength=210).pack(anchor="w")
         tk.Label(info, text=profile.get("site_url", ""),
                  bg=BG_MID, fg=FG_DIM, font=FONT_SMALL, anchor="w").pack(anchor="w")
 
@@ -3076,9 +3047,10 @@ class HelpTab(tk.Frame):
         text_frame.pack(fill="both", expand=True)
 
         self._text = tk.Text(
-            text_frame, bg=BG_DEEP, fg=FG_MAIN, font=FONT_BODY,
+            text_frame, bg=BG_DEEP, fg=FG_MAIN,
+            font=("Segoe UI", 12),   # larger for readability
             relief="flat", wrap="word", state="disabled",
-            padx=4, pady=4, spacing1=4, spacing3=4,
+            padx=12, pady=8, spacing1=6, spacing3=6,
         )
         sb = ttk.Scrollbar(text_frame, command=self._text.yview)
         self._text.configure(yscrollcommand=sb.set)
@@ -3208,24 +3180,25 @@ class App(tk.Tk):
         self._profile_menu.bind("<<ComboboxSelected>>", self._on_profile_selected)
 
     def _build_tabs(self):
-        # Tab bar
-        tab_bar = tk.Frame(self, bg=BG_MID, height=38)
+        # Tab bar — taller, larger font, clear active indicator
+        tab_bar = tk.Frame(self, bg=BG_CARD, height=48)
         tab_bar.pack(fill="x")
         tab_bar.pack_propagate(False)
 
         self._tab_btns = {}
         self._active_tab = TAB_BACKUP
         for key, label in [
-            (TAB_BACKUP,    "Backup"),
-            (TAB_RESTORE,   "Restore"),
-            (TAB_AUDIT,     "Audit"),
-            (TAB_SCHEDULER, "Schedule"),
-            (TAB_SETTINGS,  "Settings"),
-            (TAB_HELP,      "Help"),
+            (TAB_BACKUP,    "  Backup  "),
+            (TAB_RESTORE,   "  Restore  "),
+            (TAB_AUDIT,     "  Audit  "),
+            (TAB_SCHEDULER, "  Schedule  "),
+            (TAB_SETTINGS,  "  Settings  "),
+            (TAB_HELP,      "  Help  "),
         ]:
             btn = tk.Button(
-                tab_bar, text=label, bg=BG_MID, fg=FG_DIM,
-                relief="flat", font=FONT_BODY, padx=16,
+                tab_bar, text=label, bg=BG_CARD, fg=FG_DIM,
+                relief="flat", font=FONT_HEAD, padx=4, pady=0,
+                bd=0, highlightthickness=0,
                 command=lambda k=key: self._switch_tab(k),
             )
             btn.pack(side="left", fill="y")
@@ -3244,9 +3217,12 @@ class App(tk.Tk):
 
     def _switch_tab(self, key: str) -> None:
         for k, btn in self._tab_btns.items():
+            active = (k == key)
             btn.configure(
-                bg=BG_DEEP if k == key else BG_MID,
-                fg=ACCENT   if k == key else FG_DIM,
+                bg=BG_DEEP     if active else BG_CARD,
+                fg=ACCENT      if active else FG_DIM,
+                font=(*FONT_HEAD[:2], "bold") if active else FONT_HEAD,
+                relief="flat",
             )
         for frame in (self._tab_backup, self._tab_restore, self._tab_audit,
                       self._tab_scheduler, self._tab_settings, self._tab_help):
