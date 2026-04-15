@@ -284,6 +284,35 @@ class BackupEngine:
     def _log(self, msg: str) -> None:
         self.on_log(msg)
 
+    def _write_log_file(self, backup_dir: str, blog_name: str,
+                        timestamp: str, result: dict) -> None:
+        """Write a persistent session log to backup_dir/logs/."""
+        try:
+            log_dir = os.path.join(backup_dir, "logs")
+            os.makedirs(log_dir, exist_ok=True)
+            log_path = os.path.join(log_dir, f"{blog_name}_backup_{timestamp}.log")
+            with open(log_path, "w", encoding="utf-8") as f:
+                f.write(f"Smack Up Your Backup — session log\n")
+                f.write(f"Blog:      {self.profile.get('name', '')}\n")
+                f.write(f"Site:      {self.profile.get('site_url', '')}\n")
+                f.write(f"Timestamp: {timestamp}\n")
+                f.write(f"Mode:      {'Full' if self.force_full else 'Differential'}\n")
+                f.write("─" * 60 + "\n\n")
+                f.write(f"Files downloaded: {result.get('files_downloaded', 0)}\n")
+                f.write(f"Files skipped:    {result.get('files_skipped', 0)}\n")
+                f.write(f"Files failed:     {result.get('files_failed', 0)}\n")
+                f.write(f"ZIP:              {result.get('zip_path', '')}\n")
+                f.write(f"Cloud ID:         {result.get('cloud_id', '') or 'Not uploaded'}\n")
+                f.write(f"Success:          {result.get('success', False)}\n")
+                if result.get("errors"):
+                    f.write("\nERRORS:\n")
+                    for err in result["errors"]:
+                        f.write(f"  ✗ {err}\n")
+                else:
+                    f.write("\nNo errors.\n")
+        except Exception:
+            pass  # never let logging break a backup
+
     # ------------------------------------------------------------------
 
     def run(self) -> dict:
@@ -626,6 +655,7 @@ class BackupEngine:
 
         if cloud:
             try:
+                self._log("Connecting to cloud storage…")
                 cloud_id = cloud.upload_file(
                     zip_path, zip_name,
                     on_progress=lambda r, t: self._progress(
@@ -641,8 +671,9 @@ class BackupEngine:
                 cloud_manifest.push_cloud_state(cloud, self.profile, new_state, available_zips)
                 self._log("Cloud state JSON updated.")
             except Exception as e:
-                result["errors"].append(f"Cloud push failed: {e}")
-                # Non-fatal — continue to verify
+                err = f"Cloud push failed: {e}"
+                result["errors"].append(err)
+                self._log(f"✗ {err}")   # always visible in log pane
 
         # ── Stage 6: Verify ──────────────────────────────────────────
         self._progress("stage6", "Verifying…", 0.92)
@@ -674,14 +705,24 @@ class BackupEngine:
                 result["errors"].append("Could not upload backup-state.json to server (non-fatal).")
             ftp.disconnect()
 
+        # ── Log any errors that weren't already logged ───────────────
+        non_fatal = [e for e in result["errors"]
+                     if not e.startswith("✗") and "Cloud push failed" not in e
+                     and "Download" not in e]
+        for err in non_fatal:
+            self._log(f"⚠ {err}")
+
+        # ── Write session log file ────────────────────────────────────
+        self._write_log_file(backup_dir, blog_name, timestamp, result)
+
         if verify_ok:
             result["success"] = True
             self._progress("done", f"Backup complete — {result['files_downloaded']} downloaded, {result['files_skipped']} skipped.", 1.0)
             self._log("Backup successful.")
-            # ── Clean up checkpoint on success ───────────────────────
             cp.delete()
             self._log("Checkpoint cleared.")
         else:
-            self._progress("done", "Backup completed with errors.", 1.0)
+            self._progress("done", "Backup completed with errors — check the log file.", 1.0)
+            self._log(f"✗ Backup completed with {len(result['errors'])} error(s). See log file in {backup_dir}")
 
         return result
