@@ -51,6 +51,15 @@ if (!function_exists('sc_github_get')) {
     }
 }
 
+// ── Preflight: required constants ─────────────────────────────────────────────
+
+$preflight_errors = [];
+foreach (['SNAPSMACK_GITHUB_REPO', 'SMACK_RELEASE_PRIVKEY'] as $_const) {
+    if (!defined($_const) || !constant($_const)) {
+        $preflight_errors[] = "<code>{$_const}</code> is not defined in sc-config.php.";
+    }
+}
+
 // ── Load settings ─────────────────────────────────────────────────────────────
 
 $sc_db = sc_db();
@@ -65,7 +74,7 @@ $latest_tag      = '';
 $latest_tag_sha  = '';
 $check_error     = '';
 
-$tags_data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/tags?per_page=10');
+$tags_data = $preflight_errors ? false : sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/tags?per_page=10');
 if (is_array($tags_data) && !empty($tags_data)) {
     // GitHub returns tags newest-first by creation date
     $latest_tag     = $tags_data[0]['name']             ?? '';
@@ -239,6 +248,20 @@ include __DIR__ . '/sc-layout-top.php';
     <h1 class="sc-page-title">Update Smack Central</h1>
     <p class="sc-page-sub">Pulls the latest tagged release from GitHub. sc-config.php is never touched.</p>
 </div>
+
+<?php if ($preflight_errors): ?>
+    <div class="sc-card" style="margin-bottom:24px;border-color:#e05555;">
+        <h2 class="sc-card-title" style="color:#e05555;">Configuration incomplete</h2>
+        <p style="margin-bottom:12px;color:var(--sc-text-muted,#888);font-size:0.88rem;">
+            Add the following to <code>sc-config.php</code> on the server:
+        </p>
+        <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;font-size:0.85rem;font-family:monospace;">
+            <?php foreach ($preflight_errors as $e): ?>
+                <li style="color:#e05555;">✗ <?php echo $e; ?></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+<?php endif; ?>
 
 <?php if ($result_log): ?>
     <div class="sc-card" style="margin-bottom:24px;">
