@@ -3495,6 +3495,38 @@ class App(tk.Tk):
 # Entry point
 # ---------------------------------------------------------------------------
 
+def _enforce_single_instance():
+    """Prevent more than one copy of SUYB running at the same time.
+    On Windows: named mutex.  On Linux/Mac: lock file."""
+    import sys, os
+
+    if sys.platform == "win32":
+        import ctypes
+        mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "SmackUpYourBackup_SingleInstance")
+        if ctypes.windll.kernel32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
+            import tkinter as _tk
+            from tkinter import messagebox as _mb
+            _r = _tk.Tk(); _r.withdraw()
+            _mb.showinfo("Already running",
+                         "Smack Up Your Backup is already running.\n\n"
+                         "Check the system tray if you can't see the window.",
+                         parent=_r)
+            _r.destroy()
+            sys.exit(0)
+        # Keep handle alive for process lifetime
+        _enforce_single_instance._mutex = mutex
+    else:
+        import fcntl, tempfile
+        lock_path = os.path.join(tempfile.gettempdir(), "suyb.lock")
+        _enforce_single_instance._lock_fh = open(lock_path, "w")
+        try:
+            fcntl.flock(_enforce_single_instance._lock_fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            print("Smack Up Your Backup is already running.")
+            sys.exit(0)
+
+
 if __name__ == "__main__":
+    _enforce_single_instance()
     app = App()
     app.mainloop()
