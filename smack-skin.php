@@ -8,8 +8,8 @@
  *               Manages color schemes, fonts, and other skin-level customizations.
  *
  *   GALLERY   — Browse the remote skin registry, install new skins, update
- *               existing ones, or remove skins you no longer need. Skins with
- *               "development" status are visible but cannot be installed.
+ *               existing ones, or remove skins you no longer need. Development
+ *               skins and mobile-only skins are hidden from the gallery entirely.
  */
 
 require_once 'core/auth.php';
@@ -858,31 +858,38 @@ if (!empty($google_families)) {
 
     <?php
     // ── Screenshot discovery helper ────────────────────────────────────
-    // Returns array of ['file'=>relative_path, 'label'=>'Archive'|etc.]
+    // Returns array of ['file'=>absolute_url, 'label'=>'Archive'|etc.]
     // for all screenshot-*.png files in a skin directory.
+    // Uses SKINS_DIR (absolute filesystem path) for reliable file_exists checks
+    // regardless of PHP's working directory. Returns BASE_URL-prefixed URLs so
+    // links work in subdirectory installs.
     // Falls back to screenshot.png for legacy skins with a single shot.
     function skin_screenshots(string $slug): array {
-        $dir   = "skins/{$slug}";
-        $shots = [];
-        $names = [
+        $abs_dir = SKINS_DIR . '/' . $slug;   // absolute path for file_exists
+        $url_dir = BASE_URL . "skins/{$slug}"; // absolute URL for img src
+        $shots   = [];
+        $names   = [
             'screenshot-landing.png' => 'Landing',
             'screenshot-archive.png' => 'Archive',
             'screenshot-page.png'    => 'Text Page',
         ];
         foreach ($names as $file => $label) {
-            if (file_exists("{$dir}/{$file}")) {
-                $shots[] = ['file' => "{$dir}/{$file}", 'label' => $label];
+            if (file_exists("{$abs_dir}/{$file}")) {
+                $shots[] = ['file' => "{$url_dir}/{$file}", 'label' => $label];
             }
         }
         // Fallback: single screenshot.png (legacy)
-        if (empty($shots) && file_exists("{$dir}/screenshot.png")) {
-            $shots[] = ['file' => "{$dir}/screenshot.png", 'label' => 'Preview'];
+        if (empty($shots) && file_exists("{$abs_dir}/screenshot.png")) {
+            $shots[] = ['file' => "{$url_dir}/screenshot.png", 'label' => 'Preview'];
         }
         return $shots;
     }
 
     // Renders the screenshot carousel HTML for a skin card.
-    function render_skin_screenshots(string $slug, string $skin_name, ?string $remote_screenshot = null): void {
+    // $remote_screenshots: array of ['src'=>url, 'label'=>label] from the registry,
+    //   used as fallback when the skin is not locally installed.
+    // $remote_screenshot:  single URL string, legacy fallback (used when $remote_screenshots absent).
+    function render_skin_screenshots(string $slug, string $skin_name, ?string $remote_screenshot = null, array $remote_screenshots = []): void {
         $shots = skin_screenshots($slug);
         if (!empty($shots)): ?>
             <?php foreach ($shots as $i => $s): ?>
@@ -890,7 +897,8 @@ if (!empty($google_families)) {
                      alt="<?php echo htmlspecialchars($skin_name . ' — ' . $s['label']); ?>"
                      class="<?php echo $i === 0 ? 'ss-active' : ''; ?>"
                      data-label="<?php echo htmlspecialchars($s['label']); ?>"
-                     loading="lazy">
+                     loading="lazy"
+                     onerror="this.style.display='none';">
             <?php endforeach; ?>
             <?php if (count($shots) > 1): ?>
                 <span class="ss-label"><?php echo htmlspecialchars($shots[0]['label']); ?></span>
@@ -898,6 +906,25 @@ if (!empty($google_families)) {
                 <span class="ss-nav ss-nav-next" onclick="ssNav(this,1)">&rsaquo;</span>
                 <span class="ss-dots">
                     <?php foreach ($shots as $i => $s): ?>
+                        <span class="ss-dot<?php echo $i === 0 ? ' active' : ''; ?>" onclick="ssGo(this,<?php echo $i; ?>)"></span>
+                    <?php endforeach; ?>
+                </span>
+            <?php endif; ?>
+        <?php elseif (!empty($remote_screenshots)): ?>
+            <?php foreach ($remote_screenshots as $i => $s): ?>
+                <img src="<?php echo htmlspecialchars($s['src']); ?>"
+                     alt="<?php echo htmlspecialchars($skin_name . ' — ' . $s['label']); ?>"
+                     class="<?php echo $i === 0 ? 'ss-active' : ''; ?>"
+                     data-label="<?php echo htmlspecialchars($s['label']); ?>"
+                     loading="lazy"
+                     onerror="this.style.display='none'; this.parentElement.querySelector('.no-preview') && (this.parentElement.querySelector('.no-preview').style.display='block');">
+            <?php endforeach; ?>
+            <?php if (count($remote_screenshots) > 1): ?>
+                <span class="ss-label"><?php echo htmlspecialchars($remote_screenshots[0]['label']); ?></span>
+                <span class="ss-nav ss-nav-prev" onclick="ssNav(this,-1)">&lsaquo;</span>
+                <span class="ss-nav ss-nav-next" onclick="ssNav(this,1)">&rsaquo;</span>
+                <span class="ss-dots">
+                    <?php foreach ($remote_screenshots as $i => $s): ?>
                         <span class="ss-dot<?php echo $i === 0 ? ' active' : ''; ?>" onclick="ssGo(this,<?php echo $i; ?>)"></span>
                     <?php endforeach; ?>
                 </span>
@@ -932,6 +959,12 @@ if (!empty($google_families)) {
             <h3 class="mt-24">INSTALLED SKINS</h3>
             <div class="gallery-grid">
                 <?php foreach ($local_skins as $slug => $skin):
+                    // Mobile skin is auto-assigned — never user-selectable or visible
+                    if (defined('SNAPSMACK_MOBILE_SKIN') && SNAPSMACK_MOBILE_SKIN !== '' && $slug === SNAPSMACK_MOBILE_SKIN) continue;
+                    // Mobile-only skins (e.g. photogram) are never shown in the gallery
+                    if (!empty($skin['features']['mobile_only'])) continue;
+                    // Development skins are not shown in the gallery
+                    if (($skin['status'] ?? 'stable') === 'development') continue;
                     // Mode filter: only show skins matching the site's mode
                     $skin_carousel = !empty($skin['features']['carousel']);
                     if ($skin_carousel !== $is_carousel_site) continue;
@@ -999,7 +1032,11 @@ if (!empty($google_families)) {
         <div class="gallery-grid">
             <?php foreach ($gallery_skins as $slug => $skin):
                 // Mobile skin is auto-assigned — never user-selectable or visible
-                if (defined('SNAPSMACK_MOBILE_SKIN') && $slug === SNAPSMACK_MOBILE_SKIN) continue;
+                if (defined('SNAPSMACK_MOBILE_SKIN') && SNAPSMACK_MOBILE_SKIN !== '' && $slug === SNAPSMACK_MOBILE_SKIN) continue;
+                // Mobile-only skins (e.g. photogram) are never shown in the gallery
+                if (!empty($skin['features']['mobile_only'])) continue;
+                // Development skins are not shown in the gallery
+                if (($skin['status'] ?? 'stable') === 'development') continue;
                 // Mode filter: only show skins matching the site's mode
                 $skin_carousel = !empty($skin['features']['carousel']);
                 if ($skin_carousel !== $is_carousel_site) continue;
@@ -1007,7 +1044,7 @@ if (!empty($google_families)) {
                 <div class="skin-card" style="cursor:pointer;" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
                     <!-- Screenshot(s) -->
                     <div class="skin-card-screenshot">
-                        <?php render_skin_screenshots($slug, $skin['name'] ?? $slug, $skin['screenshot'] ?? null); ?>
+                        <?php render_skin_screenshots($slug, $skin['name'] ?? $slug, $skin['screenshot'] ?? null, $skin['screenshots'] ?? []); ?>
                     </div>
 
                     <!-- Body -->
@@ -1121,7 +1158,11 @@ if (!empty($google_families)) {
             foreach ($local_skins as $slug => $skin):
                 if (isset($gallery_skins[$slug])) continue;
                 // Mobile skin is auto-assigned — never user-selectable or visible
-                if (defined('SNAPSMACK_MOBILE_SKIN') && $slug === SNAPSMACK_MOBILE_SKIN) continue;
+                if (defined('SNAPSMACK_MOBILE_SKIN') && SNAPSMACK_MOBILE_SKIN !== '' && $slug === SNAPSMACK_MOBILE_SKIN) continue;
+                // Mobile-only skins (e.g. photogram) are never shown in the gallery
+                if (!empty($skin['features']['mobile_only'])) continue;
+                // Development skins are not shown in the gallery
+                if (($skin['status'] ?? 'stable') === 'development') continue;
                 $skin_carousel = !empty($skin['features']['carousel']);
                 if ($skin_carousel !== $is_carousel_site) continue;
             ?>
@@ -1219,6 +1260,11 @@ if (isset($gallery_skins)) {
         foreach ($shots as $s) {
             $screenshots[] = ['src' => $s['file'], 'label' => $s['label']];
         }
+        // Fallback: use registry's screenshots array (multiple) if skin not installed locally
+        if (empty($screenshots) && !empty($skin['screenshots'])) {
+            $screenshots = $skin['screenshots'];
+        }
+        // Final fallback: single legacy screenshot URL from registry
         if (empty($screenshots) && !empty($skin['screenshot'])) {
             $screenshots[] = ['src' => $skin['screenshot'], 'label' => 'Preview'];
         }

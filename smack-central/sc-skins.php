@@ -285,6 +285,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                     $screenshot = $existing_registry['skins'][$slug]['screenshot'] ?? '';
                 }
 
+                // Auto-detect screenshot files and copy them to the releases screenshots directory.
+                // The gallery uses these for multi-screenshot previews of non-installed skins.
+                $screenshot_names  = [
+                    'screenshot-landing.png' => 'Landing',
+                    'screenshot-archive.png' => 'Archive',
+                    'screenshot-page.png'    => 'Text Page',
+                    'screenshot.png'         => 'Preview',
+                ];
+                $ss_dest_dir = rtrim(RELEASES_DIR, '/') . '/skins/screenshots/' . $slug;
+                $ss_dest_url = rtrim(RELEASES_URL, '/') . '/skins/screenshots/' . $slug;
+                $detected_screenshots = [];
+                foreach ($screenshot_names as $filename => $label) {
+                    $src_file = rtrim($skin_dir, '/') . '/' . $filename;
+                    if (file_exists($src_file)) {
+                        if (!is_dir($ss_dest_dir)) @mkdir($ss_dest_dir, 0755, true);
+                        @copy($src_file, $ss_dest_dir . '/' . $filename);
+                        $detected_screenshots[] = ['src' => $ss_dest_url . '/' . $filename, 'label' => $label];
+                        // Use the landing shot (or first found) as the legacy single-screenshot field
+                        if ($screenshot === '') {
+                            $screenshot = $ss_dest_url . '/' . $filename;
+                        }
+                    }
+                }
+
                 if (file_exists($zip_path)) @unlink($zip_path);
 
                 $zip = new ZipArchive();
@@ -326,6 +350,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                     'author'             => $meta['author'],
                     'description'        => $meta['description'],
                     'screenshot'         => $screenshot,
+                    'screenshots'        => $detected_screenshots,
                     'download_url'       => $download_url,
                     'download_size'      => $zip_size,
                     'signature'          => $sig_hex,
