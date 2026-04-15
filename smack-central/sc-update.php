@@ -74,11 +74,22 @@ $latest_tag      = '';
 $latest_tag_sha  = '';
 $check_error     = '';
 
-$tags_data = $preflight_errors ? false : sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/tags?per_page=10');
+$tags_data = $preflight_errors ? false : sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/tags?per_page=20');
 if (is_array($tags_data) && !empty($tags_data)) {
-    // GitHub returns tags newest-first by creation date
-    $latest_tag     = $tags_data[0]['name']             ?? '';
-    $latest_tag_sha = $tags_data[0]['commit']['sha']    ?? '';
+    // Sort tags by version descending — GitHub order is unreliable.
+    // Normalises trailing patch letters (0.7.9k → 0.7.9.11) so version_compare works.
+    $normalise_ver = function(string $v): string {
+        $v = ltrim($v, 'v');
+        if (preg_match('/^(\d+(?:\.\d+)*)([a-z])$/i', $v, $m)) {
+            return $m[1] . '.' . (ord(strtolower($m[2])) - ord('a') + 1);
+        }
+        return $v . '.0';
+    };
+    usort($tags_data, function($a, $b) use ($normalise_ver) {
+        return version_compare($normalise_ver($b['name']), $normalise_ver($a['name']));
+    });
+    $latest_tag     = $tags_data[0]['name']          ?? '';
+    $latest_tag_sha = $tags_data[0]['commit']['sha'] ?? '';
 } else {
     $check_error = 'Could not reach GitHub API. Check your token and network.';
 }
