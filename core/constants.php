@@ -7,8 +7,8 @@
  * the application.
  */
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.9j');
-define('SNAPSMACK_VERSION_SHORT', '0.7.9j');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.9k');
+define('SNAPSMACK_VERSION_SHORT', '0.7.9k');
 define('SNAPSMACK_VERSION_CODENAME', "Is This Seat Taken");
 
 // --- VERSION COMPARISON ---
