@@ -4,6 +4,14 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.9k — "Is This Seat Taken" (2026-04-15)
+
+### Fixed
+- **Multisite "Last seen" time was always stale after a ping.** Was using `strtotime()` on MySQL's `last_seen_at` string then subtracting PHP's `time()`. When MySQL's server timezone differs from PHP's, the diff is wrong (showed 4h ago for a spoke that just pinged). Now fetches `UNIX_TIMESTAMP(last_seen_at)` directly from MySQL so both values are in the same reference frame. Shows "just now" for pings under 60 seconds.
+- **Registration token COPY button was a tiny grey orphan** pushed to the far right of the page using `action-view` class. Replaced with a `btn-smack` button flush against the token field, same height, shows "COPIED ✓" on success.
+
+---
+
 ## 0.7.9j — "Is This Seat Taken" (2026-04-13)
 
 ### Fixed
