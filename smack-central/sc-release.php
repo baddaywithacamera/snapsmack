@@ -198,17 +198,12 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
     }
 
     // Safety exclusions — always skipped regardless of diff mode.
-    // Fonts are pre-installed and never updated. On-demand / development skins
-    // are distributed separately; only stock skins ship in the release zip.
-    // Stock skins (always ship): hip-to-be-square, galleria, new-horizon,
-    //   50-shades-of-noah-grey, rational-geo, photogram.
-    // Photogram is a core skin — it is the mandatory mobile skin and must
-    //   travel with every release.
-    // On-demand: impact-printer (boutique, distributed separately).
-    // Development / not yet released: kiosk, pocket-rocket, the-grid (target: v0.8).
-    // Skins included in release: ONLY 50-shades-of-noah-grey and new-horizon.
-    // All other skins are tracked in git but distributed separately via
-    // the skin gallery — do not add skins here without explicit instruction.
+    // Base release ships ONLY 50-shades-of-noah-grey and new-horizon.
+    // All other skins are tracked in git but distributed via the skin gallery.
+    // Fonts are pre-installed and ship separately — never in the release zip.
+    // Tools (suyb, sybu, etc.) are desktop companion apps, not web deployables.
+    // To change what ships in the base release, edit this list and update
+    // the skin registry table in CLAUDE.md.
     $always_exclude = [
         'assets/fonts/',
         // Skins NOT included in base release package
