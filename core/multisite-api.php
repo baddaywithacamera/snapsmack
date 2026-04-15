@@ -189,8 +189,10 @@ $pdo->prepare("UPDATE snap_multisite_nodes SET last_seen_at = NOW() WHERE id = ?
 // Returns site vitals: version, counts, backup state.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'heartbeat' && $method === 'GET') {
-    $post_count  = (int)$pdo->query("SELECT COUNT(*) FROM snap_posts   WHERE status = 'published'")->fetchColumn();
-    $image_count = (int)$pdo->query("SELECT COUNT(*) FROM snap_images  WHERE img_status = 'published'")->fetchColumn();
+    // Transmissions (snap_images) are the primary content type in SnapSmack.
+    // snap_posts wraps them but the canonical count is on snap_images.
+    $post_count  = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
+    $image_count = $post_count; // same source — kept for API compat
     $pending     = (int)$pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 0")->fetchColumn();
 
     // Disk usage — uploads folder
