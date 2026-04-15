@@ -268,8 +268,8 @@ if (isset($_POST['verify_hub'])) {
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $multisite_role = $settings['multisite_role'] ?? '';
 
-// Load connected nodes
-$nodes = $pdo->query("SELECT * FROM snap_multisite_nodes ORDER BY role ASC, connected_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+// Load connected nodes — fetch UNIX_TIMESTAMP to avoid strtotime/timezone issues
+$nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, connected_at DESC")->fetchAll(PDO::FETCH_ASSOC);
 
 // --- HEARTBEAT SWEEP (hub only, once per page load) ---
 // Calls each active spoke's heartbeat endpoint and caches the stats locally.
@@ -338,7 +338,7 @@ if ($multisite_role === 'hub') {
     unset($n);
 
     // Reload nodes so status changes are reflected
-    $nodes = $pdo->query("SELECT * FROM snap_multisite_nodes ORDER BY role ASC, connected_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+    $nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, connected_at DESC")->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // Get registration token if it exists and is still valid (read from DB, not session)
@@ -472,11 +472,12 @@ include 'core/sidebar.php';
                                     </td>
                                     <td class="col-center">
                                         <?php
-                                            if ($n['last_seen_at']) {
-                                                $last_seen = strtotime($n['last_seen_at']);
-                                                $diff = time() - $last_seen;
+                                            // Use UNIX_TIMESTAMP from MySQL to avoid PHP/MySQL timezone mismatch
+                                            $last_seen_ts = isset($n['last_seen_ts']) ? (int)$n['last_seen_ts'] : 0;
+                                            if ($last_seen_ts > 0) {
+                                                $diff = time() - $last_seen_ts;
                                                 if ($diff < 60) {
-                                                    echo "now";
+                                                    echo "just now";
                                                 } elseif ($diff < 3600) {
                                                     echo floor($diff / 60) . "m ago";
                                                 } elseif ($diff < 86400) {
@@ -552,13 +553,14 @@ include 'core/sidebar.php';
                         <p style="font-size:0.85rem; color:var(--text-muted,#888); margin-bottom:10px;">
                             <strong>Active Registration Token (valid for <?php echo max(1, ceil(($reg_token_expires - time()) / 60)); ?> more minutes):</strong>
                         </p>
-                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-                            <div id="reg-token-display" style="flex:1; font-family:monospace; font-size:1.1rem; letter-spacing:2px; padding:10px;
-                                        background:var(--bg,#000); border:1px solid var(--border,#333); word-break:break-all;">
+                        <div style="display:flex; align-items:stretch; gap:0; margin-bottom:10px; border:1px solid var(--border,#333); border-radius:4px; overflow:hidden;">
+                            <div id="reg-token-display" style="flex:1; font-family:monospace; font-size:1.1rem; letter-spacing:2px; padding:12px 14px;
+                                        background:var(--bg,#000); word-break:break-all; line-height:1.4;">
                                 <?php echo htmlspecialchars($reg_token); ?>
                             </div>
-                            <button type="button" class="action-view" id="copy-token-btn"
-                                    onclick="navigator.clipboard.writeText(document.getElementById('reg-token-display').innerText.trim()).then(function(){ var b=document.getElementById('copy-token-btn'); b.textContent='COPIED'; setTimeout(function(){ b.textContent='COPY'; }, 2000); });">
+                            <button type="button" class="btn-smack" id="copy-token-btn"
+                                    style="border-radius:0; min-width:90px; border-left:1px solid var(--border,#333);"
+                                    onclick="navigator.clipboard.writeText(document.getElementById('reg-token-display').innerText.trim()).then(function(){ var b=document.getElementById('copy-token-btn'); b.textContent='COPIED ✓'; setTimeout(function(){ b.textContent='COPY'; }, 2000); });">
                                 COPY
                             </button>
                         </div>
