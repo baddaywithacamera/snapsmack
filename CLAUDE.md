@@ -17,6 +17,16 @@ Every PHP file opens with a standardised doc-block:
 
 Follow the existing header and commenting style exactly. Do not invent new formats.
 
+## CRITICAL — Skins Must Never Be Deleted
+
+**Never delete, remove, or `git rm` any skin directory.** Skins are the primary
+differentiator for SnapSmack installs. If a skin is missing from git it will be
+lost from all future releases and cannot be recovered without going back to a
+live server. If a skin needs to be hidden from users, remove it from the skin
+gallery — do not delete the files.
+
+This rule has no exceptions.
+
 ## Absolute Rules
 
 1. **No inline `<script>` blocks.** All JavaScript lives in `/assets/js/`. Engine scripts follow the naming convention `ss-engine-{name}.js`. Skins declare which scripts they need via `require_scripts[]` in their manifest. The only exception is the existing `<style>` blocks in `skin-header.php` for conditional CSS overrides (bevel, wood grain, square crop) that require PHP logic.
@@ -95,8 +105,35 @@ Everything that deploys to a web server lives at **repo root**. Non-web projects
 - `database/schema/snapsmack_canonical.sql` is maintained here and committed with every schema change. Do not ask the user to update it.
 - Git workflow: Claude stages and commits. User pushes.
 
+## Skin Registry
+
+All skins live in `skins/{skin-name}/` and must always remain tracked in git.
+Directory names use hyphens only, never underscores.
+
+| Directory | Display Name | Status | In Base Release |
+|---|---|---|---|
+| `50-shades-of-noah-grey` | 50 Shades of Noah Grey | stable | ✅ YES |
+| `new-horizon` | New Horizon | stable | ✅ YES |
+| `galleria` | Galleria | stable | skin gallery only |
+| `rational-geo` | Rational Geo | stable | skin gallery only |
+| `impact-printer` | Impact Printer | stable | skin gallery only |
+| `true-grit` | True Grit | stable | skin gallery only |
+| `hip-to-be-square` | Hip to be Square | beta | skin gallery only |
+| `a-grey-reckoning` | A Grey Reckoning | development | no |
+| `in-stereo-where-available` | In Stereo Where Available | development | no |
+| `kiosk` | Kiosk | development | no |
+| `52-card-pickup` | 52 Card Pickup | development | no |
+| `photogram` | Photogram | development | no |
+| `show-n-tell` | Show-n-Tell | development | no |
+| `the-grid` | The Grid | development | no |
+
+**Base release** includes only `50-shades-of-noah-grey` and `new-horizon`.
+All other skins are distributed via the skin gallery in Smack Central.
+To change which skins are in the base release, edit `$always_exclude` in
+`smack-central/sc-release.php` — and update this table.
+
 ## Skin Status Values
 
-- `stable` — Production ready (Galleria, Hip to be Square)
-- `beta` — Functional but not fully tested (Rational Geo)
-- `development` — Work in progress, not installable from gallery (Kiosk)
+- `stable` — Production ready
+- `beta` — Functional but not fully tested
+- `development` — Work in progress, not installable from gallery
