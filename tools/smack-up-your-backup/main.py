@@ -573,7 +573,7 @@ class ProfileDialog(tk.Toplevel):
         tk.Label(f, text="Cloud", bg=BG_MID, fg=ACCENT,
                  font=FONT_HEAD).grid(row=13, column=0, columnspan=3, sticky="w", pady=(12, 4))
         self._field(f, 14, "Provider", "cloud_provider")
-        self._field(f, 15, "Credentials JSON",     "cloud_credentials_file")
+        self._field(f, 15, "Creds override (optional)",     "cloud_credentials_file")
         tk.Button(f, text="Browse…", bg=BG_CARD, fg=FG_MAIN,
                   relief="flat", font=FONT_SMALL, padx=8, pady=2,
                   command=self._browse_credentials).grid(row=15, column=2, padx=(4, 0), pady=3)
@@ -1919,7 +1919,7 @@ class SettingsTab(tk.Frame):
             row=0, column=1, sticky="w", pady=3)
         self._profile_vars["cloud_provider"] = cloud_prov_var
 
-        self._row(cloud_g, 1, "Credentials JSON", "cloud_credentials_file")
+        self._row(cloud_g, 1, "Creds override (optional)", "cloud_credentials_file")
         self._browse_btn(cloud_g, 1, self._browse_credentials)
         self._row(cloud_g, 2, "Cloud folder ID",  "cloud_folder_id")
 
