@@ -32,6 +32,7 @@ return [
         'instagram_mode'   => true,
         'carousel'         => false,
         'community'        => ['likes', 'comments'],
+        'mobile_only'      => true,   // auto-served to phones; never shown in gallery
     ],
 
     'require_scripts' => [
