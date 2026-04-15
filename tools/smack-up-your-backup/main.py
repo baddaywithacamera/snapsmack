@@ -997,7 +997,7 @@ class BackupTab(tk.Frame):
                 if provider in ("google_drive", "onedrive"):
                     msg = (f"Cloud provider is set to '{provider}' but no credentials "
                            f"file is configured.\n\nGo to Settings → Global Cloud Config, "
-                           f"set the SA key file or Credentials JSON and click Save Defaults.\n\n"
+                           f"set the Credentials JSON and click Save Defaults.\n\n"
                            f"Continue with local-only backup instead?")
                 else:
                     msg = ("No cloud provider is configured.\n\n"
@@ -2623,7 +2623,7 @@ class SettingsTab(tk.Frame):
             self._disc_status_var.set("No cloud configuration found on this blog.")
 
     def _browse_global_key(self) -> None:
-        """File picker for the Google Drive credentials JSON (OAuth client secret or service account key)."""
+        """File picker for the Google Drive OAuth client secret JSON."""
         path = _dlg_open(self,
             title="Select credentials JSON",
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
@@ -2633,16 +2633,16 @@ class SettingsTab(tk.Frame):
             self._validate_global_key()
 
     def _validate_global_key(self) -> None:
-        """Check whether the global key file is a valid service account key."""
+        """Validate that the credentials file is a recognised OAuth client secret."""
         import cloud_client as cc
         path = self._gc_creds_var.get().strip()
         if not path:
             self._gc_key_status_var.set("")
             return
-        if cc._is_service_account_key(path):
-            self._gc_key_status_var.set("Valid service account key")
+        if cc._is_oauth_client_secret(path):
+            self._gc_key_status_var.set("Valid OAuth client secret")
         elif os.path.isfile(path):
-            self._gc_key_status_var.set("Not a service account key — OAuth will be used")
+            self._gc_key_status_var.set("Unrecognised format — expected an OAuth client secret JSON")
         else:
             self._gc_key_status_var.set("File not found")
 
@@ -2757,11 +2757,7 @@ Automatic Backups (global) — enable the system tray so closing minimizes SUYB 
     ("Cloud setup", """
 SUYB supports Google Drive and OneDrive.
 
-Google Drive — two authentication methods (both go in Settings → Global Cloud Config → Credentials JSON):
-— OAuth client secret (recommended): download from Google Cloud Console → APIs & Services → Credentials → Create OAuth 2.0 Client ID → Desktop app. First run opens a browser to authorize; subsequent runs refresh silently. Works with your personal Google Drive quota.
-— Service Account key: a JSON file from Google Cloud Console under IAM → Service Accounts. Headless, no browser popup, but service accounts have no Drive quota of their own — requires a Shared Drive with the service account added as a member.
-
-To tell which you have: open the JSON file. "type": "service_account" is a service account key. "installed" under "web" or "installed" key is OAuth.
+Google Drive — uses OAuth. Download an OAuth client secret JSON from Google Cloud Console → APIs & Services → Credentials → Create OAuth 2.0 Client ID → Desktop app. Point SUYB at it in Settings → Global Cloud Config → Credentials JSON and click Save Defaults. The first backup run opens a browser for a one-time consent click; after that the token refreshes silently in the background. Backups are stored in your own Google Drive under the folder ID you configure.
 
 OneDrive — uses MSAL. Set your credentials JSON in the profile's Credentials JSON field.
 
@@ -2801,7 +2797,7 @@ The checkpoint is deleted after a successful, verified backup completion.
 
 "Checksum mismatch" — a downloaded file's SHA-256 didn't match the manifest. SUYB retries automatically. If it keeps failing, the source file on the server may be corrupt.
 
-"Cloud upload skipped — no cloud provider configured" — check Settings → Global Cloud Config: Provider should be google_drive or onedrive, and the SA key file or Credentials JSON path should be filled in. Click Save Defaults after making changes.
+"Cloud upload skipped — no cloud provider configured" — check Settings → Global Cloud Config: Provider should be google_drive or onedrive, and the Credentials JSON path should be filled in. Click Save Defaults after making changes.
 
 "Cloud upload skipped — provider configured but no credentials" — the provider is set but the credentials file path is empty or wrong. Check the file exists at the path shown.
 

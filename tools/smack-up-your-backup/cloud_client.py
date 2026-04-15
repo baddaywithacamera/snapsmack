@@ -2,12 +2,13 @@
 Smack Up Your Backup — cloud_client.py
 Google Drive and OneDrive cloud upload/download.
 
-Two Google Drive auth modes:
-  1. Service account JSON key (headless, no browser flow — preferred)
-  2. OAuth client-secret + interactive browser flow (legacy)
+Google Drive authenticates via OAuth (InstalledAppFlow). Point the app at
+your OAuth client secret JSON (Desktop app type, downloaded from Google Cloud
+Console). The first backup run opens a browser for consent; after that the
+token is cached next to the credentials file and refreshes silently.
 
-Each blog profile can set its own credentials or fall back to the
-global cloud config (service account key + folder ID).
+Each blog profile can set its own credentials or fall back to the global
+cloud config (credentials file + folder ID).
 """
 
 import json
@@ -20,43 +21,11 @@ CHUNK_SIZE = 5 * 1024 * 1024   # 5 MB
 
 
 # ---------------------------------------------------------------------------
-# Google Drive — service account (headless, preferred)
-# ---------------------------------------------------------------------------
-
-def _get_service_account_drive_service(key_file: str):
-    """Build a Drive service from a service account JSON key file."""
-    try:
-        from google.oauth2.service_account import Credentials
-        from googleapiclient.discovery import build
-    except ImportError:
-        raise RuntimeError(
-            "google-api-python-client and google-auth are required "
-            "for Google Drive support.  pip install google-api-python-client google-auth"
-        )
-
-    SCOPES = ["https://www.googleapis.com/auth/drive"]
-    creds  = Credentials.from_service_account_file(key_file, scopes=SCOPES)
-    return build("drive", "v3", credentials=creds)
-
-
-def _is_service_account_key(path: str) -> bool:
-    """Return True if the file looks like a service account JSON key."""
-    if not path or not os.path.isfile(path):
-        return False
-    try:
-        with open(path) as f:
-            data = json.load(f)
-        return data.get("type") == "service_account"
-    except Exception:
-        return False
-
-
-# ---------------------------------------------------------------------------
-# Google Drive — OAuth (interactive browser flow, legacy)
+# Google Drive — OAuth (InstalledAppFlow)
 # ---------------------------------------------------------------------------
 
 def _get_drive_service(credentials_file: str):
-    """Build an authenticated Drive service from a client_secret JSON."""
+    """Build an authenticated Drive service from an OAuth client secret JSON."""
     try:
         from google.oauth2.credentials import Credentials
         from google_auth_oauthlib.flow import InstalledAppFlow
@@ -87,19 +56,27 @@ def _get_drive_service(credentials_file: str):
     return build("drive", "v3", credentials=creds)
 
 
+def _is_oauth_client_secret(path: str) -> bool:
+    """Return True if the file looks like an OAuth client secret JSON."""
+    if not path or not os.path.isfile(path):
+        return False
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        return "installed" in data or "web" in data
+    except Exception:
+        return False
+
+
 class DriveClient:
     def __init__(self, credentials_file: str, folder_id: str):
         self.credentials_file = credentials_file
         self.folder_id        = folder_id
         self._service         = None
-        self._is_sa           = _is_service_account_key(credentials_file)
 
     def _svc(self):
         if not self._service:
-            if self._is_sa:
-                self._service = _get_service_account_drive_service(self.credentials_file)
-            else:
-                self._service = _get_drive_service(self.credentials_file)
+            self._service = _get_drive_service(self.credentials_file)
         return self._service
 
     def upload_file(
@@ -120,7 +97,7 @@ class DriveClient:
             chunksize=CHUNK_SIZE,
         )
         meta = {"name": remote_name, "parents": [self.folder_id]}
-        req  = svc.files().create(body=meta, media_body=media, fields="id", supportsAllDrives=True)
+        req  = svc.files().create(body=meta, media_body=media, fields="id")
 
         response = None
         while response is None:
@@ -160,8 +137,6 @@ class DriveClient:
                 q=query,
                 fields="files(id,name,size,modifiedTime)",
                 orderBy="modifiedTime desc",
-                supportsAllDrives=True,
-                includeItemsFromAllDrives=True,
             )
             .execute()
         )
@@ -178,7 +153,7 @@ class DriveClient:
         import io
 
         svc = self._svc()
-        req = svc.files().get_media(fileId=file_id, supportsAllDrives=True)
+        req = svc.files().get_media(fileId=file_id)
 
         os.makedirs(os.path.dirname(local_path) or ".", exist_ok=True)
         with open(local_path, "wb") as f:
@@ -198,7 +173,7 @@ class DriveClient:
         from googleapiclient.http import MediaIoBaseDownload
 
         svc = self._svc()
-        req = svc.files().get_media(fileId=file_id, supportsAllDrives=True)
+        req = svc.files().get_media(fileId=file_id)
         buf = io.BytesIO()
         dl  = MediaIoBaseDownload(buf, req)
         done = False
@@ -218,7 +193,7 @@ class DriveClient:
         """Confirm file exists on Drive and size matches."""
         try:
             svc  = self._svc()
-            meta = svc.files().get(fileId=file_id, fields="size", supportsAllDrives=True).execute()
+            meta = svc.files().get(fileId=file_id, fields="size").execute()
             return int(meta.get("size", -1)) == expected_size
         except Exception:
             return False
@@ -384,9 +359,8 @@ def get_cloud_client(profile: dict, global_cloud: Optional[dict] = None):
       2. Global cloud config (if provided)
       3. None / empty → skip
 
-    This lets the user configure a single service account key and
-    Drive folder in global settings while still allowing per-profile
-    overrides for client isolation.
+    This lets you configure a single OAuth credentials file and Drive folder
+    in global settings while still allowing per-profile overrides.
     """
     gc = global_cloud or {}
 
