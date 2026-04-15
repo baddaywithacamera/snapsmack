@@ -206,13 +206,26 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
     //   travel with every release.
     // On-demand: impact-printer (boutique, distributed separately).
     // Development / not yet released: kiosk, pocket-rocket, the-grid (target: v0.8).
+    // Skins included in release: ONLY 50-shades-of-noah-grey and new-horizon.
+    // All other skins are tracked in git but distributed separately via
+    // the skin gallery — do not add skins here without explicit instruction.
     $always_exclude = [
         'assets/fonts/',
-        'skins/true-grit/',
-        'skins/kiosk/',
-        'skins/pocket-rocket/',
+        // Skins NOT included in base release package
+        'skins/52-card-pickup/',
+        'skins/a-grey-reckoning/',
+        'skins/galleria/',
+        'skins/hip-to-be-square/',
         'skins/impact-printer/',
+        'skins/in-stereo-where-available/',
+        'skins/kiosk/',
+        'skins/photogram/',
+        'skins/pocket-rocket/',
+        'skins/rational-geo/',
+        'skins/show-n-tell/',
         'skins/the-grid/',
+        'skins/true-grit/',
+        // Non-web directories
         'tools/',
         'projects/',
         'smack-central/',
@@ -220,6 +233,7 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         'docs/',
         'screenshots/',
         'media_assets/',
+        // Dev/meta files
         'CLAUDE.md',
         'CHANGELOG.md',
         'README.md',
