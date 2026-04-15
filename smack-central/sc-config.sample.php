@@ -43,12 +43,12 @@ define('SMACK_RELEASE_PRIVKEY', 'your_ed25519_secret_key_hex_here_128_hex_chars'
 define('SNAPSMACK_GITHUB_REPO',  'baddaywithacamera/snapsmack');
 define('SNAPSMACK_GITHUB_TOKEN', '');
 
-// ── Release Paths ─────────────────────────────────────────────────────────────
-// Absolute path to the releases output directory (must be web-accessible).
-define('RELEASES_DIR', '/home/youruser/public_html/releases/');
-
-// Public URL of the releases directory (trailing slash).
-define('RELEASES_URL', 'https://snapsmack.ca/releases/');
+// ── Git & Release Paths ───────────────────────────────────────────────────────
+// Absolute path to the SnapSmack repo root on the server (used by sc-release).
+define('SNAPSMACK_REPO_PATH', '/home/youruser/snapsmack.ca');
+define('RELEASES_DIR',        '/home/youruser/snapsmack.ca/releases/');
+define('RELEASES_URL',        'https://snapsmack.ca/releases/');
+define('GIT_BIN',             'git');
 
 // ── Asset Repository ─────────────────────────────────────────────────────────
 // SC_ASSETS_DIR: absolute path to the directory that hosts font and JS files.
