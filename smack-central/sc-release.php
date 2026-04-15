@@ -240,10 +240,15 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         // Differential mode: only include files that changed
         if ($differential && !isset($include_set[$rel])) { $skipped++; continue; }
 
-        // Safety exclusions
+        // Safety exclusions — prefix match
         foreach ($always_exclude as $excl) {
             if (str_starts_with($rel, $excl)) { $skipped++; continue 2; }
         }
+
+        // Filename-pattern exclusions (skin screenshots, SA key files, etc.)
+        $basename = basename($rel);
+        if (str_starts_with($basename, 'screenshot-') && str_ends_with($basename, '.png')) { $skipped++; continue; }
+        if (str_ends_with($basename, '.json') && str_contains($basename, 'key')) { $skipped++; continue; }
 
         $content = $src->getFromIndex($i);
         if ($content === false) continue;
