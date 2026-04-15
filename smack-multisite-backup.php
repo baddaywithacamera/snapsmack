@@ -15,6 +15,7 @@
  */
 
 require_once 'core/auth.php';
+$settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 
 // --- HUB GUARD ---
 $multisite_role = $settings['multisite_role'] ?? '';
