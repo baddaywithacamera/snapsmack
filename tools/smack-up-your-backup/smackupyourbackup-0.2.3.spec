@@ -16,10 +16,25 @@ a = Analysis(
         'pystray', 'PIL', 'PIL.Image', 'PIL.ImageDraw',
         'checkpoint', 'scheduler',
     ],
+    excludes=[
+        # AI file matching — optional, too large to bundle (several GB)
+        # Users install separately: pip install sentence-transformers
+        'sentence_transformers',
+        'torch', 'torchvision', 'torchaudio',
+        'transformers', 'tokenizers', 'huggingface_hub',
+        # Heavy scientific stack pulled in by the above
+        'scipy', 'sklearn', 'scikit_learn',
+        'numpy', 'pandas', 'matplotlib',
+        'numba', 'llvmlite',
+        'fsspec', 'pyarrow',
+        # Other heavy optional deps not needed at runtime
+        'IPython', 'ipykernel', 'notebook',
+        'pytest', 'setuptools', 'pkg_resources',
+        'jinja2', 'pygments',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
     noarchive=False,
     optimize=0,
 )
