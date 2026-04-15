@@ -120,7 +120,7 @@ class DriveClient:
             chunksize=CHUNK_SIZE,
         )
         meta = {"name": remote_name, "parents": [self.folder_id]}
-        req  = svc.files().create(body=meta, media_body=media, fields="id")
+        req  = svc.files().create(body=meta, media_body=media, fields="id", supportsAllDrives=True)
 
         response = None
         while response is None:
@@ -160,6 +160,8 @@ class DriveClient:
                 q=query,
                 fields="files(id,name,size,modifiedTime)",
                 orderBy="modifiedTime desc",
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True,
             )
             .execute()
         )
@@ -176,7 +178,7 @@ class DriveClient:
         import io
 
         svc = self._svc()
-        req = svc.files().get_media(fileId=file_id)
+        req = svc.files().get_media(fileId=file_id, supportsAllDrives=True)
 
         os.makedirs(os.path.dirname(local_path) or ".", exist_ok=True)
         with open(local_path, "wb") as f:
@@ -196,7 +198,7 @@ class DriveClient:
         from googleapiclient.http import MediaIoBaseDownload
 
         svc = self._svc()
-        req = svc.files().get_media(fileId=file_id)
+        req = svc.files().get_media(fileId=file_id, supportsAllDrives=True)
         buf = io.BytesIO()
         dl  = MediaIoBaseDownload(buf, req)
         done = False
@@ -216,7 +218,7 @@ class DriveClient:
         """Confirm file exists on Drive and size matches."""
         try:
             svc  = self._svc()
-            meta = svc.files().get(fileId=file_id, fields="size").execute()
+            meta = svc.files().get(fileId=file_id, fields="size", supportsAllDrives=True).execute()
             return int(meta.get("size", -1)) == expected_size
         except Exception:
             return False
