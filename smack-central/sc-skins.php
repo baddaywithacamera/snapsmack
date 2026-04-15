@@ -166,8 +166,14 @@ function sc_read_manifests(string $skins_dir): array {
     foreach (glob(rtrim($skins_dir, '/') . '/*/manifest.php') as $mf) {
         $slug = basename(dirname($mf));
         if (!preg_match('/^[a-z0-9][a-z0-9-]*$/', $slug)) continue;
-        $manifest = @include $mf;
+        try {
+            $manifest = include $mf;
+        } catch (\Throwable $e) {
+            continue;  // skip skins with parse errors or fatal manifest issues
+        }
         if (!is_array($manifest)) continue;
+        // Skip mobile-only skins — they are auto-assigned, not user-installable
+        if (!empty($manifest['features']['mobile_only'])) continue;
         $skins[$slug] = [
             'name'               => $manifest['name']               ?? ucfirst($slug),
             'version'            => $manifest['version']            ?? '1.0',
