@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS sc_releases (
 CREATE TABLE IF NOT EXISTS sc_assets (
     id           INT UNSIGNED    NOT NULL AUTO_INCREMENT,
     asset_type   ENUM('font','script','css') NOT NULL,
-    family       VARCHAR(100)    NOT NULL DEFAULT '' COMMENT 'Font family folder name; empty for scripts',
+    family       VARCHAR(100)    NOT NULL DEFAULT '' COMMENT 'Font family folder name — empty for scripts',
     filename     VARCHAR(200)    NOT NULL,
     rel_path     VARCHAR(300)    NOT NULL COMMENT 'Path relative to CMS root e.g. assets/fonts/Foo/foo.ttf',
     file_path    VARCHAR(500)    NOT NULL COMMENT 'Absolute path on this server',
