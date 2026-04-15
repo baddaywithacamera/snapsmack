@@ -2023,7 +2023,7 @@ class SettingsTab(tk.Frame):
                      font=FONT_MONO, state="readonly", width=18).grid(
             row=0, column=1, sticky="w", pady=3)
 
-        tk.Label(gc_g, text="SA key file", bg=BG_MID, fg=FG_DIM,
+        tk.Label(gc_g, text="Credentials JSON", bg=BG_MID, fg=FG_DIM,
                  font=FONT_BODY, anchor="w").grid(
             row=1, column=0, sticky="w", padx=(0, 10), pady=3)
         self._gc_creds_var = tk.StringVar()
@@ -2623,9 +2623,9 @@ class SettingsTab(tk.Frame):
             self._disc_status_var.set("No cloud configuration found on this blog.")
 
     def _browse_global_key(self) -> None:
-        """File picker for the global service account JSON key."""
+        """File picker for the Google Drive credentials JSON (OAuth client secret or service account key)."""
         path = _dlg_open(self,
-            title="Select service account JSON key",
+            title="Select credentials JSON",
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
         )
         if path:
@@ -2757,11 +2757,11 @@ Automatic Backups (global) — enable the system tray so closing minimizes SUYB 
     ("Cloud setup", """
 SUYB supports Google Drive and OneDrive.
 
-Google Drive — two authentication methods:
-— Service Account (SA key): a JSON file from Google Cloud Console under IAM → Service Accounts. The app authenticates silently, no browser popup. Set in Settings → Global Cloud Config → SA key file.
-— OAuth credentials: a different JSON file from Google Cloud Console. First run opens a browser to authorize. Set in your profile's Credentials JSON field.
+Google Drive — two authentication methods (both go in Settings → Global Cloud Config → Credentials JSON):
+— OAuth client secret (recommended): download from Google Cloud Console → APIs & Services → Credentials → Create OAuth 2.0 Client ID → Desktop app. First run opens a browser to authorize; subsequent runs refresh silently. Works with your personal Google Drive quota.
+— Service Account key: a JSON file from Google Cloud Console under IAM → Service Accounts. Headless, no browser popup, but service accounts have no Drive quota of their own — requires a Shared Drive with the service account added as a member.
 
-To tell which you have: open the JSON file. "type": "service_account" is an SA key. "type": "authorized_user" or "installed" is OAuth.
+To tell which you have: open the JSON file. "type": "service_account" is a service account key. "installed" under "web" or "installed" key is OAuth.
 
 OneDrive — uses MSAL. Set your credentials JSON in the profile's Credentials JSON field.
 
