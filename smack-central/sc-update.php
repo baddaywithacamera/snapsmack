@@ -53,7 +53,7 @@ if (!function_exists('sc_github_get')) {
 
 // ── Load settings ─────────────────────────────────────────────────────────────
 
-$sc_db = $pdo;  // sc-auth.php provides $pdo
+$sc_db = sc_db();
 $settings = $sc_db->query("SELECT setting_key, setting_val FROM sc_settings")
                    ->fetchAll(PDO::FETCH_KEY_PAIR);
 
