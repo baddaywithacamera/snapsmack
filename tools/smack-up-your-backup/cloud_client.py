@@ -68,6 +68,58 @@ def _is_oauth_client_secret(path: str) -> bool:
         return False
 
 
+def get_oauth_token_status(credentials_file: str) -> str:
+    """Return a human-readable status string for the OAuth token."""
+    if not credentials_file or not os.path.isfile(credentials_file):
+        return ""
+    if not _is_oauth_client_secret(credentials_file):
+        return ""
+    token_file = credentials_file.replace(".json", "_token.json")
+    if not os.path.exists(token_file):
+        return "Not authenticated — click Authenticate"
+    try:
+        from google.oauth2.credentials import Credentials
+        from google.auth.transport.requests import Request
+        creds = Credentials.from_authorized_user_file(
+            token_file, ["https://www.googleapis.com/auth/drive.file"]
+        )
+        if creds.valid:
+            return "✓ Authenticated"
+        if creds.expired and creds.refresh_token:
+            try:
+                creds.refresh(Request())
+                with open(token_file, "w") as f:
+                    f.write(creds.to_json())
+                return "✓ Token refreshed"
+            except Exception as e:
+                return f"Token expired — re-authenticate ({e})"
+        return "Token invalid — re-authenticate"
+    except Exception as e:
+        return f"Token error: {e}"
+
+
+def authenticate_oauth(credentials_file: str) -> tuple:
+    """
+    Run the OAuth consent flow explicitly. Opens a browser window.
+    Returns (success: bool, message: str).
+    """
+    if not credentials_file or not os.path.isfile(credentials_file):
+        return False, "Credentials file not found."
+    if not _is_oauth_client_secret(credentials_file):
+        return False, "Not an OAuth client secret file. Service account keys don't need authentication."
+    try:
+        from google_auth_oauthlib.flow import InstalledAppFlow
+        SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+        flow = InstalledAppFlow.from_client_secrets_file(credentials_file, SCOPES)
+        creds = flow.run_local_server(port=0)
+        token_file = credentials_file.replace(".json", "_token.json")
+        with open(token_file, "w") as f:
+            f.write(creds.to_json())
+        return True, f"✓ Authenticated successfully. Token saved."
+    except Exception as e:
+        return False, f"Authentication failed: {e}"
+
+
 class DriveClient:
     def __init__(self, credentials_file: str, folder_id: str):
         self.credentials_file = credentials_file

@@ -2037,13 +2037,20 @@ class SettingsTab(tk.Frame):
                  bg=BG_MID, fg=FG_DIM, font=FONT_SMALL,
                  anchor="w").grid(row=2, column=1, sticky="w", pady=(0, 2))
 
+        # Authenticate button — only relevant for OAuth client secret files
+        self._auth_btn = tk.Button(gc_g, text="Authenticate with Google",
+                                   bg=BG_CARD, fg=FG_MAIN, relief="flat",
+                                   font=FONT_BODY, padx=10, pady=4,
+                                   command=self._authenticate_oauth)
+        self._auth_btn.grid(row=3, column=1, sticky="w", pady=(0, 6))
+
         tk.Label(gc_g, text="Folder ID", bg=BG_MID, fg=FG_DIM,
                  font=FONT_BODY, anchor="w").grid(
-            row=3, column=0, sticky="w", padx=(0, 10), pady=3)
+            row=4, column=0, sticky="w", padx=(0, 10), pady=3)
         self._gc_folder_var = tk.StringVar()
         tk.Entry(gc_g, textvariable=self._gc_folder_var, bg=BG_INPUT, fg=FG_MAIN,
                  insertbackground=ACCENT, relief="flat",
-                 font=FONT_MONO, width=W).grid(row=3, column=1, sticky="ew", pady=3)
+                 font=FONT_MONO, width=W).grid(row=4, column=1, sticky="ew", pady=3)
 
         self._action_btn(c, "Save Defaults", self._save,
                          primary=True).pack(anchor="w", pady=(10, 0))
@@ -2633,18 +2640,50 @@ class SettingsTab(tk.Frame):
             self._validate_global_key()
 
     def _validate_global_key(self) -> None:
-        """Validate that the credentials file is a recognised OAuth client secret."""
+        """Validate credentials file and show token status for OAuth files."""
         import cloud_client as cc
         path = self._gc_creds_var.get().strip()
         if not path:
             self._gc_key_status_var.set("")
+            self._auth_btn.grid_remove()
             return
-        if cc._is_oauth_client_secret(path):
-            self._gc_key_status_var.set("Valid OAuth client secret")
+        if cc._is_service_account_key(path):
+            self._gc_key_status_var.set("✓ Valid service account key")
+            self._auth_btn.grid_remove()
+        elif cc._is_oauth_client_secret(path):
+            token_status = cc.get_oauth_token_status(path)
+            self._gc_key_status_var.set(token_status or "OAuth client secret — click Authenticate")
+            self._auth_btn.grid()   # show the button
         elif os.path.isfile(path):
-            self._gc_key_status_var.set("Unrecognised format — expected an OAuth client secret JSON")
+            self._gc_key_status_var.set("Unrecognised format — expected an OAuth or service account JSON")
+            self._auth_btn.grid_remove()
         else:
             self._gc_key_status_var.set("File not found")
+            self._auth_btn.grid_remove()
+
+    def _authenticate_oauth(self) -> None:
+        """Run the Google OAuth consent flow in a background thread."""
+        import cloud_client as cc
+        import threading
+        path = self._gc_creds_var.get().strip()
+        if not path:
+            return
+        self._gc_key_status_var.set("Opening browser for Google login…")
+        self._auth_btn.configure(state="disabled")
+        self.update_idletasks()
+
+        def _run():
+            success, msg = cc.authenticate_oauth(path)
+            def _done():
+                color = FG_OK if success else FG_ERR
+                self._gc_key_status_var.set(msg)
+                # Re-check status to get "✓ Authenticated" from token file
+                if success:
+                    self._validate_global_key()
+                self._auth_btn.configure(state="normal")
+            self.after(0, _done)
+
+        threading.Thread(target=_run, daemon=True).start()
 
     def global_cloud_config(self) -> dict:
         """Return the current global cloud config as a dict for the factory."""
