@@ -677,6 +677,27 @@ p:last-child { margin-bottom: 0; }
     align-items: center;
 }
 
+.tool-block--reversed {
+    grid-template-columns: 2fr 3fr;
+}
+
+.tool-block--reversed .tool-copy {
+    order: -1;
+}
+
+.tool-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 56px 0;
+}
+
+.tool-screenshot-trio {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2px;
+    background: var(--border);
+}
+
 .tool-screenshot {
     background: var(--white);
     border: 1px solid var(--border);
@@ -1181,7 +1202,7 @@ form.ml-block-form {
                     <div class="tagline">PHOTO <em>BLOGGING</em> IS BACK, BITCHEZ</div>
                 </div>
             </div>
-            <span class="alpha-badge">Alpha v0.7.9g</span>
+            <span class="alpha-badge">Alpha v0.7.9k</span>
         </div>
     </div>
 </header>
@@ -1273,7 +1294,7 @@ form.ml-block-form {
 <section id="working">
     <div class="wrap">
         <h2>Working Right Now</h2>
-        <p class="lede">Alpha v0.7.9g is running production sites today. Here's what's solid.</p>
+        <p class="lede">Alpha v0.7.9k is running production sites today. Here's what's solid.</p>
         <div class="status-grid">
             <div class="status-card">
                 <h3>Core CMS</h3>
@@ -1342,6 +1363,10 @@ form.ml-block-form {
             <div class="status-card">
                 <h3>Troll Control</h3>
                 <p>Browser fingerprinting on every comment submission — identity by behaviour, not by name. No cross-site tracking, no personal data stored. Ban by device fingerprint, IP, or email hash. Banned submissions get a plausible-looking success response. The harasser never knows they're blocked.</p>
+            </div>
+            <div class="status-card">
+                <h3>Smack Up Your Backup</h3>
+                <p>Desktop app for large archives. Gracefully and reliably handles multi-gigabyte backups that would flatten a shared host if run server side. One-click or scheduled backup of all your SnapSmack sites at once. Differential FTP sync, cloud storage push, three-way file audit, and cold-start recovery without a working install. Always free.</p>
             </div>
             <div class="status-card">
                 <h3>Thomas the Bear</h3>
@@ -1489,8 +1514,8 @@ form.ml-block-form {
 <!-- ── TOOLS ───────────────────────────────────────────────────────────────── -->
 <section id="tools">
     <div class="wrap">
-        <p class="section-kicker">One ready, more coming</p>
-        <h2>Companion Tool<span style="font-size:0.6em; letter-spacing:0.02em; opacity:0.7;">(s)</span></h2>
+        <p class="section-kicker">Two ready, more coming</p>
+        <h2>Companion Tools</h2>
         <p class="lede" style="margin-bottom: 48px;">Desktop apps that do the heavy lifting alongside SnapSmack. Free, same as the CMS.</p>
 
         <div class="tool-block">
@@ -1512,6 +1537,33 @@ form.ml-block-form {
                 <p class="dl-note">[ Windows 10/11 · Linux 64-bit · Free download from the admin tools page after install ]</p>
             </div>
         </div>
+
+        <hr class="tool-divider">
+
+        <div class="tool-block tool-block--reversed">
+            <div class="tool-screenshot">
+                <div class="tool-screenshot-trio">
+                    <a href="img/suyb-backupinprogress-01.png" data-lb="img/suyb-backupinprogress-01.png">
+                        <img src="img/suyb-backupinprogress-01.png" alt="Smack Up Your Backup — backup uploading">
+                    </a>
+                    <a href="img/suyb-settings-02.png" data-lb="img/suyb-settings-02.png">
+                        <img src="img/suyb-settings-02.png" alt="Smack Up Your Backup — settings">
+                    </a>
+                    <a href="img/suyb-recovery-03.png" data-lb="img/suyb-recovery-03.png">
+                        <img src="img/suyb-recovery-03.png" alt="Smack Up Your Backup — help and recovery">
+                    </a>
+                </div>
+            </div>
+            <div class="tool-copy">
+                <h3>Windows / Linux</h3>
+                <h2>Smack Up Your<br>Backup</h2>
+                <p>Your archive is only as safe as your last backup. Smack Up Your Backup runs on your desktop and handles multi-gigabyte backup and restore operations that would flatten a shared host or time out if run server-side — completing cleanly in the background, however long it takes.</p>
+                <p>Per-site profiles store your connection settings once. Choose your backup method: differential FTP sync for incremental server backups, cloud push to Google Drive or OneDrive for redundant cloud storage, or local backups only. One-click backups or scheduled runs on any cadence you set. Crash recovery checkpoints mean a restart picks up where it left off — not from zero.</p>
+                <p>The three-way file audit runs simultaneously across your local backup, the server, and cloud storage — revealing exactly what's missing, what's stale, and what's in sync across all three locations. Cold-start recovery lets you restore from a backup ZIP even if your install is completely gone. Session logs track every operation so you know what happened and when. Completely free. No paid tier. No hidden limits. No locking your data into our system. No bullshit.</p>
+                <p class="dl-note">[ Windows 10/11 · Linux 64-bit · Free download from the admin tools page after install ]</p>
+            </div>
+        </div>
+
     </div>
 </section>
 
@@ -1536,12 +1588,7 @@ form.ml-block-form {
                 <h3>Special Effects</h3>
                 <p>A visual effects engine to pimp up your blog's appearance. Parallax scrolling, reveal animations, hover effects, lightbox transitions — your images will dance off the page. Literally. Skins opt in via the manifest. You control how far it goes.</p>
             </div>
-            <div class="coming-item">
-                <span class="tag">Tools</span>
-                <h3>Smack Up Your Backup</h3>
-                <p>Desktop app for the serious hobbyist with a big-ass archive. Backup and restore operations that choke or time out on shared hosts run cleanly in the background. One-click backup of all your SnapSmack sites at once. Differential FTP sync, cloud storage push, three-way file audit, and cold-start recovery without a working install.</p>
-            </div>
-            <div class="coming-item">
+<div class="coming-item">
                 <span class="tag">Beta</span>
                 <h3>Oh Snap! — Skin Builder</h3>
                 <p>Design your own SnapSmack skin without touching code. Oh Snap! pulls your manifest, exposes every control, and lets you build and preview your skin visually in real time. AI-assisted for those who want a hand. Full CSS editor for those who'd rather just write it themselves. Ships with Beta.</p>

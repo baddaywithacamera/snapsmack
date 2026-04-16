@@ -1,0 +1,214 @@
+/**
+ * SNAPSMACK - Photo Editor Engine CSS
+ *
+ * Full-screen overlay editor for crop, rotate, brightness, contrast,
+ * sharpen, flip, and B&W. Inherits admin theme color variables.
+ */
+
+/* ── OVERLAY ─────────────────────────────────────────────────────────── */
+.pe-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 99999;
+    background: rgba(0, 0, 0, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pe-container {
+    display: flex;
+    flex-direction: column;
+    width: 96%;
+    max-width: 1200px;
+    height: 94vh;
+    background: var(--panel-bg, #1a1a1a);
+    border-radius: 6px;
+    border: 1px solid var(--border, #3a3a3a);
+    overflow: hidden;
+}
+
+/* ── TOOLBAR ─────────────────────────────────────────────────────────── */
+.pe-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border, #3a3a3a);
+    background: var(--card-bg, #222);
+    align-items: center;
+}
+
+.pe-tool-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.pe-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--border, #3a3a3a);
+    border-radius: 3px;
+    background: var(--input-bg, #1e1e1e);
+    color: var(--text, #ccc);
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.15s, background 0.15s;
+}
+.pe-btn:hover {
+    border-color: var(--accent, #7aad5a);
+}
+.pe-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+.pe-btn--sm {
+    padding: 4px 8px;
+    font-size: 11px;
+}
+.pe-btn--accent {
+    background: var(--accent, #7aad5a);
+    color: #111;
+    border-color: var(--accent, #7aad5a);
+    font-weight: 600;
+}
+.pe-btn--accent:hover {
+    opacity: 0.9;
+}
+
+.pe-toggle.pe-active {
+    background: var(--accent, #7aad5a);
+    color: #111;
+    border-color: var(--accent, #7aad5a);
+}
+
+.pe-active {
+    background: var(--accent, #7aad5a);
+    color: #111;
+    border-color: var(--accent, #7aad5a);
+}
+
+.pe-icon {
+    margin-right: 4px;
+}
+
+.pe-label {
+    font-size: 11px;
+    color: var(--dim, #666);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 4px;
+}
+
+/* ── SLIDERS ─────────────────────────────────────────────────────────── */
+.pe-sliders {
+    gap: 12px;
+}
+
+.pe-slider-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--dim, #999);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: default;
+}
+
+.pe-slider-label input[type="range"] {
+    width: 90px;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--border, #3a3a3a);
+    border-radius: 2px;
+    outline: none;
+}
+.pe-slider-label input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent, #7aad5a);
+    cursor: pointer;
+}
+.pe-slider-label input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: none;
+    border-radius: 50%;
+    background: var(--accent, #7aad5a);
+    cursor: pointer;
+}
+
+.pe-slider-label span {
+    min-width: 28px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--text, #ccc);
+}
+
+/* ── CROP RATIOS BAR ─────────────────────────────────────────────────── */
+.pe-crop-ratios {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-left: 1px solid var(--border, #3a3a3a);
+    margin-left: 4px;
+}
+
+/* ── CANVAS AREA ─────────────────────────────────────────────────────── */
+.pe-canvas-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    background: #111;
+}
+
+.pe-canvas-wrap canvas {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+#pe-crop-overlay {
+    position: absolute;
+    cursor: crosshair;
+}
+
+/* ── BOTTOM ACTIONS ──────────────────────────────────────────────────── */
+.pe-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--border, #3a3a3a);
+    background: var(--card-bg, #222);
+}
+
+.pe-spacer {
+    flex: 1;
+}
+
+/* ── RESPONSIVE ──────────────────────────────────────────────────────── */
+@media (max-width: 800px) {
+    .pe-toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .pe-sliders {
+        flex-direction: column;
+        gap: 6px;
+    }
+    .pe-slider-label input[type="range"] {
+        width: 120px;
+    }
+}

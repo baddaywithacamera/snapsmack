@@ -227,6 +227,86 @@ referencing the deleted asset will render as empty space on the public site.</p>
 HTML
 ];
 
+$help_topics['media-gallery'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Media Gallery',
+    'icon'     => '&#x25A6;',
+    'content'  => <<<'HTML'
+<h3>Media Gallery</h3>
+<p>The Media Gallery is a visual digital asset manager for your entire transmission
+library. Unlike Manage Archive (which is a table), the gallery displays your images
+as a thumbnail grid with instant search, filtering, and inline editing.</p>
+
+<h4>Browsing &amp; Filtering</h4>
+<p>The filter bar at the top provides multiple ways to narrow your view:</p>
+<ul>
+    <li><strong>Search</strong> — searches titles, descriptions, and tags with a 300ms debounce.</li>
+    <li><strong>Album / Category / Status</strong> — dropdown filters.</li>
+    <li><strong>Camera</strong> — populated automatically from your EXIF data.</li>
+    <li><strong>Date Range</strong> — from/to date pickers.</li>
+    <li><strong>Clear</strong> — resets all filters to show everything.</li>
+</ul>
+<p>Results update instantly without a full page reload.</p>
+
+<h4>Selection</h4>
+<p>Select images in three ways:</p>
+<ul>
+    <li><strong>Ctrl+Click</strong> or <strong>Cmd+Click</strong> — toggle individual images.</li>
+    <li><strong>Rubber band</strong> — click and drag on empty grid space to lasso multiple images.</li>
+    <li><strong>Ctrl+A</strong> — select all currently visible images.</li>
+</ul>
+
+<h4>Quick Edit Panel</h4>
+<p>Click any image (without Ctrl) to open the quick-edit slide-out panel on the right.
+From here you can change the title, status, tags, categories, and albums without leaving
+the gallery. Click <strong>Full Edit</strong> to jump to the full editor.</p>
+
+<h4>Bulk Operations</h4>
+<p>When one or more images are selected, the bulk actions bar appears with options to:</p>
+<ul>
+    <li>Set status to Published or Draft</li>
+    <li>Assign a category or album</li>
+    <li>Delete selected images (with confirmation)</li>
+</ul>
+HTML
+];
+
+$help_topics['photo-editor'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Photo Editor',
+    'icon'     => '&#x270E;',
+    'content'  => <<<'HTML'
+<h3>Photo Editor</h3>
+<p>The built-in photo editor lets you make quick adjustments to your images without
+leaving the admin. It opens as a full-screen overlay from the <strong>Edit Image</strong>
+button on the single-image editor and the carousel editor.</p>
+
+<h4>Tools</h4>
+<ul>
+    <li><strong>Crop</strong> — freeform or fixed aspect ratios (1:1, 4:3, 16:9, 3:2).
+        The crop overlay shows a rule-of-thirds grid. Drag corners to resize, drag the
+        centre to reposition. Click <em>Apply</em> to commit or <em>Cancel</em> to exit
+        crop mode without changes.</li>
+    <li><strong>Rotate</strong> — 90&deg; clockwise or counter-clockwise.</li>
+    <li><strong>Flip</strong> — horizontal or vertical mirror.</li>
+    <li><strong>Brightness</strong> — slider from &minus;100 to +100.</li>
+    <li><strong>Contrast</strong> — slider from &minus;100 to +100.</li>
+    <li><strong>Sharpen</strong> — slider from 0 to 100 (3&times;3 unsharp mask).</li>
+    <li><strong>B&amp;W</strong> — toggle black-and-white conversion using the luminosity method.</li>
+</ul>
+
+<h4>Undo &amp; Reset</h4>
+<p><strong>Undo</strong> steps back through each change. <strong>Reset</strong> reverts to
+the original image. Keyboard shortcut: <kbd>Ctrl+Z</kbd> (or <kbd>Cmd+Z</kbd>) to undo,
+<kbd>Escape</kbd> to close without saving.</p>
+
+<h4>Saving</h4>
+<p>Click <strong>Save</strong> to overwrite the web-size copy of the image. The editor
+respects your configured maximum image size setting and regenerates both square and
+aspect-ratio thumbnails automatically. The original full-resolution upload is not modified.</p>
+HTML
+];
+
 $help_topics['signals'] = [
     'section'  => 'The Good Shit',
     'title'    => 'Signals (Comments)',

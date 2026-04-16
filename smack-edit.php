@@ -386,6 +386,7 @@ include 'core/sidebar.php';
                         <div class="preview-frame">
                             <img src="<?php echo $post['img_file']; ?>" class="swap-preview">
                         </div>
+                        <button type="button" class="btn-smack" onclick="SnapPhotoEditor.open('<?php echo htmlspecialchars($post['img_file'], ENT_QUOTES); ?>', <?php echo (int)$post['post_id']; ?>)" style="margin-top:8px;">Edit Image</button>
                     </div>
                 </div>
             </div>
@@ -558,4 +559,6 @@ document.querySelectorAll('.palette-swatches .swatch').forEach(s => {
     });
 });
 </script>
+<link rel="stylesheet" href="assets/css/ss-engine-photo-editor.css?v=079L">
+<script src="assets/js/ss-engine-photo-editor.js?v=079L"></script>
 <?php include 'core/admin-footer.php'; ?>
