@@ -24,7 +24,7 @@ if (!empty($settings['active_skin'])) {
 // --- SECTION / PAGE MAP ---
 // Determine which accordion section to auto-open based on the current page.
 $_section_map = [
-    'good-shit'  => ['smack-admin.php','smack-post.php','smack-manage.php','smack-edit.php','smack-cats.php','smack-albums.php','smack-media.php','smack-comments.php','smack-blogroll.php','smack-pages.php','smack-community-settings.php','smack-community-users.php','smack-tools.php'],
+    'good-shit'  => ['smack-admin.php','smack-post.php','smack-manage.php','smack-edit.php','smack-cats.php','smack-albums.php','smack-media.php','smack-gallery.php','smack-comments.php','smack-blogroll.php','smack-pages.php','smack-community-settings.php','smack-community-users.php','smack-tools.php'],
     'pimp'       => ['smack-globalvibe.php','smack-skin.php','smack-pimpotron.php','smack-social-dock.php','smack-css.php','smack-scripts.php','smack-appearance-archive.php','smack-appearance-solo.php','smack-appearance-static.php'],
     'boring'     => ['smack-settings.php','smack-users.php','smack-maintenance.php','smack-backup.php','smack-disaster.php','smack-ftp.php','smack-cloud.php','smack-verify.php','smack-update.php','smack-stats.php','smack-api-keys.php','smack-multisite.php','smack-multisite-comments.php','smack-multisite-posts.php','smack-multisite-backup.php','smack-multisite-stats.php','smack-multisite-crosspost.php','smack-multisite-blogroll.php'],
     'help'       => ['smack-help.php','smack-forum.php'],
@@ -68,6 +68,9 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     </li>
                     <li class="<?php echo ($current_page == 'smack-media.php') ? 'active' : ''; ?>">
                         <a href="smack-media.php">Media Library</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-gallery.php') ? 'active' : ''; ?>">
+                        <a href="smack-gallery.php">Media Gallery</a>
                     </li>
 
                     <li class="<?php echo ($current_page == 'smack-comments.php') ? 'active' : ''; ?>">
