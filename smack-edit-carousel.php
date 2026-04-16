@@ -708,6 +708,7 @@ include 'core/sidebar.php';
                         </span>
                         <span class="ce-pos-badge cp-pos-badge"><?php echo $pimg['sort_position'] + 1; ?></span>
                         <button type="button" class="ce-remove-btn cp-remove-btn" title="Remove from post">×</button>
+                        <button type="button" class="ce-edit-img-btn" title="Edit Image" onclick="SnapPhotoEditor.open('<?php echo htmlspecialchars($pimg['img_file'], ENT_QUOTES); ?>', <?php echo (int)$pimg['post_id']; ?>)">✎</button>
                     </div>
                     <div class="cp-item-label"><?php echo htmlspecialchars(basename($pimg['img_file'])); ?></div>
 
@@ -852,4 +853,6 @@ window.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
+<link rel="stylesheet" href="assets/css/ss-engine-photo-editor.css?v=079L">
+<script src="assets/js/ss-engine-photo-editor.js?v=079L"></script>
 <?php include 'core/admin-footer.php'; ?>

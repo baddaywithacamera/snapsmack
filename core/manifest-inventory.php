@@ -783,6 +783,12 @@ return [
             'path'         => 'assets/js/ss-engine-fullscreen.js',
             'has_settings' => false,
         ],
+        'smack-photo-editor' => [
+            'label'        => 'Photo Editor (Crop, Rotate, Adjust, Sharpen)',
+            'path'         => 'assets/js/ss-engine-photo-editor.js',
+            'css'          => 'assets/css/ss-engine-photo-editor.css',
+            'has_settings' => false,
+        ],
         'smack-scroll-top' => [
             'label'        => 'Scroll-to-Top Button',
             'path'         => 'assets/js/ss-engine-scroll-top.js',

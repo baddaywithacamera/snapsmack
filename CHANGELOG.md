@@ -4,6 +4,17 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.9L — "Hot Seat" (2026-04-16)
+
+### Added
+- **Media Gallery** (`smack-gallery.php`) — visual DAM (digital asset manager) replacing the flat archive list. Browse, search, filter, and manage the entire image library from one page. Features include AJAX-driven grid with lazy-loaded thumbnails, full-text search across titles/descriptions/tags, filters for album/category/status/camera/date range/colour palette, paginated load-more, rubber-band drag selection, keyboard shortcuts (Ctrl+A, Escape), inline quick-edit panel for title/status/tags/categories/albums, and bulk operations (publish, draft, assign category, assign album, delete). Also supports a picker mode for integration with editors.
+- **Photo Editor** (`ss-engine-photo-editor.js`) — canvas-based non-destructive image editor launched from the edit page. Crop with freeform or fixed aspect ratios (1:1, 4:3, 16:9, 3:2) with rule-of-thirds overlay and draggable corner handles. Rotate 90° CW/CCW. Flip horizontal/vertical. Brightness, contrast, and sharpen sliders. Black & white conversion using luminosity method. Full undo stack. Saves at full resolution via `core/photo-editor-save.php` which overwrites the web copy and regenerates square + aspect thumbnails.
+- **Edit Image button** added to `smack-edit.php` and `smack-edit-carousel.php` image preview areas.
+- **Media Gallery** added to the sidebar navigation under "The Good Shit".
+- **Photo editor engine** registered in `core/manifest-inventory.php` for skin manifest access.
+
+---
+
 ## 0.7.9k — "Is This Seat Taken" (2026-04-15)
 
 ### Added
