@@ -199,4 +199,12 @@ $pg_active_tab = 'home';
     <!-- ── Load More ────────────────────────────────────────────────────── -->
     <?php if ($has_more): ?>
         <div class="pg-load-more-wrap">
-            <a href="<?php echo BASE_URL . '?p=' . ($curr_page
+            <a href="<?php echo BASE_URL . '?p=' . ($curr_page + 1); ?>"
+               class="pg-load-more-btn">Load more</a>
+        </div>
+    <?php endif; ?>
+
+</div><!-- /.pg-content -->
+</div><!-- /#pg-app -->
+
+<?php include __DIR__ . '/skin-footer.php'; ?>
