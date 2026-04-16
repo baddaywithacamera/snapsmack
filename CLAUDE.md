@@ -105,6 +105,73 @@ Everything that deploys to a web server lives at **repo root**. Non-web projects
 - `database/schema/snapsmack_canonical.sql` is maintained here and committed with every schema change. Do not ask the user to update it.
 - Git workflow: Claude stages and commits. User pushes.
 
+## Git Index Corruption
+
+The repo was previously on an OneDrive-synced path which caused repeated git
+index corruption (bad signature 0x00000000). The repo has been moved to a local
+path to fix this. If index corruption ever recurs, the fix is:
+
+```bash
+rm .git/index
+git read-tree HEAD
+git add <files>
+git commit
+```
+
+## Current Work State (as of session end)
+
+### SnapSmack — Alpha 0.7.9k
+All commits are on `master`, tagged `v0.7.9k`. Push from local:
+```
+git push Github master
+git push Github v0.7.9k --force
+```
+
+**Pending on live servers (FTP these files):**
+- `smack-central/sc-release.php` → snapsmack.ca (release exclusions updated)
+- Full 0.7.9k release to all live sites via Smack Central after above
+
+**0.7.9k fixes:**
+- Multisite hub sub-pages (Signals, Posts, Backup Dock, Stats, Cross-Post, Blogroll)
+  all redirected to dashboard — `$settings` not loaded before hub guard. Fixed in all 6 files.
+- Hub spoke post count wrong — was counting `snap_posts`, fixed to `snap_images`.
+- Last seen time always stale — MySQL/PHP timezone mismatch, fixed with `UNIX_TIMESTAMP()`.
+- Registration token COPY button was tiny orphaned grey button, fixed to `btn-smack`.
+- All 14 skins committed to git for the first time. Skin registry documented above.
+- Release package exclusions: only `50-shades-of-noah-grey` + `new-horizon` in base release.
+  Skin screenshots, SA key files, docs/, screenshots/, media_assets/ all excluded.
+
+### Smack Up Your Backup — v0.2.3
+All commits on `master`. Push from local: `git push Github master`
+
+**To rebuild the exe:** run `build.bat` in `tools/smack-up-your-backup/`
+
+**Status:**
+- Cloud backup to Google Drive working — SA key configured at pixhellated.ca
+- OAuth authenticate button added (Settings → Global Cloud Config)
+- Crash recovery checkpoints working
+- Scheduled backup tab working (Schedule tab)
+- Single instance enforcement added
+- Session log files written to `{backup_dir}/logs/`
+- File dialogs use PowerShell subprocess (bypasses tkinter parent issues on Windows)
+- Profiles and config persist next to the exe in `C:\SmackUpYourBackup\`
+
+**Pending cloud upload issue:**
+- pixhellated backup completes locally but cloud upload status unclear
+- SA key: `C:\SmackUpYourBackup\suyb-drive-key-5e7a5909f75e.json`
+- Drive folder ID: `12UFKgvSNtM9uKCjtttyhFPvD45wjXVv9`
+- Drive folder shared as Editor with: `smack-up-your-backup@snapsmack-backups.iam.gserviceaccount.com`
+- Check `C:\Staging\logs\` after next backup run for exact cloud error
+
+### Live Sites
+| Site | Role | Version |
+|---|---|---|
+| foundtextures.ca | Multisite Hub | Alpha 0.7.9j (needs 0.7.9k FTP update) |
+| pixhellated.ca | Spoke | Alpha 0.7.9j (needs 0.7.9k FTP update) |
+| wateronthebrain.ca | Spoke | Alpha 0.7.9j (needs 0.7.9k FTP update) |
+
+Both spokes are ACTIVE and heartbeating correctly after key exchange fix.
+
 ## Skin Registry
 
 All skins live in `skins/{skin-name}/` and must always remain tracked in git.
