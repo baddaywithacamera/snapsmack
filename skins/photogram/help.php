@@ -65,4 +65,8 @@ community account directly on your site — no third-party login required. Manag
 in Admin &gt; Community Users.</p>
 <p>Configure community features globally in <strong>Admin &gt; Community Settings</strong>:
 toggle likes, reactions, and comments on or off; choose the active reaction set; set rate
-limits; and c
+limits; and configure email notifications for new comments.</p>
+HTML
+    ],
+
+];
