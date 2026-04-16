@@ -121,28 +121,29 @@ git commit
 
 ## Current Work State (as of session end)
 
-### SnapSmack — Alpha 0.7.9k
-All commits are on `master`, tagged `v0.7.9k`. Push from local:
+### SnapSmack — Alpha 0.7.9L "Hot Seat"
+All commits are on `master`. Push from local:
 ```
 git push Github master
-git push Github v0.7.9k --force
+git push Github v0.7.9L --force
 ```
+
+**0.7.9L features (new):**
+- Media Gallery (`smack-gallery.php`) — visual DAM with AJAX grid, lazy loading,
+  search/filter/bulk ops, quick-edit panel, rubber-band selection, picker mode.
+  JS: `assets/js/ss-engine-gallery.js`, CSS: `assets/css/ss-engine-gallery.css`.
+- Photo Editor (`ss-engine-photo-editor.js`) — canvas-based editor with crop
+  (freeform + fixed ratios), rotate, flip, brightness/contrast/sharpen sliders,
+  B&W conversion. Server save: `core/photo-editor-save.php`.
+- Edit Image button on `smack-edit.php` and `smack-edit-carousel.php`.
+- Media Gallery link in sidebar nav.
+- Photo editor engine registered in `core/manifest-inventory.php`.
 
 **Pending on live servers (FTP these files):**
 - `smack-central/sc-release.php` → snapsmack.ca (release exclusions updated)
-- Full 0.7.9k release to all live sites via Smack Central after above
+- Full 0.7.9L release to all live sites via Smack Central
 
-**0.7.9k fixes:**
-- Multisite hub sub-pages (Signals, Posts, Backup Dock, Stats, Cross-Post, Blogroll)
-  all redirected to dashboard — `$settings` not loaded before hub guard. Fixed in all 6 files.
-- Hub spoke post count wrong — was counting `snap_posts`, fixed to `snap_images`.
-- Last seen time always stale — MySQL/PHP timezone mismatch, fixed with `UNIX_TIMESTAMP()`.
-- Registration token COPY button was tiny orphaned grey button, fixed to `btn-smack`.
-- All 14 skins committed to git for the first time. Skin registry documented above.
-- Release package exclusions: only `50-shades-of-noah-grey` + `new-horizon` in base release.
-  Skin screenshots, SA key files, docs/, screenshots/, media_assets/ all excluded.
-
-### Smack Up Your Backup — v0.2.3
+### Smack Up Your Backup — v0.2.4
 All commits on `master`. Push from local: `git push Github master`
 
 **To rebuild the exe:** run `build.bat` in `tools/smack-up-your-backup/`
@@ -150,6 +151,7 @@ All commits on `master`. Push from local: `git push Github master`
 **Status:**
 - Cloud backup to Google Drive working — SA key configured at pixhellated.ca
 - OAuth authenticate button added (Settings → Global Cloud Config)
+- Per-profile OAuth authenticate button added (per-profile creds override)
 - Crash recovery checkpoints working
 - Scheduled backup tab working (Schedule tab)
 - Single instance enforcement added
