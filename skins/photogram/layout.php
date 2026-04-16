@@ -250,4 +250,13 @@ $pg_active_tab = 'home';
                class="pg-sheet-input"
                id="pg-sheet-input"
                placeholder="Add a comment…"
-   
+               maxlength="500"
+               autocomplete="off">
+        <button class="pg-sheet-send" id="pg-sheet-send" aria-label="Post comment">Post</button>
+    </div>
+
+</div>
+
+</div><!-- /#pg-app -->
+
+<?php include __DIR__ . '/skin-footer.php'; ?>

@@ -5,7 +5,7 @@ Dark UI palette, tkinter, PyInstaller single-exe build chain.
 Same visual family as Smack Your Batch Up.
 """
 
-BUILD_VERSION = "0.2.3"
+BUILD_VERSION = "0.2.4"
 
 import os
 import queue
@@ -1921,7 +1921,21 @@ class SettingsTab(tk.Frame):
 
         self._row(cloud_g, 1, "Creds override (optional)", "cloud_credentials_file")
         self._browse_btn(cloud_g, 1, self._browse_credentials)
-        self._row(cloud_g, 2, "Cloud folder ID",  "cloud_folder_id")
+
+        # Status label + Authenticate button for per-profile OAuth creds
+        self._profile_creds_status_var = tk.StringVar(value="")
+        tk.Label(cloud_g, textvariable=self._profile_creds_status_var,
+                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL,
+                 anchor="w").grid(row=2, column=1, sticky="w", pady=(0, 2))
+        self._profile_auth_btn = tk.Button(
+            cloud_g, text="Authenticate with Google",
+            bg=BG_CARD, fg=FG_MAIN, relief="flat",
+            font=FONT_BODY, padx=10, pady=4,
+            command=self._authenticate_oauth_profile)
+        self._profile_auth_btn.grid(row=3, column=1, sticky="w", pady=(0, 6))
+        self._profile_auth_btn.grid_remove()  # hidden until an OAuth file is selected
+
+        self._row(cloud_g, 4, "Cloud folder ID",  "cloud_folder_id")
 
         # Local working / backup directory (always shown)
         self._local_frame = tk.Frame(c, bg=BG_MID)
@@ -2227,6 +2241,7 @@ class SettingsTab(tk.Frame):
         )
         if path and "cloud_credentials_file" in self._profile_vars:
             self._profile_vars["cloud_credentials_file"].set(path)
+            self._validate_profile_creds()
 
     def load_profile(self, profile: Optional[dict]) -> None:
         """Populate the active profile fields from a profile dict, or clear them."""
@@ -2255,6 +2270,7 @@ class SettingsTab(tk.Frame):
                 else:
                     self._method_var.set("local")
             self._on_method_change()
+            self._validate_profile_creds()
             self._no_profile_lbl.pack_forget()
             self._profile_status_var.set(f"Editing: {profile.get('name', '')}")
         else:
@@ -2681,6 +2697,50 @@ class SettingsTab(tk.Frame):
                 if success:
                     self._validate_global_key()
                 self._auth_btn.configure(state="normal")
+            self.after(0, _done)
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _validate_profile_creds(self) -> None:
+        """Validate the per-profile creds override and show auth button if OAuth."""
+        import cloud_client as cc
+        path = self._profile_vars.get("cloud_credentials_file", tk.StringVar()).get().strip()
+        if not path:
+            self._profile_creds_status_var.set("")
+            self._profile_auth_btn.grid_remove()
+            return
+        if cc._is_service_account_key(path):
+            self._profile_creds_status_var.set("✓ Valid service account key")
+            self._profile_auth_btn.grid_remove()
+        elif cc._is_oauth_client_secret(path):
+            token_status = cc.get_oauth_token_status(path)
+            self._profile_creds_status_var.set(token_status or "OAuth client secret — click Authenticate")
+            self._profile_auth_btn.grid()
+        elif os.path.isfile(path):
+            self._profile_creds_status_var.set("Unrecognised format — expected an OAuth or service account JSON")
+            self._profile_auth_btn.grid_remove()
+        else:
+            self._profile_creds_status_var.set("File not found")
+            self._profile_auth_btn.grid_remove()
+
+    def _authenticate_oauth_profile(self) -> None:
+        """Run the Google OAuth consent flow for the per-profile credentials override."""
+        import cloud_client as cc
+        import threading
+        path = self._profile_vars.get("cloud_credentials_file", tk.StringVar()).get().strip()
+        if not path:
+            return
+        self._profile_creds_status_var.set("Opening browser for Google login…")
+        self._profile_auth_btn.configure(state="disabled")
+        self.update_idletasks()
+
+        def _run():
+            success, msg = cc.authenticate_oauth(path)
+            def _done():
+                self._profile_creds_status_var.set(msg)
+                if success:
+                    self._validate_profile_creds()
+                self._profile_auth_btn.configure(state="normal")
             self.after(0, _done)
 
         threading.Thread(target=_run, daemon=True).start()

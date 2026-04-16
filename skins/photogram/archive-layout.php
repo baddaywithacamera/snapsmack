@@ -46,4 +46,6 @@
 </div>
 <?php else: ?>
 <div class="pg-grid">
-    <div class="pg-grid-emp
+    <div class="pg-grid-empty">No photos yet.</div>
+</div>
+<?php endif; ?>

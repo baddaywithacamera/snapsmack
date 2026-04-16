@@ -2,6 +2,13 @@
 
 ---
 
+## 0.2.4 — 2026-04-15
+
+### Fixed
+- **Per-profile OAuth authentication** — the per-profile Creds override field now shows a status label and an "Authenticate with Google" button when an OAuth client secret JSON is selected. Previously only the Global Cloud Config had an auth button, making it impossible to authenticate profile-specific credentials from the UI.
+
+---
+
 ## 0.2.3 — 2026-04-14
 
 ### Added

@@ -291,4 +291,14 @@ $site_title = $settings['site_title'] ?? $site_name ?? 'Photogram';
                  stroke="currentColor" stroke-width="1.5"
                  stroke-linecap="round" stroke-linejoin="round"
                  style="opacity:.3;">
-                <circle cx="11" cy="11" r=
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <p>Search titles, descriptions, #hashtags, or colours</p>
+        </div>
+    <?php endif; ?>
+
+</div><!-- /.pg-content -->
+</div><!-- /#pg-app -->
+
+<?php include __DIR__ . '/skin-footer.php'; ?>

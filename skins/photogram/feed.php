@@ -374,4 +374,17 @@ include __DIR__ . '/skin-header.php';
             endforeach; ?>
         <?php else: ?>
             <div class="pg-feed-empty">No posts yet.</div>
-        <?php en
+        <?php endif; ?>
+
+        <!-- Infinite scroll sentinel (downward) — load older posts -->
+        <div id="pg-feed-sentinel"
+             class="pg-feed-sentinel"
+             data-cursor="<?php echo $has_more ? $next_cursor : '0'; ?>">
+        </div>
+
+    </div><!-- /#pg-feed -->
+
+</div><!-- /.pg-content -->
+</div><!-- /#pg-app -->
+
+<?php include __DIR__ . '/skin-footer.php'; ?>
