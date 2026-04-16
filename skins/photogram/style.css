@@ -1434,4 +1434,36 @@ button {
 }
 
 @keyframes pg-feed-spin {
-    to { transform: r
+    to { transform: rotate(360deg); }
+}
+
+/* End-of-feed message */
+.pg-feed-sentinel.pg-feed-end {
+    color: var(--pg-text-muted);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESKTOP SKIN BLEED CONTAINMENT
+   ─────────────────────────────────────────────────────────────────────────
+   custom_css_public (the desktop skin's compiled CSS blob) loads AFTER this
+   file in core/meta.php. If no Photogram-specific custom_css_public exists in
+   the DB, the desktop skin's blob remains active and can impose padding or
+   max-width on #page-wrapper and #scroll-stage — creating visible gutters
+   around the Photogram column. These !important resets guarantee the layout
+   stays gutter-free regardless of what the desktop skin has compiled.       */
+#page-wrapper {
+    padding:   0 !important;
+    max-width: none !important;
+    margin:    0 !important;
+    width:     100% !important;
+    background: transparent !important;
+}
+#scroll-stage {
+    padding:   0 !important;
+    max-width: none !important;
+    margin:    0 !important;
+    width:     100% !important;
+}

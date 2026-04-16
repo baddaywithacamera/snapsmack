@@ -108,8 +108,9 @@ Everything that deploys to a web server lives at **repo root**. Non-web projects
 ## Git Index Corruption
 
 The repo was previously on an OneDrive-synced path which caused repeated git
-index corruption (bad signature 0x00000000). The repo has been moved to a local
-path to fix this. If index corruption ever recurs, the fix is:
+index corruption (bad signature 0x00000000). The repo now lives at `C:\dev\snapsmack`.
+In MINGW bash, use `cd /c/dev/snapsmack` (not `cd C:\dev\snapsmack`).
+If index corruption ever recurs, the fix is:
 
 ```bash
 rm .git/index
