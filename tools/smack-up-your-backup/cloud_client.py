@@ -56,6 +56,18 @@ def _get_drive_service(credentials_file: str):
     return build("drive", "v3", credentials=creds)
 
 
+def _is_service_account_key(path: str) -> bool:
+    """Return True if the file looks like a Google service account key JSON."""
+    if not path or not os.path.isfile(path):
+        return False
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        return data.get("type") == "service_account"
+    except Exception:
+        return False
+
+
 def _is_oauth_client_secret(path: str) -> bool:
     """Return True if the file looks like an OAuth client secret JSON."""
     if not path or not os.path.isfile(path):
