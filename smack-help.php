@@ -935,6 +935,48 @@ appear after failed uploads or manual file deletions.</p>
 HTML
 ];
 
+$help_topics['schema-recovery'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Schema Recovery',
+    'icon'     => '&#x1F527;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Schema Recovery &amp; Auto-Discovery</h3>
+<p>SnapSmack automatically maintains your database structure by comparing it against a
+canonical schema file stored in the codebase.</p>
+
+<h4>How It Works</h4>
+<p>When you visit the System Updates page, SnapSmack runs a schema sync operation that:</p>
+<ul>
+    <li>Reads the canonical schema definition from <code>database/schema/snapsmack_canonical.sql</code></li>
+    <li>Checks your database against it using MySQL's INFORMATION_SCHEMA</li>
+    <li>Auto-creates any missing tables</li>
+    <li>Auto-adds any missing columns</li>
+    <li>Repairs stale enum definitions on existing columns</li>
+</ul>
+
+<h4>Single Source of Truth</h4>
+<p>The canonical schema file is the single source of truth. When SnapSmack adds new tables
+(like fingerprint storage for troll banning), the developer adds them once to the canonical
+SQL file. Schema recovery then auto-discovers them on all installs — no manual sync needed.</p>
+
+<h4>Idempotent &amp; Safe</h4>
+<p>Schema recovery uses <code>IF NOT EXISTS</code> and INFORMATION_SCHEMA checks, so it's
+completely safe to run multiple times. It will never drop tables, overwrite data, or cause
+disruption to your site.</p>
+
+<h4>Why It Matters</h4>
+<p>Earlier versions required developers to manually sync new table definitions in two places
+(the SQL file AND a hardcoded PHP array), which led to deployments where new features arrived
+without their database tables. Schema recovery now reads directly from the canonical schema,
+so new tables are auto-discovered and created without manual intervention.</p>
+
+<h4>When It Runs</h4>
+<p>Schema recovery runs automatically when you visit System Updates. If your installation
+ever reports missing tables or blank admin pages, a schema recovery run usually fixes it.</p>
+HTML
+];
+
 $help_topics['backup'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'Backup & Recovery',
