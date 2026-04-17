@@ -277,6 +277,40 @@ h2 { color: #39FF14; letter-spacing: 3px; font-size: 0.85rem; margin-bottom: 30p
 }
 
 // ── ACTION: LIVE CHECK ────────────────────────────────────────────────────────
+// --- REAPPLY CURRENT VERSION ---
+// Re-download and re-extract the currently installed version (useful if a release was packaged
+// incorrectly and files were missing). Fetches release info for the installed version and
+// begins the download stage.
+if ($action === 'reapply') {
+    $release_info = updater_fetch_release_info($installed_version);
+
+    if ($release_info === false) {
+        $flash_msg  = 'REAPPLY FAILED: Could not fetch release info for v' . htmlspecialchars($installed_version) . '.';
+        $flash_type = 'error';
+    } else {
+        // Reset update state and prepare for re-download
+        $_SESSION['update_state'] = [
+            'stage'   => 'review',
+            'update'  => [
+                'version'         => $release_info['version']         ?? $installed_version,
+                'version_full'    => $release_info['version_full']    ?? '',
+                'codename'        => $release_info['codename']        ?? '',
+                'released'        => $release_info['released']        ?? '',
+                'changelog'       => $release_info['changelog']       ?? [],
+                'file_changes'    => $release_info['file_changes']    ?? [],
+                'schema_changes'  => $release_info['schema_changes']  ?? false,
+                'download_size'   => $release_info['download_size']   ?? 0,
+                'requires_php'    => $release_info['requires_php']    ?? '8.0',
+                'download_url'    => $release_info['download_url']    ?? '',
+                'checksum_sha256' => $release_info['checksum_sha256'] ?? '',
+                'signature'       => $release_info['signature']       ?? '',
+            ]
+        ];
+        $flash_msg  = 'Reapplying v' . htmlspecialchars($installed_version) . '. Click APPLY to download and re-extract.';
+        $flash_type = 'info';
+    }
+}
+
 if ($action === 'check') {
     $release_info = updater_fetch_release_info();
     $skin_info    = updater_check_skin_registry($pdo);
@@ -1030,6 +1064,12 @@ include 'core/sidebar.php';
         <form method="POST" class="mt-25">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
             <button type="submit" name="action" value="check" class="btn-smack">CHECK FOR UPDATES NOW</button>
+        </form>
+        <form method="POST" class="mt-10">
+            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+            <button type="submit" name="action" value="reapply" class="btn-smack"
+                    onclick="return confirm('Reapply v<?php echo htmlspecialchars($installed_version); ?>? This will re-download and re-extract all files.\n\nUse this if a release was packaged incorrectly or files were missed.');"
+                    style="background:#666;">REAPPLY CURRENT VERSION</button>
         </form>
         <form method="POST" class="mt-10">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
