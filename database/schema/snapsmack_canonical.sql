@@ -1,6 +1,6 @@
 -- ─────────────────────────────────────────────────────────────────────────────
 -- SNAPSMACK — Canonical Schema
--- Alpha v0.7.9j "Is This Seat Taken"
+-- Alpha v0.7.9L "Hot Seat"
 --
 -- This file is the single source of truth for the intended database structure
 -- at the current release. It is maintained by hand alongside schema-sync.php
@@ -420,6 +420,39 @@ CREATE TABLE IF NOT EXISTS `snap_ban_list` (
   KEY         `idx_type_val` (`ban_type`, `ban_value`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Centralised ban list: fingerprint, IP, and email-hash bans';
+
+-- ─── SEMANTIC ANALYSIS ────────────────────────────────────────────────────────
+-- 0.7.9L: AI semantic fingerprinting for troll detection
+
+CREATE TABLE IF NOT EXISTS `snap_comments_semantic` (
+  `id`                int unsigned     NOT NULL AUTO_INCREMENT,
+  `comment_id`        int unsigned     NOT NULL,
+  `fingerprint_hash`  varchar(255)     COLLATE utf8mb4_unicode_ci NOT NULL,
+  `comment_text`      longtext         COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tfidf_vector`      json             DEFAULT NULL
+                      COMMENT '0.7.9L: TF-IDF vector for cosine similarity analysis',
+  `created_at`        timestamp        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_fingerprint` (`fingerprint_hash`),
+  KEY `idx_created`     (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='0.7.9L: Comment text and TF-IDF vectors for semantic duplicate detection';
+
+CREATE TABLE IF NOT EXISTS `snap_keywords` (
+  `id`          int unsigned     NOT NULL AUTO_INCREMENT,
+  `keyword`     varchar(500)     COLLATE utf8mb4_unicode_ci NOT NULL,
+  `match_type`  enum('exact','substring','regex')
+                COLLATE utf8mb4_unicode_ci DEFAULT 'substring',
+  `severity`    enum('flag','reject')
+                COLLATE utf8mb4_unicode_ci DEFAULT 'flag',
+  `reason`      varchar(255)     COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `added_at`    timestamp        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `added_by`    varchar(100)     COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_keyword` (`keyword`),
+  KEY `idx_keyword`   (`keyword`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='0.7.9L: Banned keywords and phrases for content-based troll blocking';
 
 -- ─── STATS ────────────────────────────────────────────────────────────────────
 
