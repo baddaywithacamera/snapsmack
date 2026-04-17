@@ -169,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
 // ── PAGE RENDER ──────────────────────────────────────────────────────────────
 $total_bans = (int)$pdo->query("SELECT COUNT(*) FROM snap_ban_list")->fetchColumn();
-$active_bans = (int)$pdo->query("SELECT COUNT(*) FROM snap_ban_list WHERE is_banned = TRUE")->fetchColumn();
+$active_bans = $total_bans; // All rows in snap_ban_list are active; deleted bans are removed entirely
 ?>
 
 <div class="main">
