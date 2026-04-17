@@ -94,3 +94,7 @@ Options -Indexes
     AddOutputFilterByType DEFLATE image/svg+xml
     AddOutputFilterByType DEFLATE font/ttf
 </IfModule>
+
+# ─── CUSTOM ERROR PAGES ──────────────────────────────────────
+ErrorDocument 404 /error404.php
+ErrorDocument 500 /error500.php
