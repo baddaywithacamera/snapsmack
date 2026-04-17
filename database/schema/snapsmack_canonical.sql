@@ -1,6 +1,6 @@
 -- ─────────────────────────────────────────────────────────────────────────────
 -- SNAPSMACK — Canonical Schema
--- Alpha v0.7.9L "Hot Seat"
+-- Alpha v0.7.9M "Maintenance Mode"
 --
 -- This file is the single source of truth for the intended database structure
 -- at the current release. It is maintained by hand alongside schema-sync.php
