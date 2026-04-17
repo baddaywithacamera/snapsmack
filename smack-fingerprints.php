@@ -4,10 +4,13 @@
  *
  * Admin interface for viewing browser fingerprints associated with comments,
  * reviewing ban patterns, and issuing/revoking bans by fingerprint, IP, or email hash.
+ * Includes semantic analysis for detecting related accounts and keyword filtering.
  */
 
 require_once 'core/auth.php';
 require_once 'core/ban-check.php';
+require_once 'core/semantic-analysis.php';
+require_once 'core/keyword-check.php';
 
 $page_title = 'Fingerprints & Bans';
 include 'core/admin-header.php';
@@ -48,6 +51,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($action === 'remove_ban') {
         $ban_id = (int)($_POST['ban_id'] ?? 0);
         $success = remove_ban($pdo, $ban_id);
+        echo json_encode(['ok' => $success]);
+        exit;
+    }
+
+    if ($action === 'fetch_semantic') {
+        $fingerprint = $_POST['fingerprint'] ?? '';
+        if (empty($fingerprint)) {
+            echo json_encode(['ok' => false, 'error' => 'Fingerprint required']);
+            exit;
+        }
+
+        $similar = find_similar_fingerprints($pdo, $fingerprint, 0.55);
+        echo json_encode(['ok' => true, 'similar' => $similar]);
+        exit;
+    }
+
+    if ($action === 'fetch_keywords') {
+        $keywords = get_all_keywords($pdo);
+        echo json_encode(['ok' => true, 'keywords' => $keywords]);
+        exit;
+    }
+
+    if ($action === 'add_keyword') {
+        $keyword = trim($_POST['keyword'] ?? '');
+        $match_type = $_POST['match_type'] ?? 'substring';
+        $severity = $_POST['severity'] ?? 'flag';
+
+        if (empty($keyword)) {
+            echo json_encode(['ok' => false, 'error' => 'Keyword required']);
+            exit;
+        }
+
+        $success = add_keyword($pdo, $keyword, $match_type, $severity, $_POST['reason'] ?? '', $_SESSION['user_id'] ?? null);
+        echo json_encode(['ok' => $success, 'error' => $success ? null : 'Keyword already exists']);
+        exit;
+    }
+
+    if ($action === 'remove_keyword') {
+        $keyword = $_POST['keyword'] ?? '';
+        $success = remove_keyword($pdo, $keyword);
         echo json_encode(['ok' => $success]);
         exit;
     }
@@ -139,6 +182,8 @@ $active_bans = (int)$pdo->query("SELECT COUNT(*) FROM snap_ban_list WHERE is_ban
     <div class="tab-selector" id="tab-selector">
         <button class="tab-btn tab-active" data-tab="banned">BANNED</button>
         <button class="tab-btn" data-tab="fingerprints">FINGERPRINTS</button>
+        <button class="tab-btn" data-tab="semantic">SEMANTIC</button>
+        <button class="tab-btn" data-tab="keywords">KEYWORDS</button>
         <button class="tab-btn" data-tab="add">ADD BAN</button>
     </div>
 
@@ -161,7 +206,58 @@ $active_bans = (int)$pdo->query("SELECT COUNT(*) FROM snap_ban_list WHERE is_ban
         </div>
     </div>
 
-    <!-- ── TAB 3: ADD BAN ─────────────────────────────────────────────────────── -->
+    <!-- ── TAB 3: SEMANTIC ANALYSIS ──────────────────────────────────────────── -->
+    <div class="tab-content" id="tab-semantic">
+        <div class="box">
+            <h3>Semantic Similarity Analysis</h3>
+            <p class="dim" style="margin-bottom:16px;">Find fingerprints with similar writing styles to detect related accounts.</p>
+            <div class="meta-grid">
+                <div class="lens-input-wrapper">
+                    <label>FINGERPRINT TO ANALYZE</label>
+                    <input type="text" id="semantic-fp" class="full-width-input" placeholder="Enter fingerprint hash">
+                </div>
+            </div>
+            <button type="button" class="btn-smack" onclick="loadSemantic()" style="margin-top:12px;">Analyze</button>
+            <div id="semantic-results" style="margin-top:20px;"></div>
+        </div>
+    </div>
+
+    <!-- ── TAB 4: KEYWORDS ───────────────────────────────────────────────────── -->
+    <div class="tab-content" id="tab-keywords">
+        <div class="box">
+            <h3>Banned Keywords & Phrases</h3>
+            <p class="dim" style="margin-bottom:16px;">Auto-detect and flag/reject comments containing specific words or patterns.</p>
+            <div class="meta-grid">
+                <div class="lens-input-wrapper">
+                    <label>KEYWORD / PHRASE</label>
+                    <input type="text" id="keyword-value" class="full-width-input" placeholder="e.g., hate-speech or .*badword.*">
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>MATCH TYPE</label>
+                    <select id="keyword-match" class="full-width-select">
+                        <option value="substring">Substring (default)</option>
+                        <option value="exact">Exact Word</option>
+                        <option value="regex">Regex Pattern</option>
+                    </select>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>SEVERITY</label>
+                    <select id="keyword-severity" class="full-width-select">
+                        <option value="flag">Flag for Review</option>
+                        <option value="reject">Silent Reject</option>
+                    </select>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>REASON (optional)</label>
+                    <input type="text" id="keyword-reason" class="full-width-input" placeholder="Why this keyword">
+                </div>
+            </div>
+            <button type="button" class="btn-smack" onclick="addKeyword()" style="margin-top:12px;">Add Keyword</button>
+            <div id="keyword-list" style="margin-top:24px;"></div>
+        </div>
+    </div>
+
+    <!-- ── TAB 5: ADD BAN ─────────────────────────────────────────────────────── -->
     <div class="tab-content" id="tab-add">
         <div class="box">
             <h3>Issue New Ban</h3>
@@ -200,6 +296,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
         if (tab === 'banned') loadBans(1);
         if (tab === 'fingerprints') loadFingerprints(1);
+        if (tab === 'semantic') document.getElementById('semantic-fp').focus();
+        if (tab === 'keywords') loadKeywords();
     });
 });
 
@@ -333,8 +431,130 @@ document.getElementById('fp-search').addEventListener('input', function() {
     searchTimer = setTimeout(() => loadFingerprints(1), 300);
 });
 
+// ── SEMANTIC ANALYSIS ───────────────────────────────────────────────────────
+function loadSemantic() {
+    const fp = document.getElementById('semantic-fp').value.trim();
+    if (!fp) {
+        alert('Enter a fingerprint hash');
+        return;
+    }
+
+    const fd = new FormData();
+    fd.append('action', 'fetch_semantic');
+    fd.append('fingerprint', fp);
+
+    fetch('smack-fingerprints.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            let html = '';
+            if (!data.ok || data.similar.length === 0) {
+                html = '<p class="dim">No similar fingerprints found (threshold: 55%).</p>';
+            } else {
+                html = '<table class="admin-table" style="width:100%;"><tbody>';
+                html += '<tr style="font-weight:bold;"><td>Fingerprint</td><td>Similarity</td><td>Comments</td><td></td></tr>';
+                data.similar.forEach(s => {
+                    html += `<tr>
+                        <td><code>${s.fingerprint.substring(0, 24)}...</code></td>
+                        <td><strong>${Math.round(s.similarity * 100)}%</strong></td>
+                        <td>${s.comment_count}</td>
+                        <td style="text-align:right;"><button class="btn-smack btn-smack--dim btn-smack--sm" onclick="banSimilar('${s.fingerprint}')">Ban</button></td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+            }
+            document.getElementById('semantic-results').innerHTML = html;
+        });
+}
+
+function banSimilar(fp) {
+    const reason = prompt('Ban reason (optional):');
+    if (reason === null) return;
+    issueBanDirect('fingerprint', fp, reason);
+}
+
+// ── KEYWORD MANAGEMENT ──────────────────────────────────────────────────────
+function addKeyword() {
+    const keyword = document.getElementById('keyword-value').value.trim();
+    const match = document.getElementById('keyword-match').value;
+    const severity = document.getElementById('keyword-severity').value;
+    const reason = document.getElementById('keyword-reason').value;
+
+    if (!keyword) {
+        alert('Enter a keyword');
+        return;
+    }
+
+    const fd = new FormData();
+    fd.append('action', 'add_keyword');
+    fd.append('keyword', keyword);
+    fd.append('match_type', match);
+    fd.append('severity', severity);
+    fd.append('reason', reason);
+
+    fetch('smack-fingerprints.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                alert('Keyword added.');
+                document.getElementById('keyword-value').value = '';
+                document.getElementById('keyword-reason').value = '';
+                loadKeywords();
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        });
+}
+
+function removeKeyword(keyword) {
+    if (!confirm('Remove this keyword?')) return;
+
+    const fd = new FormData();
+    fd.append('action', 'remove_keyword');
+    fd.append('keyword', keyword);
+
+    fetch('smack-fingerprints.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                loadKeywords();
+            } else {
+                alert('Error removing keyword.');
+            }
+        });
+}
+
+function loadKeywords() {
+    const fd = new FormData();
+    fd.append('action', 'fetch_keywords');
+
+    fetch('smack-fingerprints.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            let html = '';
+            if (!data.ok || data.keywords.length === 0) {
+                html = '<p class="dim">No banned keywords yet.</p>';
+            } else {
+                html = '<table class="admin-table" style="width:100%;"><tbody>';
+                html += '<tr style="font-weight:bold;"><td>Keyword</td><td>Type</td><td>Severity</td><td>Reason</td><td></td></tr>';
+                data.keywords.forEach(kw => {
+                    const severity_color = kw.severity === 'reject' ? 'color:var(--danger,#cc4444)' : '';
+                    html += `<tr>
+                        <td><code>${kw.keyword}</code></td>
+                        <td><span class="dim">${kw.match_type}</span></td>
+                        <td style="${severity_color}"><strong>${kw.severity}</strong></td>
+                        <td>${kw.reason || '(none)'}</td>
+                        <td style="text-align:right;"><button class="btn-smack btn-smack--dim btn-smack--sm" onclick="removeKeyword('${kw.keyword.replace(/'/g, "\\'")}')">Remove</button></td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+            }
+            document.getElementById('keyword-list').innerHTML = html;
+        });
+}
+
 // ── INIT ────────────────────────────────────────────────────────────────────
 loadBans(1);
+loadKeywords();
 </script>
 
 <?php include 'core/admin-footer.php'; ?>
