@@ -38,6 +38,7 @@ return [
 
     'require_scripts' => [
         'smack-footer',
+        'smack-image-fade-load',
         'smack-lightbox',
         'smack-keyboard',
         'smack-justified-lib',
