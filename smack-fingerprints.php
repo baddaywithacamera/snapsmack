@@ -1,0 +1,340 @@
+<?php
+/**
+ * SNAPSMACK - Fingerprints & Ban Manager
+ *
+ * Admin interface for viewing browser fingerprints associated with comments,
+ * reviewing ban patterns, and issuing/revoking bans by fingerprint, IP, or email hash.
+ */
+
+require_once 'core/auth.php';
+require_once 'core/ban-check.php';
+
+$page_title = 'Fingerprints & Bans';
+include 'core/admin-header.php';
+include 'core/sidebar.php';
+
+// ── AJAX ENDPOINTS ──────────────────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    header('Content-Type: application/json');
+
+    $action = $_POST['action'];
+
+    if ($action === 'add_ban') {
+        $ban_type  = $_POST['ban_type'] ?? '';
+        $ban_value = trim($_POST['ban_value'] ?? '');
+        $reason    = trim($_POST['reason'] ?? '');
+
+        if (!in_array($ban_type, ['fingerprint', 'ip', 'email_hash'])) {
+            echo json_encode(['ok' => false, 'error' => 'Invalid ban type']);
+            exit;
+        }
+
+        if (empty($ban_value)) {
+            echo json_encode(['ok' => false, 'error' => 'Ban value required']);
+            exit;
+        }
+
+        // If banning by email, hash it first
+        if ($ban_type === 'email_hash') {
+            $ban_value = hash('sha256', strtolower($ban_value));
+        }
+
+        $success = add_ban($pdo, $ban_type, $ban_value, $reason, $_SESSION['user_id'] ?? null);
+
+        echo json_encode(['ok' => $success, 'error' => $success ? null : 'Ban already exists']);
+        exit;
+    }
+
+    if ($action === 'remove_ban') {
+        $ban_id = (int)($_POST['ban_id'] ?? 0);
+        $success = remove_ban($pdo, $ban_id);
+        echo json_encode(['ok' => $success]);
+        exit;
+    }
+
+    if ($action === 'fetch_bans') {
+        $page     = max(1, (int)($_POST['page'] ?? 1));
+        $per_page = 50;
+        $offset   = ($page - 1) * $per_page;
+        $banned_only = (bool)($_POST['banned_only'] ?? false);
+
+        $where = $banned_only ? "WHERE is_banned = TRUE" : "";
+        $total = (int)$pdo->query("SELECT COUNT(*) FROM snap_ban_list $where")->fetchColumn();
+
+        $stmt = $pdo->prepare("SELECT * FROM snap_ban_list $where ORDER BY banned_at DESC LIMIT $per_page OFFSET $offset");
+        $stmt->execute();
+        $bans = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'bans'     => $bans,
+            'total'    => $total,
+            'page'     => $page,
+            'per_page' => $per_page,
+            'pages'    => ceil($total / $per_page)
+        ]);
+        exit;
+    }
+
+    if ($action === 'fetch_fingerprints') {
+        $page     = max(1, (int)($_POST['page'] ?? 1));
+        $per_page = 50;
+        $offset   = ($page - 1) * $per_page;
+        $search   = trim($_POST['search'] ?? '');
+
+        $where = "1=1";
+        $params = [];
+
+        if ($search !== '') {
+            // Search by fingerprint hash prefix or IP from comment
+            $where = "(bl.ban_value LIKE ? OR EXISTS (SELECT 1 FROM snap_comments WHERE fp_hash LIKE ?))";
+            $params[] = $search . '%';
+            $params[] = $search . '%';
+        }
+
+        $total_sql = "SELECT COUNT(DISTINCT bl.ban_value) FROM snap_ban_list bl WHERE $where";
+        $stmt = $pdo->prepare($total_sql);
+        $stmt->execute($params);
+        $total = (int)$stmt->fetchColumn();
+
+        // Fetch bans with comment counts
+        $sql = "
+            SELECT bl.*,
+                   (SELECT COUNT(*) FROM snap_comments WHERE fp_hash = bl.ban_value AND bl.ban_type = 'fingerprint') as fp_comment_count,
+                   (SELECT COUNT(*) FROM snap_comments WHERE comment_ip = bl.ban_value AND bl.ban_type = 'ip') as ip_comment_count
+            FROM snap_ban_list bl
+            WHERE $where
+            ORDER BY bl.banned_at DESC
+            LIMIT $per_page OFFSET $offset
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $bans = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'bans'     => $bans,
+            'total'    => $total,
+            'page'     => $page,
+            'per_page' => $per_page,
+            'pages'    => ceil($total / $per_page)
+        ]);
+        exit;
+    }
+
+    echo json_encode(['ok' => false, 'error' => 'Unknown action']);
+    exit;
+}
+
+// ── PAGE RENDER ──────────────────────────────────────────────────────────────
+$total_bans = (int)$pdo->query("SELECT COUNT(*) FROM snap_ban_list")->fetchColumn();
+$active_bans = (int)$pdo->query("SELECT COUNT(*) FROM snap_ban_list WHERE is_banned = TRUE")->fetchColumn();
+?>
+
+<div class="main">
+    <div class="header-row header-row--ruled">
+        <h2>FINGERPRINTS & BAN MANAGER</h2>
+        <span class="dim"><?php echo $active_bans; ?> active bans (<?php echo $total_bans; ?> total)</span>
+    </div>
+
+    <!-- ── TAB SELECTOR ──────────────────────────────────────────────────────── -->
+    <div class="tab-selector" id="tab-selector">
+        <button class="tab-btn tab-active" data-tab="banned">BANNED</button>
+        <button class="tab-btn" data-tab="fingerprints">FINGERPRINTS</button>
+        <button class="tab-btn" data-tab="add">ADD BAN</button>
+    </div>
+
+    <!-- ── TAB 1: BANNED ──────────────────────────────────────────────────────── -->
+    <div class="tab-content tab-content--active" id="tab-banned">
+        <div class="box">
+            <h3>Active Bans</h3>
+            <div id="banned-list"></div>
+            <div id="banned-paginator" style="margin-top:20px; text-align:center;"></div>
+        </div>
+    </div>
+
+    <!-- ── TAB 2: FINGERPRINTS ───────────────────────────────────────────────── -->
+    <div class="tab-content" id="tab-fingerprints">
+        <div class="box">
+            <h3>Search Fingerprints</h3>
+            <input type="text" id="fp-search" class="full-width-input" placeholder="Search by fingerprint hash or IP…" style="margin-bottom:12px;">
+            <div id="fingerprint-list"></div>
+            <div id="fp-paginator" style="margin-top:20px; text-align:center;"></div>
+        </div>
+    </div>
+
+    <!-- ── TAB 3: ADD BAN ─────────────────────────────────────────────────────── -->
+    <div class="tab-content" id="tab-add">
+        <div class="box">
+            <h3>Issue New Ban</h3>
+            <div class="meta-grid">
+                <div class="lens-input-wrapper">
+                    <label>BAN TYPE</label>
+                    <select id="ban-type" class="full-width-select">
+                        <option value="fingerprint">Browser Fingerprint</option>
+                        <option value="ip">IP Address</option>
+                        <option value="email_hash">Email Address</option>
+                    </select>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>VALUE TO BAN</label>
+                    <input type="text" id="ban-value" class="full-width-input" placeholder="Paste fingerprint, IP, or email">
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>REASON</label>
+                    <input type="text" id="ban-reason" class="full-width-input" placeholder="e.g., Spam, Abuse, Sockpuppet">
+                </div>
+            </div>
+            <button type="button" class="btn-smack" onclick="issueBan()" style="margin-top:12px;">Issue Ban</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── TAB SWITCHING ───────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const tab = this.getAttribute('data-tab');
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('tab-content--active'));
+        this.classList.add('tab-active');
+        document.getElementById('tab-' + tab).classList.add('tab-content--active');
+
+        if (tab === 'banned') loadBans(1);
+        if (tab === 'fingerprints') loadFingerprints(1);
+    });
+});
+
+// ── FETCH AND RENDER BANS ───────────────────────────────────────────────────
+let currentBanPage = 1;
+function loadBans(page) {
+    currentBanPage = page;
+    const fd = new FormData();
+    fd.append('action', 'fetch_bans');
+    fd.append('page', page);
+    fd.append('banned_only', '1');
+
+    fetch('smack-fingerprints.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            let html = '<table class="admin-table" style="width:100%;"><tbody>';
+            data.bans.forEach(ban => {
+                html += `<tr>
+                    <td><code>${ban.ban_value.substring(0, 16)}...</code></td>
+                    <td><span class="dim">${ban.ban_type}</span></td>
+                    <td>${ban.reason || '(no reason given)'}</td>
+                    <td style="text-align:right;"><small>${new Date(ban.banned_at).toLocaleDateString()}</small></td>
+                    <td style="text-align:right;"><button class="btn-smack btn-smack--dim btn-smack--sm" onclick="removeBan(${ban.id})">Unban</button></td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            document.getElementById('banned-list').innerHTML = html;
+
+            // Paginator
+            let pag = '';
+            for (let i = 1; i <= data.pages; i++) {
+                pag += `<button class="btn-smack btn-smack--sm" onclick="loadBans(${i})" ${i === page ? 'disabled' : ''}>${i}</button> `;
+            }
+            document.getElementById('banned-paginator').innerHTML = pag;
+        });
+}
+
+// ── FETCH AND RENDER FINGERPRINTS ───────────────────────────────────────────
+let currentFpPage = 1;
+function loadFingerprints(page) {
+    currentFpPage = page;
+    const search = document.getElementById('fp-search').value;
+    const fd = new FormData();
+    fd.append('action', 'fetch_fingerprints');
+    fd.append('page', page);
+    fd.append('search', search);
+
+    fetch('smack-fingerprints.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            let html = '<table class="admin-table" style="width:100%;"><tbody>';
+            data.bans.forEach(ban => {
+                html += `<tr>
+                    <td><code>${ban.ban_value.substring(0, 24)}...</code></td>
+                    <td>${ban.ban_type}</td>
+                    <td><strong>${ban.fp_comment_count || ban.ip_comment_count || 0}</strong> comments</td>
+                    <td>${ban.is_banned ? '<span style="color:var(--danger,#cc4444);">⚫ BANNED</span>' : '<span style="color:var(--accent,#7aad5a);">✓ ALLOWED</span>'}</td>
+                    <td style="text-align:right;"><button class="btn-smack btn-smack--dim btn-smack--sm" onclick="banFingerprint('${ban.ban_value}', '${ban.ban_type}')">Ban</button></td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            document.getElementById('fingerprint-list').innerHTML = html;
+
+            let pag = '';
+            for (let i = 1; i <= data.pages; i++) {
+                pag += `<button class="btn-smack btn-smack--sm" onclick="loadFingerprints(${i})" ${i === page ? 'disabled' : ''}>${i}</button> `;
+            }
+            document.getElementById('fp-paginator').innerHTML = pag;
+        });
+}
+
+// ── BAN / UNBAN ─────────────────────────────────────────────────────────────
+function banFingerprint(value, type) {
+    const reason = prompt('Ban reason (optional):');
+    if (reason === null) return;
+    issueBanDirect(type, value, reason);
+}
+
+function issueBan() {
+    const type = document.getElementById('ban-type').value;
+    const value = document.getElementById('ban-value').value;
+    const reason = document.getElementById('ban-reason').value;
+    if (!value) { alert('Enter a value to ban'); return; }
+    issueBanDirect(type, value, reason);
+}
+
+function issueBanDirect(type, value, reason) {
+    const fd = new FormData();
+    fd.append('action', 'add_ban');
+    fd.append('ban_type', type);
+    fd.append('ban_value', value);
+    fd.append('reason', reason);
+
+    fetch('smack-fingerprints.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                alert('Ban issued.');
+                loadBans(1);
+                loadFingerprints(1);
+                document.getElementById('ban-value').value = '';
+                document.getElementById('ban-reason').value = '';
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        });
+}
+
+function removeBan(banId) {
+    if (!confirm('Unban this user?')) return;
+    const fd = new FormData();
+    fd.append('action', 'remove_ban');
+    fd.append('ban_id', banId);
+
+    fetch('smack-fingerprints.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                alert('Ban removed.');
+                loadBans(1);
+            } else {
+                alert('Error removing ban.');
+            }
+        });
+}
+
+// ── SEARCH DEBOUNCE ─────────────────────────────────────────────────────────
+let searchTimer;
+document.getElementById('fp-search').addEventListener('input', function() {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => loadFingerprints(1), 300);
+});
+
+// ── INIT ────────────────────────────────────────────────────────────────────
+loadBans(1);
+</script>
+
+<?php include 'core/admin-footer.php'; ?>

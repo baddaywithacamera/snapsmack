@@ -125,23 +125,22 @@ git commit
 All commits are on `master`. Push from local:
 ```
 git push Github master
-git push Github v0.7.9L --force
 ```
 
-**0.7.9L features (new):**
-- Media Gallery (`smack-gallery.php`) — visual DAM with AJAX grid, lazy loading,
-  search/filter/bulk ops, quick-edit panel, rubber-band selection, picker mode.
-  JS: `assets/js/ss-engine-gallery.js`, CSS: `assets/css/ss-engine-gallery.css`.
-- Photo Editor (`ss-engine-photo-editor.js`) — canvas-based editor with crop
-  (freeform + fixed ratios), rotate, flip, brightness/contrast/sharpen sliders,
-  B&W conversion. Server save: `core/photo-editor-save.php`.
-- Edit Image button on `smack-edit.php` and `smack-edit-carousel.php`.
-- Media Gallery link in sidebar nav.
-- Photo editor engine registered in `core/manifest-inventory.php`.
+**0.7.9L features (combined):**
+- **Media Gallery** (`smack-gallery.php`) — visual DAM with AJAX grid, full-text search, filtering, bulk operations
+- **Photo Editor** (`ss-engine-photo-editor.js`) — non-destructive canvas-based editing with crop/rotate/flip/adjust/BW
+- **Browser Fingerprinting & Ban System** — passive collection of canvas, WebGL, screen geometry, timezone, language, hardware concurrency hashed into SHA-256. Ban by fingerprint, IP, or email (hashed). Silent rejection at submission time.
+- Fingerprints & Bans admin page (`smack-fingerprints.php`) with Banned/Fingerprints/Add Ban tabs
+- Ban logic wired into both photo comment and community comment handlers
+- Help topic covering how fingerprinting works and ban management
+- Sidebar link under "Boring Ass Stuff"
+- Migration 029 creates `snap_ban_list` table
+- `core/ban-check.php` provides `is_banned()`, `add_ban()`, `remove_ban()` functions
+- `assets/js/ss-engine-fingerprint.js` computes fingerprint on page load
 
 **Pending on live servers (FTP these files):**
-- `smack-central/sc-release.php` → snapsmack.ca (release exclusions updated)
-- Full 0.7.9L release to all live sites via Smack Central
+- Full 0.7.9L release to all live sites
 
 ### Smack Up Your Backup — v0.2.4
 All commits on `master`. Push from local: `git push Github master`
