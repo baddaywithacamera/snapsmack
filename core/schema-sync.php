@@ -42,47 +42,60 @@ function snap_parse_canonical_schema(): array {
     }
 
     $create_tables = [];
+    $current_statement = '';
+    $in_create_table = false;
+    $table_name = '';
+    $paren_depth = 0;
 
-    // Match all CREATE TABLE statements. The regex captures the entire statement
-    // from CREATE through the semicolon, handling multiline definitions.
-    // Pattern: CREATE TABLE IF NOT EXISTS `table_name` ( ... ) ENGINE=... ;
-    $pattern = '/CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`(\w+)`\s*\(([\s\S]*?)\)\s*ENGINE\s*=\s*\w+(?:\s+DEFAULT\s+CHARSET[^\;]*)?;/i';
+    // Split into lines for easier processing
+    $lines = explode("\n", $sql_content);
 
-    if (preg_match_all($pattern, $sql_content, $matches, PREG_SET_ORDER)) {
-        foreach ($matches as $match) {
-            $table_name = $match[1];
-            $column_defs = $match[2];
+    foreach ($lines as $line) {
+        $line = rtrim($line);
 
-            // Reconstruct the full CREATE TABLE statement
-            // We need to extract the exact statement from the original content
-            $start = strpos($sql_content, "CREATE TABLE IF NOT EXISTS `{$table_name}`");
-            if ($start !== false) {
-                // Find the closing semicolon after this CREATE TABLE
-                $paren_count = 0;
-                $in_string = false;
-                $pos = $start;
+        // Skip empty lines and comment-only lines
+        if (empty($line) || preg_match('/^\s*--/', $line)) {
+            if ($in_create_table) {
+                $current_statement .= "\n" . $line;
+            }
+            continue;
+        }
 
-                while ($pos < strlen($sql_content)) {
-                    $char = $sql_content[$pos];
+        if (!$in_create_table) {
+            // Check if this line starts a CREATE TABLE statement
+            if (preg_match('/^\s*CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`(\w+)`/i', $line, $m)) {
+                $table_name = $m[1];
+                $in_create_table = true;
+                $current_statement = $line;
+                $paren_depth = substr_count($line, '(') - substr_count($line, ')');
+            }
+        } else {
+            // We're inside a CREATE TABLE statement
+            $current_statement .= "\n" . $line;
 
-                    // Handle string literals
-                    if ($char === "'" && ($pos === 0 || $sql_content[$pos-1] !== '\\')) {
-                        $in_string = !$in_string;
-                    }
-
-                    if (!$in_string) {
-                        if ($char === '(') $paren_count++;
-                        elseif ($char === ')') $paren_count--;
-                        elseif ($char === ';' && $paren_count === 0) {
-                            // Found the end of this statement
-                            $ddl = trim(substr($sql_content, $start, $pos - $start + 1));
-                            $create_tables[$table_name] = $ddl;
-                            break;
-                        }
-                    }
-
-                    $pos++;
+            // Update paren depth (accounting for strings to avoid false counts)
+            $depth_change = 0;
+            $in_string = false;
+            for ($i = 0; $i < strlen($line); $i++) {
+                $char = $line[$i];
+                if ($char === "'" && ($i === 0 || $line[$i-1] !== '\\')) {
+                    $in_string = !$in_string;
                 }
+                if (!$in_string) {
+                    if ($char === '(') $depth_change++;
+                    elseif ($char === ')') $depth_change--;
+                }
+            }
+            $paren_depth += $depth_change;
+
+            // Check if statement is complete (semicolon at end and parens balanced)
+            if ($paren_depth === 0 && preg_match('/;\s*$/', $line)) {
+                $ddl = trim($current_statement);
+                $create_tables[$table_name] = $ddl;
+
+                $in_create_table = false;
+                $current_statement = '';
+                $table_name = '';
             }
         }
     }
