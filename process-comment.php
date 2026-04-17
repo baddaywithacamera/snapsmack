@@ -20,6 +20,8 @@ if (!file_exists($db_path)) {
 
 require_once $db_path;
 require_once __DIR__ . '/core/ban-check.php';
+require_once __DIR__ . '/core/semantic-analysis.php';
+require_once __DIR__ . '/core/keyword-check.php';
 
 if (file_exists($spam_path)) {
     require_once $spam_path;
@@ -63,6 +65,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             die("SIGNAL REJECTED: Comments are disabled for this frequency.");
         }
 
+        // --- KEYWORD CHECK ---
+        // Check for banned keywords/phrases. If 'reject' severity, silent rejection.
+        // If 'flag' severity, store comment but flag for review.
+        $keyword_result = check_keywords($pdo, $text);
+        $keyword_flagged = false;
+        if ($keyword_result['matched'] && $keyword_result['severity'] === 'reject') {
+            // Hard rejection: silently discard
+            $target = "/index.php" . ($slug ? "/" . $slug : "");
+            header("Location: " . $target . "?status=received");
+            exit;
+        } elseif ($keyword_result['matched']) {
+            // Flag for review but continue with insertion
+            $keyword_flagged = true;
+        }
+
         // --- BAN CHECK ---
         // Silent rejection: banned submissions appear to succeed but are discarded.
         // The submitter sees the normal redirect; nothing is stored.
@@ -84,6 +101,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Store comment with is_approved = 0 for moderation queue
         $stmt = $pdo->prepare("INSERT INTO snap_comments (img_id, comment_author, comment_email, comment_text, comment_ip, fp_hash) VALUES (?, ?, ?, ?, ?, ?)");
         $stmt->execute([$img_id, $author, $email, $text, $ip, $fp_hash ?: null]);
+        $comment_id = $pdo->lastInsertId();
+
+        // --- SEMANTIC ANALYSIS STORAGE ---
+        // Store comment text and TF-IDF vector for semantic duplicate detection
+        if ($comment_id && $fp_hash) {
+            store_comment_text($pdo, (int)$comment_id, $fp_hash, $text);
+        }
 
         // --- REDIRECT ---
         // Send user back to the post with success status
