@@ -1,6 +1,6 @@
 # SnapSmack
 
-**Alpha v0.7.9c "Electric Chair"**
+**Alpha v0.7.9L "Hot Seat"**
 
 A self-hosted photography CMS for people who care about their photographs. Your domain, your archive, no algorithm.
 
@@ -25,6 +25,7 @@ Key characteristics across both editions:
 - **AI training crawler policy** — choose to allow, disallow, or take no position on AI training crawlers. Disallow mode blocks known AI bots via `robots.txt` and injects `noai`/`noimageai` meta tags site-wide.
 - **Homepage modes** — Latest Post, Skin Landing Page, or a Static Page. A Landing Page Only toggle strips all navigation and chrome for coming-soon or splash installs.
 - **Multisite management** — designate one install as the hub and connect spoke sites. Monitor heartbeat, cross-post images, moderate comments from a single dashboard, sync blogrolls, aggregate traffic stats, and SSO drill-through so you log in once and move freely between sites.
+- **Troll protection system** — browser fingerprinting, writing style detection (AI semantic analysis of TF-IDF vectors), and keyword/phrase banning. Detect coordinated attacks or persistent trolls across VPN rotations; flag or silently reject submissions from banned users without alerting them.
 - **No tracking, no ads, no third-party dependencies at runtime.**
 
 ---
