@@ -4,6 +4,13 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.9M — "Maintenance Mode" (2026-04-17)
+
+### Fixed
+- **Schema sync now reads canonical schema from git instead of maintaining hardcoded copies.** `core/schema-sync.php` previously contained duplicate table definitions hardcoded in a PHP array. When new tables were added to `database/schema/snapsmack_canonical.sql`, the schema-sync function had to be manually updated or new tables wouldn't auto-discover. This was the third/fourth request to implement this fix. Now `snap_parse_canonical_schema()` function reads the canonical SQL file at runtime, extracts CREATE TABLE statements via regex, and builds the table array dynamically. Single source of truth: all schema changes go in canonical.sql, schema-sync reads from it automatically. Eliminates silent schema mismatches that caused features like fingerprints/bans page to stay blank on fresh deployments.
+
+---
+
 ## 0.7.9L — "Hot Seat" (2026-04-16)
 
 ### Added
