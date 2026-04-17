@@ -12,6 +12,10 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - **Edit Image button** added to `smack-edit.php` and `smack-edit-carousel.php` image preview areas.
 - **Media Gallery** added to the sidebar navigation under "The Good Shit".
 - **Photo editor engine** registered in `core/manifest-inventory.php` for skin manifest access.
+- **AI Semantic Fingerprinting & Keyword Banning** — detect persistent trolls using writing style analysis and banned phrases. Browser fingerprints are stored alongside comment text; a TF-IDF semantic engine compares new comments against all prior submissions to find related accounts (55%+ similarity). Keyword/phrase banning supports exact word, substring, and regex matching with two severity levels (flag for review, or silent rejection). New admin tabs: Semantic Analysis (find similar fingerprints by writing style) and Keywords (manage banned phrases). Integration into both photo comment (`process-comment.php`) and community comment (`process-community-comment.php`) handlers. Silent rejection appears to succeed so troll doesn't know they're blocked. Essential for sites facing sophisticated attackers who rotate VPNs.
+- **Fingerprints & Troll Bans admin page** updated with Semantic and Keywords tabs.
+- **Database:** `snap_comments_semantic` table stores comment text and TF-IDF vectors; `snap_keywords` table stores banned phrases with match types and severity levels (migration 030).
+- **Core functions:** `core/semantic-analysis.php` provides `find_similar_fingerprints()`, `store_comment_text()`, TF-IDF and cosine similarity. `core/keyword-check.php` provides `check_keywords()`, `add_keyword()`, `remove_keyword()`.
 
 ---
 
