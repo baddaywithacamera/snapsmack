@@ -1399,7 +1399,9 @@ include 'core/sidebar.php';
         <!-- Next stage button -->
         <form method="POST" class="stage-next-btn">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <?php if ($stage === 'downloaded'): ?>
+            <?php if ($stage === 'review'): ?>
+                <button type="submit" name="action" value="stage_download" class="btn-smack">APPLY →</button>
+            <?php elseif ($stage === 'downloaded'): ?>
                 <button type="submit" name="action" value="stage_verify" class="btn-smack">VERIFY PACKAGE →</button>
             <?php elseif ($stage === 'verified'): ?>
                 <button type="submit" name="action" value="stage_backup" class="btn-smack">CREATE BACKUP →</button>
