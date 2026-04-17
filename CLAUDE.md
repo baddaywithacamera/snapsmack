@@ -131,13 +131,18 @@ git push Github master
 - **Media Gallery** (`smack-gallery.php`) — visual DAM with AJAX grid, full-text search, filtering, bulk operations
 - **Photo Editor** (`ss-engine-photo-editor.js`) — non-destructive canvas-based editing with crop/rotate/flip/adjust/BW
 - **Browser Fingerprinting & Ban System** — passive collection of canvas, WebGL, screen geometry, timezone, language, hardware concurrency hashed into SHA-256. Ban by fingerprint, IP, or email (hashed). Silent rejection at submission time.
-- Fingerprints & Bans admin page (`smack-fingerprints.php`) with Banned/Fingerprints/Add Ban tabs
+- **AI Semantic Analysis** — TF-IDF vectorization and cosine similarity for detecting related accounts across VPN rotations. Writing style is signature. Fingerprints are stored with comments; semantic admin tab shows similar fingerprints sorted by similarity %.
+- **Keyword & Phrase Banning** — ban keywords with three match types (exact, substring, regex) and two severity levels (flag for review, silent reject). Admin keywords tab for management.
+- Fingerprints & Bans admin page (`smack-fingerprints.php`) with Banned/Fingerprints/Semantic/Keywords/Add Ban tabs
 - Ban logic wired into both photo comment and community comment handlers
-- Help topic covering how fingerprinting works and ban management
-- Sidebar link under "Boring Ass Stuff"
-- Migration 029 creates `snap_ban_list` table
+- Migration 029 creates `snap_ban_list` table; Migration 030 creates `snap_comments_semantic` and `snap_keywords` tables
 - `core/ban-check.php` provides `is_banned()`, `add_ban()`, `remove_ban()` functions
+- `core/semantic-analysis.php` provides TF-IDF, cosine similarity, `find_similar_fingerprints()`, `store_comment_text()`
+- `core/keyword-check.php` provides `check_keywords()`, `add_keyword()`, `remove_keyword()`, `get_all_keywords()`
 - `assets/js/ss-engine-fingerprint.js` computes fingerprint on page load
+- **System Updates: Reapply Feature** — new "Reapply Current Version" button allows re-downloading/re-extracting current version if release was packaged wrong or files missed. Solves the tag-fix-after-release problem.
+- Help topic covering how fingerprinting works, semantic analysis, keyword banning, ban management
+- Sidebar link under "Boring Ass Stuff"
 
 **Pending on live servers (FTP these files):**
 - Full 0.7.9L release to all live sites
