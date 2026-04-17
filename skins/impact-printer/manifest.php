@@ -50,6 +50,7 @@ return [
     // No glitch, no justified, no wall
     'require_scripts' => [
         'smack-footer',
+        'smack-image-fade-load',
         'smack-lightbox',
         'smack-keyboard',
         'smack-community'

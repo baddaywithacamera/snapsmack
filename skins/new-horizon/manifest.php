@@ -37,8 +37,9 @@ return [
 
     // Load required JavaScript libraries and controllers
     'require_scripts' => [
-        'smack-footer', 
-        'smack-lightbox', 
+        'smack-footer',
+        'smack-image-fade-load',
+        'smack-lightbox',
         'smack-keyboard',
         'smack-justified-lib',
         'smack-justified',
