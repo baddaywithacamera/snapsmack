@@ -843,6 +843,14 @@ submission is silently rejected — the user sees a success message but the comm
     <li><strong>Banned Tab</strong> — shows all active bans. Click <em>Unban</em> to remove a ban.</li>
     <li><strong>Fingerprints Tab</strong> — search by fingerprint hash or IP. See comment counts per fingerprint.
         Click <em>Ban</em> to ban that fingerprint with a custom reason.</li>
+    <li><strong>Semantic Tab</strong> — detect related accounts using AI writing style analysis.
+        Enter a fingerprint to see all similar fingerprints (sorted by similarity %). Essential
+        for catching persistent trolls who rotate VPNs — their fingerprint changes but their
+        writing style (vocabulary, phrasing, patterns) remains signature. Similarity threshold is 55%.
+        One click to ban all related fingerprints at once.</li>
+    <li><strong>Keywords Tab</strong> — manage banned phrases and words. Add keywords with three
+        match types (exact word, substring, regex) and two severity levels (flag for review, or
+        silent reject). Silent rejection blocks the submission without alerting the submitter.</li>
     <li><strong>Add Ban Tab</strong> — issue a new ban by fingerprint, IP, or email address.</li>
 </ul>
 
