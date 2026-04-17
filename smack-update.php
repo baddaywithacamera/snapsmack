@@ -995,8 +995,8 @@ include 'core/sidebar.php';
         background: rgba(57, 255, 20, 0.03);
     }
     .stage-box h3 { margin-bottom: 16px; }
-    .stage-next-btn { margin-top: 16px; }
-    .stage-cancel { margin-top: 10px; }
+    .stage-next-btn { margin-top: 16px; display: inline-block; }
+    .stage-cancel { margin-top: 10px; display: inline-block; margin-left: 12px; }
 
     .skin-notify-card {
         display: flex; justify-content: space-between; align-items: center;
@@ -1016,6 +1016,7 @@ include 'core/sidebar.php';
         border-radius: 4px; background: rgba(221, 170, 68, 0.05);
     }
     .confirm-box p { margin-bottom: 15px; }
+    .confirm-box form { display: inline-block; margin-right: 12px; }
     .cron-info {
         margin-top: 20px; padding: 12px 18px; border-radius: 3px;
         background: rgba(255,255,255,0.03); font-family: monospace; font-size: 0.75rem; line-height: 1.6;
