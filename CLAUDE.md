@@ -27,6 +27,18 @@ gallery — do not delete the files.
 
 This rule has no exceptions.
 
+## CRITICAL — Common Oversights (Blind Spots)
+
+**After every feature build, check these three things or the release will be incomplete:**
+
+1. **CHANGELOG.md** — Add entry for the new version/feature. If you add new tables, migrations, or admin pages, document them. Users and ops teams read the changelog to understand what changed.
+
+2. **Help system (smack-help.php)** — Add a help topic or update existing topics. If you added an admin page, there should be a help topic explaining it. Help topics go in `$help_topics[]` array with section, title, icon, and HTML content.
+
+3. **Canonical schema (database/schema/snapsmack_canonical.sql)** — **Every new table must be added here.** The Schema Recovery tool (`core/schema-sync.php`) reads this file to auto-discover missing tables. If a table isn't in the canonical schema, the updater won't create it and admins get a blank page. This happened: semantic tables weren't in canonical schema → schema recovery didn't find them → fingerprints page stayed blank.
+
+These are not optional. They ensure: (1) documentation is current, (2) admins can self-serve via help, (3) schema-sync can auto-repair installs.
+
 ## Absolute Rules
 
 1. **No inline `<script>` blocks.** All JavaScript lives in `/assets/js/`. Engine scripts follow the naming convention `ss-engine-{name}.js`. Skins declare which scripts they need via `require_scripts[]` in their manifest. The only exception is the existing `<style>` blocks in `skin-header.php` for conditional CSS overrides (bevel, wood grain, square crop) that require PHP logic.
