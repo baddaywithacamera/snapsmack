@@ -819,6 +819,55 @@ It also blocks public access to admin pages (<code>/smack-*</code>), <code>/core
 HTML
 ];
 
+$help_topics['fingerprints-bans'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Fingerprints & Troll Bans',
+    'icon'     => '&#x1F511;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Fingerprints &amp; Troll Ban System</h3>
+<p>SnapSmack automatically collects a passive browser fingerprint from every commenter.
+This fingerprint is a hash of their browser characteristics (canvas, WebGL, screen resolution,
+timezone, language, etc.) and allows you to ban persistent trolls across IP changes, VPNs,
+and incognito browsing.</p>
+
+<h4>How It Works</h4>
+<p>When someone submits a comment, JavaScript on the public site extracts their browser
+fingerprint and includes it in the submission. The server stores this fingerprint alongside
+the comment. If the fingerprint (or IP or email) matches an entry in your ban list, the
+submission is silently rejected — the user sees a success message but the comment is never stored.</p>
+
+<h4>The Ban Manager</h4>
+<p>Navigate to <strong>Fingerprints &amp; Troll Bans</strong> in the admin sidebar to manage bans:</p>
+<ul>
+    <li><strong>Banned Tab</strong> — shows all active bans. Click <em>Unban</em> to remove a ban.</li>
+    <li><strong>Fingerprints Tab</strong> — search by fingerprint hash or IP. See comment counts per fingerprint.
+        Click <em>Ban</em> to ban that fingerprint with a custom reason.</li>
+    <li><strong>Add Ban Tab</strong> — issue a new ban by fingerprint, IP, or email address.</li>
+</ul>
+
+<h4>Ban Types</h4>
+<ul>
+    <li><strong>Fingerprint</strong> — blocks a specific browser/device. Best for repeat trolls.
+        They'd need a new device or browser to bypass.</li>
+    <li><strong>IP Address</strong> — blocks an IP. Easiest to evade (VPN, proxy, public WiFi).
+        Use in combination with fingerprint bans.</li>
+    <li><strong>Email Address</strong> — blocks an email hash. Stored as SHA-256 so the address
+        itself is never exposed in the database.</li>
+</ul>
+
+<h4>False Positives</h4>
+<p>Similar browsers (same device, same network) may share similar fingerprints. If you
+accidentally ban a legitimate user, simply navigate to the <em>Banned</em> tab and click <em>Unban</em>
+for that entry. It takes effect immediately.</p>
+
+<h4>Privacy</h4>
+<p>Fingerprints contain no personally identifiable information — just browser characteristics.
+Email addresses are hashed, so only the hash is stored. IP addresses are stored in plain text
+because they're necessary for blocking; they're visible only to admins.</p>
+HTML
+];
+
 $help_topics['user-manager'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'User Manager',
