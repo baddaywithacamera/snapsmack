@@ -854,7 +854,9 @@ function updater_run_migrations(PDO $pdo, array $migration_files): array {
             // Delete the SQL file — it has been applied and recorded.
             // This prevents ghost files from accumulating and being picked up
             // as pending on future updates.
-            @unlink($file);
+            if (!unlink($file)) {
+                error_log("SnapSmack updater: could not delete migration file: {$file} (permissions issue?)");
+            }
 
         } catch (\PDOException $e) {
             $result['errors'][] = $migration_name . ': ' . $e->getMessage();
