@@ -783,6 +783,11 @@ return [
             'path'         => 'assets/js/ss-engine-fullscreen.js',
             'has_settings' => false,
         ],
+        'smack-image-fade-load' => [
+            'label'        => 'Image Fade-Load Engine (Graceful image fade-in on load)',
+            'path'         => 'assets/js/ss-engine-image-fade-load.js',
+            'has_settings' => false,
+        ],
         'smack-photo-editor' => [
             'label'        => 'Photo Editor (Crop, Rotate, Adjust, Sharpen)',
             'path'         => 'assets/js/ss-engine-photo-editor.js',
