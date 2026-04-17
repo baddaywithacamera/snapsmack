@@ -32,6 +32,8 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/community-session.php';
 require_once __DIR__ . '/core/ban-check.php';
+require_once __DIR__ . '/core/semantic-analysis.php';
+require_once __DIR__ . '/core/keyword-check.php';
 
 // --- METHOD ---
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -188,6 +190,26 @@ if (!community_rate_limit('comments')) {
     exit;
 }
 
+// --- KEYWORD CHECK ---
+// Check for banned keywords/phrases. If 'reject' severity, silent rejection.
+// If 'flag' severity, store comment but flag for review.
+$keyword_result = check_keywords($pdo, $comment_text);
+if ($keyword_result['matched'] && $keyword_result['severity'] === 'reject') {
+    // Hard rejection: return fake success so submitter doesn't know they're blocked
+    echo json_encode([
+        'comment_id'   => rand(10000, 99999),
+        'is_guest'     => $is_guest,
+        'guest_name'   => $guest_name,
+        'username'     => $user['username'] ?? null,
+        'display_name' => $guest_name ?? ($user['display_name'] ?? ($user['username'] ?? null)),
+        'avatar_url'   => $user['avatar_url'] ?? null,
+        'comment_text' => $comment_text,
+        'created_at'   => date('Y-m-d H:i:s'),
+        'date_label'   => date('Y-m-d'),
+    ]);
+    exit;
+}
+
 // --- BAN CHECK ---
 // Collect fingerprint hash from payload (injected by ss-engine-fingerprint.js).
 $fp_hash = preg_match('/^[0-9a-f]{64}$/', $_POST['fp_hash'] ?? '')
@@ -230,6 +252,12 @@ if ($is_guest) {
 
 $comment_id = (int)$pdo->lastInsertId();
 $created_at = date('Y-m-d H:i:s');
+
+// --- SEMANTIC ANALYSIS STORAGE ---
+// Store comment text and TF-IDF vector for semantic duplicate detection
+if ($comment_id && $fp_hash) {
+    store_comment_text($pdo, $comment_id, $fp_hash, $comment_text);
+}
 
 if ($is_guest) {
     echo json_encode([
