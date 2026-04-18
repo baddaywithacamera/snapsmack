@@ -110,16 +110,33 @@ p:last-child { margin-bottom: 0; }
 
 /* ─── HEADER ────────────────────────────────────────────────────────────── */
 #site-header {
-    background: var(--white);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 1);
+    backdrop-filter: blur(8px);
     border-bottom: 3px solid var(--red);
     padding: 28px 0 24px;
+    transition: background 0.3s ease;
+}
+
+#site-header.scrolled {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+#site-header:hover,
+#site-header:focus-within {
+    background: rgba(255, 255, 255, 1);
 }
 
 .header-inner {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 24px;
+    gap: 40px;
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 32px;
 }
 
 .logo-lockup {
@@ -166,6 +183,53 @@ p:last-child { margin-bottom: 0; }
 .logo-text .tagline em {
     color: var(--red);
     font-style: normal;
+}
+
+/* ─── NAVIGATION ────────────────────────────────────────────────────────────── */
+nav {
+    display: flex;
+    gap: 32px;
+    margin-left: auto;
+}
+
+nav a {
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--dark-grey);
+    text-decoration: none;
+    position: relative;
+    padding-bottom: 4px;
+    transition: color 0.15s;
+}
+
+nav a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: var(--red);
+    transition: width 0.3s ease;
+}
+
+nav a:hover {
+    color: var(--black);
+}
+
+nav a:hover::after {
+    width: 100%;
+}
+
+nav a.active {
+    color: var(--black);
+}
+
+nav a.active::after {
+    width: 100%;
 }
 
 .alpha-badge {
@@ -1183,6 +1247,26 @@ form.ml-block-form {
 </head>
 <body>
 
+<!-- ── STICKY HEADER SCROLL EFFECT ─────────────────────────────────────────── -->
+<script>
+// Sticky header scroll effect
+const header = document.getElementById('site-header');
+window.addEventListener('scroll', () => {
+    if (window.scrollY > 0) {
+        header.classList.add('scrolled');
+    } else {
+        header.classList.remove('scrolled');
+    }
+});
+
+// Highlight active nav link
+document.querySelectorAll('nav a').forEach(link => {
+    if (link.href === window.location.href) {
+        link.classList.add('active');
+    }
+});
+</script>
+
 <!-- ── LIGHTBOX ────────────────────────────────────────────────────────────── -->
 <div id="lb-overlay" role="dialog" aria-modal="true" aria-label="Image viewer">
     <span class="lb-close" aria-label="Close">&times;</span>
@@ -1193,17 +1277,20 @@ form.ml-block-form {
 
 <!-- ── HEADER ─────────────────────────────────────────────────────────────── -->
 <header id="site-header">
-    <div class="wrap">
-        <div class="header-inner">
-            <div class="logo-lockup">
-                <img src="img/logo.png" alt="SnapSmack">
-                <div class="logo-text">
-                    <div class="snap"><em>SNAP</em><strong>SMACK</strong></div>
-                    <div class="tagline">PHOTO <em>BLOGGING</em> IS BACK, BITCHEZ</div>
-                </div>
+    <div class="header-inner">
+        <a href="index.html" class="logo-lockup">
+            <img src="img/logo.png" alt="SnapSmack">
+            <div class="logo-text">
+                <div class="snap"><em>SNAP</em><strong>SMACK</strong></div>
+                <div class="tagline">PHOTO <em>BLOGGING</em> IS BACK, BITCHEZ</div>
             </div>
-            <span class="alpha-badge">Alpha v0.7.9k</span>
-        </div>
+        </a>
+        <nav>
+            <a href="news.html">WOTCHA!</a>
+            <a href="bugger.html">BUGGER!</a>
+            <a href="oi.html">OI MATE!</a>
+        </nav>
+        <span class="alpha-badge">Alpha v0.7.9M</span>
     </div>
 </header>
 
