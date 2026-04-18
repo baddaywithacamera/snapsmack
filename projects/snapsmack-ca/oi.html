@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OI MATE! - Contact Sean</title>
+<meta name="description" content="Get in touch with Sean McCormick about SnapSmack.">
+
+<!-- Favicon -->
+<link rel="icon" type="image/png" href="ss_favicon.png">
+<link rel="apple-touch-icon" href="ss_favicon.png">
+
+<style>
+/* ─── RESET & BASE ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --red:       #D40000;
+    --black:     #111111;
+    --dark-grey: #333333;
+    --mid-grey:  #666666;
+    --light-grey:#f4f4f4;
+    --border:    #ddd;
+    --white:     #ffffff;
+    --max:       1100px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 17px;
+    line-height: 1.7;
+    zoom: 1.25;
+    color: var(--dark-grey);
+    background: var(--white);
+}
+
+a {
+    color: var(--dark-grey);
+    text-decoration: none;
+    transition: color 0.15s;
+}
+a:hover {
+    color: var(--black);
+    text-decoration: underline;
+}
+
+img { display: block; max-width: 100%; height: auto; }
+
+/* ─── LAYOUT ────────────────────────────────────────────────────────────── */
+.wrap {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 32px;
+}
+
+section {
+    padding: 72px 0;
+}
+
+section + section {
+    border-top: 1px solid var(--border);
+}
+
+/* ─── TYPOGRAPHY ────────────────────────────────────────────────────────── */
+h1, h2, h3 {
+    font-family: Arial Black, Arial, sans-serif;
+    line-height: 1.1;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+}
+
+h1 {
+    font-size: clamp(2.4rem, 5vw, 4rem);
+    color: var(--black);
+    margin-bottom: 24px;
+}
+
+h1 span { color: var(--red); }
+
+h2 {
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    color: var(--red);
+    margin-bottom: 24px;
+}
+
+h3 {
+    font-size: 1.05rem;
+    color: var(--black);
+    margin-bottom: 8px;
+    letter-spacing: 0.03em;
+}
+
+p { margin-bottom: 1em; }
+p:last-child { margin-bottom: 0; }
+
+.lede {
+    font-size: 1.15rem;
+    color: var(--mid-grey);
+    max-width: 680px;
+    margin-bottom: 40px;
+}
+
+/* ─── STICKY HEADER ─────────────────────────────────────────────────────── */
+#site-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 1);
+    backdrop-filter: blur(8px);
+    border-bottom: 3px solid var(--red);
+    padding: 28px 0 24px;
+    transition: background 0.3s ease, opacity 0.3s ease;
+}
+
+#site-header.scrolled {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+#site-header:hover,
+#site-header:focus-within {
+    background: rgba(255, 255, 255, 1);
+}
+
+.header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 32px;
+}
+
+.logo-lockup {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.logo-lockup img {
+    width: 70px;
+    height: auto;
+    flex-shrink: 0;
+}
+
+.logo-text .snap {
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.03em;
+    line-height: 1;
+}
+
+.logo-text .snap em {
+    color: var(--red);
+    font-style: normal;
+}
+
+.logo-text .tagline {
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: 0.6rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--dark-grey);
+    margin-top: 2px;
+}
+
+/* ─── NAVIGATION ────────────────────────────────────────────────────────── */
+nav {
+    display: flex;
+    gap: 32px;
+}
+
+nav a {
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--dark-grey);
+    text-decoration: none;
+    position: relative;
+    padding-bottom: 4px;
+}
+
+nav a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: var(--red);
+    transition: width 0.3s ease;
+}
+
+nav a:hover::after {
+    width: 100%;
+}
+
+nav a.active {
+    color: var(--black);
+}
+
+nav a.active::after {
+    width: 100%;
+}
+
+/* ─── MAIN CONTENT ──────────────────────────────────────────────────────── */
+main {
+    margin-top: 60px;
+}
+
+.page-header {
+    padding: 60px 0 40px;
+    border-bottom: 1px solid var(--border);
+}
+
+.page-header h1 {
+    margin-bottom: 16px;
+}
+
+.content {
+    padding: 60px 0;
+    max-width: 820px;
+}
+
+.content p {
+    margin-bottom: 1.5em;
+}
+
+/* ─── CONTACT CARD ──────────────────────────────────────────────────────── */
+.contact-card {
+    background: var(--light-grey);
+    border: 2px solid var(--border);
+    padding: 32px;
+    margin-bottom: 40px;
+    max-width: 480px;
+}
+
+.contact-card h3 {
+    color: var(--black);
+    margin-bottom: 4px;
+    font-size: 1.3rem;
+}
+
+.contact-card .title {
+    font-size: 0.95rem;
+    color: var(--mid-grey);
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.contact-info {
+    margin-bottom: 24px;
+}
+
+.contact-info label {
+    display: block;
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--dark-grey);
+    margin-bottom: 6px;
+    font-weight: 700;
+}
+
+.contact-info a,
+.contact-info p {
+    font-size: 1rem;
+    color: var(--red);
+    margin: 0;
+}
+
+.contact-info a:hover {
+    text-decoration: underline;
+}
+
+.contact-note {
+    background: var(--white);
+    border-left: 3px solid var(--red);
+    padding: 16px;
+    margin-top: 24px;
+    font-style: italic;
+    font-size: 0.95rem;
+    color: var(--dark-grey);
+}
+
+/* ─── FOOTER ────────────────────────────────────────────────────────────── */
+footer {
+    background: var(--light-grey);
+    border-top: 1px solid var(--border);
+    padding: 40px 0;
+    text-align: center;
+    color: var(--mid-grey);
+    font-size: 0.95rem;
+}
+
+footer a {
+    color: var(--dark-grey);
+}
+
+footer a:hover {
+    color: var(--black);
+}
+</style>
+</head>
+<body>
+
+<!-- STICKY HEADER -->
+<header id="site-header">
+    <div class="header-inner">
+        <a href="index.html" class="logo-lockup">
+            <img src="img/logo.png" alt="SnapSmack">
+            <div class="logo-text">
+                <div class="snap"><em>Snap</em><strong>Smack</strong></div>
+                <div class="tagline">smack your <em>snaps</em> up</div>
+            </div>
+        </a>
+        <nav>
+            <a href="news.html">WOTCHA!</a>
+            <a href="bugger.html">BUGGER!</a>
+            <a href="oi.html" class="active">OI MATE!</a>
+        </nav>
+    </div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main>
+    <div class="page-header">
+        <div class="wrap">
+            <h1><span>OI MATE!</span></h1>
+            <p class="lede">Get in touch with Sean about SnapSmack</p>
+        </div>
+    </div>
+
+    <section>
+        <div class="wrap">
+            <div class="content">
+                <h2>Let's Chat</h2>
+                <p>Got questions about SnapSmack? Found a bug? Just want to say hello? Reach out using any of the methods below.</p>
+
+                <div class="contact-card">
+                    <h3>Sean McCormick</h3>
+                    <div class="title">SnapSmack Creator</div>
+
+                    <div class="contact-info">
+                        <label>Email</label>
+                        <a href="mailto:sean@baddaywithacamera.ca">sean@baddaywithacamera.ca</a>
+                    </div>
+
+                    <div class="contact-info">
+                        <label>Links & Other Stuff</label>
+                        <a href="https://linktr.ee/seanmccormick" target="_blank">linktr.ee/seanmccormick</a>
+                    </div>
+
+                    <div class="contact-info">
+                        <label>Signal</label>
+                        <p>Available on Signal</p>
+                    </div>
+
+                    <div class="contact-note">
+                        <strong>Note on communication:</strong> I don't do voice or video calls due to hearing impairment. But I'm happy to chat via email, Signal, or text. Always down for a good conversation.
+                    </div>
+                </div>
+
+                <h2 style="margin-top: 48px;">Response Time</h2>
+                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. I usually get back to emails within a day or two, depending on how deep I am in the code.</p>
+
+                <p>Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+
+                <h2 style="margin-top: 48px;">Bug Reports</h2>
+                <p>Found a bug? Let me know! The best way is to describe what you were doing, what you expected to happen, and what actually happened instead.</p>
+
+                <p>Include any error messages you saw, and if possible, let me know what version of SnapSmack you're running. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- FOOTER -->
+<footer>
+    <div class="wrap">
+        <p>&copy; 2026 SnapSmack. <a href="index.html">Back to home</a></p>
+    </div>
+</footer>
+
+<script>
+// Sticky header scroll effect
+const header = document.getElementById('site-header');
+window.addEventListener('scroll', () => {
+    if (window.scrollY > 0) {
+        header.classList.add('scrolled');
+    } else {
+        header.classList.remove('scrolled');
+    }
+});
+
+// Highlight active nav link
+document.querySelectorAll('nav a').forEach(link => {
+    if (link.href === window.location.href) {
+        link.classList.add('active');
+    }
+});
+</script>
+
+</body>
+</html>
