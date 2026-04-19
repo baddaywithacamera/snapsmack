@@ -272,3 +272,13 @@ if (!empty($settings['custom_head_scripts'])):
 <?php echo $settings['custom_head_scripts']; ?>
 
 <?php endif; ?>
+
+<?php
+/**
+ * NAV DROPDOWN ENGINE
+ * Loaded on every public page — activates only when .nav-has-children
+ * exists in the DOM (i.e. the menu has at least one parent item).
+ * Handles mobile tap/click toggle and keyboard accessibility.
+ */
+?>
+<script defer src="<?php echo BASE_URL; ?>assets/js/ss-engine-nav-dropdown.js?v=<?php echo SNAPSMACK_VERSION; ?>"></script>

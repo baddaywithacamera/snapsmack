@@ -794,6 +794,12 @@ return [
             'css'          => 'assets/css/ss-engine-photo-editor.css',
             'has_settings' => false,
         ],
+        'ss-engine-menu-builder' => [
+            'label'        => 'Menu Builder (admin only — loaded by smack-menu.php)',
+            'path'         => 'assets/js/ss-engine-menu-builder.js',
+            'has_settings' => false,
+            'admin_only'   => true,
+        ],
         'smack-scroll-top' => [
             'label'        => 'Scroll-to-Top Button',
             'path'         => 'assets/js/ss-engine-scroll-top.js',

@@ -4,6 +4,23 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.9N — "Menu Engineering" (2026-04-19)
+
+### Added
+- **Menu Manager** (`smack-menu.php`, under Pimp Your Ride) — drag-and-drop navigation menu builder replaces the slot-based nav toggles scattered across smack-settings.php. Every public nav link — built-in pages, static pages, custom links — is managed from one visual editor. One level of nesting supported (sub-menus). Menu stored as JSON in `snap_settings` under key `nav_menu_json`. Migrations auto-build a sensible default from legacy settings on first load.
+- **Navigation dropdown support** — all skins now render dropdown sub-menus. Parent items get a ▾ caret; child items appear in a floating panel on hover (desktop) or tap (mobile). Fade-in/out at 0.15 s using CSS `visibility` + `opacity` transition. No third-party dependencies.
+- **Dropdown appearance controls** — background colour, opacity (0–100), and text colour configurable in Menu Manager. Values compiled to CSS variables at render time by `core/header.php`.
+- **`ss-engine-menu-builder.js`** — vanilla JS drag-and-drop engine for the admin menu builder. Pool → menu drag, in-menu reorder, nesting by drop, label editing inline, custom link form. Self-contained, no libraries.
+- **`ss-engine-nav-dropdown.js`** — public dropdown engine. Activates only when `.nav-has-children` is present in the DOM. Handles tap/click toggle for mobile and keyboard accessibility (Enter/Space/Escape). Loaded globally via `core/meta.php` (deferred).
+- **Migration 033** — seeds `nav_menu_json` key in `snap_settings` (INSERT IGNORE, idempotent).
+- Help topic added for Menu Manager under Pimp Your Ride.
+
+### Changed
+- **`core/header.php`** — nav rendering rewritten. Now reads `nav_menu_json` from settings and renders per-`<li>` nav structure with `.nav-item` / `.nav-has-children` / `.nav-submenu` classes. Falls back to legacy flat nav from slot-based settings if JSON is absent (zero-downgrade path for existing installs that haven't visited Menu Manager yet).
+- Old slot-based settings (`show_wall_link`, `blogroll_enabled`, `albums_link_enabled`, `archive_layout`) remain in the database and are still read for the legacy fallback. They are no longer surfaced in the nav admin UI — Menu Manager owns nav structure.
+
+---
+
 ## 0.7.9M — "Maintenance Mode" (2026-04-17)
 
 ### Fixed
