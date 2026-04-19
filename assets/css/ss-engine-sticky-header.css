@@ -1,0 +1,77 @@
+/**
+ * SNAPSMACK — Sticky Header Engine
+ * ss-engine-sticky-header.css
+ *
+ * Makes the site header stick to the top on scroll with a glass-morphism
+ * transparency effect. Becomes opaque on hover.  Applied by JS via the
+ * .ss-sticky-active class when the user scrolls past the header's
+ * natural position.
+ *
+ * CSS custom properties (set via inline style from PHP):
+ *   --sticky-opacity   background opacity 0-1 while transparent
+ *   --sticky-blur      backdrop blur in px
+ */
+
+/* ─── PLACEHOLDER — reserves space when header becomes fixed ───── */
+
+.ss-sticky-spacer {
+    display: none;
+}
+
+
+/* ─── ACTIVE STICKY STATE ──────────────────────────────────────── */
+
+.ss-sticky-active {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9990;
+    transition: background 0.35s ease,
+                -webkit-backdrop-filter 0.35s ease,
+                backdrop-filter 0.35s ease,
+                box-shadow 0.35s ease;
+}
+
+.ss-sticky-active ~ .ss-sticky-spacer {
+    display: block;
+}
+
+
+/* ─── TRANSPARENT (SCROLLING) STATE ─────────────────────────────── */
+
+.ss-sticky-active.ss-sticky-transparent {
+    background: rgba(0, 0, 0, var(--sticky-opacity, 0.12)) !important;
+    -webkit-backdrop-filter: blur(var(--sticky-blur, 14px));
+    backdrop-filter: blur(var(--sticky-blur, 14px));
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Fallback for browsers without backdrop-filter */
+@supports not (backdrop-filter: blur(1px)) {
+    .ss-sticky-active.ss-sticky-transparent {
+        background: rgba(0, 0, 0, calc(var(--sticky-opacity, 0.12) + 0.5)) !important;
+    }
+}
+
+
+/* ─── OPAQUE ON HOVER ──────────────────────────────────────────── */
+
+.ss-sticky-active.ss-sticky-transparent:hover {
+    background: rgba(0, 0, 0, 0.92) !important;
+    -webkit-backdrop-filter: blur(0);
+    backdrop-filter: blur(0);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+
+/* ─── RESPONSIVE — disable on very small screens ───────────────── */
+
+@media (max-width: 480px) {
+    .ss-sticky-active {
+        position: relative !important;
+    }
+    .ss-sticky-spacer {
+        display: none !important;
+    }
+}

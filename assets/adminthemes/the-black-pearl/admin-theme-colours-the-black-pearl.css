@@ -1,0 +1,589 @@
+/**
+ * SNAPSMACK - The Black Pearl admin theme colors
+ *
+ * Dark minimalist theme with white accents. All color values for admin-theme-geometry-master.css.
+ */
+
+/* 01: GLOBAL BASE */
+html, body {
+    background-color: #050505;
+    color: #AAAAAA;
+    color-scheme: dark;
+}
+
+/* Global link colours */
+a { color: #FFFFFF; text-decoration: none; }
+a:hover { color: #cccccc; }
+.support-link { color: #FFFFFF; }
+.support-link:hover { color: #cccccc; }
+
+/* 02: SIDEBAR NAVIGATION */
+.sidebar {
+    background-color: #050505;
+    border-right-color: #1A1A1A;
+}
+
+.sidebar-brand {
+    color: #FFFFFF;
+    border-bottom-color: #333333;
+}
+
+.nav-section-toggle {
+    color: #444444;
+}
+
+
+.nav-section-links a {
+    color: #888888;
+}
+
+.nav-section-links a:hover,
+.nav-section-links li.active a {
+    color: #FFFFFF;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+}
+
+.sidebar-bottom {
+    background-color: #050505;
+    border-top-color: #111111;
+}
+
+.sidebar .logout {
+    color: #333333;
+}
+
+.sidebar .logout:hover {
+    color: #444444;
+}
+
+.credits-admin {
+    color: #666666;
+}
+
+/* 03: MAIN HEADERS */
+.header-row {
+    border-bottom-color: #1A1A1A;
+}
+
+h2 {
+    color: #FFFFFF;
+    border-bottom-color: #1A1A1A;
+}
+
+/* 04: CONTENT BOXES */
+.box {
+    background-color: #0D0D0D;
+    border-color: #1A1A1A;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+}
+
+.box h3, .section-header {
+    color: #FFFFFF;
+    border-bottom-color: #333333;
+}
+
+.post-col-right {
+    border-left-color: #1A1A1A;
+}
+
+/* 05: FORM ELEMENTS */
+label {
+    color: #666666;
+}
+
+input[type="text"], input[type="number"], input[type="email"], input[type="password"],
+input[type="datetime-local"], input[type="date"], select, textarea,
+.preview-box, .select-box {
+    background-color: #1A1A1A;
+    border-color: #333333;
+    color: #FFFFFF;
+}
+/* Custom multiselect dropdown colours */
+.dropdown-content {
+    background-color: #111111;
+    border-color: #333333;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
+}
+
+.dropdown-search-wrapper {
+    border-bottom-color: #1A1A1A;
+}
+
+.dropdown-search-wrapper input {
+    background-color: #0D0D0D;
+    border-color: #333333;
+    color: #FFFFFF;
+}
+
+.multi-cat-item {
+    border-bottom-color: #1A1A1A;
+    color: #888888;
+}
+
+.multi-cat-item:hover {
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+}
+
+/* Read-only display fields get a darker coal look */
+.read-only-display {
+    background-color: #0A0A0A;
+    border-color: #1A1A1A;
+    color: #888888;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: #FFFFFF;
+    background-color: #1A1A1A;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+    outline: none;
+}
+
+/* 06: MEDIA PREVIEWS */
+.preview-frame {
+    background-color: #000000;
+    border-color: #1A1A1A;
+}
+
+/* 07: SIGNALS (The Fixes) */
+.signal-control-header {
+    /* Geometry handled in Master Geometry file */
+}
+
+/* The Status Pill */
+.status-online {
+    color: #FFFFFF;
+    border-color: #FFFFFF;
+}
+
+.status-offline {
+    color: #666666;
+    border-color: #333333;
+    background-color: #000000;
+}
+
+/* Sender Name */
+.signal-sender {
+    color: #FFFFFF;
+}
+.signal-sender span.dim {
+    color: #666666;
+}
+
+/* The Body Text */
+.signal-body {
+    color: #AAAAAA;
+    background-color: #0D0D0D;
+    border-color: #1A1A1A;
+}
+
+/* Metadata Links (Ghostly White) */
+.signal-meta {
+    color: #444444;
+}
+.signal-meta a {
+    color: #888888 !important;
+    border-bottom-color: transparent;
+}
+.signal-meta a:hover {
+    color: #FFFFFF !important;
+    border-bottom-color: #FFFFFF;
+}
+.signal-meta .dim {
+    color: #333333;
+}
+
+/* 08: BUTTONS & ACTIONS */
+
+/* Gunmetal primary buttons — flip to white on hover */
+.btn-smack, .master-update-btn {
+    background-color: #333333;
+    color: #FFFFFF;
+}
+.btn-smack:hover, .master-update-btn:hover {
+    background-color: #FFFFFF;
+    color: #000000;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+}
+
+/* Coal buttons (Backup, Settings) */
+.btn-smack.btn-backup,
+.btn-smack.btn-settings {
+    background-color: #1A1A1A;
+    color: #666666;
+}
+.btn-smack.btn-backup:hover,
+.btn-smack.btn-settings:hover {
+    background-color: #333333;
+    color: #FFFFFF;
+}
+
+/* Live Site stays themed white/black */
+.btn-smack.btn-live {
+    background-color: #FFFFFF;
+    color: #000000;
+}
+.btn-smack.btn-live:hover {
+    background-color: #AAAAAA;
+    color: #000000;
+}
+
+/* Danger button modifier — destructive/disconnect actions */
+.btn-smack.btn-danger {
+    background-color: #CC4444;
+    color: #FFFFFF;
+}
+.btn-smack.btn-danger:hover {
+    background-color: #aa2222;
+    color: #FFFFFF;
+}
+
+/* All other buttons universal white glow */
+button:hover {
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.3);
+}
+
+/* INCOMING / BROADCASTING nav buttons */
+.btn-clear {
+    color: #666666;
+    border-color: #1A1A1A;
+}
+.btn-clear:hover {
+    background-color: #0D0D0D;
+    color: #FFFFFF;
+    border-color: #FFFFFF;
+}
+.btn-clear.active {
+    background-color: #1A1A1A;
+    color: #FFFFFF;
+    border-color: #FFFFFF;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+/* Action Links */
+.action-authorize, .action-edit, .action-swap, .action-view {
+    color: #AAAAAA;
+    border-color: #1A1A1A;
+}
+.action-authorize:hover, .action-edit:hover, .action-swap:hover, .action-view:hover {
+    background-color: #FFFFFF;
+    color: #000000;
+}
+
+.action-delete {
+    color: #CC4444;
+    border-color: #CC4444;
+}
+.action-delete:hover {
+    background-color: #CC4444;
+    color: #FFFFFF;
+}
+
+/* 09: ITEM LAYOUTS */
+.recent-item {
+    border-bottom-color: #1A1A1A;
+}
+.archive-thumb {
+    border-color: #1A1A1A;
+    background-color: #000000;
+}
+.item-text strong {
+    color: #FFFFFF;
+}
+.item-text .dim {
+    color: #444444;
+}
+
+/* 10: DASH/STATS */
+.stat-box {
+    border-color: #1A1A1A;
+    background-color: #050505;
+}
+.stat-val {
+    color: #FFFFFF;
+}
+.stat-label {
+    color: #666666;
+}
+.stat-row {
+    border-bottom-color: #1A1A1A;
+}
+.stat-row .label { color: #444444; }
+.stat-row .value { color: #FFFFFF; }
+.highlight-green { color: #FFFFFF !important; }
+
+/* 11: PAGINATION */
+.pagination a {
+    background-color: #0D0D0D;
+    border-color: #1A1A1A;
+    color: #666666;
+}
+.pagination a.active {
+    background-color: #FFFFFF;
+    border-color: #FFFFFF;
+    color: #000000;
+}
+.pagination a:hover {
+    border-color: #FFFFFF;
+    color: #FFFFFF;
+}
+
+/* 12: PROGRESS/UPLOADS */
+.progress-container {
+    background-color: #000000;
+    border-color: #1A1A1A;
+}
+.progress-bar {
+    background-color: #FFFFFF;
+}
+.file-upload-wrapper {
+    border-color: #1A1A1A;
+    background-color: #0D0D0D;
+}
+.file-custom-btn {
+    background-color: #333333;
+    color: #FFFFFF;
+    border-right-color: #1A1A1A;
+}
+.file-custom-btn:hover {
+    background-color: #FFFFFF;
+    color: #000000;
+}
+.file-name-display {
+    color: #666666;
+}
+
+/* Inline checkbox labels (Built-in, N/A) — match input border treatment */
+.built-in-label {
+    background-color: #1A1A1A;
+    border-color: #333333;
+    color: #888888;
+}
+.built-in-label:hover {
+    border-color: #FFFFFF;
+    color: #FFFFFF;
+}
+input[type="checkbox"] {
+    border-color: #333333;
+    background-color: #050505;
+}
+input[type="checkbox"]:checked {
+    background-color: #FFFFFF;
+    border-color: #FFFFFF;
+}
+input[type="checkbox"]:checked::after {
+    border-color: #000000;
+}
+
+/* 13: LOGIN & FOOTER */
+.login-box {
+    background-color: #0D0D0D;
+    border-color: #1A1A1A;
+}
+
+#admin-universal-footer {
+    background-color: #050505;
+    border-top-color: #1A1A1A;
+}
+.footer-left { color: #666666; }
+.footer-left a { color: #888888; border-bottom-color: #444444; }
+.footer-left a:hover { color: #FFFFFF; border-bottom-color: #FFFFFF; }
+.footer-right { color: #666666; }
+
+/* 14: APPEARANCE */
+.appearance-controller {
+    border-color: #1A1A1A;
+}
+.skin-meta-wrap {
+    background-color: #0D0D0D;
+}
+.skin-selector-wrap {
+    background-color: #050505;
+    border-left-color: #1A1A1A;
+}
+.theme-title-display { color: #FFFFFF !important; }
+.skin-desc-text { color: #666666; }
+
+/* Filter + Reset buttons */
+.btn-smack-filter {
+    background-color: #333333;
+    color: #FFFFFF;
+}
+.btn-smack-filter:hover {
+    background-color: #FFFFFF;
+    color: #000000;
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.4);
+}
+.btn-reset {
+    color: #444444;
+    border-color: #1A1A1A;
+}
+.btn-reset:hover {
+    border-color: #333333;
+    color: #333333;
+}
+
+/* 16: INPUT RANGE (Webkit) */
+input[type="range"]::-webkit-slider-runnable-track {
+    background-color: #1A1A1A;
+}
+input[type="range"]::-webkit-slider-thumb {
+    background-color: #FFFFFF;
+}
+
+/* Asset cards (Media Library) */
+.asset-card {
+    border-color: #1A1A1A;
+    background-color: #0D0D0D;
+}
+.asset-thumb-wrapper {
+    border-bottom-color: #1A1A1A;
+    background-color: #050505;
+}
+.asset-shortcode-row .shortcode-display {
+    border-color: #FFFFFF;
+    color: #FFFFFF;
+    background-color: #050505;
+}
+.asset-no-preview {
+    color: #555;
+}
+
+/* 17: CSS OVERRIDE PAGE (smack-css.php) */
+.css-tab {
+    color: #444;
+    border-color: #1A1A1A;
+}
+
+.css-tab:hover {
+    color: #FFFFFF;
+    border-color: #FFFFFF;
+}
+
+.css-tab-active {
+    color: #FFFFFF;
+    border-color: #FFFFFF;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
+}
+
+.css-preview-block {
+    border-color: #1A1A1A;
+    background-color: #000000;
+}
+
+/* SHORTCODE TOOLBAR */
+.sc-toolbar {
+    background-color: #1a1a1a;
+    border-color: #333333;
+}
+.sc-toolbar .sc-btn {
+    background-color: #0d0d0d;
+    color: #666666;
+}
+.sc-toolbar .sc-btn:hover {
+    background-color: #1a1a1a;
+    color: #FFFFFF;
+}
+.sc-toolbar .sc-sep {
+    background-color: #333333;
+}
+.sc-toolbar .sc-btn-preview {
+    background-color: #FFFFFF;
+    color: #000000;
+}
+.sc-toolbar .sc-btn-preview:hover {
+    background-color: #AAAAAA;
+    color: #000000;
+}
+/* Confirmation / status messages */
+.msg {
+    color: #AAAAAA;
+}
+
+.alert-text {
+    color: #AAAAAA;
+}
+
+/* ─── HELP SYSTEM (smack-help.php) ─────────────────────────────────── */
+.help-nav { background-color: #050505; border-right-color: #1A1A1A; }
+.help-nav-header { border-bottom-color: #1A1A1A; }
+.help-nav-subtitle { color: #666666; }
+.help-nav-section-label { color: #666666; }
+.help-nav-link { color: #666666; }
+.help-nav-link:hover { color: #FFFFFF; }
+.help-nav-link.active { color: #FFFFFF; background-color: #0D0D0D; border-left-color: #FFFFFF; }
+.help-search input { background-color: #1A1A1A; border-color: #333333; color: #AAAAAA; }
+.help-search-result { color: #666666; }
+.help-search-result:hover { background-color: #0D0D0D; border-color: #1A1A1A; }
+.help-search-result-section { color: #666666; }
+.help-search-no-results { color: #666666; }
+.help-topic-header { border-bottom-color: #1A1A1A; }
+.help-topic-section { color: #666666; }
+.help-topic-nav { border-top-color: #1A1A1A; }
+.help-topic-nav a { color: #666666; }
+.help-topic-nav a:hover { color: #FFFFFF; }
+.help-body pre { background-color: #0D0D0D; border-color: #1A1A1A; color: #AAAAAA; }
+.help-body code { background-color: #0D0D0D; border-color: #1A1A1A; color: #AAAAAA; }
+.help-toc-section-title { border-bottom-color: #1A1A1A; }
+.help-toc-list a { color: #AAAAAA; }
+.help-toc-list a:hover { color: #FFFFFF; }
+.help-toc-list .help-toc-desc { color: #666666; }
+
+/* ─── SCHEMA HEALTH (smack-maintenance.php) ─────────────────────────── */
+.schema-count { color: #FFFFFF; }
+.schema-section-label { color: #666666; }
+.schema-list li { border-bottom-color: #1A1A1A; color: #AAAAAA; }
+
+/* ─── MANAGE ARCHIVE — DRAG REORDER & BATCH DELETE ──────────────── */
+.drag-handle { color: #666666; }
+.reorder-status.saving { color: #666666; }
+.reorder-status.saved  { color: #FFFFFF; }
+.reorder-status.error  { color: #E86060; }
+.batch-bar { border-bottom-color: #1A1A1A; }
+
+/* ─── COMPANION TOOLS (smack-tools.php) ──────────────────────────── */
+.tool-desc { color: #AAAAAA; }
+
+/* ─── CLOUD BACKUP (smack-cloud.php) ─────────────────────────────── */
+.cloud-push-grid th { border-bottom-color: #1A1A1A; color: #666666; }
+.cloud-push-grid td { border-bottom-color: #1A1A1A; }
+.cloud-push-label { color: #AAAAAA; }
+.cloud-progress-bar { border-color: #1A1A1A; background-color: #0D0D0D; }
+.cloud-progress-header { color: #AAAAAA; }
+.cloud-progress-track { background-color: #1A1A1A; }
+.cloud-progress-fill { background-color: #FFFFFF; }
+.cloud-progress-done { color: #4EC994; }
+.cloud-progress-failed { color: #E86060; }
+.cloud-progress-log { color: #666666; }
+.cloud-progress-error { color: #E86060; }
+.cloud-progress-success { color: #4EC994; }
+
+/* Interaction page */
+.box-desc, .toggle-desc, .reaction-count-note { color: #666666; }
+.toggle-row, .identity-row { border-bottom-color: #1A1A1A; }
+.toggle-row input[type="checkbox"]::before { background-color: #505050; }
+.toggle-row input[type="checkbox"]:checked::before { background-color: #FFFFFF; }
+.radio-option, .reaction-option { border-color: #1A1A1A; }
+.radio-option:hover,
+.radio-option:has(input:checked),
+.reaction-option:hover,
+.reaction-option.is-active,
+.reaction-option:has(input:checked) { border-color: #FFFFFF; }
+.radio-option:has(input:checked),
+.reaction-option.is-active,
+.reaction-option:has(input:checked) { background-color: #202020; }
+
+/* MULTISITE STATUS — Black Pearl: muted gold/silver palette */
+.status-dot--active, .status-dot--ok       { background-color: #C9A84C; }
+.status-label--active, .status-label--ok   { color: #C9A84C; }
+.status-dot--offline, .status-dot--failed  { background-color: #666666; }
+.status-label--offline, .status-label--failed { color: #666666; }
+.status-dot--unknown                       { background-color: #888888; }
+.status-label--unknown                     { color: #888888; }
+.version-behind                            { color: #888888; }
+.hub-connected-border                      { border-left-color: #C9A84C; }
+.multisite-table tr                        { border-bottom-color: #1A1A1A; }
+.multisite-table th                        { color: #888888; }
+
