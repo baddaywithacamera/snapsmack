@@ -343,7 +343,10 @@ include 'core/sidebar.php';
     background: var(--bg-hover, var(--bg-secondary));
 }
 .menu-item-row {
-    border-radius: 4px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px;
+    background: var(--bg-secondary);
     overflow: visible;
 }
 .menu-item-main {
@@ -407,6 +410,9 @@ include 'core/sidebar.php';
 }
 .menu-item-actions .btn-remove:hover {
     color: #e05252;
+}
+.menu-item-actions .btn-promote:hover {
+    color: var(--accent);
 }
 /* Children sublist */
 .menu-children-list {
