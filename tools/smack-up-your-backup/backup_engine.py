@@ -15,10 +15,15 @@ import io
 import json
 import os
 import tarfile
+import threading
 import time
 import zipfile
 from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional, Tuple
+
+# Pause and ask the user after this many download failures (already retried once each).
+# 1 = stop on the very first unrecoverable failure.  0 = disable the prompt entirely.
+FAILURE_PROMPT_THRESHOLD = 1
 
 import requests
 
@@ -201,7 +206,7 @@ def load_backup_state(ftp: ftp_module.FTPClient, backup_state_rel: str = "backup
     try:
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
             tmp_path = tmp.name
-        ok = ftp.download_file(backup_state_rel, tmp_path)
+        ok, _ = ftp.download_file(backup_state_rel, tmp_path)
         if ok and os.path.exists(tmp_path):
             with open(tmp_path) as f:
                 return json.load(f)
@@ -259,6 +264,8 @@ class BackupEngine:
         profile:          dict,
         on_progress:      Optional[ProgressCallback] = None,
         on_log:           Optional[Callable[[str], None]] = None,
+        on_ask:           Optional[Callable[[str], None]] = None,
+        on_stats:         Optional[Callable[[int, int, int, int, int, int], None]] = None,
         force_full:       bool = False,
         include_settings: bool = False,
         global_config:    Optional[dict] = None,
@@ -268,15 +275,49 @@ class BackupEngine:
         self.profile           = profile
         self.on_progress       = on_progress or (lambda stage, msg, pct: None)
         self.on_log            = on_log or print
+        self.on_ask            = on_ask   # Callable[[str], None] — engine blocks until caller responds
+        # on_stats(files_done, files_total, files_failed, bytes_done, bytes_total, bytes_failed)
+        self.on_stats          = on_stats or (lambda *a: None)
         self.force_full        = force_full
         self.include_settings  = include_settings
         self.global_config     = global_config or {}
         self.global_cloud      = global_cloud or {}
         self._cancelled        = False
         self._resume_cp        = resume_checkpoint
+        self._prompt_event     = threading.Event()
+        self._prompt_continue  = False
+        self._asked_once       = False    # only prompt the user once per run
 
     def cancel(self) -> None:
         self._cancelled = True
+        self._prompt_event.set()   # unblock engine if it's waiting for a prompt response
+
+    def prompt_continue(self) -> None:
+        """Called by the UI when the user chooses to continue after a failure prompt."""
+        self._prompt_continue = True
+        self._prompt_event.set()
+
+    def _ask_user(self, msg: str) -> bool:
+        """Pause the engine thread and ask the UI whether to abort or continue.
+
+        Returns True if the user chose to continue, False if they chose to abort
+        (or if there is no on_ask handler, which is the case for scheduled backups).
+        Only fires once per run — subsequent failures won't re-prompt.
+        """
+        if self._asked_once:
+            return True   # user already said continue; keep going
+        self._asked_once = True
+
+        if not self.on_ask:
+            # No interactive handler (e.g. scheduled backup) — abort automatically.
+            self._log("✗ Failure threshold reached — aborting (unattended run).")
+            return False
+
+        self._prompt_event.clear()
+        self._prompt_continue = False
+        self.on_ask(msg)
+        self._prompt_event.wait()   # blocks until prompt_continue() or cancel() is called
+        return self._prompt_continue
 
     def _progress(self, stage: str, msg: str, pct: float) -> None:
         self.on_progress(stage, msg, pct)
@@ -301,9 +342,14 @@ class BackupEngine:
                 f.write(f"Files downloaded: {result.get('files_downloaded', 0)}\n")
                 f.write(f"Files skipped:    {result.get('files_skipped', 0)}\n")
                 f.write(f"Files failed:     {result.get('files_failed', 0)}\n")
+                if result.get('files_cancelled', 0):
+                    f.write(f"Files cancelled:  {result.get('files_cancelled', 0)}\n")
                 f.write(f"ZIP:              {result.get('zip_path', '')}\n")
                 f.write(f"Cloud ID:         {result.get('cloud_id', '') or 'Not uploaded'}\n")
-                f.write(f"Success:          {result.get('success', False)}\n")
+                if result.get('cancelled'):
+                    f.write(f"Status:           Cancelled\n")
+                else:
+                    f.write(f"Success:          {result.get('success', False)}\n")
                 if result.get("errors"):
                     f.write("\nERRORS:\n")
                     for err in result["errors"]:
@@ -332,6 +378,8 @@ class BackupEngine:
             "files_downloaded": 0,
             "files_skipped":    0,
             "files_failed":     0,
+            "files_cancelled":  0,
+            "cancelled":        False,
             "errors":           [],
         }
 
@@ -469,7 +517,7 @@ class BackupEngine:
                 host            = self.profile.get("ftp_host", ""),
                 user            = self.profile.get("ftp_user", ""),
                 password        = self.profile.get("ftp_pass", ""),
-                remote_dir      = self.profile.get("ftp_remote_dir", "/public_html"),
+                remote_dir      = self.profile.get("ftp_remote_dir", "/"),
                 port            = int(self.profile.get("ftp_port", 21)),
                 use_tls         = bool(self.profile.get("ftp_ssl", True)),
                 verify_cert     = bool(self.profile.get("ftp_verify_cert", False)),
@@ -510,8 +558,12 @@ class BackupEngine:
                 force_full      = self.force_full,
             )
 
-        total_files = len(media_files)
-        done        = 0
+        total_files     = len(media_files)
+        bytes_total     = sum(r.size for r in media_files.values() if r.size)
+        bytes_done      = 0
+        bytes_failed    = 0
+        done            = 0
+        consec_failures = 0   # counts up to FAILURE_PROMPT_THRESHOLD then triggers prompt
 
         for key, record in media_files.items():
             if self._cancelled:
@@ -535,7 +587,7 @@ class BackupEngine:
             local_path = os.path.join(local_media_dir, record.restores_to.replace("/", os.sep))
             self._progress("stage3", f"Downloading: {record.restores_to}", pct)
 
-            ok = ftp.download_file(
+            ok, dl_err = ftp.download_file(
                 record.restores_to, local_path,
                 on_progress=lambda fn, r, t, s: None,
             )
@@ -545,13 +597,14 @@ class BackupEngine:
                 actual = ftp_module.FTPClient.sha256_file(local_path)
                 if actual != record.checksum:
                     self._log(f"✗ Checksum mismatch: {record.restores_to} — retrying once")
-                    ok = ftp.download_file(
+                    ok, dl_err = ftp.download_file(
                         record.restores_to, local_path,
                         on_progress=lambda fn, r, t, s: None,
                     )
                     if ok:
                         actual = ftp_module.FTPClient.sha256_file(local_path)
                         if actual != record.checksum:
+                            dl_err = f"checksum wrong after retry (expected {record.checksum[:8]}… got {actual[:8]}…)"
                             self._log(
                                 f"✗ Checksum wrong after retry: {record.restores_to}\n"
                                 f"  Expected: {record.checksum}\n"
@@ -563,15 +616,57 @@ class BackupEngine:
 
             if ok:
                 result["files_downloaded"] += 1
+                bytes_done += record.size or 0
                 cp.record(key, downloaded=True)
+                consec_failures = 0   # reset streak on success
+            elif self._cancelled:
+                # In-flight file interrupted by cancel — not a real failure
+                result["files_cancelled"] += 1
+                cp.record(key, failed=True)
+                self._log(f"↩ Cancelled: {record.restores_to}")
             else:
                 result["files_failed"] += 1
+                bytes_failed += record.size or 0
                 cp.record(key, failed=True)
-                result["errors"].append(f"Download/verify failed: {record.restores_to}")
+                err_msg = f"Download/verify failed: {record.restores_to}"
+                if dl_err:
+                    err_msg += f" — {dl_err}"
+                self._log(f"✗ {err_msg}")
+                result["errors"].append(err_msg)
+                consec_failures += 1
+
+                # ── Failure threshold prompt ──────────────────────────
+                if (FAILURE_PROMPT_THRESHOLD > 0
+                        and consec_failures >= FAILURE_PROMPT_THRESHOLD
+                        and not self._asked_once):
+                    ask_msg = (
+                        f"Download failed (retried once — not recoverable).\n\n"
+                        f"Error: {dl_err or 'unknown'}\n"
+                        f"File:  {record.restores_to}\n\n"
+                        f"Downloaded so far: {result['files_downloaded']}    "
+                        f"Failed: {result['files_failed']}    "
+                        f"Remaining: {total_files - done - 1}"
+                    )
+                    should_continue = self._ask_user(ask_msg)
+                    if not should_continue:
+                        self._cancelled = True
+                        break
+                    consec_failures = 0   # user said continue — reset streak
+
+            self.on_stats(
+                result["files_downloaded"] + result["files_failed"],
+                total_files,
+                result["files_failed"],
+                bytes_done,
+                bytes_total,
+                bytes_failed,
+            )
+
             done += 1
 
         # ── Stage 4: Package ─────────────────────────────────────────
         if self._cancelled:
+            result["cancelled"] = True
             if ftp:
                 ftp.disconnect()
             return result
@@ -639,6 +734,18 @@ class BackupEngine:
 
         # ── Stage 5: Cloud push ──────────────────────────────────────
         self._progress("stage5", "Pushing to cloud…", 0.72)
+
+        if result["files_failed"] > 0:
+            msg = (
+                f"Cloud upload skipped — {result['files_failed']} file(s) failed to download. "
+                f"Pushing an incomplete backup would overwrite a good one."
+            )
+            self._log(f"✗ {msg}")
+            result["errors"].append(msg)
+            if ftp:
+                ftp.disconnect()
+            return result
+
         cloud = cloud_module.get_cloud_client(self.profile, global_cloud=self.global_cloud)
         cloud_id = ""
 

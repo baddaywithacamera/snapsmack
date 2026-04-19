@@ -109,12 +109,12 @@ def new_profile_template() -> Dict:
         "ftp_port":              21,
         "ftp_user":              "",
         "ftp_pass":              "",
-        "ftp_remote_dir":        "/public_html",
+        "ftp_remote_dir":        "/",
         "ftp_ssl":               True,
         "ftp_verify_cert":       False,
         "snap_admin_user":       "",
         "snap_admin_pass":       "",
-        "backup_method":         "ftp",          # "ftp" | "cloud" | "local"
+        "backup_method":         "cloud",         # "ftp" | "cloud" | "local"
         "schedule_enabled":      False,
         "schedule_type":         "daily",        # "daily" | "weekly"
         "schedule_day":          "monday",       # weekday for weekly schedule
