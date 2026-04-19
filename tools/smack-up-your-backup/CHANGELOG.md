@@ -2,6 +2,28 @@
 
 ---
 
+## 0.2.6 — 2026-04-18
+
+### Added
+- **Cloud Sync tab** — new tab for cloud-to-cloud file sync (Google Drive → OneDrive). Create named sync jobs, run differential syncs (files already on OneDrive with matching size are skipped), and monitor progress with the same real-time stats and log UI as the Backup tab.
+- **`sync_manager.py`** — CRUD for sync job configs stored in `sync_jobs/` next to profiles.
+- **`cloud_sync_engine.py`** — background sync engine: lists Drive source, diffs against OneDrive destination, downloads to temp, uploads, deletes temp. Failure threshold prompt (Abort/Continue) mirrors backup behaviour.
+- **Google Drive readonly scope** — `DriveClient` now accepts `readonly=True` which uses `drive.readonly` scope and a separate token cache (`*_readonly_token.json`), leaving the existing backup upload token untouched.
+- **OneDrive interactive auth** — `OneDriveClient` now uses `acquire_token_interactive()` (opens system browser) instead of device flow. `authenticate_onedrive()` and `get_onedrive_token_status()` helpers added. OneDrive credentials JSON format: `{"client_id": "your-azure-app-client-id"}`.
+- **OneDrive folder path support** — destination folder now specified by name (e.g. `"FoundTexturesBackup"`) rather than item ID. Both `list_files` and `upload_file` route via Graph API path syntax (`root:/FolderName:/children`).
+
+---
+
+## 0.2.5 — 2026-04-18
+
+### Fixed
+- **Download failures now surface immediately** — each failed FTP download logs the exact FTP error in real time rather than silently accumulating until the end of the run.
+- **Backup stops on first unrecoverable failure** — after one failed download (already retried once by FTP client), a dialog pauses the backup with explicit **Abort Backup** / **Continue Anyway** buttons. No more ambiguous Yes/No.
+- **Cloud upload blocked on failed backup** — if any files failed to download, the ZIP is not pushed to cloud storage so a good backup is never overwritten by a broken one.
+- **FTP remote directory default changed from `/public_html` to `/`** — avoids silent path mismatches on servers where the FTP root is the web root.
+
+---
+
 ## 0.2.4 — 2026-04-15
 
 ### Fixed
