@@ -1,0 +1,147 @@
+<?php
+/**
+ * SNAPSMACK - Album (mission) management
+ *
+ * Provides creation, editing, and deletion of photo album collections.
+ * Maintains associations between albums and their contained images.
+ */
+
+require_once 'core/auth.php';
+
+$msg = "";
+$edit_mode = false;
+$edit_data = [];
+
+// --- FORM SUBMISSION HANDLER ---
+// Processes creation and modification of album records.
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $name = trim($_POST['album_name']);
+    $desc = trim($_POST['album_description']);
+
+    // Insert a new album.
+    if (isset($_POST['new_album']) && !empty($name)) {
+        $stmt = $pdo->prepare("INSERT INTO snap_albums (album_name, album_description) VALUES (?, ?)");
+        $stmt->execute([$name, $desc]);
+        header("Location: smack-albums.php?msg=MISSION+INITIALIZED");
+        exit;
+    }
+
+    // Update an existing album.
+    if (isset($_POST['update_album']) && !empty($name)) {
+        $id = (int)$_POST['album_id'];
+        $stmt = $pdo->prepare("UPDATE snap_albums SET album_name = ?, album_description = ? WHERE id = ?");
+        $stmt->execute([$name, $desc, $id]);
+        header("Location: smack-albums.php?msg=MISSION+MODIFIED");
+        exit;
+    }
+}
+
+// --- DELETION HANDLER ---
+// Removes an album and all its image associations.
+if (isset($_GET['delete'])) {
+    $id = (int)$_GET['delete'];
+    // Delete mappings first to preserve referential integrity.
+    $pdo->prepare("DELETE FROM snap_image_album_map WHERE album_id = ?")->execute([$id]);
+    $pdo->prepare("DELETE FROM snap_albums WHERE id = ?")->execute([$id]);
+    header("Location: smack-albums.php?msg=MISSION+PURGED");
+    exit;
+}
+
+// --- EDIT MODE ---
+// Loads the album record for editing if edit parameter is present.
+if (isset($_GET['edit'])) {
+    $id = (int)$_GET['edit'];
+    $stmt = $pdo->prepare("SELECT * FROM snap_albums WHERE id = ?");
+    $stmt->execute([$id]);
+    $edit_data = $stmt->fetch();
+    if ($edit_data) { $edit_mode = true; }
+}
+
+// Load all albums with associated image counts.
+$albums = $pdo->query("SELECT a.*, COUNT(m.image_id) as img_count FROM snap_albums a LEFT JOIN snap_image_album_map m ON a.id = m.album_id GROUP BY a.id ORDER BY a.album_name ASC")->fetchAll();
+
+$page_title = "Mission registry";
+include 'core/admin-header.php';
+include 'core/sidebar.php';
+?>
+
+<div class="main">
+    <div class="header-row header-row--ruled">
+        <h2>MISSION REGISTRY (ALBUMS)</h2>
+    </div>
+
+    <?php if (isset($_GET['msg'])): ?>
+        <div class="alert alert-success">> <?php echo htmlspecialchars($_GET['msg']); ?></div>
+    <?php endif; ?>
+    
+    <form method="POST">
+        <div class="post-layout-grid">
+            <div class="post-col-left">
+                <div class="box">
+                    <h3><?php echo $edit_mode ? "MODIFY MISSION" : "INITIALIZE MISSION"; ?></h3>
+                    
+                    <input type="hidden" name="<?php echo $edit_mode ? 'update_album' : 'new_album'; ?>" value="1">
+                    <?php if ($edit_mode): ?>
+                        <input type="hidden" name="album_id" value="<?php echo $edit_data['id']; ?>">
+                    <?php endif; ?>
+                    
+                    <div class="lens-input-wrapper">
+                        <label>MISSION NAME</label>
+                        <input type="text" name="album_name" value="<?php echo $edit_mode ? htmlspecialchars($edit_data['album_name']) : ''; ?>" placeholder="E.G. PROJECT 365, SUMMER 2025" required autofocus>
+                    </div>
+                    
+                    <div class="lens-input-wrapper">
+                        <label>MISSION BRIEFING (DESCRIPTION)</label>
+                        <textarea name="album_description" placeholder="Technical or artistic intent..." rows="8"><?php echo $edit_mode ? htmlspecialchars($edit_data['album_description'] ?? '') : ''; ?></textarea>
+                    </div>
+
+                    <div class="lens-input-wrapper mt-20">
+                        <button type="submit" class="master-update-btn">
+                            <?php echo $edit_mode ? "UPDATE MISSION" : "ADD TO REGISTRY"; ?>
+                        </button>
+                    </div>
+
+                    <?php if ($edit_mode): ?>
+                        <div class="lens-input-wrapper mt-10">
+                            <a href="smack-albums.php" class="btn-reset btn-cancel-block">CANCEL EDIT</a>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="flex-1">
+                <div class="box">
+                    <h3>ACTIVE MISSIONS</h3>
+                    
+                    <?php if (empty($albums)): ?>
+                        <p class="dim empty-notice">No missions registered.</p>
+                    <?php else: ?>
+                        <?php foreach ($albums as $a): ?>
+                            <div class="recent-item">
+                                <div class="item-details">
+                                    <div class="item-text">
+                                        <strong>
+                                            <?php echo htmlspecialchars($a['album_name']); ?>
+                                        </strong>
+                                        <code class="slug-display">TRANSMISSIONS: <?php echo (int)$a['img_count']; ?></code>
+                                        <div class="item-meta">
+                                            <?php echo !empty($a['album_description']) ? htmlspecialchars($a['album_description']) : "NO BRIEFING RECORDED."; ?>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="item-actions">
+                                    <a href="?edit=<?php echo $a['id']; ?>" class="action-edit">EDIT</a>
+                                    <a href="?delete=<?php echo $a['id']; ?>" class="action-delete" onclick="return confirm('PURGE MISSION?')">DELETE</a>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+    </form>
+</div>
+
+<?php include 'core/admin-footer.php'; ?>

@@ -1,0 +1,2155 @@
+<?php
+/**
+ * SNAPSMACK - User Manual
+ *
+ * In-admin documentation system covering every feature of the CMS.
+ * Topics are organised into sections and filtered by user role — editors
+ * only see topics relevant to content management, admins see everything.
+ * Active skins can inject their own help topics via a help.php file.
+ */
+
+$page_title = 'User Manual';
+require_once 'core/auth.php';
+
+// Detect user role for contextual filtering
+$_help_user_role = $_SESSION['user_role'] ?? 'editor';
+
+include 'core/admin-header.php';
+include 'core/sidebar.php';
+
+// =========================================================================
+//  HELP TOPICS — CORE CMS
+// =========================================================================
+
+$help_topics = [];
+
+// ── THE GOOD SHIT ────────────────────────────────────────────────────────
+
+$help_topics['dashboard'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Dashboard',
+    'icon'     => '&#x25A3;',
+    'content'  => <<<'HTML'
+<h3>System Dashboard</h3>
+<p>The dashboard is your command centre. It loads automatically after login and provides
+an at-a-glance summary of everything happening on your site.</p>
+
+<h4>Content Statistics</h4>
+<p>The top row shows counts for published transmissions, drafts, and pending signals
+(comments awaiting moderation). Click any statistic to jump directly to the relevant
+management page.</p>
+
+<h4>System Vitals</h4>
+<p>The vitals panel displays server software, PHP version, memory limits, load average,
+and disk usage. If any value is outside the recommended range, it will be highlighted.
+This is useful for diagnosing performance issues on shared hosting.</p>
+
+<h4>Network &amp; RSS</h4>
+<p>Shows your blogroll peer count and RSS feed status. If the RSS fetcher cron job is
+registered, you'll see the last fetch timestamp. If not, a registration button appears.</p>
+
+<h4>Update Notifications</h4>
+<p>When a new version of SnapSmack is available, a notification banner appears at the top
+of the dashboard with a link to the System Updates page. The check runs automatically
+every 24 hours (or via cron if registered).</p>
+
+<h4>Quick Actions</h4>
+<p>Shortcut buttons at the bottom of the dashboard for common tasks: New Post, Backup,
+Settings, and View Live Site.</p>
+HTML
+];
+
+$help_topics['new-post'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'New Post (Transmissions)',
+    'icon'     => '&#x25B2;',
+    'content'  => <<<'HTML'
+<h3>Creating a Transmission</h3>
+<p>Transmissions are the core content type in SnapSmack — each one is a photograph with
+associated metadata, description, and technical details.</p>
+
+<h4>Image Upload</h4>
+<p>Drag an image file onto the upload area or click to browse. Supported formats: JPEG, PNG,
+WebP. The system automatically reads EXIF metadata from JPEG files (camera, lens, aperture,
+shutter speed, ISO, focal length, flash) and populates the fields for you.</p>
+
+<h4>Automatic Processing</h4>
+<p>On upload, SnapSmack performs several operations automatically:</p>
+<ul>
+    <li><strong>Orientation correction</strong> — reads EXIF rotation data and physically
+    rotates the image so it displays correctly regardless of how the camera was held.</li>
+    <li><strong>Resizing</strong> — if the image exceeds the maximum dimensions set in
+    Configuration, it is proportionally scaled down.</li>
+    <li><strong>Thumbnail generation</strong> — two thumbnails are created:
+    a 400&times;400 centre-cropped square (for grid views) and a 400px aspect-ratio-preserved
+    version (for archive layouts).</li>
+</ul>
+
+<h4>Title &amp; Description</h4>
+<p>The title appears in the gallery, archive, and single-image views. The description
+supports rich formatting via the toolbar (see <em>Formatting Toolbar</em> topic) and
+shortcodes for images, columns, and dropcaps.</p>
+
+<h4>Categories &amp; Albums</h4>
+<p>Assign the transmission to one or more categories and albums using the multi-select
+dropdowns. These are used for filtering on the public archive page and for organising
+your work into collections.</p>
+
+<h4>Tags</h4>
+<p>The <strong>Tags</strong> field lets you add hashtags to the transmission. Enter them
+space-separated with the # prefix, e.g. <code>#concrete #rust #peeling</code>. Tags are
+also extracted automatically from hashtags in the title and description, so you can tag
+from either place — the dedicated field just makes them visible and easy to manage.</p>
+<p>Tags create browsable archive pages on the public site. Visitors can click any tag to
+see all transmissions sharing that tag. Tags also appear in search results.</p>
+
+<h4>Publication Settings</h4>
+<ul>
+    <li><strong>Status</strong> — Published (visible on the site) or Draft (hidden).</li>
+    <li><strong>Timestamp</strong> — set when the transmission appears in chronological order.
+    Defaults to now, but you can backdate or future-date.</li>
+    <li><strong>Orientation Override</strong> — force the system to treat the image as
+    landscape, portrait, or square regardless of actual dimensions.</li>
+    <li><strong>Allow Signals</strong> — enable or disable comments on this specific
+    transmission (independent of the global comments toggle).</li>
+    <li><strong>Allow Downloads</strong> — enable the download button for this image.</li>
+    <li><strong>External Download URL</strong> — point the download button to a Dropbox,
+    Google Drive, or other external link instead of serving the file directly.</li>
+</ul>
+
+<h4>EXIF Override</h4>
+<p>If automatic EXIF extraction doesn't pick up the right data (common with scanned film,
+drone footage, or phone cameras), you can manually set any metadata field. Manual entries
+override EXIF data.</p>
+HTML
+];
+
+$help_topics['manage-archive'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Manage Archive',
+    'icon'     => '&#x25A0;',
+    'content'  => <<<'HTML'
+<h3>Archive Management</h3>
+<p>The archive manager lists all transmissions with thumbnail previews. Use it to find,
+edit, or delete posts.</p>
+
+<h4>Search &amp; Filter</h4>
+<p>Type in the search box to filter by title. Use the status dropdown to show only
+published, draft, or scheduled transmissions. Category and album filters narrow results
+further.</p>
+
+<h4>Actions</h4>
+<ul>
+    <li><strong>Edit</strong> — opens the transmission editor with all fields pre-populated.</li>
+    <li><strong>Delete</strong> — permanently removes the transmission, its thumbnails, and
+    all associated category/album mappings. This cannot be undone.</li>
+    <li><strong>View</strong> — opens the live public page for this transmission.</li>
+</ul>
+
+<h4>Pagination</h4>
+<p>Results display 15 per page. Navigate between pages using the controls at the bottom.</p>
+HTML
+];
+
+$help_topics['categories'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Categories',
+    'icon'     => '&#x25C6;',
+    'content'  => <<<'HTML'
+<h3>Category Management</h3>
+<p>Categories are the primary taxonomy for organising your transmissions. Each transmission
+can belong to multiple categories. Categories appear as filter options on the public archive
+page and in the sidebar navigation.</p>
+
+<h4>Creating a Category</h4>
+<p>Enter a name and click Create. Category names should be descriptive and concise
+(e.g., "Street Photography", "Portraits", "Landscapes").</p>
+
+<h4>Category Descriptions</h4>
+<p>Each category has an optional description field. Descriptions can be used by skins
+for category archive pages and SEO meta descriptions. Enter a sentence or two explaining
+what the category contains.</p>
+
+<h4>Editing &amp; Deleting</h4>
+<p>Click Edit to rename a category or update its description. Deleting a category removes
+the association with all transmissions but does not delete the transmissions themselves.</p>
+HTML
+];
+
+$help_topics['albums'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Albums (Missions)',
+    'icon'     => '&#x25CB;',
+    'content'  => <<<'HTML'
+<h3>Album Management</h3>
+<p>Albums (also called Missions) are curated collections of transmissions. Unlike categories,
+which are broad organisational buckets, albums are designed for intentional groupings — a
+specific shoot, project, series, or exhibition.</p>
+
+<h4>Creating an Album</h4>
+<p>Give the album a name and optional description. The description appears on the public
+album page if your active skin supports it.</p>
+
+<h4>Assigning Transmissions</h4>
+<p>Transmissions are assigned to albums from the New Post or Edit page using the album
+multi-select dropdown. A single transmission can belong to multiple albums.</p>
+HTML
+];
+
+$help_topics['media-library'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Media Library',
+    'icon'     => '&#x25A8;',
+    'content'  => <<<'HTML'
+<h3>Media Library</h3>
+<p>The media library is a general-purpose file repository for assets that aren't
+transmissions — logos, illustrations, supplementary images, documents, etc. Files
+uploaded here are stored in the <code>media_assets/</code> directory.</p>
+
+<h4>Uploading</h4>
+<p>Drag files onto the upload area or click to browse. Any file type is accepted.</p>
+
+<h4>Shortcode Generation</h4>
+<p>Each uploaded asset gets an ID number. The media library page shows the shortcode
+for each asset, which you can copy and paste into any transmission description or
+static page:</p>
+<pre>[img:42|full|center]</pre>
+<p>See the <em>Formatting Toolbar</em> topic for details on image shortcode syntax.</p>
+
+<h4>Swapping Assets</h4>
+<p>Click the <strong>SWAP</strong> button on any asset card to replace the file on disk
+with a new upload. The asset's ID is preserved, so any <code>[img:ID|...]</code> shortcodes
+already embedded in pages or descriptions continue to work without editing.</p>
+
+<h4>Deleting Assets</h4>
+<p>Deleting an asset removes the file from disk and the database record. Any shortcodes
+referencing the deleted asset will render as empty space on the public site.</p>
+HTML
+];
+
+$help_topics['media-gallery'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Media Gallery',
+    'icon'     => '&#x25A6;',
+    'content'  => <<<'HTML'
+<h3>Media Gallery</h3>
+<p>The Media Gallery is a visual digital asset manager for your entire transmission
+library. Unlike Manage Archive (which is a table), the gallery displays your images
+as a thumbnail grid with instant search, filtering, and inline editing.</p>
+
+<h4>Browsing &amp; Filtering</h4>
+<p>The filter bar at the top provides multiple ways to narrow your view:</p>
+<ul>
+    <li><strong>Search</strong> — searches titles, descriptions, and tags with a 300ms debounce.</li>
+    <li><strong>Album / Category / Status</strong> — dropdown filters.</li>
+    <li><strong>Camera</strong> — populated automatically from your EXIF data.</li>
+    <li><strong>Date Range</strong> — from/to date pickers.</li>
+    <li><strong>Clear</strong> — resets all filters to show everything.</li>
+</ul>
+<p>Results update instantly without a full page reload.</p>
+
+<h4>Selection</h4>
+<p>Select images in three ways:</p>
+<ul>
+    <li><strong>Ctrl+Click</strong> or <strong>Cmd+Click</strong> — toggle individual images.</li>
+    <li><strong>Rubber band</strong> — click and drag on empty grid space to lasso multiple images.</li>
+    <li><strong>Ctrl+A</strong> — select all currently visible images.</li>
+</ul>
+
+<h4>Quick Edit Panel</h4>
+<p>Click any image (without Ctrl) to open the quick-edit slide-out panel on the right.
+From here you can change the title, status, tags, categories, and albums without leaving
+the gallery. Click <strong>Full Edit</strong> to jump to the full editor.</p>
+
+<h4>Bulk Operations</h4>
+<p>When one or more images are selected, the bulk actions bar appears with options to:</p>
+<ul>
+    <li>Set status to Published or Draft</li>
+    <li>Assign a category or album</li>
+    <li>Delete selected images (with confirmation)</li>
+</ul>
+HTML
+];
+
+$help_topics['photo-editor'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Photo Editor',
+    'icon'     => '&#x270E;',
+    'content'  => <<<'HTML'
+<h3>Photo Editor</h3>
+<p>The built-in photo editor lets you make quick adjustments to your images without
+leaving the admin. It opens as a full-screen overlay from the <strong>Edit Image</strong>
+button on the single-image editor and the carousel editor.</p>
+
+<h4>Tools</h4>
+<ul>
+    <li><strong>Crop</strong> — freeform or fixed aspect ratios (1:1, 4:3, 16:9, 3:2).
+        The crop overlay shows a rule-of-thirds grid. Drag corners to resize, drag the
+        centre to reposition. Click <em>Apply</em> to commit or <em>Cancel</em> to exit
+        crop mode without changes.</li>
+    <li><strong>Rotate</strong> — 90&deg; clockwise or counter-clockwise.</li>
+    <li><strong>Flip</strong> — horizontal or vertical mirror.</li>
+    <li><strong>Brightness</strong> — slider from &minus;100 to +100.</li>
+    <li><strong>Contrast</strong> — slider from &minus;100 to +100.</li>
+    <li><strong>Sharpen</strong> — slider from 0 to 100 (3&times;3 unsharp mask).</li>
+    <li><strong>B&amp;W</strong> — toggle black-and-white conversion using the luminosity method.</li>
+</ul>
+
+<h4>Undo &amp; Reset</h4>
+<p><strong>Undo</strong> steps back through each change. <strong>Reset</strong> reverts to
+the original image. Keyboard shortcut: <kbd>Ctrl+Z</kbd> (or <kbd>Cmd+Z</kbd>) to undo,
+<kbd>Escape</kbd> to close without saving.</p>
+
+<h4>Saving</h4>
+<p>Click <strong>Save</strong> to overwrite the web-size copy of the image. The editor
+respects your configured maximum image size setting and regenerates both square and
+aspect-ratio thumbnails automatically. The original full-resolution upload is not modified.</p>
+HTML
+];
+
+$help_topics['signals'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Signals (Comments)',
+    'icon'     => '&#x25AC;',
+    'content'  => <<<'HTML'
+<h3>Signal Moderation</h3>
+<p>Signals are what SnapSmack calls comments. All new signals are held in a pending queue
+until you approve them.</p>
+
+<h4>Pending vs. Live</h4>
+<p>The two-tab interface separates signals awaiting review from those already visible on
+the site. Each signal shows the author name, email (if provided), the comment text, and
+which transmission it belongs to.</p>
+
+<h4>Actions</h4>
+<ul>
+    <li><strong>Approve</strong> — makes the signal visible on the public transmission page.</li>
+    <li><strong>Delete</strong> — permanently removes the signal.</li>
+</ul>
+
+<h4>Global Toggle</h4>
+<p>Signals can be disabled site-wide from the Configuration page. When disabled, comment
+forms are hidden on all public pages. Individual transmissions can also have signals
+disabled regardless of the global setting.</p>
+HTML
+];
+
+// ── PIMP YOUR RIDE ───────────────────────────────────────────────────────
+
+$help_topics['global-vibe'] = [
+    'section'  => 'Pimp Your Ride',
+    'title'    => 'Global Vibe',
+    'icon'     => '&#x266B;',
+    'content'  => <<<'HTML'
+<h3>Theme Management</h3>
+<p>Global Vibe is where you choose the visual identity of your site. It controls both
+the public-facing skin (what visitors see) and the admin theme (what you see in the
+control panel).</p>
+
+<h4>Public Skin</h4>
+<p>Select from installed skins. Each skin has its own visual language, layout options,
+and feature set. Some skins support the floating gallery, others don't. Some offer multiple
+archive layouts. The active skin determines what manifest options are available in
+Smooth Your Skin.</p>
+
+<h4>Admin Theme</h4>
+<p>Choose from 16+ admin colour themes. These only affect the control panel — your
+public site is unaffected. Admin themes change colours and accents but share the same
+geometric layout (admin-theme-geometry-master.css).</p>
+
+<h4>Available Admin Themes</h4>
+<p>50 Shades of Greymatter, Amber Phosphorus, Blue Skies, Bumblebee, Caribbean Blue,
+Dapper Dan, Green Arrow, Green Phosphorus, Inspector Clouseau, Mi Casa Es Su Picasa,
+Midnight Lime (default), Minty Fresh, Peach Melba, Pixelpast, Purple Rain,
+The Black Pearl.</p>
+
+<h4>Archive Display Mode</h4>
+<p>Controls how the public archive grid looks. Options depend on what the active skin
+supports, but all skins offer at least Square. Four options exist:</p>
+<ul>
+    <li><strong>Square Grid</strong> — uniform 1:1 cropped tiles.</li>
+    <li><strong>Cropped Grid</strong> — tiles at a constrained aspect ratio (max 3:2).</li>
+    <li><strong>Justified (Masonry)</strong> — full aspect-ratio images in filled rows,
+    Flickr-style. Only available on skins that declare masonry support.</li>
+    <li><strong>Disabled</strong> — removes the Archive View link from the public navigation
+    entirely. Any direct visit to <code>archive.php</code> redirects to the homepage.
+    Available on all skins regardless of layout support.</li>
+</ul>
+
+<h4>Page Content Width</h4>
+<p>Sets the maximum width of text content on static pages, across all skins. The range
+slider goes from 400 px to 1400 px. Each skin has its own built-in default (typically
+640–850 px) which is used as the fallback if no override is set — move the slider to
+override.</p>
+
+<h4>Floating Gallery Controls</h4>
+<p>All floating gallery engine settings live here, not in Smooth Your Skin:</p>
+<ul>
+    <li><strong>Reflection</strong> — toggle a subtle below-tile reflection (Chromium and Safari only; Firefox degrades gracefully).</li>
+    <li><strong>Scroll Friction</strong> — how quickly the wall decelerates after a drag (0.80 = ice, 0.99 = molasses).</li>
+    <li><strong>Drag Weight</strong> — resistance when dragging (0.5 = featherlight, 5.0 = heavy).</li>
+    <li><strong>Gallery Link</strong> — show or hide the Floating Gallery link in the public nav.</li>
+</ul>
+<p>These are global because they control engine physics, not aesthetics. The wall background
+colour stays in Smooth Your Skin since it's part of each skin's visual palette.</p>
+HTML
+];
+
+$help_topics['smooth-skin'] = [
+    'section'  => 'Pimp Your Ride',
+    'title'    => 'Smooth Your Skin',
+    'icon'     => '&#x2726;',
+    'content'  => <<<'HTML'
+<h3>Skin Customizer &amp; Gallery</h3>
+<p>This page has two tabs: <strong>Customize</strong> and <strong>Gallery</strong>.</p>
+
+<h4>Customize Tab</h4>
+<p>Adjust the active skin's settings. The available options depend on which skin is active —
+each skin defines its own manifest with sections like Canvas &amp; Layout, Framing &amp;
+Presentation, Typography, Floating Gallery, and Content. Changes are applied immediately and
+generate CSS that is injected into the public site.</p>
+<p>Option types include colour pickers, range sliders, dropdowns, and number fields. Each
+option targets a specific CSS selector and property, so you can see exactly what it affects.</p>
+
+<h4>Gallery Tab</h4>
+<p>Browse the skin registry for new skins and updates. Each skin listing shows up to three
+screenshots (landing page, archive grid, and text page) in a carousel with navigation
+arrows and dot indicators. Install, update, or remove skins from this tab. All downloads
+are cryptographically verified. You cannot remove the currently active skin or protected
+skins (like Photogram, the mandatory mobile skin).</p>
+HTML
+];
+
+$help_topics['pimpotron'] = [
+    'section'  => 'Pimp Your Ride',
+    'title'    => 'Pimpotron',
+    'icon'     => '&#x2605;',
+    'content'  => <<<'HTML'
+<h3>Slideshow &amp; Carousel Engine</h3>
+<p>The Pimpotron is an advanced slideshow builder. It only appears in the sidebar when
+the active skin declares Pimpotron support in its manifest.</p>
+
+<h4>Creating a Slideshow</h4>
+<p>Give your slideshow a name and unique slug. The slug is used in templates and URLs.
+Configure global settings: transition speed, glitch effects, stage shift animation,
+and typography.</p>
+
+<h4>Managing Slides</h4>
+<p>Add slides from your existing transmissions, external image URLs, or video embeds.
+Each slide can have:</p>
+<ul>
+    <li>Overlay text with X/Y positioning</li>
+    <li>Custom background colour</li>
+    <li>Individual animation timing</li>
+</ul>
+<p>Drag slides to reorder them. The slideshow renders via a JSON API payload that the
+skin's frontend JavaScript consumes.</p>
+
+<h4>Glitch Effects</h4>
+<p>The Pimpotron includes optional visual glitch effects (distortion, colour shift) that
+can be configured by frequency (rare/occasional/frequent) and intensity
+(subtle/normal/extreme). These are purely cosmetic and intended for creative effect.</p>
+HTML
+];
+
+$help_topics['css-editor'] = [
+    'section'  => 'Pimp Your Ride',
+    'title'    => 'Smack Your CSS Up!',
+    'icon'     => '&#x270E;',
+    'content'  => <<<'HTML'
+<h3>Custom CSS Editor</h3>
+<p>Write your own CSS overrides for the public site or admin panel. The editor has two tabs:
+<strong>Public</strong> and <strong>Admin</strong>.</p>
+
+<h4>How It Works</h4>
+<p>Your custom CSS is loaded <em>after</em> all skin and theme stylesheets, so it wins in
+the CSS cascade. You can override any style on the site without modifying skin files
+directly.</p>
+
+<h4>Protected Block</h4>
+<p>At the top of the editor you may see a read-only block between <code>/* SKIN_START */</code>
+and <code>/* SKIN_END */</code> markers. This is auto-generated by the skin customizer.
+Do not attempt to edit this block — your changes will be overwritten the next time you
+save skin settings. Write your overrides below it.</p>
+
+<h4>Tips</h4>
+<ul>
+    <li>Use your browser's developer tools (F12) to inspect elements and find the right selectors.</li>
+    <li>Prefix selectors with <code>.static-transmission</code> or <code>.description</code>
+    to target only the public content area.</li>
+    <li>Test changes before saving — there's no undo.</li>
+</ul>
+HTML
+];
+
+$help_topics['scripts'] = [
+    'section'  => 'Pimp Your Ride',
+    'title'    => 'Smack Your Scripts Up!',
+    'icon'     => '&#x26A1;',
+    'content'  => <<<'HTML'
+<h3>Third-Party Script Manager</h3>
+<p>Paste tracking scripts, analytics pixels, and newsletter loaders into the database
+instead of the codebase. Each site has its own scripts — nothing touches git.</p>
+
+<h4>Head Scripts</h4>
+<p>Anything you paste here is injected before <code>&lt;/head&gt;</code> on every public
+page. Use it for universal loaders like MailerLite, Google Analytics, or any script
+that needs to run site-wide. The scripts load after all CSS so they don't block rendering.</p>
+
+<h4>Embed Codes</h4>
+<p>Define reusable HTML snippets with named keys. Each block starts with a key line:</p>
+<pre>[key:mailerlite]
+&lt;div class="ml-embedded" data-form="Ixs8uR"&gt;&lt;/div&gt;
+
+[key:youtube-subscribe]
+&lt;div class="g-ytsubscribe" data-channelid="UC..."&gt;&lt;/div&gt;</pre>
+<p>Then place them on any static page with the <code>[embed:mailerlite]</code> shortcode.
+You can define as many keys as you need.</p>
+
+<h4>Typical Setup</h4>
+<p>For a MailerLite newsletter form: paste the universal script tag in <strong>Head Scripts</strong>,
+define the form div in <strong>Embed Codes</strong> with a key, then drop
+<code>[embed:mailerlite]</code> into your About page or wherever you want the form.</p>
+HTML
+];
+
+$help_topics['social-dock'] = [
+    'section'  => 'Pimp Your Ride',
+    'title'    => 'Social Dock',
+    'icon'     => '&#x2764;',
+    'content'  => <<<'HTML'
+<h3>Social Profile Dock</h3>
+<p>A floating dock of social media profile links that appears on every public page.
+Visitors can click through to your profiles on Flickr, SmugMug, Instagram, YouTube,
+Bluesky, and 10 other platforms. No X/Twitter — by design.</p>
+
+<h4>Enabling the Dock</h4>
+<p>Toggle the dock on from <strong>Pimp Your Ride &rarr; Social Dock</strong>. Then enter
+your profile URLs for each platform you want to show. Platforms with empty URLs are
+automatically hidden.</p>
+
+<h4>Positioning</h4>
+<p>Eight placement options in two groups:</p>
+<ul>
+    <li><strong>Corners</strong> — Top Left, Top Right, Bottom Left, Bottom Right. Icons display
+    in a horizontal row.</li>
+    <li><strong>Side Edges</strong> — Left/Right Side, Top or Bottom. Icons stack vertically
+    and slide out of view during scrolling, then slide back when you stop.</li>
+</ul>
+
+<h4>Appearance</h4>
+<ul>
+    <li><strong>Light &amp; Dark Colors</strong> — set two icon colours. Light is for dark
+    backgrounds, dark is for light backgrounds. Choose which mode is active by default.</li>
+    <li><strong>Icon Shape</strong> — Round (circles) or Square (rounded corners).</li>
+    <li><strong>Icon Style</strong> — Outline (transparent, fills on hover) or Solid (filled
+    background with icon inside, brightens on hover).</li>
+    <li><strong>Drop Shadow</strong> — optional shadow behind each icon for better contrast
+    against busy photo backgrounds.</li>
+    <li><strong>Dock Opacity</strong> — how opaque the dock backdrop is (0% = fully transparent,
+    100% = solid dark glass).</li>
+</ul>
+
+<h4>Supported Platforms</h4>
+<p>Flickr, SmugMug, Instagram, Facebook, YouTube, 500px, Vero, Threads, Bluesky,
+LinkedIn, Pinterest, Tumblr, DeviantArt, Behance, and a generic Website link.</p>
+HTML
+];
+
+$help_topics['sticky-header'] = [
+    'section'  => 'Pimp Your Ride',
+    'title'    => 'Sticky Header',
+    'icon'     => '&#x2B06;',
+    'content'  => <<<'HTML'
+<h3>Sticky Header</h3>
+<p>The sticky header engine pins your site's navigation bar to the top of the screen
+when you scroll down. It uses a glass-morphism transparency effect to stay visible
+without blocking content.</p>
+
+<h4>How It Works</h4>
+<ol>
+    <li>You scroll past the header's natural position — it locks to the top.</li>
+    <li>After a brief pause, the header transitions to a transparent frosted-glass state.</li>
+    <li>Hover over the header — it snaps back to full opacity instantly.</li>
+    <li>Scroll back to the top — it returns to its normal position.</li>
+</ol>
+
+<h4>Settings</h4>
+<ul>
+    <li><strong>Background Opacity</strong> — how see-through the header is while in its
+    transparent state (0% = invisible, 100% = fully opaque).</li>
+    <li><strong>Backdrop Blur</strong> — the frosted-glass blur amount in pixels. Higher values
+    create a stronger glass effect.</li>
+</ul>
+
+<h4>Skin Compatibility</h4>
+<p>The engine auto-detects the header element in each skin. Skins that already have their
+own fixed header (like Pocket Operator) are automatically skipped — no conflicts. The
+sticky header is disabled on mobile screens (below 480px) where vertical space is limited.</p>
+HTML
+];
+
+// ── FORMATTING TOOLBAR ───────────────────────────────────────────────────
+
+$help_topics['formatting-toolbar'] = [
+    'section'  => 'Content Creation',
+    'title'    => 'Shortcode Toolbar',
+    'icon'     => '&#x2630;',
+    'content'  => <<<'HTML'
+<h3>Shortcode Toolbar</h3>
+<p>The shortcode toolbar appears above the content textarea on New Post, Edit, and
+Static Pages. Each button inserts tags or shortcodes at the cursor position. If you
+select text first, wrapping tags (bold, italic, link, headings, blockquote, dropcap)
+will wrap your selection.</p>
+
+<h4>Text Formatting</h4>
+<ul>
+    <li><strong>B</strong> — Bold. Wraps selected text in <code>&lt;strong&gt;</code> tags.</li>
+    <li><strong>I</strong> — Italic. Wraps selected text in <code>&lt;em&gt;</code> tags.</li>
+    <li><strong>LINK</strong> — Prompts for a URL, then wraps selected text in an
+    <code>&lt;a href="..."&gt;</code> tag.</li>
+</ul>
+
+<h4>Block Formatting</h4>
+<ul>
+    <li><strong>H2</strong> — Heading level 2. Wraps the line or selection.</li>
+    <li><strong>H3</strong> — Heading level 3.</li>
+    <li><strong>BQ</strong> — Blockquote. Wraps the selection in
+    <code>&lt;blockquote&gt;</code> tags.</li>
+    <li><strong>HR</strong> — Inserts a horizontal rule (<code>&lt;hr&gt;</code>).</li>
+</ul>
+
+<h4>Layout &amp; Media</h4>
+<ul>
+    <li><strong>IMG</strong> — Prompts for an image ID, size (full/wall/small), and
+    alignment (center/left/right), then inserts the <code>[img:ID|size|align]</code>
+    shortcode. Get image IDs from the Media Library page.</li>
+    <li><strong>COL 2 / COL 3</strong> — Inserts a multi-column layout block with
+    placeholder content. Edit the text between <code>[col]</code> markers. See the
+    <em>Shortcodes</em> topic for full syntax.</li>
+    <li><strong>DROP</strong> — Wraps the selection in a dropcap shortcode for
+    decorative first-letter display.</li>
+</ul>
+
+<h4>Data Shortcodes</h4>
+<p>The <strong>&lsaquo;SC&rsaquo;</strong> button opens a dropdown of data shortcodes — dynamic
+values like post count, current year, years-since calculations, and embed codes.
+Click any item to insert it at the cursor. See the <em>Shortcodes</em> topic for the
+full list.</p>
+
+<h4>Preview</h4>
+<p>The <strong>PREVIEW</strong> button (far right of the toolbar) opens a new browser tab
+showing your content rendered through the active skin, exactly as it will appear on
+the public site. All shortcodes are processed — images, columns, and dropcaps will
+display in their final form. The preview is read-only and marked "NOT PUBLISHED".</p>
+HTML
+];
+
+$help_topics['shortcodes'] = [
+    'section'  => 'Content Creation',
+    'title'    => 'Shortcodes',
+    'icon'     => '&#x2039;&#x203A;',
+    'content'  => <<<'HTML'
+<h3>Shortcode Reference</h3>
+<p>Shortcodes are special tags you can type in any description or static page content.
+They are processed by the parser and converted to HTML when the page is displayed.</p>
+
+<h4>Image Insertion</h4>
+<pre>[img:ID|size|align]</pre>
+<p>Inserts an image from the media library or your transmissions.</p>
+<ul>
+    <li><strong>ID</strong> — the numeric ID of the asset (shown in Media Library).</li>
+    <li><strong>size</strong> — <code>full</code> (original), <code>wall</code> (gallery variant),
+    or <code>small</code> (400&times;400 thumbnail). Default: full.</li>
+    <li><strong>align</strong> — <code>center</code>, <code>left</code> (floats left with
+    text wrap), or <code>right</code> (floats right). Default: center.</li>
+</ul>
+<p>Examples:</p>
+<pre>[img:42]
+[img:42|small|left]
+[img:7|wall|right]</pre>
+<p>Inline images open a full-screen lightbox viewer when clicked or tapped. The lightbox
+always shows the full-size original file, regardless of the size variant specified in
+the shortcode.</p>
+<p>In the Impact Printer skin, archive thumbnails always display the ASCII box border
+(no picker — it's hardcoded for consistency). Hero and inline page images each have
+independent style and weight controls under
+<strong>Smooth Your Skin → PRINT HEAD</strong>.</p>
+
+<h4>Multi-Column Layout</h4>
+<pre>[columns=N]
+First column content here.
+
+[col]
+
+Second column content here.
+[/columns]</pre>
+<p>Creates a CSS grid with N columns (2, 3, or 4). Use <code>[col]</code> markers to
+separate content between columns. You can put images, text, headings — anything —
+inside columns. The layout collapses to a single column on mobile screens.</p>
+
+<h4>Dropcap</h4>
+<pre>[dropcap]T[/dropcap]he story begins...</pre>
+<p>Wraps a character in a decorative enlarged dropcap. The visual style is controlled
+by the active skin's dropcap setting (configurable in Smooth Your Skin). Three styles
+are available: None, Simple Bold, and Tactical Block.</p>
+
+<h4>Spacer Shortcode</h4>
+<pre>[spacer:20]</pre>
+<p>Adds explicit vertical spacing (1–100px) within your content. Specify the pixel height
+as a number between the colons.</p>
+
+
+<h4>Data Shortcodes</h4>
+<p>Dynamic values pulled from the database or server at render time. Use the
+<strong>&lsaquo;SC&rsaquo;</strong> dropdown on the static page toolbar to insert these.</p>
+<ul>
+    <li><code>[post_count]</code> — total number of published images.</li>
+    <li><code>[site_name]</code> — your site name from Configuration.</li>
+    <li><code>[site_url]</code> — your site URL.</li>
+    <li><code>[current_year]</code> — four-digit current year.</li>
+    <li><code>[years_since year="1970" month="6" day="15"]</code> — years elapsed since a
+    specific date. Ticks over on the exact day, not January 1. Month and day are optional
+    (default to 1 if omitted).</li>
+    <li><code>[newest_post]</code> — formatted date of the most recent published image.</li>
+    <li><code>[oldest_post]</code> — formatted date of the first published image.</li>
+    <li><code>[archive_link]</code> — clickable link to the archive (blank if archive is disabled).</li>
+    <li><code>[gallery_link]</code> — clickable link to the floating gallery (blank if disabled).</li>
+    <li><code>[random_image]</code> — displays a random published image with lightbox.</li>
+    <li><code>[latest_image]</code> — displays the most recent published image with lightbox.</li>
+</ul>
+
+<h4>Embed Shortcode</h4>
+<pre>[embed:mailerlite]</pre>
+<p>Inserts a named HTML snippet defined in <strong>Pimp Your Ride &rarr; Smack Your Scripts Up!</strong>.
+Use this for newsletter forms, subscribe buttons, chat widgets, or any third-party embed
+that you want to place on specific pages without hardcoding HTML into your content.</p>
+
+<h4>Auto-Paragraph</h4>
+<p>You don't need to type <code>&lt;p&gt;</code> tags. The parser automatically converts
+double line breaks (pressing Enter twice) into paragraphs. Single line breaks become
+<code>&lt;br&gt;</code> tags. Existing HTML block elements (headings, divs, blockquotes)
+are left untouched.</p>
+HTML
+];
+
+// ── BORING ASS STUFF ─────────────────────────────────────────────────────
+
+$help_topics['configuration'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Configuration',
+    'icon'     => '&#x2699;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Global Configuration</h3>
+<p>Site-wide settings that affect the entire installation.</p>
+
+<h4>Site Identity</h4>
+<ul>
+    <li><strong>Site Name</strong> — appears in the browser title bar, RSS feed, and
+    wherever the skin displays a site title.</li>
+    <li><strong>Description</strong> — a short tagline, used in meta tags and RSS.</li>
+    <li><strong>Logo</strong> — upload an SVG, PNG, or JPG. Used in the navigation bar
+    if the active skin supports it.</li>
+    <li><strong>Favicon</strong> — the small icon that appears in browser tabs.</li>
+</ul>
+
+<h4>Image Processing</h4>
+<ul>
+    <li><strong>Max Width (Landscape)</strong> — images wider than this are scaled down on upload.</li>
+    <li><strong>Max Height (Portrait)</strong> — images taller than this are scaled down.</li>
+    <li><strong>JPEG Quality</strong> — compression level (0–100) for generated images
+    and thumbnails. Higher = better quality, larger files. Default: 85.</li>
+</ul>
+
+<h4>Homepage Mode</h4>
+<p>Controls what visitors see when they hit your root URL. Three modes:</p>
+<ul>
+    <li><strong>Latest Post (default)</strong> — the most recently published transmission
+    is shown via the active skin's single-image layout.</li>
+    <li><strong>Skin Landing Page</strong> — shows the active skin's built-in landing page
+    (slider, grid, or portfolio intro). Not all skins have a landing page; if the active
+    skin doesn't, it falls back to Latest Post behaviour.</li>
+    <li><strong>Static Page</strong> — a page you've built in the Pages section becomes
+    the homepage. A <em>Homepage Page</em> picker appears to choose which page. The image
+    feed moves to a configurable Blog URL Slug (default: <code>blog</code>), and a BLOG
+    link is added to the navigation automatically.</li>
+</ul>
+
+<h4>Landing Page Only</h4>
+<p>Available when Homepage Mode is set to Skin Landing Page or Static Page. When enabled,
+the navigation bar and site header are suppressed entirely — only the page content is shown.
+No nav, no footer, no admin chrome. Designed for coming-soon pages, splash screens, and
+single-page portfolio installs. The active skin's background, fonts, and textures are all
+preserved; only the nav wrapper is removed.</p>
+
+<h4>Navigation</h4>
+<p>Assign static pages to header navigation slots. The number of available slots depends
+on the active skin.</p>
+
+<h4>Footer</h4>
+<p>Configure footer content slots. Each slot can be on (shows default content), custom
+(your HTML), or off.</p>
+
+<h4>Comments &amp; Downloads</h4>
+<ul>
+    <li><strong>Global Comments</strong> — master switch for the entire signal system.
+    When off, no comment forms appear anywhere.</li>
+    <li><strong>Global Downloads</strong> — master switch for the download button.
+    Individual transmissions can still be toggled independently.</li>
+</ul>
+
+<h4>AI Training Crawlers</h4>
+<p>Controls whether AI companies can scrape your site content for model training.
+Three options:</p>
+<ul>
+    <li><strong>No Opinion (default)</strong> — no special directives are emitted. Standard
+    crawlers like Googlebot are unaffected. AI bots follow whatever default behaviour their
+    operators have set.</li>
+    <li><strong>Allow</strong> — explicitly permits known AI training crawlers (GPTBot,
+    ChatGPT-User, CCBot, Google-Extended, anthropic-ai, ClaudeBot, Bytespider) via
+    <code>Allow: /</code> directives in <code>robots.txt</code>.</li>
+    <li><strong>Disallow</strong> — blocks the same crawlers via <code>Disallow: /</code>
+    in <code>robots.txt</code> and adds <code>&lt;meta name="robots" content="noai, noimageai"&gt;</code>
+    to every page as a belt-and-suspenders measure for crawlers that honour the meta directive.</li>
+</ul>
+<p>The <code>robots.txt</code> file is regenerated every time you save Global Configuration.
+It also blocks public access to admin pages (<code>/smack-*</code>), <code>/core/</code>,
+<code>/backups/</code>, and <code>/migrations/</code> regardless of the AI policy setting.</p>
+HTML
+];
+
+$help_topics['fingerprints-bans'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Fingerprints & Troll Bans',
+    'icon'     => '&#x1F511;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Fingerprints &amp; Troll Ban System</h3>
+<p>SnapSmack automatically collects a passive browser fingerprint from every commenter.
+This fingerprint is a hash of their browser characteristics (canvas, WebGL, screen resolution,
+timezone, language, etc.) and allows you to ban persistent trolls across IP changes, VPNs,
+and incognito browsing.</p>
+
+<h4>How It Works</h4>
+<p>When someone submits a comment, JavaScript on the public site extracts their browser
+fingerprint and includes it in the submission. The server stores this fingerprint alongside
+the comment. If the fingerprint (or IP or email) matches an entry in your ban list, the
+submission is silently rejected — the user sees a success message but the comment is never stored.</p>
+
+<h4>The Ban Manager</h4>
+<p>Navigate to <strong>Fingerprints &amp; Troll Bans</strong> in the admin sidebar to manage bans:</p>
+<ul>
+    <li><strong>Banned Tab</strong> — shows all active bans. Click <em>Unban</em> to remove a ban.</li>
+    <li><strong>Fingerprints Tab</strong> — search by fingerprint hash or IP. See comment counts per fingerprint.
+        Click <em>Ban</em> to ban that fingerprint with a custom reason.</li>
+    <li><strong>Semantic Tab</strong> — detect related accounts using AI writing style analysis.
+        Enter a fingerprint to see all similar fingerprints (sorted by similarity %). Essential
+        for catching persistent trolls who rotate VPNs — their fingerprint changes but their
+        writing style (vocabulary, phrasing, patterns) remains signature. Similarity threshold is 55%.
+        One click to ban all related fingerprints at once.</li>
+    <li><strong>Keywords Tab</strong> — manage banned phrases and words. Add keywords with three
+        match types (exact word, substring, regex) and two severity levels (flag for review, or
+        silent reject). Silent rejection blocks the submission without alerting the submitter.</li>
+    <li><strong>Add Ban Tab</strong> — issue a new ban by fingerprint, IP, or email address.</li>
+</ul>
+
+<h4>Ban Types</h4>
+<ul>
+    <li><strong>Fingerprint</strong> — blocks a specific browser/device. Best for repeat trolls.
+        They'd need a new device or browser to bypass.</li>
+    <li><strong>IP Address</strong> — blocks an IP. Easiest to evade (VPN, proxy, public WiFi).
+        Use in combination with fingerprint bans.</li>
+    <li><strong>Email Address</strong> — blocks an email hash. Stored as SHA-256 so the address
+        itself is never exposed in the database.</li>
+</ul>
+
+<h4>False Positives</h4>
+<p>Similar browsers (same device, same network) may share similar fingerprints. If you
+accidentally ban a legitimate user, simply navigate to the <em>Banned</em> tab and click <em>Unban</em>
+for that entry. It takes effect immediately.</p>
+
+<h4>Privacy</h4>
+<p>Fingerprints contain no personally identifiable information — just browser characteristics.
+Email addresses are hashed, so only the hash is stored. IP addresses are stored in plain text
+because they're necessary for blocking; they're visible only to admins.</p>
+HTML
+];
+
+$help_topics['user-manager'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'User Manager',
+    'icon'     => '&#x263A;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>User Management</h3>
+<p>SnapSmack supports multiple user accounts with two roles.</p>
+
+<h4>Roles</h4>
+<ul>
+    <li><strong>Admin</strong> — full access to everything: configuration, themes, users,
+    backups, updates.</li>
+    <li><strong>Editor</strong> — can create and edit transmissions, moderate signals, and
+    manage categories/albums. Cannot access system settings, user management, backups, or updates.</li>
+</ul>
+
+<h4>Creating a User</h4>
+<p>Provide a username, email address, password, and role. Passwords must be at least
+12 characters. They are stored using bcrypt hashing and cannot be recovered — only reset.</p>
+
+<h4>Editing a User</h4>
+<p>You can change a user's email, role, and password. Usernames cannot be changed after
+creation (they are used for referential integrity in the database).</p>
+
+<h4>Deleting a User</h4>
+<p>You can delete any user except yourself. This is a safety measure to prevent
+accidentally locking yourself out.</p>
+HTML
+];
+
+$help_topics['maintenance'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Maintenance',
+    'icon'     => '&#x2692;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Database &amp; Asset Maintenance</h3>
+<p>Housekeeping tools for keeping your installation healthy.</p>
+
+<h4>Purge Orphaned Mappings</h4>
+<p>Removes category and album associations that point to deleted transmissions or
+deleted categories/albums. These orphans accumulate naturally over time and are harmless
+but wasteful.</p>
+
+<h4>Optimize Tables</h4>
+<p>Runs MySQL's OPTIMIZE TABLE command on all SnapSmack tables. This defragments the
+data files and reclaims disk space after large deletions. Safe to run at any time.</p>
+
+<h4>Asset Sync</h4>
+<p>Scans the image directory and regenerates any missing thumbnails. Also identifies
+database records that point to files that no longer exist on disk (orphaned records).</p>
+
+<h4>Delete Orphaned Files</h4>
+<p>Removes physical image files that have no corresponding database record. These can
+appear after failed uploads or manual file deletions.</p>
+HTML
+];
+
+$help_topics['schema-recovery'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Schema Recovery',
+    'icon'     => '&#x1F527;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Schema Recovery &amp; Auto-Discovery</h3>
+<p>SnapSmack automatically maintains your database structure by comparing it against a
+canonical schema file stored in the codebase.</p>
+
+<h4>How It Works</h4>
+<p>When you visit the System Updates page, SnapSmack runs a schema sync operation that:</p>
+<ul>
+    <li>Reads the canonical schema definition from <code>database/schema/snapsmack_canonical.sql</code></li>
+    <li>Checks your database against it using MySQL's INFORMATION_SCHEMA</li>
+    <li>Auto-creates any missing tables</li>
+    <li>Auto-adds any missing columns</li>
+    <li>Repairs stale enum definitions on existing columns</li>
+</ul>
+
+<h4>Single Source of Truth</h4>
+<p>The canonical schema file is the single source of truth. When SnapSmack adds new tables
+(like fingerprint storage for troll banning), the developer adds them once to the canonical
+SQL file. Schema recovery then auto-discovers them on all installs — no manual sync needed.</p>
+
+<h4>Idempotent &amp; Safe</h4>
+<p>Schema recovery uses <code>IF NOT EXISTS</code> and INFORMATION_SCHEMA checks, so it's
+completely safe to run multiple times. It will never drop tables, overwrite data, or cause
+disruption to your site.</p>
+
+<h4>Why It Matters</h4>
+<p>Earlier versions required developers to manually sync new table definitions in two places
+(the SQL file AND a hardcoded PHP array), which led to deployments where new features arrived
+without their database tables. Schema recovery now reads directly from the canonical schema,
+so new tables are auto-discovered and created without manual intervention.</p>
+
+<h4>When It Runs</h4>
+<p>Schema recovery runs automatically when you visit System Updates. If your installation
+ever reports missing tables or blank admin pages, a schema recovery run usually fixes it.</p>
+HTML
+];
+
+$help_topics['backup'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Backup & Recovery',
+    'icon'     => '&#x2B07;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Backup &amp; Recovery</h3>
+<p>The backup page is organised into four sections covering everything from quick exports
+to full disaster recovery.</p>
+
+<h4>Recovery Kit</h4>
+<ul>
+    <li><strong>Export Recovery Kit</strong> — generates a single encrypted ZIP file containing
+    your database dump, settings, user credentials, and metadata. This is the fastest way to
+    do a full restore. The ZIP is password-protected with AES-256 encryption.</li>
+    <li><strong>Import Recovery Kit</strong> — upload a previously exported recovery kit ZIP
+    to restore your site. This overwrites the database with the kit's contents.</li>
+</ul>
+
+<h4>Database Dumps</h4>
+<ul>
+    <li><strong>Full SQL Dump</strong> — complete export of all tables with data.
+    The most important backup to have. Restore using phpMyAdmin or the MySQL CLI.</li>
+    <li><strong>User Credentials</strong> — exports the users table separately.</li>
+    <li><strong>Schema Only</strong> — table structure without data, for creating a blank
+    installation with the same schema.</li>
+</ul>
+
+<h4>Data Liberation &amp; Maintenance</h4>
+<ul>
+    <li><strong>WXR Export</strong> — WordPress-compatible XML export. Lets you migrate
+    content to WordPress or other CMS platforms that support WXR import.</li>
+    <li><strong>JSON Export</strong> — structured JSON export of all transmissions with
+    metadata. Useful for custom migrations or data analysis.</li>
+    <li><strong>Verify Integrity</strong> — scans all uploaded images against their database
+    records and SHA-256 checksums. Reports missing files, orphaned records, and hash
+    mismatches.</li>
+    <li><strong>Source Archive</strong> — downloads a compressed archive (tar.gz) of the
+    SnapSmack codebase (code only, no uploaded images).</li>
+</ul>
+
+<h4>Remote Push</h4>
+<p>Push backups to remote storage. See the <em>FTP Backup</em> and <em>Cloud Backup</em>
+help topics for details.</p>
+
+<h4>Recommended Strategy</h4>
+<p>Export a recovery kit weekly (or before any update). For off-site redundancy, configure
+either FTP or cloud push to automatically send the backup to a remote location. Keep at
+least one recovery kit stored off-server at all times.</p>
+HTML
+];
+
+$help_topics['ftp-backup'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'FTP Backup',
+    'icon'     => '&#x21C5;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>FTP Backup</h3>
+<p>Push database dumps to a remote FTP/FTPS server for off-site storage.</p>
+
+<h4>Configuration</h4>
+<p>Enter your FTP server hostname, port, username, and password. The password is stored
+encrypted (AES-256-CBC) in the database — it is never stored in plaintext.</p>
+<ul>
+    <li><strong>Remote Path</strong> — the directory on the FTP server where backups will be
+    uploaded (e.g., <code>/backups/snapsmack/</code>).</li>
+    <li><strong>Mode</strong> — FTP (unencrypted) or FTPS (TLS-encrypted). FTPS is strongly
+    recommended.</li>
+    <li><strong>Passive Mode</strong> — enable if your server is behind a firewall that blocks
+    active FTP connections.</li>
+</ul>
+
+<h4>Testing</h4>
+<p>Use the Test Connection button to verify your credentials and remote path before pushing
+a real backup.</p>
+
+<h4>Pushing a Backup</h4>
+<p>Click "Push to FTP" on the Backup &amp; Recovery page. A fresh SQL dump is generated and
+uploaded to your remote path. The file is named with a timestamp for easy identification.</p>
+HTML
+];
+
+$help_topics['cloud-backup'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Cloud Backup',
+    'icon'     => '&#x2601;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Cloud Backup</h3>
+<p>Push database dumps to Google Drive or OneDrive using OAuth 2.0 authentication.</p>
+
+<h4>Linking a Provider</h4>
+<p>Click "Link" next to Google Drive or OneDrive. You will be redirected to the provider's
+consent screen to authorize SnapSmack. Once authorized, a refresh token is stored encrypted
+in your database — you do not need to re-authorize each session.</p>
+
+<h4>Provider Status</h4>
+<ul>
+    <li><strong>LINKED</strong> — refresh token stored, ready to push. The system will
+    automatically obtain a fresh access token when needed.</li>
+    <li><strong>ACTIVE</strong> — linked and a session access token is currently valid.</li>
+    <li><strong>NOT LINKED</strong> — no credentials stored, needs authorization.</li>
+</ul>
+
+<h4>Unlinking</h4>
+<p>Click "Unlink" to revoke access and delete the stored refresh token. You can re-link
+at any time by going through the OAuth flow again.</p>
+
+<h4>Pushing a Backup</h4>
+<p>Click "Push to Google Drive" or "Push to OneDrive" on the Backup &amp; Recovery page.
+A fresh SQL dump is generated and uploaded to the root of your cloud storage. The file is
+named with a timestamp.</p>
+HTML
+];
+
+$help_topics['updates'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'System Updates',
+    'icon'     => '&#x21BB;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Update System</h3>
+<p>SnapSmack can update itself from the official update server. All update packages are
+cryptographically signed with Ed25519 to prevent tampering.</p>
+
+<h4>Checking for Updates</h4>
+<p>Click "Check Now" to query the update server. If a cron job is registered, this happens
+automatically every 6 hours. A 24-hour fallback check runs on dashboard load even without
+cron.</p>
+
+<h4>Applying an Update</h4>
+<p>The update process:</p>
+<ol>
+    <li>A full backup is created automatically (mandatory — you cannot skip this).</li>
+    <li>The update package is downloaded and verified (SHA-256 checksum + Ed25519 signature).</li>
+    <li>Files are extracted, skipping protected paths (db.php, constants.php, uploads, etc.).</li>
+    <li>If the update includes database changes, migration scripts run automatically.</li>
+    <li>The version number is updated in the database and constants file.</li>
+</ol>
+<p>If any step fails, the system automatically rolls back to the pre-update backup.</p>
+
+<h4>Protected Paths</h4>
+<p>The updater never overwrites your site-specific files: database configuration, upload
+directories, .htaccess, robots.txt, and the signing public key. These are listed in
+<code>protected_paths.json</code>.</p>
+
+<h4>Schema Recovery</h4>
+<p>The Schema Recovery panel lets you run a schema sync or inspect migration state
+without triggering a full update. Use it after a failed update or when bringing an
+older installation current manually. Schema sync compares your live database against
+the reference schema and adds any missing columns — it never removes or modifies
+existing data.</p>
+
+<h4>Ghost Migration Files</h4>
+<p>A ghost file is a <code>.sql</code> file present in <code>/migrations/</code> that is not
+listed in the updater's known migration registry. These appear when a migration is
+renamed or removed. The <strong>Purge Ghost Files</strong> button deletes them from disk.
+Ghost files are harmless but can clutter the Schema Recovery panel.</p>
+
+<h4>Skin Updates</h4>
+<p>The update page also shows notifications about new or updated skins available in the
+registry. These are installed separately from core updates via the Skin Gallery.</p>
+HTML
+];
+
+$help_topics['blogroll'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Blogroll',
+    'icon'     => '&#x2661;',
+    'content'  => <<<'HTML'
+<h3>Blogroll &amp; Peer Network</h3>
+<p>The blogroll is a directory of fellow photographers and sites you admire. It appears
+as a public page on your site (if linked in navigation) and powers the RSS feed
+aggregation system.</p>
+
+<h4>Adding a Peer</h4>
+<p>Provide a name, URL, optional description, optional category, and optional RSS feed URL.
+If an RSS feed is provided, SnapSmack will periodically check it for new content (via the
+cron RSS fetcher).</p>
+
+<h4>Categories</h4>
+<p>Blogroll entries can be grouped into categories (e.g., "Street Photographers",
+"Film Shooters", "Inspiration"). These display as sections on the public blogroll page.</p>
+
+<h4>RSS Fetching</h4>
+<p>When the RSS cron job is registered, SnapSmack checks each peer's feed hourly and
+records the latest publication date. This lets you see at a glance who has posted
+recently. The fetcher does not import or display the actual content — it only tracks
+activity.</p>
+HTML
+];
+
+// ── PAGES & FEATURES ─────────────────────────────────────────────────────
+
+$help_topics['static-pages'] = [
+    'section'  => 'Public Features',
+    'title'    => 'Static Pages',
+    'icon'     => '&#x25AD;',
+    'content'  => <<<'HTML'
+<h3>Static Pages</h3>
+<p>Create standalone pages like About, Contact, or Portfolio that are not part of the
+transmission timeline. Static pages have their own URL based on a slug (e.g.,
+<code>yoursite.com/page.php?slug=about</code>).</p>
+
+<h4>Creating a Page</h4>
+<p>Set a title, write content (with full shortcode and formatting toolbar support),
+and assign a menu order if you want the page in the navigation.</p>
+
+<h4>Featured Image</h4>
+<p>Optionally assign a featured image (hero) that appears at the top of the page.
+This uses the media library asset system. When a hero image is set, three additional
+controls appear:</p>
+<ul>
+    <li><strong>Image Size</strong> — Full Width, Medium (60%), or Small (35%).</li>
+    <li><strong>Image Alignment</strong> — Centre, Left, or Right. Applies when size is Medium or Small.</li>
+    <li><strong>Image Shadow</strong> — adds a subtle drop shadow under the hero image.</li>
+</ul>
+
+<h4>Data Shortcodes</h4>
+<p>The content toolbar includes a shortcode picker (— INSERT SHORTCODE —) for inserting
+live site data into your page text. Available shortcodes:</p>
+<ul>
+    <li><code>[post_count]</code> — total number of published posts</li>
+    <li><code>[site_name]</code>, <code>[site_url]</code> — site identity values from settings</li>
+    <li><code>[current_year]</code> — the current four-digit year (updates automatically)</li>
+    <li><code>[years_since year="" month="" day=""]</code> — years elapsed since a given date</li>
+    <li><code>[newest_post]</code>, <code>[oldest_post]</code> — dates of first and last posts</li>
+    <li><code>[archive_link]</code>, <code>[gallery_link]</code> — auto-generated URLs</li>
+    <li><code>[random_image]</code>, <code>[latest_image]</code> — inline image from your archive</li>
+    <li><code>[embed:key]</code> — inserts a named embed code from Smack Your Scripts Up!</li>
+</ul>
+
+<h4>Navigation</h4>
+<p>Pages can be assigned to header navigation slots in the Configuration page. The
+number of available slots depends on the active skin.</p>
+
+<h4>Homepage Static Page</h4>
+<p>Any page can be set as the site homepage via Global Settings → Homepage Mode → Static Page.
+When set, that page is served at your root URL. The image feed moves to a configurable
+Blog URL Slug (default: <code>blog</code>).</p>
+
+<h4>Landing Page Only (Coming Soon Mode)</h4>
+<p>When Homepage Mode is Static Page and the Landing Page Only toggle is on, the active
+skin's navigation and footer are suppressed. The page content fills the screen with only
+the skin's background, fonts, and colours — no nav bar, no site header, nothing else.
+This is the intended way to run a coming-soon page or a single-message splash screen.
+Turn it off when you're ready to open the rest of the site.</p>
+
+<h4>Content Width</h4>
+<p>The width of the text column on static pages can be adjusted globally in
+Global Vibe → Page Content Width (400–1400 px). Each skin has its own default;
+the slider overrides it across all skins at once.</p>
+HTML
+];
+
+$help_topics['gallery-wall'] = [
+    'section'  => 'Public Features',
+    'title'    => 'Floating Gallery',
+    'icon'     => '&#x25A6;',
+    'content'  => <<<'HTML'
+<h3>Interactive Floating Gallery</h3>
+<p>The floating gallery is a 3D interactive experience that displays your photographs as
+draggable tiles on a virtual wall. It is desktop-only — mobile visitors are automatically
+redirected to the standard archive view.</p>
+
+<h4>Requirements</h4>
+<p>The floating gallery only appears when the active skin declares <code>supports_wall</code>
+in its manifest. Not all skins include floating gallery support.</p>
+
+<h4>Physics &amp; Engine Settings</h4>
+<p>The wall uses simulated physics for dragging and momentum. All engine settings live in
+<strong>Global Vibe</strong> (not Smooth Your Skin) because they control behaviour, not aesthetics:</p>
+<ul>
+    <li><strong>Reflection</strong> — toggle a below-tile reflection effect (Chromium/Safari only).</li>
+    <li><strong>Scroll Friction</strong> — how quickly the wall decelerates after a drag (0.80 = ice, 0.99 = molasses).</li>
+    <li><strong>Drag Weight</strong> — resistance when dragging (0.5 = featherlight, 5.0 = heavy).</li>
+    <li><strong>Gallery Link</strong> — show or hide the Floating Gallery nav link.</li>
+</ul>
+
+<h4>Visual Settings</h4>
+<p>The wall background colour is the only gallery setting that stays in Smooth Your Skin,
+since it's part of each skin's visual palette.</p>
+HTML
+];
+
+$help_topics['archive'] = [
+    'section'  => 'Public Features',
+    'title'    => 'Archive View',
+    'icon'     => '&#x25A4;',
+    'content'  => <<<'HTML'
+<h3>Public Archive</h3>
+<p>The archive is the browsable gallery of all published transmissions. Its appearance
+depends heavily on the active skin, but most skins offer multiple layout options.</p>
+
+<h4>Layout Modes</h4>
+<ul>
+    <li><strong>Square</strong> — uniform 1:1 ratio tiles in a clean grid.</li>
+    <li><strong>Cropped</strong> — tiles maintain a constrained aspect ratio (max 3:2 or 2:3).</li>
+    <li><strong>Masonry</strong> — full aspect-ratio images in justified rows, similar to
+    Flickr or 500px.</li>
+    <li><strong>Disabled</strong> — removes the Archive View link from the public navigation
+    entirely. Direct visits to <code>archive.php</code> redirect to the homepage. Use this
+    on single-page or coming-soon installs where you don't want the archive exposed.
+    Set in Global Vibe → Archive Display Mode.</li>
+</ul>
+
+<h4>Thumbnail Size</h4>
+<p>Choose from five sizes: XS, S, M, L, XL. This affects how many images appear per row
+at any given viewport width.</p>
+
+<h4>Filtering</h4>
+<p>Visitors can filter by category or album using the dropdowns in the archive toolbar.
+A search box also appears in the toolbar — type any keyword to search across titles,
+descriptions, and tags. Queries starting with <code>#</code> redirect straight to the
+hashtag archive for that tag.</p>
+<p>When searching, matching tags appear as clickable chips above the results with post
+counts, making it easy to discover related content.</p>
+HTML
+];
+
+$help_topics['tags'] = [
+    'section'  => 'Public Features',
+    'title'    => 'Tags & Hashtags',
+    'icon'     => '&#x0023;',
+    'content'  => <<<'HTML'
+<h3>Tagging System</h3>
+<p>Tags let visitors browse your site by topic. Every transmission can have any number of
+tags, and each tag generates a dedicated archive page listing all transmissions that share it.</p>
+
+<h4>Adding Tags</h4>
+<p>There are two ways to tag a transmission:</p>
+<ul>
+    <li><strong>Tags field</strong> — on the New Post and Edit pages, enter space-separated
+    hashtags in the Tags field (e.g. <code>#concrete #rust #peeling</code>).</li>
+    <li><strong>Inline hashtags</strong> — write <code>#hashtags</code> anywhere in the title
+    or description. They are extracted automatically on save.</li>
+</ul>
+<p>Both methods feed into the same tagging engine. The Tags field simply makes existing tags
+visible and easy to edit without digging through the description text.</p>
+
+<h4>Tag Archives</h4>
+<p>Each tag gets a public archive page at <code>?tag=slug</code>. Visitors reach these by
+clicking a tag on a post, clicking a tag chip in search results, or typing
+<code>#tagname</code> in the archive search bar (which redirects to the tag archive).</p>
+<p>Tag archives use the same grid layout as the main archive (square, cropped, or masonry
+depending on skin settings) with pagination.</p>
+
+<h4>Tag Display</h4>
+<p>How tags appear on individual posts depends on the active skin. Skins that support tag
+display show clickable tag chips below the image description. Tags link to their archive page.</p>
+
+<h4>Search Integration</h4>
+<p>The archive search bar matches against tags in addition to titles and descriptions.
+Matching tags appear as clickable chips above the search results with post counts.</p>
+HTML
+];
+
+$help_topics['downloads'] = [
+    'section'  => 'Public Features',
+    'title'    => 'Image Downloads',
+    'icon'     => '&#x2913;',
+    'content'  => <<<'HTML'
+<h3>Download System</h3>
+<p>SnapSmack can serve original-resolution image files for download. The system uses
+HMAC-SHA256 tokens to prevent URL guessing — download links are unique and time-limited.</p>
+
+<h4>Enabling Downloads</h4>
+<p>Two switches must both be on:</p>
+<ol>
+    <li><strong>Global Downloads</strong> — the master switch in Configuration.</li>
+    <li><strong>Per-Transmission</strong> — each transmission has its own download toggle
+    on the Edit page.</li>
+</ol>
+<p>Both must be enabled for the download button to appear on a given transmission.</p>
+
+<h4>External Downloads</h4>
+<p>Instead of serving the file directly, you can point the download button to an external
+URL (Dropbox, Google Drive, etc.) by entering the URL on the Edit page. This is useful
+for serving high-resolution files that are too large for your hosting storage.</p>
+HTML
+];
+
+$help_topics['rss-feed'] = [
+    'section'  => 'Public Features',
+    'title'    => 'RSS Feed',
+    'icon'     => '&#x25C9;',
+    'content'  => <<<'HTML'
+<h3>RSS Feed</h3>
+<p>Your site publishes an RSS 2.0 feed at <code>rss.php</code> containing the 20 most
+recent published transmissions. The feed includes the image in each entry's description,
+so feed readers can display thumbnails.</p>
+
+<h4>Feed URL</h4>
+<p>Share your feed URL with visitors or submit it to feed directories:
+<code>https://yoursite.com/rss.php</code></p>
+
+<h4>Blogroll Integration</h4>
+<p>When other SnapSmack sites add your feed to their blogroll, the RSS fetcher tracks
+your latest publication date, showing your peers when you last posted.</p>
+HTML
+];
+
+// ── CRON & AUTOMATION ────────────────────────────────────────────────────
+
+$help_topics['cron'] = [
+    'section'  => 'System',
+    'title'    => 'Scheduled Tasks (Cron)',
+    'icon'     => '&#x23F0;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Cron Jobs &amp; Scheduled Tasks</h3>
+<p>SnapSmack uses cron jobs for tasks that need to run periodically without manual
+intervention. Cron requires a Linux/Unix server with <code>crontab</code> access
+(available on most shared hosting plans).</p>
+
+<h4>Available Cron Jobs</h4>
+<ul>
+    <li><strong>RSS Feed Fetcher</strong> — checks your blogroll peers' feeds hourly for
+    new content. Register from the Dashboard.</li>
+    <li><strong>Version Checker</strong> — checks for core updates and new skins every
+    6 hours. Register from the System Updates page.</li>
+</ul>
+
+<h4>Registering a Cron Job</h4>
+<p>Click the "Register" button on the Dashboard (for RSS) or System Updates page (for
+version checking). The system detects your PHP CLI path and registers the job automatically.</p>
+
+<h4>Fallback Behaviour</h4>
+<p>If cron is not available or not registered, SnapSmack falls back to checking on page
+load: the dashboard triggers an update check if the last one was more than 24 hours ago.
+This is less reliable than cron but ensures the system still functions on hosting without
+cron support.</p>
+
+<h4>Manual Removal</h4>
+<p>Click "Remove" next to a registered job to unregister it. This removes the crontab
+entry but does not delete the PHP script.</p>
+HTML
+];
+
+// ── SMACK YOUR BATCH UP ──────────────────────────────────────────────────
+
+$help_topics['smackyourbatchup'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Smack Your Batch Up',
+    'icon'     => '&#x25B6;',
+    'content'  => <<<'HTML'
+<h3>Smack Your Batch Up</h3>
+<p>Smack Your Batch Up is a standalone Windows desktop app for bulk-posting images
+to SnapSmack. It connects to your site, pulls your categories and albums, and lets
+you queue up dozens of images for posting in a single batch.</p>
+
+<h4>Getting Started</h4>
+<p>Download the tool from the Companion Tools page in the admin panel or from
+<code>https://snapsmack.ca/tools/smackyourbatchup.zip</code>. Extract and run the
+.exe — no installation required. On first launch, enter your SnapSmack site URL and
+admin credentials. The app connects to your site and loads your categories and albums.</p>
+
+<h4>Loading Images</h4>
+<p>Load images in two ways: point to a folder of images, or load a manifest file. A
+manifest is a text file that pairs image filenames with titles, descriptions, tags,
+categories, and albums — useful for pre-planned batch uploads. You can load multiple
+manifests and they accumulate in the queue.</p>
+
+<h4>Queue Management</h4>
+<p>Each image appears as a row with a thumbnail preview. You can drag rows to reorder
+them, change the category or album per row, and edit titles and tags inline. The queue
+shows everything that will be posted before you commit.</p>
+
+<h4>EXIF &amp; Copyright</h4>
+<p>The app automatically embeds EXIF copyright metadata into every image using piexif
+(pure Python — no external tools needed). Copyright text, artist name, image
+description, and tags are all written into the EXIF data before upload. This metadata
+survives on the server because SnapSmack preserves EXIF through its image processing
+pipeline.</p>
+
+<h4>Downloads &amp; Cloud Storage (Optional)</h4>
+<p>The batch poster works perfectly fine without any cloud storage. If you just want to
+post images, skip this section entirely — leave the Google Drive fields blank and the
+app ignores them. Downloads will be disabled on those posts.</p>
+
+<p>If you <em>do</em> want a download button on your posts linking to full-resolution
+originals, SnapSmack supports any public URL — Google Drive, OneDrive, Dropbox, or any
+direct link. The batch poster automates this for Google Drive specifically. For other
+services, upload your originals manually and paste the share link into the Download URL
+field on the New Post or Edit Transmission page.</p>
+
+<h4>Setting Up Google Drive (Optional)</h4>
+<p>If you want the batch poster to automatically upload originals to Google Drive and
+attach the share link to each post:</p>
+<ol>
+    <li>Go to <code>console.cloud.google.com</code> and create a project (or use an existing one).</li>
+    <li>Enable the <strong>Google Drive API</strong> for that project (APIs &amp; Services → Library → search "Drive").</li>
+    <li>Go to APIs &amp; Services → Credentials → Create Credentials → <strong>OAuth client ID</strong>.</li>
+    <li>Application type: <strong>Desktop app</strong>. Name it anything you want.</li>
+    <li>Download the resulting <code>credentials.json</code> file and save it somewhere permanent on your machine.</li>
+    <li>In Smack Your Batch Up, click the credentials file picker and select your <code>credentials.json</code>.</li>
+    <li>Enter the Google Drive folder ID where you want originals stored. The folder ID is the last segment
+        of the folder URL — e.g. in <code>drive.google.com/drive/folders/1aBcDeFgHiJkLmN</code>, the ID is
+        <code>1aBcDeFgHiJkLmN</code>. Make sure this folder is set to "Anyone with the link can view" so
+        download links work for visitors.</li>
+    <li>Click <strong>Auth Drive</strong>. A browser window opens for Google sign-in. Approve access.</li>
+    <li>The status dot turns green and shows "Authenticated". A <code>token.json</code> file is saved next
+        to the exe — subsequent launches reconnect automatically without re-auth.</li>
+</ol>
+<p>Once connected, every image in the batch gets its original uploaded to Drive with EXIF
+metadata embedded, and the public share link is attached to the post automatically. If
+you later want to stop using Drive, just clear the credentials and folder ID fields —
+the app goes back to posting without downloads.</p>
+
+<h4>Admin Theme Sync</h4>
+<p>On connect, the app pulls your active admin colour scheme and applies it to the
+desktop UI. If you switch admin themes, reconnect and the app updates to match.</p>
+
+<h4>Building From Source</h4>
+<p>Source lives in <code>tools/ft-batch-poster/</code>. Run <code>build.bat</code> to
+compile with PyInstaller. The build reads the version from <code>main.py</code> and
+outputs a versioned exe to <code>C:\tools\</code>. Requires Python 3.11+ and
+<code>pip install -r requirements.txt</code>.</p>
+HTML
+];
+
+// ── WHAT SNAPSMACK IS NOT ─────────────────────────────────────────────────
+
+$help_topics['what-snapsmack-is-not'] = [
+    'section'  => 'System',
+    'title'    => 'What SnapSmack Is Not',
+    'icon'     => '&#x2717;',
+    'content'  => <<<'HTML'
+<h3>What SnapSmack Is Not</h3>
+<p>SnapSmack is a photoblogging platform. It is not a studio management system, a client
+portal, or a commercial photography business tool.</p>
+
+<p>It will never include password-protected client galleries, booking systems, calendar
+integration, proofing workflows, watermarking, print ordering, or e-commerce. Photographers
+who need those features should use Pixieset, HoneyBook, or similar dedicated tools.</p>
+
+<p>SnapSmack is not professionally supported software. It is a personal project maintained
+by one person. It works because it has to work for the person who built it. There is no
+support contract, no SLA, no guaranteed response time.</p>
+
+<p>SnapSmack is GPL v3. The source is yours. Fork it, modify it, build the commercial
+studio tool you need. We won't help you build it but we won't stop you either.</p>
+
+<p>This software was built by a photographer for photographers who want to own their work
+and their platform. If that's you, welcome.</p>
+
+<p>SnapSmack was built with a wish and a good AI tool (Claude AI) by someone who is not a
+programmer. What didn't stop him won't stop you if you need this and you're determined
+enough. You've even been given a head start. Good luck.</p>
+HTML
+];
+
+// ── INSTALLER ────────────────────────────────────────────────────────────
+
+$help_topics['installer'] = [
+    'section'  => 'System',
+    'title'    => 'Installer',
+    'icon'     => '&#x2316;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>First-Run Installer</h3>
+<p>The installer (<code>install.php</code>) guides you through setting up a fresh
+SnapSmack installation. It runs once and self-deletes on completion.</p>
+
+<h4>Steps</h4>
+<ol>
+    <li><strong>Environment Check</strong> — verifies PHP version (8.0+), required extensions
+    (PDO, GD, libsodium), and directory write permissions.</li>
+    <li><strong>Database Setup</strong> — enter your MySQL hostname, database name, username,
+    and password. The installer tests the connection immediately.</li>
+    <li><strong>Schema Creation</strong> — creates all database tables automatically.</li>
+    <li><strong>Admin Account</strong> — create your first admin user. Password must be at
+    least 12 characters.</li>
+    <li><strong>Site Configuration</strong> — set your site name and URL.</li>
+    <li><strong>Completion</strong> — the installer generates configuration files, creates
+    upload directories, writes .htaccess security rules, and then self-deletes.</li>
+</ol>
+
+<h4>Safety</h4>
+<p>The installer refuses to run if SnapSmack is already installed (it checks for existing
+settings in the database). It also rate-limits database connection attempts to prevent
+brute-force credential testing.</p>
+HTML
+];
+
+// =========================================================================
+//  DESKTOP TOOLS
+// =========================================================================
+
+$help_topics['smack-your-batch-up'] = [
+    'section'  => 'Desktop Tools',
+    'title'    => 'Smack Your Batch Up',
+    'icon'     => '&#x25B6;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Smack Your Batch Up</h3>
+<p>Smack Your Batch Up (SYBU) is a standalone Windows desktop application for posting large
+batches of images to SnapSmack. It handles EXIF embedding, Gemini AI metadata enrichment,
+Google Drive upload, and bulk posting in one workflow — without touching the web interface.</p>
+
+<h4>Installation</h4>
+<p>The application lives at <code>C:\SmackYourBatchUp\</code>. That folder contains:</p>
+<ul>
+    <li><strong>smackyourbatchup-{version}.exe</strong> — the application</li>
+    <li><strong>config.ini</strong> — saved settings (site URL, username, folder paths, Gemini key,
+    Drive folder ID). Created automatically on first use.</li>
+    <li><strong>gemini_prompts.json</strong> — your saved AI prompt presets.</li>
+    <li><strong>credentials.json</strong> — your Google OAuth client file (downloaded separately
+    from Google Cloud Console; see Google Drive section below).</li>
+    <li><strong>token.json</strong> — written automatically after first Drive auth. Do not delete —
+    it allows silent reconnection on every subsequent launch.</li>
+</ul>
+<p>To rebuild from source, run <code>tools\ft-batch-poster\build.bat</code>. The compiled exe
+is deployed to <code>C:\SmackYourBatchUp\</code> automatically.</p>
+
+<h4>The Status Bar</h4>
+<p>Three panels run across the top of the window in a dot-matrix display. Read these before
+doing anything else — they tell you whether everything is connected and how long your session
+has left.</p>
+<ul>
+    <li><strong>SITE CONNECTION</strong> — green means you are logged in. The countdown shows
+    the 48-minute PHP session window. SYBU pings the server every 10 minutes to keep the session
+    alive and resets the countdown automatically, so it should never reach zero while the app is
+    open. If you lose network and it expires, click Connect again — your queue is not lost.</li>
+    <li><strong>CLOUD DRIVE</strong> — green means Google Drive is authenticated and download
+    links will be attached to every post. If this is red when you post, images will be uploaded
+    to SnapSmack but will not have download links. Use Fix Your Batch Up to recover those links.</li>
+    <li><strong>AI ENGINE</strong> — green means a Gemini API key is saved. Without a key
+    the Enrich button will prompt you to add one in the configuration panel.</li>
+</ul>
+
+<h4>Basic Workflow</h4>
+<ol>
+    <li><strong>Connect</strong> — enter your site URL, username, and password, then click
+    Connect. SYBU logs in and loads your categories and albums. Credentials are saved and
+    reconnection happens automatically on the next launch.</li>
+    <li><strong>Set image folder</strong> — click the <code>…</code> button next to Image Folder
+    and choose the folder containing the images you want to post.</li>
+    <li><strong>Scan Folder</strong> — click Scan Folder to load every JPG, PNG, and WebP in
+    that folder into the queue. Default category, album, and orientation (set in the Manifest
+    &amp; Defaults panel) are applied to all rows.</li>
+    <li><strong>Enrich with Gemini</strong> — click this button to send each image to Gemini AI.
+    Gemini examines the photo and fills in a title, tags, category, and album for each row.
+    Rows that already have a title are skipped automatically.</li>
+    <li><strong>Review the queue</strong> — collapse the configuration panel to see the queue.
+    Click any field in a row to edit it directly. Drag rows to reorder them.</li>
+    <li><strong>Post Batch</strong> — click Post Batch to upload and publish everything.
+    Progress is shown row by row; failed rows stay red and can be retried.</li>
+</ol>
+
+<h4>Gemini AI Enrichment</h4>
+<p>Gemini looks at each image and returns a haiku-style title, 5–8 descriptive hashtags,
+and picks the best matching category and album from your site's actual lists.</p>
+<p>Configure it in the <em>Gemini AI (Optional)</em> section of the configuration panel:</p>
+<ul>
+    <li><strong>API Key</strong> — paste your Gemini API key and click Test Connection to verify.</li>
+    <li><strong>Prompt</strong> — leave blank to use the built-in default, or write your own to
+    control the style, tone, or output format. Click Save As… to name and store a prompt preset
+    for reuse.</li>
+</ul>
+<p>Your API key and last-used prompt are saved in <code>config.ini</code>. Named presets are
+stored in <code>gemini_prompts.json</code>.</p>
+
+<h4>Load Manifest (Advanced)</h4>
+<p>A manifest is a plain text file that lists images with optional pre-filled metadata. Use
+Load Manifest instead of Scan Folder if you have already prepared one. Each image block looks
+like this:</p>
+<pre><code>FILE: photo.jpg
+TITLE: Dark stone holds the rain
+TAGS: #stone #texture #macro #urban
+CATEGORY: Feeling Knotty
+ALBUM: Morning Wood</code></pre>
+<p>Blank fields are filled in from the defaults. You can run Gemini enrichment after loading a
+manifest to fill in any missing titles or tags.</p>
+
+<h4>Google Drive</h4>
+<p>Drive support attaches a permanent public download link to every post so visitors can
+download the original-quality file. It requires a one-time OAuth setup:</p>
+<ol>
+    <li>Go to Google Cloud Console → APIs &amp; Services → Credentials.</li>
+    <li>Create an OAuth 2.0 client ID (Desktop application type) and download the JSON file.</li>
+    <li>In SYBU, point the Credentials File field at that JSON file.</li>
+    <li>Enter the ID from the end of your Google Drive folder URL in the Folder ID field.</li>
+    <li>Click Auth Drive — a browser tab opens for consent. After approval, <code>token.json</code>
+    is written and Drive reconnects silently from then on.</li>
+</ol>
+<p><strong>Do not delete <code>token.json</code></strong> — it is what keeps Drive connected
+without re-authorising every session.</p>
+
+<h4>What Gets Saved to the Database</h4>
+<p>For every image posted via SYBU, SnapSmack stores the title, tags, category, album,
+orientation, the Google Drive download URL, and the original source filename. The source
+filename is particularly useful for recovery — if Drive links are ever lost,
+Fix Your Batch Up can re-match originals to server copies using visual feature matching.</p>
+
+<h4>Keeping Originals</h4>
+<p>Do not delete your source image files after posting. The copy on the server is
+web-optimised and resized. The original in your folder is what gets uploaded to Drive.
+If originals are deleted before Drive was connected, use <strong>Fix Your Batch Up</strong>
+to recover the links.</p>
+HTML
+];
+
+$help_topics['fix-your-batch-up'] = [
+    'section'  => 'Desktop Tools',
+    'title'    => 'Fix Your Batch Up',
+    'icon'     => '&#x27F3;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Fix Your Batch Up</h3>
+<p>Fix Your Batch Up is a recovery tool for images that were posted to SnapSmack without
+a Google Drive link — for example, if Smack Your Batch Up was used before Drive
+authentication was configured. It matches your local original files against the
+server-side images, uploads them to Drive, and writes the download links back to
+the database one image at a time.</p>
+
+<h4>When to Use It</h4>
+<p>Run this tool if you see images in Smack Manage with the download link column empty,
+or if the batch poster warned you that Drive was not connected when you posted.
+You can check which images are affected: the tool pulls the list automatically from
+the site on connection.</p>
+
+<h4>What You Need</h4>
+<ul>
+    <li><strong>Folder A</strong> — a local folder containing the server-side web images.
+    FTP these from your server's <code>img_uploads/</code> directory.</li>
+    <li><strong>Folder B</strong> — your folder of original camera files.</li>
+    <li>A working Drive connection (same credentials as Smack Your Batch Up).</li>
+</ul>
+<p>The tool does not require the originals to have the same filenames as the server
+images — SnapSmack renames images to haiku titles on upload. It uses image feature
+matching to find the right original.</p>
+
+<h4>Running the Tool</h4>
+<p>Run <code>tools\fix-your-batch-up\run.bat</code> from your development environment.
+On first run it installs Python dependencies automatically, then launches the application.
+The tool is not compiled to an exe — it runs directly from source.</p>
+
+<h4>How Matching Works</h4>
+<p>Matching uses a two-stage pipeline:</p>
+<ol>
+    <li><strong>pHash pre-filter</strong> — computes a perceptual hash for each image and
+    finds the 10 closest candidates in Folder B. Fast — handles hundreds of images
+    in seconds.</li>
+    <li><strong>SIFT feature matching</strong> — runs keypoint matching between the server
+    image and each candidate. Because the server image is a resized copy of the original,
+    they share strong, geometrically consistent SIFT features. Two visually similar but
+    different images (e.g. two rust texture photographs) will score much lower.</li>
+</ol>
+<p>Images are processed in batches of 10 using up to 75% of your CPU cores, so you can
+start reviewing completed rows while the next batch is still being matched.</p>
+
+<h4>The Review Interface</h4>
+<p>Each row shows the server image on the left and the matched original on the right, with
+a confidence score in the middle colour-coded green (high), amber (review recommended),
+or red (low confidence / no match found).</p>
+<ul>
+    <li><strong>Upload</strong> — uploads the right-hand image to Drive and writes the link
+    to the database immediately. The row turns green.</li>
+    <li><strong>Pick Different</strong> — opens a Windows file browser pointed at Folder B.
+    Switch to Extra Large Icons view and sort by Date Taken to find the right image
+    visually, then click Open.</li>
+    <li><strong>Skip</strong> — leaves the record unchanged and moves on.</li>
+</ul>
+<p>You can upload each image as soon as you are satisfied with the match — you do not
+need to wait for all matching to complete before starting uploads.</p>
+
+<h4>Configuration</h4>
+<p>Settings are stored in <code>tools\fix-your-batch-up\config.ini</code> and persist
+between sessions. The <em>SYBU Folder</em> field (default: <code>C:\SmackYourBatchUp</code>)
+tells the tool where to find <code>token.json</code> — it reuses the same Drive
+authentication as Smack Your Batch Up, so no separate Drive login is needed.</p>
+HTML
+];
+
+// ── SMACK UP YOUR BACKUP ─────────────────────────────────────────────────
+
+$help_topics['smack-up-your-backup'] = [
+    'section'  => 'Desktop Tools',
+    'title'    => 'Smack Up Your Backup',
+    'icon'     => '&#x25BC;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Smack Up Your Backup</h3>
+<p>Smack Up Your Backup (SUYB) is a standalone Windows/Linux desktop app that performs
+complete, verifiable backups of your SnapSmack blog. It downloads your recovery kit,
+SQL database exports, and all media files via FTP, packages everything into a dated
+ZIP, and optionally uploads it to Google Drive or OneDrive.</p>
+
+<h4>What It Backs Up</h4>
+<ul>
+    <li><strong>Recovery kit</strong> — a .tar.gz archive containing the manifest (a
+    complete inventory of every media file with paths, sizes, and SHA-256 checksums),
+    branding assets, skin files, and a bundled database export.</li>
+    <li><strong>SQL dumps</strong> — full database export and schema-only export.</li>
+    <li><strong>Media files</strong> — every image and asset tracked in the manifest,
+    downloaded via FTP. Differential mode skips files that haven't changed since the
+    last backup (verified by checksum).</li>
+</ul>
+
+<h4>Setting Up</h4>
+<p>Download SUYB from the <a href="smack-tools.php">Companion Tools</a> page. On first
+launch the setup wizard walks you through creating a profile: site URL, admin credentials
+(same ones you use to log into this panel), FTP connection details, and a local folder
+for backup storage.</p>
+<p>Use the <strong>Test Login</strong> and <strong>Test FTP</strong> buttons in the app's
+Settings tab to verify your credentials before running a backup.</p>
+
+<h4>Running a Backup</h4>
+<p>Select a blog profile from the dropdown, choose Differential (fast — skips unchanged
+files) or Full (re-downloads everything), and click <strong>START BACKUP</strong>. The log
+shows every stage in real time. Each downloaded file's SHA-256 is verified against the
+manifest — a mismatch triggers an automatic retry.</p>
+
+<h4>Crash Recovery</h4>
+<p>If a backup is interrupted mid-run (power cut, Windows Update reboot), SUYB writes
+a checkpoint file after every downloaded file using an atomic rename so even a power
+cut during the write itself can't corrupt it. The next time you click Start Backup,
+SUYB detects the checkpoint and offers to resume from where it stopped — no need to
+re-download files already verified.</p>
+
+<h4>Cloud Upload</h4>
+<p>SUYB supports Google Drive (service account key or OAuth) and OneDrive (MSAL). Configure
+your cloud credentials in Settings → Global Cloud Config. After a successful backup the ZIP
+is uploaded automatically and the cloud state index is updated so SUYB can browse and restore
+from cloud directly.</p>
+
+<h4>Scheduled Backups</h4>
+<p>Each profile can have its own backup schedule — daily or weekly at a configured time.
+Enable "Minimize to system tray instead of closing" and "Launch SUYB when Windows starts"
+in Settings so it runs in the background without any manual intervention.</p>
+
+<h4>Oh Snap! API Keys</h4>
+<p>SUYB uses the standard SnapSmack admin login for authentication — no API key is needed.
+The <strong>Oh Snap! API Keys</strong> page (Boring Ass Stuff → Oh Snap! API Keys) is for
+the Oh Snap skin designer desktop app, not for SUYB.</p>
+
+<h4>Restoring From Backup</h4>
+<p>Open the Restore tab in SUYB, select your backup ZIP (local or from cloud), and click
+Restore. Before uploading each file SUYB verifies its checksum against the manifest — a
+corrupt local file is rejected rather than uploaded to overwrite a good server copy.</p>
+
+<h4>Audit Mode</h4>
+<p>The Audit tab compares the manifest against your live server filesystem via FTP,
+identifying missing files, orphaned files not tracked by the CMS, size mismatches, and
+files found in the wrong location. Save the report as HTML for your records.</p>
+HTML
+];
+
+// ── MULTISITE MANAGEMENT ─────────────────────────────────────────────────
+
+$help_topics['multisite'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Multisite Management',
+    'icon'     => '&#x29BF;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Multisite Management</h3>
+<p>Multisite lets you run a fleet of SnapSmack installations from a single hub. One site
+acts as the hub; every other site connects as a spoke. Once connected, the hub can
+monitor all spokes, push content to them, and moderate their comments — all from
+one admin panel.</p>
+
+<h4>Getting Started</h4>
+<p>Open <strong>Multisite Management</strong> in the sidebar. Choose whether this install
+is the <strong>Hub</strong> (the command centre) or a <strong>Spoke</strong> (a spoke
+site that reports back to the hub).</p>
+
+<h4>Connecting a Spoke</h4>
+<ol>
+    <li>On the <strong>spoke</strong>, click <em>Enable as Spoke</em>, then
+    <em>Generate Registration Token</em>. A 32-character token appears, valid for
+    15 minutes.</li>
+    <li>On the <strong>hub</strong>, click <em>Register Spoke</em>. Paste the
+    spoke's URL, its registration token, and give it a friendly name.</li>
+    <li>The hub performs an API handshake — if successful the spoke appears in
+    your fleet list with an active status.</li>
+</ol>
+
+<h4>Hub Features</h4>
+<ul>
+    <li><strong>Spoke Signals</strong> — unified moderation queue for pending comments
+    across every spoke. Approve, trash, or reply without leaving the hub.</li>
+    <li><strong>Spoke Posts</strong> — aggregated post feed from all spokes so you
+    can see what's been published across the fleet.</li>
+    <li><strong>Cross-Post</strong> — push an image from the hub to one or more spokes
+    in a single action.</li>
+    <li><strong>Fleet Stats</strong> — traffic statistics rolled up from every spoke
+    into a combined dashboard.</li>
+    <li><strong>Backup Dock</strong> — backup health overview for every site in the fleet.
+    See last backup date, size, and any sites that are overdue.</li>
+    <li><strong>Blogroll Sync</strong> — keep blogrolls in sync across the fleet with push
+    or pull modes.</li>
+    <li><strong>SSO Drill-Through</strong> — log in to the hub once, then click through to
+    any spoke without re-authenticating.</li>
+</ul>
+
+<h4>Heartbeat Monitoring</h4>
+<p>The hub pings each spoke on a regular schedule. If a spoke goes unresponsive, its
+status changes to <em>unreachable</em> so you can investigate. Heartbeat data includes
+software version, PHP version, and disk usage — giving you a quick health check for
+the entire fleet.</p>
+
+<h4>API Communication</h4>
+<p>Hub and spoke communicate through a JSON API at <code>api.php?route=multisite/*</code>.
+All requests are authenticated with per-node API keys exchanged during the initial handshake.
+Communication uses HTTPS and keys are stored server-side — nothing is exposed to visitors.</p>
+HTML
+];
+
+// =========================================================================
+//  SKIN HELP HOOK
+// =========================================================================
+
+// Active skin can provide a help.php file that returns an array of additional topics
+// in the same format as above, with section set to the skin name.
+if (!empty($settings['active_skin'])) {
+    $_help_skin_slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $settings['active_skin']);
+    $_help_skin_path = "skins/{$_help_skin_slug}/help.php";
+    if (file_exists($_help_skin_path)) {
+        $skin_help = include $_help_skin_path;
+        if (is_array($skin_help)) {
+            $help_topics = array_merge($help_topics, $skin_help);
+        }
+    }
+}
+
+// =========================================================================
+//  ROLE-BASED FILTERING
+// =========================================================================
+
+// Editors only see topics without a role restriction (or role=editor).
+// Admins see everything.
+if ($_help_user_role !== 'admin') {
+    $help_topics = array_filter($help_topics, function ($t) {
+        return empty($t['role']) || $t['role'] === 'editor';
+    });
+}
+
+// =========================================================================
+//  DETERMINE ACTIVE TOPIC
+// =========================================================================
+
+$active_topic = $_GET['topic'] ?? '_toc';
+$show_toc = ($active_topic === '_toc' || !isset($help_topics[$active_topic]));
+if ($show_toc) {
+    $active_topic = '_toc';
+}
+
+// Group topics by section for sidebar navigation
+$sections = [];
+foreach ($help_topics as $slug => $topic) {
+    $sections[$topic['section']][$slug] = $topic;
+}
+
+// Build search index — JSON blob of slug → title + section + plain text snippet
+$_search_index = [];
+foreach ($help_topics as $slug => $ht) {
+    $_search_index[$slug] = [
+        'title'   => $ht['title'],
+        'section' => $ht['section'],
+        'icon'    => $ht['icon'] ?? '',
+        'text'    => strtolower(strip_tags($ht['content'])),
+    ];
+}
+?>
+
+<div class="help-layout">
+
+    <!-- Help Navigation Sidebar -->
+    <div class="help-nav">
+        <div class="help-nav-header">
+            <h2 class="help-nav-title">USER MANUAL</h2>
+            <p class="help-nav-subtitle">SnapSmack Documentation</p>
+        </div>
+
+        <!-- Search -->
+        <div class="help-search">
+            <input type="text" id="help-search-input" placeholder="Search docs..." autocomplete="off">
+        </div>
+
+        <!-- Search results (shown when typing) -->
+        <div class="help-search-results" id="help-search-results"></div>
+
+        <!-- Normal nav (hidden when searching) -->
+        <div id="help-nav-sections">
+            <a href="smack-help.php" class="help-nav-link<?php echo $show_toc ? ' active' : ''; ?>" style="padding-left: 16px; font-weight: bold;">&#x2630;&ensp;Table of Contents</a>
+
+            <?php foreach ($sections as $section_name => $topics): ?>
+                <div class="help-nav-section" data-section="<?php echo htmlspecialchars($section_name); ?>">
+                    <div class="help-nav-section-label"><?php echo htmlspecialchars($section_name); ?></div>
+
+                    <?php foreach ($topics as $slug => $topic): ?>
+                        <a href="smack-help.php?topic=<?php echo urlencode($slug); ?>"
+                           class="help-nav-link<?php echo ($slug === $active_topic) ? ' active' : ''; ?>"
+                           data-slug="<?php echo htmlspecialchars($slug); ?>"
+                           data-title="<?php echo htmlspecialchars(strtolower($topic['title'])); ?>"><?php echo htmlspecialchars($topic['icon'] ?? ''); ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?></a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <!-- Help Content Area -->
+    <div class="help-content">
+
+        <?php if ($show_toc): ?>
+            <!-- ═══ TABLE OF CONTENTS ═══ -->
+            <div class="help-topic-header">
+                <h1 class="help-topic-title">&#x2630;&ensp;User Manual</h1>
+            </div>
+
+            <div class="help-body">
+                <p>SnapSmack documentation covering every feature of the CMS. Click a topic below or use
+                the search box in the sidebar to find what you need.</p>
+
+                <?php foreach ($sections as $section_name => $topics): ?>
+                    <div class="help-toc-section">
+                        <h3 class="help-toc-section-title"><?php echo htmlspecialchars($section_name); ?></h3>
+                        <ul class="help-toc-list">
+                            <?php foreach ($topics as $slug => $topic): ?>
+                                <?php
+                                $_first_p = '';
+                                if (preg_match('/<p>(.*?)<\/p>/s', $topic['content'], $_pm)) {
+                                    $_first_p = strip_tags($_pm[1]);
+                                }
+                                if (strlen($_first_p) > 120) $_first_p = substr($_first_p, 0, 117) . '...';
+                                ?>
+                                <li>
+                                    <a href="smack-help.php?topic=<?php echo urlencode($slug); ?>"><?php echo $topic['icon'] ?? ''; ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?></a>
+                                    <?php if (!empty($_first_p)): ?>
+                                        <div class="help-toc-desc"><?php echo htmlspecialchars($_first_p); ?></div>
+                                    <?php endif; ?>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+
+        <?php else: ?>
+            <!-- ═══ SINGLE TOPIC ═══ -->
+            <?php $topic = $help_topics[$active_topic]; ?>
+
+            <div class="help-topic-header">
+                <div class="help-topic-section">
+                    <?php echo htmlspecialchars($topic['section']); ?>
+                </div>
+                <h1 class="help-topic-title">
+                    <?php echo $topic['icon'] ?? ''; ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?>
+                </h1>
+            </div>
+
+            <div class="help-body">
+                <?php echo $topic['content']; ?>
+            </div>
+
+            <!-- Topic Navigation -->
+            <div class="help-topic-nav">
+                <?php
+                $slugs = array_keys($help_topics);
+                $current_index = array_search($active_topic, $slugs);
+                $prev = ($current_index > 0) ? $slugs[$current_index - 1] : null;
+                $next = ($current_index < count($slugs) - 1) ? $slugs[$current_index + 1] : null;
+                ?>
+                <div>
+                    <?php if ($prev): ?>
+                        <a href="smack-help.php?topic=<?php echo urlencode($prev); ?>">
+                            &larr; <?php echo htmlspecialchars($help_topics[$prev]['title']); ?>
+                        </a>
+                    <?php endif; ?>
+                </div>
+                <div>
+                    <?php if ($next): ?>
+                        <a href="smack-help.php?topic=<?php echo urlencode($next); ?>">
+                            <?php echo htmlspecialchars($help_topics[$next]['title']); ?> &rarr;
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- Search Engine -->
+<script>
+(function () {
+    'use strict';
+
+    var searchIndex = <?php echo json_encode($_search_index, JSON_UNESCAPED_UNICODE); ?>;
+    var input       = document.getElementById('help-search-input');
+    var resultsDiv  = document.getElementById('help-search-results');
+    var navSections = document.getElementById('help-nav-sections');
+
+    if (!input || !resultsDiv || !navSections) return;
+
+    input.addEventListener('input', function () {
+        var q = this.value.trim().toLowerCase();
+
+        if (q.length < 2) {
+            // Reset — show nav, hide results
+            resultsDiv.classList.remove('active');
+            navSections.style.display = '';
+            return;
+        }
+
+        // Hide nav, show results
+        navSections.style.display = 'none';
+        resultsDiv.classList.add('active');
+
+        var html = '';
+        var count = 0;
+        var terms = q.split(/\s+/);
+
+        for (var slug in searchIndex) {
+            var item = searchIndex[slug];
+            var haystack = (item.title + ' ' + item.section + ' ' + item.text).toLowerCase();
+
+            // All terms must match
+            var match = true;
+            for (var i = 0; i < terms.length; i++) {
+                if (haystack.indexOf(terms[i]) === -1) { match = false; break; }
+            }
+            if (!match) continue;
+
+            // Extract snippet around first term match in content
+            var snippet = '';
+            var textLower = item.text;
+            var pos = textLower.indexOf(terms[0]);
+            if (pos !== -1) {
+                var start = Math.max(0, pos - 40);
+                var end = Math.min(textLower.length, pos + 80);
+                snippet = (start > 0 ? '...' : '') + item.text.substring(start, end) + (end < textLower.length ? '...' : '');
+                // Highlight all terms in snippet
+                for (var j = 0; j < terms.length; j++) {
+                    var re = new RegExp('(' + terms[j].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                    snippet = snippet.replace(re, '<mark>$1</mark>');
+                }
+            }
+
+            html += '<a href="smack-help.php?topic=' + encodeURIComponent(slug) + '" class="help-search-result">';
+            html += '<div>' + (item.icon || '') + '&ensp;<strong>' + escapeHtml(item.title) + '</strong></div>';
+            html += '<div class="help-search-result-section">' + escapeHtml(item.section) + '</div>';
+            if (snippet) {
+                html += '<div class="help-search-result-snippet">' + snippet + '</div>';
+            }
+            html += '</a>';
+            count++;
+        }
+
+        if (count === 0) {
+            html = '<div class="help-search-no-results">No topics found for "' + escapeHtml(q) + '"</div>';
+        }
+
+        resultsDiv.innerHTML = html;
+    });
+
+    // Keyboard shortcut: / focuses search
+    document.addEventListener('keydown', function (e) {
+        if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            input.focus();
+            input.select();
+        }
+    });
+
+    function escapeHtml(str) {
+        var d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+})();
+</script>
+
+<?php include 'core/admin-footer.php'; ?>

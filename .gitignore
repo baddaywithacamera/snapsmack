@@ -1,0 +1,70 @@
+# Live database credentials — never commit these
+core/db.php
+smack-central/sc-config.php
+
+# Backups contain full source + database dumps — never commit
+backups/
+
+# Schema reference file IS tracked — it is the canonical source of truth for
+# all table definitions and must stay in sync with install.php + migrations.
+# database/schema/
+
+# Updater temp files
+/tmp/snapsmack_update/
+
+# Session files stored in-app to avoid shared-host GC cron purges
+data/sessions/
+
+# User uploads (too large, site-specific)
+img_uploads/
+
+# Claude / AI tooling
+CLAUDE.md
+
+# Spec / planning documents — not part of source
+_spec/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# PHP error logs
+error_log
+*.log
+HIP-TO-BE-SQUARE-SPEC.docx
+PICASA-WEB-ALBUMS-SPEC.docx
+
+
+# Release packages (built by Smack Central, not stored in source)
+releases/
+
+# Build artifacts from skin packaging / registry generation
+packages/
+registry.json
+
+# Server-side auth file (cPanel / host-generated, not source code)
+auth.php
+
+# Service account keys / credentials — NEVER commit
+*-drive-key*.json
+tools/*/config.json
+
+# Desktop tool runtime config (contains key paths, folder IDs)
+tools/*/config.ini
+tools/*/profiles/
+
+# PyInstaller build artifacts — all tools
+tools/*/build/
+tools/*/dist/
+tools/*/*.spec
+
+# Dead tool directory (renamed to tools/sybu/)
+tools/ft-batch-poster/
+
+# Plugin builds (not part of SnapSmack core)
+sofobomo-canada.zip
+email-test.php
+
+# Greymatter port (work in progress — not part of SnapSmack)
+greymatter/
