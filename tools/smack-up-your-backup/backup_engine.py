@@ -754,7 +754,7 @@ class BackupEngine:
                         or (self.global_cloud or {}).get("cloud_provider") or "none")
             creds    = (self.profile.get("cloud_credentials_file")
                         or (self.global_cloud or {}).get("cloud_credentials_file") or "")
-            if provider in ("google_drive", "onedrive"):
+            if provider in ("google_drive", "box", "b2"):
                 self._log(f"Cloud upload skipped — provider is {provider} but no credentials file is set.")
                 result["errors"].append("Cloud upload skipped — set SA key file in Settings → Global Cloud Config and click Save Defaults.")
             else:

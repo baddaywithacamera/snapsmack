@@ -48,9 +48,6 @@ pyinstaller \
     --hidden-import=google_auth_oauthlib.flow \
     --hidden-import=googleapiclient.discovery \
     --hidden-import=googleapiclient.http \
-    --hidden-import=msal \
-    --hidden-import=msal.authority \
-    --hidden-import=msal.application \
     main.py
 
 echo ""
