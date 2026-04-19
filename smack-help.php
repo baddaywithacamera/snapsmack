@@ -556,6 +556,44 @@ LinkedIn, Pinterest, Tumblr, DeviantArt, Behance, and a generic Website link.</p
 HTML
 ];
 
+$help_topics['menu-manager'] = [
+    'section'  => 'Pimp Your Ride',
+    'title'    => 'Menu Manager',
+    'icon'     => '&#x2630;',
+    'content'  => <<<'HTML'
+<h3>Menu Manager</h3>
+<p>Menu Manager replaces the old nav toggle switches scattered around the settings pages
+with a single drag-and-drop editor. Every link in your public navigation bar — built-in
+pages, static pages, custom links, and sub-menus — is managed here.</p>
+
+<h4>Building Your Menu</h4>
+<p>Available items are listed on the left. Click the <strong>+</strong> button or drag an
+item to the Current Menu on the right to add it. Drag items within the menu to reorder
+them. To remove an item, click the × button — it returns to the available pool.</p>
+
+<h4>Sub-menus (One Level Deep)</h4>
+<p>SnapSmack supports one level of nesting. To create a sub-menu, drag an item from the
+available pool (or from the top level) into the "Drop here to nest" zone that appears
+beneath any top-level item. You can also reorder items within a sub-menu by dragging.
+A small ▾ caret appears on any parent item that has children.</p>
+
+<h4>Editing Labels</h4>
+<p>Click the ✎ pencil icon on any menu item to rename it. Hit Enter or click away to
+save. You can rename built-in pages (e.g. change "ARCHIVE VIEW" to "PHOTOS") without
+affecting how they link.</p>
+
+<h4>Custom Links</h4>
+<p>Use the Custom Link form at the bottom of the available items panel to add any URL.
+Enter a label and a full URL (including https://) then click <strong>Add</strong>. Custom
+links can also be nested as sub-menu items.</p>
+
+<h4>Dropdown Appearance</h4>
+<p>The Dropdown Appearance section controls the background colour, opacity, and text
+colour of all dropdown sub-menus. Changes apply globally across all skins. The dropdown
+fades in and out with a quick 0.15&nbsp;s transition.</p>
+HTML
+];
+
 $help_topics['sticky-header'] = [
     'section'  => 'Pimp Your Ride',
     'title'    => 'Sticky Header',

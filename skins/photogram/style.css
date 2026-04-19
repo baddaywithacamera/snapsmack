@@ -1467,3 +1467,81 @@ button {
     margin:    0 !important;
     width:     100% !important;
 }
+
+
+/* ==========================================================================
+   NAV DROPDOWN
+   Driven by ss-engine-nav-dropdown.js. Uses CSS variables for theming
+   so each skin can override --nav-dropdown-bg / --nav-dropdown-text.
+   Dropdown bg is set inline by core/header.php from smack-menu.php settings.
+   ========================================================================== */
+
+.nav-item {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.nav-submenu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 160px;
+    background: var(--nav-dropdown-bg, rgba(0,0,0,0.88));
+    color: var(--nav-dropdown-text, #fff);
+    list-style: none;
+    margin: 0;
+    padding: 6px 0;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 999;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    pointer-events: none;
+}
+
+.nav-has-children:hover .nav-submenu,
+.nav-has-children.open  .nav-submenu {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.nav-submenu li {
+    display: block;
+}
+
+.nav-submenu a {
+    display: block;
+    padding: 7px 18px;
+    color: var(--nav-dropdown-text, #fff);
+    text-decoration: none;
+    font-size: 0.72rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    transition: opacity 0.1s ease;
+}
+
+.nav-submenu a:hover {
+    opacity: 0.7;
+}
+
+.nav-caret {
+    font-size: 0.65em;
+    vertical-align: middle;
+    margin-left: 2px;
+    display: inline-block;
+    transition: transform 0.15s ease;
+}
+
+.nav-has-children.open .nav-caret {
+    transform: rotate(180deg);
+}
+
+.nav-sep {
+    display: inline-flex;
+    align-items: center;
+}
+
