@@ -553,17 +553,17 @@ include 'core/sidebar.php';
                         <p style="font-size:0.85rem; color:var(--text-muted,#888); margin-bottom:10px;">
                             <strong>Active Registration Token (valid for <?php echo max(1, ceil(($reg_token_expires - time()) / 60)); ?> more minutes):</strong>
                         </p>
-                        <div style="display:flex; align-items:stretch; gap:0; margin-bottom:10px; border:1px solid var(--border,#333); border-radius:4px; overflow:hidden;">
-                            <div id="reg-token-display" style="flex:1; font-family:monospace; font-size:1.1rem; letter-spacing:2px; padding:12px 14px;
-                                        background:var(--bg,#000); word-break:break-all; line-height:1.4;">
-                                <?php echo htmlspecialchars($reg_token); ?>
-                            </div>
-                            <button type="button" class="btn-smack" id="copy-token-btn"
-                                    style="border-radius:0; min-width:90px; border-left:1px solid var(--border,#333);"
-                                    onclick="navigator.clipboard.writeText(document.getElementById('reg-token-display').innerText.trim()).then(function(){ var b=document.getElementById('copy-token-btn'); b.textContent='COPIED ✓'; setTimeout(function(){ b.textContent='COPY'; }, 2000); });">
-                                COPY
-                            </button>
-                        </div>
+                        <input id="reg-token-display" type="text" readonly
+                               value="<?php echo htmlspecialchars($reg_token); ?>"
+                               style="width:100%; box-sizing:border-box; font-family:monospace; font-size:1rem;
+                                      letter-spacing:2px; padding:12px 14px; margin-bottom:8px;
+                                      background:var(--input-bg,#111); border:1px solid var(--border,#333);
+                                      border-radius:4px; color:inherit; cursor:text;"
+                               onclick="this.select();">
+                        <button type="button" class="btn-smack" id="copy-token-btn" style="width:100%; margin-bottom:10px;"
+                                onclick="navigator.clipboard.writeText(document.getElementById('reg-token-display').value).then(function(){ var b=document.getElementById('copy-token-btn'); b.textContent='COPIED ✓'; setTimeout(function(){ b.textContent='COPY'; }, 2000); });">
+                            COPY
+                        </button>
                         <p style="font-size:0.8rem; color:var(--accent,#aaa); margin-top:10px;">
                             Give this token to your hub administrator. It expires at <?php echo date('H:i:s', $reg_token_expires); ?>.
                         </p>
