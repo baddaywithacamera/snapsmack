@@ -2536,43 +2536,91 @@ class SettingsTab(tk.Frame):
             self._ai_status_var.set("Not installed — pip install sentence-transformers")
 
     def _install_ai(self):
-        import subprocess, sys, threading, shutil
+        import subprocess, sys, shutil, platform
 
-        # In a PyInstaller build sys.executable is the compiled exe, not Python.
-        # Running it with -m pip would launch a second instance of SUYB.
-        # Find the real Python interpreter instead.
         if getattr(sys, 'frozen', False):
-            python = shutil.which("python") or shutil.which("python3")
-            if not python:
-                messagebox.showinfo(
-                    "Manual install required",
-                    "SUYB is running as a compiled exe and can't run pip directly.\n\n"
-                    "To enable AI file matching, open a terminal and run:\n\n"
-                    "    pip install sentence-transformers\n\n"
-                    "Then restart SUYB.",
-                    parent=self.winfo_toplevel(),
-                )
-                return
-        else:
-            python = sys.executable
+            # Running as a compiled exe — can't pip-install into our own bundle.
+            # Open a visible terminal window so the user can see the install happen.
+            if platform.system() == "Windows":
+                try:
+                    subprocess.Popen(
+                        ["cmd", "/k",
+                         "pip install sentence-transformers"
+                         " && echo."
+                         " && echo Done! Close this window and restart SUYB."
+                         " || echo."
+                         " || echo Install failed — check output above."],
+                        creationflags=subprocess.CREATE_NEW_CONSOLE,
+                    )
+                    messagebox.showinfo(
+                        "Installing in terminal",
+                        "A terminal window opened to run pip install.\n\n"
+                        "sentence-transformers pulls in PyTorch — it's a large download "
+                        "(several GB) and may take a few minutes.\n\n"
+                        "Once the terminal says 'Done!', close it and restart SUYB.",
+                        parent=self.winfo_toplevel(),
+                    )
+                except Exception as e:
+                    messagebox.showinfo(
+                        "Manual install required",
+                        "Could not open a terminal automatically.\n\n"
+                        "Open a Command Prompt and run:\n\n"
+                        "    pip install sentence-transformers\n\n"
+                        f"({e})\n\nThen restart SUYB.",
+                        parent=self.winfo_toplevel(),
+                    )
+            else:
+                # Non-Windows frozen build — try to find Python in PATH
+                python = shutil.which("python3") or shutil.which("python")
+                if not python:
+                    messagebox.showinfo(
+                        "Manual install required",
+                        "Open a terminal and run:\n\n"
+                        "    pip install sentence-transformers\n\n"
+                        "Then restart SUYB.",
+                        parent=self.winfo_toplevel(),
+                    )
+                    return
+                self._ai_status_var.set("Installing — this may take a few minutes…")
+                import threading
+                def _run():
+                    try:
+                        r = subprocess.run(
+                            [python, "-m", "pip", "install", "sentence-transformers"],
+                            capture_output=True, text=True, timeout=600,
+                        )
+                        if r.returncode == 0:
+                            self.after(0, self._refresh_ai_status)
+                        else:
+                            err = (r.stderr or r.stdout or "Unknown error").strip()[-300:]
+                            self.after(0, lambda: self._ai_status_var.set(f"Install failed: {err}"))
+                    except subprocess.TimeoutExpired:
+                        self.after(0, lambda: self._ai_status_var.set("Timed out — try manually"))
+                    except Exception as ex:
+                        self.after(0, lambda: self._ai_status_var.set(f"Error: {ex}"))
+                threading.Thread(target=_run, daemon=True).start()
+            return
 
-        self._ai_status_var.set("Installing — this may take a minute…")
+        # Dev mode (not frozen) — run pip in background using our own interpreter
+        import threading
+        python = sys.executable
+        self._ai_status_var.set("Installing — this may take a few minutes…")
 
         def _run():
             try:
-                result = subprocess.run(
+                r = subprocess.run(
                     [python, "-m", "pip", "install", "sentence-transformers"],
-                    capture_output=True, text=True, timeout=300,
+                    capture_output=True, text=True, timeout=600,
                 )
-                if result.returncode == 0:
+                if r.returncode == 0:
                     self.after(0, self._refresh_ai_status)
                 else:
-                    err = (result.stderr or result.stdout or "Unknown error").strip()[-200:]
+                    err = (r.stderr or r.stdout or "Unknown error").strip()[-300:]
                     self.after(0, lambda: self._ai_status_var.set(f"Install failed: {err}"))
             except subprocess.TimeoutExpired:
-                self.after(0, lambda: self._ai_status_var.set("Install timed out — try manually"))
-            except Exception as e:
-                self.after(0, lambda: self._ai_status_var.set(f"Error: {e}"))
+                self.after(0, lambda: self._ai_status_var.set("Timed out — try manually"))
+            except Exception as ex:
+                self.after(0, lambda: self._ai_status_var.set(f"Error: {ex}"))
 
         threading.Thread(target=_run, daemon=True).start()
 
