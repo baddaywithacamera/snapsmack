@@ -3329,10 +3329,14 @@ class CloudSyncTab(tk.Frame):
         job = sync_manager.load_job(name)
         if not job:
             return
-        src_folder = job.get("source_folder_id", "") or "—"
-        dst_folder = job.get("dest_folder_path", "") or "—"
-        self._src_lbl.configure(text=f"Source:  Google Drive — folder {src_folder}")
-        self._dst_lbl.configure(text=f"Dest:    OneDrive — {dst_folder}")
+        src_p      = {"google_drive": "Google Drive", "onedrive": "OneDrive"}.get(
+            job.get("source_provider", "google_drive"), "—")
+        dst_p      = {"google_drive": "Google Drive", "onedrive": "OneDrive"}.get(
+            job.get("dest_provider", "onedrive"), "—")
+        src_folder = job.get("source_folder") or job.get("source_folder_id", "") or "—"
+        dst_folder = job.get("dest_folder") or job.get("dest_folder_path", "") or "—"
+        self._src_lbl.configure(text=f"Source:  {src_p} — {src_folder}")
+        self._dst_lbl.configure(text=f"Dest:    {dst_p} — {dst_folder}")
 
     def _new_job(self):
         template = sync_manager.new_job_template()
@@ -3529,6 +3533,8 @@ class CloudSyncTab(tk.Frame):
 class _SyncJobDialog(tk.Toplevel):
     """Create / edit a cloud sync job config."""
 
+    PROVIDERS = [("Google Drive", "google_drive"), ("OneDrive", "onedrive")]
+
     def __init__(self, parent, config: dict, title: str = "Sync Job"):
         super().__init__(parent)
         self.title(title)
@@ -3541,28 +3547,21 @@ class _SyncJobDialog(tk.Toplevel):
         self._build()
         self.protocol("WM_DELETE_WINDOW", self._cancel)
 
-    def _row(self, parent, label: str, var, width: int = 42, show: str = ""):
-        row = tk.Frame(parent, bg=BG_MID)
-        row.pack(fill="x", pady=3)
-        tk.Label(row, text=label, bg=BG_MID, fg=FG_DIM,
-                 font=FONT_BODY, width=26, anchor="w").pack(side="left")
-        tk.Entry(row, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
-                 insertbackground=ACCENT, relief="flat",
-                 font=FONT_MONO, width=width, show=show).pack(side="left")
-        return row
+    # ------------------------------------------------------------------
+    # Widget helpers
+    # ------------------------------------------------------------------
 
     def _browse_row(self, parent, label: str, var):
         row = tk.Frame(parent, bg=BG_MID)
         row.pack(fill="x", pady=3)
         tk.Label(row, text=label, bg=BG_MID, fg=FG_DIM,
-                 font=FONT_BODY, width=26, anchor="w").pack(side="left")
+                 font=FONT_BODY, width=24, anchor="w").pack(side="left")
         tk.Entry(row, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
                  insertbackground=ACCENT, relief="flat",
                  font=FONT_MONO, width=36).pack(side="left")
         tk.Button(row, text="…", bg=BG_CARD, fg=FG_MAIN, relief="flat",
                   font=FONT_BODY, padx=6, pady=1,
                   command=lambda: self._browse_file(var)).pack(side="left", padx=(4, 0))
-        return row
 
     @staticmethod
     def _browse_file(var):
@@ -3570,84 +3569,169 @@ class _SyncJobDialog(tk.Toplevel):
         if path:
             var.set(path)
 
-    def _auth_row(self, parent, label: str, var, auth_fn, status_var):
-        row = tk.Frame(parent, bg=BG_MID)
-        row.pack(fill="x", pady=3)
-        tk.Label(row, text=label, bg=BG_MID, fg=FG_DIM,
-                 font=FONT_BODY, width=26, anchor="w").pack(side="left")
-        tk.Button(row, text=label, bg=BG_CARD, fg=FG_MAIN, relief="flat",
-                  font=FONT_BODY, padx=10, pady=3,
-                  command=lambda: self._do_auth(auth_fn, status_var, var)).pack(side="left")
-        tk.Label(row, textvariable=status_var, bg=BG_MID, fg=FG_DIM,
-                 font=FONT_SMALL).pack(side="left", padx=(8, 0))
-
     def _do_auth(self, auth_fn, status_var, creds_var):
         status_var.set("Opening browser…")
         self.update()
         ok, msg = auth_fn(creds_var.get())
         status_var.set(msg)
 
+    # ------------------------------------------------------------------
+    # Provider section builder — reused for source and dest
+    # ------------------------------------------------------------------
+
+    def _build_endpoint(self, parent, label: str, provider_var,
+                        creds_var, folder_var, auth_status_var):
+        """Build one endpoint section (source or dest) with dynamic provider UI."""
+
+        header = tk.Label(parent, bg=BG_MID, fg=ACCENT, font=FONT_SMALL)
+        header.pack(anchor="w", pady=(12, 4))
+
+        # Provider row
+        prov_row = tk.Frame(parent, bg=BG_MID)
+        prov_row.pack(fill="x", pady=3)
+        tk.Label(prov_row, text=f"{label} provider:", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY, width=24, anchor="w").pack(side="left")
+        for display, value in self.PROVIDERS:
+            tk.Radiobutton(
+                prov_row, text=display, variable=provider_var, value=value,
+                bg=BG_MID, fg=FG_MAIN, selectcolor=BG_INPUT,
+                activebackground=BG_MID, font=FONT_BODY,
+                command=lambda: self._refresh_endpoint(
+                    label, provider_var, creds_var, folder_var,
+                    auth_status_var, header, creds_lbl, folder_lbl,
+                    folder_hint, auth_btn,
+                ),
+            ).pack(side="left", padx=(0, 12))
+
+        # Credentials file
+        creds_row = tk.Frame(parent, bg=BG_MID)
+        creds_row.pack(fill="x", pady=3)
+        creds_lbl = tk.Label(creds_row, bg=BG_MID, fg=FG_DIM,
+                              font=FONT_BODY, width=24, anchor="w")
+        creds_lbl.pack(side="left")
+        tk.Entry(creds_row, textvariable=creds_var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=36).pack(side="left")
+        tk.Button(creds_row, text="…", bg=BG_CARD, fg=FG_MAIN, relief="flat",
+                  font=FONT_BODY, padx=6, pady=1,
+                  command=lambda: self._browse_file(creds_var)).pack(side="left", padx=(4, 0))
+
+        # Folder
+        folder_row = tk.Frame(parent, bg=BG_MID)
+        folder_row.pack(fill="x", pady=3)
+        folder_lbl = tk.Label(folder_row, bg=BG_MID, fg=FG_DIM,
+                               font=FONT_BODY, width=24, anchor="w")
+        folder_lbl.pack(side="left")
+        tk.Entry(folder_row, textvariable=folder_var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=36).pack(side="left")
+
+        folder_hint = tk.Label(parent, bg=BG_MID, fg=FG_DIM, font=FONT_SMALL)
+        folder_hint.pack(anchor="w", pady=(0, 2))
+
+        # Authenticate button row
+        auth_row = tk.Frame(parent, bg=BG_MID)
+        auth_row.pack(fill="x", pady=3)
+        auth_btn = tk.Button(auth_row, bg=BG_CARD, fg=FG_MAIN, relief="flat",
+                             font=FONT_BODY, padx=10, pady=3)
+        auth_btn.pack(side="left")
+        tk.Label(auth_row, textvariable=auth_status_var, bg=BG_MID, fg=FG_DIM,
+                 font=FONT_SMALL).pack(side="left", padx=(8, 0))
+
+        # Initialise labels/hints for current provider value
+        self._refresh_endpoint(label, provider_var, creds_var, folder_var,
+                               auth_status_var, header, creds_lbl, folder_lbl,
+                               folder_hint, auth_btn)
+
+    def _refresh_endpoint(self, label, provider_var, creds_var, folder_var,
+                          auth_status_var, header, creds_lbl, folder_lbl,
+                          folder_hint, auth_btn):
+        """Update labels, hints and auth button for current provider selection."""
+        p = provider_var.get()
+        is_src = (label == "Source")
+
+        if p == "google_drive":
+            header.configure(text=f"── {label}: Google Drive {'─' * 20}")
+            creds_lbl.configure(text="OAuth client secret JSON:")
+            folder_lbl.configure(text="Folder ID:")
+            folder_hint.configure(
+                text="  Copy from Drive URL: drive.google.com/drive/folders/FOLDER_ID"
+            )
+            auth_btn.configure(
+                text="Authenticate with Google",
+                command=lambda: self._do_auth(
+                    lambda p: cloud_module.authenticate_oauth(p, readonly=is_src),
+                    auth_status_var, creds_var,
+                ),
+            )
+            # Refresh token status
+            creds = creds_var.get()
+            if creds:
+                auth_status_var.set(cloud_module.get_oauth_token_status(creds))
+        else:  # onedrive
+            header.configure(text=f"── {label}: OneDrive {'─' * 24}")
+            creds_lbl.configure(text="MS app credentials JSON:")
+            folder_lbl.configure(text="Folder name:")
+            folder_hint.configure(
+                text='  Folder in your OneDrive root, e.g. "FoundTexturesBackup"'
+                '\n  Credentials JSON: {"client_id": "your-azure-app-client-id"}'
+            )
+            auth_btn.configure(
+                text="Authenticate with Microsoft",
+                command=lambda: self._do_auth(
+                    cloud_module.authenticate_onedrive,
+                    auth_status_var, creds_var,
+                ),
+            )
+            creds = creds_var.get()
+            if creds:
+                auth_status_var.set(cloud_module.get_onedrive_token_status(creds))
+
+    # ------------------------------------------------------------------
+    # Build
+    # ------------------------------------------------------------------
+
     def _build(self):
-        c = self._config
+        c   = self._config
         PAD = 16
 
         body = tk.Frame(self, bg=BG_MID, padx=PAD, pady=PAD)
         body.pack(fill="both", expand=True)
 
         # Job name
+        name_row = tk.Frame(body, bg=BG_MID)
+        name_row.pack(fill="x", pady=3)
+        tk.Label(name_row, text="Job name:", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY, width=24, anchor="w").pack(side="left")
         self._name_var = tk.StringVar(value=c.get("name", ""))
-        self._row(body, "Job name:", self._name_var, width=36)
-
-        tk.Label(body, text="── Google Drive Source ──────────────────",
-                 bg=BG_MID, fg=ACCENT, font=FONT_SMALL).pack(anchor="w", pady=(12, 4))
-
-        self._src_creds_var = tk.StringVar(value=c.get("source_credentials_file", ""))
-        self._src_folder_var = tk.StringVar(value=c.get("source_folder_id", ""))
-        self._browse_row(body, "OAuth client secret JSON:", self._src_creds_var)
-
-        # Folder ID with help text
-        folder_row = tk.Frame(body, bg=BG_MID)
-        folder_row.pack(fill="x", pady=3)
-        tk.Label(folder_row, text="Source folder ID:", bg=BG_MID, fg=FG_DIM,
-                 font=FONT_BODY, width=26, anchor="w").pack(side="left")
-        tk.Entry(folder_row, textvariable=self._src_folder_var, bg=BG_INPUT,
-                 fg=FG_MAIN, insertbackground=ACCENT, relief="flat",
+        tk.Entry(name_row, textvariable=self._name_var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
                  font=FONT_MONO, width=36).pack(side="left")
 
-        tk.Label(body,
-                 text="  (Copy from Drive URL: drive.google.com/drive/folders/FOLDER_ID_HERE)",
-                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w", pady=(0, 2))
+        # Source endpoint
+        self._src_provider_var = tk.StringVar(value=c.get("source_provider", "google_drive"))
+        self._src_creds_var    = tk.StringVar(value=c.get("source_credentials_file", ""))
+        self._src_folder_var   = tk.StringVar(
+            value=c.get("source_folder") or c.get("source_folder_id", "")
+        )
+        self._src_auth_status  = tk.StringVar()
+        self._build_endpoint(body, "Source", self._src_provider_var,
+                             self._src_creds_var, self._src_folder_var,
+                             self._src_auth_status)
 
-        self._src_auth_status = tk.StringVar()
-        self._auth_row(body, "Authenticate with Google",
-                       self._src_creds_var,
-                       lambda p: cloud_module.authenticate_oauth(p, readonly=True),
-                       self._src_auth_status)
-
-        tk.Label(body, text="── OneDrive Destination ─────────────────",
-                 bg=BG_MID, fg=ACCENT, font=FONT_SMALL).pack(anchor="w", pady=(12, 4))
-
-        self._dst_creds_var = tk.StringVar(value=c.get("dest_credentials_file", ""))
-        self._dst_folder_var = tk.StringVar(value=c.get("dest_folder_path", ""))
-        self._browse_row(body, "MS app credentials JSON:", self._dst_creds_var)
-        self._row(body, "Destination folder name:", self._dst_folder_var, width=36)
-
-        tk.Label(body,
-                 text='  (Folder name in your OneDrive root, e.g. "FoundTexturesBackup")',
-                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w", pady=(0, 2))
-
-        self._dst_auth_status = tk.StringVar()
-        self._auth_row(body, "Authenticate with Microsoft",
-                       self._dst_creds_var,
-                       cloud_module.authenticate_onedrive,
-                       self._dst_auth_status)
-
-        tk.Label(body,
-                 text='  Credentials JSON: {"client_id": "your-azure-app-client-id"}',
-                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w", pady=(0, 2))
+        # Dest endpoint
+        self._dst_provider_var = tk.StringVar(value=c.get("dest_provider", "onedrive"))
+        self._dst_creds_var    = tk.StringVar(value=c.get("dest_credentials_file", ""))
+        self._dst_folder_var   = tk.StringVar(
+            value=c.get("dest_folder") or c.get("dest_folder_path", "")
+        )
+        self._dst_auth_status  = tk.StringVar()
+        self._build_endpoint(body, "Dest", self._dst_provider_var,
+                             self._dst_creds_var, self._dst_folder_var,
+                             self._dst_auth_status)
 
         # Buttons
-        btn_row = tk.Frame(body, bg=BG_MID, pady=(8))
+        btn_row = tk.Frame(body, bg=BG_MID, pady=8)
         btn_row.pack(fill="x")
         tk.Button(btn_row, text="Save", bg=ACCENT, fg=BG_DEEP,
                   font=FONT_HEAD, relief="flat", padx=20, pady=6,
@@ -3656,17 +3740,6 @@ class _SyncJobDialog(tk.Toplevel):
                   font=FONT_BODY, relief="flat", padx=12, pady=6,
                   command=self._cancel).pack(side="left", padx=(8, 0))
 
-        # Show current token statuses
-        src_creds = c.get("source_credentials_file", "")
-        if src_creds:
-            status = cloud_module.get_oauth_token_status(src_creds)
-            self._src_auth_status.set(status)
-
-        dst_creds = c.get("dest_credentials_file", "")
-        if dst_creds:
-            status = cloud_module.get_onedrive_token_status(dst_creds)
-            self._dst_auth_status.set(status)
-
     def _save(self):
         name = self._name_var.get().strip()
         if not name:
@@ -3674,10 +3747,12 @@ class _SyncJobDialog(tk.Toplevel):
             return
         self.result = dict(self._config)
         self.result["name"]                    = name
+        self.result["source_provider"]         = self._src_provider_var.get()
         self.result["source_credentials_file"] = self._src_creds_var.get().strip()
-        self.result["source_folder_id"]        = self._src_folder_var.get().strip()
+        self.result["source_folder"]           = self._src_folder_var.get().strip()
+        self.result["dest_provider"]           = self._dst_provider_var.get()
         self.result["dest_credentials_file"]   = self._dst_creds_var.get().strip()
-        self.result["dest_folder_path"]        = self._dst_folder_var.get().strip()
+        self.result["dest_folder"]             = self._dst_folder_var.get().strip()
         self.destroy()
 
     def _cancel(self):
