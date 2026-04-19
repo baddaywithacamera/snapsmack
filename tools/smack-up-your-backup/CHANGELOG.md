@@ -5,12 +5,16 @@
 ## 0.2.6 — 2026-04-18
 
 ### Added
-- **Cloud Sync tab** — new tab for cloud-to-cloud file sync (Google Drive → OneDrive). Create named sync jobs, run differential syncs (files already on OneDrive with matching size are skipped), and monitor progress with the same real-time stats and log UI as the Backup tab.
+- **Cloud Sync tab** — new tab for cloud-to-cloud differential file sync. Supports Google Drive, Box, and Backblaze B2 as both source and destination. Create named sync jobs, run differential syncs (files already at the destination with matching size are skipped), and monitor progress with the same real-time stats and log UI as the Backup tab.
 - **`sync_manager.py`** — CRUD for sync job configs stored in `sync_jobs/` next to profiles.
-- **`cloud_sync_engine.py`** — background sync engine: lists Drive source, diffs against OneDrive destination, downloads to temp, uploads, deletes temp. Failure threshold prompt (Abort/Continue) mirrors backup behaviour.
+- **`cloud_sync_engine.py`** — background sync engine: lists source, diffs against destination, downloads to temp, uploads, deletes temp. Failure threshold prompt (Abort/Continue) mirrors backup behaviour.
 - **Google Drive readonly scope** — `DriveClient` now accepts `readonly=True` which uses `drive.readonly` scope and a separate token cache (`*_readonly_token.json`), leaving the existing backup upload token untouched.
-- **OneDrive interactive auth** — `OneDriveClient` now uses `acquire_token_interactive()` (opens system browser) instead of device flow. `authenticate_onedrive()` and `get_onedrive_token_status()` helpers added. OneDrive credentials JSON format: `{"client_id": "your-azure-app-client-id"}`.
-- **OneDrive folder path support** — destination folder now specified by name (e.g. `"FoundTexturesBackup"`) rather than item ID. Both `list_files` and `upload_file` route via Graph API path syntax (`root:/FolderName:/children`).
+- **Box support** — `BoxClient` (list, upload with version-conflict handling, download) and `authenticate_box()` OAuth2 flow via local redirect server. No SDK required. Credentials JSON: `{"client_id": "...", "client_secret": "..."}`.
+- **Backblaze B2 support** — `B2Client` (list, upload with SHA1 verification, download) using B2 API key auth. No OAuth, no app registration. Credentials JSON: `{"account_id": "...", "application_key": "...", "bucket_name": "..."}`.
+- **Cloud backup now supports Box and B2** — the per-profile and global cloud provider dropdowns now include `box` and `b2` in addition to `google_drive`.
+
+### Removed
+- **OneDrive / Microsoft / MSAL** — removed entirely. `msal` removed from `requirements.txt` and build specs. `OneDriveClient`, `authenticate_onedrive()`, and `get_onedrive_token_status()` are gone.
 
 ---
 

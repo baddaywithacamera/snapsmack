@@ -297,7 +297,7 @@ class SetupWizard(tk.Toplevel):
         for icon, text in [
             ("📦", "Downloads your blog's recovery kit, database, and media files"),
             ("🔄", "Differential backups — only grabs what changed since last time"),
-            ("☁️",  "Optionally uploads to Google Drive or OneDrive"),
+            ("☁️",  "Optionally uploads to Google Drive, Box, or Backblaze B2"),
             ("🔍", "Audit mode checks your server for missing or orphaned files"),
             ("⏪", "Restore mode puts everything back if disaster strikes"),
         ]:
@@ -1022,7 +1022,7 @@ class BackupTab(tk.Frame):
                             return v
                     return ""
                 provider = _pick(profile.get("cloud_provider"), gc.get("cloud_provider")) or "none"
-                if provider in ("google_drive", "onedrive"):
+                if provider in ("google_drive", "box", "b2"):
                     msg = (f"Cloud provider is set to '{provider}' but no credentials "
                            f"file is configured.\n\nGo to Settings → Global Cloud Config, "
                            f"set the Credentials JSON and click Save Defaults.\n\n"
@@ -1968,7 +1968,7 @@ class SettingsTab(tk.Frame):
         self._method_var = tk.StringVar(value="ftp")
         for val, label in [
             ("ftp",   "FTP — differential sync"),
-            ("cloud", "Cloud — Google Drive / OneDrive"),
+            ("cloud", "Cloud — Google Drive / Box / B2"),
             ("local", "Local only — no upload"),
         ]:
             tk.Radiobutton(
@@ -2020,7 +2020,7 @@ class SettingsTab(tk.Frame):
             row=0, column=0, sticky="w", padx=(0, 10), pady=3)
         cloud_prov_var = tk.StringVar()
         ttk.Combobox(cloud_g, textvariable=cloud_prov_var,
-                     values=["google_drive", "onedrive", "none"],
+                     values=["google_drive", "box", "b2", "none"],
                      font=FONT_MONO, state="readonly", width=18).grid(
             row=0, column=1, sticky="w", pady=3)
         self._profile_vars["cloud_provider"] = cloud_prov_var
@@ -2139,7 +2139,7 @@ class SettingsTab(tk.Frame):
             row=0, column=0, sticky="w", padx=(0, 10), pady=3)
         self._gc_provider_var = tk.StringVar()
         ttk.Combobox(gc_g, textvariable=self._gc_provider_var,
-                     values=["google_drive", "onedrive", "none"],
+                     values=["google_drive", "box", "b2", "none"],
                      font=FONT_MONO, state="readonly", width=18).grid(
             row=0, column=1, sticky="w", pady=3)
 
@@ -2888,7 +2888,7 @@ Smack Up Your Backup downloads a complete backup of your SnapSmack blog and pack
 3. SQL dumps — downloads a full database export and a schema-only export.
 4. Media download — connects via FTP and downloads every media file. In differential mode, unchanged files (same checksum as last run) are skipped. In full mode, everything is re-downloaded.
 5. Package — bundles the kit, SQL dumps, and media into a dated ZIP.
-6. Cloud push — uploads the ZIP to Google Drive or OneDrive if configured.
+6. Cloud push — uploads the ZIP to Google Drive, Box, or Backblaze B2 if configured.
 7. Verify — checks the ZIP for CRC errors, verifies the cloud upload size, and uploads an updated backup-state.json to your server.
 
 Every downloaded file is SHA-256 verified against the manifest. A mismatch triggers one automatic retry. If it fails again, the file is logged as failed but the rest of the backup continues.
@@ -2960,13 +2960,13 @@ Automatic Backup Schedule — per-profile. Set frequency (daily or weekly), the 
 Automatic Backups (global) — enable the system tray so closing minimizes SUYB instead of quitting, and optionally launch SUYB at Windows startup so scheduled backups run without manual intervention.
 """),
     ("Cloud setup", """
-SUYB supports Google Drive and OneDrive.
+SUYB supports Google Drive, Box, and Backblaze B2 for cloud backup.
 
-Google Drive — uses OAuth. Download an OAuth client secret JSON from Google Cloud Console → APIs & Services → Credentials → Create OAuth 2.0 Client ID → Desktop app. Point SUYB at it in Settings → Global Cloud Config → Credentials JSON and click Save Defaults. The first backup run opens a browser for a one-time consent click; after that the token refreshes silently in the background. Backups are stored in your own Google Drive under the folder ID you configure.
+Google Drive — uses OAuth. Download an OAuth client secret JSON from Google Cloud Console → APIs & Services → Credentials → Create OAuth 2.0 Client ID → Desktop app. Point SUYB at it in Settings → Global Cloud Config → Credentials JSON and click Save Defaults. The first backup run opens a browser for a one-time consent click; after that the token refreshes silently in the background. Set the Cloud Folder ID to the Drive folder ID from the URL.
 
-OneDrive — uses MSAL. Set your credentials JSON in the profile's Credentials JSON field.
+Box — create a Box app at developer.box.com (Custom App, OAuth 2.0 Authentication). Download the client credentials and save them as a JSON file: {"client_id": "...", "client_secret": "..."}. Click Authenticate in the per-profile cloud settings to complete the OAuth flow. Set the Cloud Folder ID to the Box folder ID from the URL (0 = root).
 
-Set the Cloud Folder ID to the Google Drive folder ID (from the URL) or OneDrive folder path where backups should be stored.
+Backblaze B2 — no OAuth required. Create an application key at backblaze.com → App Keys. Save your credentials as a JSON file: {"account_id": "...", "application_key": "...", "bucket_name": "..."}. Use Test Connection to verify credentials. Set the Cloud Folder ID to a folder prefix within the bucket, or leave blank for the bucket root.
 
 After configuring cloud, click Save Defaults (for global config) or Save Profile (for per-profile). Run a backup and check the log for "Cloud upload complete".
 """),
@@ -3002,7 +3002,7 @@ The checkpoint is deleted after a successful, verified backup completion.
 
 "Checksum mismatch" — a downloaded file's SHA-256 didn't match the manifest. SUYB retries automatically. If it keeps failing, the source file on the server may be corrupt.
 
-"Cloud upload skipped — no cloud provider configured" — check Settings → Global Cloud Config: Provider should be google_drive or onedrive, and the Credentials JSON path should be filled in. Click Save Defaults after making changes.
+"Cloud upload skipped — no cloud provider configured" — check Settings → Global Cloud Config: Provider should be google_drive, box, or b2, and the Credentials JSON path should be filled in. Click Save Defaults after making changes.
 
 "Cloud upload skipped — provider configured but no credentials" — the provider is set but the credentials file path is empty or wrong. Check the file exists at the path shown.
 
@@ -3204,7 +3204,7 @@ class SchedulerTab(tk.Frame):
 
 
 class CloudSyncTab(tk.Frame):
-    """Cloud-to-Cloud sync tab: Google Drive → OneDrive differential file sync."""
+    """Cloud-to-Cloud sync tab: differential file sync between cloud providers."""
 
     def __init__(self, parent, app, **kwargs):
         super().__init__(parent, bg=BG_DEEP, **kwargs)
@@ -3329,10 +3329,9 @@ class CloudSyncTab(tk.Frame):
         job = sync_manager.load_job(name)
         if not job:
             return
-        src_p      = {"google_drive": "Google Drive", "onedrive": "OneDrive"}.get(
-            job.get("source_provider", "google_drive"), "—")
-        dst_p      = {"google_drive": "Google Drive", "onedrive": "OneDrive"}.get(
-            job.get("dest_provider", "onedrive"), "—")
+        _labels = {"google_drive": "Google Drive", "box": "Box", "b2": "Backblaze B2"}
+        src_p   = _labels.get(job.get("source_provider", "google_drive"), "—")
+        dst_p   = _labels.get(job.get("dest_provider",   "box"),          "—")
         src_folder = job.get("source_folder") or job.get("source_folder_id", "") or "—"
         dst_folder = job.get("dest_folder") or job.get("dest_folder_path", "") or "—"
         self._src_lbl.configure(text=f"Source:       {src_p} — {src_folder}")
@@ -3387,15 +3386,16 @@ class CloudSyncTab(tk.Frame):
             return
 
         # Validate required fields
+        _labels = {"google_drive": "Google Drive", "box": "Box", "b2": "Backblaze B2"}
         missing = []
         if not job.get("source_credentials_file"):
-            missing.append("Google Drive credentials file")
-        if not job.get("source_folder_id"):
-            missing.append("Google Drive source folder ID")
+            missing.append(f"{_labels.get(job.get('source_provider',''), 'Source')} credentials file")
+        if not job.get("source_folder"):
+            missing.append(f"{_labels.get(job.get('source_provider',''), 'Source')} folder")
         if not job.get("dest_credentials_file"):
-            missing.append("OneDrive credentials file")
-        if not job.get("dest_folder_path"):
-            missing.append("OneDrive destination folder name")
+            missing.append(f"{_labels.get(job.get('dest_provider',''), 'Destination')} credentials file")
+        if not job.get("dest_folder"):
+            missing.append(f"{_labels.get(job.get('dest_provider',''), 'Destination')} folder")
         if missing:
             messagebox.showerror("Missing config",
                                  "Please configure:\n• " + "\n• ".join(missing))
@@ -3533,7 +3533,7 @@ class CloudSyncTab(tk.Frame):
 class _SyncJobDialog(tk.Toplevel):
     """Create / edit a cloud sync job config."""
 
-    PROVIDERS = [("Google Drive", "google_drive"), ("OneDrive", "onedrive")]
+    PROVIDERS = [("Google Drive", "google_drive"), ("Box", "box"), ("Backblaze B2", "b2")]
 
     def __init__(self, parent, config: dict, title: str = "Sync Job"):
         super().__init__(parent)
@@ -3659,33 +3659,56 @@ class _SyncJobDialog(tk.Toplevel):
             )
             auth_btn.configure(
                 text="Authenticate with Google",
+                state="normal",
                 command=lambda: self._do_auth(
                     lambda p: cloud_module.authenticate_oauth(p, readonly=is_src),
                     auth_status_var, creds_var,
                 ),
             )
-            # Refresh token status
             creds = creds_var.get()
             if creds:
                 auth_status_var.set(cloud_module.get_oauth_token_status(creds))
-        else:  # onedrive
-            header.configure(text=f"── {label}: OneDrive {'─' * 24}")
-            creds_lbl.configure(text="MS app credentials JSON:")
-            folder_lbl.configure(text="Folder name:")
+
+        elif p == "box":
+            header.configure(text=f"── {label}: Box {'─' * 30}")
+            creds_lbl.configure(text="Box app credentials JSON:")
+            folder_lbl.configure(text="Box folder ID:")
             folder_hint.configure(
-                text='  Folder in your OneDrive root, e.g. "FoundTexturesBackup"'
-                '\n  Credentials JSON: {"client_id": "your-azure-app-client-id"}'
+                text='  Box folder ID from URL: app.box.com/folder/FOLDER_ID  (0 = root)'
+                '\n  Credentials JSON: {"client_id": "...", "client_secret": "..."}'
             )
             auth_btn.configure(
-                text="Authenticate with Microsoft",
+                text="Authenticate with Box",
+                state="normal",
                 command=lambda: self._do_auth(
-                    cloud_module.authenticate_onedrive,
+                    cloud_module.authenticate_box,
                     auth_status_var, creds_var,
                 ),
             )
             creds = creds_var.get()
             if creds:
-                auth_status_var.set(cloud_module.get_onedrive_token_status(creds))
+                auth_status_var.set(cloud_module.get_box_token_status(creds))
+
+        else:  # b2
+            header.configure(text=f"── {label}: Backblaze B2 {'─' * 18}")
+            creds_lbl.configure(text="B2 credentials JSON:")
+            folder_lbl.configure(text="Folder prefix (optional):")
+            folder_hint.configure(
+                text='  Leave blank to sync to bucket root'
+                '\n  Credentials JSON: {"account_id":"...","application_key":"...","bucket_name":"..."}'
+            )
+            auth_btn.configure(
+                text="Test B2 Connection",
+                state="normal",
+                command=lambda: self._do_auth(
+                    cloud_module.test_b2_connection,
+                    auth_status_var, creds_var,
+                ),
+            )
+            creds = creds_var.get()
+            if creds:
+                ok, msg = cloud_module.test_b2_connection(creds)
+                auth_status_var.set(msg)
 
     # ------------------------------------------------------------------
     # Build
@@ -3720,7 +3743,7 @@ class _SyncJobDialog(tk.Toplevel):
                              self._src_auth_status)
 
         # Dest endpoint
-        self._dst_provider_var = tk.StringVar(value=c.get("dest_provider", "onedrive"))
+        self._dst_provider_var = tk.StringVar(value=c.get("dest_provider", "box"))
         self._dst_creds_var    = tk.StringVar(value=c.get("dest_credentials_file", ""))
         self._dst_folder_var   = tk.StringVar(
             value=c.get("dest_folder") or c.get("dest_folder_path", "")

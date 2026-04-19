@@ -1,14 +1,18 @@
 """
 Smack Up Your Backup — cloud_client.py
-Google Drive and OneDrive cloud upload/download.
+Cloud upload/download: Google Drive, Box, Backblaze B2.
 
-Google Drive authenticates via OAuth (InstalledAppFlow). Point the app at
-your OAuth client secret JSON (Desktop app type, downloaded from Google Cloud
-Console). The first backup run opens a browser for consent; after that the
-token is cached next to the credentials file and refreshes silently.
+Google Drive — OAuth (InstalledAppFlow). OAuth client secret JSON from
+Google Cloud Console → APIs & Services → Credentials → Desktop app.
 
-Each blog profile can set its own credentials or fall back to the global
-cloud config (credentials file + folder ID).
+Box — OAuth2. Create a Box app at developer.box.com (Custom App, OAuth 2.0).
+Credentials JSON: {"client_id": "...", "client_secret": "..."}
+
+Backblaze B2 — API key auth. Get keys from backblaze.com → App Keys.
+Credentials JSON: {"account_id": "...", "application_key": "...", "bucket_name": "..."}
+No OAuth needed for B2 — just paste the keys.
+
+Microsoft OneDrive is NOT supported. Use Box or B2.
 """
 
 import json
@@ -147,89 +151,6 @@ def authenticate_oauth(credentials_file: str, readonly: bool = False) -> tuple:
         return False, f"Authentication failed: {e}"
 
 
-# ---------------------------------------------------------------------------
-# OneDrive helpers
-# ---------------------------------------------------------------------------
-
-def authenticate_onedrive(credentials_file: str) -> tuple:
-    """
-    Run the Microsoft interactive OAuth flow. Opens the system browser.
-    Returns (success: bool, message: str).
-    credentials_file must contain {"client_id": "..."}.
-    """
-    if not credentials_file or not os.path.isfile(credentials_file):
-        return False, "Credentials file not found."
-    try:
-        import msal
-        with open(credentials_file) as f:
-            creds = json.load(f)
-        client_id = creds.get("client_id", "")
-        if not client_id:
-            return False, "No client_id found in credentials file."
-
-        token_cache_file = credentials_file.replace(".json", "_token_cache.bin")
-        cache = msal.SerializableTokenCache()
-        if os.path.exists(token_cache_file):
-            with open(token_cache_file) as f:
-                cache.deserialize(f.read())
-
-        app    = msal.PublicClientApplication(
-            client_id,
-            authority="https://login.microsoftonline.com/common",
-            token_cache=cache,
-        )
-        SCOPES = ["Files.ReadWrite", "offline_access"]
-        result = app.acquire_token_interactive(SCOPES)
-
-        if "access_token" not in result:
-            return False, f"Authentication failed: {result.get('error_description', 'Unknown error')}"
-
-        if cache.has_state_changed:
-            with open(token_cache_file, "w") as f:
-                f.write(cache.serialize())
-
-        account = result.get("id_token_claims", {}).get("preferred_username", "")
-        return True, f"✓ Authenticated with Microsoft{(' as ' + account) if account else ''}."
-    except Exception as e:
-        return False, f"Authentication failed: {e}"
-
-
-def get_onedrive_token_status(credentials_file: str) -> str:
-    """Return a human-readable OneDrive auth status string."""
-    if not credentials_file or not os.path.isfile(credentials_file):
-        return ""
-    token_cache_file = credentials_file.replace(".json", "_token_cache.bin")
-    if not os.path.exists(token_cache_file):
-        return "Not authenticated — click Authenticate"
-    try:
-        import msal
-        with open(credentials_file) as f:
-            creds = json.load(f)
-        client_id = creds.get("client_id", "")
-        if not client_id:
-            return "Invalid credentials file — no client_id"
-        cache = msal.SerializableTokenCache()
-        with open(token_cache_file) as f:
-            cache.deserialize(f.read())
-        app      = msal.PublicClientApplication(
-            client_id,
-            authority="https://login.microsoftonline.com/common",
-            token_cache=cache,
-        )
-        accounts = app.get_accounts()
-        if not accounts:
-            return "Not authenticated — click Authenticate"
-        result = app.acquire_token_silent(
-            ["Files.ReadWrite", "offline_access"], account=accounts[0]
-        )
-        if result and "access_token" in result:
-            username = accounts[0].get("username", "")
-            return f"✓ Authenticated{(' — ' + username) if username else ''}"
-        return "Token expired — re-authenticate"
-    except Exception as e:
-        return f"Token error: {e}"
-
-
 class DriveClient:
     def __init__(self, credentials_file: str, folder_id: str, readonly: bool = False):
         self.credentials_file = credentials_file
@@ -363,129 +284,190 @@ class DriveClient:
 
 
 # ---------------------------------------------------------------------------
-# OneDrive (Microsoft Graph API via MSAL)
+# Box — OAuth 2.0 (no SDK, raw requests + local redirect server)
 # ---------------------------------------------------------------------------
 
-class OneDriveClient:
-    AUTHORITY    = "https://login.microsoftonline.com/common"
-    SCOPES       = ["Files.ReadWrite", "offline_access"]
-    GRAPH_BASE   = "https://graph.microsoft.com/v1.0"
+def _box_token_file(credentials_file: str) -> str:
+    return credentials_file.replace(".json", "_box_token.json")
 
-    def __init__(self, credentials_file: str, folder_path: str):
-        """
-        folder_path: a folder name relative to OneDrive root (e.g. "FoundTexturesBackup"),
-                     or "root" for the drive root itself.
-        """
-        self.credentials_file = credentials_file
-        self.folder_path      = folder_path   # display name / path, not an item ID
-        self._token:  Optional[str] = None
 
-    def _get_token(self) -> str:
-        try:
-            import msal
-        except ImportError:
-            raise RuntimeError("msal is required for OneDrive support.")
-
-        token_cache_file = self.credentials_file.replace(".json", "_token_cache.bin")
-
-        with open(self.credentials_file) as f:
+def get_box_token_status(credentials_file: str) -> str:
+    """Return human-readable Box auth status."""
+    if not credentials_file or not os.path.isfile(credentials_file):
+        return ""
+    token_file = _box_token_file(credentials_file)
+    if not os.path.exists(token_file):
+        return "Not authenticated — click Authenticate"
+    try:
+        import requests
+        with open(credentials_file) as f:
             creds = json.load(f)
-        client_id = creds.get("client_id", "")
-
-        cache = msal.SerializableTokenCache()
-        if os.path.exists(token_cache_file):
-            with open(token_cache_file) as f:
-                cache.deserialize(f.read())
-
-        app      = msal.PublicClientApplication(
-            client_id, authority=self.AUTHORITY, token_cache=cache
+        with open(token_file) as f:
+            tok = json.load(f)
+        # Try a lightweight API call to validate the token
+        resp = requests.get(
+            "https://api.box.com/2.0/users/me",
+            headers={"Authorization": f"Bearer {tok['access_token']}"},
+            timeout=8,
         )
-        accounts = app.get_accounts()
-        result   = None
+        if resp.status_code == 200:
+            name = resp.json().get("name", "")
+            return f"✓ Authenticated{(' — ' + name) if name else ''}"
+        if resp.status_code == 401:
+            # Try refresh
+            refreshed, msg = _box_refresh_token(credentials_file, tok)
+            return "✓ Token refreshed" if refreshed else f"Token expired — re-authenticate"
+        return f"Token status unknown ({resp.status_code})"
+    except Exception as e:
+        return f"Token error: {e}"
 
-        if accounts:
-            result = app.acquire_token_silent(self.SCOPES, account=accounts[0])
 
-        if not result:
-            # User must authenticate via the UI button before running a sync.
-            # Do not trigger interactive flow from a background thread.
-            raise RuntimeError(
-                "OneDrive not authenticated. "
-                "Click 'Authenticate with Microsoft' in the Cloud Sync job settings first."
-            )
+def _box_refresh_token(credentials_file: str, tok: dict) -> tuple:
+    """Attempt to refresh a Box access token. Returns (ok, message)."""
+    try:
+        import requests
+        with open(credentials_file) as f:
+            creds = json.load(f)
+        resp = requests.post("https://api.box.com/oauth2/token", data={
+            "grant_type":    "refresh_token",
+            "refresh_token": tok["refresh_token"],
+            "client_id":     creds["client_id"],
+            "client_secret": creds["client_secret"],
+        }, timeout=15)
+        resp.raise_for_status()
+        new_tok = resp.json()
+        with open(_box_token_file(credentials_file), "w") as f:
+            json.dump(new_tok, f)
+        return True, "✓ Token refreshed"
+    except Exception as e:
+        return False, str(e)
 
-        if "access_token" not in result:
-            raise RuntimeError(f"OneDrive auth failed: {result.get('error_description')}")
 
-        if cache.has_state_changed:
-            with open(token_cache_file, "w") as f:
-                f.write(cache.serialize())
+def authenticate_box(credentials_file: str) -> tuple:
+    """
+    Run Box OAuth2 authorization code flow. Opens system browser with
+    a local redirect server to capture the code.
+    Returns (success: bool, message: str).
+    """
+    if not credentials_file or not os.path.isfile(credentials_file):
+        return False, "Credentials file not found."
+    try:
+        import requests
+        import socket
+        import threading
+        import webbrowser
+        from http.server import BaseHTTPRequestHandler, HTTPServer
+        from urllib.parse import parse_qs, urlparse
 
-        return result["access_token"]
+        with open(credentials_file) as f:
+            creds = json.load(f)
+        client_id     = creds.get("client_id", "")
+        client_secret = creds.get("client_secret", "")
+        if not client_id or not client_secret:
+            return False, "credentials JSON must contain client_id and client_secret."
 
-    def _folder_children_url(self) -> str:
-        """Graph API URL for listing children of the configured folder."""
-        if not self.folder_path or self.folder_path.lower() == "root":
-            return f"{self.GRAPH_BASE}/me/drive/root/children"
-        # Path-based access: root:/FolderName:/children
-        return f"{self.GRAPH_BASE}/me/drive/root:/{self.folder_path}:/children"
+        # Find a free port
+        s = socket.socket()
+        s.bind(("", 0))
+        port = s.getsockname()[1]
+        s.close()
 
-    def _upload_session_url(self, filename: str) -> str:
-        """Graph API URL for creating an upload session for filename in folder."""
-        if not self.folder_path or self.folder_path.lower() == "root":
-            return f"{self.GRAPH_BASE}/me/drive/root:/{filename}:/createUploadSession"
-        return f"{self.GRAPH_BASE}/me/drive/root:/{self.folder_path}/{filename}:/createUploadSession"
+        redirect_uri = f"http://localhost:{port}"
+        code_holder  = [None]
+        error_holder = [None]
+
+        class _Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                params = parse_qs(urlparse(self.path).query)
+                code_holder[0]  = params.get("code",  [None])[0]
+                error_holder[0] = params.get("error", [None])[0]
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html")
+                self.end_headers()
+                self.wfile.write(
+                    b"<html><body style='font-family:sans-serif;padding:40px'>"
+                    b"<h2>Authenticated! You can close this window.</h2>"
+                    b"</body></html>"
+                )
+            def log_message(self, *args):
+                pass
+
+        server = HTTPServer(("localhost", port), _Handler)
+        threading.Thread(target=server.handle_request, daemon=True).start()
+
+        auth_url = (
+            f"https://account.box.com/api/oauth2/authorize"
+            f"?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code"
+        )
+        webbrowser.open(auth_url)
+
+        import time
+        deadline = time.time() + 120
+        while code_holder[0] is None and error_holder[0] is None and time.time() < deadline:
+            time.sleep(0.2)
+
+        if error_holder[0]:
+            return False, f"Box auth error: {error_holder[0]}"
+        if not code_holder[0]:
+            return False, "Authentication timed out (2 min). Try again."
+
+        # Exchange code for tokens
+        resp = requests.post("https://api.box.com/oauth2/token", data={
+            "grant_type":   "authorization_code",
+            "code":         code_holder[0],
+            "client_id":    client_id,
+            "client_secret": client_secret,
+            "redirect_uri": redirect_uri,
+        }, timeout=15)
+        resp.raise_for_status()
+        tok = resp.json()
+        with open(_box_token_file(credentials_file), "w") as f:
+            json.dump(tok, f)
+        return True, "✓ Authenticated with Box."
+    except Exception as e:
+        return False, f"Authentication failed: {e}"
+
+
+class BoxClient:
+    API_BASE    = "https://api.box.com/2.0"
+    UPLOAD_BASE = "https://upload.box.com/api/2.0"
+
+    def __init__(self, credentials_file: str, folder_id: str = "0"):
+        """folder_id: Box folder ID. '0' = root."""
+        self.credentials_file = credentials_file
+        self.folder_id        = folder_id or "0"
 
     def _headers(self) -> dict:
-        if not self._token:
-            self._token = self._get_token()
-        return {"Authorization": f"Bearer {self._token}"}
-
-    def upload_file(
-        self,
-        local_path:  str,
-        remote_name: str,
-        on_progress: Optional[ProgressCallback] = None,
-    ) -> str:
-        """Upload a file via Graph API upload session. Returns item ID."""
-        import requests
-
-        file_size    = os.path.getsize(local_path)
-        session_url  = self._upload_session_url(remote_name)
-        session_resp = requests.post(
-            session_url,
-            headers=self._headers(),
-            json={"item": {"@microsoft.graph.conflictBehavior": "replace"}},
-        )
-        session_resp.raise_for_status()
-        upload_url = session_resp.json()["uploadUrl"]
-
-        offset  = 0
-        item_id = ""
-        with open(local_path, "rb") as f:
-            while offset < file_size:
-                chunk = f.read(CHUNK_SIZE)
-                end   = offset + len(chunk) - 1
-                headers = {
-                    "Content-Length": str(len(chunk)),
-                    "Content-Range":  f"bytes {offset}-{end}/{file_size}",
-                }
-                resp = requests.put(upload_url, data=chunk, headers=headers)
-                resp.raise_for_status()
-                offset += len(chunk)
-                if on_progress:
-                    on_progress(offset, file_size)
-                if resp.status_code in (200, 201):
-                    item_id = resp.json().get("id", "")
-
-        return item_id
+        token_file = _box_token_file(self.credentials_file)
+        if not os.path.exists(token_file):
+            raise RuntimeError(
+                "Box not authenticated. Click 'Authenticate with Box' first."
+            )
+        with open(token_file) as f:
+            tok = json.load(f)
+        # Proactively refresh if we can (access tokens last 1 hour)
+        try:
+            import requests as _req
+            r = _req.get(f"{self.API_BASE}/users/me",
+                         headers={"Authorization": f"Bearer {tok['access_token']}"},
+                         timeout=5)
+            if r.status_code == 401:
+                ok, _ = _box_refresh_token(self.credentials_file, tok)
+                if ok:
+                    with open(token_file) as f:
+                        tok = json.load(f)
+        except Exception:
+            pass
+        return {"Authorization": f"Bearer {tok['access_token']}"}
 
     def list_files(self, name_filter: str = "") -> List[dict]:
         import requests
-        url  = self._folder_children_url()
-        resp = requests.get(url, headers=self._headers())
+        url  = f"{self.API_BASE}/folders/{self.folder_id}/items"
+        resp = requests.get(url, headers=self._headers(),
+                            params={"limit": 1000, "fields": "id,name,size,modified_at"},
+                            timeout=30)
         resp.raise_for_status()
-        items = resp.json().get("value", [])
+        items = resp.json().get("entries", [])
         if name_filter:
             items = [i for i in items if name_filter in i.get("name", "")]
         return [
@@ -493,10 +475,53 @@ class OneDriveClient:
                 "id":           i["id"],
                 "name":         i["name"],
                 "size":         i.get("size", 0),
-                "modifiedTime": i.get("lastModifiedDateTime", ""),
+                "modifiedTime": i.get("modified_at", ""),
             }
-            for i in items
+            for i in items if i.get("type") == "file"
         ]
+
+    def upload_file(
+        self,
+        local_path:  str,
+        remote_name: str,
+        on_progress: Optional[ProgressCallback] = None,
+    ) -> str:
+        """Upload a file to the configured Box folder. Returns item ID."""
+        import requests
+
+        file_size = os.path.getsize(local_path)
+        url       = f"{self.UPLOAD_BASE}/files/content"
+        with open(local_path, "rb") as f:
+            resp = requests.post(
+                url,
+                headers=self._headers(),
+                files={"file": (remote_name, f, "application/octet-stream")},
+                data={"attributes": json.dumps({
+                    "name": remote_name,
+                    "parent": {"id": self.folder_id},
+                })},
+                timeout=600,
+            )
+        # 409 = file exists, use upload new version endpoint
+        if resp.status_code == 409:
+            existing_id = resp.json().get("context_info", {}).get(
+                "conflicts", [{}]
+            )[0].get("id", "")
+            if existing_id:
+                url = f"{self.UPLOAD_BASE}/files/{existing_id}/content"
+                with open(local_path, "rb") as f:
+                    resp = requests.post(
+                        url,
+                        headers=self._headers(),
+                        files={"file": (remote_name, f, "application/octet-stream")},
+                        data={"attributes": json.dumps({"name": remote_name})},
+                        timeout=600,
+                    )
+        resp.raise_for_status()
+        if on_progress:
+            on_progress(file_size, file_size)
+        entries = resp.json().get("entries", [{}])
+        return entries[0].get("id", "") if entries else ""
 
     def download_file(
         self,
@@ -504,9 +529,10 @@ class OneDriveClient:
         local_path:  str,
         on_progress: Optional[ProgressCallback] = None,
     ) -> None:
+        """Download a Box file by ID to local_path."""
         import requests
-        url  = f"{self.GRAPH_BASE}/me/drive/items/{file_id}/content"
-        resp = requests.get(url, headers=self._headers(), stream=True)
+        url  = f"{self.API_BASE}/files/{file_id}/content"
+        resp = requests.get(url, headers=self._headers(), stream=True, timeout=60)
         resp.raise_for_status()
         total    = int(resp.headers.get("Content-Length", 0))
         received = 0
@@ -518,36 +544,222 @@ class OneDriveClient:
                 if on_progress:
                     on_progress(received, total)
 
-    def verify_upload(self, item_id: str, expected_size: int) -> bool:
-        import requests
-        try:
-            url  = f"{self.GRAPH_BASE}/me/drive/items/{item_id}"
-            resp = requests.get(url, headers=self._headers())
-            resp.raise_for_status()
-            return int(resp.json().get("size", -1)) == expected_size
-        except Exception:
-            return False
 
+# ---------------------------------------------------------------------------
+# Backblaze B2 — API key auth (no OAuth, no app registration)
+# ---------------------------------------------------------------------------
+
+def test_b2_connection(credentials_file: str) -> tuple:
+    """
+    Validate B2 credentials by calling b2_authorize_account.
+    Returns (success: bool, message: str).
+    credentials JSON: {"account_id": "...", "application_key": "...", "bucket_name": "..."}
+    """
+    if not credentials_file or not os.path.isfile(credentials_file):
+        return False, "Credentials file not found."
+    try:
+        import base64
+        import requests
+        with open(credentials_file) as f:
+            creds = json.load(f)
+        account_id = creds.get("account_id", "")
+        app_key    = creds.get("application_key", "")
+        bucket     = creds.get("bucket_name", "")
+        if not account_id or not app_key:
+            return False, "credentials JSON must contain account_id and application_key."
+        token = base64.b64encode(f"{account_id}:{app_key}".encode()).decode()
+        resp  = requests.get(
+            "https://api.backblazeb2.com/b2api/v2/b2_authorize_account",
+            headers={"Authorization": f"Basic {token}"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        display = resp.json().get("accountId", account_id)
+        return True, f"✓ Connected (account {display}, bucket: {bucket or 'not set'})"
+    except Exception as e:
+        return False, f"Connection failed: {e}"
+
+
+class B2Client:
+    AUTH_URL = "https://api.backblazeb2.com/b2api/v2/b2_authorize_account"
+
+    def __init__(self, credentials_file: str, folder: str = ""):
+        """folder: optional path prefix within the bucket (e.g. 'photos/')."""
+        self.credentials_file = credentials_file
+        self.folder           = folder.strip("/")
+        self._auth_cache      = None
+        self._bucket_id_cache = None
+
+    def _auth(self) -> dict:
+        if self._auth_cache:
+            return self._auth_cache
+        import base64
+        import requests
+        with open(self.credentials_file) as f:
+            creds = json.load(f)
+        self._account_id   = creds["account_id"]
+        self._app_key      = creds["application_key"]
+        self._bucket_name  = creds["bucket_name"]
+        token = base64.b64encode(
+            f"{self._account_id}:{self._app_key}".encode()
+        ).decode()
+        resp = requests.get(
+            self.AUTH_URL,
+            headers={"Authorization": f"Basic {token}"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        self._auth_cache = resp.json()
+        return self._auth_cache
+
+    def _bucket_id(self) -> str:
+        if self._bucket_id_cache:
+            return self._bucket_id_cache
+        import requests
+        auth = self._auth()
+        resp = requests.post(
+            f"{auth['apiUrl']}/b2api/v2/b2_list_buckets",
+            headers={"Authorization": auth["authorizationToken"]},
+            json={"accountId": auth["accountId"], "bucketName": self._bucket_name},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        buckets = resp.json().get("buckets", [])
+        if not buckets:
+            raise RuntimeError(f"B2 bucket '{self._bucket_name}' not found.")
+        self._bucket_id_cache = buckets[0]["bucketId"]
+        return self._bucket_id_cache
+
+    def list_files(self, name_filter: str = "") -> List[dict]:
+        import requests
+        auth   = self._auth()
+        prefix = (self.folder + "/") if self.folder else ""
+        resp   = requests.post(
+            f"{auth['apiUrl']}/b2api/v2/b2_list_file_names",
+            headers={"Authorization": auth["authorizationToken"]},
+            json={
+                "bucketId":    self._bucket_id(),
+                "prefix":      prefix,
+                "maxFileCount": 10000,
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        result = []
+        for f in resp.json().get("files", []):
+            name = f["fileName"]
+            if prefix and name.startswith(prefix):
+                name = name[len(prefix):]
+            if "/" in name:          # skip subfolders
+                continue
+            if not name:
+                continue
+            if name_filter and name_filter not in name:
+                continue
+            result.append({
+                "id":           f["fileId"],
+                "name":         name,
+                "size":         f.get("contentLength", 0),
+                "modifiedTime": "",
+            })
+        return result
+
+    def upload_file(
+        self,
+        local_path:  str,
+        remote_name: str,
+        on_progress: Optional[ProgressCallback] = None,
+    ) -> str:
+        """Upload a file to B2. Returns file ID."""
+        import hashlib
+        import requests
+        auth      = self._auth()
+        file_name = (self.folder + "/" + remote_name) if self.folder else remote_name
+        file_size = os.path.getsize(local_path)
+
+        # Compute SHA1
+        sha1 = hashlib.sha1()
+        with open(local_path, "rb") as f:
+            for chunk in iter(lambda: f.read(CHUNK_SIZE), b""):
+                sha1.update(chunk)
+
+        # Get upload URL
+        up_resp = requests.post(
+            f"{auth['apiUrl']}/b2api/v2/b2_get_upload_url",
+            headers={"Authorization": auth["authorizationToken"]},
+            json={"bucketId": self._bucket_id()},
+            timeout=15,
+        )
+        up_resp.raise_for_status()
+        up     = up_resp.json()
+
+        class _ProgressReader:
+            def __init__(self_, fh):
+                self_._fh   = fh
+                self_._sent = 0
+            def read(self_, n=-1):
+                data = self_._fh.read(n)
+                self_._sent += len(data)
+                if on_progress:
+                    on_progress(self_._sent, file_size)
+                return data
+
+        with open(local_path, "rb") as fh:
+            resp = requests.post(
+                up["uploadUrl"],
+                headers={
+                    "Authorization":    up["authorizationToken"],
+                    "X-Bz-File-Name":   file_name,
+                    "Content-Type":     "application/octet-stream",
+                    "Content-Length":   str(file_size),
+                    "X-Bz-Content-Sha1": sha1.hexdigest(),
+                },
+                data=_ProgressReader(fh),
+                timeout=600,
+            )
+        resp.raise_for_status()
+        return resp.json().get("fileId", "")
+
+    def download_file(
+        self,
+        file_id:     str,
+        local_path:  str,
+        on_progress: Optional[ProgressCallback] = None,
+    ) -> None:
+        """Download a B2 file by ID to local_path."""
+        import requests
+        auth = self._auth()
+        url  = f"{auth['downloadUrl']}/b2api/v2/b2_download_file_by_id?fileId={file_id}"
+        resp = requests.get(
+            url,
+            headers={"Authorization": auth["authorizationToken"]},
+            stream=True,
+            timeout=60,
+        )
+        resp.raise_for_status()
+        total    = int(resp.headers.get("Content-Length", 0))
+        received = 0
+        os.makedirs(os.path.dirname(local_path) or ".", exist_ok=True)
+        with open(local_path, "wb") as f:
+            for chunk in resp.iter_content(CHUNK_SIZE):
+                f.write(chunk)
+                received += len(chunk)
+                if on_progress:
+                    on_progress(received, total)
 
 # ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
 
 def get_cloud_client(profile: dict, global_cloud: Optional[dict] = None):
-    """Return the appropriate cloud client for a profile, or None.
+    """Return the appropriate cloud client for a backup profile, or None.
 
-    Resolution order for each field:
-      1. Profile-level value (if non-empty)
-      2. Global cloud config (if provided)
-      3. None / empty → skip
-
-    This lets you configure a single OAuth credentials file and Drive folder
-    in global settings while still allowing per-profile overrides.
+    Supports: google_drive, box, b2.
+    Resolution order: profile value → global cloud config → skip.
     """
     gc = global_cloud or {}
 
     def _pick(*vals):
-        """Return first non-empty, non-'none' value."""
         for v in vals:
             if v and v != "none":
                 return v
@@ -559,6 +771,8 @@ def get_cloud_client(profile: dict, global_cloud: Optional[dict] = None):
 
     if provider == "google_drive" and creds:
         return DriveClient(creds, folder)
-    if provider == "onedrive" and creds:
-        return OneDriveClient(creds, folder)   # folder = folder path for OneDrive
+    if provider == "box" and creds:
+        return BoxClient(creds, folder)
+    if provider == "b2" and creds:
+        return B2Client(creds, folder)
     return None
