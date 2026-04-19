@@ -75,14 +75,14 @@ def delete_job(name: str) -> None:
 def new_job_template() -> Dict:
     """Return a blank sync job config with all required keys."""
     return {
-        "name":                       "",
-        "source_provider":            "google_drive",
-        "source_credentials_file":    "",
-        "source_folder_id":           "",
-        "dest_provider":              "onedrive",
-        "dest_credentials_file":      "",
-        "dest_folder_path":           "",   # e.g. "FoundTexturesBackup"
-        "last_sync_date":             "",
-        "last_files_synced":          0,
-        "last_bytes_synced":          0,
+        "name":                    "",
+        "source_provider":         "google_drive",   # "google_drive" | "onedrive"
+        "source_credentials_file": "",
+        "source_folder":           "",   # Drive folder ID or OneDrive folder name
+        "dest_provider":           "onedrive",       # "google_drive" | "onedrive"
+        "dest_credentials_file":   "",
+        "dest_folder":             "",   # Drive folder ID or OneDrive folder name
+        "last_sync_date":          "",
+        "last_files_synced":       0,
+        "last_bytes_synced":       0,
     }
