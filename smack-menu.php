@@ -192,9 +192,6 @@ include 'core/sidebar.php';
                         </div>
                     </div>
 
-                    <!-- ARROW -->
-                    <div class="menu-builder-arrow">&#8594;</div>
-
                     <!-- CURRENT MENU -->
                     <div class="menu-current-panel">
                         <div class="menu-panel-title">Current Menu</div>
@@ -245,60 +242,65 @@ include 'core/sidebar.php';
 </div><!-- .smack-main-content -->
 
 <style>
+/* ── LAYOUT ── */
 .menu-builder-layout {
     display: flex;
-    gap: 20px;
+    gap: 24px;
     align-items: flex-start;
 }
 .menu-pool-panel {
-    width: 240px;
+    width: 220px;
     flex-shrink: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
 }
 .menu-current-panel {
     flex: 1;
     min-width: 300px;
 }
 .menu-panel-title {
-    font-weight: 600;
-    font-size: 0.8rem;
+    font-weight: 700;
+    font-size: 0.72rem;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 10px;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
     color: var(--accent);
 }
 .menu-pool-section {
-    margin-bottom: 16px;
+    margin-bottom: 14px;
 }
+.menu-pool-section:last-child { margin-bottom: 0; }
 .menu-pool-section-label {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     text-transform: uppercase;
     letter-spacing: 1px;
     color: var(--text-dim);
-    margin-bottom: 6px;
+    margin-bottom: 5px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 3px;
 }
 .menu-pool-list {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    min-height: 30px;
+    gap: 3px;
+    min-height: 20px;
 }
 .menu-pool-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    background: var(--bg-secondary);
+    gap: 6px;
+    background: var(--bg-primary);
     border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 6px 10px;
-    font-size: 0.78rem;
+    border-radius: 3px;
+    padding: 5px 8px;
+    font-size: 0.76rem;
     cursor: grab;
     user-select: none;
-    transition: background 0.1s;
+    transition: border-color 0.1s;
 }
-.menu-pool-item:hover {
-    background: var(--bg-hover, var(--bg-secondary));
-    border-color: var(--accent);
-}
+.menu-pool-item:hover { border-color: var(--accent); }
 .menu-pool-item .pool-add-btn {
     margin-left: auto;
     background: none;
@@ -308,80 +310,117 @@ include 'core/sidebar.php';
     font-size: 1rem;
     line-height: 1;
     padding: 0 2px;
-}
-.menu-pool-item .pool-add-btn:hover {
-    color: var(--accent-hover, var(--accent));
+    flex-shrink: 0;
 }
 .menu-custom-link-form {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
 }
 .menu-custom-link-form input {
     width: 100%;
     box-sizing: border-box;
+    font-size: 0.76rem;
 }
-.menu-builder-arrow {
-    font-size: 1.6rem;
-    color: var(--text-dim);
-    align-self: center;
-    flex-shrink: 0;
-}
+
 /* ── MENU LIST ── */
 .menu-list {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
     min-height: 60px;
     padding: 6px;
     background: var(--bg-secondary);
-    border: 1px dashed var(--border);
-    border-radius: 4px;
+    border: 2px dashed var(--border);
+    border-radius: 6px;
 }
 .menu-list.drag-over {
     border-color: var(--accent);
-    background: var(--bg-hover, var(--bg-secondary));
+    background: rgba(255,255,255,0.02);
 }
+
+/* ── TOP-LEVEL ROW — the card wrapping item + children ── */
 .menu-item-row {
     border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px;
-    background: var(--bg-secondary);
-    overflow: visible;
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 6px 6px 6px 8px;
+    background: var(--bg-primary);
 }
+.menu-item-row:hover { border-left-color: var(--accent); }
+
+/* ── ITEM BAR ── */
 .menu-item-main {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: var(--bg-primary);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 7px 10px;
+    border-radius: 3px;
+    padding: 6px 8px;
     cursor: grab;
     user-select: none;
     font-size: 0.8rem;
+    background: transparent;
 }
-.menu-item-main.dragging {
-    opacity: 0.4;
+.menu-item-main.dragging { opacity: 0.35; }
+.menu-item-main.drop-target-above { box-shadow: 0 -2px 0 var(--accent); }
+
+/* ── CHILDREN sublist ── */
+.menu-children-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 4px;
+    margin-left: 22px;
+    padding: 3px 6px;
+    border-left: 2px solid var(--border);
+    border-radius: 0 3px 3px 0;
+    min-height: 10px;
 }
-.menu-item-main.drop-target-above {
-    border-top: 2px solid var(--accent);
+.menu-children-list.has-children {
+    padding: 5px 6px;
+    background: rgba(255,255,255,0.02);
 }
-.menu-item-main.drop-target-nest {
-    border: 2px solid var(--accent);
-    background: var(--bg-hover, var(--bg-secondary));
+.menu-children-list.drag-over {
+    border-left-color: var(--accent);
+    background: rgba(255,255,255,0.03);
+}
+/* Child items: slightly dimmer/smaller */
+.menu-children-list .menu-item-main {
+    font-size: 0.76rem;
+    padding: 4px 8px;
+    background: var(--bg-secondary);
+    border-radius: 3px;
+}
+/* The thin "drop here" hint when no children */
+.menu-children-list.empty-children {
+    min-height: 10px;
+    padding: 0 6px;
+}
+.menu-empty-drop-hint {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    opacity: 0.5;
+    padding: 3px 0;
+    pointer-events: none;
+}
+
+/* ── ITEM PARTS ── */
+.menu-item-position {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    min-width: 16px;
+    text-align: right;
+    flex-shrink: 0;
 }
 .menu-item-drag-handle {
     color: var(--text-dim);
     cursor: grab;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    flex-shrink: 0;
 }
-.menu-item-label {
-    flex: 1;
-    font-weight: 500;
-}
+.menu-item-label { flex: 1; font-weight: 600; }
 .menu-item-type-badge {
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     color: var(--text-dim);
     background: var(--bg-secondary);
     border: 1px solid var(--border);
@@ -389,64 +428,28 @@ include 'core/sidebar.php';
     padding: 1px 5px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    flex-shrink: 0;
 }
-.menu-item-actions {
-    display: flex;
-    gap: 4px;
-}
+.menu-item-actions { display: flex; gap: 2px; }
 .menu-item-actions button {
     background: none;
     border: none;
     color: var(--text-dim);
     cursor: pointer;
-    padding: 2px 4px;
+    padding: 2px 5px;
     font-size: 0.85rem;
     border-radius: 3px;
     line-height: 1;
 }
-.menu-item-actions button:hover {
-    color: var(--accent);
-    background: var(--bg-secondary);
-}
-.menu-item-actions .btn-remove:hover {
-    color: #e05252;
-}
-.menu-item-actions .btn-promote:hover {
-    color: var(--accent);
-}
-/* Children sublist */
-.menu-children-list {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    margin-top: 4px;
-    margin-left: 28px;
-    padding: 4px 6px;
-    background: var(--bg-secondary);
-    border: 1px dashed var(--border);
-    border-radius: 4px;
-    min-height: 32px;
-}
-.menu-children-list.drag-over {
-    border-color: var(--accent);
-}
-.menu-children-list .menu-item-main {
-    font-size: 0.76rem;
-    padding: 5px 8px;
-}
-.menu-empty-hint {
+.menu-item-actions button:hover { color: var(--accent); background: var(--bg-secondary); }
+.menu-item-actions .btn-remove:hover { color: #e05252; }
+
+.menu-hint {
     font-size: 0.72rem;
     color: var(--text-dim);
-    text-align: center;
-    padding: 6px;
-    pointer-events: none;
-}
-.menu-hint {
-    font-size: 0.75rem;
-    color: var(--text-dim);
     margin-top: 8px;
+    opacity: 0.7;
 }
-/* Custom label editing */
 .menu-item-label-edit {
     font-size: 0.78rem;
     padding: 2px 6px;
@@ -455,6 +458,13 @@ include 'core/sidebar.php';
     background: var(--bg-primary);
     color: inherit;
     flex: 1;
+}
+.menu-empty-hint {
+    font-size: 0.76rem;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 12px 6px;
+    pointer-events: none;
 }
 </style>
 

@@ -154,9 +154,10 @@
 
         // Children sublist.
         const childList = document.createElement('div');
-        childList.className = 'menu-children-list';
-        if (!item.children || !item.children.length) {
-            childList.innerHTML = '<div class="menu-empty-hint">Drop here to nest</div>';
+        const hasKids = item.children && item.children.length > 0;
+        childList.className = 'menu-children-list' + (hasKids ? ' has-children' : ' empty-children');
+        if (!hasKids) {
+            childList.innerHTML = '<div class="menu-empty-drop-hint">drop here to nest</div>';
         } else {
             item.children.forEach((child, cidx) => {
                 childList.appendChild(makeMenuItemMain(child, cidx, true, item));
@@ -215,7 +216,9 @@
                        : item.type === 'page'   ? (item.slug || 'page')
                        : item.type;
 
+        const posLabel = isChild ? `${String.fromCharCode(97 + idx)}.` : `${idx + 1}.`;
         main.innerHTML = `
+            <span class="menu-item-position">${posLabel}</span>
             <span class="menu-item-drag-handle">&#9776;</span>
             <span class="menu-item-label" data-field="label">${escHtml(item.label)}</span>
             <span class="menu-item-type-badge">${escHtml(typeLabel)}</span>
