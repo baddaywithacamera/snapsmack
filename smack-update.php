@@ -429,8 +429,15 @@ if ($action === 'reset_update_state') {
 }
 
 // ── STAGED UPDATE: STAGE 1 — DOWNLOAD ────────────────────────────────────────
-if ($action === 'stage_download' && !empty($cached_result['core_update'])) {
-    $update       = $cached_result['core_update'];
+// Accepts update info from either cached_result (normal update flow) or
+// stage_state (reapply flow — cached_result has no core_update because the
+// installed version is current, but stage_state['update'] has the download URL).
+if ($action === 'stage_download'
+    && (!empty($cached_result['core_update']) || ($stage_state['stage'] ?? '') === 'review')
+) {
+    $update = !empty($cached_result['core_update'])
+              ? $cached_result['core_update']
+              : ($stage_state['update'] ?? []);
     $required_php = $update['requires_php'] ?? '8.0';
 
     if (version_compare(PHP_VERSION, $required_php, '<')) {
