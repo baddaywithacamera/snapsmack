@@ -1,6 +1,6 @@
 """
 Smack Up Your Backup — cloud_sync_engine.py
-Google Drive → OneDrive differential file sync.
+Cloud-to-cloud differential file sync (Google Drive, Box, Backblaze B2).
 
 Run in a background thread. All UI communication via callbacks.
 Mirrors backup_engine.py conventions: on_log, on_progress, on_stats,
@@ -14,8 +14,8 @@ from typing import Callable, Optional
 
 FAILURE_PROMPT_THRESHOLD = 1   # prompt user after this many failures
 
-# Size tolerance for differential check (Drive and OneDrive can report
-# slightly different sizes for the same file due to metadata differences).
+# Size tolerance for differential check (providers can report slightly
+# different sizes for the same file due to metadata differences).
 SIZE_TOLERANCE_PCT = 0.01
 
 
@@ -103,19 +103,25 @@ class CloudSyncEngine:
         import cloud_client as cc
         if provider == "google_drive":
             return cc.DriveClient(creds_file, folder, readonly=source)
-        if provider == "onedrive":
-            return cc.OneDriveClient(creds_file, folder)
+        if provider == "box":
+            return cc.BoxClient(creds_file, folder)
+        if provider == "b2":
+            return cc.B2Client(creds_file, folder)
         raise ValueError(f"Unknown provider: {provider!r}")
 
     @staticmethod
     def _provider_label(provider: str) -> str:
-        return {"google_drive": "Google Drive", "onedrive": "OneDrive"}.get(provider, provider)
+        return {
+            "google_drive": "Google Drive",
+            "box":          "Box",
+            "b2":           "Backblaze B2",
+        }.get(provider, provider)
 
     def _run_inner(self, result: dict) -> None:
         config = self._config
 
         src_provider = config.get("source_provider", "google_drive")
-        dst_provider = config.get("dest_provider", "onedrive")
+        dst_provider = config.get("dest_provider", "box")
 
         # ── Build clients ──────────────────────────────────────────────
         self._log(f"Connecting to {self._provider_label(src_provider)} (source)…")
@@ -161,7 +167,7 @@ class CloudSyncEngine:
         self._log(f"Found {len(src_files)} file(s) in source.")
 
         # ── List destination ───────────────────────────────────────────
-        self._log("Listing OneDrive destination folder…")
+        self._log(f"Listing {self._provider_label(dst_provider)} destination folder…")
         try:
             dst_files = dst.list_files()
             dst_map = {}
@@ -171,7 +177,7 @@ class CloudSyncEngine:
             # Non-fatal if destination folder doesn't exist yet — it'll be
             # created on first upload. But if it's an auth error, stop.
             if "401" in str(e) or "403" in str(e) or "auth" in str(e).lower():
-                result["error"] = f"OneDrive auth error: {e}"
+                result["error"] = f"{self._provider_label(dst_provider)} auth error: {e}"
                 self._log(f"✗ {result['error']}")
                 return
             self._log(f"⚠ Could not list destination (may not exist yet): {e}")
@@ -261,7 +267,7 @@ class CloudSyncEngine:
                 self.on_stats(files_done, total_files, skipped, files_failed, bytes_done, bytes_total)
                 continue
 
-            # Upload to OneDrive
+            # Upload to destination
             ul_ok  = True
             ul_err = ""
             try:
