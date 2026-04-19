@@ -211,7 +211,9 @@
         main.className = 'menu-item-main';
         main.draggable  = true;
 
-        const typeLabel = item.type === 'custom' ? 'link' : item.type;
+        const typeLabel = item.type === 'custom' ? 'link'
+                       : item.type === 'page'   ? (item.slug || 'page')
+                       : item.type;
 
         main.innerHTML = `
             <span class="menu-item-drag-handle">&#9776;</span>
