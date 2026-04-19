@@ -225,6 +225,18 @@ function snap_schema_sync(PDO $pdo): array {
              ADD COLUMN `show_in_archive` tinyint(1) NOT NULL DEFAULT 1
              COMMENT '1 = visible in public archive; 0 = hidden'"],
 
+        // 0.7.9M — snap_migrations: add auto-increment id column.
+        // The old table used migration VARCHAR(100) as PRIMARY KEY.
+        // We must restructure the PK in one compound ALTER TABLE statement
+        // because MySQL rejects ADD COLUMN AUTO_INCREMENT without a key.
+        ['snap_migrations', 'id',
+            "ALTER TABLE `snap_migrations`
+             DROP PRIMARY KEY,
+             MODIFY COLUMN `migration` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+             ADD COLUMN `id` int unsigned NOT NULL AUTO_INCREMENT FIRST,
+             ADD PRIMARY KEY (`id`),
+             ADD UNIQUE KEY `uq_migration` (`migration`)"],
+
     ];
 
     $col_check = $pdo->prepare(
