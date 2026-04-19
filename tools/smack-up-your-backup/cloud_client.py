@@ -24,8 +24,13 @@ CHUNK_SIZE = 5 * 1024 * 1024   # 5 MB
 # Google Drive — OAuth (InstalledAppFlow)
 # ---------------------------------------------------------------------------
 
-def _get_drive_service(credentials_file: str):
-    """Build an authenticated Drive service from an OAuth client secret JSON."""
+def _get_drive_service(credentials_file: str, readonly: bool = False):
+    """Build an authenticated Drive service from an OAuth client secret JSON.
+
+    readonly=True uses drive.readonly scope (for reading user's own files as
+    a sync source). A separate token cache file is used so the upload token
+    (drive.file) is unaffected.
+    """
     try:
         from google.oauth2.credentials import Credentials
         from google_auth_oauthlib.flow import InstalledAppFlow
@@ -37,8 +42,13 @@ def _get_drive_service(credentials_file: str):
             "for Google Drive support."
         )
 
-    SCOPES = ["https://www.googleapis.com/auth/drive.file"]
-    token_file = credentials_file.replace(".json", "_token.json")
+    if readonly:
+        SCOPES     = ["https://www.googleapis.com/auth/drive.readonly"]
+        token_file = credentials_file.replace(".json", "_readonly_token.json")
+    else:
+        SCOPES     = ["https://www.googleapis.com/auth/drive.file"]
+        token_file = credentials_file.replace(".json", "_token.json")
+
     creds = None
 
     if os.path.exists(token_file):
@@ -110,10 +120,11 @@ def get_oauth_token_status(credentials_file: str) -> str:
         return f"Token error: {e}"
 
 
-def authenticate_oauth(credentials_file: str) -> tuple:
+def authenticate_oauth(credentials_file: str, readonly: bool = False) -> tuple:
     """
     Run the OAuth consent flow explicitly. Opens a browser window.
     Returns (success: bool, message: str).
+    readonly=True uses drive.readonly scope (for Cloud Sync source).
     """
     if not credentials_file or not os.path.isfile(credentials_file):
         return False, "Credentials file not found."
@@ -121,26 +132,114 @@ def authenticate_oauth(credentials_file: str) -> tuple:
         return False, "Not an OAuth client secret file. Service account keys don't need authentication."
     try:
         from google_auth_oauthlib.flow import InstalledAppFlow
-        SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+        if readonly:
+            SCOPES     = ["https://www.googleapis.com/auth/drive.readonly"]
+            token_file = credentials_file.replace(".json", "_readonly_token.json")
+        else:
+            SCOPES     = ["https://www.googleapis.com/auth/drive.file"]
+            token_file = credentials_file.replace(".json", "_token.json")
         flow = InstalledAppFlow.from_client_secrets_file(credentials_file, SCOPES)
         creds = flow.run_local_server(port=0)
-        token_file = credentials_file.replace(".json", "_token.json")
         with open(token_file, "w") as f:
             f.write(creds.to_json())
-        return True, f"✓ Authenticated successfully. Token saved."
+        return True, "✓ Authenticated successfully. Token saved."
     except Exception as e:
         return False, f"Authentication failed: {e}"
 
 
+# ---------------------------------------------------------------------------
+# OneDrive helpers
+# ---------------------------------------------------------------------------
+
+def authenticate_onedrive(credentials_file: str) -> tuple:
+    """
+    Run the Microsoft interactive OAuth flow. Opens the system browser.
+    Returns (success: bool, message: str).
+    credentials_file must contain {"client_id": "..."}.
+    """
+    if not credentials_file or not os.path.isfile(credentials_file):
+        return False, "Credentials file not found."
+    try:
+        import msal
+        with open(credentials_file) as f:
+            creds = json.load(f)
+        client_id = creds.get("client_id", "")
+        if not client_id:
+            return False, "No client_id found in credentials file."
+
+        token_cache_file = credentials_file.replace(".json", "_token_cache.bin")
+        cache = msal.SerializableTokenCache()
+        if os.path.exists(token_cache_file):
+            with open(token_cache_file) as f:
+                cache.deserialize(f.read())
+
+        app    = msal.PublicClientApplication(
+            client_id,
+            authority="https://login.microsoftonline.com/common",
+            token_cache=cache,
+        )
+        SCOPES = ["Files.ReadWrite", "offline_access"]
+        result = app.acquire_token_interactive(SCOPES)
+
+        if "access_token" not in result:
+            return False, f"Authentication failed: {result.get('error_description', 'Unknown error')}"
+
+        if cache.has_state_changed:
+            with open(token_cache_file, "w") as f:
+                f.write(cache.serialize())
+
+        account = result.get("id_token_claims", {}).get("preferred_username", "")
+        return True, f"✓ Authenticated with Microsoft{(' as ' + account) if account else ''}."
+    except Exception as e:
+        return False, f"Authentication failed: {e}"
+
+
+def get_onedrive_token_status(credentials_file: str) -> str:
+    """Return a human-readable OneDrive auth status string."""
+    if not credentials_file or not os.path.isfile(credentials_file):
+        return ""
+    token_cache_file = credentials_file.replace(".json", "_token_cache.bin")
+    if not os.path.exists(token_cache_file):
+        return "Not authenticated — click Authenticate"
+    try:
+        import msal
+        with open(credentials_file) as f:
+            creds = json.load(f)
+        client_id = creds.get("client_id", "")
+        if not client_id:
+            return "Invalid credentials file — no client_id"
+        cache = msal.SerializableTokenCache()
+        with open(token_cache_file) as f:
+            cache.deserialize(f.read())
+        app      = msal.PublicClientApplication(
+            client_id,
+            authority="https://login.microsoftonline.com/common",
+            token_cache=cache,
+        )
+        accounts = app.get_accounts()
+        if not accounts:
+            return "Not authenticated — click Authenticate"
+        result = app.acquire_token_silent(
+            ["Files.ReadWrite", "offline_access"], account=accounts[0]
+        )
+        if result and "access_token" in result:
+            username = accounts[0].get("username", "")
+            return f"✓ Authenticated{(' — ' + username) if username else ''}"
+        return "Token expired — re-authenticate"
+    except Exception as e:
+        return f"Token error: {e}"
+
+
 class DriveClient:
-    def __init__(self, credentials_file: str, folder_id: str):
+    def __init__(self, credentials_file: str, folder_id: str, readonly: bool = False):
         self.credentials_file = credentials_file
         self.folder_id        = folder_id
+        self._readonly        = readonly
         self._service         = None
 
     def _svc(self):
         if not self._service:
-            self._service = _get_drive_service(self.credentials_file)
+            self._service = _get_drive_service(self.credentials_file, readonly=self._readonly)
         return self._service
 
     def upload_file(
@@ -272,11 +371,14 @@ class OneDriveClient:
     SCOPES       = ["Files.ReadWrite", "offline_access"]
     GRAPH_BASE   = "https://graph.microsoft.com/v1.0"
 
-    def __init__(self, credentials_file: str, folder_id: str):
+    def __init__(self, credentials_file: str, folder_path: str):
+        """
+        folder_path: a folder name relative to OneDrive root (e.g. "FoundTexturesBackup"),
+                     or "root" for the drive root itself.
+        """
         self.credentials_file = credentials_file
-        self.folder_id        = folder_id
+        self.folder_path      = folder_path   # display name / path, not an item ID
         self._token:  Optional[str] = None
-        self._app                   = None
 
     def _get_token(self) -> str:
         try:
@@ -295,7 +397,7 @@ class OneDriveClient:
             with open(token_cache_file) as f:
                 cache.deserialize(f.read())
 
-        app = msal.PublicClientApplication(
+        app      = msal.PublicClientApplication(
             client_id, authority=self.AUTHORITY, token_cache=cache
         )
         accounts = app.get_accounts()
@@ -305,9 +407,12 @@ class OneDriveClient:
             result = app.acquire_token_silent(self.SCOPES, account=accounts[0])
 
         if not result:
-            flow   = app.initiate_device_flow(scopes=self.SCOPES)
-            print(flow["message"])   # In UI this would be shown in a dialog
-            result = app.acquire_token_by_device_flow(flow)
+            # User must authenticate via the UI button before running a sync.
+            # Do not trigger interactive flow from a background thread.
+            raise RuntimeError(
+                "OneDrive not authenticated. "
+                "Click 'Authenticate with Microsoft' in the Cloud Sync job settings first."
+            )
 
         if "access_token" not in result:
             raise RuntimeError(f"OneDrive auth failed: {result.get('error_description')}")
@@ -317,6 +422,19 @@ class OneDriveClient:
                 f.write(cache.serialize())
 
         return result["access_token"]
+
+    def _folder_children_url(self) -> str:
+        """Graph API URL for listing children of the configured folder."""
+        if not self.folder_path or self.folder_path.lower() == "root":
+            return f"{self.GRAPH_BASE}/me/drive/root/children"
+        # Path-based access: root:/FolderName:/children
+        return f"{self.GRAPH_BASE}/me/drive/root:/{self.folder_path}:/children"
+
+    def _upload_session_url(self, filename: str) -> str:
+        """Graph API URL for creating an upload session for filename in folder."""
+        if not self.folder_path or self.folder_path.lower() == "root":
+            return f"{self.GRAPH_BASE}/me/drive/root:/{filename}:/createUploadSession"
+        return f"{self.GRAPH_BASE}/me/drive/root:/{self.folder_path}/{filename}:/createUploadSession"
 
     def _headers(self) -> dict:
         if not self._token:
@@ -332,17 +450,17 @@ class OneDriveClient:
         """Upload a file via Graph API upload session. Returns item ID."""
         import requests
 
-        file_size = os.path.getsize(local_path)
-        url       = (
-            f"{self.GRAPH_BASE}/me/drive/items/{self.folder_id}:/{remote_name}:/createUploadSession"
-        )
+        file_size    = os.path.getsize(local_path)
+        session_url  = self._upload_session_url(remote_name)
         session_resp = requests.post(
-            url, headers=self._headers(), json={"item": {"@microsoft.graph.conflictBehavior": "replace"}}
+            session_url,
+            headers=self._headers(),
+            json={"item": {"@microsoft.graph.conflictBehavior": "replace"}},
         )
         session_resp.raise_for_status()
         upload_url = session_resp.json()["uploadUrl"]
 
-        offset = 0
+        offset  = 0
         item_id = ""
         with open(local_path, "rb") as f:
             while offset < file_size:
@@ -364,7 +482,7 @@ class OneDriveClient:
 
     def list_files(self, name_filter: str = "") -> List[dict]:
         import requests
-        url  = f"{self.GRAPH_BASE}/me/drive/items/{self.folder_id}/children"
+        url  = self._folder_children_url()
         resp = requests.get(url, headers=self._headers())
         resp.raise_for_status()
         items = resp.json().get("value", [])
@@ -442,5 +560,5 @@ def get_cloud_client(profile: dict, global_cloud: Optional[dict] = None):
     if provider == "google_drive" and creds:
         return DriveClient(creds, folder)
     if provider == "onedrive" and creds:
-        return OneDriveClient(creds, folder)
+        return OneDriveClient(creds, folder)   # folder = folder path for OneDrive
     return None

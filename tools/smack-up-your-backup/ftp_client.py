@@ -278,10 +278,11 @@ class FTPClient:
         remote_rel_path: str,
         local_path:      str,
         on_progress:     Optional[ProgressCallback] = None,
-    ) -> bool:
+    ) -> tuple:
         """
         Download remote_dir/remote_rel_path to local_path.
-        Returns True on success. Retries once on failure.
+        Returns (True, "") on success, (False, reason_str) on failure.
+        Retries once on failure.
         """
         remote_full = f"{self.remote_dir}/{remote_rel_path}".replace("//", "/")
 
@@ -292,6 +293,7 @@ class FTPClient:
         except Exception:
             remote_size = 0
 
+        last_error = ""
         for attempt in range(2):
             try:
                 self._ensure_alive()
@@ -320,9 +322,10 @@ class FTPClient:
                     )
                 self._last_op_time = time.monotonic()
                 self._pace()
-                return True
+                return True, ""
 
-            except Exception:
+            except Exception as e:
+                last_error = str(e)
                 if attempt == 0:
                     time.sleep(5)
                     try:
@@ -332,9 +335,9 @@ class FTPClient:
                 else:
                     if on_progress:
                         on_progress(os.path.basename(remote_rel_path), 0, remote_size, False)
-                    return False
+                    return False, last_error
 
-        return False
+        return False, last_error
 
     def remote_size(self, remote_rel_path: str) -> int:
         """Return size of a remote file via FTP SIZE, or -1 if not found."""

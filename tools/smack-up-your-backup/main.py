@@ -5,22 +5,25 @@ Dark UI palette, tkinter, PyInstaller single-exe build chain.
 Same visual family as Smack Your Batch Up.
 """
 
-BUILD_VERSION = "0.2.4"
+BUILD_VERSION = "0.2.6"
 
 import os
 import queue
 import threading
+import time
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from typing import Optional
 
 import config as cfg_module
 import profile_manager
+import sync_manager
 import manifest_reader
 import cloud_manifest as cloud_manifest_module
 import cloud_client as cloud_module
 from audit_engine import AuditEngine, AuditReport
 from backup_engine import BackupEngine
+from cloud_sync_engine import CloudSyncEngine
 from restore_engine import RestoreEngine
 from report_writer import write_txt, write_html
 
@@ -45,14 +48,15 @@ FONT_TITLE = ("Segoe UI", 14, "bold")
 FONT_HEAD  = ("Segoe UI", 11, "bold")
 FONT_BODY  = ("Segoe UI", 10)
 FONT_SMALL = ("Segoe UI", 9)
-FONT_MONO  = ("Consolas", 10)
+FONT_MONO  = ("Consolas", 11)
 
-TAB_BACKUP    = "backup"
-TAB_RESTORE   = "restore"
-TAB_AUDIT     = "audit"
-TAB_SCHEDULER = "scheduler"
-TAB_SETTINGS  = "settings"
-TAB_HELP      = "help"
+TAB_BACKUP     = "backup"
+TAB_RESTORE    = "restore"
+TAB_AUDIT      = "audit"
+TAB_SCHEDULER  = "scheduler"
+TAB_SETTINGS   = "settings"
+TAB_CLOUD_SYNC = "cloud_sync"
+TAB_HELP       = "help"
 
 
 # ---------------------------------------------------------------------------
@@ -861,8 +865,8 @@ class LogPane(tk.Frame):
 
 class ProgressBar(tk.Frame):
     def __init__(self, parent, **kwargs):
-        super().__init__(parent, bg=BG_MID, height=4, **kwargs)
-        self._fill = tk.Frame(self, bg=ACCENT, height=4)
+        super().__init__(parent, bg=BG_MID, height=14, **kwargs)
+        self._fill = tk.Frame(self, bg=ACCENT, height=14)
         self._fill.place(x=0, y=0, relheight=1.0, relwidth=0)
         self._pct = 0.0
 
@@ -881,11 +885,14 @@ class ProgressBar(tk.Frame):
 class BackupTab(tk.Frame):
     def __init__(self, parent, app, **kwargs):
         super().__init__(parent, bg=BG_DEEP, **kwargs)
-        self._app  = app
-        self._busy = False
+        self._app         = app
+        self._busy        = False
         self._engine: Optional[BackupEngine] = None
         self._all_queue: list   = []
         self._all_results: list = []
+        self._start_time  = None   # time.monotonic() when backup started
+        self._tick_job    = None   # after() job id for the clock ticker
+        self._last_pct    = 0.0   # last known progress pct for ETA
         self._build()
 
     def _build(self):
@@ -900,12 +907,33 @@ class BackupTab(tk.Frame):
                                          bg=BG_MID, fg=FG_DIM, font=FONT_SMALL, anchor="w")
         self._file_count_lbl.pack(fill="x")
 
-        # Progress
+        # Progress bar
         self._prog_bar = ProgressBar(self)
-        self._prog_bar.pack(fill="x", padx=16, pady=(0, 2))
-        self._prog_lbl = tk.Label(self, text="", bg=BG_DEEP, fg=FG_DIM,
+        self._prog_bar.pack(fill="x", padx=16, pady=(0, 4))
+
+        # Stats row: current file | files counter | bytes | elapsed | ETA
+        stats_row = tk.Frame(self, bg=BG_DEEP)
+        stats_row.pack(fill="x", padx=16, pady=(0, 2))
+
+        self._prog_lbl = tk.Label(stats_row, text="", bg=BG_DEEP, fg=FG_DIM,
                                    font=FONT_SMALL, anchor="w")
-        self._prog_lbl.pack(fill="x", padx=16)
+        self._prog_lbl.pack(side="left", fill="x", expand=True)
+
+        self._time_lbl = tk.Label(stats_row, text="", bg=BG_DEEP, fg=FG_DIM,
+                                   font=FONT_SMALL, anchor="e")
+        self._time_lbl.pack(side="right")
+
+        # File/byte counts row
+        counts_row = tk.Frame(self, bg=BG_DEEP)
+        counts_row.pack(fill="x", padx=16, pady=(0, 4))
+
+        self._files_lbl = tk.Label(counts_row, text="", bg=BG_DEEP, fg=FG_DIM,
+                                    font=FONT_SMALL, anchor="w")
+        self._files_lbl.pack(side="left")
+
+        self._bytes_lbl = tk.Label(counts_row, text="", bg=BG_DEEP, fg=FG_DIM,
+                                    font=FONT_SMALL, anchor="e")
+        self._bytes_lbl.pack(side="right")
 
         # Pack from bottom: buttons first (lowest), then options above them
         btn_row = tk.Frame(self, bg=BG_DEEP)
@@ -1040,8 +1068,12 @@ class BackupTab(tk.Frame):
         self._all_btn.configure(state="disabled")
         self._cancel_btn.configure(state="normal")
         self._prog_bar.reset()
+        self._files_lbl.configure(text="")
+        self._bytes_lbl.configure(text="")
+        self._time_lbl.configure(text="")
         self._log.clear()
         self._log.append("Resuming backup…" if resume_cp else "Starting backup…")
+        self._start_clock()
 
         force_full       = self._backup_mode_var.get() == "full"
         include_settings = self._include_settings_var.get()
@@ -1049,6 +1081,8 @@ class BackupTab(tk.Frame):
             profile,
             on_progress=lambda s, m, p: self._app.queue_msg(("backup_progress", m, p)),
             on_log=lambda m: self._app.queue_msg(("backup_log", m)),
+            on_ask=lambda msg: self._app.queue_msg(("backup_ask", msg)),
+            on_stats=lambda *a: self._app.queue_msg(("backup_stats",) + a),
             force_full=force_full,
             include_settings=include_settings,
             global_config=self._global_config_dict() if include_settings else None,
@@ -1091,8 +1125,12 @@ class BackupTab(tk.Frame):
         self._all_btn.configure(state="disabled")
         self._cancel_btn.configure(state="normal")
         self._prog_bar.reset()
+        self._files_lbl.configure(text="")
+        self._bytes_lbl.configure(text="")
+        self._time_lbl.configure(text="")
         self._log.clear()
         self._log.append(f"Backing up {len(loaded)} blog(s)…")
+        self._start_clock()
 
         self._all_queue = loaded
         self._all_results = []
@@ -1113,6 +1151,8 @@ class BackupTab(tk.Frame):
             profile,
             on_progress=lambda s, m, p: self._app.queue_msg(("backup_progress", m, p)),
             on_log=lambda m: self._app.queue_msg(("backup_log", m)),
+            on_ask=lambda msg: self._app.queue_msg(("backup_ask", msg)),
+            on_stats=lambda *a: self._app.queue_msg(("backup_stats",) + a),
             force_full=force_full,
             include_settings=include_settings,
             global_config=self._global_config_dict() if include_settings else None,
@@ -1130,8 +1170,11 @@ class BackupTab(tk.Frame):
         return self._engine and self._engine._cancelled
 
     def _finish_all(self):
+        self._stop_clock()
         ok    = sum(1 for r in self._all_results if r.get("success"))
         total = len(self._all_results)
+        elapsed = (time.monotonic() - self._start_time) if self._start_time else 0
+        self._time_lbl.configure(text=f"Elapsed: {self._fmt_time(elapsed)}")
         self._log.append(f"\n{'─' * 40}")
         self._log.append(f"All blogs done: {ok}/{total} succeeded.")
         self._busy = False
@@ -1173,7 +1216,61 @@ class BackupTab(tk.Frame):
             self._engine.cancel()
         self._cancel_btn.configure(state="disabled")
 
+    @staticmethod
+    def _fmt_bytes(n: int) -> str:
+        if n >= 1_073_741_824:
+            return f"{n / 1_073_741_824:.1f} GB"
+        if n >= 1_048_576:
+            return f"{n / 1_048_576:.1f} MB"
+        if n >= 1024:
+            return f"{n / 1024:.0f} KB"
+        return f"{n} B"
+
+    @staticmethod
+    def _fmt_time(secs: float) -> str:
+        secs = int(secs)
+        h, rem = divmod(secs, 3600)
+        m, s   = divmod(rem, 60)
+        if h:
+            return f"{h}:{m:02d}:{s:02d}"
+        return f"{m}:{s:02d}"
+
+    def _start_clock(self):
+        self._start_time = time.monotonic()
+        self._tick()
+
+    def _stop_clock(self):
+        if self._tick_job:
+            self.after_cancel(self._tick_job)
+            self._tick_job = None
+
+    def _tick(self):
+        if not self._busy or self._start_time is None:
+            return
+        elapsed = time.monotonic() - self._start_time
+        pct = self._last_pct
+        if pct > 0.01:
+            eta = elapsed / pct * (1.0 - pct)
+            self._time_lbl.configure(
+                text=f"Elapsed: {self._fmt_time(elapsed)}   ETA: {self._fmt_time(eta)}"
+            )
+        else:
+            self._time_lbl.configure(text=f"Elapsed: {self._fmt_time(elapsed)}")
+        self._tick_job = self.after(1000, self._tick)
+
+    def on_stats(self, files_done: int, files_total: int, files_failed: int,
+                 bytes_done: int, bytes_total: int, bytes_failed: int) -> None:
+        files_ok = files_done - files_failed
+        self._files_lbl.configure(
+            text=f"Files: {files_done} / {files_total}   ✓ {files_ok}   ✗ {files_failed}"
+        )
+        if bytes_total > 0:
+            self._bytes_lbl.configure(
+                text=f"{self._fmt_bytes(bytes_done)} / {self._fmt_bytes(bytes_total)}"
+            )
+
     def on_progress(self, msg: str, pct: float) -> None:
+        self._last_pct = pct
         self._prog_bar.set(pct)
         self._prog_lbl.configure(text=msg, fg=FG_WARN if pct < 1.0 else FG_OK)
 
@@ -1181,12 +1278,21 @@ class BackupTab(tk.Frame):
         self._log.append(msg)
 
     def on_done(self, result: dict) -> None:
+        self._stop_clock()
         self._busy = False
         self._start_btn.configure(state="normal")
         self._all_btn.configure(state="normal")
         self._cancel_btn.configure(state="disabled")
         self._engine = None
-        if result["success"]:
+        elapsed = (time.monotonic() - self._start_time) if self._start_time else 0
+        self._time_lbl.configure(text=f"Elapsed: {self._fmt_time(elapsed)}")
+        if result.get("cancelled"):
+            self._prog_lbl.configure(text="Backup cancelled.", fg=FG_WARN)
+            self._log.append(
+                f"↩ Cancelled — {result['files_downloaded']} downloaded, "
+                f"{result['files_skipped']} skipped, {result['files_failed']} failed."
+            )
+        elif result["success"]:
             self._prog_bar.set(1.0)
             self._prog_lbl.configure(text="Backup complete.", fg=FG_OK)
             self._log.append(
@@ -3097,6 +3203,487 @@ class SchedulerTab(tk.Frame):
         self._app._switch_tab(TAB_BACKUP)
 
 
+class CloudSyncTab(tk.Frame):
+    """Cloud-to-Cloud sync tab: Google Drive → OneDrive differential file sync."""
+
+    def __init__(self, parent, app, **kwargs):
+        super().__init__(parent, bg=BG_DEEP, **kwargs)
+        self._app    = app
+        self._busy   = False
+        self._engine: Optional[CloudSyncEngine] = None
+        self._start_time = None
+        self._tick_job   = None
+        self._last_pct   = 0.0
+        self._build()
+
+    # ------------------------------------------------------------------
+    # Build UI
+    # ------------------------------------------------------------------
+
+    def _build(self):
+        # ── Job selector row ────────────────────────────────────────────
+        sel_row = tk.Frame(self, bg=BG_MID, padx=16, pady=10)
+        sel_row.pack(fill="x", padx=16, pady=(16, 4))
+
+        tk.Label(sel_row, text="Sync Job:", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY).pack(side="left")
+
+        self._job_var = tk.StringVar()
+        self._job_menu = ttk.Combobox(sel_row, textvariable=self._job_var,
+                                       state="readonly", font=FONT_BODY, width=30)
+        self._job_menu.pack(side="left", padx=(8, 16))
+        self._job_menu.bind("<<ComboboxSelected>>", self._on_job_selected)
+
+        tk.Button(sel_row, text="New", bg=BG_CARD, fg=FG_MAIN,
+                  font=FONT_BODY, relief="flat", padx=10, pady=4,
+                  cursor="hand2", command=self._new_job).pack(side="left", padx=(0, 4))
+        tk.Button(sel_row, text="Edit", bg=BG_CARD, fg=FG_MAIN,
+                  font=FONT_BODY, relief="flat", padx=10, pady=4,
+                  cursor="hand2", command=self._edit_job).pack(side="left", padx=(0, 4))
+        tk.Button(sel_row, text="Delete", bg=BG_CARD, fg=FG_DIM,
+                  font=FONT_BODY, relief="flat", padx=10, pady=4,
+                  cursor="hand2", command=self._delete_job).pack(side="left")
+
+        # ── Source / dest status ────────────────────────────────────────
+        self._src_lbl = tk.Label(self, text="Source: —", bg=BG_DEEP, fg=FG_DIM,
+                                  font=FONT_SMALL, anchor="w")
+        self._src_lbl.pack(fill="x", padx=16, pady=(4, 0))
+        self._dst_lbl = tk.Label(self, text="Dest:   —", bg=BG_DEEP, fg=FG_DIM,
+                                  font=FONT_SMALL, anchor="w")
+        self._dst_lbl.pack(fill="x", padx=16, pady=(0, 4))
+
+        # ── Progress bar ────────────────────────────────────────────────
+        self._prog_bar = ProgressBar(self)
+        self._prog_bar.pack(fill="x", padx=16, pady=(0, 4))
+
+        # ── Stats rows ──────────────────────────────────────────────────
+        stats_row = tk.Frame(self, bg=BG_DEEP)
+        stats_row.pack(fill="x", padx=16, pady=(0, 2))
+
+        self._prog_lbl = tk.Label(stats_row, text="", bg=BG_DEEP, fg=FG_DIM,
+                                   font=FONT_SMALL, anchor="w")
+        self._prog_lbl.pack(side="left", fill="x", expand=True)
+
+        self._time_lbl = tk.Label(stats_row, text="", bg=BG_DEEP, fg=FG_DIM,
+                                   font=FONT_SMALL, anchor="e")
+        self._time_lbl.pack(side="right")
+
+        counts_row = tk.Frame(self, bg=BG_DEEP)
+        counts_row.pack(fill="x", padx=16, pady=(0, 4))
+
+        self._files_lbl = tk.Label(counts_row, text="", bg=BG_DEEP, fg=FG_DIM,
+                                    font=FONT_SMALL, anchor="w")
+        self._files_lbl.pack(side="left")
+
+        self._bytes_lbl = tk.Label(counts_row, text="", bg=BG_DEEP, fg=FG_DIM,
+                                    font=FONT_SMALL, anchor="e")
+        self._bytes_lbl.pack(side="right")
+
+        # ── Log ─────────────────────────────────────────────────────────
+        self._log = LogPane(self)
+        self._log.pack(fill="both", expand=True, padx=16, pady=8)
+
+        # ── Button row ──────────────────────────────────────────────────
+        btn_row = tk.Frame(self, bg=BG_DEEP)
+        btn_row.pack(fill="x", padx=16, pady=(0, 16), side="bottom")
+
+        self._run_btn = tk.Button(
+            btn_row, text="▶  RUN SYNC",
+            bg=ACCENT, fg=BG_DEEP, font=FONT_HEAD, relief="flat",
+            padx=20, pady=8, cursor="hand2", command=self._start,
+        )
+        self._run_btn.pack(side="left")
+
+        self._cancel_btn = tk.Button(
+            btn_row, text="Cancel", bg=BG_CARD, fg=FG_DIM,
+            font=FONT_BODY, relief="flat", padx=12, pady=8,
+            state="disabled", command=self._cancel,
+        )
+        self._cancel_btn.pack(side="left", padx=(8, 0))
+
+        self._refresh_jobs()
+
+    # ------------------------------------------------------------------
+    # Job management
+    # ------------------------------------------------------------------
+
+    def _refresh_jobs(self):
+        jobs = sync_manager.list_jobs()
+        self._job_menu["values"] = jobs
+        if jobs:
+            if self._job_var.get() not in jobs:
+                self._job_var.set(jobs[0])
+            self._update_status_labels()
+        else:
+            self._job_var.set("")
+            self._src_lbl.configure(text="Source: —")
+            self._dst_lbl.configure(text="Dest:   —")
+
+    def _on_job_selected(self, _event=None):
+        self._update_status_labels()
+
+    def _update_status_labels(self):
+        name = self._job_var.get()
+        if not name:
+            return
+        job = sync_manager.load_job(name)
+        if not job:
+            return
+        src_folder = job.get("source_folder_id", "") or "—"
+        dst_folder = job.get("dest_folder_path", "") or "—"
+        self._src_lbl.configure(text=f"Source:  Google Drive — folder {src_folder}")
+        self._dst_lbl.configure(text=f"Dest:    OneDrive — {dst_folder}")
+
+    def _new_job(self):
+        template = sync_manager.new_job_template()
+        dlg = _SyncJobDialog(self, template, title="New Sync Job")
+        self.wait_window(dlg)
+        if dlg.result:
+            sync_manager.save_job(dlg.result)
+            self._refresh_jobs()
+            self._job_var.set(dlg.result["name"])
+
+    def _edit_job(self):
+        name = self._job_var.get()
+        if not name:
+            messagebox.showinfo("No job", "Select a sync job first.")
+            return
+        job = sync_manager.load_job(name)
+        if not job:
+            return
+        dlg = _SyncJobDialog(self, job, title="Edit Sync Job")
+        self.wait_window(dlg)
+        if dlg.result:
+            # If name changed, delete old file
+            if dlg.result["name"] != name:
+                sync_manager.delete_job(name)
+            sync_manager.save_job(dlg.result)
+            self._refresh_jobs()
+            self._job_var.set(dlg.result["name"])
+
+    def _delete_job(self):
+        name = self._job_var.get()
+        if not name:
+            return
+        if messagebox.askyesno("Delete job", f"Delete sync job '{name}'?"):
+            sync_manager.delete_job(name)
+            self._refresh_jobs()
+
+    # ------------------------------------------------------------------
+    # Run / cancel
+    # ------------------------------------------------------------------
+
+    def _start(self):
+        name = self._job_var.get()
+        if not name:
+            messagebox.showinfo("No job", "Select or create a sync job first.")
+            return
+        job = sync_manager.load_job(name)
+        if not job:
+            return
+
+        # Validate required fields
+        missing = []
+        if not job.get("source_credentials_file"):
+            missing.append("Google Drive credentials file")
+        if not job.get("source_folder_id"):
+            missing.append("Google Drive source folder ID")
+        if not job.get("dest_credentials_file"):
+            missing.append("OneDrive credentials file")
+        if not job.get("dest_folder_path"):
+            missing.append("OneDrive destination folder name")
+        if missing:
+            messagebox.showerror("Missing config",
+                                 "Please configure:\n• " + "\n• ".join(missing))
+            return
+
+        self._busy = True
+        self._run_btn.configure(state="disabled")
+        self._cancel_btn.configure(state="normal")
+        self._prog_bar.reset()
+        self._files_lbl.configure(text="")
+        self._bytes_lbl.configure(text="")
+        self._time_lbl.configure(text="")
+        self._log.clear()
+        self._log.append("Starting sync…")
+        self._start_clock()
+
+        self._engine = CloudSyncEngine(
+            config=job,
+            on_log=lambda m: self._app.queue_msg(("sync_log", m)),
+            on_progress=lambda p: self._app.queue_msg(("sync_progress", p)),
+            on_stats=lambda *a: self._app.queue_msg(("sync_stats",) + a),
+            on_done=lambda r: self._app.queue_msg(("sync_done", r)),
+            on_ask=lambda msg: self._app.queue_msg(("sync_ask", msg)),
+        )
+        t = threading.Thread(target=self._engine.run, daemon=True)
+        t.start()
+
+    def _cancel(self):
+        if self._engine:
+            self._engine.cancel()
+        self._cancel_btn.configure(state="disabled")
+
+    # ------------------------------------------------------------------
+    # Callbacks from _poll
+    # ------------------------------------------------------------------
+
+    def on_progress(self, pct: float):
+        self._prog_bar.set(pct)
+        self._last_pct = pct
+
+    def on_log(self, msg: str):
+        self._log.append(msg)
+
+    def on_stats(self, done, total, skipped, failed, bytes_done, bytes_total):
+        self._files_lbl.configure(
+            text=f"Files: {done} / {total} synced   Skipped: {skipped}   Failed: {failed}"
+        )
+        self._bytes_lbl.configure(
+            text=f"{self._fmt_bytes(bytes_done)} / {self._fmt_bytes(bytes_total)}"
+        )
+
+    def on_done(self, result: dict):
+        self._stop_clock()
+        self._busy   = False
+        self._engine = None
+        self._run_btn.configure(state="normal")
+        self._cancel_btn.configure(state="disabled")
+        self._prog_bar.set(1.0 if result.get("ok") else self._last_pct)
+
+        if result.get("cancelled"):
+            self._log.append("— Sync cancelled.")
+        elif result.get("ok"):
+            self._log.append(
+                f"✓ Sync complete — {result['files_synced']} file(s), "
+                f"{self._fmt_bytes(result['bytes_synced'])}."
+            )
+            # Update last sync info in job config
+            name = self._job_var.get()
+            if name:
+                job = sync_manager.load_job(name)
+                if job:
+                    from datetime import datetime, timezone
+                    job["last_sync_date"]    = datetime.now(timezone.utc).isoformat()
+                    job["last_files_synced"] = result["files_synced"]
+                    job["last_bytes_synced"] = result["bytes_synced"]
+                    sync_manager.save_job(job)
+        else:
+            self._log.append(
+                f"✗ Sync finished with {result.get('files_failed', 0)} failure(s). "
+                + (result.get("error", "") or "")
+            )
+
+    # ------------------------------------------------------------------
+    # Clock helpers (mirrors BackupTab)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _fmt_bytes(n: int) -> str:
+        if n >= 1_073_741_824:
+            return f"{n / 1_073_741_824:.2f} GB"
+        if n >= 1_048_576:
+            return f"{n / 1_048_576:.1f} MB"
+        if n >= 1024:
+            return f"{n / 1024:.0f} KB"
+        return f"{n} B"
+
+    @staticmethod
+    def _fmt_time(secs: float) -> str:
+        s = int(secs)
+        h, rem = divmod(s, 3600)
+        m, s   = divmod(rem, 60)
+        return f"{h:02d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
+
+    def _start_clock(self):
+        self._start_time = time.monotonic()
+        self._last_pct   = 0.0
+        if self._tick_job:
+            self.after_cancel(self._tick_job)
+        self._tick()
+
+    def _stop_clock(self):
+        if self._tick_job:
+            self.after_cancel(self._tick_job)
+            self._tick_job = None
+
+    def _tick(self):
+        if not self._busy or self._start_time is None:
+            return
+        elapsed = time.monotonic() - self._start_time
+        pct     = self._last_pct
+        if pct > 0.01:
+            eta = elapsed / pct * (1.0 - pct)
+            self._time_lbl.configure(
+                text=f"Elapsed: {self._fmt_time(elapsed)}   ETA: {self._fmt_time(eta)}"
+            )
+        else:
+            self._time_lbl.configure(text=f"Elapsed: {self._fmt_time(elapsed)}")
+        self._tick_job = self.after(1000, self._tick)
+
+
+# ---------------------------------------------------------------------------
+# Sync job editor dialog
+# ---------------------------------------------------------------------------
+
+class _SyncJobDialog(tk.Toplevel):
+    """Create / edit a cloud sync job config."""
+
+    def __init__(self, parent, config: dict, title: str = "Sync Job"):
+        super().__init__(parent)
+        self.title(title)
+        self.configure(bg=BG_MID)
+        self.resizable(False, False)
+        self.grab_set()
+        self.focus_force()
+        self.result = None
+        self._config = dict(config)
+        self._build()
+        self.protocol("WM_DELETE_WINDOW", self._cancel)
+
+    def _row(self, parent, label: str, var, width: int = 42, show: str = ""):
+        row = tk.Frame(parent, bg=BG_MID)
+        row.pack(fill="x", pady=3)
+        tk.Label(row, text=label, bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY, width=26, anchor="w").pack(side="left")
+        tk.Entry(row, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=width, show=show).pack(side="left")
+        return row
+
+    def _browse_row(self, parent, label: str, var):
+        row = tk.Frame(parent, bg=BG_MID)
+        row.pack(fill="x", pady=3)
+        tk.Label(row, text=label, bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY, width=26, anchor="w").pack(side="left")
+        tk.Entry(row, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=36).pack(side="left")
+        tk.Button(row, text="…", bg=BG_CARD, fg=FG_MAIN, relief="flat",
+                  font=FONT_BODY, padx=6, pady=1,
+                  command=lambda: self._browse_file(var)).pack(side="left", padx=(4, 0))
+        return row
+
+    @staticmethod
+    def _browse_file(var):
+        path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
+        if path:
+            var.set(path)
+
+    def _auth_row(self, parent, label: str, var, auth_fn, status_var):
+        row = tk.Frame(parent, bg=BG_MID)
+        row.pack(fill="x", pady=3)
+        tk.Label(row, text=label, bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY, width=26, anchor="w").pack(side="left")
+        tk.Button(row, text=label, bg=BG_CARD, fg=FG_MAIN, relief="flat",
+                  font=FONT_BODY, padx=10, pady=3,
+                  command=lambda: self._do_auth(auth_fn, status_var, var)).pack(side="left")
+        tk.Label(row, textvariable=status_var, bg=BG_MID, fg=FG_DIM,
+                 font=FONT_SMALL).pack(side="left", padx=(8, 0))
+
+    def _do_auth(self, auth_fn, status_var, creds_var):
+        status_var.set("Opening browser…")
+        self.update()
+        ok, msg = auth_fn(creds_var.get())
+        status_var.set(msg)
+
+    def _build(self):
+        c = self._config
+        PAD = 16
+
+        body = tk.Frame(self, bg=BG_MID, padx=PAD, pady=PAD)
+        body.pack(fill="both", expand=True)
+
+        # Job name
+        self._name_var = tk.StringVar(value=c.get("name", ""))
+        self._row(body, "Job name:", self._name_var, width=36)
+
+        tk.Label(body, text="── Google Drive Source ──────────────────",
+                 bg=BG_MID, fg=ACCENT, font=FONT_SMALL).pack(anchor="w", pady=(12, 4))
+
+        self._src_creds_var = tk.StringVar(value=c.get("source_credentials_file", ""))
+        self._src_folder_var = tk.StringVar(value=c.get("source_folder_id", ""))
+        self._browse_row(body, "OAuth client secret JSON:", self._src_creds_var)
+
+        # Folder ID with help text
+        folder_row = tk.Frame(body, bg=BG_MID)
+        folder_row.pack(fill="x", pady=3)
+        tk.Label(folder_row, text="Source folder ID:", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY, width=26, anchor="w").pack(side="left")
+        tk.Entry(folder_row, textvariable=self._src_folder_var, bg=BG_INPUT,
+                 fg=FG_MAIN, insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=36).pack(side="left")
+
+        tk.Label(body,
+                 text="  (Copy from Drive URL: drive.google.com/drive/folders/FOLDER_ID_HERE)",
+                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w", pady=(0, 2))
+
+        self._src_auth_status = tk.StringVar()
+        self._auth_row(body, "Authenticate with Google",
+                       self._src_creds_var,
+                       lambda p: cloud_module.authenticate_oauth(p, readonly=True),
+                       self._src_auth_status)
+
+        tk.Label(body, text="── OneDrive Destination ─────────────────",
+                 bg=BG_MID, fg=ACCENT, font=FONT_SMALL).pack(anchor="w", pady=(12, 4))
+
+        self._dst_creds_var = tk.StringVar(value=c.get("dest_credentials_file", ""))
+        self._dst_folder_var = tk.StringVar(value=c.get("dest_folder_path", ""))
+        self._browse_row(body, "MS app credentials JSON:", self._dst_creds_var)
+        self._row(body, "Destination folder name:", self._dst_folder_var, width=36)
+
+        tk.Label(body,
+                 text='  (Folder name in your OneDrive root, e.g. "FoundTexturesBackup")',
+                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w", pady=(0, 2))
+
+        self._dst_auth_status = tk.StringVar()
+        self._auth_row(body, "Authenticate with Microsoft",
+                       self._dst_creds_var,
+                       cloud_module.authenticate_onedrive,
+                       self._dst_auth_status)
+
+        tk.Label(body,
+                 text='  Credentials JSON: {"client_id": "your-azure-app-client-id"}',
+                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w", pady=(0, 2))
+
+        # Buttons
+        btn_row = tk.Frame(body, bg=BG_MID, pady=(8))
+        btn_row.pack(fill="x")
+        tk.Button(btn_row, text="Save", bg=ACCENT, fg=BG_DEEP,
+                  font=FONT_HEAD, relief="flat", padx=20, pady=6,
+                  command=self._save).pack(side="left")
+        tk.Button(btn_row, text="Cancel", bg=BG_CARD, fg=FG_DIM,
+                  font=FONT_BODY, relief="flat", padx=12, pady=6,
+                  command=self._cancel).pack(side="left", padx=(8, 0))
+
+        # Show current token statuses
+        src_creds = c.get("source_credentials_file", "")
+        if src_creds:
+            status = cloud_module.get_oauth_token_status(src_creds)
+            self._src_auth_status.set(status)
+
+        dst_creds = c.get("dest_credentials_file", "")
+        if dst_creds:
+            status = cloud_module.get_onedrive_token_status(dst_creds)
+            self._dst_auth_status.set(status)
+
+    def _save(self):
+        name = self._name_var.get().strip()
+        if not name:
+            messagebox.showerror("Name required", "Enter a job name.", parent=self)
+            return
+        self.result = dict(self._config)
+        self.result["name"]                    = name
+        self.result["source_credentials_file"] = self._src_creds_var.get().strip()
+        self.result["source_folder_id"]        = self._src_folder_var.get().strip()
+        self.result["dest_credentials_file"]   = self._dst_creds_var.get().strip()
+        self.result["dest_folder_path"]        = self._dst_folder_var.get().strip()
+        self.destroy()
+
+    def _cancel(self):
+        self.destroy()
+
+
 class HelpTab(tk.Frame):
     """In-app documentation — topic list on left, content on right."""
 
@@ -3197,6 +3784,7 @@ class App(tk.Tk):
         except Exception:
             self.geometry("1100x920")
 
+        self._migrate_profiles()
         self._build_ui()
         self._load_last_profile()
         self.after(100, self._poll)
@@ -3234,6 +3822,22 @@ class App(tk.Tk):
 
     # ------------------------------------------------------------------
     # UI construction
+    # ------------------------------------------------------------------
+
+    def _migrate_profiles(self) -> None:
+        """One-time migrations applied to all profiles on disk at startup."""
+        for name in profile_manager.list_profiles():
+            p = profile_manager.load_profile(name)
+            if not p:
+                continue
+            changed = False
+            # v0.2.5: default backup method changed from ftp to cloud
+            if p.get("backup_method") == "ftp":
+                p["backup_method"] = "cloud"
+                changed = True
+            if changed:
+                profile_manager.save_profile(p)
+
     # ------------------------------------------------------------------
 
     def _build_ui(self):
@@ -3283,12 +3887,13 @@ class App(tk.Tk):
         self._tab_btns = {}
         self._active_tab = TAB_BACKUP
         for key, label in [
-            (TAB_BACKUP,    "  Backup  "),
-            (TAB_RESTORE,   "  Restore  "),
-            (TAB_AUDIT,     "  Audit  "),
-            (TAB_SCHEDULER, "  Schedule  "),
-            (TAB_SETTINGS,  "  Settings  "),
-            (TAB_HELP,      "  Help  "),
+            (TAB_BACKUP,     "  Backup  "),
+            (TAB_RESTORE,    "  Restore  "),
+            (TAB_AUDIT,      "  Audit  "),
+            (TAB_SCHEDULER,  "  Schedule  "),
+            (TAB_CLOUD_SYNC, "  Cloud Sync  "),
+            (TAB_SETTINGS,   "  Settings  "),
+            (TAB_HELP,       "  Help  "),
         ]:
             btn = tk.Button(
                 tab_bar, text=label, bg=BG_CARD, fg=FG_DIM,
@@ -3300,13 +3905,14 @@ class App(tk.Tk):
             self._tab_btns[key] = btn
 
         # Tab content frames
-        self._tab_backup    = BackupTab(self,    self)
-        self._tab_restore   = RestoreTab(self,   self)
-        self._tab_audit     = AuditTab(self,     self)
-        self._tab_scheduler = SchedulerTab(self, self)
-        self._tab_settings  = SettingsTab(self,  self)
+        self._tab_backup     = BackupTab(self,     self)
+        self._tab_restore    = RestoreTab(self,    self)
+        self._tab_audit      = AuditTab(self,      self)
+        self._tab_scheduler  = SchedulerTab(self,  self)
+        self._tab_cloud_sync = CloudSyncTab(self,  self)
+        self._tab_settings   = SettingsTab(self,   self)
         self._tab_settings.load(self._cfg)
-        self._tab_help      = HelpTab(self)
+        self._tab_help       = HelpTab(self)
 
         self._switch_tab(TAB_BACKUP)
 
@@ -3320,16 +3926,18 @@ class App(tk.Tk):
                 relief="flat",
             )
         for frame in (self._tab_backup, self._tab_restore, self._tab_audit,
-                      self._tab_scheduler, self._tab_settings, self._tab_help):
+                      self._tab_scheduler, self._tab_cloud_sync,
+                      self._tab_settings, self._tab_help):
             frame.pack_forget()
 
         tab_map = {
-            TAB_BACKUP:    self._tab_backup,
-            TAB_RESTORE:   self._tab_restore,
-            TAB_AUDIT:     self._tab_audit,
-            TAB_SCHEDULER: self._tab_scheduler,
-            TAB_SETTINGS:  self._tab_settings,
-            TAB_HELP:      self._tab_help,
+            TAB_BACKUP:     self._tab_backup,
+            TAB_RESTORE:    self._tab_restore,
+            TAB_AUDIT:      self._tab_audit,
+            TAB_SCHEDULER:  self._tab_scheduler,
+            TAB_CLOUD_SYNC: self._tab_cloud_sync,
+            TAB_SETTINGS:   self._tab_settings,
+            TAB_HELP:       self._tab_help,
         }
         tab_map[key].pack(fill="both", expand=True)
         self._active_tab = key
@@ -3423,6 +4031,52 @@ class App(tk.Tk):
                     self._tab_backup.on_progress(msg[1], msg[2])
                 elif kind == "backup_log":
                     self._tab_backup.on_log(msg[1])
+                elif kind == "backup_stats":
+                    self._tab_backup.on_stats(*msg[1:])
+                elif kind == "backup_ask":
+                    # Engine is blocked waiting for a response — show dialog on main thread
+                    engine = self._tab_backup._engine
+                    if engine:
+                        dlg = tk.Toplevel(self)
+                        dlg.title("Download failure")
+                        dlg.configure(bg=BG_MID)
+                        dlg.resizable(False, False)
+                        dlg.grab_set()
+                        dlg.focus_force()
+
+                        tk.Label(dlg, text=msg[1], bg=BG_MID, fg=FG_MAIN,
+                                 font=FONT_BODY, justify="left",
+                                 wraplength=420, padx=20, pady=16).pack()
+
+                        btn_row = tk.Frame(dlg, bg=BG_MID, pady=12)
+                        btn_row.pack()
+
+                        result_holder = [None]
+
+                        def _abort():
+                            result_holder[0] = False
+                            dlg.destroy()
+
+                        def _continue():
+                            result_holder[0] = True
+                            dlg.destroy()
+
+                        tk.Button(btn_row, text="Abort Backup", font=FONT_BODY,
+                                  bg=FG_ERR, fg="white", relief="flat",
+                                  padx=16, pady=6, cursor="hand2",
+                                  command=_abort).pack(side="left", padx=(0, 8))
+                        tk.Button(btn_row, text="Continue Anyway", font=FONT_BODY,
+                                  bg=BG_CARD, fg=FG_DIM, relief="flat",
+                                  padx=16, pady=6, cursor="hand2",
+                                  command=_continue).pack(side="left")
+
+                        dlg.protocol("WM_DELETE_WINDOW", _abort)
+                        self.wait_window(dlg)
+
+                        if result_holder[0]:
+                            engine.prompt_continue()
+                        else:
+                            engine.cancel()
                 elif kind == "backup_done":
                     result = msg[1]
                     self._tab_backup.on_done(result)
@@ -3459,6 +4113,58 @@ class App(tk.Tk):
                     pass   # Audit log goes to results pane via on_done
                 elif kind == "audit_done":
                     self._tab_audit.on_done(msg[1])
+
+                elif kind == "sync_progress":
+                    self._tab_cloud_sync.on_progress(msg[1])
+                elif kind == "sync_log":
+                    self._tab_cloud_sync.on_log(msg[1])
+                elif kind == "sync_stats":
+                    self._tab_cloud_sync.on_stats(*msg[1:])
+                elif kind == "sync_ask":
+                    engine = self._tab_cloud_sync._engine
+                    if engine:
+                        dlg = tk.Toplevel(self)
+                        dlg.title("Sync failure")
+                        dlg.configure(bg=BG_MID)
+                        dlg.resizable(False, False)
+                        dlg.grab_set()
+                        dlg.focus_force()
+
+                        tk.Label(dlg, text=msg[1], bg=BG_MID, fg=FG_MAIN,
+                                 font=FONT_BODY, justify="left",
+                                 wraplength=420, padx=20, pady=16).pack()
+
+                        btn_row = tk.Frame(dlg, bg=BG_MID, pady=12)
+                        btn_row.pack()
+                        result_holder = [None]
+
+                        def _abort():
+                            result_holder[0] = False
+                            dlg.destroy()
+
+                        def _continue():
+                            result_holder[0] = True
+                            dlg.destroy()
+
+                        tk.Button(btn_row, text="Abort Sync", font=FONT_BODY,
+                                  bg=FG_ERR, fg="white", relief="flat",
+                                  padx=16, pady=6, cursor="hand2",
+                                  command=_abort).pack(side="left", padx=(0, 8))
+                        tk.Button(btn_row, text="Continue Anyway", font=FONT_BODY,
+                                  bg=BG_CARD, fg=FG_DIM, relief="flat",
+                                  padx=16, pady=6, cursor="hand2",
+                                  command=_continue).pack(side="left")
+
+                        dlg.protocol("WM_DELETE_WINDOW", _abort)
+                        self.wait_window(dlg)
+
+                        if result_holder[0]:
+                            engine.prompt_continue()
+                        else:
+                            engine.cancel()
+
+                elif kind == "sync_done":
+                    self._tab_cloud_sync.on_done(msg[1])
 
                 elif kind == "scheduled_backup":
                     # Triggered by scheduler thread — queue profile for backup
