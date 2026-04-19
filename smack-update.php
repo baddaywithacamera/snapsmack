@@ -886,10 +886,12 @@ if ($action === 'mark_migrations_applied') {
     try {
         $ps = $pdo->query("
             CREATE TABLE IF NOT EXISTS snap_migrations (
-                migration  VARCHAR(100) NOT NULL,
+                id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                migration  VARCHAR(200) NOT NULL,
                 applied_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (migration)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                PRIMARY KEY (id),
+                UNIQUE KEY uq_migration (migration)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
         if ($ps !== false) $ps->closeCursor();
 
