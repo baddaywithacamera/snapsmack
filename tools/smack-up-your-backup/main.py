@@ -3248,7 +3248,7 @@ class CloudSyncTab(tk.Frame):
         self._src_lbl = tk.Label(self, text="Source: —", bg=BG_DEEP, fg=FG_DIM,
                                   font=FONT_SMALL, anchor="w")
         self._src_lbl.pack(fill="x", padx=16, pady=(4, 0))
-        self._dst_lbl = tk.Label(self, text="Dest:   —", bg=BG_DEEP, fg=FG_DIM,
+        self._dst_lbl = tk.Label(self, text="Destination:  —", bg=BG_DEEP, fg=FG_DIM,
                                   font=FONT_SMALL, anchor="w")
         self._dst_lbl.pack(fill="x", padx=16, pady=(0, 4))
 
@@ -3335,8 +3335,8 @@ class CloudSyncTab(tk.Frame):
             job.get("dest_provider", "onedrive"), "—")
         src_folder = job.get("source_folder") or job.get("source_folder_id", "") or "—"
         dst_folder = job.get("dest_folder") or job.get("dest_folder_path", "") or "—"
-        self._src_lbl.configure(text=f"Source:  {src_p} — {src_folder}")
-        self._dst_lbl.configure(text=f"Dest:    {dst_p} — {dst_folder}")
+        self._src_lbl.configure(text=f"Source:       {src_p} — {src_folder}")
+        self._dst_lbl.configure(text=f"Destination:  {dst_p} — {dst_folder}")
 
     def _new_job(self):
         template = sync_manager.new_job_template()
@@ -3726,7 +3726,7 @@ class _SyncJobDialog(tk.Toplevel):
             value=c.get("dest_folder") or c.get("dest_folder_path", "")
         )
         self._dst_auth_status  = tk.StringVar()
-        self._build_endpoint(body, "Dest", self._dst_provider_var,
+        self._build_endpoint(body, "Destination", self._dst_provider_var,
                              self._dst_creds_var, self._dst_folder_var,
                              self._dst_auth_status)
 
