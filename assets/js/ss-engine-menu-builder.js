@@ -128,7 +128,13 @@
             if (dragItem) {
                 if (dragItem.fromPool) {
                     menu.push(cloneItem(dragItem.item));
-                } else if (!dragItem.isChild) {
+                } else if (dragItem.isChild) {
+                    // Child promoted back to top level.
+                    dragItem.parentItem.children.splice(dragItem.fromIndex, 1);
+                    const promoted = cloneItem(dragItem.item);
+                    promoted.children = [];
+                    menu.push(promoted);
+                } else {
                     // Dropped at end — remove from current pos, append.
                     const removed = menu.splice(dragItem.fromIndex, 1)[0];
                     menu.push(removed);
@@ -213,6 +219,7 @@
             <span class="menu-item-type-badge">${escHtml(typeLabel)}</span>
             <div class="menu-item-actions">
                 <button type="button" class="btn-edit" title="Edit label">&#9998;</button>
+                ${isChild ? '<button type="button" class="btn-promote" title="Move to top level">&#8593;</button>' : ''}
                 <button type="button" class="btn-remove" title="Remove">&#215;</button>
             </div>
         `;
@@ -240,6 +247,17 @@
                 if (e.key === 'Escape') { input.value = current; commit(); }
             });
         });
+
+        // Promote child to top level.
+        if (isChild && parentItem) {
+            main.querySelector('.btn-promote').addEventListener('click', () => {
+                parentItem.children.splice(idx, 1);
+                const promoted = cloneItem(item);
+                promoted.children = [];
+                menu.push(promoted);
+                render();
+            });
+        }
 
         // Remove.
         main.querySelector('.btn-remove').addEventListener('click', () => {
