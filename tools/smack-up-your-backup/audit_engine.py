@@ -85,7 +85,7 @@ class AuditEngine:
             host        = self.profile.get("ftp_host", ""),
             user        = self.profile.get("ftp_user", ""),
             password    = self.profile.get("ftp_pass", ""),
-            remote_dir  = self.profile.get("ftp_remote_dir", "/public_html"),
+            remote_dir  = self.profile.get("ftp_remote_dir", "/"),
             port        = int(self.profile.get("ftp_port", 21)),
             use_tls     = bool(self.profile.get("ftp_ssl", True)),
             verify_cert = bool(self.profile.get("ftp_verify_cert", False)),
