@@ -97,41 +97,59 @@ class CloudSyncEngine:
         finally:
             self.on_done(result)
 
-    def _run_inner(self, result: dict) -> None:
+    @staticmethod
+    def _build_client(provider: str, creds_file: str, folder: str, source: bool = False):
+        """Return the appropriate cloud client for the given provider."""
         import cloud_client as cc
+        if provider == "google_drive":
+            return cc.DriveClient(creds_file, folder, readonly=source)
+        if provider == "onedrive":
+            return cc.OneDriveClient(creds_file, folder)
+        raise ValueError(f"Unknown provider: {provider!r}")
 
+    @staticmethod
+    def _provider_label(provider: str) -> str:
+        return {"google_drive": "Google Drive", "onedrive": "OneDrive"}.get(provider, provider)
+
+    def _run_inner(self, result: dict) -> None:
         config = self._config
 
+        src_provider = config.get("source_provider", "google_drive")
+        dst_provider = config.get("dest_provider", "onedrive")
+
         # ── Build clients ──────────────────────────────────────────────
-        self._log("Connecting to Google Drive…")
+        self._log(f"Connecting to {self._provider_label(src_provider)} (source)…")
         try:
-            src = cc.DriveClient(
+            src = self._build_client(
+                src_provider,
                 config["source_credentials_file"],
-                config["source_folder_id"],
-                readonly=True,
+                config.get("source_folder") or config.get("source_folder_id", ""),
+                source=True,
             )
         except Exception as e:
-            result["error"] = f"Google Drive init failed: {e}"
+            result["error"] = f"{self._provider_label(src_provider)} source init failed: {e}"
             self._log(f"✗ {result['error']}")
             return
 
-        self._log("Connecting to OneDrive…")
+        self._log(f"Connecting to {self._provider_label(dst_provider)} (destination)…")
         try:
-            dst = cc.OneDriveClient(
+            dst = self._build_client(
+                dst_provider,
                 config["dest_credentials_file"],
-                config["dest_folder_path"],
+                config.get("dest_folder") or config.get("dest_folder_path", ""),
+                source=False,
             )
         except Exception as e:
-            result["error"] = f"OneDrive init failed: {e}"
+            result["error"] = f"{self._provider_label(dst_provider)} destination init failed: {e}"
             self._log(f"✗ {result['error']}")
             return
 
         # ── List source ────────────────────────────────────────────────
-        self._log("Listing Google Drive source folder…")
+        self._log(f"Listing {self._provider_label(src_provider)} source folder…")
         try:
             src_files = src.list_files()
         except Exception as e:
-            result["error"] = f"Could not list Google Drive folder: {e}"
+            result["error"] = f"Could not list source folder: {e}"
             self._log(f"✗ {result['error']}")
             return
 
