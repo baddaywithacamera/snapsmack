@@ -579,8 +579,8 @@ body::before {
 .square-grid .thumb-link img,
 .cropped-grid .thumb-link img {
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    height: auto;
+    object-fit: initial;
     display: block;
     transition: opacity 0.3s ease;
 }
@@ -749,6 +749,7 @@ body::before {
 .static-transmission #photobox.page-hero .post-image {
     height: auto;
     display: block;
+    opacity: 1 !important; /* landing-only mode skips skin-footer.php so JS fade never runs */
 }
 
 .static-transmission .description {
