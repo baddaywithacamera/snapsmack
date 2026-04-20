@@ -11,16 +11,17 @@
     'use strict';
 
     // ── STATE ────────────────────────────────────────────────────────────
-    var page       = 1;
-    var perPage    = 50;
-    var totalPages = 1;
-    var total      = 0;
-    var loading    = false;
-    var selected   = {};         // id → true
-    var images     = [];         // current page cache
-    var allLoaded  = [];         // all loaded images across pages
+    var page        = 1;
+    var perPage     = 50;
+    var totalPages  = 1;
+    var total       = 0;
+    var loading     = false;
+    var selected    = {};        // id → true
+    var images      = [];        // current page cache
+    var allLoaded   = [];        // all loaded images across pages
     var searchTimer = null;
-    var pickerMode = document.querySelector('[data-gallery-picker]') !== null;
+    var pickerMode  = document.querySelector('[data-gallery-picker]') !== null;
+    var colourActive = '';       // currently active palette filter (hex string or '')
 
     // ── DOM REFS ─────────────────────────────────────────────────────────
     var grid       = document.getElementById('gallery-grid');
@@ -66,6 +67,7 @@
         if (cameraSel && cameraSel.value)  params.push('camera=' + encodeURIComponent(cameraSel.value));
         if (dateFrom && dateFrom.value)    params.push('date_from=' + dateFrom.value);
         if (dateTo && dateTo.value)        params.push('date_to=' + dateTo.value);
+        if (colourActive)                  params.push('colour=' + encodeURIComponent(colourActive));
         return 'smack-gallery.php?' + params.join('&');
     }
 
@@ -323,8 +325,93 @@
             if (cameraSel) cameraSel.value = '';
             if (dateFrom)  dateFrom.value  = '';
             if (dateTo)    dateTo.value    = '';
+            clearPaletteFilter();
             fetchImages(false);
         });
+    }
+
+    // ── PALETTE FILTER ───────────────────────────────────────────────────
+    var paletteRow   = document.getElementById('gallery-palette-row');
+    var paletteClear = document.getElementById('gal-palette-clear');
+    var swatchWrap   = document.getElementById('gallery-palette-swatches');
+
+    function loadPalettes() {
+        if (!swatchWrap) return;
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'smack-gallery.php?palettes=1');
+        xhr.onload = function () {
+            if (xhr.status !== 200) return;
+            var colours;
+            try { colours = JSON.parse(xhr.responseText); } catch (e) { return; }
+            if (!colours || colours.length === 0) return;
+
+            // Sort by hue for a nice rainbow order
+            colours.sort(function (a, b) {
+                return hexToHue(a) - hexToHue(b);
+            });
+
+            for (var i = 0; i < colours.length; i++) {
+                (function (hex) {
+                    var swatch = document.createElement('button');
+                    swatch.type = 'button';
+                    swatch.className = 'gallery-palette-swatch';
+                    swatch.title = hex;
+                    swatch.style.background = hex;
+                    swatch.setAttribute('data-colour', hex);
+                    swatch.addEventListener('click', function () {
+                        if (colourActive === hex) {
+                            clearPaletteFilter();
+                        } else {
+                            setColourFilter(hex);
+                        }
+                        fetchImages(false);
+                    });
+                    swatchWrap.appendChild(swatch);
+                })(colours[i]);
+            }
+
+            if (paletteRow) paletteRow.style.display = 'flex';
+        };
+        xhr.send();
+    }
+
+    function setColourFilter(hex) {
+        colourActive = hex;
+        var swatches = swatchWrap ? swatchWrap.querySelectorAll('.gallery-palette-swatch') : [];
+        for (var i = 0; i < swatches.length; i++) {
+            swatches[i].classList.toggle('active', swatches[i].getAttribute('data-colour') === hex);
+        }
+        if (paletteClear) paletteClear.style.display = 'inline-block';
+    }
+
+    function clearPaletteFilter() {
+        colourActive = '';
+        var swatches = swatchWrap ? swatchWrap.querySelectorAll('.gallery-palette-swatch') : [];
+        for (var i = 0; i < swatches.length; i++) swatches[i].classList.remove('active');
+        if (paletteClear) paletteClear.style.display = 'none';
+    }
+
+    if (paletteClear) {
+        paletteClear.addEventListener('click', function () {
+            clearPaletteFilter();
+            fetchImages(false);
+        });
+    }
+
+    // Utility: convert hex to approximate hue (0-360) for rainbow sort
+    function hexToHue(hex) {
+        var r = parseInt(hex.slice(1, 3), 16) / 255;
+        var g = parseInt(hex.slice(3, 5), 16) / 255;
+        var b = parseInt(hex.slice(5, 7), 16) / 255;
+        var max = Math.max(r, g, b), min = Math.min(r, g, b);
+        var h = 0;
+        if (max !== min) {
+            var d = max - min;
+            if (max === r)      h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+            else if (max === g) h = ((b - r) / d + 2) / 6;
+            else                h = ((r - g) / d + 4) / 6;
+        }
+        return h * 360;
     }
 
     // ── CAMERA LIST POPULATE ─────────────────────────────────────────────
@@ -498,6 +585,35 @@
         }
     }
 
+    // Bulk tag assign
+    var bulkTagsInput = document.getElementById('gal-bulk-tags');
+    var bulkTagsBtn   = document.getElementById('gal-bulk-tags-btn');
+
+    function submitBulkTags() {
+        if (!bulkTagsInput || !bulkTagsInput.value.trim()) return;
+        var ids = Object.keys(selected).map(Number);
+        if (ids.length === 0) return;
+        var fd = new FormData();
+        fd.append('action', 'bulk');
+        fd.append('bulk_op', 'assign_tag');
+        fd.append('bulk_tags', bulkTagsInput.value.trim());
+        for (var i = 0; i < ids.length; i++) fd.append('ids[]', ids[i]);
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'smack-gallery.php');
+        xhr.onload = function () {
+            bulkTagsInput.value = '';
+            fetchImages(false);
+        };
+        xhr.send(fd);
+    }
+
+    if (bulkTagsBtn) bulkTagsBtn.addEventListener('click', submitBulkTags);
+    if (bulkTagsInput) {
+        bulkTagsInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); submitBulkTags(); }
+        });
+    }
+
     // Deselect all button
     var deselectBtn = document.getElementById('gal-deselect');
     if (deselectBtn) deselectBtn.addEventListener('click', deselectAll);
@@ -523,6 +639,7 @@
 
     // ── INIT ─────────────────────────────────────────────────────────────
     loadCameras();
+    loadPalettes();
     fetchImages(false);
 
 })();
