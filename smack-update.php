@@ -1010,8 +1010,11 @@ include 'core/sidebar.php';
         background: rgba(57, 255, 20, 0.03);
     }
     .stage-box h3 { margin-bottom: 16px; }
-    .stage-next-btn { margin-top: 16px; display: inline-block; }
-    .stage-cancel { margin-top: 10px; display: inline-block; margin-left: 12px; }
+    .stage-actions { display: flex; gap: 12px; margin-top: 16px; align-items: stretch; }
+    .stage-next-btn { flex: 1; display: flex; }
+    .stage-next-btn .btn-smack { flex: 1; width: 100%; margin-top: 0; }
+    .stage-cancel { flex: 1; display: flex; }
+    .stage-cancel .btn-smack { flex: 1; width: 100%; margin-top: 0; }
 
     .skin-notify-card {
         display: flex; justify-content: space-between; align-items: center;
@@ -1077,22 +1080,22 @@ include 'core/sidebar.php';
             <span class="label">SIGNING:</span>
             <span class="value"><?php echo SNAPSMACK_SIGNING_ENFORCED ? 'ENFORCED' : 'ADVISORY (PLACEHOLDER KEY)'; ?></span>
         </div>
-        <form method="POST" class="mt-25">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <button type="submit" name="action" value="check" class="btn-smack">CHECK FOR UPDATES NOW</button>
-        </form>
-        <form method="POST" class="mt-10">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <button type="submit" name="action" value="reapply" class="btn-smack"
-                    onclick="return confirm('Reapply v<?php echo htmlspecialchars($installed_version); ?>? This will re-download and re-extract all files.\n\nUse this if a release was packaged incorrectly or files were missed.');"
-                    style="background:#666;">REAPPLY CURRENT VERSION</button>
-        </form>
-        <form method="POST" class="mt-10">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <button type="submit" name="action" value="reset_update_state" class="btn-smack btn-secondary"
-                    onclick="return confirm('Reset all update state and re-sync installed version from constants.php?');"
-                    style="font-size:0.75rem;opacity:0.6;">RESET UPDATE STATE</button>
-        </form>
+        <div style="display:flex;gap:12px;margin-top:25px;">
+            <form method="POST" style="flex:1;">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="check" class="btn-smack" style="width:100%;">CHECK FOR UPDATES NOW</button>
+            </form>
+            <form method="POST" style="flex:1;">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="reapply" class="btn-smack" style="width:100%;background:#666;"
+                        onclick="return confirm('Reapply v<?php echo htmlspecialchars($installed_version); ?>? This will re-download and re-extract all files.\n\nUse this if a release was packaged incorrectly or files were missed.');">REAPPLY CURRENT VERSION</button>
+            </form>
+            <form method="POST" style="flex:1;">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="reset_update_state" class="btn-smack btn-secondary" style="width:100%;font-size:0.75rem;opacity:0.6;"
+                        onclick="return confirm('Reset all update state and re-sync installed version from constants.php?');">RESET UPDATE STATE</button>
+            </form>
+        </div>
     </div>
 
     <!-- REPAIR SIGNING KEY PANEL — shown when a signature failure has just occurred -->
@@ -1412,34 +1415,41 @@ include 'core/sidebar.php';
         </div>
 
         <?php if ($flash_type !== 'error'): ?>
-        <!-- Next stage button -->
-        <form method="POST" class="stage-next-btn">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <?php if ($stage === 'review'): ?>
-                <button type="submit" name="action" value="stage_download" class="btn-smack">APPLY →</button>
-            <?php elseif ($stage === 'downloaded'): ?>
-                <button type="submit" name="action" value="stage_verify" class="btn-smack">VERIFY PACKAGE →</button>
-            <?php elseif ($stage === 'verified'): ?>
-                <button type="submit" name="action" value="stage_backup" class="btn-smack">CREATE BACKUP →</button>
-            <?php elseif ($stage === 'backed_up'): ?>
-                <button type="submit" name="action" value="stage_extract" class="btn-smack">EXTRACT FILES →</button>
-            <?php elseif ($stage === 'extracted'): ?>
-                <button type="submit" name="action" value="stage_migrate" class="btn-smack">RUN MIGRATIONS &amp; FINALIZE →</button>
-            <?php endif; ?>
-        </form>
+        <div class="stage-actions">
+            <form method="POST" class="stage-next-btn">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <?php if ($stage === 'review'): ?>
+                    <button type="submit" name="action" value="stage_download" class="btn-smack">APPLY →</button>
+                <?php elseif ($stage === 'downloaded'): ?>
+                    <button type="submit" name="action" value="stage_verify" class="btn-smack">VERIFY PACKAGE →</button>
+                <?php elseif ($stage === 'verified'): ?>
+                    <button type="submit" name="action" value="stage_backup" class="btn-smack">CREATE BACKUP →</button>
+                <?php elseif ($stage === 'backed_up'): ?>
+                    <button type="submit" name="action" value="stage_extract" class="btn-smack">EXTRACT FILES →</button>
+                <?php elseif ($stage === 'extracted'): ?>
+                    <button type="submit" name="action" value="stage_migrate" class="btn-smack">RUN MIGRATIONS &amp; FINALIZE →</button>
+                <?php endif; ?>
+            </form>
+            <form method="POST" class="stage-cancel">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="cancel_update" class="btn-smack"
+                        onclick="return confirm('Cancel this update and discard the downloaded package?');"
+                        style="opacity:0.5;">
+                    CANCEL UPDATE
+                </button>
+            </form>
+        </div>
         <?php else: ?>
         <div class="update-warning">The update encountered an error at this stage. Cancel to start over.</div>
-        <?php endif; ?>
-
-        <!-- Cancel -->
-        <form method="POST" class="stage-cancel">
+        <form method="POST" class="stage-cancel" style="margin-top:12px;">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
             <button type="submit" name="action" value="cancel_update" class="btn-smack"
                     onclick="return confirm('Cancel this update and discard the downloaded package?');"
-                    style="opacity:0.5;">
+                    style="opacity:0.5;width:100%;">
                 CANCEL UPDATE
             </button>
         </form>
+        <?php endif; ?>
     </div>
 
     <?php elseif (!empty($cached_result['core_update'])): ?>
