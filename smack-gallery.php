@@ -260,6 +260,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk'
             }
             break;
 
+        case 'assign_tag':
+            require_once 'core/snap-tags.php';
+            $raw_tags = trim($_POST['bulk_tags'] ?? '');
+            if ($raw_tags !== '') {
+                $tag_list = array_filter(array_map('trim', explode(',', $raw_tags)));
+                foreach ($tag_list as $tag_text) {
+                    $tag_id = snap_tag_find_or_create($pdo, $tag_text);
+                    foreach ($ids as $img_id) {
+                        $pdo->prepare("INSERT IGNORE INTO snap_image_tags (image_id, tag_id) VALUES (?, ?)")
+                            ->execute([$img_id, $tag_id]);
+                    }
+                }
+                snap_tags_recount($pdo);
+            }
+            break;
+
         case 'delete':
             foreach ($ids as $img_id) {
                 $stmt = $pdo->prepare("SELECT img_file FROM snap_images WHERE id = ?");
@@ -293,6 +309,25 @@ if (isset($_GET['cameras']) && $_GET['cameras'] === '1') {
     exit;
 }
 
+// ── AJAX: PALETTE COLOUR LIST ─────────────────────────────────────────────────
+// Returns all distinct hex colours found across every image's stored palette.
+// Used to populate the colour swatch filter row in the gallery UI.
+if (isset($_GET['palettes']) && $_GET['palettes'] === '1') {
+    header('Content-Type: application/json');
+    $rows = $pdo->query("SELECT img_display_options FROM snap_images WHERE img_display_options IS NOT NULL AND img_display_options NOT IN ('{}', '')")->fetchAll(PDO::FETCH_COLUMN);
+    $colours = [];
+    foreach ($rows as $raw) {
+        $display = json_decode($raw, true) ?: [];
+        foreach ($display['palette'] ?? [] as $hex) {
+            if (is_string($hex) && preg_match('/^#[0-9a-fA-F]{6}$/', $hex)) {
+                $colours[$hex] = true;
+            }
+        }
+    }
+    echo json_encode(array_keys($colours));
+    exit;
+}
+
 // ── PAGE RENDER ──────────────────────────────────────────────────────────────
 // Fetch categories and albums for filter dropdowns
 $categories = $pdo->query("SELECT id, cat_name FROM snap_categories ORDER BY cat_name")->fetchAll(PDO::FETCH_ASSOC);
@@ -304,7 +339,7 @@ include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
-<link rel="stylesheet" href="assets/css/ss-engine-gallery.css?v=079L">
+<link rel="stylesheet" href="assets/css/ss-engine-gallery.css?v=079L1">
 
 <div class="main">
     <div class="header-row header-row--ruled">
@@ -347,6 +382,13 @@ include 'core/sidebar.php';
             <button type="button" id="gal-clear" class="btn-smack btn-smack--dim" title="Clear all filters">Clear</button>
         </div>
 
+        <!-- Colour palette filter (populated dynamically; hidden when no palettes exist) -->
+        <div class="gallery-palette-row" id="gallery-palette-row" style="display:none;">
+            <span class="gallery-palette-label">Colour</span>
+            <div class="gallery-palette-swatches" id="gallery-palette-swatches"></div>
+            <button type="button" class="gallery-palette-clear" id="gal-palette-clear" title="Clear colour filter" style="display:none;">✕</button>
+        </div>
+
         <!-- Bulk actions bar (hidden until selection) -->
         <div class="gallery-bulk-bar" id="gallery-bulk-bar" style="display:none;">
             <span id="gal-sel-count">0</span> selected
@@ -364,6 +406,8 @@ include 'core/sidebar.php';
                 <option value="<?php echo $a['id']; ?>"><?php echo htmlspecialchars($a['album_name']); ?></option>
                 <?php endforeach; ?>
             </select>
+            <input type="text" id="gal-bulk-tags" class="gallery-input gallery-select--sm" placeholder="+ Tags (comma-sep)" autocomplete="off">
+            <button type="button" class="btn-smack btn-smack--dim" id="gal-bulk-tags-btn">Tag</button>
             <button type="button" class="btn-smack btn-smack--danger" data-bulk="delete">Delete</button>
             <button type="button" class="btn-smack btn-smack--dim" id="gal-deselect">Deselect All</button>
         </div>
@@ -429,6 +473,6 @@ include 'core/sidebar.php';
     </div>
 </div>
 
-<script src="assets/js/ss-engine-gallery.js?v=079L"></script>
+<script src="assets/js/ss-engine-gallery.js?v=079L1"></script>
 
 <?php include 'core/admin-footer.php'; ?>

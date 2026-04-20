@@ -70,6 +70,67 @@
     border-color: var(--accent, #7aad5a);
 }
 
+/* ── PALETTE FILTER ROW ──────────────────────────────────────────────── */
+.gallery-palette-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 6px 0;
+    border-top: 1px solid var(--border, #3a3a3a);
+}
+
+.gallery-palette-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--dim, #666);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.gallery-palette-swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+}
+
+.gallery-palette-swatch {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.12s, border-color 0.12s;
+    outline: none;
+    flex-shrink: 0;
+}
+.gallery-palette-swatch:hover {
+    transform: scale(1.25);
+    border-color: rgba(255,255,255,0.4);
+}
+.gallery-palette-swatch.active {
+    border-color: var(--accent, #7aad5a);
+    transform: scale(1.25);
+    box-shadow: 0 0 0 2px var(--accent, #7aad5a);
+}
+
+.gallery-palette-clear {
+    background: none;
+    border: none;
+    color: var(--dim, #666);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+}
+.gallery-palette-clear:hover {
+    color: var(--text, #ccc);
+}
+
 /* ── BULK BAR ────────────────────────────────────────────────────────── */
 .gallery-bulk-bar {
     display: flex;
