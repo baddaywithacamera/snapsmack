@@ -420,6 +420,11 @@ body.landing-only .ip-header-inside,
     opacity: var(--ip-ink-opacity, 0.65);
 }
 
+#system-footer a {
+    color: inherit !important;
+    text-decoration: none !important;
+}
+
 /* ==========================================================================
    TECHNICAL SPECIFICATIONS (EXIF)
    ========================================================================= */
