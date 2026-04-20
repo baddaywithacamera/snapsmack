@@ -17,6 +17,11 @@
 if (!window._ssImageFadeLoaded) {
 window._ssImageFadeLoaded = true;
 
+// Signal to CSS that the fade engine is active.
+// CSS gates opacity:0 on this class so images are visible by default
+// if this script never loads (old server, landing-only mode, etc.).
+document.documentElement.classList.add('ss-fade-active');
+
 function _ssImageFadeInit() {
     const imageSelectorList = [
         '.post-image',

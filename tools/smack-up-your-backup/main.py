@@ -5,7 +5,7 @@ Dark UI palette, tkinter, PyInstaller single-exe build chain.
 Same visual family as Smack Your Batch Up.
 """
 
-BUILD_VERSION = "0.2.6"
+BUILD_VERSION = "0.2.7"
 
 import os
 import queue
@@ -3623,6 +3623,90 @@ class _SyncJobDialog(tk.Toplevel):
         ok, msg = auth_fn(creds_var.get())
         status_var.set(msg)
 
+    def _box_credentials_wizard(self, creds_var):
+        """Prompt for Box client_id + client_secret, save a credentials JSON, fill path."""
+        import json, os
+
+        dlg = tk.Toplevel(self)
+        dlg.title("Box Credentials")
+        dlg.configure(bg=BG_MID)
+        dlg.resizable(False, False)
+        dlg.grab_set()
+        dlg.focus_force()
+
+        PAD = 14
+        body = tk.Frame(dlg, bg=BG_MID, padx=PAD, pady=PAD)
+        body.pack(fill="both", expand=True)
+
+        tk.Label(body, text="Get these from developer.box.com → your app → Configuration.",
+                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL,
+                 wraplength=360, justify="left").pack(anchor="w", pady=(0, 10))
+
+        def _field(lbl_text):
+            row = tk.Frame(body, bg=BG_MID)
+            row.pack(fill="x", pady=3)
+            tk.Label(row, text=lbl_text, bg=BG_MID, fg=FG_DIM,
+                     font=FONT_BODY, width=14, anchor="w").pack(side="left")
+            var = tk.StringVar()
+            tk.Entry(row, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
+                     insertbackground=ACCENT, relief="flat",
+                     font=FONT_MONO, width=38).pack(side="left")
+            return var
+
+        client_id_var     = _field("Client ID:")
+        client_secret_var = _field("Client secret:")
+
+        # Save-to path
+        path_row = tk.Frame(body, bg=BG_MID)
+        path_row.pack(fill="x", pady=3)
+        tk.Label(path_row, text="Save as:", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY, width=14, anchor="w").pack(side="left")
+        path_var = tk.StringVar(value=os.path.join(
+            os.path.expanduser("~"), "box_credentials.json"))
+        tk.Entry(path_row, textvariable=path_var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=38).pack(side="left")
+        tk.Button(path_row, text="…", bg=BG_CARD, fg=FG_MAIN, relief="flat",
+                  font=FONT_BODY, padx=6, pady=1,
+                  command=lambda: path_var.set(
+                      filedialog.asksaveasfilename(
+                          defaultextension=".json",
+                          filetypes=[("JSON files", "*.json")],
+                          initialfile="box_credentials.json",
+                      ) or path_var.get()
+                  )).pack(side="left", padx=(4, 0))
+
+        status_var = tk.StringVar()
+        tk.Label(body, textvariable=status_var, bg=BG_MID, fg=ACCENT,
+                 font=FONT_SMALL).pack(anchor="w", pady=(6, 0))
+
+        def _save():
+            cid = client_id_var.get().strip()
+            sec = client_secret_var.get().strip()
+            pth = path_var.get().strip()
+            if not cid or not sec:
+                status_var.set("Both fields are required.")
+                return
+            if not pth:
+                status_var.set("Choose a save location.")
+                return
+            try:
+                with open(pth, "w") as fh:
+                    json.dump({"client_id": cid, "client_secret": sec}, fh, indent=2)
+                creds_var.set(pth)
+                dlg.destroy()
+            except Exception as exc:
+                status_var.set(f"Could not save: {exc}")
+
+        btn_row = tk.Frame(body, bg=BG_MID)
+        btn_row.pack(fill="x", pady=(12, 0))
+        tk.Button(btn_row, text="Save", bg=ACCENT, fg="#fff", relief="flat",
+                  font=FONT_BODY, padx=14, pady=4,
+                  command=_save).pack(side="left")
+        tk.Button(btn_row, text="Cancel", bg=BG_CARD, fg=FG_MAIN, relief="flat",
+                  font=FONT_BODY, padx=10, pady=4,
+                  command=dlg.destroy).pack(side="left", padx=(8, 0))
+
     # ------------------------------------------------------------------
     # Provider section builder — reused for source and dest
     # ------------------------------------------------------------------
@@ -3647,7 +3731,7 @@ class _SyncJobDialog(tk.Toplevel):
                 command=lambda: self._refresh_endpoint(
                     label, provider_var, creds_var, folder_var,
                     auth_status_var, header, creds_lbl, folder_lbl,
-                    folder_hint, auth_btn,
+                    folder_hint, auth_btn, browse_btn, box_btn,
                 ),
             ).pack(side="left", padx=(0, 12))
 
@@ -3660,9 +3744,14 @@ class _SyncJobDialog(tk.Toplevel):
         tk.Entry(creds_row, textvariable=creds_var, bg=BG_INPUT, fg=FG_MAIN,
                  insertbackground=ACCENT, relief="flat",
                  font=FONT_MONO, width=36).pack(side="left")
-        tk.Button(creds_row, text="…", bg=BG_CARD, fg=FG_MAIN, relief="flat",
-                  font=FONT_BODY, padx=6, pady=1,
-                  command=lambda: self._browse_file(creds_var)).pack(side="left", padx=(4, 0))
+        browse_btn = tk.Button(creds_row, text="…", bg=BG_CARD, fg=FG_MAIN, relief="flat",
+                               font=FONT_BODY, padx=6, pady=1,
+                               command=lambda: self._browse_file(creds_var))
+        browse_btn.pack(side="left", padx=(4, 0))
+        box_btn = tk.Button(creds_row, text="Create…", bg=BG_CARD, fg=FG_MAIN, relief="flat",
+                            font=FONT_BODY, padx=6, pady=1,
+                            command=lambda: self._box_credentials_wizard(creds_var))
+        # box_btn starts hidden; shown when Box provider is selected
 
         # Folder
         folder_row = tk.Frame(parent, bg=BG_MID)
@@ -3689,14 +3778,23 @@ class _SyncJobDialog(tk.Toplevel):
         # Initialise labels/hints for current provider value
         self._refresh_endpoint(label, provider_var, creds_var, folder_var,
                                auth_status_var, header, creds_lbl, folder_lbl,
-                               folder_hint, auth_btn)
+                               folder_hint, auth_btn, browse_btn, box_btn)
 
     def _refresh_endpoint(self, label, provider_var, creds_var, folder_var,
                           auth_status_var, header, creds_lbl, folder_lbl,
-                          folder_hint, auth_btn):
+                          folder_hint, auth_btn, browse_btn=None, box_btn=None):
         """Update labels, hints and auth button for current provider selection."""
         p = provider_var.get()
         is_src = (label == "Source")
+
+        # Toggle browse vs Box wizard button
+        if browse_btn is not None and box_btn is not None:
+            if p == "box":
+                browse_btn.pack_forget()
+                box_btn.pack(side="left", padx=(4, 0))
+            else:
+                box_btn.pack_forget()
+                browse_btn.pack(side="left", padx=(4, 0))
 
         if p == "google_drive":
             header.configure(text=f"── {label}: Google Drive {'─' * 20}")
@@ -3723,7 +3821,7 @@ class _SyncJobDialog(tk.Toplevel):
             folder_lbl.configure(text="Box folder ID:")
             folder_hint.configure(
                 text='  Box folder ID from URL: app.box.com/folder/FOLDER_ID  (0 = root)'
-                '\n  Credentials JSON: {"client_id": "...", "client_secret": "..."}'
+                '\n  No JSON file to download — use Create… to build it from client_id / client_secret'
             )
             auth_btn.configure(
                 text="Authenticate with Box",
