@@ -69,14 +69,57 @@
         post({ mode: 'spellcheck', selected: selected, content: content }, function (res) {
             setWorking(btnSpell, false);
             if (!res.ok) { alert('SP/GR: ' + res.error); return; }
-            showSpellResult(res.text, selected !== '' ? 'selection' : 'full');
+            var original = selected !== '' ? selected : content;
+            showSpellResult(original, res.text, selected !== '' ? 'selection' : 'full');
         });
     }
 
-    function showSpellResult(corrected, scope) {
-        // Build a simple overlay with the corrected text and a replace button
+    // Word-level LCS diff. Returns array of {type:'eq'|'del'|'ins', val:string}.
+    function computeDiff(a, b) {
+        var tokA = a.match(/\S+|\s+/g) || [];
+        var tokB = b.match(/\S+|\s+/g) || [];
+        var m = tokA.length, n = tokB.length;
+        // DP table — use flat array for speed
+        var dp = new Array((m + 1) * (n + 1)).fill(0);
+        var W = n + 1;
+        for (var i = 1; i <= m; i++) {
+            for (var j = 1; j <= n; j++) {
+                dp[i * W + j] = tokA[i-1] === tokB[j-1]
+                    ? dp[(i-1) * W + (j-1)] + 1
+                    : Math.max(dp[(i-1) * W + j], dp[i * W + (j-1)]);
+            }
+        }
+        var out = [], ci = m, cj = n;
+        while (ci > 0 || cj > 0) {
+            if (ci > 0 && cj > 0 && tokA[ci-1] === tokB[cj-1]) {
+                out.unshift({ type: 'eq',  val: tokA[ci-1] }); ci--; cj--;
+            } else if (cj > 0 && (ci === 0 || dp[ci * W + (cj-1)] >= dp[(ci-1) * W + cj])) {
+                out.unshift({ type: 'ins', val: tokB[cj-1] }); cj--;
+            } else {
+                out.unshift({ type: 'del', val: tokA[ci-1] }); ci--;
+            }
+        }
+        return out;
+    }
+
+    function renderDiff(diff) {
+        return diff.map(function (tok) {
+            var v = escHtml(tok.val);
+            if (tok.type === 'del') return '<del style="background:rgba(220,60,60,0.25);color:#f88;text-decoration:line-through;">' + v + '</del>';
+            if (tok.type === 'ins') return '<ins style="background:rgba(60,200,80,0.2);color:#8f8;text-decoration:none;">' + v + '</ins>';
+            return v;
+        }).join('');
+    }
+
+    function showSpellResult(original, corrected, scope) {
         var overlay = document.getElementById('ss-spell-overlay');
         if (overlay) overlay.remove();
+
+        var diff    = computeDiff(original, corrected);
+        var hasChanges = diff.some(function (t) { return t.type !== 'eq'; });
+        var diffHtml = hasChanges
+            ? renderDiff(diff)
+            : '<span style="opacity:0.5;font-style:italic;">No changes — looks good already.</span>';
 
         overlay = document.createElement('div');
         overlay.id = 'ss-spell-overlay';
@@ -87,21 +130,31 @@
         var box = document.createElement('div');
         box.style.cssText =
             'background:var(--bg-secondary,#1e1e1e);border:1px solid var(--border-color,#333);' +
-            'padding:32px 36px;max-width:600px;width:90%;border-radius:4px;' +
-            'font-family:inherit;box-shadow:0 16px 40px rgba(0,0,0,0.8);';
+            'padding:28px 32px;max-width:660px;width:92%;border-radius:4px;' +
+            'font-family:inherit;box-shadow:0 16px 40px rgba(0,0,0,0.8);' +
+            'max-height:85vh;overflow-y:auto;';
 
-        var label = scope === 'selection' ? 'CORRECTED SELECTION' : 'CORRECTED TEXT';
+        var label = scope === 'selection' ? 'SELECTION' : 'TEXT';
 
         box.innerHTML =
-            '<h4 style="margin:0 0 16px;letter-spacing:2px;font-size:0.8rem;' +
-                'color:var(--color-accent,#e05252);">' + label + '</h4>' +
-            '<textarea id="ss-spell-result" style="width:100%;min-height:140px;' +
+            '<h4 style="margin:0 0 4px;letter-spacing:2px;font-size:0.8rem;' +
+                'color:var(--color-accent,#e05252);">SP/GR — CHANGES</h4>' +
+            '<p style="margin:0 0 10px;font-size:0.7rem;opacity:0.5;letter-spacing:1px;">' +
+                '<del style="color:#f88;">REMOVED</del> &nbsp; ' +
+                '<ins style="color:#8f8;text-decoration:none;">ADDED</ins></p>' +
+            '<div style="background:var(--bg-primary,#111);border:1px solid var(--border-color,#444);' +
+                'padding:12px;font-size:0.88rem;line-height:1.6;color:var(--text-primary,#ccc);' +
+                'white-space:pre-wrap;word-break:break-word;margin-bottom:16px;">' +
+                diffHtml +
+            '</div>' +
+            '<h4 style="margin:0 0 8px;letter-spacing:2px;font-size:0.75rem;opacity:0.6;">CORRECTED ' + label + '</h4>' +
+            '<textarea id="ss-spell-result" style="width:100%;min-height:100px;' +
                 'font-family:inherit;font-size:0.9rem;background:var(--bg-primary,#111);' +
                 'color:var(--text-primary,#ccc);border:1px solid var(--border-color,#444);' +
                 'padding:12px;resize:vertical;box-sizing:border-box;">' +
                 escHtml(corrected) +
             '</textarea>' +
-            '<div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end;">' +
+            '<div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end;">' +
                 '<button type="button" id="ss-spell-cancel" style="' +
                     'background:transparent;border:1px solid var(--border-color,#555);' +
                     'color:var(--text-secondary,#aaa);padding:8px 20px;cursor:pointer;' +
@@ -109,7 +162,9 @@
                 '<button type="button" id="ss-spell-apply" style="' +
                     'background:var(--color-accent,#e05252);border:none;color:#fff;' +
                     'padding:8px 20px;cursor:pointer;font-family:inherit;' +
-                    'font-size:0.8rem;letter-spacing:1px;">REPLACE</button>' +
+                    'font-size:0.8rem;letter-spacing:1px;"' +
+                    (hasChanges ? '' : ' disabled style="background:var(--color-accent,#e05252);border:none;color:#fff;padding:8px 20px;cursor:not-allowed;opacity:0.4;font-family:inherit;font-size:0.8rem;letter-spacing:1px;"') +
+                    '>REPLACE</button>' +
             '</div>';
 
         overlay.appendChild(box);
@@ -119,6 +174,7 @@
         overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
 
         document.getElementById('ss-spell-apply').onclick = function () {
+            if (!hasChanges) return;
             var result = document.getElementById('ss-spell-result').value;
             if (scope === 'selection') {
                 var s = desc.selectionStart, e2 = desc.selectionEnd;
