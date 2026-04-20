@@ -1555,17 +1555,75 @@ include 'core/sidebar.php';
             If this server cannot reach snapsmack.ca, download the update zip on your own machine and upload it here.
             The same backup, verification, and extraction pipeline will run.
         </p>
-        <form method="POST" enctype="multipart/form-data">
+        <form method="POST" enctype="multipart/form-data" id="upload-zip-form">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
             <div class="lens-input-wrapper">
-                <label>UPDATE PACKAGE (.zip)</label>
-                <input type="file" name="update_zip" accept=".zip" required style="padding: 8px;">
+                <label>UPDATE PACKAGE (.ZIP)</label>
+                <input type="file" name="update_zip" id="update_zip_input" accept=".zip" required
+                       style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;">
+                <div id="zip-drop-zone" style="
+                    border:2px dashed var(--border-color,#444);
+                    padding:20px 16px;
+                    text-align:center;
+                    cursor:pointer;
+                    font-size:0.8rem;
+                    letter-spacing:1px;
+                    color:var(--text-secondary,#888);
+                    transition:border-color 0.2s,color 0.2s;
+                    user-select:none;">
+                    <span id="zip-drop-label">CLICK TO SELECT .ZIP — OR DRAG &amp; DROP</span>
+                </div>
             </div>
             <button type="submit" name="action" value="upload_zip" class="btn-smack mt-15"
                     onclick="return confirm('Apply update from uploaded zip? A backup will be created first.');">
                 UPLOAD &amp; APPLY
             </button>
         </form>
+        <script>
+        (function(){
+            var zone  = document.getElementById('zip-drop-zone');
+            var input = document.getElementById('update_zip_input');
+            var label = document.getElementById('zip-drop-label');
+            var accentColor = getComputedStyle(document.documentElement).getPropertyValue('--color-accent') || '#3ff';
+
+            zone.addEventListener('click', function(){ input.click(); });
+
+            input.addEventListener('change', function(){
+                label.textContent = input.files[0] ? input.files[0].name : 'CLICK TO SELECT .ZIP — OR DRAG & DROP';
+                zone.style.borderColor = input.files[0] ? accentColor : '';
+                zone.style.color       = input.files[0] ? accentColor : '';
+            });
+
+            zone.addEventListener('dragover', function(e){
+                e.preventDefault();
+                zone.style.borderColor = accentColor;
+                zone.style.color       = accentColor;
+            });
+            zone.addEventListener('dragleave', function(){
+                if (!input.files[0]) {
+                    zone.style.borderColor = '';
+                    zone.style.color       = '';
+                }
+            });
+            zone.addEventListener('drop', function(e){
+                e.preventDefault();
+                var file = e.dataTransfer.files[0];
+                if (file && file.name.match(/\.zip$/i)) {
+                    // Assign dropped file to the input via DataTransfer
+                    var dt = new DataTransfer();
+                    dt.items.add(file);
+                    input.files = dt.files;
+                    label.textContent    = file.name;
+                    zone.style.borderColor = accentColor;
+                    zone.style.color       = accentColor;
+                } else {
+                    label.textContent = 'ZIP FILES ONLY.';
+                    zone.style.borderColor = '#e05252';
+                    zone.style.color       = '#e05252';
+                }
+            });
+        })();
+        </script>
     </div>
 
     <!-- SKIN NOTIFICATIONS -->
