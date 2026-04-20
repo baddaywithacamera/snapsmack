@@ -213,28 +213,27 @@ body::before {
     box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 2px 10px rgba(0,0,0,0.3);
     cursor: zoom-in !important;
     outline: none !important;
-    opacity: 0;
-    transition: opacity 0.4s ease-in-out;
-}
-
-.tg-image[style*="opacity: 1"] {
-    opacity: 1 !important;
 }
 
 /* ==========================================================================
    IMAGE FADE-IN (Prevent layout jumps during image load)
+   Only applied when ss-engine-image-fade-load.js is active — it adds
+   .ss-fade-active to <html> on load. Images are visible by default so
+   they never disappear if the script is absent (old server, landing-only, etc.).
    ========================================================================= */
 
-.post-image,
-.pg-post-image,
-.inline-asset:not(.snap-inline-frame) {
+.ss-fade-active .tg-image,
+.ss-fade-active .post-image,
+.ss-fade-active .pg-post-image,
+.ss-fade-active .inline-asset:not(.snap-inline-frame) {
     opacity: 0;
     transition: opacity 0.4s ease-in-out;
 }
 
-.post-image[style*="opacity: 1"],
-.pg-post-image[style*="opacity: 1"],
-.inline-asset[style*="opacity: 1"] {
+.ss-fade-active .tg-image[style*="opacity: 1"],
+.ss-fade-active .post-image[style*="opacity: 1"],
+.ss-fade-active .pg-post-image[style*="opacity: 1"],
+.ss-fade-active .inline-asset[style*="opacity: 1"] {
     opacity: 1 !important;
 }
 
@@ -749,7 +748,6 @@ body::before {
 .static-transmission #photobox.page-hero .post-image {
     height: auto;
     display: block;
-    opacity: 1 !important; /* landing-only mode skips skin-footer.php so JS fade never runs */
 }
 
 .static-transmission .description {

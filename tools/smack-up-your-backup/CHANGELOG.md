@@ -2,6 +2,13 @@
 
 ---
 
+## 0.2.7 — 2026-04-19
+
+### Fixed
+- **Box credentials UX** — Box does not provide a downloadable JSON file like Google does. When Box is selected as a provider, the browse (…) button is now replaced with a **Create…** button that opens a small dialog. Paste in the Client ID and Client Secret from developer.box.com → your app → Configuration, pick a save location, and SUYB writes the `{"client_id": "...", "client_secret": "..."}` JSON file and fills in the path automatically.
+
+---
+
 ## 0.2.6 — 2026-04-18
 
 ### Added
