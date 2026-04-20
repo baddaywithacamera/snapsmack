@@ -149,6 +149,19 @@ if (!empty($settings['favicon_url'])):
     }
 </style>
 
+<!-- Add ss-fade-active to <html> before CSS renders so images start invisible
+     and fade in once. Without this, the class is added by JS at end of <body>,
+     images flash visible then disappear then fade — causing the page bounce. -->
+<script>document.documentElement.classList.add('ss-fade-active');</script>
+
+<!-- Preconnect to Google Fonts so font files warm up before the stylesheet
+     request arrives, cutting FOUT from ~500ms to near-instant. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<?php if (!empty($settings['google_fonts_head_link'])): ?>
+<?php echo $settings['google_fonts_head_link']; ?>
+<?php endif; ?>
+
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css">
 
 <?php
@@ -176,7 +189,7 @@ if (file_exists($inventory_path)) {
             echo "  src: url('{$file_url}') format('{$format}');\n";
             echo "  font-weight: {$weight};\n";
             echo "  font-style: {$style};\n";
-            echo "  font-display: swap;\n";
+            echo "  font-display: fallback;\n";
             echo "}\n";
         }
         echo '</style>' . "\n";

@@ -17,10 +17,9 @@
 if (!window._ssImageFadeLoaded) {
 window._ssImageFadeLoaded = true;
 
-// Signal to CSS that the fade engine is active.
-// CSS gates opacity:0 on this class so images are visible by default
-// if this script never loads (old server, landing-only mode, etc.).
-document.documentElement.classList.add('ss-fade-active');
+// Note: ss-fade-active is added to <html> by meta.php inline script so the
+// CSS opacity:0 rules apply before first paint. This script handles the
+// actual fade-in once images load.
 
 function _ssImageFadeInit() {
     const imageSelectorList = [
