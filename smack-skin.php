@@ -306,8 +306,19 @@ if (isset($_POST['save_skin_settings'])) {
             foreach (array_keys($google_needed) as $fam) {
                 $families[] = str_replace(' ', '+', $fam) . ':wght@400;700';
             }
-            $gf_url = 'https://fonts.googleapis.com/css2?' . implode('&', array_map(fn($f) => "family={$f}", $families)) . '&display=swap';
-            $injection .= '<link rel="stylesheet" href="' . htmlspecialchars($gf_url) . '">' . "\n";
+            // display=optional: font used only if immediately available (cached).
+            // No mid-render swap ever. On first load the system fallback is used;
+            // on all subsequent loads the custom font is cached and renders instantly.
+            $gf_url = 'https://fonts.googleapis.com/css2?' . implode('&', array_map(fn($f) => "family={$f}", $families)) . '&display=optional';
+            // Store in head_injection so meta.php emits this as a <link> in <head>,
+            // not the footer. Google Fonts in the footer loads after first paint and
+            // causes a visible font swap (FOUT). In <head> it loads alongside CSS.
+            $pdo->prepare("REPLACE INTO snap_settings (setting_key, setting_val) VALUES ('google_fonts_head_link', ?)")
+                ->execute(['<link rel="stylesheet" href="' . htmlspecialchars($gf_url) . '">' . "\n"]);
+        } else {
+            // No Google Fonts needed — clear any previously stored link.
+            $pdo->prepare("REPLACE INTO snap_settings (setting_key, setting_val) VALUES ('google_fonts_head_link', '')")
+                ->execute([]);
         }
     }
 
