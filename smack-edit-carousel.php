@@ -26,6 +26,7 @@
 require_once 'core/auth.php';
 require_once 'core/palette-extract.php';
 require_once 'core/snap-tags.php';
+require_once 'core/ai-provider.php';
 
 // $id is already validated by smack-edit.php before this file is included.
 // Resolve image ID → post ID.
@@ -567,6 +568,11 @@ include 'core/sidebar.php';
                                 <span class="sc-sep"></span>
                                 <button type="button" class="sc-btn" data-action="ul">UL</button>
                                 <button type="button" class="sc-btn" data-action="ol">OL</button>
+                                <?php if (snap_ai_configured()): ?>
+                                <span class="sc-sep"></span>
+                                <button type="button" class="sc-btn sc-btn-ai" id="btn-spellcheck" title="Check spelling and grammar with AI">SP/GR</button>
+                                <button type="button" class="sc-btn sc-btn-ai" id="btn-ai-assist" title="AI Writing Assistant">AI ASSIST</button>
+                                <?php endif; ?>
                             </div>
                         </div>
                         <textarea id="desc" name="desc" placeholder="Post-level description. EXIF notes go per image below."><?php echo htmlspecialchars($post['description']); ?></textarea>
@@ -855,4 +861,27 @@ window.addEventListener('DOMContentLoaded', function () {
 </script>
 <link rel="stylesheet" href="assets/css/ss-engine-photo-editor.css?v=079L">
 <script src="assets/js/ss-engine-photo-editor.js?v=079L"></script>
+<?php if (snap_ai_configured()): ?>
+<div id="ai-assist-overlay" class="ai-assist-overlay" style="display:none;" aria-modal="true" role="dialog" aria-label="AI Writing Assistant">
+    <div id="ai-assist-modal" class="ai-assist-modal">
+        <div class="ai-assist-header">
+            <span>AI WRITING ASSISTANT</span>
+            <button type="button" id="ai-assist-close" class="ai-assist-close-btn">✕</button>
+        </div>
+        <div id="ai-assist-messages" class="ai-assist-messages"></div>
+        <div class="ai-assist-input-row">
+            <input type="text" id="ai-assist-input"
+                   placeholder="Rephrase this, define a word, improve the opening paragraph…">
+            <button type="button" id="ai-assist-send" class="sc-btn">SEND</button>
+        </div>
+        <div class="ai-assist-actions">
+            <button type="button" id="ai-assist-dump" class="sc-btn" style="display:none;">
+                ↓ DUMP TO EDITOR
+            </button>
+            <span class="ai-assist-hint">Or select text in the response and copy/paste manually.</span>
+        </div>
+    </div>
+</div>
+<script src="assets/js/ss-engine-ai.js?v=<?php echo time(); ?>"></script>
+<?php endif; ?>
 <?php include 'core/admin-footer.php'; ?>

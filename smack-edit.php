@@ -9,6 +9,7 @@
 require_once 'core/auth.php';
 require_once 'core/snap-tags.php';
 require_once 'core/skin-settings.php';
+require_once 'core/ai-provider.php';
 
 // Load and apply skin-aware settings early so the frame save handler and
 // form rendering both use the actual skin defaults, not hardcoded fallbacks.
@@ -315,6 +316,11 @@ include 'core/sidebar.php';
                                 <button type="button" class="sc-btn" data-action="dropcap" title="Dropcap">DROP</button>
                                 <button type="button" class="sc-btn" data-action="spacer" title="Vertical Spacer (1-100px)">SPACER</button>
                                 <button type="button" class="sc-btn sc-btn-preview" data-action="preview" title="Preview in New Tab">PREVIEW</button>
+                                <?php if (snap_ai_configured()): ?>
+                                <span class="sc-sep"></span>
+                                <button type="button" class="sc-btn sc-btn-ai" id="btn-spellcheck" title="Check spelling and grammar with AI">SP/GR</button>
+                                <button type="button" class="sc-btn sc-btn-ai" id="btn-ai-assist" title="AI Writing Assistant">AI ASSIST</button>
+                                <?php endif; ?>
                             </div>
                         </div>
                         <textarea id="desc" name="desc" placeholder="Plain text. Blank lines become paragraph breaks."><?php echo htmlspecialchars($post['img_description']); ?></textarea>
@@ -561,4 +567,27 @@ document.querySelectorAll('.palette-swatches .swatch').forEach(s => {
 </script>
 <link rel="stylesheet" href="assets/css/ss-engine-photo-editor.css?v=079L">
 <script src="assets/js/ss-engine-photo-editor.js?v=079L"></script>
+<?php if (snap_ai_configured()): ?>
+<div id="ai-assist-overlay" class="ai-assist-overlay" style="display:none;" aria-modal="true" role="dialog" aria-label="AI Writing Assistant">
+    <div id="ai-assist-modal" class="ai-assist-modal">
+        <div class="ai-assist-header">
+            <span>AI WRITING ASSISTANT</span>
+            <button type="button" id="ai-assist-close" class="ai-assist-close-btn">✕</button>
+        </div>
+        <div id="ai-assist-messages" class="ai-assist-messages"></div>
+        <div class="ai-assist-input-row">
+            <input type="text" id="ai-assist-input"
+                   placeholder="Rephrase this, define a word, improve the opening paragraph…">
+            <button type="button" id="ai-assist-send" class="sc-btn">SEND</button>
+        </div>
+        <div class="ai-assist-actions">
+            <button type="button" id="ai-assist-dump" class="sc-btn" style="display:none;">
+                ↓ DUMP TO EDITOR
+            </button>
+            <span class="ai-assist-hint">Or select text in the response and copy/paste manually.</span>
+        </div>
+    </div>
+</div>
+<script src="assets/js/ss-engine-ai.js?v=<?php echo time(); ?>"></script>
+<?php endif; ?>
 <?php include 'core/admin-footer.php'; ?>
