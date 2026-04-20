@@ -189,7 +189,7 @@ if (file_exists($inventory_path)) {
             echo "  src: url('{$file_url}') format('{$format}');\n";
             echo "  font-weight: {$weight};\n";
             echo "  font-style: {$style};\n";
-            echo "  font-display: fallback;\n";
+            echo "  font-display: optional;\n";
             echo "}\n";
         }
         echo '</style>' . "\n";
