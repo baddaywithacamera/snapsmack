@@ -852,6 +852,10 @@ submission is silently rejected — the user sees a success message but the comm
         match types (exact word, substring, regex) and two severity levels (flag for review, or
         silent reject). Silent rejection blocks the submission without alerting the submitter.</li>
     <li><strong>Add Ban Tab</strong> — issue a new ban by fingerprint, IP, or email address.</li>
+    <li><strong>Shared Bans Tab</strong> <em>(hub installs only)</em> — view the consolidated ban registry
+        collected from all connected spokes. Shows report counts per hash, which spoke first reported it,
+        and a Clear button for false-positive removal. Clearing a ban removes it from distribution but
+        preserves the audit row.</li>
 </ul>
 
 <h4>Ban Types</h4>
@@ -873,6 +877,61 @@ for that entry. It takes effect immediately.</p>
 <p>Fingerprints contain no personally identifiable information — just browser characteristics.
 Email addresses are hashed, so only the hash is stored. IP addresses are stored in plain text
 because they're necessary for blocking; they're visible only to admins.</p>
+HTML
+];
+
+$help_topics['shield-ban-sync'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Shield — Hub/Spoke Ban Sync',
+    'icon'     => '&#x1F6E1;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>SnapSmack Shield — Hub/Spoke Ban Sync</h3>
+<p>Shield Tier 1 lets the hub and all connected spokes share hashed ban lists automatically.
+When a troll gets banned on one site, that ban propagates to every site in your multisite
+installation on the next heartbeat sweep — without any manual action on your part.</p>
+
+<h4>How It Works</h4>
+<p>The hub runs a heartbeat sweep roughly once per admin page load on the multisite management
+page. During each sweep it calls every active spoke's <code>ban-sync</code> endpoint. Two things happen
+in that one call:</p>
+<ul>
+    <li>The hub sends its consolidated ban list to the spoke. The spoke merges these with
+        <code>INSERT IGNORE</code> so duplicates are harmless and nothing ever overwrites a local ban.</li>
+    <li>The spoke returns any bans it has issued since its last sync. These flow back to the hub
+        registry, where they become available for distribution to other spokes.</li>
+</ul>
+<p>The sync is delta-based: each spoke has a cursor timestamp. Only bans added or updated
+after the cursor are transmitted on each cycle, so the payload stays small even with large
+ban lists.</p>
+
+<h4>Enabling Ban Sync</h4>
+<p>Ban sync is disabled by default. To enable it: go to <strong>Interaction</strong> in the admin sidebar,
+scroll to the <strong>Shield — Ban Sync</strong> section, and toggle it on. The section also shows the
+last sync timestamp per spoke so you can confirm the sweep is running.</p>
+
+<h4>Privacy Model</h4>
+<p>Only SHA-256 hashes are transmitted between sites — never raw IP addresses, email addresses,
+or any other identifying information. The original values are hashed locally before being stored
+or sent. Even if a sync payload were intercepted, the hashes cannot be reversed.</p>
+<p>Bans distributed from the hub to a spoke are marked internally with a <code>hub-sync:</code> prefix
+on their reason field. This prevents them from being echoed back to the hub as "new" bans
+on the next sync cycle.</p>
+
+<h4>The Shared Bans Registry</h4>
+<p>The hub maintains a <code>snap_hub_shared_bans</code> table that acts as the central registry. Each
+entry tracks the ban type, SHA-256 hash, which spoke first reported it, the first and last seen
+timestamps, and a <strong>report count</strong> — how many distinct spokes have reported the same identifier.
+High report counts (3+ spokes) signal a confirmed cross-network threat.</p>
+<p>To view the registry, go to <strong>Fingerprints &amp; Troll Bans</strong> and click the <strong>Shared Bans</strong>
+tab (visible on hub installs only). You can manually clear any entry — this sets it to <code>removed = 1</code>
+so it stops being distributed to spokes. The audit row is preserved for reference.</p>
+
+<h4>Spoke Compatibility</h4>
+<p>Spokes must be running 0.7.9O or later to support the <code>ban-sync</code> endpoint. If a spoke
+returns a 404, the hub silently skips it and retries on the next sweep — no errors, no downtime.
+Older spokes continue to receive their regular heartbeat; they simply won't participate in ban sync
+until updated.</p>
 HTML
 ];
 
@@ -2153,3 +2212,4 @@ foreach ($help_topics as $slug => $ht) {
 </script>
 
 <?php include 'core/admin-footer.php'; ?>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    

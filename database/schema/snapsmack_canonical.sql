@@ -572,6 +572,8 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
                         COMMENT 'Key we use to call the remote site',
   `software_version`    varchar(50)    COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `last_seen_at`        datetime       DEFAULT NULL,
+  `ban_sync_cursor`     datetime       DEFAULT NULL              -- v0.7.9O Shield Tier 1
+                        COMMENT 'Hub: timestamp of last successful ban sync with this spoke.',
   `post_count`          int unsigned   DEFAULT 0,
   `image_count`         int unsigned   DEFAULT 0,
   `pending_comments`    int unsigned   DEFAULT 0,
@@ -598,3 +600,29 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_queue` (
   PRIMARY KEY (`id`),
   KEY `idx_node_status` (`node_id`, `status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ─── SHIELD TIER 1 — HUB SHARED BAN REGISTRY (v0.7.9O) ──────────────────────
+
+CREATE TABLE IF NOT EXISTS `snap_hub_shared_bans` (
+  `id`            int unsigned     NOT NULL AUTO_INCREMENT,
+  `ban_type`      enum('fingerprint','ip','email_hash')
+                  COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ban_value`     char(64)         COLLATE utf8mb4_unicode_ci NOT NULL
+                  COMMENT 'SHA-256 hex. Never a raw IP or email.',
+  `reason`        varchar(64)      COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `reported_by`   varchar(255)     COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
+                  COMMENT 'URL of the spoke that first reported this hash.',
+  `first_seen`    datetime         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_seen`     datetime         NOT NULL DEFAULT CURRENT_TIMESTAMP
+                  ON UPDATE CURRENT_TIMESTAMP,
+  `report_count`  int unsigned     NOT NULL DEFAULT 1
+                  COMMENT 'Number of distinct spokes that have reported this hash.',
+  `removed`       tinyint(1)       NOT NULL DEFAULT 0
+                  COMMENT '1 = manually cleared by hub admin; excluded from distribution.',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_type_val` (`ban_type`, `ban_value`),
+  KEY `idx_last_seen` (`last_seen`),
+  KEY `idx_removed`   (`removed`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Consolidated cross-spoke ban registry (SnapSmack Shield Tier 1)';

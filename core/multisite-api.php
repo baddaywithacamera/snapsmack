@@ -21,6 +21,7 @@
  *   multisite/blogroll/list
  *   multisite/blogroll/sync
  *   multisite/disconnect
+ *   multisite/ban-sync      — bidirectional ban hash exchange (Shield Tier 1)
  */
 
 // --- ENVIRONMENT BOOTSTRAP ---
@@ -629,6 +630,88 @@ if ($resource === 'blogroll' && $sub_action === 'sync' && $method === 'POST') {
 if ($resource === 'disconnect' && $method === 'POST') {
     $pdo->prepare("DELETE FROM snap_multisite_nodes WHERE id = ?")->execute([$node_id]);
     ms_ok(['message' => 'Disconnected']);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/ban-sync
+// Called BY the hub ON this spoke. Part of SnapSmack Shield Tier 1.
+//
+// Request body (JSON):
+//   consolidated_bans — array of { ban_type, ban_value, reason } from the hub's
+//                        shared registry; spoke merges these into snap_ban_list.
+//
+// Response:
+//   new_bans — array of bans created on this spoke since ban_hub_last_sync_at.
+//   merged   — count of bans merged from hub into local snap_ban_list.
+//
+// Idempotent: INSERT IGNORE + banned_at cursor mean repeated calls are safe.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'ban-sync' && $method === 'POST') {
+
+    // Only the hub may initiate a ban sync
+    if ($node['role'] !== 'hub') ms_err('Only a hub can initiate ban-sync', 403);
+
+    // Respect the opt-in toggle; return empty (not error) if disabled so the
+    // hub doesn't mark the spoke as broken
+    if (empty($settings['hub_spoke_ban_sync'])) {
+        ms_ok(['new_bans' => [], 'merged' => 0, 'status' => 'disabled']);
+    }
+
+    $body         = json_decode(file_get_contents('php://input'), true) ?: [];
+    $consolidated = $body['consolidated_bans'] ?? [];
+    $valid_types  = ['fingerprint', 'ip', 'email_hash'];
+
+    // ── 1. Merge hub's consolidated bans into local snap_ban_list ─────────────
+    // Hub-sourced bans get a 'hub-sync:' reason prefix so the spoke never
+    // echoes them back as its own "new" bans on the next sync cycle.
+
+    $merged      = 0;
+    $insert_stmt = $pdo->prepare("
+        INSERT IGNORE INTO `snap_ban_list` (ban_type, ban_value, reason)
+        VALUES (?, ?, ?)
+    ");
+
+    foreach ($consolidated as $ban) {
+        $type  = $ban['ban_type']  ?? '';
+        $value = $ban['ban_value'] ?? '';
+        if (!in_array($type, $valid_types, true)) continue;
+        // Value must be a SHA-256 hex string — 64 lowercase hex chars
+        if (!preg_match('/^[0-9a-f]{64}$/i', $value)) continue;
+        $reason = 'hub-sync:' . substr(preg_replace('/[^a-zA-Z0-9_\- ]/', '', $ban['reason'] ?? ''), 0, 50);
+        $insert_stmt->execute([$type, $value, $reason]);
+        if ($insert_stmt->rowCount() > 0) $merged++;
+    }
+
+    // ── 2. Collect this spoke's new bans since last sync ──────────────────────
+    // Excludes hub-sourced entries to prevent echo-back.
+
+    $last_sync = $settings['ban_hub_last_sync_at'] ?? '';
+    $cursor_dt = $last_sync ?: '2000-01-01 00:00:00';
+
+    $new_stmt = $pdo->prepare("
+        SELECT ban_type, ban_value, reason, banned_at
+        FROM `snap_ban_list`
+        WHERE banned_at > ?
+          AND (reason IS NULL OR reason NOT LIKE 'hub-sync:%')
+        ORDER BY banned_at ASC
+        LIMIT 500
+    ");
+    $new_stmt->execute([$cursor_dt]);
+    $new_bans = $new_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // ── 3. Advance the spoke's sync cursor ────────────────────────────────────
+
+    $pdo->prepare("
+        INSERT INTO `snap_settings` (setting_key, setting_val)
+        VALUES ('ban_hub_last_sync_at', NOW())
+        ON DUPLICATE KEY UPDATE setting_val = NOW()
+    ")->execute();
+
+    ms_ok([
+        'new_bans' => $new_bans,
+        'merged'   => $merged,
+        'count'    => count($new_bans),
+    ]);
 }
 
 // Fell through — unknown endpoint

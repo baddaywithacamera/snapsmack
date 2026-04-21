@@ -328,6 +328,105 @@ if ($multisite_role === 'hub') {
                 $n['image_count']        = $hb['image_count']        ?? $n['image_count'];
                 $n['pending_comments']   = $hb['pending_comments']   ?? $n['pending_comments'];
                 $n['last_backup_status'] = $hb['last_backup_status'] ?? $n['last_backup_status'];
+
+                // ── Shield Tier 1: Ban Sync ───────────────────────────────────
+                // Only runs when hub_spoke_ban_sync is enabled. Exchanges hashed
+                // ban lists with each active spoke. Delta-synced via ban_sync_cursor
+                // per node. Non-fatal — a failed sync just retries on next sweep.
+                if (($settings['hub_spoke_ban_sync'] ?? '0') === '1') {
+
+                    // Build outbound payload: bans added/updated since last cursor
+                    $cursor = $n['ban_sync_cursor'] ?? null;
+                    if ($cursor) {
+                        $ban_stmt = $pdo->prepare("
+                            SELECT ban_type, ban_value, reason
+                            FROM snap_hub_shared_bans
+                            WHERE removed = 0 AND last_seen > ?
+                            LIMIT 500
+                        ");
+                        $ban_stmt->execute([$cursor]);
+                    } else {
+                        $ban_stmt = $pdo->query("
+                            SELECT ban_type, ban_value, reason
+                            FROM snap_hub_shared_bans
+                            WHERE removed = 0
+                            LIMIT 500
+                        ");
+                    }
+                    $consolidated_bans = $ban_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                    // POST consolidated bans to spoke; receive new bans in return
+                    $bs_ch = curl_init();
+                    curl_setopt_array($bs_ch, [
+                        CURLOPT_URL            => rtrim($n['site_url'], '/') . '/api.php?route=multisite/ban-sync',
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_TIMEOUT        => 10,
+                        CURLOPT_POST           => true,
+                        CURLOPT_POSTFIELDS     => json_encode(['consolidated_bans' => $consolidated_bans]),
+                        CURLOPT_SSL_VERIFYPEER => true,
+                        CURLOPT_HTTPHEADER     => [
+                            'Authorization: Bearer ' . $n['api_key_local'],
+                            'Content-Type: application/json',
+                            'Accept: application/json',
+                        ],
+                    ]);
+                    $bs_raw  = curl_exec($bs_ch);
+                    $bs_code = curl_getinfo($bs_ch, CURLINFO_HTTP_CODE);
+                    curl_close($bs_ch);
+
+                    if ($bs_raw && $bs_code === 200) {
+                        $bs = json_decode($bs_raw, true);
+                        if (!empty($bs['ok'])) {
+
+                            // Ingest new bans reported by this spoke into the hub registry.
+                            // ON DUPLICATE KEY: bump report_count + refresh last_seen.
+                            // Reason is set on first insert only (keep earliest attribution).
+                            if (!empty($bs['new_bans']) && is_array($bs['new_bans'])) {
+                                $ins = $pdo->prepare("
+                                    INSERT INTO snap_hub_shared_bans
+                                        (ban_type, ban_value, reason, reported_by)
+                                    VALUES (?, ?, ?, ?)
+                                    ON DUPLICATE KEY UPDATE
+                                        report_count = report_count + 1,
+                                        last_seen    = NOW(),
+                                        reason       = IF(reason = '', VALUES(reason), reason)
+                                ");
+                                foreach ($bs['new_bans'] as $nb) {
+                                    if (empty($nb['ban_type']) || empty($nb['ban_value'])) continue;
+                                    $ins->execute([
+                                        $nb['ban_type'],
+                                        $nb['ban_value'],
+                                        $nb['reason'] ?? '',
+                                        $n['site_url'],
+                                    ]);
+                                }
+                            }
+
+                            // Advance this spoke's sync cursor so next sweep is delta-only
+                            $pdo->prepare("
+                                UPDATE snap_multisite_nodes
+                                SET ban_sync_cursor = NOW()
+                                WHERE id = ?
+                            ")->execute([$n['id']]);
+                            $n['ban_sync_cursor'] = date('Y-m-d H:i:s');
+
+                            // Record this spoke as ban-sync capable (used for status display)
+                            $capable = json_decode($settings['ban_sync_capable_spokes'] ?? '[]', true) ?: [];
+                            if (!in_array((int)$n['id'], array_map('intval', $capable))) {
+                                $capable[]    = (int)$n['id'];
+                                $capable_json = json_encode(array_values($capable));
+                                $pdo->prepare("
+                                    INSERT INTO snap_settings (setting_key, setting_val)
+                                    VALUES ('ban_sync_capable_spokes', ?)
+                                    ON DUPLICATE KEY UPDATE setting_val = ?
+                                ")->execute([$capable_json, $capable_json]);
+                                $settings['ban_sync_capable_spokes'] = $capable_json;
+                            }
+                        }
+                    }
+                    // Non-200 / disabled / network failure is non-fatal.
+                    // Spoke that hasn't updated yet returns 404 — hub will retry next sweep.
+                }
             }
         } else {
             // Mark offline if unreachable
@@ -625,22 +724,4 @@ include 'core/sidebar.php';
                                 <th style="text-align:left; padding:8px; color:var(--text-muted,#888);">TIMESTAMP</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <?php foreach ($log as $entry): ?>
-                                <tr style="border-bottom:1px solid var(--border,#333);">
-                                    <td style="padding:8px;">
-                                        <?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($entry['created_at']))); ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
-        </div>
-
-    <?php endif; ?>
-
-</div>
-
-<?php include 'core/admin-footer.php'; ?>
+           
