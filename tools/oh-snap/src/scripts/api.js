@@ -89,6 +89,27 @@ class SnapSmackAPI {
         fd.append('activate', activate ? '1' : '0');
         return this._post('ohsnap/skin/push', fd);
     }
+
+    /** Push CSS variable overrides to the active skin on the site.
+     *  Changes are stored in snap_settings and injected at render time.
+     *  @param {Object} vars  { '--css-var-name': 'value', ... }
+     *  Returns { skin_slug, vars_count, stored_key }. */
+    async pushVars(vars) {
+        const res = await fetch(this._endpoint('ohsnap/skin/vars'), {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.apiKey}`,
+                'Content-Type':  'application/json',
+                'Accept':        'application/json',
+            },
+            body: JSON.stringify({ vars }),
+        });
+        const body = await res.json();
+        if (!res.ok || !body.ok) {
+            throw new Error(body.error || `HTTP ${res.status}`);
+        }
+        return body;
+    }
 }
 
 // Expose globally — no bundler yet.

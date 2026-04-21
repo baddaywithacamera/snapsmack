@@ -469,4 +469,64 @@ return [
     'community_comments'  => '1',
     'community_likes'     => '1',
     'community_reactions' => '0',
+
+    /* -------------------------------------------------------------------------
+       OH SNAP! CSS VARIABLE MAP
+       Declares every CSS custom property that Oh Snap! can drive.
+       Groups become panels in the Colours tab. Each var entry specifies:
+         type     — 'color' | 'range'
+         label    — human-readable name shown in the control
+         default  — the dark-variant default (Oh Snap! uses dark by default)
+         min/max/step — range only; 'unit' appended to the value (optional)
+       ------------------------------------------------------------------------- */
+    'css_variables' => [
+
+        'BACKGROUNDS' => [
+            'label' => 'Backgrounds',
+            'vars'  => [
+                '--bg-page'      => ['label' => 'Page Background',      'type' => 'color', 'default' => '#000000'],
+                '--bg-secondary' => ['label' => 'Secondary Background', 'type' => 'color', 'default' => '#131313'],
+                '--bg-tertiary'  => ['label' => 'Tertiary Background',  'type' => 'color', 'default' => '#222222'],
+                '--bg-chrome'    => ['label' => 'Chrome / UI Surface',  'type' => 'color', 'default' => '#393939'],
+                '--input-bg'     => ['label' => 'Input Background',     'type' => 'color', 'default' => '#222222'],
+            ],
+        ],
+
+        'TEXT' => [
+            'label' => 'Text',
+            'vars'  => [
+                '--text-bright'    => ['label' => 'Bright (Headings)',    'type' => 'color', 'default' => '#ffffff'],
+                '--text-primary'   => ['label' => 'Primary (Body)',       'type' => 'color', 'default' => '#cccccc'],
+                '--text-secondary' => ['label' => 'Secondary (Captions)', 'type' => 'color', 'default' => '#aaaaaa'],
+                '--text-dim'       => ['label' => 'Dim (Meta)',           'type' => 'color', 'default' => '#888888'],
+                '--text-muted'     => ['label' => 'Muted (Subtle)',       'type' => 'color', 'default' => '#555555'],
+                '--text-faint'     => ['label' => 'Faint (Placeholders)', 'type' => 'color', 'default' => '#444444'],
+                '--text-link'      => ['label' => 'Link',                 'type' => 'color', 'default' => '#eeeeee'],
+            ],
+        ],
+
+        'BORDERS' => [
+            'label' => 'Borders',
+            'vars'  => [
+                '--border-primary' => ['label' => 'Primary Border',  'type' => 'color', 'default' => '#333333'],
+                '--border-accent'  => ['label' => 'Accent Border',   'type' => 'color', 'default' => '#666666'],
+                '--border-dim'     => ['label' => 'Dim Border',      'type' => 'color', 'default' => '#222222'],
+            ],
+        ],
+
+        'TYPOGRAPHY' => [
+            'label' => 'Typography',
+            'vars'  => [
+                '--content-lh' => [
+                    'label'   => 'Line Height',
+                    'type'    => 'range',
+                    'default' => '1.6',
+                    'min'     => '1.0',
+                    'max'     => '3.0',
+                    'step'    => '0.1',
+                ],
+            ],
+        ],
+
+    ],
 ];

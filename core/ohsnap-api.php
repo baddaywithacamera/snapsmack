@@ -12,6 +12,7 @@
  *   GET  ohsnap/media         — recent 60 published images with URLs
  *   GET  ohsnap/skin          — active skin files (manifest, CSS, variable map)
  *   POST ohsnap/skin/push     — upload a skin zip and optionally activate it
+ *   POST ohsnap/skin/vars     — push CSS variable overrides (stored + served live)
  */
 
 // --- ENVIRONMENT BOOTSTRAP ---
@@ -401,6 +402,52 @@ if ($resource === 'skin' && $sub === 'push' && $method === 'POST') {
             rmdir($tmp_dir);
         }
     }
+}
+
+// =============================================================================
+// ENDPOINT: POST ohsnap/skin/vars
+// Push CSS variable overrides from Oh Snap! directly onto the active skin
+// without needing a full skin zip. Stores values in snap_settings under
+// the key "ohsnap_vars_{skin_slug}" as a JSON blob.
+//
+// Request body (JSON): { "vars": { "--bg-page": "#000", ... } }
+// The meta system reads this blob and injects it as a :root block after the
+// compiled skin CSS, so changes appear immediately on the live site.
+// =============================================================================
+if ($resource === 'skin' && $sub === 'vars' && $method === 'POST') {
+    $active_skin = $settings['active_skin'] ?? '';
+    if (!$active_skin) os_err('No active skin configured', 404);
+
+    $body = json_decode(file_get_contents('php://input'), true);
+    if (!isset($body['vars']) || !is_array($body['vars'])) {
+        os_err('Request body must be JSON with a "vars" object');
+    }
+
+    // Sanitise: only allow CSS custom property keys (--something) and safe values
+    $safe = [];
+    foreach ($body['vars'] as $prop => $val) {
+        $prop = (string)$prop;
+        $val  = (string)$val;
+        if (!preg_match('/^--[a-z][a-z0-9-]*$/i', $prop)) continue;
+        // Strip anything that could break the CSS block
+        if (preg_match('/[;<>{}]/', $val)) continue;
+        $safe[$prop] = $val;
+    }
+
+    $key     = 'ohsnap_vars_' . preg_replace('/[^a-z0-9\-]/', '', $active_skin);
+    $encoded = json_encode($safe, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    $pdo->prepare("
+        INSERT INTO snap_settings (setting_key, setting_val)
+        VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)
+    ")->execute([$key, $encoded]);
+
+    os_ok([
+        'skin_slug'  => $active_skin,
+        'vars_count' => count($safe),
+        'stored_key' => $key,
+    ]);
 }
 
 // --- FALLBACK ---

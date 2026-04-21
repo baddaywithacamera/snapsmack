@@ -69,3 +69,24 @@ $canonical_url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 <?php echo $settings['custom_css_public']; ?>
 </style>
 <?php endif; ?>
+
+<?php
+// Oh Snap! CSS variable override layer.
+// When Oh Snap! pushes vars to the site, they are stored under the key
+// "ohsnap_vars_{skin_slug}" and injected here after all other skin CSS.
+// This block is the last word on :root variables, so it always wins.
+$_ohsnap_key  = 'ohsnap_vars_' . preg_replace('/[^a-z0-9\-]/', '', ($settings['active_skin'] ?? ''));
+$_ohsnap_vars = !empty($settings[$_ohsnap_key]) ? json_decode($settings[$_ohsnap_key], true) : [];
+if (!empty($_ohsnap_vars) && is_array($_ohsnap_vars)):
+?>
+<style id="snapsmack-ohsnap-vars">
+:root {
+<?php foreach ($_ohsnap_vars as $_prop => $_val):
+    // Paranoid re-sanitise at render time: prop must be --something, value must be safe
+    if (!preg_match('/^--[a-z][a-z0-9-]*$/i', $_prop)) continue;
+    if (preg_match('/[;<>{}]/', $_val)) continue;
+?>    <?php echo htmlspecialchars($_prop, ENT_QUOTES); ?>: <?php echo htmlspecialchars($_val, ENT_QUOTES); ?>;
+<?php endforeach; ?>
+}
+</style>
+<?php endif; ?>

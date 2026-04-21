@@ -4,6 +4,23 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.9N — "Oh Snap" (2026-04-21)
+
+### Added
+- **Oh Snap! skin designer — full build.** Oh Snap! is a Tauri desktop app for designing SnapSmack skins without touching code. This release completes the core feature set:
+  - **Live srcdoc preview** — skin CSS is inlined into an iframe, not a cross-origin site load. Every control change is instant. Three view modes: Post, Archive, Landing. Three viewport widths: Desktop (1280), Tablet (768), Mobile (390).
+  - **Dynamic controls panel** — colour pickers, range sliders, and selects are built automatically from the active skin's `css_variables` manifest declaration. Groups appear as titled sections in the Colours, Type, and Layout sidebar tabs. Colour controls show a native swatch + hex input kept in sync. Range controls show the numeric value live.
+  - **Bidirectional CSS editor** — the CSS tab shows the current override block as editable text. Changes in controls update the editor; edits in the editor update the controls and preview.
+  - **AI assistant** — AI drawer at the bottom of the app. Describe a skin change in plain English ("make the background warm charcoal with amber text") and the AI returns a JSON object of CSS variable overrides which are applied directly to the preview. Supports four providers: Claude (claude-sonnet-4-6), Gemini (gemini-2.0-flash), OpenAI (gpt-4o), Ollama (local, any model). Provider and API keys configured in Settings.
+  - **Settings modal** — accessible via the gear button or Ctrl+comma. Stores API keys in localStorage. Shows only the relevant key section for the active provider.
+  - **Project management** — Save project as `.ohsnap` JSON file (Tauri file dialog or browser download fallback). Load project from file. Export as `.css` override file (drop into skin directory or paste into Admin → Pimp → Custom CSS). Auto-saves a draft to localStorage every 30 seconds. Project name is editable inline in the toolbar.
+  - **Push to site** — new `ohsnap/skin/vars` API endpoint accepts a JSON object of CSS custom property overrides and stores them in `snap_settings`. The skin's `meta.php` reads this and injects a `:root {}` block after all other skin CSS, so changes appear on the live site immediately without touching any files.
+- **New Horizon skin declared `css_variables`** in `manifest.php`. Maps all 15 CSS custom properties (backgrounds, text, borders, inputs, typography) to their Oh Snap! control types, labels, and defaults. New Horizon is the first Oh Snap!-ready skin (flag: `oh_snap_ready: true`).
+- **Oh Snap! CSS override layer in New Horizon `meta.php`** — reads `ohsnap_vars_{skin_slug}` from `snap_settings` and injects a sanitised `:root {}` block after `snapsmack-dynamic-css`. Values are re-sanitised at render time (property name regex + value character filter).
+- **`pushVars()` method added to `SnapSmackAPI`** — thin wrapper around the new `POST ohsnap/skin/vars` endpoint.
+
+---
+
 ## 0.7.9M — "Maintenance Mode" (2026-04-17)
 
 ### Fixed
@@ -721,3 +738,4 @@ _Internal bump. See 0.7.5b for the full feature set._
 Initial development. Admin interface, theme system, per-skin settings scoping,
 sidebar redesign, admin theme CSS consolidation, comment controls, footer
 configuration, and foundational CMS architecture.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
