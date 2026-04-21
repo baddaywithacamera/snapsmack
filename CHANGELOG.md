@@ -16,6 +16,18 @@ All notable changes to SnapSmack are documented here. Newest release first.
   - **Migrations:** 033 creates `snap_hub_shared_bans` and adds `ban_sync_cursor` column to `snap_multisite_nodes`; 034 seeds `ban_hub_last_sync_at` and `ban_sync_capable_spokes` settings.
   - **Help topic:** Shield — Hub/Spoke Ban Sync (under Boring Ass Stuff).
   - **Spec document:** `tools/_specs/snapsmack-shield-spec.docx` — full architectural spec for Shield Tier 1 (hub/spoke) and Tier 2 (future network-wide registry).
+- **Big Wheel / Pimpmobile admin UI modes.** New users start in Big Wheel (simplified) mode — only the essentials in the sidebar so publishing is front and centre. The full admin (Pimpmobile) unlocks automatically via an offer card on the dashboard at 100 published posts. Offer cadence: every 100 posts; after 3 declines, every 200 posts; after the 2nd decline, a "Leave Me Alone" option appears to suppress the offer permanently. Manual toggle available at the bottom of the sidebar at any time — switch in either direction instantly.
+  - **Migration 035** seeds the four control keys: `ui_mode` (default: `bigwheel`), `pimpmobile_offer_declines`, `pimpmobile_last_offer_at`, `pimpmobile_never_show`.
+  - **Help topic:** Big Wheel & Pimpmobile Modes.
+- **Post composer button text** — "SMACK THAT @#$% UP!" restored on new post pages; "FIX UP YOUR @#$% UP" on edit pages. Applies to both standard and carousel variants.
+
+### Smack Central
+- **SMACK THE ENEMY — initial build.** Network-wide distributed reputation system for coordinated troll defence. Registered sites report bad fingerprints; the network scores each fingerprint by weighted site reputation and issues colour-coded threat levels (green / yellow / orange / red / black). Blog owners choose their own auto-ban threshold; community allow-votes roll back false positives.
+  - `sc-enemy-schema.sql` — 6 tables: `ste_sites`, `ste_fingerprints`, `ste_reports`, `ste_allow_votes`, `ste_score_cache`, `ste_coordination_clusters`.
+  - `sc-enemy-scoring.php` — site weight formula (post count × age × approval ratio), time decay (6-month half-life), velocity limiting (20 reports/hour), coordination cluster detection, reporter feedback loop.
+  - `sc-enemy-api.php` — REST API: register, report (batch 500), allow-vote, scores/delta, heartbeat, opt-out. Bearer token auth, rate limiting, one-strike-per-site-per-fingerprint.
+  - `sc-enemy-admin.php` — Smack Central dashboard: stats grid, Top Scores / Sites / Clusters tabs, reinstate/suspend/resolve/clear actions, inline help.
+  - `sc-config.sample.php` updated with `STE_DB_*` constants; `sc-db.php` updated with `sc_enemy_db()`.
 
 ---
 

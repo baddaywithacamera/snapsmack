@@ -935,6 +935,50 @@ until updated.</p>
 HTML
 ];
 
+$help_topics['bigwheel-pimpmobile'] = [
+    'section'  => 'Settings',
+    'title'    => 'Big Wheel &amp; Pimpmobile Modes',
+    'icon'     => '&#x1F697;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Big Wheel &amp; Pimpmobile Modes</h3>
+<p>SnapSmack ships in <strong>Big Wheel</strong> mode — a streamlined admin that shows only what
+you need to start publishing right away. Everything is already set up with sensible defaults;
+you don't have to configure anything to get going.</p>
+
+<p>Once you've got some posts under your belt, the admin will offer to unlock
+<strong>Pimpmobile</strong> mode. Pimpmobile is the full admin interface with everything visible:</p>
+<ul>
+    <li>Media Library &amp; Media Gallery</li>
+    <li>Blogroll network tools</li>
+    <li>Community / Interaction settings</li>
+    <li>Static Pages</li>
+    <li>Companion Tools</li>
+    <li>Social Dock, custom CSS, custom scripts</li>
+    <li>Archive, Solo, and Static appearance editors</li>
+    <li>User Manager, Maintenance, Troll Control</li>
+    <li>Backup &amp; Recovery, Cloud Backup, Disaster Recovery</li>
+    <li>Traffic Stats, API Keys, Multisite Management</li>
+</ul>
+
+<h4>When Does the Offer Appear?</h4>
+<p>The offer card appears on the dashboard once you hit 100 published posts. If you click
+<strong>Not Yet</strong>, the offer backs off and reappears at the next 100-post milestone.
+After three passes, the cadence relaxes to every 200 posts. On the third offer you'll also
+see a <strong>Leave Me Alone</strong> button — click that and the offer never appears again.</p>
+
+<h4>Switching Manually</h4>
+<p>You don't have to wait for the offer. The sidebar has an <strong>Unlock Pimpmobile</strong>
+link at the bottom that switches you immediately. If you're already in Pimpmobile and want to
+go back, the same link reads <strong>Switch to Big Wheel</strong>.</p>
+
+<h4>Nothing Is Hidden Permanently</h4>
+<p>Big Wheel doesn't remove any features — it just keeps the sidebar uncluttered while you're
+getting started. All pages are accessible by direct URL regardless of mode, and switching is
+instantaneous with no data loss.</p>
+HTML
+];
+
 $help_topics['user-manager'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'User Manager',
