@@ -7,9 +7,9 @@
  * the application.
  */
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.9M');
-define('SNAPSMACK_VERSION_SHORT', '0.7.9M');
-define('SNAPSMACK_VERSION_CODENAME', "Maintenance Mode");
+define('SNAPSMACK_VERSION', 'Alpha 0.7.9N');
+define('SNAPSMACK_VERSION_SHORT', '0.7.9N');
+define('SNAPSMACK_VERSION_CODENAME', "Oh Snap");
 
 // --- VERSION COMPARISON ---
 // PHP's version_compare() treats trailing letters as "alpha" (lower than
@@ -49,5 +49,4 @@ function snapsmack_is_mobile(): bool {
     // (iOS Safari, Chrome Mobile, Samsung, etc.). Additional patterns cover
     // older or niche handsets. Tablets (iPad, Android without 'Mobile') are
     // intentionally excluded so they receive the normal desktop skin.
-    return (bool) preg_match('/Mobile|iPhone|iPod|Android.*Mobile|webOS|BlackBerry|Opera Mini|IEMobile|Windows Phone/i', $ua);
-}
+    return (bool) preg_match('/Mobile|iPhone|iPod|Android.*Mobile|webOS|BlackB
