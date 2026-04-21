@@ -27,7 +27,7 @@ REM ── Auto-generate spec if it doesn't exist for this version ────�
 set SPEC_FILE=smackyourbatchup-%BUILD_VER%.spec
 if not exist %SPEC_FILE% (
     echo Spec file not found -- generating from template...
-    python -c "import re,sys; src=open('smackyourbatchup-0.7.7a-04.spec').read(); out=re.sub(r'0\.7\.7a-04',sys.argv[1],src); open(sys.argv[2],'w').write(out); print('Generated',sys.argv[2])" %BUILD_VER% %SPEC_FILE%
+    python -c "import re,sys; src=open('smackyourbatchup-0.7.9a.spec').read(); out=re.sub(r'0\.7\.9a',sys.argv[1],src); open(sys.argv[2],'w').write(out); print('Generated',sys.argv[2])" %BUILD_VER% %SPEC_FILE%
 )
 
 echo Installing dependencies...

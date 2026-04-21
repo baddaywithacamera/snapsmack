@@ -110,24 +110,46 @@ p:last-child { margin-bottom: 0; }
 
 /* ─── HEADER ────────────────────────────────────────────────────────────── */
 #site-header {
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    background: rgba(255, 255, 255, 1);
-    backdrop-filter: blur(8px);
+    position: relative;
+    background: #fff;
     border-bottom: 3px solid var(--red);
     padding: 28px 0 24px;
-    transition: background 0.3s ease, opacity 0.3s ease;
+    transition: opacity 0.35s ease;
+}
+#site-header.faded {
+    opacity: 0;
 }
 
-#site-header.scrolled {
-    background: rgba(255, 255, 255, 0.5) !important;
-    backdrop-filter: blur(8px);
+/* ─── MINI HEADER ───────────────────────────────────────────────────────── */
+#mini-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.5);
+    border-bottom: 3px solid var(--red);
+    transform: translateY(-100%);
+    transition: transform 0.18s ease-out, background 0.2s ease;
 }
-
-#site-header:hover,
-#site-header:focus-within {
+#mini-header.visible {
+    transform: translateY(0);
+}
+#mini-header:hover {
     background: rgba(255, 255, 255, 1);
+}
+.mini-header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 10px 32px;
+}
+.mini-logo img {
+    width: 42px;
+    height: auto;
+    display: block;
 }
 
 .header-inner {
@@ -1118,10 +1140,11 @@ form.ml-block-form {
 .footer-inner {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     flex-wrap: wrap;
     gap: 16px;
 }
+.logo-lockup:hover { text-decoration: none; }
 
 .footer-copy {
     font-family: 'Courier New', monospace;
@@ -1253,23 +1276,29 @@ form.ml-block-form {
 </head>
 <body>
 
-<!-- ── STICKY HEADER SCROLL EFFECT ─────────────────────────────────────────── -->
+<!-- ── MINI HEADER SCROLL + ACTIVE NAV ──────────────────────────────────────── -->
 <script>
-// Sticky header scroll effect
-const header = document.getElementById('site-header');
-window.addEventListener('scroll', () => {
-    if (window.scrollY > 0) {
-        header.classList.add('scrolled');
-    } else {
-        header.classList.remove('scrolled');
-    }
-});
+document.addEventListener('DOMContentLoaded', function () {
+    var mainHeader = document.getElementById('site-header');
+    var miniHeader = document.getElementById('mini-header');
 
-// Highlight active nav link
-document.querySelectorAll('nav a').forEach(link => {
-    if (link.href === window.location.href) {
-        link.classList.add('active');
+    // Slide mini header in once the main header clears the viewport
+    if (mainHeader && miniHeader) {
+        function onScroll() {
+            var threshold = mainHeader.offsetTop + mainHeader.offsetHeight;
+            var past = window.scrollY > threshold;
+            miniHeader.classList.toggle('visible', past);
+            mainHeader.classList.toggle('faded', past);
+        }
+        window.addEventListener('scroll', onScroll, { passive: true });
     }
+
+    // Highlight active nav link across both headers
+    document.querySelectorAll('nav a').forEach(function (link) {
+        if (link.href === window.location.href) {
+            link.classList.add('active');
+        }
+    });
 });
 </script>
 
@@ -1293,7 +1322,21 @@ document.querySelectorAll('nav a').forEach(link => {
         </a>
         <nav>
             <a href="index.html">GAFF!</a>
-            <a href="news.html">WOTCHA!</a>
+            <a href="wotcha.html">WOTCHA!</a>
+            <a href="bugger.html">BUGGER!</a>
+            <a href="oi.html">OI MATE!</a>
+        </nav>
+    </div>
+</header>
+
+<header id="mini-header" aria-hidden="true">
+    <div class="mini-header-inner">
+        <a href="index.html" class="mini-logo">
+            <img src="img/logo.png" alt="SnapSmack">
+        </a>
+        <nav>
+            <a href="index.html">GAFF!</a>
+            <a href="wotcha.html">WOTCHA!</a>
             <a href="bugger.html">BUGGER!</a>
             <a href="oi.html">OI MATE!</a>
         </nav>
@@ -1303,7 +1346,7 @@ document.querySelectorAll('nav a').forEach(link => {
 <!-- ── HERO ───────────────────────────────────────────────────────────────── -->
 <section id="hero">
     <div class="hero-inner">
-        <span class="alpha-badge">Alpha v0.7.9M</span>
+        <span class="alpha-badge">Alpha v0.7.9N</span>
         <h1 class="hero-headline">A photo blog platform that doesn't treat you like a <span>product.</span></h1>
         <p class="hero-kicker">SnapSmack lets you smack your snaps up.</p>
         <p class="hero-sub">Self-hosted, free and open-source, built for photographers who got tired of Instagram, Facebook, and every other platform deciding what happens to their work. Own your archive. Own your audience. No middleman.</p>
@@ -1388,7 +1431,7 @@ document.querySelectorAll('nav a').forEach(link => {
 <section id="working">
     <div class="wrap">
         <h2>Working Right Now</h2>
-        <p class="lede">Alpha v0.7.9k is running production sites today. Here's what's solid.</p>
+        <p class="lede">Alpha v0.7.9N is running production sites today. Here's what's solid.</p>
         <div class="status-grid">
             <div class="status-card">
                 <h3>Core CMS</h3>
@@ -1790,9 +1833,6 @@ document.querySelectorAll('nav a').forEach(link => {
     <div class="wrap">
         <div class="footer-inner">
             <p class="footer-copy">© 2026 Sean McCormick · Dedicated to Raymond A. Vanderwoning, photographer and friend. <a href="https://www.serenity.ca/obituaries/Raymond-Anthony-Vanderwoning?obId=30943370" target="_blank" rel="noopener noreferrer">He is missed.</a></p>
-            <nav class="footer-links">
-                <a id="contact-link">Contact</a>
-            </nav>
         </div>
     </div>
 </footer>

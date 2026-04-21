@@ -24,8 +24,9 @@ class ManifestEntry:
     tags:        str = ''
     category:    str = ''
     album:       str = ''
-    orientation: str = 'auto'   # auto | 0 (landscape) | 1 (portrait) | 2 (square)
-    colors:      str = ''       # space-separated hex codes from Gemini, e.g. "#A3724B #2E1F0D #8C6B3A"
+    orientation:    str = 'auto'   # auto | 0 (landscape) | 1 (portrait) | 2 (square)
+    colors:         str = ''       # space-separated hex codes from Gemini, e.g. "#A3724B #2E1F0D #8C6B3A"
+    allow_comments: str = '1'      # '1' = on, '0' = off
     # Source line number for error reporting
     line_num:    int = 0
 

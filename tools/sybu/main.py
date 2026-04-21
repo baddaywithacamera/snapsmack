@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.7a-05"   # bump this on every rebuild
+BUILD_VERSION = "0.7.9a"   # bump this on every rebuild
 
 import os
 import queue
@@ -174,33 +174,33 @@ class EntryRow(tk.Frame):
         self._tags_var.trace_add("write", lambda *a: setattr(self.entry, 'tags', self._tags_var.get()))
 
         # ── Category combobox ─────────────────────────────────────────
-        tk.Label(self, text="cat", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=190, y=88)
+        tk.Label(self, text="cat", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=190, y=85)
         self._cat_var = tk.StringVar(value=self.entry.category)
         self._cat_cb = ttk.Combobox(
             self, textvariable=self._cat_var, values=[''] + cats,
             font=FONT_SMALL, state="normal",
         )
-        self._cat_cb.place(x=190, y=100, width=200)
+        self._cat_cb.place(x=190, y=101, width=200)
         self._cat_cb.bind("<<ComboboxSelected>>",
                     lambda e: setattr(self.entry, 'category', self._cat_var.get()))
         self._cat_var.trace_add("write",
                     lambda *a: setattr(self.entry, 'category', self._cat_var.get()))
 
         # ── Album combobox ────────────────────────────────────────────
-        tk.Label(self, text="album", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=402, y=88)
+        tk.Label(self, text="album", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=402, y=85)
         self._album_var = tk.StringVar(value=self.entry.album)
         self._album_cb = ttk.Combobox(
             self, textvariable=self._album_var, values=[''] + albums,
             font=FONT_SMALL, state="normal",
         )
-        self._album_cb.place(x=402, y=100, width=200)
+        self._album_cb.place(x=402, y=101, width=200)
         self._album_cb.bind("<<ComboboxSelected>>",
                       lambda e: setattr(self.entry, 'album', self._album_var.get()))
         self._album_var.trace_add("write",
                       lambda *a: setattr(self.entry, 'album', self._album_var.get()))
 
         # ── Orientation combobox ─────────────────────────────────────
-        tk.Label(self, text="orient", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=614, y=88)
+        tk.Label(self, text="orient", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=614, y=85)
         orient_display = {'auto': 'Auto', '0': 'Landscape', '1': 'Portrait', '2': 'Square'}
         display_val = orient_display.get(self.entry.orientation, 'Auto')
         self._orient_var = tk.StringVar(value=display_val)
@@ -209,21 +209,35 @@ class EntryRow(tk.Frame):
             values=['Auto', 'Landscape', 'Portrait', 'Square'],
             font=FONT_SMALL, state="readonly", width=9,
         )
-        self._orient_cb.place(x=614, y=100, width=110)
+        self._orient_cb.place(x=614, y=101, width=110)
         orient_reverse = {'Auto': 'auto', 'Landscape': '0', 'Portrait': '1', 'Square': '2'}
         self._orient_cb.bind("<<ComboboxSelected>>",
                       lambda e: setattr(self.entry, 'orientation',
                                         orient_reverse.get(self._orient_var.get(), 'auto')))
 
         # ── Colour swatches (filled by Gemini) ────────────────────────
-        tk.Label(self, text="colors", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=736, y=88)
+        tk.Label(self, text="colors", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=736, y=85)
         self._swatch_labels = []
         for i in range(3):
             sw = tk.Label(self, bg=BG_CARD, relief="flat", width=4,
                           cursor="hand2", font=FONT_SMALL)
-            sw.place(x=736 + i * 50, y=100, width=44, height=20)
+            sw.place(x=736 + i * 50, y=101, width=44, height=20)
             self._swatch_labels.append(sw)
         self._update_swatches(self.entry.colors)
+
+        # ── Comments toggle ───────────────────────────────────────────
+        tk.Label(self, text="comments", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).place(x=190, y=133)
+        self._comments_var = tk.StringVar(value='on' if self.entry.allow_comments == '1' else 'off')
+        self._comments_cb = ttk.Combobox(
+            self, textvariable=self._comments_var,
+            values=['on', 'off'],
+            font=FONT_SMALL, state="readonly", width=5,
+        )
+        self._comments_cb.place(x=258, y=130, width=64)
+        def _on_comments_change(*_):
+            self.entry.allow_comments = '1' if self._comments_var.get() == 'on' else '0'
+        self._comments_cb.bind("<<ComboboxSelected>>", _on_comments_change)
+        self._comments_var.trace_add("write", _on_comments_change)
 
         # ── Status badge ──────────────────────────────────────────────
         self._status_lbl = tk.Label(
@@ -303,7 +317,7 @@ class EntryRow(tk.Frame):
             return FG_MAIN
 
     def fill_from_ai(self, title: str = '', tags: str = '', category: str = '',
-                     album: str = '', colors: str = ''):
+                     album: str = '', colors: str = '', allow_comments: str = ''):
         """Push Gemini-generated values into the live fields. Skips blank values."""
         if title:
             self._title_var.set(title)
@@ -316,6 +330,9 @@ class EntryRow(tk.Frame):
         if colors:
             self.entry.colors = colors
             self._update_swatches(colors)
+        if allow_comments in ('0', '1'):
+            self.entry.allow_comments = allow_comments
+            self._comments_var.set('on' if allow_comments == '1' else 'off')
         # Force immediate repaint so fields appear filled before the next image starts
         self.update_idletasks()
 
@@ -397,7 +414,16 @@ class EntryList(tk.Frame):
 
     def _on_mousewheel_global(self, event):
         """Route mousewheel from any child widget to the queue canvas."""
-        # Only scroll if the pointer is over the entry list area
+        # Don't steal scroll from combobox widgets — let them handle their own dropdowns
+        if isinstance(event.widget, ttk.Combobox):
+            return
+        # Don't steal scroll from combobox popdown (a separate Toplevel window)
+        try:
+            if event.widget.winfo_toplevel() is not self.winfo_toplevel():
+                return
+        except Exception:
+            pass
+        # Only scroll canvas if the pointer is over the entry list area
         try:
             x, y = self._canvas.winfo_rootx(), self._canvas.winfo_rooty()
             w, h = self._canvas.winfo_width(), self._canvas.winfo_height()

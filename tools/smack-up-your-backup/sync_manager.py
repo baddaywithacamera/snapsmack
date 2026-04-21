@@ -85,4 +85,10 @@ def new_job_template() -> Dict:
         "last_sync_date":          "",
         "last_files_synced":       0,
         "last_bytes_synced":       0,
+        # Schedule fields — same shape as backup profile schedule
+        "schedule_enabled":        False,
+        "schedule_type":           "daily",
+        "schedule_day":            "monday",
+        "schedule_time":           "03:00",
+        "last_scheduled_run":      "",
     }

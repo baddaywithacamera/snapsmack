@@ -1926,6 +1926,39 @@ Communication uses HTTPS and keys are stored server-side — nothing is exposed 
 HTML
 ];
 
+$help_topics[] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'About SnapSmack',
+    'icon'     => '&#x2665;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>About SnapSmack</h3>
+<p>SnapSmack is built by <strong>Sean McCormick</strong>, a photographer in Canada who got tired of
+watching years of carefully curated photo archives evaporate into dying platforms. It exists because
+he needed it and figured other photographers probably did too.</p>
+
+<p>It's free. It will stay free. There is no investor timeline, no premium tier, and no plan to sell
+it or turn it into something else.</p>
+
+<h4>On the Code</h4>
+<p>The majority of the code was written in collaboration with <strong>Claude</strong> (Anthropic) as
+a full pair programming partner — architecture, implementation, debugging, and documentation. This is
+not boilerplate AI assistance. Claude co-authored this project from the ground up, from the database
+schema to the skin manifest system to the desktop companion tools.</p>
+
+<p>Sean is the conductor. Claude is the orchestra. Both are credited because hiding the collaboration
+would be dishonest, and neither party has any reason to be embarrassed about it.</p>
+
+<h4>Standing on Shoulders</h4>
+<p>SnapSmack picks up where <strong>PixelPost</strong> left off — the beloved PHP photoblog that ran
+on fumes for a decade after development stopped in 2009. The photoblog format it pioneered is the
+direct ancestor of what you're running now. It is not forgotten.</p>
+
+<h4>Dedication</h4>
+<p>Dedicated to <strong>Raymond A. Vanderwoning</strong>, photographer and friend. He is missed.</p>
+HTML
+];
+
 // =========================================================================
 //  SKIN HELP HOOK
 // =========================================================================

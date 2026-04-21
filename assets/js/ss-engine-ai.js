@@ -58,6 +58,38 @@
 
     // ── Spell / Grammar ──────────────────────────────────────────────────────
 
+    function showSpellWorking() {
+        var overlay = document.getElementById('ss-spell-overlay');
+        if (overlay) overlay.remove();
+        overlay = document.createElement('div');
+        overlay.id = 'ss-spell-overlay';
+        overlay.style.cssText =
+            'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);' +
+            'display:flex;align-items:center;justify-content:center;z-index:9999;';
+        var box = document.createElement('div');
+        box.style.cssText =
+            'background:var(--bg-secondary,#1e1e1e);border:1px solid var(--border-color,#333);' +
+            'padding:40px 48px;max-width:420px;width:90%;border-radius:4px;text-align:center;' +
+            'font-family:inherit;box-shadow:0 16px 40px rgba(0,0,0,0.8);';
+        box.innerHTML =
+            '<div style="font-size:0.75rem;letter-spacing:3px;color:var(--color-accent,#e05252);' +
+                'margin-bottom:20px;">SP/GR</div>' +
+            '<div id="ss-spell-working-dots" style="font-size:1.4rem;letter-spacing:6px;' +
+                'color:var(--text-secondary,#888);">. . .</div>' +
+            '<div style="margin-top:16px;font-size:0.72rem;letter-spacing:2px;' +
+                'color:var(--text-secondary,#666);">SENDING TO AI — PLEASE WAIT</div>';
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+        // Animate the dots so it's obviously alive
+        var dots = ['·  ·  ·', '●  ·  ·', '●  ●  ·', '●  ●  ●', '·  ●  ●', '·  ·  ●'];
+        var di = 0;
+        overlay._dotTimer = setInterval(function () {
+            var el = document.getElementById('ss-spell-working-dots');
+            if (el) { di = (di + 1) % dots.length; el.textContent = dots[di]; }
+        }, 220);
+        return overlay;
+    }
+
     function spellcheck() {
         var selected = desc.value.substring(desc.selectionStart, desc.selectionEnd);
         var content  = desc.value;
@@ -66,9 +98,11 @@
             return;
         }
         setWorking(btnSpell, true);
+        var workingOverlay = showSpellWorking();
         post({ mode: 'spellcheck', selected: selected, content: content }, function (res) {
             setWorking(btnSpell, false);
-            if (!res.ok) { alert('SP/GR: ' + res.error); return; }
+            if (workingOverlay._dotTimer) clearInterval(workingOverlay._dotTimer);
+            if (!res.ok) { workingOverlay.remove(); alert('SP/GR: ' + res.error); return; }
             var original = selected !== '' ? selected : content;
             showSpellResult(original, res.text, selected !== '' ? 'selection' : 'full');
         });
