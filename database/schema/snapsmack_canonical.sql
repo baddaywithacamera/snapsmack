@@ -626,3 +626,19 @@ CREATE TABLE IF NOT EXISTS `snap_hub_shared_bans` (
   KEY `idx_removed`   (`removed`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Consolidated cross-spoke ban registry (SnapSmack Shield Tier 1)';
+
+-- SMACK THE ENEMY CLIENT --
+CREATE TABLE IF NOT EXISTS `snap_ste_scores` (
+  `ban_type`     varchar(20)  COLLATE utf8mb4_unicode_ci NOT NULL
+                 COMMENT 'ip, email, fingerprint',
+  `ban_hash`     varchar(64)  COLLATE utf8mb4_unicode_ci NOT NULL
+                 COMMENT 'SHA-256 hash of the raw value',
+  `score`        float        NOT NULL DEFAULT 0,
+  `colour_level` varchar(10)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'green'
+                 COMMENT 'green, yellow, orange, red, black',
+  `last_updated` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP
+                 ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`ban_type`, `ban_hash`),
+  KEY `idx_colour` (`colour_level`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Local cache of SMACK THE ENEMY network reputation scores';

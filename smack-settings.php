@@ -7,6 +7,48 @@
  */
 
 require_once 'core/auth.php';
+require_once 'core/ste-client.php';
+
+// --- SMACK THE ENEMY: REGISTER ACTION ---
+// Handled before the main settings save so the new key is in DB before we reload settings.
+$ste_msg = '';
+$ste_err = '';
+if (isset($_POST['ste_action']) && $_POST['ste_action'] === 'register') {
+    $site_url = rtrim($settings['site_url'] ?? $_SERVER['HTTP_HOST'], '/');
+    if (empty($site_url)) $site_url = 'https://' . $_SERVER['HTTP_HOST'];
+    $display_name = $settings['site_title'] ?? 'SnapSmack Site';
+    $post_count   = (int)($pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status='published'")->fetchColumn() ?? 0);
+
+    $res = ste_client_register($site_url, $display_name, $post_count);
+    if ($res['ok']) {
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('ste_api_key',?) ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$res['api_key']]);
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('ste_enabled','1') ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute();
+        $ste_msg = 'Registered with SMACK THE ENEMY. Ready to roll.';
+        // Reload settings to pick up the new key
+        $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+    } else {
+        $ste_err = 'Registration failed: ' . ($res['error'] ?? 'unknown error');
+    }
+}
+
+// Sync scores now if key exists and a manual sync was requested
+if (isset($_POST['ste_action']) && $_POST['ste_action'] === 'sync_now') {
+    $key    = $settings['ste_api_key'] ?? '';
+    $cursor = $settings['ste_scores_cursor'] ?? '';
+    $count  = ste_client_fetch_delta($pdo, $key, $cursor);
+    $ste_msg = $count !== false ? "Synced {$count} score update(s) from the network." : 'Sync failed — check your API key and network connection.';
+    $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+}
+
+// Opt out
+if (isset($_POST['ste_action']) && $_POST['ste_action'] === 'optout') {
+    $key = $settings['ste_api_key'] ?? '';
+    if ($key) _ste_request('POST', 'optout', [], $key);
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('ste_enabled','0') ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute();
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('ste_api_key','') ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute();
+    $ste_msg = 'Opted out. Your site has been removed from the network.';
+    $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+}
 
 // --- FORM SUBMISSION HANDLER ---
 // Processes logo and favicon uploads, then saves all settings via upsert.
@@ -42,7 +84,7 @@ if (isset($_POST['save_settings'])) {
     }
 
     // Checkboxes that are unchecked send no POST value; default them to '0' before saving.
-    $checkbox_keys = ['landing_only'];
+    $checkbox_keys = ['landing_only', 'ste_enabled'];
     foreach ($checkbox_keys as $ck) {
         if (!isset($_POST['settings'][$ck])) $_POST['settings'][$ck] = '0';
     }
@@ -559,6 +601,84 @@ include 'core/sidebar.php';
                 <span id="ai-test-result" style="margin-left:12px; font-size:0.85em;"></span>
             </div>
         </div>
+
+        <?php $_ui_pimpmobile = ($settings['ui_mode'] ?? 'bigwheel') === 'pimpmobile'; ?>
+        <?php if ($_ui_pimpmobile): ?>
+        <h3>SMACK THE ENEMY</h3>
+        <?php if ($ste_msg): ?>
+            <div class="alert alert-success mb-25">&gt; <?php echo htmlspecialchars($ste_msg); ?></div>
+        <?php endif; ?>
+        <?php if ($ste_err): ?>
+            <div class="alert alert-danger mb-25">&gt; <?php echo htmlspecialchars($ste_err); ?></div>
+        <?php endif; ?>
+
+        <?php
+        $ste_key     = $settings['ste_api_key']           ?? '';
+        $ste_enabled = ($settings['ste_enabled']          ?? '0') === '1';
+        $ste_thresh  = $settings['ste_auto_ban_threshold'] ?? 'red';
+        $ste_cursor  = $settings['ste_scores_cursor']      ?? '';
+        ?>
+
+        <?php if ($ste_key === ''): ?>
+            <p class="dim" style="font-size:0.85rem; margin-bottom:16px;">
+                SMACK THE ENEMY is a voluntary network reputation system for SnapSmack blogs.
+                Register to start receiving threat level scores on incoming comments.
+                You can opt out at any time.
+            </p>
+            <form method="POST" style="display:inline;">
+                <input type="hidden" name="ste_action" value="register">
+                <button type="submit" class="btn-smack">JOIN THE NETWORK</button>
+            </form>
+        <?php else: ?>
+            <label>NETWORK STATUS</label>
+            <div class="read-only-display highlight-green">REGISTERED</div>
+            <label class="mt-20">API KEY</label>
+            <div class="read-only-display" style="font-family:monospace; font-size:0.75rem; letter-spacing:0.05em;">
+                <?php echo substr($ste_key, 0, 8); ?>…<?php echo substr($ste_key, -8); ?>
+            </div>
+
+            <label class="mt-20">PARTICIPATION</label>
+            <div class="toggle-row">
+                <input type="checkbox" id="ste_enabled" name="settings[ste_enabled]" value="1"
+                       <?php echo $ste_enabled ? 'checked' : ''; ?>>
+                <label for="ste_enabled">ACTIVE — report bans and receive threat scores</label>
+            </div>
+
+            <label class="mt-20">AUTO-BAN THRESHOLD</label>
+            <select name="settings[ste_auto_ban_threshold]" class="styled-select">
+                <?php
+                $thresholds = [
+                    'yellow' => 'YELLOW — ban anything flagged (1+ strike)',
+                    'orange' => 'ORANGE — ban confirmed threats (2+ strikes)',
+                    'red'    => 'RED — ban serious threats (3+ strikes)',
+                    'black'  => 'BLACK — ban only the worst offenders (4+ strikes)',
+                    'never'  => 'NEVER — receive scores but never auto-ban',
+                ];
+                foreach ($thresholds as $val => $label):
+                ?>
+                <option value="<?php echo $val; ?>" <?php echo $ste_thresh === $val ? 'selected' : ''; ?>>
+                    <?php echo $label; ?>
+                </option>
+                <?php endforeach; ?>
+            </select>
+            <span class="dim" style="font-size:0.8rem; display:block; margin-top:6px;">
+                Comments at or above this level are silently rejected. You still see them in Troll Control.
+            </span>
+
+            <label class="mt-20">SCORE CACHE</label>
+            <div class="read-only-display"><?php echo $ste_cursor ? 'Last synced: ' . htmlspecialchars($ste_cursor) : 'Never synced — save settings then sync'; ?></div>
+            <div class="action-grid-dual mt-15">
+                <form method="POST" style="display:contents;">
+                    <input type="hidden" name="ste_action" value="sync_now">
+                    <button type="submit" class="btn-smack">SYNC SCORES NOW</button>
+                </form>
+                <form method="POST" style="display:contents;" onsubmit="return confirm('This will remove your site from the network and clear your API key. Continue?');">
+                    <input type="hidden" name="ste_action" value="optout">
+                    <button type="submit" class="btn-smack btn-danger">OPT OUT</button>
+                </form>
+            </div>
+        <?php endif; ?>
+        <?php endif; // pimpmobile ?>
 
         <button type="submit" name="save_settings" class="master-update-btn">SAVE GLOBAL ENGINE CONFIGURATION</button>
 

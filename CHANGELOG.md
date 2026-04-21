@@ -28,6 +28,13 @@ All notable changes to SnapSmack are documented here. Newest release first.
   - `sc-enemy-api.php` — REST API: register, report (batch 500), allow-vote, scores/delta, heartbeat, opt-out. Bearer token auth, rate limiting, one-strike-per-site-per-fingerprint.
   - `sc-enemy-admin.php` — Smack Central dashboard: stats grid, Top Scores / Sites / Clusters tabs, reinstate/suspend/resolve/clear actions, inline help.
   - `sc-config.sample.php` updated with `STE_DB_*` constants; `sc-db.php` updated with `sc_enemy_db()`.
+- **SMACK THE ENEMY client — blog-side integration.** Opted-in blogs communicate with the central server through the same Bearer token architecture as the community forum. Hidden under Pimpmobile mode.
+  - `core/ste-client.php` — API client: register, report, allow-vote, fetch-delta, heartbeat, score lookup helpers (`ste_worst_colour`, `ste_exceeds_threshold`).
+  - `core/ban-check.php` updated — `add_ban()` now reports to the network; `is_banned()` checks local `snap_ste_scores` against the configured auto-ban threshold.
+  - `smack-settings.php` updated — SMACK THE ENEMY section (Pimpmobile only): Join/Opt Out, participation toggle, auto-ban threshold selector, Sync Now button, last sync timestamp.
+  - `smack-comments.php` updated — coloured threat-level dot next to each pending comment; approving a comment sends an allow-vote to the network.
+  - `snap_ste_scores` table — local score cache. Seeded by migration 036.
+  - **Help topic:** SMACK THE ENEMY — Network Reputation.
 
 ---
 

@@ -979,6 +979,66 @@ instantaneous with no data loss.</p>
 HTML
 ];
 
+$help_topics['smack-the-enemy'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'SMACK THE ENEMY — Network Reputation',
+    'icon'     => '&#x2620;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>SMACK THE ENEMY — Network Reputation</h3>
+<p>SMACK THE ENEMY is an optional network-wide reputation system. Participating SnapSmack blogs
+share hashed fingerprint reports with a central server. The server scores each fingerprint based
+on how many trusted sites have reported it, and makes those scores available to all members.
+You can use them to auto-reject known trolls before they even get into your moderation queue.</p>
+
+<h4>Getting Started</h4>
+<p>Go to <strong>Configuration</strong> (Settings section in the sidebar) and scroll to the
+<strong>SMACK THE ENEMY</strong> section at the bottom. Click <strong>Join the Network</strong>.
+Your site registers with the central server using your site URL and display name — the same
+pattern as the community forum — and you receive a Bearer token API key stored in your database.
+No personal data about you is transmitted.</p>
+
+<h4>Threat Levels</h4>
+<p>The network issues five colour-coded threat levels based on weighted report counts.
+You choose your auto-ban threshold in the same Settings section:</p>
+<ul>
+    <li><strong>Yellow</strong> (1 strike) — one trusted site has flagged this fingerprint.</li>
+    <li><strong>Orange</strong> (2 strikes) — multiple sites agree.</li>
+    <li><strong>Red</strong> (3 strikes) — serious cross-network threat.</li>
+    <li><strong>Black</strong> (4+ strikes) — confirmed persistent offender.</li>
+    <li><strong>Never</strong> — receive scores for information only; never auto-ban.</li>
+</ul>
+<p>Comments at or above your threshold are silently rejected. They still appear in
+<strong>Troll Control</strong> so you can review them.</p>
+
+<h4>Colour Dots in the Moderation Queue</h4>
+<p>When SMACK THE ENEMY is enabled and you are in Pimpmobile mode, a coloured dot appears
+next to each pending comment showing its current network threat level. Green means clean;
+anything else means at least one other site has reported that fingerprint or IP.</p>
+
+<h4>Allow Votes</h4>
+<p>If you approve a comment from a flagged submitter, an allow-vote is automatically sent
+to the network. Allow-votes reduce the fingerprint's score and can eventually clear it.
+This is how false positives get corrected without any central intervention.</p>
+
+<h4>Bans Feed the Network</h4>
+<p>When you ban a fingerprint or IP through Troll Control, the ban is automatically reported
+to the network. You don't need to do anything extra — it's wired into the same ban function
+that powers local bans.</p>
+
+<h4>Score Sync</h4>
+<p>Scores are fetched on demand via <strong>Sync Scores Now</strong> in Settings. A cursor
+timestamp is stored so only scores that have changed since your last sync are downloaded —
+the sync stays fast even as the network grows.</p>
+
+<h4>Opting Out</h4>
+<p>Click <strong>Opt Out</strong> in the SMACK THE ENEMY section of Settings. Your site is
+removed from the network, your API key is cleared, and no further data is sent or received.
+Your local <code>snap_ste_scores</code> cache is left in place — it won't be updated but it
+won't affect anything either.</p>
+HTML
+];
+
 $help_topics['user-manager'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'User Manager',
