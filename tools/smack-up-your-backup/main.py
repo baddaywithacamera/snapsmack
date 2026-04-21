@@ -5,7 +5,7 @@ Dark UI palette, tkinter, PyInstaller single-exe build chain.
 Same visual family as Smack Your Batch Up.
 """
 
-BUILD_VERSION = "0.2.7"
+BUILD_VERSION = "0.7.9a"
 
 import os
 import queue
@@ -14,8 +14,45 @@ import time
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from typing import Optional
+import traceback as _traceback
+import datetime as _datetime
 
 import config as cfg_module
+
+
+# ---------------------------------------------------------------------------
+# Debug log — written next to the exe so errors are always readable
+# ---------------------------------------------------------------------------
+_LOG_PATH = os.path.join(cfg_module._app_dir(), "suyb-debug.log")
+
+_LOG_MAX_KB = 256   # trim log when it exceeds this size
+_LOG_KEEP_KB = 128  # keep this many KB of the tail after trimming
+
+def _trim_log() -> None:
+    """If suyb-debug.log exceeds _LOG_MAX_KB, keep only the tail."""
+    try:
+        if not os.path.exists(_LOG_PATH):
+            return
+        if os.path.getsize(_LOG_PATH) > _LOG_MAX_KB * 1024:
+            with open(_LOG_PATH, "rb") as _f:
+                _f.seek(-_LOG_KEEP_KB * 1024, 2)
+                tail = _f.read()
+            # Trim to a clean line boundary
+            tail = tail[tail.find(b"\n") + 1:]
+            with open(_LOG_PATH, "wb") as _f:
+                _f.write(b"[log trimmed]\n")
+                _f.write(tail)
+    except Exception:
+        pass
+
+def _dlog(msg: str) -> None:
+    """Append a timestamped line to suyb-debug.log next to the exe."""
+    try:
+        ts = _datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(_LOG_PATH, "a", encoding="utf-8") as _f:
+            _f.write(f"[{ts}] {msg}\n")
+    except Exception:
+        pass
 import profile_manager
 import sync_manager
 import manifest_reader
@@ -2175,6 +2212,36 @@ class SettingsTab(tk.Frame):
         self._action_btn(c, "Save Defaults", self._save,
                          primary=True).pack(anchor="w", pady=(10, 0))
 
+        # ── Cloud Sync Scratch card ─────────────────────────────────────
+        c = self._card(right)
+        c.pack(fill="x", pady=(0, G))
+        self._heading(c, "Cloud Sync Scratch Folder")
+        self._sub(c, "Cloud Sync downloads one file at a time here before uploading.\n"
+                     "Leave blank to use the system temp folder (usually C:\\).\n"
+                     "Point to a drive with plenty of space if C:\\ is full.")
+
+        sc_g = tk.Frame(c, bg=BG_MID)
+        sc_g.pack(fill="x")
+        sc_g.columnconfigure(1, weight=1)
+
+        tk.Label(sc_g, text="Scratch folder", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY, anchor="w").grid(
+            row=0, column=0, sticky="w", padx=(0, 10), pady=3)
+        self._scratch_var = tk.StringVar()
+        tk.Entry(sc_g, textvariable=self._scratch_var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=W).grid(row=0, column=1, sticky="ew", pady=3)
+
+        def _browse_scratch():
+            import tkinter.filedialog as fd
+            d = fd.askdirectory(title="Choose scratch folder", parent=self)
+            if d:
+                self._scratch_var.set(d)
+
+        self._browse_btn(sc_g, 0, _browse_scratch)
+
+        self._action_btn(c, "Save", self._save_scratch).pack(anchor="w", pady=(10, 0))
+
         # ── AI File Matching card ───────────────────────────────────────
         c = self._card(right)
         c.pack(fill="x", pady=(0, G))
@@ -2255,6 +2322,7 @@ class SettingsTab(tk.Frame):
         # App options
         self._tray_var.set(cfg.getboolean("app", "tray_enabled", fallback=False))
         self._startup_var.set(cfg.getboolean("app", "startup_enabled", fallback=False))
+        self._scratch_var.set(cfg.get("sync", "scratch_dir", fallback=""))
         self._validate_global_key()
         self._refresh_ai_status()
         self.load_profile(self._app._current_profile)
@@ -2922,6 +2990,14 @@ class SettingsTab(tk.Frame):
         cfg_module.save(cfg)
         messagebox.showinfo("Saved", "Global defaults saved.")
 
+    def _save_scratch(self):
+        cfg = self._app._cfg
+        if not cfg.has_section("sync"):
+            cfg.add_section("sync")
+        cfg.set("sync", "scratch_dir", self._scratch_var.get().strip())
+        cfg_module.save(cfg)
+        messagebox.showinfo("Saved", "Scratch folder saved.")
+
 
 # ---------------------------------------------------------------------------
 # Help tab
@@ -3082,7 +3158,7 @@ class SchedulerTab(tk.Frame):
         # Header
         hdr = tk.Frame(self, bg=BG_MID, padx=PAD, pady=12)
         hdr.pack(fill="x", padx=PAD, pady=(PAD, 0))
-        tk.Label(hdr, text="Backup Schedule", bg=BG_MID, fg=ACCENT,
+        tk.Label(hdr, text="Schedule", bg=BG_MID, fg=ACCENT,
                  font=FONT_TITLE).pack(side="left")
         tk.Label(hdr,
                  text="Changes save automatically. SUYB must be running for schedules to fire.",
@@ -3095,7 +3171,7 @@ class SchedulerTab(tk.Frame):
         cols = tk.Frame(self, bg=BG_DEEP)
         cols.pack(fill="x", padx=PAD, pady=(8, 2))
         for text, width, anchor in [
-            ("Blog",            22, "w"),
+            ("Name",            22, "w"),
             ("Enabled",          7, "center"),
             ("Frequency",       10, "w"),
             ("Day",             10, "w"),
@@ -3138,25 +3214,48 @@ class SchedulerTab(tk.Frame):
 
     # ── Data ────────────────────────────────────────────────────────────
     def refresh(self) -> None:
-        """Rebuild the profile rows from disk."""
+        """Rebuild the profile rows and sync job rows from disk."""
         for w in self._inner.winfo_children():
             w.destroy()
         self._rows.clear()
 
+        # ── Backup profiles ──────────────────────────────────────────────
         profiles = []
         for name in profile_manager.list_profiles():
             p = profile_manager.load_profile(name)
             if p:
                 profiles.append(p)
 
-        if not profiles:
-            tk.Label(self._inner, text="No profiles configured yet.\nGo to Settings to add a blog.",
-                     bg=BG_DEEP, fg=FG_DIM, font=FONT_BODY, justify="center").pack(
-                pady=40)
-            return
+        # Section sub-header
+        tk.Label(self._inner, text="BACKUP PROFILES", bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").pack(fill="x", pady=(4, 2))
 
-        for p in profiles:
-            self._add_row(p)
+        if profiles:
+            for p in profiles:
+                self._add_row(p)
+        else:
+            tk.Label(self._inner, text="No profiles configured yet. Go to Settings to add a blog.",
+                     bg=BG_DEEP, fg=FG_DIM, font=FONT_BODY, anchor="w").pack(
+                fill="x", pady=(4, 4))
+
+        # ── Cloud sync jobs ──────────────────────────────────────────────
+        tk.Frame(self._inner, bg=BORDER, height=1).pack(fill="x", pady=(12, 0))
+        tk.Label(self._inner, text="CLOUD SYNC JOBS", bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").pack(fill="x", pady=(6, 2))
+
+        jobs = []
+        for name in sync_manager.list_jobs():
+            j = sync_manager.load_job(name)
+            if j:
+                jobs.append(j)
+
+        if jobs:
+            for j in jobs:
+                self._add_sync_row(j)
+        else:
+            tk.Label(self._inner, text="No sync jobs configured yet. Go to Cloud Sync to add one.",
+                     bg=BG_DEEP, fg=FG_DIM, font=FONT_BODY, anchor="w").pack(
+                fill="x", pady=(4, 4))
 
     def _add_row(self, profile: dict) -> None:
         name = profile.get("name", "")
@@ -3250,6 +3349,101 @@ class SchedulerTab(tk.Frame):
         self._app.queue_msg(("scheduled_backup", profile))
         self._app._switch_tab(TAB_BACKUP)
 
+    # ── Cloud sync row helpers ───────────────────────────────────────────
+
+    def _add_sync_row(self, job: dict) -> None:
+        name = job.get("name", "")
+        row  = tk.Frame(self._inner, bg=BG_MID, padx=8, pady=8,
+                        highlightbackground=ACCENT, highlightthickness=1)
+        row.pack(fill="x", pady=(0, 4))
+
+        vars_ = {}
+
+        # Job name
+        info = tk.Frame(row, bg=BG_MID, width=220)
+        info.pack(side="left")
+        info.pack_propagate(False)
+        tk.Label(info, text=name, bg=BG_MID, fg=FG_MAIN,
+                 font=FONT_HEAD, anchor="w", wraplength=210).pack(anchor="w")
+        src  = job.get("source_provider", "")
+        dst  = job.get("dest_provider", "")
+        tk.Label(info, text=f"{src} → {dst}", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").pack(anchor="w")
+
+        # Enabled checkbox
+        enabled_var = tk.BooleanVar(value=bool(job.get("schedule_enabled", False)))
+        vars_["schedule_enabled"] = enabled_var
+        tk.Checkbutton(row, variable=enabled_var, bg=BG_MID,
+                       selectcolor=BG_INPUT, activebackground=BG_MID,
+                       command=lambda n=name, v=enabled_var: self._save_sync_field(n, "schedule_enabled", v.get())
+                       ).pack(side="left", padx=(8, 16))
+
+        # Frequency
+        freq_var = tk.StringVar(value=job.get("schedule_type", "daily"))
+        vars_["schedule_type"] = freq_var
+        ttk.Combobox(row, textvariable=freq_var, values=["daily", "weekly"],
+                     state="readonly", font=FONT_BODY, width=8).pack(side="left", padx=(0, 8))
+        freq_var.trace_add("write", lambda *a, n=name, v=freq_var: self._save_sync_field(n, "schedule_type", v.get()))
+
+        # Day (weekly)
+        day_var = tk.StringVar(value=job.get("schedule_day", "monday"))
+        vars_["schedule_day"] = day_var
+        ttk.Combobox(row, textvariable=day_var, values=self.DAYS,
+                     state="readonly", font=FONT_BODY, width=10).pack(side="left", padx=(0, 8))
+        day_var.trace_add("write", lambda *a, n=name, v=day_var: self._save_sync_field(n, "schedule_day", v.get()))
+
+        # Time
+        time_var = tk.StringVar(value=job.get("schedule_time", "03:00"))
+        vars_["schedule_time"] = time_var
+        tk.Entry(row, textvariable=time_var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=6).pack(side="left", padx=(0, 8))
+        time_var.trace_add("write", lambda *a, n=name, v=time_var: self._save_sync_field(n, "schedule_time", v.get()))
+
+        # Last run
+        last = job.get("last_scheduled_run", "") or "Never"
+        if len(last) > 16:
+            last = last[:16].replace("T", " ")
+        tk.Label(row, text=last, bg=BG_MID, fg=FG_DIM,
+                 font=FONT_SMALL, width=20, anchor="w").pack(side="left", padx=(0, 8))
+
+        # Next run
+        from scheduler import BackupScheduler
+        next_lbl = tk.Label(row, text=BackupScheduler.next_run_str(job),
+                            bg=BG_MID, fg=ACCENT if job.get("schedule_enabled") else FG_DIM,
+                            font=FONT_SMALL, width=20, anchor="w")
+        next_lbl.pack(side="left", padx=(0, 8))
+        vars_["_next_lbl"] = next_lbl
+
+        # Run Now button
+        tk.Button(row, text="Run Now", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_SMALL, padx=8, pady=2,
+                  command=lambda j=job: self._run_now_sync(j)).pack(side="left")
+
+        self._rows[f"__sync__{name}"] = {"vars": vars_, "job": job}
+
+    def _save_sync_field(self, name: str, key: str, value) -> None:
+        """Persist a single field change to the sync job JSON."""
+        j = sync_manager.load_job(name)
+        if not j:
+            return
+        j[key] = value
+        sync_manager.save_job(j)
+        # Update next-run label
+        row = self._rows.get(f"__sync__{name}", {})
+        lbl = row.get("vars", {}).get("_next_lbl")
+        if lbl:
+            from scheduler import BackupScheduler
+            lbl.configure(
+                text=BackupScheduler.next_run_str(j),
+                fg=ACCENT if j.get("schedule_enabled") else FG_DIM,
+            )
+
+    def _run_now_sync(self, job: dict) -> None:
+        """Immediately queue a cloud sync for this job."""
+        self._app.queue_msg(("scheduled_sync", job))
+        self._app._switch_tab(TAB_CLOUD_SYNC)
+
 
 class CloudSyncTab(tk.Frame):
     """Cloud-to-Cloud sync tab: differential file sync between cloud providers."""
@@ -3262,6 +3456,7 @@ class CloudSyncTab(tk.Frame):
         self._start_time = None
         self._tick_job   = None
         self._last_pct   = 0.0
+        self._scheduled_job_name: Optional[str] = None   # set when run by scheduler
         self._build()
 
     # ------------------------------------------------------------------
@@ -3442,7 +3637,8 @@ class CloudSyncTab(tk.Frame):
             missing.append(f"{_labels.get(job.get('source_provider',''), 'Source')} folder")
         if not job.get("dest_credentials_file"):
             missing.append(f"{_labels.get(job.get('dest_provider',''), 'Destination')} credentials file")
-        if not job.get("dest_folder"):
+        # dest_folder is optional for B2 (blank = sync to bucket root)
+        if not job.get("dest_folder") and job.get("dest_provider") != "b2":
             missing.append(f"{_labels.get(job.get('dest_provider',''), 'Destination')} folder")
         if missing:
             messagebox.showerror("Missing config",
@@ -3460,6 +3656,7 @@ class CloudSyncTab(tk.Frame):
         self._log.append("Starting sync…")
         self._start_clock()
 
+        scratch = self._app._cfg.get("sync", "scratch_dir", fallback="").strip()
         self._engine = CloudSyncEngine(
             config=job,
             on_log=lambda m: self._app.queue_msg(("sync_log", m)),
@@ -3467,6 +3664,7 @@ class CloudSyncTab(tk.Frame):
             on_stats=lambda *a: self._app.queue_msg(("sync_stats",) + a),
             on_done=lambda r: self._app.queue_msg(("sync_done", r)),
             on_ask=lambda msg: self._app.queue_msg(("sync_ask", msg)),
+            scratch_dir=scratch or None,
         )
         t = threading.Thread(target=self._engine.run, daemon=True)
         t.start()
@@ -3475,6 +3673,35 @@ class CloudSyncTab(tk.Frame):
         if self._engine:
             self._engine.cancel()
         self._cancel_btn.configure(state="disabled")
+
+    def _start_scheduled_sync(self, job: dict) -> None:
+        """Called by the scheduler — runs a silent cloud sync for a job."""
+        if self._busy:
+            return  # sync already running, skip this tick
+        name = job.get("name", "")
+        self._scheduled_job_name = name
+        self._busy = True
+        self._run_btn.configure(state="disabled")
+        self._cancel_btn.configure(state="normal")
+        self._prog_bar.reset()
+        self._files_lbl.configure(text="")
+        self._bytes_lbl.configure(text="")
+        self._time_lbl.configure(text="")
+        self._log.clear()
+        self._log.append(f"Scheduled sync starting: {name}…")
+        self._start_clock()
+
+        scratch = self._app._cfg.get("sync", "scratch_dir", fallback="").strip()
+        self._engine = CloudSyncEngine(
+            config=job,
+            on_log=lambda m: self._app.queue_msg(("sync_log", m)),
+            on_progress=lambda p: self._app.queue_msg(("sync_progress", p)),
+            on_stats=lambda *a: self._app.queue_msg(("sync_stats",) + a),
+            on_done=lambda r: self._app.queue_msg(("sync_done", r)),
+            on_ask=lambda m: self._app.queue_msg(("sync_ask", m)),
+            scratch_dir=scratch or None,
+        )
+        threading.Thread(target=self._engine.run, daemon=True).start()
 
     # ------------------------------------------------------------------
     # Callbacks from _poll
@@ -3510,21 +3737,39 @@ class CloudSyncTab(tk.Frame):
                 f"✓ Sync complete — {result['files_synced']} file(s), "
                 f"{self._fmt_bytes(result['bytes_synced'])}."
             )
-            # Update last sync info in job config
+            from datetime import datetime, timezone
+            now_iso = datetime.now(timezone.utc).isoformat()
+            # Update last sync info in the UI-selected job
             name = self._job_var.get()
             if name:
                 job = sync_manager.load_job(name)
                 if job:
-                    from datetime import datetime, timezone
-                    job["last_sync_date"]    = datetime.now(timezone.utc).isoformat()
+                    job["last_sync_date"]    = now_iso
                     job["last_files_synced"] = result["files_synced"]
                     job["last_bytes_synced"] = result["bytes_synced"]
                     sync_manager.save_job(job)
+            # If this was a scheduled run, write stats + last_scheduled_run to that job
+            sched_name = self._scheduled_job_name
+            if sched_name and sched_name != name:
+                sched_job = sync_manager.load_job(sched_name)
+                if sched_job:
+                    sched_job["last_sync_date"]    = now_iso
+                    sched_job["last_files_synced"] = result["files_synced"]
+                    sched_job["last_bytes_synced"] = result["bytes_synced"]
+                    sched_job["last_scheduled_run"] = now_iso
+                    sync_manager.save_job(sched_job)
+            elif sched_name and name:
+                # Same job — just stamp last_scheduled_run on top
+                job2 = sync_manager.load_job(sched_name)
+                if job2:
+                    job2["last_scheduled_run"] = now_iso
+                    sync_manager.save_job(job2)
         else:
             self._log.append(
                 f"✗ Sync finished with {result.get('files_failed', 0)} failure(s). "
                 + (result.get("error", "") or "")
             )
+        self._scheduled_job_name = None
 
     # ------------------------------------------------------------------
     # Clock helpers (mirrors BackupTab)
@@ -3623,6 +3868,30 @@ class _SyncJobDialog(tk.Toplevel):
         ok, msg = auth_fn(creds_var.get())
         status_var.set(msg)
 
+    def _test_b2_from_fields(self, key_var, app_var, bucket_var, status_var):
+        """Test B2 credentials by building inline JSON from the three field vars."""
+        import json as _json
+        key    = (key_var.get()    if key_var    else "").strip()
+        app    = (app_var.get()    if app_var    else "").strip()
+        bucket = (bucket_var.get() if bucket_var else "").strip()
+        creds_json = _json.dumps({
+            "account_id":      key,
+            "application_key": app,
+            "bucket_name":     bucket,
+        })
+        _dlog(f"B2 test — keyID={len(key)}ch ending '{key[-4:] if key else ''}', "
+              f"appKey={len(app)}ch ending '{app[-4:] if app else ''}', "
+              f"bucket='{bucket}'")
+        status_var.set("Testing…")
+        self.update()
+        try:
+            ok, msg = cloud_module.test_b2_connection(creds_json)
+        except Exception as _e:
+            msg = f"Exception: {_e}"
+            _dlog(f"B2 test exception: {_traceback.format_exc()}")
+        _dlog(f"B2 test result: {msg}")
+        status_var.set(msg)
+
     def _box_credentials_wizard(self, creds_var):
         """Prompt for Box client_id + client_secret, save a credentials JSON, fill path."""
         import json, os
@@ -3712,7 +3981,8 @@ class _SyncJobDialog(tk.Toplevel):
     # ------------------------------------------------------------------
 
     def _build_endpoint(self, parent, label: str, provider_var,
-                        creds_var, folder_var, auth_status_var):
+                        creds_var, folder_var, auth_status_var,
+                        b2_key_var=None, b2_app_var=None, b2_bucket_var=None):
         """Build one endpoint section (source or dest) with dynamic provider UI."""
 
         header = tk.Label(parent, bg=BG_MID, fg=ACCENT, font=FONT_SMALL)
@@ -3723,21 +3993,13 @@ class _SyncJobDialog(tk.Toplevel):
         prov_row.pack(fill="x", pady=3)
         tk.Label(prov_row, text=f"{label} provider:", bg=BG_MID, fg=FG_DIM,
                  font=FONT_BODY, width=24, anchor="w").pack(side="left")
-        for display, value in self.PROVIDERS:
-            tk.Radiobutton(
-                prov_row, text=display, variable=provider_var, value=value,
-                bg=BG_MID, fg=FG_MAIN, selectcolor=BG_INPUT,
-                activebackground=BG_MID, font=FONT_BODY,
-                command=lambda: self._refresh_endpoint(
-                    label, provider_var, creds_var, folder_var,
-                    auth_status_var, header, creds_lbl, folder_lbl,
-                    folder_hint, auth_btn, browse_btn, box_btn,
-                ),
-            ).pack(side="left", padx=(0, 12))
 
-        # Credentials file
-        creds_row = tk.Frame(parent, bg=BG_MID)
-        creds_row.pack(fill="x", pady=3)
+        # ── Credentials area: file-picker row (GDrive/Box) or B2 fields ──────
+        creds_area = tk.Frame(parent, bg=BG_MID)
+        creds_area.pack(fill="x")
+
+        # File-picker row — used by Google Drive and Box
+        creds_row = tk.Frame(creds_area, bg=BG_MID)
         creds_lbl = tk.Label(creds_row, bg=BG_MID, fg=FG_DIM,
                               font=FONT_BODY, width=24, anchor="w")
         creds_lbl.pack(side="left")
@@ -3752,6 +4014,53 @@ class _SyncJobDialog(tk.Toplevel):
                             font=FONT_BODY, padx=6, pady=1,
                             command=lambda: self._box_credentials_wizard(creds_var))
         # box_btn starts hidden; shown when Box provider is selected
+
+        # B2-specific rows — keyID, applicationKey, Bucket name
+        def _b2_field_row(lbl_text, hint_text, var):
+            wrap = tk.Frame(creds_area, bg=BG_MID)
+            row = tk.Frame(wrap, bg=BG_MID)
+            row.pack(fill="x")
+            tk.Label(row, text=lbl_text, bg=BG_MID, fg=FG_DIM,
+                     font=FONT_BODY, width=24, anchor="w").pack(side="left")
+            tk.Entry(row, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
+                     insertbackground=ACCENT, relief="flat",
+                     font=FONT_MONO, width=36).pack(side="left")
+            tk.Label(wrap, text=hint_text, bg=BG_MID, fg=FG_DIM,
+                     font=FONT_SMALL, anchor="w").pack(fill="x", padx=(0, 0))
+            return wrap
+
+        b2_key_row    = _b2_field_row(
+            "keyID:",
+            "  App Keys → your key's keyID  (e.g. 0044fd08f362d4e0000000001)",
+            b2_key_var    or tk.StringVar(),
+        )
+        b2_app_row    = _b2_field_row(
+            "applicationKey:",
+            "  The secret shown once when you created the key — not the keyID",
+            b2_app_var    or tk.StringVar(),
+        )
+        b2_bucket_row = _b2_field_row(
+            "Bucket name:",
+            "  The bucket's name  (e.g. SnapSmackBackups) — not the Bucket ID",
+            b2_bucket_var or tk.StringVar(),
+        )
+        b2_rows = (b2_key_row, b2_app_row, b2_bucket_row)
+
+        # Radiobuttons — wired after rows exist so _refresh can reference them
+        for display, value in self.PROVIDERS:
+            tk.Radiobutton(
+                prov_row, text=display, variable=provider_var, value=value,
+                bg=BG_MID, fg=FG_MAIN, selectcolor=BG_INPUT,
+                activebackground=BG_MID, font=FONT_BODY,
+                command=lambda: self._refresh_endpoint(
+                    label, provider_var, creds_var, folder_var,
+                    auth_status_var, header, creds_lbl, folder_lbl,
+                    folder_hint, auth_btn, browse_btn, box_btn,
+                    creds_row=creds_row, b2_rows=b2_rows,
+                    b2_key_var=b2_key_var, b2_app_var=b2_app_var,
+                    b2_bucket_var=b2_bucket_var,
+                ),
+            ).pack(side="left", padx=(0, 12))
 
         # Folder
         folder_row = tk.Frame(parent, bg=BG_MID)
@@ -3775,20 +4084,36 @@ class _SyncJobDialog(tk.Toplevel):
         tk.Label(auth_row, textvariable=auth_status_var, bg=BG_MID, fg=FG_DIM,
                  font=FONT_SMALL).pack(side="left", padx=(8, 0))
 
-        # Initialise labels/hints for current provider value
+        # Initialise labels/visibility for current provider value
         self._refresh_endpoint(label, provider_var, creds_var, folder_var,
                                auth_status_var, header, creds_lbl, folder_lbl,
-                               folder_hint, auth_btn, browse_btn, box_btn)
+                               folder_hint, auth_btn, browse_btn, box_btn,
+                               creds_row=creds_row, b2_rows=b2_rows,
+                               b2_key_var=b2_key_var, b2_app_var=b2_app_var,
+                               b2_bucket_var=b2_bucket_var)
 
     def _refresh_endpoint(self, label, provider_var, creds_var, folder_var,
                           auth_status_var, header, creds_lbl, folder_lbl,
-                          folder_hint, auth_btn, browse_btn=None, box_btn=None):
-        """Update labels, hints and auth button for current provider selection."""
+                          folder_hint, auth_btn, browse_btn=None, box_btn=None,
+                          creds_row=None, b2_rows=None,
+                          b2_key_var=None, b2_app_var=None, b2_bucket_var=None):
+        """Update labels, hints, and auth button for current provider selection."""
         p = provider_var.get()
         is_src = (label == "Source")
 
-        # Toggle browse vs Box wizard button
-        if browse_btn is not None and box_btn is not None:
+        # Show/hide file-picker row vs B2 fields
+        if creds_row is not None and b2_rows is not None:
+            if p == "b2":
+                creds_row.pack_forget()
+                for row in b2_rows:
+                    row.pack(fill="x", pady=3)
+            else:
+                for row in b2_rows:
+                    row.pack_forget()
+                creds_row.pack(fill="x", pady=3)
+
+        # Toggle browse vs Box wizard button (only relevant when creds_row is visible)
+        if browse_btn is not None and box_btn is not None and p != "b2":
             if p == "box":
                 browse_btn.pack_forget()
                 box_btn.pack(side="left", padx=(4, 0))
@@ -3837,24 +4162,17 @@ class _SyncJobDialog(tk.Toplevel):
 
         else:  # b2
             header.configure(text=f"── {label}: Backblaze B2 {'─' * 18}")
-            creds_lbl.configure(text="B2 credentials JSON:")
+            creds_lbl.configure(text="")   # not visible but keep label neutral
             folder_lbl.configure(text="Folder prefix (optional):")
             folder_hint.configure(
-                text='  Leave blank to sync to bucket root'
-                '\n  Credentials JSON: {"account_id":"...","application_key":"...","bucket_name":"..."}'
+                text="  Leave blank to sync to bucket root"
             )
             auth_btn.configure(
                 text="Test B2 Connection",
                 state="normal",
-                command=lambda: self._do_auth(
-                    cloud_module.test_b2_connection,
-                    auth_status_var, creds_var,
-                ),
+                command=lambda kv=b2_key_var, av=b2_app_var, bv=b2_bucket_var, sv=auth_status_var:
+                    self._test_b2_from_fields(kv, av, bv, sv),
             )
-            creds = creds_var.get()
-            if creds:
-                ok, msg = cloud_module.test_b2_connection(creds)
-                auth_status_var.set(msg)
 
     # ------------------------------------------------------------------
     # Build
@@ -3877,6 +4195,18 @@ class _SyncJobDialog(tk.Toplevel):
                  insertbackground=ACCENT, relief="flat",
                  font=FONT_MONO, width=36).pack(side="left")
 
+        def _parse_b2_creds(creds_str):
+            """Return (key_id, app_key, bucket) from an inline JSON string or empty strings."""
+            import json as _json
+            s = (creds_str or "").strip()
+            if s.startswith("{"):
+                try:
+                    d = _json.loads(s)
+                    return d.get("account_id", ""), d.get("application_key", ""), d.get("bucket_name", "")
+                except Exception:
+                    pass
+            return "", "", ""
+
         # Source endpoint
         self._src_provider_var = tk.StringVar(value=c.get("source_provider", "google_drive"))
         self._src_creds_var    = tk.StringVar(value=c.get("source_credentials_file", ""))
@@ -3884,9 +4214,16 @@ class _SyncJobDialog(tk.Toplevel):
             value=c.get("source_folder") or c.get("source_folder_id", "")
         )
         self._src_auth_status  = tk.StringVar()
+        _sk, _sa, _sb = _parse_b2_creds(c.get("source_credentials_file", ""))
+        self._src_b2_key_var    = tk.StringVar(value=_sk)
+        self._src_b2_app_var    = tk.StringVar(value=_sa)
+        self._src_b2_bucket_var = tk.StringVar(value=_sb)
         self._build_endpoint(body, "Source", self._src_provider_var,
                              self._src_creds_var, self._src_folder_var,
-                             self._src_auth_status)
+                             self._src_auth_status,
+                             b2_key_var=self._src_b2_key_var,
+                             b2_app_var=self._src_b2_app_var,
+                             b2_bucket_var=self._src_b2_bucket_var)
 
         # Dest endpoint
         self._dst_provider_var = tk.StringVar(value=c.get("dest_provider", "box"))
@@ -3895,9 +4232,16 @@ class _SyncJobDialog(tk.Toplevel):
             value=c.get("dest_folder") or c.get("dest_folder_path", "")
         )
         self._dst_auth_status  = tk.StringVar()
+        _dk, _da, _db = _parse_b2_creds(c.get("dest_credentials_file", ""))
+        self._dst_b2_key_var    = tk.StringVar(value=_dk)
+        self._dst_b2_app_var    = tk.StringVar(value=_da)
+        self._dst_b2_bucket_var = tk.StringVar(value=_db)
         self._build_endpoint(body, "Destination", self._dst_provider_var,
                              self._dst_creds_var, self._dst_folder_var,
-                             self._dst_auth_status)
+                             self._dst_auth_status,
+                             b2_key_var=self._dst_b2_key_var,
+                             b2_app_var=self._dst_b2_app_var,
+                             b2_bucket_var=self._dst_b2_bucket_var)
 
         # Buttons
         btn_row = tk.Frame(body, bg=BG_MID, pady=8)
@@ -3910,18 +4254,35 @@ class _SyncJobDialog(tk.Toplevel):
                   command=self._cancel).pack(side="left", padx=(8, 0))
 
     def _save(self):
+        import json as _json
         name = self._name_var.get().strip()
         if not name:
             messagebox.showerror("Name required", "Enter a job name.", parent=self)
             return
+
+        def _b2_creds_json(key_var, app_var, bucket_var):
+            return _json.dumps({
+                "account_id":      key_var.get().strip(),
+                "application_key": app_var.get().strip(),
+                "bucket_name":     bucket_var.get().strip(),
+            })
+
         self.result = dict(self._config)
-        self.result["name"]                    = name
-        self.result["source_provider"]         = self._src_provider_var.get()
-        self.result["source_credentials_file"] = self._src_creds_var.get().strip()
-        self.result["source_folder"]           = self._src_folder_var.get().strip()
-        self.result["dest_provider"]           = self._dst_provider_var.get()
-        self.result["dest_credentials_file"]   = self._dst_creds_var.get().strip()
-        self.result["dest_folder"]             = self._dst_folder_var.get().strip()
+        self.result["name"]           = name
+        self.result["source_provider"] = self._src_provider_var.get()
+        self.result["source_credentials_file"] = (
+            _b2_creds_json(self._src_b2_key_var, self._src_b2_app_var, self._src_b2_bucket_var)
+            if self._src_provider_var.get() == "b2"
+            else self._src_creds_var.get().strip()
+        )
+        self.result["source_folder"]   = self._src_folder_var.get().strip()
+        self.result["dest_provider"]   = self._dst_provider_var.get()
+        self.result["dest_credentials_file"] = (
+            _b2_creds_json(self._dst_b2_key_var, self._dst_b2_app_var, self._dst_b2_bucket_var)
+            if self._dst_provider_var.get() == "b2"
+            else self._dst_creds_var.get().strip()
+        )
+        self.result["dest_folder"]     = self._dst_folder_var.get().strip()
         self.destroy()
 
     def _cancel(self):
@@ -4034,9 +4395,13 @@ class App(tk.Tk):
         self.after(100, self._poll)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
-        # Start scheduler
+        # Start scheduler (handles both backup profiles and cloud sync jobs)
         from scheduler import BackupScheduler
-        self._scheduler = BackupScheduler(on_trigger=self._on_schedule_trigger)
+        self._scheduler = BackupScheduler(
+            on_trigger=self._on_schedule_trigger,
+            get_sync_jobs=self._get_all_sync_jobs_for_scheduler,
+            on_sync_trigger=self._on_sync_schedule_trigger,
+        )
         self._scheduler.start(self._get_all_profiles_for_scheduler)
 
         # Start tray icon if enabled
@@ -4415,6 +4780,10 @@ class App(tk.Tk):
                     profile = msg[1]
                     self._tab_backup._start_scheduled(profile)
 
+                elif kind == "scheduled_sync":
+                    # Triggered by scheduler thread — queue cloud sync job
+                    self._tab_cloud_sync._start_scheduled_sync(msg[1])
+
                 elif kind == "tray_notify":
                     # Show a tray notification if available
                     if self._tray_icon:
@@ -4443,6 +4812,19 @@ class App(tk.Tk):
     def _on_schedule_trigger(self, profile: dict) -> None:
         """Called by scheduler thread when a backup is due — queues it safely."""
         self.queue_msg(("scheduled_backup", profile))
+
+    def _get_all_sync_jobs_for_scheduler(self) -> list:
+        """Return all sync jobs for the scheduler to iterate."""
+        jobs = []
+        for name in sync_manager.list_jobs():
+            j = sync_manager.load_job(name)
+            if j:
+                jobs.append(j)
+        return jobs
+
+    def _on_sync_schedule_trigger(self, job: dict) -> None:
+        """Called by scheduler thread when a cloud sync is due — queues it safely."""
+        self.queue_msg(("scheduled_sync", job))
 
     # ------------------------------------------------------------------
     # System tray
@@ -4572,6 +4954,19 @@ def _enforce_single_instance():
 
 
 if __name__ == "__main__":
+    def _log_unhandled(exc_type, exc_val, exc_tb):
+        _dlog("UNHANDLED EXCEPTION:\n" + "".join(_traceback.format_exception(exc_type, exc_val, exc_tb)))
+        import sys as _s
+        _s.__excepthook__(exc_type, exc_val, exc_tb)
+    import sys as _s
+    _s.excepthook = _log_unhandled
+
     _enforce_single_instance()
-    app = App()
-    app.mainloop()
+    _trim_log()
+    _dlog(f"--- SUYB v{BUILD_VERSION} starting ---")
+    try:
+        app = App()
+        app.mainloop()
+    except Exception:
+        _dlog("CRASH:\n" + _traceback.format_exc())
+        raise

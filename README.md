@@ -78,6 +78,16 @@ See `CHANGELOG.md` for the full release history.
 
 ---
 
+## Credits
+
+SnapSmack is built by **Sean McCormick**, a photographer in Canada who got tired of watching years of carefully curated photo archives evaporate into dying platforms.
+
+The majority of the code was written in collaboration with **Claude** (Anthropic) as a full pair programming partner — architecture, implementation, debugging, and documentation. This is not boilerplate AI assistance. Claude co-authored this project from the ground up. Sean is the conductor; Claude is the orchestra.
+
+This is acknowledged openly because hiding it would be dishonest. The code is real, the decisions are considered, and the collaboration is something neither party has any reason to be embarrassed about.
+
+---
+
 ## License
 
 SnapSmack is proprietary software. All rights reserved.

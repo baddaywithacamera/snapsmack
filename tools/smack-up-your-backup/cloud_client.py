@@ -210,21 +210,29 @@ class DriveClient:
         """
         List files in the configured folder.
         Returns list of {id, name, size, modifiedTime}.
+        Paginates automatically — Google Drive caps each page at 1000 items.
         """
         svc   = self._svc()
         query = f"'{self.folder_id}' in parents and trashed=false"
         if name_filter:
             query += f" and name contains '{name_filter}'"
-        results = (
-            svc.files()
-            .list(
+        all_files  = []
+        page_token = None
+        while True:
+            kwargs = dict(
                 q=query,
-                fields="files(id,name,size,modifiedTime)",
+                fields="nextPageToken,files(id,name,size,modifiedTime)",
+                pageSize=1000,
                 orderBy="modifiedTime desc",
             )
-            .execute()
-        )
-        return results.get("files", [])
+            if page_token:
+                kwargs["pageToken"] = page_token
+            results    = svc.files().list(**kwargs).execute()
+            all_files += results.get("files", [])
+            page_token = results.get("nextPageToken")
+            if not page_token:
+                break
+        return all_files
 
     def download_file(
         self,
@@ -549,30 +557,49 @@ class BoxClient:
 # Backblaze B2 — API key auth (no OAuth, no app registration)
 # ---------------------------------------------------------------------------
 
+def _load_b2_creds(credentials_file: str) -> dict:
+    """
+    Load B2 credentials from either an inline JSON string or a file path.
+    Inline form: '{"account_id":"...","application_key":"...","bucket_name":"..."}'
+    File form:   '/path/to/creds.json'  (legacy, still supported)
+    """
+    s = (credentials_file or "").strip()
+    if s.startswith("{"):
+        return json.loads(s)
+    if os.path.isfile(s):
+        with open(s) as f:
+            return json.load(f)
+    raise FileNotFoundError(f"B2 credentials not found: {s!r}")
+
+
 def test_b2_connection(credentials_file: str) -> tuple:
     """
     Validate B2 credentials by calling b2_authorize_account.
     Returns (success: bool, message: str).
-    credentials JSON: {"account_id": "...", "application_key": "...", "bucket_name": "..."}
+    Accepts inline JSON string or a file path.
     """
-    if not credentials_file or not os.path.isfile(credentials_file):
-        return False, "Credentials file not found."
+    if not credentials_file or not credentials_file.strip():
+        return False, "No credentials provided."
     try:
         import base64
         import requests
-        with open(credentials_file) as f:
-            creds = json.load(f)
-        account_id = creds.get("account_id", "")
-        app_key    = creds.get("application_key", "")
-        bucket     = creds.get("bucket_name", "")
+        creds      = _load_b2_creds(credentials_file)
+        account_id = creds.get("account_id", "").strip()
+        app_key    = creds.get("application_key", "").strip()
+        bucket     = creds.get("bucket_name", "").strip()
         if not account_id or not app_key:
-            return False, "credentials JSON must contain account_id and application_key."
+            return False, "Key ID and Application Key are required."
+        # Diagnostic: show lengths and last char so paste errors are visible
+        key_dbg = f"keyID={len(account_id)}ch ending '{account_id[-4:]}', " \
+                  f"appKey={len(app_key)}ch ending '{app_key[-4:]}'"
         token = base64.b64encode(f"{account_id}:{app_key}".encode()).decode()
         resp  = requests.get(
             "https://api.backblazeb2.com/b2api/v2/b2_authorize_account",
             headers={"Authorization": f"Basic {token}"},
             timeout=15,
         )
+        if resp.status_code == 401:
+            return False, f"401 Unauthorized — wrong credentials. {key_dbg}"
         resp.raise_for_status()
         display = resp.json().get("accountId", account_id)
         return True, f"✓ Connected (account {display}, bucket: {bucket or 'not set'})"
@@ -595,8 +622,7 @@ class B2Client:
             return self._auth_cache
         import base64
         import requests
-        with open(self.credentials_file) as f:
-            creds = json.load(f)
+        creds = _load_b2_creds(self.credentials_file)
         self._account_id   = creds["account_id"]
         self._app_key      = creds["application_key"]
         self._bucket_name  = creds["bucket_name"]
@@ -674,8 +700,10 @@ class B2Client:
         import hashlib
         import requests
         auth      = self._auth()
-        file_name = (self.folder + "/" + remote_name) if self.folder else remote_name
-        file_size = os.path.getsize(local_path)
+        from urllib.parse import quote
+        file_name     = (self.folder + "/" + remote_name) if self.folder else remote_name
+        file_name_enc = quote(file_name, safe="/")   # B2 requires URL-encoded filename; "/" is safe
+        file_size     = os.path.getsize(local_path)
 
         # Compute SHA1
         sha1 = hashlib.sha1()
@@ -709,7 +737,7 @@ class B2Client:
                 up["uploadUrl"],
                 headers={
                     "Authorization":    up["authorizationToken"],
-                    "X-Bz-File-Name":   file_name,
+                    "X-Bz-File-Name":   file_name_enc,
                     "Content-Type":     "application/octet-stream",
                     "Content-Length":   str(file_size),
                     "X-Bz-Content-Sha1": sha1.hexdigest(),

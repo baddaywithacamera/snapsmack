@@ -38,6 +38,9 @@ DEFAULTS = {
         "credentials_file": "",
         "folder_id":        "",
     },
+    "sync": {
+        "scratch_dir": "",   # Temp dir for cloud sync staging; blank = system temp
+    },
 }
 
 

@@ -24,17 +24,22 @@ DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sun
 
 class BackupScheduler:
 
-    def __init__(self, on_trigger: Callable[[dict], None]):
+    def __init__(self, on_trigger: Callable[[dict], None],
+                 get_sync_jobs: Optional[Callable[[], List[dict]]] = None,
+                 on_sync_trigger: Optional[Callable[[dict], None]] = None):
         """
         on_trigger is called with the profile dict when a backup is due.
-        It is invoked from the scheduler thread — implementations must
+        on_sync_trigger is called with the sync job dict when a cloud sync is due.
+        Both are invoked from the scheduler thread — implementations must
         be thread-safe (e.g. use app.queue_msg).
         """
-        self._on_trigger   = on_trigger
-        self._get_profiles: Optional[Callable[[], List[dict]]] = None
-        self._stop_event   = threading.Event()
+        self._on_trigger     = on_trigger
+        self._on_sync_trigger = on_sync_trigger
+        self._get_profiles:  Optional[Callable[[], List[dict]]] = None
+        self._get_sync_jobs: Optional[Callable[[], List[dict]]] = get_sync_jobs
+        self._stop_event     = threading.Event()
         self._thread: Optional[threading.Thread] = None
-        self._running      = False
+        self._running        = False
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -74,15 +79,23 @@ class BackupScheduler:
                 pass  # never crash the scheduler thread
 
     def _check_all(self) -> None:
-        if not self._get_profiles:
-            return
         now = datetime.now()
-        for profile in self._get_profiles():
-            try:
-                if self._is_due(profile, now):
-                    self._on_trigger(profile)
-            except Exception:
-                pass
+        # Check backup profiles
+        if self._get_profiles:
+            for profile in self._get_profiles():
+                try:
+                    if self._is_due(profile, now):
+                        self._on_trigger(profile)
+                except Exception:
+                    pass
+        # Check cloud sync jobs
+        if self._get_sync_jobs and self._on_sync_trigger:
+            for job in self._get_sync_jobs():
+                try:
+                    if self._is_due(job, now):
+                        self._on_sync_trigger(job)
+                except Exception:
+                    pass
 
     @staticmethod
     def _is_due(profile: dict, now: datetime) -> bool:

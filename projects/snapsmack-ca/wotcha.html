@@ -107,25 +107,48 @@ p:last-child { margin-bottom: 0; }
     margin-bottom: 40px;
 }
 
-/* ─── STICKY HEADER ─────────────────────────────────────────────────────── */
+/* ─── HEADER ────────────────────────────────────────────────────────────── */
 #site-header {
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    background: rgba(255, 255, 255, 1);
-    backdrop-filter: blur(8px);
+    position: relative;
+    background: #fff;
     border-bottom: 3px solid var(--red);
     padding: 28px 0 24px;
-    transition: background 0.3s ease, opacity 0.3s ease;
+    transition: opacity 0.35s ease;
+}
+#site-header.faded {
+    opacity: 0;
 }
 
-#site-header.scrolled {
+/* ─── MINI HEADER ───────────────────────────────────────────────────────── */
+#mini-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
     background: rgba(255, 255, 255, 0.5);
+    border-bottom: 3px solid var(--red);
+    transform: translateY(-100%);
+    transition: transform 0.18s ease-out, background 0.2s ease;
 }
-
-#site-header:hover,
-#site-header:focus-within {
+#mini-header.visible {
+    transform: translateY(0);
+}
+#mini-header:hover {
     background: rgba(255, 255, 255, 1);
+}
+.mini-header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 10px 32px;
+}
+.mini-logo img {
+    width: 42px;
+    height: auto;
+    display: block;
 }
 
 .header-inner {
@@ -172,6 +195,11 @@ p:last-child { margin-bottom: 0; }
     letter-spacing: 0.04em;
     color: var(--dark-grey);
     margin-top: 4px;
+}
+
+.logo-text .tagline em {
+    color: var(--red);
+    font-style: normal;
 }
 
 /* ─── NAVIGATION ────────────────────────────────────────────────────────── */
@@ -251,10 +279,11 @@ main {
 .footer-inner {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     flex-wrap: wrap;
     gap: 16px;
 }
+.logo-lockup:hover { text-decoration: none; }
 .footer-copy {
     font-family: 'Courier New', monospace;
     font-size: 0.68rem;
@@ -277,41 +306,77 @@ main {
     text-transform: uppercase;
 }
 .footer-links a:hover { color: var(--white); }
+
+/* ─── LIGHTBOX ──────────────────────────────────────────────────────────── */
+#lb-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    background: rgba(0, 0, 0, 0.88);
+    cursor: zoom-out;
+    align-items: center;
+    justify-content: center;
+}
+#lb-overlay.open {
+    display: flex;
+}
+#lb-overlay img {
+    max-width: 92vw;
+    max-height: 90vh;
+    object-fit: contain;
+    box-shadow: 0 8px 48px rgba(0,0,0,0.6);
+    cursor: default;
+}
 </style>
 <script>
-// Sticky header scroll effect
-const header = document.getElementById('site-header');
-window.addEventListener('scroll', () => {
-    if (window.scrollY > 0) {
-        header.classList.add('scrolled');
-    } else {
-        header.classList.remove('scrolled');
+document.addEventListener('DOMContentLoaded', function () {
+    var mainHeader = document.getElementById('site-header');
+    var miniHeader = document.getElementById('mini-header');
+    if (mainHeader && miniHeader) {
+        function onScroll() {
+            var threshold = mainHeader.offsetTop + mainHeader.offsetHeight;
+            var past = window.scrollY > threshold;
+            miniHeader.classList.toggle('visible', past);
+            mainHeader.classList.toggle('faded', past);
+        }
+        window.addEventListener('scroll', onScroll, { passive: true });
     }
-});
-
-// Highlight active nav link
-document.querySelectorAll('nav a').forEach(link => {
-    if (link.href === window.location.href) {
-        link.classList.add('active');
-    }
+    document.querySelectorAll('nav a').forEach(function (link) {
+        if (link.href === window.location.href) link.classList.add('active');
+    });
 });
 </script>
 </head>
 <body>
 
-<!-- STICKY HEADER -->
+<!-- HEADER -->
 <header id="site-header">
     <div class="header-inner">
         <a href="index.html" class="logo-lockup">
             <img src="img/logo.png" alt="SnapSmack">
             <div class="logo-text">
-                <div class="snap"><em>Snap</em><strong>Smack</strong></div>
-                <div class="tagline">smack your <em>snaps</em> up</div>
+                <div class="snap"><em>SNAP</em><strong>SMACK</strong></div>
+                <div class="tagline">PHOTO <em>BLOGGING</em> IS BACK, BITCHEZ</div>
             </div>
         </a>
         <nav>
             <a href="index.html">GAFF!</a>
-            <a href="news.html" class="active">WOTCHA!</a>
+            <a href="wotcha.html">WOTCHA!</a>
+            <a href="bugger.html">BUGGER!</a>
+            <a href="oi.html">OI MATE!</a>
+        </nav>
+    </div>
+</header>
+
+<header id="mini-header" aria-hidden="true">
+    <div class="mini-header-inner">
+        <a href="index.html" class="mini-logo">
+            <img src="img/logo.png" alt="SnapSmack">
+        </a>
+        <nav>
+            <a href="index.html">GAFF!</a>
+            <a href="wotcha.html">WOTCHA!</a>
             <a href="bugger.html">BUGGER!</a>
             <a href="oi.html">OI MATE!</a>
         </nav>
@@ -330,53 +395,71 @@ document.querySelectorAll('nav a').forEach(link => {
     <section>
         <div class="wrap">
             <div class="content">
-                <h2>Latest Updates</h2>
-                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+                <h2>SnapSmack Picks Up Where PixelPost Left Off — April 2026</h2>
+                <a href="img/snapsmack-dash.png" data-lb="img/snapsmack-dash.png" style="display: block; text-decoration: none; margin-bottom: 28px;">
+                    <img src="img/snapsmack-dash.png" alt="SnapSmack — admin dashboard showing PixelPost integration" style="width: 100%; height: auto; display: block;">
+                </a>
+                <p>If you used PixelPost, you already know what SnapSmack is. One photo, one post, your words around it, your site, your rules. No feed burying you. No algorithm deciding who sees your work. No terms of service changing on a Tuesday because someone in marketing had a thought.</p>
+                <p>PixelPost did that beautifully until development stopped in 2009. Sixteen years ago. The community kept it alive on fumes for a decade before spam and abandonment finally won.</p>
+                <p>SnapSmack starts where PixelPost stopped — and keeps going. Built from scratch on current PHP and MySQL by Sean McCormick and Claude (Anthropic) — one set of hands, no prior experience shipping software, zero apologies. Solo mode works exactly like PixelPost: one image, one post, chronological, yours. Carousel mode handles multi-image posts when one frame isn't enough. A skin designer lets you build and preview your own look against live content without touching code. An AI assistant helps when you're staring at a blank caption field at midnight.</p>
+                <p>The companion tools are built for the hobbyist who punches like Mike Tyson. A batch processor handles the jobs that would make a shared host spontaneously combust. A backup tool moves your content between cloud services directly — no middleman, no memory limits, no drama. And the forum requires a handshake before you can post, because we watched what open comments did last time.</p>
+                <p>Sixteen years is long enough to wait.</p>
 
-                <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-
-                <h2 style="margin-top: 48px;">Version 0.7.9M Released</h2>
-                <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
-
-                <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.</p>
-
-                <h2 style="margin-top: 48px;">Coming Soon</h2>
-                <p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.</p>
-
-                <p>Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.</p>
+                <p style="font-family: Arial Black, Arial, sans-serif; font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; font-size: 1rem;">Release notes and update history will appear here when SnapSmack reaches public Beta.</p>
             </div>
         </div>
     </section>
 </main>
+
+<!-- LIGHTBOX OVERLAY -->
+<div id="lb-overlay">
+    <img id="lb-img" src="" alt="">
+</div>
 
 <!-- FOOTER -->
 <footer id="site-footer">
     <div class="wrap">
         <div class="footer-inner">
             <p class="footer-copy">&copy; 2026 Sean McCormick &middot; Dedicated to Raymond A. Vanderwoning, photographer and friend. <a href="https://www.serenity.ca/obituaries/Raymond-Anthony-Vanderwoning?obId=30943370" target="_blank" rel="noopener noreferrer">He is missed.</a></p>
-            <nav class="footer-links">
-                <a href="index.html">Home</a>
-            </nav>
         </div>
     </div>
 </footer>
 
 <script>
-// Sticky header scroll effect
-const header = document.getElementById('site-header');
-window.addEventListener('scroll', () => {
-    if (window.scrollY > 0) {
-        header.classList.add('scrolled');
-    } else {
-        header.classList.remove('scrolled');
+document.addEventListener('DOMContentLoaded', function () {
+    var mainHeader = document.getElementById('site-header');
+    var miniHeader = document.getElementById('mini-header');
+    if (mainHeader && miniHeader) {
+        function onScroll() {
+            var threshold = mainHeader.offsetTop + mainHeader.offsetHeight;
+            var past = window.scrollY > threshold;
+            miniHeader.classList.toggle('visible', past);
+            mainHeader.classList.toggle('faded', past);
+        }
+        window.addEventListener('scroll', onScroll, { passive: true });
     }
-});
+    document.querySelectorAll('nav a').forEach(function (link) {
+        if (link.href === window.location.href) link.classList.add('active');
+    });
 
-// Highlight active nav link
-document.querySelectorAll('nav a').forEach(link => {
-    if (link.href === window.location.href) {
-        link.classList.add('active');
-    }
+    // Lightbox
+    var overlay = document.getElementById('lb-overlay');
+    var lbImg   = document.getElementById('lb-img');
+    document.querySelectorAll('a[data-lb]').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+            e.preventDefault();
+            lbImg.src = a.getAttribute('data-lb');
+            lbImg.alt = a.querySelector('img') ? a.querySelector('img').alt : '';
+            overlay.classList.add('open');
+        });
+    });
+    overlay.addEventListener('click', function () {
+        overlay.classList.remove('open');
+        lbImg.src = '';
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { overlay.classList.remove('open'); lbImg.src = ''; }
+    });
 });
 </script>
 

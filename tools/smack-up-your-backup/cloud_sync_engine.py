@@ -10,9 +10,12 @@ on_done, on_ask, cancel(), prompt_continue().
 import os
 import tempfile
 import threading
+import time
 from typing import Callable, Optional
 
-FAILURE_PROMPT_THRESHOLD = 1   # prompt user after this many failures
+FAILURE_PROMPT_THRESHOLD = 3   # prompt user after this many failures
+MAX_RETRIES              = 3   # download/upload attempts per file before counting as failure
+RETRY_DELAY_SECS         = 5   # seconds to wait between retries
 
 # Size tolerance for differential check (providers can report slightly
 # different sizes for the same file due to metadata differences).
@@ -28,13 +31,15 @@ class CloudSyncEngine:
         on_stats:    Callable,
         on_done:     Callable[[dict], None],
         on_ask:      Optional[Callable[[str], None]] = None,
+        scratch_dir: Optional[str] = None,
     ):
-        self._config  = config
-        self.on_log   = on_log
-        self.on_progress = on_progress
-        self.on_stats = on_stats
-        self.on_done  = on_done
-        self.on_ask   = on_ask
+        self._config      = config
+        self._scratch_dir = scratch_dir
+        self.on_log       = on_log
+        self.on_progress  = on_progress
+        self.on_stats     = on_stats
+        self.on_done      = on_done
+        self.on_ask       = on_ask
 
         self._cancelled       = False
         self._prompt_event    = threading.Event()
@@ -216,7 +221,8 @@ class CloudSyncEngine:
 
         self.on_stats(files_done, total_files, skipped, files_failed, bytes_done, bytes_total)
 
-        tmp_dir = os.path.join(tempfile.gettempdir(), "suyb_sync")
+        base    = self._scratch_dir if self._scratch_dir else tempfile.gettempdir()
+        tmp_dir = os.path.join(base, "suyb_sync")
         os.makedirs(tmp_dir, exist_ok=True)
 
         # ── Transfer loop ──────────────────────────────────────────────
@@ -233,14 +239,25 @@ class CloudSyncEngine:
 
             self._log(f"↓ {name}")
 
-            # Download from Drive
-            dl_ok  = True
+            # Download from source (with retries)
+            dl_ok  = False
             dl_err = ""
-            try:
-                src.download_file(file_id, tmp_path)
-            except Exception as e:
-                dl_ok  = False
-                dl_err = str(e)
+            for attempt in range(1, MAX_RETRIES + 1):
+                if self._cancelled:
+                    break
+                try:
+                    src.download_file(file_id, tmp_path)
+                    dl_ok  = True
+                    dl_err = ""
+                    break
+                except Exception as e:
+                    dl_err = str(e)
+                    if os.path.exists(tmp_path):
+                        try: os.remove(tmp_path)
+                        except Exception: pass
+                    if attempt < MAX_RETRIES and not self._cancelled:
+                        self._log(f"  ⚠ Download attempt {attempt}/{MAX_RETRIES} failed — retrying in {RETRY_DELAY_SECS}s…")
+                        time.sleep(RETRY_DELAY_SECS)
 
             if self._cancelled:
                 if os.path.exists(tmp_path):
@@ -251,7 +268,7 @@ class CloudSyncEngine:
                 continue
 
             if not dl_ok:
-                self._log(f"✗ Download failed: {name} — {dl_err}")
+                self._log(f"✗ Download failed ({MAX_RETRIES} attempts): {name} — {dl_err}")
                 files_failed += 1
                 if os.path.exists(tmp_path):
                     try: os.remove(tmp_path)
@@ -267,21 +284,29 @@ class CloudSyncEngine:
                 self.on_stats(files_done, total_files, skipped, files_failed, bytes_done, bytes_total)
                 continue
 
-            # Upload to destination
-            ul_ok  = True
+            # Upload to destination (with retries)
+            ul_ok  = False
             ul_err = ""
-            try:
-                dst.upload_file(tmp_path, name)
-            except Exception as e:
-                ul_ok  = False
-                ul_err = str(e)
-            finally:
-                if os.path.exists(tmp_path):
-                    try: os.remove(tmp_path)
-                    except Exception: pass
+            for attempt in range(1, MAX_RETRIES + 1):
+                if self._cancelled:
+                    break
+                try:
+                    dst.upload_file(tmp_path, name)
+                    ul_ok  = True
+                    ul_err = ""
+                    break
+                except Exception as e:
+                    ul_err = str(e)
+                    if attempt < MAX_RETRIES and not self._cancelled:
+                        self._log(f"  ⚠ Upload attempt {attempt}/{MAX_RETRIES} failed — retrying in {RETRY_DELAY_SECS}s…")
+                        time.sleep(RETRY_DELAY_SECS)
+
+            if os.path.exists(tmp_path):
+                try: os.remove(tmp_path)
+                except Exception: pass
 
             if not ul_ok:
-                self._log(f"✗ Upload failed: {name} — {ul_err}")
+                self._log(f"✗ Upload failed ({MAX_RETRIES} attempts): {name} — {ul_err}")
                 files_failed += 1
                 if files_failed >= FAILURE_PROMPT_THRESHOLD:
                     keep_going = self._ask_user(

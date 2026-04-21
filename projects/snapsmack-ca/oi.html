@@ -107,26 +107,48 @@ p:last-child { margin-bottom: 0; }
     margin-bottom: 40px;
 }
 
-/* ─── STICKY HEADER ─────────────────────────────────────────────────────── */
+/* ─── HEADER ────────────────────────────────────────────────────────────── */
 #site-header {
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    background: rgba(255, 255, 255, 1);
-    backdrop-filter: blur(8px);
+    position: relative;
+    background: #fff;
     border-bottom: 3px solid var(--red);
     padding: 28px 0 24px;
-    transition: background 0.3s ease, opacity 0.3s ease;
+    transition: opacity 0.35s ease;
+}
+#site-header.faded {
+    opacity: 0;
 }
 
-#site-header.scrolled {
-    background: rgba(255, 255, 255, 0.5) !important;
-    backdrop-filter: blur(8px);
+/* ─── MINI HEADER ───────────────────────────────────────────────────────── */
+#mini-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.5);
+    border-bottom: 3px solid var(--red);
+    transform: translateY(-100%);
+    transition: transform 0.18s ease-out, background 0.2s ease;
 }
-
-#site-header:hover,
-#site-header:focus-within {
+#mini-header.visible {
+    transform: translateY(0);
+}
+#mini-header:hover {
     background: rgba(255, 255, 255, 1);
+}
+.mini-header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 10px 32px;
+}
+.mini-logo img {
+    width: 42px;
+    height: auto;
+    display: block;
 }
 
 .header-inner {
@@ -173,6 +195,11 @@ p:last-child { margin-bottom: 0; }
     letter-spacing: 0.04em;
     color: var(--dark-grey);
     margin-top: 4px;
+}
+
+.logo-text .tagline em {
+    color: var(--red);
+    font-style: normal;
 }
 
 /* ─── NAVIGATION ────────────────────────────────────────────────────────── */
@@ -311,10 +338,11 @@ main {
 .footer-inner {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     flex-wrap: wrap;
     gap: 16px;
 }
+.logo-lockup:hover { text-decoration: none; }
 .footer-copy {
     font-family: 'Courier New', monospace;
     font-size: 0.68rem;
@@ -339,41 +367,60 @@ main {
 .footer-links a:hover { color: var(--white); }
 </style>
 <script>
-// Sticky header scroll effect
-const header = document.getElementById('site-header');
-window.addEventListener('scroll', () => {
-    if (window.scrollY > 0) {
-        header.classList.add('scrolled');
-    } else {
-        header.classList.remove('scrolled');
+document.addEventListener('DOMContentLoaded', function () {
+    var mainHeader = document.getElementById('site-header');
+    var miniHeader = document.getElementById('mini-header');
+    if (mainHeader && miniHeader) {
+        function onScroll() {
+            var threshold = mainHeader.offsetTop + mainHeader.offsetHeight;
+            var past = window.scrollY > threshold;
+            miniHeader.classList.toggle('visible', past);
+            mainHeader.classList.toggle('faded', past);
+        }
+        window.addEventListener('scroll', onScroll, { passive: true });
     }
-});
-
-// Highlight active nav link
-document.querySelectorAll('nav a').forEach(link => {
-    if (link.href === window.location.href) {
-        link.classList.add('active');
-    }
+    document.querySelectorAll('nav a').forEach(function (link) {
+        if (link.href === window.location.href) link.classList.add('active');
+    });
+    // Obfuscated email — same pattern as index.html
+    (function () {
+        var el = document.getElementById('oi-email');
+        if (el) { el.href = 'mailto:sean@baddaywithacamera.ca'; el.textContent = 'sean@baddaywithacamera.ca'; }
+    })();
 });
 </script>
 </head>
 <body>
 
-<!-- STICKY HEADER -->
+<!-- HEADER -->
 <header id="site-header">
     <div class="header-inner">
         <a href="index.html" class="logo-lockup">
             <img src="img/logo.png" alt="SnapSmack">
             <div class="logo-text">
-                <div class="snap"><em>Snap</em><strong>Smack</strong></div>
-                <div class="tagline">smack your <em>snaps</em> up</div>
+                <div class="snap"><em>SNAP</em><strong>SMACK</strong></div>
+                <div class="tagline">PHOTO <em>BLOGGING</em> IS BACK, BITCHEZ</div>
             </div>
         </a>
         <nav>
             <a href="index.html">GAFF!</a>
-            <a href="news.html">WOTCHA!</a>
+            <a href="wotcha.html">WOTCHA!</a>
             <a href="bugger.html">BUGGER!</a>
-            <a href="oi.html" class="active">OI MATE!</a>
+            <a href="oi.html">OI MATE!</a>
+        </nav>
+    </div>
+</header>
+
+<header id="mini-header" aria-hidden="true">
+    <div class="mini-header-inner">
+        <a href="index.html" class="mini-logo">
+            <img src="img/logo.png" alt="SnapSmack">
+        </a>
+        <nav>
+            <a href="index.html">GAFF!</a>
+            <a href="wotcha.html">WOTCHA!</a>
+            <a href="bugger.html">BUGGER!</a>
+            <a href="oi.html">OI MATE!</a>
         </nav>
     </div>
 </header>
@@ -390,34 +437,33 @@ document.querySelectorAll('nav a').forEach(link => {
     <section>
         <div class="wrap">
             <div class="content">
-                <h2>Let's Chat</h2>
-                <p>Got questions about SnapSmack? Found a bug? Just want to say hello? Reach out using any of the methods below.</p>
+                <h2>Reach Out</h2>
+                <p>Sean reads every message. There's no support team, no ticketing system, no chatbot — just him. Response time depends on what's on fire. If your site is down, lead with that and he'll prioritise it.</p>
 
                 <div class="contact-card">
                     <h3>Sean McCormick</h3>
-                    <div class="title">SnapSmack Creator</div>
+                    <div class="title">SnapSmack Creator &amp; Primary Disaster</div>
 
                     <div class="contact-info">
                         <label>Email</label>
-                        <a href="mailto:sean@baddaywithacamera.ca">sean@baddaywithacamera.ca</a>
+                        <a id="oi-email" href="#">(loading…)</a>
                     </div>
 
                     <div class="contact-info">
-                        <label>Links & Other Stuff</label>
-                        <a href="https://linktr.ee/seanmccormick" target="_blank">linktr.ee/seanmccormick</a>
-                    </div>
-
-                    <div class="contact-info">
-                        <label>Signal</label>
-                        <p>Available on Signal</p>
+                        <label>Photography &amp; Links</label>
+                        <a href="https://linktr.ee/mccormickphotography" target="_blank" rel="noopener">linktr.ee/mccormickphotography</a>
                     </div>
 
                 </div>
 
                 <h2 style="margin-top: 48px;">Bug Reports</h2>
-                <p>Found a bug? Let me know! The best way is to describe what you were doing, what you expected to happen, and what actually happened instead.</p>
+                <p>Before filing a report, check <a href="bugger.html">BUGGER!</a> — there's a self-diagnosis checklist there that fixes most problems without any back-and-forth. If you've worked through it and still have a problem, here's what to include: what you were doing, what you expected, what actually happened, your PHP version, your MySQL version, and the error message if there is one. Screenshots are fine. Stack traces from the error log are better.</p>
+                <p>If you have a GitHub account, open an issue there. If you don't, email works exactly as well.</p>
 
-                <p>Include any error messages you saw, and if possible, let me know what version of SnapSmack you're running. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+                <h2 style="margin-top: 48px;">Contributing</h2>
+                <p>SnapSmack is open source. Code contributions aren't being solicited — if there's a bug, Sean will fix it faster and better once he knows about it. If you want to fork it and do your own thing, you're welcome to.</p>
+                <p>Skin submissions are a different matter — those are very welcome. One rule: third-party skins must be free. No exceptions, no premium tiers, no upsell. The project exists to give photographers a hand up, not to create a marketplace that charges them for tools they need.</p>
+                <p>If you don't code or design, telling photographers that SnapSmack exists is contribution enough.</p>
             </div>
         </div>
     </section>
@@ -428,29 +474,31 @@ document.querySelectorAll('nav a').forEach(link => {
     <div class="wrap">
         <div class="footer-inner">
             <p class="footer-copy">&copy; 2026 Sean McCormick &middot; Dedicated to Raymond A. Vanderwoning, photographer and friend. <a href="https://www.serenity.ca/obituaries/Raymond-Anthony-Vanderwoning?obId=30943370" target="_blank" rel="noopener noreferrer">He is missed.</a></p>
-            <nav class="footer-links">
-                <a href="index.html">Home</a>
-            </nav>
         </div>
     </div>
 </footer>
 
 <script>
-// Sticky header scroll effect
-const header = document.getElementById('site-header');
-window.addEventListener('scroll', () => {
-    if (window.scrollY > 0) {
-        header.classList.add('scrolled');
-    } else {
-        header.classList.remove('scrolled');
+document.addEventListener('DOMContentLoaded', function () {
+    var mainHeader = document.getElementById('site-header');
+    var miniHeader = document.getElementById('mini-header');
+    if (mainHeader && miniHeader) {
+        function onScroll() {
+            var threshold = mainHeader.offsetTop + mainHeader.offsetHeight;
+            var past = window.scrollY > threshold;
+            miniHeader.classList.toggle('visible', past);
+            mainHeader.classList.toggle('faded', past);
+        }
+        window.addEventListener('scroll', onScroll, { passive: true });
     }
-});
-
-// Highlight active nav link
-document.querySelectorAll('nav a').forEach(link => {
-    if (link.href === window.location.href) {
-        link.classList.add('active');
-    }
+    document.querySelectorAll('nav a').forEach(function (link) {
+        if (link.href === window.location.href) link.classList.add('active');
+    });
+    // Obfuscated email — same pattern as index.html
+    (function () {
+        var el = document.getElementById('oi-email');
+        if (el) { el.href = 'mailto:sean@baddaywithacamera.ca'; el.textContent = 'sean@baddaywithacamera.ca'; }
+    })();
 });
 </script>
 
