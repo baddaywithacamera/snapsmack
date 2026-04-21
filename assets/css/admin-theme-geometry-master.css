@@ -4017,3 +4017,66 @@ input[type="range"]:active::-webkit-slider-thumb {
     border-color: var(--accent-primary, #fff) !important;
     box-shadow: 0 0 0 2px var(--accent-primary, #fff);
 }
+
+/* ── Big Wheel / Pimpmobile offer card ────────────────────────────────────── */
+.pimpmobile-offer {
+    padding: 22px 24px;
+    margin-bottom: 25px;
+    border-radius: 3px;
+    border-left: 4px solid var(--accent-primary, #c8ff00);
+    background: var(--box-bg, rgba(255,255,255,0.04));
+}
+.pimpmobile-offer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+}
+.pimpmobile-offer-body {
+    flex: 1;
+}
+.pimpmobile-offer-body h3 {
+    margin: 0 0 8px;
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+    color: var(--accent-primary, #c8ff00);
+}
+.pimpmobile-offer-body p {
+    margin: 0;
+    font-size: 0.85rem;
+    opacity: 0.75;
+    line-height: 1.5;
+}
+.pimpmobile-offer-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+.pimpmobile-offer-actions .btn-smack {
+    margin: 0;
+    width: auto;
+    flex-shrink: 0;
+}
+.btn-smack-ghost {
+    background: transparent;
+    border: 1px solid currentColor;
+    opacity: 0.55;
+    font-size: 0.78rem;
+    padding: 6px 14px;
+}
+.btn-smack-ghost:hover { opacity: 0.85; }
+
+/* Sidebar bottom mode toggle                                                  */
+.sidebar-mode-toggle {
+    display: block;
+    font-size: 0.72rem;
+    opacity: 0.45;
+    text-align: center;
+    margin-bottom: 6px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+}
+.sidebar-mode-toggle:hover { opacity: 0.75; }

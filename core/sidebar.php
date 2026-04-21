@@ -10,6 +10,9 @@
 
 $current_page = basename($_SERVER['PHP_SELF']);
 
+// --- UI MODE ---
+$_ui_pimpmobile = ($settings['ui_mode'] ?? 'bigwheel') === 'pimpmobile';
+
 // --- CONDITIONAL PIMPOTRON DETECTION ---
 $_sidebar_pimpotron = false;
 if (!empty($settings['active_skin'])) {
@@ -66,16 +69,20 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-albums.php') ? 'active' : ''; ?>">
                         <a href="smack-albums.php">Albums</a>
                     </li>
+                    <?php if ($_ui_pimpmobile): ?>
                     <li class="<?php echo ($current_page == 'smack-media.php') ? 'active' : ''; ?>">
                         <a href="smack-media.php">Media Library</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-gallery.php') ? 'active' : ''; ?>">
                         <a href="smack-gallery.php">Media Gallery</a>
                     </li>
+                    <?php endif; ?>
 
                     <li class="<?php echo ($current_page == 'smack-comments.php') ? 'active' : ''; ?>">
                         <a href="smack-comments.php">Signals</a>
                     </li>
+
+                    <?php if ($_ui_pimpmobile): ?>
                     <li class="<?php echo ($current_page == 'smack-blogroll.php') ? 'active' : ''; ?>">
                         <a href="smack-blogroll.php">Blogroll</a>
                     </li>
@@ -88,6 +95,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-tools.php') ? 'active' : ''; ?>">
                         <a href="smack-tools.php">Companion Tools</a>
                     </li>
+                    <?php endif; ?>
                 </ul>
             </div>
 
@@ -104,11 +112,12 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-skin.php') ? 'active' : ''; ?>">
                         <a href="smack-skin.php">Smooth Your Skin</a>
                     </li>
-                    <?php if ($_sidebar_pimpotron): ?>
+                    <?php if ($_ui_pimpmobile && $_sidebar_pimpotron): ?>
                     <li class="<?php echo ($current_page == 'smack-pimpotron.php') ? 'active' : ''; ?>">
                         <a href="smack-pimpotron.php">Pimpotron</a>
                     </li>
                     <?php endif; ?>
+                    <?php if ($_ui_pimpmobile): ?>
                     <li class="<?php echo ($current_page == 'smack-social-dock.php') ? 'active' : ''; ?>">
                         <a href="smack-social-dock.php">Social Dock</a>
                     </li>
@@ -127,19 +136,24 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-appearance-static.php') ? 'active' : ''; ?>">
                         <a href="smack-appearance-static.php">Static Page Appearance</a>
                     </li>
+                    <?php endif; ?>
                 </ul>
             </div>
 
-            <!-- SECTION 3: Boring Ass Stuff -->
+            <!-- SECTION 3: Boring Ass Stuff (Pimpmobile) / Settings (Big Wheel) -->
             <div class="nav-section<?php echo ($_active_section === 'boring') ? ' open' : ''; ?>" data-section="boring">
                 <button type="button" class="nav-section-toggle">
-                    <span class="nav-section-label">Boring Ass Stuff</span>
+                    <span class="nav-section-label"><?php echo $_ui_pimpmobile ? 'Boring Ass Stuff' : 'Settings'; ?></span>
                     <span class="nav-section-arrow"></span>
                 </button>
                 <ul class="nav-section-links">
                     <li class="<?php echo ($current_page == 'smack-settings.php') ? 'active' : ''; ?>">
                         <a href="smack-settings.php">Configuration</a>
                     </li>
+                    <li class="<?php echo ($current_page == 'smack-update.php') ? 'active' : ''; ?>">
+                        <a href="smack-update.php">System Updates</a>
+                    </li>
+                    <?php if ($_ui_pimpmobile): ?>
                     <li class="<?php echo ($current_page == 'smack-users.php') ? 'active' : ''; ?>">
                         <a href="smack-users.php">User Manager</a>
                     </li>
@@ -147,7 +161,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                         <a href="smack-maintenance.php">Maintenance</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-fingerprints.php') ? 'active' : ''; ?>">
-                        <a href="smack-fingerprints.php">Fingerprints & Bans</a>
+                        <a href="smack-fingerprints.php">Troll Control</a>
                     </li>
                     <li class="<?php echo in_array($current_page, ['smack-backup.php','smack-ftp.php','smack-verify.php']) ? 'active' : ''; ?>">
                         <a href="smack-backup.php">Backup &amp; Recovery</a>
@@ -157,9 +171,6 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     </li>
                     <li class="<?php echo ($current_page == 'smack-disaster.php') ? 'active' : ''; ?>">
                         <a href="smack-disaster.php">Disaster Recovery</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-update.php') ? 'active' : ''; ?>">
-                        <a href="smack-update.php">System Updates</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-stats.php') ? 'active' : ''; ?>">
                         <a href="smack-stats.php">Traffic Stats</a>
@@ -189,7 +200,8 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-multisite-blogroll.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite-blogroll.php">Blogroll Sync</a>
                     </li>
-                    <?php endif; ?>
+                    <?php endif; // multisite ?>
+                    <?php endif; // pimpmobile ?>
                 </ul>
             </div>
 
@@ -213,7 +225,17 @@ foreach ($_section_map as $sec => $_sec_pages) {
     </div>
 
     <div class="sidebar-bottom">
+        <?php if ($_ui_pimpmobile): ?>
+        <form method="POST" action="smack-admin.php">
+            <input type="hidden" name="pimpmobile_action" value="switch_to_bigwheel">
+            <button type="submit" class="sidebar-mode-toggle">SWITCH TO BIG WHEEL</button>
+        </form>
+        <?php else: ?>
+        <form method="POST" action="smack-admin.php">
+            <input type="hidden" name="pimpmobile_action" value="switch_to_pimpmobile">
+            <button type="submit" class="sidebar-mode-toggle">UNLOCK PIMPMOBILE</button>
+        </form>
+        <?php endif; ?>
         <a href="logout.php" class="logout">Logout</a>
         <div class="credits-admin">&copy; 2026 Sean McCormick</div>
-    </div>
-</div>
+    </div

@@ -204,6 +204,51 @@ if ($cron_supported) {
     $rss_job_registered = ($check_rc === 0 && strpos(implode("\n", $check_cron), '# snapsmack-rss-fetch') !== false);
 }
 
+// --- BIG WHEEL / PIMPMOBILE ---
+$_ui_pimpmobile = ($settings['ui_mode'] ?? 'bigwheel') === 'pimpmobile';
+
+// POST handler — mode switch and offer responses
+if (isset($_POST['pimpmobile_action'])) {
+    $_pm_action = $_POST['pimpmobile_action'];
+
+    if ($_pm_action === 'switch_to_pimpmobile') {
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('ui_mode','pimpmobile') ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute();
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('pimpmobile_last_offer_at',?) ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$count_pub]);
+        $settings['ui_mode'] = 'pimpmobile';
+        $_ui_pimpmobile = true;
+
+    } elseif ($_pm_action === 'switch_to_bigwheel') {
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('ui_mode','bigwheel') ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute();
+        $settings['ui_mode'] = 'bigwheel';
+        $_ui_pimpmobile = false;
+
+    } elseif ($_pm_action === 'decline_pimpmobile_offer') {
+        $_pm_declines = intval($settings['pimpmobile_offer_declines'] ?? 0) + 1;
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('pimpmobile_offer_declines',?) ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$_pm_declines]);
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('pimpmobile_last_offer_at',?) ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$count_pub]);
+        $settings['pimpmobile_offer_declines'] = $_pm_declines;
+        $settings['pimpmobile_last_offer_at']  = $count_pub;
+
+    } elseif ($_pm_action === 'never_show_pimpmobile') {
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('pimpmobile_never_show','1') ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute();
+        $settings['pimpmobile_never_show'] = '1';
+    }
+}
+
+// Determine whether the offer card should appear this visit.
+// Cadence: every 100 posts; after 3 declines switches to every 200 posts.
+$_pm_declines       = intval($settings['pimpmobile_offer_declines'] ?? 0);
+$_pm_last_at        = intval($settings['pimpmobile_last_offer_at']  ?? 0);
+$_pm_cadence        = ($_pm_declines >= 3) ? 200 : 100;
+$_pimpmobile_offer  = (
+    !$_ui_pimpmobile &&
+    empty($settings['pimpmobile_never_show']) &&
+    $count_pub > 0 &&
+    $count_pub >= $_pm_last_at + $_pm_cadence
+);
+// "Never show again" button appears on the 3rd presentation (≥2 prior declines).
+$_pm_show_never     = ($_pm_declines >= 2);
+
 $page_title = "System Dashboard";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
@@ -211,6 +256,33 @@ include 'core/sidebar.php';
 
 <div class="main">
     <h2>SYSTEM DASHBOARD</h2>
+
+    <?php if ($_pimpmobile_offer): ?>
+    <div class="pimpmobile-offer">
+        <div class="pimpmobile-offer-header">
+            <div class="pimpmobile-offer-body">
+                <h3>READY TO TAKE THE WHEEL?</h3>
+                <p>You've published <?php echo $count_pub; ?> posts — the full admin is standing by. Pimpmobile mode unlocks media management, community tools, custom CSS &amp; scripts, advanced backup options, traffic stats, and the full API. You can switch back any time.</p>
+                <div class="pimpmobile-offer-actions">
+                    <form method="POST" style="display:inline;">
+                        <input type="hidden" name="pimpmobile_action" value="switch_to_pimpmobile">
+                        <button type="submit" class="btn-smack">LET'S PIMP THIS RIDE</button>
+                    </form>
+                    <form method="POST" style="display:inline;">
+                        <input type="hidden" name="pimpmobile_action" value="decline_pimpmobile_offer">
+                        <button type="submit" class="btn-smack btn-smack-ghost">NOT YET</button>
+                    </form>
+                    <?php if ($_pm_show_never): ?>
+                    <form method="POST" style="display:inline;">
+                        <input type="hidden" name="pimpmobile_action" value="never_show_pimpmobile">
+                        <button type="submit" class="btn-smack btn-smack-ghost">LEAVE ME ALONE</button>
+                    </form>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <?php if ($_update_total > 0): ?>
     <div class="alert-update">
