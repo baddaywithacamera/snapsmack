@@ -839,7 +839,7 @@ include 'core/sidebar.php';
         </div>
 
         <div class="form-action-row">
-            <button type="submit" class="master-update-btn">COMMIT TRANSMISSION</button>
+            <button type="submit" class="master-update-btn">SMACK THAT @#$% UP!</button>
         </div>
 
     </form>
