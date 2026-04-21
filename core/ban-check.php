@@ -8,6 +8,8 @@
  *   2. IP address
  *   3. SHA-256 hash of the lowercased email address (if provided)
  *
+ * Also checks SMACK THE ENEMY network scores if ste_enabled = 1.
+ *
  * Returns true if the submission should be blocked, false if clean.
  *
  * Usage:
@@ -18,6 +20,10 @@
  * only their SHA-256 hash. This protects the submitter's privacy even
  * if the database is compromised.
  */
+
+if (!function_exists('ste_worst_colour')) {
+    require_once __DIR__ . '/ste-client.php';
+}
 
 /**
  * Check whether a comment submission matches any active ban.
@@ -59,11 +65,36 @@ function is_banned(PDO $pdo, string $fp_hash, string $ip, string $email = ''): b
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
-    return (bool) $stmt->fetchColumn();
+    if ($stmt->fetchColumn()) return true;
+
+    // --- SMACK THE ENEMY network score check ---
+    // If enabled, also block submitters whose cached score meets the threshold.
+    try {
+        $ste_enabled   = ($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='ste_enabled' LIMIT 1")->fetchColumn() ?? '0') === '1';
+        $ste_threshold = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='ste_auto_ban_threshold' LIMIT 1")->fetchColumn() ?: 'red';
+
+        if ($ste_enabled && $ste_threshold !== 'never') {
+            $ste_checks = [];
+            if ($fp_hash !== '') $ste_checks[] = ['ban_type' => 'fingerprint', 'ban_value' => $fp_hash];
+            if ($ip !== '')      $ste_checks[] = ['ban_type' => 'ip',          'ban_value' => $ip];
+            if ($email !== '')   $ste_checks[] = ['ban_type' => 'email',       'ban_value' => $email];
+
+            if (!empty($ste_checks)) {
+                $colour = ste_worst_colour($pdo, $ste_checks);
+                if (ste_exceeds_threshold($colour, $ste_threshold)) {
+                    return true;
+                }
+            }
+        }
+    } catch (Exception $e) {
+        // STE check is non-fatal — never block a clean comment due to DB error
+    }
+
+    return false;
 }
 
 /**
- * Add a ban to snap_ban_list.
+ * Add a ban to snap_ban_list, and report to SMACK THE ENEMY if enabled.
  *
  * @param  PDO    $pdo       Database connection
  * @param  string $ban_type  'fingerprint' | 'ip' | 'email_hash'
@@ -79,7 +110,26 @@ function add_ban(PDO $pdo, string $ban_type, string $ban_value, string $reason =
         VALUES (?, ?, ?, ?)
     ");
     $stmt->execute([$ban_type, $ban_value, $reason ?: null, $banned_by]);
-    return $stmt->rowCount() > 0;
+    $inserted = $stmt->rowCount() > 0;
+
+    // Report to SMACK THE ENEMY network (non-blocking, non-fatal)
+    if ($inserted) {
+        try {
+            $ste_enabled = ($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='ste_enabled' LIMIT 1")->fetchColumn() ?? '0') === '1';
+            if ($ste_enabled) {
+                $ste_key = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='ste_api_key' LIMIT 1")->fetchColumn() ?: '';
+                if ($ste_key !== '') {
+                    // Translate local ban_type to STE ban_type (email stored as email_hash locally)
+                    $ste_type = ($ban_type === 'email_hash') ? 'email' : $ban_type;
+                    ste_client_report($ste_key, [['ban_type' => $ste_type, 'ban_value' => $ban_value]]);
+                }
+            }
+        } catch (Exception $e) {
+            // Non-fatal — local ban is already recorded
+        }
+    }
+
+    return $inserted;
 }
 
 /**

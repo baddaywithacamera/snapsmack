@@ -4018,6 +4018,14 @@ input[type="range"]:active::-webkit-slider-thumb {
     box-shadow: 0 0 0 2px var(--accent-primary, #fff);
 }
 
+/* ── SMACK THE ENEMY threat level dots (comment queue) ───────────────────── */
+.ste-dot        { font-size: 0.6rem; vertical-align: middle; }
+.ste-dot-green  { color: #4caf50; }
+.ste-dot-yellow { color: #ffc107; }
+.ste-dot-orange { color: #ff9800; }
+.ste-dot-red    { color: #f44336; }
+.ste-dot-black  { color: #888; }
+
 /* ── Big Wheel / Pimpmobile offer card ────────────────────────────────────── */
 .pimpmobile-offer {
     padding: 22px 24px;

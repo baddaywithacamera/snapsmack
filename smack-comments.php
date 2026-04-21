@@ -10,6 +10,7 @@
 
 require_once 'core/auth.php';
 require_once 'core/ban-check.php';
+require_once 'core/ste-client.php';
 
 // --- GLOBAL COMMENT SETTINGS ---
 $s_rows = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -68,8 +69,23 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     } else {
         // Legacy system
         if ($_GET['action'] == 'approve') {
+            // Fetch comment for STE allow-vote before approving
+            $_ste_cmt = $pdo->prepare("SELECT fp_hash, comment_ip FROM snap_comments WHERE id = ? LIMIT 1");
+            $_ste_cmt->execute([$id]);
+            $_ste_row = $_ste_cmt->fetch(PDO::FETCH_ASSOC);
+
             $pdo->prepare("UPDATE snap_comments SET is_approved = 1 WHERE id = ?")->execute([$id]);
             $msg = "Signal authorized. Broadcasting live.";
+
+            // Send allow-vote to SMACK THE ENEMY (non-fatal)
+            try {
+                $_ste_on  = ($s_rows['ste_enabled']  ?? '0') === '1';
+                $_ste_key = $s_rows['ste_api_key']   ?? '';
+                if ($_ste_on && $_ste_key !== '' && $_ste_row) {
+                    if (!empty($_ste_row['fp_hash']))   ste_client_allow($_ste_key, 'fingerprint', $_ste_row['fp_hash']);
+                    if (!empty($_ste_row['comment_ip'])) ste_client_allow($_ste_key, 'ip',         $_ste_row['comment_ip']);
+                }
+            } catch (Exception $e) { /* non-fatal */ }
         } elseif ($_GET['action'] == 'delete') {
             $pdo->prepare("DELETE FROM snap_comments WHERE id = ?")->execute([$id]);
             $msg = "Signal terminated.";
@@ -112,6 +128,9 @@ try {
 // ── Legacy counts (for nav tabs) ─────────────────────────────────────────────
 $leg_pending_count = $pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 0")->fetchColumn();
 $leg_live_count    = $pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 1")->fetchColumn();
+
+// ── SMACK THE ENEMY display settings ─────────────────────────────────────────
+$_ste_active = ($s_rows['ste_enabled'] ?? '0') === '1' && ($s_rows['ui_mode'] ?? 'bigwheel') === 'pimpmobile';
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -350,6 +369,16 @@ include 'core/sidebar.php';
                                         | FP: <span title="<?php echo htmlspecialchars($c['fp_hash']); ?>" class="fp-indicator">&#x2022;&#x2022;&#x2022;<?php echo substr($c['fp_hash'], -6); ?></span>
                                     <?php else: ?>
                                         | FP: <span class="fp-none" title="No fingerprint — submitted before fingerprinting was enabled, or JavaScript was disabled">—</span>
+                                    <?php endif; ?>
+                                    <?php if ($_ste_active): ?>
+                                        <?php
+                                        $_ste_checks = [];
+                                        if (!empty($c['fp_hash']))     $_ste_checks[] = ['ban_type' => 'fingerprint', 'ban_value' => $c['fp_hash']];
+                                        if (!empty($c['display_ip']))  $_ste_checks[] = ['ban_type' => 'ip',          'ban_value' => $c['display_ip']];
+                                        $_ste_colour = !empty($_ste_checks) ? ste_worst_colour($pdo, $_ste_checks) : 'green';
+                                        $_ste_labels = ['green' => 'Clean', 'yellow' => '1 strike', 'orange' => '2 strikes', 'red' => '3 strikes', 'black' => '4+ strikes'];
+                                        ?>
+                                        | <span class="ste-dot ste-dot-<?php echo $_ste_colour; ?>" title="Network: <?php echo $_ste_labels[$_ste_colour] ?? $_ste_colour; ?>">&#x2B24;</span>
                                     <?php endif; ?>
                                     | <?php echo htmlspecialchars($c['display_date']); ?>
                                 </div>
