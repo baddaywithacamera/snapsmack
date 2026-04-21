@@ -7,5 +7,5 @@
  * to determine whether an update is available.
  */
 
-define('SC_VERSION',    '0.7.9M');
-define('SC_CODENAME',   'Maintenance Mode');
+define('SC_VERSION',  '0.7.9O');
+define('SC_CODENAME', 'Network Effects');

@@ -67,6 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_community'])) {
         'rate_limit_signups'          => max(1, min(100,  (int)($_POST['rate_limit_signups']  ?? 3))),
         'rate_limit_logins'           => max(1, min(100,  (int)($_POST['rate_limit_logins']   ?? 10))),
         'rate_limit_resets'           => max(1, min(100,  (int)($_POST['rate_limit_resets']   ?? 3))),
+
+        // Shield — hub/spoke ban sync (only meaningful on hub installs; harmless on spokes)
+        'hub_spoke_ban_sync'          => ($_POST['hub_spoke_ban_sync'] ?? '0') === '1' ? '1' : '0',
     ];
 
     // Validate dock position
@@ -104,6 +107,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_community'])) {
 // --- LOAD CURRENT SETTINGS ---
 $active_reactions_raw = $settings['community_active_reactions'] ?? '["fire","chef-kiss","wow","moody","sharp","golden-hour"]';
 $active_reactions     = json_decode($active_reactions_raw, true) ?: [];
+
+// Shield — hub-specific data for status display
+$is_hub          = ($settings['multisite_role'] ?? '') === 'hub';
+$shield_nodes    = [];
+$shield_ban_count = 0;
+if ($is_hub) {
+    try {
+        $shield_nodes = $pdo->query("
+            SELECT id, site_url, status, ban_sync_cursor
+            FROM snap_multisite_nodes
+            WHERE role = 'spoke'
+            ORDER BY site_url ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        $shield_ban_count = (int)$pdo->query(
+            "SELECT COUNT(*) FROM snap_hub_shared_bans WHERE removed = 0"
+        )->fetchColumn();
+    } catch (PDOException $e) {
+        // Tables may not exist on very old installs — Shield section will show upgrade note
+    }
+}
 
 $page_title = "Interaction";
 include 'core/admin-header.php';
@@ -335,6 +359,68 @@ include 'core/sidebar.php';
             <?php endforeach; ?>
         </div>
     </div>
+
+
+    <!-- ====================================================================
+         SECTION 6: SHIELD — HUB/SPOKE BAN SYNC (hub installs only)
+         ==================================================================== -->
+    <?php if ($is_hub): ?>
+    <div class="box">
+        <h3>SHIELD — BAN SYNC</h3>
+        <p class="box-desc">
+            When enabled, the hub shares hashed ban lists with all connected spokes during each heartbeat sweep.
+            Only SHA-256 hashes are transmitted — no raw IPs, emails, or identifying information ever leaves a site.
+            Bans originating from the hub are silently merged on each spoke; new bans on any spoke are collected
+            back to the hub registry and distributed on the next cycle.
+        </p>
+
+        <div class="field-row">
+            <label for="hub_spoke_ban_sync">ENABLE HUB/SPOKE BAN SYNC</label>
+            <label class="toggle">
+                <input type="checkbox" id="hub_spoke_ban_sync" name="hub_spoke_ban_sync" value="1"
+                       <?php echo ($settings['hub_spoke_ban_sync'] ?? '0') === '1' ? 'checked' : ''; ?>>
+                <span class="toggle-track"></span>
+            </label>
+        </div>
+
+        <?php if (!empty($shield_nodes)): ?>
+        <div style="margin-top:20px;">
+            <h4 style="margin-bottom:10px; font-size:0.85em; letter-spacing:0.05em; color:var(--text-muted,#888);">SPOKE SYNC STATUS</h4>
+            <table class="admin-table" style="width:100%;">
+                <tbody>
+                <tr style="font-weight:bold; font-size:0.85em;">
+                    <td>Spoke</td>
+                    <td>Status</td>
+                    <td>Last Sync</td>
+                </tr>
+                <?php foreach ($shield_nodes as $sn):
+                    $cursor   = $sn['ban_sync_cursor'];
+                    $status   = $sn['status'];
+                    $hostname = parse_url($sn['site_url'], PHP_URL_HOST) ?: $sn['site_url'];
+                    $sync_display = $cursor
+                        ? date('Y-m-d H:i', strtotime($cursor))
+                        : '<span style="color:var(--text-muted,#888);">Never synced</span>';
+                    $status_color = $status === 'active' ? 'var(--accent,#7aad5a)' : 'var(--text-muted,#888)';
+                ?>
+                <tr>
+                    <td><?php echo htmlspecialchars($hostname); ?></td>
+                    <td><span style="color:<?php echo $status_color; ?>;"><?php echo htmlspecialchars(strtoupper($status)); ?></span></td>
+                    <td><?php echo $sync_display; ?></td>
+                </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($shield_ban_count > 0): ?>
+        <p style="margin-top:16px; font-size:0.9em;">
+            <strong><?php echo $shield_ban_count; ?></strong> shared ban<?php echo $shield_ban_count !== 1 ? 's' : ''; ?> in hub registry.
+            <a href="smack-fingerprints.php" style="margin-left:8px;">View Shared Bans →</a>
+        </p>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 
 
     <!-- ====================================================================

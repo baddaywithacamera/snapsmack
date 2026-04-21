@@ -4,6 +4,21 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.9O — "Network Effects" (2026-04-21)
+
+### Added
+- **SnapSmack Shield Tier 1 — hub/spoke ban hash sharing.** When enabled, banning a troll on any site in a multisite installation automatically propagates that ban to every other site. Only SHA-256 hashes are exchanged — no raw IPs, emails, or identifying information ever leaves a site.
+  - **Hub shared ban registry** (`snap_hub_shared_bans` table) — central store of consolidated cross-spoke ban hashes. Tracks ban type, hash, first/last seen, report count (number of distinct spokes reporting the same identifier), and a soft-delete flag for false-positive removal.
+  - **Spoke-side `POST multisite/ban-sync` endpoint** in `core/multisite-api.php` — validates caller is hub, merges incoming consolidated bans (with `hub-sync:` reason prefix to prevent echo-back on next cycle), collects new local bans since last cursor, advances cursor, and returns new bans to hub.
+  - **Hub-side ban sync sweep** in `smack-multisite.php` — after each successful heartbeat, hub calls spoke's `ban-sync` endpoint, ingests new bans into `snap_hub_shared_bans` (ON DUPLICATE KEY: bumps report_count + refreshes last_seen), advances `ban_sync_cursor` per node. Fully delta-synced. Non-fatal: older spokes that 404 are silently skipped and retried next sweep.
+  - **Shared Bans tab** in `smack-fingerprints.php` (hub only) — paginated registry view. Shows hash, type, reason, reporting spoke hostname, report count (colour-coded amber at 3+, red at 5+), last seen date. Clear button soft-deletes from distribution while preserving audit row.
+  - **Shield section** in `smack-community-settings.php` (hub only) — opt-in toggle for `hub_spoke_ban_sync`, per-spoke last sync timestamp table, shared ban count with link to registry.
+  - **Migrations:** 033 creates `snap_hub_shared_bans` and adds `ban_sync_cursor` column to `snap_multisite_nodes`; 034 seeds `ban_hub_last_sync_at` and `ban_sync_capable_spokes` settings.
+  - **Help topic:** Shield — Hub/Spoke Ban Sync (under Boring Ass Stuff).
+  - **Spec document:** `tools/_specs/snapsmack-shield-spec.docx` — full architectural spec for Shield Tier 1 (hub/spoke) and Tier 2 (future network-wide registry).
+
+---
+
 ## 0.7.9N — "Oh Snap" (2026-04-21)
 
 ### Added

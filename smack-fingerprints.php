@@ -95,6 +95,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         exit;
     }
 
+    if ($action === 'fetch_shared_bans') {
+        // Hub-only: fetch from snap_hub_shared_bans (table may not exist on spokes)
+        $page     = max(1, (int)($_POST['page'] ?? 1));
+        $per_page = 50;
+        $offset   = ($page - 1) * $per_page;
+
+        try {
+            $total = (int)$pdo->query("SELECT COUNT(*) FROM snap_hub_shared_bans WHERE removed = 0")->fetchColumn();
+            $rows  = $pdo->query("
+                SELECT id, ban_type, ban_value, reason, reported_by,
+                       first_seen, last_seen, report_count, removed
+                FROM snap_hub_shared_bans
+                WHERE removed = 0
+                ORDER BY last_seen DESC
+                LIMIT {$per_page} OFFSET {$offset}
+            ")->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            echo json_encode(['ok' => false, 'error' => 'Table not available']);
+            exit;
+        }
+
+        echo json_encode([
+            'ok'       => true,
+            'rows'     => $rows,
+            'total'    => $total,
+            'page'     => $page,
+            'per_page' => $per_page,
+            'pages'    => ceil($total / $per_page),
+        ]);
+        exit;
+    }
+
+    if ($action === 'remove_shared_ban') {
+        // Hub-only: soft-delete (sets removed = 1, preserves audit trail)
+        $ban_id = (int)($_POST['ban_id'] ?? 0);
+        if (!$ban_id) {
+            echo json_encode(['ok' => false, 'error' => 'Invalid ID']);
+            exit;
+        }
+        try {
+            $pdo->prepare("UPDATE snap_hub_shared_bans SET removed = 1 WHERE id = ?")->execute([$ban_id]);
+            echo json_encode(['ok' => true]);
+        } catch (PDOException $e) {
+            echo json_encode(['ok' => false, 'error' => 'Update failed']);
+        }
+        exit;
+    }
+
     if ($action === 'fetch_bans') {
         $page     = max(1, (int)($_POST['page'] ?? 1));
         $per_page = 50;
@@ -168,8 +216,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 }
 
 // ── PAGE RENDER ──────────────────────────────────────────────────────────────
-$total_bans = (int)$pdo->query("SELECT COUNT(*) FROM snap_ban_list")->fetchColumn();
+$total_bans  = (int)$pdo->query("SELECT COUNT(*) FROM snap_ban_list")->fetchColumn();
 $active_bans = $total_bans; // All rows in snap_ban_list are active; deleted bans are removed entirely
+
+$settings       = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+$is_hub         = ($settings['multisite_role'] ?? '') === 'hub';
+$ban_sync_on    = ($settings['hub_spoke_ban_sync'] ?? '0') === '1';
+$shared_ban_count = 0;
+if ($is_hub) {
+    try {
+        $shared_ban_count = (int)$pdo->query("SELECT COUNT(*) FROM snap_hub_shared_bans WHERE removed = 0")->fetchColumn();
+    } catch (PDOException $e) {
+        // Table may not exist on older installs
+    }
+}
 ?>
 
 <div class="main">
@@ -185,6 +245,9 @@ $active_bans = $total_bans; // All rows in snap_ban_list are active; deleted ban
         <button class="tab-btn" data-tab="semantic">SEMANTIC</button>
         <button class="tab-btn" data-tab="keywords">KEYWORDS</button>
         <button class="tab-btn" data-tab="add">ADD BAN</button>
+        <?php if ($is_hub): ?>
+        <button class="tab-btn" data-tab="shared-bans">SHARED BANS <?php if ($shared_ban_count > 0): ?><span style="margin-left:4px; font-size:0.75em; opacity:0.6;">(<?php echo $shared_ban_count; ?>)</span><?php endif; ?></button>
+        <?php endif; ?>
     </div>
 
     <!-- ── TAB 1: BANNED ──────────────────────────────────────────────────────── -->
@@ -282,6 +345,27 @@ $active_bans = $total_bans; // All rows in snap_ban_list are active; deleted ban
             <button type="button" class="btn-smack" onclick="issueBan()" style="margin-top:12px;">Issue Ban</button>
         </div>
     </div>
+
+    <?php if ($is_hub): ?>
+    <!-- ── TAB 6: SHARED BANS (hub only) ────────────────────────────────────── -->
+    <div class="tab-content" id="tab-shared-bans">
+        <div class="box">
+            <h3>Hub Shared Ban Registry</h3>
+            <?php if (!$ban_sync_on): ?>
+            <div class="alert alert-info" style="margin-bottom:16px;">
+                Ban sync is currently disabled. Enable it in <a href="smack-community-settings.php">Community Settings → Shield</a>.
+            </div>
+            <?php endif; ?>
+            <p class="dim" style="margin-bottom:16px;">
+                Consolidated ban hashes collected from all connected spokes. Only SHA-256 hashes are stored — no raw IPs or emails.
+                Report count shows how many distinct spokes have reported the same identifier.
+                Clearing a ban removes it from distribution but preserves the audit row (shown in grey).
+            </p>
+            <div id="shared-ban-list"></div>
+            <div id="shared-ban-paginator" style="margin-top:20px; text-align:center;"></div>
+        </div>
+    </div>
+    <?php endif; ?>
 </div>
 
 <script>
@@ -298,6 +382,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         if (tab === 'fingerprints') loadFingerprints(1);
         if (tab === 'semantic') document.getElementById('semantic-fp').focus();
         if (tab === 'keywords') loadKeywords();
+        if (tab === 'shared-bans') loadSharedBans(1);
     });
 });
 
@@ -551,6 +636,81 @@ function loadKeywords() {
             document.getElementById('keyword-list').innerHTML = html;
         });
 }
+
+// ── SHARED BANS (hub only) ──────────────────────────────────────────────────
+<?php if ($is_hub): ?>
+let currentSharedPage = 1;
+function loadSharedBans(page) {
+    currentSharedPage = page;
+    const fd = new FormData();
+    fd.append('action', 'fetch_shared_bans');
+    fd.append('page', page);
+
+    fetch('smack-fingerprints.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            const el = document.getElementById('shared-ban-list');
+            if (!data.ok) {
+                el.innerHTML = '<p class="dim">' + (data.error || 'Could not load shared bans.') + '</p>';
+                return;
+            }
+            if (!data.rows.length) {
+                el.innerHTML = '<p class="dim">No shared bans yet. Bans will appear here once spokes complete a sync.</p>';
+                document.getElementById('shared-ban-paginator').innerHTML = '';
+                return;
+            }
+
+            const typeLabel = { fingerprint: 'Fingerprint', ip: 'IP', email_hash: 'Email' };
+            let html = '<table class="admin-table" style="width:100%;"><tbody>';
+            html += '<tr style="font-weight:bold;"><td>Hash</td><td>Type</td><td>Reason</td><td>Reported By</td><td style="text-align:center;">Reports</td><td>Last Seen</td><td></td></tr>';
+            data.rows.forEach(row => {
+                const shortHash = row.ban_value.substring(0, 16) + '…';
+                const reporter  = row.reported_by ? (new URL(row.reported_by).hostname) : '—';
+                const lastSeen  = new Date(row.last_seen).toLocaleDateString();
+                const countBadge = row.report_count >= 5
+                    ? `<strong style="color:var(--danger,#cc4444);">${row.report_count}</strong>`
+                    : row.report_count >= 3
+                        ? `<strong style="color:var(--warn,#d4a030);">${row.report_count}</strong>`
+                        : row.report_count;
+                html += `<tr>
+                    <td><code title="${row.ban_value}">${shortHash}</code></td>
+                    <td><span class="dim">${typeLabel[row.ban_type] || row.ban_type}</span></td>
+                    <td>${row.reason || '<span class="dim">(none)</span>'}</td>
+                    <td><span class="dim" title="${row.reported_by}">${reporter}</span></td>
+                    <td style="text-align:center;">${countBadge}</td>
+                    <td><small>${lastSeen}</small></td>
+                    <td style="text-align:right;"><button class="btn-smack btn-smack--dim btn-smack--sm" onclick="removeSharedBan(${row.id})">Clear</button></td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            html += `<p class="dim" style="margin-top:10px; font-size:0.85em;">${data.total} shared ban${data.total !== 1 ? 's' : ''} total</p>`;
+            el.innerHTML = html;
+
+            let pag = '';
+            for (let i = 1; i <= data.pages; i++) {
+                pag += `<button class="btn-smack btn-smack--sm" onclick="loadSharedBans(${i})" ${i === page ? 'disabled' : ''}>${i}</button> `;
+            }
+            document.getElementById('shared-ban-paginator').innerHTML = pag;
+        });
+}
+
+function removeSharedBan(banId) {
+    if (!confirm('Clear this ban from distribution? The audit row will be preserved but it will no longer be sent to spokes.')) return;
+    const fd = new FormData();
+    fd.append('action', 'remove_shared_ban');
+    fd.append('ban_id', banId);
+
+    fetch('smack-fingerprints.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                loadSharedBans(currentSharedPage);
+            } else {
+                alert('Error: ' + (data.error || 'Could not clear ban.'));
+            }
+        });
+}
+<?php endif; ?>
 
 // ── INIT ────────────────────────────────────────────────────────────────────
 loadBans(1);
