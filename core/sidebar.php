@@ -222,20 +222,19 @@ foreach ($_section_map as $sec => $_sec_pages) {
             </div>
 
         </nav>
+
+        <!-- MODE TOGGLE — outside accordion, between nav and sidebar-bottom -->
+        <form method="POST" action="smack-admin.php" class="mode-toggle-form">
+            <input type="hidden" name="pimpmobile_action"
+                   value="<?php echo $_ui_pimpmobile ? 'switch_to_bigwheel' : 'switch_to_pimpmobile'; ?>">
+            <button type="submit" class="mode-toggle-btn">
+                <?php echo $_ui_pimpmobile ? 'Switch to Big Wheel' : 'Unlock Pimpmobile'; ?>
+            </button>
+        </form>
+
     </div>
 
     <div class="sidebar-bottom">
-        <?php if ($_ui_pimpmobile): ?>
-        <form method="POST" action="smack-admin.php">
-            <input type="hidden" name="pimpmobile_action" value="switch_to_bigwheel">
-            <button type="submit" class="sidebar-mode-toggle">SWITCH TO BIG WHEEL</button>
-        </form>
-        <?php else: ?>
-        <form method="POST" action="smack-admin.php">
-            <input type="hidden" name="pimpmobile_action" value="switch_to_pimpmobile">
-            <button type="submit" class="sidebar-mode-toggle">UNLOCK PIMPMOBILE</button>
-        </form>
-        <?php endif; ?>
         <a href="logout.php" class="logout">Logout</a>
         <div class="credits-admin">&copy; 2026 Sean McCormick</div>
     </div>
