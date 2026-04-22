@@ -819,6 +819,46 @@ It also blocks public access to admin pages (<code>/smack-*</code>), <code>/core
 HTML
 ];
 
+$help_topics['akismet-spam'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Akismet Spam Filter',
+    'icon'     => '&#x1F6AB;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Akismet Spam Filter</h3>
+<p>SnapSmack integrates with <a href="https://akismet.com" target="_blank">Akismet</a>
+to automatically identify and reject spam comments. Akismet is a cloud service that
+checks submissions against a global spam database built from millions of sites.</p>
+
+<h4>Setup</h4>
+<ol>
+    <li>Get a free API key at <a href="https://akismet.com/signup/" target="_blank">akismet.com/signup</a>
+    (free for personal/non-commercial sites).</li>
+    <li>Go to <strong>Admin → Settings → Global Comments → Architecture &amp; Interaction</strong>.</li>
+    <li>Paste your key into the <strong>Akismet API Key</strong> field.</li>
+    <li>Click <strong>TEST KEY</strong> — you'll see a ✓ or ✗ inline without a page reload.</li>
+    <li>Save settings.</li>
+</ol>
+
+<h4>How It Works</h4>
+<p>When a visitor submits a comment, SnapSmack sends the comment text, author name, email,
+URL, IP address, and user-agent to Akismet's API. If Akismet classifies it as spam, the
+comment is silently rejected — the submitter sees a success message but the comment is
+never stored. This prevents spammers from learning they've been blocked and adjusting
+their technique.</p>
+
+<h4>Multisite / Hub Installs</h4>
+<p>On a hub installation, the Akismet key is configured once on the hub and automatically
+distributed to all connected spokes via the heartbeat. Each spoke checks its own comments
+independently against the shared key — no spam reaches any site in the network.</p>
+
+<h4>Akismet vs. SnapSmack's Own Spam Tools</h4>
+<p>Akismet handles content-based spam (gibberish, SEO links, bot-generated text). It works
+alongside — not instead of — SnapSmack's fingerprint bans, keyword filters, semantic
+analysis, and SMACK THE ENEMY network reputation. Use all layers together for best results.</p>
+HTML
+];
+
 $help_topics['fingerprints-bans'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'Fingerprints & Troll Bans',
