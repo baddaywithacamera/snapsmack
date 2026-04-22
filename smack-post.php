@@ -238,15 +238,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
     $download_url   = trim($_POST['download_url'] ?? '');
     $source_file    = trim($_POST['source_file'] ?? '');
 
-    // Validate: if downloads are enabled and download link is required, block save
-    if ($allow_download && ($settings['download_link_required'] ?? '0') === '1' && empty($download_url)) {
+    // Validate: if require_download_link is on, any published post must have a URL.
+    // The previous check gated on $allow_download, which meant batch-poster posts
+    // (allow_download=0, download_url='') could slip through even with the setting on.
+    if (($settings['download_link_required'] ?? '0') === '1'
+        && $status === 'published'
+        && empty($download_url)) {
         $is_xhr = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
                   strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
         if ($is_xhr) {
-            echo "Download link is required when downloads are enabled.";
+            echo "A download URL is required for published posts on this site.";
             exit;
         }
-        $post_error = "Download link is required when downloads are enabled.";
+        $post_error = "A download URL is required for published posts on this site.";
     }
     $selected_cats = $_POST['cat_ids'] ?? [];
     $selected_albums = $_POST['album_ids'] ?? [];

@@ -552,6 +552,34 @@ include 'core/sidebar.php';
         </div>
 
         <!-- ============================================================
+             DOWNLOADS
+             ============================================================ -->
+        <div class="box">
+            <h3>DOWNLOADS</h3>
+            <div class="dash-grid">
+
+                <div class="lens-input-wrapper">
+                    <label>REQUIRE DOWNLOAD LINK?</label>
+                    <select name="settings[download_link_required]">
+                        <option value="0" <?php echo (($settings['download_link_required'] ?? '0') == '0') ? 'selected' : ''; ?>>NO — OPTIONAL</option>
+                        <option value="1" <?php echo (($settings['download_link_required'] ?? '0') == '1') ? 'selected' : ''; ?>>YES — BLOCK PUBLISH IF MISSING</option>
+                    </select>
+                    <span class="dim">WHEN ENABLED, POSTS CANNOT BE PUBLISHED WITHOUT A DOWNLOAD URL. INTENDED FOR SITES WHERE EVERY IMAGE IS BACKED BY A GOOGLE DRIVE ORIGINAL.</span>
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>DEFAULT DOWNLOAD MODE</label>
+                    <select name="settings[download_default_mode]">
+                        <option value="per_post" <?php echo (($settings['download_default_mode'] ?? 'per_post') == 'per_post') ? 'selected' : ''; ?>>PER-POST (ENABLE MANUALLY)</option>
+                        <option value="all_posts" <?php echo (($settings['download_default_mode'] ?? 'per_post') == 'all_posts') ? 'selected' : ''; ?>>ALL POSTS (DOWNLOADS ON BY DEFAULT)</option>
+                    </select>
+                    <span class="dim">ALL POSTS SAVES A STEP IF EVERY IMAGE IS DOWNLOADABLE. YOU CAN STILL DISABLE PER-POST.</span>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ============================================================
              TIME & LOCALIZATION — dash-grid (3-col)
              Exactly 3 items. Perfect fit.
              ============================================================ -->
