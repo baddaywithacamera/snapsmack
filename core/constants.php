@@ -7,9 +7,9 @@
  * the application.
  */
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.9O');
-define('SNAPSMACK_VERSION_SHORT', '0.7.9O');
-define('SNAPSMACK_VERSION_CODENAME', "Network Effects");
+define('SNAPSMACK_VERSION', 'Alpha 0.7.9P');
+define('SNAPSMACK_VERSION_SHORT', '0.7.9P');
+define('SNAPSMACK_VERSION_CODENAME', "Spam Blocker");
 
 // --- VERSION COMPARISON ---
 // PHP's version_compare() treats trailing letters as "alpha" (lower than
