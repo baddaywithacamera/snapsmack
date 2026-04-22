@@ -94,9 +94,9 @@ include 'core/sidebar.php';
                     <label>REQUIRE DOWNLOAD LINK?</label>
                     <select name="settings[download_link_required]">
                         <option value="0" <?php echo (($settings['download_link_required'] ?? '0') == '0') ? 'selected' : ''; ?>>NO (OPTIONAL)</option>
-                        <option value="1" <?php echo (($settings['download_link_required'] ?? '0') == '1') ? 'selected' : ''; ?>>YES (BLOCK SAVE IF MISSING)</option>
+                        <option value="1" <?php echo (($settings['download_link_required'] ?? '0') == '1') ? 'selected' : ''; ?>>YES (BLOCK PUBLISH IF MISSING)</option>
                     </select>
-                    <span class="dim">WHEN ENABLED, POSTS WITH DOWNLOADS TURNED ON MUST HAVE A DOWNLOAD LINK OR THE SAVE WILL FAIL.</span>
+                    <span class="dim">WHEN ENABLED, POSTS CANNOT BE PUBLISHED WITHOUT A DOWNLOAD URL. USE FOR SITES WHERE EVERY IMAGE IS BACKED BY A GOOGLE DRIVE ORIGINAL.</span>
                 </div>
 
             </div>

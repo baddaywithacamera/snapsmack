@@ -1520,6 +1520,13 @@ HMAC-SHA256 tokens to prevent URL guessing — download links are unique and tim
 <p>Instead of serving the file directly, you can point the download button to an external
 URL (Dropbox, Google Drive, etc.) by entering the URL on the Edit page. This is useful
 for serving high-resolution files that are too large for your hosting storage.</p>
+
+<h4>Require Download URL</h4>
+<p>Sites that use the batch poster with Google Drive can enable <strong>Require Download
+Link</strong> in Settings → Downloads. When on, any attempt to publish a post without a
+download URL is blocked — both from the manual post form and from the SYBU batch poster.
+This ensures no post ever goes live without its Drive original linked.</p>
+<p>To enable: Admin → Settings → Downloads → Require Download Link → YES — BLOCK PUBLISH IF MISSING.</p>
 HTML
 ];
 
