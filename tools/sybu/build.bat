@@ -3,7 +3,7 @@ REM ─────────────────────────�
 REM  Smack Your Batch Up — build script
 REM  Requires: Python 3.11+, pip install -r requirements.txt
 REM  Output:   C:\SmackYourBatchUp\smackyourbatchup-{version}.exe
-REM  EXIF is handled by piexif (pure Python) — no external dependencies.
+REM  UPX is disabled in the spec — builds finish in 2-5 min, not an hour.
 REM ─────────────────────────────────────────────────────────────────────────
 
 REM ── Read BUILD_VERSION from main.py ───────────────────────────────────────
@@ -12,6 +12,16 @@ set BUILD_VER=%RAW_VER:"=%
 set EXE_NAME=smackyourbatchup-%BUILD_VER%.exe
 echo Build version: %BUILD_VER%
 echo Output name:   %EXE_NAME%
+
+REM ── Use versioned spec file ───────────────────────────────────────────────
+set SPEC_FILE=smackyourbatchup-%BUILD_VER%.spec
+if not exist %SPEC_FILE% (
+    echo ERROR: Spec file %SPEC_FILE% not found.
+    echo When bumping the version, copy and rename the previous spec file,
+    echo then update the name= field inside it to match the new version.
+    pause
+    exit /b 1
+)
 
 REM ── Clean stale build artifacts (prevents OneDrive / AV lock errors) ──────
 if exist build (
@@ -23,26 +33,20 @@ if exist dist (
     rmdir /s /q dist
 )
 
-REM ── Auto-generate spec if it doesn't exist for this version ─────────────
-set SPEC_FILE=smackyourbatchup-%BUILD_VER%.spec
-if not exist %SPEC_FILE% (
-    echo Spec file not found -- generating from template...
-    python -c "import re,sys; src=open('smackyourbatchup-0.7.7a-04.spec').read(); out=re.sub(r'0\.7\.7a-04',sys.argv[1],src); open(sys.argv[2],'w').write(out); print('Generated',sys.argv[2])" %BUILD_VER% %SPEC_FILE%
-)
-
 echo Installing dependencies...
 pip install -r requirements.txt
 
 echo.
 echo Building %EXE_NAME%...
 if not exist C:\SmackYourBatchUp mkdir C:\SmackYourBatchUp
-pyinstaller %SPEC_FILE% --distpath "C:\SmackYourBatchUp"
+pyinstaller --clean %SPEC_FILE% --distpath "C:\SmackYourBatchUp"
 
 echo.
-if exist C:\SmackYourBatchUp\%EXE_NAME% (
+if exist "C:\SmackYourBatchUp\%EXE_NAME%" (
     echo Build successful: C:\SmackYourBatchUp\%EXE_NAME%
     echo Done. Launch: C:\SmackYourBatchUp\%EXE_NAME%
 ) else (
-    echo Build FAILED. Check output above for errors.
+    echo Build FAILED — check output above for errors.
+    pause
+    exit /b 1
 )
-pause

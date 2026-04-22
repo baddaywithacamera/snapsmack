@@ -1846,80 +1846,50 @@ Fix Your Batch Up can re-match originals to server copies using visual feature m
 <h4>Keeping Originals</h4>
 <p>Do not delete your source image files after posting. The copy on the server is
 web-optimised and resized. The original in your folder is what gets uploaded to Drive.
-If originals are deleted before Drive was connected, use <strong>Fix Your Batch Up</strong>
-to recover the links.</p>
+If Drive was not connected when images were posted, use the <strong>Repair tab</strong>
+in Smack Your Batch Up to backfill missing Drive links.</p>
 HTML
 ];
 
-$help_topics['fix-your-batch-up'] = [
+$help_topics['sybu-repair'] = [
     'section'  => 'Desktop Tools',
-    'title'    => 'Fix Your Batch Up',
-    'icon'     => '&#x27F3;',
+    'title'    => 'SYBU — Repair Tab',
+    'icon'     => '&#x2692;',
     'role'     => 'admin',
     'content'  => <<<'HTML'
-<h3>Fix Your Batch Up</h3>
-<p>Fix Your Batch Up is a recovery tool for images that were posted to SnapSmack without
-a Google Drive link — for example, if Smack Your Batch Up was used before Drive
-authentication was configured. It matches your local original files against the
-server-side images, uploads them to Drive, and writes the download links back to
-the database one image at a time.</p>
+<h3>Smack Your Batch Up — Repair Tab</h3>
+<p>The Repair tab fixes three categories of data quality issues in bulk. Pull audit data
+first on the Audit tab, then switch to Repair to run any of the three actions independently.</p>
 
-<h4>When to Use It</h4>
-<p>Run this tool if you see images in Smack Manage with the download link column empty,
-or if the batch poster warned you that Drive was not connected when you posted.
-You can check which images are affected: the tool pulls the list automatically from
-the site on connection.</p>
+<h4>1. Rename Drive Files to {id}.jpg</h4>
+<p>Early versions of Smack Your Batch Up named Drive files after the image's haiku title.
+Because Gemini could generate duplicate titles, this caused filename collisions in Drive
+that silently corrupted the source map. This action renames every Drive file to its numeric
+post ID (e.g. <code>1042.jpg</code>). Drive share URLs are file-ID-based and are not affected
+by the rename — no blog links will break. Processes at a rate-limited 150ms per file to stay
+within Drive API quotas. Stop and resume at any time.</p>
 
-<h4>What You Need</h4>
+<h4>2. Re-enrich Duplicate Titles</h4>
+<p>Finds all posts that share a title with at least one other post, downloads the original
+image from Drive, sends it to Gemini, and writes a new unique haiku title back to the blog.
+Retries up to four times per image to guarantee uniqueness against both the live title list
+and titles already generated in the current repair run. Rate-limited at 500ms between Gemini
+calls. Marks the audit as stale on completion so the next Audit pull reflects the changes.</p>
+
+<h4>3. Backfill Missing Drive Links</h4>
+<p>Lists every published post without a download URL. For each one, paste the Google Drive
+share link and click Save — the link is written to the database immediately and
+<code>allow_download</code> is enabled. Populated automatically from the most recent Audit
+pull. No batch operation here: each link requires a manual paste because the originals must
+be located and uploaded by hand.</p>
+
+<h4>Requirements</h4>
 <ul>
-    <li><strong>Folder A</strong> — a local folder containing the server-side web images.
-    FTP these from your server's <code>img_uploads/</code> directory.</li>
-    <li><strong>Folder B</strong> — your folder of original camera files.</li>
-    <li>A working Drive connection (same credentials as Smack Your Batch Up).</li>
+    <li><strong>Audit data</strong> — pull the audit on the Audit tab before running any repair.</li>
+    <li><strong>Drive auth</strong> — required for Rename and Re-enrich (not needed for Backfill).</li>
+    <li><strong>Gemini key</strong> — required for Re-enrich only.</li>
+    <li><strong>Site connection</strong> — required for all three actions.</li>
 </ul>
-<p>The tool does not require the originals to have the same filenames as the server
-images — SnapSmack renames images to haiku titles on upload. It uses image feature
-matching to find the right original.</p>
-
-<h4>Running the Tool</h4>
-<p>Run <code>tools\fix-your-batch-up\run.bat</code> from your development environment.
-On first run it installs Python dependencies automatically, then launches the application.
-The tool is not compiled to an exe — it runs directly from source.</p>
-
-<h4>How Matching Works</h4>
-<p>Matching uses a two-stage pipeline:</p>
-<ol>
-    <li><strong>pHash pre-filter</strong> — computes a perceptual hash for each image and
-    finds the 10 closest candidates in Folder B. Fast — handles hundreds of images
-    in seconds.</li>
-    <li><strong>SIFT feature matching</strong> — runs keypoint matching between the server
-    image and each candidate. Because the server image is a resized copy of the original,
-    they share strong, geometrically consistent SIFT features. Two visually similar but
-    different images (e.g. two rust texture photographs) will score much lower.</li>
-</ol>
-<p>Images are processed in batches of 10 using up to 75% of your CPU cores, so you can
-start reviewing completed rows while the next batch is still being matched.</p>
-
-<h4>The Review Interface</h4>
-<p>Each row shows the server image on the left and the matched original on the right, with
-a confidence score in the middle colour-coded green (high), amber (review recommended),
-or red (low confidence / no match found).</p>
-<ul>
-    <li><strong>Upload</strong> — uploads the right-hand image to Drive and writes the link
-    to the database immediately. The row turns green.</li>
-    <li><strong>Pick Different</strong> — opens a Windows file browser pointed at Folder B.
-    Switch to Extra Large Icons view and sort by Date Taken to find the right image
-    visually, then click Open.</li>
-    <li><strong>Skip</strong> — leaves the record unchanged and moves on.</li>
-</ul>
-<p>You can upload each image as soon as you are satisfied with the match — you do not
-need to wait for all matching to complete before starting uploads.</p>
-
-<h4>Configuration</h4>
-<p>Settings are stored in <code>tools\fix-your-batch-up\config.ini</code> and persist
-between sessions. The <em>SYBU Folder</em> field (default: <code>C:\SmackYourBatchUp</code>)
-tells the tool where to find <code>token.json</code> — it reuses the same Drive
-authentication as Smack Your Batch Up, so no separate Drive login is needed.</p>
 HTML
 ];
 

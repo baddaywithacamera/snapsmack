@@ -76,12 +76,16 @@ def new_job_template() -> Dict:
     """Return a blank sync job config with all required keys."""
     return {
         "name":                    "",
-        "source_provider":         "google_drive",   # "google_drive" | "onedrive"
+        "source_provider":         "google_drive",
         "source_credentials_file": "",
-        "source_folder":           "",   # Drive folder ID or OneDrive folder name
-        "dest_provider":           "onedrive",       # "google_drive" | "onedrive"
+        "source_folder":           "",
+        "source_b2_key_id":        "",
+        "source_b2_app_key":       "",
+        "dest_provider":           "onedrive",
         "dest_credentials_file":   "",
-        "dest_folder":             "",   # Drive folder ID or OneDrive folder name
+        "dest_folder":             "",
+        "dest_b2_key_id":          "",
+        "dest_b2_app_key":         "",
         "last_sync_date":          "",
         "last_files_synced":       0,
         "last_bytes_synced":       0,

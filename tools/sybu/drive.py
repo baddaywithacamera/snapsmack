@@ -122,6 +122,48 @@ def upload(service, file_path: str, filename: str,
     return f"https://drive.google.com/uc?export=download&id={file_id}"
 
 
+def rename(service, file_id: str, new_name: str) -> str:
+    """
+    Rename a file in Google Drive.  Returns the new name as confirmed by the
+    API.  The file's share URL is ID-based and is unaffected by the rename.
+    """
+    result = service.files().update(
+        fileId=file_id,
+        body={'name': new_name},
+        fields='id,name',
+    ).execute(num_retries=0)
+    return result.get('name', new_name)
+
+
+def download_to_temp(service, file_id: str) -> str:
+    """
+    Download a Drive file to a temp file on disk.
+    Returns the temp file path — caller is responsible for deleting it.
+    Raises RuntimeError on failure.
+    """
+    import io
+    import tempfile
+    from googleapiclient.http import MediaIoBaseDownload
+
+    # Get file metadata first (we need the name to pick the right extension)
+    meta = service.files().get(fileId=file_id, fields='name,mimeType').execute()
+    original_name = meta.get('name', 'download.jpg')
+    ext = os.path.splitext(original_name)[1] or '.jpg'
+
+    request = service.files().get_media(fileId=file_id)
+    buf = io.BytesIO()
+    downloader = MediaIoBaseDownload(buf, request, chunksize=4 * 1024 * 1024)
+    done = False
+    while not done:
+        _, done = downloader.next_chunk()
+
+    buf.seek(0)
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+    tmp.write(buf.read())
+    tmp.close()
+    return tmp.name
+
+
 def revoke_token() -> None:
     """Delete the saved token, forcing re-authentication next time."""
     token_path = _token_path()

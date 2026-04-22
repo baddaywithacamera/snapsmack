@@ -1,5 +1,50 @@
 # Smack Up Your Backup — Changelog
 
+## Versioning
+
+SUYB uses the same `0.7.9x` version scheme as SnapSmack. The letter suffix increments independently per SUYB release — it does NOT track SnapSmack releases one-for-one. `BUILD_VERSION` in `main.py` must always match the latest entry in this file.
+
+Example: SnapSmack ships `0.7.9P`. SUYB is on `0.7.9c`. Next SUYB release is `0.7.9d`, regardless of what letter SnapSmack is on.
+
+Historical entries below `0.7.9d` used a separate `0.2.x` numbering scheme that was incorrect. Those entries are preserved as-is for history but the scheme has been corrected going forward.
+
+---
+
+## 0.7.9h — 2026-04-20
+
+### Fixed
+- **Cloud Sync source count wrong (1145 instead of 1457)** — `src_map` was built as a dict keyed by filename using a dict comprehension, silently dropping any file whose name already appeared in the map. Drive was returning all 1457 files correctly (confirmed via page logging); 312 of them shared a filename with another entry and were lost. Fixed: build the map in a loop, keeping the most recently modified entry when duplicates exist. Duplicate count is logged with a ⚠ warning.
+
+---
+
+## 0.7.9g — 2026-04-20
+
+### Fixed
+- **Console/DOS window no longer appears on launch** — spec changed to `console=False`. Debug output still captured to `suyb-debug.log` next to the exe.
+
+---
+
+## 0.7.9f — 2026-04-20
+
+### Added
+- **Drive listing debug logging** — `list_files` now logs per-page counts, folder ID, query, and final total to both the console window and `suyb-debug.log` next to the exe. Lets us see exactly what the Drive API is returning page by page to diagnose the 1145 vs 1457 source count discrepancy.
+
+---
+
+## 0.7.9e — 2026-04-20
+
+### Fixed
+- **Google Drive source listing returning wrong count** — removed `orderBy="modifiedTime desc"` from Drive API `list_files` pagination. Drive re-sorts between paginated requests when ordering is specified, causing files to be skipped across page boundaries. Still investigating if this fully resolves the 1145 vs 1457 discrepancy.
+
+---
+
+## 0.7.9d — 2026-04-20
+
+### Fixed
+- **B2 credentials not persisting across sessions** — Edit Sync Job was saving B2 Key ID, Application Key, and Bucket name to the dialog's result dict but relying on the caller to write to disk after `wait_window()` returned. On Windows this handoff was silently failing: the window closed, the caller read `dlg.result`, but the values never reached the JSON job file. Save is now self-contained inside `_SyncJobDialog._save()` — writes directly to disk via `sync_manager.save_job()` before destroying the dialog. Prints a confirmation line to the console (`[SUYB] saved → <path>`) so the write is visible and verifiable.
+- **Edit Sync Job dialog oversized** — window was 600×720, taller than necessary on most screens. Reduced to 600×560.
+- **BUILD_VERSION incremented** — was "0.7.9c", now "0.7.9d".
+
 ---
 
 ## 0.2.6 — 2026-04-18
@@ -96,3 +141,4 @@
 - Hub/Spoke discovery — auto-creates profiles from a SnapSmack multisite hub.
 - Export/Import settings for moving config between machines.
 - AI-assisted file matching for restore (optional, requires sentence-transformers).
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   

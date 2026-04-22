@@ -4,6 +4,8 @@
 
 Version is defined once in `core/constants.php` (`SNAPSMACK_VERSION`, `SNAPSMACK_VERSION_SHORT`, `SNAPSMACK_VERSION_CODENAME`) and `smack-central/sc-version.php`. Git handles per-file versioning — **do not put version numbers in doc-block headers**.
 
+**Smack Up Your Backup versioning:** SUYB uses the same `0.7.9x` scheme as SnapSmack, where the letter increments independently per SUYB release. `BUILD_VERSION` in `tools/smack-up-your-backup/main.py` is SUYB's version — it is NOT SnapSmack's version and is NOT a separate 0.1.x/0.2.x series. When bumping SUYB: increment the letter (e.g. `0.7.9c` → `0.7.9d`), add a CHANGELOG entry in `tools/smack-up-your-backup/CHANGELOG.md`, and update `BUILD_VERSION` in `main.py` to match.
+
 Every PHP file opens with a standardised doc-block:
 
 ```php
@@ -133,61 +135,83 @@ git commit
 
 ## Current Work State (as of session end)
 
-### SnapSmack — Alpha 0.7.9L "Hot Seat"
+**CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
+
+### SnapSmack — Alpha 0.7.9P "Spam Blocker"
 All commits are on `master`. Push from local:
 ```
 git push Github master
 ```
 
-**0.7.9L features (combined):**
-- **Media Gallery** (`smack-gallery.php`) — visual DAM with AJAX grid, full-text search, filtering, bulk operations
-- **Photo Editor** (`ss-engine-photo-editor.js`) — non-destructive canvas-based editing with crop/rotate/flip/adjust/BW
-- **Browser Fingerprinting & Ban System** — passive collection of canvas, WebGL, screen geometry, timezone, language, hardware concurrency hashed into SHA-256. Ban by fingerprint, IP, or email (hashed). Silent rejection at submission time.
-- **AI Semantic Analysis** — TF-IDF vectorization and cosine similarity for detecting related accounts across VPN rotations. Writing style is signature. Fingerprints are stored with comments; semantic admin tab shows similar fingerprints sorted by similarity %.
-- **Keyword & Phrase Banning** — ban keywords with three match types (exact, substring, regex) and two severity levels (flag for review, silent reject). Admin keywords tab for management.
-- Fingerprints & Bans admin page (`smack-fingerprints.php`) with Banned/Fingerprints/Semantic/Keywords/Add Ban tabs
-- Ban logic wired into both photo comment and community comment handlers
-- Migration 029 creates `snap_ban_list` table; Migration 030 creates `snap_comments_semantic` and `snap_keywords` tables
-- `core/ban-check.php` provides `is_banned()`, `add_ban()`, `remove_ban()` functions
-- `core/semantic-analysis.php` provides TF-IDF, cosine similarity, `find_similar_fingerprints()`, `store_comment_text()`
-- `core/keyword-check.php` provides `check_keywords()`, `add_keyword()`, `remove_keyword()`, `get_all_keywords()`
-- `assets/js/ss-engine-fingerprint.js` computes fingerprint on page load
-- **System Updates: Reapply Feature** — new "Reapply Current Version" button allows re-downloading/re-extracting current version if release was packaged wrong or files missed. Solves the tag-fix-after-release problem.
-- Help topic covering how fingerprinting works, semantic analysis, keyword banning, ban management
-- Sidebar link under "Boring Ass Stuff"
+**Latest changes (0.7.9P):**
+- Akismet API key field restored to Admin → Settings → GLOBAL COMMENTS
+- `core/spam-check.php` fixed: URL no longer hardcoded, uses HTTPS curl instead of fsockopen
+- snapsmack.ca anti-spam section renamed and rewritten (SMACK DAB / SMACK DOWN / SMACK UP)
+- `smack-settings.php` — new DOWNLOADS box: Require Download Link + Default Download Mode settings (hub installs)
+- `smack-appearance-solo.php` — updated YES label for stricter require-link behaviour
+- `smack-post.php` — validation fix: download_link_required now fires for any published post without a URL, not just when allow_download is also ticked
+- `smack-help.php` — added "Require Download URL" help subsection
+- `smack-audit.php` (NEW FILE) — JSON endpoint: GET summary, GET list, POST update_title
+- `projects/snapsmack-ca/index.html` — FYBU section replaced with SYBU (Audit & Repair)
 
 **Pending on live servers (FTP these files):**
-- Full 0.7.9L release to all live sites
+- `smack-settings.php`
+- `smack-post.php`
+- `smack-appearance-solo.php`
+- `smack-help.php`
+- `smack-audit.php` (NEW — also needs FTP to pixhellated.ca and wateronthebrain.ca)
+- `core/spam-check.php`
+- `projects/snapsmack-ca/index.html` (to snapsmack.ca server)
 
-### Smack Up Your Backup — v0.2.4
+**After FTP:**
+- Enable "Require Download Link" on foundtextures.ca Admin → Settings → Downloads
+
+### Smack Your Batch Up (SYBU) — v0.7.9b "Audit & Repair"
+Tool lives in `tools/sybu/`. All commits on `master`. Push from local: `git push Github master`
+
+**To rebuild the exe:** run `build.bat` in `tools/sybu/`
+Output: `C:\SmackYourBatchUp\smackyourbatchup-0.7.9b.exe`
+
+**What's new in 0.7.9b:**
+- POST / AUDIT / REPAIR tab strip in header
+- AUDIT tab: live summary stats, duplicate title groups, missing Drive links list, Go to Repair button
+- REPAIR tab — three actions:
+  - Rename Drive Files to {id}.jpg (150ms rate-limit delay, resumable stop/start)
+  - Re-enrich Duplicate Titles (download from Drive → Gemini → unique title → blog, 4× retry, 500ms delay)
+  - Backfill Missing Drive Links (inline per-post URL entry using smack-backfill.php)
+- `drive.py` — added `rename()` and `download_to_temp()` functions
+- `poster.py` — added `audit_summary()`, `audit_list()`, `audit_update_title()` to SnapSmackClient
+
+**Pending:**
+- Rebuild exe (run `build.bat` in `tools/sybu/`)
+- Run Repair → Rename Drive Files to {id}.jpg on foundtextures.ca (1,431 files)
+- Run Repair → Re-enrich Duplicate Titles on foundtextures.ca (287 posts)
+- Fix 3 posts missing Drive links (IDs 883, 1008, 1009) via Repair → Backfill
+
+### Smack Up Your Backup (SUYB) — v0.7.9d
 All commits on `master`. Push from local: `git push Github master`
 
-**To rebuild the exe:** run `build.bat` in `tools/smack-up-your-backup/`
+**To rebuild the exe:** run `strip_nulls.py` then `build.bat` in `tools/smack-up-your-backup/`
 
 **Status:**
 - Cloud backup to Google Drive working — SA key configured at pixhellated.ca
-- OAuth authenticate button added (Settings → Global Cloud Config)
-- Per-profile OAuth authenticate button added (per-profile creds override)
-- Crash recovery checkpoints working
-- Scheduled backup tab working (Schedule tab)
-- Single instance enforcement added
-- Session log files written to `{backup_dir}/logs/`
-- File dialogs use PowerShell subprocess (bypasses tkinter parent issues on Windows)
-- Profiles and config persist next to the exe in `C:\SmackUpYourBackup\`
-
-**Pending cloud upload issue:**
-- pixhellated backup completes locally but cloud upload status unclear
+- B2 credentials in Edit Sync Job now save correctly (save moved inside dialog._save())
 - SA key: `C:\SmackUpYourBackup\suyb-drive-key-5e7a5909f75e.json`
 - Drive folder ID: `12UFKgvSNtM9uKCjtttyhFPvD45wjXVv9`
 - Drive folder shared as Editor with: `smack-up-your-backup@snapsmack-backups.iam.gserviceaccount.com`
-- Check `C:\Staging\logs\` after next backup run for exact cloud error
+- Profiles and config persist next to the exe in `C:\SmackUpYourBackup\`
+
+**Pending:**
+- Rebuild exe from `tools/smack-up-your-backup/` (run `strip_nulls.py` then `build.bat`)
+- Test: enter B2 credentials → Save → reopen → fields persist
+- Run Audit & Cleanup on foundtextures job once credentials confirmed saved
 
 ### Live Sites
 | Site | Role | Version |
 |---|---|---|
-| foundtextures.ca | Multisite Hub | Alpha 0.7.9j (needs 0.7.9k FTP update) |
-| pixhellated.ca | Spoke | Alpha 0.7.9j (needs 0.7.9k FTP update) |
-| wateronthebrain.ca | Spoke | Alpha 0.7.9j (needs 0.7.9k FTP update) |
+| foundtextures.ca | Multisite Hub | Alpha 0.7.9j (needs FTP update to 0.7.9P) |
+| pixhellated.ca | Spoke | Alpha 0.7.9j (needs FTP update to 0.7.9P) |
+| wateronthebrain.ca | Spoke | Alpha 0.7.9j (needs FTP update to 0.7.9P) |
 
 Both spokes are ACTIVE and heartbeating correctly after key exchange fix.
 
@@ -223,3 +247,4 @@ To change which skins are in the base release, edit `$always_exclude` in
 - `stable` — Production ready
 - `beta` — Functional but not fully tested
 - `development` — Work in progress, not installable from gallery
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   

@@ -62,7 +62,7 @@ class PostResult:
 
 @dataclass
 class SiteData:
-    """Category and album name→ID lookups, descriptions, and tag list from the site."""
+    """Category and album name→ID lookups, descriptions, tag list, and title list from the site."""
     categories:      Dict[str, int] = field(default_factory=dict)
     albums:          Dict[str, int] = field(default_factory=dict)
     _cat_display:    Dict[str, str] = field(default_factory=dict)
@@ -70,6 +70,7 @@ class SiteData:
     cat_descriptions:   Dict[str, str] = field(default_factory=dict)  # lower_name → description
     album_descriptions: Dict[str, str] = field(default_factory=dict)  # lower_name → description
     tags:            List[str]          = field(default_factory=list)  # existing hashtags
+    titles:          List[str]          = field(default_factory=list)  # existing post titles
 
 
 # ---------------------------------------------------------------------------
@@ -144,6 +145,52 @@ class SnapSmackClient:
         # Session has expired — attempt silent re-login
         return self.relogin()
 
+    # ------------------------------------------------------------------
+    # Audit / Repair API (smack-audit.php)
+    # ------------------------------------------------------------------
+
+    def audit_summary(self) -> dict:
+        """Return post counts and duplicate-title stats from smack-audit.php."""
+        r = self.session.get(
+            f"{self.base_url}/smack-audit.php",
+            params={'action': 'summary'},
+            timeout=15,
+        )
+        r.raise_for_status()
+        data = r.json()
+        if not data.get('ok'):
+            raise RuntimeError(data.get('error', 'Audit summary failed'))
+        return data
+
+    def audit_list(self) -> list:
+        """Return all published posts as a list of dicts (id, title, download_url…)."""
+        r = self.session.get(
+            f"{self.base_url}/smack-audit.php",
+            params={'action': 'list'},
+            timeout=(10, 180),  # 10s connect, 3 min read — large sites return 1000+ rows
+        )
+        r.raise_for_status()
+        data = r.json()
+        if not data.get('ok'):
+            raise RuntimeError(data.get('error', 'Audit list failed'))
+        return data.get('posts', [])
+
+    def audit_update_title(self, snap_id: int, new_title: str) -> None:
+        """Update the title of a published post."""
+        r = self.session.post(
+            f"{self.base_url}/smack-audit.php",
+            data={'action': 'update_title',
+                  'snap_id':   snap_id,
+                  'new_title': new_title},
+            timeout=15,
+        )
+        r.raise_for_status()
+        data = r.json()
+        if not data.get('ok'):
+            raise RuntimeError(data.get('error', 'Title update failed'))
+
+    # ------------------------------------------------------------------
+
     def fetch_site_data(self) -> SiteData:
         if not self._logged_in:
             raise RuntimeError("Not logged in.")
@@ -166,7 +213,8 @@ class SnapSmackClient:
                     data.albums[key]              = album['id']
                     data._album_display[key]       = album['name']
                     data.album_descriptions[key]   = album.get('description', '')
-                data.tags = payload.get('tags', [])
+                data.tags    = payload.get('tags', [])
+                data.titles  = payload.get('titles', [])
                 return data
         except Exception:
             pass  # Fall through to HTML scrape if endpoint unavailable
@@ -369,12 +417,12 @@ def run_batch(
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _mime(filename: str) -> str:
-    ext = os.path.splitext(filename)[1].lower()
+def _mime(path: str) -> str:
+    ext = os.path.splitext(path)[1].lower()
     return {
         '.jpg':  'image/jpeg',
         '.jpeg': 'image/jpeg',
         '.png':  'image/png',
         '.gif':  'image/gif',
         '.webp': 'image/webp',
-    }.get(ext, 'application/octet-stream')
+    }.get(ext, 'image/jpeg')

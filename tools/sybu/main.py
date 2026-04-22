@@ -5,9 +5,37 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.7a-05"   # bump this on every rebuild
+BUILD_VERSION = "0.7.9b"   # bump this on every rebuild
 
+# ---------------------------------------------------------------------------
+# Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
+# Must happen before any other import so library warnings are captured too.
+# ---------------------------------------------------------------------------
 import os
+import sys
+
+def _setup_log() -> str:
+    """Open sybu-debug.log next to the exe (or source file when dev).  Returns path."""
+    if getattr(sys, 'frozen', False):
+        base = os.path.dirname(sys.executable)
+    else:
+        base = os.path.dirname(os.path.abspath(__file__))
+    log_path = os.path.join(base, 'sybu-debug.log')
+    try:
+        _lf = open(log_path, 'a', encoding='utf-8', buffering=1)
+        import datetime
+        _lf.write(f"\n{'='*60}\n"
+                  f"  Smack Your Batch Up {BUILD_VERSION}  —  "
+                  f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                  f"{'='*60}\n")
+        sys.stdout = _lf
+        sys.stderr = _lf
+    except Exception:
+        pass  # if we can't open the log, don't crash — just run silently
+    return log_path
+
+LOG_PATH = _setup_log()
+
 import queue
 import threading
 import tkinter as tk
@@ -21,6 +49,7 @@ import drive as drive_module
 import gemini as gemini_module
 import manifest_parser
 import poster as poster_module
+import profile_manager
 from manifest_parser import ManifestEntry
 from poster import SnapSmackClient, SiteData
 
@@ -679,6 +708,26 @@ class App(tk.Tk):
         ttk.Button(header, text="?  Help", style="Ghost.TButton",
                    command=self._show_help).pack(side="right", padx=14, pady=6)
 
+        # Centre: tab strip
+        self._active_tab     = 'post'
+        self._tab_btns       = {}
+        self._tab_indicators = {}
+        tab_strip = tk.Frame(header, bg=BG_CARD)
+        tab_strip.pack(side="left", padx=(28, 0), fill="y")
+        for _tname, _tlabel in [('post', 'POST'), ('audit', 'AUDIT'), ('repair', 'REPAIR'), ('settings', 'SETTINGS')]:
+            _cell = tk.Frame(tab_strip, bg=BG_CARD)
+            _cell.pack(side="left")
+            _active = (_tname == 'post')
+            _btn = tk.Label(_cell, text=_tlabel,
+                            bg=BG_CARD, fg=ACCENT if _active else FG_DIM,
+                            font=FONT_BOLD, padx=16, cursor="hand2")
+            _btn.pack()
+            _ind = tk.Frame(_cell, bg=ACCENT if _active else BG_CARD, height=2)
+            _ind.pack(fill="x")
+            _btn.bind("<Button-1>", lambda e, t=_tname: self._switch_tab(t))
+            self._tab_btns[_tname]       = _btn
+            self._tab_indicators[_tname] = _ind
+
         self._session_remaining = 0
         self._session_timer_id  = None
         self._conn_flash_state  = False
@@ -755,19 +804,27 @@ class App(tk.Tk):
                                 bg=BG_SBAR, fg=LED_OFF, font=(lf, 20, "bold"))
         self._ai_lbl.pack(side="left", padx=(5, 0), anchor="w")
 
+        # ── Tab content frames (below shared LED bar) ─────────────────
+        # POST is visible by default; AUDIT and REPAIR are packed on demand.
+        self._post_frame     = tk.Frame(self, bg=BG_DEEP)
+        self._audit_frame    = tk.Frame(self, bg=BG_DEEP)
+        self._repair_frame   = tk.Frame(self, bg=BG_DEEP)
+        self._settings_frame = tk.Frame(self, bg=BG_DEEP)
+        self._post_frame.pack(fill="both", expand=True)
+        # other frames packed by _switch_tab()
+
         # ── Config collapse toggle bar ────────────────────────────────
         self._cfg_visible = True
-        cfg_toggle = tk.Frame(self, bg=BG_DEEP, height=26, cursor="hand2")
+        cfg_toggle = tk.Frame(self._post_frame, bg=BG_DEEP, height=26, cursor="hand2")
         cfg_toggle.pack(fill="x")
         cfg_toggle.pack_propagate(False)
         self._cfg_arrow = tk.Label(cfg_toggle, text="▲  CONFIGURATION",
                                    bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL,
                                    cursor="hand2")
         self._cfg_arrow.pack(side="left", padx=14, pady=4)
-        tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
 
         # ── Config area ───────────────────────────────────────────────
-        self._cfg_frame = tk.Frame(self, bg=BG_DEEP)
+        self._cfg_frame = tk.Frame(self._post_frame, bg=BG_DEEP)
         self._cfg_frame.pack(fill="x", padx=14, pady=10)
         cfg = self._cfg_frame
 
@@ -794,6 +851,7 @@ class App(tk.Tk):
         self._toggle_cfg = _toggle_cfg
         cfg_toggle.bind("<Button-1>", _toggle_cfg)
         self._cfg_arrow.bind("<Button-1>", _toggle_cfg)
+        tk.Frame(self._post_frame, bg=BORDER, height=1).pack(fill="x")
 
         # Two-column grid: CONNECTION (left) | MANIFEST & DEFAULTS (right)
         cols = tk.Frame(cfg, bg=BG_DEEP)
@@ -981,27 +1039,27 @@ class App(tk.Tk):
         self._entry(copy_body, self._copyright_var, width=0).pack(fill="x")
 
         # ── Queue header (ruled like admin h2) ────────────────────────
-        self._queue_rule = tk.Frame(self, bg=BORDER, height=1)
-        self._queue_hdr  = tk.Frame(self, bg=BG_DEEP, height=30)
+        self._queue_rule = tk.Frame(self._post_frame, bg=BORDER, height=1)
+        self._queue_hdr  = tk.Frame(self._post_frame, bg=BG_DEEP, height=30)
         self._queue_hdr.pack_propagate(False)
         self._queue_lbl = tk.Label(
             self._queue_hdr, text="QUEUE — 0 ITEMS",
             bg=BG_DEEP, fg=FG_DIM, font=FONT_BOLD,
         )
         self._queue_lbl.pack(side="left", padx=14, pady=6)
-        self._queue_sep  = tk.Frame(self, bg=BORDER, height=1)
+        self._queue_sep  = tk.Frame(self._post_frame, bg=BORDER, height=1)
 
         # ── Entry list ────────────────────────────────────────────────
-        self._entry_list = EntryList(self)
+        self._entry_list = EntryList(self._post_frame)
 
         # Queue section is hidden while config is open; shown when config collapses
         # (pack() calls intentionally omitted — _toggle_cfg manages visibility)
 
         # ── Bottom action bar ─────────────────────────────────────────
         # Stored as instance vars so _toggle_cfg can insert queue items before them.
-        self._bottom_sep = tk.Frame(self, bg=BORDER, height=1)
+        self._bottom_sep = tk.Frame(self._post_frame, bg=BORDER, height=1)
         self._bottom_sep.pack(fill="x")
-        self._bottom_bar = tk.Frame(self, bg=BG_CARD, height=52)
+        self._bottom_bar = tk.Frame(self._post_frame, bg=BG_CARD, height=52)
         self._bottom_bar.pack(fill="x")
         bottom = self._bottom_bar
         bottom.pack_propagate(False)
@@ -1065,6 +1123,1201 @@ class App(tk.Tk):
         self._status_lbl = tk.Label(bottom, text="Load a manifest to begin.",
                                      bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
         self._status_lbl.pack(side="right", padx=14)
+
+        # ── Build audit and repair tab content ────────────────────────
+        self._build_audit_ui()
+        self._build_repair_ui()
+        self._build_settings_ui()
+
+    # ------------------------------------------------------------------
+    # Tab switching
+    # ------------------------------------------------------------------
+
+    def _switch_tab(self, tab: str):
+        if tab == self._active_tab:
+            return
+        for name, btn in self._tab_btns.items():
+            active = (name == tab)
+            btn.configure(fg=ACCENT if active else FG_DIM)
+            self._tab_indicators[name].configure(bg=ACCENT if active else BG_CARD)
+        self._post_frame.pack_forget()
+        self._audit_frame.pack_forget()
+        self._repair_frame.pack_forget()
+        self._settings_frame.pack_forget()
+        if tab == 'post':
+            self._post_frame.pack(fill="both", expand=True)
+        elif tab == 'audit':
+            self._audit_frame.pack(fill="both", expand=True)
+            self._refresh_audit_if_needed()
+        elif tab == 'repair':
+            self._repair_frame.pack(fill="both", expand=True)
+        elif tab == 'settings':
+            self._settings_frame.pack(fill="both", expand=True)
+        self._active_tab = tab
+
+    # ------------------------------------------------------------------
+    # Audit tab UI
+    # ------------------------------------------------------------------
+
+    def _build_audit_ui(self):
+        """Populate self._audit_frame."""
+        p = self._audit_frame
+
+        # ── Top bar ───────────────────────────────────────────────────
+        top = tk.Frame(p, bg=BG_CARD, height=44)
+        top.pack(fill="x")
+        top.pack_propagate(False)
+        tk.Label(top, text="SITE AUDIT", bg=BG_CARD, fg=ACCENT,
+                 font=FONT_TITLE).pack(side="left", padx=16, anchor="center")
+        self._audit_refresh_btn = ttk.Button(
+            top, text="↺  Refresh", style="Ghost.TButton",
+            command=self._on_audit_refresh)
+        self._audit_refresh_btn.pack(side="right", padx=14, pady=6)
+        tk.Frame(p, bg=BORDER, height=1).pack(fill="x")
+
+        # ── Summary stats + progress ──────────────────────────────────
+        self._audit_summary_frame = tk.Frame(p, bg=BG_DEEP, padx=16, pady=8)
+        self._audit_summary_frame.pack(fill="x")
+        self._audit_summary_lbl = tk.Label(
+            self._audit_summary_frame,
+            text="Connect to a site on the POST tab, then switch here to audit it.",
+            bg=BG_DEEP, fg=FG_DIM, font=FONT_UI, anchor="w")
+        self._audit_summary_lbl.pack(fill="x")
+        # Indeterminate progress bar — shown only while a pull is in flight
+        self._audit_prog = ttk.Progressbar(
+            self._audit_summary_frame, mode="indeterminate", length=400)
+        # (not packed yet — _on_audit_refresh shows/hides it)
+        self._audit_elapsed_lbl = tk.Label(
+            self._audit_summary_frame,
+            text="", bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL, anchor="w")
+        # (not packed yet)
+        tk.Frame(p, bg=BORDER, height=1).pack(fill="x")
+
+        # ── Scrollable issue list ─────────────────────────────────────
+        canvas_frame = tk.Frame(p, bg=BG_DEEP)
+        canvas_frame.pack(fill="both", expand=True)
+
+        self._audit_canvas = tk.Canvas(canvas_frame, bg=BG_DEEP,
+                                       highlightthickness=0)
+        vbar = ttk.Scrollbar(canvas_frame, orient="vertical",
+                             command=self._audit_canvas.yview)
+        self._audit_canvas.configure(yscrollcommand=vbar.set)
+        vbar.pack(side="right", fill="y")
+        self._audit_canvas.pack(side="left", fill="both", expand=True)
+
+        self._audit_inner = tk.Frame(self._audit_canvas, bg=BG_DEEP)
+        self._audit_win = self._audit_canvas.create_window(
+            (0, 0), window=self._audit_inner, anchor="nw")
+        self._audit_inner.bind("<Configure>", lambda e: self._audit_canvas.configure(
+            scrollregion=self._audit_canvas.bbox("all")))
+        self._audit_canvas.bind("<Configure>", lambda e:
+            self._audit_canvas.itemconfigure(self._audit_win, width=e.width))
+        self._audit_canvas.bind_all("<MouseWheel>",
+            lambda e: self._audit_canvas.yview_scroll(
+                int(-1 * (e.delta / 120)), "units") if self._active_tab == 'audit' else None)
+
+        # Placeholder — replaced after first pull
+        self._audit_placeholder = tk.Label(
+            self._audit_inner,
+            text="No audit data loaded.",
+            bg=BG_DEEP, fg=FG_DIM, font=FONT_UI, anchor="w")
+        self._audit_placeholder.pack(padx=16, pady=20, anchor="w")
+
+        # Internal state
+        self._audit_data     = None   # list of post dicts from audit_list()
+        self._audit_summary  = None   # summary dict
+        self._audit_loaded   = False
+
+    def _refresh_audit_if_needed(self):
+        """Auto-pull on first tab switch if connected and not yet loaded."""
+        if not self._audit_loaded and self._client:
+            self._on_audit_refresh()
+
+    def _on_audit_refresh(self):
+        if not self._client:
+            self._audit_summary_lbl.configure(
+                text="Not connected. Connect on the POST tab first.", fg=FG_WARN)
+            return
+
+        import time as _time_mod
+        self._audit_refresh_btn.configure(state="disabled")
+        self._audit_summary_lbl.configure(
+            text="Step 1 / 2 — fetching summary stats…", fg=FG_WARN)
+        self._audit_prog.pack(fill="x", pady=(6, 2))
+        self._audit_elapsed_lbl.pack(anchor="w")
+        self._audit_prog.start(12)   # ms per step — smooth bounce
+        self._audit_pull_start = _time_mod.time()
+        self._audit_elapsed_id = self.after(500, self._audit_tick_elapsed)
+
+        def _worker():
+            try:
+                summary = self._client.audit_summary()
+                total   = summary.get('total', '?')
+                self.after(0, lambda: self._audit_summary_lbl.configure(
+                    text=f"Step 2 / 2 — fetching {total} posts… "
+                         f"(large sites can take 30–60 s)", fg=FG_WARN))
+                posts = self._client.audit_list()
+                self.after(0, lambda: self._on_audit_loaded(summary, posts))
+            except Exception as exc:
+                self.after(0, lambda: self._on_audit_error(str(exc)))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _audit_tick_elapsed(self):
+        """Update the elapsed-time label every second while audit is running."""
+        import time as _time_mod
+        if not hasattr(self, '_audit_pull_start'):
+            return
+        elapsed = int(_time_mod.time() - self._audit_pull_start)
+        self._audit_elapsed_lbl.configure(
+            text=f"  {elapsed}s elapsed…" if elapsed < 60
+            else f"  {elapsed // 60}m {elapsed % 60}s elapsed…")
+        # Reschedule until the pull finishes (_on_audit_loaded/_on_audit_error cancel it)
+        self._audit_elapsed_id = self.after(1000, self._audit_tick_elapsed)
+
+    def _audit_stop_progress(self):
+        """Stop the progress bar and elapsed timer."""
+        self._audit_prog.stop()
+        self._audit_prog.pack_forget()
+        self._audit_elapsed_lbl.pack_forget()
+        self._audit_elapsed_lbl.configure(text="")
+        if hasattr(self, '_audit_elapsed_id'):
+            self.after_cancel(self._audit_elapsed_id)
+            del self._audit_elapsed_id
+        if hasattr(self, '_audit_pull_start'):
+            del self._audit_pull_start
+
+    def _on_audit_loaded(self, summary: dict, posts: list):
+        self._audit_stop_progress()
+        self._audit_summary  = summary
+        self._audit_data     = posts
+        self._audit_loaded   = True
+        self._audit_refresh_btn.configure(state="normal")
+
+        # Update summary text
+        total  = summary.get('total', 0)
+        miss   = summary.get('missing_drive', 0)
+        dgrps  = summary.get('duplicate_groups', 0)
+        need   = summary.get('posts_needing_titles', 0)
+        parts  = [f"{total} published posts"]
+        if miss:
+            parts.append(f"{miss} missing Drive link{'s' if miss != 1 else ''}")
+        else:
+            parts.append("all have Drive links ✓")
+        if dgrps:
+            parts.append(f"{dgrps} duplicate title group{'s' if dgrps != 1 else ''} "
+                         f"({need} post{'s' if need != 1 else ''} need new titles)")
+        else:
+            parts.append("no duplicate titles ✓")
+        self._audit_summary_lbl.configure(
+            text="  ·  ".join(parts),
+            fg=FG_WARN if (miss or dgrps) else FG_OK)
+
+        # Rebuild issue list
+        for w in self._audit_inner.winfo_children():
+            w.destroy()
+
+        dups, missing = self._compute_audit_issues(posts)
+
+        # Also populate the Repair tab's backfill panel with missing-link posts
+        self._populate_backfill(missing)
+
+        if not dups and not missing:
+            tk.Label(self._audit_inner, text="✓  No issues found.",
+                     bg=BG_DEEP, fg=FG_OK, font=FONT_BOLD,
+                     anchor="w").pack(padx=16, pady=20, fill="x")
+            return
+
+        # ── Duplicate titles section ──────────────────────────────────
+        if dups:
+            self._audit_section(self._audit_inner, "DUPLICATE TITLES",
+                                f"{len(dups)} groups · {sum(len(v)-1 for v in dups.values())} posts need new titles")
+            for title, group_posts in sorted(dups.items(),
+                                             key=lambda x: -len(x[1])):
+                row = tk.Frame(self._audit_inner, bg=BG_CARD,
+                               highlightthickness=1, highlightbackground=BORDER)
+                row.pack(fill="x", padx=8, pady=2)
+                count = len(group_posts)
+                hdr = tk.Frame(row, bg=BG_CARD)
+                hdr.pack(fill="x", padx=10, pady=(6, 2))
+                tk.Label(hdr, text=f"×{count}", bg=BG_CARD, fg=FG_WARN,
+                         font=FONT_BOLD, width=4, anchor="w").pack(side="left")
+                tk.Label(hdr, text=title[:90], bg=BG_CARD, fg=FG_MAIN,
+                         font=FONT_UI, anchor="w").pack(side="left", fill="x",
+                                                         expand=True)
+                for pp in group_posts:
+                    sub = tk.Frame(row, bg=BG_CARD)
+                    sub.pack(fill="x", padx=28, pady=(0, 2))
+                    tk.Label(sub, text=f"ID {pp['snap_id']}",
+                             bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL,
+                             width=8, anchor="w").pack(side="left")
+                    tk.Label(sub, text=pp['img_date'][:10],
+                             bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL,
+                             width=12, anchor="w").pack(side="left")
+                    url = pp.get('download_url', '')
+                    url_color = FG_OK if url else FG_ERR
+                    url_text  = "Drive ✓" if url else "No Drive link"
+                    tk.Label(sub, text=url_text, bg=BG_CARD, fg=url_color,
+                             font=FONT_SMALL, anchor="w").pack(side="left")
+
+        # ── Missing Drive links section ───────────────────────────────
+        if missing:
+            self._audit_section(self._audit_inner, "MISSING DRIVE LINKS",
+                                f"{len(missing)} posts")
+            for pp in missing:
+                row = tk.Frame(self._audit_inner, bg=BG_CARD,
+                               highlightthickness=1, highlightbackground=BORDER)
+                row.pack(fill="x", padx=8, pady=2)
+                r = tk.Frame(row, bg=BG_CARD)
+                r.pack(fill="x", padx=10, pady=6)
+                tk.Label(r, text=f"ID {pp['snap_id']}",
+                         bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL,
+                         width=8, anchor="w").pack(side="left")
+                tk.Label(r, text=pp['img_date'][:10],
+                         bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL,
+                         width=12, anchor="w").pack(side="left")
+                tk.Label(r, text=pp['img_title'][:70],
+                         bg=BG_CARD, fg=FG_MAIN, font=FONT_UI,
+                         anchor="w").pack(side="left", fill="x", expand=True)
+
+        # ── Go to Repair button ───────────────────────────────────────
+        if dups or missing:
+            tk.Frame(self._audit_inner, bg=BORDER, height=1).pack(
+                fill="x", padx=8, pady=(12, 0))
+            btn_row = tk.Frame(self._audit_inner, bg=BG_DEEP)
+            btn_row.pack(fill="x", padx=8, pady=8)
+            ttk.Button(btn_row, text="→  Go to Repair",
+                       style="Accent.TButton",
+                       command=lambda: self._switch_tab('repair')).pack(
+                           side="left")
+
+    def _on_audit_error(self, msg: str):
+        self._audit_stop_progress()
+        self._audit_refresh_btn.configure(state="normal")
+        self._audit_summary_lbl.configure(
+            text=f"Audit failed: {msg}", fg=FG_ERR)
+
+    def _compute_audit_issues(self, posts: list):
+        """
+        Returns:
+          dups    — {title: [post, post, …]} for titles appearing more than once
+          missing — [post, …] for posts with empty download_url
+        """
+        from collections import defaultdict
+        title_map = defaultdict(list)
+        missing   = []
+        for p in posts:
+            title_map[p.get('img_title') or ''].append(p)
+            if not p.get('download_url'):
+                missing.append(p)
+        dups = {t: ps for t, ps in title_map.items() if len(ps) > 1 and t}
+        return dups, missing
+
+    def _audit_section(self, parent, title: str, subtitle: str = ''):
+        """Render a section header row in the audit inner frame."""
+        f = tk.Frame(parent, bg=BG_DEEP)
+        f.pack(fill="x", padx=8, pady=(14, 4))
+        tk.Label(f, text=title, bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_BOLD, anchor="w").pack(side="left")
+        if subtitle:
+            tk.Label(f, text=f"  —  {subtitle}", bg=BG_DEEP, fg=FG_DIM,
+                     font=FONT_SMALL, anchor="w").pack(side="left")
+        tk.Frame(parent, bg=BORDER, height=1).pack(fill="x", padx=8)
+
+    # ------------------------------------------------------------------
+    # Settings tab UI
+    # ------------------------------------------------------------------
+
+    def _build_settings_ui(self):
+        """Populate self._settings_frame — profile manager."""
+        p = self._settings_frame
+
+        # ── Top bar ───────────────────────────────────────────────────
+        top = tk.Frame(p, bg=BG_CARD, height=44)
+        top.pack(fill="x")
+        top.pack_propagate(False)
+        tk.Label(top, text="SITE PROFILES", bg=BG_CARD, fg=ACCENT,
+                 font=FONT_TITLE).pack(side="left", padx=16, anchor="center")
+        tk.Frame(p, bg=BORDER, height=1).pack(fill="x")
+
+        # ── Two-pane layout ───────────────────────────────────────────
+        body = tk.Frame(p, bg=BG_DEEP)
+        body.pack(fill="both", expand=True, padx=16, pady=14)
+        body.columnconfigure(0, weight=0)   # profile list — fixed
+        body.columnconfigure(1, weight=1)   # form — expands
+        body.rowconfigure(0, weight=1)
+
+        # ── LEFT: profile list ────────────────────────────────────────
+        left = tk.Frame(body, bg=BG_CARD, width=200,
+                        highlightthickness=1, highlightbackground=BORDER)
+        left.grid(row=0, column=0, sticky="nsew", padx=(0, 14))
+        left.pack_propagate(False)
+
+        tk.Label(left, text="SITES", bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_SMALL).pack(anchor="w", padx=10, pady=(8, 4))
+
+        list_frame = tk.Frame(left, bg=BG_MID)
+        list_frame.pack(fill="both", expand=True, padx=6)
+
+        self._profile_lb = tk.Listbox(
+            list_frame,
+            bg=BG_MID, fg=FG_MAIN, font=FONT_UI,
+            selectbackground=ACCENT, selectforeground="#000000",
+            relief="flat", bd=0, highlightthickness=0,
+            activestyle="none",
+        )
+        lb_scroll = ttk.Scrollbar(list_frame, orient="vertical",
+                                  command=self._profile_lb.yview)
+        self._profile_lb.configure(yscrollcommand=lb_scroll.set)
+        lb_scroll.pack(side="right", fill="y")
+        self._profile_lb.pack(side="left", fill="both", expand=True)
+        self._profile_lb.bind("<<ListboxSelect>>", self._on_profile_select)
+
+        btn_bar = tk.Frame(left, bg=BG_CARD)
+        btn_bar.pack(fill="x", padx=6, pady=8)
+        ttk.Button(btn_bar, text="+ New", style="Ghost.TButton",
+                   command=self._on_profile_new).pack(side="left")
+        ttk.Button(btn_bar, text="Delete", style="Ghost.TButton",
+                   command=self._on_profile_delete).pack(side="right")
+
+        load_btn = tk.Frame(left, bg=BG_CARD)
+        load_btn.pack(fill="x", padx=6, pady=(0, 10))
+        ttk.Button(load_btn, text="→  Load Site",
+                   style="Accent.TButton",
+                   command=self._on_profile_load).pack(fill="x")
+
+        # ── RIGHT: form ───────────────────────────────────────────────
+        right_outer = tk.Frame(body, bg=BG_DEEP)
+        right_outer.grid(row=0, column=1, sticky="nsew")
+
+        rcanvas = tk.Canvas(right_outer, bg=BG_DEEP, highlightthickness=0)
+        rvbar   = ttk.Scrollbar(right_outer, orient="vertical",
+                                command=rcanvas.yview)
+        rcanvas.configure(yscrollcommand=rvbar.set)
+        rvbar.pack(side="right", fill="y")
+        rcanvas.pack(side="left", fill="both", expand=True)
+        right = tk.Frame(rcanvas, bg=BG_DEEP)
+        rwin  = rcanvas.create_window((0, 0), window=right, anchor="nw")
+        right.bind("<Configure>", lambda e: rcanvas.configure(
+            scrollregion=rcanvas.bbox("all")))
+        rcanvas.bind("<Configure>", lambda e:
+            rcanvas.itemconfigure(rwin, width=e.width))
+        rcanvas.bind_all("<MouseWheel>",
+            lambda e: rcanvas.yview_scroll(
+                int(-1 * (e.delta / 120)), "units")
+            if self._active_tab == 'settings' else None)
+
+        def _sbox(title):
+            f = tk.Frame(right, bg=BG_CARD,
+                         highlightthickness=1, highlightbackground=BORDER)
+            f.pack(fill="x", pady=(0, 10))
+            tk.Label(f, text=title, bg=BG_CARD, fg=FG_DIM,
+                     font=FONT_SMALL).pack(anchor="w", padx=10, pady=(6, 0))
+            body_f = tk.Frame(f, bg=BG_CARD, padx=10, pady=8)
+            body_f.pack(fill="x")
+            return body_f
+
+        def _sfield(parent, label, var, show='', width=0):
+            tk.Label(parent, text=label, bg=BG_CARD, fg=FG_DIM,
+                     font=FONT_SMALL).pack(anchor="w")
+            e = tk.Entry(parent, textvariable=var,
+                         bg=BG_MID, fg=FG_MAIN, font=FONT_UI,
+                         relief="flat", insertbackground=ACCENT,
+                         show=show)
+            if width:
+                e.config(width=width)
+            e.pack(fill="x", pady=(2, 8))
+            return e
+
+        def _sfield_browse(parent, label, var, browse_cmd):
+            tk.Label(parent, text=label, bg=BG_CARD, fg=FG_DIM,
+                     font=FONT_SMALL).pack(anchor="w")
+            row = tk.Frame(parent, bg=BG_CARD)
+            row.pack(fill="x", pady=(2, 8))
+            tk.Entry(row, textvariable=var,
+                     bg=BG_MID, fg=FG_MAIN, font=FONT_UI,
+                     relief="flat", insertbackground=ACCENT).pack(
+                         side="left", fill="x", expand=True, padx=(0, 4))
+            self._mini_btn(row, "…", browse_cmd).pack(side="left")
+
+        # Profile name
+        name_row = tk.Frame(right, bg=BG_DEEP)
+        name_row.pack(fill="x", pady=(0, 10))
+        tk.Label(name_row, text="PROFILE NAME", bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_SMALL).pack(anchor="w")
+        self._sp_name_var = tk.StringVar()
+        tk.Entry(name_row, textvariable=self._sp_name_var,
+                 bg=BG_MID, fg=ACCENT, font=FONT_BOLD,
+                 relief="flat", insertbackground=ACCENT).pack(
+                     fill="x", pady=(2, 0))
+
+        # CONNECTION
+        self._sp_url_var  = tk.StringVar()
+        self._sp_user_var = tk.StringVar()
+        self._sp_pass_var = tk.StringVar()
+        conn_body = _sbox("CONNECTION")
+        _sfield(conn_body, "SITE URL", self._sp_url_var)
+        cred_row = tk.Frame(conn_body, bg=BG_CARD)
+        cred_row.pack(fill="x")
+        cred_row.columnconfigure(0, weight=1)
+        cred_row.columnconfigure(1, weight=1)
+        lf = tk.Frame(cred_row, bg=BG_CARD)
+        lf.grid(row=0, column=0, sticky="ew", padx=(0, 6))
+        _sfield(lf, "USERNAME", self._sp_user_var)
+        rf = tk.Frame(cred_row, bg=BG_CARD)
+        rf.grid(row=0, column=1, sticky="ew")
+        _sfield(rf, "PASSWORD", self._sp_pass_var, show="•")
+
+        # Test connection button + result label (inside CONNECTION box)
+        test_row = tk.Frame(conn_body, bg=BG_CARD)
+        test_row.pack(fill="x", pady=(0, 4))
+        self._sp_test_btn = ttk.Button(test_row, text="Test Connection",
+                                        style="Ghost.TButton",
+                                        command=self._on_sp_test_connection)
+        self._sp_test_btn.pack(side="left")
+        self._sp_test_lbl = tk.Label(test_row, text="", bg=BG_CARD,
+                                      fg=FG_DIM, font=FONT_SMALL)
+        self._sp_test_lbl.pack(side="left", padx=(10, 0))
+
+        # GOOGLE DRIVE
+        self._sp_creds_var  = tk.StringVar()
+        self._sp_folder_var = tk.StringVar()
+        drv_body = _sbox("GOOGLE DRIVE")
+        _sfield_browse(drv_body, "CREDENTIALS FILE", self._sp_creds_var,
+                       lambda: self._sp_creds_var.set(
+                           filedialog.askopenfilename(
+                               title="Select credentials.json",
+                               filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+                               initialdir=os.path.dirname(self._sp_creds_var.get())
+                                          if self._sp_creds_var.get() else "~")
+                           or self._sp_creds_var.get()))
+        _sfield(drv_body, "DRIVE FOLDER ID", self._sp_folder_var)
+
+        # GEMINI AI
+        self._sp_gemini_var = tk.StringVar()
+        gem_body = _sbox("GEMINI AI")
+        _sfield(gem_body, "API KEY", self._sp_gemini_var)
+
+        # DEFAULTS
+        self._sp_copyright_var = tk.StringVar()
+        self._sp_cat_var       = tk.StringVar()
+        self._sp_alb_var       = tk.StringVar()
+        self._sp_orient_var    = tk.StringVar(value='auto')
+        def_body = _sbox("DEFAULTS")
+        _sfield(def_body, "COPYRIGHT TEXT", self._sp_copyright_var)
+        def_row = tk.Frame(def_body, bg=BG_CARD)
+        def_row.pack(fill="x")
+        def_row.columnconfigure(0, weight=1)
+        def_row.columnconfigure(1, weight=1)
+        def_row.columnconfigure(2, weight=1)
+        cat_f = tk.Frame(def_row, bg=BG_CARD)
+        cat_f.grid(row=0, column=0, sticky="ew", padx=(0, 6))
+        tk.Label(cat_f, text="DEFAULT CATEGORY", bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_SMALL).pack(anchor="w")
+        tk.Entry(cat_f, textvariable=self._sp_cat_var,
+                 bg=BG_MID, fg=FG_MAIN, font=FONT_UI, relief="flat",
+                 insertbackground=ACCENT).pack(fill="x", pady=(2, 0))
+        alb_f = tk.Frame(def_row, bg=BG_CARD)
+        alb_f.grid(row=0, column=1, sticky="ew", padx=(0, 6))
+        tk.Label(alb_f, text="DEFAULT ALBUM", bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_SMALL).pack(anchor="w")
+        tk.Entry(alb_f, textvariable=self._sp_alb_var,
+                 bg=BG_MID, fg=FG_MAIN, font=FONT_UI, relief="flat",
+                 insertbackground=ACCENT).pack(fill="x", pady=(2, 0))
+        ori_f = tk.Frame(def_row, bg=BG_CARD)
+        ori_f.grid(row=0, column=2, sticky="ew")
+        tk.Label(ori_f, text="ORIENTATION", bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_SMALL).pack(anchor="w")
+        ttk.Combobox(ori_f, textvariable=self._sp_orient_var,
+                     values=['auto', 'landscape', 'portrait', 'square'],
+                     font=FONT_SMALL, state="readonly").pack(fill="x", pady=(2, 0))
+
+        # Save button
+        save_row = tk.Frame(right, bg=BG_DEEP)
+        save_row.pack(fill="x", pady=(4, 0))
+        self._sp_status_lbl = tk.Label(save_row, text="", bg=BG_DEEP,
+                                        fg=FG_DIM, font=FONT_SMALL)
+        self._sp_status_lbl.pack(side="left")
+        ttk.Button(save_row, text="Save Profile",
+                   style="Accent.TButton",
+                   command=self._on_profile_save).pack(side="right")
+
+        # Populate list
+        self._settings_refresh_list()
+
+    def _settings_refresh_list(self, select_name: str = ''):
+        """Reload the profile listbox."""
+        names = profile_manager.list_profiles()
+        self._profile_lb.delete(0, "end")
+        sel_idx = 0
+        for i, name in enumerate(names):
+            self._profile_lb.insert("end", name)
+            if name == select_name:
+                sel_idx = i
+        if names:
+            self._profile_lb.selection_set(sel_idx)
+            self._profile_lb.see(sel_idx)
+            self._settings_populate_form(names[sel_idx])
+
+    def _on_profile_select(self, _event=None):
+        sel = self._profile_lb.curselection()
+        if not sel:
+            return
+        name = self._profile_lb.get(sel[0])
+        self._settings_populate_form(name)
+
+    def _settings_populate_form(self, name: str):
+        p = profile_manager.load_profile(name)
+        if p is None:
+            return
+        self._sp_name_var.set(p.get('name', ''))
+        self._sp_url_var.set(p.get('url', ''))
+        self._sp_user_var.set(p.get('username', ''))
+        self._sp_pass_var.set(p.get('password', ''))
+        self._sp_creds_var.set(p.get('google_credentials', ''))
+        self._sp_folder_var.set(p.get('drive_folder_id', ''))
+        self._sp_gemini_var.set(p.get('gemini_api_key', ''))
+        self._sp_copyright_var.set(p.get('copyright_text', ''))
+        self._sp_cat_var.set(p.get('default_category', ''))
+        self._sp_alb_var.set(p.get('default_album', ''))
+        self._sp_orient_var.set(p.get('default_orientation', 'auto'))
+        self._sp_status_lbl.configure(text='', fg=FG_DIM)
+
+    def _on_profile_new(self):
+        blank = profile_manager.blank_profile()
+        # Pick a unique name
+        existing = profile_manager.list_profiles()
+        base = 'New Site'
+        name = base
+        n = 2
+        while name in existing:
+            name = f'{base} {n}'
+            n += 1
+        blank['name'] = name
+        profile_manager.save_profile(blank)
+        self._settings_refresh_list(select_name=name)
+
+    def _on_profile_save(self):
+        name = self._sp_name_var.get().strip()
+        if not name:
+            messagebox.showwarning("Name required",
+                                   "Enter a profile name before saving.", parent=self)
+            return
+        # If name changed, check for collision
+        sel = self._profile_lb.curselection()
+        old_name = self._profile_lb.get(sel[0]) if sel else ''
+        existing = profile_manager.list_profiles()
+        if name != old_name and name in existing:
+            if not messagebox.askyesno("Overwrite?",
+                    f'A profile named "{name}" already exists. Overwrite?',
+                    parent=self):
+                return
+        # Delete old file if renamed
+        if old_name and old_name != name:
+            profile_manager.delete_profile(old_name)
+
+        profile_manager.save_profile({
+            'name':                name,
+            'url':                 self._sp_url_var.get().strip(),
+            'username':            self._sp_user_var.get().strip(),
+            'password':            self._sp_pass_var.get(),
+            'google_credentials':  self._sp_creds_var.get().strip(),
+            'drive_folder_id':     self._sp_folder_var.get().strip(),
+            'drive_enabled':       True,
+            'gemini_api_key':      self._sp_gemini_var.get().strip(),
+            'copyright_text':      self._sp_copyright_var.get(),
+            'default_category':    self._sp_cat_var.get().strip(),
+            'default_album':       self._sp_alb_var.get().strip(),
+            'default_orientation': self._sp_orient_var.get(),
+        })
+        self._settings_refresh_list(select_name=name)
+        self._sp_status_lbl.configure(text='✓  Saved', fg=FG_OK)
+
+    def _on_profile_delete(self):
+        sel = self._profile_lb.curselection()
+        if not sel:
+            return
+        name = self._profile_lb.get(sel[0])
+        if not messagebox.askyesno("Delete profile",
+                f'Delete "{name}"? This cannot be undone.', parent=self):
+            return
+        profile_manager.delete_profile(name)
+        self._settings_refresh_list()
+        self._sp_status_lbl.configure(text='', fg=FG_DIM)
+
+    def _on_profile_load(self):
+        """Load selected profile into POST tab fields and reconnect."""
+        sel = self._profile_lb.curselection()
+        if not sel:
+            messagebox.showwarning("No profile selected",
+                                   "Select a site profile first.", parent=self)
+            return
+        name = self._profile_lb.get(sel[0])
+        p = profile_manager.load_profile(name)
+        if p is None:
+            return
+
+        # Populate POST tab config vars
+        self._url_var.set(p.get('url', ''))
+        self._user_var.set(p.get('username', ''))
+        self._pass_var.set(p.get('password', ''))
+        self._goog_creds_var.set(p.get('google_credentials', ''))
+        self._drive_folder_var.set(p.get('drive_folder_id', ''))
+        self._gemini_key_var.set(p.get('gemini_api_key', ''))
+        self._copyright_var.set(p.get('copyright_text', ''))
+        self._def_cat_var.set(p.get('default_category', ''))
+        self._def_alb_var.set(p.get('default_album', ''))
+        orient = p.get('default_orientation', 'auto')
+        self._def_orient_var.set(orient.capitalize() if orient != 'auto' else 'Auto')
+        drive_on = p.get('drive_enabled', True)
+        self._drive_enabled_var.set(drive_on)
+        self._on_drive_toggle()
+
+        # Save to config.ini so values persist on next launch
+        self._save_config()
+
+        # Switch to POST and connect
+        self._switch_tab('post')
+        self._on_connect()
+
+    def _on_sp_test_connection(self):
+        """
+        Test login using the URL / username / password currently in the
+        Settings form fields (no save required).  Runs in a background thread
+        so the UI stays responsive.
+        """
+        url  = self._sp_url_var.get().strip()
+        user = self._sp_user_var.get().strip()
+        pw   = self._sp_pass_var.get()
+
+        if not url or not user:
+            self._sp_test_lbl.configure(text="Enter URL and username first.", fg=FG_WARN)
+            return
+
+        self._sp_test_btn.configure(state="disabled")
+        self._sp_test_lbl.configure(text="Testing…", fg=FG_DIM)
+
+        def _worker():
+            try:
+                from poster import SnapSmackClient
+                client = SnapSmackClient(url)
+                client.login(user, pw)
+                self.after(0, lambda: self._sp_test_lbl.configure(
+                    text="✓  Connected successfully", fg=FG_OK))
+            except Exception as exc:
+                msg = str(exc)
+                if len(msg) > 80:
+                    msg = msg[:77] + "…"
+                self.after(0, lambda m=msg: self._sp_test_lbl.configure(
+                    text=f"✗  {m}", fg=FG_ERR))
+            finally:
+                self.after(0, lambda: self._sp_test_btn.configure(state="normal"))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    # ------------------------------------------------------------------
+    # Repair tab UI
+    # ------------------------------------------------------------------
+
+    def _build_repair_ui(self):
+        """Populate self._repair_frame."""
+        p = self._repair_frame
+
+        # ── Top bar ───────────────────────────────────────────────────
+        top = tk.Frame(p, bg=BG_CARD, height=44)
+        top.pack(fill="x")
+        top.pack_propagate(False)
+        tk.Label(top, text="REPAIR", bg=BG_CARD, fg=ACCENT,
+                 font=FONT_TITLE).pack(side="left", padx=16, anchor="center")
+        tk.Frame(p, bg=BORDER, height=1).pack(fill="x")
+
+        # Scrollable body
+        canvas_frame = tk.Frame(p, bg=BG_DEEP)
+        canvas_frame.pack(fill="both", expand=True)
+        rcanvas = tk.Canvas(canvas_frame, bg=BG_DEEP, highlightthickness=0)
+        rvbar   = ttk.Scrollbar(canvas_frame, orient="vertical",
+                                command=rcanvas.yview)
+        rcanvas.configure(yscrollcommand=rvbar.set)
+        rvbar.pack(side="right", fill="y")
+        rcanvas.pack(side="left", fill="both", expand=True)
+        rbody = tk.Frame(rcanvas, bg=BG_DEEP)
+        rwin  = rcanvas.create_window((0, 0), window=rbody, anchor="nw")
+        rbody.bind("<Configure>", lambda e: rcanvas.configure(
+            scrollregion=rcanvas.bbox("all")))
+        rcanvas.bind("<Configure>", lambda e:
+            rcanvas.itemconfigure(rwin, width=e.width))
+        rcanvas.bind_all("<MouseWheel>",
+            lambda e: rcanvas.yview_scroll(
+                int(-1 * (e.delta / 120)), "units") if self._active_tab == 'repair' else None)
+
+        # ═══════════════════════════════════════════════════════════════
+        # ACTION 1: Rename Drive Files to {id}.jpg
+        # ═══════════════════════════════════════════════════════════════
+        self._repair_section(rbody, "1. RENAME DRIVE FILES TO {id}.jpg",
+            "Updates filenames in Google Drive to match their blog post ID. "
+            "URLs are file-ID-based and are NOT changed — no posts will break.")
+
+        rename_body = tk.Frame(rbody, bg=BG_CARD, padx=16, pady=12)
+        rename_body.pack(fill="x", padx=8, pady=(0, 4))
+
+        self._rename_status_lbl = tk.Label(
+            rename_body,
+            text="Requires Drive auth and audit data. Pull audit on the AUDIT tab first.",
+            bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL, anchor="w", wraplength=700)
+        self._rename_status_lbl.pack(fill="x", pady=(0, 8))
+
+        self._rename_prog_var = tk.DoubleVar()
+        self._rename_prog = ttk.Progressbar(rename_body, variable=self._rename_prog_var,
+                                             mode="determinate", length=400)
+        self._rename_prog.pack(anchor="w", pady=(0, 6))
+
+        rename_btn_row = tk.Frame(rename_body, bg=BG_CARD)
+        rename_btn_row.pack(fill="x")
+        self._rename_btn = ttk.Button(rename_btn_row, text="▶  Start Rename Batch",
+                                       style="Accent.TButton",
+                                       command=self._on_rename_start)
+        self._rename_btn.pack(side="left")
+        self._rename_stop_btn = ttk.Button(rename_btn_row, text="■  Stop",
+                                            style="Ghost.TButton",
+                                            command=self._on_rename_stop,
+                                            state="disabled")
+        self._rename_stop_btn.pack(side="left", padx=(8, 0))
+
+        rename_log_frame = tk.Frame(rename_body, bg=BG_MID,
+                                    highlightthickness=1,
+                                    highlightbackground=BORDER)
+        rename_log_frame.pack(fill="x", pady=(10, 0))
+        self._rename_log = tk.Text(rename_log_frame, bg=BG_MID, fg=FG_MAIN,
+                                    font=FONT_SMALL, height=8, state="disabled",
+                                    wrap="none", relief="flat")
+        self._rename_log.pack(fill="x", padx=4, pady=4)
+        self._rename_log.tag_configure("ok",   foreground=FG_OK)
+        self._rename_log.tag_configure("err",  foreground=FG_ERR)
+        self._rename_log.tag_configure("warn", foreground=FG_WARN)
+        self._rename_running = False
+        self._rename_stop    = False
+
+        # ═══════════════════════════════════════════════════════════════
+        # ACTION 2: Re-enrich Duplicate Titles
+        # ═══════════════════════════════════════════════════════════════
+        tk.Frame(rbody, bg=BORDER, height=1).pack(fill="x", padx=8, pady=(16, 0))
+        self._repair_section(rbody, "2. RE-ENRICH DUPLICATE TITLES",
+            "Downloads each duplicate-title post's original from Google Drive, "
+            "sends to Gemini, writes a new unique title back to the blog.")
+
+        enrich_body = tk.Frame(rbody, bg=BG_CARD, padx=16, pady=12)
+        enrich_body.pack(fill="x", padx=8, pady=(0, 4))
+
+        self._reenrich_status_lbl = tk.Label(
+            enrich_body,
+            text="Requires Drive auth, Gemini key, and audit data.",
+            bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL, anchor="w", wraplength=700)
+        self._reenrich_status_lbl.pack(fill="x", pady=(0, 8))
+
+        self._reenrich_prog_var = tk.DoubleVar()
+        self._reenrich_prog = ttk.Progressbar(enrich_body,
+                                               variable=self._reenrich_prog_var,
+                                               mode="determinate", length=400)
+        self._reenrich_prog.pack(anchor="w", pady=(0, 6))
+
+        reenrich_btn_row = tk.Frame(enrich_body, bg=BG_CARD)
+        reenrich_btn_row.pack(fill="x")
+        self._reenrich_btn = ttk.Button(reenrich_btn_row,
+                                         text="▶  Start Re-enrichment",
+                                         style="Accent.TButton",
+                                         command=self._on_reenrich_start)
+        self._reenrich_btn.pack(side="left")
+        self._reenrich_stop_btn = ttk.Button(reenrich_btn_row, text="■  Stop",
+                                              style="Ghost.TButton",
+                                              command=self._on_reenrich_stop,
+                                              state="disabled")
+        self._reenrich_stop_btn.pack(side="left", padx=(8, 0))
+
+        reenrich_log_frame = tk.Frame(enrich_body, bg=BG_MID,
+                                       highlightthickness=1,
+                                       highlightbackground=BORDER)
+        reenrich_log_frame.pack(fill="x", pady=(10, 0))
+        self._reenrich_log = tk.Text(reenrich_log_frame, bg=BG_MID, fg=FG_MAIN,
+                                      font=FONT_SMALL, height=8, state="disabled",
+                                      wrap="none", relief="flat")
+        self._reenrich_log.pack(fill="x", padx=4, pady=4)
+        self._reenrich_log.tag_configure("ok",   foreground=FG_OK)
+        self._reenrich_log.tag_configure("err",  foreground=FG_ERR)
+        self._reenrich_log.tag_configure("warn", foreground=FG_WARN)
+        self._reenrich_running = False
+        self._reenrich_stop    = False
+
+        # ═══════════════════════════════════════════════════════════════
+        # ACTION 3: Backfill Missing Drive Links
+        # ═══════════════════════════════════════════════════════════════
+        tk.Frame(rbody, bg=BORDER, height=1).pack(fill="x", padx=8, pady=(16, 0))
+        self._repair_section(rbody, "3. BACKFILL MISSING DRIVE LINKS",
+            "For posts without a download URL, paste in the Drive share link and save it.")
+
+        self._backfill_body = tk.Frame(rbody, bg=BG_CARD, padx=16, pady=12)
+        self._backfill_body.pack(fill="x", padx=8, pady=(0, 16))
+
+        self._backfill_status_lbl = tk.Label(
+            self._backfill_body,
+            text="Pull audit data on the AUDIT tab to see missing-link posts here.",
+            bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL, anchor="w")
+        self._backfill_status_lbl.pack(fill="x")
+        # Rows are built dynamically by _populate_backfill()
+
+    def _repair_section(self, parent, title: str, desc: str):
+        hdr = tk.Frame(parent, bg=BG_DEEP)
+        hdr.pack(fill="x", padx=8, pady=(12, 4))
+        tk.Label(hdr, text=title, bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_BOLD, anchor="w").pack(fill="x")
+        if desc:
+            tk.Label(hdr, text=desc, bg=BG_DEEP, fg=FG_DIM,
+                     font=FONT_SMALL, anchor="w",
+                     wraplength=760).pack(fill="x", pady=(2, 0))
+
+    def _repair_log(self, widget: 'tk.Text', msg: str, tag: str = ''):
+        widget.configure(state="normal")
+        widget.insert("end", msg + "\n", tag)
+        widget.see("end")
+        widget.configure(state="disabled")
+
+    # ------------------------------------------------------------------
+    # Repair Action 1: Rename Drive files
+    # ------------------------------------------------------------------
+
+    def _on_rename_start(self):
+        if not self._drive_service:
+            messagebox.showerror("Drive not connected",
+                                 "Auth Drive on the POST tab first.", parent=self)
+            return
+        if not self._audit_data:
+            messagebox.showerror("No audit data",
+                                 "Pull audit data on the AUDIT tab first.", parent=self)
+            return
+
+        posts_with_drive = [
+            p for p in self._audit_data if p.get('download_url')]
+        if not posts_with_drive:
+            messagebox.showinfo("Nothing to rename",
+                                "No posts have Drive links.", parent=self)
+            return
+
+        self._rename_running = True
+        self._rename_stop    = False
+        self._rename_btn.configure(state="disabled")
+        self._rename_stop_btn.configure(state="normal")
+        self._rename_prog.configure(maximum=len(posts_with_drive))
+        self._rename_prog_var.set(0)
+        self._rename_status_lbl.configure(
+            text=f"Renaming {len(posts_with_drive)} files…", fg=FG_WARN)
+
+        import drive as drive_module
+
+        def _worker():
+            import re, time
+            done = 0; errors = 0
+            for pp in posts_with_drive:
+                if self._rename_stop:
+                    self.after(0, lambda: self._repair_log(
+                        self._rename_log, "— Stopped by user.", "warn"))
+                    break
+                url   = pp['download_url']
+                sid   = pp['snap_id']
+                # Extract Drive file ID — handles both URL formats
+                m = re.search(r'/file/d/([a-zA-Z0-9_-]+)', url)
+                if not m:
+                    m = re.search(r'[?&]id=([a-zA-Z0-9_-]+)', url)
+                if not m:
+                    self.after(0, lambda s=sid: self._repair_log(
+                        self._rename_log,
+                        f"✗ ID {s} — cannot extract Drive file ID from URL", "err"))
+                    errors += 1
+                    done   += 1
+                    self.after(0, lambda d=done: self._rename_prog_var.set(d))
+                    continue
+                file_id  = m.group(1)
+                new_name = f"{sid}.jpg"
+                try:
+                    drive_module.rename(self._drive_service, file_id, new_name)
+                    self.after(0, lambda s=sid, n=new_name: self._repair_log(
+                        self._rename_log, f"✓ ID {s}  →  {n}", "ok"))
+                except Exception as exc:
+                    self.after(0, lambda s=sid, e=str(exc): self._repair_log(
+                        self._rename_log, f"✗ ID {s} — {e}", "err"))
+                    errors += 1
+                done += 1
+                self.after(0, lambda d=done: self._rename_prog_var.set(d))
+                time.sleep(0.15)   # stay under Drive API quota
+
+            total = len(posts_with_drive)
+            self.after(0, lambda: self._on_rename_done(done, errors, total))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_rename_stop(self):
+        self._rename_stop = True
+        self._rename_stop_btn.configure(state="disabled")
+
+    def _on_rename_done(self, done: int, errors: int, total: int):
+        self._rename_running = False
+        self._rename_btn.configure(state="normal")
+        self._rename_stop_btn.configure(state="disabled")
+        msg = f"Done: {done}/{total} processed, {errors} error(s)."
+        self._rename_status_lbl.configure(
+            text=msg, fg=FG_OK if not errors else FG_WARN)
+        self._repair_log(self._rename_log, f"\n{msg}")
+
+    # ------------------------------------------------------------------
+    # Repair Action 2: Re-enrich duplicate titles
+    # ------------------------------------------------------------------
+
+    def _on_reenrich_start(self):
+        if not self._drive_service:
+            messagebox.showerror("Drive not connected",
+                                 "Auth Drive on the POST tab first.", parent=self)
+            return
+        if not self._audit_data:
+            messagebox.showerror("No audit data",
+                                 "Pull audit data on the AUDIT tab first.", parent=self)
+            return
+        if not self._client:
+            messagebox.showerror("Not connected",
+                                 "Connect to site on the POST tab first.", parent=self)
+            return
+
+        gemini_key = self._config.get('gemini_api_key', '').strip()
+        if not gemini_key:
+            messagebox.showerror("No Gemini key",
+                                 "Add a Gemini API key on the POST tab first.",
+                                 parent=self)
+            return
+
+        dups, _ = self._compute_audit_issues(self._audit_data)
+        if not dups:
+            messagebox.showinfo("No duplicates",
+                                "No duplicate titles found in audit data.", parent=self)
+            return
+
+        # Collect posts that need new titles (all but the first per group)
+        to_fix = []
+        for title, group in dups.items():
+            to_fix.extend(group[1:])   # keep first, re-enrich the rest
+
+        if not to_fix:
+            return
+
+        self._reenrich_running = True
+        self._reenrich_stop    = False
+        self._reenrich_btn.configure(state="disabled")
+        self._reenrich_stop_btn.configure(state="normal")
+        self._reenrich_prog.configure(maximum=len(to_fix))
+        self._reenrich_prog_var.set(0)
+        self._reenrich_status_lbl.configure(
+            text=f"Re-enriching {len(to_fix)} posts…", fg=FG_WARN)
+
+        # Seed used_titles from all current blog titles (guard against NULL titles)
+        used_titles = {p['img_title'].strip().lower()
+                       for p in self._audit_data if p.get('img_title')}
+
+        import gemini as gemini_module
+        import drive as drive_module
+
+        # Pre-fetch site data for category/album prompts if available
+        cats   = list(self._site_data._cat_display.values()) if self._site_data else []
+        albums = list(self._site_data._album_display.values()) if self._site_data else []
+
+        def _worker():
+            import re, os, time
+            done = 0; errors = 0
+            genai = None
+            try:
+                import google.generativeai as genai_mod
+                genai_mod.configure(api_key=gemini_key)
+                model = genai_mod.GenerativeModel(gemini_module.MODEL_NAME)
+            except Exception as e:
+                self.after(0, lambda: self._repair_log(
+                    self._reenrich_log, f"✗ Gemini init failed: {e}", "err"))
+                self.after(0, lambda: self._on_reenrich_done(0, len(to_fix), len(to_fix)))
+                return
+
+            prompt = gemini_module._build_prompt(cats, albums)
+
+            for pp in to_fix:
+                if self._reenrich_stop:
+                    self.after(0, lambda: self._repair_log(
+                        self._reenrich_log, "— Stopped by user.", "warn"))
+                    break
+
+                sid = pp['snap_id']
+                url = pp.get('download_url', '')
+                old_title = pp['img_title']
+
+                if not url:
+                    self.after(0, lambda s=sid: self._repair_log(
+                        self._reenrich_log,
+                        f"✗ ID {s} — no Drive URL, cannot download", "err"))
+                    errors += 1
+                    done   += 1
+                    self.after(0, lambda d=done: self._reenrich_prog_var.set(d))
+                    continue
+
+                m = re.search(r'/file/d/([a-zA-Z0-9_-]+)', url)
+                if not m:
+                    m = re.search(r'[?&]id=([a-zA-Z0-9_-]+)', url)
+                if not m:
+                    self.after(0, lambda s=sid: self._repair_log(
+                        self._reenrich_log,
+                        f"✗ ID {s} — cannot extract Drive file ID", "err"))
+                    errors += 1
+                    done   += 1
+                    self.after(0, lambda d=done: self._reenrich_prog_var.set(d))
+                    continue
+
+                file_id  = m.group(1)
+                tmp_path = None
+                try:
+                    # 1. Download from Drive
+                    tmp_path = drive_module.download_to_temp(
+                        self._drive_service, file_id)
+
+                    # 2. Send to Gemini — retry up to 4× for uniqueness
+                    img_part  = gemini_module._load_image_part(None, tmp_path)
+                    new_title = ''
+                    for attempt in range(1, 5):
+                        run_prompt = prompt if attempt == 1 else (
+                            f"The title \"{new_title}\" is already in use. "
+                            f"Generate a DIFFERENT haiku-style title.\n\n" + prompt)
+                        resp   = model.generate_content([run_prompt, img_part])
+                        parsed = gemini_module._parse_response(resp.text)
+                        t      = parsed.get('title', '').strip()
+                        if t and t.lower() not in used_titles:
+                            new_title = t
+                            break
+                        if t:
+                            new_title = t   # keep for retry prompt
+
+                    if not new_title or new_title.lower() in used_titles:
+                        raise RuntimeError("Could not generate a unique title after 4 attempts")
+
+                    # 3. Update blog
+                    self._client.audit_update_title(sid, new_title)
+                    used_titles.add(new_title.lower())
+
+                    self.after(0, lambda s=sid, o=old_title, n=new_title:
+                        self._repair_log(self._reenrich_log,
+                            f'✓ ID {s}  "{o[:40]}"  →  "{n[:40]}"', "ok"))
+
+                except Exception as exc:
+                    self.after(0, lambda s=sid, e=str(exc): self._repair_log(
+                        self._reenrich_log, f"✗ ID {s} — {e}", "err"))
+                    errors += 1
+                finally:
+                    if tmp_path and os.path.isfile(tmp_path):
+                        try:
+                            os.unlink(tmp_path)
+                        except OSError:
+                            pass
+
+                done += 1
+                self.after(0, lambda d=done: self._reenrich_prog_var.set(d))
+                time.sleep(0.5)   # Gemini rate limiting
+
+            self.after(0, lambda: self._on_reenrich_done(done, errors, len(to_fix)))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_reenrich_stop(self):
+        self._reenrich_stop = True
+        self._reenrich_stop_btn.configure(state="disabled")
+
+    def _on_reenrich_done(self, done: int, errors: int, total: int):
+        self._reenrich_running = False
+        self._reenrich_btn.configure(state="normal")
+        self._reenrich_stop_btn.configure(state="disabled")
+        msg = f"Done: {done}/{total} processed, {errors} error(s). Refresh Audit to verify."
+        self._reenrich_status_lbl.configure(
+            text=msg, fg=FG_OK if not errors else FG_WARN)
+        self._repair_log(self._reenrich_log, f"\n{msg}")
+        # Mark audit as stale so next switch re-pulls
+        self._audit_loaded = False
+
+    # ------------------------------------------------------------------
+    # Repair Action 3: Backfill missing Drive links
+    # ------------------------------------------------------------------
+
+    def _populate_backfill(self, missing: list):
+        """Build one row per missing-link post in the backfill panel."""
+        # Clear existing rows (keep status label)
+        for w in self._backfill_body.winfo_children():
+            if w is not self._backfill_status_lbl:
+                w.destroy()
+
+        if not missing:
+            self._backfill_status_lbl.configure(
+                text="✓  No posts are missing Drive links.", fg=FG_OK)
+            return
+
+        self._backfill_status_lbl.configure(
+            text=f"{len(missing)} post(s) missing a Drive link. "
+                 "Paste the share URL and click Save.",
+            fg=FG_WARN)
+
+        self._backfill_vars = {}
+        for pp in missing:
+            row = tk.Frame(self._backfill_body, bg=BG_CARD)
+            row.pack(fill="x", pady=3)
+            sid = pp['snap_id']
+
+            tk.Label(row, text=f"ID {sid}", bg=BG_CARD, fg=FG_DIM,
+                     font=FONT_SMALL, width=8, anchor="w").pack(side="left")
+            tk.Label(row, text=pp['img_title'][:40], bg=BG_CARD, fg=FG_MAIN,
+                     font=FONT_SMALL, width=42, anchor="w").pack(side="left", padx=(0, 8))
+
+            url_var = tk.StringVar()
+            self._backfill_vars[sid] = url_var
+            tk.Entry(row, textvariable=url_var, bg=BG_MID, fg=FG_MAIN,
+                     font=FONT_SMALL, relief="flat", width=40,
+                     insertbackground=ACCENT).pack(side="left", padx=(0, 6))
+
+            save_lbl = tk.Label(row, text="", bg=BG_CARD, font=FONT_SMALL, width=6)
+            save_lbl.pack(side="left")
+            ttk.Button(row, text="Save", style="Ghost.TButton",
+                       command=lambda s=sid, v=url_var, l=save_lbl:
+                           self._on_backfill_save(s, v, l)).pack(side="left")
+
+    def _on_backfill_save(self, snap_id: int, url_var: 'tk.StringVar',
+                          status_lbl: 'tk.Label'):
+        url = url_var.get().strip()
+        if not url:
+            messagebox.showwarning("Empty URL", "Paste the Drive share URL first.",
+                                   parent=self)
+            return
+        if not self._client:
+            messagebox.showerror("Not connected",
+                                 "Connect to site on the POST tab first.", parent=self)
+            return
+        status_lbl.configure(text="Saving…", fg=FG_WARN)
+
+        def _worker():
+            try:
+                self._client.keepalive()   # refresh session if expired before POSTing
+                # Use the backfill endpoint for this (sets allow_download=1 too)
+                r = self._client.session.post(
+                    f"{self._client.base_url}/smack-backfill.php",
+                    data={'action': 'update', 'snap_id': snap_id,
+                          'download_url': url},
+                    timeout=15)
+                r.raise_for_status()
+                data = r.json()
+                if data.get('ok'):
+                    self.after(0, lambda: status_lbl.configure(text="✓", fg=FG_OK))
+                    self._audit_loaded = False
+                else:
+                    raise RuntimeError(data.get('error', 'Save failed'))
+            except Exception as exc:
+                self.after(0, lambda: status_lbl.configure(text="✗", fg=FG_ERR))
+                self.after(0, lambda: messagebox.showerror(
+                    "Save failed", str(exc), parent=self))
+        threading.Thread(target=_worker, daemon=True).start()
 
     # ------------------------------------------------------------------
     # Box layout helpers (mirror admin .box / box-header pattern)
@@ -1621,6 +2874,7 @@ class App(tk.Tk):
                 cat_descriptions=self._site_data.cat_descriptions if self._site_data else None,
                 album_descriptions=self._site_data.album_descriptions if self._site_data else None,
                 existing_tags=self._site_data.tags if self._site_data else None,
+                existing_titles=self._site_data.titles if self._site_data else None,
             )
 
             def _done():
@@ -2104,12 +3358,10 @@ class App(tk.Tk):
             self._post_canvas.configure(cursor="")
             self._post_canvas.unbind("<Button-1>")
         else:
-            self._post_canvas.itemconfig(self._post_text, fill=BG_DEEP)
+            self._post_canvas.itemconfig(self._post_text, fill="#000000")
             self._post_canvas.itemconfig(self._post_rect, fill=ACCENT)
             self._post_canvas.configure(cursor="hand2")
             self._post_canvas.bind("<Button-1>", lambda e: self._on_post())
-        self._validate_btn.configure(state=state)
-        self._connect_btn.configure(state=state)
 
 
 # ---------------------------------------------------------------------------
@@ -2118,4 +3370,4 @@ class App(tk.Tk):
 
 if __name__ == "__main__":
     app = App()
-    app.mainloop()
+    app.mainloop()
