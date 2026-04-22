@@ -49,4 +49,5 @@ function snapsmack_is_mobile(): bool {
     // (iOS Safari, Chrome Mobile, Samsung, etc.). Additional patterns cover
     // older or niche handsets. Tablets (iPad, Android without 'Mobile') are
     // intentionally excluded so they receive the normal desktop skin.
-    return (bool) preg_match('/Mobile|iPhone|iPod|Android.*Mobile|webOS|BlackB
+    return (bool) preg_match('/Mobile|iPhone|iPod|Android.*Mobile|webOS|BlackBerry|Windows Phone|Opera Mini|IEMobile/i', $ua);
+}

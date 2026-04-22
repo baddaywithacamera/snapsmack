@@ -1385,7 +1385,7 @@ include 'core/sidebar.php';
 
         <!-- Accumulated log -->
         <div class="step-log">
-            <?php foreach ($stage_state['log'] as $step): ?>
+            <?php foreach (($stage_state['log'] ?? []) as $step): ?>
             <div class="step-row step-<?php echo $step['status']; ?>">
                 <span class="step-icon"><?php echo $step['status'] === 'ok' ? '✓' : '✗'; ?></span>
                 <span><?php echo htmlspecialchars($step['label']); ?></span>
