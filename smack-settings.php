@@ -9,6 +9,45 @@
 require_once 'core/auth.php';
 require_once 'core/ste-client.php';
 
+// --- AKISMET KEY TEST (AJAX) ---
+if (
+    isset($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+    $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest' &&
+    ($_POST['action'] ?? '') === 'akismet_test'
+) {
+    $key = trim($_POST['key'] ?? '');
+    $ok  = false;
+    $msg = 'No key provided.';
+    if ($key) {
+        $site_url = rtrim($settings['site_url'] ?? ('https://' . $_SERVER['HTTP_HOST']), '/');
+        $payload  = http_build_query([
+            'key'  => $key,
+            'blog' => $site_url,
+        ]);
+        $ch = curl_init('https://rest.akismet.com/1.1/verify-key');
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 8,
+            CURLOPT_USERAGENT      => 'SnapSmack/' . (defined('SNAPSMACK_VERSION') ? SNAPSMACK_VERSION : '0'),
+        ]);
+        $body = curl_exec($ch);
+        curl_close($ch);
+        if (trim($body) === 'valid') {
+            $ok  = true;
+            $msg = '✓ Valid Akismet key.';
+        } elseif (trim($body) === 'invalid') {
+            $msg = '✗ Invalid key — check it at akismet.com.';
+        } else {
+            $msg = '✗ Akismet did not respond — try again.';
+        }
+    }
+    header('Content-Type: application/json');
+    echo json_encode(['ok' => $ok, 'message' => $msg]);
+    exit;
+}
+
 // --- SMACK THE ENEMY: REGISTER ACTION ---
 // Handled before the main settings save so the new key is in DB before we reload settings.
 $ste_msg = '';
@@ -230,6 +269,19 @@ include 'core/sidebar.php';
                         <option value="0" <?php echo (($settings['global_comments_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
                     </select>
                     <span class="dim">MASTER OVERRIDE FOR ALL POSTS.</span>
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>AKISMET API KEY</label>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="text" name="settings[akismet_key]"
+                               value="<?php echo htmlspecialchars($settings['akismet_key'] ?? ''); ?>"
+                               placeholder="e.g. a1b2c3d4e5f6"
+                               style="flex:1;font-family:monospace;">
+                        <button type="button" id="akismet-test-btn" class="btn btn-sm">TEST KEY</button>
+                    </div>
+                    <span class="dim">AKISMET SPAM FILTER. GET A FREE KEY AT <a href="https://akismet.com/signup/" target="_blank" style="color:inherit;">AKISMET.COM</a>. LEAVE BLANK TO DISABLE.</span>
+                    <span id="akismet-test-result" style="display:none;margin-top:4px;font-size:11px;"></span>
                 </div>
 
                 <div class="lens-input-wrapper">
@@ -684,6 +736,47 @@ include 'core/sidebar.php';
 
     </form>
 </div>
+
+<script>
+// Akismet key test button
+(function () {
+    var btn = document.getElementById('akismet-test-btn');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+        var key = document.querySelector('input[name="settings[akismet_key]"]').value.trim();
+        var result = document.getElementById('akismet-test-result');
+        if (!key) {
+            result.style.display = '';
+            result.style.color = '#aaa';
+            result.textContent = 'Enter a key first.';
+            return;
+        }
+        btn.disabled = true;
+        btn.textContent = 'TESTING…';
+        result.style.display = 'none';
+        var fd = new FormData();
+        fd.append('action', 'akismet_test');
+        fd.append('key', key);
+        fetch('smack-settings.php', { method: 'POST', body: fd,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            result.style.display = '';
+            result.style.color = d.ok ? '#4caf50' : '#e74c3c';
+            result.textContent = d.message;
+        })
+        .catch(function () {
+            result.style.display = '';
+            result.style.color = '#e74c3c';
+            result.textContent = 'Request failed — check console.';
+        })
+        .finally(function () {
+            btn.disabled = false;
+            btn.textContent = 'TEST KEY';
+        });
+    });
+})();
+</script>
 
 <script>
 // Toggle visibility of custom footer text fields based on slot selection.

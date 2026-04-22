@@ -9,53 +9,43 @@
 
 function is_spam($author, $email, $body, $pdo) {
     // --- API KEY LOOKUP ---
-    // Fetch the Akismet key from the database settings
-    $stmt = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'akismet_key'");
+    $stmt        = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'akismet_key'");
     $akismet_key = $stmt->fetchColumn();
 
     // If no key is set, fail open and allow the comment through.
-    // Change to 'return true' if you prefer lockdown mode (block by default).
     if (!$akismet_key) return false;
 
-    $blog_url = 'https://baddaywithacamera.ca';
+    // --- SITE URL ---
+    // Pull from settings; fall back to current host. Never hardcode.
+    $stmt2    = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'site_url'");
+    $blog_url = rtrim($stmt2->fetchColumn() ?: ('https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost')), '/');
 
     // --- REQUEST PAYLOAD ---
-    // Build the query string with comment and request metadata
-    $query = http_build_query([
-        'blog' => $blog_url,
-        'user_ip' => $_SERVER['REMOTE_ADDR'],
-        'user_agent' => $_SERVER['HTTP_USER_AGENT'],
-        'referrer' => $_SERVER['HTTP_REFERER'] ?? '',
-        'comment_type' => 'comment',
-        'comment_author' => $author,
+    $payload = http_build_query([
+        'blog'                 => $blog_url,
+        'user_ip'              => $_SERVER['REMOTE_ADDR']     ?? '',
+        'user_agent'           => $_SERVER['HTTP_USER_AGENT'] ?? '',
+        'referrer'             => $_SERVER['HTTP_REFERER']    ?? '',
+        'comment_type'         => 'comment',
+        'comment_author'       => $author,
         'comment_author_email' => $email,
-        'comment_content' => $body
+        'comment_content'      => $body,
     ]);
 
-    $host = "$akismet_key.rest.akismet.com";
-    $path = "/1.1/comment-check";
+    // --- HTTPS REQUEST VIA CURL ---
+    // fsockopen on port 80 is deprecated and blocked by many hosts.
+    $url = "https://{$akismet_key}.rest.akismet.com/1.1/comment-check";
+    $ch  = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 5,
+        CURLOPT_USERAGENT      => 'SnapSmack/' . (defined('SNAPSMACK_VERSION') ? SNAPSMACK_VERSION : '0'),
+    ]);
+    $response = curl_exec($ch);
+    curl_close($ch);
 
-    // --- HTTP REQUEST ---
-    // Construct a raw HTTP/1.0 POST request to the Akismet API
-    $request = "POST $path HTTP/1.0\r\n";
-    $request .= "Host: $host\r\n";
-    $request .= "Content-Type: application/x-www-form-urlencoded\r\n";
-    $request .= "Content-Length: " . strlen($query) . "\r\n";
-    $request .= "User-Agent: SnapSmack/4.3\r\n\r\n";
-    $request .= $query;
-
-    $response = "";
-    $fs = fsockopen($host, 80);
-    if ($fs) {
-        fwrite($fs, $request);
-        while (!feof($fs)) $response .= fgets($fs, 1160);
-        fclose($fs);
-
-        // --- RESPONSE PARSING ---
-        // Split headers from body and check the response
-        $response = explode("\r\n\r\n", $response, 2);
-        // Akismet returns "true" in the body if the comment is spam
-        return (trim($response[1] ?? '') == 'true');
-    }
-    return false;
+    // Akismet returns "true" in the body if the comment is spam.
+    return (trim($response ?: '') === 'true');
 }
