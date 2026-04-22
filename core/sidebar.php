@@ -238,4 +238,5 @@ foreach ($_section_map as $sec => $_sec_pages) {
         <?php endif; ?>
         <a href="logout.php" class="logout">Logout</a>
         <div class="credits-admin">&copy; 2026 Sean McCormick</div>
-    </div
+    </div>
+</div>
