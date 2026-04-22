@@ -604,6 +604,50 @@ nav a.active::after {
     background: var(--light-grey);
 }
 
+
+/* ─── SECURITY SECTION ──────────────────────────────────────────────────── */
+#security {
+    background: #2e2e2e;
+    color: var(--white);
+    border-top: none;
+}
+#security h2 { color: var(--red); }
+#security .lede { color: #aaa; }
+.security-layers {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+    margin-top: 40px;
+}
+.security-layer {
+    border-top: 3px solid var(--red);
+    padding-top: 24px;
+}
+.security-layer .layer-num {
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--red);
+    margin-bottom: 10px;
+}
+.security-layer h3 {
+    color: var(--white);
+    font-size: 1.15rem;
+    margin-bottom: 14px;
+}
+.security-layer p {
+    font-size: 0.9rem;
+    color: #aaa;
+    line-height: 1.6;
+    margin-bottom: 0.75em;
+}
+.security-layer p:last-child { margin-bottom: 0; }
+@media (max-width: 800px) {
+    .security-layers { grid-template-columns: 1fr; }
+}
+
 .status-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -1303,7 +1347,7 @@ document.querySelectorAll('nav a').forEach(link => {
 <!-- ── HERO ───────────────────────────────────────────────────────────────── -->
 <section id="hero">
     <div class="hero-inner">
-        <span class="alpha-badge">Alpha v0.7.9M</span>
+        <span class="alpha-badge">Alpha v0.7.9O</span>
         <h1 class="hero-headline">A photo blog platform that doesn't treat you like a <span>product.</span></h1>
         <p class="hero-kicker">SnapSmack lets you smack your snaps up.</p>
         <p class="hero-sub">Self-hosted, free and open-source, built for photographers who got tired of Instagram, Facebook, and every other platform deciding what happens to their work. Own your archive. Own your audience. No middleman.</p>
@@ -1388,7 +1432,7 @@ document.querySelectorAll('nav a').forEach(link => {
 <section id="working">
     <div class="wrap">
         <h2>Working Right Now</h2>
-        <p class="lede">Alpha v0.7.9k is running production sites today. Here's what's solid.</p>
+        <p class="lede">Alpha v0.7.9O is running production sites today. Here's what's solid.</p>
         <div class="status-grid">
             <div class="status-card">
                 <h3>Core CMS</h3>
@@ -1454,10 +1498,7 @@ document.querySelectorAll('nav a').forEach(link => {
                 <h3>Comment Moderation</h3>
                 <p>Approve, reject, or delete comments from a dedicated moderation panel. Aggregated across all your sites in multisite mode. Flag for review, bulk actions, and a full comment history per post.</p>
             </div>
-            <div class="status-card">
-                <h3>Troll Control</h3>
-                <p>Browser fingerprinting on every comment submission — identity by behaviour, not by name. No cross-site tracking, no personal data stored. Ban by device fingerprint, IP, or email hash. Banned submissions get a plausible-looking success response. The harasser never knows they're blocked.</p>
-            </div>
+
             <div class="status-card">
                 <h3>Smack Up Your Backup</h3>
                 <p>Desktop app for large archives. Gracefully and reliably handles multi-gigabyte backups that would flatten a shared host if run server side. One-click or scheduled backup of all your SnapSmack sites at once. Differential FTP sync, cloud storage push, three-way file audit, and cold-start recovery without a working install. Always free.</p>
@@ -1483,6 +1524,43 @@ document.querySelectorAll('nav a').forEach(link => {
         A sharp blow, a loud kiss, or a small single-masted fishing vessel. In this context, what you do to a photograph when you publish it to the internet with zero regard for the algorithm. See also: <em>heroin</em> (unrelated but equally addictive).
     </div>
 </div>
+
+<!-- ── SECURITY ──────────────────────────────────────────────────────────── -->
+<section id="security">
+    <div class="wrap">
+        <h2>Security</h2>
+        <p class="lede">Three layers. Site ban, multi-site ban, SnapSmack network reputation tracking. The more work a troll has to do, the more likely they are to go bother someone else. We pile it on them and then some.</p>
+
+        <div class="security-layers">
+
+            <div class="security-layer">
+                <div class="layer-num">Layer 1 — Local</div>
+                <h3>SMACK DAB</h3>
+                <p>Every comment submission is fingerprinted — canvas, WebGL, screen geometry, timezone, language, hardware concurrency — hashed into a SHA-256 identity. No cross-site tracking. No personal data stored. Just a behavioural signature that follows the device, not the account.</p>
+                <p>Ban by device fingerprint, IP, or email hash. Banned submissions get a plausible-looking success response — the harasser never knows they're blocked. They just keep shouting into a room where nobody can hear them. Keyword and phrase banning on top: exact match, substring, or full regex, with silent reject or flag-for-review severity.</p>
+                <p>Akismet runs alongside as a first-pass filter. Known spam never reaches the fingerprinting layer. Two independent systems, two different threat models, one comment box.</p>
+            </div>
+
+            <div class="security-layer">
+                <div class="layer-num">Layer 2 — Your Network</div>
+                <h3>SMACK DOWN</h3>
+                <p>Running a fleet of sites on multisite? Ban a troll on one and they're banned everywhere. SMACK DOWN syncs hashed ban lists across every spoke in your network automatically — no manual propagation, no admin intervention. Delta sync keeps the payload small. Only SHA-256 hashes travel between sites. The original values never leave the site that generated them.</p>
+                <p>The hub maintains a shared ban registry. Each entry tracks how many distinct spokes have reported the same hash — a high report count means a confirmed cross-network threat. False positives can be soft-cleared without losing the audit trail.</p>
+                <p>If your hub runs Akismet, every spoke does too. One key, managed centrally, pushed automatically. No per-site configuration. No account juggling.</p>
+            </div>
+
+            <div class="security-layer">
+                <div class="layer-num">Layer 3 — The Network</div>
+                <h3>SMACK UP</h3>
+                <p>Voluntary network-wide reputation. Participating SnapSmack blogs report bad fingerprints to a central server. The server scores each fingerprint by weighted site reputation — an established blog with hundreds of posts carries more authority than a new install with one. Scores decay over time so old reports don't haunt people forever.</p>
+                <p>Five threat levels: green, yellow, orange, red, black. Each blog owner sets their own auto-ban threshold. Community allow-votes roll back false positives — if you approve a flagged commenter, that vote reduces their score across the whole network. No central authority decides who's banned. The community does.</p>
+                <p>Opt-in. Privacy-preserving. Only hashes are transmitted. Pull out any time.</p>
+            </div>
+
+        </div>
+    </div>
+</section>
+
 
 <!-- ── THEMES IN THE WILD ──────────────────────────────────────────────────── -->
 <section id="themes">
@@ -2018,4 +2096,4 @@ document.getElementById('yr').textContent = new Date().getFullYear();
 </script>
 </body>
 </html>
-      
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
