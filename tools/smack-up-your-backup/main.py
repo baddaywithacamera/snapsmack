@@ -5,10 +5,11 @@ Dark UI palette, tkinter, PyInstaller single-exe build chain.
 Same visual family as Smack Your Batch Up.
 """
 
-BUILD_VERSION = "0.2.6"
+BUILD_VERSION = "0.7.9h"
 
 import os
 import queue
+import tempfile
 import threading
 import time
 import tkinter as tk
@@ -24,6 +25,9 @@ import cloud_client as cloud_module
 from audit_engine import AuditEngine, AuditReport
 from backup_engine import BackupEngine
 from cloud_sync_engine import CloudSyncEngine
+from coverage_engine import (CoverageEngine, CoverageReport,
+                             DedupeEngine, DedupeResult,
+                             COVERED, OVER_BACKED, NEVER_BACKED)
 from restore_engine import RestoreEngine
 from report_writer import write_txt, write_html
 
@@ -1624,8 +1628,9 @@ class CloudBrowserDialog(tk.Toplevel):
 class AuditTab(tk.Frame):
     def __init__(self, parent, app, **kwargs):
         super().__init__(parent, bg=BG_DEEP, **kwargs)
-        self._app    = app
-        self._report: Optional[AuditReport] = None
+        self._app             = app
+        self._report:          Optional[AuditReport]     = None
+        self._coverage_report: Optional[CoverageReport]  = None
         self._build()
 
     def _build(self):
@@ -1638,6 +1643,22 @@ class AuditTab(tk.Frame):
             padx=16, pady=6, cursor="hand2", command=self._run,
         )
         self._run_btn.pack(side="left")
+
+        self._cov_btn = tk.Button(
+            ctrl, text="▶  COVERAGE CHECK",
+            bg=BG_CARD, fg=FG_MAIN, font=FONT_HEAD, relief="flat",
+            padx=16, pady=6, cursor="hand2", command=self._run_coverage,
+        )
+        self._cov_btn.pack(side="left", padx=(8, 0))
+
+        self._dedup_btn = tk.Button(
+            ctrl, text="✂  CLEAN UP DUPES",
+            bg=BG_CARD, fg=FG_DIM, font=FONT_HEAD, relief="flat",
+            padx=16, pady=6, cursor="hand2", command=self._run_dedupe,
+            state="disabled",
+        )
+        self._dedup_btn.pack(side="left", padx=(8, 0))
+
         tk.Button(ctrl, text="Save .txt", bg=BG_CARD, fg=FG_MAIN,
                   relief="flat", font=FONT_BODY, padx=10, pady=6,
                   command=lambda: self._save("txt")).pack(side="left", padx=(8, 0))
@@ -1645,8 +1666,8 @@ class AuditTab(tk.Frame):
                   relief="flat", font=FONT_BODY, padx=10, pady=6,
                   command=lambda: self._save("html")).pack(side="left", padx=(4, 0))
         tk.Label(ctrl,
-                 text="Compares manifest vs server filesystem vs database.  "
-                      "Uses SHA-256 checksums from the manifest to detect size mismatches.",
+                 text="Audit: compares manifest vs live server.  "
+                      "Coverage: checks which files are inside your local backup ZIPs.",
                  bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL).pack(
             side="left", padx=(16, 0))
 
@@ -1698,6 +1719,7 @@ class AuditTab(tk.Frame):
             return
 
         self._run_btn.configure(state="disabled")
+        self._cov_btn.configure(state="disabled")
         self._prog_bar.reset()
         self._clear_results()
 
@@ -1711,6 +1733,221 @@ class AuditTab(tk.Frame):
             daemon=True,
         )
         t.start()
+
+    def _run_coverage(self):
+        profile = self._app.current_profile()
+        if not profile:
+            messagebox.showinfo("No profile", "Select a blog profile first.")
+            return
+
+        backup_dir = profile.get("backup_dir", "")
+        if not backup_dir or not os.path.isdir(backup_dir):
+            messagebox.showerror("No backup directory",
+                                 "Set a backup directory in this profile first.")
+            return
+
+        kit_path = self._find_latest_kit(backup_dir, profile.get("name", ""))
+        if not kit_path:
+            messagebox.showerror(
+                "No manifest",
+                "No recovery kit found in the backup directory.\n"
+                "Run a backup first to generate the manifest.",
+            )
+            return
+
+        try:
+            manifest = manifest_reader.from_tar(kit_path)
+        except Exception as e:
+            messagebox.showerror("Manifest error", str(e))
+            return
+
+        self._run_btn.configure(state="disabled")
+        self._cov_btn.configure(state="disabled")
+        self._prog_bar.reset()
+        self._clear_results()
+
+        engine = CoverageEngine(
+            backup_dir  = backup_dir,
+            manifest    = manifest,
+            blog_name   = profile.get("name", ""),
+            on_progress = lambda s, m, p: self._app.queue_msg(("coverage_progress", m, p)),
+            on_log      = lambda m: self._app.queue_msg(("coverage_log", m)),
+        )
+        t = threading.Thread(
+            target=lambda: self._app.queue_msg(("coverage_done", engine.run())),
+            daemon=True,
+        )
+        t.start()
+
+    def on_coverage_progress(self, msg: str, pct: float) -> None:
+        self._prog_bar.set(pct)
+        self._status_lbl.configure(text=msg, fg=FG_WARN if pct < 1.0 else FG_OK)
+
+    def on_coverage_done(self, report: CoverageReport) -> None:
+        self._coverage_report = report
+        self._run_btn.configure(state="normal")
+        self._cov_btn.configure(state="normal")
+        self._prog_bar.set(1.0)
+        self._status_lbl.configure(text="Coverage check complete.", fg=FG_OK)
+        # Enable dedupe button only when there's something to clean
+        if report.count(OVER_BACKED) > 0:
+            self._dedup_btn.configure(state="normal", fg=FG_WARN)
+        else:
+            self._dedup_btn.configure(state="disabled", fg=FG_DIM)
+        self._render_coverage_report(report)
+
+    def _render_coverage_report(self, report: CoverageReport) -> None:
+        self._clear_results()
+        t = self._results
+        t.configure(state="normal")
+
+        def line(text, tag=""):
+            t.insert("end", text + "\n", tag)
+
+        covered      = report.count(COVERED)
+        over_backed  = report.count(OVER_BACKED)
+        never_backed = report.count(NEVER_BACKED)
+        total        = covered + over_backed + never_backed
+
+        line(f"COVERAGE REPORT  —  {report.site_name}", "heading")
+        line(f"{report.backup_dir}  ·  {report.scan_date}", "dim")
+        line(f"ZIPs scanned: {len(report.zips_scanned)}", "dim")
+        line("")
+        line(f"  {'Covered (in exactly 1 ZIP)':<35} {covered:>5}",
+             "ok" if covered > 0 else "dim")
+        line(f"  {'Over-backed (in 2+ ZIPs)':<35} {over_backed:>5}",
+             "warn" if over_backed > 0 else "dim")
+        line(f"  {'Never backed up':<35} {never_backed:>5}",
+             "err" if never_backed > 0 else "dim")
+        line(f"  {'Total manifest media files':<35} {total:>5}", "dim")
+
+        # ── Never-backed files ────────────────────────────────────────
+        nb_entries = report.by_status(NEVER_BACKED)
+        if nb_entries:
+            line(f"\n── NEVER BACKED UP ({len(nb_entries)}) ──", "heading")
+            line("  These files are in the manifest but not found in any backup ZIP.", "dim")
+            line("  They may have been missed by the backup or deleted from the server", "dim")
+            line("  after the manifest was generated.", "dim")
+            line("")
+            for e in nb_entries:
+                kb = f"{e.manifest_size // 1024:,} KB" if e.manifest_size else "unknown size"
+                line(f"  {e.restores_to}  ({kb})", "err")
+
+        # ── Over-backed files ─────────────────────────────────────────
+        ob_entries = report.by_status(OVER_BACKED)
+        if ob_entries:
+            line(f"\n── OVER-BACKED ({len(ob_entries)}) ──", "heading")
+            line("  These files appear in more than one ZIP (wasting space).", "dim")
+            line("")
+            for e in ob_entries:
+                line(f"  {e.restores_to}", "warn")
+                for zname in e.zip_names:
+                    line(f"      in: {zname}", "dim")
+
+        if not nb_entries and not ob_entries:
+            line("\n  ✓  All manifest files are covered exactly once.", "ok")
+
+        t.configure(state="disabled")
+
+    # ------------------------------------------------------------------
+    # Deduplification
+    # ------------------------------------------------------------------
+
+    def _run_dedupe(self):
+        if not self._coverage_report or self._coverage_report.count(OVER_BACKED) == 0:
+            messagebox.showinfo("Nothing to do", "Run a coverage check first.")
+            return
+
+        n_files = self._coverage_report.count(OVER_BACKED)
+        # Count how many ZIPs will be rewritten
+        from collections import Counter
+        affected_zips: set = set()
+        for e in self._coverage_report.by_status(OVER_BACKED):
+            for z in sorted(e.zip_names)[:-1]:   # all but the newest
+                affected_zips.add(z)
+
+        confirmed = messagebox.askyesno(
+            "Clean up duplicate backup entries?",
+            f"Found {n_files} file(s) stored in more than one ZIP.\n\n"
+            f"This will rewrite {len(affected_zips)} ZIP(s), removing "
+            f"the extra copies and keeping each file only in its newest ZIP.\n\n"
+            f"The ZIPs are rewritten in-place — this cannot be undone.\n\n"
+            "Proceed?",
+        )
+        if not confirmed:
+            return
+
+        self._run_btn.configure(state="disabled")
+        self._cov_btn.configure(state="disabled")
+        self._dedup_btn.configure(state="disabled")
+        self._prog_bar.reset()
+        self._clear_results()
+
+        engine = DedupeEngine(
+            report      = self._coverage_report,
+            on_progress = lambda s, m, p: self._app.queue_msg(("dedupe_progress", m, p)),
+            on_log      = lambda m: self._app.queue_msg(("dedupe_log", m)),
+        )
+        t = threading.Thread(
+            target=lambda: self._app.queue_msg(("dedupe_done", engine.run())),
+            daemon=True,
+        )
+        t.start()
+
+    def on_dedupe_progress(self, msg: str, pct: float) -> None:
+        self._prog_bar.set(pct)
+        self._status_lbl.configure(text=msg, fg=FG_WARN if pct < 1.0 else FG_OK)
+
+    def on_dedupe_done(self, result: DedupeResult) -> None:
+        self._run_btn.configure(state="normal")
+        self._cov_btn.configure(state="normal")
+        # Dedupe button stays disabled — coverage data is now stale
+        self._dedup_btn.configure(state="disabled", fg=FG_DIM)
+        self._coverage_report = None   # force re-scan before next dedupe
+        self._prog_bar.set(1.0)
+        self._status_lbl.configure(text="Cleanup complete — run Coverage Check again to verify.", fg=FG_OK)
+        self._render_dedupe_result(result)
+
+    def _render_dedupe_result(self, result: DedupeResult) -> None:
+        self._clear_results()
+        t = self._results
+        t.configure(state="normal")
+
+        def line(text, tag=""):
+            t.insert("end", text + "\n", tag)
+
+        line("CLEANUP REPORT", "heading")
+        line(f"{result.backup_dir}  ·  {result.run_date}", "dim")
+        line("")
+
+        if not result.zips_modified:
+            line("  Nothing was changed.", "dim")
+            t.configure(state="disabled")
+            return
+
+        saved_kb = result.total_saved // 1024
+        line(f"  Removed {result.total_removed} duplicate entries "
+             f"across {len(result.zips_modified)} ZIP(s).", "ok")
+        line(f"  Approximate space recovered: {saved_kb:,} KB", "ok")
+        line("")
+
+        for zr in result.zips_modified:
+            if zr.ok:
+                line(f"  ✓  {zr.zip_name}", "ok")
+                line(f"       {zr.entries_before} entries → {zr.entries_after}  "
+                     f"(removed {zr.entries_removed},  saved {zr.bytes_saved // 1024:,} KB)", "dim")
+            else:
+                line(f"  ✗  {zr.zip_name}", "err")
+                line(f"       {zr.error}", "err")
+
+        if result.errors:
+            line(f"\n── ERRORS ({len(result.errors)}) ──", "heading")
+            for err in result.errors:
+                line(f"  {err}", "err")
+
+        line("")
+        line("  Run Coverage Check again to confirm all files are now covered exactly once.", "dim")
+        t.configure(state="disabled")
 
     def _find_latest_kit(self, backup_dir: str, blog_name: str) -> Optional[str]:
         if not backup_dir or not os.path.isdir(backup_dir):
@@ -1729,6 +1966,7 @@ class AuditTab(tk.Frame):
     def on_done(self, report: AuditReport) -> None:
         self._report = report
         self._run_btn.configure(state="normal")
+        self._cov_btn.configure(state="normal")
         self._prog_bar.set(1.0)
         self._status_lbl.configure(text="Audit complete.", fg=FG_OK)
         self._render_report(report)
@@ -3301,6 +3539,13 @@ class CloudSyncTab(tk.Frame):
         )
         self._cancel_btn.pack(side="left", padx=(8, 0))
 
+        self._dedup_b2_btn = tk.Button(
+            btn_row, text="🔍  AUDIT & CLEANUP",
+            bg=BG_CARD, fg=FG_DIM, font=FONT_HEAD, relief="flat",
+            padx=16, pady=8, cursor="hand2", command=self._audit_cleanup,
+        )
+        self._dedup_b2_btn.pack(side="left", padx=(24, 0))
+
         self._refresh_jobs()
 
     # ------------------------------------------------------------------
@@ -3329,10 +3574,9 @@ class CloudSyncTab(tk.Frame):
         job = sync_manager.load_job(name)
         if not job:
             return
-        src_p      = {"google_drive": "Google Drive", "onedrive": "OneDrive"}.get(
-            job.get("source_provider", "google_drive"), "—")
-        dst_p      = {"google_drive": "Google Drive", "onedrive": "OneDrive"}.get(
-            job.get("dest_provider", "onedrive"), "—")
+        _pmap  = {"google_drive": "Google Drive", "onedrive": "OneDrive", "backblaze_b2": "Backblaze B2"}
+        src_p  = _pmap.get(job.get("source_provider", "google_drive"), "—")
+        dst_p  = _pmap.get(job.get("dest_provider", "onedrive"), "—")
         src_folder = job.get("source_folder") or job.get("source_folder_id", "") or "—"
         dst_folder = job.get("dest_folder") or job.get("dest_folder_path", "") or "—"
         self._src_lbl.configure(text=f"Source:  {src_p} — {src_folder}")
@@ -3342,8 +3586,9 @@ class CloudSyncTab(tk.Frame):
         template = sync_manager.new_job_template()
         dlg = _SyncJobDialog(self, template, title="New Sync Job")
         self.wait_window(dlg)
+        # Save already happened inside _SyncJobDialog._save().
+        # Just refresh the UI if the dialog completed successfully.
         if dlg.result:
-            sync_manager.save_job(dlg.result)
             self._refresh_jobs()
             self._job_var.set(dlg.result["name"])
 
@@ -3357,11 +3602,9 @@ class CloudSyncTab(tk.Frame):
             return
         dlg = _SyncJobDialog(self, job, title="Edit Sync Job")
         self.wait_window(dlg)
+        # Save already happened inside _SyncJobDialog._save().
+        # Just refresh the UI if the dialog completed successfully.
         if dlg.result:
-            # If name changed, delete old file
-            if dlg.result["name"] != name:
-                sync_manager.delete_job(name)
-            sync_manager.save_job(dlg.result)
             self._refresh_jobs()
             self._job_var.set(dlg.result["name"])
 
@@ -3386,16 +3629,37 @@ class CloudSyncTab(tk.Frame):
         if not job:
             return
 
-        # Validate required fields
+        # Validate required fields (provider-aware)
         missing = []
-        if not job.get("source_credentials_file"):
-            missing.append("Google Drive credentials file")
-        if not job.get("source_folder_id"):
-            missing.append("Google Drive source folder ID")
-        if not job.get("dest_credentials_file"):
-            missing.append("OneDrive credentials file")
-        if not job.get("dest_folder_path"):
-            missing.append("OneDrive destination folder name")
+        src_p = job.get("source_provider", "google_drive")
+        dst_p = job.get("dest_provider", "onedrive")
+
+        if src_p in ("google_drive", "box"):
+            if not job.get("source_credentials_file"):
+                missing.append("Source credentials file (OAuth JSON)")
+            if not job.get("source_folder"):
+                missing.append("Source folder ID")
+        elif src_p in ("backblaze_b2", "b2"):
+            if not job.get("source_b2_key_id"):
+                missing.append("Source B2 Key ID")
+            if not job.get("source_b2_app_key"):
+                missing.append("Source B2 Application Key")
+            if not job.get("source_folder"):
+                missing.append("Source bucket name")
+
+        if dst_p in ("onedrive", "google_drive", "box"):
+            if not job.get("dest_credentials_file"):
+                missing.append("Destination credentials file (OAuth JSON)")
+            if not job.get("dest_folder"):
+                missing.append("Destination folder")
+        elif dst_p in ("backblaze_b2", "b2"):
+            if not job.get("dest_b2_key_id"):
+                missing.append("Destination B2 Key ID")
+            if not job.get("dest_b2_app_key"):
+                missing.append("Destination B2 Application Key")
+            if not job.get("dest_folder"):
+                missing.append("Destination bucket name")
+
         if missing:
             messagebox.showerror("Missing config",
                                  "Please configure:\n• " + "\n• ".join(missing))
@@ -3427,6 +3691,229 @@ class CloudSyncTab(tk.Frame):
         if self._engine:
             self._engine.cancel()
         self._cancel_btn.configure(state="disabled")
+
+    # ------------------------------------------------------------------
+    # B2 connection test (used by _SyncJobDialog)
+    # ------------------------------------------------------------------
+
+
+    # ------------------------------------------------------------------
+    # Audit & Cleanup
+    # ------------------------------------------------------------------
+
+    def _audit_cleanup(self):
+        """
+        Inventory source and B2 destination, cross-reference by size,
+        show a confirmation summary, then delete bad versions and
+        re-transfer files with no good copy.
+        """
+        if self._busy:
+            messagebox.showinfo("Busy", "Wait for the current sync to finish.")
+            return
+
+        name = self._job_var.get()
+        if not name:
+            messagebox.showinfo("No job", "Select a sync job first.")
+            return
+
+        job = sync_manager.load_job(name)
+        if not job:
+            messagebox.showerror("Job not found", f"Could not load job: {name}")
+            return
+
+        if job.get("dest_provider") not in ("backblaze_b2", "b2"):
+            messagebox.showinfo(
+                "B2 only",
+                "Audit & Cleanup only works on Backblaze B2 destinations.",
+            )
+            return
+
+        import cloud_client as cc
+        import b2_integrity as bi
+
+        key_id  = job.get("dest_b2_key_id", "").strip()
+        app_key = job.get("dest_b2_app_key", "").strip()
+        bucket  = (job.get("dest_folder") or "").strip()
+        if not key_id or not app_key or not bucket:
+            messagebox.showerror(
+                "Missing config",
+                "Destination B2 Key ID, Application Key, and bucket name are all required.",
+            )
+            return
+
+        src_provider = job.get("source_provider", "google_drive")
+        try:
+            from cloud_sync_engine import CloudSyncEngine
+            src_client = CloudSyncEngine._build_client(
+                src_provider, job, "source", source=True
+            )
+            dst_client = cc.B2Client(key_id, app_key, bucket)
+        except Exception as e:
+            messagebox.showerror("Connection error", str(e))
+            return
+
+        self._busy = True
+        self._dedup_b2_btn.configure(state="disabled")
+        self._run_btn.configure(state="disabled")
+        self._log.clear()
+        self._prog_bar.reset()
+
+        # Output dir for CSVs
+        import sys
+        if getattr(sys, "frozen", False):
+            out_dir = os.path.join(os.path.dirname(sys.executable), "manifests")
+        else:
+            out_dir = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "manifests"
+            )
+        paths = bi.report_paths(out_dir)
+
+        def _run():
+            def _log(m):
+                self._app.queue_msg(("sync_log", m))
+
+            # Phase 1 & 2: Inventory
+            try:
+                b2_inv  = bi.inventory_b2(dst_client, _log)
+                src_inv = bi.inventory_source(src_client, _log)
+            except Exception as e:
+                self._app.queue_msg(("cleanup_done", {
+                    "ok": False, "error": str(e),
+                    "report": [], "src_inv": {}, "paths": paths,
+                }))
+                return
+
+            # Write inventory CSVs
+            src_rows = [{"filename": k, "size": v["size"], "md5": v.get("md5", "")}
+                        for k, v in src_inv.items()]
+            dst_rows = [
+                {"filename": k, "version": i + 1,
+                 "size": ver["size"], "sha1": ver.get("sha1", ""),
+                 "uploaded_ms": ver.get("uploaded_ms", "")}
+                for k, versions in b2_inv.items()
+                for i, ver in enumerate(versions)
+            ]
+            bi.write_csv(src_rows, paths["src_manifest"])
+            bi.write_csv(dst_rows, paths["dst_manifest"])
+
+            # Phase 3: Report
+            report = bi.generate_dedup_report(src_inv, b2_inv, _log)
+            bi.write_csv(report, paths["dedup_report"])
+
+            self._app.queue_msg(("cleanup_confirm", {
+                "report":  report,
+                "src_inv": src_inv,
+                "paths":   paths,
+                "dst_client": dst_client,
+                "src_client": src_client,
+            }))
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def on_cleanup_confirm(self, payload: dict):
+        """Called on UI thread — show summary and ask for confirmation."""
+        import b2_integrity as bi
+
+        report     = payload["report"]
+        src_inv    = payload["src_inv"]
+        paths      = payload["paths"]
+        dst_client = payload["dst_client"]
+        src_client = payload["src_client"]
+
+        summary = bi.cleanup_summary(report)
+
+        if summary["to_delete"] == 0 and summary["to_replace"] == 0:
+            self._busy = False
+            self._dedup_b2_btn.configure(state="normal")
+            self._run_btn.configure(state="normal")
+            self._log.append(
+                f"✓ Audit complete — no issues found.\n"
+                f"  {summary['ok']} file(s) verified, "
+                f"{summary['orphans']} orphan(s) on B2 not in source."
+            )
+            self._log.append(f"  Report: {paths['dedup_report']}")
+            return
+
+        msg = (
+            f"Audit complete. Here's what needs to happen:\n\n"
+            f"  Versions to delete:       {summary['to_delete']:>6}\n"
+            f"  Files to re-transfer:     {summary['to_replace']:>6}\n"
+            f"  Files missing from dest:  {summary['missing']:>6}\n"
+            f"  Orphans on B2 (not in source): {summary['orphans']:>3}\n"
+            f"  Already OK:               {summary['ok']:>6}\n\n"
+            f"Deleting bad versions and re-transferring bad files cannot be undone.\n"
+            f"Proceed?"
+        )
+        confirmed = messagebox.askyesno("Confirm Cleanup", msg)
+        if not confirmed:
+            self._busy = False
+            self._dedup_b2_btn.configure(state="normal")
+            self._run_btn.configure(state="normal")
+            self._log.append("Cleanup cancelled.")
+            return
+
+        import sys
+        if getattr(sys, "frozen", False):
+            scratch = os.path.dirname(sys.executable)
+        else:
+            scratch = tempfile.gettempdir()
+
+        self._cleanup_cancelled = False
+
+        def _execute():
+            import b2_integrity as bi
+
+            def _log(m):
+                self._app.queue_msg(("sync_log", m))
+
+            def _progress(pct):
+                self._app.queue_msg(("sync_progress", pct))
+
+            def _cancelled():
+                return self._cleanup_cancelled
+
+            result = bi.execute_cleanup(
+                b2_client=dst_client,
+                src_client=src_client,
+                src_inventory=src_inv,
+                report=report,
+                scratch_dir=scratch,
+                on_log=_log,
+                on_progress=_progress,
+                cancelled=_cancelled,
+            )
+            bi.write_csv(result["log_rows"], paths["cleanup_log"])
+            result["paths"] = paths
+            self._app.queue_msg(("cleanup_done", result))
+
+        threading.Thread(target=_execute, daemon=True).start()
+
+    def on_cleanup_done(self, result: dict):
+        self._busy = False
+        self._dedup_b2_btn.configure(state="normal")
+        self._run_btn.configure(state="normal")
+        self._prog_bar.reset()
+
+        if result.get("error"):
+            self._log.append(f"✗ Cleanup failed: {result['error']}")
+            return
+
+        d = result.get("deleted", 0)
+        r = result.get("replaced", 0)
+        f = result.get("failed", 0)
+        m = result.get("missing_from_source", 0)
+        paths = result.get("paths", {})
+
+        self._log.append(
+            f"{'✓' if f == 0 else '⚠'} Cleanup complete — "
+            f"{d} version(s) deleted, {r} file(s) re-transferred"
+            + (f", {f} failure(s)" if f else "")
+            + (f", {m} missing from source" if m else "")
+        )
+        if paths.get("cleanup_log"):
+            self._log.append(f"  Log: {paths['cleanup_log']}")
+        if paths.get("dedup_report"):
+            self._log.append(f"  Report: {paths['dedup_report']}")
 
     # ------------------------------------------------------------------
     # Callbacks from _poll
@@ -3533,7 +4020,7 @@ class CloudSyncTab(tk.Frame):
 class _SyncJobDialog(tk.Toplevel):
     """Create / edit a cloud sync job config."""
 
-    PROVIDERS = [("Google Drive", "google_drive"), ("OneDrive", "onedrive")]
+    PROVIDERS = [("Google Drive", "google_drive"), ("OneDrive", "onedrive"), ("Backblaze B2", "backblaze_b2")]
 
     def __init__(self, parent, config: dict, title: str = "Sync Job"):
         super().__init__(parent)
@@ -3580,11 +4067,12 @@ class _SyncJobDialog(tk.Toplevel):
     # ------------------------------------------------------------------
 
     def _build_endpoint(self, parent, label: str, provider_var,
-                        creds_var, folder_var, auth_status_var):
+                        creds_var, folder_var, b2_key_var, b2_appkey_var,
+                        auth_status_var):
         """Build one endpoint section (source or dest) with dynamic provider UI."""
 
         header = tk.Label(parent, bg=BG_MID, fg=ACCENT, font=FONT_SMALL)
-        header.pack(anchor="w", pady=(12, 4))
+        header.pack(anchor="w", pady=(8, 2))
 
         # Provider row
         prov_row = tk.Frame(parent, bg=BG_MID)
@@ -3598,14 +4086,15 @@ class _SyncJobDialog(tk.Toplevel):
                 activebackground=BG_MID, font=FONT_BODY,
                 command=lambda: self._refresh_endpoint(
                     label, provider_var, creds_var, folder_var,
-                    auth_status_var, header, creds_lbl, folder_lbl,
-                    folder_hint, auth_btn,
+                    b2_key_var, b2_appkey_var, auth_status_var,
+                    header, prov_row, creds_row, creds_lbl,
+                    b2_key_row, b2_appkey_row,
+                    folder_lbl, folder_hint, auth_btn,
                 ),
             ).pack(side="left", padx=(0, 12))
 
-        # Credentials file
+        # Credentials file row — NOT packed at creation; _refresh_endpoint positions it
         creds_row = tk.Frame(parent, bg=BG_MID)
-        creds_row.pack(fill="x", pady=3)
         creds_lbl = tk.Label(creds_row, bg=BG_MID, fg=FG_DIM,
                               font=FONT_BODY, width=24, anchor="w")
         creds_lbl.pack(side="left")
@@ -3616,7 +4105,23 @@ class _SyncJobDialog(tk.Toplevel):
                   font=FONT_BODY, padx=6, pady=1,
                   command=lambda: self._browse_file(creds_var)).pack(side="left", padx=(4, 0))
 
-        # Folder
+        # B2 Key ID row — NOT packed at creation; _refresh_endpoint positions it
+        b2_key_row = tk.Frame(parent, bg=BG_MID)
+        tk.Label(b2_key_row, text="Key ID:", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY, width=24, anchor="w").pack(side="left")
+        tk.Entry(b2_key_row, textvariable=b2_key_var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=36).pack(side="left")
+
+        # B2 Application Key row — NOT packed at creation; _refresh_endpoint positions it
+        b2_appkey_row = tk.Frame(parent, bg=BG_MID)
+        tk.Label(b2_appkey_row, text="Application Key:", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY, width=24, anchor="w").pack(side="left")
+        tk.Entry(b2_appkey_row, textvariable=b2_appkey_var, bg=BG_INPUT, fg=FG_MAIN,
+                 insertbackground=ACCENT, relief="flat",
+                 font=FONT_MONO, width=36).pack(side="left")
+
+        # Folder / Bucket row
         folder_row = tk.Frame(parent, bg=BG_MID)
         folder_row.pack(fill="x", pady=3)
         folder_lbl = tk.Label(folder_row, bg=BG_MID, fg=FG_DIM,
@@ -3629,7 +4134,7 @@ class _SyncJobDialog(tk.Toplevel):
         folder_hint = tk.Label(parent, bg=BG_MID, fg=FG_DIM, font=FONT_SMALL)
         folder_hint.pack(anchor="w", pady=(0, 2))
 
-        # Authenticate button row
+        # Authenticate / Test connection button row
         auth_row = tk.Frame(parent, bg=BG_MID)
         auth_row.pack(fill="x", pady=3)
         auth_btn = tk.Button(auth_row, bg=BG_CARD, fg=FG_MAIN, relief="flat",
@@ -3640,15 +4145,30 @@ class _SyncJobDialog(tk.Toplevel):
 
         # Initialise labels/hints for current provider value
         self._refresh_endpoint(label, provider_var, creds_var, folder_var,
-                               auth_status_var, header, creds_lbl, folder_lbl,
-                               folder_hint, auth_btn)
+                               b2_key_var, b2_appkey_var, auth_status_var,
+                               header, prov_row, creds_row, creds_lbl,
+                               b2_key_row, b2_appkey_row,
+                               folder_lbl, folder_hint, auth_btn)
 
     def _refresh_endpoint(self, label, provider_var, creds_var, folder_var,
-                          auth_status_var, header, creds_lbl, folder_lbl,
-                          folder_hint, auth_btn):
+                          b2_key_var, b2_appkey_var, auth_status_var,
+                          header, prov_row, creds_row, creds_lbl, b2_key_row,
+                          b2_appkey_row, folder_lbl, folder_hint, auth_btn):
         """Update labels, hints and auth button for current provider selection."""
         p = provider_var.get()
         is_src = (label == "Source")
+        is_b2  = (p == "backblaze_b2")
+
+        # Show/hide credential rows, always inserting immediately after prov_row
+        # so the order is: provider → credentials → folder → auth (regardless of provider)
+        if is_b2:
+            creds_row.pack_forget()
+            b2_key_row.pack(after=prov_row, fill="x", pady=3)
+            b2_appkey_row.pack(after=b2_key_row, fill="x", pady=3)
+        else:
+            b2_key_row.pack_forget()
+            b2_appkey_row.pack_forget()
+            creds_row.pack(after=prov_row, fill="x", pady=3)
 
         if p == "google_drive":
             header.configure(text=f"── {label}: Google Drive {'─' * 20}")
@@ -3659,15 +4179,27 @@ class _SyncJobDialog(tk.Toplevel):
             )
             auth_btn.configure(
                 text="Authenticate with Google",
+                state="normal",
                 command=lambda: self._do_auth(
                     lambda p: cloud_module.authenticate_oauth(p, readonly=is_src),
                     auth_status_var, creds_var,
                 ),
             )
-            # Refresh token status
             creds = creds_var.get()
             if creds:
                 auth_status_var.set(cloud_module.get_oauth_token_status(creds))
+        elif p == "backblaze_b2":
+            header.configure(text=f"── {label}: Backblaze B2 {'─' * 21}")
+            folder_lbl.configure(text="Bucket name:")
+            folder_hint.configure(
+                text="  Backblaze → Buckets — use the bucket name, not the bucket ID."
+            )
+            auth_btn.configure(
+                text="Test connection",
+                state="normal",
+                command=lambda: self._test_b2(b2_key_var, b2_appkey_var, folder_var, auth_status_var),
+            )
+            auth_status_var.set("")
         else:  # onedrive
             header.configure(text=f"── {label}: OneDrive {'─' * 24}")
             creds_lbl.configure(text="MS app credentials JSON:")
@@ -3678,6 +4210,7 @@ class _SyncJobDialog(tk.Toplevel):
             )
             auth_btn.configure(
                 text="Authenticate with Microsoft",
+                state="normal",
                 command=lambda: self._do_auth(
                     cloud_module.authenticate_onedrive,
                     auth_status_var, creds_var,
@@ -3695,6 +4228,20 @@ class _SyncJobDialog(tk.Toplevel):
         c   = self._config
         PAD = 16
 
+        self.geometry("600x560")
+        self.resizable(False, False)
+
+        # Buttons anchored to bottom of window FIRST so they're always visible
+        btn_row = tk.Frame(self, bg=BG_MID, padx=PAD, pady=8)
+        btn_row.pack(side="bottom", fill="x")
+        tk.Button(btn_row, text="Save", bg=ACCENT, fg=BG_DEEP,
+                  font=FONT_HEAD, relief="flat", padx=20, pady=6,
+                  command=self._save).pack(side="left")
+        tk.Button(btn_row, text="Cancel", bg=BG_CARD, fg=FG_DIM,
+                  font=FONT_BODY, relief="flat", padx=12, pady=6,
+                  command=self._cancel).pack(side="left", padx=(8, 0))
+
+        # Body fills remaining space above buttons
         body = tk.Frame(self, bg=BG_MID, padx=PAD, pady=PAD)
         body.pack(fill="both", expand=True)
 
@@ -3709,36 +4256,32 @@ class _SyncJobDialog(tk.Toplevel):
                  font=FONT_MONO, width=36).pack(side="left")
 
         # Source endpoint
-        self._src_provider_var = tk.StringVar(value=c.get("source_provider", "google_drive"))
-        self._src_creds_var    = tk.StringVar(value=c.get("source_credentials_file", ""))
-        self._src_folder_var   = tk.StringVar(
+        self._src_provider_var  = tk.StringVar(value=c.get("source_provider", "google_drive"))
+        self._src_creds_var     = tk.StringVar(value=c.get("source_credentials_file", ""))
+        self._src_folder_var    = tk.StringVar(
             value=c.get("source_folder") or c.get("source_folder_id", "")
         )
-        self._src_auth_status  = tk.StringVar()
+        self._src_b2_key_var    = tk.StringVar(value=c.get("source_b2_key_id", ""))
+        self._src_b2_appkey_var = tk.StringVar(value=c.get("source_b2_app_key", ""))
+        self._src_auth_status   = tk.StringVar()
         self._build_endpoint(body, "Source", self._src_provider_var,
                              self._src_creds_var, self._src_folder_var,
+                             self._src_b2_key_var, self._src_b2_appkey_var,
                              self._src_auth_status)
 
         # Dest endpoint
-        self._dst_provider_var = tk.StringVar(value=c.get("dest_provider", "onedrive"))
-        self._dst_creds_var    = tk.StringVar(value=c.get("dest_credentials_file", ""))
-        self._dst_folder_var   = tk.StringVar(
+        self._dst_provider_var  = tk.StringVar(value=c.get("dest_provider", "onedrive"))
+        self._dst_creds_var     = tk.StringVar(value=c.get("dest_credentials_file", ""))
+        self._dst_folder_var    = tk.StringVar(
             value=c.get("dest_folder") or c.get("dest_folder_path", "")
         )
-        self._dst_auth_status  = tk.StringVar()
+        self._dst_b2_key_var    = tk.StringVar(value=c.get("dest_b2_key_id", ""))
+        self._dst_b2_appkey_var = tk.StringVar(value=c.get("dest_b2_app_key", ""))
+        self._dst_auth_status   = tk.StringVar()
         self._build_endpoint(body, "Dest", self._dst_provider_var,
                              self._dst_creds_var, self._dst_folder_var,
+                             self._dst_b2_key_var, self._dst_b2_appkey_var,
                              self._dst_auth_status)
-
-        # Buttons
-        btn_row = tk.Frame(body, bg=BG_MID, pady=8)
-        btn_row.pack(fill="x")
-        tk.Button(btn_row, text="Save", bg=ACCENT, fg=BG_DEEP,
-                  font=FONT_HEAD, relief="flat", padx=20, pady=6,
-                  command=self._save).pack(side="left")
-        tk.Button(btn_row, text="Cancel", bg=BG_CARD, fg=FG_DIM,
-                  font=FONT_BODY, relief="flat", padx=12, pady=6,
-                  command=self._cancel).pack(side="left", padx=(8, 0))
 
     def _save(self):
         name = self._name_var.get().strip()
@@ -3750,10 +4293,45 @@ class _SyncJobDialog(tk.Toplevel):
         self.result["source_provider"]         = self._src_provider_var.get()
         self.result["source_credentials_file"] = self._src_creds_var.get().strip()
         self.result["source_folder"]           = self._src_folder_var.get().strip()
+        self.result["source_b2_key_id"]        = self._src_b2_key_var.get().strip()
+        self.result["source_b2_app_key"]       = self._src_b2_appkey_var.get().strip()
         self.result["dest_provider"]           = self._dst_provider_var.get()
         self.result["dest_credentials_file"]   = self._dst_creds_var.get().strip()
         self.result["dest_folder"]             = self._dst_folder_var.get().strip()
+        self.result["dest_b2_key_id"]          = self._dst_b2_key_var.get().strip()
+        self.result["dest_b2_app_key"]         = self._dst_b2_appkey_var.get().strip()
+
+        # Save directly from here — do not rely on the caller reading dlg.result
+        # after wait_window; that handoff is unreliable on Windows.
+        old_name = self._config.get("name", "")
+        try:
+            if old_name and old_name != name:
+                sync_manager.delete_job(old_name)
+            sync_manager.save_job(self.result)
+            path = sync_manager._job_path(self.result["name"])
+            print(f"[SUYB] saved → {path}  "
+                  f"dest_b2_key_id={self.result['dest_b2_key_id']!r}  "
+                  f"dest_b2_app_key={'(set)' if self.result['dest_b2_app_key'] else '(empty)'}")
+        except Exception as e:
+            messagebox.showerror("Save failed", f"Could not write job file:\n{e}", parent=self)
+            return
+
         self.destroy()
+
+    def _test_b2(self, key_var, appkey_var, folder_var, status_var):
+        """Test B2 connection from the dialog."""
+        import cloud_client as cc
+        status_var.set("Connecting…")
+        self.update()
+        try:
+            ok, msg = cc.test_b2_connection(
+                key_var.get().strip(),
+                appkey_var.get().strip(),
+                folder_var.get().strip(),
+            )
+            status_var.set(msg)
+        except Exception as e:
+            status_var.set(f"✗ {e}")
 
     def _cancel(self):
         self.destroy()
@@ -4189,6 +4767,20 @@ class App(tk.Tk):
                 elif kind == "audit_done":
                     self._tab_audit.on_done(msg[1])
 
+                elif kind == "coverage_progress":
+                    self._tab_audit.on_coverage_progress(msg[1], msg[2])
+                elif kind == "coverage_log":
+                    pass   # Coverage log goes to results pane via on_coverage_done
+                elif kind == "coverage_done":
+                    self._tab_audit.on_coverage_done(msg[1])
+
+                elif kind == "dedupe_progress":
+                    self._tab_audit.on_dedupe_progress(msg[1], msg[2])
+                elif kind == "dedupe_log":
+                    pass   # Dedupe log goes to results pane via on_dedupe_done
+                elif kind == "dedupe_done":
+                    self._tab_audit.on_dedupe_done(msg[1])
+
                 elif kind == "sync_progress":
                     self._tab_cloud_sync.on_progress(msg[1])
                 elif kind == "sync_log":
@@ -4240,6 +4832,11 @@ class App(tk.Tk):
 
                 elif kind == "sync_done":
                     self._tab_cloud_sync.on_done(msg[1])
+
+                elif kind == "cleanup_confirm":
+                    self._tab_cloud_sync.on_cleanup_confirm(msg[1])
+                elif kind == "cleanup_done":
+                    self._tab_cloud_sync.on_cleanup_done(msg[1])
 
                 elif kind == "scheduled_backup":
                     # Triggered by scheduler thread — queue profile for backup

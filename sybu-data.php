@@ -74,10 +74,20 @@ foreach ($tags_raw as $row) {
 }
 sort($tags);
 
+// ── Titles ────────────────────────────────────────────────────────────────────
+// All existing post titles — used by SYBU to prevent Gemini generating duplicates.
+
+$titles_raw = $pdo->query(
+    "SELECT img_title FROM snap_images ORDER BY img_id ASC"
+)->fetchAll(PDO::FETCH_COLUMN);
+
+$titles = array_values(array_filter(array_map('trim', $titles_raw)));
+
 // ── Response ──────────────────────────────────────────────────────────────────
 
 echo json_encode([
     'categories' => $categories,
     'albums'     => $albums,
     'tags'       => $tags,
+    'titles'     => $titles,
 ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);

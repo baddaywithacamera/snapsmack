@@ -15,6 +15,14 @@ define('SC_DB_NAME', 'your_database_name');
 define('SC_DB_USER', 'your_database_user');
 define('SC_DB_PASS', 'your_database_password');
 
+// ── SMACK THE ENEMY Database ──────────────────────────────────────────────────
+// Dedicated isolated DB for the Tier 2 network reputation system.
+// squir871_enemy on snapsmack.ca. Apply sc-enemy-schema.sql once to create tables.
+define('STE_DB_HOST', 'localhost');
+define('STE_DB_NAME', 'squir871_enemy');
+define('STE_DB_USER', 'squir871_enemyadmin');
+define('STE_DB_PASS', 'your_ste_database_password');
+
 // ── Session ───────────────────────────────────────────────────────────────────
 define('SC_SESSION_NAME', 'smack_central_session');
 define('SC_BASE_URL',     'https://snapsmack.ca/smack-central/');

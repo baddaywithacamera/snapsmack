@@ -129,6 +129,9 @@ def _parse_response(text: str) -> dict:
     return result
 
 
+MAX_TITLE_RETRIES = 4   # max attempts to generate a unique title before giving up
+
+
 def enrich_batch(
     api_key:            str,
     entries:            List[ManifestEntry],
@@ -141,6 +144,7 @@ def enrich_batch(
     cat_descriptions:   Optional[dict] = None,
     album_descriptions: Optional[dict] = None,
     existing_tags:      Optional[List[str]] = None,
+    existing_titles:    Optional[List[str]] = None,
 ) -> List[ManifestEntry]:
     """
     Process a list of ManifestEntry objects, sending each image to Gemini
@@ -151,6 +155,8 @@ def enrich_batch(
     custom_prompt overrides the default prompt if provided.
     cat_descriptions / album_descriptions: dicts of lower_name → description text.
     existing_tags: list of hashtags already in use on the site (soft matching).
+    existing_titles: list of titles already in use on the site — used to prevent
+                     duplicates both within this batch and against the live database.
 
     Returns the (mutated) list of entries.
     """
@@ -165,6 +171,9 @@ def enrich_batch(
     )
     total  = len(entries)
 
+    # Titles we must not reuse: pre-existing on the site + generated in this run.
+    used_titles: set = {t.strip().lower() for t in (existing_titles or [])}
+
     for i, entry in enumerate(entries, start=1):
         if skip_filled and entry.title.strip():
             if on_progress:
@@ -178,23 +187,51 @@ def enrich_batch(
             continue
 
         try:
-            img_part = _load_image_part(genai, img_path)
-            response = model.generate_content([prompt, img_part])
-            parsed   = _parse_response(response.text)
+            img_part   = _load_image_part(genai, img_path)
+            last_error = None
 
-            if parsed['title']:
-                entry.title = parsed['title']
-            if parsed['tags']:
-                entry.tags = parsed['tags']
-            if parsed['category']:
-                entry.category = parsed['category']
-            if parsed['album']:
-                entry.album = parsed['album']
-            if parsed['colors']:
-                entry.colors = parsed['colors']
+            for attempt in range(1, MAX_TITLE_RETRIES + 1):
+                # On retries, prepend a note telling Gemini which title to avoid.
+                if attempt == 1:
+                    run_prompt = prompt
+                else:
+                    run_prompt = (
+                        f"The title you previously generated — \"{entry.title}\" — is already "
+                        f"in use. Generate a DIFFERENT haiku-style title for this image. "
+                        f"The new title must be unique and must not match any previously used title.\n\n"
+                        + prompt
+                    )
 
-            if on_progress:
-                on_progress(i, total, entry, None)
+                response = model.generate_content([run_prompt, img_part])
+                parsed   = _parse_response(response.text)
+                title    = parsed.get('title', '').strip()
+
+                if title and title.lower() not in used_titles:
+                    # Unique title — accept it.
+                    entry.title = title
+                    used_titles.add(title.lower())
+                    if parsed['tags']:
+                        entry.tags = parsed['tags']
+                    if parsed['category']:
+                        entry.category = parsed['category']
+                    if parsed['album']:
+                        entry.album = parsed['album']
+                    if parsed['colors']:
+                        entry.colors = parsed['colors']
+                    last_error = None
+                    break
+                else:
+                    # Duplicate — store for retry prompt and try again.
+                    if title:
+                        entry.title = title   # keep for retry prompt context
+                    last_error = f"Duplicate title after {attempt} attempt(s): \"{title}\""
+
+            if last_error:
+                if on_progress:
+                    on_progress(i, total, entry, last_error)
+            else:
+                if on_progress:
+                    on_progress(i, total, entry, None)
 
         except Exception as e:
             if on_progress:

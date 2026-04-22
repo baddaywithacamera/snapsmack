@@ -24,6 +24,28 @@ function sc_db(): PDO {
 }
 
 /**
+ * Returns a PDO connection to the SMACK THE ENEMY database.
+ * Isolated dedicated DB (squir871_enemy) — entirely separate from SC and forum.
+ * Used by sc-enemy-api.php and sc-enemy-admin.php.
+ */
+function sc_enemy_db(): PDO {
+    static $pdo = null;
+    if ($pdo === null) {
+        $pdo = new PDO(
+            'mysql:host=' . STE_DB_HOST . ';dbname=' . STE_DB_NAME . ';charset=utf8mb4',
+            STE_DB_USER,
+            STE_DB_PASS,
+            [
+                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES   => false,
+            ]
+        );
+    }
+    return $pdo;
+}
+
+/**
  * Returns a PDO connection to the FORUM database (isolated from Smack Central).
  * Used by sc-forum.php for all forum operations so a compromised API key
  * cannot touch Smack Central admin tables.

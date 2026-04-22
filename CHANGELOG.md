@@ -8,14 +8,17 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ### Added
 - **Require Download URL setting** — new toggle in Admin → Settings → Downloads. When enabled, posts cannot be published without a download URL. The previous implementation (in `smack-appearance-solo.php`) only appeared on spoke installs and only validated when the Allow Download toggle was also checked — meaning the SYBU batch poster could post without a Drive link even with the setting on. Both bugs fixed: setting is now in `smack-settings.php` for hub installs, and validation checks `img_status = published` + empty `download_url` regardless of the `allow_download` flag.
+- **`smack-audit.php`** (new file) — authenticated JSON endpoint for the SYBU Audit & Repair tool. Three actions: `GET ?action=summary` returns post count, missing Drive link count, and duplicate title group stats; `GET ?action=list` returns all published posts with id, title, date, and download URL; `POST action=update_title` updates a post's title by ID.
 
 ### Fixed / Restored
 - **Akismet spam filter restored.** `core/spam-check.php` was functional but the admin UI to configure it had been dropped during a settings page rebuild. The Akismet API Key field is now back in Admin → Settings → GLOBAL COMMENTS (Architecture & Interaction box). Includes a **TEST KEY** button that hits Akismet's `verify-key` endpoint via AJAX and shows an inline ✓/✗ result without a page reload.
 - **`spam-check.php` hardcoded blog URL removed** — was hardcoded to `baddaywithacamera.ca`. Now reads `site_url` from `snap_settings` with a fallback to `$_SERVER['HTTP_HOST']`. Never hardcode.
 - **`spam-check.php` upgraded to HTTPS curl** — was using `fsockopen` on port 80, which is deprecated and blocked by many shared hosts. Now uses `curl` over HTTPS to `https://{key}.rest.akismet.com/1.1/comment-check`. Timeout: 5 seconds. User-agent: `SnapSmack/{SNAPSMACK_VERSION}`.
+- **`smack-help.php` SYBU section** — removed stale reference to Fix Your Batch Up ("use FYBU to recover links"). Now correctly describes the Repair tab in Smack Your Batch Up. Added help topics for all three Repair actions (Rename Drive Files, Re-enrich Duplicate Titles, Backfill Missing Drive Links).
 
 ### snapsmack.ca
 - **Anti-spam section updated** — layer names, all body copy, and lede rewritten per brand refresh. New names: SMACK DAB (was Troll Control), SMACK DOWN (was SnapSmack Shield), SMACK UP (was Smack The Enemy). Layer 1 copy now mentions Akismet explicitly. Layer 2 copy mentions shared Akismet key managed centrally via hub. Section background lightened to `#2e2e2e` to separate it visually from the themes section below.
+- **SYBU section updated** — status card and tool copy updated to describe the Audit and Repair tabs added in SYBU 0.7.9b. Fix Your Batch Up references removed.
 
 ---
 
