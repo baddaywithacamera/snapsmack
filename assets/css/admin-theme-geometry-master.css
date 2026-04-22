@@ -4075,16 +4075,28 @@ input[type="range"]:active::-webkit-slider-thumb {
 }
 .btn-smack-ghost:hover { opacity: 0.85; }
 
-/* Sidebar bottom mode toggle                                                  */
-.sidebar-mode-toggle {
-    display: block;
-    font-size: 0.72rem;
-    opacity: 0.45;
-    text-align: center;
-    margin-bottom: 6px;
-    letter-spacing: 0.06em;
-    cursor: pointer;
-    text-decoration: none;
-    color: inherit;
+/* Mode toggle — sits between accordion and sidebar-bottom, looks like nav     */
+.mode-toggle-form {
+    margin: 8px 0 0;
+    padding: 0;
 }
-.sidebar-mode-toggle:hover { opacity: 0.75; }
+.mode-toggle-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    background: none;
+    border: none;
+    border-top: 1px solid rgba(128,128,128,0.22);
+    width: 100%;
+    text-align: left;
+    padding: 10px 14px;
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: inherit;
+    opacity: 0.45;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+.mode-toggle-btn:hover { opacity: 0.85; }
