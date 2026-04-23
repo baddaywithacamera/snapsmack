@@ -7,7 +7,7 @@ The server-side hub for the SnapSmack admin community forum. Deploys to any PHP/
 ## Requirements
 
 - PHP 7.4+ with PDO and PDO_MySQL
-- MySQL 5.7+ or MariaDB 10.3+
+- MySQL 8.0+ (required for `ADD COLUMN IF NOT EXISTS` in the v2 migration; fresh installs on 5.7 are fine)
 - Apache with `mod_rewrite` and `AllowOverride All` (standard on cPanel shared hosting)
 
 ---
@@ -23,6 +23,8 @@ mysql -u your_user -p your_database < forum-schema.sql
 ```
 
 Or paste `forum-schema.sql` into phpMyAdmin's SQL tab. Safe to re-run — all `CREATE TABLE` statements use `IF NOT EXISTS` and category seeding uses `INSERT IGNORE`.
+
+**Upgrading an existing install?** Run `forum-schema-v2-migration.sql` instead. It adds the new columns and tables without touching existing data. Requires MySQL 8.0+.
 
 ### 2. Upload the API files
 
@@ -89,20 +91,44 @@ Content-Type: application/json
 
 | Method | Endpoint | Auth | Purpose |
 |--------|----------|------|---------|
-| POST | `/register` | None | Register an install; returns `api_key` and `is_moderator` status |
-| GET | `/categories` | Install key | List active boards with counts |
-| GET | `/threads?cat=N&page=N` | Install key | List threads (pinned first, then by activity); includes `author_domain` and `caller_is_mod` |
-| GET | `/threads/{id}` | Install key | Thread + all replies; includes `author_domain` on each post and `caller_is_mod` |
-| POST | `/threads` | Install key | Create a thread |
-| POST | `/threads/{id}/replies` | Install key | Add a reply |
-| PATCH | `/threads/{id}` | Moderator install key | Toggle `is_pinned` and/or `is_locked` on a thread |
-| PATCH | `/installs/me` | Install key | Update display name |
-| DELETE | `/threads/{id}` | Install key (own) or moderator | Soft-delete a thread |
-| DELETE | `/replies/{id}` | Install key (own) or moderator | Soft-delete a reply |
+| POST | `/register` | None | Register an install; returns `api_key` and `is_moderator` |
+| GET | `/categories` | Install key | List active boards with thread/reply counts |
+| GET | `/threads?cat=N&page=N&tag=slug` | Install key | Thread listing — pinned first, then by activity. Includes excerpt, last-reply author, solved state, unread flag, tag list |
+| GET | `/threads/{id}` | Install key | Full thread + replies + reactions + tags + read state. Increments view count. |
+| POST | `/threads` | Install key | Create a thread (rate-limited: 3/hour) |
+| PATCH | `/threads/{id}` | Own or mod | Edit body (own/mod) or toggle pin/lock flags (mod only) |
+| DELETE | `/threads/{id}` | Own or mod | Soft-delete a thread |
+| POST | `/threads/{id}/replies` | Install key | Add a reply (rate-limited: 10/hour). Triggers notifications. |
+| PATCH | `/replies/{id}` | Own or mod | Edit reply body. Saves previous body to edit history. |
+| DELETE | `/replies/{id}` | Own or mod | Soft-delete a reply. Unsolves thread if this was the accepted answer. |
+| POST | `/replies/{id}/solve` | Thread author or mod | Mark reply as accepted answer |
+| DELETE | `/replies/{id}/solve` | Thread author or mod | Unmark accepted answer |
+| POST | `/threads/{id}/react` | Install key | Add emoji reaction (rate-limited: 30/10min). Same emoji toggles off; different emoji replaces. |
+| DELETE | `/threads/{id}/react` | Install key | Remove own reaction from a thread |
+| POST | `/replies/{id}/react` | Install key | Add emoji reaction to a reply |
+| DELETE | `/replies/{id}/react` | Install key | Remove own reaction from a reply |
+| POST | `/threads/{id}/read` | Install key | Mark thread as read; records current reply count for unread tracking |
+| GET | `/search?q=term&cat=N&page=N` | Install key | Full-text search across thread titles/bodies and reply bodies |
+| GET | `/tags` | Install key | List all tags with thread counts |
+| POST | `/threads/{id}/tags` | Mod only | Add tag to thread. Provide `tag_id`, or `slug`+`name` to create a new tag. |
+| DELETE | `/threads/{id}/tags/{tag_id}` | Mod only | Remove tag from thread |
+| GET | `/notifications?page=N` | Install key | Get notifications (replies to your threads/watched threads). Includes unread count. |
+| POST | `/notifications/read` | Install key | Mark notifications as read. Body: `{"ids":[1,2]}` or `{"all":true}` |
+| PATCH | `/installs/me` | Install key | Update display name when blog name changes |
 
 ### Moderator actions
 
-Installs with `is_moderator = 1` in `ss_forum_installs` can delete any thread or reply, and pin/lock threads via the PATCH route. Promote installs to moderator from the Smack Central forum admin panel. The legacy `FORUM_MOD_KEY` Bearer token still works for direct API access.
+Installs with `is_moderator = 1` in `ss_forum_installs` can delete any thread or reply, edit any post, pin/lock threads, and manage tags. Promote installs to moderator from the Smack Central forum admin panel. The `FORUM_MOD_KEY` Bearer token also works for direct API access without being tied to an install record.
+
+### Rate limits
+
+| Action | Limit |
+|--------|-------|
+| Post a thread | 3 per hour |
+| Post a reply | 10 per hour |
+| Add a reaction | 30 per 10 minutes |
+
+Rate limits apply per install. Old entries are pruned automatically on each check.
 
 ---
 
@@ -112,8 +138,15 @@ Installs with `is_moderator = 1` in `ss_forum_installs` can delete any thread or
 |-------|---------|
 | `ss_forum_installs` | One row per registered SnapSmack install |
 | `ss_forum_categories` | Forum boards (seeded with 5 defaults) |
-| `ss_forum_threads` | Original posts |
-| `ss_forum_replies` | Replies to threads |
+| `ss_forum_threads` | Original posts — includes view count, solved state, excerpt, last-reply info, reaction count, tag cache |
+| `ss_forum_replies` | Replies — includes edit state, reaction count |
+| `ss_forum_reactions` | Emoji reactions (one per install per target; target_type = thread or reply) |
+| `ss_forum_edit_history` | Body snapshots taken before each edit |
+| `ss_forum_tags` | Tag definitions with denormalised thread count |
+| `ss_forum_thread_tags` | Thread ↔ tag pivot |
+| `ss_forum_read_state` | Per-install, per-thread read tracking (reply count at last read) |
+| `ss_forum_rate_limit` | Sliding window action log for rate limiting |
+| `ss_forum_notifications` | Reply notifications (polled, no push) |
 
 See `forum-schema.sql` for full column definitions.
 

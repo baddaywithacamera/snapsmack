@@ -157,6 +157,9 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-users.php') ? 'active' : ''; ?>">
                         <a href="smack-users.php">User Manager</a>
                     </li>
+                    <li class="<?php echo ($current_page == 'smack-2fa.php') ? 'active' : ''; ?>">
+                        <a href="smack-2fa.php">Two-Factor Auth</a>
+                    </li>
                     <li class="<?php echo ($current_page == 'smack-maintenance.php') ? 'active' : ''; ?>">
                         <a href="smack-maintenance.php">Maintenance</a>
                     </li>

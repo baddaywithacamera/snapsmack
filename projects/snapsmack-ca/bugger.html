@@ -107,27 +107,52 @@ p:last-child { margin-bottom: 0; }
     margin-bottom: 40px;
 }
 
-/* ─── STICKY HEADER ─────────────────────────────────────────────────────── */
+/* ─── MAIN HEADER (scrolls with page — not sticky) ──────────────────────── */
 #site-header {
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    background: rgba(255, 255, 255, 1);
-    backdrop-filter: blur(8px);
+    background: var(--white);
     border-bottom: 3px solid var(--red);
     padding: 28px 0 24px;
-    transition: background 0.3s ease, opacity 0.3s ease;
 }
 
-#site-header.scrolled {
-    background: rgba(255, 255, 255, 0.5) !important;
-    backdrop-filter: blur(8px);
+/* ─── MINI HEADER (fixed, slides down when main scrolls out) ────────────── */
+#mini-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 2px solid rgba(212, 0, 0, 0.5);
+    padding: 8px 0;
+    transform: translateY(-100%);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-#site-header:hover,
-#site-header:focus-within {
-    background: rgba(255, 255, 255, 1);
+#mini-header.visible {
+    transform: translateY(0);
+    opacity: 1;
 }
+
+.mini-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 32px;
+}
+
+.mini-inner a.mini-logo img {
+    display: block;
+    width: 38px;
+    height: auto;
+}
+
+#mini-header nav { gap: 28px; }
+#mini-header nav a { font-size: 1rem; }
 
 .header-inner {
     display: flex;
@@ -143,6 +168,11 @@ p:last-child { margin-bottom: 0; }
     display: flex;
     align-items: center;
     gap: 20px;
+    text-decoration: none;
+}
+
+.logo-lockup:hover {
+    text-decoration: none;
 }
 
 .logo-lockup img {
@@ -274,27 +304,37 @@ footer a:hover {
 }
 </style>
 <script>
-// Sticky header scroll effect
-const header = document.getElementById('site-header');
-window.addEventListener('scroll', () => {
-    if (window.scrollY > 0) {
-        header.classList.add('scrolled');
-    } else {
-        header.classList.remove('scrolled');
-    }
-});
+const mainHeader = document.getElementById('site-header');
+const miniHeader = document.getElementById('mini-header');
 
-// Highlight active nav link
+new IntersectionObserver(
+    ([entry]) => miniHeader.classList.toggle('visible', !entry.isIntersecting),
+    { threshold: 0 }
+).observe(mainHeader);
+
 document.querySelectorAll('nav a').forEach(link => {
-    if (link.href === window.location.href) {
-        link.classList.add('active');
-    }
+    if (link.href === window.location.href) link.classList.add('active');
 });
 </script>
 </head>
 <body>
 
-<!-- STICKY HEADER -->
+<!-- MINI HEADER — logo only, slides down when main header leaves viewport -->
+<div id="mini-header">
+    <div class="mini-inner">
+        <a href="index.html" class="mini-logo">
+            <img src="img/logo.png" alt="SnapSmack">
+        </a>
+        <nav>
+            <a href="index.html">HOME</a>
+            <a href="wotcha.html">WOTCHA!</a>
+            <a href="bugger.html">BUGGER!</a>
+            <a href="oi.html">OI MATE!</a>
+        </nav>
+    </div>
+</div>
+
+<!-- MAIN HEADER -->
 <header id="site-header">
     <div class="header-inner">
         <a href="index.html" class="logo-lockup">
@@ -306,7 +346,7 @@ document.querySelectorAll('nav a').forEach(link => {
         </a>
         <nav>
             <a href="index.html">HOME</a>
-            <a href="news.html">WOTCHA!</a>
+            <a href="wotcha.html">WOTCHA!</a>
             <a href="bugger.html" class="active">BUGGER!</a>
             <a href="oi.html">OI MATE!</a>
         </nav>
@@ -318,7 +358,7 @@ document.querySelectorAll('nav a').forEach(link => {
     <div class="page-header">
         <div class="wrap">
             <h1>BUGGER!</h1>
-            <p class="lede">Emergency updates and critical fixes. Check here if your site is down.</p>
+            <p class="lede">Known issues, half-finished bits, and things that technically work but not the way they're supposed to. Alpha software. You've been warned.</p>
         </div>
     </div>
 
@@ -326,23 +366,23 @@ document.querySelectorAll('nav a').forEach(link => {
         <div class="wrap">
             <div class="content">
                 <div class="alert">
-                    <strong>All systems operational.</strong> No known issues at this time. Your SnapSmack install is running normally.
+                    <strong>Alpha status.</strong> SnapSmack is in active development. The core platform runs live sites without drama. The items below are known rough edges — tracked, being worked on, not forgotten.
                 </div>
 
-                <h2>Known Issues & Fixes</h2>
-                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+                <h2>The Grid Skin</h2>
+                <p>The Grid is about halfway there. The layout engine runs and the grid renders correctly — images tile, columns behave, the basic structure holds together. What isn't working yet: the dynamic column-count logic doesn't respond properly to the manifest options at save time, so changing the grid density in the skin settings doesn't actually do anything. It saves. It just doesn't apply. The skin is excluded from the gallery until that's resolved. It's not lost, it's just not ready.</p>
 
-                <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+                <h2 style="margin-top: 48px;">Oh Snap! Skin Designer — AI Integration</h2>
+                <p>Oh Snap! is the desktop skin design tool — you build skins visually and push them directly to your blog without touching code. The design side works: the controls panel, the live preview, the push-to-blog pipeline. What isn't cooperating yet is the AI side. Oh Snap! supports multiple AI providers (local via Ollama, cloud via a handful of others) for generating skin suggestions and colour palettes from a prompt or a photo. The handoff between the UI and the AI provider is inconsistent — responses come back in the wrong shape, the generated CSS occasionally lands with bad values, and streaming output from local models cuts off mid-response. It functions enough to be useful in favourable conditions, but it isn't reliable enough to document as a feature yet.</p>
 
-                <h2 style="margin-top: 48px;">Recent Emergency Patches</h2>
-                <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
+                <h2 style="margin-top: 48px;">Community Forum</h2>
+                <p>The forum exists and works at a basic level — you can register, post threads, reply, and moderate. What it doesn't have yet is anything that makes it worth using over email: no solved/accepted answers, no post editing, no reactions, no search, no view counts, no thread excerpts in the listing. It's functional the way a bus shelter is functional. Keeps the rain off. Improvements are coming in the next cycle.</p>
 
-                <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.</p>
+                <h2 style="margin-top: 48px;">Smack Your Batch Up — Repair Operations</h2>
+                <p>The SYBU desktop tool handles bulk post management, Drive sync, and audit operations. The Repair tab — which handles renaming Drive files, re-enriching duplicate post titles via AI, and backfilling missing Drive links — is new and hasn't had a full run against a large dataset yet. The operations are rate-limited and resumable, but they haven't been stress-tested at scale. If you're running a repair job on a large archive, watch the first few hundred entries before walking away from it.</p>
 
-                <h2 style="margin-top: 48px;">Hotfixes & Workarounds</h2>
-                <p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.</p>
-
-                <p>Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.</p>
+                <h2 style="margin-top: 48px;">Development Skins (Not Yet in Gallery)</h2>
+                <p>Several skins are in the repo but not available in the skin gallery yet. A Grey Reckoning, In Stereo Where Available, Kiosk, 52 Card Pickup, Photogram, Show-n-Tell, and The Grid are all in various states of done. They're tracked in git, they won't disappear, but they're not ready for installs. When they're ready, they'll show up in the gallery without any action required on your end.</p>
             </div>
         </div>
     </section>
@@ -356,21 +396,16 @@ document.querySelectorAll('nav a').forEach(link => {
 </footer>
 
 <script>
-// Sticky header scroll effect
-const header = document.getElementById('site-header');
-window.addEventListener('scroll', () => {
-    if (window.scrollY > 0) {
-        header.classList.add('scrolled');
-    } else {
-        header.classList.remove('scrolled');
-    }
-});
+const mainHeader = document.getElementById('site-header');
+const miniHeader = document.getElementById('mini-header');
 
-// Highlight active nav link
+new IntersectionObserver(
+    ([entry]) => miniHeader.classList.toggle('visible', !entry.isIntersecting),
+    { threshold: 0 }
+).observe(mainHeader);
+
 document.querySelectorAll('nav a').forEach(link => {
-    if (link.href === window.location.href) {
-        link.classList.add('active');
-    }
+    if (link.href === window.location.href) link.classList.add('active');
 });
 </script>
 

@@ -1110,6 +1110,56 @@ accidentally locking yourself out.</p>
 HTML
 ];
 
+$help_topics['two-factor-auth'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Two-Factor Authentication',
+    'icon'     => '&#x1F510;',
+    'content'  => <<<'HTML'
+<h3>Two-Factor Authentication (2FA)</h3>
+<p>2FA adds a second layer of security to your account. After enabling it, every login
+requires your password <em>plus</em> a 6-digit code from an authenticator app. Even if
+someone gets your password, they cannot log in without your phone.</p>
+
+<h4>Setting Up 2FA</h4>
+<p>Go to <strong>Settings → Two-Factor Auth</strong> and click <em>Set Up
+Two-Factor Authentication</em>. SnapSmack generates a secret key and displays it as a QR
+code. Open any TOTP-compatible authenticator app — Google Authenticator, Authy, 1Password,
+Bitwarden — and scan the code. Then enter the 6-digit code the app shows to confirm setup.</p>
+
+<p>Can't scan? Every QR code screen also shows the raw key as text so you can enter it
+manually into your app.</p>
+
+<h4>Recovery Codes</h4>
+<p>When you activate 2FA, SnapSmack generates eight one-time recovery codes. These codes
+let you log in if you ever lose access to your authenticator app. Each code works once and
+is removed after use.</p>
+<p><strong>Save your recovery codes somewhere safe — they are shown only once.</strong>
+A password manager is a good place. If you lose both your authenticator and your recovery
+codes, contact your host to reset the database column directly.</p>
+
+<h4>Logging In with 2FA Active</h4>
+<p>After entering your username and password, you will see a verification screen. Enter
+the 6-digit code currently shown in your authenticator app. Codes rotate every 30 seconds
+and there is a ±30 second window to account for clock drift.</p>
+
+<h4>Using a Recovery Code to Log In</h4>
+<p>On the verification screen, click the <em>Recovery Code</em> tab and enter one of your
+saved codes. The code is consumed and cannot be reused. You will still be logged in with
+full access, but consider setting up a new authenticator device and regenerating fresh
+recovery codes soon after.</p>
+
+<h4>Regenerating Recovery Codes</h4>
+<p>If your recovery codes are lost or you suspect they have been compromised, go to
+<strong>Settings → Two-Factor Auth</strong> and use the <em>Regenerate Recovery Codes</em>
+section. You will need a valid authenticator code to confirm. Old codes are invalidated
+immediately.</p>
+
+<h4>Disabling 2FA</h4>
+<p>You can turn off 2FA at any time from the same page. You will need your current
+authenticator code to confirm the action. Once disabled, logins require only your password.</p>
+HTML
+];
+
 $help_topics['maintenance'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'Maintenance',

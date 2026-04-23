@@ -575,6 +575,19 @@ class App(tk.Tk):
         self.minsize(860, 600)
         self.configure(bg=BG_DEEP)
 
+        # Set window/taskbar icon explicitly — the exe icon set via PyInstaller
+        # only affects File Explorer; tkinter needs iconbitmap() for the taskbar.
+        try:
+            if getattr(sys, 'frozen', False):
+                _ico = os.path.join(sys._MEIPASS, 'assets', 'sybu.ico')
+            else:
+                _ico = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                    'assets', 'sybu.ico')
+            if os.path.exists(_ico):
+                self.iconbitmap(_ico)
+        except Exception:
+            pass  # non-fatal — falls back to default tkinter feather
+
         # State
         self._config        = cfg_module.load()
         self._client:       Optional[SnapSmackClient] = None
@@ -2256,36 +2269,124 @@ class App(tk.Tk):
                 text="✓  No posts are missing Drive links.", fg=FG_OK)
             return
 
+        drive_ready = (self._drive_service is not None
+                       and bool(self._drive_folder_var.get().strip()))
+
         self._backfill_status_lbl.configure(
             text=f"{len(missing)} post(s) missing a Drive link. "
-                 "Paste the share URL and click Save.",
+                 + ("Searching Drive…" if drive_ready
+                    else "Paste the share URL and click Save."),
             fg=FG_WARN)
 
         self._backfill_vars = {}
+        rows_data = []
+
         for pp in missing:
             row = tk.Frame(self._backfill_body, bg=BG_CARD)
             row.pack(fill="x", pady=3)
-            sid = pp['snap_id']
+            sid   = pp['snap_id']
+            title = pp['img_title']
 
             tk.Label(row, text=f"ID {sid}", bg=BG_CARD, fg=FG_DIM,
                      font=FONT_SMALL, width=8, anchor="w").pack(side="left")
-            tk.Label(row, text=pp['img_title'][:40], bg=BG_CARD, fg=FG_MAIN,
+            tk.Label(row, text=title[:40], bg=BG_CARD, fg=FG_MAIN,
                      font=FONT_SMALL, width=42, anchor="w").pack(side="left", padx=(0, 8))
 
+            # Status label — shows "…" while auto-searching, then result or nothing
+            status_lbl = tk.Label(row, text="…" if drive_ready else "",
+                                  bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL, width=12)
+            status_lbl.pack(side="left")
+
+            # Manual entry controls — hidden while Drive auto-search is running;
+            # revealed if the search comes up empty or Drive is not connected.
             url_var = tk.StringVar()
             self._backfill_vars[sid] = url_var
-            tk.Entry(row, textvariable=url_var, bg=BG_MID, fg=FG_MAIN,
-                     font=FONT_SMALL, relief="flat", width=40,
-                     insertbackground=ACCENT).pack(side="left", padx=(0, 6))
+            entry    = tk.Entry(row, textvariable=url_var, bg=BG_MID, fg=FG_MAIN,
+                                font=FONT_SMALL, relief="flat", width=36,
+                                insertbackground=ACCENT)
+            save_lbl = tk.Label(row, text="", bg=BG_CARD, font=FONT_SMALL, width=4)
+            save_btn = ttk.Button(row, text="Save", style="Ghost.TButton",
+                                  command=lambda s=sid, v=url_var, l=save_lbl:
+                                      self._on_backfill_save(s, v, l))
 
-            save_lbl = tk.Label(row, text="", bg=BG_CARD, font=FONT_SMALL, width=6)
+            if not drive_ready:
+                # Drive not connected — show manual controls immediately
+                entry.pack(side="left", padx=(0, 4))
+                save_lbl.pack(side="left")
+                save_btn.pack(side="left")
+
+            rows_data.append((sid, title, url_var, status_lbl, entry, save_lbl, save_btn))
+
+        # If Drive is ready, kick off auto-find-and-save for every row.
+        # Stagger by 300 ms so we don't hammer the API simultaneously.
+        if drive_ready:
+            folder_id = self._drive_folder_var.get().strip()
+            for i, row_info in enumerate(rows_data):
+                self.after(i * 300,
+                           lambda ri=row_info, fid=folder_id:
+                               self._auto_backfill(ri, fid))
+
+    def _auto_backfill(self, row_info: tuple, folder_id: str):
+        """
+        Search Drive for a file matching the post title; if found, save the
+        URL directly to the blog without any user interaction.
+        Reveals the manual entry controls only if the search fails or finds nothing.
+        """
+        sid, title, url_var, status_lbl, entry, save_lbl, save_btn = row_info
+
+        def _reveal_manual():
+            entry.pack(side="left", padx=(0, 4))
             save_lbl.pack(side="left")
-            ttk.Button(row, text="Save", style="Ghost.TButton",
-                       command=lambda s=sid, v=url_var, l=save_lbl:
-                           self._on_backfill_save(s, v, l)).pack(side="left")
+            save_btn.pack(side="left")
+
+        def _worker():
+            # --- Drive search ---
+            try:
+                results = drive_module.search(self._drive_service, folder_id, title)
+            except Exception as exc:
+                self.after(0, lambda: status_lbl.configure(text="✗ search err", fg=FG_ERR))
+                self.after(0, _reveal_manual)
+                print(f"[backfill] Drive search error for ID {sid}: {exc}")
+                return
+
+            if not results:
+                self.after(0, lambda: status_lbl.configure(text="not found", fg=FG_DIM))
+                self.after(0, _reveal_manual)
+                return
+
+            # Found — auto-save to blog
+            url = results[0]['url']
+            self.after(0, lambda: url_var.set(url))
+            self.after(0, lambda: status_lbl.configure(text="saving…", fg=FG_DIM))
+
+            if not self._client:
+                self.after(0, lambda: status_lbl.configure(text="not connected", fg=FG_ERR))
+                self.after(0, _reveal_manual)
+                return
+
+            try:
+                self._client.keepalive()
+                r = self._client.session.post(
+                    f"{self._client.base_url}/smack-backfill.php",
+                    data={'action': 'update', 'snap_id': sid, 'download_url': url},
+                    timeout=15)
+                r.raise_for_status()
+                data = r.json()
+                if data.get('ok'):
+                    self.after(0, lambda: status_lbl.configure(text="✓ saved", fg=FG_OK))
+                    self._audit_loaded = False
+                else:
+                    raise RuntimeError(data.get('error', 'Save failed'))
+            except Exception as exc:
+                self.after(0, lambda: status_lbl.configure(text="✗ save err", fg=FG_ERR))
+                self.after(0, _reveal_manual)
+                print(f"[backfill] Auto-save error for ID {sid}: {exc}")
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def _on_backfill_save(self, snap_id: int, url_var: 'tk.StringVar',
                           status_lbl: 'tk.Label'):
+        """Manual save — used only when auto-find came up empty."""
         url = url_var.get().strip()
         if not url:
             messagebox.showwarning("Empty URL", "Paste the Drive share URL first.",
@@ -2295,12 +2396,11 @@ class App(tk.Tk):
             messagebox.showerror("Not connected",
                                  "Connect to site on the POST tab first.", parent=self)
             return
-        status_lbl.configure(text="Saving…", fg=FG_WARN)
+        status_lbl.configure(text="saving…", fg=FG_WARN)
 
         def _worker():
             try:
-                self._client.keepalive()   # refresh session if expired before POSTing
-                # Use the backfill endpoint for this (sets allow_download=1 too)
+                self._client.keepalive()
                 r = self._client.session.post(
                     f"{self._client.base_url}/smack-backfill.php",
                     data={'action': 'update', 'snap_id': snap_id,
