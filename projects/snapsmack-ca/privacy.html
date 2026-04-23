@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy | SnapSmack</title>
+<meta name="description" content="What SnapSmack knows about you and your site, and what it does with that.">
+
+<link rel="icon" type="image/png" href="ss_favicon.png">
+<link rel="apple-touch-icon" href="ss_favicon.png">
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --red:       #D40000;
+    --black:     #111111;
+    --dark-grey: #333333;
+    --mid-grey:  #666666;
+    --light-grey:#f4f4f4;
+    --border:    #ddd;
+    --white:     #ffffff;
+    --max:       1100px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 17px;
+    line-height: 1.7;
+    zoom: 1.25;
+    color: var(--dark-grey);
+    background: var(--white);
+}
+
+a { color: var(--dark-grey); text-decoration: none; transition: color 0.15s; }
+a:hover { color: var(--black); }
+
+.wrap { max-width: var(--max); margin: 0 auto; padding: 0 40px; }
+
+/* ─── HEADER ───────────────────────────────────────────────────────────── */
+#site-header {
+    background: var(--black);
+    border-bottom: 3px solid var(--red);
+    padding: 20px 0;
+}
+
+.header-inner {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logo-lockup {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    text-decoration: none;
+}
+
+.logo-lockup img { width: 48px; height: 48px; }
+
+.logo-text { line-height: 1.1; }
+.snap { font-family: 'Courier New', monospace; font-size: 1.4rem; color: var(--white); letter-spacing: 0.02em; }
+.snap em { color: var(--red); font-style: normal; }
+.snap strong { font-weight: 700; }
+.tagline { font-family: 'Courier New', monospace; font-size: 0.55rem; color: #888; letter-spacing: 0.14em; text-transform: uppercase; margin-top: 2px; }
+
+nav { display: flex; gap: 32px; }
+nav a { font-family: 'Courier New', monospace; font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; color: #aaa; }
+nav a:hover { color: var(--white); }
+nav a.active { color: var(--white); }
+
+/* ─── PAGE ─────────────────────────────────────────────────────────────── */
+.page-wrap {
+    max-width: 720px;
+    margin: 64px auto 96px;
+    padding: 0 40px;
+}
+
+.page-wrap h1 {
+    font-family: 'Courier New', monospace;
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--black);
+    margin-bottom: 8px;
+}
+
+.page-wrap .lede {
+    font-size: 1.05rem;
+    color: var(--mid-grey);
+    margin-bottom: 48px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+}
+
+.page-wrap h2 {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--black);
+    margin: 48px 0 16px;
+}
+
+.page-wrap h2:first-of-type { margin-top: 0; }
+
+.page-wrap p { margin-bottom: 20px; }
+
+.page-wrap p:last-child { margin-bottom: 0; }
+
+.page-wrap ul {
+    margin: 0 0 20px 24px;
+}
+
+.page-wrap ul li {
+    margin-bottom: 10px;
+}
+
+.callout {
+    background: var(--light-grey);
+    border-left: 3px solid var(--red);
+    padding: 18px 22px;
+    margin: 32px 0;
+    font-size: 0.95rem;
+}
+
+.callout p { margin-bottom: 0; }
+
+.updated {
+    font-family: 'Courier New', monospace;
+    font-size: 0.72rem;
+    color: #aaa;
+    letter-spacing: 0.06em;
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+}
+
+/* ─── FOOTER ───────────────────────────────────────────────────────────── */
+#site-footer {
+    background: var(--black);
+    border-top: 3px solid var(--red);
+    padding: 32px 0;
+}
+
+.footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.footer-copy {
+    font-family: 'Courier New', monospace;
+    font-size: 0.68rem;
+    color: #aaa;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    margin: 0;
+}
+
+.footer-copy a { color: var(--white); }
+.footer-copy a:hover { text-decoration: underline; }
+
+.footer-links { display: flex; gap: 24px; }
+
+.footer-links a {
+    font-family: 'Courier New', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    color: #aaa;
+    text-transform: uppercase;
+}
+
+.footer-links a:hover { color: var(--white); }
+
+@media (max-width: 760px) {
+    .header-inner { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .footer-inner { flex-direction: column; align-items: flex-start; }
+    .page-wrap { padding: 0 24px; margin: 48px auto 72px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────────────────────────── -->
+<header id="site-header">
+    <div class="header-inner">
+        <a href="index.html" class="logo-lockup">
+            <img src="img/logo.png" alt="SnapSmack">
+            <div class="logo-text">
+                <div class="snap"><em>SNAP</em><strong>SMACK</strong></div>
+                <div class="tagline">PHOTO <em>BLOGGING</em> IS BACK, BITCHEZ</div>
+            </div>
+        </a>
+        <nav>
+            <a href="index.html">HOME</a>
+            <a href="wotcha.html">WOTCHA!</a>
+            <a href="bugger.html">BUGGER!</a>
+            <a href="oi.html">OI MATE!</a>
+        </nav>
+    </div>
+</header>
+
+<!-- ── CONTENT ────────────────────────────────────────────────────────────── -->
+<div class="page-wrap">
+
+    <h1>Privacy Policy</h1>
+    <p class="lede">What SnapSmack knows about you and your site, and what it does with that. No legalese. No tricks. Just a straight account of how this works.</p>
+
+    <h2>The short version</h2>
+    <p>SnapSmack is software you install on your own server. Your blog, your posts, your visitors — that data lives on your machine and nowhere else. The SnapSmack project does not collect it, see it, or have any access to it.</p>
+    <p>The only time any information about your site reaches the SnapSmack network is when you choose to connect to community features — the spam protection network or the community forum. Both are opt-in. Neither is required to run SnapSmack.</p>
+
+    <h2>Your blog and your visitors</h2>
+    <p>SnapSmack is self-hosted software. When someone visits your blog, comments on a post, or sends you a message through your site, that data goes to your server — not ours. We have no access to your posts, your images, your visitors, or your comment data.</p>
+    <p>What your blog collects from visitors, and what you do with that data, is your responsibility. You should have your own privacy policy if your site collects personal information from visitors. SnapSmack's administration panel includes a privacy policy field for exactly this reason.</p>
+
+    <h2>When you opt into Smack the Enemy (spam protection)</h2>
+    <p>Smack the Enemy is SnapSmack's voluntary spam protection network. Sites that join share information about bad actors — trolls and spammers — so the whole network can benefit. Here is exactly what gets shared and what does not.</p>
+
+    <p><strong>What is transmitted to the central server:</strong></p>
+    <ul>
+        <li>Your site's URL. This is how the network identifies you. It is stored on the central server and visible to the network administrator.</li>
+        <li>SHA-256 hashes of IP addresses, email addresses, and browser fingerprints belonging to commenters you report. The hash is a one-way transformation — the original IP address or email cannot be recovered from it. The actual addresses never leave your server.</li>
+        <li>Your site's post count and age, used to calculate how much weight your reports carry. Newer or smaller sites carry less weight than established ones.</li>
+        <li>When you approve a flagged commenter, that approval is recorded as an allow-vote, which helps correct false positives across the network.</li>
+    </ul>
+
+    <p><strong>What is not shared:</strong></p>
+    <ul>
+        <li>Your visitors' actual IP addresses or email addresses — only hashes.</li>
+        <li>Your post content, images, or any other blog data.</li>
+        <li>Your admin credentials or API key (the key authenticates your site but is not stored in a readable form on the central server).</li>
+    </ul>
+
+    <div class="callout">
+        <p>Other sites in the Smack the Enemy network cannot see your site's URL or your reporting history. That information is only visible to the network administrator (currently Sean McCormick, who runs Smack Central). What other sites receive from the network is threat scores for fingerprints — not a list of who reported them.</p>
+    </div>
+
+    <p>You can opt out of Smack the Enemy at any time in your admin settings. Opting out stops all further data transmission. Your site's registration record on the central server is retained but your weight is zeroed — you stop contributing to and receiving from the network.</p>
+
+    <h2>When you opt into the community forum</h2>
+    <p>The SnapSmack community forum is a place for site owners to talk to each other. When you connect your site to the forum:</p>
+    <ul>
+        <li>Your site's URL and the display name you choose are visible to all forum participants. This is intentional — the forum is a community of site owners, and participants can see who they are talking to.</li>
+        <li>Posts and replies you make in the forum are visible to all participants.</li>
+        <li>Your SnapSmack version is recorded when you register, so the forum can show which version you are running.</li>
+    </ul>
+    <p>You can disconnect your site from the forum at any time. Your posts remain unless you ask for them to be removed — contact details are below.</p>
+
+    <h2>Smack Style — writing fingerprinting (Tier 3 protection)</h2>
+    <p>Smack Style is an additional layer of spam protection built on top of Smack the Enemy. It exists for a specific reason: the developer of SnapSmack was personally cyberstalked by a troll for several years — one who evaded bans by rotating IP addresses, using disposable email accounts, and clearing browser fingerprints. Smack Style is built to detect that kind of evasion, so that no one using SnapSmack has to go through the same thing.</p>
+
+    <p>The plain version: if you're a bad actor, we take your fingerprints and save them — we just don't write your name on them. We don't need to. You'll leave more, and we'll match them up.</p>
+
+    <p>Here is how it works and what it means for your blog's visitors.</p>
+
+    <p><strong>What it does:</strong> When a commenter is banned on a SnapSmack blog that has Smack the Enemy enabled, the blog software analyses that commenter's previous comments and extracts a writing style fingerprint — a set of 25 numbers describing things like how often they use certain common words, their punctuation habits, average sentence length, and similar stylistic patterns. This is the same approach used in academic authorship analysis. The 25 numbers are then transmitted to Smack Central alongside the ban report.</p>
+
+    <p><strong>What is not transmitted:</strong> The actual text of the comments never leaves your server. Only the 25 numeric values are sent. Smack Central has no record of what anyone wrote — only an abstract description of how they write.</p>
+
+    <p><strong>What Smack Central does with it:</strong> The writing style fingerprints from all participating sites are periodically compared against each other. If a banned commenter shows up on a different site with a different IP address and a different email address, but writes in a recognisably similar style, Smack Central can flag that as a likely match and surface it for the network administrator to review. No automatic action is taken on a style match alone — it is a signal for human review, not an automatic ban.</p>
+
+    <p><strong>Retention:</strong> Writing style fingerprints are stored for one year and then permanently deleted. They are used only to detect evasion of existing bans. They are not used for any other purpose and are not shared with any third party.</p>
+
+    <div class="callout">
+        <p>If your blog has Smack the Enemy enabled, you should disclose to your own visitors that when a commenter is banned, a writing style fingerprint derived from their comments may be transmitted to the Smack Central network. The actual comment text is never transmitted — only the derived numeric fingerprint. You can copy and adapt the language above for your own privacy policy.</p>
+    </div>
+
+    <h2>This website (snapsmack.ca)</h2>
+    <p>This site does not use analytics, tracking pixels, or advertising scripts of any kind. Your web server access logs record the standard information any web server records — IP address, browser, referring page, page requested. We do not use that data for any purpose beyond diagnosing server problems.</p>
+    <p>There are no cookies on this site other than any your browser sets on its own.</p>
+
+    <h2>Who runs this</h2>
+    <p>SnapSmack is built and maintained by Sean McCormick. The Smack Central network server and the community forum are operated by Sean McCormick. If you have questions about your data, want to request removal of your site's record, or just want to know something this policy does not cover, get in touch.</p>
+    <p>Contact: <span id="contact-privacy"></span></p>
+
+    <p class="updated">Last updated: April 2026</p>
+
+</div>
+
+<!-- ── FOOTER ─────────────────────────────────────────────────────────────── -->
+<footer id="site-footer">
+    <div class="wrap">
+        <div class="footer-inner">
+            <p class="footer-copy">© 2026 Sean McCormick · Dedicated to Raymond A. Vanderwoning, photographer and friend. <a href="https://www.serenity.ca/obituaries/Raymond-Anthony-Vanderwoning?obId=30943370" target="_blank" rel="noopener noreferrer">He is missed.</a></p>
+            <nav class="footer-links">
+                <a href="privacy.html" class="active">Twig n Berries</a>
+                <a id="contact-link-footer">Contact</a>
+            </nav>
+        </div>
+    </div>
+</footer>
+
+<script>
+// Obfuscated contact email — same pattern as main site
+(function(){
+    var u='sean',d='baddaywithacamera.ca';
+    var el = document.getElementById('contact-privacy');
+    if (el) {
+        var a = document.createElement('a');
+        a.href = 'mailto:' + u + '@' + d;
+        a.textContent = u + '@' + d;
+        el.appendChild(a);
+    }
+    var fl = document.getElementById('contact-link-footer');
+    if (fl) {
+        fl.href = 'mailto:' + u + '@' + d;
+        fl.textContent = 'Contact';
+    }
+})();
+
+document.querySelectorAll('nav a').forEach(link => {
+    if (link.href === window.location.href) link.classList.add('active');
+});
+</script>
+</body>
+</html>

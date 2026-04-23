@@ -86,8 +86,12 @@ function ste_client_register(string $site_url, string $display_name, int $post_c
  * Report one or more ban hashes to the network.
  * $bans = [['ban_type'=>'ip','ban_value'=>'sha256hex'], ...]  (max 500)
  * Values must be raw strings — this function hashes them.
+ *
+ * $style_vector is an optional 25-element float array from ste_style_extract().
+ * If provided, it is transmitted alongside the report so Smack Central can
+ * detect evasion by writing style. Raw comment text is never transmitted.
  */
-function ste_client_report(string $api_key, array $bans): array {
+function ste_client_report(string $api_key, array $bans, ?array $style_vector = null): array {
     if (empty($bans) || $api_key === '') return ['ok' => false, 'error' => 'No key or bans.'];
 
     $payload = [];
@@ -101,7 +105,16 @@ function ste_client_report(string $api_key, array $bans): array {
 
     if (empty($payload)) return ['ok' => false, 'error' => 'No valid bans to report.'];
 
-    return _ste_request('POST', 'report', ['bans' => $payload], $api_key);
+    $body = ['bans' => $payload];
+
+    // Include style vector if present and valid
+    if ($style_vector !== null && count($style_vector) === 25) {
+        $body['style_vector'] = $style_vector;
+        // Metadata passed through for SC storage — word/comment counts
+        // are set by the caller if available; safe to omit.
+    }
+
+    return _ste_request('POST', 'report', $body, $api_key);
 }
 
 /**

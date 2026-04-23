@@ -36,7 +36,7 @@ if (file_exists(__DIR__ . '/sc-version.php')) require_once __DIR__ . '/sc-versio
       <a href="sc-forum.php"
          class="<?php echo $sc_active_nav === 'sc-forum.php'         ? 'active' : ''; ?>">Forum Admin</a>
       <a href="sc-enemy-admin.php"
-         class="<?php echo $sc_active_nav === 'sc-enemy-admin.php'   ? 'active' : ''; ?>">☠ Smack the Enemy</a>
+         class="<?php echo $sc_active_nav === 'sc-enemy-admin.php'   ? 'active' : ''; ?>">Smack the Enemy</a>
       <span class="sc-nav-label" style="margin-top:16px;">System</span>
       <a href="sc-update.php"
          class="<?php echo $sc_active_nav === 'sc-update.php'         ? 'active' : ''; ?>">Update</a>

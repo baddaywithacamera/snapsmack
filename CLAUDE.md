@@ -15,7 +15,16 @@ The promo site files are NOT tracked by git and have no backup. Every uninvited 
 
 ## Version & Headers
 
+**Versioning scheme (as of 0.7.17):** Standard three-part numeric semver — `0.7.17`, `0.7.18`, etc. The old letter-suffix format (`0.7.9P`) is retired; `snap_version_compare()` in `core/constants.php` still handles legacy strings from older installs.
+
+Milestone map: `0.7.x` = Alpha · `0.8.x` = Closed Beta · `0.9.x` = Open Beta · `1.0` = Stable.
+
+Codename convention by milestone:
+- `0.7.x` — sitting-related codenames (Hot Seat, Bench Warmer, …)
+
 Version is defined once in `core/constants.php` (`SNAPSMACK_VERSION`, `SNAPSMACK_VERSION_SHORT`, `SNAPSMACK_VERSION_CODENAME`) and `smack-central/sc-version.php`. Git handles per-file versioning — **do not put version numbers in doc-block headers**.
+
+**SYBU versioning:** `BUILD_VERSION` in `tools/sybu/main.py` uses the same `0.7.9x` letter-suffix scheme, incrementing independently per SYBU release. It is NOT SnapSmack's version. When bumping SYBU: increment the letter (`0.7.9b` → `0.7.9c`), add a CHANGELOG entry in `tools/sybu/CHANGELOG.md`, create a new `.spec` file, and update `BUILD_VERSION` in `main.py` to match.
 
 **Smack Up Your Backup versioning:** SUYB uses the same `0.7.9x` scheme as SnapSmack, where the letter increments independently per SUYB release. `BUILD_VERSION` in `tools/smack-up-your-backup/main.py` is SUYB's version — it is NOT SnapSmack's version and is NOT a separate 0.1.x/0.2.x series. When bumping SUYB: increment the letter (e.g. `0.7.9c` → `0.7.9d`), add a CHANGELOG entry in `tools/smack-up-your-backup/CHANGELOG.md`, and update `BUILD_VERSION` in `main.py` to match.
 
@@ -52,7 +61,7 @@ This rule has no exceptions.
 - Both must match. Missing one = admin shows wrong version. **This has been missed multiple times.**
 
 ### 2. CHANGELOG.md — add the release entry
-- Entry format: `## 0.7.9X — "Codename" (YYYY-MM-DD)` followed by `### Added`, `### Fixed`, etc. with `- bullet` items.
+- Entry format: `## 0.7.18 — "Codename" (YYYY-MM-DD)` followed by `### Added`, `### Fixed`, etc. with `- bullet` items.
 - The release packager reads CHANGELOG.md **from the git tag** via raw GitHub URL. If the entry isn't there, or the tag points to an old commit, the packager shows nothing.
 - After editing: check for null bytes — `python3 -c "d=open('CHANGELOG.md','rb').read(); print(d.count(b'\x00'), 'nulls')"` — strip if any found.
 - After pushing master, **move the tag**: `git tag -f vX.X.XY && git push Github vX.X.XY --force`
@@ -174,56 +183,82 @@ git commit
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.9P "Spam Blocker"
+### SnapSmack — Alpha 0.7.18 "Bench Warmer"
 All commits are on `master`. Push from local:
 ```
 git push Github master
 ```
+After pushing: `git tag -f v0.7.18 && git push Github v0.7.18 --force`
 
-**Latest changes (0.7.9P):**
-- Akismet API key field restored to Admin → Settings → GLOBAL COMMENTS
-- `core/spam-check.php` fixed: URL no longer hardcoded, uses HTTPS curl instead of fsockopen
-- snapsmack.ca anti-spam section renamed and rewritten (SMACK DAB / SMACK DOWN / SMACK UP)
-- `smack-settings.php` — new DOWNLOADS box: Require Download Link + Default Download Mode settings (hub installs)
-- `smack-appearance-solo.php` — updated YES label for stricter require-link behaviour
-- `smack-post.php` — validation fix: download_link_required now fires for any published post without a URL, not just when allow_download is also ticked
-- `smack-help.php` — added "Require Download URL" help subsection
-- `smack-audit.php` (NEW FILE) — JSON endpoint: GET summary, GET list, POST update_title
-- `projects/snapsmack-ca/index.html` — FYBU section replaced with SYBU (Audit & Repair)
+**Latest changes (0.7.18 — Smack Style / SMACK THE ENEMY Tier 3):**
+- Version bump only — companion tool release (SYBU 0.7.9c) — previously noted
+- **Smack Style** — stylometric writing fingerprint system (Tasks #52–#58, all complete):
+  - `core/ste-style.php` (NEW) — 25-dimension style vector extraction from comment text
+  - `core/ban-check.php` — add_ban() now extracts + transmits style vector at ban time; `_ste_fetch_comment_texts()` added
+  - `core/ste-client.php` — ste_client_report() accepts optional $style_vector param
+  - `smack-central/sc-enemy-api.php` — report handler stores incoming style vectors into ste_style_vectors
+  - `smack-central/sc-enemy-admin.php` — Style Analysis tab: run_analysis, cluster display, escalate/dismiss actions; skull emoji removed from heading and nav
+  - `smack-central/sc-schema.php` — MySQL 5.7 fix: removed IF NOT EXISTS from ADD COLUMN DDL
+  - `smack-central/schemas/sc-enemy-canonical.sql` — ste_style_vectors table added
+  - `smack-central/sc-update.php` — sc-db.php added to $protected list (never overwritten by updater)
+  - `smack-central/sc-layout-top.php` — skull emoji removed from nav
+  - `projects/snapsmack-ca/privacy.html` (NEW) — full privacy policy including Smack Style disclosure section
+  - `projects/snapsmack-ca/index.html` — "Twig n Berries" footer link to privacy.html added
 
-**Pending on live servers (FTP these files):**
+**Pending on live servers (FTP these files to all three sites):**
+- `core/constants.php`
+- `core/ste-style.php` (NEW)
+- `core/ban-check.php`
+- `core/ste-client.php`
+- `core/spam-check.php`
+- `smack-central/sc-version.php`
+- `smack-central/sc-forum.php`
+- `smack-central/sc-release.php`
+- `smack-central/sc-enemy-admin.php`
+- `smack-central/sc-enemy-api.php`
+- `smack-central/sc-schema.php`
+- `smack-central/sc-update.php`
+- `smack-central/sc-layout-top.php`
+- `assets/js/smack-sc-forum.js` (NEW)
 - `smack-settings.php`
 - `smack-post.php`
 - `smack-appearance-solo.php`
 - `smack-help.php`
-- `smack-audit.php` (NEW — also needs FTP to pixhellated.ca and wateronthebrain.ca)
-- `core/spam-check.php`
-- `projects/snapsmack-ca/index.html` (to snapsmack.ca server)
+- `smack-audit.php` (NEW)
+- `projects/snapsmack-ca/privacy.html` (NEW — to snapsmack.ca server only)
+- `projects/snapsmack-ca/index.html` (to snapsmack.ca server only)
+
+**Pending DB on live squir871_enemy (run via phpMyAdmin):**
+- Apply remaining enemy schema: `coordination_cluster_id` column + `idx_cluster` index on `ste_reports`
+- Create `ste_style_vectors` table (full DDL in `smack-central/schemas/sc-enemy-canonical.sql`)
 
 **After FTP:**
 - Enable "Require Download Link" on foundtextures.ca Admin → Settings → Downloads
+- Confirm sc-db.php on server has sc_enemy_db() and sc_forum_db() (was overwritten by updater — correct version now in repo)
 
-### Smack Your Batch Up (SYBU) — v0.7.9b "Audit & Repair"
+### Smack Your Batch Up (SYBU) — v0.7.9c "Advanced Visual Match"
 Tool lives in `tools/sybu/`. All commits on `master`. Push from local: `git push Github master`
+After pushing: `git tag -f vSYBU-0.7.9c && git push Github vSYBU-0.7.9c --force`
 
 **To rebuild the exe:** run `build.bat` in `tools/sybu/`
-Output: `C:\SmackYourBatchUp\smackyourbatchup-0.7.9b.exe`
+Output: `C:\SmackYourBatchUp\smackyourbatchup-0.7.9c.exe`
+Spec: `tools/sybu/smackyourbatchup-0.7.9c.spec`
 
-**What's new in 0.7.9b:**
-- POST / AUDIT / REPAIR tab strip in header
-- AUDIT tab: live summary stats, duplicate title groups, missing Drive links list, Go to Repair button
-- REPAIR tab — three actions:
-  - Rename Drive Files to {id}.jpg (150ms rate-limit delay, resumable stop/start)
-  - Re-enrich Duplicate Titles (download from Drive → Gemini → unique title → blog, 4× retry, 500ms delay)
-  - Backfill Missing Drive Links (inline per-post URL entry using smack-backfill.php)
-- `drive.py` — added `rename()` and `download_to_temp()` functions
-- `poster.py` — added `audit_summary()`, `audit_list()`, `audit_update_title()` to SnapSmackClient
+**What's new in 0.7.9c:**
+- ADV. MATCH tab — two-stage pHash + SIFT visual matching (ported from Fix Your Batch Up)
+  - Pick server folder (local FTP copy) + originals folder → Run Matching
+  - ProcessPoolExecutor, ≤4 workers, results stream in as MatchRow cards
+  - Upload confirmed matches to Drive; write URL back via smack-backfill.php
+  - Uses credentials already in Settings — no separate entry required
+- `matcher.py` added to SYBU (pHash + SIFT engine)
+- `poster.py` — `SnapSmackClient.backfill_update_link()` added
+- Repair tab renamed to BASIC REPAIR & MATCH
 
 **Pending:**
-- Rebuild exe (run `build.bat` in `tools/sybu/`)
-- Run Repair → Rename Drive Files to {id}.jpg on foundtextures.ca (1,431 files)
-- Run Repair → Re-enrich Duplicate Titles on foundtextures.ca (287 posts)
-- Fix 3 posts missing Drive links (IDs 883, 1008, 1009) via Repair → Backfill
+- Rebuild exe (run `build.bat` in `tools/sybu/`) — needs cv2, imagehash installed
+- Run BASIC REPAIR → Rename Drive Files to {id}.jpg on foundtextures.ca (1,431 files)
+- Run BASIC REPAIR → Re-enrich Duplicate Titles on foundtextures.ca (287 posts)
+- Fix 3 posts missing Drive links (IDs 883, 1008, 1009) via BASIC REPAIR → Backfill
 
 ### Smack Up Your Backup (SUYB) — v0.7.9d
 All commits on `master`. Push from local: `git push Github master`
@@ -246,9 +281,9 @@ All commits on `master`. Push from local: `git push Github master`
 ### Live Sites
 | Site | Role | Version |
 |---|---|---|
-| foundtextures.ca | Multisite Hub | Alpha 0.7.9j (needs FTP update to 0.7.9P) |
-| pixhellated.ca | Spoke | Alpha 0.7.9j (needs FTP update to 0.7.9P) |
-| wateronthebrain.ca | Spoke | Alpha 0.7.9j (needs FTP update to 0.7.9P) |
+| foundtextures.ca | Multisite Hub | Alpha 0.7.9j (needs FTP update to 0.7.18) |
+| pixhellated.ca | Spoke | Alpha 0.7.9j (needs FTP update to 0.7.18) |
+| wateronthebrain.ca | Spoke | Alpha 0.7.9j (needs FTP update to 0.7.18) |
 
 Both spokes are ACTIVE and heartbeating correctly after key exchange fix.
 
@@ -284,4 +319,3 @@ To change which skins are in the base release, edit `$always_exclude` in
 - `stable` — Production ready
 - `beta` — Functional but not fully tested
 - `development` — Work in progress, not installable from gallery
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
