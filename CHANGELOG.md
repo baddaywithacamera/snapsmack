@@ -4,6 +4,13 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.18 — "Bench Warmer" (2026-04-23)
+
+### Companion Tools
+- **SYBU 0.7.9c** — Advanced Visual Match tab: two-stage pHash + SIFT image matching ported from Fix Your Batch Up. Pick a server folder and originals folder, run matching, review side-by-side confidence-scored results, upload confirmed originals to Drive. Uses credentials already in Settings — no separate entry required.
+
+---
+
 ## 0.7.17 — "Hot Seat" (2026-04-23)
 
 ### Changed

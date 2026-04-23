@@ -189,6 +189,25 @@ class SnapSmackClient:
         if not data.get('ok'):
             raise RuntimeError(data.get('error', 'Title update failed'))
 
+    def backfill_update_link(self, snap_id: int, download_url: str) -> None:
+        """Write a Drive share URL back to a post via smack-backfill.php."""
+        r = self.session.post(
+            f'{self.base_url}/smack-backfill.php',
+            data={'action': 'update', 'snap_id': snap_id,
+                  'download_url': download_url},
+            timeout=15,
+        )
+        r.raise_for_status()
+        try:
+            data = r.json()
+        except Exception:
+            raise RuntimeError(
+                f'Server returned non-JSON (likely a login redirect). '
+                f'Response: {r.text[:200]}'
+            )
+        if not data.get('ok'):
+            raise RuntimeError(data.get('error', 'Drive link update failed'))
+
     # ------------------------------------------------------------------
 
     def fetch_site_data(self) -> SiteData:

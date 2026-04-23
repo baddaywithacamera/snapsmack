@@ -39,6 +39,11 @@ PICASA-WEB-ALBUMS-SPEC.docx
 # Release packages (built by Smack Central, not stored in source)
 releases/
 
+# Smack Central one-off DB migration patches — canonical schemas are in
+# smack-central/schemas/ and ARE tracked; these ad-hoc patch files are not.
+smack-central/sc-enemy-schema.sql
+smack-central/sc-enemy-schema-patch.sql
+
 # Build artifacts from skin packaging / registry generation
 packages/
 registry.json

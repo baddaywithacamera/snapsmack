@@ -4,6 +4,27 @@ Same versioning scheme as SnapSmack (0.7.9x). Letter increments per SYBU release
 
 ---
 
+## 0.7.9c — Advanced Visual Match (2026-04-23)
+
+### Added
+- **ADV. MATCH tab** — two-stage pHash + SIFT visual image matching, ported from Fix Your Batch Up:
+  - Pick a **Server Folder** (local FTP copy of blog images) and an **Originals Folder** (your local photos)
+  - **Run Matching** launches a `ProcessPoolExecutor` (up to 4 workers, capped at ~75% CPU):
+    - Stage 1: perceptual hash (pHash) pre-filter — picks the top 10 closest candidates per server image
+    - Stage 2: SIFT keypoint matching via OpenCV — scores each candidate, selects the best match
+  - Results render as scrollable **MatchRow** cards — server image on the left, confidence score in the centre (colour-coded: green ≥ 82%, amber ≥ 60%, red below), matched original on the right
+  - Per-row actions: **Upload** (to Google Drive using credentials already in Settings, writes link back via `smack-backfill.php`), **Pick Different** (file browser), **Skip**
+  - Serial upload queue prevents race conditions when multiple rows upload simultaneously
+  - Stop button cancels matching mid-run
+  - Drive credentials and folder ID are read from Settings — **no separate credential entry required**
+- **`matcher.py`** added to SYBU — shared matching engine (pHash + SIFT)
+- **`poster.py`** — `SnapSmackClient.backfill_update_link(snap_id, download_url)` for writing Drive URLs back to the blog
+
+### Changed
+- Repair tab renamed to **BASIC REPAIR & MATCH**
+
+---
+
 ## 0.7.9b — Audit & Repair (2026-04-22)
 
 ### Added
