@@ -1,5 +1,18 @@
 # SnapSmack Architecture Conventions
 
+## CRITICAL — Promotional Site (projects/snapsmack-ca/)
+
+**Only change what you are explicitly asked to change. Nothing else.**
+
+The promo site files are NOT tracked by git and have no backup. Every uninvited change destroys work the user cannot recover. This has caused repeated rework and wasted sessions.
+
+- Do not touch styling, layout, or content unless the user names it specifically.
+- Do not "fix" things that look wrong to you. Ask first.
+- When making a surgical change (e.g. update one href), touch only that attribute. Do not rewrite the surrounding block.
+- `index.html` is the canonical reference for header/nav/tagline styling. Match it exactly on other pages — do not invent variations.
+- These files are not in git. There is no undo. Every mistake requires manual reconstruction.
+- **Before editing any file in `projects/snapsmack-ca/`, create a `.bak` copy first** using `cp filename.html filename.html.bak`. Do this without exception, every time, before the first edit in a session. The .bak files live alongside the originals and are not uploaded to the server.
+
 ## Version & Headers
 
 Version is defined once in `core/constants.php` (`SNAPSMACK_VERSION`, `SNAPSMACK_VERSION_SHORT`, `SNAPSMACK_VERSION_CODENAME`) and `smack-central/sc-version.php`. Git handles per-file versioning — **do not put version numbers in doc-block headers**.
@@ -29,17 +42,41 @@ gallery — do not delete the files.
 
 This rule has no exceptions.
 
-## CRITICAL — Common Oversights (Blind Spots)
+## CRITICAL — Release Checklist (Do Not Skip Any Item)
 
-**After every feature build, check these three things or the release will be incomplete:**
+**Every single release, without exception, requires all of the following. Claude has repeatedly missed these. Check each one before declaring work done or suggesting a git push.**
 
-1. **CHANGELOG.md** — Add entry for the new version/feature. If you add new tables, migrations, or admin pages, document them. Users and ops teams read the changelog to understand what changed.
+### 1. Version strings — bump in BOTH places
+- `core/constants.php` — `SNAPSMACK_VERSION`, `SNAPSMACK_VERSION_SHORT`, `SNAPSMACK_VERSION_CODENAME`
+- `smack-central/sc-version.php` — `SC_VERSION`, `SC_CODENAME`
+- Both must match. Missing one = admin shows wrong version. **This has been missed multiple times.**
 
-2. **Help system (smack-help.php)** — Add a help topic or update existing topics. If you added an admin page, there should be a help topic explaining it. Help topics go in `$help_topics[]` array with section, title, icon, and HTML content.
+### 2. CHANGELOG.md — add the release entry
+- Entry format: `## 0.7.9X — "Codename" (YYYY-MM-DD)` followed by `### Added`, `### Fixed`, etc. with `- bullet` items.
+- The release packager reads CHANGELOG.md **from the git tag** via raw GitHub URL. If the entry isn't there, or the tag points to an old commit, the packager shows nothing.
+- After editing: check for null bytes — `python3 -c "d=open('CHANGELOG.md','rb').read(); print(d.count(b'\x00'), 'nulls')"` — strip if any found.
+- After pushing master, **move the tag**: `git tag -f vX.X.XY && git push Github vX.X.XY --force`
 
-3. **Canonical schema (database/schema/snapsmack_canonical.sql)** — **Every new table must be added here.** The Schema Recovery tool (`core/schema-sync.php`) reads this file to auto-discover missing tables. If a table isn't in the canonical schema, the updater won't create it and admins get a blank page. This happened: semantic tables weren't in canonical schema → schema recovery didn't find them → fingerprints page stayed blank.
+### 3. Help system (smack-help.php) — add or update topics
+- Every new admin page or user-facing feature needs a help topic.
+- Topics go in `$help_topics['key']` with `section`, `title`, `icon`, `content` (heredoc HTML).
+- **This has been missed multiple times.** Do not push without checking.
 
-These are not optional. They ensure: (1) documentation is current, (2) admins can self-serve via help, (3) schema-sync can auto-repair installs.
+### 4. Canonical schema (database/schema/snapsmack_canonical.sql)
+- Every new table must be added here or schema-sync won't find it.
+- Every new table also needs a numbered migration in `/migrations/`.
+
+### 5. HTML structure — validate any touched PHP layout files
+- Unclosed tags (missing `>`, missing `</div>`) cause catastrophic layout failures.
+- Any file that includes or outputs HTML structure should be spot-checked at EOF.
+- **sidebar.php lost its closing `</div>` and `>`, swallowing the entire main content area into the sidebar. This shipped.**
+
+### 6. SYBU companion tool checklist (when SYBU changes ship)
+- `BUILD_VERSION` in `tools/sybu/main.py` — bump the letter
+- `tools/sybu/CHANGELOG.md` — add entry
+- Spec file `tools/sybu/smackyourbatchup-X.X.Xb.spec` — update `name=` field if version changed
+- Run `build.bat` to produce new exe
+- `git tag -f vSYBU-X.X.Xb && git push Github vSYBU-X.X.Xb --force` (or equivalent)
 
 ## Absolute Rules
 

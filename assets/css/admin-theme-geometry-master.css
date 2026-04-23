@@ -1421,6 +1421,160 @@ input[type="range"]:active::-webkit-slider-thumb {
     opacity: 1;
 }
 
+/* Login tab strip — used on login.php and smack-2fa-verify.php */
+.login-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border, #2e2e2e);
+}
+
+.login-tab {
+    flex: 1;
+    padding: 9px 0;
+    font-size: 0.68rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted, #666);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s;
+}
+
+.login-tab.active {
+    color: var(--text-primary, #eee);
+    border-bottom-color: var(--accent, #aaa);
+}
+
+.login-panel {
+    display: none;
+}
+
+.login-panel.active {
+    display: block;
+}
+
+.login-hint {
+    font-size: 0.72rem;
+    color: var(--text-muted, #666);
+    margin-bottom: 16px;
+}
+
+.login-aux-link {
+    display: block;
+    margin-top: 14px;
+    font-size: 0.72rem;
+    color: var(--text-muted, #555);
+    text-decoration: none;
+    text-align: center;
+}
+
+.login-aux-link:hover {
+    color: var(--text-secondary, #aaa);
+}
+
+/* 2FA setup page — recovery code grid and status badges */
+.recovery-codes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    max-width: 480px;
+    margin-bottom: 20px;
+}
+
+.recovery-code-item {
+    font-family: 'Courier New', monospace;
+    font-size: 0.92rem;
+    letter-spacing: 0.08em;
+    background: var(--bg-base);
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+}
+
+.copy-confirm-msg {
+    display: none;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-left: 8px;
+}
+
+.totp-status-badge {
+    display: inline-block;
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    padding: 5px 12px;
+    text-transform: uppercase;
+}
+
+.totp-status-badge.active {
+    background: var(--status-ok-bg, #1a4a1a);
+    color: var(--status-ok-fg, #6fcf6f);
+}
+
+.totp-status-badge.inactive {
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+}
+
+.totp-qr-row {
+    display: flex;
+    gap: 40px;
+    align-items: flex-start;
+    margin: 24px 0;
+    flex-wrap: wrap;
+}
+
+.totp-manual-key {
+    font-family: 'Courier New', monospace;
+    font-size: 1.05rem;
+    letter-spacing: 0.14em;
+    display: block;
+    background: var(--bg-base);
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+    word-break: break-all;
+}
+
+/* Status row — badge + heading inline */
+.status-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.status-row .section-title {
+    margin: 0;
+}
+
+/* Setting section variants */
+.setting-section-highlight {
+    border-left: 4px solid var(--accent);
+    background: var(--bg-elevated);
+    padding: 24px;
+    margin-bottom: 28px;
+}
+
+.setting-section-danger-zone {
+    margin-top: 24px;
+    border-top: 1px solid var(--border);
+    padding-top: 24px;
+}
+
+.section-title-danger {
+    color: var(--danger, #c0392b);
+}
+
+/* Small setting description — e.g. TOTP account details */
+.setting-desc-sm {
+    font-size: 0.82rem;
+}
+
 /* --- ALERTS & UTILITY CLASSES --- */
 .alert {
     padding: 15px;

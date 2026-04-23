@@ -4,6 +4,24 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.9P — "Spam Blocker" (2026-04-22)
+
+### Added
+- **TOTP Two-Factor Authentication.** Full RFC 6238 2FA with no library dependencies.
+  - `core/totp.php` — Pure PHP TOTP implementation: Base32 secret generation, RFC 6238 code generation with dynamic truncation, ±1 step verification window, `hash_equals()` for timing safety, 8-code bcrypt-hashed recovery code system, `otpauth://` URI builder, Google Charts QR helper.
+  - `smack-2fa.php` — Setup/manage page. Three states: inactive (generate), pending (scan QR + confirm), active (disable or regenerate recovery codes). All sensitive actions require a live TOTP code to confirm.
+  - `smack-2fa-verify.php` — Login interstitial. Shown after password accepted when 2FA is active. Accepts live TOTP code or one-time recovery code. Limits to 5 failed attempts before expiring the pending session.
+  - `migrations/037_totp_2fa.php` — Adds `totp_secret`, `totp_enabled`, `totp_recovery_json` columns to `snap_users`.
+  - `login.php` — 2FA gate wired in. Password success with `totp_enabled` → pending session → verify page instead of direct session grant.
+  - `core/sidebar.php` — Two-Factor Auth link added under User Manager (Pimpmobile mode).
+  - `smack-help.php` — Full 2FA help topic covering setup, recovery codes, login flow, and disable.
+  - `assets/js/smack-login.js` — Shared tab-switcher JS for login.php and smack-2fa-verify.php.
+  - `assets/js/smack-admin-2fa.js` — Recovery code copy-to-clipboard JS (reads from DOM, no PHP/JS coupling).
+  - `assets/css/admin-theme-geometry-master.css` — Login tab strip, recovery code grid, 2FA status badge, and QR layout classes. Applies to login.php and 2FA pages.
+- **Session security hardening.** `session_regenerate_id(true)` now called at every authentication completion point: password login, account recovery code login, and TOTP/2FA recovery code verification. Prevents session fixation.
+
+---
+
 ## 0.7.9P — "Spam Blocker" (2026-04-20)
 
 ### Added

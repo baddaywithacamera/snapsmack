@@ -242,6 +242,9 @@ CREATE TABLE IF NOT EXISTS `snap_users` (
   `preferred_skin`       varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT 'default-dark',
   `recovery_code_hash`   varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `force_password_change` tinyint(1) NOT NULL DEFAULT 0,
+  `totp_secret`           varchar(32)  DEFAULT NULL,
+  `totp_enabled`          tinyint(1)   NOT NULL DEFAULT 0,
+  `totp_recovery_json`    text         DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -164,6 +164,35 @@ def download_to_temp(service, file_id: str) -> str:
     return tmp.name
 
 
+def search(service, folder_id: str, title_query: str) -> list:
+    """
+    Search for files in a Drive folder whose name contains title_query.
+    Returns a list of dicts: [{'id': '...', 'name': '...', 'url': '...'}, ...]
+    Returns [] if nothing found.  Raises RuntimeError on API failure.
+    """
+    # Escape single quotes in the query string to avoid breaking the q param
+    escaped = title_query.replace("\\", "\\\\").replace("'", "\\'")
+    q = f"name contains '{escaped}' and '{folder_id}' in parents and trashed = false"
+    try:
+        result = service.files().list(
+            q=q,
+            fields="files(id,name)",
+            pageSize=10,
+        ).execute(num_retries=0)
+    except Exception as exc:
+        raise RuntimeError(f"Drive search failed: {exc}") from exc
+
+    files = result.get('files', [])
+    return [
+        {
+            'id':   f['id'],
+            'name': f['name'],
+            'url':  f"https://drive.google.com/uc?export=download&id={f['id']}",
+        }
+        for f in files
+    ]
+
+
 def revoke_token() -> None:
     """Delete the saved token, forcing re-authentication next time."""
     token_path = _token_path()

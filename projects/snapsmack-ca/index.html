@@ -108,27 +108,52 @@ p:last-child { margin-bottom: 0; }
     max-width: 680px;
 }
 
-/* ─── HEADER ────────────────────────────────────────────────────────────── */
+/* ─── MAIN HEADER (scrolls with page — not sticky) ──────────────────────── */
 #site-header {
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    background: rgba(255, 255, 255, 1);
-    backdrop-filter: blur(8px);
+    background: var(--white);
     border-bottom: 3px solid var(--red);
     padding: 28px 0 24px;
-    transition: background 0.3s ease, opacity 0.3s ease;
 }
 
-#site-header.scrolled {
-    background: rgba(255, 255, 255, 0.5) !important;
-    backdrop-filter: blur(8px);
+/* ─── MINI HEADER (fixed, slides down when main scrolls out) ────────────── */
+#mini-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 2px solid rgba(212, 0, 0, 0.5);
+    padding: 8px 0;
+    transform: translateY(-100%);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-#site-header:hover,
-#site-header:focus-within {
-    background: rgba(255, 255, 255, 1);
+#mini-header.visible {
+    transform: translateY(0);
+    opacity: 1;
 }
+
+.mini-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 32px;
+}
+
+.mini-inner a.mini-logo img {
+    display: block;
+    width: 38px;
+    height: auto;
+}
+
+#mini-header nav { gap: 28px; }
+#mini-header nav a { font-size: 1rem; }
 
 .header-inner {
     display: flex;
@@ -144,6 +169,11 @@ p:last-child { margin-bottom: 0; }
     display: flex;
     align-items: center;
     gap: 20px;
+    text-decoration: none;
+}
+
+.logo-lockup:hover {
+    text-decoration: none;
 }
 
 .logo-lockup img {
@@ -1297,32 +1327,27 @@ form.ml-block-form {
 </head>
 <body>
 
-<!-- ── STICKY HEADER SCROLL EFFECT ─────────────────────────────────────────── -->
-<script>
-// Sticky header scroll effect
-const header = document.getElementById('site-header');
-window.addEventListener('scroll', () => {
-    if (window.scrollY > 0) {
-        header.classList.add('scrolled');
-    } else {
-        header.classList.remove('scrolled');
-    }
-});
-
-// Highlight active nav link
-document.querySelectorAll('nav a').forEach(link => {
-    if (link.href === window.location.href) {
-        link.classList.add('active');
-    }
-});
-</script>
-
 <!-- ── LIGHTBOX ────────────────────────────────────────────────────────────── -->
 <div id="lb-overlay" role="dialog" aria-modal="true" aria-label="Image viewer">
     <span class="lb-close" aria-label="Close">&times;</span>
     <button class="lb-prev" aria-label="Previous image">&#8592;</button>
     <img id="lb-img" src="" alt="">
     <button class="lb-next" aria-label="Next image">&#8594;</button>
+</div>
+
+<!-- ── MINI HEADER — logo only, slides down when main header leaves viewport -->
+<div id="mini-header">
+    <div class="mini-inner">
+        <a href="index.html" class="mini-logo">
+            <img src="img/logo.png" alt="SnapSmack">
+        </a>
+        <nav>
+            <a href="index.html">HOME</a>
+            <a href="wotcha.html">WOTCHA!</a>
+            <a href="bugger.html">BUGGER!</a>
+            <a href="oi.html">OI MATE!</a>
+        </nav>
+    </div>
 </div>
 
 <!-- ── HEADER ─────────────────────────────────────────────────────────────── -->
@@ -1337,7 +1362,7 @@ document.querySelectorAll('nav a').forEach(link => {
         </a>
         <nav>
             <a href="index.html">HOME</a>
-            <a href="news.html">WOTCHA!</a>
+            <a href="wotcha.html">WOTCHA!</a>
             <a href="bugger.html">BUGGER!</a>
             <a href="oi.html">OI MATE!</a>
         </nav>
@@ -1444,7 +1469,7 @@ document.querySelectorAll('nav a').forEach(link => {
             </div>
             <div class="status-card">
                 <h3>Smack Your Batch Up</h3>
-                <p>Desktop tool for bulk posting, auditing, and repair. Batch manifests, EXIF embedding, Drive uploads, session keepalive. Gemini AI enrichment populates titles, tags, categories, and dominant colour palettes per image — live, as each one processes. Audit tab surfaces duplicate title groups and missing Drive links; Repair tab batch-fixes them automatically.</p>
+                <p>Bulk post, audit, and repair your archive from the desktop. AI enrichment, Drive sync, batch rename, and duplicate title repair — proven on archives of 1,400+ files. Full rundown in Companion Tools below.</p>
             </div>
             <div class="status-card">
                 <h3>Community</h3>
@@ -1732,6 +1757,7 @@ document.querySelectorAll('nav a').forEach(link => {
                 <p>Your archive is only as safe as your last backup. Smack Up Your Backup runs on your desktop and handles multi-gigabyte backup and restore operations that would flatten a shared host or time out if run server-side — completing cleanly in the background, however long it takes.</p>
                 <p>Per-site profiles store your connection settings once. Choose your backup method: differential FTP sync for incremental server backups, cloud push to Google Drive or OneDrive for redundant cloud storage, or local backups only. One-click backups or scheduled runs on any cadence you set. Crash recovery checkpoints mean a restart picks up where it left off — not from zero.</p>
                 <p>The three-way file audit runs simultaneously across your local backup, the server, and cloud storage — revealing exactly what's missing, what's stale, and what's in sync across all three locations. Cold-start recovery lets you restore from a backup ZIP even if your install is completely gone. Session logs track every operation so you know what happened and when. Completely free. No paid tier. No hidden limits. No locking your data into our system. No bullshit.</p>
+                <p>If your high-res originals live on Google Drive or another cloud service, SUYB backs those up too — cloud to cloud, directly between providers, without pulling the files down to your desktop first. For photographers running large archives on Drive, that's the one that matters.</p>
                 <p class="dl-note">[ Windows 10/11 · Linux 64-bit · Free download from the admin tools page after install ]</p>
             </div>
         </div>
@@ -2093,6 +2119,20 @@ document.getElementById('yr').textContent = new Date().getFullYear();
         if (bearsActive) clearAllBears();
     });
 })();
+</script>
+
+<script>
+const mainHeader = document.getElementById('site-header');
+const miniHeader = document.getElementById('mini-header');
+
+new IntersectionObserver(
+    ([entry]) => miniHeader.classList.toggle('visible', !entry.isIntersecting),
+    { threshold: 0 }
+).observe(mainHeader);
+
+document.querySelectorAll('nav a').forEach(link => {
+    if (link.href === window.location.href) link.classList.add('active');
+});
 </script>
 </body>
 </html>

@@ -9,6 +9,7 @@
 
 require_once 'core/db.php';
 require_once 'core/auth-recovery.php';
+require_once 'core/totp.php';
 
 // --- SESSION INITIALIZATION ---
 // Must use the same session save path as auth.php so the session file
@@ -63,6 +64,11 @@ $active_skin_path = $theme_base . $colour_css_file;
 $error       = '';
 $active_tab  = 'password'; // 'password' or 'recovery'
 
+// Surface the 2FA lockout message if redirected back from smack-2fa-verify.php
+if (($_GET['err'] ?? '') === '2fa_locked') {
+    $error = 'Too many failed 2FA attempts. Please log in again.';
+}
+
 // --- AUTHENTICATION HANDLER ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $login_type = $_POST['login_type'] ?? 'password';
@@ -73,11 +79,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user_input = trim($_POST['username'] ?? '');
         $pass_input = $_POST['password'] ?? '';
 
-        $stmt = $pdo->prepare("SELECT id, username, password_hash, user_role, preferred_skin, force_password_change FROM snap_users WHERE username = ?");
+        $stmt = $pdo->prepare("SELECT id, username, password_hash, user_role, preferred_skin, force_password_change, totp_enabled, totp_secret FROM snap_users WHERE username = ?");
         $stmt->execute([$user_input]);
         $user = $stmt->fetch();
 
         if ($user && password_verify($pass_input, $user['password_hash'])) {
+
+            // ── 2FA gate ─────────────────────────────────────────────────────
+            // If 2FA is active, plant a pending session key and redirect to
+            // the verification page instead of granting a full session here.
+            if (!empty($user['totp_enabled']) && !empty($user['totp_secret'])) {
+                $_SESSION['totp_pending_user_id'] = $user['id'];
+                header("Location: smack-2fa-verify.php");
+                exit;
+            }
+
+            // ── No 2FA — complete the session normally ───────────────────────
+            // Regenerate session ID to prevent session fixation.
+            session_regenerate_id(true);
             $_SESSION['user_login']          = $user['username'];
             $_SESSION['user_role']           = $user['user_role'] ?: 'editor';
             $_SESSION['user_preferred_skin'] = $user['preferred_skin'] ?: null;
@@ -107,6 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user) {
             snapsmack_consume_recovery_code($pdo, $user['id']);
 
+            session_regenerate_id(true);
             $_SESSION['user_login']            = $user['username'];
             $_SESSION['user_role']             = $user['user_role'] ?: 'editor';
             $_SESSION['user_preferred_skin']   = $user['preferred_skin'] ?: null;
@@ -132,20 +152,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="assets/css/admin-theme-geometry-master.css">
     <link rel="stylesheet" href="<?php echo htmlspecialchars($active_skin_path); ?>">
-    <style>
-        .login-tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 1px solid var(--border, #2e2e2e); }
-        .login-tab  { flex: 1; padding: 9px 0; font-size: 0.68rem; letter-spacing: 1.5px;
-                      text-transform: uppercase; background: none; border: none; cursor: pointer;
-                      color: var(--text-muted, #666); border-bottom: 2px solid transparent;
-                      margin-bottom: -1px; transition: color 0.15s; }
-        .login-tab.active { color: var(--text-primary, #eee); border-bottom-color: var(--accent, #aaa); }
-        .login-panel { display: none; }
-        .login-panel.active { display: block; }
-        .forgot-link { display: block; margin-top: 14px; font-size: 0.72rem; color: var(--text-muted, #555);
-                       text-decoration: none; text-align: center; }
-        .forgot-link:hover { color: var(--text-secondary, #aaa); }
-        .rec-hint { font-size: 0.72rem; color: var(--text-muted, #666); margin-bottom: 16px; }
-    </style>
 </head>
 <body class="login-body">
     <div class="login-container">
@@ -158,9 +164,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="login-tabs">
                 <button type="button" class="login-tab <?php echo $active_tab === 'password' ? 'active' : ''; ?>"
-                        onclick="switchTab('password')">Password</button>
+                        data-tab="password" onclick="switchTab('password')">Password</button>
                 <button type="button" class="login-tab <?php echo $active_tab === 'recovery' ? 'active' : ''; ?>"
-                        onclick="switchTab('recovery')">Recovery Code</button>
+                        data-tab="recovery" onclick="switchTab('recovery')">Recovery Code</button>
             </div>
 
             <!-- PASSWORD LOGIN -->
@@ -180,14 +186,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <button type="submit" class="master-update-btn">AUTHORIZE ACCESS</button>
                 </form>
-                <a href="password-reset.php" class="forgot-link">Forgot password?</a>
+                <a href="password-reset.php" class="login-aux-link">Forgot password?</a>
             </div>
 
             <!-- RECOVERY CODE LOGIN -->
             <div id="panel-recovery" class="login-panel <?php echo $active_tab === 'recovery' ? 'active' : ''; ?>">
                 <form method="POST">
                     <input type="hidden" name="login_type" value="recovery">
-                    <p class="rec-hint">Enter your username and the one-time code provided by your administrator.</p>
+                    <p class="login-hint">Enter your username and the one-time code provided by your administrator.</p>
                     <div class="control-group">
                         <label>USERNAME</label>
                         <input type="text" name="rec_username" required
@@ -208,13 +214,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <a href="index.php" class="back-link">&larr; RETURN TO SITE</a>
         </div>
     </div>
-    <script>
-    function switchTab(tab) {
-        document.querySelectorAll('.login-tab').forEach(function(t) { t.classList.remove('active'); });
-        document.querySelectorAll('.login-panel').forEach(function(p) { p.classList.remove('active'); });
-        document.querySelector('.login-tab:nth-child(' + (tab === 'password' ? 1 : 2) + ')').classList.add('active');
-        document.getElementById('panel-' + tab).classList.add('active');
-    }
-    </script>
+    <script src="assets/js/smack-login.js"></script>
 </body>
 </html>
