@@ -7,5 +7,5 @@
  * to determine whether an update is available.
  */
 
-define('SC_VERSION',  '0.7.9P');
-define('SC_CODENAME', 'Spam Blocker');
+define('SC_VERSION',  '0.7.17');
+define('SC_CODENAME', 'Hot Seat');

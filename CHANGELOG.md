@@ -4,6 +4,30 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.17 — "Hot Seat" (2026-04-23)
+
+### Changed
+- **Versioning scheme.** Retired the letter-suffix format (`0.7.9P`) in favour of standard three-part numeric semver (`0.7.17`, `0.7.18`, …). Milestone map: `0.7.x` = Alpha, `0.8.x` = Closed Beta, `0.9.x` = Open Beta, `1.0` = Stable. `snap_version_compare()` in `core/constants.php` retains backward-compatibility with legacy letter-suffix version strings from older installs.
+- **Smack Central release packager** (`smack-central/sc-release.php`) — tag list now filters to new-format semver tags only (`vX.Y.Z`). Old letter-suffix tags and companion-tool tags (`vSYBU-*`) are excluded. Dropdown and history table show the three most recent releases only.
+
+### Added
+- **Smack Central forum — PGSB redesign** (`smack-central/sc-forum.php`). Full rebuild of the hub forum interface.
+  - Forum is now the primary full-page experience. The three-tab layout (Forum / Installs / Manage Boards) is replaced by a PGSB identity bar: avatar, gold PGSB badge, and "Pan Galactic Straw Boss" label on the left; Installs and Boards links as secondary nav on the right.
+  - Hub posts (from `snapsmack.ca` install) are badged as PGSB throughout — in the thread list, thread title, and each post in the stream. Posts from PGSB get a distinct gold left-border tint (`scf-post--pgsb`).
+  - Mod controls are contextual and always visible: Pin / Lock / Delete in the thread title bar; Delete / Restore per reply in each post header. No hunting.
+  - PGSB composer shows the hub avatar, PGSB badge, and "Reply as Pan Galactic Straw Boss" label. Post button reads "Post as PGSB". Locked threads show an inline notice with a reminder that you can unlock from the controls above.
+  - `PGSB_DISPLAY_NAME`, `PGSB_SHORT`, `PGSB_DOMAIN` constants defined at the top of the file — one place to change the hub identity.
+  - Hub install row in the Installs section is identified with the PGSB badge; rename/ban/promote controls suppressed for it.
+- **`assets/js/smack-sc-forum.js`** (new file) — emoji insertion and inline install rename JS extracted from inline `<script>` blocks into a proper file per architecture rules.
+
+### snapsmack.ca
+- **Three Ways to Play section** added between Working Right Now and Pick a Colour. Explains the three install modes (SMACKONEOUT, GRAMOFSMACK, SMACKTALK) with individual mode cards, mode numbers, and Coming Beta badge on SMACKTALK.
+- **GRAMOFSMACK copy** updated: tagline "Got Zuck-fucked?", carousel/grid copy refreshed to emphasise power tools and ownership.
+- **Coming Next** — SMACKTALK and MOSAIC split into separate cards. SMACKTALK focuses on the writing-and-images blogging identity; MOSAIC describes the inline panel layout engine as its own distinct feature.
+- Version badge updated to Alpha 0.7.17 throughout.
+
+---
+
 ## 0.7.9P — "Spam Blocker" (2026-04-22)
 
 ### Added
