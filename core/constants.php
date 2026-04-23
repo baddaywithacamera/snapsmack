@@ -7,19 +7,21 @@
  * the application.
  */
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.9P');
-define('SNAPSMACK_VERSION_SHORT', '0.7.9P');
-define('SNAPSMACK_VERSION_CODENAME', "Spam Blocker");
+define('SNAPSMACK_VERSION', 'Alpha 0.7.17');
+define('SNAPSMACK_VERSION_SHORT', '0.7.17');
+define('SNAPSMACK_VERSION_CODENAME', 'Hot Seat');
 
 // --- VERSION COMPARISON ---
-// PHP's version_compare() treats trailing letters as "alpha" (lower than
-// no suffix), so 0.7.3a < 0.7.3. SnapSmack uses the letter suffix as a
-// patch increment: 0.7.3a > 0.7.3, 0.7.3b > 0.7.3a, etc.
+// Versions are standard three-part semver: 0.7.17, 0.7.18, etc.
+// Milestone map: 0.7.x = Alpha, 0.8.x = Closed Beta, 0.9.x = Open Beta, 1.0 = Stable.
 //
-// This function normalises the trailing letter to a fourth numeric segment
-// (a=1, b=2, ...) before delegating to version_compare(). No letter = .0.
+// Legacy installs (pre-0.7.17) used a letter-suffix scheme (0.7.9P, etc.).
+// This function handles both formats: it normalises a trailing letter to a
+// fourth numeric segment (a=1, b=2, ...) before delegating to version_compare().
+// Plain semver strings pass through unmodified (appended .0 is harmless).
 //
-// Usage: snap_version_compare('0.7.3a', '0.7.3', '>') => true
+// Usage: snap_version_compare('0.7.17', '0.7.16', '>') => true
+//        snap_version_compare('0.7.9p', '0.7.9n', '>') => true (legacy)
 function snap_version_compare(string $v1, string $v2, string $op = '>'): bool {
     $normalise = function (string $v): string {
         if (preg_match('/^(\d+(?:\.\d+)*)([a-z])$/i', $v, $m)) {

@@ -102,26 +102,26 @@ function sc_github_get(string $endpoint): array|false {
 }
 
 // ── Helper: list tags from GitHub (sorted newest-first by version) ────────────
+// Only returns tags in the current three-segment numeric semver format
+// (e.g. v0.7.17). Old letter-suffix tags (v0.7.9P) and companion-tool
+// tags (vSYBU-*, vSUYB-*) are silently excluded. Returns at most 3 tags.
 function sc_list_tags(): array {
-    $data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/tags?per_page=30');
+    $data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/tags?per_page=50');
     if (!is_array($data)) return [];
     $tags = array_column($data, 'name');
 
-    // Normalise trailing letter suffix (a=1, b=2 …) into a numeric segment
-    // so version_compare() treats 0.7.4b > 0.7.4a > 0.7.4.
-    $norm = function (string $v): string {
-        $v = ltrim($v, 'vV');
-        if (preg_match('/^(\d+(?:\.\d+)*)([a-z])$/i', $v, $m)) {
-            return $m[1] . '.' . (ord(strtolower($m[2])) - ord('a') + 1);
-        }
-        return $v . '.0';
-    };
+    // Keep only clean X.Y.Z numeric tags — no letter suffix, no tool prefixes.
+    $tags = array_values(array_filter($tags, function (string $t): bool {
+        return (bool) preg_match('/^v?\d+\.\d+\.\d+$/i', $t);
+    }));
 
-    usort($tags, function ($a, $b) use ($norm) {
-        return version_compare($norm($b), $norm($a));   // descending
+    // Sort descending by version_compare (plain semver — no normalisation needed).
+    usort($tags, function ($a, $b): int {
+        return version_compare(ltrim($b, 'vV'), ltrim($a, 'vV'));
     });
 
-    return $tags;
+    // Expose only the three most recent releases.
+    return array_slice($tags, 0, 3);
 }
 
 // ── Helper: file changes between two tags via GitHub compare API ──────────────
@@ -548,7 +548,7 @@ try {
     $releases = sc_db()->query(
         "SELECT version_full, git_tag, released_at, download_url, download_size,
                 schema_changes, is_latest, created_at
-         FROM sc_releases ORDER BY id DESC LIMIT 20"
+         FROM sc_releases ORDER BY id DESC LIMIT 3"
     )->fetchAll();
 } catch (Exception $e) {}
 

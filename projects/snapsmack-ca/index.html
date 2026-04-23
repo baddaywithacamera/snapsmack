@@ -913,6 +913,76 @@ nav a.active::after {
     letter-spacing: 0.02em;
 }
 
+/* ─── ADMIN SKINS ───────────────────────────────────────────────────────── */
+#admin-skins { background: var(--light-grey, #f4f4f4); }
+#admin-skins h2 { color: var(--red); }
+#admin-skins .lede { color: var(--dark-grey); }
+
+/* ─── THREE WAYS IN ─────────────────────────────────────────────────────── */
+#modes {
+    background: var(--near-black, #111);
+    color: var(--white);
+}
+#modes h2 { color: var(--red); }
+#modes .lede {
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 48px;
+}
+.modes-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+    margin-top: 40px;
+}
+.mode-card {
+    border-top: 3px solid var(--red);
+    padding-top: 24px;
+}
+.mode-card .mode-num {
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--red);
+    margin-bottom: 10px;
+}
+.mode-card h3 {
+    color: var(--white);
+    font-size: 1.4rem;
+    margin-bottom: 6px;
+    letter-spacing: 0.04em;
+}
+.mode-card .mode-tagline {
+    font-size: 0.82rem;
+    color: var(--red);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+    font-weight: 700;
+}
+.mode-card p {
+    font-size: 0.9rem;
+    color: #aaa;
+    line-height: 1.6;
+    margin-bottom: 0.75em;
+}
+.mode-card p:last-child { margin-bottom: 0; }
+.mode-card .mode-coming {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--black);
+    background: var(--red);
+    padding: 3px 8px;
+    margin-bottom: 16px;
+}
+@media (max-width: 800px) {
+    .modes-grid { grid-template-columns: 1fr; }
+}
+
 /* ─── COMING SOON ───────────────────────────────────────────────────────── */
 #coming {
     background: var(--black);
@@ -1372,7 +1442,7 @@ form.ml-block-form {
 <!-- ── HERO ───────────────────────────────────────────────────────────────── -->
 <section id="hero">
     <div class="hero-inner">
-        <span class="alpha-badge">Alpha v0.7.9O</span>
+        <span class="alpha-badge">Alpha v0.7.9P</span>
         <h1 class="hero-headline">A photo blog platform that doesn't treat you like a <span>product.</span></h1>
         <p class="hero-kicker">SnapSmack lets you smack your snaps up.</p>
         <p class="hero-sub">Self-hosted, free and open-source, built for photographers who got tired of Instagram, Facebook, and every other platform deciding what happens to their work. Own your archive. Own your audience. No middleman.</p>
@@ -1457,7 +1527,7 @@ form.ml-block-form {
 <section id="working">
     <div class="wrap">
         <h2>Working Right Now</h2>
-        <p class="lede">Alpha v0.7.9O is running production sites today. Here's what's solid.</p>
+        <p class="lede">Alpha v0.7.9P is running production sites today. Here's what's solid.</p>
         <div class="status-grid">
             <div class="status-card">
                 <h3>Core CMS</h3>
@@ -1488,12 +1558,12 @@ form.ml-block-form {
                 <p>Spell check, grammar, rephrasing, and a full chat assistant in the post editor. Your API key, your provider — Claude, Gemini, or ChatGPT.</p>
             </div>
             <div class="status-card">
-                <h3>Solo Mode</h3>
-                <p>One image at a time. Post, title, describe, tag, publish. Clean, focused, no distractions.</p>
+                <h3>SMACKONEOUT</h3>
+                <p>One image, one post, chronological, yours. The classic Pixelpost experience — the photoblogging format that defined the early web and quietly disappeared when the platforms took over. Solo image posting done the way it was always supposed to be done.</p>
             </div>
             <div class="status-card">
-                <h3>Carousel Mode</h3>
-                <p>Core working, fine-tuning skins. Post up to 30 images at a time in carousel rows — panorama layout included. The Grid is the flagship carousel skin, with more carousel-native skins in development.</p>
+                <h3>GRAMOFSMACK</h3>
+                <p>The 2016 Instagram experience — before the algorithm ate it. Multiple images per post, carousel layout, curated grid. Post up to 30 images at a time in carousel rows, panorama layout included. Your grid, your order, no Reels, no suggested posts, no one deciding what your followers see.</p>
             </div>
             <div class="status-card">
                 <h3>Albums & Archives</h3>
@@ -1533,13 +1603,6 @@ form.ml-block-form {
                 <p>He's adorable, he'll make your day, and he lives in every installation of SnapSmack. You can find him and his story if you're clever and determined enough.</p>
             </div>
         </div>
-        <h2 style="margin-top: 48px;">Pick a Colour, Any Colour</h2>
-        <p style="font-size: 1rem; color: var(--dark-grey); max-width: 680px; line-height: 1.7;">The admin interface has sixteen colour themed skins available for it (so far). This one is Bumblebee, for those photographers who are ready to roll out. Don't see something you like? Use the skin designer to create something that tickles your pickle and add it to the repository for others to enjoy, too.</p>
-        <div class="admin-shots" style="margin-top: 24px;">
-            <a href="img/admin-dashboard.png" data-lb="img/admin-dashboard.png"><img src="img/admin-dashboard.png" alt="SnapSmack admin — dashboard"></a>
-            <a href="img/admin-newpost.png" data-lb="img/admin-newpost.png"><img src="img/admin-newpost.png" alt="SnapSmack admin — new post"></a>
-            <a href="img/admin-global.png" data-lb="img/admin-global.png"><img src="img/admin-global.png" alt="SnapSmack admin — global settings"></a>
-        </div>
     </div>
 </section>
 
@@ -1549,6 +1612,57 @@ form.ml-block-form {
         A sharp blow, a loud kiss, or a small single-masted fishing vessel. In this context, what you do to a photograph when you publish it to the internet with zero regard for the algorithm. See also: <em>heroin</em> (unrelated but equally addictive).
     </div>
 </div>
+
+<!-- ── THREE WAYS IN ─────────────────────────────────────────────────────── -->
+<section id="modes">
+    <div class="wrap">
+        <h2>Three Ways to Play</h2>
+        <p class="lede">When's the last time you were part of a three way?</p>
+
+        <div class="modes-grid">
+
+            <div class="mode-card">
+                <div class="mode-num">Install Mode 01</div>
+                <h3>SMACKONEOUT</h3>
+                <div class="mode-tagline">One image. One post. Yours.</div>
+                <p>The classic photoblogging format — the kind that defined the early web before Instagram convinced everyone their archive needed to be curated for someone else's algorithm.</p>
+                <p>You shoot. You post. Chronological, clean, no distractions. One image at a time with a title, description, tags, and as much or as little writing as you want alongside it. No grid pressure. No performance. Just your photographs and a place to put them that you actually own.</p>
+            </div>
+
+            <div class="mode-card">
+                <div class="mode-num">Install Mode 02</div>
+                <h3>GRAMOFSMACK</h3>
+                <div class="mode-tagline">Got Zuck-fucked?</div>
+                <p>The classic Insta 3 across square feed is back. Multiple images per post. Carousel layout. Curated grid. Everything Instagram used to be in 2016 before Reels, before suggested posts, before the app decided your followers should see strangers' content instead of yours.</p>
+                <p>Post up to 30 images at a time in carousel rows, panorama layout included. We've added the power toys Zuck denied you to make sharing easy. Your grid, your order, no algorithm between you and your audience. A skinnable Instagram experience, running on your server, owned by you. Do a gram and feel good about it.</p>
+            </div>
+
+            <div class="mode-card">
+                <div class="mode-num">Install Mode 03</div>
+                <h3>SMACKTALK</h3>
+                <div class="mode-tagline">For photographers who write.</div>
+                <p>Longform photo essays, diary entries, narrative posts — writing and images at equal billing. Not a caption under a photo. Not a photo illustrating a blog post. Both at once, inseparable, the way it was always meant to work.</p>
+                <p>MOSAIC, a layout engine built into the post editor, lets you arrange multiple images into justified panels that flow inline with your text. The web 2.0 blogging experience before it got buried under plugins, themes, and someone else's roadmap. Primitive by design, and yours.</p>
+                <span class="mode-coming">Coming Beta</span>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- ── PICK A COLOUR ─────────────────────────────────────────────────────── -->
+<section id="admin-skins">
+    <div class="wrap">
+        <h2>Pick a Colour, Any Colour</h2>
+        <p class="lede">The admin interface has sixteen colour themed skins available for it (so far). This one is Bumblebee, for those photographers who are ready to roll out. Don't see something you like? Use the skin designer to create something that tickles your pickle and add it to the repository for others to enjoy, too.</p>
+        <div class="admin-shots" style="margin-top: 24px;">
+            <a href="img/admin-dashboard.png" data-lb="img/admin-dashboard.png"><img src="img/admin-dashboard.png" alt="SnapSmack admin — dashboard"></a>
+            <a href="img/admin-newpost.png" data-lb="img/admin-newpost.png"><img src="img/admin-newpost.png" alt="SnapSmack admin — new post"></a>
+            <a href="img/admin-global.png" data-lb="img/admin-global.png"><img src="img/admin-global.png" alt="SnapSmack admin — global settings"></a>
+        </div>
+    </div>
+</section>
+
 
 <!-- ── SECURITY ──────────────────────────────────────────────────────────── -->
 <section id="security">
@@ -1774,7 +1888,7 @@ form.ml-block-form {
             <div class="coming-item">
                 <span class="tag">Skin</span>
                 <h3>The Grid</h3>
-                <p>The first carousel-native skin. The look and feel of Instagram circa 2018 — before it got Zuck-fucked. Curate your 3x3 grid with carousel rows stacked deep and single-image rows for visual impact. It's the skinnable Instagram experience everyone's been asking for, and it comes with a few surprises. More carousel-native skins are in development.</p>
+                <p>The flagship GRAMOFSMACK skin. Clean columns, tight spacing, single-image punctuation rows for visual impact — the grid format done properly. It's the reference implementation for what GRAMOFSMACK can look like when a skin is built for it from the ground up, and it ships with a few surprises. More carousel-native skins are in development.</p>
             </div>
             <div class="coming-item">
                 <span class="tag">Tools</span>
@@ -1790,6 +1904,16 @@ form.ml-block-form {
                 <span class="tag">Beta</span>
                 <h3>Oh Snap! — Skin Builder</h3>
                 <p>Design your own SnapSmack skin without touching code. Oh Snap! pulls your manifest, exposes every control, and lets you build and preview your skin visually in real time. AI-assisted for those who want a hand. Full CSS editor for those who'd rather just write it themselves. Ships with Beta.</p>
+            </div>
+            <div class="coming-item">
+                <span class="tag">Install Mode</span>
+                <h3>SMACKTALK</h3>
+                <p>For photographers who write. Longform photo essays, diary entries, personal narratives — writing and images at equal billing, the way the web was supposed to work before everything became a feed. No follower counts. No suggested posts. No algorithm deciding who reads you. Just a blog, a domain you own, and a place to put words and pictures together the way you mean them. Primitive by design, and yours to keep.</p>
+            </div>
+            <div class="coming-item">
+                <span class="tag">Editor Engine</span>
+                <h3>MOSAIC</h3>
+                <p>A layout engine built into the SMACKTALK post editor. Arrange multiple images into justified panel rows that flow inline with your writing — not below it, not in a separate gallery, but woven into the text as part of the story. Two images side by side. Three in a justified row. A full-width single shot to punctuate a moment. MOSAIC treats your photos as editorial elements, not attachments.</p>
             </div>
         </div>
     </div>
@@ -2136,4 +2260,3 @@ document.querySelectorAll('nav a').forEach(link => {
 </script>
 </body>
 </html>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
