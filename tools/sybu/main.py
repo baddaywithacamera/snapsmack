@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.9b"   # bump this on every rebuild
+BUILD_VERSION = "0.7.9c"   # bump this on every rebuild
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
@@ -42,6 +42,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import List, Optional
 
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from PIL import Image, ImageTk
 
 import config as cfg_module
@@ -89,6 +90,14 @@ FONT_BOLD    = ("Segoe UI", 9, "bold")
 FONT_SMALL   = ("Segoe UI", 8)
 FONT_MONO    = ("Consolas", 9)
 FONT_TITLE   = ("Segoe UI", 13, "bold")
+
+# Advanced Visual Match tab constants (ported from Fix Your Batch Up)
+MATCH_IMG_W   = 380    # max display width for preview images
+MATCH_IMG_H   = 260    # max display height
+FG_HIGH       = "#4EC994"   # green  — high confidence
+FG_MED        = "#D4872A"   # amber  — medium confidence
+FG_LOW        = "#FF3E3E"   # red    — low / no match
+FONT_CONF     = ("Segoe UI", 22, "bold")
 
 BG_SBAR      = "#0c0c0c"   # LED status bar background
 
@@ -563,6 +572,335 @@ class EntryList(tk.Frame):
 
 
 # ---------------------------------------------------------------------------
+# Advanced Visual Match — MatchRow widget
+# ---------------------------------------------------------------------------
+
+def _match_load_thumb(path: str, max_w: int = MATCH_IMG_W,
+                      max_h: int = MATCH_IMG_H) -> Optional['ImageTk.PhotoImage']:
+    """Load an image from disk, scale to fit, return a PhotoImage."""
+    try:
+        img = Image.open(path).convert('RGB')
+        w, h = img.size
+        scale = min(max_w / w, max_h / h, 1.0)
+        img = img.resize((max(1, int(w * scale)), max(1, int(h * scale))),
+                         Image.LANCZOS)
+        return ImageTk.PhotoImage(img)
+    except Exception:
+        return None
+
+
+def _match_haiku_to_filename(title: str, ext: str) -> str:
+    """Sanitize a title into a safe filename."""
+    invalid = r'\/:*?"<>|'
+    clean = ''.join(c for c in title if c not in invalid).strip()
+    return f"{(clean or 'untitled')}{ext}"
+
+
+class SybuMatchRow(tk.Frame):
+    """
+    One image-matching review row in the Advanced Visual Match tab.
+
+    Left   : server-side FTP copy (post title, thumbnail)
+    Centre : confidence score + match count + label
+    Right  : matched local original + Upload / Pick Different / Skip buttons
+
+    Drive credentials and folder ID are read from app._config — no separate
+    credential fields anywhere in this widget.
+    """
+
+    def __init__(self, parent, record: dict, result: dict, app: 'App'):
+        super().__init__(parent, bg=BG_CARD,
+                         highlightthickness=1, highlightbackground=BORDER)
+        self.record        = record
+        self.result        = result
+        self.app           = app
+        self._orig_photo   = None
+        self._srv_photo    = None
+        self._cancel_evt   = threading.Event()
+        self._approved_var = tk.BooleanVar(value=False)
+        self._build()
+
+    def _build(self):
+        # ── Left: server image ────────────────────────────────────────────
+        left = tk.Frame(self, bg=BG_CARD, width=MATCH_IMG_W + 10)
+        left.pack(side='left', fill='y', padx=(8, 4), pady=8)
+        left.pack_propagate(False)
+
+        srv_path = self._server_local_path()
+        self._blank_srv = tk.PhotoImage(width=1, height=1)
+        self._srv_lbl = tk.Label(left, bg=BG_MID,
+                                  width=MATCH_IMG_W, height=MATCH_IMG_H,
+                                  image=self._blank_srv, relief='flat')
+        self._srv_lbl.pack(fill='x')
+        if srv_path:
+            photo = _match_load_thumb(srv_path)
+            if photo:
+                self._srv_photo = photo
+                self._srv_lbl.configure(image=photo,
+                                        width=photo.width(), height=photo.height())
+            else:
+                self._srv_lbl.configure(text="Preview unavailable",
+                                        fg=FG_DIM, font=FONT_UI, compound='center')
+
+        title = self.record.get('img_title', 'Untitled')[:60]
+        tk.Label(left, text=title, bg=BG_CARD, fg=FG_MAIN,
+                 font=FONT_BOLD, wraplength=MATCH_IMG_W,
+                 justify='left', anchor='w').pack(fill='x', pady=(4, 0))
+        tk.Label(left, text=f"ID {self.record.get('snap_id', '?')}",
+                 bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_SMALL, anchor='w').pack(fill='x')
+
+        # ── Centre: confidence ────────────────────────────────────────────
+        mid = tk.Frame(self, bg=BG_CARD, width=160)
+        mid.pack(side='left', fill='y', padx=8)
+        mid.pack_propagate(False)
+
+        conf      = self.result.get('confidence', 0.0)
+        label_key = self.result.get('label', 'none')
+        conf_color = {'high': FG_HIGH, 'medium': FG_MED,
+                      'low': FG_LOW, 'none': FG_DIM}.get(label_key, FG_DIM)
+
+        conf_pct = f"{int(conf * 100)}%" if conf > 0 else "—"
+        tk.Label(mid, text=conf_pct, bg=BG_CARD, fg=conf_color,
+                 font=FONT_CONF).pack(pady=(50, 0))
+        tk.Label(mid, text="confidence", bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_SMALL).pack()
+
+        match_n = self.result.get('match_count', 0)
+        if match_n:
+            tk.Label(mid, text=f"{match_n} keypoints", bg=BG_CARD,
+                     fg=FG_DIM, font=FONT_SMALL).pack(pady=(4, 0))
+
+        label_text = {
+            'high':   "Auto-matched",
+            'medium': "Review suggested",
+            'low':    "Weak match",
+            'none':   "No match found",
+        }.get(label_key, "")
+        tk.Label(mid, text=label_text, bg=BG_CARD, fg=conf_color,
+                 font=FONT_SMALL, wraplength=150, justify='center').pack(pady=(6, 0))
+
+        # ── Right: original + buttons ─────────────────────────────────────
+        right = tk.Frame(self, bg=BG_CARD, width=MATCH_IMG_W + 100)
+        right.pack(side='left', fill='both', expand=True, padx=(4, 8), pady=8)
+
+        orig_frame = tk.Frame(right, bg=BG_CARD)
+        orig_frame.pack(side='top', fill='x')
+
+        self._blank_orig = tk.PhotoImage(width=1, height=1)
+        self._orig_lbl = tk.Label(orig_frame, bg=BG_MID,
+                                   width=MATCH_IMG_W, height=MATCH_IMG_H,
+                                   image=self._blank_orig, relief='flat')
+        self._orig_lbl.pack(side='left')
+
+        orig_path = self.result.get('match_path')
+        if not orig_path:
+            self._orig_lbl.configure(text="No match found\nClick 'Pick Different'",
+                                      fg=FG_DIM, font=FONT_UI, compound='center')
+        elif not os.path.isfile(orig_path):
+            self._orig_lbl.configure(text="File moved or deleted\nClick 'Pick Different'",
+                                      fg=FG_WARN, font=FONT_UI, compound='center')
+
+        self._orig_name_lbl = tk.Label(right, text=self._orig_basename(),
+                                        bg=BG_CARD, fg=FG_DIM,
+                                        font=FONT_SMALL, anchor='w')
+        self._orig_name_lbl.pack(fill='x', pady=(4, 6))
+
+        if orig_path and os.path.isfile(orig_path):
+            self._set_orig_image(orig_path)
+
+        # Buttons
+        btn_row = tk.Frame(right, bg=BG_CARD)
+        btn_row.pack(fill='x')
+
+        self._approve_chk = tk.Checkbutton(
+            btn_row, text="Approve", variable=self._approved_var,
+            bg=BG_CARD, fg=FG_DIM, font=FONT_UI,
+            selectcolor=BG_MID, activebackground=BG_CARD,
+            relief='flat', cursor='hand2',
+        )
+        self._approve_chk.pack(side='left', padx=(0, 8))
+
+        self._upload_btn = tk.Button(
+            btn_row, text="Upload",
+            bg=ACCENT, fg="#000000", font=FONT_BOLD,
+            relief='flat', cursor='hand2', width=10,
+            command=self._on_upload,
+        )
+        self._upload_btn.pack(side='left', padx=(0, 6))
+
+        self._cancel_btn = tk.Button(
+            btn_row, text="",
+            bg=BG_CARD, fg=BG_CARD, font=FONT_UI,
+            relief='flat', width=8, state='disabled',
+            command=self._on_cancel,
+        )
+        self._cancel_btn.pack(side='left', padx=(0, 6))
+
+        tk.Button(
+            btn_row, text="Pick Different",
+            bg=BG_HOVER, fg=FG_MAIN, font=FONT_UI,
+            relief='flat', cursor='hand2', width=14,
+            command=self._on_pick,
+        ).pack(side='left', padx=(0, 6))
+
+        tk.Button(
+            btn_row, text="Skip",
+            bg=BG_MID, fg=FG_DIM, font=FONT_UI,
+            relief='flat', cursor='hand2', width=6,
+            command=self._on_skip,
+        ).pack(side='left')
+
+    # ── Helpers ───────────────────────────────────────────────────────────
+
+    def _server_local_path(self) -> Optional[str]:
+        folder = self.app._match_srv_folder_var.get().strip()
+        img_file = self.record.get('img_file', '')
+        if not folder or not img_file:
+            return None
+        path = os.path.join(folder, os.path.basename(img_file))
+        return path if os.path.isfile(path) else None
+
+    def _set_orig_image(self, path: str):
+        photo = _match_load_thumb(path)
+        if photo:
+            self._orig_photo = photo
+            self._orig_lbl.configure(image=photo, text='',
+                                     width=photo.width(), height=photo.height())
+        self._orig_name_lbl.configure(text=os.path.basename(path))
+        self.result['match_path'] = path
+
+    def _orig_basename(self) -> str:
+        p = self.result.get('match_path', '')
+        return os.path.basename(p) if p else '—'
+
+    # ── Actions ───────────────────────────────────────────────────────────
+
+    def _on_upload(self):
+        match_path = self.result.get('match_path')
+        if not match_path:
+            messagebox.showwarning("No original selected",
+                                   "Use 'Pick Different' to choose the original.",
+                                   parent=self)
+            return
+        if not self.app._drive_service:
+            messagebox.showerror("Drive not connected",
+                                  "Auth Drive on the POST tab before uploading.",
+                                  parent=self)
+            return
+        self._upload_btn.configure(text="Queued…", state='disabled',
+                                   bg=FG_DIM, fg="#000000")
+        self._approved_var.set(False)
+        self.app._match_enqueue_upload(self)
+
+    def _start_upload(self, done_evt: threading.Event):
+        """Called by the drain thread to start the actual upload."""
+        match_path = self.result.get('match_path')
+        if not match_path or not os.path.isfile(match_path):
+            self._upload_btn.configure(text="Upload", state='normal',
+                                       bg=ACCENT, fg="#000000")
+            done_evt.set()
+            return
+
+        self._cancel_evt.clear()
+        self._upload_btn.configure(text="Uploading…", state='disabled',
+                                   bg=FG_WARN, fg="#000000")
+        self._cancel_btn.configure(text="Cancel", bg=BG_MID, fg=FG_DIM,
+                                   state='normal', cursor='hand2')
+        self.update_idletasks()
+
+        snap_id    = int(self.record['snap_id'])
+        folder_id  = self.app._config.get('drive_folder_id', '').strip() or None
+        drive_svc  = self.app._drive_service
+        client     = self.app._client
+        orig_path  = match_path
+        cancel_evt = self._cancel_evt
+
+        raw_title   = self.record.get('img_title', '').strip()
+        _, _ext     = os.path.splitext(orig_path)
+        drive_fname = (_match_haiku_to_filename(raw_title, _ext.lower())
+                       if raw_title else os.path.basename(orig_path))
+
+        def _worker():
+            import socket
+            import drive as drive_module
+            _prev = socket.getdefaulttimeout()
+            socket.setdefaulttimeout(180)
+            try:
+                drive_url = drive_module.upload(drive_svc, orig_path,
+                                                drive_fname, folder_id=folder_id)
+                if cancel_evt.is_set():
+                    self.after(0, self._mark_cancelled)
+                    return
+                client.backfill_update_link(snap_id, drive_url)
+                self.after(0, lambda: self._mark_done(drive_url))
+            except Exception as exc:
+                self.after(0, lambda: self._mark_error(str(exc)))
+            finally:
+                socket.setdefaulttimeout(_prev)
+                done_evt.set()
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _mark_done(self, drive_url: str):
+        self.result['_uploaded'] = True
+        self._cancel_btn.configure(text="", bg=BG_CARD, fg=BG_CARD, state='disabled')
+        self._upload_btn.configure(text="✓ Done", bg=FG_OK, fg="#000000",
+                                   state='disabled')
+        self.configure(highlightbackground=FG_OK)
+        self.app._match_on_row_done()
+        self.app._match_remove_row(self)
+        self.after(1500, self._dismiss)
+
+    def _dismiss(self):
+        try:
+            self.destroy()
+        except Exception:
+            pass
+        try:
+            self.app._match_inner.update_idletasks()
+            self.app._match_canvas.configure(
+                scrollregion=self.app._match_canvas.bbox('all'))
+        except Exception:
+            pass
+
+    def _mark_cancelled(self):
+        self._cancel_btn.configure(text="", bg=BG_CARD, fg=BG_CARD, state='disabled')
+        self._upload_btn.configure(text="Upload", bg=ACCENT, fg="#000000",
+                                   state='normal')
+        self.configure(highlightbackground=BORDER)
+
+    def _on_cancel(self):
+        self._cancel_evt.set()
+        self._cancel_btn.configure(text="Cancelling…", state='disabled')
+
+    def _mark_error(self, msg: str):
+        self._cancel_btn.configure(text="", bg=BG_CARD, fg=BG_CARD, state='disabled')
+        self._upload_btn.configure(text="Error — retry", bg=FG_ERR,
+                                   fg="#000000", state='normal')
+        messagebox.showerror("Upload failed", msg, parent=self)
+
+    def _on_pick(self):
+        folder_b = self.app._match_orig_folder_var.get().strip()
+        path = filedialog.askopenfilename(
+            title="Choose the original for this image",
+            initialdir=folder_b if folder_b and os.path.isdir(folder_b) else None,
+            filetypes=[('Image files', '*.jpg *.jpeg *.png *.webp *.JPG *.JPEG *.PNG'),
+                       ('All files', '*.*')],
+            parent=self,
+        )
+        if path:
+            self._set_orig_image(path)
+            self._upload_btn.configure(text="Upload", state='normal',
+                                       bg=ACCENT, fg="#000000")
+
+    def _on_skip(self):
+        self.app._match_on_row_done()
+        self.app._match_remove_row(self)
+        self.after(0, self._dismiss)
+
+
+# ---------------------------------------------------------------------------
 # Main application window
 # ---------------------------------------------------------------------------
 
@@ -727,7 +1065,7 @@ class App(tk.Tk):
         self._tab_indicators = {}
         tab_strip = tk.Frame(header, bg=BG_CARD)
         tab_strip.pack(side="left", padx=(28, 0), fill="y")
-        for _tname, _tlabel in [('post', 'POST'), ('audit', 'AUDIT'), ('repair', 'REPAIR'), ('settings', 'SETTINGS')]:
+        for _tname, _tlabel in [('post', 'POST'), ('audit', 'AUDIT'), ('repair', 'BASIC REPAIR'), ('match', 'ADV. MATCH'), ('settings', 'SETTINGS')]:
             _cell = tk.Frame(tab_strip, bg=BG_CARD)
             _cell.pack(side="left")
             _active = (_tname == 'post')
@@ -823,6 +1161,7 @@ class App(tk.Tk):
         self._audit_frame    = tk.Frame(self, bg=BG_DEEP)
         self._repair_frame   = tk.Frame(self, bg=BG_DEEP)
         self._settings_frame = tk.Frame(self, bg=BG_DEEP)
+        self._match_frame    = tk.Frame(self, bg=BG_DEEP)
         self._post_frame.pack(fill="both", expand=True)
         # other frames packed by _switch_tab()
 
@@ -1140,6 +1479,7 @@ class App(tk.Tk):
         # ── Build audit and repair tab content ────────────────────────
         self._build_audit_ui()
         self._build_repair_ui()
+        self._build_match_ui()
         self._build_settings_ui()
 
     # ------------------------------------------------------------------
@@ -1156,6 +1496,7 @@ class App(tk.Tk):
         self._post_frame.pack_forget()
         self._audit_frame.pack_forget()
         self._repair_frame.pack_forget()
+        self._match_frame.pack_forget()
         self._settings_frame.pack_forget()
         if tab == 'post':
             self._post_frame.pack(fill="both", expand=True)
@@ -1164,6 +1505,8 @@ class App(tk.Tk):
             self._refresh_audit_if_needed()
         elif tab == 'repair':
             self._repair_frame.pack(fill="both", expand=True)
+        elif tab == 'match':
+            self._match_frame.pack(fill="both", expand=True)
         elif tab == 'settings':
             self._settings_frame.pack(fill="both", expand=True)
         self._active_tab = tab
@@ -1436,6 +1779,307 @@ class App(tk.Tk):
             tk.Label(f, text=f"  —  {subtitle}", bg=BG_DEEP, fg=FG_DIM,
                      font=FONT_SMALL, anchor="w").pack(side="left")
         tk.Frame(parent, bg=BORDER, height=1).pack(fill="x", padx=8)
+
+    # ------------------------------------------------------------------
+    # Advanced Visual Match tab UI
+    # ------------------------------------------------------------------
+
+    def _build_match_ui(self):
+        """Populate self._match_frame — two-stage pHash + SIFT visual matching."""
+        p = self._match_frame
+
+        # ── Top bar ───────────────────────────────────────────────────
+        top = tk.Frame(p, bg=BG_CARD, height=44)
+        top.pack(fill="x")
+        top.pack_propagate(False)
+        tk.Label(top, text="ADVANCED VISUAL MATCH", bg=BG_CARD, fg=ACCENT,
+                 font=FONT_TITLE).pack(side="left", padx=16, anchor="center")
+        tk.Frame(p, bg=BORDER, height=1).pack(fill="x")
+
+        # ── Config strip ──────────────────────────────────────────────
+        cfg = tk.Frame(p, bg=BG_DEEP, padx=14, pady=10)
+        cfg.pack(fill="x")
+
+        self._match_srv_folder_var  = tk.StringVar()
+        self._match_orig_folder_var = tk.StringVar()
+
+        def _folder_row(parent, label, var, col):
+            cell = tk.Frame(parent, bg=BG_DEEP)
+            cell.grid(row=0, column=col, sticky="ew", padx=(0, 16))
+            tk.Label(cell, text=label, bg=BG_DEEP, fg=FG_DIM,
+                     font=FONT_SMALL).pack(anchor="w")
+            row = tk.Frame(cell, bg=BG_DEEP)
+            row.pack(fill="x", pady=(2, 0))
+            tk.Entry(row, textvariable=var,
+                     bg=BG_MID, fg=FG_MAIN, font=FONT_UI,
+                     relief="flat", insertbackground=ACCENT).pack(
+                         side="left", fill="x", expand=True, padx=(0, 4))
+            self._mini_btn(row, "…",
+                lambda v=var: v.set(
+                    filedialog.askdirectory(
+                        title="Select folder",
+                        initialdir=v.get() if v.get() and os.path.isdir(v.get()) else "~")
+                    or v.get()
+                )
+            ).pack(side="left")
+
+        cfg.columnconfigure(0, weight=1)
+        cfg.columnconfigure(1, weight=1)
+        _folder_row(cfg, "SERVER FOLDER (local FTP copy)",
+                    self._match_srv_folder_var, 0)
+        _folder_row(cfg, "ORIGINALS FOLDER (local photos)",
+                    self._match_orig_folder_var, 1)
+
+        # Drive status + Match button
+        ctrl = tk.Frame(p, bg=BG_CARD, padx=14, pady=8)
+        ctrl.pack(fill="x")
+
+        self._match_drive_lbl = tk.Label(ctrl, text="", bg=BG_CARD,
+                                          fg=FG_DIM, font=FONT_SMALL)
+        self._match_drive_lbl.pack(side="left")
+
+        self._match_status_lbl = tk.Label(ctrl, text="", bg=BG_CARD,
+                                           fg=FG_DIM, font=FONT_SMALL)
+        self._match_status_lbl.pack(side="left", padx=(16, 0))
+
+        self._match_prog_var = tk.DoubleVar()
+        self._match_prog = ttk.Progressbar(ctrl, variable=self._match_prog_var,
+                                            mode="determinate", length=220)
+        self._match_prog.pack(side="left", padx=(16, 0))
+        self._match_prog.pack_forget()   # shown only while matching
+
+        self._match_stop_flag = False
+        self._match_running   = False
+
+        self._match_stop_btn = ttk.Button(ctrl, text="■  Stop",
+                                           style="Ghost.TButton",
+                                           command=self._on_match_stop,
+                                           state="disabled")
+        self._match_stop_btn.pack(side="right", padx=(8, 0))
+
+        self._match_btn = ttk.Button(ctrl, text="▶  Run Matching",
+                                      style="Accent.TButton",
+                                      command=self._on_match_start)
+        self._match_btn.pack(side="right")
+
+        tk.Frame(p, bg=BORDER, height=1).pack(fill="x")
+
+        # ── Scrollable MatchRow area ──────────────────────────────────
+        canvas_frame = tk.Frame(p, bg=BG_DEEP)
+        canvas_frame.pack(fill="both", expand=True)
+
+        self._match_canvas = tk.Canvas(canvas_frame, bg=BG_DEEP,
+                                        highlightthickness=0)
+        mvbar = ttk.Scrollbar(canvas_frame, orient="vertical",
+                              command=self._match_canvas.yview)
+        self._match_canvas.configure(yscrollcommand=mvbar.set)
+        mvbar.pack(side="right", fill="y")
+        self._match_canvas.pack(side="left", fill="both", expand=True)
+
+        self._match_inner = tk.Frame(self._match_canvas, bg=BG_DEEP)
+        mwin = self._match_canvas.create_window(
+            (0, 0), window=self._match_inner, anchor="nw")
+        self._match_inner.bind("<Configure>", lambda e: self._match_canvas.configure(
+            scrollregion=self._match_canvas.bbox("all")))
+        self._match_canvas.bind("<Configure>", lambda e:
+            self._match_canvas.itemconfigure(mwin, width=e.width))
+        self._match_canvas.bind_all("<MouseWheel>",
+            lambda e: self._match_canvas.yview_scroll(
+                int(-1 * (e.delta / 120)), "units")
+            if self._active_tab == 'match' else None)
+
+        self._match_placeholder = tk.Label(
+            self._match_inner,
+            text=(
+                "Pick a server folder and originals folder, then click Run Matching.\n\n"
+                "Stage 1: pHash pre-filter narrows to the 10 most similar candidates.\n"
+                "Stage 2: SIFT keypoint matching selects the best match.\n\n"
+                "Requires Drive auth on the POST tab to upload confirmed matches."
+            ),
+            bg=BG_DEEP, fg=FG_DIM, font=FONT_UI,
+            justify="left", anchor="w", wraplength=680)
+        self._match_placeholder.pack(padx=20, pady=24, anchor="w")
+
+        # Internal state
+        self._match_row_widgets: list  = []
+        self._match_done_count: int    = 0
+        self._match_total_count: int   = 0
+        self._match_upload_queue       = queue.Queue()
+        self._match_upload_running     = False
+
+        # Refresh drive status whenever this tab becomes active
+        self.after(500, self._match_refresh_drive_status)
+
+    def _match_refresh_drive_status(self):
+        """Update the Drive status label in the match tab."""
+        if not hasattr(self, '_match_drive_lbl'):
+            return
+        if self._drive_service:
+            self._match_drive_lbl.configure(
+                text="● Drive connected — uploads ready", fg=FG_OK)
+        else:
+            self._match_drive_lbl.configure(
+                text="● Drive not connected — auth on POST tab before uploading",
+                fg=FG_WARN)
+
+    def _on_match_start(self):
+        """Validate folders and launch two-stage matching in a thread pool."""
+        srv_folder  = self._match_srv_folder_var.get().strip()
+        orig_folder = self._match_orig_folder_var.get().strip()
+
+        if not srv_folder or not os.path.isdir(srv_folder):
+            messagebox.showerror("Server folder missing",
+                                  "Select a valid server folder (local FTP copy).",
+                                  parent=self)
+            return
+        if not orig_folder or not os.path.isdir(orig_folder):
+            messagebox.showerror("Originals folder missing",
+                                  "Select a valid originals folder.",
+                                  parent=self)
+            return
+
+        # Collect image files from both folders
+        _img_exts = {'.jpg', '.jpeg', '.png', '.webp'}
+        srv_files  = [os.path.join(srv_folder, f)
+                      for f in os.listdir(srv_folder)
+                      if os.path.splitext(f.lower())[1] in _img_exts]
+        orig_files = [os.path.join(orig_folder, f)
+                      for f in os.listdir(orig_folder)
+                      if os.path.splitext(f.lower())[1] in _img_exts]
+
+        if not srv_files:
+            messagebox.showinfo("No images", "No images found in the server folder.",
+                                parent=self)
+            return
+        if not orig_files:
+            messagebox.showinfo("No originals",
+                                "No images found in the originals folder.", parent=self)
+            return
+
+        # Clear previous results
+        for w in self._match_inner.winfo_children():
+            w.destroy()
+        self._match_row_widgets.clear()
+        self._match_done_count  = 0
+        self._match_total_count = len(srv_files)
+
+        self._match_running   = True
+        self._match_stop_flag = False
+        self._match_btn.configure(state="disabled")
+        self._match_stop_btn.configure(state="normal")
+        self._match_prog.configure(maximum=len(srv_files))
+        self._match_prog_var.set(0)
+        self._match_prog.pack(side="left", padx=(16, 0))
+        self._match_status_lbl.configure(
+            text=f"Hashing {len(orig_files)} originals…", fg=FG_WARN)
+        self._match_refresh_drive_status()
+
+        def _run():
+            import sys as _sys
+            # Make matcher importable by worker processes
+            _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            from matcher import match_one, phash_file
+
+            # Pre-hash originals (fast — all in-process)
+            orig_pairs = []
+            for op in orig_files:
+                h = phash_file(op)
+                orig_pairs.append((op, h))
+
+            self.after(0, lambda: self._match_status_lbl.configure(
+                text=f"Matching {len(srv_files)} server images…", fg=FG_WARN))
+
+            import math
+            max_workers = max(1, min(4, math.floor(os.cpu_count() * 0.75)))
+
+            done = 0
+            args_list = [(sp, orig_pairs) for sp in srv_files]
+
+            with ProcessPoolExecutor(max_workers=max_workers) as pool:
+                futures = {pool.submit(match_one, a): a[0] for a in args_list}
+                for fut in as_completed(futures):
+                    if self._match_stop_flag:
+                        pool.shutdown(wait=False, cancel_futures=True)
+                        break
+                    try:
+                        result = fut.result()
+                    except Exception:
+                        result = {'server_path': futures[fut],
+                                  'match_path': None, 'confidence': 0.0,
+                                  'match_count': 0, 'candidates': [],
+                                  'label': 'none'}
+
+                    # Build a minimal record dict from server filename
+                    sp      = result['server_path']
+                    base    = os.path.splitext(os.path.basename(sp))[0]
+                    record  = {'snap_id': base, 'img_title': base,
+                                'img_file': sp}
+
+                    done += 1
+                    _done = done
+                    _res  = dict(result)
+                    _rec  = dict(record)
+                    self.after(0, lambda r=_rec, rs=_res, d=_done: (
+                        self._match_add_row(r, rs),
+                        self._match_prog_var.set(d),
+                        self._match_status_lbl.configure(
+                            text=f"{d} / {len(srv_files)} matched", fg=FG_WARN),
+                    ))
+
+            self.after(0, self._on_match_done)
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _match_add_row(self, record: dict, result: dict):
+        row = SybuMatchRow(self._match_inner, record, result, self)
+        row.pack(fill="x", padx=8, pady=(0, 4))
+        self._match_row_widgets.append(row)
+        self._match_canvas.configure(
+            scrollregion=self._match_canvas.bbox("all"))
+
+    def _on_match_done(self):
+        self._match_running = False
+        self._match_btn.configure(state="normal")
+        self._match_stop_btn.configure(state="disabled")
+        self._match_prog.pack_forget()
+        total = len(self._match_row_widgets)
+        self._match_status_lbl.configure(
+            text=f"Done — {total} image{'s' if total != 1 else ''} to review.",
+            fg=FG_OK if total else FG_DIM)
+
+    def _on_match_stop(self):
+        self._match_stop_flag = True
+        self._match_stop_btn.configure(state="disabled")
+        self._match_status_lbl.configure(text="Stopping…", fg=FG_WARN)
+
+    def _match_on_row_done(self):
+        self._match_done_count += 1
+
+    def _match_remove_row(self, row: 'SybuMatchRow'):
+        if row in self._match_row_widgets:
+            self._match_row_widgets.remove(row)
+
+    def _match_enqueue_upload(self, row: 'SybuMatchRow'):
+        self._match_upload_queue.put(row)
+        if not self._match_upload_running:
+            self._match_drain_uploads()
+
+    def _match_drain_uploads(self):
+        """Serially drain the upload queue — one upload at a time."""
+        try:
+            row = self._match_upload_queue.get_nowait()
+        except queue.Empty:
+            self._match_upload_running = False
+            return
+        self._match_upload_running = True
+        done_evt = threading.Event()
+        row._start_upload(done_evt)
+
+        def _wait():
+            done_evt.wait()
+            self.after(0, self._match_drain_uploads)
+
+        threading.Thread(target=_wait, daemon=True).start()
 
     # ------------------------------------------------------------------
     # Settings tab UI
@@ -1840,7 +2484,7 @@ class App(tk.Tk):
         top = tk.Frame(p, bg=BG_CARD, height=44)
         top.pack(fill="x")
         top.pack_propagate(False)
-        tk.Label(top, text="REPAIR", bg=BG_CARD, fg=ACCENT,
+        tk.Label(top, text="BASIC REPAIR & MATCH", bg=BG_CARD, fg=ACCENT,
                  font=FONT_TITLE).pack(side="left", padx=16, anchor="center")
         tk.Frame(p, bg=BORDER, height=1).pack(fill="x")
 

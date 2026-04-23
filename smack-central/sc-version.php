@@ -7,5 +7,5 @@
  * to determine whether an update is available.
  */
 
-define('SC_VERSION',  '0.7.17');
-define('SC_CODENAME', 'Hot Seat');
+define('SC_VERSION',  '0.7.18');
+define('SC_CODENAME', 'Bench Warmer');
