@@ -8,13 +8,19 @@
 
 require_once __DIR__ . '/sc-auth.php';
 
-$pdo  = sc_enemy_db();
 $msg  = '';
 $err  = '';
 
+try {
+    $pdo = sc_enemy_db();
+} catch (Throwable $e) {
+    $err = 'SMACK THE ENEMY DB unavailable: ' . htmlspecialchars($e->getMessage());
+    $pdo = null;
+}
+
 // ── POST actions ──────────────────────────────────────────────────────────────
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($pdo && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $action = $_POST['action'] ?? '';
 
@@ -60,13 +66,198 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->prepare("DELETE FROM ste_score_cache WHERE fingerprint_id = ?")->execute([$fp_id]);
         $msg = "Fingerprint score cleared.";
     }
+
+    if ($action === 'dismiss_style_cluster') {
+        // Mark a pair of fingerprint IDs as a confirmed false positive
+        $a = (int)($_POST['fp_a'] ?? 0);
+        $b = (int)($_POST['fp_b'] ?? 0);
+        if ($a && $b) {
+            $sc_pdo      = sc_db();
+            $dismissed   = json_decode(
+                $sc_pdo->query("SELECT setting_val FROM sc_settings WHERE setting_key='ste_style_dismissed' LIMIT 1")->fetchColumn() ?: '[]',
+                true
+            ) ?: [];
+            $pair        = [$a < $b ? $a : $b, $a < $b ? $b : $a];
+            if (!in_array($pair, $dismissed, true)) $dismissed[] = $pair;
+            $sc_pdo->prepare("INSERT INTO sc_settings (setting_key, setting_val) VALUES ('ste_style_dismissed', ?)
+                              ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+                    ->execute([json_encode($dismissed)]);
+            $msg = "Cluster dismissed — pair will not appear in future analysis runs.";
+        }
+    }
+
+    if ($action === 'escalate_style_cluster') {
+        // Escalate all fingerprints in a cluster to the highest colour among them
+        $fp_ids_raw = $_POST['fp_ids'] ?? '';
+        $fp_ids     = array_filter(array_map('intval', explode(',', $fp_ids_raw)));
+        $target_col = $_POST['target_colour'] ?? '';
+        $valid_cols = ['yellow','orange','red','black'];
+        if ($fp_ids && in_array($target_col, $valid_cols, true)) {
+            $placeholders = implode(',', array_fill(0, count($fp_ids), '?'));
+            $pdo->prepare("UPDATE ste_fingerprints SET colour_level = ? WHERE id IN ({$placeholders})")
+                ->execute(array_merge([$target_col], $fp_ids));
+            $msg = "Escalated " . count($fp_ids) . " fingerprint(s) to " . strtoupper($target_col) . ".";
+        }
+    }
 }
 
-require_once __DIR__ . '/sc-enemy-scoring.php';
+if ($pdo) require_once __DIR__ . '/sc-enemy-scoring.php';
+
+// ── Style analysis helper ─────────────────────────────────────────────────────
+
+/**
+ * Pull all non-expired style vectors, compute pairwise cosine similarity,
+ * return connected clusters above the 0.80 threshold.
+ *
+ * Returns [$clusters, $ran] where $clusters is an array of cluster arrays
+ * and $ran is always true on success.
+ */
+function ste_style_run_analysis(PDO $pdo): array {
+    // Load dismissed pairs from SC settings
+    try {
+        $sc_pdo    = sc_db();
+        $dismissed = json_decode(
+            $sc_pdo->query("SELECT setting_val FROM sc_settings WHERE setting_key='ste_style_dismissed' LIMIT 1")->fetchColumn() ?: '[]',
+            true
+        ) ?: [];
+    } catch (Exception $e) {
+        $dismissed = [];
+    }
+
+    // Pull vectors for non-green flagged fingerprints with valid style data
+    $rows = $pdo->query("
+        SELECT sv.fingerprint_id, sv.vector, sv.word_count, sv.comment_count,
+               f.ban_type, f.ban_value, f.score, f.colour_level,
+               GROUP_CONCAT(DISTINCT ss.site_url ORDER BY ss.site_url SEPARATOR ', ') AS reporting_sites
+        FROM ste_style_vectors sv
+        JOIN ste_fingerprints f ON f.id = sv.fingerprint_id
+        JOIN ste_sites ss        ON ss.id = sv.site_id
+        WHERE sv.expires_at >= CURDATE()
+          AND f.colour_level != 'green'
+        GROUP BY sv.fingerprint_id
+        LIMIT 2000
+    ")->fetchAll();
+
+    if (count($rows) < 2) return [[], true];
+
+    // Decode vectors
+    $fps = [];
+    foreach ($rows as $row) {
+        $vec = json_decode($row['vector'], true);
+        if (!is_array($vec) || count($vec) !== 25) continue;
+        $fps[$row['fingerprint_id']] = array_merge($row, ['vec' => array_map('floatval', $vec)]);
+    }
+
+    $ids = array_keys($fps);
+    $n   = count($ids);
+    if ($n < 2) return [[], true];
+
+    // Union-find
+    $parent = array_combine($ids, $ids);
+    $find   = function(int $x) use (&$parent, &$find): int {
+        if ($parent[$x] !== $x) $parent[$x] = $find($parent[$x]);
+        return $parent[$x];
+    };
+    $union  = function(int $a, int $b) use (&$parent, &$find): void {
+        $ra = $find($a); $rb = $find($b);
+        if ($ra !== $rb) $parent[$rb] = $ra;
+    };
+
+    // Edge data: keep highest similarity per pair for display
+    $edges = [];
+
+    for ($i = 0; $i < $n - 1; $i++) {
+        for ($j = $i + 1; $j < $n; $j++) {
+            $idA = $ids[$i]; $idB = $ids[$j];
+
+            // Skip dismissed pairs
+            $pair = [$idA < $idB ? $idA : $idB, $idA < $idB ? $idB : $idA];
+            if (in_array($pair, $dismissed, true)) continue;
+
+            $vA  = $fps[$idA]['vec'];
+            $vB  = $fps[$idB]['vec'];
+            $sim = ste_style_cosine($vA, $vB);
+
+            if ($sim >= 0.80) {
+                $union($idA, $idB);
+                $key = $idA . '_' . $idB;
+                $edges[$key] = ['a' => $idA, 'b' => $idB, 'sim' => $sim];
+            }
+        }
+    }
+
+    // Group into clusters
+    $groups = [];
+    foreach ($ids as $id) {
+        $root = $find($id);
+        $groups[$root][] = $id;
+    }
+
+    $clusters = [];
+    foreach ($groups as $members) {
+        if (count($members) < 2) continue;
+
+        // Find max similarity within the cluster
+        $max_sim = 0.0;
+        $cluster_edges = [];
+        for ($i = 0; $i < count($members) - 1; $i++) {
+            for ($j = $i + 1; $j < count($members); $j++) {
+                $a = $members[$i]; $b = $members[$j];
+                $key = $a . '_' . $b;
+                $rkey = $b . '_' . $a;
+                $sim = $edges[$key]['sim'] ?? ($edges[$rkey]['sim'] ?? 0.0);
+                if ($sim > 0) {
+                    $cluster_edges[] = ['a' => $a, 'b' => $b, 'sim' => $sim];
+                    $max_sim = max($max_sim, $sim);
+                }
+            }
+        }
+
+        // Determine confidence
+        if ($max_sim >= 0.95)      $confidence = 'STRONG MATCH';
+        elseif ($max_sim >= 0.90)  $confidence = 'LIKELY MATCH';
+        else                       $confidence = 'POSSIBLE MATCH';
+
+        // Target colour = highest colour in cluster
+        $colour_order  = ['green'=>0,'yellow'=>1,'orange'=>2,'red'=>3,'black'=>4];
+        $target_colour = 'yellow';
+        foreach ($members as $mid) {
+            $col = $fps[$mid]['colour_level'];
+            if (($colour_order[$col] ?? 0) > ($colour_order[$target_colour] ?? 0)) {
+                $target_colour = $col;
+            }
+        }
+
+        $clusters[] = [
+            'members'       => array_map(fn($mid) => $fps[$mid], $members),
+            'edges'         => $cluster_edges,
+            'max_sim'       => $max_sim,
+            'confidence'    => $confidence,
+            'target_colour' => $target_colour,
+            'member_ids'    => implode(',', $members),
+        ];
+    }
+
+    // Sort by confidence desc
+    usort($clusters, fn($a, $b) => $b['max_sim'] <=> $a['max_sim']);
+
+    return [$clusters, true];
+}
+
+function ste_style_cosine(array $a, array $b): float {
+    $dot = $magA = $magB = 0.0;
+    for ($i = 0; $i < 25; $i++) {
+        $dot  += $a[$i] * $b[$i];
+        $magA += $a[$i] * $a[$i];
+        $magB += $b[$i] * $b[$i];
+    }
+    $denom = sqrt($magA) * sqrt($magB);
+    return $denom > 0 ? round($dot / $denom, 4) : 0.0;
+}
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
-try {
+try { if (!$pdo) throw new PDOException($err ?: 'No DB connection.');
     $stats = [
         'sites_active'  => (int)$pdo->query("SELECT COUNT(*) FROM ste_sites WHERE status = 'active'")->fetchColumn(),
         'sites_opted_out' => (int)$pdo->query("SELECT COUNT(*) FROM ste_sites WHERE status = 'opted_out'")->fetchColumn(),
@@ -77,7 +268,8 @@ try {
         'total_allows'  => (int)$pdo->query("SELECT COUNT(*) FROM ste_allow_votes")->fetchColumn(),
         'black_count'   => (int)$pdo->query("SELECT COUNT(*) FROM ste_fingerprints WHERE colour_level = 'black'")->fetchColumn(),
         'red_count'     => (int)$pdo->query("SELECT COUNT(*) FROM ste_fingerprints WHERE colour_level = 'red'")->fetchColumn(),
-        'clusters_open' => (int)$pdo->query("SELECT COUNT(*) FROM ste_coordination_clusters WHERE resolved = 0")->fetchColumn(),
+        'clusters_open'  => (int)$pdo->query("SELECT COUNT(*) FROM ste_coordination_clusters WHERE resolved = 0")->fetchColumn(),
+        'style_vectors'  => (int)$pdo->query("SELECT COUNT(*) FROM ste_style_vectors WHERE expires_at >= CURDATE()")->fetchColumn(),
     ];
 
     $top_fps = $pdo->query("
@@ -109,11 +301,19 @@ try {
         LIMIT 20
     ")->fetchAll();
 
+    // ── Style analysis (run on demand only) ──────────────────────────────────
+    $style_clusters  = [];
+    $style_ran       = false;
+    if (isset($_POST['action']) && $_POST['action'] === 'run_style_analysis') {
+        [$style_clusters, $style_ran] = ste_style_run_analysis($pdo);
+    }
+
     $db_ok = true;
 } catch (PDOException $e) {
     $err   = "SMACK THE ENEMY DB unavailable: " . htmlspecialchars($e->getMessage());
     $db_ok = false;
     $stats = $top_fps = $sites = $clusters = [];
+    $style_clusters = []; $style_ran = false;
 }
 
 include __DIR__ . '/sc-layout-top.php';
@@ -136,8 +336,8 @@ include __DIR__ . '/sc-layout-top.php';
 .ste-panel { display:none; } .ste-panel.active { display:block; }
 </style>
 
-<h2 style="margin-bottom:4px;">☠ SMACK THE ENEMY</h2>
-<p style="color:#888; margin-bottom:24px;">Shield Tier 2 — Network Reputation Dashboard</p>
+<h2 style="margin-bottom:4px;">SMACK THE ENEMY</h2>
+<p style="color:#888; margin-bottom:24px;">Shield Tier 3 — Network Reputation &amp; Style Analysis</p>
 
 <?php if ($msg): ?><div class="sc-msg"><?php echo htmlspecialchars($msg); ?></div><?php endif; ?>
 <?php if ($err): ?><div class="sc-error"><?php echo $err; ?></div><?php endif; ?>
@@ -153,12 +353,14 @@ include __DIR__ . '/sc-layout-top.php';
     <div class="ste-stat"><div class="num" style="color:#ff9800"><?php echo $stats['red_count']; ?></div><div class="lbl">Red</div></div>
     <div class="ste-stat"><div class="num" style="color:<?php echo $stats['clusters_open'] ? '#ffc107' : '#4caf50'; ?>"><?php echo $stats['clusters_open']; ?></div><div class="lbl">Open Clusters</div></div>
     <div class="ste-stat"><div class="num" style="color:<?php echo $stats['quarantined'] ? '#ffc107' : '#4caf50'; ?>"><?php echo $stats['quarantined']; ?></div><div class="lbl">Quarantined</div></div>
+    <div class="ste-stat"><div class="num" style="color:#90caf9"><?php echo $stats['style_vectors']; ?></div><div class="lbl">Style Vectors</div></div>
 </div>
 
 <div class="ste-tabs">
     <button class="ste-tab active" onclick="steTab('fps')">TOP SCORES</button>
     <button class="ste-tab" onclick="steTab('sites')">SITES</button>
     <button class="ste-tab" onclick="steTab('clusters')">CLUSTERS <?php if($stats['clusters_open']): ?><span style="color:#ffc107">(<?php echo $stats['clusters_open']; ?>)</span><?php endif; ?></button>
+    <button class="ste-tab" onclick="steTab('style')">STYLE ANALYSIS <?php if($stats['style_vectors']): ?><span style="color:#90caf9">(<?php echo $stats['style_vectors']; ?>)</span><?php endif; ?></button>
     <button class="ste-tab" onclick="steTab('help')" style="margin-left:auto">HOW IT WORKS</button>
 </div>
 
@@ -275,6 +477,102 @@ include __DIR__ . '/sc-layout-top.php';
         <?php endforeach; ?>
         </tbody>
     </table>
+    <?php endif; ?>
+</div>
+
+<!-- STYLE ANALYSIS ──────────────────────────────────────────────────────── -->
+<div class="ste-panel" id="panel-style">
+    <p style="color:#aaa; font-size:0.88rem; margin-bottom:20px; max-width:680px;">
+        Compares writing style vectors across all flagged fingerprints. Clusters fingerprints
+        that appear to be the same person using different identities to evade a prior ban.
+        Run this manually every week or two. Raw comment text is never stored here — only numeric feature vectors.
+    </p>
+
+    <?php if (!$style_ran): ?>
+    <form method="post" action="sc-enemy-admin.php#panel-style">
+        <input type="hidden" name="action" value="run_style_analysis">
+        <button type="submit" class="sc-btn sc-btn-primary">Run Style Analysis (<?php echo $stats['style_vectors']; ?> vectors)</button>
+    </form>
+    <?php elseif (empty($style_clusters)): ?>
+    <p style="color:#4caf50; padding:12px 0">
+        ✓ Analysis complete — no suspicious clusters found across <?php echo $stats['style_vectors']; ?> vectors.
+    </p>
+    <?php else: ?>
+    <p style="color:#ffc107; margin-bottom:20px; font-size:0.88rem;">
+        Found <?php echo count($style_clusters); ?> cluster<?php echo count($style_clusters) !== 1 ? 's' : ''; ?> of fingerprints with similar writing style.
+    </p>
+
+    <?php foreach ($style_clusters as $ci => $cl):
+        $conf_colour = match($cl['confidence']) {
+            'STRONG MATCH' => '#f44336',
+            'LIKELY MATCH' => '#ff9800',
+            default        => '#ffc107',
+        };
+    ?>
+    <div style="border:1px solid #333; border-radius:4px; padding:16px; margin-bottom:20px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+            <span style="color:<?php echo $conf_colour; ?>; font-family:monospace; font-size:0.82rem; font-weight:bold; letter-spacing:0.08em;">
+                <?php echo $cl['confidence']; ?> — <?php echo number_format($cl['max_sim'] * 100, 1); ?>% similarity
+            </span>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <form method="post" style="display:inline" onsubmit="return confirm('Escalate all fingerprints in this cluster to <?php echo strtoupper($cl['target_colour']); ?>?')">
+                    <input type="hidden" name="action" value="escalate_style_cluster">
+                    <input type="hidden" name="fp_ids" value="<?php echo htmlspecialchars($cl['member_ids']); ?>">
+                    <input type="hidden" name="target_colour" value="<?php echo htmlspecialchars($cl['target_colour']); ?>">
+                    <button type="submit" class="sc-btn sc-btn--sm" style="border-color:<?php echo $conf_colour; ?>">
+                        Escalate All to <?php echo strtoupper($cl['target_colour']); ?>
+                    </button>
+                </form>
+                <?php if (count($cl['members']) === 2):
+                    $idA = $cl['members'][0]['fingerprint_id'];
+                    $idB = $cl['members'][1]['fingerprint_id'];
+                ?>
+                <form method="post" style="display:inline">
+                    <input type="hidden" name="action" value="dismiss_style_cluster">
+                    <input type="hidden" name="fp_a" value="<?php echo (int)$idA; ?>">
+                    <input type="hidden" name="fp_b" value="<?php echo (int)$idB; ?>">
+                    <button type="submit" class="sc-btn sc-btn--sm sc-btn--dim">Dismiss</button>
+                </form>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <table class="sc-table" style="width:100%; font-size:0.82rem;">
+            <thead><tr>
+                <th>Hash</th><th>Type</th><th>Level</th>
+                <th style="text-align:center">Score</th>
+                <th>Reported by</th>
+            </tr></thead>
+            <tbody>
+            <?php foreach ($cl['members'] as $m): ?>
+            <tr>
+                <td><code><?php echo substr($m['ban_value'], 0, 16); ?>…</code></td>
+                <td><small><?php echo htmlspecialchars($m['ban_type']); ?></small></td>
+                <td>
+                    <span class="colour-dot dot-<?php echo $m['colour_level']; ?>"></span>
+                    <?php echo strtoupper($m['colour_level']); ?>
+                </td>
+                <td style="text-align:center"><?php echo number_format($m['score'], 2); ?></td>
+                <td><small style="color:#aaa"><?php echo htmlspecialchars($m['reporting_sites'] ?? '—'); ?></small></td>
+            </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <?php if (count($cl['edges']) > 0): ?>
+        <div style="margin-top:10px; font-size:0.78rem; color:#666; font-family:monospace;">
+            <?php foreach ($cl['edges'] as $edge): ?>
+            <span style="margin-right:16px;">
+                …<?php echo substr($cl['members'][array_search($edge['a'], array_column($cl['members'], 'fingerprint_id'))]['ban_value'] ?? '', 12, 8); ?>
+                ↔
+                …<?php echo substr($cl['members'][array_search($edge['b'], array_column($cl['members'], 'fingerprint_id'))]['ban_value'] ?? '', 12, 8); ?>
+                <span style="color:<?php echo $conf_colour; ?>"><?php echo number_format($edge['sim'] * 100, 1); ?>%</span>
+            </span>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+    </div>
+    <?php endforeach; ?>
     <?php endif; ?>
 </div>
 

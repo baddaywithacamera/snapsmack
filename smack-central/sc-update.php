@@ -147,7 +147,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull'
 
         // 3. Copy files into place ────────────────────────────────────────────
         // Skip sc-config.php — always preserve the live config.
-        $protected = ['sc-config.php'];
+        // Skip sc-db.php — paired with sc-config.php; adding/changing DB connections
+        // requires manual deployment so a bad tag cannot silently drop sc_enemy_db()
+        // or sc_forum_db() from a running install.
+        $protected = ['sc-config.php', 'sc-db.php'];
         $dest_dir  = __DIR__ . '/';
         $copied    = 0;
         $skipped   = 0;

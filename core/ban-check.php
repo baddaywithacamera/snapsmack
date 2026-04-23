@@ -119,9 +119,24 @@ function add_ban(PDO $pdo, string $ban_type, string $ban_value, string $reason =
             if ($ste_enabled) {
                 $ste_key = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='ste_api_key' LIMIT 1")->fetchColumn() ?: '';
                 if ($ste_key !== '') {
-                    // Translate local ban_type to STE ban_type (email stored as email_hash locally)
+                    // Translate local ban_type to STE ban_type
                     $ste_type = ($ban_type === 'email_hash') ? 'email' : $ban_type;
-                    ste_client_report($ste_key, [['ban_type' => $ste_type, 'ban_value' => $ban_value]]);
+
+                    // Extract stylometric vector from this commenter's comment history.
+                    // Raw text never leaves this server — only the numeric vector is transmitted.
+                    $style_vector = null;
+                    if (!isset($ste_style_loaded)) {
+                        @include_once __DIR__ . '/ste-style.php';
+                        $ste_style_loaded = true;
+                    }
+                    if (function_exists('ste_style_extract')) {
+                        $comment_texts = _ste_fetch_comment_texts($pdo, $ban_type, $ban_value);
+                        if (!empty($comment_texts)) {
+                            $style_vector = ste_style_extract($comment_texts);
+                        }
+                    }
+
+                    ste_client_report($ste_key, [['ban_type' => $ste_type, 'ban_value' => $ban_value]], $style_vector);
                 }
             }
         } catch (Exception $e) {
@@ -130,6 +145,44 @@ function add_ban(PDO $pdo, string $ban_type, string $ban_value, string $reason =
     }
 
     return $inserted;
+}
+
+/**
+ * Fetch comment texts for a banned commenter — used for stylometric extraction.
+ * Matches by ban_type: fingerprint → fp_hash, ip → comment_ip, email_hash → comment_email.
+ * Returns an array of comment_text strings (may be empty).
+ *
+ * @internal Called only from add_ban() when STE is enabled.
+ */
+function _ste_fetch_comment_texts(PDO $pdo, string $ban_type, string $ban_value): array {
+    try {
+        switch ($ban_type) {
+            case 'fingerprint':
+                $stmt = $pdo->prepare(
+                    "SELECT comment_text FROM snap_comments WHERE fp_hash = ? AND comment_text IS NOT NULL LIMIT 50"
+                );
+                $stmt->execute([$ban_value]);
+                break;
+            case 'ip':
+                $stmt = $pdo->prepare(
+                    "SELECT comment_text FROM snap_comments WHERE comment_ip = ? AND comment_text IS NOT NULL LIMIT 50"
+                );
+                $stmt->execute([$ban_value]);
+                break;
+            case 'email_hash':
+                // ban_value is the raw email address at this point (hashed later by ste-client)
+                $stmt = $pdo->prepare(
+                    "SELECT comment_text FROM snap_comments WHERE comment_email = ? AND comment_text IS NOT NULL LIMIT 50"
+                );
+                $stmt->execute([$ban_value]);
+                break;
+            default:
+                return [];
+        }
+        return array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'comment_text');
+    } catch (Exception $e) {
+        return [];
+    }
 }
 
 /**

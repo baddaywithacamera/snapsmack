@@ -196,7 +196,9 @@ function sc_schema_build_ddl(array $diff): array {
             // Strip leading `col_name` from $def to get just the type/modifiers
             // $def is the full "col_name TYPE NOT NULL DEFAULT ..." line
             $type_part = preg_replace('/^`?' . preg_quote($col, '/') . '`?\s+/i', '', $def_clean);
-            $stmts[] = "ALTER TABLE `{$table}` ADD COLUMN IF NOT EXISTS `{$col}` {$type_part};";
+            // No IF NOT EXISTS — MySQL 5.7 doesn't support it on ADD COLUMN.
+            // The diff already confirmed the column is absent, so it's safe.
+            $stmts[] = "ALTER TABLE `{$table}` ADD COLUMN `{$col}` {$type_part};";
         }
     }
 

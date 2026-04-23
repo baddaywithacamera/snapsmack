@@ -209,6 +209,54 @@ if ($route === 'report' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         ste_recompute_score($pdo, $fp_id);
     }
 
+    // ── Store style vector (SMACK STYLE — Tier 3) ─────────────────────────────
+    // The blog extracts writing style features at ban time. Only the numeric
+    // vector arrives here — raw comment text never leaves the blog.
+    $raw_vector = $body['style_vector'] ?? null;
+    if (
+        $raw_vector !== null
+        && is_array($raw_vector)
+        && count($raw_vector) === 25
+        && count($affected_fps) > 0
+    ) {
+        // Validate: all elements must be numeric floats in [0, 1]
+        $valid_vector = true;
+        foreach ($raw_vector as $v) {
+            if (!is_numeric($v) || $v < 0 || $v > 1) { $valid_vector = false; break; }
+        }
+
+        if ($valid_vector) {
+            $vector_json  = json_encode(array_map('floatval', $raw_vector));
+            $expires_date = date('Y-m-d', strtotime('+365 days'));
+            $upsert_vec   = $pdo->prepare("
+                INSERT INTO ste_style_vectors
+                    (fingerprint_id, site_id, vector, word_count, comment_count, expires_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    vector        = VALUES(vector),
+                    word_count    = VALUES(word_count),
+                    comment_count = VALUES(comment_count),
+                    recorded_at   = CURRENT_TIMESTAMP,
+                    expires_at    = VALUES(expires_at)
+            ");
+
+            // Associate the vector with the first accepted fingerprint in this report batch.
+            // A single report call typically covers one commenter.
+            $fp_id_for_vec = $affected_fps[0];
+            $upsert_vec->execute([
+                $fp_id_for_vec,
+                $site['id'],
+                $vector_json,
+                (int)($body['style_word_count']    ?? 0),
+                (int)($body['style_comment_count'] ?? 0),
+                $expires_date,
+            ]);
+
+            // Expire old vectors while we're here (opportunistic cleanup)
+            $pdo->exec("DELETE FROM ste_style_vectors WHERE expires_at < CURDATE()");
+        }
+    }
+
     ste_json([
         'ok'          => true,
         'accepted'    => $accepted,

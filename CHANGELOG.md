@@ -6,6 +6,21 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ## 0.7.18 — "Bench Warmer" (2026-04-23)
 
+### Added
+- **Smack Style — stylometric writing fingerprints (Shield Tier 3).** Detects ban evasion by writing style when IP, email, and browser fingerprint rotation would otherwise defeat the network.
+  - `core/ste-style.php` (new) — extracts a 25-dimension writing style vector from a commenter's comment history at ban time. Features: function word frequencies, punctuation rates, TTR, capitalisation habits, contraction use, sentence length statistics. Raw comment text never leaves the installing server — only the numeric vector is transmitted.
+  - `core/ban-check.php` — `add_ban()` now calls `ste_style_extract()` on the banned commenter's comment history and transmits the vector alongside the ban report. Added `_ste_fetch_comment_texts()` helper.
+  - `core/ste-client.php` — `ste_client_report()` accepts an optional `$style_vector` parameter and includes it in the API payload when valid.
+  - `smack-central/sc-enemy-api.php` — report handler receives and stores style vectors into `ste_style_vectors`, with opportunistic cleanup of expired rows.
+  - `smack-central/schemas/sc-enemy-canonical.sql` — `ste_style_vectors` table added (fingerprint_id + site_id unique key, JSON vector, 365-day retention via `expires_at`).
+  - `smack-central/sc-enemy-admin.php` — Style Analysis tab: run cosine-similarity clustering across stored style vectors, display matched fingerprint clusters with confidence badges (POSSIBLE / LIKELY / STRONG MATCH), escalate all cluster members to a higher colour level, or dismiss false-positive pairs. Admin page subtitle updated to Shield Tier 3.
+- **Privacy policy** (`projects/snapsmack-ca/privacy.html`, new) — plain-language policy covering the self-hosted data model, STE network visibility, Smack Style data (what is extracted, what is transmitted, 1-year retention), forum participant visibility. Blog owners who enable STE are directed to disclose Smack Style collection to their own visitors. Footer link "Twig n Berries" added to snapsmack.ca.
+
+### Fixed
+- **`smack-central/sc-schema.php`** — Removed `IF NOT EXISTS` from `ADD COLUMN` DDL. MySQL 5.7 does not support `IF NOT EXISTS` on `ALTER TABLE ... ADD COLUMN`; this caused schema-sync to fail silently on the live server.
+- **`smack-central/sc-update.php`** — Added `sc-db.php` to the `$protected` file list so the SC self-updater never overwrites it. Previously, running the updater before pushing the latest tag replaced the live `sc-db.php` with the version from the last published release, removing `sc_enemy_db()` and `sc_forum_db()`.
+- **`smack-central/sc-layout-top.php`** — Removed skull emoji from the Smack the Enemy nav link.
+
 ### Companion Tools
 - **SYBU 0.7.9c** — Advanced Visual Match tab: two-stage pHash + SIFT image matching ported from Fix Your Batch Up. Pick a server folder and originals folder, run matching, review side-by-side confidence-scored results, upload confirmed originals to Drive. Uses credentials already in Settings — no separate entry required.
 

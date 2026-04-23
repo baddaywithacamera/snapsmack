@@ -13,6 +13,7 @@
 --   ste_allow_votes         — community allow votes (false-positive signals)
 --   ste_score_cache         — pre-computed scores for delta push
 --   ste_coordination_clusters — detected sybil coordination events
+--   ste_style_vectors       — stylometric writing style vectors (SMACK STYLE / Tier 3)
 
 CREATE TABLE IF NOT EXISTS `ste_sites` (
     `id`               INT UNSIGNED    NOT NULL AUTO_INCREMENT,
@@ -103,4 +104,21 @@ CREATE TABLE IF NOT EXISTS `ste_coordination_clusters` (
     KEY `idx_fingerprint` (`fingerprint_id`),
     KEY `idx_resolved`    (`resolved`),
     CONSTRAINT `fk_cluster_fingerprint` FOREIGN KEY (`fingerprint_id`) REFERENCES `ste_fingerprints` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ste_style_vectors` (
+    `id`             INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    `fingerprint_id` INT UNSIGNED  NOT NULL,
+    `site_id`        INT UNSIGNED  NOT NULL,
+    `vector`         TEXT          NOT NULL  COMMENT 'JSON array — 25 normalized floats',
+    `word_count`     SMALLINT      NOT NULL  DEFAULT 0   COMMENT 'Total words across source comments',
+    `comment_count`  TINYINT       NOT NULL  DEFAULT 0   COMMENT 'Number of comments used',
+    `recorded_at`    TIMESTAMP     NOT NULL  DEFAULT CURRENT_TIMESTAMP,
+    `expires_at`     DATE          NOT NULL  COMMENT 'Hard delete after this date (1-year retention)',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_fp_site`    (`fingerprint_id`, `site_id`),
+    KEY `idx_fingerprint`      (`fingerprint_id`),
+    KEY `idx_expires`          (`expires_at`),
+    CONSTRAINT `fk_style_fingerprint` FOREIGN KEY (`fingerprint_id`) REFERENCES `ste_fingerprints` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_style_site`        FOREIGN KEY (`site_id`)        REFERENCES `ste_sites`        (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
