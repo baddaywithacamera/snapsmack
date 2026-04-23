@@ -4,6 +4,13 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.19 — "Couch Potato" (2026-04-23)
+
+### Added
+- **snapsmack.ca** — TWIG N BERRIES! privacy policy page (`tnb.html`) added across all site navigation. Nav link text resized to 0.8rem site-wide to prevent overflow.
+
+---
+
 ## 0.7.18 — "Bench Warmer" (2026-04-23)
 
 ### Added

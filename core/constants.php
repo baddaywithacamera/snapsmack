@@ -7,9 +7,9 @@
  * the application.
  */
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.18');
-define('SNAPSMACK_VERSION_SHORT', '0.7.18');
-define('SNAPSMACK_VERSION_CODENAME', 'Bench Warmer');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.19');
+define('SNAPSMACK_VERSION_SHORT', '0.7.19');
+define('SNAPSMACK_VERSION_CODENAME', 'Couch Potato');
 
 // --- VERSION COMPARISON ---
 // Versions are standard three-part semver: 0.7.17, 0.7.18, etc.
