@@ -29,11 +29,15 @@ _spec/
 Thumbs.db
 desktop.ini
 
-# PHP error logs
+# PHP error logs (if tracked, run: git rm --cached error_log)
 error_log
 *.log
+
+# Spec/setup documents that wound up at root — not part of source
+# If tracked, run: git rm --cached <filename>
 HIP-TO-BE-SQUARE-SPEC.docx
 PICASA-WEB-ALBUMS-SPEC.docx
+suyb-google-drive-setup.docx
 
 
 # Release packages (built by Smack Central, not stored in source)
@@ -70,6 +74,11 @@ tools/ft-batch-poster/
 # Plugin builds (not part of SnapSmack core)
 sofobomo-canada.zip
 email-test.php
+
+# Accidental root-level zips — release packages should live in releases/
+# If tracked, run: git rm --cached snapsmack.zip smack-central-current.zip
+snapsmack.zip
+smack-central-current.zip
 
 # Greymatter port (work in progress — not part of SnapSmack)
 greymatter/
