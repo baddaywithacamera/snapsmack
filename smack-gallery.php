@@ -315,36 +315,42 @@ include 'core/sidebar.php';
     <!-- ── FILTER BAR ──────────────────────────────────────────────────── -->
     <div class="gallery-filters" id="gallery-filters">
         <div class="gallery-filter-row">
-            <input type="text" id="gal-search" class="gallery-search" placeholder="Search titles, descriptions, tags…" autocomplete="off">
+            <div class="gallery-filter-main">
+                <input type="text" id="gal-search" class="gallery-search" placeholder="Search titles, descriptions, tags…" autocomplete="off">
 
-            <select id="gal-album" class="gallery-select">
-                <option value="">All Albums</option>
-                <?php foreach ($albums as $a): ?>
-                <option value="<?php echo $a['id']; ?>"><?php echo htmlspecialchars($a['album_name']); ?></option>
-                <?php endforeach; ?>
-            </select>
+                <select id="gal-album" class="gallery-select">
+                    <option value="">All Albums</option>
+                    <?php foreach ($albums as $a): ?>
+                    <option value="<?php echo $a['id']; ?>"><?php echo htmlspecialchars($a['album_name']); ?></option>
+                    <?php endforeach; ?>
+                </select>
 
-            <select id="gal-cat" class="gallery-select">
-                <option value="">All Categories</option>
-                <?php foreach ($categories as $c): ?>
-                <option value="<?php echo $c['id']; ?>"><?php echo htmlspecialchars($c['cat_name']); ?></option>
-                <?php endforeach; ?>
-            </select>
+                <select id="gal-cat" class="gallery-select">
+                    <option value="">All Categories</option>
+                    <?php foreach ($categories as $c): ?>
+                    <option value="<?php echo $c['id']; ?>"><?php echo htmlspecialchars($c['cat_name']); ?></option>
+                    <?php endforeach; ?>
+                </select>
 
-            <select id="gal-status" class="gallery-select">
-                <option value="">All Status</option>
-                <option value="published">Published</option>
-                <option value="draft">Draft</option>
-            </select>
+                <select id="gal-status" class="gallery-select">
+                    <option value="">All Status</option>
+                    <option value="published">Published</option>
+                    <option value="draft">Draft</option>
+                </select>
 
-            <select id="gal-camera" class="gallery-select">
-                <option value="">All Cameras</option>
-            </select>
+                <select id="gal-camera" class="gallery-select">
+                    <option value="">All Cameras</option>
+                </select>
+            </div>
 
-            <input type="date" id="gal-date-from" class="gallery-date" title="From date">
-            <input type="date" id="gal-date-to" class="gallery-date" title="To date">
-
-            <button type="button" id="gal-clear" class="btn-smack btn-smack--dim" title="Clear all filters">Clear</button>
+            <div class="gallery-filter-sub">
+                <div class="gallery-daterange">
+                    <input type="date" id="gal-date-from" class="gallery-date" title="From date">
+                    <span class="gallery-daterange-sep">—</span>
+                    <input type="date" id="gal-date-to" class="gallery-date" title="To date">
+                </div>
+                <button type="button" id="gal-clear" class="gallery-clear-btn" title="Clear all filters">✕ Clear</button>
+            </div>
         </div>
 
         <!-- Bulk actions bar (hidden until selection) -->

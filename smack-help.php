@@ -196,6 +196,89 @@ multi-select dropdown. A single transmission can belong to multiple albums.</p>
 HTML
 ];
 
+$help_topics['collections'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Collections',
+    'icon'     => '&#x25BD;',
+    'content'  => <<<'HTML'
+<h3>Collections</h3>
+<p>Collections are heterogeneous containers — they can hold posts, albums, and categories in any
+combination. A collection might represent a portfolio theme, a season, or a cross-cutting
+editorial concept that doesn't map neatly to a single category or album.</p>
+
+<h4>Live Membership</h4>
+<p>Collections are not snapshots. Member albums and categories resolve to their current content
+at render time — if you add posts to an album that's in a collection, those posts are
+automatically part of the collection. Only individual posts are pinned directly.</p>
+
+<h4>Featured Image</h4>
+<p>Each collection has an optional hero thumbnail. Select any published post and its first
+image is used as the representative thumbnail in gallery views.</p>
+
+<h4>Ordering Members</h4>
+<p>Drag and drop members in the editor to set their display order. Changes save automatically
+via the reorder endpoint.</p>
+HTML
+];
+
+$help_topics['mosaics'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Mosaics',
+    'icon'     => '&#x25A6;',
+    'content'  => <<<'HTML'
+<h3>MOSAIC Engine</h3>
+<p>Mosaics are justified image panels that flow inline inside post body content — a row-based
+bin-packing layout that arranges images into clean rows of equal height, similar to the
+Jetpack justified gallery for WordPress.</p>
+
+<h4>Building a Mosaic</h4>
+<p>In the Mosaics admin page, give the mosaic a title, choose images from the media library,
+set the gap (0–20px), and save. Each saved mosaic gets a shortcode like
+<code>[mosaic:3]</code>.</p>
+
+<h4>Inserting Into a Post</h4>
+<p>In the SmackTalk longform editor, click the MOSAIC button in the toolbar to open the mosaic
+picker. Click a mosaic to insert its shortcode at the cursor position. The mosaic renders
+at the full column width when the post is viewed.</p>
+
+<h4>Multiple Panels Per Post</h4>
+<p>Any number of MOSAIC shortcodes can appear in a single post, interspersed with writing.
+Each is an independent panel.</p>
+HTML
+];
+
+$help_topics['longform-post'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Longform Post (SmackTalk)',
+    'icon'     => '&#x270E;',
+    'content'  => <<<'HTML'
+<h3>SmackTalk — Longform Posts</h3>
+<p>Longform posts are the SmackTalk post type — writing at equal billing with photography.
+They use the full shortcode toolbar and support embedded MOSAIC panels inline.</p>
+
+<h4>Structure</h4>
+<p>A typical SmackTalk post has a hero image, an opening section of writing, one or more
+MOSAIC panels with images, and more writing between and after them. There is no limit on
+length or the number of embedded panels.</p>
+
+<h4>Hero Image</h4>
+<p>Select a hero image from the media library. This image is used as the post thumbnail
+in archive and collection views. It is separate from the images embedded via shortcodes
+in the body.</p>
+
+<h4>Categories and Albums</h4>
+<p>Longform posts are assigned to categories and albums using the same multi-select dropdowns
+as standard posts. These associations are stored in dedicated junction tables
+(<code>snap_post_cat_map</code>, <code>snap_post_album_map</code>) for direct
+post-to-container mapping.</p>
+
+<h4>Toolbar</h4>
+<p>The full formatting toolbar is available: Bold, Italic, Underline, Link, H2, H3,
+Blockquote, HR, lists, columns, dropcap, spacer, image shortcodes, and the MOSAIC insert
+button. Shortcode insertion is the same as on static pages and post descriptions.</p>
+HTML
+];
+
 $help_topics['media-library'] = [
     'section'  => 'The Good Shit',
     'title'    => 'Media Library',
@@ -1079,6 +1162,84 @@ won't affect anything either.</p>
 HTML
 ];
 
+$help_topics['smackback'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'SMACKBACK — File Integrity Monitoring',
+    'icon'     => '&#x26A1;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>SMACKBACK — File Integrity Monitoring</h3>
+<p>SMACKBACK is automated sentinel software that ships in every install and runs without
+configuration. It monitors SNAPSMACK's own PHP, JavaScript, and CSS files for unauthorized
+modification — hashing them at install time and re-verifying on a schedule, on every admin
+login, and on every skin load.</p>
+
+<h4>When a Tamper Is Detected</h4>
+<p>Confirmed tamper is unmissable. The admin interface switches to a high-contrast BREACH skin
+that cannot be dismissed until the incident is resolved. An email alert fires immediately.
+The incident response procedure kicks in automatically.</p>
+
+<h4>Hub/Spoke Escalation</h4>
+<p>On hub/spoke networks, tamper alerts are sent upstream and cross-correlated across all
+spokes. The same file modified at multiple sites in sequence isn't a coincidence — it's a
+coordinated attack. The response escalates accordingly, and the network can issue an emergency
+broadcast to put every connected admin on notice simultaneously.</p>
+
+<h4>What It Does Not Prevent</h4>
+<p>SMACKBACK detects tampering — it does not prevent it. Total server compromise (shell,
+database, and filesystem access) can defeat software-only integrity monitoring. Your hosting
+choice, SSH key hygiene, and server firewall configuration are the first line of defence.
+SMACKBACK is what catches it when those lines are crossed.</p>
+HTML
+];
+
+$help_topics['gobsmacked'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'GOBSMACKED — Stylometric Evasion Detection',
+    'icon'     => '&#x270D;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>GOBSMACKED — Stylometric Evasion Detection</h3>
+<p>GOBSMACKED detects ban evasion by writing style. When a commenter is banned, a compact
+numeric fingerprint of how they write is extracted from their comment history and reported
+to SMACK THE ENEMY. If the same person returns on a new device, new IP, or new email, their
+writing style still matches the banned signature.</p>
+
+<p>Raw comment text never leaves your server. Only a 25-dimension numeric vector is
+transmitted — sentence rhythm, punctuation habits, function word frequencies, capitalisation
+patterns. The original words are not recoverable from it.</p>
+
+<h4>How It Works</h4>
+<p>You don't need to do anything. When you ban a commenter through Troll Control and you are
+connected to SMACK THE ENEMY, GOBSMACKED automatically extracts the style vector and includes
+it in the ban report. The central server stores it and runs periodic clustering analysis to
+identify fingerprints that appear to be the same person across different accounts.</p>
+
+<h4>Minimum Text Threshold</h4>
+<p>A style vector is only extracted if the banned commenter has at least 30 words across all
+their comments on your site. Below that threshold there is not enough text for a reliable
+signature, and no vector is sent.</p>
+
+<h4>Cluster Analysis</h4>
+<p>The SMACK THE ENEMY admin panel (on the hub) runs cosine similarity analysis across stored
+style vectors. Fingerprints that score above 0.80 similarity are grouped into clusters and
+presented with confidence labels: <strong>POSSIBLE MATCH</strong> (0.80–0.89),
+<strong>LIKELY MATCH</strong> (0.90–0.95), <strong>STRONG MATCH</strong> (0.95+). The hub
+admin can escalate all fingerprints in a cluster to a higher threat level, or dismiss a
+cluster as a false positive.</p>
+
+<h4>Privacy</h4>
+<p>GOBSMACKED is disclosed in the TWIG N BERRIES privacy policy on snapsmack.ca. If you
+participate in SMACK THE ENEMY you should disclose that your site uses stylometric analysis
+in your own site's privacy policy. The SnapSmack Settings page includes a privacy policy
+field for this purpose.</p>
+
+<h4>Requirements</h4>
+<p>GOBSMACKED requires SMACK THE ENEMY participation. It has no effect on standalone installs
+that are not connected to the network.</p>
+HTML
+];
+
 $help_topics['user-manager'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'User Manager',
@@ -1483,6 +1644,39 @@ Turn it off when you're ready to open the rest of the site.</p>
 <p>The width of the text column on static pages can be adjusted globally in
 Global Vibe → Page Content Width (400–1400 px). Each skin has its own default;
 the slider overrides it across all skins at once.</p>
+HTML
+];
+
+$help_topics['privacy-policy'] = [
+    'section'  => 'Public Features',
+    'title'    => 'Privacy Policy Page',
+    'icon'     => '&#x2611;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Privacy Policy Page</h3>
+<p>SnapSmack includes a built-in privacy policy page manager. When enabled, a link appears
+in the public site footer and the policy is accessible at <code>/privacy-policy.php</code>.</p>
+
+<h4>Enabling It</h4>
+<p>Go to <strong>Privacy Policy</strong> in the sidebar (under The Good Shit), check the
+enable box, write your content, and save. The footer link appears immediately.</p>
+
+<h4>What to Include</h4>
+<p>At minimum, your privacy policy should tell visitors:</p>
+<ul>
+    <li>What data your site collects (SnapSmack collects visit statistics using a daily-rotating hash — no IP addresses are stored).</li>
+    <li>Whether you participate in SMACK THE ENEMY (if so, ban hashes are shared with the network).</li>
+    <li>Whether GOBSMACKED is active (if so, stylometric writing vectors are extracted from banned commenters' comment histories and shared with the network — raw text is never transmitted).</li>
+    <li>Whether you use any third-party analytics or tracking scripts (configured in Smack Your Scripts Up!).</li>
+</ul>
+
+<h4>HTML Accepted</h4>
+<p>The content field accepts HTML. Use headings, paragraphs, and lists to structure
+a readable policy. The page renders inside your active skin like any other static page.</p>
+
+<h4>Page Title</h4>
+<p>The title field controls both the heading displayed on the public page and the text
+of the footer link.</p>
 HTML
 ];
 

@@ -5,7 +5,7 @@
  * Standard single-image view with title, description, EXIF, and comments.
  * Variables available from index.php: $pdo, $settings, $img, $active_skin, $site_name
  */
-require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
+require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 ?>
 
 <?php include('skin-header.php'); ?>
@@ -28,7 +28,7 @@ require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
     <?php endif; ?>
 
     <div id="infobox">
-        <?php include dirname(__DIR__, 2) . '/core/navigation_bar.php'; ?>
+        <?php include dirname(__DIR__, 2) . '/core/navigation-bar.php'; ?>
     </div>
 
     <!-- Center-expanding info/comments overlay -->

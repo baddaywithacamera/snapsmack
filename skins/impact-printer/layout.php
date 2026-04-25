@@ -5,7 +5,7 @@
  *
  * Renders the photo display with ASCII frame borders, navigation, metadata, and comments sections.
  */
-require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
+require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 
 
 // Determine the ASCII border style from settings
@@ -36,7 +36,7 @@ $border_style = $settings['image_frame_style'] ?? 'box';
     </div>
 
     <div id="infobox">
-        <?php include dirname(__DIR__, 2) . '/core/navigation_bar.php'; ?>
+        <?php include dirname(__DIR__, 2) . '/core/navigation-bar.php'; ?>
     </div>
 
     <div id="footer">

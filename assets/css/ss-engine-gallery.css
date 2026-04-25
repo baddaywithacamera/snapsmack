@@ -13,14 +13,26 @@
 
 .gallery-filter-row {
     display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.gallery-filter-main {
+    display: flex;
+    gap: 8px;
+    align-items: center;
     flex-wrap: wrap;
+}
+
+.gallery-filter-sub {
+    display: flex;
     gap: 8px;
     align-items: center;
 }
 
 .gallery-search {
-    flex: 1 1 220px;
-    min-width: 180px;
+    flex: 1 1 260px;
+    min-width: 200px;
     padding: 7px 12px;
     border: 1px solid var(--border, #3a3a3a);
     border-radius: 3px;
@@ -36,23 +48,75 @@
     color: var(--dim, #666);
 }
 
-.gallery-select,
-.gallery-date {
+.gallery-select {
+    flex: 0 1 150px;
+    min-width: 110px;
+    max-width: 180px;
     padding: 7px 10px;
     border: 1px solid var(--border, #3a3a3a);
     border-radius: 3px;
     background: var(--input-bg, #1e1e1e);
     color: var(--text, #ccc);
     font-size: 13px;
-    min-width: 0;
 }
-.gallery-select:focus,
+.gallery-select:focus {
+    outline: none;
+    border-color: var(--accent, #7aad5a);
+}
+
+.gallery-daterange {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 1 auto;
+}
+
+.gallery-daterange-sep {
+    color: var(--dim, #555);
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.gallery-date {
+    width: 132px;
+    flex: 0 0 132px;
+    padding: 7px 8px;
+    border: 1px solid var(--border, #3a3a3a);
+    border-radius: 3px;
+    background: var(--input-bg, #1e1e1e);
+    color: var(--text, #ccc);
+    font-size: 13px;
+}
 .gallery-date:focus {
     outline: none;
     border-color: var(--accent, #7aad5a);
 }
 
+.gallery-clear-btn {
+    flex: 0 0 auto;
+    appearance: none;
+    -webkit-appearance: none;
+    background: none;
+    border: 1px solid var(--border, #3a3a3a);
+    border-radius: 3px;
+    color: var(--dim, #666);
+    padding: 6px 12px;
+    font-size: 12px;
+    font-family: inherit;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+.gallery-clear-btn:hover {
+    color: var(--text, #ccc);
+    border-color: var(--text, #ccc);
+}
+
 .gallery-select--sm {
+    flex: 0 1 130px;
     max-width: 150px;
 }
 

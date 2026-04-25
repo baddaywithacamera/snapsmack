@@ -4,6 +4,33 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.21 — "Couch Potato" (2026-04-25)
+
+### Added
+- **Privacy Policy page** (`smack-privacy.php`, `privacy-policy.php`). Admin page in The Good Shit sidebar lets blog owners write and enable a public-facing privacy policy. When enabled, a link appears in the public footer. Content stored in `snap_settings`. Renders inside the active skin at `/privacy-policy.php`. Particularly relevant for installs participating in SMACK THE ENEMY or GOBSMACKED — the help topic lists what to disclose.
+- **Security audit published** (`secaudits/`). Full audit findings committed to the repository. Security through obscurity is a non-starter with open source — publishing the audit is evidence that the work is being done.
+- **Head scripts moved from DB to filesystem** (`data/custom-head.html`). File-based storage means SMACKBACK can watch for unauthorized changes. A DB injection attack cannot alter file-based content. `data/.htaccess` blocks direct web access. Existing installs fall back to the DB value until admin re-saves in smack-scripts.php.
+- **`setup.php` rewritten — signed release installer.** Fetches `latest.json` from `snapsmack.ca/releases/`, downloads the signed release package, verifies SHA-256 checksum and Ed25519 signature before extracting. Zip entry path traversal validation added. Sodium fallback to checksum-only if extension unavailable. Git clone path removed.
+- **SMACKBACK help topic** added to `smack-help.php`.
+- **GOBSMACKED help topic** added to `smack-help.php`.
+- **Privacy Policy help topic** added to `smack-help.php`.
+
+---
+
+## 0.7.20 — "Couch Potato" (2026-04-24)
+
+### Added
+- **Head scripts moved from DB to filesystem** (`data/custom-head.html`). File-based storage means SMACKBACK can watch for unauthorized changes — a DB injection attack cannot alter file-based content. `data/.htaccess` blocks direct web access. Existing installs fall back to the DB value until admin re-saves in smack-scripts.php, at which point the DB entry is cleared and the file becomes the single source of truth.
+- **`setup.php` rewritten — signed release installer.** The bootstrap deployer no longer pulls raw source from GitHub. It now fetches `latest.json` from `snapsmack.ca/releases/`, downloads the signed release package, verifies the SHA-256 checksum and Ed25519 signature before extracting anything, and aborts if either check fails. Zip entry path traversal validation added. Falls back gracefully to checksum-only if the sodium extension is unavailable. Git clone path removed entirely.
+- **SMACKBACK help topic** added to `smack-help.php`. SMACKBACK is the file integrity monitoring feature — automated sentinel software shipping in every install. Topic covers tamper detection, the BREACH skin response, hub/spoke escalation, and residual risks.
+- **GOBSMACKED help topic** added to `smack-help.php`.
+- **MOSAIC engine restored.** Row-based bin-packing layout engine for justified image panels inside post body content. `[mosaic:ID]` shortcode renders via `ss-engine-mosaic.js`. Parser Phase 8 calls `parseMosaics()`. Engine registered in manifest inventory. Admin builder at `smack-mosaics.php` (pimpmobile). Migration 038 creates `snap_mosaics` table.
+- **Featured images for categories, albums, and collections.** Each container now has a `featured_post_id` column pointing to any published post whose first image is used as the representative hero thumbnail in gallery and collection views. Picker modal shared across `smack-cats.php`, `smack-albums.php`, and `smack-collections.php`. Migration 039.
+- **Collections** (`smack-collections.php`, pimpmobile). Heterogeneous containers that hold posts, albums, and categories in any combination. Membership is live — member albums/categories resolve to their current posts at render time. Drag-to-reorder member list, AJAX add/remove. Two new tables: `snap_collections` and `snap_collection_items`. Migration 040.
+- **SmackTalk longform post editor** (`smack-post-long.php`, pimpmobile). Writing-forward post type with full shortcode toolbar, MOSAIC insert button (opens picker modal), hero image from the media library, categories/albums/tags, publish/draft, timestamp override. Saves to `snap_posts` with `post_type = 'longform'`. New junction tables `snap_post_cat_map` and `snap_post_album_map` for direct post → category/album associations. `featured_asset_id` column on `snap_posts` for hero selection from the asset library. Migration 041.
+
+---
+
 ## 0.7.19 — "Couch Potato" (2026-04-23)
 
 ### Added
@@ -14,14 +41,14 @@ All notable changes to SnapSmack are documented here. Newest release first.
 ## 0.7.18 — "Bench Warmer" (2026-04-23)
 
 ### Added
-- **Smack Style — stylometric writing fingerprints (Shield Tier 3).** Detects ban evasion by writing style when IP, email, and browser fingerprint rotation would otherwise defeat the network.
+- **GOBSMACKED — stylometric writing fingerprints (Shield Tier 3).** Detects ban evasion by writing style when IP, email, and browser fingerprint rotation would otherwise defeat the network.
   - `core/ste-style.php` (new) — extracts a 25-dimension writing style vector from a commenter's comment history at ban time. Features: function word frequencies, punctuation rates, TTR, capitalisation habits, contraction use, sentence length statistics. Raw comment text never leaves the installing server — only the numeric vector is transmitted.
   - `core/ban-check.php` — `add_ban()` now calls `ste_style_extract()` on the banned commenter's comment history and transmits the vector alongside the ban report. Added `_ste_fetch_comment_texts()` helper.
   - `core/ste-client.php` — `ste_client_report()` accepts an optional `$style_vector` parameter and includes it in the API payload when valid.
   - `smack-central/sc-enemy-api.php` — report handler receives and stores style vectors into `ste_style_vectors`, with opportunistic cleanup of expired rows.
   - `smack-central/schemas/sc-enemy-canonical.sql` — `ste_style_vectors` table added (fingerprint_id + site_id unique key, JSON vector, 365-day retention via `expires_at`).
-  - `smack-central/sc-enemy-admin.php` — Style Analysis tab: run cosine-similarity clustering across stored style vectors, display matched fingerprint clusters with confidence badges (POSSIBLE / LIKELY / STRONG MATCH), escalate all cluster members to a higher colour level, or dismiss false-positive pairs. Admin page subtitle updated to Shield Tier 3.
-- **Privacy policy** (`projects/snapsmack-ca/privacy.html`, new) — plain-language policy covering the self-hosted data model, STE network visibility, Smack Style data (what is extracted, what is transmitted, 1-year retention), forum participant visibility. Blog owners who enable STE are directed to disclose Smack Style collection to their own visitors. Footer link "Twig n Berries" added to snapsmack.ca.
+  - `smack-central/sc-enemy-admin.php` — GOBSMACKED tab: run cosine-similarity clustering across stored style vectors, display matched fingerprint clusters with confidence badges (POSSIBLE / LIKELY / STRONG MATCH), escalate all cluster members to a higher colour level, or dismiss false-positive pairs. Admin page subtitle updated to Shield Tier 3.
+- **Privacy policy** (`projects/snapsmack-ca/tnb.html`, new) — plain-language policy covering the self-hosted data model, STE network visibility, GOBSMACKED data (what is extracted, what is transmitted, 1-year retention), forum participant visibility. Blog owners who enable STE are directed to disclose GOBSMACKED collection to their own visitors. TWIG N BERRIES! nav link added site-wide.
 
 ### Fixed
 - **`smack-central/sc-schema.php`** — Removed `IF NOT EXISTS` from `ADD COLUMN` DDL. MySQL 5.7 does not support `IF NOT EXISTS` on `ALTER TABLE ... ADD COLUMN`; this caused schema-sync to fail silently on the live server.

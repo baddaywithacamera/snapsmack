@@ -51,6 +51,23 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-users-recovery-columns.sql',
 ];
 
+// ─── DEPRECATED FILES ───────────────────────────────────────────────────────
+
+/**
+ * Files removed from the SnapSmack distribution, keyed by filename (relative
+ * to the install root) with the version string in which they were removed.
+ *
+ * updater_remove_deprecated_files() reads this list and unlinks any file that
+ * still exists on the server after a successful update. This prevents orphan
+ * accumulation on existing installs when files are renamed or deleted.
+ *
+ * Add an entry here whenever a file is removed from the repo. Never remove
+ * entries — they are needed to clean up installs that missed an earlier update.
+ */
+const UPDATER_DEPRECATED_FILES = [
+    'smack-post.php' => '0.7.20',  // renamed to smack-post-solo.php
+];
+
 // ─── VERSION CHECK ──────────────────────────────────────────────────────────
 
 /**
@@ -1323,6 +1340,54 @@ function updater_cleanup(): void {
         }
         rmdir($dir);
     }
+}
+
+/**
+ * Remove files that were deleted from the SnapSmack distribution in a given
+ * release or any earlier release, preventing orphan accumulation on existing
+ * installs that had those files before the update was applied.
+ *
+ * Only removes files listed in UPDATER_DEPRECATED_FILES whose removal version
+ * is ≤ the version currently being installed. Silently skips files that are
+ * already gone. Returns a summary array for the update log.
+ *
+ * @param string $installing_version  The version string being installed (e.g. '0.7.20')
+ * @return array { removed: string[], failed: string[] }
+ */
+function updater_remove_deprecated_files(string $installing_version): array {
+    $root    = dirname(__DIR__);
+    $removed = [];
+    $failed  = [];
+
+    foreach (UPDATER_DEPRECATED_FILES as $rel_path => $removed_in) {
+        // Only act if the removal version is <= the version being installed.
+        // version_compare() handles standard semver (0.7.20 etc.) correctly.
+        // snap_version_compare() is not used here because constants.php may not
+        // be loaded yet when updater.php is required by smack-update.php.
+        if (version_compare($removed_in, $installing_version, '>')) {
+            continue;
+        }
+
+        $abs = $root . '/' . ltrim($rel_path, '/');
+
+        // Security: never allow path traversal
+        if (str_contains($rel_path, '..') || str_starts_with($rel_path, '/')) {
+            $failed[] = $rel_path . ' (blocked — path traversal)';
+            continue;
+        }
+
+        if (!file_exists($abs)) {
+            continue; // already gone — nothing to do
+        }
+
+        if (@unlink($abs)) {
+            $removed[] = $rel_path;
+        } else {
+            $failed[] = $rel_path;
+        }
+    }
+
+    return ['removed' => $removed, 'failed' => $failed];
 }
 
 /**

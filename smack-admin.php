@@ -8,6 +8,15 @@
 
 require_once 'core/auth.php';
 
+// --- SETTINGS ---
+// Must load before any logic that reads $settings (UI mode, offer card, etc.).
+// admin-header.php also loads settings, but it runs during HTML output — too late
+// for the pre-render PHP logic on this page.
+if (!isset($settings)) {
+    $_s = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
+    $settings = $_s->fetchAll(PDO::FETCH_KEY_PAIR);
+}
+
 // --- EARLY CRON DETECTION ---
 // Must run before any POST handlers that depend on $cron_supported.
 // admin-header.php also sets these, but it loads after the handlers.
@@ -307,7 +316,7 @@ include 'core/sidebar.php';
         <div class="box">
             <h3>QUICK STRIKE</h3>
             <div class="quick-strike-grid">
-                <a href="smack-post.php"><button class="btn-smack">NEW POST</button></a>
+                <a href="smack-post-solo.php"><button class="btn-smack">NEW POST</button></a>
                 <a href="smack-backup.php"><button class="btn-smack btn-backup">BACKUP</button></a>
                 <a href="smack-settings.php"><button class="btn-smack btn-settings">SETTINGS</button></a>
                 <a href="index.php" target="_blank"><button class="btn-smack btn-live">LIVE SITE</button></a>

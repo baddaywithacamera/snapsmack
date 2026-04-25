@@ -562,6 +562,17 @@ textarea,
     letter-spacing: 2px;
 }
 
+/* --- Gallery filter bar --- */
+/* Global select/input rules set width:100% and height:52px.
+   Gallery filter controls are compact inline elements — reset both. */
+.gallery-filter-row select,
+.gallery-filter-row input[type="date"],
+.gallery-filter-row input[type="text"] {
+    width: auto;
+    height: auto;
+    min-height: unset;
+}
+
 /* --- Shortcode insert select --- */
 /* Global `select` rule sets width:100% and height:52px — override both
    so the shortcode picker sits inline with the other sc-btn buttons. */

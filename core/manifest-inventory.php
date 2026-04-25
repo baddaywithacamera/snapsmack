@@ -672,6 +672,12 @@ return [
             'path'         => 'assets/js/ss-engine-photogram.js',
             'has_settings' => false,
         ],
+        'smack-mosaic' => [
+            'label'        => 'Mosaic Engine (Tiled image panels via [mosaic:ID] shortcode)',
+            'path'         => 'assets/js/ss-engine-mosaic.js',
+            'css'          => 'assets/css/ss-engine-mosaic.css',
+            'has_settings' => false,
+        ],
         'smack-carousel-post' => [
             'label'        => 'Carousel Post Engine (Multi-image upload strip with drag-reorder)',
             'path'         => 'assets/js/ss-engine-carousel-post.js',

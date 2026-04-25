@@ -82,7 +82,15 @@ if ($powered_mode === 'on') {
     }
 }
 
-// --- SLOT 5: RSS (ALWAYS ON) ---
+// --- SLOT 5: PRIVACY POLICY ---
+// Only shown when enabled in smack-privacy.php
+if (!empty($settings['privacy_policy_enabled']) && $settings['privacy_policy_enabled'] === '1') {
+    $pp_label = htmlspecialchars($settings['privacy_policy_title'] ?? 'Privacy Policy');
+    $pp_url   = (defined('BASE_URL') ? BASE_URL : '/') . 'privacy-policy.php';
+    $slots[]  = '<a href="' . $pp_url . '" class="footer-link">' . $pp_label . '</a>';
+}
+
+// --- SLOT 6: RSS (ALWAYS ON) ---
 // RSS feed link is always visible and cannot be disabled
 $rss_url = (defined('BASE_URL') ? BASE_URL : '/') . 'feed';
 $slots[] = '<a href="' . $rss_url . '" class="footer-link rss-tag" title="RSS Feed">RSS</a>';

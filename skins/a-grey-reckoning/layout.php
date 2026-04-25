@@ -9,7 +9,7 @@
  *
  * Variables available from index.php: $pdo, $settings, $img, $active_skin, $site_name
  */
-require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
+require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 
 $site_display_name = $site_name ?? 'SNAPSMACK';
 

@@ -40,11 +40,12 @@ Key characteristics across both editions:
 
 ## Installation
 
-1. Upload all files to your web root (or a subdirectory).
+1. Upload `setup.php` to an empty directory on your server.
 2. Create a MySQL database and note the credentials.
 3. Visit `https://yourdomain.com/setup.php` in your browser.
-4. Follow the installer — it creates the database schema, seeds default settings, and writes `core/db.php`.
-5. Delete or rename `setup.php` and `install.php` when done.
+4. The deployer fetches the latest signed release from snapsmack.ca, verifies its checksum and Ed25519 signature, and extracts it. It self-deletes on success and hands off to `install.php`.
+5. Follow the installer — it creates the database schema, seeds default settings, and writes `core/db.php`.
+6. `install.php` self-deletes on completion.
 
 If you're upgrading from an earlier version, use the self-update system in the admin under **System → Update Manager** rather than overwriting files manually.
 

@@ -7,7 +7,7 @@
  * info/caption slides UP from bottom (like a magazine caption block).
  * No #footer element — core ss-engine-footer.js no-ops gracefully.
  */
-require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
+require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 
 $global_on = (($settings['global_comments_enabled'] ?? '1') == '1');
 $post_on   = (($img['allow_comments'] ?? '1') == '1');
@@ -95,7 +95,7 @@ $exif_labels = [
 
     <!-- INFOBOX (core navigation bar) — in-flow, flex-shrink: 0 -->
     <div id="infobox">
-        <?php include dirname(__DIR__, 2) . '/core/navigation_bar.php'; ?>
+        <?php include dirname(__DIR__, 2) . '/core/navigation-bar.php'; ?>
     </div>
 
     <?php include('skin-footer.php'); ?>

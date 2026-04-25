@@ -13,6 +13,12 @@ The promo site files are NOT tracked by git and have no backup. Every uninvited 
 - These files are not in git. There is no undo. Every mistake requires manual reconstruction.
 - **Before editing any file in `projects/snapsmack-ca/`, create a `.bak` copy first** using `cp filename.html filename.html.bak`. Do this without exception, every time, before the first edit in a session. The .bak files live alongside the originals and are not uploaded to the server.
 
+### Canonical snapsmack.ca header/footer values (DO NOT change these when editing nav links)
+
+- **Nav HOME link text:** `GAFF!` (all pages, both mini-header and main header navs)
+- **Logo tagline:** `PHOTO <em>BLOGGING</em> IS BACK, BITCHEZ` (all pages — matches index.html exactly)
+- **Footer:** `&copy; 2026 Sean McCormick · Dedicated to Raymond A. Vanderwoning, photographer and friend. <a href="https://www.serenity.ca/obituaries/Raymond-Anthony-Vanderwoning?obId=30943370" target="_blank" rel="noopener noreferrer">He is missed.</a>` — centered, no HOME link, no CONTACT link in footer on non-index pages
+
 ## Version & Headers
 
 **Versioning scheme (as of 0.7.17):** Standard three-part numeric semver — `0.7.17`, `0.7.18`, etc. The old letter-suffix format (`0.7.9P`) is retired; `snap_version_compare()` in `core/constants.php` still handles legacy strings from older installs.
@@ -183,34 +189,59 @@ git commit
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.18 "Bench Warmer"
+### SnapSmack — Alpha 0.7.20 "Couch Potato"
 All commits are on `master`. Push from local:
 ```
 git push Github master
 ```
-After pushing: `git tag -f v0.7.18 && git push Github v0.7.18 --force`
+After pushing: `git tag -f v0.7.20 && git push Github v0.7.20 --force`
 
-**Latest changes (0.7.18 — Smack Style / SMACK THE ENEMY Tier 3):**
+**Latest changes (0.7.20 — MOSAIC + Collections + Featured Images + SmackTalk):**
+- Version bump: 0.7.19 → 0.7.20 "Couch Potato"
+- **MOSAIC engine restored** — `assets/js/ss-engine-mosaic.js`, `assets/css/ss-engine-mosaic.css`, `smack-mosaics.php` (admin builder, pimpmobile). Parser Phase 8 calls `parseMosaics()`. Engine registered in manifest-inventory. Migration 038 (`snap_mosaics` table).
+- **Featured images on categories and albums** — `featured_post_id` column on `snap_categories` and `snap_albums`. Picker modal added to `smack-cats.php` and `smack-albums.php`. Migration 039.
+- **Collections** — `smack-collections.php` (admin, pimpmobile). Heterogeneous containers (posts/albums/categories). Drag-to-reorder AJAX member list. `snap_collections` + `snap_collection_items` tables. Featured image picker. Migration 040.
+- **SmackTalk longform editor** — `smack-post-long.php` (pimpmobile). Full toolbar + MOSAIC insert button, hero image from media library, categories/albums/tags, publish/draft, timestamp. `post_type='longform'` on `snap_posts`. New `content LONGTEXT` + `featured_asset_id` columns on `snap_posts`. New `snap_post_cat_map` + `snap_post_album_map` tables. Migration 041.
+- **Canonical schema** — all new tables and columns added to `database/schema/snapsmack_canonical.sql`.
+- **Sidebar** — "New Longform Post" nav link added (pimpmobile-gated).
+- **Help** — Collections, Mosaics, and Longform Post topics added to `smack-help.php`.
+
+**Previous changes (0.7.19 — GOBSMACKED rename + snapsmack.ca TWIG N BERRIES!):**
+- Version bump: 0.7.18 → 0.7.19 "Couch Potato"
+- **GOBSMACKED** — renamed from "Smack Style" throughout all user-facing text. Internal code (DB tables, PHP functions, filenames) unchanged.
+  - `smack-central/sc-enemy-admin.php` — subtitle, stat label, tab, and run button updated to GOBSMACKED
+  - `smack-central/sc-enemy-api.php` — comment updated
+  - `smack-central/schemas/sc-enemy-canonical.sql` — comment updated
+  - `core/ste-style.php` — docblock updated
+  - `_spec/smack-style.md` — title and content updated
+- **snapsmack.ca** — TWIG N BERRIES! privacy policy page (`tnb.html`, was privacy.html):
+  - Added to nav on all five pages (index, wotcha, bugger, oi, tnb)
+  - Nav font-size reduced to 0.8rem site-wide to prevent overflow
+  - All "Smack Style" references in tnb.html renamed to GOBSMACKED
+
+**Latest changes (0.7.18 — GOBSMACKED / SMACK THE ENEMY Tier 3):**
 - Version bump only — companion tool release (SYBU 0.7.9c) — previously noted
-- **Smack Style** — stylometric writing fingerprint system (Tasks #52–#58, all complete):
+- **GOBSMACKED** — stylometric writing fingerprint system (Tasks #52–#58, all complete):
   - `core/ste-style.php` (NEW) — 25-dimension style vector extraction from comment text
   - `core/ban-check.php` — add_ban() now extracts + transmits style vector at ban time; `_ste_fetch_comment_texts()` added
   - `core/ste-client.php` — ste_client_report() accepts optional $style_vector param
   - `smack-central/sc-enemy-api.php` — report handler stores incoming style vectors into ste_style_vectors
-  - `smack-central/sc-enemy-admin.php` — Style Analysis tab: run_analysis, cluster display, escalate/dismiss actions; skull emoji removed from heading and nav
+  - `smack-central/sc-enemy-admin.php` — GOBSMACKED tab: run_analysis, cluster display, escalate/dismiss actions; skull emoji removed from heading and nav
   - `smack-central/sc-schema.php` — MySQL 5.7 fix: removed IF NOT EXISTS from ADD COLUMN DDL
   - `smack-central/schemas/sc-enemy-canonical.sql` — ste_style_vectors table added
   - `smack-central/sc-update.php` — sc-db.php added to $protected list (never overwritten by updater)
   - `smack-central/sc-layout-top.php` — skull emoji removed from nav
-  - `projects/snapsmack-ca/privacy.html` (NEW) — full privacy policy including Smack Style disclosure section
-  - `projects/snapsmack-ca/index.html` — "Twig n Berries" footer link to privacy.html added
 
 **Pending on live servers (FTP these files to all three sites):**
 - `core/constants.php`
-- `core/ste-style.php` (NEW)
+- `core/ste-style.php` (NEW from 0.7.18)
 - `core/ban-check.php`
 - `core/ste-client.php`
 - `core/spam-check.php`
+- `core/parser.php` (NEW Phase 8 mosaic call)
+- `core/meta.php` (NEW mosaic CSS/JS links)
+- `core/manifest-inventory.php` (NEW mosaic engine entry)
+- `core/sidebar.php` (NEW longform + collections + mosaics links)
 - `smack-central/sc-version.php`
 - `smack-central/sc-forum.php`
 - `smack-central/sc-release.php`
@@ -219,14 +250,30 @@ After pushing: `git tag -f v0.7.18 && git push Github v0.7.18 --force`
 - `smack-central/sc-schema.php`
 - `smack-central/sc-update.php`
 - `smack-central/sc-layout-top.php`
-- `assets/js/smack-sc-forum.js` (NEW)
+- `assets/js/smack-sc-forum.js` (NEW from 0.7.18)
+- `assets/js/ss-engine-mosaic.js` (NEW)
+- `assets/css/ss-engine-mosaic.css` (NEW)
 - `smack-settings.php`
-- `smack-post.php`
+- `smack-post-solo.php` (was smack-post.php — renamed 0.7.20; **run `git rm smack-post.php` from local** — sandbox can't delete files; updater will auto-remove it on existing installs via UPDATER_DEPRECATED_FILES)
 - `smack-appearance-solo.php`
 - `smack-help.php`
-- `smack-audit.php` (NEW)
-- `projects/snapsmack-ca/privacy.html` (NEW — to snapsmack.ca server only)
+- `smack-audit.php` (NEW from 0.7.18)
+- `smack-cats.php` (UPDATED — featured image picker)
+- `smack-albums.php` (UPDATED — featured image picker)
+- `smack-mosaics.php` (NEW)
+- `smack-collections.php` (NEW)
+- `smack-post-long.php` (NEW)
+- `smack-update.php` (UPDATED — deprecated file removal in migrate+finalize stages)
+- `core/updater.php` (UPDATED — UPDATER_DEPRECATED_FILES + updater_remove_deprecated_files())
+- `migrations/038_mosaics.php` (NEW)
+- `migrations/039_featured_images.php` (NEW)
+- `migrations/040_collections.php` (NEW)
+- `migrations/041_longform_post_type.php` (NEW)
 - `projects/snapsmack-ca/index.html` (to snapsmack.ca server only)
+- `projects/snapsmack-ca/wotcha.html` (to snapsmack.ca server only)
+- `projects/snapsmack-ca/bugger.html` (to snapsmack.ca server only)
+- `projects/snapsmack-ca/oi.html` (to snapsmack.ca server only)
+- `projects/snapsmack-ca/tnb.html` (NEW — to snapsmack.ca server only)
 
 **Pending DB on live squir871_enemy (run via phpMyAdmin):**
 - Apply remaining enemy schema: `coordination_cluster_id` column + `idx_cluster` index on `ste_reports`
@@ -235,6 +282,33 @@ After pushing: `git tag -f v0.7.18 && git push Github v0.7.18 --force`
 **After FTP:**
 - Enable "Require Download Link" on foundtextures.ca Admin → Settings → Downloads
 - Confirm sc-db.php on server has sc_enemy_db() and sc_forum_db() (was overwritten by updater — correct version now in repo)
+
+**Pending local git hygiene (run from C:\dev\snapsmack):**
+```
+# Remove the smack-post.php shim (updater handles cleanup on existing installs)
+git rm smack-post.php
+
+# Rename the duplicate 030 migration — shim already in place, real file is written
+git rm migrations/030_semantic_analysis_tables.php
+git add migrations/030_semantic_analysis_tables.php  # picks up the rewritten PDO version
+# Then rename it cleanly:
+git mv migrations/030_semantic_analysis_tables.php migrations/042_semantic_analysis_tables.php
+
+# Move the impact-printer reference doc out of assets/css/ (new copy already in skins/)
+git rm assets/css/impact-printer-image-borders-text-characters.txt
+git add skins/impact-printer/image-borders-text-characters.txt
+
+# Remove the underscore-named core shims (real files are layout-logic.php / navigation-bar.php)
+git rm core/layout_logic.php core/navigation_bar.php
+git add core/layout-logic.php core/navigation-bar.php
+
+# Move SUYB setup guide to its tool directory
+git mv suyb-google-drive-setup.docx tools/smack-up-your-backup/google-drive-setup.docx
+
+# Untrack the large zips and error log that slipped into git
+git rm --cached snapsmack.zip smack-central-current.zip error_log
+```
+After running these: update the $migration_name string inside `042_semantic_analysis_tables.php` from `'030_semantic_analysis_tables'` to `'042_semantic_analysis_tables'`.
 
 ### Smack Your Batch Up (SYBU) — v0.7.9c "Advanced Visual Match"
 Tool lives in `tools/sybu/`. All commits on `master`. Push from local: `git push Github master`
@@ -281,9 +355,9 @@ All commits on `master`. Push from local: `git push Github master`
 ### Live Sites
 | Site | Role | Version |
 |---|---|---|
-| foundtextures.ca | Multisite Hub | Alpha 0.7.9j (needs FTP update to 0.7.18) |
-| pixhellated.ca | Spoke | Alpha 0.7.9j (needs FTP update to 0.7.18) |
-| wateronthebrain.ca | Spoke | Alpha 0.7.9j (needs FTP update to 0.7.18) |
+| foundtextures.ca | Multisite Hub | Alpha 0.7.9j (needs FTP update to 0.7.20) |
+| pixhellated.ca | Spoke | Alpha 0.7.9j (needs FTP update to 0.7.20) |
+| wateronthebrain.ca | Spoke | Alpha 0.7.9j (needs FTP update to 0.7.20) |
 
 Both spokes are ACTIVE and heartbeating correctly after key exchange fix.
 
