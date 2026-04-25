@@ -69,16 +69,24 @@ function ste_body(): array {
 
 function ste_rate_limit(): void {
     $ip    = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-    $key   = 'ratelimit_' . md5($ip);
     $limit = 100;
-    // Use session-less file-based approach: transient file in /tmp
-    $file  = sys_get_temp_dir() . '/ste_' . md5($ip) . '.json';
-    $data  = file_exists($file) ? json_decode(file_get_contents($file), true) : ['count' => 0, 'window' => time()];
-    if (time() - $data['window'] > 60) {
+    // File-based rate limit with exclusive locking to prevent race conditions
+    // where concurrent requests all read the old count and all pass the check.
+    $file = sys_get_temp_dir() . '/ste_' . md5($ip) . '.json';
+    $fp   = fopen($file, 'c+');
+    if (!$fp) return; // Can't open file — fail open rather than block all requests
+    flock($fp, LOCK_EX);
+    $raw  = stream_get_contents($fp);
+    $data = $raw ? (json_decode($raw, true) ?? []) : [];
+    if (empty($data['window']) || time() - $data['window'] > 60) {
         $data = ['count' => 0, 'window' => time()];
     }
     $data['count']++;
-    file_put_contents($file, json_encode($data));
+    ftruncate($fp, 0);
+    rewind($fp);
+    fwrite($fp, json_encode($data));
+    flock($fp, LOCK_UN);
+    fclose($fp);
     if ($data['count'] > $limit) {
         ste_json(['ok' => false, 'error' => 'Rate limit exceeded. Max 100 requests/minute.'], 429);
     }
