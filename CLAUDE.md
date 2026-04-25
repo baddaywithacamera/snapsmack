@@ -196,9 +196,11 @@ git push Github master
 ```
 After pushing: `git tag -f v0.7.24 && git push Github v0.7.24 --force`
 
-**Latest changes (0.7.24 — Dashboard Apply Update fix):**
+**Latest changes (0.7.24 — Dashboard Apply Update fix + SMACKATTACK rename):**
 - Version bump: 0.7.23 → 0.7.24 "Lawn Chair"
 - **Dashboard "Apply Update" button fixed** — `cron-version-check.php` and `smack-admin.php` fallback check both omitted `download_url`, `checksum_sha256`, and `signature` from the cached `core_update` blob; clicking Apply Update always produced "NO DOWNLOAD URL" error. Both now store the full field set.
+- **Smack the Enemy renamed to SMACKATTACK** — all user-facing labels, headings, help topics, settings section, and API messages updated. Internal code/files/DB tables unchanged (`sc-enemy-*`, `ste_*`).
+- **Packager changelog fetch fixed** — PHP proxy in `sc-release.php` resolves tag to commit SHA before fetching, bypassing GitHub CDN caching.
 
 **Previous changes (0.7.23 — Security audit 2 fixes):**
 - Version bump: 0.7.22 → 0.7.23 "Couch Potato"

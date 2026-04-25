@@ -938,7 +938,7 @@ independently against the shared key — no spam reaches any site in the network
 <h4>Akismet vs. SnapSmack's Own Spam Tools</h4>
 <p>Akismet handles content-based spam (gibberish, SEO links, bot-generated text). It works
 alongside — not instead of — SnapSmack's fingerprint bans, keyword filters, semantic
-analysis, and SMACK THE ENEMY network reputation. Use all layers together for best results.</p>
+analysis, and SMACKATTACK network reputation. Use all layers together for best results.</p>
 HTML
 ];
 
@@ -1104,19 +1104,19 @@ HTML
 
 $help_topics['smack-the-enemy'] = [
     'section'  => 'Boring Ass Stuff',
-    'title'    => 'SMACK THE ENEMY — Network Reputation',
+    'title'    => 'SMACKATTACK — Network Reputation',
     'icon'     => '&#x2620;',
     'role'     => 'admin',
     'content'  => <<<'HTML'
-<h3>SMACK THE ENEMY — Network Reputation</h3>
-<p>SMACK THE ENEMY is an optional network-wide reputation system. Participating SnapSmack blogs
+<h3>SMACKATTACK — Network Reputation</h3>
+<p>SMACKATTACK is an optional network-wide reputation system. Participating SnapSmack blogs
 share hashed fingerprint reports with a central server. The server scores each fingerprint based
 on how many trusted sites have reported it, and makes those scores available to all members.
 You can use them to auto-reject known trolls before they even get into your moderation queue.</p>
 
 <h4>Getting Started</h4>
 <p>Go to <strong>Configuration</strong> (Settings section in the sidebar) and scroll to the
-<strong>SMACK THE ENEMY</strong> section at the bottom. Click <strong>Join the Network</strong>.
+<strong>SMACKATTACK</strong> section at the bottom. Click <strong>Join the Network</strong>.
 Your site registers with the central server using your site URL and display name — the same
 pattern as the community forum — and you receive a Bearer token API key stored in your database.
 No personal data about you is transmitted.</p>
@@ -1135,7 +1135,7 @@ You choose your auto-ban threshold in the same Settings section:</p>
 <strong>Troll Control</strong> so you can review them.</p>
 
 <h4>Colour Dots in the Moderation Queue</h4>
-<p>When SMACK THE ENEMY is enabled and you are in Pimpmobile mode, a coloured dot appears
+<p>When SMACKATTACK is enabled and you are in Pimpmobile mode, a coloured dot appears
 next to each pending comment showing its current network threat level. Green means clean;
 anything else means at least one other site has reported that fingerprint or IP.</p>
 
@@ -1155,7 +1155,7 @@ timestamp is stored so only scores that have changed since your last sync are do
 the sync stays fast even as the network grows.</p>
 
 <h4>Opting Out</h4>
-<p>Click <strong>Opt Out</strong> in the SMACK THE ENEMY section of Settings. Your site is
+<p>Click <strong>Opt Out</strong> in the SMACKATTACK section of Settings. Your site is
 removed from the network, your API key is cleared, and no further data is sent or received.
 Your local <code>snap_ste_scores</code> cache is left in place — it won't be updated but it
 won't affect anything either.</p>
@@ -1202,7 +1202,7 @@ $help_topics['gobsmacked'] = [
 <h3>GOBSMACKED — Stylometric Evasion Detection</h3>
 <p>GOBSMACKED detects ban evasion by writing style. When a commenter is banned, a compact
 numeric fingerprint of how they write is extracted from their comment history and reported
-to SMACK THE ENEMY. If the same person returns on a new device, new IP, or new email, their
+to SMACKATTACK. If the same person returns on a new device, new IP, or new email, their
 writing style still matches the banned signature.</p>
 
 <p>Raw comment text never leaves your server. Only a 25-dimension numeric vector is
@@ -1211,7 +1211,7 @@ patterns. The original words are not recoverable from it.</p>
 
 <h4>How It Works</h4>
 <p>You don't need to do anything. When you ban a commenter through Troll Control and you are
-connected to SMACK THE ENEMY, GOBSMACKED automatically extracts the style vector and includes
+connected to SMACKATTACK, GOBSMACKED automatically extracts the style vector and includes
 it in the ban report. The central server stores it and runs periodic clustering analysis to
 identify fingerprints that appear to be the same person across different accounts.</p>
 
@@ -1221,7 +1221,7 @@ their comments on your site. Below that threshold there is not enough text for a
 signature, and no vector is sent.</p>
 
 <h4>Cluster Analysis</h4>
-<p>The SMACK THE ENEMY admin panel (on the hub) runs cosine similarity analysis across stored
+<p>The SMACKATTACK admin panel (on the hub) runs cosine similarity analysis across stored
 style vectors. Fingerprints that score above 0.80 similarity are grouped into clusters and
 presented with confidence labels: <strong>POSSIBLE MATCH</strong> (0.80–0.89),
 <strong>LIKELY MATCH</strong> (0.90–0.95), <strong>STRONG MATCH</strong> (0.95+). The hub
@@ -1230,12 +1230,12 @@ cluster as a false positive.</p>
 
 <h4>Privacy</h4>
 <p>GOBSMACKED is disclosed in the TWIG N BERRIES privacy policy on snapsmack.ca. If you
-participate in SMACK THE ENEMY you should disclose that your site uses stylometric analysis
+participate in SMACKATTACK you should disclose that your site uses stylometric analysis
 in your own site's privacy policy. The SnapSmack Settings page includes a privacy policy
 field for this purpose.</p>
 
 <h4>Requirements</h4>
-<p>GOBSMACKED requires SMACK THE ENEMY participation. It has no effect on standalone installs
+<p>GOBSMACKED requires SMACKATTACK participation. It has no effect on standalone installs
 that are not connected to the network.</p>
 HTML
 ];
@@ -1665,7 +1665,7 @@ enable box, write your content, and save. The footer link appears immediately.</
 <p>At minimum, your privacy policy should tell visitors:</p>
 <ul>
     <li>What data your site collects (SnapSmack collects visit statistics using a daily-rotating hash — no IP addresses are stored).</li>
-    <li>Whether you participate in SMACK THE ENEMY (if so, ban hashes are shared with the network).</li>
+    <li>Whether you participate in SMACKATTACK (if so, ban hashes are shared with the network).</li>
     <li>Whether GOBSMACKED is active (if so, stylometric writing vectors are extracted from banned commenters' comment histories and shared with the network — raw text is never transmitted).</li>
     <li>Whether you use any third-party analytics or tracking scripts (configured in Smack Your Scripts Up!).</li>
 </ul>

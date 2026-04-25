@@ -5,7 +5,7 @@
  * Manages the site's public-facing privacy policy. When enabled, a link
  * appears in the public footer and the policy renders at privacy-policy.php.
  *
- * Blog owners who participate in SMACK THE ENEMY or GOBSMACKED should
+ * Blog owners who participate in SMACKATTACK or GOBSMACKED should
  * disclose this to their visitors here.
  */
 
@@ -83,7 +83,7 @@ include 'core/sidebar.php';
         <div class="box">
             <div class="lens-input-wrapper">
                 <label>Privacy Policy Content</label>
-                <p class="dim">HTML accepted. If you participate in SMACK THE ENEMY or GOBSMACKED, disclose it here. Your visitors have a right to know.</p>
+                <p class="dim">HTML accepted. If you participate in SMACKATTACK or GOBSMACKED, disclose it here. Your visitors have a right to know.</p>
                 <textarea name="privacy_policy_content" class="css-override-textarea" spellcheck="false" rows="24"><?php echo htmlspecialchars($pp_content); ?></textarea>
             </div>
         </div>

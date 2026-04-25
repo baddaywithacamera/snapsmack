@@ -6,6 +6,10 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ## 0.7.24 — "Lawn Chair" (2026-04-25)
 
+### Changed
+- **Smack the Enemy renamed to SMACKATTACK** — all user-facing labels, headings, help topics, settings section, and API response messages updated. Internal code, file names, and database tables (`sc-enemy-*`, `ste_*`) unchanged.
+- **Packager changelog auto-fill fixed** — the packager JS now fetches CHANGELOG.md via a server-side PHP proxy that resolves the tag to a commit SHA before fetching, bypassing GitHub CDN tag-ref caching that caused the field to show empty after a force-push.
+
 ### Fixed
 - **Dashboard "Apply Update" button broken** — `cron-version-check.php` and the `smack-admin.php` fallback on-load check both stored a partial `core_update` blob that omitted `download_url`, `checksum_sha256`, and `signature`. Clicking Apply Update from the dashboard always produced "NO DOWNLOAD URL — RUN CHECK FOR UPDATES AGAIN." Both now store the full field set so the cached result can drive a complete update without requiring a manual re-check.
 
