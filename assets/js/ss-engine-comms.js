@@ -39,7 +39,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (window.SNAP_DATA) {
-        createHelpToast();
+        // If the consent banner is still showing, wait until it's dismissed
+        // before showing the F1 help toast — don't stack modals on first visit.
+        if (window.snapConsent && window.snapConsent.pending()) {
+            document.addEventListener('snap:consent-resolved', function () {
+                createHelpToast();
+            }, { once: true });
+        } else {
+            createHelpToast();
+        }
     }
 });
 
