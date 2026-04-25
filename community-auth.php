@@ -23,11 +23,24 @@ $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
 
 $action = $_GET['action'] ?? 'login';
 
+/**
+ * Validate a redirect target. Only relative paths are allowed — no scheme,
+ * no protocol-relative URLs (//evil.com). Returns '/' for anything suspicious.
+ */
+function community_safe_redirect(string $target): string {
+    $target = trim($target);
+    // Allow '/' or any path starting with a single slash followed by a non-slash
+    if ($target === '/' || preg_match('/^\/[^\/]/', $target)) {
+        return $target;
+    }
+    return '/';
+}
+
 // Already logged in — nothing to do here except logout
 if ($action !== 'logout' && $action !== 'verify') {
     $community_user = community_current_user();
     if ($community_user) {
-        $redirect = $_GET['redirect'] ?? '/';
+        $redirect = community_safe_redirect($_GET['redirect'] ?? '/');
         header('Location: ' . $redirect);
         exit;
     }
@@ -157,7 +170,7 @@ if ($action === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $identifier = trim($_POST['identifier'] ?? '');  // username or email
         $password   = $_POST['password'] ?? '';
-        $redirect   = $_POST['redirect'] ?? '/';
+        $redirect   = community_safe_redirect($_POST['redirect'] ?? '/');
 
         if (empty($identifier) || empty($password)) {
             $error = "Enter your username (or email) and password.";
@@ -179,7 +192,7 @@ if ($action === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = "Please verify your email before signing in. Check your inbox for the verification link.";
             } else {
                 community_login((int)$user['id']);
-                header('Location: ' . (filter_var($redirect, FILTER_VALIDATE_URL) ? $redirect : '/'));
+                header('Location: ' . $redirect);
                 exit;
             }
         }
@@ -627,21 +640,4 @@ $reset_token_param = htmlspecialchars($_GET['token'] ?? '');
             </div>
 
 
-        <?php // ================================================================
-              // EMAIL VERIFICATION RESULT
-              // ============================================================ ?>
-        <?php elseif ($action === 'verify'): ?>
-
-            <h2>Email Verification</h2>
-            <div class="auth-links">
-                <a href="/community-auth.php?action=login">Sign in</a>
-            </div>
-
-        <?php endif; ?>
-
-    </div><!-- /.auth-box -->
-
-</div><!-- /.auth-wrap -->
-
-</body>
-</html>
+        <?php // ============================================================

@@ -141,7 +141,7 @@ if ($step === 2 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
                     } elseif (strpos($msg, 'getaddrinfo') !== false || strpos($msg, 'No such host') !== false) {
                         $errors[] = "Cannot reach host '{$db_host}'. Check the hostname.";
                     } else {
-                        $errors[] = 'Connection failed: ' . htmlspecialchars($msg);
+                        $errors[] = 'Connection failed. Check your credentials and hostname, then try again.';
                     }
                 }
                 $step = 2;
@@ -1935,8 +1935,4 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         echo "</body></html>";
         exit;
         ?>
-    <?php endif; ?>
-
-</div>
-</body>
-</html>
+    <?php endif; 
