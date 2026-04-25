@@ -1935,4 +1935,8 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         echo "</body></html>";
         exit;
         ?>
-    <?php endif; 
+    <?php endif; ?>
+
+</div>
+</body>
+</html>

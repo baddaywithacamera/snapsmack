@@ -640,4 +640,21 @@ $reset_token_param = htmlspecialchars($_GET['token'] ?? '');
             </div>
 
 
-        <?php // ============================================================
+        <?php // ================================================================
+              // EMAIL VERIFICATION RESULT
+              // ============================================================ ?>
+        <?php elseif ($action === 'verify'): ?>
+
+            <h2>Email Verification</h2>
+            <div class="auth-links">
+                <a href="/community-auth.php?action=login">Sign in</a>
+            </div>
+
+        <?php endif; ?>
+
+    </div><!-- /.auth-box -->
+
+</div><!-- /.auth-wrap -->
+
+</body>
+</html>

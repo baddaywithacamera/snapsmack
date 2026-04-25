@@ -143,4 +143,28 @@ button:hover { background: #444; }
     <?php endif; ?>
 
     <?php if ($success): ?>
-        <
+        <a href="login.php" class="back">← Back to login</a>
+
+    <?php elseif ($step === 'reset'): ?>
+        <form method="POST">
+            <input type="hidden" name="token" value="<?php echo htmlspecialchars($token); ?>">
+            <label>New Password</label>
+            <input type="password" name="password" minlength="8" required autofocus>
+            <label>Confirm Password</label>
+            <input type="password" name="confirm" minlength="8" required>
+            <button type="submit">Set New Password</button>
+        </form>
+        <a href="login.php" class="back">← Back to login</a>
+
+    <?php else: ?>
+        <form method="POST">
+            <label>Email Address</label>
+            <input type="email" name="email" required autofocus
+                   value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>">
+            <button type="submit">Send Reset Link</button>
+        </form>
+        <a href="login.php" class="back">← Back to login</a>
+    <?php endif; ?>
+</div>
+</body>
+</html>
