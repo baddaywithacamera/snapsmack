@@ -1,6 +1,6 @@
 <?php
 /**
- * SMACK CENTRAL - SMACK THE ENEMY Admin
+ * SMACK CENTRAL - SMACKATTACK Admin
  *
  * Network oversight dashboard: registered sites, coordination clusters,
  * suspended sites, top-scored fingerprints, and manual tools.
@@ -14,7 +14,7 @@ $err  = '';
 try {
     $pdo = sc_enemy_db();
 } catch (Throwable $e) {
-    $err = 'SMACK THE ENEMY DB unavailable: ' . htmlspecialchars($e->getMessage());
+    $err = 'SMACKATTACK DB unavailable: ' . htmlspecialchars($e->getMessage());
     $pdo = null;
 }
 
@@ -310,7 +310,7 @@ try { if (!$pdo) throw new PDOException($err ?: 'No DB connection.');
 
     $db_ok = true;
 } catch (PDOException $e) {
-    $err   = "SMACK THE ENEMY DB unavailable: " . htmlspecialchars($e->getMessage());
+    $err   = "SMACKATTACK DB unavailable: " . htmlspecialchars($e->getMessage());
     $db_ok = false;
     $stats = $top_fps = $sites = $clusters = [];
     $style_clusters = []; $style_ran = false;
@@ -336,7 +336,7 @@ include __DIR__ . '/sc-layout-top.php';
 .ste-panel { display:none; } .ste-panel.active { display:block; }
 </style>
 
-<h2 style="margin-bottom:4px;">SMACK THE ENEMY</h2>
+<h2 style="margin-bottom:4px;">SMACKATTACK</h2>
 <p style="color:#888; margin-bottom:24px;">Shield Tier 3 — Network Reputation &amp; GOBSMACKED</p>
 
 <?php if ($msg): ?><div class="sc-msg"><?php echo htmlspecialchars($msg); ?></div><?php endif; ?>
@@ -578,8 +578,8 @@ include __DIR__ . '/sc-layout-top.php';
 
 <!-- HOW IT WORKS ────────────────────────────────────────────────────────── -->
 <div class="ste-panel" id="panel-help" style="max-width:720px; line-height:1.65; font-size:0.9rem; color:#ccc;">
-    <h3 style="margin-top:0; color:#fff;">How SMACK THE ENEMY Works</h3>
-    <p>SMACK THE ENEMY is a voluntary network reputation system. Participating SnapSmack sites report bad fingerprints (trolls, spammers) to the central server. The server scores each fingerprint based on how many sites have reported it and how trustworthy those sites are, then makes the scores available to all participants.</p>
+    <h3 style="margin-top:0; color:#fff;">How SMACKATTACK Works</h3>
+    <p>SMACKATTACK is a voluntary network reputation system. Participating SnapSmack sites report bad fingerprints (trolls, spammers) to the central server. The server scores each fingerprint based on how many sites have reported it and how trustworthy those sites are, then makes the scores available to all participants.</p>
 
     <h4 style="color:#fff;">Threat Levels</h4>
     <p>Every fingerprint gets a colour based on its weighted score:</p>

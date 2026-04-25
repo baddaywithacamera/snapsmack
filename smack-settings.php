@@ -48,7 +48,7 @@ if (
     exit;
 }
 
-// --- SMACK THE ENEMY: REGISTER ACTION ---
+// --- SMACKATTACK: REGISTER ACTION ---
 // Handled before the main settings save so the new key is in DB before we reload settings.
 $ste_msg = '';
 $ste_err = '';
@@ -62,7 +62,7 @@ if (isset($_POST['ste_action']) && $_POST['ste_action'] === 'register') {
     if ($res['ok']) {
         $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('ste_api_key',?) ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$res['api_key']]);
         $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('ste_enabled','1') ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute();
-        $ste_msg = 'Registered with SMACK THE ENEMY. Ready to roll.';
+        $ste_msg = 'Registered with SMACKATTACK. Ready to roll.';
         // Reload settings to pick up the new key
         $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
     } else {
@@ -694,7 +694,7 @@ include 'core/sidebar.php';
 
         <?php $_ui_pimpmobile = ($settings['ui_mode'] ?? 'bigwheel') === 'pimpmobile'; ?>
         <?php if ($_ui_pimpmobile): ?>
-        <h3>SMACK THE ENEMY</h3>
+        <h3>SMACKATTACK</h3>
         <?php if ($ste_msg): ?>
             <div class="alert alert-success mb-25">&gt; <?php echo htmlspecialchars($ste_msg); ?></div>
         <?php endif; ?>
@@ -711,7 +711,7 @@ include 'core/sidebar.php';
 
         <?php if ($ste_key === ''): ?>
             <p class="dim" style="font-size:0.85rem; margin-bottom:16px;">
-                SMACK THE ENEMY is a voluntary network reputation system for SnapSmack blogs.
+                SMACKATTACK is a voluntary network reputation system for SnapSmack blogs.
                 Register to start receiving threat level scores on incoming comments.
                 You can opt out at any time.
             </p>

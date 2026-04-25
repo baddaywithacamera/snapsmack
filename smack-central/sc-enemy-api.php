@@ -1,6 +1,6 @@
 <?php
 /**
- * SMACK CENTRAL - SMACK THE ENEMY Public API
+ * SMACK CENTRAL - SMACKATTACK Public API
  *
  * Network-wide distributed ban reputation system for SnapSmack.
  * Called by opted-in SnapSmack blogs — NOT the SC admin interface.
@@ -135,7 +135,7 @@ if ($route === 'register' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         'ok'      => true,
         'site_id' => $site_id,
         'api_key' => $api_key,
-        'message' => 'Welcome to SMACK THE ENEMY. Store your api_key securely.',
+        'message' => 'Welcome to SMACKATTACK. Store your api_key securely.',
     ]);
 }
 
@@ -420,7 +420,7 @@ if ($route === 'optout' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     ste_json([
         'ok'               => true,
         'confirmation_token' => $token,
-        'message'          => 'Opted out. Your API key has been revoked. Historical contributions are retained per the SMACK THE ENEMY privacy policy.',
+        'message'          => 'Opted out. Your API key has been revoked. Historical contributions are retained per the SMACKATTACK privacy policy.',
     ]);
 }
 
