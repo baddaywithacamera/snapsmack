@@ -61,8 +61,17 @@ try {
         $_core_update = null;
         if ($_core_status === 'update_available') {
             $_core_update = [
-                'version'      => $_release['version'] ?? '',
-                'version_full' => $_release['version_full'] ?? '',
+                'version'         => $_release['version']         ?? '',
+                'version_full'    => $_release['version_full']    ?? '',
+                'codename'        => $_release['codename']        ?? '',
+                'released'        => $_release['released']        ?? '',
+                'changelog'       => $_release['changelog']       ?? [],
+                'schema_changes'  => $_release['schema_changes']  ?? false,
+                'download_size'   => $_release['download_size']   ?? 0,
+                'requires_php'    => $_release['requires_php']    ?? '8.0',
+                'download_url'    => $_release['download_url']    ?? '',
+                'checksum_sha256' => $_release['checksum_sha256'] ?? '',
+                'signature'       => $_release['signature']       ?? '',
             ];
         }
 

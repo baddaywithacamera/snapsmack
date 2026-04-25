@@ -72,13 +72,17 @@ $core_status = updater_check_status($installed_version, $release_info);
 $core_update = null;
 if ($core_status === 'update_available') {
     $core_update = [
-        'version'        => $release_info['version'] ?? '',
-        'version_full'   => $release_info['version_full'] ?? '',
-        'released'       => $release_info['released'] ?? '',
-        'changelog'      => $release_info['changelog'] ?? [],
-        'schema_changes' => $release_info['schema_changes'] ?? false,
-        'download_size'  => $release_info['download_size'] ?? 0,
-        'requires_php'   => $release_info['requires_php'] ?? '8.0',
+        'version'         => $release_info['version']         ?? '',
+        'version_full'    => $release_info['version_full']    ?? '',
+        'codename'        => $release_info['codename']        ?? '',
+        'released'        => $release_info['released']        ?? '',
+        'changelog'       => $release_info['changelog']       ?? [],
+        'schema_changes'  => $release_info['schema_changes']  ?? false,
+        'download_size'   => $release_info['download_size']   ?? 0,
+        'requires_php'    => $release_info['requires_php']    ?? '8.0',
+        'download_url'    => $release_info['download_url']    ?? '',
+        'checksum_sha256' => $release_info['checksum_sha256'] ?? '',
+        'signature'       => $release_info['signature']       ?? '',
     ];
 }
 
