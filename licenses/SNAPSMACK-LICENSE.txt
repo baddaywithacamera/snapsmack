@@ -1,7 +1,6 @@
 SNAPSMACK PUBLIC LICENSE
 
-Copyright (c) 2026 Sean McCormick (sean@baddaywithacamera.ca). 
-Includes original code by the aforementioned with code contributed by Google Gemini Pro and Claude Pro.
+Copyright (c) 2026 Sean McCormick (sean@baddaywithacamera.ca). Includes original code by the aforementioned with code contributed by Google Gemini Pro and Claude Pro (Sonnet 4.6 & Opus 4.7).
 
 1. USAGE
 This software is provided free of charge for both commercial and non-commercial use. 
@@ -9,17 +8,13 @@ This software is provided free of charge for both commercial and non-commercial 
 2. MODIFICATIONS AND REDISTRIBUTION
 You are permitted to fork and modify the code. However, any redistributed versions of this software, modified or otherwise, must satisfy all of the following conditions:
 
-  a) The complete corresponding source code must be made publicly available,
-     in a location accessible to anyone who receives the software, at no charge.
+  a) The complete corresponding source code must be made publicly available, in a location accessible to anyone who receives the software, at no charge.
 
   b) The software must be made available for free, under these exact license terms.
 
-  c) No technical measures may be applied that restrict a recipient's ability
-     to read, inspect, or modify the source code.
+  c) No technical measures may be applied that restrict a recipient's ability to read, inspect, or modify the source code.
 
-Transparency is a security requirement: people have the right to see the code
-they are running. Distributing SnapSmack without its source, in whole or in part,
-is not permitted under any circumstances.
+Transparency is a security requirement: people have the right to see the code they are running. Distributing SnapSmack without its source, in whole or in part, is not permitted under any circumstances.
 
 3. CONTRIBUTIONS
 The main branch of SNAPSMACK remains closed to direct public contributions. Suggestions, bug reports, or fixes should be submitted via email to the address listed above.
@@ -31,5 +26,7 @@ This software utilizes third-party components which are subject to their own res
 This software is provided "as is," without warranty of any kind, express or implied. In no event shall the author be liable for any claim, damages, or other liability arising from the use of the software.
 
 ---
+
 ETHICAL PROVENANCE SUMMARY
-Substantial portions of SNAPSMACK are "Vibe Coded." This software was built using Large Language Models (LLMs) trained on vast datasets of existing code. Because the ethical and legal provenance of AI training data remains a "fruit of the poisoned tree"—where the original sources were not always permissive or compensated — the author believes it is unethical to commercially gate or charge for the resulting output. This software must remain in the commons, free for all, as a matter of integrity.
+
+Substantial portions of SNAPSMACK are "Vibe Coded." This software was built using Large Language Models (LLMs) trained on vast datasets of existing code. Because the ethical and legal provenance of AI training data remains a "fruit of the poisoned tree" — where the original sources were not always permissive or compensated — the author believes it is unethical to commercially gate or charge for the resulting output. This software must remain in the commons, free for all, as a matter of integrity.

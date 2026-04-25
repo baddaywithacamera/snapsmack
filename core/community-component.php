@@ -3,9 +3,9 @@
  * SNAPSMACK - Community Component
  *
  * Shared include for likes, reactions, and account-required comments.
- * Drop into any skin's layout.php after core/layout_logic.php has run.
+ * Drop into any skin's layout.php after core/layout-logic.php has run.
  *
- * Requires these variables to be in scope (all provided by layout_logic.php):
+ * Requires these variables to be in scope (all provided by layout-logic.php):
  *   $pdo       — PDO connection
  *   $settings  — snap_settings key-value array
  *   $img       — current image/post row from snap_images
@@ -33,7 +33,7 @@ if (($settings['community_enabled'] ?? '1') !== '1') {
     return;
 }
 
-// --- GUARD: Require layout_logic.php to have run ---
+// --- GUARD: Require layout-logic.php to have run ---
 if (empty($img['id'])) {
     return;
 }

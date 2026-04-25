@@ -5,7 +5,7 @@
  * Supports three frame modes: none, pixel, galleria.
  * Variables available from index.php: $pdo, $settings, $img, $active_skin, $site_name
  */
-require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
+require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 
 $frame_style = $settings['htbs_frame_style'] ?? 'none';
 $frame_class = 'snt-frame-' . $frame_style;
@@ -47,7 +47,7 @@ $frame_class = 'snt-frame-' . $frame_style;
     <?php endif; ?>
 
     <div id="infobox">
-        <?php include dirname(__DIR__, 2) . '/core/navigation_bar.php'; ?>
+        <?php include dirname(__DIR__, 2) . '/core/navigation-bar.php'; ?>
     </div>
 
     <!-- Center-expanding info/comments overlay -->

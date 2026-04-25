@@ -209,7 +209,7 @@ if ($route === 'report' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         ste_recompute_score($pdo, $fp_id);
     }
 
-    // ── Store style vector (SMACK STYLE — Tier 3) ─────────────────────────────
+    // ── Store style vector (GOBSMACKED — Tier 3) ──────────────────────────────
     // The blog extracts writing style features at ban time. Only the numeric
     // vector arrives here — raw comment text never leaves the blog.
     $raw_vector = $body['style_vector'] ?? null;

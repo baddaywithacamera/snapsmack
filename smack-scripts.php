@@ -16,20 +16,22 @@ require_once 'core/auth.php';
 
 // ─── FORM SUBMISSION ───────────────────────────────────────────────
 
+define('CUSTOM_HEAD_FILE', __DIR__ . '/data/custom-head.html');
+
 if (isset($_POST['save_scripts'])) {
 
     $head_scripts = trim($_POST['head_scripts'] ?? '');
     $embed_codes  = trim($_POST['embed_codes'] ?? '');
 
-    // Head scripts — single blob, injected on every public page.
-    $check = $pdo->prepare("SELECT COUNT(*) FROM snap_settings WHERE setting_key = 'custom_head_scripts'");
-    $check->execute();
-    if ($check->fetchColumn() > 0) {
-        $stmt = $pdo->prepare("UPDATE snap_settings SET setting_val = ? WHERE setting_key = 'custom_head_scripts'");
-    } else {
-        $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_val, setting_key) VALUES (?, 'custom_head_scripts')");
+    // Head scripts — written to a file, not the DB, so SMACKBACK can watch it.
+    // A DB-injection attack cannot alter file-based content.
+    if (!is_dir(__DIR__ . '/data')) {
+        mkdir(__DIR__ . '/data', 0755, true);
     }
-    $stmt->execute([$head_scripts]);
+    file_put_contents(CUSTOM_HEAD_FILE, $head_scripts);
+
+    // Clear the legacy DB entry so the file is the single source of truth.
+    $pdo->prepare("DELETE FROM snap_settings WHERE setting_key = 'custom_head_scripts'")->execute();
 
     // Embed codes — key=value blocks, one per shortcode.
     $check2 = $pdo->prepare("SELECT COUNT(*) FROM snap_settings WHERE setting_key = 'custom_embed_codes'");
@@ -47,9 +49,14 @@ if (isset($_POST['save_scripts'])) {
 
 // ─── LOAD EXISTING DATA ───────────────────────────────────────────
 
-$stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = 'custom_head_scripts'");
-$stmt->execute();
-$head_scripts = $stmt->fetchColumn() ?: '';
+// Load head scripts from file. Fall back to DB for installs that haven't re-saved yet.
+if (file_exists(CUSTOM_HEAD_FILE)) {
+    $head_scripts = file_get_contents(CUSTOM_HEAD_FILE);
+} else {
+    $stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = 'custom_head_scripts'");
+    $stmt->execute();
+    $head_scripts = $stmt->fetchColumn() ?: '';
+}
 
 $stmt2 = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = 'custom_embed_codes'");
 $stmt2->execute();

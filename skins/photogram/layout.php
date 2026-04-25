@@ -7,11 +7,11 @@
  * inline like button, comment trigger that opens the bottom sheet.
  * Double-tap on image fires a like + heart burst animation.
  *
- * Variables from index.php / layout_logic.php:
+ * Variables from index.php / layout-logic.php:
  *   $pdo, $settings, $img, $active_skin, $site_name, $exif_data, $comments
  */
 
-require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
+require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 require_once dirname(__DIR__, 2) . '/core/snap-tags.php';
 
 // ── Profile data ──────────────────────────────────────────────────────────

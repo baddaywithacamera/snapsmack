@@ -27,7 +27,7 @@ if (!empty($settings['active_skin'])) {
 // --- SECTION / PAGE MAP ---
 // Determine which accordion section to auto-open based on the current page.
 $_section_map = [
-    'good-shit'  => ['smack-admin.php','smack-post.php','smack-manage.php','smack-edit.php','smack-cats.php','smack-albums.php','smack-media.php','smack-gallery.php','smack-comments.php','smack-blogroll.php','smack-pages.php','smack-community-settings.php','smack-community-users.php','smack-tools.php'],
+    'good-shit'  => ['smack-admin.php','smack-post-solo.php','smack-post-long.php','smack-manage.php','smack-edit.php','smack-cats.php','smack-albums.php','smack-collections.php','smack-mosaics.php','smack-media.php','smack-gallery.php','smack-comments.php','smack-blogroll.php','smack-pages.php','smack-privacy.php','smack-community-settings.php','smack-community-users.php','smack-tools.php'],
     'pimp'       => ['smack-globalvibe.php','smack-skin.php','smack-pimpotron.php','smack-social-dock.php','smack-css.php','smack-scripts.php','smack-appearance-archive.php','smack-appearance-solo.php','smack-appearance-static.php'],
     'boring'     => ['smack-settings.php','smack-users.php','smack-maintenance.php','smack-fingerprints.php','smack-backup.php','smack-disaster.php','smack-ftp.php','smack-cloud.php','smack-verify.php','smack-update.php','smack-stats.php','smack-api-keys.php','smack-multisite.php','smack-multisite-comments.php','smack-multisite-posts.php','smack-multisite-backup.php','smack-multisite-stats.php','smack-multisite-crosspost.php','smack-multisite-blogroll.php'],
     'help'       => ['smack-help.php','smack-forum.php'],
@@ -57,9 +57,14 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-admin.php') ? 'active' : ''; ?>">
                         <a href="smack-admin.php">Dashboard</a>
                     </li>
-                    <li class="<?php echo ($current_page == 'smack-post.php') ? 'active' : ''; ?>">
-                        <a href="smack-post.php">New Post</a>
+                    <li class="<?php echo ($current_page == 'smack-post-solo.php') ? 'active' : ''; ?>">
+                        <a href="smack-post-solo.php">New Post</a>
                     </li>
+                    <?php if ($_ui_pimpmobile): ?>
+                    <li class="<?php echo ($current_page == 'smack-post-long.php') ? 'active' : ''; ?>">
+                        <a href="smack-post-long.php">New Longform Post</a>
+                    </li>
+                    <?php endif; ?>
                     <li class="<?php echo ($current_page == 'smack-manage.php' || $current_page == 'smack-edit.php') ? 'active' : ''; ?>">
                         <a href="smack-manage.php">Manage Archive</a>
                     </li>
@@ -69,6 +74,14 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-albums.php') ? 'active' : ''; ?>">
                         <a href="smack-albums.php">Albums</a>
                     </li>
+                    <?php if ($_ui_pimpmobile): ?>
+                    <li class="<?php echo ($current_page == 'smack-collections.php') ? 'active' : ''; ?>">
+                        <a href="smack-collections.php">Collections</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-mosaics.php') ? 'active' : ''; ?>">
+                        <a href="smack-mosaics.php">Mosaics</a>
+                    </li>
+                    <?php endif; ?>
                     <?php if ($_ui_pimpmobile): ?>
                     <li class="<?php echo ($current_page == 'smack-media.php') ? 'active' : ''; ?>">
                         <a href="smack-media.php">Media Library</a>
@@ -91,6 +104,9 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     </li>
                     <li class="<?php echo ($current_page == 'smack-pages.php') ? 'active' : ''; ?>">
                         <a href="smack-pages.php">Static Pages</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-privacy.php') ? 'active' : ''; ?>">
+                        <a href="smack-privacy.php">Privacy Policy</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-tools.php') ? 'active' : ''; ?>">
                         <a href="smack-tools.php">Companion Tools</a>
@@ -224,16 +240,18 @@ foreach ($_section_map as $sec => $_sec_pages) {
                 </ul>
             </div>
 
-        </nav>
+            <!-- MODE TOGGLE — styled as section header, no drawer, direct form submit -->
+            <div class="nav-section nav-section--mode-toggle">
+                <form method="POST" action="smack-admin.php">
+                    <input type="hidden" name="pimpmobile_action"
+                           value="<?php echo $_ui_pimpmobile ? 'switch_to_bigwheel' : 'switch_to_pimpmobile'; ?>">
+                    <button type="submit" class="nav-section-toggle">
+                        <span class="nav-section-label"><?php echo $_ui_pimpmobile ? 'Switch to Big Wheel' : 'Unlock Pimpmobile'; ?></span>
+                    </button>
+                </form>
+            </div>
 
-        <!-- MODE TOGGLE — outside accordion, between nav and sidebar-bottom -->
-        <form method="POST" action="smack-admin.php" class="mode-toggle-form">
-            <input type="hidden" name="pimpmobile_action"
-                   value="<?php echo $_ui_pimpmobile ? 'switch_to_bigwheel' : 'switch_to_pimpmobile'; ?>">
-            <button type="submit" class="mode-toggle-btn">
-                <?php echo $_ui_pimpmobile ? 'Switch to Big Wheel' : 'Unlock Pimpmobile'; ?>
-            </button>
-        </form>
+        </nav>
 
     </div>
 

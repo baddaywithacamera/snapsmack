@@ -337,7 +337,7 @@ include __DIR__ . '/sc-layout-top.php';
 </style>
 
 <h2 style="margin-bottom:4px;">SMACK THE ENEMY</h2>
-<p style="color:#888; margin-bottom:24px;">Shield Tier 3 — Network Reputation &amp; Style Analysis</p>
+<p style="color:#888; margin-bottom:24px;">Shield Tier 3 — Network Reputation &amp; GOBSMACKED</p>
 
 <?php if ($msg): ?><div class="sc-msg"><?php echo htmlspecialchars($msg); ?></div><?php endif; ?>
 <?php if ($err): ?><div class="sc-error"><?php echo $err; ?></div><?php endif; ?>
@@ -353,14 +353,14 @@ include __DIR__ . '/sc-layout-top.php';
     <div class="ste-stat"><div class="num" style="color:#ff9800"><?php echo $stats['red_count']; ?></div><div class="lbl">Red</div></div>
     <div class="ste-stat"><div class="num" style="color:<?php echo $stats['clusters_open'] ? '#ffc107' : '#4caf50'; ?>"><?php echo $stats['clusters_open']; ?></div><div class="lbl">Open Clusters</div></div>
     <div class="ste-stat"><div class="num" style="color:<?php echo $stats['quarantined'] ? '#ffc107' : '#4caf50'; ?>"><?php echo $stats['quarantined']; ?></div><div class="lbl">Quarantined</div></div>
-    <div class="ste-stat"><div class="num" style="color:#90caf9"><?php echo $stats['style_vectors']; ?></div><div class="lbl">Style Vectors</div></div>
+    <div class="ste-stat"><div class="num" style="color:#90caf9"><?php echo $stats['style_vectors']; ?></div><div class="lbl">GOBSMACKED</div></div>
 </div>
 
 <div class="ste-tabs">
     <button class="ste-tab active" onclick="steTab('fps')">TOP SCORES</button>
     <button class="ste-tab" onclick="steTab('sites')">SITES</button>
     <button class="ste-tab" onclick="steTab('clusters')">CLUSTERS <?php if($stats['clusters_open']): ?><span style="color:#ffc107">(<?php echo $stats['clusters_open']; ?>)</span><?php endif; ?></button>
-    <button class="ste-tab" onclick="steTab('style')">STYLE ANALYSIS <?php if($stats['style_vectors']): ?><span style="color:#90caf9">(<?php echo $stats['style_vectors']; ?>)</span><?php endif; ?></button>
+    <button class="ste-tab" onclick="steTab('style')">GOBSMACKED <?php if($stats['style_vectors']): ?><span style="color:#90caf9">(<?php echo $stats['style_vectors']; ?>)</span><?php endif; ?></button>
     <button class="ste-tab" onclick="steTab('help')" style="margin-left:auto">HOW IT WORKS</button>
 </div>
 
@@ -491,7 +491,7 @@ include __DIR__ . '/sc-layout-top.php';
     <?php if (!$style_ran): ?>
     <form method="post" action="sc-enemy-admin.php#panel-style">
         <input type="hidden" name="action" value="run_style_analysis">
-        <button type="submit" class="sc-btn sc-btn-primary">Run Style Analysis (<?php echo $stats['style_vectors']; ?> vectors)</button>
+        <button type="submit" class="sc-btn sc-btn-primary">Run GOBSMACKED Analysis (<?php echo $stats['style_vectors']; ?> vectors)</button>
     </form>
     <?php elseif (empty($style_clusters)): ?>
     <p style="color:#4caf50; padding:12px 0">

@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
   `title`             varchar(500)   COLLATE utf8mb4_unicode_ci NOT NULL,
   `slug`              varchar(600)   COLLATE utf8mb4_unicode_ci NOT NULL,
   `description`       text           COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `post_type`         enum('single','carousel','panorama') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'single',
+  `post_type`         enum('single','carousel','panorama','longform') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'single',
   `status`            varchar(20)    COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'published',
   `created_at`        datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`        datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -79,6 +79,10 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
   `post_border_color` char(7)        COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '#000000',
   `post_bg_color`     char(7)        COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '#ffffff',
   `post_shadow`       tinyint unsigned NOT NULL DEFAULT 0,
+  `content`           longtext       COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                      COMMENT 'Body content for longform (SmackTalk) posts — migration 041',
+  `featured_asset_id` int unsigned   DEFAULT NULL
+                      COMMENT 'Hero image for longform posts — FK to snap_assets.id — migration 041',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_slug` (`slug`),
   KEY `idx_status` (`status`),
@@ -120,6 +124,8 @@ CREATE TABLE IF NOT EXISTS `snap_categories` (
                     COMMENT 'Optional manual cover override — FK to snap_images',
   `show_in_archive` tinyint(1) NOT NULL DEFAULT 1
                     COMMENT '1 = visible in public archive; 0 = hidden (added 0.7.9f)',
+  `featured_post_id` int unsigned DEFAULT NULL
+                    COMMENT 'Hero image source for category gallery views — migration 039',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -129,6 +135,8 @@ CREATE TABLE IF NOT EXISTS `snap_albums` (
   `album_description` text COLLATE utf8mb4_unicode_ci,
   `cover_image_id`    int  DEFAULT NULL
                       COMMENT 'Optional manual cover override — FK to snap_images',
+  `featured_post_id`  int unsigned DEFAULT NULL
+                      COMMENT 'Hero image source for album gallery views — migration 039',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -645,3 +653,68 @@ CREATE TABLE IF NOT EXISTS `snap_ste_scores` (
   KEY `idx_colour` (`colour_level`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='Local cache of SMACK THE ENEMY network reputation scores';
+
+
+-- ─── MOSAICS (migration 038) ──────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS `snap_mosaics` (
+  `id`         INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  `title`      VARCHAR(150)  COLLATE utf8mb4_unicode_ci NOT NULL,
+  `asset_ids`  LONGTEXT      COLLATE utf8mb4_unicode_ci NOT NULL
+               COMMENT 'JSON array of snap_assets IDs in display order',
+  `gap`        TINYINT       NOT NULL DEFAULT 4
+               COMMENT 'Gap in pixels between mosaic cells (0–20)',
+  `created_at` TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ─── COLLECTIONS (migration 040) ─────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS `snap_collections` (
+  `id`               INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  `name`             VARCHAR(150)  COLLATE utf8mb4_unicode_ci NOT NULL,
+  `slug`             VARCHAR(150)  COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description`      TEXT          COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `featured_post_id` INT UNSIGNED  DEFAULT NULL
+                     COMMENT 'Hero image source; NULL = fall back to most recent member post',
+  `sort_order`       INT           NOT NULL DEFAULT 0,
+  `created_at`       TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`       TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_slug` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `snap_collection_items` (
+  `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `collection_id` INT UNSIGNED NOT NULL,
+  `item_type`     ENUM('post','album','category') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `item_id`       INT UNSIGNED NOT NULL
+                  COMMENT 'ID in snap_posts, snap_albums, or snap_categories respectively',
+  `sort_order`    INT          NOT NULL DEFAULT 0,
+  `added_at`      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_collection_item` (`collection_id`, `item_type`, `item_id`),
+  KEY `idx_collection` (`collection_id`),
+  CONSTRAINT `fk_ci_collection`
+      FOREIGN KEY (`collection_id`) REFERENCES `snap_collections` (`id`)
+      ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ─── LONGFORM POST PIVOTS (migration 041) ────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS `snap_post_cat_map` (
+  `post_id` INT UNSIGNED NOT NULL,
+  `cat_id`  INT UNSIGNED NOT NULL,
+  PRIMARY KEY (`post_id`, `cat_id`),
+  KEY `idx_pcm_cat` (`cat_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `snap_post_album_map` (
+  `post_id`  INT UNSIGNED NOT NULL,
+  `album_id` INT UNSIGNED NOT NULL,
+  PRIMARY KEY (`post_id`, `album_id`),
+  KEY `idx_pam_album` (`album_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

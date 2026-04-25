@@ -5,7 +5,7 @@
  *
  * Renders the photo display, navigation, metadata, and comments sections.
  */
-require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
+require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 
 ?>
 
@@ -28,7 +28,7 @@ require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
     <div id="infobox">
         <?php 
         /* The navigation bar handles its own link logic */
-        include dirname(__DIR__, 2) . '/core/navigation_bar.php'; 
+        include dirname(__DIR__, 2) . '/core/navigation-bar.php'; 
         ?>
     </div>
 

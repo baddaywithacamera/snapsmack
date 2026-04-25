@@ -1072,8 +1072,9 @@ nav a.active::after {
     font-size: 0.88rem;
     color: var(--mid-grey);
     line-height: 1.6;
-    margin: 0;
+    margin: 0 0 0.75em 0;
 }
+.not-item p:last-child { margin-bottom: 0; }
 
 /* ─── BETA SIGNUP ───────────────────────────────────────────────────────── */
 #beta {
@@ -1262,7 +1263,7 @@ form.ml-block-form {
 .footer-inner {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     flex-wrap: wrap;
     gap: 16px;
 }
@@ -1412,11 +1413,11 @@ form.ml-block-form {
             <img src="img/logo.png" alt="SnapSmack">
         </a>
         <nav>
-            <a href="index.html">HOME</a>
+            <a href="index.html">GAFF!</a>
             <a href="wotcha.html">WOTCHA!</a>
             <a href="bugger.html">BUGGER!</a>
-            <a href="oi.html">OI MATE!</a>
             <a href="tnb.html">TWIG N BERRIES!</a>
+            <a href="oi.html">OI MATE!</a>
         </nav>
     </div>
 </div>
@@ -1432,11 +1433,11 @@ form.ml-block-form {
             </div>
         </a>
         <nav>
-            <a href="index.html">HOME</a>
+            <a href="index.html">GAFF!</a>
             <a href="wotcha.html">WOTCHA!</a>
             <a href="bugger.html">BUGGER!</a>
-            <a href="oi.html">OI MATE!</a>
             <a href="tnb.html">TWIG N BERRIES!</a>
+            <a href="oi.html">OI MATE!</a>
         </nav>
     </div>
 </header>
@@ -1444,7 +1445,7 @@ form.ml-block-form {
 <!-- ── HERO ───────────────────────────────────────────────────────────────── -->
 <section id="hero">
     <div class="hero-inner">
-        <span class="alpha-badge">Alpha v0.7.9P</span>
+        <span class="alpha-badge">Alpha v0.7.20</span>
         <h1 class="hero-headline">A photo blog platform that doesn't treat you like a <span>product.</span></h1>
         <p class="hero-kicker">SnapSmack lets you smack your snaps up.</p>
         <p class="hero-sub">Self-hosted, free and open-source, built for photographers who got tired of Instagram, Facebook, and every other platform deciding what happens to their work. Own your archive. Own your audience. No middleman.</p>
@@ -1670,7 +1671,7 @@ form.ml-block-form {
 <section id="security">
     <div class="wrap">
         <h2>Security</h2>
-        <p class="lede">Three layers. Site ban, multi-site ban, SnapSmack network reputation tracking. The more work a troll has to do, the more likely they are to go bother someone else. We pile it on them and then some.</p>
+        <p class="lede">Six layers. Local fingerprint ban, fleet-wide ban sync, network reputation, stylometric evasion detection, file integrity monitoring, and cryptographically signed releases. The more work a troll or attacker has to do, the more likely they are to go bother someone else. We work them harder than an Amazon employee on Black Friday.</p>
 
         <div class="security-layers">
 
@@ -1695,7 +1696,31 @@ form.ml-block-form {
                 <h3>SMACK UP</h3>
                 <p>Voluntary network-wide reputation. Participating SnapSmack blogs report bad fingerprints to a central server. The server scores each fingerprint by weighted site reputation — an established blog with hundreds of posts carries more authority than a new install with one. Scores decay over time so old reports don't haunt people forever.</p>
                 <p>Five threat levels: green, yellow, orange, red, black. Each blog owner sets their own auto-ban threshold. Community allow-votes roll back false positives — if you approve a flagged commenter, that vote reduces their score across the whole network. No central authority decides who's banned. The community does.</p>
-                <p>Opt-in. Privacy-preserving. Only hashes are transmitted. Pull out any time.</p>
+                <p>Opt-in. Privacy-preserving. Only hashes are transmitted. Pull out (heh!) any time.</p>
+            </div>
+
+            <div class="security-layer">
+                <div class="layer-num">Layer 4 — The Network</div>
+                <h3>GOBSMACKED</h3>
+                <p>When a commenter is banned, a compact 25-dimension numeric fingerprint of how they write is extracted from their comment history — sentence rhythm, punctuation habits, function word ratios, capitalisation patterns. Not the text. The signature of the hand that wrote it.</p>
+                <p>If the same person returns on a new device, new IP, new email — they write the same way. GOBSMACKED compares incoming style vectors against the signatures of known-banned accounts across the network. The troll who thinks clearing their cookies was enough is in for a surprise.</p>
+                <p>Network opt-in. Requires SMACK THE ENEMY participation. Raw comment text never leaves your server.</p>
+            </div>
+
+            <div class="security-layer">
+                <div class="layer-num">Layer 5 — Your Install</div>
+                <h3>SMACKBACK</h3>
+                <p>SMACKBACK is automated sentinel software that ships in every install and runs without configuration. On hub/spoke networks, tamper reports are cross-correlated across all spokes — the same file modified at multiple sites in sequence isn't a coincidence, it's a coordinated attack, and the response escalates accordingly.</p>
+                <p>SNAPSMACK watches its own files. PHP, JavaScript, and CSS are hashed at install time and re-verified on a schedule — and on every admin login and skin load. A modified file is caught fast.</p>
+                <p>Confirmed tamper is unmissable: the admin interface switches to a high-contrast BREACH skin that cannot be dismissed until the incident is resolved. An email alert fires. The incident response procedure kicks in.</p>
+            </div>
+
+            <div class="security-layer">
+                <div class="layer-num">Layer 6 — The Software</div>
+                <h3>SNAP DECISION</h3>
+                <p>Every SNAPSMACK release is cryptographically signed. The signing key lives on a hardware token, not a hard drive. The installer verifies the signature before unpacking anything. If verification fails, nothing installs.</p>
+                <p>SHA-256 checksums for every release file are published alongside the download. Every release commit is tagged in git and the tag is signed — the full chain of custody from code to installer is publicly verifiable.</p>
+                <p>No external packages fetched automatically at install time. Any third-party JavaScript is copied directly into the codebase and reviewed before it ships — not pulled from a remote registry on the fly. The most common supply-chain attack vector against PHP web software doesn't exist here because the surface doesn't exist.</p>
             </div>
 
         </div>
@@ -1934,7 +1959,7 @@ form.ml-block-form {
         <h2>What It Is Not</h2>
         <div class="not-grid">
             <div class="not-item">
-                <h3>Not for professional photographers</h3>
+                <h3>Not for pro photogs</h3>
                 <p>SnapSmack is built for hobbyist photo bloggers — people who love shooting and writing about it. It has no print store, no client proofing, no licensing workflows, no watermarking. If your photos are your livelihood, you need something else.</p>
             </div>
             <div class="not-item">
@@ -1951,7 +1976,13 @@ form.ml-block-form {
             </div>
             <div class="not-item">
                 <h3>Not a peeping tom</h3>
-                <p>Zero tracking cookies. Zero tracking pixels. No perviness. Web stats use a daily-rotating hash — your visitors' IP addresses are never stored. The only thing SnapSmack phones home for is if you opt into the support community. If you don't turn that on, you're invisible to us. It's your site, your audience, your business. Not ours.</p>
+                <p>Zero tracking cookies. Zero tracking pixels. Your visitors' IP addresses are never stored. It's your site, your audience, your business.</p>
+
+                <p>Not ours.</p>
+
+                <p>Some optional features do phone home — security telemetry, network reputation, the community forum. All opt-in, all disclosed.</p>
+
+                <p><a href="tnb.html">Full breakdown in Twig N Berries →</a></p>
             </div>
             <div class="not-item">
                 <h3>Not designed for phones first</h3>
@@ -2020,9 +2051,6 @@ form.ml-block-form {
     <div class="wrap">
         <div class="footer-inner">
             <p class="footer-copy">© 2026 Sean McCormick · Dedicated to Raymond A. Vanderwoning, photographer and friend. <a href="https://www.serenity.ca/obituaries/Raymond-Anthony-Vanderwoning?obId=30943370" target="_blank" rel="noopener noreferrer">He is missed.</a></p>
-            <nav class="footer-links">
-                <a id="contact-link">Contact</a>
-            </nav>
         </div>
     </div>
 </footer>

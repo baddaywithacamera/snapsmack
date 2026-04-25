@@ -7,7 +7,7 @@
  * visually adjacent to the download button. Clicking the main button
  * toggles a like; the reaction trigger expands a picker above/beside it.
  *
- * Include in any skin's layout.php after layout_logic.php has run:
+ * Include in any skin's layout.php after layout-logic.php has run:
  *   <?php include dirname(__DIR__, 2) . '/core/community-dock.php'; ?>
  *
  * Position is set via snap_settings 'community_dock_position'.

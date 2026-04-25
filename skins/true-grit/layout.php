@@ -6,7 +6,7 @@
  * Renders the photo display, navigation, metadata, and comments sections.
  * Based on 50 Shades chassis with tg- namespace.
  */
-require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
+require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 require_once dirname(__DIR__, 2) . '/core/snap-tags.php';
 
 ?>
@@ -27,7 +27,7 @@ require_once dirname(__DIR__, 2) . '/core/snap-tags.php';
     </div>
 
     <div id="infobox">
-        <?php include dirname(__DIR__, 2) . '/core/navigation_bar.php'; ?>
+        <?php include dirname(__DIR__, 2) . '/core/navigation-bar.php'; ?>
     </div>
 
     <div id="footer">

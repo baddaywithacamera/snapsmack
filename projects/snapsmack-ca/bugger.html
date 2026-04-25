@@ -286,21 +286,28 @@ main {
 }
 
 /* ─── FOOTER ────────────────────────────────────────────────────────────── */
-footer {
-    background: var(--light-grey);
-    border-top: 1px solid var(--border);
-    padding: 40px 0;
-    text-align: center;
-    color: var(--mid-grey);
-    font-size: 0.95rem;
+#site-footer {
+    background: var(--black);
+    border-top: 3px solid var(--red);
+    padding: 32px 0;
 }
 
-footer a {
-    color: var(--dark-grey);
+.footer-copy {
+    font-family: 'Courier New', monospace;
+    font-size: 0.68rem;
+    color: #aaa;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    margin: 0;
 }
 
-footer a:hover {
-    color: var(--black);
+.footer-copy a {
+    color: var(--white);
+    text-decoration: none;
+}
+
+.footer-copy a:hover {
+    text-decoration: underline;
 }
 </style>
 <script>
@@ -326,11 +333,11 @@ document.querySelectorAll('nav a').forEach(link => {
             <img src="img/logo.png" alt="SnapSmack">
         </a>
         <nav>
-            <a href="index.html">HOME</a>
+            <a href="index.html">GAFF!</a>
             <a href="wotcha.html">WOTCHA!</a>
             <a href="bugger.html">BUGGER!</a>
-            <a href="oi.html">OI MATE!</a>
             <a href="tnb.html">TWIG N BERRIES!</a>
+            <a href="oi.html">OI MATE!</a>
         </nav>
     </div>
 </div>
@@ -342,15 +349,15 @@ document.querySelectorAll('nav a').forEach(link => {
             <img src="img/logo.png" alt="SnapSmack">
             <div class="logo-text">
                 <div class="snap"><em>Snap</em><strong>Smack</strong></div>
-                <div class="tagline">smack your <em>snaps</em> up</div>
+                <div class="tagline">PHOTO <em>BLOGGING</em> IS BACK, BITCHEZ</div>
             </div>
         </a>
         <nav>
-            <a href="index.html">HOME</a>
+            <a href="index.html">GAFF!</a>
             <a href="wotcha.html">WOTCHA!</a>
             <a href="bugger.html" class="active">BUGGER!</a>
-            <a href="oi.html">OI MATE!</a>
             <a href="tnb.html">TWIG N BERRIES!</a>
+            <a href="oi.html">OI MATE!</a>
         </nav>
     </div>
 </header>
@@ -391,9 +398,9 @@ document.querySelectorAll('nav a').forEach(link => {
 </main>
 
 <!-- FOOTER -->
-<footer>
+<footer id="site-footer">
     <div class="wrap">
-        <p>&copy; 2026 SnapSmack. <a href="index.html">Back to home</a></p>
+        <p class="footer-copy">&copy; 2026 Sean McCormick · Dedicated to Raymond A. Vanderwoning, photographer and friend. <a href="https://www.serenity.ca/obituaries/Raymond-Anthony-Vanderwoning?obId=30943370" target="_blank" rel="noopener noreferrer">He is missed.</a></p>
     </div>
 </footer>
 

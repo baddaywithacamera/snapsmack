@@ -7,5 +7,5 @@
  * to determine whether an update is available.
  */
 
-define('SC_VERSION',  '0.7.19');
+define('SC_VERSION',  '0.7.21');
 define('SC_CODENAME', 'Couch Potato');

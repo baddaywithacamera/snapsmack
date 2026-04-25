@@ -288,17 +288,23 @@ nav a.active::after { width: 100%; }
 }
 
 /* ─── FOOTER ────────────────────────────────────────────────────────────── */
-footer {
-    background: var(--light-grey);
-    border-top: 1px solid var(--border);
-    padding: 40px 0;
-    text-align: center;
-    color: var(--mid-grey);
-    font-size: 0.95rem;
+#site-footer {
+    background: var(--black);
+    border-top: 3px solid var(--red);
+    padding: 32px 0;
 }
 
-footer a { color: var(--dark-grey); }
-footer a:hover { color: var(--black); }
+.footer-copy {
+    font-family: 'Courier New', monospace;
+    font-size: 0.68rem;
+    color: #aaa;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    margin: 0;
+}
+
+.footer-copy a { color: var(--white); text-decoration: none; }
+.footer-copy a:hover { color: var(--white); text-decoration: underline; }
 
 @media (max-width: 700px) {
     nav { gap: 16px; }
@@ -315,11 +321,11 @@ footer a:hover { color: var(--black); }
             <img src="img/logo.png" alt="SnapSmack">
         </a>
         <nav>
-            <a href="index.html">HOME</a>
+            <a href="index.html">GAFF!</a>
             <a href="wotcha.html">WOTCHA!</a>
             <a href="bugger.html">BUGGER!</a>
-            <a href="oi.html">OI MATE!</a>
             <a href="tnb.html" class="active">TWIG N BERRIES!</a>
+            <a href="oi.html">OI MATE!</a>
         </nav>
     </div>
 </div>
@@ -331,15 +337,15 @@ footer a:hover { color: var(--black); }
             <img src="img/logo.png" alt="SnapSmack">
             <div class="logo-text">
                 <div class="snap"><em>Snap</em><strong>Smack</strong></div>
-                <div class="tagline">smack your <em>snaps</em> up</div>
+                <div class="tagline">PHOTO <em>BLOGGING</em> IS BACK, BITCHEZ</div>
             </div>
         </a>
         <nav>
-            <a href="index.html">HOME</a>
+            <a href="index.html">GAFF!</a>
             <a href="wotcha.html">WOTCHA!</a>
             <a href="bugger.html">BUGGER!</a>
-            <a href="oi.html">OI MATE!</a>
             <a href="tnb.html" class="active">TWIG N BERRIES!</a>
+            <a href="oi.html">OI MATE!</a>
         </nav>
     </div>
 </header>
@@ -348,7 +354,7 @@ footer a:hover { color: var(--black); }
     <div class="page-header">
         <div class="wrap">
             <h1>TWIG N BERRIES</h1>
-            <p class="lede">What SnapSmack knows about you and your site, and what it does with that. No legalese. No tricks. Just a straight account of how this works.</p>
+            <p class="lede">Let's talk about your privates. Er, privacy. Yeah. Here's what SnapSmack and its creator knows about you and your site, and what it does with that. No legalese. No tricks. Just a straight account of how this works.</p>
         </div>
     </div>
 
@@ -363,8 +369,8 @@ footer a:hover { color: var(--black); }
             <p>SnapSmack is self-hosted software. When someone visits your blog, comments on a post, or sends you a message through your site, that data goes to your server — not ours. We have no access to your posts, your images, your visitors, or your comment data.</p>
             <p>What your blog collects from visitors, and what you do with that data, is your responsibility. You should have your own privacy policy if your site collects personal information from visitors. SnapSmack's administration panel includes a privacy policy field for exactly this reason.</p>
 
-            <h2>When you opt into Smack the Enemy (spam protection)</h2>
-            <p>Smack the Enemy is SnapSmack's voluntary spam protection network. Sites that join share information about bad actors — trolls and spammers — so the whole network can benefit. Here is exactly what gets shared and what does not.</p>
+            <h2>When you opt into SMACK UP (spam protection)</h2>
+            <p>SMACK UP is SnapSmack's voluntary spam protection network. Sites that join share information about bad actors — trolls and spammers — so the whole network can benefit. Here is exactly what gets shared and what does not.</p>
 
             <p><strong>What is transmitted to the central server:</strong></p>
             <ul>
@@ -382,10 +388,31 @@ footer a:hover { color: var(--black); }
             </ul>
 
             <div class="callout">
-                <p>Other sites in the Smack the Enemy network cannot see your site's URL or your reporting history. That information is only visible to the network administrator (currently Sean McCormick, who runs Smack Central). What other sites receive from the network is threat scores for fingerprints — not a list of who reported them.</p>
+                <p>Other sites in the SMACK UP network cannot see your site's URL or your reporting history. That information is only visible to the network administrator (currently Sean McCormick, who runs Smack Central). What other sites receive from the network is threat scores for fingerprints — not a list of who reported them.</p>
             </div>
 
-            <p>You can opt out of Smack the Enemy at any time in your admin settings. Opting out stops all further data transmission. Your site's registration record on the central server is retained but your weight is zeroed — you stop contributing to and receiving from the network.</p>
+            <p>You can opt out of SMACK UP at any time in your admin settings. Opting out stops all further data transmission. Your site's registration record on the central server is retained but your weight is zeroed — you stop contributing to and receiving from the network.</p>
+
+            <p>SMACK UP also includes GOBSMACKED, a feature that analyses writing style to detect ban evasion. <a href="#gobsmacked">Read more below.</a></p>
+
+            <h2 id="gobsmacked">GOBSMACKED — writing fingerprinting (Tier 3 protection)</h2>
+            <p>GOBSMACKED is an additional layer of spam protection built on top of SMACK UP. It exists for a specific reason: the developer of SnapSmack was personally cyberstalked by a troll for several years — one who evaded bans by rotating IP addresses, using disposable email accounts, and clearing browser fingerprints. GOBSMACKED is built to detect that kind of evasion, so that no one using SnapSmack has to go through the same thing.</p>
+
+            <p>The plain version: if you're a bad actor, we take your fingerprints and save them — we just don't write your name on them. We don't need to. You'll leave more, and we'll match them up.</p>
+
+            <p>Here is how it works and what it means for your blog's visitors.</p>
+
+            <p><strong>What it does:</strong> When a commenter is banned on a SnapSmack blog that has SMACK UP enabled, the blog software analyses that commenter's previous comments and extracts a writing style fingerprint — a set of 25 numbers describing things like how often they use certain common words, their punctuation habits, average sentence length, and similar stylistic patterns. This is the same approach used in academic authorship analysis. The 25 numbers are then transmitted to Smack Central alongside the ban report.</p>
+
+            <p><strong>What is not transmitted:</strong> The actual text of the comments never leaves your server. Only the 25 numeric values are sent. Smack Central has no record of what anyone wrote — only an abstract description of how they write.</p>
+
+            <p><strong>What Smack Central does with it:</strong> The writing style fingerprints from all participating sites are periodically compared against each other. If a banned commenter shows up on a different site with a different IP address and a different email address, but writes in a recognisably similar style, Smack Central can flag that as a likely match and surface it for the network administrator to review. No automatic action is taken on a style match alone — it is a signal for human review, not an automatic ban.</p>
+
+            <p><strong>Retention:</strong> Writing style fingerprints are stored for one year and then permanently deleted. They are used only to detect evasion of existing bans. They are not used for any other purpose and are not shared with any third party.</p>
+
+            <div class="callout">
+                <p>If your blog has SMACK UP enabled, you should disclose to your own visitors that when a commenter is banned, a writing style fingerprint derived from their comments may be transmitted to the SMACK CENTRAL network. The actual comment text is never transmitted — only the derived numeric fingerprint. You can copy and adapt the language above for your own privacy policy.</p>
+            </div>
 
             <h2>When you opt into the community forum</h2>
             <p>The SnapSmack community forum is a place for site owners to talk to each other. When you connect your site to the forum:</p>
@@ -395,25 +422,6 @@ footer a:hover { color: var(--black); }
                 <li>Your SnapSmack version is recorded when you register, so the forum can show which version you are running.</li>
             </ul>
             <p>You can disconnect your site from the forum at any time. Your posts remain unless you ask for them to be removed — contact details are below.</p>
-
-            <h2>Smack Style — writing fingerprinting (Tier 3 protection)</h2>
-            <p>Smack Style is an additional layer of spam protection built on top of Smack the Enemy. It exists for a specific reason: the developer of SnapSmack was personally cyberstalked by a troll for several years — one who evaded bans by rotating IP addresses, using disposable email accounts, and clearing browser fingerprints. Smack Style is built to detect that kind of evasion, so that no one using SnapSmack has to go through the same thing.</p>
-
-            <p>The plain version: if you're a bad actor, we take your fingerprints and save them — we just don't write your name on them. We don't need to. You'll leave more, and we'll match them up.</p>
-
-            <p>Here is how it works and what it means for your blog's visitors.</p>
-
-            <p><strong>What it does:</strong> When a commenter is banned on a SnapSmack blog that has Smack the Enemy enabled, the blog software analyses that commenter's previous comments and extracts a writing style fingerprint — a set of 25 numbers describing things like how often they use certain common words, their punctuation habits, average sentence length, and similar stylistic patterns. This is the same approach used in academic authorship analysis. The 25 numbers are then transmitted to Smack Central alongside the ban report.</p>
-
-            <p><strong>What is not transmitted:</strong> The actual text of the comments never leaves your server. Only the 25 numeric values are sent. Smack Central has no record of what anyone wrote — only an abstract description of how they write.</p>
-
-            <p><strong>What Smack Central does with it:</strong> The writing style fingerprints from all participating sites are periodically compared against each other. If a banned commenter shows up on a different site with a different IP address and a different email address, but writes in a recognisably similar style, Smack Central can flag that as a likely match and surface it for the network administrator to review. No automatic action is taken on a style match alone — it is a signal for human review, not an automatic ban.</p>
-
-            <p><strong>Retention:</strong> Writing style fingerprints are stored for one year and then permanently deleted. They are used only to detect evasion of existing bans. They are not used for any other purpose and are not shared with any third party.</p>
-
-            <div class="callout">
-                <p>If your blog has Smack the Enemy enabled, you should disclose to your own visitors that when a commenter is banned, a writing style fingerprint derived from their comments may be transmitted to the Smack Central network. The actual comment text is never transmitted — only the derived numeric fingerprint. You can copy and adapt the language above for your own privacy policy.</p>
-            </div>
 
             <h2>This website (snapsmack.ca)</h2>
             <p>This site does not use analytics, tracking pixels, or advertising scripts of any kind. Our web server access logs record the standard information any web server records — IP address, browser, referring page, page requested. We do not use that data for any purpose beyond diagnosing server problems.</p>
@@ -430,9 +438,9 @@ footer a:hover { color: var(--black); }
 </main>
 
 <!-- FOOTER -->
-<footer>
+<footer id="site-footer">
     <div class="wrap">
-        <p>&copy; 2026 SnapSmack. <a href="index.html">Back to home</a></p>
+        <p class="footer-copy">&copy; 2026 Sean McCormick · Dedicated to Raymond A. Vanderwoning, photographer and friend. <a href="https://www.serenity.ca/obituaries/Raymond-Anthony-Vanderwoning?obId=30943370" target="_blank" rel="noopener noreferrer">He is missed.</a></p>
     </div>
 </footer>
 

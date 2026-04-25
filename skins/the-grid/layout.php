@@ -8,11 +8,11 @@
  * images in a SnapSlider in carousel mode with dot indicators and dispatches
  * snapslider:slidechange to update the EXIF panel on each swipe.
  *
- * Variables from index.php / layout_logic.php:
+ * Variables from index.php / layout-logic.php:
  *   $pdo, $settings, $img, $active_skin, $exif_data, $comments
  */
 
-require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
+require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 require_once dirname(__DIR__, 2) . '/core/snap-tags.php';
 
 // ── Load the post container for this image ────────────────────────────────

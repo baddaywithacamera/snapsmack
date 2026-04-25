@@ -13,7 +13,7 @@
 --   ste_allow_votes         — community allow votes (false-positive signals)
 --   ste_score_cache         — pre-computed scores for delta push
 --   ste_coordination_clusters — detected sybil coordination events
---   ste_style_vectors       — stylometric writing style vectors (SMACK STYLE / Tier 3)
+--   ste_style_vectors       — stylometric writing style vectors (GOBSMACKED / Tier 3)
 
 CREATE TABLE IF NOT EXISTS `ste_sites` (
     `id`               INT UNSIGNED    NOT NULL AUTO_INCREMENT,

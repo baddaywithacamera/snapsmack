@@ -3,183 +3,173 @@
  * SNAPSMACK - Bootstrap Deployer
  *
  * Upload this single file to an empty directory on your server and open it
- * in a browser. It pulls the SnapSmack codebase from GitHub (via Git or zip
- * download), then hands off to install.php for database setup.
+ * in a browser. It fetches the latest signed release from snapsmack.ca,
+ * verifies the SHA-256 checksum and Ed25519 signature, then hands off to
+ * install.php for database setup.
  *
- * Requirements: PHP 8.0+, and either Git or allow_url_fopen / cURL.
+ * Requirements: PHP 8.0+, cURL or allow_url_fopen, ZipArchive, sodium.
  * This file self-deletes after a successful deploy.
  */
 
 // --- CONFIGURATION ---
-$repo_url     = 'https://github.com/baddaywithacamera/snapsmack.git';
-$zip_url      = 'https://github.com/baddaywithacamera/snapsmack/archive/refs/heads/master.zip';
-$branch       = 'master';
-$target_dir   = __DIR__;
+$api_url    = 'https://snapsmack.ca/releases/latest.json';
+$target_dir = __DIR__;
+
+// Ed25519 public key — must match core/release-pubkey.php in the release package.
+// If the installed key ever differs, smack-update.php has a repair tool.
+define('SETUP_RELEASE_PUBKEY', '938cb27f4230122dc22bc70decac66a09c20ad5f8db5748d0f443a57b18470d7');
 
 // --- SAFETY CHECK ---
-// If install.php already exists, the codebase is already here.
 if (file_exists($target_dir . '/install.php') && file_exists($target_dir . '/core/parser.php')) {
     header('Location: install.php');
     exit;
 }
 
 // --- DETECT CAPABILITIES ---
-$has_git   = false;
-$has_curl  = function_exists('curl_init');
-$has_fopen = ini_get('allow_url_fopen');
+$has_curl   = function_exists('curl_init');
+$has_fopen  = ini_get('allow_url_fopen');
+$has_zip    = class_exists('ZipArchive');
+$has_sodium = function_exists('sodium_crypto_sign_verify_detached');
 
-// Check for Git binary
-$git_path = trim(shell_exec('which git 2>/dev/null') ?? '');
-if (!empty($git_path) && file_exists($git_path)) {
-    $has_git = true;
-}
-
-$method  = '';
 $error   = '';
 $success = false;
+$release = null;
+
+// --- FETCH RELEASE MANIFEST ---
+function setup_fetch_url(string $url): string|false {
+    global $has_curl, $has_fopen;
+    if ($has_curl) {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        $data = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        return ($code === 200 && $data !== false) ? $data : false;
+    }
+    if ($has_fopen) {
+        return @file_get_contents($url);
+    }
+    return false;
+}
+
+// --- VERIFY PACKAGE ---
+function setup_verify(string $file_path, string $expected_sha256, string $signature_hex): string|true {
+    $actual = hash_file('sha256', $file_path);
+    if (!hash_equals($expected_sha256, $actual)) {
+        return 'SHA-256 checksum mismatch — the download may be corrupt or tampered with.';
+    }
+
+    if (!function_exists('sodium_crypto_sign_verify_detached')) {
+        return true; // sodium unavailable — checksum passed, skip signature
+    }
+
+    if (empty($signature_hex) || strlen($signature_hex) !== 128) {
+        return 'Signature missing or malformed in release manifest.';
+    }
+
+    try {
+        $sig    = sodium_hex2bin($signature_hex);
+        $pubkey = sodium_hex2bin(SETUP_RELEASE_PUBKEY);
+        $ok     = sodium_crypto_sign_verify_detached($sig, $expected_sha256, $pubkey);
+        if (!$ok) {
+            return 'Ed25519 signature verification failed — this package cannot be trusted.';
+        }
+    } catch (Exception $e) {
+        return 'Signature check error: ' . $e->getMessage();
+    }
+
+    return true;
+}
 
 // --- HANDLE DEPLOY ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
 
-    $chosen = $_POST['method'] ?? 'auto';
+    if (!$has_zip) {
+        $error = 'ZipArchive is not available on this server. Contact your host to enable the zip PHP extension.';
+    } elseif (!$has_curl && !$has_fopen) {
+        $error = 'No HTTP fetch method available. This server has no cURL and allow_url_fopen is disabled.';
+    } else {
 
-    // --- METHOD 1: GIT CLONE ---
-    if (($chosen === 'git' || $chosen === 'auto') && $has_git) {
-        $method = 'git';
-
-        // Clone into a temp directory first, then move files into place.
-        // This avoids Git complaining about a non-empty directory (setup.php is here).
-        $tmp_dir = $target_dir . '/.snapsmack-deploy-tmp';
-
-        // Clean up any leftover temp dir from a failed attempt
-        if (is_dir($tmp_dir)) {
-            shell_exec("rm -rf " . escapeshellarg($tmp_dir));
-        }
-
-        $cmd = sprintf(
-            'git clone --depth 1 --branch %s %s %s 2>&1',
-            escapeshellarg($branch),
-            escapeshellarg($repo_url),
-            escapeshellarg($tmp_dir)
-        );
-        $output = shell_exec($cmd);
-
-        if (is_dir($tmp_dir . '/core')) {
-            // Move everything from temp into the target directory.
-            // The .git folder comes along — that's fine for future updates.
-            $items = array_diff(scandir($tmp_dir), ['.', '..']);
-            $move_failed = false;
-            foreach ($items as $item) {
-                $src = $tmp_dir . '/' . $item;
-                $dst = $target_dir . '/' . $item;
-                if (!rename($src, $dst)) {
-                    $move_failed = true;
-                    $error = "Git clone succeeded but failed to move files into place. Check directory permissions.";
-                    break;
-                }
-            }
-
-            // Clean up the (now empty) temp dir
-            @rmdir($tmp_dir);
-
-            if (!$move_failed) {
-                // Remove db.php if it came from the repo — install.php will generate it
-                @unlink($target_dir . '/core/db.php');
-                $success = true;
-            }
+        // Step 1: Fetch release manifest
+        $manifest_raw = setup_fetch_url($api_url);
+        if (!$manifest_raw) {
+            $error = 'Could not fetch release manifest from snapsmack.ca. Check that outbound HTTPS is allowed on this server.';
         } else {
-            $error = "Git clone failed. Output:\n" . ($output ?? 'No output captured.');
-        }
-    }
-
-    // --- METHOD 2: ZIP DOWNLOAD ---
-    if (!$success && ($chosen === 'zip' || $chosen === 'auto') && ($has_curl || $has_fopen)) {
-        $method = 'zip';
-        $zip_file = $target_dir . '/snapsmack-download.zip';
-
-        // Download the zip
-        $zip_data = false;
-        if ($has_curl) {
-            $ch = curl_init($zip_url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 120);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-            $zip_data = curl_exec($ch);
-            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            if ($http_code !== 200) $zip_data = false;
-        } elseif ($has_fopen) {
-            $zip_data = @file_get_contents($zip_url);
+            $release = json_decode($manifest_raw, true);
+            if (empty($release['download_url']) || empty($release['checksum_sha256'])) {
+                $error = 'Release manifest is missing required fields. Try again or contact support.';
+            }
         }
 
-        if ($zip_data === false || strlen($zip_data) < 1000) {
-            $error = "Failed to download the release zip from GitHub. Check that outbound HTTPS is allowed on this server.";
-        } else {
-            file_put_contents($zip_file, $zip_data);
+        // Step 2: Download release zip
+        if (!$error) {
+            $dl_url = $release['download_url'] ?? '';
+            if (!preg_match('#^https://#i', $dl_url)) {
+                $error = 'Release manifest contains an invalid or non-HTTPS download URL. Aborting for safety.';
+            }
+        }
+        if (!$error) {
+            $zip_file = $target_dir . '/snapsmack-install.zip';
+            $zip_data = setup_fetch_url($release['download_url']);
+            if (!$zip_data || strlen($zip_data) < 10000) {
+                $error = 'Failed to download release package from ' . htmlspecialchars($release['download_url']) . '.';
+            } else {
+                file_put_contents($zip_file, $zip_data);
+            }
+        }
 
-            // Extract
+        // Step 3: Verify checksum + signature
+        if (!$error) {
+            $verify = setup_verify($zip_file, $release['checksum_sha256'], $release['signature'] ?? '');
+            if ($verify !== true) {
+                @unlink($zip_file);
+                $error = $verify;
+            }
+        }
+
+        // Step 4: Extract — validate every entry for path traversal before touching disk
+        if (!$error) {
             $zip = new ZipArchive();
-            if ($zip->open($zip_file) === true) {
-                // GitHub zips contain a top-level folder like "snapsmack-master/"
-                // We need to extract its contents into the target directory.
-                $zip->extractTo($target_dir);
-                $zip->close();
-
-                // Find the extracted folder
-                $extracted_dir = null;
-                foreach (scandir($target_dir) as $item) {
-                    if (strpos($item, 'snapsmack-') === 0 && is_dir($target_dir . '/' . $item)) {
-                        $extracted_dir = $target_dir . '/' . $item;
+            if ($zip->open($zip_file) !== true) {
+                $error = 'Failed to open the downloaded zip file. It may be corrupt.';
+            } else {
+                $real_target = realpath($target_dir) . DIRECTORY_SEPARATOR;
+                $safe = true;
+                for ($i = 0; $i < $zip->numFiles; $i++) {
+                    $entry = $zip->getNameIndex($i);
+                    $dest  = realpath($target_dir) . DIRECTORY_SEPARATOR . $entry;
+                    // Reject any entry that would land outside the target directory
+                    if (strpos($dest, $real_target) !== 0) {
+                        $safe  = false;
+                        $error = 'Package failed security check: path traversal detected in zip entry "' . htmlspecialchars($entry) . '". Installation aborted.';
                         break;
                     }
                 }
 
-                if ($extracted_dir && is_dir($extracted_dir . '/core')) {
-                    // Recursively merge source into destination.
-                    // Plain rename() fails when the target directory already exists,
-                    // so we walk the tree: files overwrite, directories recurse.
-                    $merge_dirs = function (string $src, string $dst) use (&$merge_dirs): void {
-                        if (!is_dir($dst)) { @mkdir($dst, 0755, true); }
-                        $items = array_diff(scandir($src), ['.', '..']);
-                        foreach ($items as $item) {
-                            $s = $src . '/' . $item;
-                            $d = $dst . '/' . $item;
-                            if (is_dir($s)) {
-                                $merge_dirs($s, $d);
-                            } else {
-                                rename($s, $d);
-                            }
-                        }
-                        @rmdir($src);
-                    };
-                    $merge_dirs($extracted_dir, $target_dir);
-
-                    // Remove db.php if it came from the repo
-                    @unlink($target_dir . '/core/db.php');
-                    $success = true;
-                } else {
-                    $error = "Zip extracted but the expected folder structure was not found.";
+                if ($safe) {
+                    $zip->extractTo($target_dir);
                 }
-            } else {
-                $error = "Failed to open the downloaded zip file. It may be corrupted.";
-            }
+                $zip->close();
+                @unlink($zip_file);
 
-            // Clean up zip file
-            @unlink($zip_file);
+                if ($safe) {
+                    if (!file_exists($target_dir . '/core/parser.php')) {
+                        $error = 'Zip extracted but expected files were not found. The package may be malformed.';
+                    } else {
+                        // Remove db.php — install.php generates it fresh
+                        @unlink($target_dir . '/core/db.php');
+                        $success = true;
+                    }
+                }
+            }
         }
     }
 
-    // --- NO METHOD AVAILABLE ---
-    if (!$success && empty($error)) {
-        $error = "No deployment method available. This server has no Git, no cURL, and allow_url_fopen is disabled. You'll need to upload the SnapSmack files manually.";
-    }
-
-    // --- SUCCESS: REDIRECT TO INSTALLER ---
     if ($success) {
-        // Self-delete
         @unlink(__FILE__);
-
         header('Location: install.php');
         exit;
     }
@@ -216,7 +206,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
         .subtitle { color: #666; font-size: 0.85rem; margin-bottom: 40px; letter-spacing: 1px; }
         h2 { font-size: 1.1rem; color: #eee; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #2a2a2a; }
         p { margin-bottom: 16px; color: #999; }
-
         .method-list { list-style: none; margin: 20px 0; }
         .method-list li {
             padding: 10px 0;
@@ -226,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
         }
         .pass { color: #a0ff90; }
         .fail { color: #ff6b6b; }
-
+        .warn { color: #ffcc00; }
         button {
             display: inline-block;
             padding: 12px 30px;
@@ -243,7 +232,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
         }
         button:hover { background: #c0ffb0; }
         button:disabled { background: #333; color: #666; cursor: not-allowed; }
-
         .error-box {
             background: #2a0a0a;
             border: 1px solid #ff6b6b;
@@ -253,6 +241,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
             border-radius: 3px;
             font-size: 0.9rem;
             white-space: pre-wrap;
+        }
+        .warn-box {
+            background: #1a1500;
+            border: 1px solid #ffcc00;
+            color: #ffdd66;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            border-radius: 3px;
+            font-size: 0.9rem;
         }
         .manual-box {
             background: #1a1a1a;
@@ -273,18 +270,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
             text-transform: uppercase;
             letter-spacing: 2px;
         }
-        .method-note {
-            margin-top: 12px;
-            font-size: 0.8rem;
-            color: #555;
-        }
+        .method-note { margin-top: 12px; font-size: 0.8rem; color: #555; }
+        .version-note { font-size: 0.8rem; color: #555; margin-top: 6px; }
     </style>
 </head>
 <body>
 <div class="setup">
 
     <h1>SNAPSMACK <span>SETUP</span></h1>
-    <p class="subtitle">Codebase Deployer</p>
+    <p class="subtitle">Release Deployer</p>
 
     <?php if (!empty($error)): ?>
         <div class="error-box"><?php echo htmlspecialchars($error); ?></div>
@@ -292,54 +286,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
 
     <h2>Deploy SnapSmack to this server</h2>
 
-    <p>This script will pull the SnapSmack codebase from GitHub into this directory, then hand off to the installer for database setup.</p>
+    <p>This script fetches the latest signed release from snapsmack.ca, verifies its checksum and signature, and installs it here. Once complete it hands off to the installer for database setup.</p>
 
     <ul class="method-list">
         <li>
-            <span>Git</span>
-            <span class="<?php echo $has_git ? 'pass' : 'fail'; ?>">
-                <?php echo $has_git ? 'AVAILABLE' : 'NOT FOUND'; ?>
-            </span>
-        </li>
-        <li>
             <span>cURL</span>
-            <span class="<?php echo $has_curl ? 'pass' : 'fail'; ?>">
-                <?php echo $has_curl ? 'AVAILABLE' : 'NOT FOUND'; ?>
-            </span>
+            <span class="<?php echo $has_curl ? 'pass' : 'fail'; ?>"><?php echo $has_curl ? 'AVAILABLE' : 'NOT FOUND'; ?></span>
         </li>
         <li>
             <span>allow_url_fopen</span>
-            <span class="<?php echo $has_fopen ? 'pass' : 'fail'; ?>">
-                <?php echo $has_fopen ? 'ENABLED' : 'DISABLED'; ?>
-            </span>
+            <span class="<?php echo $has_fopen ? 'pass' : ($has_curl ? 'warn' : 'fail'); ?>"><?php echo $has_fopen ? 'ENABLED' : ($has_curl ? 'NOT NEEDED' : 'DISABLED'); ?></span>
+        </li>
+        <li>
+            <span>ZipArchive</span>
+            <span class="<?php echo $has_zip ? 'pass' : 'fail'; ?>"><?php echo $has_zip ? 'AVAILABLE' : 'NOT FOUND'; ?></span>
+        </li>
+        <li>
+            <span>Sodium (signature verification)</span>
+            <span class="<?php echo $has_sodium ? 'pass' : 'warn'; ?>"><?php echo $has_sodium ? 'AVAILABLE' : 'NOT FOUND — checksum only'; ?></span>
         </li>
     </ul>
 
-    <?php if ($has_git || $has_curl || $has_fopen): ?>
-        <form method="post">
-            <input type="hidden" name="deploy" value="1">
-            <input type="hidden" name="method" value="auto">
-            <button type="submit">Deploy SnapSmack</button>
-        </form>
-
-        <p class="method-note">
-            <?php if ($has_git): ?>
-                Will use Git clone (preferred).
-            <?php else: ?>
-                Will download zip from GitHub.
-            <?php endif; ?>
-        </p>
-
-    <?php else: ?>
-        <p>No automatic deployment method is available on this server. Upload the files manually:</p>
+    <?php if (!$has_sodium): ?>
+        <div class="warn-box">Sodium extension not found. The release package will be verified by SHA-256 checksum only — Ed25519 signature verification will be skipped. Ask your host to enable the sodium PHP extension for full verification.</div>
     <?php endif; ?>
 
-    <div class="or-divider">— or deploy manually —</div>
+    <?php if (($has_curl || $has_fopen) && $has_zip): ?>
+        <form method="post">
+            <input type="hidden" name="deploy" value="1">
+            <button type="submit">Install SnapSmack</button>
+        </form>
+        <p class="method-note">Downloads the latest signed release · verifies before extracting · self-deletes on success.</p>
+    <?php else: ?>
+        <p>Automatic installation is not available on this server. Download the latest release manually from <strong>snapsmack.ca/releases</strong> and upload the files here, then open <strong>install.php</strong> to continue.</p>
+    <?php endif; ?>
 
-    <p>SSH into your server and run:</p>
-    <div class="manual-box">cd <?php echo htmlspecialchars($target_dir); ?> && git clone <?php echo htmlspecialchars($repo_url); ?> .</div>
+    <div class="or-divider">— or install manually —</div>
 
-    <p>Then open <strong>install.php</strong> in your browser to continue setup.</p>
+    <p>Download the latest release zip from <strong>snapsmack.ca/releases</strong>, extract it into this directory, then open <strong>install.php</strong> in your browser.</p>
 
 </div>
 </body>

@@ -93,6 +93,12 @@ class SnapSmack {
         // <p><div>...</div>text</p>. Split the div out and re-wrap leftovers.
         $content = $this->cleanBlockNesting($content);
 
+        // --- PHASE 8: MOSAIC SHORTCODES ---
+        // [mosaic:ID] shortcodes expand to data-attribute divs rendered by
+        // ss-engine-mosaic.js. Runs after block-nesting cleanup so the <div>
+        // it emits is already outside any wrapping <p>.
+        $content = $this->parseMosaics($content);
+
         return $content;
     }
 

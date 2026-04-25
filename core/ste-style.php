@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - SMACK STYLE: Stylometric Feature Extractor
+ * SNAPSMACK - GOBSMACKED: Stylometric Feature Extractor
  *
  * Extracts a 25-dimension writing style vector from raw comment text.
  * Used at ban/report time to build a numeric signature of how someone writes.

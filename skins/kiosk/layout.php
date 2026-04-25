@@ -5,7 +5,7 @@
  *
  * Renders a kiosk display with pimpotron slideshow, logo glitch effects, and navigation.
  */
-require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
+require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 ?>
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-pimpotron.css?v=<?php echo time(); ?>">
@@ -35,7 +35,7 @@ require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
 
     <footer id="kiosk-hud">
         <nav id="kiosk-navigation">
-            <?php include dirname(__DIR__, 2) . '/core/navigation_bar.php'; ?>
+            <?php include dirname(__DIR__, 2) . '/core/navigation-bar.php'; ?>
         </nav>
     </footer>
 

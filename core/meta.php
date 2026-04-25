@@ -150,6 +150,8 @@ if (!empty($settings['favicon_url'])):
 </style>
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-mosaic.css">
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js" defer></script>
 
 <?php
 /**
@@ -267,8 +269,12 @@ if (!empty($_smack_js_config)):
  * Injected from Smack Your Scripts Up! admin page.
  * Loads after all CSS so tracking/analytics scripts don't block rendering.
  */
-if (!empty($settings['custom_head_scripts'])):
-?>
-<?php echo $settings['custom_head_scripts']; ?>
-
-<?php endif; ?>
+// Head scripts stored in a file so SMACKBACK can watch for tampering.
+// Falls back to DB for installs that have not yet re-saved via smack-scripts.php.
+$_custom_head_file = dirname(__DIR__) . '/data/custom-head.html';
+if (file_exists($_custom_head_file) && ($__head = file_get_contents($_custom_head_file)) !== false && trim($__head) !== ''):
+    echo $__head;
+elseif (!empty($settings['custom_head_scripts'])):
+    echo $settings['custom_head_scripts'];
+endif;
+unset($_custom_head_file, $__head);

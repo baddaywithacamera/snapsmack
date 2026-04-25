@@ -1,5 +1,5 @@
 <?php
-require_once dirname(__DIR__, 2) . '/core/layout_logic.php';
+require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 
 // Per-image frame overrides
 $display_opts = [];
@@ -47,7 +47,7 @@ if ($bevel) $frame_style .= "--bevel-style:{$bevel};";
     </div>
 
     <div id="infobox">
-        <?php include dirname(__DIR__, 2) . '/core/navigation_bar.php'; ?>
+        <?php include dirname(__DIR__, 2) . '/core/navigation-bar.php'; ?>
     </div>
 
     <!-- Center-expanding info/comments overlay -->
