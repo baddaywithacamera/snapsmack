@@ -88,7 +88,11 @@
             banner.style.transform = 'translateY(100%)';
             setTimeout(function () {
                 if (banner.parentNode) banner.parentNode.removeChild(banner);
+                // Signal to other engines that the consent decision is done.
+                document.dispatchEvent(new CustomEvent('snap:consent-resolved'));
             }, 300);
+        } else {
+            document.dispatchEvent(new CustomEvent('snap:consent-resolved'));
         }
     }
 
