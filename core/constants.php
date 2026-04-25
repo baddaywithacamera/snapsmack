@@ -7,8 +7,16 @@
  * the application.
  */
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.21');
-define('SNAPSMACK_VERSION_SHORT', '0.7.21');
+// --- SECURITY HEADERS ---
+// Sent on every request before any output. Skipped on CLI (e.g. migrations).
+if (PHP_SAPI !== 'cli' && !headers_sent()) {
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+}
+
+define('SNAPSMACK_VERSION', 'Alpha 0.7.22');
+define('SNAPSMACK_VERSION_SHORT', '0.7.22');
 define('SNAPSMACK_VERSION_CODENAME', 'Couch Potato');
 
 // --- VERSION COMPARISON ---
@@ -48,8 +56,4 @@ function snapsmack_is_mobile(): bool {
     if (empty($ua)) return false;
 
     // Match common phone tokens. The 'Mobile' token catches most modern phones
-    // (iOS Safari, Chrome Mobile, Samsung, etc.). Additional patterns cover
-    // older or niche handsets. Tablets (iPad, Android without 'Mobile') are
-    // intentionally excluded so they receive the normal desktop skin.
-    return (bool) preg_match('/Mobile|iPhone|iPod|Android.*Mobile|webOS|BlackBerry|Windows Phone|Opera Mini|IEMobile/i', $ua);
-}
+    // (iOS Safari, Chrome Mobile, Samsun

@@ -98,23 +98,33 @@ if (isset($_POST['save_settings'])) {
         if (!is_dir($target_dir)) {
             mkdir($target_dir, 0755, true);
         }
+        $logo_allowed_ext  = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'];
+        $logo_allowed_mime = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp'];
         $ext = strtolower(pathinfo($_FILES['logo_upload']['name'], PATHINFO_EXTENSION));
-        $target_file = $target_dir . "logo." . $ext;
-
-        if (move_uploaded_file($_FILES['logo_upload']['tmp_name'], $target_file)) {
-            $_POST['settings']['header_logo_url'] = "/" . $target_file;
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime  = finfo_file($finfo, $_FILES['logo_upload']['tmp_name']);
+        finfo_close($finfo);
+        if (in_array($ext, $logo_allowed_ext) && in_array($mime, $logo_allowed_mime)) {
+            $target_file = $target_dir . "logo." . $ext;
+            if (move_uploaded_file($_FILES['logo_upload']['tmp_name'], $target_file)) {
+                $_POST['settings']['header_logo_url'] = "/" . $target_file;
+            }
         }
     }
 
-    // Handle favicon upload with type validation.
+    // Handle favicon upload with extension and MIME type validation.
     if (!empty($_FILES['favicon_upload']['name'])) {
         $target_dir = "assets/img/";
         if (!is_dir($target_dir)) {
             mkdir($target_dir, 0755, true);
         }
+        $fav_allowed_ext  = ['ico', 'png', 'svg'];
+        $fav_allowed_mime = ['image/x-icon', 'image/vnd.microsoft.icon', 'image/png', 'image/svg+xml'];
         $fav_ext = strtolower(pathinfo($_FILES['favicon_upload']['name'], PATHINFO_EXTENSION));
-        $allowed_fav = ['ico', 'png', 'svg'];
-        if (in_array($fav_ext, $allowed_fav)) {
+        $finfo   = finfo_open(FILEINFO_MIME_TYPE);
+        $fav_mime = finfo_file($finfo, $_FILES['favicon_upload']['tmp_name']);
+        finfo_close($finfo);
+        if (in_array($fav_ext, $fav_allowed_ext) && in_array($fav_mime, $fav_allowed_mime)) {
             $fav_file = $target_dir . "favicon." . $fav_ext;
             if (move_uploaded_file($_FILES['favicon_upload']['tmp_name'], $fav_file)) {
                 $_POST['settings']['favicon_url'] = "/" . $fav_file;
@@ -863,19 +873,4 @@ if (homepageMode) {
             fd.append('provider', provider);
             fd.append('api_key',  apiKey);
 
-            fetch('smack-ai-test.php', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
-                .then(function (r) { return r.json(); })
-                .then(function (d) {
-                    testRes.textContent = d.ok ? '✓ ' + d.message : '✗ ' + d.error;
-                    testRes.style.color = d.ok ? 'var(--color-ok, #4caf50)' : 'var(--color-danger, #e05252)';
-                })
-                .catch(function () {
-                    testRes.textContent = '✗ Request failed';
-                    testRes.style.color = 'var(--color-danger, #e05252)';
-                });
-        });
-    }
-}());
-</script>
-<script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
-<?php include 'core/admin-footer.php'; ?>
+        

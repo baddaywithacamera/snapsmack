@@ -189,22 +189,31 @@ git commit
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.20 "Couch Potato"
+### SnapSmack — Alpha 0.7.22 "Couch Potato"
 All commits are on `master`. Push from local:
 ```
 git push Github master
 ```
-After pushing: `git tag -f v0.7.20 && git push Github v0.7.20 --force`
+After pushing: `git tag -f v0.7.22 && git push Github v0.7.22 --force`
 
-**Latest changes (0.7.20 — MOSAIC + Collections + Featured Images + SmackTalk):**
-- Version bump: 0.7.19 → 0.7.20 "Couch Potato"
-- **MOSAIC engine restored** — `assets/js/ss-engine-mosaic.js`, `assets/css/ss-engine-mosaic.css`, `smack-mosaics.php` (admin builder, pimpmobile). Parser Phase 8 calls `parseMosaics()`. Engine registered in manifest-inventory. Migration 038 (`snap_mosaics` table).
-- **Featured images on categories and albums** — `featured_post_id` column on `snap_categories` and `snap_albums`. Picker modal added to `smack-cats.php` and `smack-albums.php`. Migration 039.
-- **Collections** — `smack-collections.php` (admin, pimpmobile). Heterogeneous containers (posts/albums/categories). Drag-to-reorder AJAX member list. `snap_collections` + `snap_collection_items` tables. Featured image picker. Migration 040.
-- **SmackTalk longform editor** — `smack-post-long.php` (pimpmobile). Full toolbar + MOSAIC insert button, hero image from media library, categories/albums/tags, publish/draft, timestamp. `post_type='longform'` on `snap_posts`. New `content LONGTEXT` + `featured_asset_id` columns on `snap_posts`. New `snap_post_cat_map` + `snap_post_album_map` tables. Migration 041.
-- **Canonical schema** — all new tables and columns added to `database/schema/snapsmack_canonical.sql`.
-- **Sidebar** — "New Longform Post" nav link added (pimpmobile-gated).
-- **Help** — Collections, Mosaics, and Longform Post topics added to `smack-help.php`.
+**Latest changes (0.7.22 — Security hardening pass):**
+- Version bump: 0.7.21 → 0.7.22 "Couch Potato"
+- **Open redirect fixed** in `community-auth.php` — `community_safe_redirect()` helper enforces relative-paths-only
+- **Logo/favicon upload hardened** in `smack-settings.php` — extension whitelist + `finfo` MIME validation on both logo and favicon uploads
+- **Path traversal closed** in `smack-edit.php` — skin slug and `edit_page` manifest values now validated against `/^[a-z0-9][a-z0-9\-]*$/` before path construction
+- **Session fixation fixed** in `login.php` — `session_regenerate_id(true)` now called before writing `totp_pending_user_id` on the 2FA path
+- **Rate limiting added** to `password-reset.php` — max 5 admin reset requests per IP per hour via `snap_rate_limits` table
+- **Slug validation hardened** in `smack-post-solo.php` and `smack-post-long.php` — consecutive hyphens collapsed, leading/trailing stripped, `untitled` fallback, user-supplied slugs normalised through `long_slugify()`
+- **DB error message suppressed** in `install.php` — catch-all branch no longer leaks raw MySQL error
+- **Security headers added site-wide** in `core/constants.php` — `X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin` on every request
+
+**Previous changes (0.7.21 — Security audit + Privacy Policy + SMACKBACK):**
+- Version bump: 0.7.20 → 0.7.21 "Couch Potato"
+- **Privacy Policy page** — `smack-privacy.php` (admin) + `privacy-policy.php` (public). Footer link, The Good Shit sidebar.
+- **Security audit published** — `secaudits/` directory committed to git.
+- **Head scripts moved from DB to filesystem** — `data/custom-head.html`, DB fallback for existing installs.
+- **`setup.php` rewritten** — signed release installer, SHA-256 + Ed25519 verification, zip slip protection.
+- **SMACKBACK, GOBSMACKED, Privacy Policy help topics** added to `smack-help.php`.
 
 **Previous changes (0.7.19 — GOBSMACKED rename + snapsmack.ca TWIG N BERRIES!):**
 - Version bump: 0.7.18 → 0.7.19 "Couch Potato"
@@ -233,7 +242,7 @@ After pushing: `git tag -f v0.7.20 && git push Github v0.7.20 --force`
   - `smack-central/sc-layout-top.php` — skull emoji removed from nav
 
 **Pending on live servers (FTP these files to all three sites):**
-- `core/constants.php`
+- `core/constants.php` ← security headers + version bump (0.7.22)
 - `core/ste-style.php` (NEW from 0.7.18)
 - `core/ban-check.php`
 - `core/ste-client.php`
@@ -253,16 +262,28 @@ After pushing: `git tag -f v0.7.20 && git push Github v0.7.20 --force`
 - `assets/js/smack-sc-forum.js` (NEW from 0.7.18)
 - `assets/js/ss-engine-mosaic.js` (NEW)
 - `assets/css/ss-engine-mosaic.css` (NEW)
-- `smack-settings.php`
+- `smack-settings.php` ← logo/favicon MIME validation (0.7.22)
 - `smack-post-solo.php` (was smack-post.php — renamed 0.7.20; **run `git rm smack-post.php` from local** — sandbox can't delete files; updater will auto-remove it on existing installs via UPDATER_DEPRECATED_FILES)
 - `smack-appearance-solo.php`
 - `smack-help.php`
+- `community-auth.php` ← open redirect fix (0.7.22)
+- `login.php` ← session fixation fix (0.7.22)
+- `password-reset.php` ← rate limiting (0.7.22)
+- `smack-edit.php` ← path traversal fix (0.7.22)
+- `smack-post-solo.php` ← slug validation (0.7.22)
+- `install.php` ← DB error suppression (0.7.22)
+- `smack-privacy.php` (NEW — 0.7.21)
+- `privacy-policy.php` (NEW — 0.7.21)
+- `smack-scripts.php` (UPDATED — head scripts to file 0.7.21)
+- `setup.php` (UPDATED — signed release installer 0.7.21)
+- `data/.htaccess` (NEW — blocks web access to data/ dir 0.7.21)
+- `smack-central/sc-version.php` ← version bump (0.7.22)
 - `smack-audit.php` (NEW from 0.7.18)
 - `smack-cats.php` (UPDATED — featured image picker)
 - `smack-albums.php` (UPDATED — featured image picker)
 - `smack-mosaics.php` (NEW)
 - `smack-collections.php` (NEW)
-- `smack-post-long.php` (NEW)
+- `smack-post-long.php` (NEW + slug validation 0.7.22)
 - `smack-update.php` (UPDATED — deprecated file removal in migrate+finalize stages)
 - `core/updater.php` (UPDATED — UPDATER_DEPRECATED_FILES + updater_remove_deprecated_files())
 - `migrations/038_mosaics.php` (NEW)

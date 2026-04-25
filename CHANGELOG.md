@@ -4,6 +4,20 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.22 — "Couch Potato" (2026-04-25)
+
+### Security
+- **Open redirect fixed in `community-auth.php`.** Two redirect paths accepted arbitrary URLs — a logged-in check (line 30) passed `$_GET['redirect']` directly to `Location:`, and the login POST handler (line 182) used `FILTER_VALIDATE_URL` which accepts any valid URL including external ones. Both now pass through `community_safe_redirect()` which only allows relative paths starting with a single `/`.
+- **Logo upload validation hardened in `smack-settings.php`.** Logo upload previously accepted any file extension with no MIME check — upload `logo.php`, get RCE. Now enforces a whitelist of image extensions (`jpg`, `jpeg`, `png`, `gif`, `svg`, `webp`) and validates the actual MIME type via `finfo`. Favicon upload already had an extension whitelist; MIME validation added there too.
+- **Path traversal closed in `smack-edit.php`.** The skin manifest `edit_page` value was concatenated into an include path without validation. Skin slug and `edit_page` values are now validated against a safe slug pattern (`/^[a-z0-9][a-z0-9\-]*$/`) before any path construction.
+- **Session fixation fixed in 2FA login flow (`login.php`).** `session_regenerate_id(true)` was called after full session grant (no-2FA path) but NOT before planting `totp_pending_user_id` on the 2FA path. An attacker who pre-seeded a known session ID could observe the pending user ID. Fixed by calling `session_regenerate_id(true)` before writing the pending state.
+- **Rate limiting added to admin password reset (`password-reset.php`).** No rate limit existed on the admin reset form — an attacker could flood a target's inbox with reset emails. Max 5 requests per IP per hour using the existing `snap_rate_limits` table.
+- **Slug validation hardened.** `smack-post-solo.php` slug generation now collapses consecutive hyphens and strips leading/trailing hyphens, with an `untitled` fallback for all-special-char titles. `smack-post-long.php` now passes user-supplied slugs through `long_slugify()` for normalisation.
+- **DB error message suppressed in installer (`install.php`).** The catch-all connection failure branch was returning the raw MySQL exception message. Replaced with a generic error that doesn't leak server internals.
+- **Security headers added site-wide (`core/constants.php`).** `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, and `Referrer-Policy: strict-origin-when-cross-origin` are now sent on every request. CLI execution and already-sent-headers cases are skipped. Full CSP is deferred — too complex to implement correctly with skin-loaded external fonts and scripts.
+
+---
+
 ## 0.7.21 — "Couch Potato" (2026-04-25)
 
 ### Added

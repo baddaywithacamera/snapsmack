@@ -89,6 +89,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // If 2FA is active, plant a pending session key and redirect to
             // the verification page instead of granting a full session here.
             if (!empty($user['totp_enabled']) && !empty($user['totp_secret'])) {
+                // Regenerate session ID before writing the pending state to
+                // prevent session fixation — attacker cannot pre-seed the ID
+                // that will hold totp_pending_user_id.
+                session_regenerate_id(true);
                 $_SESSION['totp_pending_user_id'] = $user['id'];
                 header("Location: smack-2fa-verify.php");
                 exit;
@@ -207,13 +211,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                placeholder="SNAP-XXXX-XXXX-XXXX"
                                value="<?php echo htmlspecialchars($_POST['rec_code'] ?? ''); ?>">
                     </div>
-                    <button type="submit" class="master-update-btn">USE RECOVERY CODE</button>
-                </form>
-            </div>
-
-            <a href="index.php" class="back-link">&larr; RETURN TO SITE</a>
-        </div>
-    </div>
-    <script src="assets/js/smack-login.js"></script>
-</body>
-</html>
+                    <button type="submit" class="mas

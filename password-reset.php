@@ -49,23 +49,43 @@ if ($step === 'reset' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // ─── STEP 1: Request reset link ──────────────────────────────────────────────
 if ($step === 'request' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = strtolower(trim($_POST['email'] ?? ''));
+    // Rate limit: max 5 admin reset requests per IP per hour.
+    $rl_ip     = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $rl_action = 'admin_password_reset';
+    $rl_window = date('Y-m-d H:i:00', floor(time() / 3600) * 3600);
+    try {
+        $pdo->prepare("
+            INSERT INTO snap_rate_limits (ip, action, count, window_start)
+            VALUES (?, ?, 1, ?)
+            ON DUPLICATE KEY UPDATE count = count + 1
+        ")->execute([$rl_ip, $rl_action, $rl_window]);
+        $rl_stmt = $pdo->prepare("SELECT count FROM snap_rate_limits WHERE ip = ? AND action = ? AND window_start = ? LIMIT 1");
+        $rl_stmt->execute([$rl_ip, $rl_action, $rl_window]);
+        $rl_count = (int)$rl_stmt->fetchColumn();
+    } catch (Exception $e) {
+        $rl_count = 0; // If rate limit table is unavailable, allow through
+    }
 
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $err = 'Please enter a valid email address.';
+    if ($rl_count > 5) {
+        $err = 'Too many reset requests. Please wait an hour before trying again.';
     } else {
-        $reset_token = snapsmack_generate_reset_token($pdo, $email);
+        $email = strtolower(trim($_POST['email'] ?? ''));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $err = 'Please enter a valid email address.';
+        } else {
+            $reset_token = snapsmack_generate_reset_token($pdo, $email);
 
-        // Always show the same message whether the email exists or not
-        // (prevents user enumeration)
-        $msg = 'If that email address is registered, a reset link has been sent. Check your inbox and spam folder.';
+            // Always show the same message whether the email exists or not
+            // (prevents user enumeration)
+            $msg = 'If that email address is registered, a reset link has been sent. Check your inbox and spam folder.';
 
-        if ($reset_token) {
-            // Look up username for personalised email
-            $u = $pdo->prepare("SELECT username FROM snap_users WHERE LOWER(email) = ?");
-            $u->execute([$email]);
-            $username = $u->fetchColumn() ?: 'User';
-            snapsmack_send_reset_email($email, $username, $reset_token, $site_name, $site_url);
+            if ($reset_token) {
+                // Look up username for personalised email
+                $u = $pdo->prepare("SELECT username FROM snap_users WHERE LOWER(email) = ?");
+                $u->execute([$email]);
+                $username = $u->fetchColumn() ?: 'User';
+                snapsmack_send_reset_email($email, $username, $reset_token, $site_name, $site_url);
+            }
         }
     }
 }
@@ -123,28 +143,4 @@ button:hover { background: #444; }
     <?php endif; ?>
 
     <?php if ($success): ?>
-        <a href="login.php" class="back">← Back to login</a>
-
-    <?php elseif ($step === 'reset'): ?>
-        <form method="POST">
-            <input type="hidden" name="token" value="<?php echo htmlspecialchars($token); ?>">
-            <label>New Password</label>
-            <input type="password" name="password" minlength="8" required autofocus>
-            <label>Confirm Password</label>
-            <input type="password" name="confirm" minlength="8" required>
-            <button type="submit">Set New Password</button>
-        </form>
-        <a href="login.php" class="back">← Back to login</a>
-
-    <?php else: ?>
-        <form method="POST">
-            <label>Email Address</label>
-            <input type="email" name="email" required autofocus
-                   value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>">
-            <button type="submit">Send Reset Link</button>
-        </form>
-        <a href="login.php" class="back">← Back to login</a>
-    <?php endif; ?>
-</div>
-</body>
-</html>
+        <
