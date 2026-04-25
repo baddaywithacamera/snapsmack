@@ -4,6 +4,13 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.24 — "Lawn Chair" (2026-04-25)
+
+### Fixed
+- **Dashboard "Apply Update" button broken** — `cron-version-check.php` and the `smack-admin.php` fallback on-load check both stored a partial `core_update` blob that omitted `download_url`, `checksum_sha256`, and `signature`. Clicking Apply Update from the dashboard always produced "NO DOWNLOAD URL — RUN CHECK FOR UPDATES AGAIN." Both now store the full field set so the cached result can drive a complete update without requiring a manual re-check.
+
+---
+
 ## 0.7.23 — "Couch Potato" (2026-04-25)
 
 ### Security

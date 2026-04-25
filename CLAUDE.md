@@ -189,14 +189,18 @@ git commit
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.23 "Couch Potato"
+### SnapSmack — Alpha 0.7.24 "Lawn Chair"
 All commits are on `master`. Push from local:
 ```
 git push Github master
 ```
-After pushing: `git tag -f v0.7.23 && git push Github v0.7.23 --force`
+After pushing: `git tag -f v0.7.24 && git push Github v0.7.24 --force`
 
-**Latest changes (0.7.23 — Security audit 2 fixes):**
+**Latest changes (0.7.24 — Dashboard Apply Update fix):**
+- Version bump: 0.7.23 → 0.7.24 "Lawn Chair"
+- **Dashboard "Apply Update" button fixed** — `cron-version-check.php` and `smack-admin.php` fallback check both omitted `download_url`, `checksum_sha256`, and `signature` from the cached `core_update` blob; clicking Apply Update always produced "NO DOWNLOAD URL" error. Both now store the full field set.
+
+**Previous changes (0.7.23 — Security audit 2 fixes):**
 - Version bump: 0.7.22 → 0.7.23 "Couch Potato"
 - **Email header injection fixed** in `core/contact-form.php` — CRLF stripped from $name and $email before mail() headers
 - **Race condition fixed** in `smack-central/sc-enemy-api.php` — flock(LOCK_EX) on rate limit file
@@ -247,68 +251,19 @@ After pushing: `git tag -f v0.7.23 && git push Github v0.7.23 --force`
   - `smack-central/sc-update.php` — sc-db.php added to $protected list (never overwritten by updater)
   - `smack-central/sc-layout-top.php` — skull emoji removed from nav
 
-**Pending on live servers (FTP these files to all three sites):**
-- `core/constants.php` ← security headers + version bump (0.7.22)
-- `core/ste-style.php` (NEW from 0.7.18)
-- `core/ban-check.php`
-- `core/ste-client.php`
-- `core/spam-check.php`
-- `core/parser.php` (NEW Phase 8 mosaic call)
-- `core/meta.php` (NEW mosaic CSS/JS links)
-- `core/manifest-inventory.php` (NEW mosaic engine entry)
-- `core/sidebar.php` (NEW longform + collections + mosaics links)
-- `smack-central/sc-version.php`
-- `smack-central/sc-forum.php`
-- `smack-central/sc-release.php`
-- `smack-central/sc-enemy-admin.php`
-- `smack-central/sc-enemy-api.php`
-- `smack-central/sc-schema.php`
-- `smack-central/sc-update.php`
-- `smack-central/sc-layout-top.php`
-- `assets/js/smack-sc-forum.js` (NEW from 0.7.18)
-- `assets/js/ss-engine-mosaic.js` (NEW)
-- `assets/css/ss-engine-mosaic.css` (NEW)
-- `smack-settings.php` ← logo/favicon MIME validation (0.7.22)
-- `smack-post-solo.php` (was smack-post.php — renamed 0.7.20; **run `git rm smack-post.php` from local** — sandbox can't delete files; updater will auto-remove it on existing installs via UPDATER_DEPRECATED_FILES)
-- `smack-appearance-solo.php`
-- `smack-help.php`
-- `community-auth.php` ← open redirect fix (0.7.22)
-- `login.php` ← session fixation fix (0.7.22)
-- `password-reset.php` ← rate limiting (0.7.22)
-- `smack-edit.php` ← path traversal fix (0.7.22)
-- `smack-post-solo.php` ← slug validation (0.7.22)
-- `install.php` ← DB error suppression (0.7.22)
-- `smack-privacy.php` (NEW — 0.7.21)
-- `privacy-policy.php` (NEW — 0.7.21)
-- `smack-scripts.php` (UPDATED — head scripts to file 0.7.21)
-- `setup.php` (UPDATED — signed release installer 0.7.21)
-- `data/.htaccess` (NEW — blocks web access to data/ dir 0.7.21)
-- `smack-central/sc-version.php` ← version bump (0.7.22)
-- `smack-audit.php` (NEW from 0.7.18)
-- `smack-cats.php` (UPDATED — featured image picker)
-- `smack-albums.php` (UPDATED — featured image picker)
-- `smack-mosaics.php` (NEW)
-- `smack-collections.php` (NEW)
-- `smack-post-long.php` (NEW + slug validation 0.7.22)
-- `smack-update.php` (UPDATED — deprecated file removal in migrate+finalize stages)
-- `core/updater.php` (UPDATED — UPDATER_DEPRECATED_FILES + updater_remove_deprecated_files())
-- `migrations/038_mosaics.php` (NEW)
-- `migrations/039_featured_images.php` (NEW)
-- `migrations/040_collections.php` (NEW)
-- `migrations/041_longform_post_type.php` (NEW)
-- `projects/snapsmack-ca/index.html` (to snapsmack.ca server only)
-- `projects/snapsmack-ca/wotcha.html` (to snapsmack.ca server only)
-- `projects/snapsmack-ca/bugger.html` (to snapsmack.ca server only)
-- `projects/snapsmack-ca/oi.html` (to snapsmack.ca server only)
-- `projects/snapsmack-ca/tnb.html` (NEW — to snapsmack.ca server only)
+**Pending — live sites:**
+- Update remaining sites to 0.7.23 via Smack Central update system (one updated, confirmed 0.7.19 → 0.7.23 clean with orphan cleanup working)
+- `projects/snapsmack-ca/` files still need manual FTP to snapsmack.ca server (untracked, not in release package)
 
 **Pending DB on live squir871_enemy (run via phpMyAdmin):**
 - Apply remaining enemy schema: `coordination_cluster_id` column + `idx_cluster` index on `ste_reports`
 - Create `ste_style_vectors` table (full DDL in `smack-central/schemas/sc-enemy-canonical.sql`)
 
-**After FTP:**
+**Pending — other:**
 - Enable "Require Download Link" on foundtextures.ca Admin → Settings → Downloads
 - Confirm sc-db.php on server has sc_enemy_db() and sc_forum_db() (was overwritten by updater — correct version now in repo)
+- CSRF implementation (deferred HIGH severity — SameSite=Lax partial mitigation in place)
+- Fix packager changelog auto-fill: likely CORS on fetch to raw.githubusercontent.com — fix is a PHP proxy endpoint in sc-release.php
 
 **Pending local git hygiene (run from C:\dev\snapsmack):**
 ```
@@ -382,11 +337,11 @@ All commits on `master`. Push from local: `git push Github master`
 ### Live Sites
 | Site | Role | Version |
 |---|---|---|
-| foundtextures.ca | Multisite Hub | Alpha 0.7.9j (needs FTP update to 0.7.20) |
-| pixhellated.ca | Spoke | Alpha 0.7.9j (needs FTP update to 0.7.20) |
-| wateronthebrain.ca | Spoke | Alpha 0.7.9j (needs FTP update to 0.7.20) |
+| foundtextures.ca | Multisite Hub | Alpha 0.7.23 (needs update to 0.7.24) |
+| pixhellated.ca | Spoke | needs update to 0.7.24 |
+| wateronthebrain.ca | Spoke | needs update to 0.7.24 |
 
-Both spokes are ACTIVE and heartbeating correctly after key exchange fix.
+Updater confirmed: 0.7.19 → 0.7.23 clean, no errors, orphan cleanup working. Both spokes heartbeating correctly.
 
 ## Skin Registry
 
