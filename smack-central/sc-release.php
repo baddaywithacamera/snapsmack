@@ -337,6 +337,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 }
 
 // ── POST: Build release ───────────────────────────────────────────────────────
+// ── AJAX: fetch and parse CHANGELOG.md for a given tag ───────────────────────
+// Called by the packager JS instead of hitting raw.githubusercontent.com directly.
+// Fetches by commit SHA (not tag ref) to bypass GitHub CDN tag-ref caching.
+if (($_GET['action'] ?? '') === 'fetch_changelog') {
+    header('Content-Type: application/json');
+    $tag = preg_replace('/[^a-zA-Z0-9._\-]/', '', $_GET['tag'] ?? '');
+    if ($tag === '') { echo json_encode(['ok' => false, 'error' => 'No tag']); exit; }
+
+    // Resolve tag → commit SHA via API so we fetch by SHA, not tag ref.
+    $ref_data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/git/ref/tags/' . urlencode($tag));
+    $sha = '';
+    if (is_array($ref_data)) {
+        // Lightweight tag → commit SHA directly; annotated tag → object SHA, need one more hop.
+        if (($ref_data['object']['type'] ?? '') === 'tag') {
+            $tag_data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/git/tags/' . ($ref_data['object']['sha'] ?? ''));
+            $sha = $tag_data['object']['sha'] ?? '';
+        } else {
+            $sha = $ref_data['object']['sha'] ?? '';
+        }
+    }
+
+    if ($sha === '') { echo json_encode(['ok' => false, 'error' => 'Could not resolve tag SHA']); exit; }
+
+    $url  = 'https://raw.githubusercontent.com/' . SNAPSMACK_GITHUB_REPO . '/' . $sha . '/CHANGELOG.md';
+    $body = sc_http_raw($url);
+    if ($body === false) { echo json_encode(['ok' => false, 'error' => 'Could not fetch CHANGELOG.md']); exit; }
+
+    echo json_encode(['ok' => true, 'content' => $body]);
+    exit;
+}
+
 $action       = $_POST['action'] ?? '';
 $build_error  = '';
 $build_log    = [];
@@ -876,15 +907,18 @@ require __DIR__ . '/sc-layout-top.php';
     function fetchChangelog(tag, version) {
         if (!clta) return;
         if (clta.dataset.userEdited) return;
-        var url = 'https://raw.githubusercontent.com/' + repo + '/refs/tags/' + encodeURIComponent(tag) + '/CHANGELOG.md';
+        // Proxy through sc-release.php to fetch by commit SHA (avoids GitHub CDN
+        // tag-ref caching that causes stale results after a force-push).
+        var url = 'sc-release.php?action=fetch_changelog&tag=' + encodeURIComponent(tag);
         if (clstat) { clstat.textContent = '⟳ loading…'; clstat.style.color = 'var(--sc-color-dim, #888)'; }
         fetch(url)
             .then(function (r) {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
-                return r.text();
+                return r.json();
             })
-            .then(function (text) {
-                var entries = parseChangelog(text, version);
+            .then(function (data) {
+                if (!data.ok) throw new Error(data.error || 'proxy error');
+                var entries = parseChangelog(data.content, version);
                 if (!clta.dataset.userEdited) {
                     if (entries.length) {
                         clta.value = entries.join('\n');
