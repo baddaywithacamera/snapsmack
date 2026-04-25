@@ -211,4 +211,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                placeholder="SNAP-XXXX-XXXX-XXXX"
                                value="<?php echo htmlspecialchars($_POST['rec_code'] ?? ''); ?>">
                     </div>
-                    <button type="submit" class="mas
+                    <button type="submit" class="master-update-btn">USE RECOVERY CODE</button>
+                </form>
+            </div>
+
+            <a href="index.php" class="back-link">&larr; RETURN TO SITE</a>
+        </div>
+    </div>
+    <script src="assets/js/smack-login.js"></script>
+</body>
+</html>

@@ -873,4 +873,19 @@ if (homepageMode) {
             fd.append('provider', provider);
             fd.append('api_key',  apiKey);
 
-        
+            fetch('smack-ai-test.php', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: fd })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    testRes.textContent = d.ok ? '✓ ' + d.message : '✗ ' + d.error;
+                    testRes.style.color = d.ok ? 'var(--color-ok, #4caf50)' : 'var(--color-danger, #e05252)';
+                })
+                .catch(function () {
+                    testRes.textContent = '✗ Request failed';
+                    testRes.style.color = 'var(--color-danger, #e05252)';
+                });
+        });
+    }
+}());
+</script>
+<script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
+<?php include 'core/admin-footer.php'; ?>

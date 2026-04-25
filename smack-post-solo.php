@@ -874,4 +874,12 @@ include 'core/sidebar.php';
         </div>
         <div class="ai-assist-actions">
             <button type="button" id="ai-assist-dump" class="sc-btn" style="display:none;">
-                ↓ DUMP TO EDIT
+                ↓ DUMP TO EDITOR
+            </button>
+            <span class="ai-assist-hint">Or select text in the response and copy/paste manually.</span>
+        </div>
+    </div>
+</div>
+<script src="assets/js/ss-engine-ai.js?v=<?php echo time(); ?>"></script>
+<?php endif; ?>
+<?php include 'core/admin-footer.php'; ?>

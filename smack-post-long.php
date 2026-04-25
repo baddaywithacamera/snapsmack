@@ -742,4 +742,7 @@ function clearHero() {
         + '<button type="button" onclick="openHeroPicker()" class="btn-secondary" style="font-size:11px;padding:5px 12px;">SELECT HERO</button>'
         + '</div>';
 }
-document.ge
+document.getElementById('hero-picker-modal').addEventListener('click', function (e) {
+    if (e.target === this) closeHeroPicker();
+});
+</script>
