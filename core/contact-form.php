@@ -91,8 +91,10 @@ function _snapsmack_contact_process(string $admin_email, string $site_name): str
         return '<div class="contact-success">Thank you. Your message has been sent.</div>';
     }
 
-    $name    = trim($_POST['contact_name'] ?? '');
-    $email   = trim($_POST['contact_email'] ?? '');
+    // Strip CRLF sequences before any use in mail headers or subject — prevents
+    // header injection via crafted name or email inputs.
+    $name    = preg_replace('/[\r\n]+/', ' ', trim($_POST['contact_name']    ?? ''));
+    $email   = preg_replace('/[\r\n]+/', '',  trim($_POST['contact_email']   ?? ''));
     $message = trim($_POST['contact_message'] ?? '');
 
     if (empty($name) || empty($email) || empty($message)) {

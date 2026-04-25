@@ -189,14 +189,20 @@ git commit
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.22 "Couch Potato"
+### SnapSmack — Alpha 0.7.23 "Couch Potato"
 All commits are on `master`. Push from local:
 ```
 git push Github master
 ```
-After pushing: `git tag -f v0.7.22 && git push Github v0.7.22 --force`
+After pushing: `git tag -f v0.7.23 && git push Github v0.7.23 --force`
 
-**Latest changes (0.7.22 — Security hardening pass):**
+**Latest changes (0.7.23 — Security audit 2 fixes):**
+- Version bump: 0.7.22 → 0.7.23 "Couch Potato"
+- **Email header injection fixed** in `core/contact-form.php` — CRLF stripped from $name and $email before mail() headers
+- **Race condition fixed** in `smack-central/sc-enemy-api.php` — flock(LOCK_EX) on rate limit file
+- **Weak randomness fixed** in `smack-central/sc-release.php` — bin2hex(random_bytes(16)) for temp filenames
+
+**Previous changes (0.7.22 — Security hardening pass):**
 - Version bump: 0.7.21 → 0.7.22 "Couch Potato"
 - **Open redirect fixed** in `community-auth.php` — `community_safe_redirect()` helper enforces relative-paths-only
 - **Logo/favicon upload hardened** in `smack-settings.php` — extension whitelist + `finfo` MIME validation on both logo and favicon uploads

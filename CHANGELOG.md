@@ -4,6 +4,15 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.23 — "Couch Potato" (2026-04-25)
+
+### Security
+- **Email header injection fixed in `core/contact-form.php`** — `$name` was interpolated directly into the mail subject and `$email` into `From:` / `Reply-To:` headers with no CRLF stripping. A crafted name containing `\r\n` could inject arbitrary mail headers enabling spam relay. Both inputs now stripped of CRLF sequences before use.
+- **Race condition fixed in `smack-central/sc-enemy-api.php` rate limiter** — file-based rate limiting used no locking; concurrent requests all read the stale count before any write completed, allowing limit bypass. `ste_rate_limit()` now uses `flock(LOCK_EX)` for atomic read-increment-write.
+- **Weak temp file randomness fixed in `smack-central/sc-release.php`** — `rand(1000, 9999)` replaced with `bin2hex(random_bytes(16))` for unpredictable temp filenames.
+
+---
+
 ## 0.7.22 — "Couch Potato" (2026-04-25)
 
 ### Security

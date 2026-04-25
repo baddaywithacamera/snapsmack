@@ -169,7 +169,7 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         return ['ok' => false, 'msg' => 'Could not download zip from GitHub. Check outbound HTTPS access.'];
     }
 
-    $tmp_src = sys_get_temp_dir() . '/sc_gh_' . time() . '_' . rand(1000, 9999) . '.zip';
+    $tmp_src = sys_get_temp_dir() . '/sc_gh_' . bin2hex(random_bytes(16)) . '.zip';
     file_put_contents($tmp_src, $data);
     $dl_kb = round(strlen($data) / 1024);
     unset($data);
