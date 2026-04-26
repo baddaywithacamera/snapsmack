@@ -4,6 +4,13 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.25 — "Lawn Chair" (2026-04-25)
+
+### Fixed
+- **Reapply Current Version looping** — clicking APPLY after reapply kept returning to the review screen because `stage_download` only read from the cached update notification, not the session data set by the reapply action. Now falls back to session update data so reapply works without a pending update notification.
+
+---
+
 ## 0.7.24 — "Lawn Chair" (2026-04-25)
 
 ### Added
