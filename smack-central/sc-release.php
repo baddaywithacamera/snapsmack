@@ -967,4 +967,24 @@ require __DIR__ . '/sc-layout-top.php';
         var tag = opt.value;
         if (vinp  && !vinp.value) vinp.value  = v;
         if (vfull && !vfull.value) vfull.value = 'Alpha ' + v;
-        if (v && tag) fetchChangelog(t
+        if (v && tag) fetchChangelog(tag, v);
+    }
+}());
+</script>
+
+<?php require __DIR__ . '/sc-layout-bottom.php'; ?>
+        if (vinp  && !vinp.value) vinp.value  = v;
+        if (vfull && !vfull.value) vfull.value = 'Alpha ' + v;
+        if (v && tag) fetchChangelog(ttag.
+    if (sel.options.length) {
+        var opt = sel.options[sel.selectedIndex];
+        var v   = opt.dataset.version || '';
+        var tag = opt.value;
+        if (vinp  && !vinp.value) vinp.value  = v;
+        if (vfull && !vfull.value) vfull.value = 'Alpha ' + v;
+        if (v && tag) fetchChangelog(tag, v);
+    }
+}());
+</script>
+
+<?php require __DIR__ . '/sc-layout-bottom.php'; ?>
