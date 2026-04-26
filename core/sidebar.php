@@ -11,7 +11,8 @@
 $current_page = basename($_SERVER['PHP_SELF']);
 
 // --- UI MODE ---
-$_ui_pimpmobile = ($settings['ui_mode'] ?? 'bigwheel') === 'pimpmobile';
+$_ui_pimpmobile    = ($settings['ui_mode']        ?? 'bigwheel') === 'pimpmobile';
+$_longform_enabled = ($settings['enable_longform'] ?? '0')        === '1';
 
 // --- CONDITIONAL PIMPOTRON DETECTION ---
 $_sidebar_pimpotron = false;
@@ -60,7 +61,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-post-solo.php') ? 'active' : ''; ?>">
                         <a href="smack-post-solo.php">New Post</a>
                     </li>
-                    <?php if ($_ui_pimpmobile): ?>
+                    <?php if ($_ui_pimpmobile && $_longform_enabled): ?>
                     <li class="<?php echo ($current_page == 'smack-post-long.php') ? 'active' : ''; ?>">
                         <a href="smack-post-long.php">New Longform Post</a>
                     </li>

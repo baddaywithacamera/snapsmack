@@ -692,6 +692,17 @@ include 'core/sidebar.php';
             </div>
         </div>
 
+        <h3>POST MODES</h3>
+        <div class="lens-input-wrapper">
+            <label>SMACKTALK (LONGFORM POSTS)</label>
+            <label class="toggle-switch">
+                <input type="checkbox" name="settings[enable_longform]" value="1"
+                       <?php echo ($settings['enable_longform'] ?? '0') === '1' ? 'checked' : ''; ?>>
+                <span class="toggle-slider"></span>
+            </label>
+            <span class="dim">ENABLES THE LONGFORM POST EDITOR AND "NEW LONGFORM POST" IN THE SIDEBAR. TURN ON FOR SMACKTALK INSTALLS. LEAVE OFF FOR PHOTO-ONLY (SMACKONEOUT) INSTALLS.</span>
+        </div>
+
         <?php $_ui_pimpmobile = ($settings['ui_mode'] ?? 'bigwheel') === 'pimpmobile'; ?>
         <?php if ($_ui_pimpmobile): ?>
         <h3>SMACKATTACK</h3>

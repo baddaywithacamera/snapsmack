@@ -60,8 +60,8 @@ $keys = $pdo->query("
     ORDER BY created_at DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-require_once 'core/header.php';
-require_once 'core/sidebar.php';
+include 'core/admin-header.php';
+include 'core/sidebar.php';
 ?>
 
 <div class="smack-main">
@@ -241,4 +241,4 @@ require_once 'core/sidebar.php';
 }
 </style>
 
-<?php require_once 'core/footer.php'; ?>
+<?php include 'core/admin-footer.php'; ?>
