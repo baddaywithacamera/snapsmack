@@ -4,6 +4,22 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.27 — "Lawn Chair" (2026-04-26)
+
+### Added
+- **SmackTalk 3.0 edition in installer** — The edition chooser (step 1b) now includes SmackTalk 3.0 alongside SmackOneOut and Carousel. Selecting it seeds `enable_longform = 1` so longform posting is active from first login with no admin configuration required.
+- **Cloudflare Tunnel HTTPS detection** — `snap_is_https()` helper added to `core/constants.php`; checks `$_SERVER['HTTPS']`, `HTTP_X_FORWARDED_PROTO`, and `HTTP_X_FORWARDED_SSL`. Replaces bare `$_SERVER['HTTPS']` checks throughout the codebase. Installs behind Cloudflare Tunnel or any reverse proxy now correctly detect HTTPS, set secure cookies, and write correct base URLs.
+- **Release packager security hardening** — `secaudits/`, `migrations/`, `database/`, `data/`, `.well-known/`, and internal maintenance scripts excluded from install packages. Galleria and Rational Geo added to the base release package (previously gallery-only).
+
+### Fixed
+- **`.htaccess` HTTPS redirect** — redirect rule was commented out entirely; now active with dual-condition check (`HTTP:X-Forwarded-Proto` + `HTTPS`) to avoid redirect loops on both direct HTTPS and Cloudflare-proxied installs.
+- **Installer multi-step display** — DB-confirmed and admin account form were rendering on the same screen. DB confirm step now hands off cleanly to a separate screen before presenting the admin form.
+- **`setup.php` installer** — file was truncated in git (missing Install button, closing form, and HTML); restored from history. Extraction now processes files individually, skipping `setup.php` itself to avoid PHP overwriting a running script.
+- **Release packager changelog auto-fill** — `sc-release.php` was truncated in git (missing closing `</script>` tag and `require sc-layout-bottom.php`); browser never parsed or executed the changelog JS. Restored from history.
+- **Oh Snap shell permission** — `tools/oh-snap/src-tauri/capabilities/default.json` updated `shell:open` → `shell:allow-open` for Tauri 2 compatibility.
+
+---
+
 ## 0.7.26 — "Lawn Chair" (2026-04-26)
 
 ### Fixed
