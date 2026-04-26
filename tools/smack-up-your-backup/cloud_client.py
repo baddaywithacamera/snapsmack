@@ -213,26 +213,13 @@ class DriveClient:
         md5Checksum is None for Google Workspace native files (Docs, Sheets, etc).
         Paginates automatically — Google Drive caps each page at 1000 items.
         """
-        import datetime, sys
-        def _dbg(msg: str) -> None:
-            ts  = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            line = f"[{ts}] [Drive.list_files] {msg}"
-            print(line, flush=True)
-            try:
-                log_path = os.path.join(os.path.dirname(sys.executable), "suyb-debug.log")
-                with open(log_path, "a", encoding="utf-8") as fh:
-                    fh.write(line + "\n")
-            except Exception:
-                pass
-
         svc   = self._svc()
         query = f"'{self.folder_id}' in parents and trashed=false"
         if name_filter:
-            query += f" and name contains '{name_filter}'"
-        _dbg(f"folder_id={self.folder_id!r}  query={query!r}")
+            safe_filter = name_filter.replace("'", "\\'")
+            query += f" and name contains '{safe_filter}'"
         all_files  = []
         page_token = None
-        page_num   = 0
         while True:
             kwargs = dict(
                 q=query,
@@ -247,14 +234,9 @@ class DriveClient:
             results    = svc.files().list(**kwargs).execute()
             page_files = results.get("files", [])
             page_token = results.get("nextPageToken")
-            page_num  += 1
-            _dbg(f"page {page_num}: got {len(page_files)} file(s), "
-                 f"nextPageToken={'yes' if page_token else 'none'}, "
-                 f"running total={len(all_files) + len(page_files)}")
             all_files += page_files
             if not page_token:
                 break
-        _dbg(f"list complete: {len(all_files)} total file(s)")
         return all_files
 
     def download_file(

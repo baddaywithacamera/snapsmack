@@ -441,7 +441,7 @@ function loadFingerprints(page) {
                     <td><code>${ban.ban_value.substring(0, 24)}...</code></td>
                     <td>${ban.ban_type}</td>
                     <td><strong>${ban.fp_comment_count || ban.ip_comment_count || 0}</strong> comments</td>
-                    <td>${ban.is_banned ? '<span style="color:var(--danger,#cc4444);">⚫ BANNED</span>' : '<span style="color:var(--accent,#7aad5a);">✓ ALLOWED</span>'}</td>
+                    <td><span style="color:var(--danger,#cc4444);">⚫ BANNED</span></td>
                     <td style="text-align:right;"><button class="btn-smack btn-smack--dim btn-smack--sm" onclick="banFingerprint('${ban.ban_value}', '${ban.ban_type}')">Ban</button></td>
                 </tr>`;
             });
