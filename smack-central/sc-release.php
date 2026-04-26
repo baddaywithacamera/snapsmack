@@ -921,8 +921,12 @@ require __DIR__ . '/sc-layout-top.php';
                 return r.json();
             })
             .then(function (data) {
+                console.log('[changelog proxy] response ok:', data.ok, 'error:', data.error || 'none');
+                console.log('[changelog proxy] content length:', data.content ? data.content.length : 0);
+                console.log('[changelog proxy] content preview:', data.content ? data.content.substring(0, 300) : '(empty)');
                 if (!data.ok) throw new Error(data.error || 'proxy error');
                 var entries = parseChangelog(data.content, version);
+                console.log('[changelog proxy] version sought:', version, 'entries found:', entries.length);
                 if (!clta.dataset.userEdited) {
                     if (entries.length) {
                         clta.value = entries.join('\n');
