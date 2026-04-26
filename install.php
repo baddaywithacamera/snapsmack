@@ -11,8 +11,8 @@
 
 // --- CONFIGURATION ---
 // The version this installer deploys.
-$installer_version       = '0.7.7';
-$installer_version_label = 'Alpha 0.7.7';
+$installer_version       = '0.7.26';
+$installer_version_label = 'Alpha 0.7.26';
 
 // --- SESSION INIT ---
 session_start();
@@ -34,15 +34,87 @@ $recovery_mode = ($_GET['mode'] ?? $_POST['mode'] ?? '') === 'recovery';
 $has_existing_db = false;
 
 // --- SAFETY LOCK ---
-// If SnapSmack is already installed, refuse to run (unless recovery mode).
+// If SnapSmack is already installed, refuse to run (unless recovery mode or patch action).
+$patch_action = ($_GET['action'] ?? '') === 'patch_schema';
+
 if (file_exists(__DIR__ . '/core/db.php')) {
     try {
         require_once __DIR__ . '/core/db.php';
         $check = $pdo->query("SELECT COUNT(*) FROM snap_settings")->fetchColumn();
         if ($check > 0) {
             $has_existing_db = true;
+
+            // --- SCHEMA PATCH ACTION ---
+            // Adds columns that were missing from older fresh-install schemas.
+            // Safe to run on any version — all statements use ADD COLUMN IF NOT EXISTS.
+            if ($patch_action) {
+                $patch_results = [];
+                $patch_errors  = [];
+
+                $patches = [
+                    // snap_users — recovery + 2FA columns
+                    "ALTER TABLE `snap_users`
+                        ADD COLUMN IF NOT EXISTS `recovery_code_hash`    VARCHAR(255) DEFAULT NULL      AFTER `preferred_skin`,
+                        ADD COLUMN IF NOT EXISTS `force_password_change` TINYINT(1)   NOT NULL DEFAULT 0 AFTER `recovery_code_hash`,
+                        ADD COLUMN IF NOT EXISTS `totp_secret`           VARCHAR(32)  DEFAULT NULL      AFTER `force_password_change`,
+                        ADD COLUMN IF NOT EXISTS `totp_enabled`          TINYINT(1)   NOT NULL DEFAULT 0 AFTER `totp_secret`,
+                        ADD COLUMN IF NOT EXISTS `totp_recovery_json`    TEXT         DEFAULT NULL      AFTER `totp_enabled`",
+                ];
+                $patch_labels = [
+                    'snap_users — recovery_code_hash, force_password_change, totp_secret, totp_enabled, totp_recovery_json',
+                ];
+
+                foreach ($patches as $i => $sql) {
+                    try {
+                        $pdo->exec($sql);
+                        $patch_results[] = $patch_labels[$i];
+                    } catch (PDOException $e) {
+                        $patch_errors[] = $patch_labels[$i] . ' — ' . $e->getMessage();
+                    }
+                }
+
+                $all_ok = empty($patch_errors);
+                echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>SnapSmack Schema Patch</title>'
+                   . '<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0e0e0e;color:#d0d0d0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}.wrap{width:100%;max-width:580px}h1{font-size:1.4rem;color:#a0ff90;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}h1 span{color:#555;font-weight:300}.sub{color:#555;font-size:.8rem;letter-spacing:1px;margin-bottom:32px}h2{font-size:1rem;color:#eee;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #2a2a2a}ul{list-style:none;margin:0 0 20px}ul li{padding:8px 0;border-bottom:1px solid #1a1a1a;font-size:.88rem}.ok{color:#a0ff90}.err{color:#ff6b6b}.tag{display:inline-block;font-size:.7rem;text-transform:uppercase;letter-spacing:1px;padding:2px 6px;border-radius:2px;margin-right:8px}.tag-ok{background:#0d2b0d;color:#a0ff90}.tag-err{background:#2a0a0a;color:#ff6b6b}.box{padding:14px 18px;margin-bottom:20px;border-radius:3px;font-size:.88rem}.box-ok{background:#0d2b0d;border:1px solid #a0ff90;color:#a0ff90}.box-err{background:#2a0a0a;border:1px solid #ff6b6b;color:#ff9999}.btn{display:inline-block;padding:10px 24px;background:#a0ff90;color:#0e0e0e;border:none;font-size:.88rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;cursor:pointer;border-radius:3px;text-decoration:none;margin-top:8px}.btn:hover{background:#c0ffb0}</style>'
+                   . '</head><body><div class="wrap">'
+                   . '<h1>SNAPSMACK <span>SCHEMA PATCH</span></h1><p class="sub">install.php — schema repair</p>';
+
+                if (!empty($patch_results)) {
+                    echo '<h2>Applied</h2><ul>';
+                    foreach ($patch_results as $r) {
+                        echo '<li class="ok"><span class="tag tag-ok">PATCHED</span>' . htmlspecialchars($r) . '</li>';
+                    }
+                    echo '</ul>';
+                }
+                if (!empty($patch_errors)) {
+                    echo '<h2>Errors</h2><ul>';
+                    foreach ($patch_errors as $e) {
+                        echo '<li class="err"><span class="tag tag-err">ERROR</span>' . htmlspecialchars($e) . '</li>';
+                    }
+                    echo '</ul>';
+                }
+
+                if ($all_ok) {
+                    echo '<div class="box box-ok">Schema is up to date. You can now delete install.php.</div>';
+                } else {
+                    echo '<div class="box box-err">Some patches failed. Check errors above.</div>';
+                }
+
+                echo '<a class="btn" href="smack-admin.php">Go to Admin</a>';
+                echo '</div></body></html>';
+                exit;
+            }
+
             if (!$recovery_mode) {
-                die('<!DOCTYPE html><html><head><meta charset="utf-8"><title>SnapSmack</title></head><body style="background:#111;color:#eee;font-family:monospace;padding:60px;text-align:center;"><h1>SNAPSMACK IS ALREADY INSTALLED</h1><p>Delete <code>install.php</code> from your server, or <a href="install.php?mode=recovery" style="color:#a0ff90;">enter recovery mode</a>.</p></body></html>');
+                die('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>SnapSmack</title>'
+                  . '<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0e0e0e;color:#d0d0d0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}.wrap{width:100%;max-width:560px}h1{font-size:1.4rem;color:#a0ff90;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}h1 span{color:#555;font-weight:300}.sub{color:#555;font-size:.8rem;letter-spacing:1px;margin-bottom:32px}p{color:#999;margin-bottom:20px}a{color:#a0ff90}.btn{display:inline-block;padding:10px 24px;background:#1a1a1a;color:#a0ff90;border:1px solid #333;font-size:.88rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;cursor:pointer;border-radius:3px;text-decoration:none;margin-right:12px;margin-bottom:10px}.btn:hover{border-color:#a0ff90}</style>'
+                  . '</head><body><div class="wrap">'
+                  . '<h1>SNAPSMACK <span>INSTALLER</span></h1><p class="sub">Already installed</p>'
+                  . '<p>SnapSmack is already running on this server.</p>'
+                  . '<p><a href="install.php?action=patch_schema" class="btn">Patch Schema</a>'
+                  . '<a href="install.php?mode=recovery" class="btn">Recovery Mode</a></p>'
+                  . '<p style="font-size:.8rem;color:#555">Patch Schema adds any missing database columns from newer versions — safe to run on any install, does not touch existing data.</p>'
+                  . '</div></body></html>');
             }
         }
     } catch (Exception $e) {
@@ -65,7 +137,11 @@ if (!isset($_SESSION['db_lockout_until'])) $_SESSION['db_lockout_until'] = 0;
 // The installer progresses linearly. Each step validates before advancing.
 // Recovery steps use string prefixes (r2, r3, r4) so we cannot blindly cast to int.
 $raw_step = $_POST['step'] ?? 1;
-$step = (is_string($raw_step) && str_starts_with($raw_step, 'r')) ? $raw_step : (int)$raw_step;
+// '1b' = edition chooser (between env check and DB config)
+// 'r*' = recovery mode steps
+$step = (is_string($raw_step) && (str_starts_with($raw_step, 'r') || $raw_step === '1b'))
+    ? $raw_step
+    : (int)$raw_step;
 $errors = [];
 $success = [];
 
@@ -92,7 +168,7 @@ if ($step === 2 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
     } else {
         // Capture install mode choice (set on step 1 form, carried forward here)
         $posted_mode = $_POST['site_mode'] ?? '';
-        if (in_array($posted_mode, ['photoblog', 'carousel'], true)) {
+        if (in_array($posted_mode, ['photoblog', 'carousel', 'smacktalk'], true)) {
             $_SESSION['site_mode'] = $posted_mode;
         } elseif (empty($_SESSION['site_mode'])) {
             $_SESSION['site_mode'] = 'photoblog'; // safe default
@@ -274,12 +350,17 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
 
             // --- USERS ---
             "{$prefix}users" => "CREATE TABLE IF NOT EXISTS `{$prefix}users` (
-                `id` int NOT NULL AUTO_INCREMENT,
-                `username` varchar(50) NOT NULL,
-                `password_hash` varchar(255) NOT NULL,
-                `user_role` varchar(20) NOT NULL DEFAULT 'editor',
-                `email` varchar(100) DEFAULT NULL,
-                `preferred_skin` varchar(100) DEFAULT 'default-dark',
+                `id`                    int          NOT NULL AUTO_INCREMENT,
+                `username`              varchar(50)  NOT NULL,
+                `password_hash`         varchar(255) NOT NULL,
+                `user_role`             varchar(20)  NOT NULL DEFAULT 'editor',
+                `email`                 varchar(100) DEFAULT NULL,
+                `preferred_skin`        varchar(100) DEFAULT 'default-dark',
+                `recovery_code_hash`    varchar(255) DEFAULT NULL,
+                `force_password_change` tinyint(1)   NOT NULL DEFAULT 0,
+                `totp_secret`           varchar(32)  DEFAULT NULL,
+                `totp_enabled`          tinyint(1)   NOT NULL DEFAULT 0,
+                `totp_recovery_json`    text         DEFAULT NULL,
                 PRIMARY KEY (`id`),
                 UNIQUE KEY `username` (`username`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
@@ -729,7 +810,7 @@ try {
     if ($wrote_db === false) {
         $errors[] = 'Could not write core/db.php — check that the core/ directory is writable.';
     } else {
-        @chmod(__DIR__ . '/core/db.php', 0640);
+        @chmod(__DIR__ . '/core/db.php', 0644);
     }
 
     // --- GENERATE core/constants.php ---
@@ -746,7 +827,7 @@ try {
 
 define(\'SNAPSMACK_VERSION\', \'' . $installer_version_label . '\');
 define(\'SNAPSMACK_VERSION_SHORT\', \'' . $installer_version . '\');
-define(\'SNAPSMACK_VERSION_CODENAME\', "Muffet\'s Tuffet");
+define(\'SNAPSMACK_VERSION_CODENAME\', \'Lawn Chair\');
 define(\'SNAPSMACK_TABLE_PREFIX\', \'' . $prefix . '\');
 
 // --- VERSION COMPARISON ---
@@ -905,9 +986,17 @@ function snapsmack_is_mobile(): bool {
 # ─────────────────────────────────────────────────────────────
 
 # ─── FORCE HTTPS ─────────────────────────────────────────────
+# Only enable on direct-Apache installs where Apache handles HTTPS.
+# Leave commented out behind Cloudflare Tunnel or any SSL-terminating
+# reverse proxy — HTTPS is enforced at the edge and this rule will
+# cause an ERR_TOO_MANY_REDIRECTS loop on the origin.
+#
+# RewriteEngine On
+# RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+# RewriteCond %{HTTPS} !=on
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
 RewriteEngine On
-RewriteCond %{HTTPS} !=on
-RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
 
 # ─── PHP LIMITS ──────────────────────────────────────────────
 php_value upload_max_filesize 64M
@@ -979,6 +1068,22 @@ HTACCESS;
     if (!is_dir(__DIR__ . '/skins/50-shades-of-noah-grey')) {
         $errors[] = 'Default skin "50 Shades of Noah Grey" not found in skins/. The public site cannot load without it. Make sure the full SnapSmack codebase (including the skins/ directory) is uploaded before running the installer.';
         $skin_warning = $errors[count($errors) - 1];
+    }
+
+    // --- FTP-FRIENDLY PERMISSIONS ---
+    // chmod all files to 664 and directories to 775 so the FTP user can
+    // overwrite any file after install, provided they share a group with
+    // the web server user (www-data, apache, etc.).
+    if (empty($errors)) {
+        $iter = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator(__DIR__, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+        foreach ($iter as $item) {
+            @chmod($item->getPathname(), $item->isDir() ? 0775 : 0664);
+        }
+        @chmod(__DIR__, 0775);
+        @chmod(__DIR__ . '/core/db.php', 0644);
     }
 
     // --- SELF-DELETE ---
@@ -1062,7 +1167,7 @@ $options = [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH
 try { $pdo = new PDO($dsn, $user, $pass, $options); } catch (\PDOException $e) { die("<div style=\'background:#200;color:#f99;padding:20px;border:1px solid red;font-family:monospace;\'><h3>DATABASE_LINK_FAILURE</h3>The connection to the data vault was interrupted.</div>"); }
 ';
                             @file_put_contents(__DIR__ . '/core/db.php', $db_php);
-                            @chmod(__DIR__ . '/core/db.php', 0640);
+                            @chmod(__DIR__ . '/core/db.php', 0644);
                         }
 
                         // Generate constants.php if it doesn't exist
@@ -1070,7 +1175,7 @@ try { $pdo = new PDO($dsn, $user, $pass, $options); } catch (\PDOException $e) {
                             $const_php = '<?php
 define(\'SNAPSMACK_VERSION\', \'' . $installer_version_label . '\');
 define(\'SNAPSMACK_VERSION_SHORT\', \'' . $installer_version . '\');
-define(\'SNAPSMACK_VERSION_CODENAME\', "Muffet\'s Tuffet");
+define(\'SNAPSMACK_VERSION_CODENAME\', \'Lawn Chair\');
 define(\'SNAPSMACK_TABLE_PREFIX\', \'snap_\');
 function snap_version_compare(string $v1, string $v2, string $op = \'>\'): bool {
     $normalise = function (string $v): string {
@@ -1283,24 +1388,16 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         }
 
         /* --- EDITION CHOOSER --- */
-        .install-mode-heading {
-            margin: 32px 0 4px;
-            font-size: 1rem;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: #aaa;
-        }
         .install-mode-cards {
             display: flex;
-            gap: 16px;
-            margin: 16px 0 28px;
+            flex-direction: column;
+            gap: 12px;
+            margin: 20px 0 28px;
         }
         .install-mode-card {
-            flex: 1;
             cursor: pointer;
-            display: flex;
-            flex-direction: column;
         }
+
         .install-mode-card input[type="radio"] {
             position: absolute;
             opacity: 0;
@@ -1310,11 +1407,12 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         .install-mode-card-inner {
             border: 2px solid #2a2a2a;
             border-radius: 4px;
-            padding: 20px 18px;
+            padding: 18px 20px;
             transition: border-color 0.15s, background 0.15s;
             background: #0d0d0d;
-            flex: 1;
-            box-sizing: border-box;
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
         }
         .install-mode-card input[type="radio"]:checked + .install-mode-card-inner {
             border-color: #a0ff90;
@@ -1328,14 +1426,19 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             font-weight: 700;
             color: #a0ff90;
             line-height: 1;
-            margin-bottom: 6px;
+            min-width: 48px;
+            padding-top: 2px;
+        }
+
+        .install-mode-body {
+            flex: 1;
         }
         .install-mode-name {
             font-size: 1rem;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.06em;
-            margin-bottom: 10px;
+            letter-spacing: 0.08em;
+            margin-bottom: 6px;
             color: #eee;
         }
         .install-mode-desc {
@@ -1436,21 +1539,25 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
 
     <?php
     // --- STEP DOTS ---
-    // Map internal step numbers to visual step numbers (1–4).
-    // Internal step 3 (schema creation) is processing-only and immediately
-    // advances to step 4, so the user never sees it as a distinct page.
-    // Visual mapping: internal 1→1, 2→2, 3→3, 4→3, 5→4, complete→done
-    $total_steps = $recovery_mode ? 3 : 4;
+    // Visual steps: 1=Env Check, 2=Edition, 3=Database, 4=Admin, 5=Done
+    // Internal step 3 (schema) is processing-only and skips straight to 4.
+    // Visual mapping: 1→1, 1b→2, 2→3, 3→3, 4→4, 5→5, complete→done
+    $total_steps = $recovery_mode ? 3 : 5;
     if ($step === 'complete') {
         $current_num = $total_steps + 1; // all dots "done"
     } elseif ($recovery_mode) {
-        // Recovery steps: r2→1, r3→2, r4/r4_exec→3
         $recovery_map = ['r2' => 1, 'r3' => 2, 'r4' => 3, 'r4_exec' => 3];
         $current_num = $recovery_map[$step] ?? 1;
+    } elseif ($step === '1b') {
+        $current_num = 2;
+    } elseif ($step === 2) {
+        $current_num = 3;
+    } elseif ($step === 3) {
+        $current_num = 3;
     } elseif ($step >= 4) {
-        $current_num = $step - 1; // shift 4→3, 5→4
+        $current_num = $step; // 4→4, 5→5
     } else {
-        $current_num = $step;
+        $current_num = $step; // 1→1
     }
     echo '<div class="step-indicator">';
     for ($i = 1; $i <= $total_steps; $i++) {
@@ -1531,30 +1638,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         <?php if ($all_pass): ?>
             <form method="post">
                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
-                <input type="hidden" name="step" value="2">
-
-                <h3 class="install-mode-heading">Choose Your Edition</h3>
-                <p class="install-desc-note">This cannot be changed after installation.</p>
-
-                <div class="install-mode-cards">
-                    <label class="install-mode-card">
-                        <input type="radio" name="site_mode" value="photoblog" checked>
-                        <div class="install-mode-card-inner">
-                            <div class="install-mode-version">1.0</div>
-                            <div class="install-mode-name">Photoblog</div>
-                            <div class="install-mode-desc">Post one photograph a day. A personal archive of images with dates, titles, and your words. No noise, no feed — just your photos.</div>
-                        </div>
-                    </label>
-                    <label class="install-mode-card">
-                        <input type="radio" name="site_mode" value="carousel">
-                        <div class="install-mode-card-inner">
-                            <div class="install-mode-version">2.0</div>
-                            <div class="install-mode-name">Carousel</div>
-                            <div class="install-mode-desc">Post one or several photos at a time, building a scrollable stream of moments. The way Instagram felt in the early days, on your own server.</div>
-                        </div>
-                    </label>
-                </div>
-
+                <input type="hidden" name="step" value="1b">
                 <button type="submit">Continue</button>
             </form>
         <?php else: ?>
@@ -1565,10 +1649,60 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
 
 
     <?php // ============================================================= ?>
+    <?php // STEP 1b: Choose Edition ?>
+    <?php // ============================================================= ?>
+    <?php if ($step === '1b'): ?>
+        <h2>Step 2 — Choose Your Edition</h2>
+        <p class="install-desc-note">This cannot be changed after installation.</p>
+
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+            <input type="hidden" name="step" value="2">
+
+            <div class="install-mode-cards">
+                <label class="install-mode-card">
+                    <input type="radio" name="site_mode" value="photoblog" checked>
+                    <div class="install-mode-card-inner">
+                        <div class="install-mode-version">1.0</div>
+                        <div class="install-mode-body">
+                            <div class="install-mode-name">SMACKONEOUT</div>
+                            <div class="install-mode-desc">One image, one post, chronological, yours. The classic Pixelpost experience — the photoblogging format that defined the early web and quietly disappeared when the platforms took over. Solo image posting done the way it was always supposed to be done.</div>
+                        </div>
+                    </div>
+                </label>
+                <label class="install-mode-card">
+                    <input type="radio" name="site_mode" value="carousel">
+                    <div class="install-mode-card-inner">
+                        <div class="install-mode-version">2.0</div>
+                        <div class="install-mode-body">
+                            <div class="install-mode-name">GRAMOFSMACK</div>
+                            <div class="install-mode-desc">The 2016 Instagram experience — before the algorithm ate it. Multiple images per post, carousel layout, curated grid. Post up to 30 images at a time in carousel rows, panorama layout included. Your grid, your order, no Reels, no suggested posts, no one deciding what your followers see.</div>
+                        </div>
+                    </div>
+                </label>
+                <label class="install-mode-card">
+                    <input type="radio" name="site_mode" value="smacktalk">
+                    <div class="install-mode-card-inner">
+                        <div class="install-mode-version">3.0</div>
+                        <div class="install-mode-body">
+                            <div class="install-mode-name">SMACKTALK</div>
+                            <div class="install-mode-desc">For photographers who write. Longform photo essays, diary entries, personal narratives — writing and images at equal billing, the way the web was supposed to work before everything became a feed. No follower counts. No algorithm deciding who reads you. Just a blog, a domain you own, and a place to put words and pictures together the way you mean them.</div>
+                        </div>
+                    </div>
+                </label>
+            </div>
+
+            <button type="submit">Continue</button>
+        </form>
+
+    <?php endif; ?>
+
+
+    <?php // ============================================================= ?>
     <?php // STEP 2: Database Configuration ?>
     <?php // ============================================================= ?>
     <?php if ($step === 2): ?>
-        <h2>Step 2 — Database Configuration</h2>
+        <h2>Step 3 — Database Configuration</h2>
         <p class="install-desc-note">Enter the database credentials from your hosting control panel. The database must already exist.</p>
 
         <form method="post">
@@ -1602,7 +1736,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
     <?php // STEP 3: Schema Created — Show Results + Admin User Form ?>
     <?php // ============================================================= ?>
     <?php if ($step === 4 && !isset($_POST['admin_user'])): ?>
-        <h2>Step 3 — Database Created</h2>
+        <h2>Step 4 — Database Created</h2>
 
         <div class="success-box">All tables created successfully.</div>
 
@@ -1612,7 +1746,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         <?php endforeach; ?>
         </ul>
 
-        <h2>Step 4 — Your Site &amp; Admin Account</h2>
+        <h2>Step 5 — Your Site &amp; Admin Account</h2>
 
         <form method="post">
             <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
@@ -1653,7 +1787,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
     <?php // STEP 4: Admin form re-display on validation error ?>
     <?php // ============================================================= ?>
     <?php if ($step === 4 && isset($_POST['admin_user'])): ?>
-        <h2>Step 4 — Your Site &amp; Admin Account</h2>
+        <h2>Step 5 — Your Site &amp; Admin Account</h2>
 
         <form method="post">
             <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">

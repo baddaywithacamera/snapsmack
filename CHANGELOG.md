@@ -4,6 +4,17 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.26 — "Lawn Chair" (2026-04-26)
+
+### Fixed
+- **install.php fresh-install schema** — `snap_users` CREATE TABLE was missing `recovery_code_hash`, `force_password_change`, `totp_secret`, `totp_enabled`, and `totp_recovery_json` columns added in post-0.7.9g migrations. Fresh installs would fail at login with `Unknown column 'force_password_change'`.
+- **install.php db.php permissions** — `core/db.php` was set to `0640` after write, breaking PHP access on any server where the FTP user and web server user differ. Changed to `0644` (three instances).
+
+### Added
+- **install.php schema patcher** — The "already installed" wall now offers a **Patch Schema** button (`?action=patch_schema`) alongside Recovery Mode. Runs `ALTER TABLE … ADD COLUMN IF NOT EXISTS` for any columns missing from older installs. Safe to run on any version, does not touch existing data.
+
+---
+
 ## 0.7.25 — "Lawn Chair" (2026-04-25)
 
 ### Fixed
