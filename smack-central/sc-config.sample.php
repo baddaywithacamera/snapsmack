@@ -48,8 +48,11 @@ define('SMACK_RELEASE_PRIVKEY', 'your_ed25519_secret_key_hex_here_128_hex_chars'
 // ── GitHub ────────────────────────────────────────────────────────────────────
 // Used by the Release Packager and Skin Packager to pull from GitHub.
 // Token is optional but raises the API rate limit from 60 → 5000 req/hour.
+// Without a token the changelog auto-fill will fail frequently on busy days.
+// Generate one at: github.com → Settings → Developer settings →
+//   Personal access tokens → Tokens (classic) → no scopes needed for public repos.
 define('SNAPSMACK_GITHUB_REPO',  'baddaywithacamera/snapsmack');
-define('SNAPSMACK_GITHUB_TOKEN', '');
+define('SNAPSMACK_GITHUB_TOKEN', 'your_github_pat_here');
 
 // ── Git & Release Paths ───────────────────────────────────────────────────────
 // Absolute path to the SnapSmack repo root on the server (used by sc-release).
