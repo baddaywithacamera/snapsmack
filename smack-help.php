@@ -2312,6 +2312,43 @@ Communication uses HTTPS and keys are stored server-side — nothing is exposed 
 HTML
 ];
 
+$help_topics['server-files'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Server Directory Structure',
+    'icon'     => '&#x1F4C2;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>What's on Your Server</h3>
+<p>If you connect to your server via FTP or SFTP, here is what every directory contains and whether you should ever touch it.</p>
+
+<h4>assets/</h4>
+<p>Global CSS, JavaScript, and font files that ship with SnapSmack. Also contains <code>site-images/</code> for the default avatar and a few interface graphics. Don't edit files here directly — they are overwritten on every update. Custom CSS belongs in your skin's style settings.</p>
+
+<h4>core/</h4>
+<p>The engine. Authentication, database connection, skin rendering, API handlers, the updater — everything that makes SnapSmack run. You should never need to edit anything here. These files are overwritten on every update. If you find yourself wanting to change something in core, open a support request instead.</p>
+
+<h4>data/</h4>
+<p>Runtime data created by SnapSmack as it runs. Not part of the release package — SnapSmack creates this directory on first use. Contains:</p>
+<ul>
+<li><code>data/sessions/</code> — PHP login sessions, stored here instead of <code>/tmp</code> so your host's cron job can't log you out every 24 minutes. Protected by a deny-all <code>.htaccess</code> — not web-accessible.</li>
+<li><code>data/custom-head.html</code> — any custom HTML you've added via Admin → Settings → Head Scripts. Edit through the admin, not directly.</li>
+</ul>
+<p>Do not delete the <code>data/</code> directory. You will be logged out immediately and lose any custom head scripts.</p>
+
+<h4>img_uploads/</h4>
+<p>Every photo you have ever posted. Organised as <code>img_uploads/YYYY/MM/</code> by upload date. Thumbnails live alongside originals. Back this directory up regularly — it is the only directory that cannot be restored from a package. Everything else can be reinstalled. Your photos cannot.</p>
+
+<h4>licenses/</h4>
+<p>Open source licenses for the fonts and JavaScript libraries bundled with SnapSmack. Required for legal compliance with the fonts you use. Do not delete.</p>
+
+<h4>skins/</h4>
+<p>Installed themes. Each subdirectory is one skin. The base release ships with 50 Shades of Noah Grey, New Horizon, Galleria, Rational Geo, and Photogram (mobile). Additional skins can be installed from Smack Central → Skin Packager. To remove a skin, uninstall it through the admin — do not delete the directory manually while it is the active skin or you will get a 500 error.</p>
+
+<h4>Files in the Root</h4>
+<p>The PHP files in the root directory are SnapSmack's public-facing pages and admin screens — <code>index.php</code>, <code>smack-admin.php</code>, <code>login.php</code>, and so on. These are overwritten on every update. <code>install.php</code> self-deletes after a successful install; if it is still present, delete it manually. <code>.htaccess</code> handles URL rewriting and HTTPS redirection — do not delete it or your site will break.</p>
+HTML
+];
+
 // =========================================================================
 //  SKIN HELP HOOK
 // =========================================================================
@@ -2577,4 +2614,3 @@ foreach ($help_topics as $slug => $ht) {
 </script>
 
 <?php include 'core/admin-footer.php'; ?>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
