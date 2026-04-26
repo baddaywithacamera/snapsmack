@@ -11,8 +11,20 @@
 
 // --- CONFIGURATION ---
 // The version this installer deploys.
-$installer_version       = '0.7.26';
-$installer_version_label = 'Alpha 0.7.26';
+$installer_version       = '0.7.27';
+$installer_version_label = 'Alpha 0.7.27';
+
+// --- HTTPS DETECTION ---
+// Defined here rather than relying on core/constants.php, which does not exist
+// on a fresh install. Must be available before the form renders on step 5.
+if (!function_exists('snap_is_https')) {
+    function snap_is_https(): bool {
+        if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') return true;
+        if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') return true;
+        if (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on') return true;
+        return false;
+    }
+}
 
 // --- SESSION INIT ---
 session_start();
