@@ -90,3 +90,5 @@ greymatter/
 # snapsmack.ca promo site — not part of the CMS codebase, deployed separately
 projects/snapsmack-ca/
 projects/snapsmack-ca/img/
+sc-config.php
+sc-config.php

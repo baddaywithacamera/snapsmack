@@ -175,7 +175,7 @@ function community_generate_token(): string {
 // Writes the session cookie with secure defaults.
 // ---------------------------------------------------------------------------
 function community_set_cookie(string $token, int $days): void {
-    $secure   = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+    $secure   = snap_is_https();
     $expires  = time() + ($days * 86400);
     setcookie(
         COMMUNITY_COOKIE_NAME,

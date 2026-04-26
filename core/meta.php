@@ -82,7 +82,7 @@ if (empty($og_description) && !empty($settings['site_description'])) {
 
 // --- CANONICAL URL ---
 // Prevent duplicate content issues in search engines
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+$protocol = snap_is_https() ? "https://" : "http://";
 $canonical_url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 
 // --- EXIF DISPLAY FLAG ---
