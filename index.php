@@ -39,7 +39,7 @@ try {
     }
 
     // Override defaults with database values if they exist
-    $active_skin = $settings['active_skin'] ?? $active_skin;
+    $active_skin = ($settings['active_skin'] ?? '') ?: $active_skin;
     $site_name = $settings['site_name'] ?? $site_name;
 
     // Force Pocket Rocket on mobile devices (phones only, not tablets)
