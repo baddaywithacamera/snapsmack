@@ -189,30 +189,41 @@ git commit
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.25 "Lawn Chair"
+### SnapSmack — Alpha 0.7.27 "Lawn Chair"
 All commits are on `main`. Push from local:
 ```
 git push Github main
-git tag -d v0.7.25
-git tag v0.7.25
-git push Github --delete v0.7.25
-git push Github v0.7.25
+git tag -d v0.7.27
+git tag v0.7.27
+git push Github --delete v0.7.27
+git push Github v0.7.27
 ```
 
-**⚠️ Uncommitted changes pending** — delete `C:\dev\snapsmack\.git\index.lock` from local machine first, then commit and push.
+**Changes this session (0.7.26 — Cloudflare HTTPS + packager fixes):**
+- **`core/constants.php`** — `snap_is_https()` helper added; checks `$_SERVER['HTTPS']`, `HTTP_X_FORWARDED_PROTO`, `HTTP_X_FORWARDED_SSL`
+- **`core/auth.php`** — `secure` cookie flag uses `snap_is_https()` (was bare `$_SERVER['HTTPS']`)
+- **`core/community-session.php`** — `$secure` uses `snap_is_https()`
+- **`core/meta.php`** — `$protocol` uses `snap_is_https()`
+- **`core/multisite-api.php`** — BASE_URL bootstrap inlined full three-condition HTTPS check (constants.php not loaded yet at this point)
+- **`core/ohsnap-api.php`** — same as multisite-api.php
+- **`.htaccess`** — HTTPS redirect now active with two-condition check (`HTTP:X-Forwarded-Proto` + `HTTPS`) — was commented out entirely
+- **`install.php`** — HTTPS redirect in heredoc fixed; step '4b' added to normalization; DB-confirmed step split from admin-form step; `snap_is_https()` used for Site URL field
+- **`setup.php`** — Restored from git history (was truncated 346→366 lines); file-by-file zip extraction added, skipping setup.php itself to avoid PHP overwriting-running-script issue
+- **`smack-central/sc-release.php`** — Restored from git history (was truncated — missing `</script>` and `require sc-layout-bottom.php`; this was why changelog JS never fired); `$always_exclude` hardened: added `secaudits/`, `migrations/`, `database/`, `data/`, `backfill-checksums.php`, `backfill-thumbs.php`, `smack-central-current.zip`, `.well-known/`; galleria and rational-geo REMOVED from exclude list (now in base package); codename placeholder updated
+- **`smack-central/sc-config.sample.php`** — GitHub PAT entry documented with instructions
+- **`.gitignore`** — `sc-config.php` added (was accidentally committed with live credentials — rotated)
+- **`CLAUDE.md`** — Skin registry updated: galleria + rational-geo now `✅ YES` for base release
 
-**Changes this session (0.7.25 — installer + admin polish):**
-- **`install.php`** — Step 1 split into two pages: env check (step 1) → edition chooser (step 1b) → DB config (step 2→3); `$total_steps` 4→5; dot mapping updated; equal-height edition cards (`align-items: stretch`); Cloudflare Tunnel .htaccess template hardened (X-Forwarded-Proto condition)
-- **`.htaccess`** — Force-HTTPS rule now checks `X-Forwarded-Proto` first, preventing redirect loops behind Cloudflare Tunnel and other reverse proxies
-- **`setup.php`** — Vertical centering added; `hash_file()` null-check before `hash_equals()` (prevents fatal crash on permission denied); write-failure check with actionable message
-- **`smack-central/sc-release.php`** — `parseChangelog` CRLF bug fixed (`text.replace(/\r/g,'').split('\n')`); debug console.logs removed
+**Previous changes (0.7.25 — installer + admin polish):**
+- **`install.php`** — Step 1 split into two pages: env check (step 1) → edition chooser (step 1b) → DB config (step 2→3); `$total_steps` 4→5; dot mapping updated; equal-height edition cards (`align-items: stretch`)
+- **`smack-central/sc-release.php`** — `parseChangelog` CRLF bug fixed; debug console.logs removed
 - **`core/sidebar.php`** — "Mosaics" → "Mosaic" in nav label
-- **`smack-2fa.php`** — Fixed wrong includes (was using public header/footer instead of admin)
-- **`smack-fingerprints.php`** — Admin theme applied; tab buttons use `btn-smack`/`btn-settings` pattern; `is_banned` column reference removed (never existed); includes moved after AJAX block
+- **`smack-2fa.php`** — Fixed wrong includes
+- **`smack-fingerprints.php`** — Admin theme applied; `is_banned` column reference removed
 - **`assets/css/admin-theme-geometry-master.css`** — `.tab-selector` geometry added
-- **`smack-multisite.php`** — Completed truncated file (tbody, closing tags, unknown-role branch, admin-footer)
-- **`index.php`** — Guarded empty `active_skin` DB value with `?: $active_skin`
-- **`tools/oh-snap/src-tauri/capabilities/default.json`** — `shell:open` → `shell:allow-open` (Tauri 2 permission name)
+- **`smack-multisite.php`** — Completed truncated file
+- **`index.php`** — Guarded empty `active_skin` DB value
+- **`tools/oh-snap/src-tauri/capabilities/default.json`** — `shell:open` → `shell:allow-open`
 
 **Latest changes (0.7.25 — Reapply loop fix):**
 - Version bump: 0.7.24 → 0.7.25 "Lawn Chair"
@@ -276,9 +287,13 @@ git push Github v0.7.25
   - `smack-central/sc-layout-top.php` — skull emoji removed from nav
 
 **Pending — live sites:**
-- FTP updated `install.php` and `.htaccess` to strathmore.pics (files already extracted on server, just need these two updated to unblock install)
-- Rebuild 0.7.25 release package from Smack Central (to bake in fixed .htaccess + install.php for future installs)
-- Update all live sites to 0.7.25 via Smack Central update system
+- FTP `smack-central/sc-release.php` to snapsmack.ca (restored — truncation fix)
+- FTP `setup.php` to snapsmack.ca (restored — truncation fix)
+- Hard refresh Release Packager after FTP — verify changelog auto-fill fires (XHR to `sc-release.php?action=fetch_changelog&tag=v0.7.26` should appear in Network tab)
+- Rebuild 0.7.26 release package from Smack Central (bakes in Cloudflare HTTPS fix, hardened exclude list, galleria+rational-geo in base)
+- FTP skins to strathmore.pics: `skins/50-shades-of-noah-grey/`, `skins/new-horizon/`, `skins/galleria/`, `skins/rational-geo/` (fresh install has no skins — packager had them excluded, now fixed for future builds)
+- Complete strathmore.pics install: delete duplicate snap_user 'sean' then re-run step 5
+- Update all live sites to 0.7.26 via Smack Central update system
 - `projects/snapsmack-ca/` files still need manual FTP to snapsmack.ca server (untracked, not in release package)
 
 **Pending DB on live squir871_enemy (run via phpMyAdmin):**
@@ -289,7 +304,6 @@ git push Github v0.7.25
 - Enable "Require Download Link" on foundtextures.ca Admin → Settings → Downloads
 - Confirm sc-db.php on server has sc_enemy_db() and sc_forum_db() (was overwritten by updater — correct version now in repo)
 - CSRF implementation (deferred HIGH severity — SameSite=Lax partial mitigation in place)
-- Fix packager changelog auto-fill: likely CORS on fetch to raw.githubusercontent.com — fix is a PHP proxy endpoint in sc-release.php
 
 **Pending local git hygiene (run from C:\dev\snapsmack):**
 ```
@@ -362,10 +376,10 @@ All commits on `main`. Push from local: `git push Github main`, then force-move 
 ### Live Sites
 | Site | Role | Version |
 |---|---|---|
-| foundtextures.ca | Multisite Hub | Alpha 0.7.23 (needs update to 0.7.25) |
-| pixhellated.ca | Spoke | needs update to 0.7.25 |
-| wateronthebrain.ca | Spoke | needs update to 0.7.25 |
-| hekeepsdroningon.ca | Spoke | needs update to 0.7.25 |
+| foundtextures.ca | Multisite Hub | Alpha 0.7.23 (needs update to 0.7.27) |
+| pixhellated.ca | Spoke | needs update to 0.7.27 |
+| wateronthebrain.ca | Spoke | needs update to 0.7.27 |
+| hekeepsdroningon.ca | Spoke | needs update to 0.7.27 |
 | strathmore.pics | Standalone | fresh install in progress (Cloudflare Tunnel) |
 
 Updater confirmed: 0.7.19 → 0.7.23 clean, no errors, orphan cleanup working. Spokes heartbeating correctly.
@@ -392,7 +406,7 @@ Directory names use hyphens only, never underscores.
 | `show-n-tell` | Show-n-Tell | development | no |
 | `the-grid` | The Grid | development | no |
 
-**Base release** includes only `50-shades-of-noah-grey` and `new-horizon`.
+**Base release** includes `50-shades-of-noah-grey`, `new-horizon`, `galleria`, and `rational-geo`.
 All other skins are distributed via the skin gallery in Smack Central.
 To change which skins are in the base release, edit `$always_exclude` in
 `smack-central/sc-release.php` — and update this table.
