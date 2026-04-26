@@ -56,8 +56,8 @@ function snap_is_https(): bool {
 // The slug of the skin forced onto mobile devices. This skin is not selectable
 // in the admin skin picker — it is served automatically when a phone is detected.
 // Empty string = mobile visitors get the active desktop skin.
-// Install Photogram from the skin gallery for a dedicated mobile experience.
-define('SNAPSMACK_MOBILE_SKIN', '');
+// Photogram ships in every base release package and is the default mobile skin.
+define('SNAPSMACK_MOBILE_SKIN', 'photogram');
 
 /**
  * Detect mobile devices via User-Agent string.

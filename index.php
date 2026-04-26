@@ -43,7 +43,7 @@ try {
     $site_name = $settings['site_name'] ?? $site_name;
 
     // Force Pocket Rocket on mobile devices (phones only, not tablets)
-    if (snapsmack_is_mobile() && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)) {
+    if (snapsmack_is_mobile() && SNAPSMACK_MOBILE_SKIN !== '' && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)) {
         $active_skin = SNAPSMACK_MOBILE_SKIN;
     }
 
