@@ -423,8 +423,15 @@ if ($action === 'reset_update_state') {
 }
 
 // ── STAGED UPDATE: STAGE 1 — DOWNLOAD ────────────────────────────────────────
-if ($action === 'stage_download' && !empty($cached_result['core_update'])) {
-    $update       = $cached_result['core_update'];
+// Prefer the cached check result (normal update flow). Fall back to the session
+// update data set by the reapply action so the APPLY button works after reapply
+// even when no update notification is cached in snap_settings.
+$_stage_download_update = $cached_result['core_update'] ?? null;
+if (empty($_stage_download_update) && !empty($_SESSION['update_state']['update'])) {
+    $_stage_download_update = $_SESSION['update_state']['update'];
+}
+if ($action === 'stage_download' && !empty($_stage_download_update)) {
+    $update       = $_stage_download_update;
     $required_php = $update['requires_php'] ?? '8.0';
 
     if (version_compare(PHP_VERSION, $required_php, '<')) {

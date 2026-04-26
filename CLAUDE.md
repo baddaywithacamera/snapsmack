@@ -189,14 +189,18 @@ git commit
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.24 "Lawn Chair"
+### SnapSmack — Alpha 0.7.25 "Lawn Chair"
 All commits are on `master`. Push from local:
 ```
 git push Github master
 ```
-After pushing: `git tag -f v0.7.24 && git push Github v0.7.24 --force`
+After pushing: `git tag -f v0.7.25 && git push Github v0.7.25 --force`
 
-**Latest changes (0.7.24 — Dashboard Apply Update fix + SMACKATTACK rename):**
+**Latest changes (0.7.25 — Reapply loop fix):**
+- Version bump: 0.7.24 → 0.7.25 "Lawn Chair"
+- **Reapply Current Version loop fixed** — `stage_download` now falls back to session update data when no cached notification exists, so APPLY works after reapply.
+
+**Previous changes (0.7.24 — Dashboard Apply Update fix + SMACKATTACK rename):**
 - Version bump: 0.7.23 → 0.7.24 "Lawn Chair"
 - **Dashboard "Apply Update" button fixed** — `cron-version-check.php` and `smack-admin.php` fallback check both omitted `download_url`, `checksum_sha256`, and `signature` from the cached `core_update` blob; clicking Apply Update always produced "NO DOWNLOAD URL" error. Both now store the full field set.
 - **Smack the Enemy renamed to SMACKATTACK** — all user-facing labels, headings, help topics, settings section, and API messages updated. Internal code/files/DB tables unchanged (`sc-enemy-*`, `ste_*`).
