@@ -213,7 +213,6 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         'skins/impact-printer/',
         'skins/in-stereo-where-available/',
         'skins/kiosk/',
-        'skins/photogram/',
         'skins/pocket-rocket/',
         'skins/show-n-tell/',
         'skins/the-grid/',

@@ -32,7 +32,7 @@ Version is defined once in `core/constants.php` (`SNAPSMACK_VERSION`, `SNAPSMACK
 
 **SYBU versioning:** `BUILD_VERSION` in `tools/sybu/main.py` uses the same `0.7.9x` letter-suffix scheme, incrementing independently per SYBU release. It is NOT SnapSmack's version. When bumping SYBU: increment the letter (`0.7.9b` → `0.7.9c`), add a CHANGELOG entry in `tools/sybu/CHANGELOG.md`, create a new `.spec` file, and update `BUILD_VERSION` in `main.py` to match.
 
-**Smack Up Your Backup versioning:** SUYB uses the same `0.7.9x` scheme as SnapSmack, where the letter increments independently per SUYB release. `BUILD_VERSION` in `tools/smack-up-your-backup/main.py` is SUYB's version — it is NOT SnapSmack's version and is NOT a separate 0.1.x/0.2.x series. When bumping SUYB: increment the letter (e.g. `0.7.9c` → `0.7.9d`), add a CHANGELOG entry in `tools/smack-up-your-backup/CHANGELOG.md`, and update `BUILD_VERSION` in `main.py` to match.
+**Smack Up Your Backup versioning:** SUYB uses `0.7.x` where x is a meaningful release count within the SnapSmack milestone era (not a letter suffix, not one-for-one with SnapSmack). When SnapSmack hits 0.8.x, SUYB resets to `0.8.1`. When bumping SUYB: increment x, add a CHANGELOG entry in `tools/smack-up-your-backup/CHANGELOG.md`, create a new `.spec` file, and update `BUILD_VERSION` in `main.py` to match.
 
 Every PHP file opens with a standardised doc-block:
 
@@ -163,6 +163,13 @@ Everything that deploys to a web server lives at **repo root**. Non-web projects
 - Load order in `core/meta.php`: public-facing.css → @font-face → style.css → dynamic compiled CSS.
 - Wall textures use the `custom-wall-texture` property pattern with per-option `css` blocks.
 - Wall background colour targets `--wall-bg` CSS variable on `:root`.
+
+## Runtime-Generated Directories (Not From Package)
+
+These directories appear on live servers but are NOT in the release package and should never be questioned or deleted:
+
+- `data/sessions/` — created by `core/auth.php` line 34 on first authenticated page load. Stores PHP session files so shared hosting cron jobs can't purge them from `/tmp`. A deny-all `.htaccess` is written inside it automatically — session files are not web-accessible. Permissions: `0700`.
+- `data/` parent is created as a side effect of the above `mkdir(..., true)` call.
 
 ## Design Decisions
 
@@ -355,7 +362,7 @@ Spec: `tools/sybu/smackyourbatchup-0.7.9c.spec`
 - Run BASIC REPAIR → Re-enrich Duplicate Titles on foundtextures.ca (287 posts)
 - Fix 3 posts missing Drive links (IDs 883, 1008, 1009) via BASIC REPAIR → Backfill
 
-### Smack Up Your Backup (SUYB) — v0.7.9d
+### Smack Up Your Backup (SUYB) — v0.7.3
 All commits on `main`. Push from local: `git push Github main`, then force-move the tag.
 
 **To rebuild the exe:** run `strip_nulls.py` then `build.bat` in `tools/smack-up-your-backup/`
@@ -402,7 +409,7 @@ Directory names use hyphens only, never underscores.
 | `in-stereo-where-available` | In Stereo Where Available | development | no |
 | `kiosk` | Kiosk | development | no |
 | `52-card-pickup` | 52 Card Pickup | development | no |
-| `photogram` | Photogram | development | no |
+| `photogram` | Photogram | development | ✅ YES (mobile skin — always ships) |
 | `show-n-tell` | Show-n-Tell | development | no |
 | `the-grid` | The Grid | development | no |
 

@@ -5,7 +5,7 @@ Dark UI palette, tkinter, PyInstaller single-exe build chain.
 Same visual family as Smack Your Batch Up.
 """
 
-BUILD_VERSION = "0.7.9h"
+BUILD_VERSION = "0.7.3"
 
 import os
 import queue

@@ -2,11 +2,21 @@
 
 ## Versioning
 
-SUYB uses the same `0.7.9x` version scheme as SnapSmack. The letter suffix increments independently per SUYB release — it does NOT track SnapSmack releases one-for-one. `BUILD_VERSION` in `main.py` must always match the latest entry in this file.
+SUYB uses `0.7.x` where the third number is SUYB's own build count within the SnapSmack milestone era. When SnapSmack moves to 0.8.x (Closed Beta), SUYB resets to `0.8.1`. `BUILD_VERSION` in `main.py` must always match the latest entry in this file.
 
-Example: SnapSmack ships `0.7.9P`. SUYB is on `0.7.9c`. Next SUYB release is `0.7.9d`, regardless of what letter SnapSmack is on.
+Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired. Rapid same-day debug iterations (0.7.9e–h) are not counted as separate builds — only meaningful releases count. Entries are preserved as-is for history.
 
-Historical entries below `0.7.9d` used a separate `0.2.x` numbering scheme that was incorrect. Those entries are preserved as-is for history but the scheme has been corrected going forward.
+---
+
+## 0.7.3 — 2026-04-26
+
+### Changed
+- **Versioning scheme updated** — retired `0.7.9x` letter-suffix format in favour of plain `0.7.x` (meaningful release count within the Alpha era). See Versioning note above.
+
+### Security
+- **Drive API query injection closed** — `name_filter` in `DriveClient.list_files()` is now escaped before interpolation into the Drive API query string. Single quotes in profile names no longer break listing.
+- **Debug log removed** — unconditional `_dbg()` logging to `suyb-debug.log` in the exe directory has been removed from `DriveClient.list_files()`. Was leftover development instrumentation, written on every backup run.
+- **SA key patterns added to .gitignore** — `*-drive-key-*.json`, `*_token.json`, and `*_box_token.json` are now excluded so credential files can never be accidentally committed.
 
 ---
 
@@ -141,4 +151,3 @@ Historical entries below `0.7.9d` used a separate `0.2.x` numbering scheme that 
 - Hub/Spoke discovery — auto-creates profiles from a SnapSmack multisite hub.
 - Export/Import settings for moving config between machines.
 - AI-assisted file matching for restore (optional, requires sentence-transformers).
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
