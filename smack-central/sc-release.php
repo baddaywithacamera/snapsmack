@@ -717,7 +717,7 @@ require __DIR__ . '/sc-layout-top.php';
             </div>
             <div class="sc-field">
               <label>Codename <span class="sc-dim" style="font-weight:400;text-transform:none;">(optional)</span></label>
-              <input type="text" name="codename" id="codename-input" placeholder="Sitzfleisch">
+              <input type="text" name="codename" id="codename-input" placeholder="e.g. Lawn Chair">
             </div>
           </div>
 
@@ -947,7 +947,7 @@ require __DIR__ . '/sc-layout-top.php';
                 }
             })
             .catch(function (err) {
-                if (clstat) { clstat.textContent = '✗ Could not fetch CHANGELOG.md'; clstat.style.color = 'var(--sc-color-err, #e05252)'; }
+                if (clstat) { clstat.textContent = '✗ Could not fetch CHANGELOG.md — ' + err.message + ' (GitHub rate limit? Add a token to sc-config.php)'; clstat.style.color = 'var(--sc-color-err, #e05252)'; }
             });
     }
 
