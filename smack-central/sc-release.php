@@ -346,15 +346,19 @@ if (($_GET['action'] ?? '') === 'fetch_changelog') {
     if ($tag === '') { echo json_encode(['ok' => false, 'error' => 'No tag']); exit; }
 
     // Resolve tag → commit SHA via API so we fetch by SHA, not tag ref.
-    $ref_data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/git/ref/tags/' . urlencode($tag));
+    // Use git/refs/tags/{tag} (plural refs) — the correct GitHub REST API path.
+    $ref_data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/git/refs/tags/' . urlencode($tag));
     $sha = '';
     if (is_array($ref_data)) {
-        // Lightweight tag → commit SHA directly; annotated tag → object SHA, need one more hop.
-        if (($ref_data['object']['type'] ?? '') === 'tag') {
-            $tag_data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/git/tags/' . ($ref_data['object']['sha'] ?? ''));
+        // git/refs/tags/{tag} returns a single object for an exact match,
+        // but may return a numeric array if multiple refs match. Normalise.
+        $ref = isset($ref_data[0]) ? $ref_data[0] : $ref_data;
+        // Lightweight tag → commit SHA directly; annotated tag → dereference one more hop.
+        if (($ref['object']['type'] ?? '') === 'tag') {
+            $tag_data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/git/tags/' . ($ref['object']['sha'] ?? ''));
             $sha = $tag_data['object']['sha'] ?? '';
         } else {
-            $sha = $ref_data['object']['sha'] ?? '';
+            $sha = $ref['object']['sha'] ?? '';
         }
     }
 
