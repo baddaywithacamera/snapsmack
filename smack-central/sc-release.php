@@ -873,7 +873,7 @@ require __DIR__ . '/sc-layout-top.php';
     // Parse CHANGELOG.md text for a specific version string.
     // Returns an array of plain-text entries (no bullets, no markdown).
     function parseChangelog(text, version) {
-        var lines   = text.split('\n');
+        var lines   = text.replace(/\r/g, '').split('\n');
         var entries = [];
         var inVer   = false;
         var section = '';
