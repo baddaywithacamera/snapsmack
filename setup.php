@@ -58,6 +58,9 @@ function setup_fetch_url(string $url): string|false {
 // --- VERIFY PACKAGE ---
 function setup_verify(string $file_path, string $expected_sha256, string $signature_hex): string|true {
     $actual = hash_file('sha256', $file_path);
+    if ($actual === false) {
+        return 'Could not read downloaded file for checksum — check directory permissions.';
+    }
     if (!hash_equals($expected_sha256, $actual)) {
         return 'SHA-256 checksum mismatch — the download may be corrupt or tampered with.';
     }
@@ -117,7 +120,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
             if (!$zip_data || strlen($zip_data) < 10000) {
                 $error = 'Failed to download release package from ' . htmlspecialchars($release['download_url']) . '.';
             } else {
-                file_put_contents($zip_file, $zip_data);
+                $written = file_put_contents($zip_file, $zip_data);
+                if ($written === false) {
+                    $error = 'Could not write release package to disk — check that the web server has write permission to ' . htmlspecialchars($target_dir) . '.';
+                }
             }
         }
 
@@ -161,6 +167,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
                     } else {
                         // Remove db.php — install.php generates it fresh
                         @unlink($target_dir . '/core/db.php');
+
+                        // Set permissions so the FTP user can overwrite any file.
+                        // Directories: 775 (rwxrwxr-x), files: 664 (rw-rw-r--)
+                        // Requires the FTP user and web server user to share a group.
+                        $iter = new RecursiveIteratorIterator(
+                            new RecursiveDirectoryIterator($target_dir, RecursiveDirectoryIterator::SKIP_DOTS),
+                            RecursiveIteratorIterator::SELF_FIRST
+                        );
+                        foreach ($iter as $item) {
+                            @chmod($item->getPathname(), $item->isDir() ? 0775 : 0664);
+                        }
+                        @chmod($target_dir, 0775);
+
                         $success = true;
                     }
                 }
@@ -191,6 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
             line-height: 1.6;
             min-height: 100vh;
             display: flex;
+            align-items: center;
             justify-content: center;
             padding: 40px 20px;
         }

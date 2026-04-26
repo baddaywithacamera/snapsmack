@@ -4,7 +4,11 @@
 # ─────────────────────────────────────────────────────────────
 
 # ─── FORCE HTTPS ─────────────────────────────────────────────
+# Redirects HTTP → HTTPS. Safe behind Cloudflare Tunnel and any
+# other SSL-terminating reverse proxy: the X-Forwarded-Proto check
+# prevents redirect loops when the edge already speaks HTTPS.
 RewriteEngine On
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
 RewriteCond %{HTTPS} !=on
 RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
 
