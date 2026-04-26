@@ -267,13 +267,11 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         $basename = basename($rel);
         // Strip key JSON files (service account keys etc.) from anywhere in the tree
         if (str_ends_with($basename, '.json') && str_contains($basename, 'key')) { $skipped++; continue; }
-        // Strip screenshot PNGs only from excluded skins (they don't ship in the
-        // base release). Base-release skins (50-shades, new-horizon) keep their
-        // screenshots so the gallery previews work on fresh installs.
+        // Strip screenshot PNGs from all skins — gallery previews are served from
+        // SC assets, not from the install directory. Keeping them bloats the package.
         if (str_starts_with($basename, 'screenshot') && str_ends_with($basename, '.png') && str_starts_with($rel, 'skins/')) {
-            foreach ($always_exclude as $excl) {
-                if (str_starts_with($excl, 'skins/') && str_starts_with($rel, $excl)) { $skipped++; continue 2; }
-            }
+            $skipped++;
+            continue;
         }
 
         $content = $src->getFromIndex($i);

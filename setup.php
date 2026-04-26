@@ -170,6 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
                         }
                         $content = $zip->getFromIndex($i);
                         if ($content !== false) {
+                            @mkdir(dirname($target_dir . '/' . $entry), 0775, true);
                             @file_put_contents($target_dir . '/' . $entry, $content);
                         }
                     }
