@@ -6,6 +6,9 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ## 0.7.24 — "Lawn Chair" (2026-04-25)
 
+### Added
+- **SmackTalk mode toggle in Settings** — "New Longform Post" now only appears in the sidebar when SmackTalk mode is explicitly enabled. Photo-only (SmackOneOut) installs no longer show the longform editor link. Migration 043 seeds `enable_longform = 0` on existing installs.
+
 ### Changed
 - **Smack the Enemy renamed to SMACKATTACK** — all user-facing labels, headings, help topics, settings section, and API response messages updated. Internal code, file names, and database tables (`sc-enemy-*`, `ste_*`) unchanged.
 - **Packager changelog auto-fill fixed** — the packager JS now fetches CHANGELOG.md via a server-side PHP proxy that resolves the tag to a commit SHA before fetching, bypassing GitHub CDN tag-ref caching that caused the field to show empty after a force-push.
