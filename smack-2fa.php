@@ -124,7 +124,7 @@ if ($pending_secret) {
     $qr_url   = totp_qr_url($totp_uri);
 }
 
-require_once 'core/header.php';
+require_once 'core/admin-header.php';
 require_once 'core/sidebar.php';
 ?>
 
@@ -257,5 +257,5 @@ require_once 'core/sidebar.php';
     </div>
 </div>
 
-<?php require_once 'core/footer.php'; ?>
+<?php require_once 'core/admin-footer.php'; ?>
 <script src="assets/js/smack-admin-2fa.js"></script>

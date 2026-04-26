@@ -80,7 +80,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                         <a href="smack-collections.php">Collections</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-mosaics.php') ? 'active' : ''; ?>">
-                        <a href="smack-mosaics.php">Mosaics</a>
+                        <a href="smack-mosaics.php">Mosaic</a>
                     </li>
                     <?php endif; ?>
                     <?php if ($_ui_pimpmobile): ?>

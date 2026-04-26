@@ -986,17 +986,13 @@ function snapsmack_is_mobile(): bool {
 # ─────────────────────────────────────────────────────────────
 
 # ─── FORCE HTTPS ─────────────────────────────────────────────
-# Only enable on direct-Apache installs where Apache handles HTTPS.
-# Leave commented out behind Cloudflare Tunnel or any SSL-terminating
-# reverse proxy — HTTPS is enforced at the edge and this rule will
-# cause an ERR_TOO_MANY_REDIRECTS loop on the origin.
-#
-# RewriteEngine On
-# RewriteCond %{HTTP:X-Forwarded-Proto} !=https
-# RewriteCond %{HTTPS} !=on
-# RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
-
+# Redirects HTTP → HTTPS. Safe behind Cloudflare Tunnel and any
+# other SSL-terminating reverse proxy: the X-Forwarded-Proto check
+# prevents redirect loops when the edge already speaks HTTPS.
 RewriteEngine On
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+RewriteCond %{HTTPS} !=on
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
 
 # ─── PHP LIMITS ──────────────────────────────────────────────
 php_value upload_max_filesize 64M
