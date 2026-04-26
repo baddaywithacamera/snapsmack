@@ -1,2 +1,9 @@
 *.pyc
 __pycache__/
+
+# Google SA keys and OAuth tokens — must NEVER be committed.
+# Runtime location: C:\SmackUpYourBackup\  (outside the repo)
+*-drive-key-*.json
+*_token.json
+*_readonly_token.json
+*_box_token.json
