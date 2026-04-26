@@ -13,8 +13,6 @@ require_once 'core/semantic-analysis.php';
 require_once 'core/keyword-check.php';
 
 $page_title = 'Fingerprints & Bans';
-include 'core/admin-header.php';
-include 'core/sidebar.php';
 
 // ── AJAX ENDPOINTS ──────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -147,12 +145,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $page     = max(1, (int)($_POST['page'] ?? 1));
         $per_page = 50;
         $offset   = ($page - 1) * $per_page;
-        $banned_only = (bool)($_POST['banned_only'] ?? false);
+        // snap_ban_list contains only active bans — every row is a ban, no is_banned column
+        $total = (int)$pdo->query("SELECT COUNT(*) FROM snap_ban_list")->fetchColumn();
 
-        $where = $banned_only ? "WHERE is_banned = TRUE" : "";
-        $total = (int)$pdo->query("SELECT COUNT(*) FROM snap_ban_list $where")->fetchColumn();
-
-        $stmt = $pdo->prepare("SELECT * FROM snap_ban_list $where ORDER BY banned_at DESC LIMIT $per_page OFFSET $offset");
+        $stmt = $pdo->prepare("SELECT * FROM snap_ban_list ORDER BY banned_at DESC LIMIT $per_page OFFSET $offset");
         $stmt->execute();
         $bans = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -216,6 +212,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 }
 
 // ── PAGE RENDER ──────────────────────────────────────────────────────────────
+include 'core/admin-header.php';
+include 'core/sidebar.php';
 $total_bans  = (int)$pdo->query("SELECT COUNT(*) FROM snap_ban_list")->fetchColumn();
 $active_bans = $total_bans; // All rows in snap_ban_list are active; deleted bans are removed entirely
 
@@ -240,13 +238,13 @@ if ($is_hub) {
 
     <!-- ── TAB SELECTOR ──────────────────────────────────────────────────────── -->
     <div class="tab-selector" id="tab-selector">
-        <button class="tab-btn tab-active" data-tab="banned">BANNED</button>
-        <button class="tab-btn" data-tab="fingerprints">FINGERPRINTS</button>
-        <button class="tab-btn" data-tab="semantic">SEMANTIC</button>
-        <button class="tab-btn" data-tab="keywords">KEYWORDS</button>
-        <button class="tab-btn" data-tab="add">ADD BAN</button>
+        <button class="tab-btn btn-smack tab-active" data-tab="banned">BANNED</button>
+        <button class="tab-btn btn-smack btn-settings" data-tab="fingerprints">FINGERPRINTS</button>
+        <button class="tab-btn btn-smack btn-settings" data-tab="semantic">SEMANTIC</button>
+        <button class="tab-btn btn-smack btn-settings" data-tab="keywords">KEYWORDS</button>
+        <button class="tab-btn btn-smack btn-settings" data-tab="add">ADD BAN</button>
         <?php if ($is_hub): ?>
-        <button class="tab-btn" data-tab="shared-bans">SHARED BANS <?php if ($shared_ban_count > 0): ?><span style="margin-left:4px; font-size:0.75em; opacity:0.6;">(<?php echo $shared_ban_count; ?>)</span><?php endif; ?></button>
+        <button class="tab-btn btn-smack btn-settings" data-tab="shared-bans">SHARED BANS <?php if ($shared_ban_count > 0): ?><span style="margin-left:4px; font-size:0.75em; opacity:0.6;">(<?php echo $shared_ban_count; ?>)</span><?php endif; ?></button>
         <?php endif; ?>
     </div>
 
@@ -373,9 +371,13 @@ if ($is_hub) {
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         const tab = this.getAttribute('data-tab');
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active'));
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('tab-active');
+            b.classList.add('btn-settings');
+        });
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('tab-content--active'));
         this.classList.add('tab-active');
+        this.classList.remove('btn-settings');
         document.getElementById('tab-' + tab).classList.add('tab-content--active');
 
         if (tab === 'banned') loadBans(1);

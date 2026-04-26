@@ -724,4 +724,26 @@ include 'core/sidebar.php';
                                 <th style="text-align:left; padding:8px; color:var(--text-muted,#888);">TIMESTAMP</th>
                             </tr>
                         </thead>
-           
+                        <tbody>
+                            <?php foreach ($log as $row): ?>
+                            <tr style="border-bottom:1px solid var(--border,#2a2a2a);">
+                                <td style="padding:8px; color:var(--text-muted,#888); font-family:monospace; font-size:0.8rem;">
+                                    <?php echo htmlspecialchars($row['created_at']); ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+
+    <?php else: ?>
+        <div class="box">
+            <p style="color:var(--text-muted,#888);">Unknown multisite role configured.</p>
+        </div>
+    <?php endif; ?>
+
+</div>
+
+<?php require_once 'core/admin-footer.php'; ?>
