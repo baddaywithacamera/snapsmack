@@ -190,11 +190,29 @@ git commit
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
 ### SnapSmack — Alpha 0.7.25 "Lawn Chair"
-All commits are on `master`. Push from local:
+All commits are on `main`. Push from local:
 ```
-git push Github master
+git push Github main
+git tag -d v0.7.25
+git tag v0.7.25
+git push Github --delete v0.7.25
+git push Github v0.7.25
 ```
-After pushing: `git tag -f v0.7.25 && git push Github v0.7.25 --force`
+
+**⚠️ Uncommitted changes pending** — delete `C:\dev\snapsmack\.git\index.lock` from local machine first, then commit and push.
+
+**Changes this session (0.7.25 — installer + admin polish):**
+- **`install.php`** — Step 1 split into two pages: env check (step 1) → edition chooser (step 1b) → DB config (step 2→3); `$total_steps` 4→5; dot mapping updated; equal-height edition cards (`align-items: stretch`); Cloudflare Tunnel .htaccess template hardened (X-Forwarded-Proto condition)
+- **`.htaccess`** — Force-HTTPS rule now checks `X-Forwarded-Proto` first, preventing redirect loops behind Cloudflare Tunnel and other reverse proxies
+- **`setup.php`** — Vertical centering added; `hash_file()` null-check before `hash_equals()` (prevents fatal crash on permission denied); write-failure check with actionable message
+- **`smack-central/sc-release.php`** — `parseChangelog` CRLF bug fixed (`text.replace(/\r/g,'').split('\n')`); debug console.logs removed
+- **`core/sidebar.php`** — "Mosaics" → "Mosaic" in nav label
+- **`smack-2fa.php`** — Fixed wrong includes (was using public header/footer instead of admin)
+- **`smack-fingerprints.php`** — Admin theme applied; tab buttons use `btn-smack`/`btn-settings` pattern; `is_banned` column reference removed (never existed); includes moved after AJAX block
+- **`assets/css/admin-theme-geometry-master.css`** — `.tab-selector` geometry added
+- **`smack-multisite.php`** — Completed truncated file (tbody, closing tags, unknown-role branch, admin-footer)
+- **`index.php`** — Guarded empty `active_skin` DB value with `?: $active_skin`
+- **`tools/oh-snap/src-tauri/capabilities/default.json`** — `shell:open` → `shell:allow-open` (Tauri 2 permission name)
 
 **Latest changes (0.7.25 — Reapply loop fix):**
 - Version bump: 0.7.24 → 0.7.25 "Lawn Chair"
@@ -258,7 +276,9 @@ After pushing: `git tag -f v0.7.25 && git push Github v0.7.25 --force`
   - `smack-central/sc-layout-top.php` — skull emoji removed from nav
 
 **Pending — live sites:**
-- Update remaining sites to 0.7.23 via Smack Central update system (one updated, confirmed 0.7.19 → 0.7.23 clean with orphan cleanup working)
+- FTP updated `install.php` and `.htaccess` to strathmore.pics (files already extracted on server, just need these two updated to unblock install)
+- Rebuild 0.7.25 release package from Smack Central (to bake in fixed .htaccess + install.php for future installs)
+- Update all live sites to 0.7.25 via Smack Central update system
 - `projects/snapsmack-ca/` files still need manual FTP to snapsmack.ca server (untracked, not in release package)
 
 **Pending DB on live squir871_enemy (run via phpMyAdmin):**
@@ -299,8 +319,7 @@ git rm --cached snapsmack.zip smack-central-current.zip error_log
 After running these: update the $migration_name string inside `042_semantic_analysis_tables.php` from `'030_semantic_analysis_tables'` to `'042_semantic_analysis_tables'`.
 
 ### Smack Your Batch Up (SYBU) — v0.7.9c "Advanced Visual Match"
-Tool lives in `tools/sybu/`. All commits on `master`. Push from local: `git push Github master`
-After pushing: `git tag -f vSYBU-0.7.9c && git push Github vSYBU-0.7.9c --force`
+Tool lives in `tools/sybu/`. All commits on `main`. Push from local: `git push Github main`, then force-move the tag.
 
 **To rebuild the exe:** run `build.bat` in `tools/sybu/`
 Output: `C:\SmackYourBatchUp\smackyourbatchup-0.7.9c.exe`
@@ -323,7 +342,7 @@ Spec: `tools/sybu/smackyourbatchup-0.7.9c.spec`
 - Fix 3 posts missing Drive links (IDs 883, 1008, 1009) via BASIC REPAIR → Backfill
 
 ### Smack Up Your Backup (SUYB) — v0.7.9d
-All commits on `master`. Push from local: `git push Github master`
+All commits on `main`. Push from local: `git push Github main`, then force-move the tag.
 
 **To rebuild the exe:** run `strip_nulls.py` then `build.bat` in `tools/smack-up-your-backup/`
 
@@ -343,11 +362,13 @@ All commits on `master`. Push from local: `git push Github master`
 ### Live Sites
 | Site | Role | Version |
 |---|---|---|
-| foundtextures.ca | Multisite Hub | Alpha 0.7.23 (needs update to 0.7.24) |
-| pixhellated.ca | Spoke | needs update to 0.7.24 |
-| wateronthebrain.ca | Spoke | needs update to 0.7.24 |
+| foundtextures.ca | Multisite Hub | Alpha 0.7.23 (needs update to 0.7.25) |
+| pixhellated.ca | Spoke | needs update to 0.7.25 |
+| wateronthebrain.ca | Spoke | needs update to 0.7.25 |
+| hekeepsdroningon.ca | Spoke | needs update to 0.7.25 |
+| strathmore.pics | Standalone | fresh install in progress (Cloudflare Tunnel) |
 
-Updater confirmed: 0.7.19 → 0.7.23 clean, no errors, orphan cleanup working. Both spokes heartbeating correctly.
+Updater confirmed: 0.7.19 → 0.7.23 clean, no errors, orphan cleanup working. Spokes heartbeating correctly.
 
 ## Skin Registry
 
@@ -358,8 +379,8 @@ Directory names use hyphens only, never underscores.
 |---|---|---|---|
 | `50-shades-of-noah-grey` | 50 Shades of Noah Grey | stable | ✅ YES |
 | `new-horizon` | New Horizon | stable | ✅ YES |
-| `galleria` | Galleria | stable | skin gallery only |
-| `rational-geo` | Rational Geo | stable | skin gallery only |
+| `galleria` | Galleria | stable | ✅ YES |
+| `rational-geo` | Rational Geo | stable | ✅ YES |
 | `impact-printer` | Impact Printer | stable | skin gallery only |
 | `true-grit` | True Grit | stable | skin gallery only |
 | `hip-to-be-square` | Hip to be Square | beta | skin gallery only |

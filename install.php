@@ -139,7 +139,7 @@ if (!isset($_SESSION['db_lockout_until'])) $_SESSION['db_lockout_until'] = 0;
 $raw_step = $_POST['step'] ?? 1;
 // '1b' = edition chooser (between env check and DB config)
 // 'r*' = recovery mode steps
-$step = (is_string($raw_step) && (str_starts_with($raw_step, 'r') || $raw_step === '1b'))
+$step = (is_string($raw_step) && (str_starts_with($raw_step, 'r') || $raw_step === '1b' || $raw_step === '4b'))
     ? $raw_step
     : (int)$raw_step;
 $errors = [];
@@ -1550,8 +1550,12 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         $current_num = 3;
     } elseif ($step === 3) {
         $current_num = 3;
+    } elseif ($step === 4) {
+        $current_num = 4;
+    } elseif ($step === '4b') {
+        $current_num = 5;
     } elseif ($step >= 4) {
-        $current_num = $step; // 4→4, 5→5
+        $current_num = $step;
     } else {
         $current_num = $step; // 1→1
     }
@@ -1742,6 +1746,15 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         <?php endforeach; ?>
         </ul>
 
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+            <input type="hidden" name="step" value="4b">
+            <button type="submit">Continue</button>
+        </form>
+
+    <?php endif; ?>
+
+    <?php if ($step === '4b' || ($step === 4 && isset($_POST['admin_user']))): ?>
         <h2>Step 5 — Your Site &amp; Admin Account</h2>
 
         <form method="post">
@@ -1757,7 +1770,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             <div class="hint">Optional. A short description or subtitle.</div>
 
             <label for="site_url">Site URL</label>
-            <input type="text" id="site_url" name="site_url" value="<?php echo htmlspecialchars($_POST['site_url'] ?? ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . rtrim(dirname($_SERVER['SCRIPT_NAME']), '/'))); ?>" placeholder="https://example.com">
+            <input type="text" id="site_url" name="site_url" value="<?php echo htmlspecialchars($_POST['site_url'] ?? ((snap_is_https() ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . rtrim(dirname($_SERVER['SCRIPT_NAME']), '/'))); ?>" placeholder="https://example.com">
             <div class="hint">The full URL to your SnapSmack site. No trailing slash.</div>
 
             <label for="admin_user" class="install-divider-label">Admin Username</label>
@@ -1779,45 +1792,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
     <?php endif; ?>
 
 
-    <?php // ============================================================= ?>
-    <?php // STEP 4: Admin form re-display on validation error ?>
-    <?php // ============================================================= ?>
-    <?php if ($step === 4 && isset($_POST['admin_user'])): ?>
-        <h2>Step 5 — Your Site &amp; Admin Account</h2>
-
-        <form method="post">
-            <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
-            <input type="hidden" name="step" value="4">
-
-            <label for="site_name">Site Name</label>
-            <input type="text" id="site_name" name="site_name" value="<?php echo htmlspecialchars($_POST['site_name'] ?? ''); ?>" autofocus>
-            <div class="hint">The name of your photo blog. Shown in the header and browser tab.</div>
-
-            <label for="site_tagline">Tagline</label>
-            <input type="text" id="site_tagline" name="site_tagline" value="<?php echo htmlspecialchars($_POST['site_tagline'] ?? ''); ?>">
-            <div class="hint">Optional. A short description or subtitle.</div>
-
-            <label for="site_url">Site URL</label>
-            <input type="text" id="site_url" name="site_url" value="<?php echo htmlspecialchars($_POST['site_url'] ?? ''); ?>" placeholder="https://example.com">
-            <div class="hint">The full URL to your SnapSmack site. No trailing slash.</div>
-
-            <label for="admin_user" class="install-divider-label">Admin Username</label>
-            <input type="text" id="admin_user" name="admin_user" value="<?php echo htmlspecialchars($_POST['admin_user'] ?? ''); ?>">
-
-            <label for="admin_email">Admin Email</label>
-            <input type="email" id="admin_email" name="admin_email" value="<?php echo htmlspecialchars($_POST['admin_email'] ?? ''); ?>">
-
-            <label for="admin_pass">Password</label>
-            <input type="password" id="admin_pass" name="admin_pass">
-            <div class="hint">Minimum 12 characters. Length is security.</div>
-
-            <label for="admin_pass2">Confirm Password</label>
-            <input type="password" id="admin_pass2" name="admin_pass2">
-
-            <button type="submit">Create Site &amp; Finish</button>
-        </form>
-
-    <?php endif; ?>
+    <?php // Step 4 validation error re-display is handled by the combined 4b block above ?>
 
 
     <?php // ============================================================= ?>

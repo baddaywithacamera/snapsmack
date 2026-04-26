@@ -156,7 +156,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
                 }
 
                 if ($safe) {
-                    $zip->extractTo($target_dir);
+                    // Extract file by file so we can skip setup.php itself —
+                    // PHP cannot overwrite a running script, and a single
+                    // extractTo() call stops on the first permission error,
+                    // leaving everything alphabetically after it (skins/ etc.)
+                    // unextracted.
+                    for ($i = 0; $i < $zip->numFiles; $i++) {
+                        $entry = $zip->getNameIndex($i);
+                        if ($entry === 'setup.php') continue; // skip self
+                        if (str_ends_with($entry, '/')) {
+                            @mkdir($target_dir . '/' . $entry, 0775, true);
+                            continue;
+                        }
+                        $content = $zip->getFromIndex($i);
+                        if ($content !== false) {
+                            @file_put_contents($target_dir . '/' . $entry, $content);
+                        }
+                    }
                 }
                 $zip->close();
                 @unlink($zip_file);
