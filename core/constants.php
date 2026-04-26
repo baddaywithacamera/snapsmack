@@ -40,6 +40,18 @@ function snap_version_compare(string $v1, string $v2, string $op = '>'): bool {
     return version_compare($normalise($v1), $normalise($v2), $op);
 }
 
+// --- HTTPS DETECTION ---
+// Behind Cloudflare Tunnel (and other SSL-terminating reverse proxies),
+// $_SERVER['HTTPS'] is always empty because CF connects to the origin over
+// plain HTTP. Always use snap_is_https() instead of checking $_SERVER['HTTPS']
+// directly so cookies get the Secure flag, canonical URLs are https://, etc.
+function snap_is_https(): bool {
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') return true;
+    if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') return true;
+    if (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on') return true;
+    return false;
+}
+
 // --- MOBILE SKIN OVERRIDE ---
 // The slug of the skin forced onto mobile devices. This skin is not selectable
 // in the admin skin picker — it is served automatically when a phone is detected.

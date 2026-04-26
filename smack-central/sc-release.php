@@ -228,11 +228,22 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         'docs/',
         'screenshots/',
         'media_assets/',
+        'secaudits/',
+        'migrations/',
+        'database/',
+        'data/',
         // Dev/meta files
         'CLAUDE.md',
         'CHANGELOG.md',
         'README.md',
         '.gitignore',
+        // One-off utility scripts — not part of a normal install
+        'backfill-checksums.php',
+        'backfill-thumbs.php',
+        // Build artifacts at root
+        'smack-central-current.zip',
+        // ACME / Let's Encrypt challenge — server-specific
+        '.well-known/',
     ];
 
     $differential = !empty($include_files);
@@ -958,9 +969,4 @@ require __DIR__ . '/sc-layout-top.php';
         var tag = opt.value;
         if (vinp  && !vinp.value) vinp.value  = v;
         if (vfull && !vfull.value) vfull.value = 'Alpha ' + v;
-        if (v && tag) fetchChangelog(tag, v);
-    }
-}());
-</script>
-
-<?php require __DIR__ . '/sc-layout-bottom.php'; ?>
+        if (v && tag) fetchChangelog(t

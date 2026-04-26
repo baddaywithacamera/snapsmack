@@ -17,7 +17,7 @@
 
 // --- ENVIRONMENT BOOTSTRAP ---
 if (!defined('BASE_URL')) {
-    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') ? 'https' : 'http';
     define('BASE_URL', $protocol . '://' . $_SERVER['HTTP_HOST'] . '/');
 }
 

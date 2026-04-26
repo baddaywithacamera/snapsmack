@@ -129,7 +129,7 @@ if (isset($_SESSION['user_login'])) {
         [
             'expires'  => time() + 86400,
             'path'     => '/',
-            'secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+            'secure'   => snap_is_https(),
             'httponly' => true,
             'samesite' => 'Lax',
         ]
