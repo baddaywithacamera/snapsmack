@@ -4,7 +4,28 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
-## 0.7.27 — "Lawn Chair" (2026-04-26)
+## 0.7.28 — "Lock-Off" (2026-04-28)
+
+### Changed
+- Version bump. Codename: Lock-Off (the locking mechanism on a child car seat — keeps things exactly where you put them).
+
+---
+
+## 0.7.27 — "Lawn Chair" (2026-04-28)
+
+### Added
+- **XHR-driven update modal** — Updates now run in a modal overlay without page navigation. Triggered from the dashboard banner, sidebar System Updates link, or the Updates page directly. Five-stage progress bar (Download → Verify → Backup → Extract → Migrate), live log, changelog review before applying, rollback button on failure. Full-page HTML fallback retained for non-JS environments. New `assets/js/ss-engine-updater.js` and `assets/css/ss-engine-updater.css`.
+- **Custom login slug + bot protection** — Login page renamed from `login.php` to `snap-in.php`. Direct `.php` URL returns 403; named route `/snap-in` serves the page. Pre-shared token recovery path: `snap-in.php?key=TOKEN` redirects to the configured login slug so you're never locked out. Migration `044_login_slug.php` seeds `login_slug` and `login_recovery_key` in `snap_settings`.
+- **Passphrase generator** — Login and change-password pages include a six-word passphrase generator (`assets/js/smack-passphrase.js`). "Generate & Fill" populates the password field; "Just show me one" displays a phrase without filling. Nudges users away from symbol-scrambled passwords.
+
+### Fixed
+- **`db.php` permissions on shared hosting** — Installer now sets `core/db.php` to `0644` instead of `0640`. Fixes "Permission denied" on servers where PHP runs as a different user than the FTP/deploy user.
+- **Fresh install schema gaps** — `snap_users` CREATE TABLE in `install.php` was missing five columns added via migrations (`recovery_code_hash`, `force_password_change`, `totp_secret`, `totp_enabled`, `totp_recovery_json`). All columns now present in the initial schema.
+- **Schema patcher** — `install.php?action=patch_schema` runs idempotent ALTER TABLE migrations for the missing columns. Safe to run against any existing install.
+
+---
+
+## 0.7.26 — "Lawn Chair" (2026-04-26)
 
 ### Added
 - **SmackTalk 3.0 edition in installer** — The edition chooser (step 1b) now includes SmackTalk 3.0 alongside SmackOneOut and Carousel. Selecting it seeds `enable_longform = 1` so longform posting is active from first login with no admin configuration required.

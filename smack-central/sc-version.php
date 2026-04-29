@@ -7,5 +7,5 @@
  * to determine whether an update is available.
  */
 
-define('SC_VERSION',  '0.7.27');
-define('SC_CODENAME', 'Lawn Chair');
+define('SC_VERSION',  '0.7.28');
+define('SC_CODENAME', 'Lock-Off');
