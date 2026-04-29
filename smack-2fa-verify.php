@@ -11,7 +11,7 @@ require_once 'core/db.php';
 require_once 'core/totp.php';
 
 // --- SESSION INITIALIZATION ---
-// Must match the session config in login.php and core/auth.php exactly.
+// Must match the session config in snap-in.php and core/auth.php exactly.
 if (session_status() === PHP_SESSION_NONE) {
     $ss_session_dir = __DIR__ . '/data/sessions';
     if (!is_dir($ss_session_dir)) {
@@ -33,10 +33,10 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // --- GUARD ---
-// Only reachable if login.php planted a pending user ID.
+// Only reachable if snap-in.php planted a pending user ID.
 // If it's missing, the user hasn't passed password verification — send them back.
 if (empty($_SESSION['totp_pending_user_id'])) {
-    header("Location: login.php");
+    header("Location: snap-in.php");
     exit;
 }
 
@@ -58,7 +58,7 @@ if ($_SESSION['totp_fail_count'] >= 5) {
     // Too many failures — wipe the pending session and force a fresh login.
     session_unset();
     session_destroy();
-    header("Location: login.php?err=2fa_locked");
+    header("Location: snap-in.php?err=2fa_locked");
     exit;
 }
 
@@ -230,7 +230,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </form>
             </div>
 
-            <a href="login.php" class="login-aux-link">&larr; BACK TO LOGIN</a>
+            <a href="snap-in.php" class="login-aux-link">&larr; BACK TO LOGIN</a>
         </div>
     </div>
     <script src="assets/js/smack-login.js"></script>

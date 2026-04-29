@@ -48,7 +48,7 @@ $current_gutter = (int)($settings['static_content_gutter'] ?? 40);
             <div class="dash-grid">
 
                 <div class="lens-input-wrapper">
-                    <label>CONTENT WIDTH</label>
+                    <label>CONTENT WIDTH <span class="field-tip" data-tip="Maximum width of the text content column. Each skin has its own default when not set here.">ⓘ</span></label>
                     <div style="display:flex; align-items:center; gap:12px;">
                         <input type="range"
                                name="settings[static_content_width]"
@@ -58,11 +58,10 @@ $current_gutter = (int)($settings['static_content_gutter'] ?? 40);
                                oninput="this.nextElementSibling.textContent = this.value + 'px'">
                         <span style="min-width:52px; font-family:monospace;"><?php echo $current_width; ?>px</span>
                     </div>
-                    <span class="dim">MAXIMUM WIDTH OF THE TEXT CONTENT COLUMN. EACH SKIN HAS ITS OWN DEFAULT WHEN NOT SET HERE.</span>
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>SIDE GUTTERS</label>
+                    <label>SIDE GUTTERS <span class="field-tip" data-tip="Internal side padding — how far text sits from the edge of the content area.">ⓘ</span></label>
                     <div style="display:flex; align-items:center; gap:12px;">
                         <input type="range"
                                name="settings[static_content_gutter]"
@@ -72,7 +71,6 @@ $current_gutter = (int)($settings['static_content_gutter'] ?? 40);
                                oninput="this.nextElementSibling.textContent = this.value + 'px'">
                         <span style="min-width:52px; font-family:monospace;"><?php echo $current_gutter; ?>px</span>
                     </div>
-                    <span class="dim">INTERNAL SIDE PADDING — HOW FAR TEXT SITS FROM THE EDGE OF THE CONTENT AREA.</span>
                 </div>
 
             </div>

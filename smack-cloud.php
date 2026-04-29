@@ -259,9 +259,8 @@ include 'core/sidebar.php';
                     <label>CLIENT ID</label>
                     <input type="text" name="google_client_id" value="<?php echo htmlspecialchars($settings['google_client_id'] ?? ''); ?>" placeholder="xxxx.apps.googleusercontent.com">
 
-                    <label>CLIENT SECRET</label>
+                    <label>CLIENT SECRET <span class="field-tip" data-tip="Leave blank to keep the existing stored secret.">ⓘ</span></label>
                     <input type="password" name="google_client_secret" placeholder="<?php echo !empty($settings['google_client_secret']) ? '••••••••••••••••' : 'client secret'; ?>">
-                    <span class="dim">Leave blank to keep existing secret.</span>
 
                     <details style="margin-top: 15px;">
                         <summary class="dim" style="cursor: pointer;">SETUP GUIDE</summary>
@@ -284,9 +283,8 @@ include 'core/sidebar.php';
                     <label>APPLICATION (CLIENT) ID</label>
                     <input type="text" name="onedrive_client_id" value="<?php echo htmlspecialchars($settings['onedrive_client_id'] ?? ''); ?>" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
 
-                    <label>CLIENT SECRET</label>
+                    <label>CLIENT SECRET <span class="field-tip" data-tip="Leave blank to keep the existing stored secret.">ⓘ</span></label>
                     <input type="password" name="onedrive_client_secret" placeholder="<?php echo !empty($settings['onedrive_client_secret']) ? '••••••••••••••••' : 'client secret'; ?>">
-                    <span class="dim">Leave blank to keep existing secret.</span>
 
                     <details style="margin-top: 15px;">
                         <summary class="dim" style="cursor: pointer;">SETUP GUIDE</summary>

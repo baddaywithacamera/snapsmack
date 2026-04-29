@@ -80,8 +80,7 @@ include 'core/sidebar.php';
         <!-- HEAD SCRIPTS -->
         <div class="box">
             <div class="lens-input-wrapper">
-                <label>HEAD SCRIPTS</label>
-                <p class="dim">Injected before &lt;/head&gt; on every public page. Analytics, tracking pixels, universal loaders (e.g. MailerLite, Google Analytics).</p>
+                <label>HEAD SCRIPTS <span class="field-tip" data-tip="Injected before &lt;/head&gt; on every public page. Use for analytics, tracking pixels, or universal loaders (e.g. MailerLite, Google Analytics).">ⓘ</span></label>
                 <textarea name="head_scripts" class="css-override-textarea" spellcheck="false" placeholder="<!-- Paste your tracking scripts here -->"><?php echo htmlspecialchars($head_scripts); ?></textarea>
             </div>
         </div>

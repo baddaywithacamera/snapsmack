@@ -142,7 +142,7 @@ include 'core/sidebar.php';
                     </div>
 
                     <div class="lens-input-wrapper mt-20">
-                        <label>DESCRIPTION <span class="dim">(optional — shown on category pages &amp; used for SEO)</span></label>
+                        <label>DESCRIPTION <span class="field-tip" data-tip="Optional. Shown on category pages and used for SEO meta description.">ⓘ</span></label>
                         <textarea name="cat_description" rows="3" placeholder="A short description of this category."><?php echo $edit_mode ? htmlspecialchars($edit_data['cat_description'] ?? '') : ''; ?></textarea>
                     </div>
 
@@ -151,15 +151,14 @@ include 'core/sidebar.php';
                         <label>
                             <input type="checkbox" name="show_in_archive" value="1"
                                    <?php echo (!$edit_mode || ($edit_data['show_in_archive'] ?? 1)) ? 'checked' : ''; ?>>
-                            SHOW IN ARCHIVE
+                            SHOW IN ARCHIVE <span class="field-tip" data-tip="Uncheck to hide this category and its images from the public archive grid.">ⓘ</span>
                         </label>
-                        <span class="dim">UNCHECK TO HIDE THIS CATEGORY AND ITS IMAGES FROM THE PUBLIC ARCHIVE GRID.</span>
                     </div>
                     <?php endif; ?>
 
                     <!-- FEATURED IMAGE -->
                     <div class="lens-input-wrapper mt-20">
-                        <label>FEATURED IMAGE <span class="dim">(pick any post — used as the representative thumbnail)</span></label>
+                        <label>FEATURED IMAGE <span class="field-tip" data-tip="Pick any post — used as the representative thumbnail for this category.">ⓘ</span></label>
                         <input type="hidden" name="featured_post_id" id="cat-featured-id"
                                value="<?php echo $edit_mode ? (int)($edit_data['featured_post_id'] ?? 0) : 0; ?>">
                         <div id="cat-featured-preview" style="margin-top:8px;">

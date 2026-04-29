@@ -4,6 +4,24 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.29 — "Lock-Off" (2026-04-29)
+
+### Added
+- **Login brute-force protection** — `snap-in.php` now tracks failed login attempts per IP in the existing `snap_rate_limits` table. Five failures within a 10-minute window triggers an automatic 7-day IP ban stored in the new `snap_ip_bans` table. Migration `045_login_protection.php` creates the table idempotently.
+- **User-Agent filter at login** — Blank UAs and known scripted clients (curl, python-requests, Wget, sqlmap, Hydra, etc.) receive a silent 403 before any login logic runs.
+- **IP Shield tab in Troll Control** — `smack-fingerprints.php` exposes the `snap_ip_bans` table via a new IP Shield tab: lists active bans with expiry, supports manual lift. New AJAX handlers: `fetch_ip_bans`, `lift_ip_ban`.
+- **Admin settings hover tooltips** — All field descriptions across admin pages converted from visible `class="dim"` inline text to `class="field-tip"` hover icons (ⓘ). Eliminates uneven field spacing throughout the admin. CSS rule added to `admin-theme-geometry-master.css`.
+- **`snap_ip_bans` table** — New canonical schema entry and migration `045`.
+- **`tools/smackattack-scanner/`** — GOBSMACKED Scanner v0.1.0: local Python/tkinter desktop tool for the admin to run stylometric scans directly against the SnapSmack MySQL database. 25-dimension vector engine is an exact port of `core/ste-style.php`. Peer comparison, banned-profile comparison, results stored in `snap_gobsmacked_scan`, mark-reviewed and upload-to-hub actions. Ships as a single-file exe via PyInstaller (`build.bat`).
+- **snapsmack.ca** — Two new WOTCHA articles: dedicated SMACKATTACK network explainer (Apr 22) and login security changes overview (Apr 29).
+
+### Fixed
+- **`snap-in.php` truncation** — Login page HTML was truncated mid-CSS block; reconstructed with complete form, tab UI, passphrase nudge, and JS.
+- **Passphrase nudge CSS** — Moved from inline `<style>` block in `snap-in.php` to `admin-theme-geometry-master.css` (compliant with no-inline-style rule).
+- **`smack-2fa-verify.php` truncation** — File was missing `>\n</html>` at EOF; repaired.
+
+---
+
 ## 0.7.28 — "Lock-Off" (2026-04-28)
 
 ### Changed

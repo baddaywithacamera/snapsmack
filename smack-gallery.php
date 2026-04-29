@@ -407,7 +407,7 @@ include 'core/sidebar.php';
                 </select>
             </div>
             <div class="lens-input-wrapper">
-                <label>TAGS <span class="dim">(comma-separated)</span></label>
+                <label>TAGS <span class="field-tip" data-tip="Enter tags separated by commas.">ⓘ</span></label>
                 <input type="text" id="qe-tags" class="gallery-input">
             </div>
             <div class="lens-input-wrapper">

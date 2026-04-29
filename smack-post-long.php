@@ -309,7 +309,7 @@ include 'core/sidebar.php';
                 </div>
                 <div class="flex-1">
                     <div class="lens-input-wrapper">
-                        <label>SLUG <span class="dim">(URL hook)</span></label>
+                        <label>SLUG <span class="field-tip" data-tip="The URL-friendly identifier for this post. Auto-generated from the title if left blank.">ⓘ</span></label>
                         <input type="text" name="slug" id="long-slug"
                                value="<?php echo htmlspecialchars($edit_post['slug'] ?? ''); ?>"
                                placeholder="auto-generated">
@@ -449,7 +449,7 @@ include 'core/sidebar.php';
                     </div>
 
                     <div class="lens-input-wrapper mt-10">
-                        <label>TAGS <span class="dim">(space-separated hashtags)</span></label>
+                        <label>TAGS <span class="field-tip" data-tip="Space-separated hashtags (e.g. street architecture film).">ⓘ</span></label>
                         <input type="text" name="tags" id="long-tags"
                                value="<?php echo htmlspecialchars($edit_tags_str ?? ''); ?>"
                                placeholder="#narrative #essay #portraits">
@@ -483,7 +483,7 @@ include 'core/sidebar.php';
 
                     <!-- HERO IMAGE (from media library) -->
                     <div class="lens-input-wrapper mt-10">
-                        <label>HERO IMAGE <span class="dim">(from media library)</span></label>
+                        <label>HERO IMAGE <span class="field-tip" data-tip="Primary image for this post, selected from your media library.">ⓘ</span></label>
                         <input type="hidden" name="featured_asset_id" id="long-hero-asset-id"
                                value="<?php echo $featured_asset_data ? (int)$featured_asset_data['id'] : ''; ?>">
                         <div id="long-hero-preview" style="margin-top:6px;">

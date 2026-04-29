@@ -1557,6 +1557,76 @@ registry. These are installed separately from core updates via the Skin Gallery.
 HTML
 ];
 
+$help_topics['ip_shield'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'IP Shield & Login Security',
+    'icon'     => '&#x1F6E1;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>IP Shield & Login Security</h3>
+<p>SnapSmack has three layers of protection on the login endpoint.</p>
+
+<h4>1. Non-Standard Login Path</h4>
+<p>The login page lives at a URL you configure in Configuration &rarr; Security (default: <code>/snap-in</code>).
+Direct access to <code>snap-in.php</code> returns a 403. Bots scanning for <code>wp-login.php</code>
+and similar standard paths hit dead ends without ever finding the door.</p>
+
+<h4>2. User-Agent Filtering</h4>
+<p>Requests with a blank, curl, Python, or other scripted User-Agent are silently rejected with a 403
+before any login logic runs. Real browsers always send a UA string.</p>
+
+<h4>3. Auto IP Ban (Brute-Force Detection)</h4>
+<p>Every failed login attempt is counted per IP in a 10-minute sliding window. After 5 failures,
+the IP is automatically banned for 7 days. Subsequent requests from that IP are blocked before
+any credential check runs.</p>
+<p>View and lift active bans in <strong>Troll Control &rarr; IP Shield</strong>.</p>
+
+<h4>If You Lock Yourself Out</h4>
+<p>If your own IP is auto-banned, lift it from the IP Shield tab in Troll Control, or run:
+<code>DELETE FROM snap_ip_bans WHERE ip = 'YOUR.IP';</code> in your database console.</p>
+HTML
+];
+
+$help_topics['updater_modal'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Applying Updates',
+    'icon'     => '&#x21BB;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Update Modal</h3>
+<p>Updates run in a modal overlay — no page navigation required. You can trigger it from
+the dashboard banner, the System Updates link in the sidebar, or by navigating directly
+to the Updates page.</p>
+
+<h4>How to Start an Update</h4>
+<p>When an update is available, a banner appears on the dashboard. Click <strong>VIEW UPDATES</strong>
+to open the modal. The modal immediately checks for available updates and shows a changelog
+and file change summary. Review these, then click <strong>APPLY UPDATE</strong> to proceed.</p>
+
+<h4>What Each Stage Does</h4>
+<p><strong>Download</strong> — Fetches the signed release package from the update server.
+<strong>Verify</strong> — Confirms the package hasn't been tampered with (SHA-256 checksum + Ed25519 signature).
+<strong>Backup</strong> — Creates a full zip backup of your installation before touching any files.
+<strong>Extract</strong> — Unpacks the package in chunks, skipping any protected paths.
+<strong>Migrate</strong> — Runs any new database migrations and updates the installed version number.</p>
+
+<h4>Protected Paths</h4>
+<p>The updater never overwrites your site-specific files: <code>core/db.php</code>, <code>core/constants.php</code>,
+the <code>uploads/</code> directory, <code>.htaccess</code>, and others listed in
+<code>protected_paths.json</code>. Changes to these files are skipped — your configuration is safe.</p>
+
+<h4>If an Update Fails</h4>
+<p>If any stage fails, a <strong>Rollback</strong> button appears. This restores the pre-update backup,
+returning your site to the state it was in before the update began. After a rollback, check
+the error message and try again — most failures are network timeouts or disk permission issues
+that resolve on a retry.</p>
+
+<h4>Skin Updates</h4>
+<p>Core updates and skin updates are separate. Skin notifications appear on the Updates page
+but are installed via the Skin Gallery, not the update modal.</p>
+HTML
+];
+
 $help_topics['blogroll'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'Blogroll',
