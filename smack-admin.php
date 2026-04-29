@@ -317,7 +317,7 @@ include 'core/sidebar.php';
             echo strtoupper(implode(' — ', $_notices));
             ?>
         </div>
-        <a href="smack-update.php" class="btn-smack">VIEW UPDATES</a>
+        <a href="smack-update.php" class="btn-smack" onclick="event.preventDefault(); SnapUpdater.open();">VIEW UPDATES</a>
     </div>
     <?php endif; ?>
 

@@ -2,8 +2,7 @@
 # ─────────────────────────────────────────────────────────────
 # SNAPSMACK — Root .htaccess
 # ─────────────────────────────────────────────────────────────
-
-# ─── FORCE HTTPS ─────────────────────────────────────────────
+# ─── FORCE HTTPS ────────────────────────────────────────────────
 # Redirects HTTP → HTTPS. Safe behind Cloudflare Tunnel and any
 # other SSL-terminating reverse proxy: the X-Forwarded-Proto check
 # prevents redirect loops when the edge already speaks HTTPS.
@@ -11,85 +10,69 @@ RewriteEngine On
 RewriteCond %{HTTP:X-Forwarded-Proto} !=https
 RewriteCond %{HTTPS} !=on
 RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
-
-# ─── PHP LIMITS ──────────────────────────────────────────────
+# ─── PHP LIMITS ──────────────────────────────────────────────────
 # 64MB uploads for high-res photography, 128MB memory for
 # image processing and backup operations
 php_value upload_max_filesize 64M
 php_value post_max_size 64M
 php_value memory_limit 128M
 php_value max_execution_time 120
-
-# ─── CLEAN URL ROUTER ────────────────────────────────────────
+# ─── CLEAN URL ROUTER ────────────────────────────────────────────
 RewriteBase /
-
 # Don't rewrite real files or directories
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-
 # Named routes
 RewriteRule ^archive$ archive.php [L,QSA]
 RewriteRule ^rss$ rss.php [L,QSA]
 RewriteRule ^feed$ rss.php [L,QSA]
-
+RewriteRule ^snap-in$ snap-in.php [L,QSA]
 # Everything else → index.php (image slugs, static pages)
 RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
-
-# ─── SECURITY HEADERS ────────────────────────────────────────
+# ─── SECURITY HEADERS ────────────────────────────────────────────
 <IfModule mod_headers.c>
     # Block clickjacking
     Header always set X-Frame-Options "SAMEORIGIN"
-
     # Prevent MIME-type sniffing
     Header always set X-Content-Type-Options "nosniff"
-
     # Referrer policy — send origin only to external sites
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
-
     # Block access to sensitive file types
     <FilesMatch "\.(sql|log|bak|inc|sh|env|json)$">
         Header set X-Robots-Tag "noindex, nofollow"
     </FilesMatch>
 </IfModule>
-
-# ─── BLOCK DIRECT ACCESS TO SENSITIVE FILES ──────────────────
+# ─── BLOCK DIRECT ACCESS TO SENSITIVE FILES ──────────────────────────
 <FilesMatch "(^\.ht|\.sql$|\.log$|\.bak$|\.inc$|\.sh$|\.env$)">
     Order Allow,Deny
     Deny from all
 </FilesMatch>
-
-# Block direct access to core PHP includes
-<FilesMatch "^(db|auth|constants|release-pubkey|updater|skin-registry|manifest-inventory)\.php$">
+# Block direct access to core PHP includes and the old login filename
+<FilesMatch "^(db|auth|constants|release-pubkey|updater|skin-registry|manifest-inventory|login)\.php$">
     Order Allow,Deny
     Deny from all
 </FilesMatch>
-
-# ─── BLOCK DIRECTORY LISTINGS ────────────────────────────────
+# ─── BLOCK DIRECTORY LISTINGS ────────────────────────────────────────────
 Options -Indexes
-
-# ─── CACHING FOR STATIC ASSETS ──────────────────────────────
+# ─── CACHING FOR STATIC ASSETS ────────────────────────────────────────
 <IfModule mod_expires.c>
     ExpiresActive On
-
     # Images: 30 days
     ExpiresByType image/jpeg "access plus 30 days"
     ExpiresByType image/png "access plus 30 days"
     ExpiresByType image/gif "access plus 30 days"
     ExpiresByType image/webp "access plus 30 days"
     ExpiresByType image/svg+xml "access plus 30 days"
-
     # CSS/JS: 7 days
     ExpiresByType text/css "access plus 7 days"
     ExpiresByType application/javascript "access plus 7 days"
-
     # Fonts: 30 days
     ExpiresByType font/ttf "access plus 30 days"
     ExpiresByType font/woff "access plus 30 days"
     ExpiresByType font/woff2 "access plus 30 days"
     ExpiresByType application/font-woff "access plus 30 days"
 </IfModule>
-
-# ─── GZIP COMPRESSION ───────────────────────────────────────
+# ─── GZIP COMPRESSION ───────────────────────────────────────────────────
 <IfModule mod_deflate.c>
     AddOutputFilterByType DEFLATE text/html
     AddOutputFilterByType DEFLATE text/css
@@ -98,7 +81,6 @@ Options -Indexes
     AddOutputFilterByType DEFLATE image/svg+xml
     AddOutputFilterByType DEFLATE font/ttf
 </IfModule>
-
-# ─── CUSTOM ERROR PAGES ──────────────────────────────────────
+# ─── CUSTOM ERROR PAGES ────────────────────────────────────────────────
 ErrorDocument 404 /error404.php
 ErrorDocument 500 /error500.php

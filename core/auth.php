@@ -59,7 +59,7 @@ require_once 'db.php';
 if (isset($_GET['logout'])) {
     session_unset();
     session_destroy();
-    header("Location: " . BASE_URL . "login.php");
+    header("Location: " . BASE_URL . "snap-in.php");
     exit;
 }
 
@@ -76,7 +76,7 @@ if (!isset($_SESSION['user_login'])) {
         echo json_encode(['status' => 'session_expired', 'msg' => 'Session expired. Please log in again.']);
         exit;
     }
-    header("Location: " . BASE_URL . "login.php");
+    header("Location: " . BASE_URL . "snap-in.php");
     exit;
 }
 

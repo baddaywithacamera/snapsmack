@@ -180,8 +180,6 @@ a:hover { color: var(--text-primary); }
    ──────────────────────────────────────────────────────────────────── */
 .pile-frame-print {
     background:
-        /* Glossy sheen: diagonal highlight */
-        linear-gradient(135deg, rgba(255,255,255,0.6) 0%, transparent 35%, transparent 65%, rgba(255,255,255,0.2) 100%),
         /* Paper base — bright white with just a hint of cool blue */
         linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%);
     padding: 8px;
@@ -190,7 +188,11 @@ a:hover { color: var(--text-primary); }
     box-shadow:
         0 0.5px 1px rgba(0,0,0,0.10),
         0 2px 6px rgba(0,0,0,0.08),
-        0 6px 20px rgba(0,0,0,0.10);
+        0 5px 16px rgba(0,0,0,0.10),
+        /* Bow curl: print lifts at bottom edges, heavier shadow at centre */
+        0 10px 22px -6px rgba(0,0,0,0.22),
+        -6px 8px 14px -8px rgba(0,0,0,0.10),
+        6px 8px 14px -8px rgba(0,0,0,0.10);
 }
 
 /* Print edge: barely visible trim line */
@@ -203,19 +205,17 @@ a:hover { color: var(--text-primary); }
     pointer-events: none;
 }
 
-/* Glossy surface catch on the image itself */
+/* Overhead light reflection — ceiling lamp bouncing off glossy paper surface */
 .pile-frame-print::after {
     content: '';
     position: absolute;
     inset: 8px;
     background: linear-gradient(
-        115deg,
-        transparent 0%,
-        transparent 40%,
-        rgba(255,255,255,0.06) 42%,
-        rgba(255,255,255,0.12) 44%,
-        transparent 46%,
-        transparent 100%
+        180deg,
+        rgba(255,255,255,0.24) 0%,
+        rgba(255,255,255,0.12) 22%,
+        rgba(255,255,255,0.04) 48%,
+        transparent 68%
     );
     pointer-events: none;
     z-index: 1;

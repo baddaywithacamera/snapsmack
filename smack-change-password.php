@@ -56,16 +56,27 @@ include 'core/sidebar.php';
             <div class="alert alert-error"><?php echo htmlspecialchars($err); ?></div>
         <?php endif; ?>
 
-        <form method="POST">
+        <form method="POST" id="change-pass-form">
             <label>NEW PASSWORD</label>
-            <input type="password" name="password" minlength="8" required autofocus>
+            <input type="password" name="password" id="new-password" minlength="8" required autofocus>
 
             <label>CONFIRM PASSWORD</label>
             <input type="password" name="confirm" minlength="8" required>
 
             <button type="submit" class="master-update-btn">SET PASSWORD &amp; CONTINUE</button>
         </form>
+
+        <div style="margin-top:24px; padding:16px; background:rgba(160,255,144,0.04); border:1px solid rgba(160,255,144,0.15); border-radius:4px; font-size:0.82rem; color:var(--text-muted,#777); line-height:1.6;">
+            <strong style="color:var(--accent,#a0ff90);">Skip the symbols. Use a passphrase.</strong><br>
+            Six random words are easier to remember and harder to crack than <code>P@ssw0rd123!</code><br>
+            <span style="display:block; margin:10px 0 8px; font-family:monospace; font-size:0.88rem; color:var(--text-dim,#999); word-break:break-all;" id="cp-phrase-display">floppypancakesdonotmakegoodsextoys</span>
+            <button type="button" class="master-update-btn" style="padding:6px 16px; font-size:0.78rem; margin-right:8px;"
+                    onclick="snapSuggestPassphrase('new-password', 'cp-phrase-display')">Generate &amp; Fill</button>
+            <button type="button" class="master-update-btn" style="padding:6px 16px; font-size:0.78rem; background:transparent; border:1px solid var(--accent,#a0ff90); color:var(--accent,#a0ff90);"
+                    onclick="snapSuggestPassphrase(null, 'cp-phrase-display')">Just show me one</button>
+        </div>
     </div>
 </div>
 
 <?php include 'core/admin-footer.php'; ?>
+<script src="assets/js/smack-passphrase.js"></script>

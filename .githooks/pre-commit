@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+"""
+Pre-commit hook — rejects staged PHP files that contain null bytes or fail
+PHP syntax check (php -l). Both are silent artifacts of the Cowork VM edit
+tool: null bytes corrupt output, truncation breaks PHP parsing.
+
+Install once:
+    git config core.hooksPath .githooks
+"""
+
+import subprocess, sys, shutil
+
+result = subprocess.run(
+    ['git', 'diff', '--cached', '--name-only', '--diff-filter=ACM'],
+    capture_output=True, text=True
+)
+
+php_files = [f for f in result.stdout.splitlines() if f.endswith('.php')]
+null_dirty = []
+syntax_dirty = []
+php_available = shutil.which('php') is not None
+
+for path in php_files:
+    try:
+        with open(path, 'rb') as fh:
+            if b'\x00' in fh.read():
+                null_dirty.append(path)
+                continue  # no point linting a null-byte file
+    except OSError:
+        pass
+
+    if php_available:
+        lint = subprocess.run(
+            ['php', '-l', path],
+            capture_output=True, text=True
+        )
+        if lint.returncode != 0:
+            syntax_dirty.append((path, lint.stderr.strip() or lint.stdout.strip()))
+
+blocked = bool(null_dirty or syntax_dirty)
+
+if null_dirty:
+    print('\n\033[31m[pre-commit] NULL BYTES DETECTED — commit blocked\033[0m')
+    print('Files with null bytes (Cowork VM edit artifact):')
+    for f in null_dirty:
+        print(f'  {f}')
+    print('\nStrip with:')
+    for f in null_dirty:
+        print(f"  python3 -c \"d=open('{f}','rb').read(); open('{f}','wb').write(d.replace(b'\\x00',b''))\"")
+
+if syntax_dirty:
+    print('\n\033[31m[pre-commit] PHP SYNTAX ERRORS — commit blocked\033[0m')
+    print('Files that failed php -l (truncated or broken):')
+    for f, err in syntax_dirty:
+        print(f'  {f}')
+        for line in err.splitlines()[:3]:
+            print(f'    {line}')
+
+if not php_available:
+    print('\n\033[33m[pre-commit] php not found in PATH — syntax check skipped\033[0m')
+
+if blocked:
+    print('\nFix the issues above, re-stage, and commit.\n')
+    sys.exit(1)
+
+sys.exit(0)

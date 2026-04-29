@@ -61,6 +61,7 @@ $active_skin_path = $theme_base . $colour_css_file;
 
     <link rel="stylesheet" href="assets/css/admin-theme-geometry-master.css?v=076a">
     <link rel="stylesheet" href="<?php echo $active_skin_path; ?>">
+    <link rel="stylesheet" href="assets/css/ss-engine-updater.css">
 </head>
 <body class="admin-body">
 <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open');">&#9776;</button>

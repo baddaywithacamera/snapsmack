@@ -30,5 +30,5 @@ session_destroy();
 
 // --- REDIRECT ---
 // Send user back to login screen
-header("Location: login.php");
+header("Location: snap-in.php");
 exit;

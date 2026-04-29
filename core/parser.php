@@ -182,6 +182,15 @@ class SnapSmack {
     // =========================================================================
 
     /**
+     * Parse [mosaic:ID] shortcodes into data-attribute divs for ss-engine-mosaic.js.
+     * TODO: full implementation pending. Currently passes content through unchanged
+     * so existing posts render without error.
+     */
+    private function parseMosaics($content) {
+        return $content;
+    }
+
+    /**
      * Parse [columns=N] ... [col] ... [/columns] blocks.
      *
      * Content between [columns=N] and [/columns] is split on [col] markers.

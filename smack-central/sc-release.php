@@ -246,6 +246,13 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
     $differential = !empty($include_files);
     $include_set  = $differential ? array_flip($include_files) : [];
 
+    // Files that must ship even when their parent directory is in $always_exclude.
+    // The canonical schema SQL is needed on live servers so updater_canonical_diff()
+    // can fall back to the on-disk copy when the remote URL is unavailable.
+    $always_include = [
+        'database/schema/snapsmack_canonical.sql',
+    ];
+
     $count   = 0;
     $skipped = 0;
     for ($i = 0; $i < $src->numFiles; $i++) {
@@ -257,9 +264,14 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         // Differential mode: only include files that changed
         if ($differential && !isset($include_set[$rel])) { $skipped++; continue; }
 
-        // Safety exclusions — prefix match
-        foreach ($always_exclude as $excl) {
-            if (str_starts_with($rel, $excl)) { $skipped++; continue 2; }
+        // Force-include overrides the always_exclude list
+        $force_include = in_array($rel, $always_include, true);
+
+        // Safety exclusions — prefix match (skipped for force-included files)
+        if (!$force_include) {
+            foreach ($always_exclude as $excl) {
+                if (str_starts_with($rel, $excl)) { $skipped++; continue 2; }
+            }
         }
 
         // Filename-pattern exclusions

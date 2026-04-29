@@ -1445,7 +1445,7 @@ form.ml-block-form {
 <!-- ── HERO ───────────────────────────────────────────────────────────────── -->
 <section id="hero">
     <div class="hero-inner">
-        <span class="alpha-badge">Alpha v0.7.24</span>
+        <span class="alpha-badge">Alpha v0.7.27</span>
         <h1 class="hero-headline">A photo blog platform that doesn't treat you like a <span>product.</span></h1>
         <p class="hero-kicker">SnapSmack lets you smack your snaps up.</p>
         <p class="hero-sub">Self-hosted, free and open-source, built for photographers who got tired of Instagram, Facebook, and every other platform deciding what happens to their work. Own your archive. Own your audience. No middleman.</p>
@@ -1671,7 +1671,7 @@ form.ml-block-form {
 <section id="security">
     <div class="wrap">
         <h2>Security</h2>
-        <p class="lede">Six layers. Local fingerprint ban, fleet-wide ban sync, network reputation, stylometric evasion detection, file integrity monitoring, and cryptographically signed releases. The more work a troll or attacker has to do, the more likely they are to go bother someone else. We work them harder than an Amazon employee on Black Friday.</p>
+        <p class="lede">Eight layers. Local fingerprint ban, fleet-wide ban sync, community reputation scoring, the SMACKATTACK reputation network, stylometric evasion detection, file integrity monitoring, IP SMACKER admin login hardening, and cryptographically signed releases. The more work a troll or attacker has to do, the more likely they are to go bother someone else. We work them harder than an Amazon employee on Black Friday.</p>
 
         <div class="security-layers">
 
@@ -1694,13 +1694,20 @@ form.ml-block-form {
             <div class="security-layer">
                 <div class="layer-num">Layer 3 — The Network</div>
                 <h3>SMACK UP</h3>
-                <p>Voluntary network-wide reputation. Participating SnapSmack blogs report bad fingerprints to a central server (SMACKATTACK). The server scores each fingerprint by weighted site reputation — an established blog with hundreds of posts carries more authority than a new install with one. Scores decay over time so old reports don't haunt people forever.</p>
-                <p>Five threat levels: green, yellow, orange, red, black. Each blog owner sets their own auto-ban threshold. Community allow-votes roll back false positives — if you approve a flagged commenter, that vote reduces their score across the whole network. No central authority decides who's banned. The community does.</p>
-                <p>Opt-in. Privacy-preserving. Only hashes are transmitted. Pull out (heh!) any time.</p>
+                <p>Voluntary community reputation scoring. Participating SnapSmack blogs report bad actor fingerprints — device hashes, IP hashes, email hashes — to the network. Each report is scored by weighted site reputation: an established blog with years of posts and a clean track record carries more authority than a brand-new install with one post. Scores decay over time so old incidents don't follow people forever.</p>
+                <p>Five threat levels: green, yellow, orange, red, black. Each blog owner sets their own auto-ban threshold independently. Community allow-votes roll back false positives — approve a flagged commenter on your blog and their score drops across the whole network. No central authority decides who is banned. The community does, collectively, and no single site controls the outcome.</p>
             </div>
 
             <div class="security-layer">
                 <div class="layer-num">Layer 4 — The Network</div>
+                <h3>SMACKATTACK</h3>
+                <p>SMACKATTACK is the central reputation server that powers Layers 3 and 5. It receives reports from participating blogs, maintains the cross-network scoring database, coordinates stylometric vector sharing for GOBSMACKED, and issues threat-level responses to incoming queries. It is infrastructure, not a product — it runs in the background and blogs talk to it automatically when opted in.</p>
+                <p>The server is operated by the SnapSmack project. It stores no raw comment text, no personal data, and no readable fingerprint values — only SHA-256 hashes, numeric style vectors, and scores. The trust model is federated: SMACKATTACK aggregates and scores, but individual blogs make their own ban decisions. SMACKATTACK cannot force a ban on any site.</p>
+                <p>Participation is opt-in. A single toggle in admin settings connects or disconnects your site from the network. If you pull out, your historical reports remain in the aggregate but your site stops querying and contributing. No lock-in.</p>
+            </div>
+
+            <div class="security-layer">
+                <div class="layer-num">Layer 5 — The Network</div>
                 <h3>GOBSMACKED</h3>
                 <p>When a commenter is banned, a compact 25-dimension numeric fingerprint of how they write is extracted from their comment history — sentence rhythm, punctuation habits, function word ratios, capitalisation patterns. Not the text. The signature of the hand that wrote it.</p>
                 <p>If the same person returns on a new device, new IP, new email — they write the same way. GOBSMACKED compares incoming style vectors against the signatures of known-banned accounts across the network. The troll who thinks clearing their cookies was enough is in for a surprise.</p>
@@ -1708,7 +1715,7 @@ form.ml-block-form {
             </div>
 
             <div class="security-layer">
-                <div class="layer-num">Layer 5 — Your Install</div>
+                <div class="layer-num">Layer 6 — Your Install</div>
                 <h3>SMACKBACK</h3>
                 <p>SMACKBACK is automated sentinel software that ships in every install and runs without configuration. On hub/spoke networks, tamper reports are cross-correlated across all spokes — the same file modified at multiple sites in sequence isn't a coincidence, it's a coordinated attack, and the response escalates accordingly.</p>
                 <p>SNAPSMACK watches its own files. PHP, JavaScript, and CSS are hashed at install time and re-verified on a schedule — and on every admin login and skin load. A modified file is caught fast.</p>
@@ -1716,10 +1723,19 @@ form.ml-block-form {
             </div>
 
             <div class="security-layer">
-                <div class="layer-num">Layer 6 — The Software</div>
+                <div class="layer-num">Layer 7 — The Admin</div>
+                <h3>IP SMACKER</h3>
+                <p>The admin login is hardened at three levels before a password is ever checked. First: blank User-Agent strings and known scripting signatures (curl, python-requests, sqlmap, Hydra, WPScan, and a dozen others) get a silent 403 — no response body, no timing information, nothing useful to enumerate. Real browsers always send a UA. Scanners often don't.</p>
+                <p>Second: the login URL is not <code>/login</code> or <code>/admin</code>. It's a configurable slug that only you know. Direct PHP file access returns a 403. A pre-shared recovery token lets you redirect to the real slug if you forget it — the token itself is never exposed in normal operation.</p>
+                <p>Third: five failed login attempts within ten minutes triggers an automatic seven-day IP ban. The ban is recorded in the database, checked on every subsequent request, and manageable from the admin panel under IP SMACKER. Manual bans and lifts are one click. No SSH, no config files, no server restart.</p>
+            </div>
+
+            <div class="security-layer">
+                <div class="layer-num">Layer 8 — The Software</div>
                 <h3>SNAP DECISION</h3>
                 <p>Every SNAPSMACK release is cryptographically signed. The signing key lives on a hardware token, not a hard drive. The installer verifies the signature before unpacking anything. If verification fails, nothing installs.</p>
                 <p>SHA-256 checksums for every release file are published alongside the download. Every release commit is tagged in git and the tag is signed — the full chain of custody from code to installer is publicly verifiable.</p>
+                <p>Regular security audits are performed across every release. Reports are published in full and committed to the public git repository — the audit trail is as open as the code.</p>
                 <p>No external packages fetched automatically at install time. Any third-party JavaScript is copied directly into the codebase and reviewed before it ships — not pulled from a remote registry on the fly. The most common supply-chain attack vector against PHP web software doesn't exist here because the surface doesn't exist.</p>
             </div>
 
@@ -2222,71 +2238,4 @@ document.getElementById('yr').textContent = new Date().getFullYear();
                 'should know what it is built on. Ctrl+Shift+Y still summons Thomas here. ' +
                 'He belongs wherever photographs are made.</p>' +
             '</div>' +
-            '<div style="margin-top:24px;text-align:center;font-size:11px;' +
-                'letter-spacing:2px;text-transform:uppercase;opacity:0.7;color:#ffffff;">' +
-                '&mdash;&nbsp; For Noah Grey &nbsp;&mdash;</div>' +
-            '<div style="margin-top:20px;text-align:center;font-size:11px;' +
-                'letter-spacing:1px;text-transform:uppercase;opacity:0.5;">' +
-                '[ ESC ] Close</div>';
-        backdrop.appendChild(panel);
-        backdrop.addEventListener('click', function(e) {
-            if (e.target === backdrop) backdrop.style.display = 'none';
-        });
-        document.documentElement.appendChild(backdrop);
-    }
-
-    function closeNoahModal() {
-        var modal = document.getElementById('thomas-noah-modal');
-        if (modal) modal.style.display = 'none';
-    }
-
-    function showDedication() {
-        var el = document.getElementById('thomas-dedication');
-        if (!el) {
-            el = document.createElement('div');
-            el.id = 'thomas-dedication';
-            el.innerHTML = '<span>Thomas the Bear</span> &nbsp;&middot;&nbsp; For Noah Grey. We remember.';
-            document.body.appendChild(el);
-        }
-        setTimeout(function() { el.classList.add('visible'); }, 50);
-        setTimeout(function() {
-            el.classList.remove('visible');
-            setTimeout(function() { el.remove(); }, 800);
-        }, 4000);
-    }
-
-    document.addEventListener('keydown', function(e) {
-        if (e.ctrlKey && e.shiftKey && (e.key === 'y' || e.key === 'Y')) {
-            e.preventDefault();
-            if (!dedicationShown) { showDedication(); dedicationShown = true; }
-            buildBear();
-        }
-        if (e.ctrlKey && e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
-            e.preventDefault();
-            showNoahModal();
-        }
-        if (e.key === 'Escape') { clearAllBears(); closeNoahModal(); }
-        if (bearsActive && (e.key === 'x' || e.key === 'X')) { clearAllBears(); }
-    });
-
-    document.addEventListener('click', function() {
-        if (bearsActive) clearAllBears();
-    });
-})();
-</script>
-
-<script>
-const mainHeader = document.getElementById('site-header');
-const miniHeader = document.getElementById('mini-header');
-
-new IntersectionObserver(
-    ([entry]) => miniHeader.classList.toggle('visible', !entry.isIntersecting),
-    { threshold: 0 }
-).observe(mainHeader);
-
-document.querySelectorAll('nav a').forEach(link => {
-    if (link.href === window.location.href) link.classList.add('active');
-});
-</script>
-</body>
-</html>
+            '<div style="margin-top:24px;text-align:center;font-size:11px;'

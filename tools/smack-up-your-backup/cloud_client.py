@@ -57,10 +57,22 @@ def _get_drive_service(credentials_file: str, readonly: bool = False):
 
     if os.path.exists(token_file):
         creds = Credentials.from_authorized_user_file(token_file, SCOPES)
+    else:
+        raise RuntimeError(
+            f"No token file found at: {token_file}\n"
+            f"Click 'Authenticate with Google' in the Edit dialog, then Save."
+        )
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            try:
+                creds.refresh(Request())
+            except Exception as e:
+                raise RuntimeError(
+                    f"Token refresh failed (invalid_grant): {e}\n"
+                    f"Token file: {token_file}\n"
+                    f"Re-authenticate: open Edit dialog, click 'Authenticate with Google', then Save."
+                ) from e
         else:
             flow = InstalledAppFlow.from_client_secrets_file(credentials_file, SCOPES)
             creds = flow.run_local_server(port=0)
@@ -94,21 +106,28 @@ def _is_oauth_client_secret(path: str) -> bool:
         return False
 
 
-def get_oauth_token_status(credentials_file: str) -> str:
-    """Return a human-readable status string for the OAuth token."""
+def get_oauth_token_status(credentials_file: str, readonly: bool = False) -> str:
+    """Return a human-readable status string for the OAuth token.
+
+    readonly=True checks the _readonly_token.json used by Cloud Sync sources.
+    readonly=False (default) checks _token.json used by backup destinations.
+    """
     if not credentials_file or not os.path.isfile(credentials_file):
         return ""
     if not _is_oauth_client_secret(credentials_file):
         return ""
-    token_file = credentials_file.replace(".json", "_token.json")
+    if readonly:
+        token_file = credentials_file.replace(".json", "_readonly_token.json")
+        scopes     = ["https://www.googleapis.com/auth/drive.readonly"]
+    else:
+        token_file = credentials_file.replace(".json", "_token.json")
+        scopes     = ["https://www.googleapis.com/auth/drive.file"]
     if not os.path.exists(token_file):
         return "Not authenticated — click Authenticate"
     try:
         from google.oauth2.credentials import Credentials
         from google.auth.transport.requests import Request
-        creds = Credentials.from_authorized_user_file(
-            token_file, ["https://www.googleapis.com/auth/drive.file"]
-        )
+        creds = Credentials.from_authorized_user_file(token_file, scopes)
         if creds.valid:
             return "✓ Authenticated"
         if creds.expired and creds.refresh_token:
@@ -910,25 +929,6 @@ class B2Client:
 # Factory
 # ---------------------------------------------------------------------------
 
-def get_cloud_client(profile: dict, global_cloud: Optional[dict] = None):
-    """Return the appropriate cloud client for a backup profile, or None.
-
-    Supports: google_drive, box, b2.
-    Resolution order: profile value → global cloud config → skip.
-    """
-    gc = global_cloud or {}
-
-    def _pick(*vals):
-        for v in vals:
-            if v and v != "none":
-                return v
-        return ""
-
-    provider = _pick(profile.get("cloud_provider"), gc.get("cloud_provider")) or "none"
-    creds    = _pick(profile.get("cloud_credentials_file"), gc.get("cloud_credentials_file"))
-    folder   = _pick(profile.get("cloud_folder_id"), gc.get("cloud_folder_id"))
-
-    if provider == "google_drive" and creds:
         return DriveClient(creds, folder)
     if provider == "box" and creds:
         return BoxClient(creds, folder)

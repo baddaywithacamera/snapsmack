@@ -9,7 +9,7 @@ return [
     'author' => 'Sean McCormick',
     'support' => 'sean@baddaywithacamera.ca',
     'description' => 'Randomised photo pile skin. Throws a configurable number of images onto the screen like prints tossed on a table. Four frame styles (Polaroid, standard print, borderless, slide mount), reshuffle to load a fresh set, and hover-to-lift interaction. Named for the card trick where someone throws a deck on the floor.',
-    'status' => 'development',
+    'status' => 'available',
 
     'features' => [
         'supports_wall' => false,
