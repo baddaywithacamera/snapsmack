@@ -91,4 +91,10 @@ greymatter/
 projects/snapsmack-ca/
 projects/snapsmack-ca/img/
 sc-config.php
-sc-config.php
+
+# Windows corrupted NUL device artifact
+nul
+
+# One-time emergency deploy tools — FTP and delete, never store in source
+snap-bootstrap.php
+tools/smackattack-scanner/__pycache__/
