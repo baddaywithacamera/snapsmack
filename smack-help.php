@@ -1559,11 +1559,11 @@ HTML
 
 $help_topics['ip_shield'] = [
     'section'  => 'Boring Ass Stuff',
-    'title'    => 'IP Shield & Login Security',
+    'title'    => 'IP SMACKER & Login Security',
     'icon'     => '&#x1F6E1;',
     'role'     => 'admin',
     'content'  => <<<'HTML'
-<h3>IP Shield & Login Security</h3>
+<h3>IP SMACKER & Login Security</h3>
 <p>SnapSmack has three layers of protection on the login endpoint.</p>
 
 <h4>1. Non-Standard Login Path</h4>
@@ -1579,10 +1579,10 @@ before any login logic runs. Real browsers always send a UA string.</p>
 <p>Every failed login attempt is counted per IP in a 10-minute sliding window. After 5 failures,
 the IP is automatically banned for 7 days. Subsequent requests from that IP are blocked before
 any credential check runs.</p>
-<p>View and lift active bans in <strong>Troll Control &rarr; IP Shield</strong>.</p>
+<p>View and lift active bans in <strong>Troll Control &rarr; IP SMACKER</strong>.</p>
 
 <h4>If You Lock Yourself Out</h4>
-<p>If your own IP is auto-banned, lift it from the IP Shield tab in Troll Control, or run:
+<p>If your own IP is auto-banned, lift it from the IP SMACKER tab in Troll Control, or run:
 <code>DELETE FROM snap_ip_bans WHERE ip = 'YOUR.IP';</code> in your database console.</p>
 HTML
 ];
@@ -2523,164 +2523,4 @@ foreach ($help_topics as $slug => $ht) {
 
             <div class="help-body">
                 <p>SnapSmack documentation covering every feature of the CMS. Click a topic below or use
-                the search box in the sidebar to find what you need.</p>
-
-                <?php foreach ($sections as $section_name => $topics): ?>
-                    <div class="help-toc-section">
-                        <h3 class="help-toc-section-title"><?php echo htmlspecialchars($section_name); ?></h3>
-                        <ul class="help-toc-list">
-                            <?php foreach ($topics as $slug => $topic): ?>
-                                <?php
-                                $_first_p = '';
-                                if (preg_match('/<p>(.*?)<\/p>/s', $topic['content'], $_pm)) {
-                                    $_first_p = strip_tags($_pm[1]);
-                                }
-                                if (strlen($_first_p) > 120) $_first_p = substr($_first_p, 0, 117) . '...';
-                                ?>
-                                <li>
-                                    <a href="smack-help.php?topic=<?php echo urlencode($slug); ?>"><?php echo $topic['icon'] ?? ''; ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?></a>
-                                    <?php if (!empty($_first_p)): ?>
-                                        <div class="help-toc-desc"><?php echo htmlspecialchars($_first_p); ?></div>
-                                    <?php endif; ?>
-                                </li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-
-        <?php else: ?>
-            <!-- ═══ SINGLE TOPIC ═══ -->
-            <?php $topic = $help_topics[$active_topic]; ?>
-
-            <div class="help-topic-header">
-                <div class="help-topic-section">
-                    <?php echo htmlspecialchars($topic['section']); ?>
-                </div>
-                <h1 class="help-topic-title">
-                    <?php echo $topic['icon'] ?? ''; ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?>
-                </h1>
-            </div>
-
-            <div class="help-body">
-                <?php echo $topic['content']; ?>
-            </div>
-
-            <!-- Topic Navigation -->
-            <div class="help-topic-nav">
-                <?php
-                $slugs = array_keys($help_topics);
-                $current_index = array_search($active_topic, $slugs);
-                $prev = ($current_index > 0) ? $slugs[$current_index - 1] : null;
-                $next = ($current_index < count($slugs) - 1) ? $slugs[$current_index + 1] : null;
-                ?>
-                <div>
-                    <?php if ($prev): ?>
-                        <a href="smack-help.php?topic=<?php echo urlencode($prev); ?>">
-                            &larr; <?php echo htmlspecialchars($help_topics[$prev]['title']); ?>
-                        </a>
-                    <?php endif; ?>
-                </div>
-                <div>
-                    <?php if ($next): ?>
-                        <a href="smack-help.php?topic=<?php echo urlencode($next); ?>">
-                            <?php echo htmlspecialchars($help_topics[$next]['title']); ?> &rarr;
-                        </a>
-                    <?php endif; ?>
-                </div>
-            </div>
-        <?php endif; ?>
-    </div>
-</div>
-
-<!-- Search Engine -->
-<script>
-(function () {
-    'use strict';
-
-    var searchIndex = <?php echo json_encode($_search_index, JSON_UNESCAPED_UNICODE); ?>;
-    var input       = document.getElementById('help-search-input');
-    var resultsDiv  = document.getElementById('help-search-results');
-    var navSections = document.getElementById('help-nav-sections');
-
-    if (!input || !resultsDiv || !navSections) return;
-
-    input.addEventListener('input', function () {
-        var q = this.value.trim().toLowerCase();
-
-        if (q.length < 2) {
-            // Reset — show nav, hide results
-            resultsDiv.classList.remove('active');
-            navSections.style.display = '';
-            return;
-        }
-
-        // Hide nav, show results
-        navSections.style.display = 'none';
-        resultsDiv.classList.add('active');
-
-        var html = '';
-        var count = 0;
-        var terms = q.split(/\s+/);
-
-        for (var slug in searchIndex) {
-            var item = searchIndex[slug];
-            var haystack = (item.title + ' ' + item.section + ' ' + item.text).toLowerCase();
-
-            // All terms must match
-            var match = true;
-            for (var i = 0; i < terms.length; i++) {
-                if (haystack.indexOf(terms[i]) === -1) { match = false; break; }
-            }
-            if (!match) continue;
-
-            // Extract snippet around first term match in content
-            var snippet = '';
-            var textLower = item.text;
-            var pos = textLower.indexOf(terms[0]);
-            if (pos !== -1) {
-                var start = Math.max(0, pos - 40);
-                var end = Math.min(textLower.length, pos + 80);
-                snippet = (start > 0 ? '...' : '') + item.text.substring(start, end) + (end < textLower.length ? '...' : '');
-                // Highlight all terms in snippet
-                for (var j = 0; j < terms.length; j++) {
-                    var re = new RegExp('(' + terms[j].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
-                    snippet = snippet.replace(re, '<mark>$1</mark>');
-                }
-            }
-
-            html += '<a href="smack-help.php?topic=' + encodeURIComponent(slug) + '" class="help-search-result">';
-            html += '<div>' + (item.icon || '') + '&ensp;<strong>' + escapeHtml(item.title) + '</strong></div>';
-            html += '<div class="help-search-result-section">' + escapeHtml(item.section) + '</div>';
-            if (snippet) {
-                html += '<div class="help-search-result-snippet">' + snippet + '</div>';
-            }
-            html += '</a>';
-            count++;
-        }
-
-        if (count === 0) {
-            html = '<div class="help-search-no-results">No topics found for "' + escapeHtml(q) + '"</div>';
-        }
-
-        resultsDiv.innerHTML = html;
-    });
-
-    // Keyboard shortcut: / focuses search
-    document.addEventListener('keydown', function (e) {
-        if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-            e.preventDefault();
-            input.focus();
-            input.select();
-        }
-    });
-
-    function escapeHtml(str) {
-        var d = document.createElement('div');
-        d.textContent = str;
-        return d.innerHTML;
-    }
-})();
-</script>
-
-<?php include 'core/admin-footer.php'; ?>
+                the search box in the sidebar to find what you n
