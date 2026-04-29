@@ -93,6 +93,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         exit;
     }
 
+    if ($action === 'lift_ip_ban') {
+        $ip = trim($_POST['ip'] ?? '');
+        if ($ip === '') { echo json_encode(['ok' => false, 'error' => 'No IP provided']); exit; }
+        try {
+            $pdo->prepare("DELETE FROM snap_ip_bans WHERE ip = ?")->execute([$ip]);
+            echo json_encode(['ok' => true]);
+        } catch (PDOException $e) {
+            echo json_encode(['ok' => false, 'error' => 'DB error']);
+        }
+        exit;
+    }
+
+    if ($action === 'fetch_ip_bans') {
+        try {
+            $rows = $pdo->query(
+                "SELECT ip, reason, banned_at, expires_at FROM snap_ip_bans
+                 ORDER BY banned_at DESC LIMIT 200"
+            )->fetchAll(PDO::FETCH_ASSOC);
+            echo json_encode(['ok' => true, 'bans' => $rows]);
+        } catch (PDOException $e) {
+            echo json_encode(['ok' => true, 'bans' => []]);
+        }
+        exit;
+    }
+
     if ($action === 'fetch_shared_bans') {
         // Hub-only: fetch from snap_hub_shared_bans (table may not exist on spokes)
         $page     = max(1, (int)($_POST['page'] ?? 1));
@@ -243,6 +268,7 @@ if ($is_hub) {
         <button class="tab-btn btn-smack btn-settings" data-tab="semantic">SEMANTIC</button>
         <button class="tab-btn btn-smack btn-settings" data-tab="keywords">KEYWORDS</button>
         <button class="tab-btn btn-smack btn-settings" data-tab="add">ADD BAN</button>
+        <button class="tab-btn btn-smack btn-settings" data-tab="ip-shield">IP SHIELD</button>
         <?php if ($is_hub): ?>
         <button class="tab-btn btn-smack btn-settings" data-tab="shared-bans">SHARED BANS <?php if ($shared_ban_count > 0): ?><span style="margin-left:4px; font-size:0.75em; opacity:0.6;">(<?php echo $shared_ban_count; ?>)</span><?php endif; ?></button>
         <?php endif; ?>
@@ -344,6 +370,19 @@ if ($is_hub) {
         </div>
     </div>
 
+    <!-- ── TAB: IP SHIELD — auto-ban list from brute-force detection ──────────── -->
+    <div class="tab-content" id="tab-ip-shield">
+        <div class="box">
+            <h3>IP Shield — Auto-Banned IPs</h3>
+            <p class="dim" style="margin-bottom:16px;">
+                IPs banned automatically by the login brute-force detector (5 failures in 10 minutes → 7-day ban).
+                UA-filtered requests are silently dropped and not listed here.
+                Lift a ban early if you blocked a legitimate user.
+            </p>
+            <div id="ip-shield-list"><em style="opacity:0.5;">Loading…</em></div>
+        </div>
+    </div>
+
     <?php if ($is_hub): ?>
     <!-- ── TAB 6: SHARED BANS (hub only) ────────────────────────────────────── -->
     <div class="tab-content" id="tab-shared-bans">
@@ -385,6 +424,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         if (tab === 'semantic') document.getElementById('semantic-fp').focus();
         if (tab === 'keywords') loadKeywords();
         if (tab === 'shared-bans') loadSharedBans(1);
+        if (tab === 'ip-shield') loadIpBans();
     });
 });
 
@@ -713,6 +753,54 @@ function removeSharedBan(banId) {
         });
 }
 <?php endif; ?>
+
+// ── IP SHIELD ────────────────────────────────────────────────────────────────
+function loadIpBans() {
+    const el = document.getElementById('ip-shield-list');
+    el.innerHTML = '<em style="opacity:0.5;">Loading…</em>';
+    const fd = new FormData();
+    fd.append('action', 'fetch_ip_bans');
+    fetch('smack-fingerprints.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok || !data.bans.length) {
+                el.innerHTML = '<p class="dim">No active auto-bans. Good.</p>';
+                return;
+            }
+            let html = '<table class="admin-table" style="width:100%;"><tbody>';
+            html += '<tr style="font-weight:bold;font-size:0.78rem;"><td>IP</td><td>Reason</td><td>Banned At</td><td>Expires</td><td></td></tr>';
+            data.bans.forEach(row => {
+                const banned  = new Date(row.banned_at).toLocaleString();
+                const expires = new Date(row.expires_at).toLocaleString();
+                const expired = new Date(row.expires_at) < new Date();
+                html += `<tr${expired ? ' style="opacity:0.45;"' : ''}>
+                    <td><code>${row.ip}</code></td>
+                    <td><span class="dim">${row.reason}</span></td>
+                    <td><small>${banned}</small></td>
+                    <td><small>${expires}${expired ? ' <em>(expired)</em>' : ''}</small></td>
+                    <td style="text-align:right;">
+                        <button class="btn-smack btn-smack--dim btn-smack--sm"
+                                onclick="liftIpBan('${row.ip.replace(/'/g,'')}')">Lift</button>
+                    </td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            el.innerHTML = html;
+        });
+}
+
+function liftIpBan(ip) {
+    if (!confirm('Lift ban for ' + ip + '?')) return;
+    const fd = new FormData();
+    fd.append('action', 'lift_ip_ban');
+    fd.append('ip', ip);
+    fetch('smack-fingerprints.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) loadIpBans();
+            else alert('Error: ' + (data.error || 'Could not lift ban.'));
+        });
+}
 
 // ── INIT ────────────────────────────────────────────────────────────────────
 loadBans(1);

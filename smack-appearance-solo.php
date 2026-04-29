@@ -56,12 +56,11 @@ include 'core/sidebar.php';
             <div class="config-grid">
 
                 <div class="lens-input-wrapper">
-                    <label>EXIF / TECHNICAL SPECS</label>
+                    <label>EXIF / TECHNICAL SPECS <span class="field-tip" data-tip="Hides the technical specifications panel from visitors. Data is still stored in the database.">ⓘ</span></label>
                     <select name="settings[exif_display_enabled]">
                         <option value="1" <?php echo (($settings['exif_display_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>SHOW ON PUBLIC POSTS</option>
                         <option value="0" <?php echo (($settings['exif_display_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>HIDDEN FROM PUBLIC</option>
                     </select>
-                    <span class="dim">HIDES THE TECHNICAL SPECIFICATIONS PANEL FROM VISITORS. DATA IS STILL STORED IN THE DATABASE.</span>
                 </div>
 
             </div>
@@ -73,30 +72,27 @@ include 'core/sidebar.php';
             <div class="config-grid">
 
                 <div class="lens-input-wrapper">
-                    <label>GLOBAL DOWNLOADS</label>
+                    <label>GLOBAL DOWNLOADS <span class="field-tip" data-tip="Master override. When disabled, no posts show download buttons regardless of per-post setting.">ⓘ</span></label>
                     <select name="settings[global_downloads_enabled]">
                         <option value="1" <?php echo (($settings['global_downloads_enabled'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
                         <option value="0" <?php echo (($settings['global_downloads_enabled'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
                     </select>
-                    <span class="dim">MASTER OVERRIDE. WHEN DISABLED, NO POSTS SHOW DOWNLOAD BUTTONS REGARDLESS OF PER-POST SETTING.</span>
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>DEFAULT FOR NEW POSTS</label>
+                    <label>DEFAULT FOR NEW POSTS <span class="field-tip" data-tip="When set to All Posts, new posts default to download-enabled. You can still disable per-post.">ⓘ</span></label>
                     <select name="settings[download_default_mode]">
                         <option value="per_post" <?php echo (($settings['download_default_mode'] ?? 'per_post') == 'per_post') ? 'selected' : ''; ?>>PER-POST (MANUALLY ENABLE EACH POST)</option>
                         <option value="all_posts" <?php echo (($settings['download_default_mode'] ?? 'per_post') == 'all_posts') ? 'selected' : ''; ?>>ALL POSTS (DOWNLOADS ON BY DEFAULT)</option>
                     </select>
-                    <span class="dim">WHEN SET TO ALL POSTS, NEW POSTS DEFAULT TO DOWNLOAD-ENABLED. YOU CAN STILL DISABLE PER-POST.</span>
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>REQUIRE DOWNLOAD LINK?</label>
+                    <label>REQUIRE DOWNLOAD LINK? <span class="field-tip" data-tip="When enabled, posts cannot be published without a download URL. Use for sites where every image is backed by a Google Drive original.">ⓘ</span></label>
                     <select name="settings[download_link_required]">
                         <option value="0" <?php echo (($settings['download_link_required'] ?? '0') == '0') ? 'selected' : ''; ?>>NO (OPTIONAL)</option>
                         <option value="1" <?php echo (($settings['download_link_required'] ?? '0') == '1') ? 'selected' : ''; ?>>YES (BLOCK PUBLISH IF MISSING)</option>
                     </select>
-                    <span class="dim">WHEN ENABLED, POSTS CANNOT BE PUBLISHED WITHOUT A DOWNLOAD URL. USE FOR SITES WHERE EVERY IMAGE IS BACKED BY A GOOGLE DRIVE ORIGINAL.</span>
                 </div>
 
             </div>
@@ -109,24 +105,22 @@ include 'core/sidebar.php';
 
                 <?php if ($supports_drop_caps): ?>
                 <div class="lens-input-wrapper">
-                    <label>DROP CAPS</label>
+                    <label>DROP CAPS <span class="field-tip" data-tip="Enlarges the first letter of the first paragraph. Skin-supplied styling via CSS ::first-letter.">ⓘ</span></label>
                     <select name="settings[drop_caps_enabled]">
                         <option value="0" <?php echo (($settings['drop_caps_enabled'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED</option>
                         <option value="1" <?php echo (($settings['drop_caps_enabled'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED — FIRST PARAGRAPH</option>
                     </select>
-                    <span class="dim">ENLARGES THE FIRST LETTER OF THE FIRST PARAGRAPH. SKIN-SUPPLIED STYLING VIA CSS ::FIRST-LETTER.</span>
                 </div>
                 <?php endif; ?>
 
                 <?php if ($supports_pull_quotes): ?>
                 <div class="lens-input-wrapper">
-                    <label>PULL QUOTES</label>
+                    <label>PULL QUOTES <span class="field-tip" data-tip="Manual mode: wrap text in [pullquote]…[/pullquote] to pull it out. Auto mode pulls the first sentence of every post.">ⓘ</span></label>
                     <select name="settings[pull_quotes_enabled]">
                         <option value="0" <?php echo (($settings['pull_quotes_enabled'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED</option>
                         <option value="manual" <?php echo (($settings['pull_quotes_enabled'] ?? '0') == 'manual') ? 'selected' : ''; ?>>MANUAL (USE [pullquote] SHORTCODE)</option>
                         <option value="auto" <?php echo (($settings['pull_quotes_enabled'] ?? '0') == 'auto') ? 'selected' : ''; ?>>AUTO-PULL FIRST SENTENCE</option>
                     </select>
-                    <span class="dim">MANUAL MODE: WRAP TEXT IN [pullquote]…[/pullquote] TO PULL IT OUT. AUTO MODE PULLS THE FIRST SENTENCE OF EVERY POST.</span>
                 </div>
                 <?php endif; ?>
 

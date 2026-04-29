@@ -324,6 +324,17 @@ CREATE TABLE IF NOT EXISTS `snap_rate_limits` (
   KEY `idx_window` (`window_start`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `snap_ip_bans` (
+  `id`         int unsigned NOT NULL AUTO_INCREMENT,
+  `ip`         varchar(45)  COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reason`     varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'auto:brute_force',
+  `banned_at`  datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `expires_at` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ip` (`ip`),
+  KEY `idx_expires` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 -- ─── COMMUNITY (optional feature set) ────────────────────────────────────────
 

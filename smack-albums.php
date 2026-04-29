@@ -147,7 +147,7 @@ include 'core/sidebar.php';
 
                     <!-- FEATURED IMAGE -->
                     <div class="lens-input-wrapper mt-20">
-                        <label>FEATURED IMAGE <span class="dim">(pick any post — used as the representative thumbnail)</span></label>
+                        <label>FEATURED IMAGE <span class="field-tip" data-tip="Pick any post — used as the representative thumbnail for this album.">ⓘ</span></label>
                         <input type="hidden" name="featured_post_id" id="album-featured-id"
                                value="<?php echo $edit_mode ? (int)($edit_data['featured_post_id'] ?? 0) : 0; ?>">
                         <div id="album-featured-preview" style="margin-top:8px;">

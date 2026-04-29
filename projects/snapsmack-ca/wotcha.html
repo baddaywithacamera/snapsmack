@@ -452,6 +452,14 @@ article.post:last-child {
             <h3>All Posts</h3>
             <ol>
                 <li>
+                    <span class="idx-date">Apr 29</span>
+                    <a href="#lockdown">Bots Can't Find the Door If You Move It</a>
+                </li>
+                <li>
+                    <span class="idx-date">Apr 22</span>
+                    <a href="#smackattack">SMACKATTACK: The Reputation Network</a>
+                </li>
+                <li>
                     <span class="idx-date">Apr 20</span>
                     <a href="#spam">The Spam Is Handled. Took Three Layers.</a>
                 </li>
@@ -499,6 +507,50 @@ article.post:last-child {
         <div class="wrap">
 
             <!-- POST 1 -->
+            <!-- POST: LOCKDOWN -->
+            <article class="post" id="lockdown">
+                <div class="post-meta">
+                    <span class="post-date">April 29, 2026</span>
+                    <span class="post-tag">Security</span>
+                </div>
+                <h2><a href="#lockdown">Bots Can't Find the Door If You Move It</a></h2>
+
+                <p>The standard WordPress login URL is <code>/wp-login.php</code>. Every bot on the internet knows this. They scan every server they find, try the URL, and start spraying credentials. The attacks are not sophisticated. They do not need to be. They just need enough targets and enough time.</p>
+
+                <p>SnapSmack's login does not live at a predictable path. You set the URL slug yourself — anything you want, under Configuration → Security. The default is <code>/snap-in</code>, but it could be anything. The actual <code>snap-in.php</code> file returns a 403 if accessed directly. The only way in is through the slug. Bots scanning <code>wp-login.php</code>, <code>admin</code>, <code>login</code>, and several hundred other common paths get nothing. No error page that confirms the software. No redirect. Nothing to work with.</p>
+
+                <p>The second gate is User-Agent filtering. Every real browser identifies itself. Curl does not claim to be Chrome. Python-requests does not claim to be Safari. Any request that arrives at the login endpoint with a blank, scripted, or obviously automated User-Agent is dropped with a 403 before any authentication logic runs. They do not learn whether the credentials were wrong. They do not learn whether the page exists. The request just stops.</p>
+
+                <p>The third gate is automatic IP banning. Failed login attempts are counted per IP in a ten-minute window. Five failures means a seven-day ban. The IP is blocked at the start of every subsequent request — before the page renders, before credentials are checked. The counter resets when the ban is issued. The ban is noted in the database with a reason and an expiry time. You can review the list and lift individual bans early from the IP Shield tab in Troll Control if the system catches a real user who fat-fingered their password too many times.</p>
+
+                <p>If you forget your own login slug, there is a recovery token. Put a long random string in Configuration → Security as the Recovery Token. If you need to find the login page again, visit <code>snap-in.php?key=TOKEN</code> and you will be redirected to the correct URL. The recovery path is disabled by default and is only active when you have set a token.</p>
+
+                <p>None of this stops a determined, targeted attack from a human being who knows what they are looking at. What it stops is the automated, undifferentiated internet noise that hits every server constantly and compromises the ones that were not paying attention.</p>
+            </article>
+
+            <!-- POST: SMACKATTACK -->
+            <article class="post" id="smackattack">
+                <div class="post-meta">
+                    <span class="post-date">April 22, 2026</span>
+                    <span class="post-tag">Security</span>
+                </div>
+                <h2><a href="#smackattack">SMACKATTACK: The Reputation Network</a></h2>
+
+                <p>A single SnapSmack install can ban someone. SMACKATTACK is what happens when all opted-in SnapSmack installs share that information — anonymously, automatically, and without any of the raw identifying data leaving your server.</p>
+
+                <p>When a comment is banned on a participating site, a SHA-256 hash of the relevant fingerprint — browser signature, IP, or email — is reported to the SMACKATTACK hub. The hub maintains a running score for each fingerprint across all reporting sites, weighted by how reliable each site's reports have historically been and adjusted for time decay so that old reports matter less than recent ones. A fingerprint that a dozen sites have independently flagged in the last week scores very differently from one that a single site flagged eight months ago.</p>
+
+                <p>The output is a colour-coded threat level. Green is fine. Yellow is a watch. Orange means the network has seen this before and you should look at it. Red means auto-ban is reasonable. Black means the network has extensive, recent, multi-site evidence and the default action is silence with no explanation to the commenter.</p>
+
+                <p>SMACKATTACK also runs coordination detection. When multiple fingerprints score above threshold and their reports cluster temporally — the same wave of activity across multiple sites — the system flags it as a coordination event. This surfaces in the SMACKATTACK admin tab as a cluster, and you can inspect it, escalate individual fingerprints to the hub's shared registry, or dismiss it.</p>
+
+                <p>The fourth layer — and the one that required building a separate analysis system — is GOBSMACKED. It does not use fingerprints or IPs at all. It builds a stylometric profile from comment text: a 25-dimension vector measuring sentence length, vocabulary range, punctuation patterns, the specific idioms someone reaches for. When a new comment arrives, its vector is compared against all prior submissions. A cosine similarity above 55% means this new account writes like an existing banned account, regardless of what IP they are coming from or what browser they are using.</p>
+
+                <p>A VPN changes your IP. GOBSMACKED does not care. A new email address changes your identity. GOBSMACKED does not care. People write the way they write. This is not something most of them think to change, and changing it consistently under pressure is harder than it sounds.</p>
+
+                <p>SMACKATTACK is opt-in. Join from Configuration → SMACKATTACK. You can opt out at any time, at which point your site is removed from the network and your contribution to the shared registry is marked for expiry. The hub stores hashes, not content. Your commenters' text never leaves your installation.</p>
+            </article>
+
             <article class="post" id="spam">
                 <div class="post-meta">
                     <span class="post-date">April 20, 2026</span>
@@ -512,7 +564,7 @@ article.post:last-child {
 
                 <p>Second layer: SnapSmack Shield. When a SnapSmack multisite installation bans a fingerprint — a browser signature, an IP hash, an email hash — that ban propagates automatically to every site in the network. Not the raw data. SHA-256 hashes only. No IP addresses leave your server. The hub maintains a central registry of consolidated hashes, distributes them to each spoke, and spokes block matching fingerprints silently before a comment is ever posted. It costs nothing extra and requires no configuration once multisite is running.</p>
 
-                <p>Third layer, and the one that required the most engineering: SMACK THE ENEMY. A distributed reputation network across all opted-in SnapSmack installations. Every site that opts in contributes anonymised fingerprint reports; the network scores each fingerprint by weighted site reputation, applies time decay so old reports fade, detects coordination clusters where the same bad actor is operating across multiple accounts, and issues a colour-coded threat level. Green is fine. Black means the network has seen this fingerprint at enough sites with enough frequency that auto-banning is entirely reasonable.</p>
+                <p>Third layer, and the one that required the most engineering: SMACKATTACK. A distributed reputation network across all opted-in SnapSmack installations. Every site that opts in contributes anonymised fingerprint reports; the network scores each fingerprint by weighted site reputation, applies time decay so old reports fade, detects coordination clusters where the same bad actor is operating across multiple accounts, and issues a colour-coded threat level. Green is fine. Black means the network has seen this fingerprint at enough sites with enough frequency that auto-banning is entirely reasonable.</p>
 
                 <p>One anti-spam layer is not enough. Anyone who has run a public comment section for more than fifteen minutes already knows this. Three layers might be more than strictly necessary. It probably isn't.</p>
             </article>

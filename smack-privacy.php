@@ -64,8 +64,7 @@ include 'core/sidebar.php';
 
         <div class="box">
             <div class="lens-input-wrapper">
-                <label>Enable Public Privacy Policy Page</label>
-                <p class="dim">When enabled, a Privacy Policy link appears in the public site footer and the policy is accessible at <code>/privacy-policy.php</code>.</p>
+                <label>Enable Public Privacy Policy Page <span class="field-tip" data-tip="When enabled, a Privacy Policy link appears in the public site footer and the policy is accessible at /privacy-policy.php.">ⓘ</span></label>
                 <label class="toggle-switch">
                     <input type="checkbox" name="privacy_policy_enabled" value="1" <?php echo ($pp_enabled === '1') ? 'checked' : ''; ?>>
                     <span class="toggle-label">Show privacy policy link in footer</span>
@@ -82,8 +81,7 @@ include 'core/sidebar.php';
 
         <div class="box">
             <div class="lens-input-wrapper">
-                <label>Privacy Policy Content</label>
-                <p class="dim">HTML accepted. If you participate in SMACKATTACK or GOBSMACKED, disclose it here. Your visitors have a right to know.</p>
+                <label>Privacy Policy Content <span class="field-tip" data-tip="HTML accepted. If you participate in SMACKATTACK or GOBSMACKED, disclose it here — your visitors have a right to know.">ⓘ</span></label>
                 <textarea name="privacy_policy_content" class="css-override-textarea" spellcheck="false" rows="24"><?php echo htmlspecialchars($pp_content); ?></textarea>
             </div>
         </div>

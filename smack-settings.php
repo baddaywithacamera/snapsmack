@@ -239,9 +239,8 @@ include 'core/sidebar.php';
                     <label>TAGLINE</label>
                     <input type="text" name="settings[site_tagline]" value="<?php echo htmlspecialchars($settings['site_tagline'] ?? ''); ?>">
 
-                    <label>SITE DESCRIPTION</label>
+                    <label>SITE DESCRIPTION <span class="field-tip" data-tip="Used for Open Graph link previews and feed skin profile bios.">ⓘ</span></label>
                     <textarea name="settings[site_description]" rows="3" placeholder="One or two sentences about this blog. Used for Open Graph link previews and photo-feed skin profiles."><?php echo htmlspecialchars($settings['site_description'] ?? ''); ?></textarea>
-                    <span class="dim">USED FOR LINK PREVIEWS (OG) AND FEED SKIN PROFILE BIOS.</span>
 
                     <label>BASE SITE URL</label>
                     <input type="text" name="settings[site_url]" value="<?php echo htmlspecialchars($settings['site_url'] ?? 'https://example.com/'); ?>">
@@ -273,74 +272,67 @@ include 'core/sidebar.php';
             <h3>ARCHITECTURE & INTERACTION</h3>
             <div class="config-grid">
                 <div class="lens-input-wrapper">
-                    <label>GLOBAL COMMENTS</label>
+                    <label>GLOBAL COMMENTS <span class="field-tip" data-tip="Master override for all posts. Disabling this kills comments site-wide regardless of per-post settings.">ⓘ</span></label>
                     <select name="settings[global_comments_enabled]">
                         <option value="1" <?php echo (($settings['global_comments_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
                         <option value="0" <?php echo (($settings['global_comments_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
                     </select>
-                    <span class="dim">MASTER OVERRIDE FOR ALL POSTS.</span>
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>AKISMET API KEY</label>
+                    <label>AKISMET API KEY <span class="field-tip" data-tip="Spam filter for comments. Leave blank to disable. Get a free key at akismet.com/signup">ⓘ</span></label>
                     <div style="display:flex;gap:8px;align-items:center;">
                         <input type="text" name="settings[akismet_key]"
                                value="<?php echo htmlspecialchars($settings['akismet_key'] ?? ''); ?>"
                                placeholder="e.g. a1b2c3d4e5f6"
                                style="flex:1;font-family:monospace;">
-                        <button type="button" id="akismet-test-btn" class="btn btn-sm">TEST KEY</button>
+                        <button type="button" id="akismet-test-btn" class="master-update-btn" style="white-space:nowrap;padding:0 16px;flex-shrink:0;">TEST KEY</button>
                     </div>
-                    <span class="dim">AKISMET SPAM FILTER. GET A FREE KEY AT <a href="https://akismet.com/signup/" target="_blank" style="color:inherit;">AKISMET.COM</a>. LEAVE BLANK TO DISABLE.</span>
                     <span id="akismet-test-result" style="display:none;margin-top:4px;font-size:11px;"></span>
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>SITE-WIDE SEARCH</label>
+                    <label>SITE-WIDE SEARCH <span class="field-tip" data-tip="Enables full-text search on skins that support it (e.g. Photogram).">ⓘ</span></label>
                     <select name="settings[search_enabled]">
                         <option value="0" <?php echo (($settings['search_enabled'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED (DEFAULT)</option>
                         <option value="1" <?php echo (($settings['search_enabled'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
                     </select>
-                    <span class="dim">ENABLES FULL-TEXT SEARCH ON SKINS THAT SUPPORT IT (E.G. PHOTOGRAM).</span>
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>AI TRAINING CRAWLERS</label>
+                    <label>AI TRAINING CRAWLERS <span class="field-tip" data-tip="Controls robots.txt directives for GPTBot, ClaudeBot, CCBot, Google-Extended, and ByteSpider. Regenerated on save.">ⓘ</span></label>
                     <select name="settings[ai_training_policy]">
                         <option value="no_opinion" <?php echo (($settings['ai_training_policy'] ?? 'no_opinion') == 'no_opinion') ? 'selected' : ''; ?>>NO OPINION (DEFAULT)</option>
                         <option value="allow" <?php echo (($settings['ai_training_policy'] ?? 'no_opinion') == 'allow') ? 'selected' : ''; ?>>ALLOW</option>
                         <option value="disallow" <?php echo (($settings['ai_training_policy'] ?? 'no_opinion') == 'disallow') ? 'selected' : ''; ?>>DISALLOW</option>
                     </select>
-                    <span class="dim">CONTROLS ROBOTS.TXT DIRECTIVES FOR GPTBOT, CLAUDEBOT, CCBOT, GOOGLE-EXTENDED, BYTESPIDER. REGENERATED ON SAVE.</span>
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>PUBLIC BLOGROLL</label>
+                    <label>PUBLIC BLOGROLL <span class="field-tip" data-tip="Controls the blogroll nav link and public blogroll page access.">ⓘ</span></label>
                     <select name="settings[blogroll_enabled]">
                         <option value="1" <?php echo (($settings['blogroll_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
                         <option value="0" <?php echo (($settings['blogroll_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED</option>
                     </select>
-                    <span class="dim">CONTROLS NAV LINK AND PUBLIC PAGE ACCESS.</span>
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>COMMUNITY FORUM</label>
+                    <label>COMMUNITY FORUM <span class="field-tip" data-tip="Shows the forum client in your admin panel. Connects to the SnapSmack community hub.">ⓘ</span></label>
                     <select name="settings[forum_enabled]">
                         <option value="1" <?php echo (($settings['forum_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED (DEFAULT)</option>
                         <option value="0" <?php echo (($settings['forum_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED</option>
                     </select>
-                    <span class="dim">SHOWS THE FORUM CLIENT IN YOUR ADMIN PANEL. CONNECTS TO THE SNAPSMACK COMMUNITY HUB.</span>
                 </div>
 
                 <!-- Forum URL is hardcoded to snapsmack.ca. Not user-configurable. -->
 
                 <div class="lens-input-wrapper">
-                    <label>HOMEPAGE MODE</label>
+                    <label>HOMEPAGE MODE <span class="field-tip" data-tip="Latest Post shows the newest image. Skin Landing uses the skin's built-in slider/grid. Static Page uses a custom page you select.">ⓘ</span></label>
                     <select name="settings[homepage_mode]" id="homepage-mode-select">
                         <option value="latest_post" <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'latest_post') ? 'selected' : ''; ?>>LATEST POST (DEFAULT)</option>
                         <option value="skin_landing" <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'skin_landing') ? 'selected' : ''; ?>>SKIN LANDING PAGE</option>
                         <option value="static_page" <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'static_page') ? 'selected' : ''; ?>>STATIC PAGE</option>
                     </select>
-                    <span class="dim">LATEST POST SHOWS NEWEST IMAGE. SKIN LANDING USES THE SKIN'S BUILT-IN SLIDER/GRID. STATIC PAGE USES A CUSTOM PAGE.</span>
 
                     <div class="lens-input-wrapper homepage-page-picker<?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'static_page') ? '' : ' d-none'; ?>" id="homepage-page-picker">
                         <label>HOMEPAGE PAGE</label>
@@ -353,20 +345,36 @@ include 'core/sidebar.php';
                     </div>
 
                     <div class="lens-input-wrapper homepage-blog-slug<?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'latest_post') ? ' d-none' : ''; ?>" id="homepage-blog-slug">
-                        <label>BLOG URL SLUG</label>
+                        <label>BLOG URL SLUG <span class="field-tip" data-tip="The URL where visitors find your image feed (e.g. /blog, /feed, /photos). Appears in navigation.">ⓘ</span></label>
                         <input type="text" name="settings[blog_slug]" value="<?php echo htmlspecialchars($settings['blog_slug'] ?? 'blog'); ?>" placeholder="blog">
-                        <span class="dim">THE URL WHERE VISITORS FIND YOUR IMAGE FEED (E.G. /BLOG, /FEED, /PHOTOS). APPEARS IN NAVIGATION.</span>
                     </div>
 
                     <?php $show_landing_only = in_array(($settings['homepage_mode'] ?? 'latest_post'), ['skin_landing', 'static_page']); ?>
                     <div class="lens-input-wrapper<?php echo $show_landing_only ? '' : ' d-none'; ?>" id="homepage-landing-only">
-                        <label>LANDING PAGE ONLY</label>
+                        <label>LANDING PAGE ONLY <span class="field-tip" data-tip="No navigation, no skin, no chrome — just page content. Use for splash screens or single-page sites.">ⓘ</span></label>
                         <label class="toggle-switch">
                             <input type="checkbox" name="settings[landing_only]" value="1" <?php echo (($settings['landing_only'] ?? '0') === '1') ? 'checked' : ''; ?>>
                             <span class="toggle-slider"></span>
                         </label>
-                        <span class="dim">NO NAVIGATION, NO SKIN, NO CHROME — JUST THE PAGE CONTENT. USE FOR COMING SOON, SPLASH SCREENS, OR SINGLE-PAGE SITES.</span>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             SECURITY
+             ============================================================ -->
+        <div class="box">
+            <h3>SECURITY</h3>
+            <p class="dim">Harden your login endpoint against bots and brute-force attacks.</p>
+            <div class="post-layout-grid">
+                <div class="lens-input-wrapper">
+                    <label>LOGIN SLUG <span class="field-tip" data-tip="The URL path for your login page (e.g. snap-in → yoursite.com/snap-in). Bots won't find it. Changing this takes effect immediately — bookmark the new URL before saving.">ⓘ</span></label>
+                    <input type="text" name="settings[login_slug]" value="<?php echo htmlspecialchars($settings['login_slug'] ?? 'snap-in'); ?>" placeholder="snap-in">
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>RECOVERY TOKEN <span class="field-tip" data-tip="If you forget your login slug, visit snap-in.php?key=TOKEN to be redirected to it. Leave blank to disable. Use a long random string.">ⓘ</span></label>
+                    <input type="text" name="settings[login_recovery_key]" value="<?php echo htmlspecialchars($settings['login_recovery_key'] ?? ''); ?>" placeholder="leave blank to disable" autocomplete="off">
                 </div>
             </div>
         </div>
@@ -421,13 +429,12 @@ include 'core/sidebar.php';
                         $custom_val = $settings[$custom_key] ?? '';
                     ?>
                     <div class="lens-input-wrapper">
-                        <label><?php echo $slot['label']; ?> SLOT</label>
+                        <label><?php echo $slot['label']; ?> SLOT <span class="field-tip" data-tip="<?php echo htmlspecialchars(strip_tags($slot['hint'])); ?>">ⓘ</span></label>
                         <select name="settings[<?php echo $state_key; ?>]" class="footer-slot-toggle" data-target="<?php echo $custom_key; ?>">
                             <option value="on"     <?php echo ($state === 'on')     ? 'selected' : ''; ?>>ON (DEFAULT)</option>
                             <option value="custom" <?php echo ($state === 'custom') ? 'selected' : ''; ?>>CUSTOM TEXT</option>
                             <option value="off"    <?php echo ($state === 'off')    ? 'selected' : ''; ?>>OFF</option>
                         </select>
-                        <span class="dim"><?php echo $slot['hint']; ?></span>
                         <div class="footer-custom-field<?php echo ($state === 'custom') ? '' : ' d-none'; ?>" id="field-<?php echo $custom_key; ?>">
                             <input type="text"
                                    name="settings[<?php echo $custom_key; ?>]"
@@ -438,9 +445,8 @@ include 'core/sidebar.php';
                     <?php endforeach; ?>
 
                     <div class="lens-input-wrapper">
-                        <label>RSS SLOT</label>
+                        <label>RSS SLOT <span class="field-tip" data-tip="Links to your site RSS feed. Cannot be disabled.">ⓘ</span></label>
                         <div class="read-only-display">ALWAYS ON — CANNOT BE DISABLED</div>
-                        <span class="dim">Links to your site RSS feed.</span>
                     </div>
                 </div>
 
@@ -452,13 +458,12 @@ include 'core/sidebar.php';
                         $custom_val = $settings[$custom_key] ?? '';
                     ?>
                     <div class="lens-input-wrapper">
-                        <label><?php echo $slot['label']; ?> SLOT</label>
+                        <label><?php echo $slot['label']; ?> SLOT <span class="field-tip" data-tip="<?php echo htmlspecialchars(strip_tags($slot['hint'])); ?>">ⓘ</span></label>
                         <select name="settings[<?php echo $state_key; ?>]" class="footer-slot-toggle" data-target="<?php echo $custom_key; ?>">
                             <option value="on"     <?php echo ($state === 'on')     ? 'selected' : ''; ?>>ON (DEFAULT)</option>
                             <option value="custom" <?php echo ($state === 'custom') ? 'selected' : ''; ?>>CUSTOM TEXT</option>
                             <option value="off"    <?php echo ($state === 'off')    ? 'selected' : ''; ?>>OFF</option>
                         </select>
-                        <span class="dim"><?php echo $slot['hint']; ?></span>
                         <div class="footer-custom-field<?php echo ($state === 'custom') ? '' : ' d-none'; ?>" id="field-<?php echo $custom_key; ?>">
                             <input type="text"
                                    name="settings[<?php echo $custom_key; ?>]"
@@ -531,13 +536,11 @@ include 'core/sidebar.php';
                     <label>JPEG COMPRESSION (1-100)</label>
                     <input type="number" name="settings[jpeg_quality]" value="<?php echo htmlspecialchars($settings['jpeg_quality'] ?? 85); ?>">
 
-                    <label>EXIF ARTIST TAG</label>
+                    <label>EXIF ARTIST TAG <span class="field-tip" data-tip="Written into the Artist field of every JPEG upload. Leave blank to skip.">ⓘ</span></label>
                     <input type="text" name="settings[exif_artist]" value="<?php echo htmlspecialchars($settings['exif_artist'] ?? ''); ?>" placeholder="e.g. Sean McCormick">
-                    <span class="dim">WRITTEN INTO THE ARTIST FIELD OF EVERY JPEG UPLOAD. LEAVE BLANK TO SKIP.</span>
 
-                    <label>EXIF COPYRIGHT TAG</label>
+                    <label>EXIF COPYRIGHT TAG <span class="field-tip" data-tip="Written into the Copyright field of every JPEG upload. Leave blank to skip.">ⓘ</span></label>
                     <input type="text" name="settings[exif_copyright]" value="<?php echo htmlspecialchars($settings['exif_copyright'] ?? ''); ?>" placeholder="e.g. © 2026 Sean McCormick. All rights reserved.">
-                    <span class="dim">WRITTEN INTO THE COPYRIGHT FIELD OF EVERY JPEG UPLOAD. LEAVE BLANK TO SKIP.</span>
                 </div>
                 <div class="post-col-right">
                     <label>HEADER LOGO ASSET</label>
@@ -569,21 +572,19 @@ include 'core/sidebar.php';
             <div class="dash-grid">
 
                 <div class="lens-input-wrapper">
-                    <label>REQUIRE DOWNLOAD LINK?</label>
+                    <label>REQUIRE DOWNLOAD LINK? <span class="field-tip" data-tip="When enabled, posts cannot be published without a download URL. Intended for sites where every image is backed by a Google Drive original.">ⓘ</span></label>
                     <select name="settings[download_link_required]">
                         <option value="0" <?php echo (($settings['download_link_required'] ?? '0') == '0') ? 'selected' : ''; ?>>NO — OPTIONAL</option>
                         <option value="1" <?php echo (($settings['download_link_required'] ?? '0') == '1') ? 'selected' : ''; ?>>YES — BLOCK PUBLISH IF MISSING</option>
                     </select>
-                    <span class="dim">WHEN ENABLED, POSTS CANNOT BE PUBLISHED WITHOUT A DOWNLOAD URL. INTENDED FOR SITES WHERE EVERY IMAGE IS BACKED BY A GOOGLE DRIVE ORIGINAL.</span>
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>DEFAULT DOWNLOAD MODE</label>
+                    <label>DEFAULT DOWNLOAD MODE <span class="field-tip" data-tip="All Posts saves a step if every image is downloadable. You can still disable downloads per-post.">ⓘ</span></label>
                     <select name="settings[download_default_mode]">
                         <option value="per_post" <?php echo (($settings['download_default_mode'] ?? 'per_post') == 'per_post') ? 'selected' : ''; ?>>PER-POST (ENABLE MANUALLY)</option>
                         <option value="all_posts" <?php echo (($settings['download_default_mode'] ?? 'per_post') == 'all_posts') ? 'selected' : ''; ?>>ALL POSTS (DOWNLOADS ON BY DEFAULT)</option>
                     </select>
-                    <span class="dim">ALL POSTS SAVES A STEP IF EVERY IMAGE IS DOWNLOADABLE. YOU CAN STILL DISABLE PER-POST.</span>
                 </div>
 
             </div>
@@ -692,18 +693,19 @@ include 'core/sidebar.php';
             </div>
         </div>
 
+        <?php $_ui_pimpmobile = ($settings['ui_mode'] ?? 'bigwheel') === 'pimpmobile'; ?>
+        <?php if (($settings['site_mode'] ?? 'photoblog') === 'smacktalk'): ?>
         <h3>POST MODES</h3>
         <div class="lens-input-wrapper">
-            <label>SMACKTALK (LONGFORM POSTS)</label>
+            <label>SMACKTALK (LONGFORM POSTS) <span class="field-tip" data-tip='Enables the longform post editor and "New Longform Post" in the sidebar.'>ⓘ</span></label>
             <label class="toggle-switch">
                 <input type="checkbox" name="settings[enable_longform]" value="1"
                        <?php echo ($settings['enable_longform'] ?? '0') === '1' ? 'checked' : ''; ?>>
                 <span class="toggle-slider"></span>
             </label>
-            <span class="dim">ENABLES THE LONGFORM POST EDITOR AND "NEW LONGFORM POST" IN THE SIDEBAR. TURN ON FOR SMACKTALK INSTALLS. LEAVE OFF FOR PHOTO-ONLY (SMACKONEOUT) INSTALLS.</span>
         </div>
+        <?php endif; ?>
 
-        <?php $_ui_pimpmobile = ($settings['ui_mode'] ?? 'bigwheel') === 'pimpmobile'; ?>
         <?php if ($_ui_pimpmobile): ?>
         <h3>SMACKATTACK</h3>
         <?php if ($ste_msg): ?>
@@ -726,9 +728,9 @@ include 'core/sidebar.php';
                 Register to start receiving threat level scores on incoming comments.
                 You can opt out at any time.
             </p>
-            <form method="POST" style="display:inline;">
+            <form method="POST" style="margin-top:15px;">
                 <input type="hidden" name="ste_action" value="register">
-                <button type="submit" class="btn-smack">JOIN THE NETWORK</button>
+                <button type="submit" class="btn-smack" style="width:100%;">JOIN THE NETWORK</button>
             </form>
         <?php else: ?>
             <label>NETWORK STATUS</label>

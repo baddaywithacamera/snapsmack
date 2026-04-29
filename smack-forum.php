@@ -680,7 +680,7 @@ require 'core/sidebar.php';
           </div>
 
           <div class="lens-input-wrapper">
-            <label>BODY</label>
+            <label>BODY <span class="field-tip" data-tip="20,000 character limit.">ⓘ</span></label>
             <div class="forum-emoji-bar">
               <?php foreach (['😊','😂','🤔','👍','👎','🔥','❤️','🎉','💡','⚠️','🐛','✅','❌','🚀','💎','📌','🔒','👀','🙏','💬'] as $em): ?>
               <button type="button" class="forum-emoji-btn" onclick="forumInsertEmoji(this,'<?php echo $em; ?>')"><?php echo $em; ?></button>
@@ -688,7 +688,6 @@ require 'core/sidebar.php';
             </div>
             <textarea name="body" rows="10" placeholder="Describe your issue, question, or topic&#8230;"
                       style="width:100%; resize:vertical;" required><?php echo htmlspecialchars($_POST['body'] ?? ''); ?></textarea>
-            <span class="dim" style="font-size:0.72rem; margin-top:6px;">20,000 character limit.</span>
           </div>
 
           <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:16px;">

@@ -111,7 +111,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
             <div class="dash-grid">
 
                 <div class="lens-input-wrapper">
-                    <label>DEFAULT LAYOUT</label>
+                    <label>DEFAULT LAYOUT <span class="field-tip" data-tip="The layout visitors see when they first arrive. If they have previously changed it, their preference wins.">ⓘ</span></label>
                     <select name="settings[archive_layout]" id="default-layout-select"
                             onchange="syncAvailableCheckbox(this.value)">
                         <?php foreach ($all_layouts as $lk => $ll): ?>
@@ -123,11 +123,10 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                             DISABLED (HIDE ARCHIVE FROM NAV)
                         </option>
                     </select>
-                    <span class="dim">THE LAYOUT VISITORS SEE WHEN THEY FIRST ARRIVE. IF THEY HAVE PREVIOUSLY CHANGED IT, THEIR PREFERENCE WINS.</span>
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>OFFER VISITORS A LAYOUT SWITCH?</label>
+                    <label>OFFER VISITORS A LAYOUT SWITCH? <span class="field-tip" data-tip="Checked modes appear as toggle buttons on the public archive. The default layout is always included automatically.">ⓘ</span></label>
                     <div style="display:flex; flex-direction:column; gap:6px; margin-top:4px;">
                         <?php foreach ($all_layouts as $lk => $ll): ?>
                             <label style="display:flex; align-items:center; gap:8px; font-size:0.85em; cursor:pointer;">
@@ -140,11 +139,10 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                             </label>
                         <?php endforeach; ?>
                     </div>
-                    <span class="dim">CHECKED MODES APPEAR AS TOGGLE BUTTONS ON THE PUBLIC ARCHIVE. THE DEFAULT LAYOUT IS ALWAYS INCLUDED AUTOMATICALLY.</span>
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>THUMBNAIL SIZE</label>
+                    <label>THUMBNAIL SIZE <span class="field-tip" data-tip="Applies to square and cropped grid modes.">ⓘ</span></label>
                     <select name="settings[thumb_size]">
                         <?php foreach ($size_steps as $key => $label): ?>
                             <option value="<?php echo $key; ?>" <?php echo ($current_size === $key) ? 'selected' : ''; ?>>
@@ -152,11 +150,10 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <span class="dim">APPLIES TO SQUARE AND CROPPED GRID MODES.</span>
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>COLUMNS</label>
+                    <label>COLUMNS <span class="field-tip" data-tip="How many columns across on desktop. Applies to square and cropped grid modes.">ⓘ</span></label>
                     <div style="display:flex; align-items:center; gap:12px;">
                         <input type="range" name="settings[browse_cols]"
                                min="2" max="8" step="1"
@@ -164,11 +161,10 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                                oninput="this.nextElementSibling.textContent = this.value">
                         <span style="min-width:24px; font-family:monospace;"><?php echo $current_cols; ?></span>
                     </div>
-                    <span class="dim">HOW MANY COLUMNS ACROSS ON DESKTOP. APPLIES TO SQUARE AND CROPPED GRID MODES.</span>
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>GUTTER</label>
+                    <label>GUTTER <span class="field-tip" data-tip="Gap between grid tiles.">ⓘ</span></label>
                     <div style="display:flex; align-items:center; gap:12px;">
                         <input type="range" name="settings[archive_gutter]"
                                min="0" max="24" step="2"
@@ -176,11 +172,10 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                                oninput="this.nextElementSibling.textContent = this.value + 'px'">
                         <span style="min-width:36px; font-family:monospace;"><?php echo $current_gutter; ?>px</span>
                     </div>
-                    <span class="dim">GAP BETWEEN GRID TILES.</span>
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>JUSTIFIED ROW HEIGHT</label>
+                    <label>JUSTIFIED ROW HEIGHT <span class="field-tip" data-tip="Target row height for masonry/justified mode. Rows expand slightly to fill width.">ⓘ</span></label>
                     <div style="display:flex; align-items:center; gap:12px;">
                         <input type="range" name="settings[justified_row_height]"
                                min="120" max="500" step="10"
@@ -188,7 +183,6 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                                oninput="this.nextElementSibling.textContent = this.value + 'px'">
                         <span style="min-width:44px; font-family:monospace;"><?php echo $current_row_h; ?>px</span>
                     </div>
-                    <span class="dim">TARGET ROW HEIGHT FOR MASONRY / JUSTIFIED MODE. ROWS EXPAND SLIGHTLY TO FILL WIDTH.</span>
                 </div>
 
             </div>
@@ -199,7 +193,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
             <h3>TILE BORDER &amp; SHADOW</h3>
             <div class="dash-grid">
                 <div class="lens-input-wrapper">
-                    <label>BORDER STYLE</label>
+                    <label>BORDER STYLE <span class="field-tip" data-tip="Applied to every tile in the archive grid.">ⓘ</span></label>
                     <select name="settings[archive_border_style]" id="archive-border-select"
                             onchange="document.getElementById('shadow-depth-row').classList.toggle('d-none', !['shadow','double_shadow'].includes(this.value))">
                         <?php foreach ($border_styles as $bk => $bl): ?>
@@ -208,10 +202,9 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <span class="dim">APPLIED TO EVERY TILE IN THE ARCHIVE GRID.</span>
                 </div>
                 <div class="lens-input-wrapper<?php echo in_array($current_border, ['shadow','double_shadow']) ? '' : ' d-none'; ?>" id="shadow-depth-row">
-                    <label>SHADOW DEPTH</label>
+                    <label>SHADOW DEPTH <span class="field-tip" data-tip="1 = subtle. 5 = dramatic.">ⓘ</span></label>
                     <div style="display:flex; align-items:center; gap:12px;">
                         <input type="range" name="settings[archive_shadow_depth]"
                                min="1" max="5" step="1"
@@ -219,7 +212,6 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                                oninput="this.nextElementSibling.textContent = this.value">
                         <span style="min-width:20px; font-family:monospace;"><?php echo $current_shadow; ?></span>
                     </div>
-                    <span class="dim">1 = SUBTLE. 5 = DRAMATIC.</span>
                 </div>
             </div>
         </div>
@@ -273,7 +265,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>SCROLL FRICTION</label>
+                    <label>SCROLL FRICTION <span class="field-tip" data-tip="Higher = more coast. Lower = stops faster.">ⓘ</span></label>
                     <?php if ($wall_unavailable): ?>
                         <input type="range" disabled min="0.80" max="0.99" value="0.96">
                         <input type="hidden" name="settings[wall_friction]" value="0.96">
@@ -284,12 +276,11 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                                    oninput="this.nextElementSibling.textContent = this.value">
                             <span><?php echo htmlspecialchars($settings['wall_friction'] ?? '0.96'); ?></span>
                         </div>
-                        <span class="dim">HIGHER = MORE COAST. LOWER = STOPS FASTER.</span>
                     <?php endif; ?>
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>DRAG WEIGHT</label>
+                    <label>DRAG WEIGHT <span class="field-tip" data-tip="How heavy the drag feels. Higher = more sluggish.">ⓘ</span></label>
                     <?php if ($wall_unavailable): ?>
                         <input type="range" disabled min="0.5" max="5.0" value="2.5">
                         <input type="hidden" name="settings[wall_dragweight]" value="2.5">
@@ -300,12 +291,11 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                                    oninput="this.nextElementSibling.textContent = this.value">
                             <span><?php echo htmlspecialchars($settings['wall_dragweight'] ?? '2.5'); ?></span>
                         </div>
-                        <span class="dim">HOW HEAVY THE DRAG FEELS. HIGHER = MORE SLUGGISH.</span>
                     <?php endif; ?>
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>REFLECTION</label>
+                    <label>REFLECTION <span class="field-tip" data-tip="Reflects the gallery off the floor.">ⓘ</span></label>
                     <?php if ($wall_unavailable): ?>
                         <select disabled class="select-locked"><option>DISABLED BY SKIN</option></select>
                         <input type="hidden" name="settings[wall_reflect]" value="0">
@@ -314,7 +304,6 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                             <option value="1" <?php echo (($settings['wall_reflect'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
                             <option value="0" <?php echo (($settings['wall_reflect'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED</option>
                         </select>
-                        <span class="dim">REFLECTS THE GALLERY OFF THE FLOOR.</span>
                     <?php endif; ?>
                 </div>
 

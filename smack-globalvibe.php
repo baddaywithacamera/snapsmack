@@ -214,28 +214,24 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper">
                         <label>
                             <input type="checkbox" name="sticky_header_enabled" value="1" <?php echo ($settings['sticky_header_enabled'] ?? '0') === '1' ? 'checked' : ''; ?>>
-                            ENABLE STICKY HEADER
+                            ENABLE STICKY HEADER <span class="field-tip" data-tip="Header stays pinned to the top on scroll. Goes transparent while idle, snaps back opaque on hover. Skins with their own fixed headers are automatically excluded.">ⓘ</span>
                         </label>
-                        <span class="dim" style="display: block; margin-top: 4px;">Header stays pinned to the top on scroll. Goes transparent while idle, snaps back opaque on hover.</span>
-                        <p class="dim" style="margin-top: 10px;">Skins with their own fixed headers are automatically excluded.</p>
                     </div>
 
                     <div class="lens-input-wrapper">
-                        <label>BACKGROUND OPACITY (TRANSPARENT STATE)</label>
+                        <label>BACKGROUND OPACITY (TRANSPARENT STATE) <span class="field-tip" data-tip="0% = fully see-through, 100% = fully opaque.">ⓘ</span></label>
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <input type="range" name="sticky_header_opacity" min="0" max="100" value="<?php echo htmlspecialchars($settings['sticky_header_opacity'] ?? '12'); ?>" style="flex: 1;" oninput="this.nextElementSibling.textContent = this.value + '%'">
                             <span style="min-width: 40px; font-family: monospace;"><?php echo htmlspecialchars($settings['sticky_header_opacity'] ?? '12'); ?>%</span>
                         </div>
-                        <span class="dim">0% = fully see-through, 100% = fully opaque.</span>
                     </div>
 
                     <div class="lens-input-wrapper">
-                        <label>BACKDROP BLUR</label>
+                        <label>BACKDROP BLUR <span class="field-tip" data-tip="Glass-morphism blur. Higher = more frosted glass. 0 = no blur.">ⓘ</span></label>
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <input type="range" name="sticky_header_blur" min="0" max="30" value="<?php echo htmlspecialchars($settings['sticky_header_blur'] ?? '14'); ?>" style="flex: 1;" oninput="this.nextElementSibling.textContent = this.value + 'px'">
                             <span style="min-width: 40px; font-family: monospace;"><?php echo htmlspecialchars($settings['sticky_header_blur'] ?? '14'); ?>px</span>
                         </div>
-                        <span class="dim">Glass-morphism blur. Higher = more frosted glass. 0 = no blur.</span>
                     </div>
                 </div>
             </div>

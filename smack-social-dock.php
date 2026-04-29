@@ -88,13 +88,12 @@ include 'core/sidebar.php';
                 <div class="post-col-left">
                     <label>
                         <input type="checkbox" name="social_dock_enabled" value="1" <?php echo ($settings['social_dock_enabled'] ?? '0') === '1' ? 'checked' : ''; ?>>
-                        ENABLE SOCIAL DOCK
+                        ENABLE SOCIAL DOCK <span class="field-tip" data-tip="Floating profile links visible on every public page. When downloads are enabled for an image, the download button appears in the dock automatically.">ⓘ</span>
                     </label>
-                    <span class="dim" style="display: block; margin-top: 4px;">Floating profile links visible on every public page. When downloads are enabled for an image, the download button appears in the dock automatically.</span>
                 </div>
 
                 <div class="post-col-right">
-                    <label>POSITION</label>
+                    <label>POSITION <span class="field-tip" data-tip="Side positions slide out of view while scrolling. Corner positions stay fixed.">ⓘ</span></label>
                     <?php
                     $current_pos = $settings['social_dock_position'] ?? 'bottom-right';
                     $positions = [
@@ -121,7 +120,6 @@ include 'core/sidebar.php';
                             </optgroup>
                         <?php endforeach; ?>
                     </select>
-                    <span class="dim" style="display: block; margin-top: 4px;">Side positions slide out of view while scrolling.</span>
                 </div>
             </div>
         </div>
@@ -135,42 +133,37 @@ include 'core/sidebar.php';
 
             <div class="post-layout-grid">
                 <div class="post-col-left">
-                    <label>LIGHT ICON COLOUR</label>
+                    <label>LIGHT ICON COLOUR <span class="field-tip" data-tip="Icon colour and border tint for dark backgrounds.">ⓘ</span></label>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <input type="color" name="social_dock_color_light" value="<?php echo htmlspecialchars($settings['social_dock_color_light'] ?? '#ffffff'); ?>" style="width: 50px; height: 34px; border: 1px solid #ccc; cursor: pointer;" oninput="this.nextElementSibling.value = this.value">
                         <input type="text" value="<?php echo htmlspecialchars($settings['social_dock_color_light'] ?? '#ffffff'); ?>" style="width: 100px; font-family: monospace;" onchange="this.previousElementSibling.value = this.value" oninput="this.previousElementSibling.value = this.value">
                     </div>
-                    <span class="dim">Icon colour and border tint for dark backgrounds.</span>
 
-                    <label style="margin-top: 15px;">DARK ICON COLOUR</label>
+                    <label style="margin-top: 15px;">DARK ICON COLOUR <span class="field-tip" data-tip="Icon colour and border tint for light backgrounds.">ⓘ</span></label>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <input type="color" name="social_dock_color_dark" value="<?php echo htmlspecialchars($settings['social_dock_color_dark'] ?? '#1a1a1a'); ?>" style="width: 50px; height: 34px; border: 1px solid #ccc; cursor: pointer;" oninput="this.nextElementSibling.value = this.value">
                         <input type="text" value="<?php echo htmlspecialchars($settings['social_dock_color_dark'] ?? '#1a1a1a'); ?>" style="width: 100px; font-family: monospace;" onchange="this.previousElementSibling.value = this.value" oninput="this.previousElementSibling.value = this.value">
                     </div>
-                    <span class="dim">Icon colour and border tint for light backgrounds.</span>
 
-                    <label style="margin-top: 15px;">DEFAULT MODE</label>
+                    <label style="margin-top: 15px;">DEFAULT MODE <span class="field-tip" data-tip="Which icon colour set to use — light icons for dark sites, dark icons for light sites.">ⓘ</span></label>
                     <?php $current_mode = $settings['social_dock_color_mode'] ?? 'light'; ?>
                     <select name="social_dock_color_mode">
                         <option value="light" <?php echo $current_mode === 'light' ? 'selected' : ''; ?>>Light icons (for dark sites)</option>
                         <option value="dark" <?php echo $current_mode === 'dark' ? 'selected' : ''; ?>>Dark icons (for light sites)</option>
                     </select>
-                    <span class="dim">Which colour set to use.</span>
                 </div>
 
                 <div class="post-col-right">
                     <label>
                         <input type="checkbox" name="social_dock_shadow" value="1" <?php echo ($settings['social_dock_shadow'] ?? '1') === '1' ? 'checked' : ''; ?>>
-                        ICON DROP SHADOW
+                        ICON DROP SHADOW <span class="field-tip" data-tip="Subtle shadow behind each circle for contrast against busy backgrounds.">ⓘ</span>
                     </label>
-                    <span class="dim" style="display: block; margin-top: 4px;">Subtle shadow behind each circle for contrast against busy backgrounds.</span>
 
-                    <label style="margin-top: 15px;">IDLE OPACITY</label>
+                    <label style="margin-top: 15px;">IDLE OPACITY <span class="field-tip" data-tip="How visible the dock is when not being hovered. Hovering always reveals at full opacity.">ⓘ</span></label>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <input type="range" name="social_dock_opacity" min="10" max="100" value="<?php echo htmlspecialchars($settings['social_dock_opacity'] ?? '50'); ?>" style="flex: 1;" oninput="this.nextElementSibling.textContent = this.value + '%'">
                         <span style="min-width: 40px; font-family: monospace;"><?php echo htmlspecialchars($settings['social_dock_opacity'] ?? '50'); ?>%</span>
                     </div>
-                    <span class="dim">How visible the dock is when not being hovered. Hovering always reveals at full opacity.</span>
                 </div>
             </div>
         </div>

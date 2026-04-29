@@ -292,13 +292,13 @@ include 'core/sidebar.php';
                                placeholder="url-friendly-slug">
                     </div>
                     <div class="lens-input-wrapper mt-16">
-                        <label>DESCRIPTION <span class="dim">(optional)</span></label>
+                        <label>DESCRIPTION <span class="field-tip" data-tip="Optional. Shown on the collection page.">ⓘ</span></label>
                         <textarea name="col_desc" rows="4" placeholder="A short description of this collection."><?php echo htmlspecialchars($editing['description'] ?? ''); ?></textarea>
                     </div>
 
                     <!-- FEATURED IMAGE -->
                     <div class="lens-input-wrapper mt-20">
-                        <label>FEATURED IMAGE <span class="dim">(picks any post's hero image)</span></label>
+                        <label>FEATURED IMAGE <span class="field-tip" data-tip="Picks any post's hero image — used as the representative thumbnail for this collection.">ⓘ</span></label>
                         <div id="col-featured-preview" style="margin-top:8px;">
                             <?php if ($featured_thumb && !empty($featured_thumb['thumb'])): ?>
                                 <img src="<?php echo htmlspecialchars(BASE_URL . ltrim($featured_thumb['thumb'],'/'));?>"

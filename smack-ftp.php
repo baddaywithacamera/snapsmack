@@ -231,9 +231,8 @@ include 'core/sidebar.php';
                 </div>
 
                 <div class="post-col-right">
-                    <label>FTP PASSWORD</label>
+                    <label>FTP PASSWORD <span class="field-tip" data-tip="Leave blank to keep the existing stored password.">ⓘ</span></label>
                     <input type="password" name="ftp_pass" placeholder="<?php echo !empty($settings['ftp_pass']) ? '••••••••••••••••' : 'password'; ?>">
-                    <span class="dim">Leave blank to keep existing password.</span>
 
                     <label>REMOTE DIRECTORY</label>
                     <input type="text" name="ftp_remote_dir" value="<?php echo htmlspecialchars($settings['ftp_remote_dir'] ?? '/'); ?>" placeholder="/">
