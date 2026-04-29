@@ -196,17 +196,37 @@ git commit
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.27 "Lawn Chair"
+### SnapSmack — Alpha 0.7.28 "Lock-Off"
 All commits are on `main`. Push from local:
 ```
 git push Github main
-git tag -d v0.7.27
-git tag v0.7.27
-git push Github --delete v0.7.27
-git push Github v0.7.27
+git tag -d v0.7.28
+git tag v0.7.28
+git push Github --delete v0.7.28
+git push Github v0.7.28
 ```
+✅ 0.7.27 and 0.7.28 pushed and tagged on Github.
 
-**Changes this session (0.7.26 — Cloudflare HTTPS + packager fixes):**
+**Changes this session (0.7.27/0.7.28):**
+- **`assets/js/ss-engine-updater.js`** (NEW) — XHR-driven update modal. State machine: IDLE → CHECKING → REVIEW → APPLYING → SUCCESS/ERROR. Five-stage progress bar, changelog + file change rendering, extract chunk polling (1.5s interval), rollback button on failure. Exposes `SnapUpdater.open()` globally.
+- **`assets/css/ss-engine-updater.css`** (NEW) — Modal styling with stage dots, extract progress bar, log items, error panel.
+- **`assets/js/smack-passphrase.js`** (NEW) — Six-word passphrase generator. `snapSuggestPassphrase(inputId, displayId)` fills field and/or display span.
+- **`smack-update.php`** — `$wants_json` detection; JSON output paths on all stage handlers (`check`, `stage_download`, `stage_verify`, `stage_backup`, `stage_extract` init + chunk, `stage_migrate`). HTML path unchanged. Sets `window._snapUpdaterAutoOpen = true` for direct page visits.
+- **`core/admin-header.php`** — `ss-engine-updater.css` link added.
+- **`core/admin-footer.php`** — Modal container div + `ss-engine-updater.js` script tag added.
+- **`smack-admin.php`** — Update banner "VIEW UPDATES" calls `SnapUpdater.open()` instead of navigating.
+- **`core/sidebar.php`** — System Updates link calls `SnapUpdater.open()` if JS available.
+- **`smack-help.php`** — `updater_modal` help topic added.
+- **`snap-in.php`** (NEW — replaces `login.php`) — Direct `.php` URL returns 403. Named route `/snap-in` serves login. Token recovery path: `?key=TOKEN` redirects to configured login slug. Passphrase nudge UI in password panel.
+- **`smack-change-password.php`** — Passphrase generator section added.
+- **`core/auth.php`**, **`logout.php`**, **`smack-2fa-verify.php`** — All `login.php` references → `snap-in.php`.
+- **`migrations/044_login_slug.php`** (NEW) — Seeds `login_slug = snap-in` and `login_recovery_key = ''` in `snap_settings`.
+- **`smack-central/sc-config.php`** — Recreated with real credentials (gitignored).
+- **`install.php`** — `db.php` chmod `0640` → `0644`; `snap_users` CREATE TABLE now includes all 5 migration columns; `?action=patch_schema` handler added.
+- **`CHANGELOG.md`** — 0.7.27 and 0.7.28 entries added.
+- **`core/constants.php`** + **`smack-central/sc-version.php`** — Version bumped to 0.7.28 "Lock-Off".
+
+**Previous changes (0.7.26 — Cloudflare HTTPS + packager fixes):**
 - **`core/constants.php`** — `snap_is_https()` helper added; checks `$_SERVER['HTTPS']`, `HTTP_X_FORWARDED_PROTO`, `HTTP_X_FORWARDED_SSL`
 - **`core/auth.php`** — `secure` cookie flag uses `snap_is_https()` (was bare `$_SERVER['HTTPS']`)
 - **`core/community-session.php`** — `$secure` uses `snap_is_https()`
@@ -385,8 +405,9 @@ All commits on `main`. Push from local: `git push Github main`, then force-move 
 |---|---|---|
 | foundtextures.ca | Multisite Hub | Alpha 0.7.23 (needs update to 0.7.27) |
 | pixhellated.ca | Spoke | needs update to 0.7.27 |
-| wateronthebrain.ca | Spoke | needs update to 0.7.27 |
-| hekeepsdroningon.ca | Spoke | needs update to 0.7.27 |
+| wateronthebrain.ca | Spoke | needs update to 0.7.27 — **self-hosted, Proxmox** |
+| hekeepsdroningon.ca | Spoke | needs update to 0.7.27 — **self-hosted, Proxmox** |
+| photowalk.ing | Standalone | bootstrapped 2026-04-27 — **self-hosted, Proxmox** |
 | strathmore.pics | Standalone | fresh install in progress (Cloudflare Tunnel) |
 
 Updater confirmed: 0.7.19 → 0.7.23 clean, no errors, orphan cleanup working. Spokes heartbeating correctly.
@@ -398,20 +419,20 @@ Directory names use hyphens only, never underscores.
 
 | Directory | Display Name | Status | In Base Release |
 |---|---|---|---|
-| `50-shades-of-noah-grey` | 50 Shades of Noah Grey | stable | ✅ YES |
-| `new-horizon` | New Horizon | stable | ✅ YES |
-| `galleria` | Galleria | stable | ✅ YES |
-| `rational-geo` | Rational Geo | stable | ✅ YES |
-| `impact-printer` | Impact Printer | stable | skin gallery only |
-| `true-grit` | True Grit | stable | skin gallery only |
-| `hip-to-be-square` | Hip to be Square | beta | skin gallery only |
-| `a-grey-reckoning` | A Grey Reckoning | development | no |
-| `in-stereo-where-available` | In Stereo Where Available | development | no |
-| `kiosk` | Kiosk | development | no |
-| `52-card-pickup` | 52 Card Pickup | development | no |
-| `photogram` | Photogram | development | ✅ YES (mobile skin — always ships) |
-| `show-n-tell` | Show-n-Tell | development | no |
-| `the-grid` | The Grid | development | no |
+| `50-shades-of-noah-grey` | 50 Shades of Noah Grey | available | ✅ YES |
+| `new-horizon` | New Horizon | available | ✅ YES |
+| `galleria` | Galleria | available | ✅ YES |
+| `rational-geo` | Rational Geo | available | ✅ YES |
+| `impact-printer` | Impact Printer | available | skin gallery only |
+| `true-grit` | True Grit | available | skin gallery only |
+| `hip-to-be-square` | Hip to be Square | withheld | skin gallery only |
+| `a-grey-reckoning` | A Grey Reckoning | withheld | no |
+| `in-stereo-where-available` | In Stereo Where Available | withheld | no |
+| `kiosk` | Kiosk | withheld | no |
+| `52-card-pickup` | 52 Card Pickup | available (in development) | no |
+| `photogram` | Photogram | withheld | ✅ YES (mobile skin — always ships) |
+| `show-n-tell` | Show-n-Tell | withheld | no |
+| `the-grid` | The Grid | withheld | no |
 
 **Base release** includes `50-shades-of-noah-grey`, `new-horizon`, `galleria`, and `rational-geo`.
 All other skins are distributed via the skin gallery in Smack Central.
@@ -420,6 +441,6 @@ To change which skins are in the base release, edit `$always_exclude` in
 
 ## Skin Status Values
 
-- `stable` — Production ready
-- `beta` — Functional but not fully tested
-- `development` — Work in progress, not installable from gallery
+- `available` — Installable from skin gallery (production ready)
+- `withheld` — Not shown in skin gallery (in development or not yet ready)
+- `available (in development)` — Installable but actively being worked on
