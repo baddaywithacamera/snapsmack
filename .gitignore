@@ -107,3 +107,5 @@ __pycache__/
 *.pyc
 
 # Powertools (Claude's w
+# Claude Commander lives in its own repo
+projects/claude-commander/

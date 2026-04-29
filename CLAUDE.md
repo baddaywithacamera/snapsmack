@@ -196,18 +196,51 @@ git commit
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.28 "Lock-Off"
-All commits are on `main`. Push from local:
+### SnapSmack — Alpha 0.7.29 "Lock-Off"
+✅ **0.7.29 committed and tagged on Github (master branch).** Pending git hygiene commit below.
+
+**Git branch is `master` not `main`** (confirmed 2026-04-29).
+
+**Pending git hygiene commit (run from local):**
+```bash
+cd /c/dev/snapsmack
+git add .gitignore smack-fingerprints.php smack-help.php \
+  secaudits/2026-04-29-F-snapsmack-security-audit.pdf \
+  _spec/claude-commander-spec-v0_2.docx _spec/claude-commander-spec-v0_3.docx
+git commit -m "Post-0.7.29: IP SMACKER rename, Audit F, Commander spec v0.3, gitignore cleanup"
+git push Github master
 ```
-git push Github main
-git tag -d v0.7.28
-git tag v0.7.28
-git push Github --delete v0.7.28
-git push Github v0.7.28
-```
+(No version bump — housekeeping only. No tag move needed.)
+
+**Changes in 0.7.29 session (already pushed):**
+- **`snap-in.php`** — Reconstructed (was truncated). Three-layer login hardening: UA filter, IP ban gate, brute-force auto-ban. Duplicate CSS link removed.
+- **`assets/css/admin-theme-geometry-master.css`** — field-tip tooltip CSS + login page CSS.
+- **`migrations/045_login_protection.php`** (NEW) — Creates `snap_ip_bans` table.
+- **`database/schema/snapsmack_canonical.sql`** — `snap_ip_bans` table added.
+- **`smack-fingerprints.php`** — IP SMACKER tab (renamed from IP Shield): `fetch_ip_bans` + `lift_ip_ban` AJAX handlers, JS.
+- **`smack-help.php`** — `ip_shield` / IP SMACKER help topic added.
+- **20 admin pages** — All `class="dim"` field descriptions → `class="field-tip"` hover tooltips.
+- **`smack-2fa-verify.php`** — Truncation fix.
+- **`tools/smackattack-scanner/`** (NEW) — GOBSMACKED Scanner v0.1.0.
+- **`assets/js/smack-passphrase.js`**, **`ss-engine-updater.js`**, **`ss-engine-updater.css`** (NEW).
+- **`projects/snapsmack-ca/wotcha.html`** — Two new articles.
+- **`projects/snapsmack-ca/index.html`** — 8 security layers, SMACKATTACK own card, IP SMACKER card.
+- **`CHANGELOG.md`**, **`core/constants.php`**, **`smack-central/sc-version.php`** — Bumped to 0.7.29.
+- **`secaudits/2026-04-29-E-snapsmack-security-audit.pdf`** — Audit E.
+
+**Changes this session (post-0.7.29 housekeeping):**
+- **`smack-fingerprints.php`** + **`smack-help.php`** — IP Shield → IP SMACKER rename throughout.
+- **`projects/snapsmack-ca/index.html`** — SMACKATTACK own card (Layer 4), IP SMACKER (Layer 7), 8 layers total.
+- **`_spec/claude-commander-spec-v0_2.docx`** — Section 18 added (Co-Work effectiveness, 7 items from Claude's experience).
+- **`_spec/claude-commander-spec-v0_3.docx`** — Section 19 added (cross-project intelligence, bridging, machine summaries).
+- **`tools/claude-commander/`** (NEW, gitignored) — Python sidecar scaffold: swapfile.py, project_registry.py, git_ops.py, remote_ops.py, action_executor.py, main.py. Full working backend.
+- **`_claudepowertools/`** (NEW, gitignored) — context.index, session.state, snapsmack-project-summary.md.
+- **`secaudits/2026-04-29-F-snapsmack-security-audit.pdf`** — Audit F: post-release verification, IP SMACKER rename, inline debt audit, Commander scaffold review.
+- **`.gitignore`** — claude-commander, __pycache__, _claudepowertools added.
+
 ✅ 0.7.27 and 0.7.28 pushed and tagged on Github.
 
-**Changes this session (0.7.27/0.7.28):**
+**Changes previous session (0.7.27/0.7.28):**
 - **`assets/js/ss-engine-updater.js`** (NEW) — XHR-driven update modal. State machine: IDLE → CHECKING → REVIEW → APPLYING → SUCCESS/ERROR. Five-stage progress bar, changelog + file change rendering, extract chunk polling (1.5s interval), rollback button on failure. Exposes `SnapUpdater.open()` globally.
 - **`assets/css/ss-engine-updater.css`** (NEW) — Modal styling with stage dots, extract progress bar, log items, error panel.
 - **`assets/js/smack-passphrase.js`** (NEW) — Six-word passphrase generator. `snapSuggestPassphrase(inputId, displayId)` fills field and/or display span.
@@ -401,16 +434,17 @@ All commits on `main`. Push from local: `git push Github main`, then force-move 
 - Run Audit & Cleanup on foundtextures job once credentials confirmed saved
 
 ### Live Sites
-| Site | Role | Version |
-|---|---|---|
-| foundtextures.ca | Multisite Hub | Alpha 0.7.23 (needs update to 0.7.27) |
-| pixhellated.ca | Spoke | needs update to 0.7.27 |
-| wateronthebrain.ca | Spoke | needs update to 0.7.27 — **self-hosted, Proxmox** |
-| hekeepsdroningon.ca | Spoke | needs update to 0.7.27 — **self-hosted, Proxmox** |
-| photowalk.ing | Standalone | bootstrapped 2026-04-27 — **self-hosted, Proxmox** |
-| strathmore.pics | Standalone | fresh install in progress (Cloudflare Tunnel) |
+| Site | Role | Version | Hosting |
+|---|---|---|---|
+| foundtextures.ca | Multisite Hub | Alpha 0.7.28 | self-hosted, Proxmox |
+| snapsmack.ca | Promo + Smack Central | — | self-hosted, Proxmox (moved from shared cPanel) |
+| pixhellated.ca | Spoke | needs update to 0.7.28 | shared hosting |
+| wateronthebrain.ca | Spoke | needs update to 0.7.28 | self-hosted, Proxmox |
+| hekeepsdroningon.ca | Spoke | needs update to 0.7.28 | self-hosted, Proxmox |
+| photowalk.ing | Standalone | needs update to 0.7.28 | self-hosted, Proxmox |
+| strathmore.pics | Standalone | fresh install in progress | self-hosted, Proxmox (Cloudflare Tunnel) |
 
-Updater confirmed: 0.7.19 → 0.7.23 clean, no errors, orphan cleanup working. Spokes heartbeating correctly.
+Updater confirmed: modal working on foundtextures.ca at 0.7.28. All self-hosted sites on Proxmox in Sean's basement.
 
 ## Skin Registry
 

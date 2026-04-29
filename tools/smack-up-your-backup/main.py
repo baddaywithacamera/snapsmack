@@ -13,7 +13,7 @@ import tempfile
 import threading
 import time
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Optional
 
 import config as cfg_module
@@ -22,6 +22,7 @@ import sync_manager
 import manifest_reader
 import cloud_manifest as cloud_manifest_module
 import cloud_client as cloud_module
+import credential_store as cred_store
 from audit_engine import AuditEngine, AuditReport
 from backup_engine import BackupEngine
 from cloud_sync_engine import CloudSyncEngine
@@ -2263,23 +2264,41 @@ class SettingsTab(tk.Frame):
             row=0, column=1, sticky="w", pady=3)
         self._profile_vars["cloud_provider"] = cloud_prov_var
 
-        self._row(cloud_g, 1, "Creds override (optional)", "cloud_credentials_file")
-        self._browse_btn(cloud_g, 1, self._browse_credentials)
+        # ── Credential picker (row 1) ───────────────────────────────────
+        tk.Label(cloud_g, text="Saved credentials", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY, anchor="w").grid(
+            row=1, column=0, sticky="w", padx=(0, 10), pady=3)
+        self._profile_creds_combo = ttk.Combobox(cloud_g, font=FONT_BODY,
+                                                  width=self._W - 2, state="readonly")
+        self._profile_creds_combo.grid(row=1, column=1, sticky="ew", pady=3)
+        _refresh_cred_combo(self._profile_creds_combo)
+        self._profile_creds_combo.bind("<<ComboboxSelected>>",
+                                        self._on_profile_cred_selected)
+        tk.Button(cloud_g, text="Manage Library…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY, padx=8, pady=3,
+                  command=lambda: _open_cred_library(
+                      self,
+                      self._profile_vars.get("cloud_credentials_file", tk.StringVar()),
+                      self._profile_creds_combo)
+                  ).grid(row=1, column=2, padx=(4, 0), pady=3, sticky="w")
+
+        self._row(cloud_g, 2, "Creds override (optional)", "cloud_credentials_file")
+        self._browse_btn(cloud_g, 2, self._browse_credentials)
 
         # Status label + Authenticate button for per-profile OAuth creds
         self._profile_creds_status_var = tk.StringVar(value="")
         tk.Label(cloud_g, textvariable=self._profile_creds_status_var,
                  bg=BG_MID, fg=FG_DIM, font=FONT_SMALL,
-                 anchor="w").grid(row=2, column=1, sticky="w", pady=(0, 2))
+                 anchor="w").grid(row=3, column=1, sticky="w", pady=(0, 2))
         self._profile_auth_btn = tk.Button(
             cloud_g, text="Authenticate with Google",
             bg=BG_CARD, fg=FG_MAIN, relief="flat",
             font=FONT_BODY, padx=10, pady=4,
             command=self._authenticate_oauth_profile)
-        self._profile_auth_btn.grid(row=3, column=1, sticky="w", pady=(0, 6))
+        self._profile_auth_btn.grid(row=4, column=1, sticky="w", pady=(0, 6))
         self._profile_auth_btn.grid_remove()  # hidden until an OAuth file is selected
 
-        self._row(cloud_g, 4, "Cloud folder ID",  "cloud_folder_id")
+        self._row(cloud_g, 5, "Cloud folder ID",  "cloud_folder_id")
 
         # Local working / backup directory (always shown)
         self._local_frame = tk.Frame(c, bg=BG_MID)
@@ -2381,34 +2400,50 @@ class SettingsTab(tk.Frame):
                      font=FONT_MONO, state="readonly", width=18).grid(
             row=0, column=1, sticky="w", pady=3)
 
-        tk.Label(gc_g, text="Credentials JSON", bg=BG_MID, fg=FG_DIM,
+        # ── Credential picker (row 1) ───────────────────────────────────
+        tk.Label(gc_g, text="Saved credentials", bg=BG_MID, fg=FG_DIM,
                  font=FONT_BODY, anchor="w").grid(
             row=1, column=0, sticky="w", padx=(0, 10), pady=3)
         self._gc_creds_var = tk.StringVar()
+        self._gc_creds_combo = ttk.Combobox(gc_g, font=FONT_BODY, width=W - 2,
+                                             state="readonly")
+        self._gc_creds_combo.grid(row=1, column=1, sticky="ew", pady=3)
+        _refresh_cred_combo(self._gc_creds_combo)
+        self._gc_creds_combo.bind("<<ComboboxSelected>>", self._on_gc_cred_selected)
+        tk.Button(gc_g, text="Manage Library…", bg=BG_CARD, fg=FG_MAIN,
+                  relief="flat", font=FONT_BODY, padx=8, pady=3,
+                  command=lambda: _open_cred_library(self, self._gc_creds_var,
+                                                     self._gc_creds_combo)
+                  ).grid(row=1, column=2, padx=(4, 0), pady=3, sticky="w")
+
+        # ── Raw path (row 2) — editable fallback ───────────────────────
+        tk.Label(gc_g, text="Credentials JSON", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY, anchor="w").grid(
+            row=2, column=0, sticky="w", padx=(0, 10), pady=3)
         tk.Entry(gc_g, textvariable=self._gc_creds_var, bg=BG_INPUT, fg=FG_MAIN,
                  insertbackground=ACCENT, relief="flat",
-                 font=FONT_MONO, width=W).grid(row=1, column=1, sticky="ew", pady=3)
-        self._browse_btn(gc_g, 1, self._browse_global_key)
+                 font=FONT_MONO, width=W).grid(row=2, column=1, sticky="ew", pady=3)
+        self._browse_btn(gc_g, 2, self._browse_global_key)
 
         self._gc_key_status_var = tk.StringVar(value="")
         tk.Label(gc_g, textvariable=self._gc_key_status_var,
                  bg=BG_MID, fg=FG_DIM, font=FONT_SMALL,
-                 anchor="w").grid(row=2, column=1, sticky="w", pady=(0, 2))
+                 anchor="w").grid(row=3, column=1, sticky="w", pady=(0, 2))
 
         # Authenticate button — only relevant for OAuth client secret files
         self._auth_btn = tk.Button(gc_g, text="Authenticate with Google",
                                    bg=BG_CARD, fg=FG_MAIN, relief="flat",
                                    font=FONT_BODY, padx=10, pady=4,
                                    command=self._authenticate_oauth)
-        self._auth_btn.grid(row=3, column=1, sticky="w", pady=(0, 6))
+        self._auth_btn.grid(row=4, column=1, sticky="w", pady=(0, 6))
 
         tk.Label(gc_g, text="Folder ID", bg=BG_MID, fg=FG_DIM,
                  font=FONT_BODY, anchor="w").grid(
-            row=4, column=0, sticky="w", padx=(0, 10), pady=3)
+            row=5, column=0, sticky="w", padx=(0, 10), pady=3)
         self._gc_folder_var = tk.StringVar()
         tk.Entry(gc_g, textvariable=self._gc_folder_var, bg=BG_INPUT, fg=FG_MAIN,
                  insertbackground=ACCENT, relief="flat",
-                 font=FONT_MONO, width=W).grid(row=4, column=1, sticky="ew", pady=3)
+                 font=FONT_MONO, width=W).grid(row=5, column=1, sticky="ew", pady=3)
 
         self._action_btn(c, "Save Defaults", self._save,
                          primary=True).pack(anchor="w", pady=(10, 0))
@@ -2488,8 +2523,13 @@ class SettingsTab(tk.Frame):
         self._batch_var.set(cfg.get("pacing", "batch_size",     fallback="0"))
         # Global cloud config
         self._gc_provider_var.set(cfg.get("cloud", "provider", fallback="google_drive"))
-        self._gc_creds_var.set(cfg.get("cloud", "credentials_file", fallback=""))
+        gc_creds_path = cfg.get("cloud", "credentials_file", fallback="")
+        self._gc_creds_var.set(gc_creds_path)
         self._gc_folder_var.set(cfg.get("cloud", "folder_id", fallback=""))
+        # Sync credential combobox with library
+        _refresh_cred_combo(self._gc_creds_combo)
+        gc_lib_name = cred_store.name_for(gc_creds_path) if gc_creds_path else None
+        self._gc_creds_combo.set(gc_lib_name or "")
         # App options
         self._tray_var.set(cfg.getboolean("app", "tray_enabled", fallback=False))
         self._startup_var.set(cfg.getboolean("app", "startup_enabled", fallback=False))
@@ -2578,6 +2618,14 @@ class SettingsTab(tk.Frame):
             self.after(0, lambda: self._conn_status_var.set(msg))
         threading.Thread(target=_run, daemon=True).start()
 
+    def _on_profile_cred_selected(self, _event=None):
+        """Credential library dropdown → fill profile path var."""
+        name = self._profile_creds_combo.get()
+        path = cred_store.path_for(name)
+        if path and "cloud_credentials_file" in self._profile_vars:
+            self._profile_vars["cloud_credentials_file"].set(path)
+            self._validate_profile_creds()
+
     def _browse_credentials(self) -> None:
         path = _dlg_open(self,
             title="Select credentials JSON",
@@ -2585,6 +2633,12 @@ class SettingsTab(tk.Frame):
         )
         if path and "cloud_credentials_file" in self._profile_vars:
             self._profile_vars["cloud_credentials_file"].set(path)
+            name = cred_store.name_for(path)
+            if name:
+                _refresh_cred_combo(self._profile_creds_combo)
+                self._profile_creds_combo.set(name)
+            else:
+                self._profile_creds_combo.set("")
             self._validate_profile_creds()
 
     def load_profile(self, profile: Optional[dict]) -> None:
@@ -2615,6 +2669,11 @@ class SettingsTab(tk.Frame):
                     self._method_var.set("local")
             self._on_method_change()
             self._validate_profile_creds()
+            # Sync credential combobox
+            creds_path = profile.get("cloud_credentials_file", "")
+            _refresh_cred_combo(self._profile_creds_combo)
+            lib_name = cred_store.name_for(creds_path) if creds_path else None
+            self._profile_creds_combo.set(lib_name or "")
             self._no_profile_lbl.pack_forget()
             self._profile_status_var.set(f"Editing: {profile.get('name', '')}")
         else:
@@ -2989,6 +3048,14 @@ class SettingsTab(tk.Frame):
         else:
             self._disc_status_var.set("No cloud configuration found on this blog.")
 
+    def _on_gc_cred_selected(self, _event=None):
+        """Credential library dropdown selection → fill path var."""
+        name = self._gc_creds_combo.get()
+        path = cred_store.path_for(name)
+        if path:
+            self._gc_creds_var.set(path)
+            self._validate_global_key()
+
     def _browse_global_key(self) -> None:
         """File picker for the Google Drive OAuth client secret JSON."""
         path = _dlg_open(self,
@@ -2997,6 +3064,13 @@ class SettingsTab(tk.Frame):
         )
         if path:
             self._gc_creds_var.set(path)
+            # Sync combobox if this file is already in the library
+            name = cred_store.name_for(path)
+            if name:
+                _refresh_cred_combo(self._gc_creds_combo)
+                self._gc_creds_combo.set(name)
+            else:
+                self._gc_creds_combo.set("")
             self._validate_global_key()
 
     def _validate_global_key(self) -> None:
@@ -3035,11 +3109,14 @@ class SettingsTab(tk.Frame):
         def _run():
             success, msg = cc.authenticate_oauth(path)
             def _done():
-                color = FG_OK if success else FG_ERR
                 self._gc_key_status_var.set(msg)
-                # Re-check status to get "✓ Authenticated" from token file
                 if success:
                     self._validate_global_key()
+                    _offer_save_to_library(self, path)
+                    _refresh_cred_combo(self._gc_creds_combo)
+                    name = cred_store.name_for(path)
+                    if name:
+                        self._gc_creds_combo.set(name)
                 self._auth_btn.configure(state="normal")
             self.after(0, _done)
 
@@ -3084,6 +3161,11 @@ class SettingsTab(tk.Frame):
                 self._profile_creds_status_var.set(msg)
                 if success:
                     self._validate_profile_creds()
+                    _offer_save_to_library(self, path)
+                    _refresh_cred_combo(self._profile_creds_combo)
+                    name = cred_store.name_for(path)
+                    if name:
+                        self._profile_creds_combo.set(name)
                 self._profile_auth_btn.configure(state="normal")
             self.after(0, _done)
 
@@ -4014,6 +4096,246 @@ class CloudSyncTab(tk.Frame):
 
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Credential library dialog
+# ---------------------------------------------------------------------------
+
+class _CredLibraryDialog(tk.Toplevel):
+    """Manage the named credential library.
+
+    Shows all registered credentials (name + path). Lets the user add,
+    rename, and remove entries. Picking a credential and clicking Select
+    returns it to the caller via self.selected_path.
+    """
+
+    def __init__(self, parent, on_select=None):
+        super().__init__(parent)
+        self.title("Credential Library")
+        self.configure(bg=BG_DEEP)
+        self.resizable(False, False)
+        self.grab_set()
+        self._on_select = on_select   # callable(name, path) or None
+        self.selected_path = None
+        self._build()
+        self._refresh()
+        self.transient(parent)
+
+    def _build(self):
+        pad = dict(padx=16, pady=8)
+
+        tk.Label(self, text="Saved Credentials", bg=BG_DEEP, fg=ACCENT,
+                 font=FONT_HEAD).pack(anchor="w", **pad)
+        tk.Label(self, text="Register credentials files once — pick them by name\n"
+                            "in any profile or Cloud Sync job.",
+                 bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL, justify="left").pack(
+            anchor="w", padx=16, pady=(0, 8))
+
+        # List frame
+        list_frame = tk.Frame(self, bg=BG_MID, bd=1, relief="flat")
+        list_frame.pack(fill="both", padx=16, pady=(0, 8))
+
+        self._listbox = tk.Listbox(
+            list_frame, bg=BG_MID, fg=FG_MAIN, selectbackground=ACCENT,
+            selectforeground=BG_DEEP, font=FONT_BODY, width=60, height=8,
+            relief="flat", bd=0, highlightthickness=0,
+        )
+        self._listbox.pack(side="left", fill="both", expand=True)
+        sb = tk.Scrollbar(list_frame, orient="vertical",
+                          command=self._listbox.yview)
+        sb.pack(side="right", fill="y")
+        self._listbox.configure(yscrollcommand=sb.set)
+        self._listbox.bind("<<ListboxSelect>>", self._on_listbox_select)
+
+        # Path label beneath list
+        self._path_var = tk.StringVar()
+        tk.Label(self, textvariable=self._path_var, bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w", wraplength=560).pack(
+            anchor="w", padx=16, pady=(0, 8))
+
+        # Button row
+        btn_row = tk.Frame(self, bg=BG_DEEP)
+        btn_row.pack(fill="x", padx=16, pady=(0, 12))
+
+        self._select_btn = tk.Button(
+            btn_row, text="Use Selected", bg=ACCENT, fg=BG_DEEP,
+            font=FONT_BODY, relief="flat", padx=12, pady=5,
+            command=self._use_selected, state="disabled")
+        self._select_btn.pack(side="left")
+
+        tk.Button(btn_row, text="Add…", bg=BG_CARD, fg=FG_MAIN,
+                  font=FONT_BODY, relief="flat", padx=10, pady=5,
+                  command=self._add).pack(side="left", padx=(8, 0))
+
+        self._rename_btn = tk.Button(
+            btn_row, text="Rename…", bg=BG_CARD, fg=FG_MAIN,
+            font=FONT_BODY, relief="flat", padx=10, pady=5,
+            command=self._rename, state="disabled")
+        self._rename_btn.pack(side="left", padx=(8, 0))
+
+        self._remove_btn = tk.Button(
+            btn_row, text="Remove", bg=BG_CARD, fg=FG_DIM,
+            font=FONT_BODY, relief="flat", padx=10, pady=5,
+            command=self._remove, state="disabled")
+        self._remove_btn.pack(side="left", padx=(8, 0))
+
+        tk.Button(btn_row, text="Close", bg=BG_CARD, fg=FG_DIM,
+                  font=FONT_BODY, relief="flat", padx=10, pady=5,
+                  command=self.destroy).pack(side="right")
+
+    def _refresh(self, select_name=None):
+        self._entries = cred_store.load()
+        self._listbox.delete(0, "end")
+        sel_idx = None
+        for i, e in enumerate(self._entries):
+            self._listbox.insert("end", e["name"])
+            if select_name and e["name"] == select_name:
+                sel_idx = i
+        if sel_idx is not None:
+            self._listbox.selection_set(sel_idx)
+            self._listbox.see(sel_idx)
+            self._on_listbox_select()
+
+    def _on_listbox_select(self, _event=None):
+        sel = self._listbox.curselection()
+        if sel and sel[0] < len(self._entries):
+            e = self._entries[sel[0]]
+            self._path_var.set(e["path"])
+            state = "normal"
+        else:
+            self._path_var.set("")
+            state = "disabled"
+        self._select_btn.configure(state=state)
+        self._rename_btn.configure(state=state)
+        self._remove_btn.configure(state=state)
+
+    def _selected_entry(self):
+        sel = self._listbox.curselection()
+        if sel and sel[0] < len(self._entries):
+            return self._entries[sel[0]]
+        return None
+
+    def _use_selected(self):
+        e = self._selected_entry()
+        if e:
+            self.selected_path = e["path"]
+            if self._on_select:
+                self._on_select(e["name"], e["path"])
+            self.destroy()
+
+    def _add(self):
+        path = filedialog.askopenfilename(
+            parent=self,
+            title="Select credentials JSON",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+        )
+        if not path:
+            return
+        # Suggest a name — use existing name if already registered
+        existing_name = cred_store.name_for(path) or os.path.splitext(os.path.basename(path))[0]
+        name = self._prompt_name("Add credential", existing_name)
+        if name:
+            cred_store.add_or_update(name, path)
+            self._refresh(select_name=name)
+
+    def _rename(self):
+        e = self._selected_entry()
+        if not e:
+            return
+        new_name = self._prompt_name("Rename credential", e["name"])
+        if new_name and new_name != e["name"]:
+            cred_store.rename(e["name"], new_name)
+            self._refresh(select_name=new_name)
+
+    def _remove(self):
+        e = self._selected_entry()
+        if not e:
+            return
+        if messagebox.askyesno("Remove", f"Remove '{e['name']}' from the library?\n"
+                               "(The credentials file itself is not deleted.)",
+                               parent=self):
+            cred_store.remove(e["name"])
+            self._refresh()
+
+    def _prompt_name(self, title, initial="") -> str:
+        dlg = tk.Toplevel(self)
+        dlg.title(title)
+        dlg.configure(bg=BG_DEEP)
+        dlg.resizable(False, False)
+        dlg.grab_set()
+        dlg.transient(self)
+        result = [None]
+
+        tk.Label(dlg, text="Name:", bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_BODY).pack(padx=20, pady=(16, 4), anchor="w")
+        var = tk.StringVar(value=initial)
+        entry = tk.Entry(dlg, textvariable=var, bg=BG_INPUT, fg=FG_MAIN,
+                         insertbackground=ACCENT, relief="flat",
+                         font=FONT_BODY, width=36)
+        entry.pack(padx=20, pady=(0, 12))
+        entry.select_range(0, "end")
+        entry.focus_set()
+
+        def _ok():
+            v = var.get().strip()
+            if v:
+                result[0] = v
+                dlg.destroy()
+
+        entry.bind("<Return>", lambda _: _ok())
+        btn_row = tk.Frame(dlg, bg=BG_DEEP)
+        btn_row.pack(padx=20, pady=(0, 16))
+        tk.Button(btn_row, text="OK", bg=ACCENT, fg=BG_DEEP,
+                  font=FONT_BODY, relief="flat", padx=12, pady=4,
+                  command=_ok).pack(side="left")
+        tk.Button(btn_row, text="Cancel", bg=BG_CARD, fg=FG_DIM,
+                  font=FONT_BODY, relief="flat", padx=10, pady=4,
+                  command=dlg.destroy).pack(side="left", padx=(8, 0))
+        dlg.wait_window()
+        return result[0]
+
+
+def _refresh_cred_combo(combo):
+    """Repopulate a credentials combobox from the library."""
+    names = cred_store.names()
+    combo["values"] = names
+
+
+def _open_cred_library(parent, path_var, combo=None):
+    """Open the library dialog; on select, update path_var and optionally combo."""
+    def _on_select(name, path):
+        path_var.set(path)
+        if combo is not None:
+            _refresh_cred_combo(combo)
+            combo.set(name)
+    dlg = _CredLibraryDialog(parent, on_select=_on_select)
+    parent.wait_window(dlg)
+
+
+def _offer_save_to_library(parent, path):
+    """After a successful auth, offer to save the credentials path to the library."""
+    if not path:
+        return
+    if cred_store.name_for(path):
+        return   # already registered
+    if not messagebox.askyesno(
+        "Save to credential library",
+        f"Save these credentials to your library?\n\n{path}\n\n"
+        "You'll be able to pick them by name in any profile or sync job.",
+        parent=parent,
+    ):
+        return
+    suggested = os.path.splitext(os.path.basename(path))[0]
+    name = simpledialog.askstring(
+        "Credential name",
+        "Enter a name for this credential:",
+        initialvalue=suggested,
+        parent=parent,
+    )
+    if name and name.strip():
+        cred_store.add_or_update(name.strip(), path)
+
+
+# ---------------------------------------------------------------------------
 # Sync job editor dialog
 # ---------------------------------------------------------------------------
 
@@ -4061,6 +4383,8 @@ class _SyncJobDialog(tk.Toplevel):
         self.update()
         ok, msg = auth_fn(creds_var.get())
         status_var.set(msg)
+        if ok:
+            _offer_save_to_library(self, creds_var.get())
 
     # ------------------------------------------------------------------
     # Provider section builder — reused for source and dest
@@ -4079,25 +4403,61 @@ class _SyncJobDialog(tk.Toplevel):
         prov_row.pack(fill="x", pady=3)
         tk.Label(prov_row, text=f"{label} provider:", bg=BG_MID, fg=FG_DIM,
                  font=FONT_BODY, width=24, anchor="w").pack(side="left")
+        # _endpoint_refs will be populated after picker_row/creds_combo are created
+        _endpoint_refs = {}
+
+        def _on_provider_change():
+            self._refresh_endpoint(
+                label, provider_var, creds_var, folder_var,
+                b2_key_var, b2_appkey_var, auth_status_var,
+                header, prov_row,
+                _endpoint_refs["picker_row"], _endpoint_refs["creds_combo"],
+                _endpoint_refs["creds_row"], _endpoint_refs["creds_lbl"],
+                b2_key_row, b2_appkey_row,
+                folder_lbl, folder_hint, auth_btn,
+            )
+
         for display, value in self.PROVIDERS:
             tk.Radiobutton(
                 prov_row, text=display, variable=provider_var, value=value,
                 bg=BG_MID, fg=FG_MAIN, selectcolor=BG_INPUT,
                 activebackground=BG_MID, font=FONT_BODY,
-                command=lambda: self._refresh_endpoint(
-                    label, provider_var, creds_var, folder_var,
-                    b2_key_var, b2_appkey_var, auth_status_var,
-                    header, prov_row, creds_row, creds_lbl,
-                    b2_key_row, b2_appkey_row,
-                    folder_lbl, folder_hint, auth_btn,
-                ),
+                command=_on_provider_change,
             ).pack(side="left", padx=(0, 12))
+
+        # Saved credentials picker row — NOT packed at creation; shown when oauth provider
+        picker_row = tk.Frame(parent, bg=BG_MID)
+        tk.Label(picker_row, text="Saved credentials:", bg=BG_MID, fg=FG_DIM,
+                 font=FONT_BODY, width=24, anchor="w").pack(side="left")
+        creds_combo = ttk.Combobox(picker_row, font=FONT_BODY, width=34, state="readonly")
+        _refresh_cred_combo(creds_combo)
+        creds_combo.pack(side="left")
+
+        def _on_cred_picked(_evt=None, _is_src=(label == "Source")):
+            name = creds_combo.get()
+            path = cred_store.path_for(name)
+            if path:
+                creds_var.set(path)
+                auth_status_var.set(cloud_module.get_oauth_token_status(
+                    path, readonly=_is_src))
+        creds_combo.bind("<<ComboboxSelected>>", _on_cred_picked)
+
+        tk.Button(picker_row, text="Manage…", bg=BG_CARD, fg=FG_MAIN, relief="flat",
+                  font=FONT_BODY, padx=6, pady=1,
+                  command=lambda: _open_cred_library(self, creds_var, creds_combo)
+                  ).pack(side="left", padx=(4, 0))
 
         # Credentials file row — NOT packed at creation; _refresh_endpoint positions it
         creds_row = tk.Frame(parent, bg=BG_MID)
         creds_lbl = tk.Label(creds_row, bg=BG_MID, fg=FG_DIM,
                               font=FONT_BODY, width=24, anchor="w")
         creds_lbl.pack(side="left")
+
+        # Wire up late-bound refs now that all widgets exist
+        _endpoint_refs["picker_row"]  = picker_row
+        _endpoint_refs["creds_combo"] = creds_combo
+        _endpoint_refs["creds_row"]   = creds_row
+        _endpoint_refs["creds_lbl"]   = creds_lbl
         tk.Entry(creds_row, textvariable=creds_var, bg=BG_INPUT, fg=FG_MAIN,
                  insertbackground=ACCENT, relief="flat",
                  font=FONT_MONO, width=36).pack(side="left")
@@ -4146,13 +4506,15 @@ class _SyncJobDialog(tk.Toplevel):
         # Initialise labels/hints for current provider value
         self._refresh_endpoint(label, provider_var, creds_var, folder_var,
                                b2_key_var, b2_appkey_var, auth_status_var,
-                               header, prov_row, creds_row, creds_lbl,
+                               header, prov_row, picker_row, creds_combo,
+                               creds_row, creds_lbl,
                                b2_key_row, b2_appkey_row,
                                folder_lbl, folder_hint, auth_btn)
 
     def _refresh_endpoint(self, label, provider_var, creds_var, folder_var,
                           b2_key_var, b2_appkey_var, auth_status_var,
-                          header, prov_row, creds_row, creds_lbl, b2_key_row,
+                          header, prov_row, picker_row, creds_combo,
+                          creds_row, creds_lbl, b2_key_row,
                           b2_appkey_row, folder_lbl, folder_hint, auth_btn):
         """Update labels, hints and auth button for current provider selection."""
         p = provider_var.get()
@@ -4160,15 +4522,21 @@ class _SyncJobDialog(tk.Toplevel):
         is_b2  = (p == "backblaze_b2")
 
         # Show/hide credential rows, always inserting immediately after prov_row
-        # so the order is: provider → credentials → folder → auth (regardless of provider)
+        # so the order is: provider → saved picker → raw path → folder → auth
         if is_b2:
+            picker_row.pack_forget()
             creds_row.pack_forget()
             b2_key_row.pack(after=prov_row, fill="x", pady=3)
             b2_appkey_row.pack(after=b2_key_row, fill="x", pady=3)
         else:
             b2_key_row.pack_forget()
             b2_appkey_row.pack_forget()
-            creds_row.pack(after=prov_row, fill="x", pady=3)
+            picker_row.pack(after=prov_row, fill="x", pady=3)
+            creds_row.pack(after=picker_row, fill="x", pady=3)
+            # Sync combobox with current path
+            _refresh_cred_combo(creds_combo)
+            name = cred_store.name_for(creds_var.get()) if creds_var.get() else None
+            creds_combo.set(name or "")
 
         if p == "google_drive":
             header.configure(text=f"── {label}: Google Drive {'─' * 20}")
@@ -4187,7 +4555,7 @@ class _SyncJobDialog(tk.Toplevel):
             )
             creds = creds_var.get()
             if creds:
-                auth_status_var.set(cloud_module.get_oauth_token_status(creds))
+                auth_status_var.set(cloud_module.get_oauth_token_status(creds, readonly=is_src))
         elif p == "backblaze_b2":
             header.configure(text=f"── {label}: Backblaze B2 {'─' * 21}")
             folder_lbl.configure(text="Bucket name:")

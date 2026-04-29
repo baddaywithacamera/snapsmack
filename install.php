@@ -753,7 +753,7 @@ if ($step === 4 && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_
             ]);
 
             $hash = password_hash($admin_pass, PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("INSERT INTO `{$prefix}users` (username, email, password_hash, user_role, preferred_skin) VALUES (?, ?, ?, 'admin', 'midnight-lime')");
+            $stmt = $pdo->prepare("INSERT IGNORE INTO `{$prefix}users` (username, email, password_hash, user_role, preferred_skin) VALUES (?, ?, ?, 'admin', 'midnight-lime')");
             $stmt->execute([$admin_user, $admin_email, $hash]);
 
             $_SESSION['admin_created'] = true;
@@ -856,7 +856,7 @@ function snap_version_compare(string $v1, string $v2, string $op = \'>\'): bool 
 // --- MOBILE SKIN OVERRIDE ---
 // The slug of the skin forced onto mobile devices. This skin is not selectable
 // in the admin skin picker — it is served automatically when a phone is detected.
-define(\'SNAPSMACK_MOBILE_SKIN\', \'\');
+define(\'SNAPSMACK_MOBILE_SKIN\', \'photogram\');
 
 /**
  * Detect mobile devices via User-Agent string.
@@ -871,6 +871,22 @@ function snapsmack_is_mobile(): bool {
     // older or niche handsets. Tablets (iPad, Android without \'Mobile\') are
     // intentionally excluded so they receive the normal desktop skin.
     return (bool) preg_match(\'/Mobile|iPhone|iPod|Android.*Mobile|webOS|BlackBerry|Opera Mini|IEMobile|Windows Phone/i\', $ua);
+}
+
+// --- HTTPS DETECTION ---
+// Checks native HTTPS and reverse-proxy headers (Cloudflare Tunnel, etc.).
+function snap_is_https(): bool {
+    if (!empty($_SERVER[\'HTTPS\']) && $_SERVER[\'HTTPS\'] !== \'off\') return true;
+    if (!empty($_SERVER[\'HTTP_X_FORWARDED_PROTO\']) && $_SERVER[\'HTTP_X_FORWARDED_PROTO\'] === \'https\') return true;
+    if (!empty($_SERVER[\'HTTP_X_FORWARDED_SSL\']) && $_SERVER[\'HTTP_X_FORWARDED_SSL\'] === \'on\') return true;
+    return false;
+}
+
+// --- SECURITY HEADERS ---
+if (PHP_SAPI !== \'cli\' && !headers_sent()) {
+    header(\'X-Content-Type-Options: nosniff\');
+    header(\'X-Frame-Options: SAMEORIGIN\');
+    header(\'Referrer-Policy: strict-origin-when-cross-origin\');
 }
 ';
 
@@ -1194,7 +1210,7 @@ function snap_version_compare(string $v1, string $v2, string $op = \'>\'): bool 
     };
     return version_compare($normalise($v1), $normalise($v2), $op);
 }
-define(\'SNAPSMACK_MOBILE_SKIN\', \'\');
+define(\'SNAPSMACK_MOBILE_SKIN\', \'photogram\');
 function snapsmack_is_mobile(): bool {
     $ua = $_SERVER[\'HTTP_USER_AGENT\'] ?? \'\';
     if (empty($ua)) return false;
@@ -1310,6 +1326,14 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             margin-top: 16px;
         }
         label:first-of-type { margin-top: 0; }
+        .pass-wrap { display: flex; gap: 8px; align-items: stretch; }
+        .pass-wrap input { flex: 1; }
+        .pass-toggle {
+            background: #1a1a1a; border: 1px solid #333; color: #666;
+            font-size: 0.75rem; font-weight: 700; letter-spacing: 1px;
+            padding: 0 12px; cursor: pointer; white-space: nowrap;
+        }
+        .pass-toggle:hover { color: #a0ff90; border-color: #a0ff90; }
         input[type="text"],
         input[type="password"],
         input[type="email"] {
@@ -1538,6 +1562,13 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             margin-top: 16px;
         }
     </style>
+    <script>
+    function togglePass(id, btn) {
+        var f = document.getElementById(id);
+        if (f.type === 'password') { f.type = 'text'; btn.textContent = 'HIDE'; }
+        else { f.type = 'password'; btn.textContent = 'SHOW'; }
+    }
+    </script>
 </head>
 <body>
 <div class="installer">
@@ -1732,7 +1763,10 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             <input type="text" id="db_user" name="db_user" value="<?php echo htmlspecialchars($_POST['db_user'] ?? ''); ?>">
 
             <label for="db_pass">Database Password</label>
-            <input type="password" id="db_pass" name="db_pass">
+            <div class="pass-wrap">
+                <input type="password" id="db_pass" name="db_pass" autocomplete="current-password">
+                <button type="button" class="pass-toggle" onclick="togglePass('db_pass', this)">SHOW</button>
+            </div>
 
             <label for="db_prefix">Table Prefix</label>
             <input type="text" id="db_prefix" name="db_prefix" value="<?php echo htmlspecialchars($_POST['db_prefix'] ?? 'snap_'); ?>">
@@ -1792,13 +1826,44 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             <input type="email" id="admin_email" name="admin_email" value="<?php echo htmlspecialchars($_POST['admin_email'] ?? ''); ?>">
 
             <label for="admin_pass">Password</label>
-            <input type="password" id="admin_pass" name="admin_pass">
+            <div class="pass-wrap">
+                <input type="password" id="admin_pass" name="admin_pass" autocomplete="new-password">
+                <button type="button" class="pass-toggle" onclick="togglePass('admin_pass', this)">SHOW</button>
+            </div>
             <div class="hint">Minimum 12 characters. Length is security.</div>
 
             <label for="admin_pass2">Confirm Password</label>
-            <input type="password" id="admin_pass2" name="admin_pass2">
+            <div class="pass-wrap">
+                <input type="password" id="admin_pass2" name="admin_pass2" autocomplete="new-password">
+                <button type="button" class="pass-toggle" onclick="togglePass('admin_pass2', this)">SHOW</button>
+            </div>
+            <div id="pass-match-msg" class="hint" style="display:none;"></div>
 
-            <button type="submit">Create Site &amp; Finish</button>
+            <button type="submit" id="btn-finish">Create Site &amp; Finish</button>
+            <script>
+            (function() {
+                var p1 = document.getElementById('admin_pass');
+                var p2 = document.getElementById('admin_pass2');
+                var msg = document.getElementById('pass-match-msg');
+                var btn = document.getElementById('btn-finish');
+                function check() {
+                    if (!p2.value) { msg.style.display = 'none'; return; }
+                    if (p1.value === p2.value) {
+                        msg.style.display = 'block';
+                        msg.style.color = '#a0ff90';
+                        msg.textContent = '✓ Passwords match.';
+                        btn.disabled = false;
+                    } else {
+                        msg.style.display = 'block';
+                        msg.style.color = '#ff6b6b';
+                        msg.textContent = '✗ Passwords do not match.';
+                        btn.disabled = true;
+                    }
+                }
+                p1.addEventListener('input', check);
+                p2.addEventListener('input', check);
+            })();
+            </script>
         </form>
 
     <?php endif; ?>
@@ -1889,7 +1954,10 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             <input type="text" id="db_user" name="db_user" value="<?php echo htmlspecialchars($_POST['db_user'] ?? ''); ?>">
 
             <label for="db_pass">Database Password</label>
-            <input type="password" id="db_pass" name="db_pass">
+            <div class="pass-wrap">
+                <input type="password" id="db_pass" name="db_pass" autocomplete="current-password">
+                <button type="button" class="pass-toggle" onclick="togglePass('db_pass', this)">SHOW</button>
+            </div>
 
             <label for="sql_dump" class="install-divider-label">SQL Dump File</label>
             <input type="file" id="sql_dump" name="sql_dump" accept=".sql" class="install-file-input">
@@ -1969,91 +2037,4 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         echo "<!DOCTYPE html><html><head><title>SnapSmack Recovery</title>";
         echo "<style>body{background:#0e0e0e;color:#ccc;font-family:monospace;padding:30px;font-size:13px;line-height:1.7;}";
         echo ".success{color:#39FF14;} .info{color:#00bfff;} .warn{color:#ffaa00;} .error{color:#ff6b6b;}";
-        echo "h2{color:#a0ff90;letter-spacing:2px;} h3{color:#eee;margin-top:24px;} hr{border-color:#333;margin:16px 0;}";
-        echo ".summary{background:#1a1a1a;border:1px solid #333;padding:14px;margin:10px 0;border-radius:4px;}";
-        echo "a{color:#a0ff90;}</style></head><body>";
-        echo "<h2>SNAPSMACK RECOVERY ENGINE</h2><hr>";
-        flush();
-
-        // Ensure we have a PDO connection
-        if (!isset($pdo)) {
-            if (file_exists(__DIR__ . '/core/db.php')) {
-                require_once __DIR__ . '/core/db.php';
-            } else {
-                echo "<span class='error'>ERROR:</span> No database connection available.<br>";
-                echo "</body></html>";
-                exit;
-            }
-        }
-
-        require_once __DIR__ . '/core/recovery-engine.php';
-        $engine = new SnapSmackRecovery($pdo, __DIR__);
-
-        $image_mode = $_SESSION['recovery_image_mode'] ?? 'in_place';
-        $flat_path  = $_SESSION['recovery_flat_path'] ?? '';
-        $flat_dir   = ($image_mode === 'flat' && !empty($flat_path)) ? __DIR__ . '/' . ltrim($flat_path, '/') : null;
-
-        // 1. Ensure directory structure
-        echo "<h3>PHASE 1: DIRECTORY STRUCTURE</h3>";
-        $engine->ensureDirectories();
-        echo "<span class='success'>OK:</span> Upload directories verified.<br>";
-        flush();
-
-        // 2. Restore image files
-        echo "<h3>PHASE 2: IMAGE FILES</h3>";
-        $img_result = $engine->restoreImages($flat_dir);
-        echo "<div class='summary'>";
-        echo "Restored: {$img_result['restored']} | Already in place: {$img_result['in_place']} | Missing: {$img_result['missing']}";
-        echo "</div>";
-        flush();
-
-        // 3. Regenerate thumbnails and compute checksums
-        echo "<h3>PHASE 3: THUMBNAILS &amp; CHECKSUMS</h3>";
-        $thumb_result = $engine->regenerateAndChecksum();
-        echo "<div class='summary'>";
-        echo "Regenerated: {$thumb_result['generated']} | Skipped: {$thumb_result['skipped']}";
-        if (!empty($thumb_result['errors'])) {
-            echo "<br>Errors: " . count($thumb_result['errors']);
-        }
-        echo "</div>";
-        flush();
-
-        // 4. Restore media assets
-        echo "<h3>PHASE 4: MEDIA ASSETS</h3>";
-        $asset_result = $engine->restoreMediaAssets($flat_dir);
-        echo "<div class='summary'>";
-        echo "Restored: {$asset_result['restored']} | In place: {$asset_result['in_place']} | Missing: {$asset_result['missing']}";
-        echo "</div>";
-        flush();
-
-        // 5. Restore branding
-        echo "<h3>PHASE 5: BRANDING</h3>";
-        $brand_result = $engine->restoreBranding($flat_dir);
-        echo "<div class='summary'>";
-        echo "Restored: {$brand_result['restored']} | In place: {$brand_result['in_place']} | Missing: {$brand_result['missing']}";
-        echo "</div>";
-        flush();
-
-        // Final summary
-        $total_restored = $img_result['restored'] + $asset_result['restored'] + $brand_result['restored'];
-        $total_missing  = $img_result['missing'] + $asset_result['missing'] + $brand_result['missing'];
-
-        echo "<hr><h2 style='margin-top:20px;'>RECOVERY COMPLETE</h2>";
-        echo "<div class='summary'>";
-        echo "<span class='success'>Files restored: {$total_restored}</span><br>";
-        echo "<span class='success'>Thumbnails regenerated: {$thumb_result['generated']}</span><br>";
-        if ($total_missing > 0) {
-            echo "<span class='warn'>Files still missing: {$total_missing}</span><br>";
-        }
-        echo "</div>";
-
-        echo "<p style='margin-top:20px;'><a href='login.php' style='display:inline-block;padding:12px 30px;background:#a0ff90;color:#0e0e0e;text-decoration:none;font-weight:700;text-transform:uppercase;letter-spacing:1px;border-radius:3px;'>Log In</a></p>";
-        echo "<p class='warn' style='margin-top:16px;'>Delete <code>install.php</code> from your server when you're done.</p>";
-        echo "</body></html>";
-        exit;
-        ?>
-    <?php endif; ?>
-
-</div>
-</body>
-</html>
+        echo "h2{color:

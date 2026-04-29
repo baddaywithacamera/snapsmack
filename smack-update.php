@@ -132,6 +132,13 @@ if (is_array($stage_state) && is_array($stage_state['update'] ?? null)) {
     $_SESSION['update_state'] = $stage_state;
 }
 
+// --- JSON OUTPUT DETECTION ---
+// When triggered by the updater modal, all responses are JSON.
+// The HTML path is completely unchanged — full-page still works.
+$wants_json = (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+           && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+           || !empty($_GET['json']) || !empty($_POST['json']);
+
 // --- ACTION HANDLER ---
 $action     = $_POST['action'] ?? $_GET['action'] ?? '';
 $flash_msg  = '';
@@ -140,6 +147,11 @@ $flash_type = 'info';
 // CSRF validation for POST actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action) {
     if (!isset($_POST['csrf']) || !hash_equals($csrf, $_POST['csrf'])) {
+        if ($wants_json) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'stage' => $action, 'message' => 'CSRF validation failed. Refresh and try again.']);
+            exit;
+        }
         $flash_msg  = 'CSRF VALIDATION FAILED. REFRESH AND TRY AGAIN.';
         $flash_type = 'error';
         $action     = '';
@@ -222,7 +234,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'stage_extract_chunk') {
             'detail' => "{$chunk_state['files_updated']} updated, {$chunk_state['files_skipped']} protected",
         ];
         unset($_SESSION['update_chunk_state']);
+        if ($wants_json) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'status'   => 'ok',
+                'stage'    => 'extract',
+                'done'     => true,
+                'progress' => 100,
+                'data'     => [
+                    'files_written'     => $chunk_state['files_updated'],
+                    'files_skipped'     => $chunk_state['files_skipped'],
+                    'protected_skipped' => $chunk_state['files_skipped'],
+                ],
+            ]);
+            exit;
+        }
         header('Location: smack-update.php');
+        exit;
+    }
+
+    if ($wants_json) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status'   => 'ok',
+            'stage'    => 'extract',
+            'done'     => false,
+            'progress' => $pct,
+            'data'     => [
+                'files_written' => $chunk_state['files_updated'],
+                'files_skipped' => $chunk_state['files_skipped'],
+                'total'         => $total,
+            ],
+        ]);
         exit;
     }
 
@@ -368,6 +411,29 @@ if ($action === 'check') {
         $flash_msg  = strtoupper(implode(' — ', $notifications));
         $flash_type = 'warning';
     }
+
+    if ($wants_json) {
+        header('Content-Type: application/json');
+        $up_to_date = ($core_status === 'up_to_date' && $skin_info['total_notifications'] === 0);
+        echo json_encode([
+            'status'  => ($core_status === 'error') ? 'error' : 'ok',
+            'stage'   => $up_to_date ? 'up_to_date' : 'review',
+            'message' => $flash_msg,
+            'data'    => [
+                'up_to_date'     => $up_to_date,
+                'version'        => $core_update['version']       ?? null,
+                'version_full'   => $core_update['version_full']  ?? null,
+                'codename'       => $core_update['codename']      ?? null,
+                'released'       => $core_update['released']      ?? null,
+                'changelog'      => $core_update['changelog']     ?? [],
+                'file_changes'   => $core_update['file_changes']  ?? [],
+                'schema_changes' => $core_update['schema_changes'] ?? false,
+                'download_size'  => $core_update['download_size'] ?? 0,
+                'csrf_token'     => $csrf,
+            ],
+        ]);
+        exit;
+    }
 }
 
 // ── STAGED UPDATE: CANCEL ─────────────────────────────────────────────────────
@@ -448,6 +514,11 @@ if ($action === 'stage_download' && !empty($_stage_download_update)) {
             if ($zip_path === false) {
                 $flash_msg  = "DOWNLOAD FAILED: {$dl_error}";
                 $flash_type = 'error';
+                if ($wants_json) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['status' => 'error', 'stage' => 'download', 'message' => $flash_msg]);
+                    exit;
+                }
             } else {
                 $size_mb = number_format(filesize($zip_path) / 1048576, 1);
                 $_SESSION['update_state'] = [
@@ -457,6 +528,16 @@ if ($action === 'stage_download' && !empty($_stage_download_update)) {
                     'log'      => [['label' => 'Package downloaded', 'status' => 'ok', 'detail' => "{$size_mb} MB"]],
                 ];
                 $stage_state = $_SESSION['update_state'];
+                if ($wants_json) {
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'status'  => 'ok',
+                        'stage'   => 'download',
+                        'message' => 'Package downloaded.',
+                        'data'    => ['bytes' => filesize($zip_path), 'filename' => basename($zip_path)],
+                    ]);
+                    exit;
+                }
             }
         }
     }
@@ -477,10 +558,25 @@ if ($action === 'stage_verify'
         @unlink($zip_path);
         unset($_SESSION['update_state']);
         $stage_state = null;
+        if ($wants_json) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'stage' => 'verify', 'message' => $flash_msg]);
+            exit;
+        }
     } else {
         $_SESSION['update_state']['stage'] = 'verified';
         $_SESSION['update_state']['log'][] = ['label' => 'Signature verified', 'status' => 'ok', 'detail' => 'SHA-256 + Ed25519 OK'];
         $stage_state = $_SESSION['update_state'];
+        if ($wants_json) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'status'  => 'ok',
+                'stage'   => 'verify',
+                'message' => 'Signature verified.',
+                'data'    => ['checksum_ok' => true, 'signature_ok' => true],
+            ]);
+            exit;
+        }
     }
 }
 
@@ -498,12 +594,27 @@ if ($action === 'stage_backup'
         @unlink($stage_state['zip_path'] ?? '');
         unset($_SESSION['update_state']);
         $stage_state = null;
+        if ($wants_json) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'stage' => 'backup', 'message' => $flash_msg]);
+            exit;
+        }
     } else {
         $_SESSION['update_state']['stage']       = 'backed_up';
         $_SESSION['update_state']['backup_file'] = $backup_file;
         $_SESSION['update_backup_file']          = $backup_file; // keep for rollback button
         $_SESSION['update_state']['log'][]       = ['label' => 'Backup created', 'status' => 'ok', 'detail' => basename($backup_file)];
         $stage_state = $_SESSION['update_state'];
+        if ($wants_json) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'status'  => 'ok',
+                'stage'   => 'backup',
+                'message' => 'Backup created.',
+                'data'    => ['backup_path' => basename($backup_file)],
+            ]);
+            exit;
+        }
     }
 }
 
@@ -526,6 +637,12 @@ if ($action === 'stage_extract'
         'errors'        => [],
         'total'         => 0,
     ];
+    if ($wants_json) {
+        // XHR path: don't redirect — JS will poll stage_extract_chunk itself
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'ok', 'stage' => 'extract', 'message' => 'Extraction initialised.', 'data' => ['polling' => true]]);
+        exit;
+    }
     header('Location: smack-update.php?action=stage_extract_chunk');
     exit;
 }
@@ -551,6 +668,16 @@ if ($action === 'stage_migrate'
         $flash_type = 'error';
         $_SESSION['update_state']['log'][] = ['label' => 'Migrations failed — rolled back', 'status' => 'fail', 'detail' => implode('; ', $migrate_result['errors'])];
         $stage_state = $_SESSION['update_state'];
+        if ($wants_json) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'status'  => 'error',
+                'stage'   => 'migrate',
+                'message' => $flash_msg,
+                'data'    => ['rollback_available' => false, 'rolled_back' => true],
+            ]);
+            exit;
+        }
     } else {
         $schema_detail = !empty($migrate_result['schema']['created'])
             ? 'Tables created: ' . implode(', ', $migrate_result['schema']['created'])
@@ -605,6 +732,22 @@ if ($action === 'stage_migrate'
         $flash_msg  = "UPDATE COMPLETE. NOW RUNNING v{$update['version']}.";
         $flash_type = 'success';
         $cached_result = null;
+
+        if ($wants_json) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'status'  => 'ok',
+                'stage'   => 'done',
+                'message' => $flash_msg,
+                'data'    => [
+                    'new_version'      => $update['version'],
+                    'new_version_full' => $update['version_full'] ?? "Alpha {$update['version']}",
+                    'migrations_run'   => count($migrate_result['applied'] ?? []),
+                    'migrations_skipped' => count($migrate_result['skipped'] ?? []),
+                ],
+            ]);
+            exit;
+        }
     }
 }
 
@@ -979,6 +1122,8 @@ if (!empty($_SESSION['update_complete_log'])) {
 $page_title = "System Updates";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
+// Signal the updater JS to auto-open when landing directly on this page
+echo '<script>window._snapUpdaterAutoOpen = true;</script>';
 ?>
 
 <style>

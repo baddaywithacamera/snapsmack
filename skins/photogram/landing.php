@@ -26,54 +26,71 @@ $count_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_images WHERE img_status =
 $count_stmt->execute([$now_local]);
 $post_count = (int)$count_stmt->fetchColumn();
 
-// Total likes across all published posts
-$like_total_stmt = $pdo->prepare("
-    SELECT COUNT(*) FROM snap_likes l
-    JOIN snap_images i ON i.id = l.post_id
-    WHERE i.img_status = 'published' AND i.img_date <= ?
-");
-$like_total_stmt->execute([$now_local]);
-$like_count = (int)$like_total_stmt->fetchColumn();
+// Community profile totals — guarded: tables may not exist on older installs
+$like_count    = 0;
+$comment_count = 0;
+try {
+    $like_total_stmt = $pdo->prepare("
+        SELECT COUNT(*) FROM snap_likes l
+        JOIN snap_images i ON i.id = l.post_id
+        WHERE i.img_status = 'published' AND i.img_date <= ?
+    ");
+    $like_total_stmt->execute([$now_local]);
+    $like_count = (int)$like_total_stmt->fetchColumn();
 
-// Total visible comments across all published posts
-$comment_total_stmt = $pdo->prepare("
-    SELECT COUNT(*) FROM snap_community_comments cc
-    JOIN snap_images i ON i.id = cc.post_id
-    WHERE cc.status = 'visible' AND i.img_status = 'published' AND i.img_date <= ?
-");
-$comment_total_stmt->execute([$now_local]);
-$comment_count = (int)$comment_total_stmt->fetchColumn();
+    $comment_total_stmt = $pdo->prepare("
+        SELECT COUNT(*) FROM snap_community_comments cc
+        JOIN snap_images i ON i.id = cc.post_id
+        WHERE cc.status = 'visible' AND i.img_status = 'published' AND i.img_date <= ?
+    ");
+    $comment_total_stmt->execute([$now_local]);
+    $comment_count = (int)$comment_total_stmt->fetchColumn();
+} catch (PDOException $e) {}
 
 // ── Fetch images for grid (paginated) ─────────────────────────────────────
 $per_page   = 30;
 $curr_page  = max(1, (int)($_GET['p'] ?? 1));
 $offset     = ($curr_page - 1) * $per_page;
 
+// Base query — no community joins so it always works regardless of schema state
 $grid_stmt = $pdo->prepare("
-    SELECT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_square,
-           COALESCE(c.comment_count, 0) AS comment_count,
-           COALESCE(lk.like_count, 0)   AS like_count
-    FROM snap_images i
-    LEFT JOIN (
-        SELECT post_id, COUNT(*) AS comment_count
-        FROM snap_community_comments
-        WHERE status = 'visible'
-        GROUP BY post_id
-    ) c ON c.post_id = i.id
-    LEFT JOIN (
-        SELECT post_id, COUNT(*) AS like_count
-        FROM snap_likes
-        GROUP BY post_id
-    ) lk ON lk.post_id = i.id
-    WHERE i.img_status = 'published' AND i.img_date <= ?
-    ORDER BY i.sort_order ASC, i.img_date DESC
+    SELECT id, img_title, img_slug, img_file, img_thumb_square
+    FROM snap_images
+    WHERE img_status = 'published' AND img_date <= ?
+    ORDER BY sort_order ASC, img_date DESC
     LIMIT ? OFFSET ?
 ");
 $grid_stmt->execute([$now_local, $per_page, $offset]);
 $grid_images = $grid_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$total_stmt = $count_stmt; // already ran
-$has_more   = ($offset + count($grid_images)) < $post_count;
+// Augment with per-image like/comment counts — guarded against missing tables
+$_pg_community = [];
+try {
+    if (!empty($grid_images)) {
+        $_pg_ids = array_column($grid_images, 'id');
+        $_pg_ph  = implode(',', array_fill(0, count($_pg_ids), '?'));
+
+        $_lk = $pdo->prepare("SELECT post_id, COUNT(*) AS cnt FROM snap_likes WHERE post_id IN ($_pg_ph) GROUP BY post_id");
+        $_lk->execute($_pg_ids);
+        foreach ($_lk->fetchAll(PDO::FETCH_ASSOC) as $_r) {
+            $_pg_community[$_r['post_id']]['like_count'] = (int)$_r['cnt'];
+        }
+
+        $_cc = $pdo->prepare("SELECT post_id, COUNT(*) AS cnt FROM snap_community_comments WHERE post_id IN ($_pg_ph) AND status = 'visible' GROUP BY post_id");
+        $_cc->execute($_pg_ids);
+        foreach ($_cc->fetchAll(PDO::FETCH_ASSOC) as $_r) {
+            $_pg_community[$_r['post_id']]['comment_count'] = (int)$_r['cnt'];
+        }
+    }
+} catch (PDOException $e) {}
+
+foreach ($grid_images as &$_gi) {
+    $_gi['like_count']    = $_pg_community[$_gi['id']]['like_count']    ?? 0;
+    $_gi['comment_count'] = $_pg_community[$_gi['id']]['comment_count'] ?? 0;
+}
+unset($_gi, $_pg_community, $_pg_ids, $_pg_ph, $_lk, $_cc, $_r);
+
+$has_more = ($offset + count($grid_images)) < $post_count;
 
 // ── Profile data from settings ────────────────────────────────────────────
 $site_title  = $settings['site_title']       ?? $site_name ?? 'Photogram';

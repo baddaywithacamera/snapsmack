@@ -168,7 +168,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                         <a href="smack-settings.php">Configuration</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-update.php') ? 'active' : ''; ?>">
-                        <a href="smack-update.php">System Updates</a>
+                        <a href="smack-update.php" onclick="if(typeof SnapUpdater!=='undefined'){event.preventDefault();SnapUpdater.open();}">System Updates</a>
                     </li>
                     <?php if ($_ui_pimpmobile): ?>
                     <li class="<?php echo ($current_page == 'smack-users.php') ? 'active' : ''; ?>">
