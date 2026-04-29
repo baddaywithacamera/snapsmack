@@ -98,3 +98,12 @@ nul
 # One-time emergency deploy tools — FTP and delete, never store in source
 snap-bootstrap.php
 tools/smackattack-scanner/__pycache__/
+tools/claude-commander/
+
+# Claude Commander (dev scaffold — will move to own repo)
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Powertools (Claude's w

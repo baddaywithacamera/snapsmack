@@ -268,7 +268,7 @@ if ($is_hub) {
         <button class="tab-btn btn-smack btn-settings" data-tab="semantic">SEMANTIC</button>
         <button class="tab-btn btn-smack btn-settings" data-tab="keywords">KEYWORDS</button>
         <button class="tab-btn btn-smack btn-settings" data-tab="add">ADD BAN</button>
-        <button class="tab-btn btn-smack btn-settings" data-tab="ip-shield">IP SHIELD</button>
+        <button class="tab-btn btn-smack btn-settings" data-tab="ip-smacker">IP SMACKER</button>
         <?php if ($is_hub): ?>
         <button class="tab-btn btn-smack btn-settings" data-tab="shared-bans">SHARED BANS <?php if ($shared_ban_count > 0): ?><span style="margin-left:4px; font-size:0.75em; opacity:0.6;">(<?php echo $shared_ban_count; ?>)</span><?php endif; ?></button>
         <?php endif; ?>
@@ -370,16 +370,16 @@ if ($is_hub) {
         </div>
     </div>
 
-    <!-- ── TAB: IP SHIELD — auto-ban list from brute-force detection ──────────── -->
-    <div class="tab-content" id="tab-ip-shield">
+    <!-- ── TAB: IP SMACKER — auto-ban list from brute-force detection ──────────── -->
+    <div class="tab-content" id="tab-ip-smacker">
         <div class="box">
-            <h3>IP Shield — Auto-Banned IPs</h3>
+            <h3>IP SMACKER — Auto-Banned IPs</h3>
             <p class="dim" style="margin-bottom:16px;">
                 IPs banned automatically by the login brute-force detector (5 failures in 10 minutes → 7-day ban).
                 UA-filtered requests are silently dropped and not listed here.
                 Lift a ban early if you blocked a legitimate user.
             </p>
-            <div id="ip-shield-list"><em style="opacity:0.5;">Loading…</em></div>
+            <div id="ip-smacker-list"><em style="opacity:0.5;">Loading…</em></div>
         </div>
     </div>
 
@@ -424,7 +424,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         if (tab === 'semantic') document.getElementById('semantic-fp').focus();
         if (tab === 'keywords') loadKeywords();
         if (tab === 'shared-bans') loadSharedBans(1);
-        if (tab === 'ip-shield') loadIpBans();
+        if (tab === 'ip-smacker') loadIpSmacker();
     });
 });
 
@@ -754,9 +754,9 @@ function removeSharedBan(banId) {
 }
 <?php endif; ?>
 
-// ── IP SHIELD ────────────────────────────────────────────────────────────────
-function loadIpBans() {
-    const el = document.getElementById('ip-shield-list');
+// ── IP SMACKER ────────────────────────────────────────────────────────────────
+function loadIpSmacker() {
+    const el = document.getElementById('ip-smacker-list');
     el.innerHTML = '<em style="opacity:0.5;">Loading…</em>';
     const fd = new FormData();
     fd.append('action', 'fetch_ip_bans');
@@ -797,7 +797,7 @@ function liftIpBan(ip) {
     fetch('smack-fingerprints.php', { method: 'POST', body: fd })
         .then(r => r.json())
         .then(data => {
-            if (data.ok) loadIpBans();
+            if (data.ok) loadIpSmacker();
             else alert('Error: ' + (data.error || 'Could not lift ban.'));
         });
 }
