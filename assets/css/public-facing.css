@@ -383,3 +383,17 @@ body.landing-only .tg-topbar { display: none; }
 }
 .archive-layout-toggle .alt-btn:hover   { opacity: 0.85; }
 .archive-layout-toggle .alt-btn--active { opacity: 1; }
+
+/* ── Image fade-load engine: initial state ───────────────────────────────────
+   Set opacity:0 via CSS so images start invisible before any JS runs.
+   Without this, the browser paints partially-decoded images before the
+   smack-image-fade-load engine sets opacity:0 at runtime, causing a visible
+   half-loaded flash. The engine JS handles transition to opacity:1 on load. */
+.post-image,
+.fsog-image,
+.pg-post-image,
+.tg-image,
+img[data-lightbox-src] {
+    opacity: 0;
+    transition: opacity 0.4s ease-in-out;
+}

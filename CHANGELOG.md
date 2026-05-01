@@ -4,6 +4,21 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.33 — "Perch" (2026-05-01)
+
+### Fixed
+- **Engine CSS moved to `<head>`** — All skin `skin-footer.php` files were outputting engine `<link>` stylesheet tags at the bottom of `<body>`. CSS in the body is invalid HTML and causes browsers to re-render mid-paint, producing visible layout jumps on every page load and page switch. Engine CSS is now output by `core/meta.php` in the `<head>` (reads the skin manifest and outputs only CSS links); engine JS remains in the footer for performance. All 12 skin footers updated.
+- **Image fade-in flash fixed** — `ss-engine-image-fade-load.js` was setting `opacity: 0` at runtime (end of body), creating a race condition where the browser partially painted images before the JS ran. Initial `opacity: 0` and `transition` now set in `public-facing.css` so images are invisible before first paint. JS handles only the transition to `opacity: 1` on load.
+
+---
+
+## 0.7.32 — "Perch" (2026-05-01)
+
+### Fixed
+- **Updater modal UI** — Multiple accumulated bugs: (1) admin theme's bare `button` rule (100% width, 52px height, 30px margin-top) was overriding all buttons inside the modal, turning the `×` close button into a full-width pink rectangle; (2) JS generated single-dash class names (`su-btn-primary`, `su-btn-secondary`, `su-btn-danger`) but CSS defined double-dash equivalents (`su-btn--primary` etc.) so button colours never applied; (3) `su-footer-btns` wrapper div had no CSS, causing CANCEL/APPLY buttons to stack vertically; (4) `su-uptodate-icon` class undefined in CSS (CSS had `su-big-icon`); (5) header `<span>` missing `su-title` class so title was unstyled. All fixed: admin theme isolation block added using ID specificity, missing classes added, class mismatches resolved.
+
+---
+
 ## 0.7.31 — "Perch" (2026-05-01)
 
 ### Fixed
