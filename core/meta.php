@@ -191,13 +191,32 @@ if (file_exists($inventory_path)) {
  * CSS LOAD ORDER (CRITICAL FOR CUSTOMIZATIONS)
  *   1. public-facing.css    — global resets and shared layout
  *   2. @font-face           — local font declarations
- *   3. style.css            — skin baseline styles (default appearance)
- *   4. dynamic compiled CSS — skin admin overrides (MUST WIN)
+ *   3. Engine CSS           — JS engine stylesheets (must be in <head>, not body)
+ *   4. style.css            — skin baseline styles (default appearance)
+ *   5. dynamic compiled CSS — skin admin overrides (MUST WIN)
  *
- * The dynamic CSS must load LAST so user customizations from the skin option
- * panel (fonts, sizes, colors, transforms) override the skin's hardcoded
- * style.css defaults. This is why the order is critical.
+ * Engine CSS is loaded here (head) so it's available before first paint.
+ * Engine JS stays in skin-footer.php (end of body) for performance.
+ * CSS in the body causes browsers to re-render mid-paint — always put it here.
  */
+
+// Load engine CSS for all scripts required by the active skin.
+// Mirrors the script loop in skin-footer.php but outputs only CSS links.
+if (!isset($skin_manifest_path)) {
+    $skin_manifest_path = dirname(__DIR__) . '/skins/' . ($active_skin ?? '50-shades-of-noah-grey') . '/manifest.php';
+}
+if (file_exists($skin_manifest_path)) {
+    $_skin_mf   = include $skin_manifest_path;
+    $_inventory = include __DIR__ . '/manifest-inventory.php';
+    foreach ($_skin_mf['require_scripts'] ?? [] as $_handle) {
+        if (!empty($_inventory['scripts'][$_handle]['css'])) {
+            echo '<link rel="stylesheet" href="' . BASE_URL
+                . $_inventory['scripts'][$_handle]['css']
+                . '?v=' . SNAPSMACK_VERSION_SHORT . '">' . "\n";
+        }
+    }
+    unset($_skin_mf, $_inventory, $_handle);
+}
 ?>
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>skins/<?php echo $active_skin ?? '50-shades-of-noah-grey'; ?>/style.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
