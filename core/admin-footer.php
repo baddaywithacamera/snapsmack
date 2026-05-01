@@ -23,9 +23,6 @@
     </div>
 </footer>
 
-<div id="snap-updater-modal"></div>
-
 <script src="assets/js/ss-engine-sidebar.js"></script>
-<script src="assets/js/ss-engine-updater.js"></script>
 </body>
 </html>

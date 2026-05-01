@@ -4,6 +4,15 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.34 — "Perch" (2026-05-01)
+
+### Fixed
+- **Removed updater modal** — `ss-engine-updater.js` and its modal were scope creep from a request that only needed a dismiss button on the update notification banner. The modal conflicted with the admin theme and added unnecessary complexity. Removed from `core/admin-footer.php` and `core/admin-header.php`. The `smack-update.php` page handles updates directly as it always did.
+- **Update banner: DISMISS button added** — Dashboard update notification now has a DISMISS link alongside VIEW UPDATES. Clicking it sets a session flag and hides the banner for the rest of the session without navigating away.
+- **Removed modal auto-open trigger** from `smack-update.php`.
+
+---
+
 ## 0.7.33 — "Perch" (2026-05-01)
 
 ### Fixed

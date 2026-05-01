@@ -1122,8 +1122,6 @@ if (!empty($_SESSION['update_complete_log'])) {
 $page_title = "System Updates";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
-// Signal the updater JS to auto-open when landing directly on this page
-echo '<script>window._snapUpdaterAutoOpen = true;</script>';
 ?>
 
 <style>
@@ -1204,6 +1202,9 @@ echo '<script>window._snapUpdaterAutoOpen = true;</script>';
     .migration-pending { opacity: 0.6; }
     .migration-ghost { color: #c74; }
     .recovery-actions { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; align-items: center; }
+    .update-action-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+    .update-action-row form { flex: 1; min-width: 180px; }
+    .update-action-row .btn-smack { margin-top: 0; width: 100%; }
 </style>
 
 <div class="main">
@@ -1235,22 +1236,24 @@ echo '<script>window._snapUpdaterAutoOpen = true;</script>';
             <span class="label">SIGNING:</span>
             <span class="value"><?php echo SNAPSMACK_SIGNING_ENFORCED ? 'ENFORCED' : 'ADVISORY (PLACEHOLDER KEY)'; ?></span>
         </div>
-        <form method="POST" class="mt-25">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <button type="submit" name="action" value="check" class="btn-smack">CHECK FOR UPDATES NOW</button>
-        </form>
-        <form method="POST" class="mt-10">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <button type="submit" name="action" value="reapply" class="btn-smack"
-                    onclick="return confirm('Reapply v<?php echo htmlspecialchars($installed_version); ?>? This will re-download and re-extract all files.\n\nUse this if a release was packaged incorrectly or files were missed.');"
-                    style="background:#666;">REAPPLY CURRENT VERSION</button>
-        </form>
-        <form method="POST" class="mt-10">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <button type="submit" name="action" value="reset_update_state" class="btn-smack btn-secondary"
-                    onclick="return confirm('Reset all update state and re-sync installed version from constants.php?');"
-                    style="font-size:0.75rem;opacity:0.6;">RESET UPDATE STATE</button>
-        </form>
+        <div class="update-action-row mt-25">
+            <form method="POST">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="check" class="btn-smack">CHECK FOR UPDATES NOW</button>
+            </form>
+            <form method="POST">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="reapply" class="btn-smack"
+                        onclick="return confirm('Reapply v<?php echo htmlspecialchars($installed_version); ?>? This will re-download and re-extract all files.\n\nUse this if a release was packaged incorrectly or files were missed.');"
+                        style="background:#666;">REAPPLY CURRENT VERSION</button>
+            </form>
+            <form method="POST">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="reset_update_state" class="btn-smack btn-secondary"
+                        onclick="return confirm('Reset all update state and re-sync installed version from constants.php?');"
+                        style="font-size:0.75rem;opacity:0.6;">RESET UPDATE STATE</button>
+            </form>
+        </div>
     </div>
 
     <!-- REPAIR SIGNING KEY PANEL — shown when a signature failure has just occurred -->
@@ -1659,120 +1662,4 @@ echo '<script>window._snapUpdaterAutoOpen = true;</script>';
 
         <?php if (!empty($upd['schema_changes'])): ?>
         <div class="update-warning mt-20">
-            THIS UPDATE INCLUDES DATABASE SCHEMA CHANGES. A full backup will be created before applying. Migrations will run automatically.
-        </div>
-        <?php endif; ?>
-
-        <?php if (!empty($upd['requires_php']) && version_compare(PHP_VERSION, $upd['requires_php'], '<')): ?>
-        <div class="update-warning mt-20">
-            THIS UPDATE REQUIRES PHP <?php echo htmlspecialchars($upd['requires_php']); ?>+.
-            You are running PHP <?php echo PHP_VERSION; ?>. Update your PHP installation first.
-        </div>
-        <?php else: ?>
-        <div class="confirm-box">
-            <p>Applying this update will:</p>
-            <ul class="changelog-list">
-                <li>Download the update package from snapsmack.ca</li>
-                <li>Verify the checksum and Ed25519 signature</li>
-                <li>Create a full backup of the current installation</li>
-                <li>Extract new files (protected paths are never overwritten)</li>
-                <?php if (!empty($upd['schema_changes'])): ?>
-                    <li>Run database schema migrations</li>
-                <?php endif; ?>
-                <li>Update the version number</li>
-            </ul>
-            <p class="dim text-sm" style="margin-bottom:15px;">
-                Each step runs as a separate request — no timeouts on slow connections.
-            </p>
-            <form method="POST">
-                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                <button type="submit" name="action" value="stage_download" class="btn-smack master-update-btn"
-                        onclick="return confirm('Begin update to v<?php echo htmlspecialchars($upd['version']); ?>?');">
-                    APPLY UPDATE → v<?php echo htmlspecialchars($upd['version']); ?>
-                </button>
-            </form>
-        </div>
-        <?php endif; ?>
-    </div>
-    <?php endif; ?>
-
-    <!-- MANUAL UPLOAD FALLBACK -->
-    <div class="box update-section">
-        <h3>MANUAL UPDATE (UPLOAD)</h3>
-        <p class="dim text-sm mb-15">
-            If this server cannot reach snapsmack.ca, download the update zip on your own machine and upload it here.
-            The same backup, verification, and extraction pipeline will run.
-        </p>
-        <form method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <div class="lens-input-wrapper">
-                <label>UPDATE PACKAGE (.zip)</label>
-                <input type="file" name="update_zip" accept=".zip" required style="padding: 8px;">
-            </div>
-            <button type="submit" name="action" value="upload_zip" class="btn-smack mt-15"
-                    onclick="return confirm('Apply update from uploaded zip? A backup will be created first.');">
-                UPLOAD &amp; APPLY
-            </button>
-        </form>
-    </div>
-
-    <!-- SKIN NOTIFICATIONS -->
-    <?php if (!empty($cached_result['new_skins']) || !empty($cached_result['updated_skins'])): ?>
-    <div class="box update-section">
-        <h3>SKIN REGISTRY</h3>
-        <?php if (!empty($cached_result['new_skins'])): ?>
-        <label>NEW SKINS AVAILABLE</label>
-        <?php foreach ($cached_result['new_skins'] as $skin): ?>
-            <div class="skin-notify-card skin-notify-new">
-                <div>
-                    <strong><?php echo htmlspecialchars($skin['name']); ?></strong>
-                    <?php if ($skin['description']): ?>
-                        <span class="dim ml-10"><?php echo htmlspecialchars($skin['description']); ?></span>
-                    <?php endif; ?>
-                </div>
-                <span class="skin-notify-version">v<?php echo htmlspecialchars($skin['version']); ?></span>
-            </div>
-        <?php endforeach; ?>
-        <?php endif; ?>
-        <?php if (!empty($cached_result['updated_skins'])): ?>
-        <label class="<?php echo !empty($cached_result['new_skins']) ? 'mt-25' : ''; ?>">SKIN UPDATES AVAILABLE</label>
-        <?php foreach ($cached_result['updated_skins'] as $skin): ?>
-            <div class="skin-notify-card skin-notify-update">
-                <div><strong><?php echo htmlspecialchars($skin['name']); ?></strong></div>
-                <span class="skin-notify-version">v<?php echo htmlspecialchars($skin['from']); ?> → v<?php echo htmlspecialchars($skin['to']); ?></span>
-            </div>
-        <?php endforeach; ?>
-        <?php endif; ?>
-        <a href="smack-skin.php?tab=gallery" class="btn-smack mt-25 btn-block">OPEN SKIN GALLERY</a>
-    </div>
-    <?php endif; ?>
-
-    <!-- CRON SETUP -->
-    <div class="box update-section">
-        <h3>AUTOMATED CHECKS</h3>
-        <?php if ($cron_supported): ?>
-            <label>VERSION CHECK JOB</label>
-            <div class="read-only-display"><?php echo $version_job_registered ? 'REGISTERED — RUNS EVERY 6 HOURS' : 'NOT REGISTERED'; ?></div>
-            <form method="POST" class="mt-25">
-                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                <div class="action-grid-dual">
-                    <button type="submit" name="action" value="cron_register" class="btn-smack" <?php echo $version_job_registered ? 'disabled' : ''; ?>>REGISTER VERSION CHECK</button>
-                    <button type="submit" name="action" value="cron_remove"   class="btn-smack" <?php echo !$version_job_registered ? 'disabled' : ''; ?>>REMOVE VERSION CHECK</button>
-                </div>
-            </form>
-            <p class="dim text-sm mt-15">Without cron, the dashboard falls back to a 24-hour on-load check.</p>
-        <?php else: ?>
-            <label>CRON ENGINE</label>
-            <div class="read-only-display">NOT SUPPORTED ON THIS HOST</div>
-            <p class="dim text-sm mt-10">The dashboard will fall back to checking every 24 hours on page load.</p>
-        <?php endif; ?>
-    </div>
-</div>
-
-<script>
-(function () {
-    var log = document.querySelector('.step-log');
-    if (log) { log.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-})();
-</script>
-<?php include 'core/admin-footer.php'; ?>
+            THIS
