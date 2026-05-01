@@ -4,6 +4,13 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.31 — "Perch" (2026-05-01)
+
+### Fixed
+- **FOUC / layout shift on every page load** — `core/meta.php` and all skin `skin-footer.php` / `skin-meta.php` files were using `time()` as the CSS/JS cache buster, which generates a unique URL on every request and completely defeats browser caching. Every page load forced a fresh download of the skin stylesheet, variant stylesheet, and all engine CSS/JS files, causing visible reflow and font swap. Changed to `SNAPSMACK_VERSION_SHORT` — assets are now cached across page loads and only re-fetched when a new version is deployed.
+
+---
+
 ## 0.7.30 — "Perch" (2026-05-01)
 
 ### Fixed

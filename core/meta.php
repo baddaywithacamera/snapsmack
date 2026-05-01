@@ -200,7 +200,7 @@ if (file_exists($inventory_path)) {
  */
 ?>
 
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>skins/<?php echo $active_skin ?? '50-shades-of-noah-grey'; ?>/style.css?v=<?php echo time(); ?>">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>skins/<?php echo $active_skin ?? '50-shades-of-noah-grey'; ?>/style.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 
 <?php
 /**
@@ -210,7 +210,7 @@ if (file_exists($inventory_path)) {
  * This ensures admin customizations in dynamic CSS always override variants.
  */
 if (!empty($skin_variant_url)): ?>
-<link rel="stylesheet" href="<?php echo $skin_variant_url; ?>?v=<?php echo time(); ?>">
+<link rel="stylesheet" href="<?php echo $skin_variant_url; ?>?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 <?php endif; ?>
 
 <?php if (!empty($settings['custom_css_public'])): ?>
