@@ -32,7 +32,7 @@ var SnapUpdater = (function () {
             '<div class="su-overlay" onclick="SnapUpdater._overlayClick()"></div>',
             '<div class="su-dialog">',
               '<div class="su-header">',
-                '<span>SNAPSMACK UPDATE</span>',
+                '<span class="su-title">SNAPSMACK UPDATE</span>',
                 '<button class="su-close" onclick="SnapUpdater.close()" aria-label="Close">&times;</button>',
               '</div>',
               '<div class="su-body">',

@@ -374,3 +374,69 @@
 }
 .su-btn--danger:hover { background: rgba(255,107,107,0.1); }
 .su-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Admin theme isolation ──────────────────────────────────────────────────
+   The admin theme's bare `button` rule sets width:100%, height:52px,
+   margin-top:30px. Override everything inside the updater modal so it
+   doesn't inherit those styles. ID selector wins without !important. */
+#snap-updater-modal button {
+    width: auto;
+    height: auto;
+    margin-top: 0;
+    display: inline-flex;
+    padding: 9px 22px;
+    background: transparent;
+}
+
+/* Close button — fully reset so admin theme can't touch it */
+#snap-updater-modal .su-close {
+    background: none;
+    border: none;
+    color: var(--text-muted, #666);
+    font-size: 1.4rem;
+    line-height: 1;
+    padding: 0 4px;
+    cursor: pointer;
+    transition: color 0.15s;
+    width: auto;
+    height: auto;
+    margin-top: 0;
+}
+#snap-updater-modal .su-close:hover { color: var(--text, #d0d0d0); }
+
+/* ── Missing classes (JS uses single-dash; CSS had double-dash) ── */
+.su-btn-primary {
+    background: var(--accent, #a0ff90);
+    color: #0e0e0e;
+    border: none;
+}
+.su-btn-primary:hover { background: #c0ffb0; }
+.su-btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border, #444);
+    color: var(--text-muted, #888);
+}
+.su-btn-secondary:hover { border-color: var(--text-muted, #666); color: var(--text, #ccc); }
+.su-btn-danger {
+    background: transparent;
+    border: 1px solid #ff6b6b;
+    color: #ff6b6b;
+}
+.su-btn-danger:hover { background: rgba(255,107,107,0.1); }
+
+/* ── Footer button row (missing entirely from original CSS) ── */
+.su-footer-btns {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 24px;
+    flex-wrap: wrap;
+}
+
+/* ── Up-to-date checkmark icon (JS uses su-uptodate-icon, not su-big-icon) ── */
+.su-uptodate-icon {
+    font-size: 2.5rem;
+    text-align: center;
+    margin: 10px 0 16px;
+    color: var(--accent, #a0ff90);
+}
