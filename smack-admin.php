@@ -302,7 +302,15 @@ include 'core/sidebar.php';
     </div>
     <?php endif; ?>
 
-    <?php if ($_update_total > 0): ?>
+    <?php
+    // Dismiss handler — sets a session flag to hide the banner for this session
+    if (isset($_GET['dismiss_update_notice'])) {
+        $_SESSION['update_notice_dismissed'] = true;
+        header('Location: smack-admin.php');
+        exit;
+    }
+    ?>
+    <?php if ($_update_total > 0 && empty($_SESSION['update_notice_dismissed'])): ?>
     <div class="alert-update">
         <div>
             <?php
@@ -317,7 +325,10 @@ include 'core/sidebar.php';
             echo strtoupper(implode(' — ', $_notices));
             ?>
         </div>
-        <a href="smack-update.php" class="btn-smack" onclick="event.preventDefault(); SnapUpdater.open();">VIEW UPDATES</a>
+        <div style="display:flex; gap:12px; align-items:center;">
+            <a href="smack-update.php" class="btn-smack" style="margin-top:0;">VIEW UPDATES</a>
+            <a href="smack-admin.php?dismiss_update_notice=1" class="btn-smack-ghost" style="margin-top:0; white-space:nowrap;">DISMISS</a>
+        </div>
     </div>
     <?php endif; ?>
 
