@@ -20,5 +20,5 @@ $skin_slug    = $settings['active_skin'] ?? 'new-horizon';
 $variant_url  = BASE_URL . 'skins/' . $skin_slug . '/variant-' . $active_variant . '.css';
 $skin_css_url = BASE_URL . 'skins/' . $skin_slug . '/style.css';
 ?>
-<link rel="stylesheet" href="<?php echo $variant_url; ?>?v=<?php echo time(); ?>">
-<link rel="stylesheet" href="<?php echo $skin_css_url; ?>?v=<?php echo time(); ?>">
+<link rel="stylesheet" href="<?php echo $variant_url; ?>?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<link rel="stylesheet" href="<?php echo $skin_css_url; ?>?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">

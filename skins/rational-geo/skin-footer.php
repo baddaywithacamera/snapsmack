@@ -16,9 +16,9 @@ if (!empty($requested)) {
             if (isset($inventory['scripts'][$handle])) {
                 $script = $inventory['scripts'][$handle];
                 if (!empty($script['css'])) {
-                    echo '<link rel="stylesheet" href="' . BASE_URL . $script['css'] . '?v=' . time() . '">' . "\n";
+                    echo '<link rel="stylesheet" href="' . BASE_URL . $script['css'] . '?v=' . SNAPSMACK_VERSION_SHORT . '">' . "\n";
                 }
-                echo '<script src="' . BASE_URL . $script['path'] . '?v=' . time() . '"></script>' . "\n";
+                echo '<script src="' . BASE_URL . $script['path'] . '?v=' . SNAPSMACK_VERSION_SHORT . '"></script>' . "\n";
             }
         }
     }

@@ -17,4 +17,4 @@ if (!in_array($active_variant, $allowed_variants)) {
 }
 $variant_url = BASE_URL . 'skins/' . ($settings['active_skin'] ?? 'impact-printer') . '/variant-' . $active_variant . '.css';
 ?>
-<link rel="stylesheet" href="<?php echo $variant_url; ?>?v=<?php echo time(); ?>">
+<link rel="stylesheet" href="<?php echo $variant_url; ?>?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
