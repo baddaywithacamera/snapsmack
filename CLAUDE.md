@@ -196,68 +196,35 @@ git commit
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.29 "Lock-Off"
-✅ **0.7.29 committed and tagged on Github (master branch).** Pending git hygiene commit below.
+### SnapSmack — Alpha 0.7.34 "Perch"
+✅ **0.7.34 committed and tagged on Github (master branch).**
 
 **Git branch is `master` not `main`** (confirmed 2026-04-29).
 
-**Pending git hygiene commit (run from local):**
-```bash
-cd /c/dev/snapsmack
-git add .gitignore smack-fingerprints.php smack-help.php \
-  secaudits/2026-04-29-F-snapsmack-security-audit.pdf \
-  _spec/claude-commander-spec-v0_2.docx _spec/claude-commander-spec-v0_3.docx
-git commit -m "Post-0.7.29: IP SMACKER rename, Audit F, Commander spec v0.3, gitignore cleanup"
-git push Github master
-```
-(No version bump — housekeeping only. No tag move needed.)
+**Changes this session (0.7.30–0.7.34, all pushed):**
 
-**Changes in 0.7.29 session (already pushed):**
-- **`snap-in.php`** — Reconstructed (was truncated). Three-layer login hardening: UA filter, IP ban gate, brute-force auto-ban. Duplicate CSS link removed.
-- **`assets/css/admin-theme-geometry-master.css`** — field-tip tooltip CSS + login page CSS.
-- **`migrations/045_login_protection.php`** (NEW) — Creates `snap_ip_bans` table.
-- **`database/schema/snapsmack_canonical.sql`** — `snap_ip_bans` table added.
-- **`smack-fingerprints.php`** — IP SMACKER tab (renamed from IP Shield): `fetch_ip_bans` + `lift_ip_ban` AJAX handlers, JS.
-- **`smack-help.php`** — `ip_shield` / IP SMACKER help topic added.
-- **20 admin pages** — All `class="dim"` field descriptions → `class="field-tip"` hover tooltips.
-- **`smack-2fa-verify.php`** — Truncation fix.
-- **`tools/smackattack-scanner/`** (NEW) — GOBSMACKED Scanner v0.1.0.
-- **`assets/js/smack-passphrase.js`**, **`ss-engine-updater.js`**, **`ss-engine-updater.css`** (NEW).
-- **`projects/snapsmack-ca/wotcha.html`** — Two new articles.
-- **`projects/snapsmack-ca/index.html`** — 8 security layers, SMACKATTACK own card, IP SMACKER card.
-- **`CHANGELOG.md`**, **`core/constants.php`**, **`smack-central/sc-version.php`** — Bumped to 0.7.29.
-- **`secaudits/2026-04-29-E-snapsmack-security-audit.pdf`** — Audit E.
+**0.7.30** — `parseMosaics()` fatal fix + keyboard shortcut fix
+- **`core/parser.php`** — `parseMosaics()` stub method confirmed present (live server had stale file — fixed via updater)
+- **`skins/50-shades-of-noah-grey/manifest.php`** — `smack-keyboard` added to `require_scripts` so F1/1/2 shortcuts fire on photo and static page views (was archive-only)
 
-**Changes this session (post-0.7.29 housekeeping):**
-- **`smack-fingerprints.php`** + **`smack-help.php`** — IP Shield → IP SMACKER rename throughout.
-- **`projects/snapsmack-ca/index.html`** — SMACKATTACK own card (Layer 4), IP SMACKER (Layer 7), 8 layers total.
-- **`_spec/claude-commander-spec-v0_2.docx`** — Section 18 added (Co-Work effectiveness, 7 items from Claude's experience).
-- **`_spec/claude-commander-spec-v0_3.docx`** — Section 19 added (cross-project intelligence, bridging, machine summaries).
-- **`tools/claude-commander/`** (NEW, gitignored) — Python sidecar scaffold: swapfile.py, project_registry.py, git_ops.py, remote_ops.py, action_executor.py, main.py. Full working backend.
-- **`_claudepowertools/`** (NEW, gitignored) — context.index, session.state, snapsmack-project-summary.md.
-- **`secaudits/2026-04-29-F-snapsmack-security-audit.pdf`** — Audit F: post-release verification, IP SMACKER rename, inline debt audit, Commander scaffold review.
-- **`.gitignore`** — claude-commander, __pycache__, _claudepowertools added.
+**0.7.31** — FOUC fix: replace `time()` cache busters with version string
+- **`core/meta.php`** — `?v=<?php echo time(); ?>` → `?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>` for skin CSS
+- **`skins/*/skin-meta.php`** (multiple) — same `time()` → version string fix
+- **`skins/*/skin-footer.php`** (12 files) — removed engine CSS `<link>` output; skins now output JS only
+- **`core/meta.php`** — added engine CSS loading block in `<head>` (reads skin manifest + inventory, outputs `<link>` for each script that has a CSS file)
 
-✅ 0.7.27 and 0.7.28 pushed and tagged on Github.
+**0.7.32** — Image fade race condition fix
+- **`assets/css/public-facing.css`** — added `opacity: 0; transition: opacity 0.4s ease-in-out` for `.post-image`, `.fsog-image`, `.pg-post-image`, `.tg-image`, `img[data-lightbox-src]` so images are hidden before JS loads
 
-**Changes previous session (0.7.27/0.7.28):**
-- **`assets/js/ss-engine-updater.js`** (NEW) — XHR-driven update modal. State machine: IDLE → CHECKING → REVIEW → APPLYING → SUCCESS/ERROR. Five-stage progress bar, changelog + file change rendering, extract chunk polling (1.5s interval), rollback button on failure. Exposes `SnapUpdater.open()` globally.
-- **`assets/css/ss-engine-updater.css`** (NEW) — Modal styling with stage dots, extract progress bar, log items, error panel.
-- **`assets/js/smack-passphrase.js`** (NEW) — Six-word passphrase generator. `snapSuggestPassphrase(inputId, displayId)` fills field and/or display span.
-- **`smack-update.php`** — `$wants_json` detection; JSON output paths on all stage handlers (`check`, `stage_download`, `stage_verify`, `stage_backup`, `stage_extract` init + chunk, `stage_migrate`). HTML path unchanged. Sets `window._snapUpdaterAutoOpen = true` for direct page visits.
-- **`core/admin-header.php`** — `ss-engine-updater.css` link added.
-- **`core/admin-footer.php`** — Modal container div + `ss-engine-updater.js` script tag added.
-- **`smack-admin.php`** — Update banner "VIEW UPDATES" calls `SnapUpdater.open()` instead of navigating.
-- **`core/sidebar.php`** — System Updates link calls `SnapUpdater.open()` if JS available.
-- **`smack-help.php`** — `updater_modal` help topic added.
-- **`snap-in.php`** (NEW — replaces `login.php`) — Direct `.php` URL returns 403. Named route `/snap-in` serves login. Token recovery path: `?key=TOKEN` redirects to configured login slug. Passphrase nudge UI in password panel.
-- **`smack-change-password.php`** — Passphrase generator section added.
-- **`core/auth.php`**, **`logout.php`**, **`smack-2fa-verify.php`** — All `login.php` references → `snap-in.php`.
-- **`migrations/044_login_slug.php`** (NEW) — Seeds `login_slug = snap-in` and `login_recovery_key = ''` in `snap_settings`.
-- **`smack-central/sc-config.php`** — Recreated with real credentials (gitignored).
-- **`install.php`** — `db.php` chmod `0640` → `0644`; `snap_users` CREATE TABLE now includes all 5 migration columns; `?action=patch_schema` handler added.
-- **`CHANGELOG.md`** — 0.7.27 and 0.7.28 entries added.
-- **`core/constants.php`** + **`smack-central/sc-version.php`** — Version bumped to 0.7.28 "Lock-Off".
+**0.7.33** — Updater modal UI fixes (CSS/JS class mismatches, admin theme bleed)
+- **`assets/css/ss-engine-updater.css`** — `#snap-updater-modal button` override block (admin theme isolation); added `.su-footer-btns`, `.su-uptodate-icon`, single-dash `.su-btn-primary` / `.su-btn-secondary` classes that JS actually generates
+- **`assets/js/ss-engine-updater.js`** — added `su-title` class to modal header span
+
+**0.7.34** — Remove updater modal; add DISMISS to update banner
+- **`core/admin-footer.php`** — removed `<div id="snap-updater-modal">` and `ss-engine-updater.js` script tag
+- **`core/admin-header.php`** — removed `ss-engine-updater.css` link
+- **`smack-admin.php`** — VIEW UPDATES → plain link to `smack-update.php`; DISMISS link added with `$_SESSION['update_notice_dismissed']` session suppression
+- **`smack-update.php`** — removed `window._snapUpdaterAutoOpen = true` auto-open trigger
 
 **Previous changes (0.7.26 — Cloudflare HTTPS + packager fixes):**
 - **`core/constants.php`** — `snap_is_https()` helper added; checks `$_SERVER['HTTPS']`, `HTTP_X_FORWARDED_PROTO`, `HTTP_X_FORWARDED_SSL`
@@ -347,16 +314,14 @@ git push Github master
   - `smack-central/sc-layout-top.php` — skull emoji removed from nav
 
 **Pending — live sites:**
-- FTP `smack-central/sc-release.php` to snapsmack.ca (restored — truncation fix)
-- FTP `setup.php` to snapsmack.ca (restored — truncation fix)
-- Hard refresh Release Packager after FTP — verify changelog auto-fill fires (XHR to `sc-release.php?action=fetch_changelog&tag=v0.7.26` should appear in Network tab)
-- Rebuild 0.7.26 release package from Smack Central (bakes in Cloudflare HTTPS fix, hardened exclude list, galleria+rational-geo in base)
-- FTP skins to strathmore.pics: `skins/50-shades-of-noah-grey/`, `skins/new-horizon/`, `skins/galleria/`, `skins/rational-geo/` (fresh install has no skins — packager had them excluded, now fixed for future builds)
+- Build 0.7.34 release package from Smack Central
+- Update all live sites to 0.7.34 via Smack Central update system
+- FTP `smack-central/sc-release.php` + `setup.php` to snapsmack.ca if not done (truncation fix from 0.7.26 era)
+- FTP skins to strathmore.pics: `skins/50-shades-of-noah-grey/`, `skins/new-horizon/`, `skins/galleria/`, `skins/rational-geo/` (fresh install has no skins)
 - Complete strathmore.pics install: delete duplicate snap_user 'sean' then re-run step 5
-- Update all live sites to 0.7.26 via Smack Central update system
 - `projects/snapsmack-ca/` files still need manual FTP to snapsmack.ca server (untracked, not in release package)
 
-**Pending DB on live squir871_enemy (run via phpMyAdmin):**
+**Pending DB on live squir871_enemy (use migration runner, not phpMyAdmin):**
 - Apply remaining enemy schema: `coordination_cluster_id` column + `idx_cluster` index on `ste_reports`
 - Create `ste_style_vectors` table (full DDL in `smack-central/schemas/sc-enemy-canonical.sql`)
 
