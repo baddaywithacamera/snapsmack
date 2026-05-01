@@ -4,6 +4,14 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.30 — "Perch" (2026-05-01)
+
+### Fixed
+- **`core/parser.php` — `parseMosaics()` fatal error** — Method was called at line 100 but missing from the live server's copy of the file, causing a fatal error on all pages that parse post content (single photo view, static pages). Method stub is now present and passes content through unchanged pending full mosaic implementation.
+- **`skins/50-shades-of-noah-grey` — keyboard shortcuts missing on photo/page views** — `smack-keyboard` was not listed in the skin's `require_scripts`, so F1 (help menu), `1` (toggle info), and `2` (toggle comments) only worked on archive (where the justified engine loads the comms script as a side effect). Added to manifest; shortcuts now load on all page types.
+
+---
+
 ## 0.7.29 — "Lock-Off" (2026-04-29)
 
 ### Added
