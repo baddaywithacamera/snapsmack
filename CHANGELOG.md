@@ -4,6 +4,13 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.35 — "Perch" (2026-05-01)
+
+### Fixed
+- **`core/release-pubkey.php` missing** — `core/updater.php` hard-required this file, which was never committed to the repo or included in release packages. Any server that received the 0.7.27–0.7.34 updater code via an in-admin update would immediately 500 on `smack-update.php` after the update completed, because the new `updater.php` requires a file that was never deployed. Added `core/release-pubkey.php` with a placeholder all-zeros key (disables Ed25519 signature verification, falls back to SHA-256 checksum only). Made the `require_once` in `updater.php` defensive so a missing file no longer fatals.
+
+---
+
 ## 0.7.34 — "Perch" (2026-05-01)
 
 ### Fixed

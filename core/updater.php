@@ -19,7 +19,15 @@
  * - Rollback restores from the pre-update backup on failure
  */
 
-require_once __DIR__ . '/release-pubkey.php';
+// release-pubkey.php holds the Ed25519 public key for verifying release packages.
+// The placeholder (all-zeros key) disables signature verification, falling back
+// to SHA-256 checksum only. The file is protected from overwrites by the updater.
+if (file_exists(__DIR__ . '/release-pubkey.php')) {
+    require_once __DIR__ . '/release-pubkey.php';
+}
+if (!defined('SNAPSMACK_RELEASE_PUBKEY')) {
+    define('SNAPSMACK_RELEASE_PUBKEY', str_repeat('0', 64));
+}
 
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
 

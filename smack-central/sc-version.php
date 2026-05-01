@@ -7,5 +7,5 @@
  * to determine whether an update is available.
  */
 
-define('SC_VERSION',  '0.7.34');
+define('SC_VERSION',  '0.7.35');
 define('SC_CODENAME', 'Perch');
