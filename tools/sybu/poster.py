@@ -79,71 +79,33 @@ class SiteData:
 
 class SnapSmackClient:
 
-    def __init__(self, base_url: str):
-        self.base_url  = base_url.rstrip('/')
-        self.session   = requests.Session()
-        self.session.headers.update({'User-Agent': 'ft-batch-poster/1.0'})
-        self._logged_in = False
-        self._username: str = ''
-        self._password: str = ''
+    def __init__(self, base_url: str, api_key: str = ''):
+        self.base_url = base_url.rstrip('/')
+        self.session  = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'SYBU/1.0',
+            'X-Snap-Key': api_key,
+        })
+        self._api_key = api_key
 
-    def login(self, username: str, password: str) -> None:
-        url  = f"{self.base_url}/snap-in"
-        resp = self.session.post(
-            url,
-            data={'username': username, 'password': password},
+    def verify(self) -> None:
+        """
+        Verify the API key by hitting sybu-data.php.
+        Raises RuntimeError if the key is rejected or the server is unreachable.
+        """
+        resp = self.session.get(
+            f"{self.base_url}/sybu-data.php",
             timeout=15,
-            allow_redirects=True,
         )
+        if resp.status_code == 401:
+            raise RuntimeError("Invalid API key — check Settings and regenerate if needed.")
+        if resp.status_code == 403:
+            raise RuntimeError("Access denied (403). Check server configuration.")
         resp.raise_for_status()
-        if 'snap-in' in resp.url or 'login' in resp.url:
-            raise RuntimeError("Login failed — check your username and password.")
-        self._logged_in = True
-        self._username  = username
-        self._password  = password
-
-    def is_session_alive(self) -> bool:
-        """
-        Lightweight check: hit an authenticated page and see if we get
-        redirected back to the login page. Returns True if session is still valid.
-        """
-        if not self._logged_in:
-            return False
-        try:
-            resp = self.session.get(
-                f"{self.base_url}/smack-admin.php",
-                timeout=10,
-                allow_redirects=True,
-            )
-            return 'snap-in' not in resp.url and 'login' not in resp.url
-        except Exception:
-            return False
-
-    def relogin(self) -> bool:
-        """
-        Re-authenticate using stored credentials.  Called automatically by
-        keepalive() when the PHP session has expired mid-batch.
-        Returns True if the re-login succeeded, False otherwise.
-        """
-        if not self._username or not self._password:
-            return False
-        try:
-            self.login(self._username, self._password)
-            return True
-        except Exception:
-            return False
 
     def keepalive(self) -> bool:
-        """
-        Keep the PHP session alive during long-running operations.
-        Hits smack-admin.php to extend the session.  If the session has
-        already expired, automatically re-logs in with stored credentials.
-        Returns True if the session is alive (or was successfully renewed).
-        """
-        if self.is_session_alive():
-            return True
-        # Session has expired — attempt silent re-login
-        return self.relogin()
+        """No-op — API key auth has no session to keep alive. Always returns True."""
+        return True
 
     # ------------------------------------------------------------------
     # Audit / Repair API (smack-audit.php)

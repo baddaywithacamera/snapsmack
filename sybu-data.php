@@ -11,7 +11,7 @@
  * Response: application/json
  */
 
-require_once 'core/auth.php';
+require_once 'core/api-auth.php';
 
 header('Content-Type: application/json; charset=utf-8');
 

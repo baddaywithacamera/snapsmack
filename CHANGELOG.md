@@ -4,6 +4,16 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.36 — "Perch" (2026-05-01)
+
+### Added
+- **Tool API key authentication** (`core/api-auth.php`) — Companion tools (SYBU, etc.) can now authenticate with a 64-char hex key sent as the `X-Snap-Key` request header instead of maintaining a login session. Dual-auth: endpoints accept either a valid API key or a browser session cookie, so admin UI access is unchanged.
+- **API Access settings UI** — Admin → Settings → API Access section: generate, copy, regenerate, and revoke the tool API key.
+- **Migration 046** — Seeds `tool_api_key` (empty) into `snap_settings`.
+- **`smack-audit.php`, `smack-backfill.php`, `sybu-data.php`, `smack-post-solo.php`** — Switched from `core/auth.php` to `core/api-auth.php` for dual auth support.
+
+---
+
 ## 0.7.35 — "Perch" (2026-05-01)
 
 ### Fixed

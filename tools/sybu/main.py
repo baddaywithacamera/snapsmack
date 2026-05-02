@@ -5,7 +5,7 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
-BUILD_VERSION = "0.7.9d"   # bump this on every rebuild
+BUILD_VERSION = "0.7.9e"   # bump this on every rebuild
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
@@ -1212,23 +1212,15 @@ class App(tk.Tk):
         cols.columnconfigure(1, weight=1)
 
         # ── Box: CONNECTION ───────────────────────────────────────────
-        self._url_var  = tk.StringVar()
-        self._user_var = tk.StringVar()
-        self._pass_var = tk.StringVar()
-        self._rem_var  = tk.BooleanVar()
+        self._url_var     = tk.StringVar()
+        self._api_key_var = tk.StringVar()
 
         conn_box  = self._box(cols, "CONNECTION")
         conn_box.grid(row=0, column=0, sticky="nsew", padx=(0, 7))
         conn_body = self._box_body(conn_box)
 
         self._field(conn_body, "SITE URL", self._url_var)
-
-        cred_cols = tk.Frame(conn_body, bg=BG_CARD)
-        cred_cols.pack(fill="x", pady=(0, 8))
-        cred_cols.columnconfigure(0, weight=1)
-        cred_cols.columnconfigure(1, weight=1)
-        self._field_in(cred_cols, "USERNAME",  self._user_var, row=0, col=0, padx=(0, 6))
-        self._field_in(cred_cols, "PASSWORD",  self._pass_var, row=0, col=1, show="•")
+        self._field(conn_body, "API KEY",  self._api_key_var, show="•")
 
         btn_row = tk.Frame(conn_body, bg=BG_CARD)
         btn_row.pack(fill="x")
@@ -2210,20 +2202,10 @@ class App(tk.Tk):
 
         # CONNECTION
         self._sp_url_var  = tk.StringVar()
-        self._sp_user_var = tk.StringVar()
-        self._sp_pass_var = tk.StringVar()
+        self._sp_api_key_var = tk.StringVar()
         conn_body = _sbox("CONNECTION")
         _sfield(conn_body, "SITE URL", self._sp_url_var)
-        cred_row = tk.Frame(conn_body, bg=BG_CARD)
-        cred_row.pack(fill="x")
-        cred_row.columnconfigure(0, weight=1)
-        cred_row.columnconfigure(1, weight=1)
-        lf = tk.Frame(cred_row, bg=BG_CARD)
-        lf.grid(row=0, column=0, sticky="ew", padx=(0, 6))
-        _sfield(lf, "USERNAME", self._sp_user_var)
-        rf = tk.Frame(cred_row, bg=BG_CARD)
-        rf.grid(row=0, column=1, sticky="ew")
-        _sfield(rf, "PASSWORD", self._sp_pass_var, show="•")
+        _sfield(conn_body, "API KEY",  self._sp_api_key_var, show="•")
 
         # Test connection button + result label (inside CONNECTION box)
         test_row = tk.Frame(conn_body, bg=BG_CARD)
@@ -2329,8 +2311,7 @@ class App(tk.Tk):
             return
         self._sp_name_var.set(p.get('name', ''))
         self._sp_url_var.set(p.get('url', ''))
-        self._sp_user_var.set(p.get('username', ''))
-        self._sp_pass_var.set(p.get('password', ''))
+        self._sp_api_key_var.set(p.get('api_key', ''))
         self._sp_creds_var.set(p.get('google_credentials', ''))
         self._sp_folder_var.set(p.get('drive_folder_id', ''))
         self._sp_gemini_var.set(p.get('gemini_api_key', ''))
@@ -2376,8 +2357,7 @@ class App(tk.Tk):
         profile_manager.save_profile({
             'name':                name,
             'url':                 self._sp_url_var.get().strip(),
-            'username':            self._sp_user_var.get().strip(),
-            'password':            self._sp_pass_var.get(),
+            'api_key':             self._sp_api_key_var.get().strip(),
             'google_credentials':  self._sp_creds_var.get().strip(),
             'drive_folder_id':     self._sp_folder_var.get().strip(),
             'drive_enabled':       True,
@@ -2416,8 +2396,7 @@ class App(tk.Tk):
 
         # Populate POST tab config vars
         self._url_var.set(p.get('url', ''))
-        self._user_var.set(p.get('username', ''))
-        self._pass_var.set(p.get('password', ''))
+        self._api_key_var.set(p.get('api_key', ''))
         self._goog_creds_var.set(p.get('google_credentials', ''))
         self._drive_folder_var.set(p.get('drive_folder_id', ''))
         self._gemini_key_var.set(p.get('gemini_api_key', ''))
@@ -2439,16 +2418,15 @@ class App(tk.Tk):
 
     def _on_sp_test_connection(self):
         """
-        Test login using the URL / username / password currently in the
+        Test connection using the URL / API key currently in the
         Settings form fields (no save required).  Runs in a background thread
         so the UI stays responsive.
         """
-        url  = self._sp_url_var.get().strip()
-        user = self._sp_user_var.get().strip()
-        pw   = self._sp_pass_var.get()
+        url = self._sp_url_var.get().strip()
+        key = self._sp_api_key_var.get().strip()
 
-        if not url or not user:
-            self._sp_test_lbl.configure(text="Enter URL and username first.", fg=FG_WARN)
+        if not url or not key:
+            self._sp_test_lbl.configure(text="Enter URL and API Key first.", fg=FG_WARN)
             return
 
         self._sp_test_btn.configure(state="disabled")
@@ -2457,8 +2435,8 @@ class App(tk.Tk):
         def _worker():
             try:
                 from poster import SnapSmackClient
-                client = SnapSmackClient(url)
-                client.login(user, pw)
+                client = SnapSmackClient(url, api_key=key)
+                client.verify()
                 self.after(0, lambda: self._sp_test_lbl.configure(
                     text="✓  Connected successfully", fg=FG_OK))
             except Exception as exc:
@@ -3138,8 +3116,7 @@ class App(tk.Tk):
     def _load_config_to_ui(self):
         c = self._config
         self._url_var.set(c.get('url', ''))
-        self._user_var.set(c.get('username', ''))
-        self._pass_var.set(c.get('password', ''))
+        self._api_key_var.set(c.get('api_key', ''))
         self._rem_var.set(c.get('remember', False))
         self._def_cat_var.set(c.get('default_category', ''))
         self._def_alb_var.set(c.get('default_album', ''))
@@ -3208,15 +3185,14 @@ class App(tk.Tk):
 
         # ── Site ──────────────────────────────────────────────────────
         url      = c.get('url', '').strip()
-        username = c.get('username', '').strip()
-        password = c.get('password', '')
-        if url and username and password:
+        api_key = c.get('api_key', '').strip()
+        if url and api_key:
             self._conn_dot.configure(fg=LED_WARN)
             self._conn_lbl.configure(text="CONNECTING...", fg=LED_WARN)
             def _site_thread():
                 try:
-                    client = SnapSmackClient(url)
-                    client.login(username, password)
+                    client = SnapSmackClient(url, api_key=api_key)
+                    client.verify()
                     site_data = client.fetch_site_data()
                     self._client    = client
                     self._site_data = site_data
@@ -3231,8 +3207,7 @@ class App(tk.Tk):
                         self._entry_list.update_combos(cats, albums)
                         self._def_cat_cb['values'] = [''] + cats
                         self._def_alb_cb['values'] = [''] + albums
-                        self._start_session_timer()
-                        self._start_keepalive()
+
                         self._save_config()
                     self.after(0, _done)
                 except Exception:
@@ -3244,8 +3219,7 @@ class App(tk.Tk):
     def _save_config(self):
         cfg_module.save({
             'url':                self._url_var.get().strip(),
-            'username':           self._user_var.get().strip(),
-            'password':           self._pass_var.get(),
+            'api_key':            self._api_key_var.get().strip(),
             'remember':           self._rem_var.get(),
             'default_category':    self._def_cat_var.get().strip(),
             'default_album':       self._def_alb_var.get().strip(),
@@ -3361,12 +3335,11 @@ class App(tk.Tk):
     # ------------------------------------------------------------------
 
     def _on_connect(self):
-        url  = self._url_var.get().strip()
-        user = self._user_var.get().strip()
-        pw   = self._pass_var.get()
+        url = self._url_var.get().strip()
+        key = self._api_key_var.get().strip()
 
-        if not url or not user or not pw:
-            messagebox.showerror("Missing credentials", "Fill in Site URL, Username, and Password.")
+        if not url or not key:
+            messagebox.showerror("Missing credentials", "Fill in Site URL and API Key.")
             return
 
         self._set_status("Connecting…", FG_WARN)
@@ -3375,8 +3348,8 @@ class App(tk.Tk):
         self.update_idletasks()
 
         try:
-            client    = SnapSmackClient(url)
-            client.login(user, pw)
+            client    = SnapSmackClient(url, api_key=key)
+            client.verify()
             site_data = client.fetch_site_data()
 
             self._client    = client
@@ -3392,8 +3365,6 @@ class App(tk.Tk):
             self._conn_dot.configure(fg=LED_OK)
             self._conn_lbl.configure(text=f"CONNECTED  {len(cats)} CATS  {len(albums)} ALBUMS", fg=LED_OK)
             self._set_status("Connected. Load a manifest to begin.", FG_OK)
-            self._start_session_timer()
-            self._start_keepalive()
             self._save_config()
 
         except Exception as e:
@@ -3730,7 +3701,7 @@ class App(tk.Tk):
               "Without a key the Enrich button still appears but will ask for one.")
 
         _section("BASIC WORKFLOW")
-        _item("1.  Connect", "Enter your site URL, username, and password, then click Connect. "
+        _item("1.  Connect", "Enter your site URL and API Key (generated in SnapSmack Admin → Settings → API Access), then click Connect. "
               "SYBU logs in and loads your categories and albums.")
         _item("2.  Set image folder", "Click … next to Image Folder and pick the folder "
               "containing your images.")
@@ -3934,7 +3905,6 @@ class App(tk.Tk):
                 elif msg[0] == 'session_renewed':
                     # Keepalive ping succeeded (or silent re-login worked) —
                     # reset the session countdown so it reflects the renewed lifetime.
-                    self._start_session_timer()
                     self._conn_dot.configure(fg=LED_OK)
 
                 elif msg[0] == 'session_renewal_failed':
@@ -4114,4 +4084,4 @@ class App(tk.Tk):
 
 if __name__ == "__main__":
     app = App()
-    app.mainloop()
+    app.mainloop()

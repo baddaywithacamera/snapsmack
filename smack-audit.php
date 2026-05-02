@@ -10,7 +10,7 @@
  * POST ?action=update_title — set img_title for one record (snap_id, new_title)
  */
 
-require_once 'core/auth.php';
+require_once 'core/api-auth.php';
 
 header('Content-Type: application/json; charset=utf-8');
 

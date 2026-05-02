@@ -48,6 +48,23 @@ if (
     exit;
 }
 
+// --- TOOL API KEY ACTIONS ---
+$api_key_msg = '';
+if (isset($_POST['api_key_action'])) {
+    if ($_POST['api_key_action'] === 'generate') {
+        $new_key = bin2hex(random_bytes(32)); // 64-char hex
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('tool_api_key', ?)
+                        ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute([$new_key]);
+        $settings['tool_api_key'] = $new_key;
+        $api_key_msg = 'New API key generated. Copy it into your tool now — it will not be shown in full again.';
+    } elseif ($_POST['api_key_action'] === 'revoke') {
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('tool_api_key', '')
+                        ON DUPLICATE KEY UPDATE setting_val = ''")->execute();
+        $settings['tool_api_key'] = '';
+        $api_key_msg = 'API key revoked. Tool access is now disabled.';
+    }
+}
+
 // --- SMACKATTACK: REGISTER ACTION ---
 // Handled before the main settings save so the new key is in DB before we reload settings.
 $ste_msg = '';
@@ -782,6 +799,52 @@ include 'core/sidebar.php';
             </div>
         <?php endif; ?>
         <?php endif; // pimpmobile ?>
+
+        <h3>API ACCESS</h3>
+        <?php
+        $tool_api_key = $settings['tool_api_key'] ?? '';
+        ?>
+        <?php if ($api_key_msg): ?>
+            <div class="alert alert-success mb-25">&gt; <?php echo htmlspecialchars($api_key_msg); ?></div>
+        <?php endif; ?>
+        <p class="dim" style="font-size:0.85rem; margin-bottom:16px;">
+            Generate an API key to allow companion tools (SYBU, etc.) to authenticate
+            without a login session. Send the key in the <code>X-Snap-Key</code> request header.
+            Revoking the key immediately blocks all tool access.
+        </p>
+
+        <?php if ($tool_api_key !== ''): ?>
+            <div class="control-group" style="margin-bottom:12px;">
+                <label>CURRENT KEY</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="text" id="tool-api-key-display"
+                           value="<?php echo htmlspecialchars($tool_api_key); ?>"
+                           readonly style="font-family:monospace; font-size:0.8rem; flex:1;">
+                    <button type="button" onclick="
+                        navigator.clipboard.writeText(document.getElementById('tool-api-key-display').value);
+                        this.textContent='COPIED';
+                        setTimeout(()=>this.textContent='COPY',1500);
+                    " class="btn-smack" style="margin-top:0; white-space:nowrap;">COPY</button>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <form method="POST" style="margin:0;">
+                    <input type="hidden" name="api_key_action" value="generate">
+                    <button type="submit" class="btn-smack" style="margin-top:0;">REGENERATE KEY</button>
+                </form>
+                <form method="POST" style="margin:0;"
+                      onsubmit="return confirm('Revoke the API key? All tools will lose access immediately.');">
+                    <input type="hidden" name="api_key_action" value="revoke">
+                    <button type="submit" class="btn-smack btn-danger" style="margin-top:0;">REVOKE KEY</button>
+                </form>
+            </div>
+        <?php else: ?>
+            <p class="dim" style="font-size:0.85rem; margin-bottom:12px;">No key generated. Tool API access is currently disabled.</p>
+            <form method="POST" style="margin:0;">
+                <input type="hidden" name="api_key_action" value="generate">
+                <button type="submit" class="btn-smack" style="margin-top:0;">GENERATE API KEY</button>
+            </form>
+        <?php endif; ?>
 
         <button type="submit" name="save_settings" class="master-update-btn">SAVE GLOBAL ENGINE CONFIGURATION</button>
 
