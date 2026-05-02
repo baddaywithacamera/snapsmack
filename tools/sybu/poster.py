@@ -88,7 +88,7 @@ class SnapSmackClient:
         self._password: str = ''
 
     def login(self, username: str, password: str) -> None:
-        url  = f"{self.base_url}/login.php"
+        url  = f"{self.base_url}/snap-in"
         resp = self.session.post(
             url,
             data={'username': username, 'password': password},
@@ -96,7 +96,7 @@ class SnapSmackClient:
             allow_redirects=True,
         )
         resp.raise_for_status()
-        if 'login.php' in resp.url:
+        if 'snap-in' in resp.url or 'login' in resp.url:
             raise RuntimeError("Login failed — check your username and password.")
         self._logged_in = True
         self._username  = username
@@ -105,7 +105,7 @@ class SnapSmackClient:
     def is_session_alive(self) -> bool:
         """
         Lightweight check: hit an authenticated page and see if we get
-        redirected back to login.php. Returns True if session is still valid.
+        redirected back to the login page. Returns True if session is still valid.
         """
         if not self._logged_in:
             return False
@@ -115,7 +115,7 @@ class SnapSmackClient:
                 timeout=10,
                 allow_redirects=True,
             )
-            return 'login.php' not in resp.url
+            return 'snap-in' not in resp.url and 'login' not in resp.url
         except Exception:
             return False
 

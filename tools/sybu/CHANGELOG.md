@@ -4,6 +4,13 @@ Same versioning scheme as SnapSmack (0.7.9x). Letter increments per SYBU release
 
 ---
 
+## 0.7.9d — Login endpoint fix (2026-05-01)
+
+### Fixed
+- **Login endpoint updated** — SnapSmack 0.7.22 blocked direct access to `login.php` via `.htaccess`. SYBU was still POSTing to `/login.php` and getting 403 on every connect attempt. Updated `poster.py` to POST to `/snap-in` (the named route) instead, which routes through the `.htaccess` rewrite and is not subject to the direct-file block.
+
+---
+
 ## 0.7.9c — Advanced Visual Match (2026-04-23)
 
 ### Added
