@@ -9,7 +9,7 @@
  * POST ?action=update — set download_url + allow_download=1 for one record
  */
 
-require_once 'core/auth.php';
+require_once 'core/api-auth.php';
 
 $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
 $settings      = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);

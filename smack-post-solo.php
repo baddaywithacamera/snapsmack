@@ -8,7 +8,7 @@
  * GRAMOFSMACK uses smack-post-gram.php; SmackTalk uses smack-post-long.php.
  */
 
-require_once 'core/auth.php';
+require_once 'core/api-auth.php';
 require_once 'core/palette-extract.php';
 require_once 'core/snap-tags.php';
 require_once 'core/ai-provider.php';

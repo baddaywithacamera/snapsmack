@@ -4,6 +4,19 @@ Same versioning scheme as SnapSmack (0.7.9x). Letter increments per SYBU release
 
 ---
 
+## 0.7.9e — API key authentication (2026-05-01)
+
+### Changed
+- **Session auth replaced with API key** — SYBU no longer logs in with username/password. Authentication now uses a 64-char hex key sent as the `X-Snap-Key` request header on every request. Generate the key in SnapSmack Admin → Settings → API Access. No session to maintain, no keepalive timer, no login page interaction.
+- **Settings panel** — USERNAME and PASSWORD fields replaced with a single API KEY field.
+- **Connect flow** — verifies the key against `sybu-data.php` on connect; instant rejection if the key is wrong or revoked.
+- **`poster.py`** — `login()`, `is_session_alive()`, `relogin()` removed. `keepalive()` is now a no-op that always returns True (kept for call-site compatibility). `SnapSmackClient` now takes `api_key` as a constructor argument.
+
+### Requires
+- SnapSmack 0.7.36 or later (adds `core/api-auth.php`, `tool_api_key` setting, migration 046)
+
+---
+
 ## 0.7.9d — Login endpoint fix (2026-05-01)
 
 ### Fixed
