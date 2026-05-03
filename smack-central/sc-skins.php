@@ -398,6 +398,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
     }
 }
 
+    // ── Delete skin from registry ─────────────────────────────────────────────
+    elseif (isset($_POST['delete_skin'])) {
+        $slug = preg_replace('/[^a-z0-9-]/', '', $_POST['slug'] ?? '');
+        if ($slug && isset($existing_registry['skins'][$slug])) {
+            // Delete the zip from disk
+            $zip_url  = $existing_registry['skins'][$slug]['download_url'] ?? '';
+            $zip_name = basename(parse_url($zip_url, PHP_URL_PATH));
+            if ($zip_name) {
+                $del_path = rtrim(RELEASES_DIR, '/') . '/skins/' . $zip_name;
+                if (file_exists($del_path)) @unlink($del_path);
+            }
+            unset($existing_registry['skins'][$slug]);
+            $existing_registry['generated'] = gmdate('Y-m-d\TH:i:s\Z');
+            file_put_contents($registry_path, json_encode($existing_registry, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        }
+        header('Location: sc-skins.php?deleted=' . urlencode($slug));
+        exit;
+    }
+
 render:
 
 // ── HTML ──────────────────────────────────────────────────────────────────────
@@ -408,6 +427,12 @@ include __DIR__ . '/sc-layout-top.php';
     <h1 class="sc-page-title">Skin Packager</h1>
     <p class="sc-dim">Pull skins from GitHub, package, sign, and publish to the registry.</p>
 </div>
+
+<?php if (!empty($_GET['deleted'])): ?>
+    <div class="sc-alert sc-alert--ok" style="margin-bottom:16px;">
+        &#x2713; <strong><?php echo htmlspecialchars($_GET['deleted']); ?></strong> removed from registry.
+    </div>
+<?php endif; ?>
 
 <?php if (!empty($preflight)): ?>
     <div class="sc-card" style="margin-bottom:20px;">
@@ -644,7 +669,7 @@ include __DIR__ . '/sc-layout-top.php';
         <table class="sc-table" style="width:100%;">
             <thead>
                 <tr>
-                    <th>Slug</th><th>Name</th><th>Version</th><th>Status</th><th>Download</th>
+                    <th>Slug</th><th>Name</th><th>Version</th><th>Status</th><th>Download</th><th></th>
                 </tr>
             </thead>
             <tbody>
@@ -667,6 +692,16 @@ include __DIR__ . '/sc-layout-top.php';
                         <?php else: ?>
                             <span class="sc-dim">—</span>
                         <?php endif; ?>
+                    </td>
+                    <td style="text-align:right;">
+                        <form method="POST" action="sc-skins.php" style="display:inline;"
+                              onsubmit="return confirm('Remove \'<?php echo addslashes(htmlspecialchars($entry['name'] ?? $slug)); ?>\' from registry and delete its zip?');">
+                            <input type="hidden" name="delete_skin" value="1">
+                            <input type="hidden" name="slug" value="<?php echo htmlspecialchars($slug); ?>">
+                            <button type="submit" style="background:none;border:1px solid #552;color:#a80;font-size:0.72rem;padding:2px 8px;cursor:pointer;border-radius:2px;letter-spacing:.5px;text-transform:uppercase;">
+                                Delete
+                            </button>
+                        </form>
                     </td>
                 </tr>
             <?php endforeach; ?>
