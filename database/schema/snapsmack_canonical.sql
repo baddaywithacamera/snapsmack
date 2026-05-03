@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS `snap_categories` (
   `cover_image_id`  int   DEFAULT NULL
                     COMMENT 'Optional manual cover override — FK to snap_images',
   `show_in_archive` tinyint(1) NOT NULL DEFAULT 1
-                    COMMENT '1 = visible in public archive; 0 = hidden (added 0.7.9f)',
+                    COMMENT '1 = visible in public archive, 0 = hidden (added 0.7.9f)',
   `featured_post_id` int unsigned DEFAULT NULL
                     COMMENT 'Hero image source for category gallery views — migration 039',
   PRIMARY KEY (`id`)
@@ -641,7 +641,7 @@ CREATE TABLE IF NOT EXISTS `snap_hub_shared_bans` (
   `report_count`  int unsigned     NOT NULL DEFAULT 1
                   COMMENT 'Number of distinct spokes that have reported this hash.',
   `removed`       tinyint(1)       NOT NULL DEFAULT 0
-                  COMMENT '1 = manually cleared by hub admin; excluded from distribution.',
+                  COMMENT '1 = manually cleared by hub admin, excluded from distribution.',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_type_val` (`ban_type`, `ban_value`),
   KEY `idx_last_seen` (`last_seen`),
@@ -689,7 +689,7 @@ CREATE TABLE IF NOT EXISTS `snap_collections` (
   `slug`             VARCHAR(150)  COLLATE utf8mb4_unicode_ci NOT NULL,
   `description`      TEXT          COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `featured_post_id` INT UNSIGNED  DEFAULT NULL
-                     COMMENT 'Hero image source; NULL = fall back to most recent member post',
+                     COMMENT 'Hero image source — NULL falls back to most recent member post',
   `sort_order`       INT           NOT NULL DEFAULT 0,
   `created_at`       TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`       TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

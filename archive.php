@@ -45,7 +45,17 @@ try {
     // --- ARCHIVE LAYOUT MODE ---
     // Owner sets the default in Archive Appearance. Visitor can override via ?layout=
     // URL param if the owner has enabled multiple modes. Preference persists via JS/localStorage.
-    $archive_layout_default = $settings['archive_layout'] ?? 'square';
+    // Skin manifest may declare a preferred default via features.archive_layout_default.
+    $skin_layout_fallback = 'square';
+    $_manifest_path = __DIR__ . '/skins/' . $active_skin . '/manifest.php';
+    if (file_exists($_manifest_path)) {
+        $_m = include $_manifest_path;
+        if (!empty($_m['features']['archive_layout_default'])) {
+            $skin_layout_fallback = $_m['features']['archive_layout_default'];
+        }
+        unset($_m, $_manifest_path);
+    }
+    $archive_layout_default = $settings['archive_layout'] ?? $skin_layout_fallback;
     if ($archive_layout_default === 'none') {
         $base = rtrim($settings['site_url'] ?? '/', '/') . '/';
         header('Location: ' . $base);
