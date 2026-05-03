@@ -279,32 +279,73 @@ function loadFeaturedPosts(q) {
         if (xhr.status !== 200) return;
         var posts = JSON.parse(xhr.responseText);
         if (!posts.length) { grid.innerHTML = '<p class="dim" style="font-size:12px;padding:10px;">No posts found.</p>'; return; }
-        var html = '';
+        var frag = document.createDocumentFragment();
         posts.forEach(function (p) {
             var thumb = p.img_thumb_square || p.img_thumb_aspect || p.img_file;
             var src   = thumb ? _featuredBase + thumb.replace(/^\//, '') : '';
-            html += '<div onclick="selectFeatured(' + p.id + ',\'' + (src || '') + '\',\'' + p.title.replace(/'/g,'\\\'') + '\')"'
-                  + ' style="cursor:pointer;border:2px solid transparent;border-radius:3px;overflow:hidden;aspect-ratio:1;background:#111;">';
-            if (src) html += '<img src="' + src + '" style="width:100%;height:100%;object-fit:cover;" loading="lazy">';
-            else      html += '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--dim);font-size:10px;padding:4px;text-align:center;">' + p.title + '</div>';
-            html += '</div>';
+            var div = document.createElement('div');
+            div.style.cssText = 'cursor:pointer;border:2px solid transparent;border-radius:3px;overflow:hidden;aspect-ratio:1;background:#111;';
+            div.dataset.id    = p.id;
+            div.dataset.src   = src;
+            div.dataset.title = p.title;
+            div.addEventListener('click', function () {
+                selectFeatured(this.dataset.id, this.dataset.src, this.dataset.title);
+            });
+            if (src) {
+                var img = document.createElement('img');
+                img.src = src;
+                img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+                img.loading = 'lazy';
+                div.appendChild(img);
+            } else {
+                var label = document.createElement('div');
+                label.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;color:var(--dim);font-size:10px;padding:4px;text-align:center;';
+                label.textContent = p.title;
+                div.appendChild(label);
+            }
+            frag.appendChild(div);
         });
-        grid.innerHTML = html;
+        grid.innerHTML = '';
+        grid.appendChild(frag);
     };
     xhr.send();
 }
 function selectFeatured(id, thumb, title) {
     var ctx = _featuredCtx;
     document.getElementById(ctx + '-featured-id').value = id;
-    var preview = '<img src="' + thumb + '" style="width:80px;height:80px;object-fit:cover;border-radius:3px;border:1px solid var(--border);" alt="Featured image">'
-        + '<span class="dim" style="display:block;font-size:11px;margin-top:4px;">' + title + '</span>'
-        + '<div style="display:flex;gap:8px;margin-top:8px;">'
-        + '<button type="button" onclick="openFeaturedPicker(\'' + ctx + '\')" class="btn-secondary" style="font-size:11px;padding:5px 12px;">CHANGE</button>'
-        + '<button type="button" onclick="clearFeatured(\'' + ctx + '\')" class="btn-secondary" style="font-size:11px;padding:5px 12px;color:var(--dim);">REMOVE</button>'
-        + '</div>';
-    document.getElementById(ctx + '-featured-preview').innerHTML = preview;
+    var wrap = document.getElementById(ctx + '-featured-preview');
+    wrap.innerHTML = '';
+    var img = document.createElement('img');
+    img.src = thumb;
+    img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:3px;border:1px solid var(--border);';
+    img.alt = 'Featured image';
+    var span = document.createElement('span');
+    span.className = 'dim';
+    span.style.cssText = 'display:block;font-size:11px;margin-top:4px;';
+    span.textContent = title;
+    var btns = document.createElement('div');
+    btns.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
+    var btnChange = document.createElement('button');
+    btnChange.type = 'button';
+    btnChange.className = 'btn-secondary';
+    btnChange.style.cssText = 'font-size:11px;padding:5px 12px;';
+    btnChange.textContent = 'CHANGE';
+    btnChange.addEventListener('click', function () { openFeaturedPicker(ctx); });
+    var btnRemove = document.createElement('button');
+    btnRemove.type = 'button';
+    btnRemove.className = 'btn-secondary';
+    btnRemove.style.cssText = 'font-size:11px;padding:5px 12px;color:var(--dim);';
+    btnRemove.textContent = 'REMOVE';
+    btnRemove.addEventListener('click', function () { clearFeatured(ctx); });
+    btns.appendChild(btnChange);
+    btns.appendChild(btnRemove);
+    wrap.appendChild(img);
+    wrap.appendChild(span);
+    wrap.appendChild(btns);
     closeFeaturedPicker();
 }
 // Close modal on backdrop click
 document.getElementById('featured-modal').addEventListener('click', function (e) {
-    if (e.target === this) closeFeat
+    if (e.target === this) closeFeaturedPicker();
+});
+</script>

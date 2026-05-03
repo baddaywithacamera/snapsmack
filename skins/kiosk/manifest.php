@@ -40,7 +40,8 @@ return [
         'smack-keyboard',
         'smack-glitch',
         'smack-pimpotron',
-        'smack-logo'
+        'smack-logo',
+        'smack-image-fade-load',
     ],
 
     'options' => [
