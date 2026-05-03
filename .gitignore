@@ -109,3 +109,7 @@ __pycache__/
 # Powertools (Claude's w
 # Claude Commander lives in its own repo
 projects/claude-commander/
+
+# Backup files and server-specific config
+*.bak
+.htaccess

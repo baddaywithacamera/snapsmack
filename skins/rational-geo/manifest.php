@@ -16,7 +16,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'            => 'Rational Geo',
-    'version'         => '1.0',
+    'version'         => '1.1',
     'author'          => 'Sean McCormick',
     'author_email'    => 'sean@baddaywithacamera.ca',
     'description'     => 'An homage to the world\'s best magazine. Editorial serif typography, the iconic yellow accent, light and dark variants. For anyone who has read it and loved it or dreamed of having their work published in it.',
