@@ -14,10 +14,11 @@
  * 2. REVIEW        — Display changelog, file changes, migration warnings
  * 3. STAGE: download  — Download zip to temp dir
  * 4. STAGE: verify    — Checksum + Ed25519 signature check
- * 5. STAGE: backup    — Forced pre-update backup
- * 6. STAGE: extract   — Extract files (protected paths never overwritten)
- * 7. STAGE: migrate   — Run schema migrations + bump version
- * 8. DONE          — Success screen, or rollback on failure
+ * 5. STAGE: backup      — Forced pre-update backup
+ * 6. STAGE: premigrate — Extract migrations/ from zip, run against DB BEFORE files go live
+ * 7. STAGE: extract    — Extract all remaining files (DB already patched)
+ * 8. STAGE: migrate    — Finalize: version bump, deprecated cleanup, asset sync
+ * 9. DONE              — Success screen, or rollback on failure
  */
 
 require_once 'core/auth.php';
@@ -618,6 +619,79 @@ if ($action === 'stage_backup'
     }
 }
 
+// ── STAGED UPDATE: STAGE 5 — PRE-MIGRATE ────────────────────────────────────
+//
+// Extract migrations/ from the zip and run pending migrations against the live
+// DB BEFORE any PHP files are overwritten. This prevents PDO 500 errors when
+// new code references tables or columns that the migration would have added.
+if ($action === 'stage_premigrate'
+    && !empty($stage_state)
+    && ($stage_state['stage'] ?? '') === 'backed_up'
+) {
+    $zip_path    = $stage_state['zip_path'] ?? '';
+    $mig_extract = updater_extract_migrations_only($zip_path);
+
+    foreach ($mig_extract['errors'] as $e) {
+        $_SESSION['update_state']['log'][] = ['label' => 'Migration extract warning', 'status' => 'warn', 'detail' => $e];
+    }
+
+    if (!$mig_extract['success']) {
+        $rb_error = '';
+        updater_rollback($stage_state['backup_file'] ?? '', $rb_error);
+        $flash_msg  = 'FAILED TO STAGE MIGRATION FILES. SYSTEM ROLLED BACK.';
+        $flash_type = 'error';
+        if ($wants_json) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'stage' => 'premigrate', 'message' => $flash_msg, 'data' => ['rolled_back' => true]]);
+            exit;
+        }
+    } else {
+        $_SESSION['update_state']['log'][] = [
+            'label'  => 'Migration files staged',
+            'status' => 'ok',
+            'detail' => $mig_extract['count'] . ' file(s) extracted from package',
+        ];
+
+        $migrations     = updater_find_migrations($pdo);
+        $migrate_result = updater_run_migrations($pdo, $migrations);
+
+        if (!$migrate_result['success']) {
+            $rb_error = '';
+            updater_rollback($stage_state['backup_file'] ?? '', $rb_error);
+            $flash_msg  = 'PRE-MIGRATION FAILED — ROLLED BACK. Errors: ' . implode('; ', $migrate_result['errors']);
+            $flash_type = 'error';
+            $_SESSION['update_state']['log'][] = ['label' => 'Pre-migration failed — rolled back', 'status' => 'fail', 'detail' => implode('; ', $migrate_result['errors'])];
+            $stage_state = $_SESSION['update_state'];
+            if ($wants_json) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'stage' => 'premigrate', 'message' => $flash_msg, 'data' => ['rolled_back' => true]]);
+                exit;
+            }
+        } else {
+            $mig_detail = !empty($migrate_result['applied'])
+                ? implode(', ', $migrate_result['applied'])
+                : 'none pending';
+            $_SESSION['update_state']['log'][] = [
+                'label'  => 'Schema + migrations (pre-extract)',
+                'status' => 'ok',
+                'detail' => $mig_detail,
+            ];
+            $_SESSION['update_state']['stage'] = 'premigrated';
+            $stage_state = $_SESSION['update_state'];
+            if ($wants_json) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'status'  => 'ok',
+                    'stage'   => 'premigrate',
+                    'message' => 'Database patched. Ready to extract files.',
+                    'data'    => ['migrations_applied' => count($migrate_result['applied'] ?? [])],
+                ]);
+                exit;
+            }
+        }
+    }
+}
+
 // ── STAGED UPDATE: STAGE 4 — EXTRACT (initialises chunked extraction) ─────────
 //
 // Rather than extracting the entire zip in one request (which times out on
@@ -627,7 +701,7 @@ if ($action === 'stage_backup'
 // files are extracted — then it redirects back here with stage = 'extracted'.
 if ($action === 'stage_extract'
     && !empty($stage_state)
-    && ($stage_state['stage'] ?? '') === 'backed_up'
+    && ($stage_state['stage'] ?? '') === 'premigrated'
 ) {
     $_SESSION['update_chunk_state'] = [
         'zip_path'      => $stage_state['zip_path'],
@@ -1583,6 +1657,8 @@ include 'core/sidebar.php';
             <?php elseif ($stage === 'verified'): ?>
                 <button type="submit" name="action" value="stage_backup" class="btn-smack">CREATE BACKUP →</button>
             <?php elseif ($stage === 'backed_up'): ?>
+                <button type="submit" name="action" value="stage_premigrate" class="btn-smack">PATCH DATABASE →</button>
+            <?php elseif ($stage === 'premigrated'): ?>
                 <button type="submit" name="action" value="stage_extract" class="btn-smack">EXTRACT FILES →</button>
             <?php elseif ($stage === 'extracted'): ?>
                 <button type="submit" name="action" value="stage_migrate" class="btn-smack">RUN MIGRATIONS &amp; FINALIZE →</button>
@@ -1679,65 +1755,4 @@ include 'core/sidebar.php';
         <h3>UP TO DATE</h3>
         <p class="dim" style="font-size:0.85rem;">No update available. Your installation is running the latest release.</p>
     </div>
-    <?php endif; ?>
-
-    <!-- MANUAL UPDATE (UPLOAD) -->
-    <div class="box update-section">
-        <h3>MANUAL UPDATE (UPLOAD)</h3>
-        <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
-            If this server cannot reach snapsmack.ca, download the update zip on your own machine and upload it here.
-            The same backup, verification, and extraction pipeline will run.
-        </p>
-        <form method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <div class="form-group">
-                <label>UPDATE PACKAGE (.ZIP)</label>
-                <input type="file" name="update_zip" accept=".zip" required>
-            </div>
-            <button type="submit" name="action" value="upload_zip" class="btn-smack mt-20">UPLOAD &amp; APPLY</button>
-        </form>
-    </div>
-
-    <!-- AUTOMATED CHECKS -->
-    <div class="box update-section">
-        <h3>AUTOMATED CHECKS</h3>
-        <div class="form-group">
-            <label>VERSION CHECK JOB</label>
-            <div class="read-only-display">
-                <?php if (!$cron_supported): ?>
-                    CRON NOT AVAILABLE ON THIS SERVER
-                <?php elseif ($version_job_registered): ?>
-                    REGISTERED — RUNS EVERY 6 HOURS
-                <?php else: ?>
-                    NOT REGISTERED
-                <?php endif; ?>
-            </div>
-        </div>
-        <?php if ($cron_supported): ?>
-        <div class="recovery-actions mt-20">
-            <form method="POST">
-                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                <button type="submit" name="action" value="cron_register" class="btn-smack">REGISTER VERSION CHECK</button>
-            </form>
-            <form method="POST">
-                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                <button type="submit" name="action" value="cron_remove" class="btn-smack btn-secondary">REMOVE VERSION CHECK</button>
-            </form>
-        </div>
-        <p class="dim" style="font-size:0.75rem;margin-top:12px;">Without cron, the dashboard falls back to a 24-hour on-load check.</p>
-        <?php endif; ?>
-    </div>
-
-</div>
-
-<?php if ($stage_state): ?>
-<script>
-(function () {
-    // Scroll stage box into view on every page load during a staged update
-    var box = document.getElementById('stage-box');
-    if (box) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}());
-</script>
-<?php endif; ?>
-
-<?php include 'core/admin-footer.php'; ?>
+    <?php e
