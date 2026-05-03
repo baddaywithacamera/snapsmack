@@ -4,6 +4,20 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.40 — "Moist Bar Stool" (2026-05-03)
+
+### Added
+- **Archive Calendar** (`ss-engine-calendar.js`, `ss-engine-calendar.css`, `api-calendar.php`, `archive.php`) — Archive layout toggle gains a **Cal** option on skins that opt in. Selecting Cal slides a calendar panel in from the right. Shows as many months as fit the viewport height. Click a day to browse that date; click a second day to filter a date range. Colour scheme inherits from the active skin's CSS custom properties. Slides back out when another layout is selected.
+- **Date-range archive filter** (`archive.php`) — New `?from=YYYY-MM-DD&to=YYYY-MM-DD` query params filter the archive to a date range. Sanitised and sorted server-side.
+- **`api-calendar.php`** — Month count cap raised from 3 to 12 to support dynamic viewport-height-based loading.
+- **`skins/50-shades-of-noah-grey/manifest.php`** — Added `smack-calendar` to `require_scripts`; `croppedwithcalendar` added to `archive_layouts`.
+- **`skins/rational-geo/manifest.php`** — Same.
+
+### Improved
+- **`archive.php`** — `croppedwithcalendar` layout is stripped from the toggle if the active skin does not require the calendar engine, so no orphaned Cal buttons appear on unsupported skins.
+
+---
+
 ## 0.7.39 — "Moist Bar Stool" (2026-05-01)
 
 ### Fixed

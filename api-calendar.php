@@ -8,7 +8,7 @@
  *
  * GET parameters:
  *   offset  (int)   — month offset from current month (0 = now, -1 = last month, etc.)
- *   months  (int)   — number of months to return (1-3, default 1)
+ *   months  (int)   — number of months to return (1-12, default 1)
  *   count   (int)   — number of recent posts to return (5-20, default 10)
  *
  * Response shape:
@@ -43,7 +43,7 @@ header('X-Robots-Tag: noindex');
 
 // --- PARAMETERS ---
 $offset      = max(-120, min(0, (int)($_GET['offset'] ?? 0)));
-$months_req  = max(1, min(3, (int)($_GET['months'] ?? 1)));
+$months_req  = max(1, min(12, (int)($_GET['months'] ?? 1)));
 $post_count  = max(5, min(20, (int)($_GET['count']  ?? 10)));
 
 // --- BASE URL ---

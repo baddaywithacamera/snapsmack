@@ -29,13 +29,14 @@ return [
     'default_variant' => 'light',
 
     'features' => [
-        'supports_wall'   => false,
-        'supports_slider' => false,
-        'has_landing'     => false,
-        'post_modes'      => ['image'],
-        'instagram_mode'  => false,
-        'carousel'        => false,
-        'community'       => ['likes', 'comments'],
+        'supports_wall'        => false,
+        'supports_slider'      => false,
+        'has_landing'          => false,
+        'post_modes'           => ['image'],
+        'instagram_mode'       => false,
+        'carousel'             => false,
+        'community'            => ['likes', 'comments'],
+        'archive_layouts'      => ['square', 'cropped', 'masonry', 'croppedwithcalendar'],
     ],
 
     'require_scripts' => [
@@ -47,6 +48,7 @@ return [
         'smack-justified',
         'smack-community',
         'smack-drawer',
+        'smack-calendar',
     ],
 
     'community_comments'  => '1',
