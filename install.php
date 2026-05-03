@@ -190,12 +190,7 @@ if ($step === 2 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
         $db_name   = trim($_POST['db_name'] ?? '');
         $db_user   = trim($_POST['db_user'] ?? '');
         $db_pass   = $_POST['db_pass'] ?? '';
-        $db_prefix = trim($_POST['db_prefix'] ?? 'snap_');
-
-        // Sanitize prefix: alphanumeric and underscores only
-        $db_prefix = preg_replace('/[^a-zA-Z0-9_]/', '', $db_prefix);
-        if (empty($db_prefix)) $db_prefix = 'snap_';
-        if (substr($db_prefix, -1) !== '_') $db_prefix .= '_';
+        $db_prefix = 'snap_'; // Fixed — not user-configurable.
 
         if (empty($db_name) || empty($db_user)) {
             $errors[] = 'Database name and username are required.';
@@ -258,9 +253,54 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
     }
 
     if (empty($errors)) {
-        $tables = [
+        // ── SCHEMA CREATION ──────────────────────────────────────────────────────
+        // Execute the canonical schema file rather than maintaining a duplicate
+        // DDL list here. On prefix change, swap snap_ for the chosen prefix.
+        // ─────────────────────────────────────────────────────────────────────────
+        $created = [];
+        $failed  = [];
+        $canonical_path = __DIR__ . '/database/schema/snapsmack_canonical.sql';
 
-            // --- PHOTO POSTS ---
+        if (!file_exists($canonical_path)) {
+            $errors[] = 'Canonical schema file missing: database/schema/snapsmack_canonical.sql. Re-download the release package.';
+            $step = 3;
+        } else {
+            $raw = file_get_contents($canonical_path);
+
+            // Strip -- line comments (not inside string literals in our schema).
+            $raw = preg_replace('/--[^\n]*/', '', $raw);
+            // Strip /* ... */ block comments.
+            $raw = preg_replace('/\/\*.*?\*\//s', '', $raw);
+
+            // Split on semicolons and execute each non-empty statement.
+            $statements = array_filter(array_map('trim', explode(';', $raw)), fn($s) => $s !== '');
+
+            foreach ($statements as $sql) {
+                try {
+                    $pdo->exec($sql);
+                    if (preg_match('/CREATE\s+TABLE\s+(?:IF NOT EXISTS\s+)?`([^`]+)`/i', $sql, $m)) {
+                        $created[] = $m[1];
+                    }
+                } catch (PDOException $e) {
+                    $failed[] = preg_replace('/\s+/', ' ', substr($sql, 0, 80)) . '…: ' . $e->getMessage();
+                }
+            }
+        }
+
+        // Keep the old $tables symbol alive so the "tables created" UI still works.
+        $tables = []; // (replaced by canonical SQL execution above — kept for template compat)
+
+        // --- LEGACY BLOCK REMOVED ---
+        // The CREATE TABLE definitions that used to live here are now maintained
+        // exclusively in database/schema/snapsmack_canonical.sql.
+        // Do not add table DDL here — update the canonical file instead.
+
+        $ignored_tables = []; // (kept for future use)
+
+        // LEGACY DDL — kept for syntax validity, never executed.
+        // All CREATE TABLE definitions are now in database/schema/snapsmack_canonical.sql.
+        // Do not add table DDL here.
+        $_dead_tables = [
             "{$prefix}images" => "CREATE TABLE IF NOT EXISTS `{$prefix}images` (
                 `id` int NOT NULL AUTO_INCREMENT,
                 `img_title` varchar(255) NOT NULL,
@@ -699,25 +739,196 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
                 KEY `idx_password_resets_email` (`email`),
                 KEY `idx_password_resets_token` (`token`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- IP BANS (Probe Guard + brute-force banning) ---
+            "{$prefix}ip_bans" => "CREATE TABLE IF NOT EXISTS `{$prefix}ip_bans` (
+                `id`         int unsigned NOT NULL AUTO_INCREMENT,
+                `ip`         varchar(45)  COLLATE utf8mb4_unicode_ci NOT NULL,
+                `reason`     varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'auto:brute_force',
+                `banned_at`  datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `expires_at` datetime NOT NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_ip` (`ip`),
+                KEY `idx_expires` (`expires_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- BAN LIST (centralised fingerprint/IP/email-hash bans) ---
+            "{$prefix}ban_list" => "CREATE TABLE IF NOT EXISTS `{$prefix}ban_list` (
+                `id`          int unsigned NOT NULL AUTO_INCREMENT,
+                `ban_type`    enum('fingerprint','ip','email_hash') COLLATE utf8mb4_unicode_ci NOT NULL,
+                `ban_value`   varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+                `reason`      varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                `banned_at`   datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `banned_by`   int unsigned DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_ban` (`ban_type`, `ban_value`),
+                KEY `idx_type_val` (`ban_type`, `ban_value`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- SEMANTIC ANALYSIS ---
+            "{$prefix}comments_semantic" => "CREATE TABLE IF NOT EXISTS `{$prefix}comments_semantic` (
+                `id`               int unsigned NOT NULL AUTO_INCREMENT,
+                `comment_id`       int unsigned NOT NULL,
+                `fingerprint_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+                `comment_text`     longtext     COLLATE utf8mb4_unicode_ci NOT NULL,
+                `tfidf_vector`     json         DEFAULT NULL,
+                `created_at`       timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                KEY `idx_fingerprint` (`fingerprint_hash`),
+                KEY `idx_created`     (`created_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            "{$prefix}keywords" => "CREATE TABLE IF NOT EXISTS `{$prefix}keywords` (
+                `id`         int unsigned NOT NULL AUTO_INCREMENT,
+                `keyword`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+                `match_type` enum('exact','substring','regex') COLLATE utf8mb4_unicode_ci DEFAULT 'substring',
+                `severity`   enum('flag','reject') COLLATE utf8mb4_unicode_ci DEFAULT 'flag',
+                `reason`     varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                `added_at`   timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `added_by`   varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_keyword` (`keyword`),
+                KEY `idx_keyword` (`keyword`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- SMACK THE ENEMY reputation scores ---
+            "{$prefix}ste_scores" => "CREATE TABLE IF NOT EXISTS `{$prefix}ste_scores` (
+                `ban_type`     varchar(20)  COLLATE utf8mb4_unicode_ci NOT NULL,
+                `ban_hash`     varchar(64)  COLLATE utf8mb4_unicode_ci NOT NULL,
+                `score`        float        NOT NULL DEFAULT 0,
+                `colour_level` varchar(10)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'green',
+                `last_updated` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`ban_type`, `ban_hash`),
+                KEY `idx_colour` (`colour_level`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- OH SNAP API KEYS ---
+            "{$prefix}ohsnap_keys" => "CREATE TABLE IF NOT EXISTS `{$prefix}ohsnap_keys` (
+                `id`           int          NOT NULL AUTO_INCREMENT,
+                `label`        varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+                `key_hash`     varchar(64)  COLLATE utf8mb4_unicode_ci NOT NULL,
+                `key_prefix`   varchar(8)   COLLATE utf8mb4_unicode_ci NOT NULL,
+                `is_active`    tinyint(1)   NOT NULL DEFAULT 1,
+                `created_at`   datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `last_used_at` datetime     DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_key_hash` (`key_hash`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- MULTISITE ---
+            "{$prefix}multisite_nodes" => "CREATE TABLE IF NOT EXISTS `{$prefix}multisite_nodes` (
+                `id`                 int unsigned NOT NULL AUTO_INCREMENT,
+                `role`               enum('hub','spoke') COLLATE utf8mb4_unicode_ci NOT NULL,
+                `site_url`           varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+                `site_name`          varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                `api_key_local`      varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+                `api_key_remote`     varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+                `software_version`   varchar(50)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                `last_seen_at`       datetime     DEFAULT NULL,
+                `ban_sync_cursor`    datetime     DEFAULT NULL,
+                `post_count`         int unsigned DEFAULT 0,
+                `image_count`        int unsigned DEFAULT 0,
+                `pending_comments`   int unsigned DEFAULT 0,
+                `last_backup_at`     datetime     DEFAULT NULL,
+                `last_backup_size`   bigint unsigned DEFAULT NULL,
+                `last_backup_dest`   varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                `last_backup_status` enum('ok','failed','unknown') COLLATE utf8mb4_unicode_ci DEFAULT 'unknown',
+                `disk_usage_bytes`   bigint unsigned DEFAULT NULL,
+                `status`             enum('active','offline','disconnected') COLLATE utf8mb4_unicode_ci DEFAULT 'active',
+                `connected_at`       datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_site_url` (`site_url`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            "{$prefix}multisite_queue" => "CREATE TABLE IF NOT EXISTS `{$prefix}multisite_queue` (
+                `id`           int unsigned NOT NULL AUTO_INCREMENT,
+                `node_id`      int unsigned NOT NULL,
+                `action`       varchar(50)  COLLATE utf8mb4_unicode_ci NOT NULL,
+                `payload`      text         COLLATE utf8mb4_unicode_ci,
+                `status`       enum('pending','processing','completed','failed') COLLATE utf8mb4_unicode_ci DEFAULT 'pending',
+                `attempts`     tinyint unsigned DEFAULT 0,
+                `created_at`   datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `processed_at` datetime     DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                KEY `idx_node_status` (`node_id`, `status`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            "{$prefix}hub_shared_bans" => "CREATE TABLE IF NOT EXISTS `{$prefix}hub_shared_bans` (
+                `id`           int unsigned NOT NULL AUTO_INCREMENT,
+                `ban_type`     enum('fingerprint','ip','email_hash') COLLATE utf8mb4_unicode_ci NOT NULL,
+                `ban_value`    char(64)     COLLATE utf8mb4_unicode_ci NOT NULL,
+                `reason`       varchar(64)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+                `reported_by`  varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+                `first_seen`   datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `last_seen`    datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                `report_count` int unsigned NOT NULL DEFAULT 1,
+                `removed`      tinyint(1)   NOT NULL DEFAULT 0,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_ban_type_value` (`ban_type`, `ban_value`),
+                KEY `idx_removed` (`removed`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- MOSAICS ---
+            "{$prefix}mosaics" => "CREATE TABLE IF NOT EXISTS `{$prefix}mosaics` (
+                `id`         int unsigned  NOT NULL AUTO_INCREMENT,
+                `title`      varchar(150)  COLLATE utf8mb4_unicode_ci NOT NULL,
+                `asset_ids`  longtext      COLLATE utf8mb4_unicode_ci NOT NULL,
+                `gap`        tinyint       NOT NULL DEFAULT 4,
+                `created_at` timestamp     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` timestamp     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // --- COLLECTIONS ---
+            "{$prefix}collections" => "CREATE TABLE IF NOT EXISTS `{$prefix}collections` (
+                `id`               int unsigned NOT NULL AUTO_INCREMENT,
+                `name`             varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+                `slug`             varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+                `description`      text         COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                `featured_post_id` int unsigned DEFAULT NULL,
+                `created_at`       timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `updated_at`       timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_slug` (`slug`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            "{$prefix}collection_items" => "CREATE TABLE IF NOT EXISTS `{$prefix}collection_items` (
+                `id`            int unsigned NOT NULL AUTO_INCREMENT,
+                `collection_id` int unsigned NOT NULL,
+                `item_type`     enum('post','album','category') COLLATE utf8mb4_unicode_ci NOT NULL,
+                `item_id`       int unsigned NOT NULL,
+                `sort_order`    int          NOT NULL DEFAULT 0,
+                `added_at`      timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_collection_item` (`collection_id`, `item_type`, `item_id`),
+                KEY `idx_collection` (`collection_id`),
+                CONSTRAINT `fk_ci_collection`
+                    FOREIGN KEY (`collection_id`) REFERENCES `{$prefix}collections` (`id`)
+                    ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ];
-
-        $created = [];
-        $failed  = [];
-
-        foreach ($tables as $name => $sql) {
-            try {
-                $pdo->exec($sql);
-                $created[] = $name;
-            } catch (PDOException $e) {
-                $failed[] = "{$name}: " . $e->getMessage();
-            }
-        }
 
         if (!empty($failed)) {
             $errors = $failed;
             $step = 3;
         } else {
             $_SESSION['tables_created'] = $created;
+
+            // Stamp all numbered migration files as already applied.
+            // Fresh installs get the full schema from canonical.sql — the migration
+            // runner must not re-apply them on first admin login.
+            // This list is derived automatically from the migrations/ directory so
+            // it never needs manual updating when new migrations are added.
+            $migration_files = glob(__DIR__ . '/migrations/[0-9][0-9][0-9]_*.php') ?: [];
+            sort($migration_files);
+            $stamp = $pdo->prepare(
+                "INSERT IGNORE INTO `{$prefix}migrations` (migration, applied_at)
+                 VALUES (?, NOW())"
+            );
+            foreach ($migration_files as $mf) {
+                $stamp->execute([basename($mf, '.php')]);
+            }
+
             $step = 4; // Advance to admin user creation
         }
     }
@@ -967,6 +1178,15 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'sticky_header_enabled'     => '1',
                 'installed_version'         => $installer_version,
                 'install_timestamp'         => date('Y-m-d H:i:s'),
+                // --- ARCHIVE ---
+                'archive_layout'            => 'square',
+                'archive_layouts_available' => 'square,cropped,masonry',
+                // --- PRIVACY POLICY ---
+                'privacy_policy_enabled'    => '0',
+                'privacy_policy_title'      => 'Privacy Policy',
+                'privacy_policy_content'    => '',
+                // --- TOOL API KEY ---
+                'tool_api_key'              => bin2hex(random_bytes(32)),
             ];
 
             $stmt = $pdo->prepare("INSERT INTO `{$prefix}settings` (setting_key, setting_val) VALUES (?, ?)");

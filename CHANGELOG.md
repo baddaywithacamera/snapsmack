@@ -4,6 +4,19 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.39 — "Moist Bar Stool" (2026-05-01)
+
+### Fixed
+- **`smack-update.php`** — Removed auto-advance `setTimeout` that caused the updater to loop through stages without user input. Each stage now waits for manual button click.
+- **`archive.php`** — Skin manifests can now declare `features.archive_layout_default` to set a preferred default archive layout without overriding the admin's explicit DB setting. True Grit defaults to masonry.
+- **`skins/true-grit/manifest.php`** — `archive_layout_default` set to `masonry` (justified grid).
+
+### Improved
+- **`install.php`** — Fresh install schema now driven by `database/schema/snapsmack_canonical.sql` directly; table prefix hardcoded to `snap_`; all numbered migrations auto-stamped via directory scan. Installer is now self-maintaining — no manual DDL or migration list to update.
+- **`install.php`** — Missing settings seeded on fresh install: `archive_layout`, `archive_layouts_available`, `privacy_policy_*`, `tool_api_key` (auto-generated).
+- **`database/schema/snapsmack_canonical.sql`** — Removed semicolons from column `COMMENT` strings that broke statement splitting.
+- **`CLAUDE.md`** — Documented VM shell write prohibition (root cause of repeated file truncation).
+
 ## 0.7.38 — "Moist Bar Stool" (2026-05-01)
 
 ### Fixed

@@ -47,6 +47,19 @@ Every PHP file opens with a standardised doc-block:
 
 Follow the existing header and commenting style exactly. Do not invent new formats.
 
+## CRITICAL — VM Shell Must Never Write to Project Files
+
+**Never use shell commands that write to files in the workspace.** This means:
+
+- **No `sed -i`**, `awk`, `perl -i`, or any other in-place shell edit command
+- **No shell redirects** (`>`, `>>`) targeting project files
+- **No `cp`, `mv`, `rm`** on project files from the VM bash shell
+- **No git commands from VM bash** — the VM shares `.git` with Windows git; VM git ops corrupt index/lock state
+
+**Why:** The VM mounts the workspace over a FUSE/network path. `sed -i` writes a temp file and renames it over the original — on this mount that rename can truncate the file. The original is destroyed. This has happened multiple times and caused 500 errors on live sites.
+
+**All file edits use the Edit or Write tools only.** Shell (`mcp__workspace__bash`) is read-only with respect to project files — use it for running scripts, checking output, installing packages, etc. Never for writing files.
+
 ## CRITICAL — Skins Must Never Be Deleted
 
 **Never delete, remove, or `git rm` any skin directory.** Skins are the primary
@@ -80,6 +93,7 @@ This rule has no exceptions.
 ### 4. Canonical schema (database/schema/snapsmack_canonical.sql)
 - Every new table must be added here or schema-sync won't find it.
 - Every new table also needs a numbered migration in `/migrations/`.
+- **`install.php` is self-maintaining** — it reads `snapsmack_canonical.sql` directly for the schema, and auto-scans `migrations/[0-9][0-9][0-9]_*.php` to stamp all migrations as applied. No manual updates to install.php needed when adding tables or migrations.
 
 ### 5. HTML structure — validate any touched PHP layout files
 - Unclosed tags (missing `>`, missing `</div>`) cause catastrophic layout failures.

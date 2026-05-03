@@ -21,13 +21,14 @@ return [
     'demo_url'      => 'https://foundtextures.ca',
 
     'features' => [
-        'supports_wall'   => true,
-        'archive_layouts' => ['square', 'cropped', 'masonry'],
-        'has_landing'     => false,
-        'post_modes'      => ['image'],
-        'instagram_mode'  => false,
-        'carousel'        => false,
-        'community'       => ['likes', 'comments'],
+        'supports_wall'          => true,
+        'archive_layouts'        => ['square', 'cropped', 'masonry'],
+        'archive_layout_default' => 'masonry',
+        'has_landing'            => false,
+        'post_modes'             => ['image'],
+        'instagram_mode'         => false,
+        'carousel'               => false,
+        'community'              => ['likes', 'comments'],
     ],
 
     'variants' => [

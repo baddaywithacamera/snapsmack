@@ -1556,7 +1556,7 @@ include 'core/sidebar.php';
     <!-- STAGED UPDATE IN PROGRESS -->
     <?php if ($stage_state): ?>
     <?php $stage = $stage_state['stage'] ?? ''; ?>
-    <div class="stage-box">
+    <div class="stage-box" id="stage-box">
         <h3>UPDATE IN PROGRESS — <?php echo strtoupper($stage); ?></h3>
 
         <!-- Accumulated log -->
@@ -1669,7 +1669,7 @@ include 'core/sidebar.php';
 
         <form method="POST" class="mt-30">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <button type="submit" name="action" value="stage_review" class="btn-smack">APPLY UPDATE &rarr;</button>
+            <button type="submit" name="action" value="stage_download" class="btn-smack">APPLY UPDATE &rarr;</button>
         </form>
 
     </div>
@@ -1681,6 +1681,63 @@ include 'core/sidebar.php';
     </div>
     <?php endif; ?>
 
+    <!-- MANUAL UPDATE (UPLOAD) -->
+    <div class="box update-section">
+        <h3>MANUAL UPDATE (UPLOAD)</h3>
+        <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
+            If this server cannot reach snapsmack.ca, download the update zip on your own machine and upload it here.
+            The same backup, verification, and extraction pipeline will run.
+        </p>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+            <div class="form-group">
+                <label>UPDATE PACKAGE (.ZIP)</label>
+                <input type="file" name="update_zip" accept=".zip" required>
+            </div>
+            <button type="submit" name="action" value="upload_zip" class="btn-smack mt-20">UPLOAD &amp; APPLY</button>
+        </form>
+    </div>
+
+    <!-- AUTOMATED CHECKS -->
+    <div class="box update-section">
+        <h3>AUTOMATED CHECKS</h3>
+        <div class="form-group">
+            <label>VERSION CHECK JOB</label>
+            <div class="read-only-display">
+                <?php if (!$cron_supported): ?>
+                    CRON NOT AVAILABLE ON THIS SERVER
+                <?php elseif ($version_job_registered): ?>
+                    REGISTERED — RUNS EVERY 6 HOURS
+                <?php else: ?>
+                    NOT REGISTERED
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php if ($cron_supported): ?>
+        <div class="recovery-actions mt-20">
+            <form method="POST">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="cron_register" class="btn-smack">REGISTER VERSION CHECK</button>
+            </form>
+            <form method="POST">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="cron_remove" class="btn-smack btn-secondary">REMOVE VERSION CHECK</button>
+            </form>
+        </div>
+        <p class="dim" style="font-size:0.75rem;margin-top:12px;">Without cron, the dashboard falls back to a 24-hour on-load check.</p>
+        <?php endif; ?>
+    </div>
+
 </div>
+
+<?php if ($stage_state): ?>
+<script>
+(function () {
+    // Scroll stage box into view on every page load during a staged update
+    var box = document.getElementById('stage-box');
+    if (box) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}());
+</script>
+<?php endif; ?>
 
 <?php include 'core/admin-footer.php'; ?>
