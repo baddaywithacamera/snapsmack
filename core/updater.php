@@ -668,6 +668,65 @@ function _updater_detect_wrapper(ZipArchive $zip): string {
  *
  * Returns an array of absolute file paths, empty if nothing is pending.
  */
+
+/**
+ * Extract only the migrations/ directory from the update zip.
+ *
+ * Called before file extraction so the DB schema is patched before any new
+ * PHP files that depend on those changes go live. Prevents PDO 500 errors
+ * on installs where column/table additions arrive with the file update.
+ */
+function updater_extract_migrations_only(string $zip_path): array {
+    $root   = dirname(__DIR__);
+    $result = ['success' => true, 'count' => 0, 'errors' => []];
+
+    $zip = new ZipArchive();
+    if ($zip->open($zip_path) !== true) {
+        $result['success'] = false;
+        $result['errors'][] = 'Failed to open zip archive.';
+        return $result;
+    }
+
+    $wrapper = _updater_detect_wrapper($zip);
+    $mig_dir = $root . '/migrations';
+    if (!is_dir($mig_dir)) {
+        mkdir($mig_dir, 0755, true);
+    }
+
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $entry    = $zip->getNameIndex($i);
+        $relative = $entry;
+
+        if ($wrapper !== '') {
+            if (!str_starts_with($entry, $wrapper)) continue;
+            $relative = substr($entry, strlen($wrapper));
+        }
+
+        if (!str_starts_with($relative, 'migrations/')) continue;
+        if (str_ends_with($relative, '/'))             continue;
+        if (str_contains($relative, '..')) {
+            $result['errors'][] = "Blocked suspicious path: {$relative}";
+            continue;
+        }
+
+        $dest    = $root . '/' . $relative;
+        $content = $zip->getFromIndex($i);
+        if ($content === false) {
+            $result['errors'][] = "Could not read: {$relative}";
+            continue;
+        }
+        if (file_put_contents($dest, $content) === false) {
+            $result['errors'][] = "Could not write: {$relative}";
+            $result['success']  = false;
+            continue;
+        }
+        $result['count']++;
+    }
+
+    $zip->close();
+    return $result;
+}
+
 function updater_find_migrations(PDO $pdo): array {
     $dir = UPDATER_MIGRATIONS_DIR;
     if (!is_dir($dir)) return [];
@@ -1517,20 +1576,4 @@ function _updater_http_get(string $url): string|false {
             CURLOPT_MAXREDIRS      => 5,
             CURLOPT_TIMEOUT        => 30,
             CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_USERAGENT      => 'SnapSmack-Updater/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0.0'),
-        ]);
-        $body = curl_exec($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        return ($body !== false && $code === 200) ? $body : false;
-    }
-
-    // Fallback
-    $ctx = stream_context_create([
-        'http' => [
-            'timeout' => 30,
-            'user_agent' => 'SnapSmack-Updater/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0.0'),
-        ],
-    ]);
-    return @file_get_contents($url, false, $ctx);
-}
+ 
