@@ -4,6 +4,16 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.37 — "Moist Bar Stool" (2026-05-03)
+
+### Fixed
+- **`smack-update.php` truncation** — File was truncated mid-content due to null byte corruption. Stripped nulls, completed the schema_changes warning block, Apply Update button, up-to-date fallback, and `admin-footer.php` include.
+- **`SNAPSMACK_SIGNING_ENFORCED` undefined fatal** — Constant was referenced in `smack-update.php` and `core/updater.php` but never defined anywhere. Added definition to `core/updater.php` (derives from pubkey: enforced when real key present, advisory when placeholder). Guarded the display line in `smack-update.php` with `defined()` for safety on old installs.
+- **`snap-in.php` passphrase nudge removed** — Passphrase suggester had no business on the login page. Removed the nudge block and `smack-passphrase.js` load. Belongs on change-password only.
+- **Login tab panels both visible** — `.tab-content` had no CSS hide/show rules, causing both the PASSWORD and RECOVERY CODE panels to render simultaneously. Added `display:none` / `.active { display:block }` to `admin-theme-geometry-master.css`.
+
+---
+
 ## 0.7.36 — "Perch" (2026-05-01)
 
 ### Added

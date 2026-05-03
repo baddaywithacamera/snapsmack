@@ -28,6 +28,10 @@ if (file_exists(__DIR__ . '/release-pubkey.php')) {
 if (!defined('SNAPSMACK_RELEASE_PUBKEY')) {
     define('SNAPSMACK_RELEASE_PUBKEY', str_repeat('0', 64));
 }
+// Signing is enforced only when a real (non-placeholder) pubkey is present.
+if (!defined('SNAPSMACK_SIGNING_ENFORCED')) {
+    define('SNAPSMACK_SIGNING_ENFORCED', SNAPSMACK_RELEASE_PUBKEY !== str_repeat('0', 64));
+}
 
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
 
