@@ -7,5 +7,5 @@
  * to determine whether an update is available.
  */
 
-define('SC_VERSION',  '0.7.36');
-define('SC_CODENAME', 'Perch');
+define('SC_VERSION',  '0.7.37');
+define('SC_CODENAME', 'Moist Bar Stool');

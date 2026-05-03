@@ -1234,7 +1234,7 @@ include 'core/sidebar.php';
         </div>
         <div class="stat-row mt-20">
             <span class="label">SIGNING:</span>
-            <span class="value"><?php echo SNAPSMACK_SIGNING_ENFORCED ? 'ENFORCED' : 'ADVISORY (PLACEHOLDER KEY)'; ?></span>
+            <span class="value"><?php echo (defined('SNAPSMACK_SIGNING_ENFORCED') && SNAPSMACK_SIGNING_ENFORCED) ? 'ENFORCED' : 'ADVISORY (PLACEHOLDER KEY)'; ?></span>
         </div>
         <div class="update-action-row mt-25">
             <form method="POST">
@@ -1662,4 +1662,25 @@ include 'core/sidebar.php';
 
         <?php if (!empty($upd['schema_changes'])): ?>
         <div class="update-warning mt-20">
-            THIS
+            THIS UPDATE INCLUDES DATABASE SCHEMA CHANGES. Migrations will run automatically during the apply step.
+        </div>
+
+        <?php endif; ?>
+
+        <form method="POST" class="mt-30">
+            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+            <button type="submit" name="action" value="stage_review" class="btn-smack">APPLY UPDATE &rarr;</button>
+        </form>
+
+    </div>
+
+    <?php else: ?>
+    <div class="box update-section">
+        <h3>UP TO DATE</h3>
+        <p class="dim" style="font-size:0.85rem;">No update available. Your installation is running the latest release.</p>
+    </div>
+    <?php endif; ?>
+
+</div>
+
+<?php include 'core/admin-footer.php'; ?>

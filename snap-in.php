@@ -303,16 +303,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                            autocomplete="current-password" required>
                 </div>
 
-                <div class="passphrase-nudge">
-                    <strong>Consider a passphrase.</strong>
-                    <span class="passphrase-example" id="pp-example">&nbsp;</span>
-                    <button type="button" class="btn-suggest"
-                            onclick="snapSuggestPassphrase('password','pp-example')">
-                        Suggest one
-                    </button>
-                    &mdash; harder to crack, easier to type.
-                </div>
-
                 <button type="submit" class="btn-smack btn-login">LOG IN</button>
             </form>
         </div>
@@ -344,10 +334,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div><!-- /.login-box -->
 </div><!-- /.login-wrap -->
 
-<script src="assets/js/smack-passphrase.js"></script>
 <script>
 (function () {
-    // Tab switching
     document.querySelectorAll('.login-tabs .tab-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
             var tab = this.dataset.tab;
@@ -359,13 +347,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
         });
     });
-    // Pre-fill a passphrase example on load (display only)
-    (function () {
-        var el = document.getElementById('pp-example');
-        if (el && typeof snapGeneratePassphrase === 'function') {
-            el.textContent = snapGeneratePassphrase(6);
-        }
-    }());
 }());
 </script>
 

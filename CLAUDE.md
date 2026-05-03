@@ -196,10 +196,26 @@ git commit
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.34 "Perch"
-✅ **0.7.34 committed and tagged on Github (master branch).**
+### SnapSmack — Alpha 0.7.36 "Perch"
+✅ **0.7.36 committed locally. Pending push.**
 
 **Git branch is `master` not `main`** (confirmed 2026-04-29).
+
+**Changes this session (0.7.30–0.7.36):**
+
+**0.7.36** — Tool API key authentication + SYBU 0.7.9e
+- **`core/api-auth.php`** (NEW) — Dual auth: accepts `X-Snap-Key` header (tools) or session cookie (browser). Invalid key → 401 JSON. No key → falls through to normal session auth.
+- **`smack-settings.php`** — API Access section added: generate/copy/regenerate/revoke 64-char hex tool API key stored as `tool_api_key` in `snap_settings`.
+- **`migrations/046_tool_api_key.php`** (NEW) — Seeds `tool_api_key` setting.
+- **`migrations/047_patch_htaccess.php`** (NEW) — Reads root `.htaccess`, checks for required named routes (`snap-in`), injects any missing immediately before catch-all slug rule. Atomic tmp+rename write. Idempotent. Fixes old installs that never got `snap-in` because `.htaccess` is in updater's protected paths.
+- **`smack-audit.php`, `smack-backfill.php`, `sybu-data.php`, `smack-post-solo.php`** — `auth.php` → `api-auth.php`.
+- **`tools/sybu/poster.py`** — `login()`, `is_session_alive()`, `relogin()` removed. `SnapSmackClient` now takes `api_key` arg, sends `X-Snap-Key` header on all requests. `keepalive()` is a no-op.
+- **`tools/sybu/main.py`** — USERNAME/PASSWORD fields → API KEY field. Connect calls `client.verify()`. Session timer and keepalive timer removed.
+- **SYBU bumped to 0.7.9e.**
+
+**0.7.35** — Fix missing release-pubkey.php (folded into 0.7.36 push)
+- **`core/release-pubkey.php`** (NEW) — Placeholder all-zeros Ed25519 pubkey. Prevents smack-update.php 500 on installs that updated via the in-admin updater.
+- **`core/updater.php`** — `require_once` made defensive; falls back to zeros key if file missing.
 
 **Changes this session (0.7.30–0.7.34, all pushed):**
 
@@ -314,8 +330,13 @@ git commit
   - `smack-central/sc-layout-top.php` — skull emoji removed from nav
 
 **Pending — live sites:**
-- Build 0.7.34 release package from Smack Central
-- Update all live sites to 0.7.34 via Smack Central update system
+- Push 0.7.36 to Github (commit is local only — run commit command from session)
+- FTP `core/release-pubkey.php` to photowalk.ing (fixes smack-update.php 500 — then updater can pull 0.7.36)
+- FTP `.htaccess` to photowalk.ing (fixes `/snap-in` 404 immediately — migration 047 will also patch it once 0.7.36 is applied via updater)
+- Build 0.7.36 release package from Smack Central after push
+- Update all live sites to 0.7.36 via Smack Central update system
+- Generate API key in foundtextures.ca Admin → Settings → API Access, paste into SYBU Settings → API Key
+- Rebuild SYBU exe (`build.bat` in `tools/sybu/`) after push for 0.7.9e
 - FTP `smack-central/sc-release.php` + `setup.php` to snapsmack.ca if not done (truncation fix from 0.7.26 era)
 - FTP skins to strathmore.pics: `skins/50-shades-of-noah-grey/`, `skins/new-horizon/`, `skins/galleria/`, `skins/rational-geo/` (fresh install has no skins)
 - Complete strathmore.pics install: delete duplicate snap_user 'sean' then re-run step 5
@@ -357,7 +378,7 @@ git rm --cached snapsmack.zip smack-central-current.zip error_log
 ```
 After running these: update the $migration_name string inside `042_semantic_analysis_tables.php` from `'030_semantic_analysis_tables'` to `'042_semantic_analysis_tables'`.
 
-### Smack Your Batch Up (SYBU) — v0.7.9c "Advanced Visual Match"
+### Smack Your Batch Up (SYBU) — v0.7.9e "API key authentication"
 Tool lives in `tools/sybu/`. All commits on `main`. Push from local: `git push Github main`, then force-move the tag.
 
 **To rebuild the exe:** run `build.bat` in `tools/sybu/`

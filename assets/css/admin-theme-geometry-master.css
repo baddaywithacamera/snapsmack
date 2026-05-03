@@ -4384,7 +4384,7 @@ input[type="range"]:active::-webkit-slider-thumb {
     transform: none;
 }
 
-/* ── Login page: passphrase nudge ────────────────────────────────────────── */
+/* ── Login page ──────────────────────────────────────────────────────────── */
 .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
 .login-box { width: 100%; max-width: 420px; padding: 36px 32px; }
 .login-logo { text-align: center; margin-bottom: 28px; }
@@ -4393,8 +4393,5 @@ input[type="range"]:active::-webkit-slider-thumb {
 .login-error { background: rgba(255,80,80,0.08); border: 1px solid rgba(255,80,80,0.3); color: #ff6060; padding: 10px 14px; border-radius: 4px; font-size: 0.78rem; margin-bottom: 18px; }
 .login-tabs { margin-bottom: 24px; }
 .btn-login { width: 100%; margin-top: 20px; }
-.passphrase-nudge { margin-top: 20px; padding: 14px 16px; background: rgba(160,255,144,0.05); border: 1px solid rgba(160,255,144,0.15); border-radius: 4px; font-size: 0.78rem; color: var(--text-muted,#666); line-height: 1.5; }
-.passphrase-nudge strong { color: var(--accent,#a0ff90); font-weight: 600; }
-.passphrase-nudge .passphrase-example { display: block; margin: 6px 0 10px; font-family: monospace; font-size: 0.82rem; color: var(--text-dim,#888); word-break: break-all; }
-.passphrase-nudge .btn-suggest { background: none; border: 1px solid rgba(160,255,144,0.3); color: var(--accent,#a0ff90); padding: 4px 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; border-radius: 3px; }
-.passphrase-nudge .btn-suggest:hover { background: rgba(160,255,144,0.1); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
