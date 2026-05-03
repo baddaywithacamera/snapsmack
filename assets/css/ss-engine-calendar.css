@@ -1,69 +1,65 @@
 /**
  * SNAPSMACK - Archive Calendar Engine Styles
  *
- * Layout: fixed full-height panel sliding in from left or right.
- * Skins override colours via their own :root variables or CSS.
- * The engine adds .smack-cal-- left|right to the panel element.
+ * Panel slides in from the right when the archive layout is 'croppedwithcalendar'.
+ * Colours are resolved from the active skin's CSS custom properties, with
+ * hardcoded dark fallbacks for skins that don't declare them.
+ *
+ * Skin colour hooks (declare in skin's :root to override):
+ *   --cal-bg        panel background       (falls back to --bg, then #111)
+ *   --cal-text      primary text           (falls back to --text, then #ccc)
+ *   --cal-text-dim  days with no posts     (falls back to --text-dim, then #444)
+ *   --cal-border    dividers / grid lines  (falls back to --border, then #2a2a2a)
+ *   --cal-label     section labels         (falls back to --dim, then #777)
+ *   --cal-active    active / selected      (falls back to --accent, then #fff)
+ *   --cal-hover-bg  day hover background   (falls back to rgba(255,255,255,.08))
+ *   --cal-today     today outline colour   (falls back to --cal-label, then #555)
+ *   --cal-range-bg  range highlight fill   (falls back to rgba(255,255,255,.06))
+ *   --cal-range-start-bg  start cell fill  (falls back to --accent, then #fff)
  */
 
-/* ── Panel base ──────────────────────────────────────────────────────────── */
+/* ── Variable resolution: skin vars → cal vars → hardcoded fallback ─────── */
+
+#smack-cal-panel {
+    --_cal-bg:       var(--cal-bg,       var(--bg,       #111));
+    --_cal-text:     var(--cal-text,     var(--text,     #ccc));
+    --_cal-text-dim: var(--cal-text-dim, var(--text-dim, #444));
+    --_cal-border:   var(--cal-border,   var(--border,   #2a2a2a));
+    --_cal-label:    var(--cal-label,    var(--dim,      #777));
+    --_cal-active:   var(--cal-active,   var(--accent,   #fff));
+    --_cal-hover-bg: var(--cal-hover-bg, rgba(255,255,255,.08));
+    --_cal-today:    var(--cal-today,    var(--cal-label,#555));
+    --_cal-range-bg: var(--cal-range-bg, rgba(255,255,255,.06));
+    --_cal-range-start-bg: var(--cal-range-start-bg, var(--accent, rgba(255,255,255,.18)));
+}
+
+/* ── Panel ───────────────────────────────────────────────────────────────── */
 
 #smack-cal-panel {
     position: fixed;
     top: 0;
+    right: 0;
     bottom: 0;
-    width: 280px;
-    max-width: 90vw;
+    width: 268px;
+    max-width: 92vw;
     z-index: 1200;
     overflow-y: auto;
     overscroll-behavior: contain;
 
-    background: var(--cal-bg, #111);
-    color:       var(--cal-text, #ccc);
-    border-right: 1px solid var(--cal-border, #2a2a2a);
+    background:  var(--_cal-bg);
+    color:       var(--_cal-text);
+    border-left: 1px solid var(--_cal-border);
 
     display: flex;
     flex-direction: column;
-    gap: 0;
 
-    transform: translateX(-100%);
+    transform: translateX(100%);
     transition: transform 0.32s cubic-bezier(.2,.9,.2,1);
     will-change: transform;
 }
 
-#smack-cal-panel.smack-cal--right {
-    left: auto;
-    right: 0;
-    border-right: none;
-    border-left: 1px solid var(--cal-border, #2a2a2a);
-    transform: translateX(100%);
-}
-
 #smack-cal-panel.smack-cal-panel--open {
     transform: translateX(0);
-}
-
-/* ── Overlay ─────────────────────────────────────────────────────────────── */
-
-#smack-cal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 1199;
-    background: rgba(0,0,0,0.45);
-    opacity: 0;
-    transition: opacity 0.28s ease;
-}
-
-#smack-cal-overlay.smack-cal-overlay--visible {
-    display: block;
-    opacity: 1;
-}
-
-/* ── Body scroll lock ────────────────────────────────────────────────────── */
-
-.smack-cal-body-lock {
-    overflow: hidden;
 }
 
 /* ── Header ──────────────────────────────────────────────────────────────── */
@@ -72,63 +68,81 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 16px 12px;
-    border-bottom: 1px solid var(--cal-border, #2a2a2a);
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--_cal-border);
     flex-shrink: 0;
 }
 
 .smack-cal-title {
-    font-size: 0.75em;
+    font-size: 0.68em;
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--cal-label, #888);
+    color: var(--_cal-label);
 }
 
 .smack-cal-close {
     background: none;
     border: none;
-    color: var(--cal-text, #ccc);
+    color: var(--_cal-text);
     cursor: pointer;
     font-size: 1rem;
     padding: 2px 4px;
     line-height: 1;
-    opacity: 0.6;
+    opacity: 0.5;
     transition: opacity 0.15s;
 }
 
 .smack-cal-close:hover { opacity: 1; }
 
+/* ── Range hint bar ──────────────────────────────────────────────────────── */
+
+.smack-cal-range-hint {
+    padding: 7px 16px;
+    font-size: 0.65em;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--_cal-label);
+    border-bottom: 1px solid var(--_cal-border);
+    flex-shrink: 0;
+    line-height: 1.4;
+}
+
 /* ── Months container ────────────────────────────────────────────────────── */
 
 .smack-cal-months {
-    padding: 16px 16px 8px;
+    padding: 14px 14px 4px;
     flex: 1;
     min-height: 0;
-    position: relative;
+    overflow-y: auto;
 }
 
-.smack-cal-months.smack-cal-loading::after {
-    content: '';
-    display: block;
-    position: absolute;
-    inset: 0;
-    background: rgba(0,0,0,0.4);
+.smack-cal-loading-msg {
+    font-size: 0.72em;
+    color: var(--_cal-label);
+    padding: 8px 2px;
+}
+
+.smack-cal-error {
+    font-size: 0.72em;
+    color: var(--_cal-label);
+    padding: 8px 2px;
+    font-style: italic;
 }
 
 /* ── Month block ─────────────────────────────────────────────────────────── */
 
 .smack-cal-month {
-    margin-bottom: 20px;
+    margin-bottom: 18px;
 }
 
 .smack-cal-month-name {
-    font-size: 0.72em;
+    font-size: 0.68em;
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--cal-label, #888);
-    margin-bottom: 8px;
+    color: var(--_cal-label);
+    margin-bottom: 7px;
 }
 
 /* ── Calendar grid ───────────────────────────────────────────────────────── */
@@ -136,25 +150,27 @@
 .smack-cal-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 2px;
+    gap: 1px;
 }
 
 .smack-cal-dow {
-    font-size: 0.62em;
-    letter-spacing: 0.06em;
+    font-size: 0.58em;
+    letter-spacing: 0.04em;
     text-align: center;
-    padding: 2px 0 4px;
-    color: var(--cal-label, #777);
+    padding: 2px 0 5px;
+    color: var(--_cal-label);
     text-transform: uppercase;
 }
 
 .smack-cal-day {
-    font-size: 0.75em;
+    font-size: 0.72em;
     text-align: center;
-    padding: 4px 2px;
+    padding: 5px 2px;
     border-radius: 3px;
-    line-height: 1.4;
-    color: var(--cal-text-dim, #555);
+    line-height: 1.2;
+    color: var(--_cal-text-dim);
+    transition: background 0.1s;
+    user-select: none;
 }
 
 .smack-cal-day--empty {
@@ -162,108 +178,71 @@
 }
 
 .smack-cal-day--today {
-    outline: 1px solid var(--cal-today, #555);
-    outline-offset: -1px;
-    border-radius: 3px;
+    outline: 1px solid var(--_cal-today);
+    outline-offset: -2px;
 }
 
 .smack-cal-day--has-post {
-    color: var(--cal-text, #ccc);
-}
-
-.smack-cal-day--has-post a {
-    display: block;
-    width: 100%;
-    color: var(--cal-active, #fff);
-    text-decoration: none;
+    color: var(--_cal-text);
+    cursor: pointer;
     font-weight: 600;
+}
+
+.smack-cal-day--has-post:hover {
+    background: var(--_cal-hover-bg);
+    color: var(--_cal-active);
+}
+
+/* ── Range selection states ──────────────────────────────────────────────── */
+
+.smack-cal-day--range-start {
+    background: var(--_cal-range-start-bg);
+    color: var(--_cal-active);
     border-radius: 3px;
-    padding: 2px 0;
-    transition: background 0.12s;
+    font-weight: 700;
 }
 
-.smack-cal-day--has-post a:hover {
-    background: var(--cal-hover-bg, rgba(255,255,255,0.1));
+.smack-cal-day--in-range-preview {
+    background: var(--_cal-range-bg);
+    color: var(--_cal-text);
+    border-radius: 0;
 }
 
-/* ── Nav buttons ─────────────────────────────────────────────────────────── */
+/* Start cell keeps its rounded look even when also in-range-preview */
+.smack-cal-day--range-start.smack-cal-day--in-range-preview {
+    border-radius: 3px 0 0 3px;
+}
+
+/* ── In range-mode: all has-post days get a pointer even without hover ───── */
+.smack-cal-range-mode .smack-cal-day {
+    cursor: crosshair;
+}
+
+.smack-cal-range-mode .smack-cal-day--has-post {
+    cursor: crosshair;
+}
+
+/* ── Nav ─────────────────────────────────────────────────────────────────── */
 
 .smack-cal-nav {
     display: flex;
     justify-content: space-between;
-    padding: 4px 0 12px;
+    padding: 6px 14px 14px;
+    border-top: 1px solid var(--_cal-border);
+    flex-shrink: 0;
 }
 
 .smack-cal-nav-btn {
     background: none;
     border: none;
-    color: var(--cal-label, #888);
+    color: var(--_cal-label);
     cursor: pointer;
-    font-size: 0.7em;
-    letter-spacing: 0.05em;
-    padding: 4px 0;
+    font-size: 0.65em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
+    padding: 4px 0;
     transition: color 0.15s;
 }
 
-.smack-cal-nav-btn:hover  { color: var(--cal-active, #fff); }
-.smack-cal-nav-btn:disabled { opacity: 0.25; cursor: default; }
-
-/* ── Section label ───────────────────────────────────────────────────────── */
-
-.smack-cal-section-label {
-    font-size: 0.65em;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--cal-label, #777);
-    padding: 0 16px 8px;
-    border-top: 1px solid var(--cal-border, #2a2a2a);
-    padding-top: 14px;
-}
-
-/* ── Recent posts list ───────────────────────────────────────────────────── */
-
-.smack-cal-posts {
-    flex-shrink: 0;
-    padding-bottom: 16px;
-}
-
-.smack-cal-post-list {
-    list-style: none;
-    margin: 0;
-    padding: 0 16px;
-}
-
-.smack-cal-post-list li {
-    padding: 4px 0;
-    border-bottom: 1px solid var(--cal-border, #1e1e1e);
-    font-size: 0.76em;
-    line-height: 1.4;
-}
-
-.smack-cal-post-list li:last-child { border-bottom: none; }
-
-.smack-cal-post-list a {
-    color: var(--cal-text, #bbb);
-    text-decoration: none;
-    display: block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    transition: color 0.12s;
-}
-
-.smack-cal-post-list a:hover { color: var(--cal-active, #fff); }
-
-.smack-cal-post-empty {
-    color: var(--cal-label, #666);
-    font-size: 0.76em;
-    font-style: italic;
-}
-
-.smack-cal-error {
-    color: var(--cal-error, #c0392b);
-    font-size: 0.8em;
-    padding: 8px 0;
-}
+.smack-cal-nav-btn:hover    { color: var(--_cal-active); }
+.smack-cal-nav-btn:disabled { opacity: 0.2; cursor: default; }

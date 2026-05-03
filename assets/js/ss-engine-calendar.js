@@ -1,117 +1,141 @@
 /**
  * SNAPSMACK - Archive Calendar Engine
  *
- * Renders a fixed sidebar calendar panel that slides in from the left or right.
- * Days with published images are highlighted as clickable links into the archive.
- * Below the calendar, a configurable list of recent post titles is shown.
- * Month navigation loads new data via AJAX without a page reload.
+ * Archive-integrated sliding calendar panel. Activates automatically when the
+ * archive layout is 'croppedwithcalendar' (body class archive-layout-croppedwithcalendar).
+ * Slides in from the right; slides out before navigating to any other layout.
+ *
+ * Supports single-day navigation and two-click date-range selection.
+ * Month count is computed from available viewport height on open.
+ * Colours inherit from the active skin's CSS custom properties.
  *
  * Activated by: require_scripts[] = 'smack-calendar' in skin manifest.
- * Configured via: window.SMACK_CONFIG.calendar (emitted by core/meta.php).
+ * Triggered by: archive layout toggle (layout=croppedwithcalendar).
  *
- * DOM requirements:
- *   #smack-cal-trigger  — button/link that opens/closes the panel
- *   (panel is created and injected by this engine)
+ * Date selection UX:
+ *   First click on a day  → enters range-start mode (day highlighted)
+ *   Second click same day → single-day navigate (?date=YYYY-MM-DD)
+ *   Second click other day → range navigate (?from=DATE&to=DATE)
+ *   ESC while in range-start mode → cancel, return to browsing
  *
- * SMACK_CONFIG.calendar keys:
- *   side        — 'left' | 'right'  (default: 'left')
- *   months      — integer 1-3       (how many months to show, default: 1)
- *   postCount   — integer 5-20      (recent post list length, default: 10)
- *   endpoint    — string URL        (AJAX endpoint, default: '/api-calendar.php')
+ * SMACK_CONFIG.calendar keys (emitted by core/meta.php):
+ *   endpoint — URL of api-calendar.php
  */
 
 (function () {
     'use strict';
 
-    var cfg = (window.SMACK_CONFIG && window.SMACK_CONFIG.calendar) || {};
-    var SIDE       = cfg.side      || 'left';
-    var MONTHS     = Math.min(3, Math.max(1, parseInt(cfg.months,    10) || 1));
-    var POST_COUNT = Math.min(20, Math.max(5, parseInt(cfg.postCount, 10) || 10));
-    var ENDPOINT   = cfg.endpoint || '/api-calendar.php';
+    // ── Config ─────────────────────────────────────────────────────────────
 
-    // State
-    var isOpen    = false;
-    var isLoading = false;
-    var panel     = null;
-    var overlay   = null;
-    var calBody   = null;
-    var postList  = null;
+    var cfg      = (window.SMACK_CONFIG && window.SMACK_CONFIG.calendar) || {};
+    var ENDPOINT = cfg.endpoint || '/api-calendar.php';
 
-    // Current displayed month offset from today (0 = current month)
+    // Height of one rendered month block (heading + day-of-week row + grid + margin).
+    // Used to compute how many months fit in the viewport.
+    var MONTH_BLOCK_H = 215;
+    var PANEL_CHROME  = 120; // header + nav + padding
+
+    // ── State ──────────────────────────────────────────────────────────────
+
+    var panel       = null;
+    var calBody     = null;
+    var rangeHint   = null;
+    var isOpen      = false;
+    var isLoading   = false;
     var monthOffset = 0;
+    var computedMonths = 1;
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // DOM CONSTRUCTION
-    // ─────────────────────────────────────────────────────────────────────────
+    // Range-selection state
+    var rangeStart  = null; // 'YYYY-MM-DD' or null
+    var allDayCells = [];   // flat list of rendered {dateKey, el} for hover preview
+
+    // ── DOM construction ───────────────────────────────────────────────────
 
     function buildPanel() {
-        // Overlay (click-outside-to-close)
-        overlay = document.createElement('div');
-        overlay.id = 'smack-cal-overlay';
-        overlay.addEventListener('click', close);
-        document.body.appendChild(overlay);
-
-        // Panel
         panel = document.createElement('div');
         panel.id = 'smack-cal-panel';
         panel.setAttribute('aria-label', 'Archive Calendar');
         panel.setAttribute('role', 'complementary');
-        panel.classList.add('smack-cal--' + SIDE);
+        panel.classList.add('smack-cal--right');
 
-        // Header row: title + close button
+        // Header
         var header = document.createElement('div');
         header.className = 'smack-cal-header';
 
         var title = document.createElement('span');
         title.className = 'smack-cal-title';
-        title.textContent = 'Archive';
+        title.textContent = 'Browse by Date';
         header.appendChild(title);
 
         var closeBtn = document.createElement('button');
         closeBtn.className = 'smack-cal-close';
         closeBtn.setAttribute('aria-label', 'Close calendar');
-        closeBtn.textContent = '✕';
-        closeBtn.addEventListener('click', close);
+        closeBtn.innerHTML = '&#x2715;';
+        closeBtn.addEventListener('click', function () {
+            // Navigate to cropped layout (removes calendar)
+            var fallback = findFallbackLayoutLink();
+            slideOutThen(function () {
+                window.location.href = fallback;
+            });
+        });
         header.appendChild(closeBtn);
-
         panel.appendChild(header);
 
-        // Calendar body (months rendered here)
+        // Range hint bar (hidden until range-start is set)
+        rangeHint = document.createElement('div');
+        rangeHint.className = 'smack-cal-range-hint';
+        rangeHint.style.display = 'none';
+        panel.appendChild(rangeHint);
+
+        // Calendar body
         calBody = document.createElement('div');
         calBody.className = 'smack-cal-months';
         panel.appendChild(calBody);
 
-        // Recent posts section
-        var postSection = document.createElement('div');
-        postSection.className = 'smack-cal-posts';
+        // Navigation
+        var navRow = document.createElement('div');
+        navRow.className = 'smack-cal-nav';
 
-        var postLabel = document.createElement('div');
-        postLabel.className = 'smack-cal-section-label';
-        postLabel.textContent = 'Recent Posts';
-        postSection.appendChild(postLabel);
+        var prevBtn = document.createElement('button');
+        prevBtn.className = 'smack-cal-nav-btn';
+        prevBtn.innerHTML = '&larr; Earlier';
+        prevBtn.addEventListener('click', function () { monthOffset--; loadData(); });
 
-        postList = document.createElement('ul');
-        postList.className = 'smack-cal-post-list';
-        postSection.appendChild(postList);
+        var nextBtn = document.createElement('button');
+        nextBtn.id = 'smack-cal-next';
+        nextBtn.className = 'smack-cal-nav-btn smack-cal-nav-next';
+        nextBtn.innerHTML = 'Later &rarr;';
+        nextBtn.addEventListener('click', function () {
+            if (monthOffset < 0) { monthOffset++; loadData(); }
+        });
 
-        panel.appendChild(postSection);
+        navRow.appendChild(prevBtn);
+        navRow.appendChild(nextBtn);
+        panel.appendChild(navRow);
 
         document.body.appendChild(panel);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // DATA / AJAX
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Viewport height → month count ──────────────────────────────────────
 
-    function fetchData(offset, cb) {
+    function computeMonthCount() {
+        var available = window.innerHeight - PANEL_CHROME;
+        return Math.max(1, Math.floor(available / MONTH_BLOCK_H));
+    }
+
+    // ── AJAX ───────────────────────────────────────────────────────────────
+
+    function loadData() {
         if (isLoading) return;
         isLoading = true;
-        calBody.classList.add('smack-cal-loading');
+        calBody.innerHTML = '<p class="smack-cal-loading-msg">Loading…</p>';
+
+        computedMonths = computeMonthCount();
 
         var url = ENDPOINT
-            + '?offset=' + encodeURIComponent(offset)
-            + '&months=' + encodeURIComponent(MONTHS)
-            + '&count='  + encodeURIComponent(POST_COUNT);
+            + '?offset='  + encodeURIComponent(monthOffset)
+            + '&months='  + encodeURIComponent(computedMonths)
+            + '&count=5';
 
         var xhr = new XMLHttpRequest();
         xhr.open('GET', url, true);
@@ -119,91 +143,64 @@
         xhr.onreadystatechange = function () {
             if (xhr.readyState !== 4) return;
             isLoading = false;
-            calBody.classList.remove('smack-cal-loading');
             if (xhr.status === 200) {
-                try {
-                    var data = JSON.parse(xhr.responseText);
-                    cb(null, data);
-                } catch (e) {
-                    cb('Parse error');
-                }
+                try { renderCalendar(JSON.parse(xhr.responseText)); }
+                catch (e) { calBody.innerHTML = '<p class="smack-cal-error">Parse error.</p>'; }
             } else {
-                cb('HTTP ' + xhr.status);
+                calBody.innerHTML = '<p class="smack-cal-error">Could not load calendar.</p>';
             }
         };
         xhr.send();
+
+        // Disable next button when at current month
+        var nextBtn = document.getElementById('smack-cal-next');
+        if (nextBtn) nextBtn.disabled = (monthOffset >= 0);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // RENDER
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Render ─────────────────────────────────────────────────────────────
 
     function renderCalendar(data) {
         calBody.innerHTML = '';
+        allDayCells = [];
 
-        if (!data || !data.months) return;
+        if (!data || !data.months || !data.months.length) {
+            calBody.innerHTML = '<p class="smack-cal-error">No data.</p>';
+            return;
+        }
 
         data.months.forEach(function (monthData) {
             calBody.appendChild(buildMonthBlock(monthData, data.base_url));
         });
 
-        // Navigation row (previous / next month)
-        var navRow = document.createElement('div');
-        navRow.className = 'smack-cal-nav';
-
-        var prevBtn = document.createElement('button');
-        prevBtn.className = 'smack-cal-nav-btn';
-        prevBtn.textContent = '← Earlier';
-        prevBtn.addEventListener('click', function () {
-            monthOffset--;
-            loadData();
-        });
-
-        var nextBtn = document.createElement('button');
-        nextBtn.className = 'smack-cal-nav-btn smack-cal-nav-next';
-        nextBtn.textContent = 'Later →';
-        nextBtn.disabled = (monthOffset >= 0);
-        nextBtn.addEventListener('click', function () {
-            if (monthOffset < 0) {
-                monthOffset++;
-                loadData();
-            }
-        });
-
-        navRow.appendChild(prevBtn);
-        navRow.appendChild(nextBtn);
-        calBody.appendChild(navRow);
-
-        // Recent posts
-        renderPosts(data.recent_posts || [], data.base_url);
+        updateRangeHighlights();
     }
 
     function buildMonthBlock(monthData, baseUrl) {
-        // monthData: { year, month (1-12), name, days: { "YYYY-MM-DD": count, ... } }
         var wrap = document.createElement('div');
         wrap.className = 'smack-cal-month';
 
         var heading = document.createElement('div');
         heading.className = 'smack-cal-month-name';
-        heading.textContent = monthData.name + ' ' + monthData.year;
+        heading.textContent = monthData.name + ' ' + monthData.year;
         wrap.appendChild(heading);
 
         var grid = document.createElement('div');
         grid.className = 'smack-cal-grid';
 
-        // Day-of-week headers (Mon-Sun)
-        var dayNames = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
-        dayNames.forEach(function (d) {
+        // Day-of-week headers Mon→Sun
+        ['Mo','Tu','We','Th','Fr','Sa','Su'].forEach(function (d) {
             var hdr = document.createElement('div');
             hdr.className = 'smack-cal-dow';
             hdr.textContent = d;
             grid.appendChild(hdr);
         });
 
-        // First day of the month (JS: 0=Sun..6=Sat → convert to Mon=0 offset)
-        var firstDate = new Date(monthData.year, monthData.month - 1, 1);
-        var startOffset = (firstDate.getDay() + 6) % 7; // 0=Mon
+        var firstDate   = new Date(monthData.year, monthData.month - 1, 1);
+        var startOffset = (firstDate.getDay() + 6) % 7;
         var daysInMonth = new Date(monthData.year, monthData.month, 0).getDate();
+
+        var today    = new Date();
+        var todayKey = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
 
         // Empty cells before day 1
         for (var i = 0; i < startOffset; i++) {
@@ -212,121 +209,195 @@
             grid.appendChild(empty);
         }
 
-        var today = new Date();
-        var todayKey = today.getFullYear() + '-'
-            + pad(today.getMonth() + 1) + '-'
-            + pad(today.getDate());
-
         for (var d = 1; d <= daysInMonth; d++) {
-            var dateKey = monthData.year + '-'
-                + pad(monthData.month) + '-'
-                + pad(d);
+            var dateKey = monthData.year + '-' + pad(monthData.month) + '-' + pad(d);
+            var count   = monthData.days[dateKey] || 0;
 
             var cell = document.createElement('div');
             cell.className = 'smack-cal-day';
+            if (dateKey === todayKey)  cell.classList.add('smack-cal-day--today');
+            if (count > 0)             cell.classList.add('smack-cal-day--has-post');
 
-            if (dateKey === todayKey) cell.classList.add('smack-cal-day--today');
+            cell.dataset.date  = dateKey;
+            cell.dataset.count = count;
+            cell.textContent   = d;
 
-            var count = monthData.days[dateKey] || 0;
             if (count > 0) {
-                cell.classList.add('smack-cal-day--has-post');
-                var link = document.createElement('a');
-                link.href = baseUrl + '?date=' + encodeURIComponent(dateKey);
-                link.title = count + (count === 1 ? ' post' : ' posts');
-                link.textContent = d;
-                cell.appendChild(link);
-            } else {
-                cell.textContent = d;
+                cell.title = count + (count === 1 ? ' photo' : ' photos');
             }
 
+            cell.addEventListener('click', function () { onDayClick(this); });
+            cell.addEventListener('mouseenter', function () { onDayHover(this.dataset.date); });
+
             grid.appendChild(cell);
+            allDayCells.push({ dateKey: dateKey, el: cell });
         }
 
         wrap.appendChild(grid);
         return wrap;
     }
 
-    function renderPosts(posts, baseUrl) {
-        postList.innerHTML = '';
-        if (!posts.length) {
-            var li = document.createElement('li');
-            li.className = 'smack-cal-post-empty';
-            li.textContent = 'No recent posts.';
-            postList.appendChild(li);
-            return;
+    // ── Day interaction ────────────────────────────────────────────────────
+
+    function onDayClick(cell) {
+        var dateKey = cell.dataset.date;
+
+        if (!rangeStart) {
+            // First click — enter range-start mode
+            rangeStart = dateKey;
+            showRangeHint('Now click an end date — or click the same date for a single day.');
+            updateRangeHighlights();
+            calBody.classList.add('smack-cal-range-mode');
+        } else if (dateKey === rangeStart) {
+            // Clicked same cell — single day navigation
+            var url = buildArchiveUrl({ date: dateKey });
+            navigateTo(url);
+        } else {
+            // Second click — range navigation
+            var d1 = rangeStart < dateKey ? rangeStart : dateKey;
+            var d2 = rangeStart < dateKey ? dateKey : rangeStart;
+            var url = buildArchiveUrl({ from: d1, to: d2 });
+            navigateTo(url);
         }
-        posts.forEach(function (post) {
-            var li = document.createElement('li');
-            var a  = document.createElement('a');
-            a.href        = post.url;
-            a.textContent = post.title;
-            a.title       = post.date;
-            li.appendChild(a);
-            postList.appendChild(li);
+    }
+
+    function onDayHover(dateKey) {
+        if (!rangeStart) return;
+        // Preview range between rangeStart and hovered date
+        var lo = rangeStart < dateKey ? rangeStart : dateKey;
+        var hi = rangeStart < dateKey ? dateKey : rangeStart;
+        allDayCells.forEach(function (c) {
+            if (c.dateKey >= lo && c.dateKey <= hi) {
+                c.el.classList.add('smack-cal-day--in-range-preview');
+            } else {
+                c.el.classList.remove('smack-cal-day--in-range-preview');
+            }
         });
     }
 
-    function pad(n) {
-        return n < 10 ? '0' + n : '' + n;
+    function updateRangeHighlights() {
+        allDayCells.forEach(function (c) {
+            c.el.classList.remove('smack-cal-day--range-start', 'smack-cal-day--in-range-preview');
+            if (c.dateKey === rangeStart) {
+                c.el.classList.add('smack-cal-day--range-start');
+            }
+        });
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // OPEN / CLOSE
-    // ─────────────────────────────────────────────────────────────────────────
+    function clearRange() {
+        rangeStart = null;
+        rangeHint.style.display = 'none';
+        calBody.classList.remove('smack-cal-range-mode');
+        allDayCells.forEach(function (c) {
+            c.el.classList.remove(
+                'smack-cal-day--range-start',
+                'smack-cal-day--in-range-preview'
+            );
+        });
+    }
+
+    function showRangeHint(msg) {
+        rangeHint.textContent = msg;
+        rangeHint.style.display = 'block';
+    }
+
+    // ── URL building ───────────────────────────────────────────────────────
+
+    function buildArchiveUrl(params) {
+        // Preserve layout=croppedwithcalendar so the panel stays open
+        var base = window.location.pathname;
+        var parts = ['layout=croppedwithcalendar'];
+        if (params.date) parts.push('date=' + encodeURIComponent(params.date));
+        if (params.from) parts.push('from=' + encodeURIComponent(params.from));
+        if (params.to)   parts.push('to='   + encodeURIComponent(params.to));
+        return base + '?' + parts.join('&');
+    }
+
+    function navigateTo(url) {
+        window.location.href = url;
+    }
+
+    // ── Open / Close ───────────────────────────────────────────────────────
 
     function open() {
         if (isOpen) return;
         isOpen = true;
+        // Force reflow then add open class for CSS transition
+        panel.getBoundingClientRect();
         panel.classList.add('smack-cal-panel--open');
-        overlay.classList.add('smack-cal-overlay--visible');
-        document.body.classList.add('smack-cal-body-lock');
         loadData();
     }
 
-    function close() {
-        if (!isOpen) return;
-        isOpen = false;
+    function slideOutThen(cb) {
         panel.classList.remove('smack-cal-panel--open');
-        overlay.classList.remove('smack-cal-overlay--visible');
-        document.body.classList.remove('smack-cal-body-lock');
+        setTimeout(cb, 340);
     }
 
-    function toggle() {
-        isOpen ? close() : open();
-    }
-
-    function loadData() {
-        fetchData(monthOffset, function (err, data) {
-            if (err) {
-                calBody.innerHTML = '<p class="smack-cal-error">Could not load calendar.</p>';
-                return;
+    // Find the URL of the first non-calendar layout toggle link
+    function findFallbackLayoutLink() {
+        var links = document.querySelectorAll('.archive-layout-toggle a[data-layout]');
+        for (var i = 0; i < links.length; i++) {
+            if (links[i].dataset.layout !== 'croppedwithcalendar') {
+                return links[i].href;
             }
-            renderCalendar(data);
+        }
+        return 'archive.php';
+    }
+
+    // ── Keyboard ───────────────────────────────────────────────────────────
+
+    function onKeydown(e) {
+        if (e.key === 'Escape') {
+            if (rangeStart) {
+                clearRange();
+            }
+        }
+    }
+
+    // ── Wire layout toggle links to slide-out animation ───────────────────
+
+    function wireLayoutLinks() {
+        var links = document.querySelectorAll('.archive-layout-toggle a[data-layout]');
+        links.forEach(function (link) {
+            if (link.dataset.layout === 'croppedwithcalendar') return;
+            link.addEventListener('click', function (e) {
+                if (!isOpen) return;
+                e.preventDefault();
+                var href = this.href;
+                slideOutThen(function () {
+                    window.location.href = href;
+                });
+            });
         });
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // INIT
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Util ───────────────────────────────────────────────────────────────
+
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+    // ── Init ───────────────────────────────────────────────────────────────
 
     document.addEventListener('DOMContentLoaded', function () {
+        var isCalLayout = document.body.classList.contains('archive-layout-croppedwithcalendar');
+        if (!isCalLayout) return; // Only activate on calendar layout
+
         buildPanel();
+        wireLayoutLinks();
+        open();
 
-        var trigger = document.getElementById('smack-cal-trigger');
-        if (trigger) {
-            trigger.addEventListener('click', function (e) {
-                e.preventDefault();
-                toggle();
-            });
-        }
+        document.addEventListener('keydown', onKeydown);
 
-        // Keyboard: Escape closes
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && isOpen) close();
+        window.addEventListener('resize', function () {
+            if (!isOpen || isLoading) return;
+            var newCount = computeMonthCount();
+            if (newCount !== computedMonths) loadData();
         });
 
-        // Expose API for skins that want to control the panel directly
-        window.smackCalendar = { open: open, close: close, toggle: toggle };
+        // Public API
+        window.smackCalendar = {
+            open:       open,
+            clearRange: clearRange,
+        };
     });
 
 }());

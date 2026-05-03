@@ -47,12 +47,14 @@ try {
     // URL param if the owner has enabled multiple modes. Preference persists via JS/localStorage.
     // Skin manifest may declare a preferred default via features.archive_layout_default.
     $skin_layout_fallback = 'square';
+    $skin_has_calendar = false;
     $_manifest_path = __DIR__ . '/skins/' . $active_skin . '/manifest.php';
     if (file_exists($_manifest_path)) {
         $_m = include $_manifest_path;
         if (!empty($_m['features']['archive_layout_default'])) {
             $skin_layout_fallback = $_m['features']['archive_layout_default'];
         }
+        $skin_has_calendar = in_array('smack-calendar', $_m['require_scripts'] ?? []);
         unset($_m, $_manifest_path);
     }
     $archive_layout_default = $settings['archive_layout'] ?? $skin_layout_fallback;
@@ -61,7 +63,7 @@ try {
         header('Location: ' . $base);
         exit;
     }
-    if (!in_array($archive_layout_default, ['square', 'cropped', 'masonry'])) {
+    if (!in_array($archive_layout_default, ['square', 'cropped', 'masonry', 'croppedwithcalendar'])) {
         $archive_layout_default = 'square';
     }
 
@@ -73,6 +75,12 @@ try {
     );
     if (empty($available_modes)) $available_modes = [$archive_layout_default];
     $available_modes = array_values($available_modes);
+    // Only offer croppedwithcalendar if the skin has the calendar engine.
+    if (!$skin_has_calendar) {
+        $available_modes = array_values(array_filter($available_modes, function($m) {
+            return $m !== 'croppedwithcalendar';
+        }));
+    }
     if (!in_array($archive_layout_default, $available_modes)) {
         $available_modes[] = $archive_layout_default;
     }
@@ -104,7 +112,9 @@ try {
         else $thumb_step = 'xl';
     }
     if (!in_array($thumb_step, ['xs', 's', 'm', 'l', 'xl'])) $thumb_step = 'm';
-    $thumb_px = $thumb_size_map[$archive_layout][$thumb_step] ?? $thumb_size_map['square']['m'];
+    // croppedwithcalendar renders the same grid as cropped
+    $grid_layout = ($archive_layout === 'croppedwithcalendar') ? 'cropped' : $archive_layout;
+    $thumb_px = $thumb_size_map[$grid_layout][$thumb_step] ?? $thumb_size_map['square']['m'];
 
     // Justified row target height for masonry layout
     $justified_row_height = (int)($settings['justified_row_height'] ?? 180);
@@ -114,6 +124,15 @@ try {
     $cat_filter    = isset($_GET['cat']) ? (int)$_GET['cat'] : null;
     $album_filter  = isset($_GET['album']) ? (int)$_GET['album'] : null;
     $search_query  = trim($_GET['q'] ?? '');
+    // Calendar date-range filter: ?from=YYYY-MM-DD&to=YYYY-MM-DD
+    $from_filter   = (isset($_GET['from']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['from']))
+                     ? $_GET['from'] : null;
+    $to_filter     = (isset($_GET['to'])   && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['to']))
+                     ? $_GET['to'] : null;
+    if ($from_filter && $to_filter && $from_filter > $to_filter) {
+        list($from_filter, $to_filter) = [$to_filter, $from_filter];
+    }
+
     // Calendar date filter: YYYY-MM-DD — shows all posts on that specific date.
     $date_filter   = (isset($_GET['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date']))
                      ? $_GET['date'] : null;
@@ -150,6 +169,11 @@ try {
         $params[] = $like;
         $params[] = $tag_like;
         $params[] = $family_exact;
+    } elseif ($from_filter && $to_filter) {
+        // Calendar date-range browse.
+        $where_clauses[] = "DATE(i.img_date) >= ? AND DATE(i.img_date) <= ?";
+        $params[] = $from_filter;
+        $params[] = $to_filter;
     } elseif ($date_filter) {
         // Calendar day browse — all posts published on a specific date.
         $where_clauses[] = "DATE(i.img_date) = ?";
@@ -287,14 +311,14 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
         <?php if ($offer_toggle): ?>
         <div class="archive-layout-toggle" role="group" aria-label="Layout">
             <?php
-            $toggle_labels = ['square' => 'Grid', 'cropped' => 'Crop', 'masonry' => 'Flow'];
+            $toggle_labels = ['square' => 'Grid', 'cropped' => 'Crop', 'masonry' => 'Flow', 'croppedwithcalendar' => 'Cal'];
             foreach ($available_modes as $mode):
                 $is_active = ($mode === $archive_layout);
                 // Build URL preserving existing query params except layout.
                 $qp = $_GET;
                 $qp['layout'] = $mode;
                 unset($qp['q']); // don't conflict with search — reset to all on layout switch
-                unset($qp['cat']); unset($qp['album']); unset($qp['date']);
+                unset($qp['cat']); unset($qp['album']); unset($qp['date']); unset($qp['from']); unset($qp['to']);
                 $qs = http_build_query($qp);
             ?>
                 <a href="archive.php?<?php echo $qs; ?>"
@@ -468,22 +492,4 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                                 <img src="<?php echo $thumb_url; ?>" alt="<?php echo htmlspecialchars($img['img_title']); ?>" loading="lazy">
                             </a>
                         </div>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <div class="empty-sector-msg">NO TRANSMISSIONS RECORDED IN THIS SECTOR.</div>
-                <?php endif; ?>
-            </div>
-            <?php endif; ?>
-
-            <?php
-            $footer_file = __DIR__ . '/' . $skin_path . '/skin-footer.php';
-            if (file_exists($footer_file)) include $footer_file;
-            ?>
-        </div>
-    </div>
-
-    <?php include __DIR__ . '/core/footer-scripts.php'; ?>
-
-
-</body>
-</html>
+                    <?php endforeac

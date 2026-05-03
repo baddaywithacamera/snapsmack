@@ -19,12 +19,13 @@ return [
     'status'        => 'stable',
 
     'features' => [
-        'supports_wall'  => true,
-        'has_landing'    => false,
-        'post_modes'     => ['image'],
-        'instagram_mode' => false,
-        'carousel'       => false,
-        'community'      => ['likes', 'comments'],
+        'supports_wall'        => true,
+        'has_landing'          => false,
+        'post_modes'           => ['image'],
+        'instagram_mode'       => false,
+        'carousel'             => false,
+        'community'            => ['likes', 'comments'],
+        'archive_layouts'      => ['square', 'cropped', 'masonry', 'croppedwithcalendar'],
     ],
 
     // Variant system for different greyscale themes
@@ -44,6 +45,7 @@ return [
         'smack-justified',
         'smack-community',
         'smack-keyboard',
+        'smack-calendar',
     ],
 
     'options' => [
