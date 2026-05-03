@@ -40,12 +40,11 @@ if ($is_ajax && !empty($_POST['action'])) {
 
         if ($type === 'post') {
             $rows = $pdo->prepare(
-                "SELECT p.id, p.title AS name, p.created_at,
+                "SELECT i.id, i.img_title AS name, i.img_date AS created_at,
                         i.img_thumb_square AS thumb
-                 FROM snap_posts p
-                 LEFT JOIN snap_images i ON i.post_id = p.id
-                 WHERE p.status = 'published' AND p.title LIKE ?
-                 GROUP BY p.id ORDER BY p.created_at DESC LIMIT 60"
+                 FROM snap_images i
+                 WHERE i.img_status = 'published' AND i.img_title LIKE ?
+                 ORDER BY i.img_date DESC LIMIT 60"
             );
             $rows->execute([$q]);
         } elseif ($type === 'album') {
@@ -216,13 +215,13 @@ if (!empty($_GET['edit'])) {
             $enriched = $item;
             if ($item['item_type'] === 'post') {
                 $r = $pdo->prepare(
-                    "SELECT p.title, i.img_thumb_square AS thumb
-                     FROM snap_posts p LEFT JOIN snap_images i ON i.post_id=p.id
-                     WHERE p.id=? LIMIT 1"
+                    "SELECT i.img_title AS title, i.img_thumb_square AS thumb
+                     FROM snap_images i
+                     WHERE i.id=? LIMIT 1"
                 );
                 $r->execute([$item['item_id']]);
                 $row = $r->fetch(PDO::FETCH_ASSOC);
-                $enriched['display_name'] = $row['title'] ?? '(post ' . $item['item_id'] . ')';
+                $enriched['display_name'] = $row['title'] ?? '(image ' . $item['item_id'] . ')';
                 $enriched['thumb']        = $row['thumb'] ?? null;
             } elseif ($item['item_type'] === 'album') {
                 $r = $pdo->prepare("SELECT album_name FROM snap_albums WHERE id=?");
@@ -241,9 +240,9 @@ if (!empty($_GET['edit'])) {
         // Featured image
         if (!empty($editing['featured_post_id'])) {
             $fs = $pdo->prepare(
-                "SELECT i.img_thumb_square AS thumb, p.title
-                 FROM snap_posts p LEFT JOIN snap_images i ON i.post_id=p.id
-                 WHERE p.id=? LIMIT 1"
+                "SELECT i.img_thumb_square AS thumb, i.img_title AS title
+                 FROM snap_images i
+                 WHERE i.id=? LIMIT 1"
             );
             $fs->execute([$editing['featured_post_id']]);
             $featured_thumb = $fs->fetch(PDO::FETCH_ASSOC) ?: null;

@@ -28,18 +28,16 @@ $msg = "";
 $edit_mode = false;
 $edit_data = [];
 
-// --- AJAX: post picker for featured image ---
+// --- AJAX: image picker for featured image ---
 if (!empty($_GET['ajax']) && $_GET['ajax'] === 'posts') {
     header('Content-Type: application/json');
     $q     = '%' . trim($_GET['q'] ?? '') . '%';
     $posts = $pdo->prepare(
-        "SELECT p.id, p.title, p.created_at,
+        "SELECT i.id, i.img_title AS title, i.img_date AS created_at,
                 i.img_thumb_square, i.img_thumb_aspect, i.img_file
-         FROM snap_posts p
-         LEFT JOIN snap_images i ON i.post_id = p.id
-         WHERE p.status = 'published' AND p.title LIKE ?
-         GROUP BY p.id
-         ORDER BY p.created_at DESC
+         FROM snap_images i
+         WHERE i.img_status = 'published' AND i.img_title LIKE ?
+         ORDER BY i.img_date DESC
          LIMIT 80"
     );
     $posts->execute([$q]);
@@ -99,10 +97,9 @@ $albums = $pdo->query(
 $featured_thumb = null;
 if ($edit_mode && !empty($edit_data['featured_post_id'])) {
     $fs = $pdo->prepare(
-        "SELECT i.img_thumb_square, i.img_thumb_aspect, i.img_file, p.title
-         FROM snap_posts p
-         LEFT JOIN snap_images i ON i.post_id = p.id
-         WHERE p.id = ? LIMIT 1"
+        "SELECT i.img_thumb_square, i.img_thumb_aspect, i.img_file, i.img_title AS title
+         FROM snap_images i
+         WHERE i.id = ? LIMIT 1"
     );
     $fs->execute([$edit_data['featured_post_id']]);
     $featured_thumb = $fs->fetch(PDO::FETCH_ASSOC) ?: null;
