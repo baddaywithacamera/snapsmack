@@ -426,23 +426,46 @@ include 'core/sidebar.php';
         grid.innerHTML = '<p class="dim" style="font-size:12px;padding:8px;grid-column:1/-1;">Loading…</p>';
         ajax('search_items', { type: activeTab, q: q, collection_id: COLL_ID }, function (items) {
             if (!items.length) { grid.innerHTML = '<p class="dim" style="font-size:12px;padding:8px;grid-column:1/-1;">Nothing found.</p>'; return; }
-            var html = '';
+            var frag = document.createDocumentFragment();
             items.forEach(function (it) {
                 var src = it.thumb ? BASE + it.thumb.replace(/^\//,'') : '';
-                html += '<div onclick="addMember(\'' + activeTab + '\',' + it.id + ',\'' + (it.name||'').replace(/'/g,'\\\'') + '\',\'' + (src||'') + '\')"'
-                      + ' style="cursor:pointer;border:2px solid ' + (it.added ? 'var(--accent)' : 'transparent') + ';border-radius:3px;overflow:hidden;position:relative;">';
+                var div = document.createElement('div');
+                div.style.cssText = 'cursor:pointer;border:2px solid ' + (it.added ? 'var(--accent)' : 'transparent') + ';border-radius:3px;overflow:hidden;position:relative;';
+                div.dataset.type  = activeTab;
+                div.dataset.id    = it.id;
+                div.dataset.name  = it.name || '';
+                div.dataset.src   = src;
+                div.addEventListener('click', function () {
+                    addMember(this.dataset.type, this.dataset.id, this.dataset.name, this.dataset.src);
+                });
                 if (src) {
-                    html += '<div style="aspect-ratio:1;"><img src="' + src + '" style="width:100%;height:100%;object-fit:cover;" loading="lazy"></div>';
+                    var inner = document.createElement('div');
+                    inner.style.cssText = 'aspect-ratio:1;';
+                    var img = document.createElement('img');
+                    img.src = src;
+                    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+                    img.loading = 'lazy';
+                    inner.appendChild(img);
+                    div.appendChild(inner);
                 } else {
-                    html += '<div style="aspect-ratio:1;background:var(--card-bg);display:flex;align-items:center;justify-content:center;padding:6px;">'
-                          + '<span style="font-size:10px;color:var(--dim);text-align:center;word-break:break-word;">' + it.name + '</span></div>';
+                    var inner = document.createElement('div');
+                    inner.style.cssText = 'aspect-ratio:1;background:var(--card-bg);display:flex;align-items:center;justify-content:center;padding:6px;';
+                    var lbl = document.createElement('span');
+                    lbl.style.cssText = 'font-size:10px;color:var(--dim);text-align:center;word-break:break-word;';
+                    lbl.textContent = it.name;
+                    inner.appendChild(lbl);
+                    div.appendChild(inner);
                 }
                 if (it.added) {
-                    html += '<div style="position:absolute;top:3px;right:3px;background:var(--accent);color:#111;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;">✓</div>';
+                    var tick = document.createElement('div');
+                    tick.style.cssText = 'position:absolute;top:3px;right:3px;background:var(--accent);color:#111;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;';
+                    tick.textContent = '✓';
+                    div.appendChild(tick);
                 }
-                html += '</div>';
+                frag.appendChild(div);
             });
-            grid.innerHTML = html;
+            grid.innerHTML = '';
+            grid.appendChild(frag);
         });
     }
 
@@ -461,10 +484,43 @@ include 'core/sidebar.php';
             div.setAttribute('data-id',   id);
             div.draggable = true;
             div.style.cursor = 'grab';
-            div.innerHTML = '<div class="item-details">'
-                + (thumb ? '<img src="' + thumb + '" style="width:40px;height:40px;object-fit:cover;border-radius:2px;flex-shrink:0;margin-right:10px;" alt="">' : '<div style="width:40px;height:40px;background:var(--card-bg);border-radius:2px;flex-shrink:0;margin-right:10px;display:flex;align-items:center;justify-content:center;"><span style="font-size:9px;text-transform:uppercase;color:var(--dim);">' + type.substring(0,3) + '</span></div>')
-                + '<div class="item-text"><strong>' + name + '</strong><code class="slug-display">' + type.toUpperCase() + '</code></div></div>'
-                + '<div class="item-actions"><a href="#" class="action-delete" onclick="removeMember(\'' + type + '\',' + id + ',this);return false;">REMOVE</a></div>';
+            var details = document.createElement('div');
+            details.className = 'item-details';
+            if (thumb) {
+                var tImg = document.createElement('img');
+                tImg.src = thumb;
+                tImg.style.cssText = 'width:40px;height:40px;object-fit:cover;border-radius:2px;flex-shrink:0;margin-right:10px;';
+                tImg.alt = '';
+                details.appendChild(tImg);
+            } else {
+                var tPlaceholder = document.createElement('div');
+                tPlaceholder.style.cssText = 'width:40px;height:40px;background:var(--card-bg);border-radius:2px;flex-shrink:0;margin-right:10px;display:flex;align-items:center;justify-content:center;';
+                var tLabel = document.createElement('span');
+                tLabel.style.cssText = 'font-size:9px;text-transform:uppercase;color:var(--dim);';
+                tLabel.textContent = type.substring(0, 3);
+                tPlaceholder.appendChild(tLabel);
+                details.appendChild(tPlaceholder);
+            }
+            var itemText = document.createElement('div');
+            itemText.className = 'item-text';
+            var strong = document.createElement('strong');
+            strong.textContent = name;
+            var code = document.createElement('code');
+            code.className = 'slug-display';
+            code.textContent = type.toUpperCase();
+            itemText.appendChild(strong);
+            itemText.appendChild(code);
+            details.appendChild(itemText);
+            var actions = document.createElement('div');
+            actions.className = 'item-actions';
+            var removeLink = document.createElement('a');
+            removeLink.href = '#';
+            removeLink.className = 'action-delete';
+            removeLink.textContent = 'REMOVE';
+            removeLink.addEventListener('click', function (e) { e.preventDefault(); removeMember(type, id, div); });
+            actions.appendChild(removeLink);
+            div.appendChild(details);
+            div.appendChild(actions);
             bindDrag(div);
             list.appendChild(div);
             // Refresh picker to show ✓
@@ -531,25 +587,62 @@ include 'core/sidebar.php';
         xhr.onload = function () {
             var posts = JSON.parse(xhr.responseText);
             if (!posts.length) { grid.innerHTML = '<p class="dim" style="font-size:12px;padding:8px;">No posts.</p>'; return; }
-            var html = '';
+            var frag = document.createDocumentFragment();
             posts.forEach(function (p) {
                 var src = p.thumb ? BASE + p.thumb.replace(/^\//,'') : '';
-                html += '<div onclick="selectFeatured(' + p.id + ',\'' + (src||'') + '\',\'' + p.title.replace(/'/g,'\\\'') + '\')"'
-                      + ' style="cursor:pointer;border:2px solid transparent;border-radius:3px;overflow:hidden;aspect-ratio:1;background:#111;">';
-                if (src) html += '<img src="' + src + '" style="width:100%;height:100%;object-fit:cover;" loading="lazy">';
-                else     html += '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--dim);font-size:10px;padding:4px;text-align:center;">' + p.title + '</div>';
-                html += '</div>';
+                var div = document.createElement('div');
+                div.style.cssText = 'cursor:pointer;border:2px solid transparent;border-radius:3px;overflow:hidden;aspect-ratio:1;background:#111;';
+                div.dataset.id    = p.id;
+                div.dataset.src   = src;
+                div.dataset.title = p.title;
+                div.addEventListener('click', function () {
+                    selectFeatured(this.dataset.id, this.dataset.src, this.dataset.title);
+                });
+                if (src) {
+                    var img = document.createElement('img');
+                    img.src = src;
+                    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+                    img.loading = 'lazy';
+                    div.appendChild(img);
+                } else {
+                    var label = document.createElement('div');
+                    label.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;color:var(--dim);font-size:10px;padding:4px;text-align:center;';
+                    label.textContent = p.title;
+                    div.appendChild(label);
+                }
+                frag.appendChild(div);
             });
-            grid.innerHTML = html;
+            grid.innerHTML = '';
+            grid.appendChild(frag);
         };
         xhr.send();
     }
     function selectFeatured(id, thumb, title) {
         document.getElementById('col-featured-id').value = id;
-        document.getElementById('col-featured-preview').innerHTML =
-            '<img src="' + thumb + '" style="width:80px;height:80px;object-fit:cover;border-radius:3px;border:1px solid var(--border);" alt="Featured">'
-            + '<span class="dim" style="display:block;font-size:11px;margin-top:4px;">' + title + '</span>'
-            + '<div style="display:flex;gap:8px;margin-top:8px;"><button type="button" onclick="openFeaturedPicker()" class="btn-secondary" style="font-size:11px;padding:5px 12px;">CHANGE</button><button type="button" onclick="clearFeatured()" class="btn-secondary" style="font-size:11px;padding:5px 12px;color:var(--dim);">REMOVE</button></div>';
+        var wrap = document.getElementById('col-featured-preview');
+        wrap.innerHTML = '';
+        var img = document.createElement('img');
+        img.src = thumb;
+        img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:3px;border:1px solid var(--border);';
+        img.alt = 'Featured';
+        var span = document.createElement('span');
+        span.className = 'dim';
+        span.style.cssText = 'display:block;font-size:11px;margin-top:4px;';
+        span.textContent = title;
+        var btns = document.createElement('div');
+        btns.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
+        var btnChange = document.createElement('button');
+        btnChange.type = 'button'; btnChange.className = 'btn-secondary';
+        btnChange.style.cssText = 'font-size:11px;padding:5px 12px;';
+        btnChange.textContent = 'CHANGE';
+        btnChange.addEventListener('click', openFeaturedPicker);
+        var btnRemove = document.createElement('button');
+        btnRemove.type = 'button'; btnRemove.className = 'btn-secondary';
+        btnRemove.style.cssText = 'font-size:11px;padding:5px 12px;color:var(--dim);';
+        btnRemove.textContent = 'REMOVE';
+        btnRemove.addEventListener('click', clearFeatured);
+        btns.appendChild(btnChange); btns.appendChild(btnRemove);
+        wrap.appendChild(img); wrap.appendChild(span); wrap.appendChild(btns);
         closeFeaturedModal();
         if (COLL_ID) ajax('save_featured', { collection_id: COLL_ID, post_id: id }, function(){});
     }

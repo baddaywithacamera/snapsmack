@@ -38,6 +38,7 @@ return [
     'require_scripts' => [
         'smack-community',
         'smack-photogram',
+        'smack-image-fade-load',
     ],
 
     'options' => [

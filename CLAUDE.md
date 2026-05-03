@@ -58,7 +58,24 @@ Follow the existing header and commenting style exactly. Do not invent new forma
 
 **Why:** The VM mounts the workspace over a FUSE/network path. `sed -i` writes a temp file and renames it over the original — on this mount that rename can truncate the file. The original is destroyed. This has happened multiple times and caused 500 errors on live sites.
 
-**All file edits use the Edit or Write tools only.** Shell (`mcp__workspace__bash`) is read-only with respect to project files — use it for running scripts, checking output, installing packages, etc. Never for writing files.
+**The Write tool pads files with null bytes when new content is shorter than the old file, and truncates when new content is longer.** The Edit tool is reliable for surgical in-place changes. For full file creation or replacement, use a Python shell write:
+
+```python
+python3 -c "
+path = '/sessions/.../mnt/snapsmack/file.php'
+content = '''...'''
+with open(path, 'w') as f:
+    f.write(content)
+"
+```
+
+**After every file write, check for truncation and null bytes:**
+
+```bash
+python3 -c "d=open('path','rb').read(); print(len(d), 'bytes,', d.count(b'\x00'), 'nulls'); print(repr(d[-60:]))"
+```
+
+Zero nulls and a clean EOF are required before committing. This has caused repeated 500 errors on live sites when missed.
 
 ## CRITICAL — Skins Must Never Be Deleted
 

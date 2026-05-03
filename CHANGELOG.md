@@ -7,6 +7,8 @@ All notable changes to SnapSmack are documented here. Newest release first.
 ## 0.7.39 — "Moist Bar Stool" (2026-05-01)
 
 ### Fixed
+- **`skins/photogram/manifest.php`** — Added `smack-image-fade-load` to `require_scripts`. Images were hidden by the CSS initial-state rule (opacity:0) but the fade-in engine was never loaded, causing black boxes in the archive grid.
+- **`skins/kiosk/manifest.php`** — Same `smack-image-fade-load` omission fixed.
 - **`smack-update.php`** — Removed auto-advance `setTimeout` that caused the updater to loop through stages without user input. Each stage now waits for manual button click.
 - **`archive.php`** — Skin manifests can now declare `features.archive_layout_default` to set a preferred default archive layout without overriding the admin's explicit DB setting. True Grit defaults to masonry.
 - **`skins/true-grit/manifest.php`** — `archive_layout_default` set to `masonry` (justified grid).
@@ -1008,10 +1010,4 @@ _Internal bump. See 0.7.5b for the full feature set._
 - F1 help not firing on Galleria after Phase C community retrofit. Root cause: `community-component.php` and `community-dock.php` called `community_current_user()` before the community migration had been run, throwing an uncaught `PDOException` that halted rendering before `ss-engine-comms.js` loaded. Fix: added `snap_community_ready()` guard to `core/community-session.php`; both includes bail silently when the community tables are absent.
 - F1 help modal invisible on texture-background skins (Impact Printer). Root cause: Impact Printer sets `body` background via `background-image` only — `getComputedStyle(body).backgroundColor` returns `rgba(0,0,0,0)`, making the modal panel transparent. Fix: added `getThemeColors()` helper to `ss-engine-comms.js` that reads `--bg-primary` / `--text-primary` from `:root` CSS custom properties first, falls back to computed body styles, then falls back to `#1a1a1a` / `#e0e0e0` if still transparent.
 - Unsolicited Disaster Recovery button removed from `smack-backup.php` header. The button was added uninstructed when `smack-disaster.php` was split out and broke the layout.
-- Photogram `layout.php` like queries used wrong column names (`img_id` / `account_id`) against `snap_likes` which uses `post_id` / `user_id`. Fixed both queries and replaced stale `$_SESSION['community_account_id']` with `community_current_user()`.
-- Photogram system footer cut off by fixed bottom nav. Root cause: `core/footer.php` renders `#system-footer` in normal document flow below `#pg-app`, directly under the `position: fixed` nav bar. Fix: `#system-footer { display: none; }` in Photogram's `style.css`. The bottom nav replaces the site footer concept in this skin.
-
-### Migrations
-- `migrate-rename-pocket-operator.sql`: updates any install with `active_skin = 'pocket-operator'` in `snap_settings` to `pocket-rocket`. Safe to run on installs that never used Pocket Operator (no-op).
-- Community infrastructure tables (`snap_likes`, `snap_reactions`, `snap_community_accounts`, `snap_community_sessions`) require the 0.7.1 migration to be run before community features are active.
-- `migrate-posts.sql`: creates `snap_posts`, `snap_post_images`, `snap_post_cat_map`, `snap_post_album_map`; adds `post_id` FK column to `snap_images`; wraps all existing images in single-type post records for forward compatibility. Non-destructive — legacy skins continue querying `snap_images` unchanged. Required before any skin
+- Photogram `layout.php` like queries used wrong column names (`im
