@@ -15,8 +15,8 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Referrer-Policy: strict-origin-when-cross-origin');
 }
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.37');
-define('SNAPSMACK_VERSION_SHORT', '0.7.37');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.38');
+define('SNAPSMACK_VERSION_SHORT', '0.7.38');
 define('SNAPSMACK_VERSION_CODENAME', 'Moist Bar Stool');
 
 // --- VERSION COMPARISON ---
@@ -71,5 +71,4 @@ function snapsmack_is_mobile(): bool {
     // (iOS Safari, Chrome Mobile, Samsung, etc.). Additional patterns cover
     // older or niche handsets. Tablets (iPad, Android without 'Mobile') are
     // intentionally excluded so they receive the normal desktop skin.
-    return (bool) preg_match('/Mobile|iPhone|iPod|Android.*Mobile|webOS|BlackBerry|Windows Phone|Opera Mini|IEMobile/i', $ua);
-}
+    return (bool) preg_match('/Mobile|iPhone|iPod|Android.*Mobile|webOS|BlackBerry|Windows Phone|Opera Mini|IEMobile/i'

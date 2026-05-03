@@ -74,7 +74,7 @@ if ($theme_mode === 'on') {
 // Display SnapSmack branding, or use custom text
 $powered_mode = $settings['footer_slot_powered'] ?? 'on';
 if ($powered_mode === 'on') {
-    $slots[] = 'POWERED BY <a href="https://snapsmack.ca" target="_blank" rel="nofollow noopener">SNAPSMACK</a> ' . strtoupper($version_str);
+    $slots[] = 'POWERED BY <a href="https://snapsmack.ca" target="_blank" rel="nofollow noopener" class="footer-link">SNAPSMACK</a> ' . strtoupper($version_str);
 } elseif ($powered_mode === 'custom') {
     $custom = trim($settings['footer_slot_powered_custom'] ?? '');
     if ($custom !== '') {

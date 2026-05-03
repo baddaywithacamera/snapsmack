@@ -4,7 +4,14 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
-## 0.7.37 — "Moist Bar Stool" (2026-05-03)
+## 0.7.38 — "Moist Bar Stool" (2026-05-01)
+
+### Fixed
+- **Footer SNAPSMACK link unstyled** (`core/footer.php`) — The powered-by SnapSmack link was missing `class="footer-link"`, the class every other footer link has. All skins style hover colour via that class. Bare `<a>` got browser-default styling.
+
+---
+
+## 0.7.37 — "Moist Bar Stool" (2026-05-01)
 
 ### Added
 - **Probe Guard** (`probe-ban.php` + `.htaccess`) — Requests to known scanner paths (wp-login.php, xmlrpc.php, .env probes, shell uploads, phpmyadmin, etc.) are routed via RewriteRule to a PHP ban handler that records a 30-day ban in `snap_ip_bans` and returns a 403. Banning is automatic with no admin involvement required.
