@@ -27,6 +27,10 @@ RewriteRule ^archive$ archive.php [L,QSA]
 RewriteRule ^rss$ rss.php [L,QSA]
 RewriteRule ^feed$ rss.php [L,QSA]
 RewriteRule ^snap-in$ snap-in.php [L,QSA]
+# ─── PROBE GUARD ────────────────────────────────────────────────────────────
+# Scanner paths that are never valid on a SnapSmack install.
+# Matched requests are routed to probe-ban.php which bans the IP for 30 days.
+RewriteRule ^(wp-login\.php|wp-login|wp-admin|wp-admin/.*|xmlrpc\.php|xmlrpc|\.env|\.env\..+|phpinfo\.php|info\.php|shell\.php|cmd\.php|c99\.php|r57\.php|alfa\.php|wso\.php|webshell\.php|b374k\.php|adminer\.php|phpmyadmin.*|pma.*|\.git.*|backup\.sql|database\.sql|db\.sql|dump\.sql|install\.sql|config\.php|configuration\.php|boaform/.*|vendor/phpunit.*)$ probe-ban.php [L,QSA]
 # Everything else → index.php (image slugs, static pages)
 RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
 # ─── SECURITY HEADERS ────────────────────────────────────────────
@@ -72,15 +76,4 @@ Options -Indexes
     ExpiresByType font/woff2 "access plus 30 days"
     ExpiresByType application/font-woff "access plus 30 days"
 </IfModule>
-# ─── GZIP COMPRESSION ───────────────────────────────────────────────────
-<IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html
-    AddOutputFilterByType DEFLATE text/css
-    AddOutputFilterByType DEFLATE application/javascript
-    AddOutputFilterByType DEFLATE application/json
-    AddOutputFilterByType DEFLATE image/svg+xml
-    AddOutputFilterByType DEFLATE font/ttf
-</IfModule>
-# ─── CUSTOM ERROR PAGES ────────────────────────────────────────────────
-ErrorDocument 404 /error404.php
-ErrorDocument 500 /error500.php
+# ─── GZIP COMPRES

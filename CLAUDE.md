@@ -196,14 +196,20 @@ git commit
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.36 "Perch"
-✅ **0.7.36 committed locally. Pending push.**
+### SnapSmack — Alpha 0.7.37 "Moist Bar Stool"
+✅ **0.7.37 committed locally. Pending push.**
 
 **Git branch is `master` not `main`** (confirmed 2026-04-29).
 
-**Changes this session (0.7.30–0.7.36):**
+**Changes this session (0.7.37):**
 
-**0.7.36** — Tool API key authentication + SYBU 0.7.9e
+**0.7.37** — Probe Guard + featured image picker fix + smack-cats.php 500 fix
+- **`probe-ban.php`** (NEW) — PHP ban handler for scanner probes. Resolves real IP from CF-Connecting-IP / X-Forwarded-For, inserts 30-day ban into `snap_ip_bans` with reason `auto:probe`, returns 403.
+- **`.htaccess`** — Probe Guard RewriteRules added before slug catch-all. Routes wp-login.php, xmlrpc.php, .env probes, shell uploads, phpmyadmin, .git, SQL dumps, and other known scanner paths to probe-ban.php.
+- **`smack-cats.php`, `smack-albums.php`, `smack-collections.php`** — Featured image picker AJAX switched from querying `snap_posts` to `snap_images` directly. Fixes "No posts found" on any install where images exist without snap_posts rows (legacy/image-only setups). Display fetch queries updated to match. `featured_post_id` column stores `snap_images.id`.
+- **`smack-cats.php`** — INSERT was missing `cat_slug` column. Generated from name via regex before INSERT.
+
+**Previous session (0.7.36) — Tool API key authentication + SYBU 0.7.9e**
 - **`core/api-auth.php`** (NEW) — Dual auth: accepts `X-Snap-Key` header (tools) or session cookie (browser). Invalid key → 401 JSON. No key → falls through to normal session auth.
 - **`smack-settings.php`** — API Access section added: generate/copy/regenerate/revoke 64-char hex tool API key stored as `tool_api_key` in `snap_settings`.
 - **`migrations/046_tool_api_key.php`** (NEW) — Seeds `tool_api_key` setting.
@@ -330,11 +336,12 @@ git commit
   - `smack-central/sc-layout-top.php` — skull emoji removed from nav
 
 **Pending — live sites:**
-- Push 0.7.36 to Github (commit is local only — run commit command from session)
-- FTP `core/release-pubkey.php` to photowalk.ing (fixes smack-update.php 500 — then updater can pull 0.7.36)
-- FTP `.htaccess` to photowalk.ing (fixes `/snap-in` 404 immediately — migration 047 will also patch it once 0.7.36 is applied via updater)
-- Build 0.7.36 release package from Smack Central after push
-- Update all live sites to 0.7.36 via Smack Central update system
+- Push 0.7.37 to Github (commit is local only)
+- FTP `core/release-pubkey.php` to photowalk.ing (fixes smack-update.php 500 — then updater can pull 0.7.37)
+- FTP `.htaccess` to photowalk.ing (probe guard + snap-in route — migration 047 patches snap-in route; probe guard only ships via FTP/update)
+- FTP `smack-cats.php`, `smack-albums.php`, `smack-collections.php`, `probe-ban.php` to photowalk.ing for immediate fixes
+- Build 0.7.37 release package from Smack Central after push
+- Update all live sites to 0.7.37 via Smack Central update system
 - Generate API key in foundtextures.ca Admin → Settings → API Access, paste into SYBU Settings → API Key
 - Rebuild SYBU exe (`build.bat` in `tools/sybu/`) after push for 0.7.9e
 - FTP `smack-central/sc-release.php` + `setup.php` to snapsmack.ca if not done (truncation fix from 0.7.26 era)
@@ -444,23 +451,4 @@ Directory names use hyphens only, never underscores.
 | `galleria` | Galleria | available | ✅ YES |
 | `rational-geo` | Rational Geo | available | ✅ YES |
 | `impact-printer` | Impact Printer | available | skin gallery only |
-| `true-grit` | True Grit | available | skin gallery only |
-| `hip-to-be-square` | Hip to be Square | withheld | skin gallery only |
-| `a-grey-reckoning` | A Grey Reckoning | withheld | no |
-| `in-stereo-where-available` | In Stereo Where Available | withheld | no |
-| `kiosk` | Kiosk | withheld | no |
-| `52-card-pickup` | 52 Card Pickup | available (in development) | no |
-| `photogram` | Photogram | withheld | ✅ YES (mobile skin — always ships) |
-| `show-n-tell` | Show-n-Tell | withheld | no |
-| `the-grid` | The Grid | withheld | no |
-
-**Base release** includes `50-shades-of-noah-grey`, `new-horizon`, `galleria`, and `rational-geo`.
-All other skins are distributed via the skin gallery in Smack Central.
-To change which skins are in the base release, edit `$always_exclude` in
-`smack-central/sc-release.php` — and update this table.
-
-## Skin Status Values
-
-- `available` — Installable from skin gallery (production ready)
-- `withheld` — Not shown in skin gallery (in development or not yet ready)
-- `available (in development)` — Installable but actively being worked on
+| `true-grit` | True Grit
