@@ -196,8 +196,8 @@ git commit
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.37 "Moist Bar Stool"
-✅ **0.7.37 committed locally. Pending push.**
+### SnapSmack — Alpha 0.7.38 "Moist Bar Stool"
+✅ **0.7.38 committed locally. Pending push.**
 
 **Git branch is `master` not `main`** (confirmed 2026-04-29).
 
