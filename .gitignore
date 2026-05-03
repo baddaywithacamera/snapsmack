@@ -113,3 +113,4 @@ projects/claude-commander/
 # Backup files and server-specific config
 *.bak
 .htaccess
+wotcha.html

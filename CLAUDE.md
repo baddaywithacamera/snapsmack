@@ -227,245 +227,108 @@ git commit
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.38 "Moist Bar Stool"
-✅ **0.7.38 committed locally. Pending push.**
+### SnapSmack — Alpha 0.7.40 "Warm Bench"
+✅ **0.7.40 ready to commit and push (not yet committed).**
 
 **Git branch is `master` not `main`** (confirmed 2026-04-29).
 
-**Changes this session (0.7.37):**
+**Changes this session (0.7.40):**
 
-**0.7.37** — Probe Guard + featured image picker fix + smack-cats.php 500 fix
-- **`probe-ban.php`** (NEW) — PHP ban handler for scanner probes. Resolves real IP from CF-Connecting-IP / X-Forwarded-For, inserts 30-day ban into `snap_ip_bans` with reason `auto:probe`, returns 403.
-- **`.htaccess`** — Probe Guard RewriteRules added before slug catch-all. Routes wp-login.php, xmlrpc.php, .env probes, shell uploads, phpmyadmin, .git, SQL dumps, and other known scanner paths to probe-ban.php.
-- **`smack-cats.php`, `smack-albums.php`, `smack-collections.php`** — Featured image picker AJAX switched from querying `snap_posts` to `snap_images` directly. Fixes "No posts found" on any install where images exist without snap_posts rows (legacy/image-only setups). Display fetch queries updated to match. `featured_post_id` column stores `snap_images.id`.
-- **`smack-cats.php`** — INSERT was missing `cat_slug` column. Generated from name via regex before INSERT.
+**Photogram + Kiosk black image fix**
+- **`skins/photogram/manifest.php`** — Added `smack-image-fade-load` to `require_scripts`. The 0.7.32 FOUC fix sets `opacity:0` on `.pg-post-image` globally; without the fade engine images never reappear.
+- **`skins/kiosk/manifest.php`** — Same fix.
 
-**Previous session (0.7.36) — Tool API key authentication + SYBU 0.7.9e**
-- **`core/api-auth.php`** (NEW) — Dual auth: accepts `X-Snap-Key` header (tools) or session cookie (browser). Invalid key → 401 JSON. No key → falls through to normal session auth.
-- **`smack-settings.php`** — API Access section added: generate/copy/regenerate/revoke 64-char hex tool API key stored as `tool_api_key` in `snap_settings`.
-- **`migrations/046_tool_api_key.php`** (NEW) — Seeds `tool_api_key` setting.
-- **`migrations/047_patch_htaccess.php`** (NEW) — Reads root `.htaccess`, checks for required named routes (`snap-in`), injects any missing immediately before catch-all slug rule. Atomic tmp+rename write. Idempotent. Fixes old installs that never got `snap-in` because `.htaccess` is in updater's protected paths.
-- **`smack-audit.php`, `smack-backfill.php`, `sybu-data.php`, `smack-post-solo.php`** — `auth.php` → `api-auth.php`.
-- **`tools/sybu/poster.py`** — `login()`, `is_session_alive()`, `relogin()` removed. `SnapSmackClient` now takes `api_key` arg, sends `X-Snap-Key` header on all requests. `keepalive()` is a no-op.
-- **`tools/sybu/main.py`** — USERNAME/PASSWORD fields → API KEY field. Connect calls `client.verify()`. Session timer and keepalive timer removed.
-- **SYBU bumped to 0.7.9e.**
+**Archive calendar (SMACKONEOUT / SMACKTALK skins only)**
+- **`assets/js/ss-engine-calendar.js`** — Complete rewrite. Activates only when `archive-layout-croppedwithcalendar` is on body. Slides in from right, dynamic month count based on viewport height, two-click date range navigates to `?from=DATE&to=DATE&layout=croppedwithcalendar`, same cell twice = single day `?date=DATE`, ESC cancels range.
+- **`assets/css/ss-engine-calendar.css`** — Reworked. CSS variable cascade: `--cal-bg: var(--cal-bg, var(--bg, #111))` etc. so any skin inherits correct colours automatically.
+- **`archive.php`** — Added `croppedwithcalendar` layout, `$from_filter`/`$to_filter` date range params, calendar guard (only shown if skin has `smack-calendar` in require_scripts), toggle label `Cal`, layout switch clears from/to params.
+- **`api-calendar.php`** — `min(3, ...)` → `min(12, ...)` months param.
+- **`migrations/048_calendar_layout.php`** (NEW) — Appends `croppedwithcalendar` to `archive_layouts_available` setting.
+- **`skins/50-shades-of-noah-grey/manifest.php`** — Added `smack-calendar` to `require_scripts`, `croppedwithcalendar` to `archive_layouts`, version 1.0 → 1.1.
+- **`skins/rational-geo/manifest.php`** — Same changes, version 1.0 → 1.1.
+- **`skins/true-grit/manifest.php`** — `archive_layout_default` set to `masonry` (0.7.39 carry-over).
+- Calendar NOT added to Photogram — deferred, doesn't fit Instagram-mode UX.
 
-**0.7.35** — Fix missing release-pubkey.php (folded into 0.7.36 push)
-- **`core/release-pubkey.php`** (NEW) — Placeholder all-zeros Ed25519 pubkey. Prevents smack-update.php 500 on installs that updated via the in-admin updater.
-- **`core/updater.php`** — `require_once` made defensive; falls back to zeros key if file missing.
+**Updater: pre-migrate stage**
+- **`smack-update.php`** — New `stage_premigrate` inserted between backup and extract. Extracts only `migrations/` from zip first, runs them against live DB, then `stage_extract` proceeds. Prevents 500 errors from PHP files referencing columns that don't exist yet.
+- **`core/updater.php`** — Added `updater_extract_migrations_only(string $zip_path): array`.
 
-**Changes this session (0.7.30–0.7.34, all pushed):**
+**Smack Central: Skin Packager delete button**
+- **`smack-central/sc-skins.php`** — POST handler for `delete_skin` (sanitize slug, delete zip, update registry.json, redirect with flash). Delete button per row with JS confirm, amber styling.
 
-**0.7.30** — `parseMosaics()` fatal fix + keyboard shortcut fix
-- **`core/parser.php`** — `parseMosaics()` stub method confirmed present (live server had stale file — fixed via updater)
-- **`skins/50-shades-of-noah-grey/manifest.php`** — `smack-keyboard` added to `require_scripts` so F1/1/2 shortcuts fire on photo and static page views (was archive-only)
+**Other**
+- **`.gitignore`** — Added `*.bak` and `.htaccess`; deduplicated `projects/snapsmack-ca/`.
+- **`smack-cats.php`, `smack-albums.php`, `smack-collections.php`** — Featured image picker queries `snap_images` directly (carry-over from 0.7.37).
 
-**0.7.31** — FOUC fix: replace `time()` cache busters with version string
-- **`core/meta.php`** — `?v=<?php echo time(); ?>` → `?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>` for skin CSS
-- **`skins/*/skin-meta.php`** (multiple) — same `time()` → version string fix
-- **`skins/*/skin-footer.php`** (12 files) — removed engine CSS `<link>` output; skins now output JS only
-- **`core/meta.php`** — added engine CSS loading block in `<head>` (reads skin manifest + inventory, outputs `<link>` for each script that has a CSS file)
+**Commit command (run from C:\dev\snapsmack in MINGW bash):**
+```bash
+cd /c/dev/snapsmack
+git add core/constants.php smack-central/sc-version.php CHANGELOG.md .gitignore
+git add assets/js/ss-engine-calendar.js assets/css/ss-engine-calendar.css
+git add archive.php api-calendar.php
+git add skins/50-shades-of-noah-grey/manifest.php skins/rational-geo/manifest.php
+git add skins/photogram/manifest.php skins/kiosk/manifest.php
+git add smack-update.php core/updater.php migrations/048_calendar_layout.php
+git add smack-central/sc-skins.php skins/true-grit/manifest.php
+git add smack-cats.php smack-albums.php smack-collections.php
+git rm --cached .htaccess
+git commit -m "0.7.40 — archive calendar, date range filter, pre-migrate updater stage, skin packager delete"
+git tag -f v0.7.40
+git push Github master
+git push Github v0.7.40 --force
+```
 
-**0.7.32** — Image fade race condition fix
-- **`assets/css/public-facing.css`** — added `opacity: 0; transition: opacity 0.4s ease-in-out` for `.post-image`, `.fsog-image`, `.pg-post-image`, `.tg-image`, `img[data-lightbox-src]` so images are hidden before JS loads
+**Pending — FTP to photowalk.ing (urgent):**
+- `core/release-pubkey.php` (fixes smack-update.php 500 — then updater can pull 0.7.40)
+- `.htaccess` (probe guard + snap-in route)
+- `probe-ban.php`
+- `skins/photogram/manifest.php` (black image fix — urgent)
+- `smack-cats.php`, `smack-albums.php`, `smack-collections.php`
 
-**0.7.33** — Updater modal UI fixes (CSS/JS class mismatches, admin theme bleed)
-- **`assets/css/ss-engine-updater.css`** — `#snap-updater-modal button` override block (admin theme isolation); added `.su-footer-btns`, `.su-uptodate-icon`, single-dash `.su-btn-primary` / `.su-btn-secondary` classes that JS actually generates
-- **`assets/js/ss-engine-updater.js`** — added `su-title` class to modal header span
-
-**0.7.34** — Remove updater modal; add DISMISS to update banner
-- **`core/admin-footer.php`** — removed `<div id="snap-updater-modal">` and `ss-engine-updater.js` script tag
-- **`core/admin-header.php`** — removed `ss-engine-updater.css` link
-- **`smack-admin.php`** — VIEW UPDATES → plain link to `smack-update.php`; DISMISS link added with `$_SESSION['update_notice_dismissed']` session suppression
-- **`smack-update.php`** — removed `window._snapUpdaterAutoOpen = true` auto-open trigger
-
-**Previous changes (0.7.26 — Cloudflare HTTPS + packager fixes):**
-- **`core/constants.php`** — `snap_is_https()` helper added; checks `$_SERVER['HTTPS']`, `HTTP_X_FORWARDED_PROTO`, `HTTP_X_FORWARDED_SSL`
-- **`core/auth.php`** — `secure` cookie flag uses `snap_is_https()` (was bare `$_SERVER['HTTPS']`)
-- **`core/community-session.php`** — `$secure` uses `snap_is_https()`
-- **`core/meta.php`** — `$protocol` uses `snap_is_https()`
-- **`core/multisite-api.php`** — BASE_URL bootstrap inlined full three-condition HTTPS check (constants.php not loaded yet at this point)
-- **`core/ohsnap-api.php`** — same as multisite-api.php
-- **`.htaccess`** — HTTPS redirect now active with two-condition check (`HTTP:X-Forwarded-Proto` + `HTTPS`) — was commented out entirely
-- **`install.php`** — HTTPS redirect in heredoc fixed; step '4b' added to normalization; DB-confirmed step split from admin-form step; `snap_is_https()` used for Site URL field
-- **`setup.php`** — Restored from git history (was truncated 346→366 lines); file-by-file zip extraction added, skipping setup.php itself to avoid PHP overwriting-running-script issue
-- **`smack-central/sc-release.php`** — Restored from git history (was truncated — missing `</script>` and `require sc-layout-bottom.php`; this was why changelog JS never fired); `$always_exclude` hardened: added `secaudits/`, `migrations/`, `database/`, `data/`, `backfill-checksums.php`, `backfill-thumbs.php`, `smack-central-current.zip`, `.well-known/`; galleria and rational-geo REMOVED from exclude list (now in base package); codename placeholder updated
-- **`smack-central/sc-config.sample.php`** — GitHub PAT entry documented with instructions
-- **`.gitignore`** — `sc-config.php` added (was accidentally committed with live credentials — rotated)
-- **`CLAUDE.md`** — Skin registry updated: galleria + rational-geo now `✅ YES` for base release
-
-**Previous changes (0.7.25 — installer + admin polish):**
-- **`install.php`** — Step 1 split into two pages: env check (step 1) → edition chooser (step 1b) → DB config (step 2→3); `$total_steps` 4→5; dot mapping updated; equal-height edition cards (`align-items: stretch`)
-- **`smack-central/sc-release.php`** — `parseChangelog` CRLF bug fixed; debug console.logs removed
-- **`core/sidebar.php`** — "Mosaics" → "Mosaic" in nav label
-- **`smack-2fa.php`** — Fixed wrong includes
-- **`smack-fingerprints.php`** — Admin theme applied; `is_banned` column reference removed
-- **`assets/css/admin-theme-geometry-master.css`** — `.tab-selector` geometry added
-- **`smack-multisite.php`** — Completed truncated file
-- **`index.php`** — Guarded empty `active_skin` DB value
-- **`tools/oh-snap/src-tauri/capabilities/default.json`** — `shell:open` → `shell:allow-open`
-
-**Latest changes (0.7.25 — Reapply loop fix):**
-- Version bump: 0.7.24 → 0.7.25 "Lawn Chair"
-- **Reapply Current Version loop fixed** — `stage_download` now falls back to session update data when no cached notification exists, so APPLY works after reapply.
-
-**Previous changes (0.7.24 — Dashboard Apply Update fix + SMACKATTACK rename):**
-- Version bump: 0.7.23 → 0.7.24 "Lawn Chair"
-- **Dashboard "Apply Update" button fixed** — `cron-version-check.php` and `smack-admin.php` fallback check both omitted `download_url`, `checksum_sha256`, and `signature` from the cached `core_update` blob; clicking Apply Update always produced "NO DOWNLOAD URL" error. Both now store the full field set.
-- **Smack the Enemy renamed to SMACKATTACK** — all user-facing labels, headings, help topics, settings section, and API messages updated. Internal code/files/DB tables unchanged (`sc-enemy-*`, `ste_*`).
-- **Packager changelog fetch fixed** — PHP proxy in `sc-release.php` resolves tag to commit SHA before fetching, bypassing GitHub CDN caching.
-
-**Previous changes (0.7.23 — Security audit 2 fixes):**
-- Version bump: 0.7.22 → 0.7.23 "Couch Potato"
-- **Email header injection fixed** in `core/contact-form.php` — CRLF stripped from $name and $email before mail() headers
-- **Race condition fixed** in `smack-central/sc-enemy-api.php` — flock(LOCK_EX) on rate limit file
-- **Weak randomness fixed** in `smack-central/sc-release.php` — bin2hex(random_bytes(16)) for temp filenames
-
-**Previous changes (0.7.22 — Security hardening pass):**
-- Version bump: 0.7.21 → 0.7.22 "Couch Potato"
-- **Open redirect fixed** in `community-auth.php` — `community_safe_redirect()` helper enforces relative-paths-only
-- **Logo/favicon upload hardened** in `smack-settings.php` — extension whitelist + `finfo` MIME validation on both logo and favicon uploads
-- **Path traversal closed** in `smack-edit.php` — skin slug and `edit_page` manifest values now validated against `/^[a-z0-9][a-z0-9\-]*$/` before path construction
-- **Session fixation fixed** in `login.php` — `session_regenerate_id(true)` now called before writing `totp_pending_user_id` on the 2FA path
-- **Rate limiting added** to `password-reset.php` — max 5 admin reset requests per IP per hour via `snap_rate_limits` table
-- **Slug validation hardened** in `smack-post-solo.php` and `smack-post-long.php` — consecutive hyphens collapsed, leading/trailing stripped, `untitled` fallback, user-supplied slugs normalised through `long_slugify()`
-- **DB error message suppressed** in `install.php` — catch-all branch no longer leaks raw MySQL error
-- **Security headers added site-wide** in `core/constants.php` — `X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin` on every request
-
-**Previous changes (0.7.21 — Security audit + Privacy Policy + SMACKBACK):**
-- Version bump: 0.7.20 → 0.7.21 "Couch Potato"
-- **Privacy Policy page** — `smack-privacy.php` (admin) + `privacy-policy.php` (public). Footer link, The Good Shit sidebar.
-- **Security audit published** — `secaudits/` directory committed to git.
-- **Head scripts moved from DB to filesystem** — `data/custom-head.html`, DB fallback for existing installs.
-- **`setup.php` rewritten** — signed release installer, SHA-256 + Ed25519 verification, zip slip protection.
-- **SMACKBACK, GOBSMACKED, Privacy Policy help topics** added to `smack-help.php`.
-
-**Previous changes (0.7.19 — GOBSMACKED rename + snapsmack.ca TWIG N BERRIES!):**
-- Version bump: 0.7.18 → 0.7.19 "Couch Potato"
-- **GOBSMACKED** — renamed from "Smack Style" throughout all user-facing text. Internal code (DB tables, PHP functions, filenames) unchanged.
-  - `smack-central/sc-enemy-admin.php` — subtitle, stat label, tab, and run button updated to GOBSMACKED
-  - `smack-central/sc-enemy-api.php` — comment updated
-  - `smack-central/schemas/sc-enemy-canonical.sql` — comment updated
-  - `core/ste-style.php` — docblock updated
-  - `_spec/smack-style.md` — title and content updated
-- **snapsmack.ca** — TWIG N BERRIES! privacy policy page (`tnb.html`, was privacy.html):
-  - Added to nav on all five pages (index, wotcha, bugger, oi, tnb)
-  - Nav font-size reduced to 0.8rem site-wide to prevent overflow
-  - All "Smack Style" references in tnb.html renamed to GOBSMACKED
-
-**Latest changes (0.7.18 — GOBSMACKED / SMACK THE ENEMY Tier 3):**
-- Version bump only — companion tool release (SYBU 0.7.9c) — previously noted
-- **GOBSMACKED** — stylometric writing fingerprint system (Tasks #52–#58, all complete):
-  - `core/ste-style.php` (NEW) — 25-dimension style vector extraction from comment text
-  - `core/ban-check.php` — add_ban() now extracts + transmits style vector at ban time; `_ste_fetch_comment_texts()` added
-  - `core/ste-client.php` — ste_client_report() accepts optional $style_vector param
-  - `smack-central/sc-enemy-api.php` — report handler stores incoming style vectors into ste_style_vectors
-  - `smack-central/sc-enemy-admin.php` — GOBSMACKED tab: run_analysis, cluster display, escalate/dismiss actions; skull emoji removed from heading and nav
-  - `smack-central/sc-schema.php` — MySQL 5.7 fix: removed IF NOT EXISTS from ADD COLUMN DDL
-  - `smack-central/schemas/sc-enemy-canonical.sql` — ste_style_vectors table added
-  - `smack-central/sc-update.php` — sc-db.php added to $protected list (never overwritten by updater)
-  - `smack-central/sc-layout-top.php` — skull emoji removed from nav
-
-**Pending — live sites:**
-- Push 0.7.37 to Github (commit is local only)
-- FTP `core/release-pubkey.php` to photowalk.ing (fixes smack-update.php 500 — then updater can pull 0.7.37)
-- FTP `.htaccess` to photowalk.ing (probe guard + snap-in route — migration 047 patches snap-in route; probe guard only ships via FTP/update)
-- FTP `smack-cats.php`, `smack-albums.php`, `smack-collections.php`, `probe-ban.php` to photowalk.ing for immediate fixes
-- Build 0.7.37 release package from Smack Central after push
-- Update all live sites to 0.7.37 via Smack Central update system
-- Generate API key in foundtextures.ca Admin → Settings → API Access, paste into SYBU Settings → API Key
-- Rebuild SYBU exe (`build.bat` in `tools/sybu/`) after push for 0.7.9e
-- FTP `smack-central/sc-release.php` + `setup.php` to snapsmack.ca if not done (truncation fix from 0.7.26 era)
-- FTP skins to strathmore.pics: `skins/50-shades-of-noah-grey/`, `skins/new-horizon/`, `skins/galleria/`, `skins/rational-geo/` (fresh install has no skins)
-- Complete strathmore.pics install: delete duplicate snap_user 'sean' then re-run step 5
-- `projects/snapsmack-ca/` files still need manual FTP to snapsmack.ca server (untracked, not in release package)
-
-**Pending DB on live squir871_enemy (use migration runner, not phpMyAdmin):**
-- Apply remaining enemy schema: `coordination_cluster_id` column + `idx_cluster` index on `ste_reports`
-- Create `ste_style_vectors` table (full DDL in `smack-central/schemas/sc-enemy-canonical.sql`)
+**Pending — after push:**
+- Build 0.7.40 release package from Smack Central
+- Build skin packages for 50-shades-of-noah-grey v1.1 and rational-geo v1.1 via Skin Packager
+- Update all live sites to 0.7.40 via Smack Central update system
+- Generate API key in foundtextures.ca Admin → Settings → API Access, paste into SYBU
+- Rebuild SYBU exe (`build.bat` in `tools/sybu/`)
+- strathmore.pics install: delete duplicate snap_user 'sean', re-run step 5
+- FTP skins to strathmore.pics: `50-shades-of-noah-grey`, `new-horizon`, `galleria`, `rational-geo`
+- FTP `projects/snapsmack-ca/` files to snapsmack.ca (untracked, manual FTP)
 
 **Pending — other:**
-- Enable "Require Download Link" on foundtextures.ca Admin → Settings → Downloads
-- Confirm sc-db.php on server has sc_enemy_db() and sc_forum_db() (was overwritten by updater — correct version now in repo)
 - CSRF implementation (deferred HIGH severity — SameSite=Lax partial mitigation in place)
+- Calendar for Photogram/GRAM OF SMACK — deferred, not designed yet
+- Enable "Require Download Link" on foundtextures.ca Admin → Settings → Downloads
+- Apply remaining enemy schema migrations (coordination_cluster_id, ste_style_vectors) via migration runner
 
-**Pending local git hygiene (run from C:\dev\snapsmack):**
-```
-# Remove the smack-post.php shim (updater handles cleanup on existing installs)
+**Pending local git hygiene:**
+```bash
 git rm smack-post.php
-
-# Rename the duplicate 030 migration — shim already in place, real file is written
-git rm migrations/030_semantic_analysis_tables.php
-git add migrations/030_semantic_analysis_tables.php  # picks up the rewritten PDO version
-# Then rename it cleanly:
 git mv migrations/030_semantic_analysis_tables.php migrations/042_semantic_analysis_tables.php
-
-# Move the impact-printer reference doc out of assets/css/ (new copy already in skins/)
 git rm assets/css/impact-printer-image-borders-text-characters.txt
 git add skins/impact-printer/image-borders-text-characters.txt
-
-# Remove the underscore-named core shims (real files are layout-logic.php / navigation-bar.php)
 git rm core/layout_logic.php core/navigation_bar.php
 git add core/layout-logic.php core/navigation-bar.php
-
-# Move SUYB setup guide to its tool directory
 git mv suyb-google-drive-setup.docx tools/smack-up-your-backup/google-drive-setup.docx
-
-# Untrack the large zips and error log that slipped into git
 git rm --cached snapsmack.zip smack-central-current.zip error_log
 ```
-After running these: update the $migration_name string inside `042_semantic_analysis_tables.php` from `'030_semantic_analysis_tables'` to `'042_semantic_analysis_tables'`.
+After running these: update `$migration_name` in `042_semantic_analysis_tables.php` from `'030_semantic_analysis_tables'` to `'042_semantic_analysis_tables'`.
 
 ### Smack Your Batch Up (SYBU) — v0.7.9e "API key authentication"
-Tool lives in `tools/sybu/`. All commits on `main`. Push from local: `git push Github main`, then force-move the tag.
-
-**To rebuild the exe:** run `build.bat` in `tools/sybu/`
-Output: `C:\SmackYourBatchUp\smackyourbatchup-0.7.9c.exe`
-Spec: `tools/sybu/smackyourbatchup-0.7.9c.spec`
-
-**What's new in 0.7.9c:**
-- ADV. MATCH tab — two-stage pHash + SIFT visual matching (ported from Fix Your Batch Up)
-  - Pick server folder (local FTP copy) + originals folder → Run Matching
-  - ProcessPoolExecutor, ≤4 workers, results stream in as MatchRow cards
-  - Upload confirmed matches to Drive; write URL back via smack-backfill.php
-  - Uses credentials already in Settings — no separate entry required
-- `matcher.py` added to SYBU (pHash + SIFT engine)
-- `poster.py` — `SnapSmackClient.backfill_update_link()` added
-- Repair tab renamed to BASIC REPAIR & MATCH
-
-**Pending:**
-- Rebuild exe (run `build.bat` in `tools/sybu/`) — needs cv2, imagehash installed
-- Run BASIC REPAIR → Rename Drive Files to {id}.jpg on foundtextures.ca (1,431 files)
-- Run BASIC REPAIR → Re-enrich Duplicate Titles on foundtextures.ca (287 posts)
-- Fix 3 posts missing Drive links (IDs 883, 1008, 1009) via BASIC REPAIR → Backfill
+Tool lives in `tools/sybu/`. Pending: rebuild exe (`build.bat`), push, force-move tag.
 
 ### Smack Up Your Backup (SUYB) — v0.7.3
-All commits on `main`. Push from local: `git push Github main`, then force-move the tag.
-
-**To rebuild the exe:** run `strip_nulls.py` then `build.bat` in `tools/smack-up-your-backup/`
-
-**Status:**
-- Cloud backup to Google Drive working — SA key configured at pixhellated.ca
-- B2 credentials in Edit Sync Job now save correctly (save moved inside dialog._save())
-- SA key: `C:\SmackUpYourBackup\suyb-drive-key-5e7a5909f75e.json`
-- Drive folder ID: `12UFKgvSNtM9uKCjtttyhFPvD45wjXVv9`
-- Drive folder shared as Editor with: `smack-up-your-backup@snapsmack-backups.iam.gserviceaccount.com`
-- Profiles and config persist next to the exe in `C:\SmackUpYourBackup\`
-
-**Pending:**
-- Rebuild exe from `tools/smack-up-your-backup/` (run `strip_nulls.py` then `build.bat`)
-- Test: enter B2 credentials → Save → reopen → fields persist
-- Run Audit & Cleanup on foundtextures job once credentials confirmed saved
+Pending: rebuild exe, test B2 credentials, run Audit & Cleanup on foundtextures job.
 
 ### Live Sites
 | Site | Role | Version | Hosting |
 |---|---|---|---|
 | foundtextures.ca | Multisite Hub | Alpha 0.7.28 | self-hosted, Proxmox |
-| snapsmack.ca | Promo + Smack Central | — | self-hosted, Proxmox (moved from shared cPanel) |
-| pixhellated.ca | Spoke | needs update to 0.7.28 | shared hosting |
-| wateronthebrain.ca | Spoke | needs update to 0.7.28 | self-hosted, Proxmox |
-| hekeepsdroningon.ca | Spoke | needs update to 0.7.28 | self-hosted, Proxmox |
-| photowalk.ing | Standalone | needs update to 0.7.28 | self-hosted, Proxmox |
+| snapsmack.ca | Promo + Smack Central | — | self-hosted, Proxmox |
+| pixhellated.ca | Spoke | needs update to 0.7.40 | shared hosting |
+| wateronthebrain.ca | Spoke | needs update to 0.7.40 | self-hosted, Proxmox |
+| hekeepsdroningon.ca | Spoke | needs update to 0.7.40 | self-hosted, Proxmox |
+| photowalk.ing | Standalone | needs update to 0.7.40 | self-hosted, Proxmox |
 | strathmore.pics | Standalone | fresh install in progress | self-hosted, Proxmox (Cloudflare Tunnel) |
 
 Updater confirmed: modal working on foundtextures.ca at 0.7.28. All self-hosted sites on Proxmox in Sean's basement.
@@ -482,4 +345,6 @@ Directory names use hyphens only, never underscores.
 | `galleria` | Galleria | available | ✅ YES |
 | `rational-geo` | Rational Geo | available | ✅ YES |
 | `impact-printer` | Impact Printer | available | skin gallery only |
-| `true-grit` | True Grit
+| `true-grit` | True Grit | available | skin gallery only |
+| `photogram` | Photogram | available | ✅ YES |
+| `kiosk` | Kiosk | available | skin gallery only |
