@@ -227,89 +227,52 @@ git commit
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.40 "Warm Bench"
-✅ **0.7.40 ready to commit and push (not yet committed).**
+### SnapSmack — Alpha 0.7.42 "Recliner"
+✅ **0.7.42 ready to commit and push (not yet committed).**
 
 **Git branch is `master` not `main`** (confirmed 2026-04-29).
 
 **Signing keypair status:**
-- Release private key: in `sc-config.php` on snapsmack.ca server (needs FTP with new key)
-- Release public key: `4df51e2c4610a9a34913f7a52a29f8964dc2aec8448abcfe899cc4e2cf45068a` — in `core/release-pubkey.php` (committed in 0.7.40)
-- Root public key: `d4c4256853fc046160f0f0028f3b48548eac50defdbd0803ef545d36d100eae5` — hardcoded in `core/updater.php`
-- Root private key + full instructions: in Bitwarden (`KEY-ROTATION-INSTRUCTIONS.txt` on disk, gitignored)
+- Release private key: in `sc-config.php` on snapsmack.ca server ✅
+- Release public key: `4df51e2c4610a9a34913f7a52a29f8964dc2aec8448abcfe899cc4e2cf45068a` — in `core/release-pubkey.php` ✅
+- Root public key: `d4c4256853fc046160f0f0028f3b48548eac50defdbd0803ef545d36d100eae5` — hardcoded in `core/updater.php` ✅
+- Root private key + full instructions: in Bitwarden (`KEY-ROTATION-INSTRUCTIONS.txt` on disk, gitignored) ✅
 
-**Changes this session (0.7.40):**
+**snapsmack.ca server notes:**
+- Snapsmack files now on SATA bulk storage via bind mount: host `/mnt/bulk-storage/snapsmack-ca` → CT101 `/var/www/snapsmack.ca`
+- `sc-assets/` directory created at `/var/www/snapsmack.ca/sc-assets/` ✅
+- Cloudflare is in front of snapsmack.ca — purge cache after FTPing CSS files
 
-**Photogram + Kiosk black image fix**
-- **`skins/photogram/manifest.php`** — Added `smack-image-fade-load` to `require_scripts`.
-- **`skins/kiosk/manifest.php`** — Same fix.
+**Changes in 0.7.41 + 0.7.42 (both sessions):**
+- Key rotation infrastructure (root key + release key two-tier system)
+- Smack Central CSS: font 13px→15px, sidebar 210→230px, max-width 1400px, padding 32px 48px
+- Smack Central CSS: added missing classes (`sc-page-head`, `sc-card`, `sc-card-title`, `sc-btn--dim`, `sc-warn`, `sc-muted`, `sc-help-*`, `sc-step-log`)
+- `core/release-pubkey.php` — real public key replacing all-zeros placeholder
+- Archive calendar, date range filter, pre-migrate updater stage (shipped in 0.7.40/0.7.41)
 
-**Archive calendar (SMACKONEOUT / SMACKTALK skins only)**
-- **`assets/js/ss-engine-calendar.js`** — Complete rewrite. Activates only when `archive-layout-croppedwithcalendar` is on body. Two-click date range → `?from=DATE&to=DATE&layout=croppedwithcalendar`, same cell twice = single day, ESC cancels.
-- **`assets/css/ss-engine-calendar.css`** — Reworked with CSS variable cascade.
-- **`archive.php`** — Added `croppedwithcalendar` layout, `$from_filter`/`$to_filter` date range params.
-- **`api-calendar.php`** — `min(3, ...)` → `min(12, ...)` months param.
-- **`migrations/048_calendar_layout.php`** (NEW) — Appends `croppedwithcalendar` to `archive_layouts_available`.
-- **`skins/50-shades-of-noah-grey/manifest.php`** — Added `smack-calendar`, `croppedwithcalendar`, version 1.0 → 1.1.
-- **`skins/rational-geo/manifest.php`** — Same, version 1.0 → 1.1.
-- **`skins/true-grit/manifest.php`** — `archive_layout_default` set to `masonry`.
-
-**Updater: pre-migrate stage**
-- **`smack-update.php`** — New `stage_premigrate` between backup and extract. Also: `accept_key_rotation` action, rotation detection in verify failure path, enhanced repair panel (shows KEY ROTATION DETECTED with pre-filled key when root-key-signed rotation file is available; falls back to manual paste otherwise).
-- **`core/updater.php`** — Added `updater_extract_migrations_only()`, `updater_fetch_key_rotation()`, `SNAPSMACK_ROOT_PUBKEY` constant, `UPDATER_KEY_ROTATION_URL` constants.
-
-**Signing key infrastructure**
-- **`core/release-pubkey.php`** — Real public key replacing all-zeros placeholder.
-- **`core/updater.php`** — Root pubkey hardcoded; `updater_fetch_key_rotation()` fetches and verifies rotation announcements against root key.
-- **`smack-update.php`** — Auto-detects rotation on sig failure; shows amber KEY ROTATION DETECTED panel with ACCEPT button; falls back to manual paste if no rotation file on server.
-- **`smack-central/sc-release.php`** — `signing_pubkey` added to `latest.json` manifest; new Key Rotation panel (generate blob → sign offline → paste sig → publish).
-- **`smack-central/KEY-ROTATION-INSTRUCTIONS.txt`** — Gitignored. Full rotation procedure + both keypairs. Store in Bitwarden.
-
-**Smack Central: CSS / layout**
-- **`smack-central/assets/css/sc-geometry.css`** — Base font 13px→15px, label 0.7→0.8rem, dim 0.75→0.85rem, sidebar 210→230px.
-- **`smack-central/assets/css/sc-admin.css`** — `.sc-main` max-width removed (was 1100px).
-
-**Smack Central: Skin Packager delete button**
-- **`smack-central/sc-skins.php`** — POST handler for `delete_skin`, delete button per row.
-
-**Other**
-- **`.gitignore`** — Added `*.bak`, `.htaccess`, `smack-central/KEY-ROTATION-INSTRUCTIONS.txt`; deduplicated `projects/snapsmack-ca/`.
-- **`smack-cats.php`, `smack-albums.php`, `smack-collections.php`** — Featured image picker queries `snap_images` directly.
-
-**Commit command (run from C:\dev\snapsmack in MINGW bash):**
+**Commit command for 0.7.42 (run from C:\dev\snapsmack in MINGW bash):**
 ```bash
 cd /c/dev/snapsmack
-git add core/constants.php smack-central/sc-version.php CHANGELOG.md .gitignore
-git add assets/js/ss-engine-calendar.js assets/css/ss-engine-calendar.css
-git add archive.php api-calendar.php
-git add skins/50-shades-of-noah-grey/manifest.php skins/rational-geo/manifest.php
-git add skins/photogram/manifest.php skins/kiosk/manifest.php
-git add smack-update.php core/updater.php migrations/048_calendar_layout.php
-git add smack-central/sc-skins.php skins/true-grit/manifest.php
-git add smack-cats.php smack-albums.php smack-collections.php
-git add core/release-pubkey.php
-git add smack-central/sc-release.php
-git add smack-central/assets/css/sc-geometry.css smack-central/assets/css/sc-admin.css
-git rm --cached .htaccess
-git commit -m "0.7.40 — archive calendar, date range filter, pre-migrate updater stage, key rotation infrastructure, SC font/layout fix"
-git tag -f v0.7.40
+git add core/constants.php smack-central/sc-version.php CHANGELOG.md
+git add smack-central/assets/css/sc-admin.css smack-central/assets/css/sc-geometry.css
+git add CLAUDE.md
+git commit -m "0.7.42 — SC CSS missing classes, layout padding, font size fix"
+git tag -f v0.7.42
 git push Github master
-git push Github v0.7.40 --force
+git push Github v0.7.42 --force
 ```
 
-**Pending — FTP to photowalk.ing:**
-- `.htaccess` (probe guard + snap-in route)
-- `probe-ban.php`
-- `smack-cats.php`, `smack-albums.php`, `smack-collections.php`
-- `skins/photogram/manifest.php` ships with 0.7.40 update package — update via updater once 0.7.40 is pushed
+**Pending — FTP to photowalk.ing (manual only — not in release package):**
+- `.htaccess` (probe guard + snap-in route) — gitignored by design, every server has its own
 
-**Pending — after push:**
-- Rebuild 0.7.40 release package from Smack Central (keypair is now wired up — packages will be properly signed)
+**Pending — after 0.7.42 push:**
+- Build 0.7.42 release package from Smack Central → Release Packager
 - Build skin packages for 50-shades-of-noah-grey v1.1 and rational-geo v1.1 via Skin Packager
-- Update all live sites to 0.7.40 via Smack Central update system
+- Update all live sites to 0.7.42 via Smack Central updater (updater handles all PHP file deployment)
+- FTP `.htaccess` to photowalk.ing manually (only file that needs manual FTP)
 - Generate API key in foundtextures.ca Admin → Settings → API Access, paste into SYBU
 - Rebuild SYBU exe (`build.bat` in `tools/sybu/`)
-- strathmore.pics install: delete duplicate snap_user 'sean', re-run step 5
+- strathmore.pics: delete duplicate snap_user 'sean', re-run install step 5
 - FTP skins to strathmore.pics: `50-shades-of-noah-grey`, `new-horizon`, `galleria`, `rational-geo`
 - FTP `projects/snapsmack-ca/` files to snapsmack.ca (untracked, manual FTP)
 
@@ -343,13 +306,15 @@ Pending: rebuild exe, test B2 credentials, run Audit & Cleanup on foundtextures 
 |---|---|---|---|
 | foundtextures.ca | Multisite Hub | Alpha 0.7.28 | self-hosted, Proxmox |
 | snapsmack.ca | Promo + Smack Central | — | self-hosted, Proxmox |
-| pixhellated.ca | Spoke | needs update to 0.7.40 | shared hosting |
-| wateronthebrain.ca | Spoke | needs update to 0.7.40 | self-hosted, Proxmox |
-| hekeepsdroningon.ca | Spoke | needs update to 0.7.40 | self-hosted, Proxmox |
-| photowalk.ing | Standalone | needs update to 0.7.40 | self-hosted, Proxmox |
+| pixhellated.ca | Spoke | needs update to 0.7.42 | shared hosting |
+| wateronthebrain.ca | Spoke | needs update to 0.7.42 | self-hosted, Proxmox |
+| hekeepsdroningon.ca | Spoke | needs update to 0.7.42 | self-hosted, Proxmox |
+| photowalk.ing | Standalone | needs update to 0.7.42 | self-hosted, Proxmox |
 | strathmore.pics | Standalone | fresh install in progress | self-hosted, Proxmox (Cloudflare Tunnel) |
 
 Updater confirmed: modal working on foundtextures.ca at 0.7.28. All self-hosted sites on Proxmox in Sean's basement.
+
+**NOTE: All core PHP files ship in the release package via the updater. The only file requiring manual FTP per-server is `.htaccess` (gitignored, server-specific). Do not list in-package files as pending FTP.**
 
 ## Skin Registry
 
