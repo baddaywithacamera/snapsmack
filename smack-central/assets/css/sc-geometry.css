@@ -41,12 +41,12 @@
     /* ── Typography ──────────────────────────────────────── */
     --sc-font:          'Arial', 'Helvetica Neue', sans-serif;
     --sc-font-mono:     'Courier New', Courier, monospace;
-    --sc-size-base:     13px;
-    --sc-size-label:    0.7rem;
-    --sc-size-dim:      0.75rem;
+    --sc-size-base:     15px;
+    --sc-size-label:    0.8rem;
+    --sc-size-dim:      0.85rem;
 
     /* ── Layout ──────────────────────────────────────────── */
-    --sc-sidebar-w:     210px;
+    --sc-sidebar-w:     230px;
     --sc-radius:        4px;
     --sc-radius-sm:     2px;
     --sc-transition:    0.18s ease;

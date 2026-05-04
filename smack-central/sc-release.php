@@ -361,6 +361,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 if (($_GET['action'] ?? '') === 'fetch_changelog') {
     header('Content-Type: application/json');
     $tag = preg_replace('/[^a-zA-Z0-9._\-]/', '', $_GET['tag'] ?? '');
+    // ── Publish key rotation ─────────────────────────────────────────────────
+    if (isset($_POST['publish_rotation'])) {
+        $new_pub   = strtolower(preg_replace('/[^0-9a-fA-F]/', '', $_POST['rotation_new_pubkey'] ?? ''));
+        $old_pub   = strtolower(preg_replace('/[^0-9a-fA-F]/', '', $_POST['rotation_old_pubkey'] ?? ''));
+        $reason    = trim($_POST['rotation_reason'] ?? '');
+        $sig_input = strtolower(preg_replace('/[^0-9a-fA-F]/', '', $_POST['rotation_sig'] ?? ''));
+        $rot_error = '';
+        $rot_ok    = false;
+
+        if (strlen($new_pub) !== 64) {
+            $rot_error = 'New pubkey must be exactly 64 hex characters.';
+        } elseif (strlen($sig_input) !== 128) {
+            $rot_error = 'Signature must be exactly 128 hex characters.';
+        } else {
+            // Build the canonical blob the admin signed locally
+            $rot_blob = json_encode([
+                'new_pubkey' => $new_pub,
+                'old_pubkey' => $old_pub,
+                'issued_at'  => gmdate('Y-m-d\TH:i:s\Z'),
+                'reason'     => $reason,
+            ], JSON_UNESCAPED_SLASHES);
+
+            // Verify against the hardcoded root public key
+            $root_pub_hex = '3287b9b29257da6a307fc85b949c9dc52bc99c08a66db21e6fcbaab0fb324652';
+            try {
+                $valid = function_exists('sodium_crypto_sign_verify_detached')
+                    && sodium_crypto_sign_verify_detached(
+                        sodium_hex2bin($sig_input),
+                        $rot_blob,
+                        sodium_hex2bin($root_pub_hex)
+                    );
+            } catch (Exception $e) {
+                $valid = false;
+            }
+
+            if (!$valid) {
+                $rot_error = 'Signature did not verify against the root public key. Re-sign the exact blob shown and try again.';
+            } else {
+                $json_dst = rtrim(RELEASES_DIR, '/') . '/key-rotation.json';
+                $sig_dst  = rtrim(RELEASES_DIR, '/') . '/key-rotation.sig';
+                if (file_put_contents($json_dst, $rot_blob) !== false
+                    && file_put_contents($sig_dst, $sig_input) !== false) {
+                    $rot_ok = true;
+                } else {
+                    $rot_error = 'Failed to write rotation files to ' . RELEASES_DIR . '. Check server permissions.';
+                }
+            }
+        }
+    }
+
+    // ── Delete key rotation file ─────────────────────────────────────────────
+    if (isset($_POST['delete_rotation'])) {
+        @unlink(rtrim(RELEASES_DIR, '/') . '/key-rotation.json');
+        @unlink(rtrim(RELEASES_DIR, '/') . '/key-rotation.sig');
+    }
+
     if ($tag === '') { echo json_encode(['ok' => false, 'error' => 'No tag']); exit; }
 
     // Resolve tag → commit SHA via API so we fetch by SHA, not tag ref.
@@ -535,6 +591,7 @@ if ($action === 'build' && $preflight_ok) {
                     'download_url'       => $download_url,
                     'checksum_sha256'    => $checksum,
                     'signature'          => $sig_hex,
+                    'signing_pubkey'     => $sc_derived_pubkey,
                     'changelog'          => $changelog,
                     'file_changes'       => $file_changes,
                     'schema_changes'     => $schema_changes,
@@ -866,6 +923,99 @@ require __DIR__ . '/sc-layout-top.php';
         <?php endif; ?>
       </div>
     </div>
+
+    <!-- ── Key Rotation panel ─────────────────────────────────────────────── -->
+    <div class="sc-box" style="margin-top:20px;border-color:#c66;">
+      <div class="sc-box-header">
+        <span class="sc-box-title">Key Rotation</span>
+        <span class="sc-dim" style="font-size:var(--sc-size-label);">Root-key-signed</span>
+      </div>
+      <div class="sc-box-body">
+
+        <?php if (!empty($rot_ok)): ?>
+        <div style="color:#0f0;margin-bottom:14px;">&#10003; Rotation files published to <code><?php echo rtrim(RELEASES_URL,'/'); ?>/key-rotation.json</code></div>
+        <?php endif; ?>
+        <?php if (!empty($rot_error)): ?>
+        <div style="color:#f44;margin-bottom:14px;">&#9888; <?php echo htmlspecialchars($rot_error); ?></div>
+        <?php endif; ?>
+
+        <p class="sc-dim" style="margin-bottom:14px;">
+          Use this when you need to rotate the release signing key. Installs that encounter
+          a signature mismatch will fetch this file, verify it against the hardcoded root key,
+          and automatically accept the new release key without manual intervention.
+        </p>
+
+        <p class="sc-dim" style="margin-bottom:6px;font-size:var(--sc-size-label);">STEP 1 — Fill in the new pubkey and an optional reason, then copy the blob below.</p>
+        <form method="POST" id="rotation-form">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div>
+              <label class="sc-label">New pubkey (64 hex)</label>
+              <input type="text" name="rotation_new_pubkey" id="rot-new-pub"
+                     value="<?php echo htmlspecialchars($sc_derived_pubkey); ?>"
+                     style="width:100%;font-family:monospace;font-size:0.78rem;"
+                     maxlength="64" autocomplete="off" spellcheck="false">
+            </div>
+            <div>
+              <label class="sc-label">Old pubkey (64 hex)</label>
+              <input type="text" name="rotation_old_pubkey" id="rot-old-pub"
+                     placeholder="previous public key"
+                     style="width:100%;font-family:monospace;font-size:0.78rem;"
+                     maxlength="64" autocomplete="off" spellcheck="false">
+            </div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <label class="sc-label">Reason (optional)</label>
+            <input type="text" name="rotation_reason" id="rot-reason"
+                   placeholder="e.g. Key compromise, routine rotation"
+                   style="width:100%;">
+          </div>
+
+          <label class="sc-label">Blob to sign (copy this, sign offline with root private key)</label>
+          <div class="sc-code-block" id="rot-blob-preview" style="word-break:break-all;user-select:all;cursor:text;margin-bottom:10px;font-size:0.78rem;min-height:3em;">
+            <em style="opacity:0.4;">Fill in new pubkey above to generate blob.</em>
+          </div>
+
+          <p class="sc-dim" style="margin-bottom:6px;font-size:var(--sc-size-label);">STEP 2 — On your local machine, run (requires PHP + sodium):</p>
+          <div class="sc-code-block" style="font-size:0.75rem;word-break:break-all;margin-bottom:10px;">
+            php -r "$blob = file_get_contents('rotation.json'); echo sodium_bin2hex(sodium_crypto_sign_detached($blob, sodium_hex2bin('YOUR_ROOT_PRIVKEY')));"
+          </div>
+          <p class="sc-dim" style="margin-bottom:6px;font-size:var(--sc-size-label);">STEP 3 — Paste the resulting hex signature here and publish.</p>
+          <input type="text" name="rotation_sig" id="rot-sig"
+                 placeholder="128-char hex Ed25519 signature from root key"
+                 style="width:100%;font-family:monospace;font-size:0.78rem;margin-bottom:10px;"
+                 maxlength="128" autocomplete="off" spellcheck="false">
+
+          <button type="submit" name="publish_rotation" value="1" class="sc-btn"
+                  style="background:#c66;"
+                  onclick="return confirm('Publish this key rotation? Installs will pick it up automatically on next signature failure.');">
+            PUBLISH ROTATION
+          </button>
+        </form>
+
+        <?php
+        $rot_json_path = rtrim(RELEASES_DIR, '/') . '/key-rotation.json';
+        if (file_exists($rot_json_path)):
+            $rot_live = json_decode(file_get_contents($rot_json_path), true);
+        ?>
+        <hr style="margin:18px 0;border-color:var(--sc-border);">
+        <p class="sc-dim" style="font-size:var(--sc-size-label);">ACTIVE ROTATION FILE</p>
+        <table style="font-size:0.8rem;margin-top:8px;border-collapse:collapse;">
+          <tr><td style="opacity:0.5;padding:2px 12px 2px 0;">Issued</td><td style="font-family:monospace;"><?php echo htmlspecialchars($rot_live['issued_at'] ?? ''); ?></td></tr>
+          <tr><td style="opacity:0.5;padding:2px 12px 2px 0;">Reason</td><td><?php echo htmlspecialchars($rot_live['reason'] ?? '—'); ?></td></tr>
+          <tr><td style="opacity:0.5;padding:2px 12px 2px 0;">New key</td><td style="font-family:monospace;word-break:break-all;color:#0f0;"><?php echo htmlspecialchars($rot_live['new_pubkey'] ?? ''); ?></td></tr>
+          <tr><td style="opacity:0.5;padding:2px 12px 2px 0;">Old key</td><td style="font-family:monospace;word-break:break-all;opacity:0.5;"><?php echo htmlspecialchars($rot_live['old_pubkey'] ?? ''); ?></td></tr>
+        </table>
+        <form method="POST" style="margin-top:12px;">
+          <button type="submit" name="delete_rotation" value="1" class="sc-btn sc-btn--sm"
+                  style="background:#600;font-size:0.7rem;"
+                  onclick="return confirm('Delete the rotation file? Installs that have not yet updated their key will fall back to manual repair.');">
+            DELETE ROTATION FILE
+          </button>
+        </form>
+        <?php endif; ?>
+
+      </div>
+    </div>
   </div>
 
 </div><!-- /.sc-grid-2 -->
@@ -874,6 +1024,28 @@ require __DIR__ . '/sc-layout-top.php';
 // Auto-fill version, codename, and changelog fields when tag selection changes.
 (function () {
     var repo    = <?php echo json_encode(SNAPSMACK_GITHUB_REPO); ?>;
+
+    // Key rotation blob preview
+    (function () {
+        var newPub  = document.getElementById('rot-new-pub');
+        var oldPub  = document.getElementById('rot-old-pub');
+        var reason  = document.getElementById('rot-reason');
+        var preview = document.getElementById('rot-blob-preview');
+        if (!newPub || !preview) return;
+        function updateBlob() {
+            var blob = JSON.stringify({
+                new_pubkey: newPub.value.trim().toLowerCase(),
+                old_pubkey: (oldPub ? oldPub.value.trim().toLowerCase() : ''),
+                issued_at:  new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
+                reason:     (reason ? reason.value.trim() : ''),
+            });
+            preview.textContent = blob;
+        }
+        [newPub, oldPub, reason].forEach(function(el) {
+            if (el) el.addEventListener('input', updateBlob);
+        });
+        updateBlob();
+    }());
     var sel     = document.getElementById('tag-select');
     var vinp    = document.getElementById('version-input');
     var vfull   = document.getElementById('version-full-input');

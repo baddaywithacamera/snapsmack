@@ -130,7 +130,7 @@ a:hover { filter: brightness(1.2); }
 .sc-main {
     flex: 1;
     padding: 20px 32px;
-    max-width: 1100px;
+    max-width: none;
 }
 
 /* ── Page header row ─────────────────────────────────────────────────────── */
