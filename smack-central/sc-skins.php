@@ -698,19 +698,14 @@ include __DIR__ . '/sc-layout-top.php';
                               onsubmit="return confirm('Remove \'<?php echo addslashes(htmlspecialchars($entry['name'] ?? $slug)); ?>\' from registry and delete its zip?');">
                             <input type="hidden" name="delete_skin" value="1">
                             <input type="hidden" name="slug" value="<?php echo htmlspecialchars($slug); ?>">
-                            <button type="submit" style="background:none;border:1px solid #552;color:#a80;font-size:0.72rem;padding:2px 8px;cursor:pointer;border-radius:2px;letter-spacing:.5px;text-transform:uppercase;">
-                                Delete
-                            </button>
+                                                        <button type="submit" style="background:none;border:1px solid #b8860b;color:#b8860b;padding:3px 10px;cursor:pointer;font-size:0.8rem;letter-spacing:1px;text-transform:uppercase;">DELETE</button>
                         </form>
                     </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
         </table>
-        <p style="margin-top:12px; font-size:0.82rem;">
-            <a href="<?php echo htmlspecialchars(rtrim(RELEASES_URL, '/') . '/skins/registry.json'); ?>"
-               target="_blank" class="sc-dim">View registry.json ↗</a>
-        </p>
+        <p style="margin-top:0.5rem;"><a href="<?php echo htmlspecialchars(rtrim(RELEASES_URL, '/') . '/skins/registry.json'); ?>" target="_blank" class="sc-dim" style="font-size:0.82rem;">View registry.json ↗</a></p>
     </div>
 <?php endif; ?>
 
