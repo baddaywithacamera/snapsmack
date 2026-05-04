@@ -4,6 +4,15 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.42 — “Recliner” (2026-05-04)
+
+### Fixed
+- **Smack Central CSS** — Added missing CSS classes (`sc-page-head`, `sc-card`, `sc-card-title`, `sc-btn--dim`, `sc-warn`, `sc-muted`, `sc-help-*`, `sc-step-log`) that were used in PHP templates but undefined, causing unstyled layouts across multiple SC pages.
+- **Smack Central layout** — Increased `.sc-main` padding and set `max-width: 1400px` for better readability on wide screens.
+- **Smack Central font size** — Base font bumped from 13px to 15px.
+
+---
+
 ## 0.7.41 — “Recliner” (2026-05-04)
 
 ### Added
