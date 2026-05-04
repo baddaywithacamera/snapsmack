@@ -38,7 +38,7 @@ if (!defined('SNAPSMACK_SIGNING_ENFORCED')) {
 // This key should never change. Even when the release signing key is rotated,
 // this root key is what makes rotation announcements trustworthy.
 if (!defined('SNAPSMACK_ROOT_PUBKEY')) {
-    define('SNAPSMACK_ROOT_PUBKEY', '3287b9b29257da6a307fc85b949c9dc52bc99c08a66db21e6fcbaab0fb324652');
+    define('SNAPSMACK_ROOT_PUBKEY', 'd4c4256853fc046160f0f0028f3b48548eac50defdbd0803ef545d36d100eae5');
 }
 if (!defined('UPDATER_KEY_ROTATION_URL')) {
     define('UPDATER_KEY_ROTATION_URL',     'https://snapsmack.ca/releases/key-rotation.json');

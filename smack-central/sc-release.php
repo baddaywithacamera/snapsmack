@@ -384,7 +384,7 @@ if (($_GET['action'] ?? '') === 'fetch_changelog') {
             ], JSON_UNESCAPED_SLASHES);
 
             // Verify against the hardcoded root public key
-            $root_pub_hex = '3287b9b29257da6a307fc85b949c9dc52bc99c08a66db21e6fcbaab0fb324652';
+            $root_pub_hex = 'd4c4256853fc046160f0f0028f3b48548eac50defdbd0803ef545d36d100eae5';
             try {
                 $valid = function_exists('sodium_crypto_sign_verify_detached')
                     && sodium_crypto_sign_verify_detached(

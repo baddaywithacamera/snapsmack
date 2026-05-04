@@ -4,6 +4,21 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.41 — “Recliner” (2026-05-04)
+
+### Added
+- **Key rotation infrastructure** — Root-key-signed key rotation system. Installs that encounter a signature mismatch automatically fetch `key-rotation.json` from the release server, verify it against a hardcoded root public key, and present a one-click KEY ROTATION DETECTED panel. No manual key paste required when the release signing key is rotated.
+- **Smack Central: Key Rotation panel** (`sc-release.php`) — Generate rotation blob, sign offline with root private key, paste signature, publish. SC verifies the signature against the root key before writing anything to disk.
+- **`core/updater.php`** — `updater_fetch_key_rotation()` function, `SNAPSMACK_ROOT_PUBKEY` and `UPDATER_KEY_ROTATION_URL` constants.
+- **`smack-update.php`** — `accept_key_rotation` action; repair panel now shows amber KEY ROTATION DETECTED state with pre-filled new key when a valid rotation file is found; falls back to manual paste otherwise.
+- **`latest.json`** — Now includes `signing_pubkey` field so the current release public key is always visible in the manifest.
+
+### Fixed
+- **Smack Central font and layout** (`sc-geometry.css`, `sc-admin.css`) — Base font increased from 13px to 15px, label and dim sizes bumped proportionally, sidebar widened from 210px to 230px, main content area max-width constraint removed.
+- **`core/release-pubkey.php`** — Real Ed25519 public key replacing all-zeros placeholder; signature verification now enforced on all installs receiving 0.7.41+.
+
+---
+
 ## 0.7.40 — "Moist Bar Stool" (2026-05-03)
 
 ### Added

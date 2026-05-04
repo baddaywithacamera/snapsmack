@@ -17,4 +17,4 @@
  * back to SHA-256 checksum-only verification.
  */
 
-define('SNAPSMACK_RELEASE_PUBKEY', 'b9955f78c835f964b980a104d231be8253fce59db89cb12367c9ccbbafcea297');
+define('SNAPSMACK_RELEASE_PUBKEY', '4df51e2c4610a9a34913f7a52a29f8964dc2aec8448abcfe899cc4e2cf45068a');
