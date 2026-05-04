@@ -648,4 +648,5 @@ class SnapSmackExport {
         return $manifest;
     }
 }
-<?php // EOF
+
+// EOF
