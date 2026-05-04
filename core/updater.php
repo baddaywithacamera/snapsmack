@@ -1409,7 +1409,67 @@ function updater_repair_pubkey(string $new_pubkey_hex, string &$error = ''): boo
     }
 
     return true;
-}\r\n\r\n/**\r\n * Fetch and verify a root-key-signed key rotation announcement.\r\n *\r\n * Downloads key-rotation.json + key-rotation.sig from the release server and\r\n * verifies the JSON is signed by the hardcoded root private key (whose public\r\n * half is in SNAPSMACK_ROOT_PUBKEY). Returns an array with the new release\r\n * pubkey and metadata on success, null if no valid rotation is available.\r\n *\r\n * The root key never changes and is kept offline — it is the trust anchor that\r\n * prevents an attacker who compromises sc-config.php from slipping in a new key.\r\n */\r\nfunction updater_fetch_key_rotation(): ?array {\r\n    if (!function_exists('sodium_crypto_sign_verify_detached')) {\r\n        return null;\r\n    }\r\n\r\n    $json_body = _updater_http_get(UPDATER_KEY_ROTATION_URL);\r\n    $sig_body  = _updater_http_get(UPDATER_KEY_ROTATION_SIG_URL);\r\n\r\n    if ($json_body === false || $sig_body === false) {\r\n        return null;  // No rotation file on server — normal state\r\n    }\r\n\r\n    $sig_hex = trim($sig_body);\r\n\r\n    // Verify the rotation JSON is signed by the root key\r\n    try {\r\n        $root_pubkey = sodium_hex2bin(SNAPSMACK_ROOT_PUBKEY);\r\n        $signature   = sodium_hex2bin($sig_hex);\r\n        $valid = sodium_crypto_sign_verify_detached($signature, $json_body, $root_pubkey);\r\n    } catch (\SodiumException $e) {\r\n        error_log('SnapSmack Updater: Key rotation sig error — ' . $e->getMessage());\r\n        return null;\r\n    }\r\n\r\n    if (!$valid) {\r\n        error_log('SnapSmack Updater: Key rotation file failed root-key verification.');\r\n        return null;\r\n    }\r\n\r\n    $data = json_decode($json_body, true);\r\n    if (!isset($data['new_pubkey']) || !preg_match('/^[0-9a-f]{64}$/', $data['new_pubkey'])) {\r\n        return null;\r\n    }\r\n\r\n    // Already applied — nothing to do\r\n    if (defined('SNAPSMACK_RELEASE_PUBKEY') && $data['new_pubkey'] === SNAPSMACK_RELEASE_PUBKEY) {\r\n        return null;\r\n    }\r\n\r\n    return [\r\n        'new_pubkey' => $data['new_pubkey'],\r\n        'old_pubkey' => $data['old_pubkey'] ?? '',\r\n        'issued_at'  => $data['issued_at']  ?? '',\r\n        'reason'     => $data['reason']     ?? '',\r\n    ];\r\n}\r\n\r\nfunction updater_cleanup(): void {
+}
+
+/**
+ * Fetch and verify a root-key-signed key rotation announcement.
+ *
+ * Downloads key-rotation.json + key-rotation.sig from the release server and
+ * verifies the JSON is signed by the hardcoded root private key (whose public
+ * half is in SNAPSMACK_ROOT_PUBKEY). Returns an array with the new release
+ * pubkey and metadata on success, null if no valid rotation is available.
+ *
+ * The root key never changes and is kept offline — it is the trust anchor that
+ * prevents an attacker who compromises sc-config.php from slipping in a new key.
+ */
+function updater_fetch_key_rotation(): ?array {
+    if (!function_exists('sodium_crypto_sign_verify_detached')) {
+        return null;
+    }
+
+    $json_body = _updater_http_get(UPDATER_KEY_ROTATION_URL);
+    $sig_body  = _updater_http_get(UPDATER_KEY_ROTATION_SIG_URL);
+
+    if ($json_body === false || $sig_body === false) {
+        return null;  // No rotation file on server — normal state
+    }
+
+    $sig_hex = trim($sig_body);
+
+    // Verify the rotation JSON is signed by the root key
+    try {
+        $root_pubkey = sodium_hex2bin(SNAPSMACK_ROOT_PUBKEY);
+        $signature   = sodium_hex2bin($sig_hex);
+        $valid = sodium_crypto_sign_verify_detached($signature, $json_body, $root_pubkey);
+    } catch (\SodiumException $e) {
+        error_log('SnapSmack Updater: Key rotation sig error — ' . $e->getMessage());
+        return null;
+    }
+
+    if (!$valid) {
+        error_log('SnapSmack Updater: Key rotation file failed root-key verification.');
+        return null;
+    }
+
+    $data = json_decode($json_body, true);
+    if (!isset($data['new_pubkey']) || !preg_match('/^[0-9a-f]{64}$/', $data['new_pubkey'])) {
+        return null;
+    }
+
+    // Already applied — nothing to do
+    if (defined('SNAPSMACK_RELEASE_PUBKEY') && $data['new_pubkey'] === SNAPSMACK_RELEASE_PUBKEY) {
+        return null;
+    }
+
+    return [
+        'new_pubkey' => $data['new_pubkey'],
+        'old_pubkey' => $data['old_pubkey'] ?? '',
+        'issued_at'  => $data['issued_at']  ?? '',
+        'reason'     => $data['reason']     ?? '',
+    ];
+}
+
+function updater_cleanup(): void {
     $dir = UPDATER_TEMP_DIR;
     if (is_dir($dir)) {
         $files = new RecursiveIteratorIterator(
