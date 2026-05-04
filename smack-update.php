@@ -452,6 +452,23 @@ if ($action === 'cancel_update') {
 // value, which is the ground truth on shared hosts where the update can fail
 // after file extraction but before finalisation.
 // ── REPAIR SIGNING KEY ────────────────────────────────────────────────────────
+// ── ACCEPT ROOT-KEY-SIGNED KEY ROTATION ───────────────────────────────────────────
+if ($action === 'accept_key_rotation') {
+    $rotation     = $_SESSION['pending_key_rotation'] ?? null;
+    $repair_error = '';
+    if ($rotation && !empty($rotation['new_pubkey']) && updater_repair_pubkey($rotation['new_pubkey'], $repair_error)) {
+        unset($_SESSION['pending_key_rotation'],
+              $_SESSION['update_state'], $_SESSION['update_complete_log'],
+              $_SESSION['update_chunk_state']);
+        $stage_state = null;
+        $flash_msg  = 'SIGNING KEY UPDATED VIA ROOT-KEY-SIGNED ROTATION. RESET STATE AND CHECK FOR UPDATES TO CONTINUE.';
+        $flash_type = 'success';
+    } else {
+        $flash_msg  = 'KEY ROTATION FAILED: ' . strtoupper($repair_error ?: 'NO VALID ROTATION DATA IN SESSION.');
+        $flash_type = 'error';
+    }
+}
+
 if ($action === 'repair_pubkey') {
     $new_key = trim($_POST['new_pubkey'] ?? '');
     $repair_error = '';
@@ -559,6 +576,15 @@ if ($action === 'stage_verify'
         @unlink($zip_path);
         unset($_SESSION['update_state']);
         $stage_state = null;
+        // If signature failed, check for a root-key-signed rotation announcement
+        if (stripos($verify_error, 'signature') !== false) {
+            $rotation = updater_fetch_key_rotation();
+            if ($rotation) {
+                $_SESSION['pending_key_rotation'] = $rotation;
+            } else {
+                unset($_SESSION['pending_key_rotation']);
+            }
+        }
         if ($wants_json) {
             header('Content-Type: application/json');
             echo json_encode(['status' => 'error', 'stage' => 'verify', 'message' => $flash_msg]);
@@ -1332,16 +1358,49 @@ include 'core/sidebar.php';
 
     <!-- REPAIR SIGNING KEY PANEL — shown when a signature failure has just occurred -->
     <?php
-    $sig_failure = isset($flash_msg) && stripos($flash_msg, 'SIGNATURE VERIFICATION FAILED') !== false;
+    $sig_failure      = isset($flash_msg) && stripos($flash_msg, 'signature') !== false && stripos($flash_msg, 'failed') !== false;
+    $pending_rotation = $_SESSION['pending_key_rotation'] ?? null;
     ?>
-    <?php if ($sig_failure || isset($_GET['repair_key'])): ?>
+    <?php if ($sig_failure || $pending_rotation || isset($_GET['repair_key'])): ?>
     <div class="box update-section" id="repair-key-panel" style="border-color:#c00;">
+
+        <?php if ($pending_rotation): ?>
+        <!-- Root-key-signed rotation available — no manual paste needed -->
+        <h3 style="color:#fa0;">&#9888; KEY ROTATION DETECTED</h3>
+        <p class="dim" style="font-size:0.8rem;margin-bottom:12px;">
+            A key rotation announcement was fetched from <code>snapsmack.ca</code> and verified
+            against the hardcoded root key. The new release signing key is shown below.
+            Accept to update this install and continue.
+        </p>
+        <table style="font-size:0.78rem;margin-bottom:14px;width:100%;border-collapse:collapse;">
+            <tr><td style="opacity:0.5;padding:3px 10px 3px 0;white-space:nowrap;">Issued</td>
+                <td style="font-family:monospace;"><?php echo htmlspecialchars($pending_rotation['issued_at']); ?></td></tr>
+            <?php if (!empty($pending_rotation['reason'])): ?>
+            <tr><td style="opacity:0.5;padding:3px 10px 3px 0;">Reason</td>
+                <td><?php echo htmlspecialchars($pending_rotation['reason']); ?></td></tr>
+            <?php endif; ?>
+            <tr><td style="opacity:0.5;padding:3px 10px 3px 0;">Old key</td>
+                <td style="font-family:monospace;word-break:break-all;opacity:0.6;"><?php echo htmlspecialchars($pending_rotation['old_pubkey']); ?></td></tr>
+            <tr><td style="opacity:0.5;padding:3px 10px 3px 0;">New key</td>
+                <td style="font-family:monospace;word-break:break-all;color:#0f0;"><?php echo htmlspecialchars($pending_rotation['new_pubkey']); ?></td></tr>
+        </table>
+        <form method="POST">
+            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+            <button type="submit" name="action" value="accept_key_rotation" class="btn-smack"
+                    style="background:#fa0;color:#000;"
+                    onclick="return confirm('Accept this key rotation? It was verified against the root key.');">
+                &#10003; ACCEPT KEY ROTATION
+            </button>
+        </form>
+
+        <?php else: ?>
+        <!-- Manual fallback — no rotation file found on server -->
         <h3 style="color:#c00;">&#9888; REPAIR SIGNING KEY</h3>
         <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
             The installed public key does not match the key used to sign this release.
-            This happens when the release keypair is rotated. Paste the new 64-character
-            hex public key below (from <code>core/release-pubkey.php</code> in the repo,
-            or the SIGNING KEY box in Smack Central) to repair the mismatch.
+            No root-key-signed rotation file was found on the server. Paste the new
+            64-character hex public key manually (from Smack Central &rarr; Release Packager
+            &rarr; Signing Key, or <code>core/release-pubkey.php</code> in the repo).
         </p>
         <p style="font-size:0.75rem;margin-bottom:12px;opacity:0.6;">
             Current key: <code><?php echo htmlspecialchars(SNAPSMACK_RELEASE_PUBKEY); ?></code>
@@ -1358,6 +1417,8 @@ include 'core/sidebar.php';
                 UPDATE SIGNING KEY
             </button>
         </form>
+        <?php endif; ?>
+
     </div>
     <?php endif; ?>
 
