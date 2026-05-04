@@ -1576,4 +1576,19 @@ function _updater_http_get(string $url): string|false {
             CURLOPT_MAXREDIRS      => 5,
             CURLOPT_TIMEOUT        => 30,
             CURLOPT_SSL_VERIFYPEER => true,
- 
+        ]);
+        $body = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        return ($body !== false && $code === 200) ? $body : false;
+    }
+
+    // Fallback
+    $ctx = stream_context_create([
+        'http' => [
+            'timeout' => 30,
+            'user_agent' => 'SnapSmack-Updater/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0.0'),
+        ],
+    ]);
+    return @file_get_contents($url, false, $ctx);
+}
