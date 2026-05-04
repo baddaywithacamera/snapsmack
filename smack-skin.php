@@ -829,11 +829,6 @@ if (!empty($google_families)) {
                 </div>
             </div>
             <?php endforeach; ?>
-                    </div>
-                <?php endforeach; ?>
-                </div>
-            </div>
-            <?php endif; ?>
 
         </div>
 
