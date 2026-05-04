@@ -217,6 +217,24 @@ if ($preflight_ok && $_SERVER['REQUEST_METHOD'] === 'GET') {
     $refs = sc_skins_get_refs();
 }
 
+// ── Delete skin from registry (no preflight required) ─────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_skin'])) {
+    $slug = preg_replace('/[^a-z0-9-]/', '', $_POST['slug'] ?? '');
+    if ($slug && isset($existing_registry['skins'][$slug])) {
+        $zip_url  = $existing_registry['skins'][$slug]['download_url'] ?? '';
+        $zip_name = basename(parse_url($zip_url, PHP_URL_PATH));
+        if ($zip_name) {
+            $del_path = rtrim(RELEASES_DIR, '/') . '/skins/' . $zip_name;
+            if (file_exists($del_path)) @unlink($del_path);
+        }
+        unset($existing_registry['skins'][$slug]);
+        $existing_registry['generated'] = gmdate('Y-m-d\TH:i:s\Z');
+        file_put_contents($registry_path, json_encode($existing_registry, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    }
+    header('Location: sc-skins.php?deleted=' . urlencode($slug));
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
 
     // ── Phase 2: fetch skins from GitHub ─────────────────────────────────────
@@ -397,25 +415,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
         }
     }
 }
-
-    // ── Delete skin from registry ─────────────────────────────────────────────
-    elseif (isset($_POST['delete_skin'])) {
-        $slug = preg_replace('/[^a-z0-9-]/', '', $_POST['slug'] ?? '');
-        if ($slug && isset($existing_registry['skins'][$slug])) {
-            // Delete the zip from disk
-            $zip_url  = $existing_registry['skins'][$slug]['download_url'] ?? '';
-            $zip_name = basename(parse_url($zip_url, PHP_URL_PATH));
-            if ($zip_name) {
-                $del_path = rtrim(RELEASES_DIR, '/') . '/skins/' . $zip_name;
-                if (file_exists($del_path)) @unlink($del_path);
-            }
-            unset($existing_registry['skins'][$slug]);
-            $existing_registry['generated'] = gmdate('Y-m-d\TH:i:s\Z');
-            file_put_contents($registry_path, json_encode($existing_registry, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-        }
-        header('Location: sc-skins.php?deleted=' . urlencode($slug));
-        exit;
-    }
 
 render:
 

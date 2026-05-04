@@ -492,4 +492,22 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                                 <img src="<?php echo $thumb_url; ?>" alt="<?php echo htmlspecialchars($img['img_title']); ?>" loading="lazy">
                             </a>
                         </div>
-                    <?php endforeac
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="empty-sector-msg">NO TRANSMISSIONS RECORDED IN THIS SECTOR.</div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+
+            <?php
+            $footer_file = __DIR__ . '/' . $skin_path . '/skin-footer.php';
+            if (file_exists($footer_file)) include $footer_file;
+            ?>
+        </div>
+    </div>
+
+    <?php include __DIR__ . '/core/footer-scripts.php'; ?>
+
+
+</body>
+</html>

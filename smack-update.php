@@ -1755,4 +1755,8 @@ include 'core/sidebar.php';
         <h3>UP TO DATE</h3>
         <p class="dim" style="font-size:0.85rem;">No update available. Your installation is running the latest release.</p>
     </div>
-    <?php e
+    <?php endif; ?>
+
+</div>
+
+<?php include 'core/admin-footer.php'; ?>
