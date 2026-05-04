@@ -787,22 +787,15 @@ if (!empty($google_families)) {
             <?php endforeach; ?>
 
             <?php
-            // --- ENGINE CONTROLS: Global protocols surfaced by required engines ---
-            $engine_controls = [];
-            foreach ($resolved_engines as $engine_key => $engine) {
-                if (!empty($engine['has_settings']) && !empty($engine['controls'])) {
-                    foreach ($engine['controls'] as $ctrl_key => $ctrl_meta) {
-                        $engine_controls[$ctrl_key] = array_merge($ctrl_meta, ['_engine' => $engine_key]);
-                    }
-                }
-            }
-
-            if (!empty($engine_controls)):
+            // --- ENGINE CONTROLS: One box per engine that exposes settings ---
+            foreach ($resolved_engines as $engine_key => $engine):
+                if (empty($engine['has_settings']) || empty($engine['controls'])) continue;
+                $engine_label = strtoupper($engine['label'] ?? $engine_key);
             ?>
             <div class="box">
-                <h3>SYSTEM ENGINE PROTOCOLS</h3>
+                <h3><?php echo htmlspecialchars($engine_label); ?> SETTINGS</h3>
                 <div class="dash-grid">
-                <?php foreach ($engine_controls as $k => $o):
+                <?php foreach ($engine['controls'] as $k => $o):
                     $val = ($settings[$k] ?? '') !== '' ? $settings[$k] : ($o['default'] ?? '');
                 ?>
                     <div class="lens-input-wrapper">
@@ -831,6 +824,11 @@ if (!empty($google_families)) {
                         <?php else: ?>
                             <input type="text" name="skin_opt[<?php echo htmlspecialchars($k); ?>]" value="<?php echo htmlspecialchars($val); ?>">
                         <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
                     </div>
                 <?php endforeach; ?>
                 </div>
