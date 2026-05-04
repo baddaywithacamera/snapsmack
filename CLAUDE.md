@@ -232,33 +232,49 @@ git commit
 
 **Git branch is `master` not `main`** (confirmed 2026-04-29).
 
+**Signing keypair status:**
+- Release private key: in `sc-config.php` on snapsmack.ca server (needs FTP with new key)
+- Release public key: `4df51e2c4610a9a34913f7a52a29f8964dc2aec8448abcfe899cc4e2cf45068a` — in `core/release-pubkey.php` (committed in 0.7.40)
+- Root public key: `d4c4256853fc046160f0f0028f3b48548eac50defdbd0803ef545d36d100eae5` — hardcoded in `core/updater.php`
+- Root private key + full instructions: in Bitwarden (`KEY-ROTATION-INSTRUCTIONS.txt` on disk, gitignored)
+
 **Changes this session (0.7.40):**
 
 **Photogram + Kiosk black image fix**
-- **`skins/photogram/manifest.php`** — Added `smack-image-fade-load` to `require_scripts`. The 0.7.32 FOUC fix sets `opacity:0` on `.pg-post-image` globally; without the fade engine images never reappear.
+- **`skins/photogram/manifest.php`** — Added `smack-image-fade-load` to `require_scripts`.
 - **`skins/kiosk/manifest.php`** — Same fix.
 
 **Archive calendar (SMACKONEOUT / SMACKTALK skins only)**
-- **`assets/js/ss-engine-calendar.js`** — Complete rewrite. Activates only when `archive-layout-croppedwithcalendar` is on body. Slides in from right, dynamic month count based on viewport height, two-click date range navigates to `?from=DATE&to=DATE&layout=croppedwithcalendar`, same cell twice = single day `?date=DATE`, ESC cancels range.
-- **`assets/css/ss-engine-calendar.css`** — Reworked. CSS variable cascade: `--cal-bg: var(--cal-bg, var(--bg, #111))` etc. so any skin inherits correct colours automatically.
-- **`archive.php`** — Added `croppedwithcalendar` layout, `$from_filter`/`$to_filter` date range params, calendar guard (only shown if skin has `smack-calendar` in require_scripts), toggle label `Cal`, layout switch clears from/to params.
+- **`assets/js/ss-engine-calendar.js`** — Complete rewrite. Activates only when `archive-layout-croppedwithcalendar` is on body. Two-click date range → `?from=DATE&to=DATE&layout=croppedwithcalendar`, same cell twice = single day, ESC cancels.
+- **`assets/css/ss-engine-calendar.css`** — Reworked with CSS variable cascade.
+- **`archive.php`** — Added `croppedwithcalendar` layout, `$from_filter`/`$to_filter` date range params.
 - **`api-calendar.php`** — `min(3, ...)` → `min(12, ...)` months param.
-- **`migrations/048_calendar_layout.php`** (NEW) — Appends `croppedwithcalendar` to `archive_layouts_available` setting.
-- **`skins/50-shades-of-noah-grey/manifest.php`** — Added `smack-calendar` to `require_scripts`, `croppedwithcalendar` to `archive_layouts`, version 1.0 → 1.1.
-- **`skins/rational-geo/manifest.php`** — Same changes, version 1.0 → 1.1.
-- **`skins/true-grit/manifest.php`** — `archive_layout_default` set to `masonry` (0.7.39 carry-over).
-- Calendar NOT added to Photogram — deferred, doesn't fit Instagram-mode UX.
+- **`migrations/048_calendar_layout.php`** (NEW) — Appends `croppedwithcalendar` to `archive_layouts_available`.
+- **`skins/50-shades-of-noah-grey/manifest.php`** — Added `smack-calendar`, `croppedwithcalendar`, version 1.0 → 1.1.
+- **`skins/rational-geo/manifest.php`** — Same, version 1.0 → 1.1.
+- **`skins/true-grit/manifest.php`** — `archive_layout_default` set to `masonry`.
 
 **Updater: pre-migrate stage**
-- **`smack-update.php`** — New `stage_premigrate` inserted between backup and extract. Extracts only `migrations/` from zip first, runs them against live DB, then `stage_extract` proceeds. Prevents 500 errors from PHP files referencing columns that don't exist yet.
-- **`core/updater.php`** — Added `updater_extract_migrations_only(string $zip_path): array`.
+- **`smack-update.php`** — New `stage_premigrate` between backup and extract. Also: `accept_key_rotation` action, rotation detection in verify failure path, enhanced repair panel (shows KEY ROTATION DETECTED with pre-filled key when root-key-signed rotation file is available; falls back to manual paste otherwise).
+- **`core/updater.php`** — Added `updater_extract_migrations_only()`, `updater_fetch_key_rotation()`, `SNAPSMACK_ROOT_PUBKEY` constant, `UPDATER_KEY_ROTATION_URL` constants.
+
+**Signing key infrastructure**
+- **`core/release-pubkey.php`** — Real public key replacing all-zeros placeholder.
+- **`core/updater.php`** — Root pubkey hardcoded; `updater_fetch_key_rotation()` fetches and verifies rotation announcements against root key.
+- **`smack-update.php`** — Auto-detects rotation on sig failure; shows amber KEY ROTATION DETECTED panel with ACCEPT button; falls back to manual paste if no rotation file on server.
+- **`smack-central/sc-release.php`** — `signing_pubkey` added to `latest.json` manifest; new Key Rotation panel (generate blob → sign offline → paste sig → publish).
+- **`smack-central/KEY-ROTATION-INSTRUCTIONS.txt`** — Gitignored. Full rotation procedure + both keypairs. Store in Bitwarden.
+
+**Smack Central: CSS / layout**
+- **`smack-central/assets/css/sc-geometry.css`** — Base font 13px→15px, label 0.7→0.8rem, dim 0.75→0.85rem, sidebar 210→230px.
+- **`smack-central/assets/css/sc-admin.css`** — `.sc-main` max-width removed (was 1100px).
 
 **Smack Central: Skin Packager delete button**
-- **`smack-central/sc-skins.php`** — POST handler for `delete_skin` (sanitize slug, delete zip, update registry.json, redirect with flash). Delete button per row with JS confirm, amber styling.
+- **`smack-central/sc-skins.php`** — POST handler for `delete_skin`, delete button per row.
 
 **Other**
-- **`.gitignore`** — Added `*.bak` and `.htaccess`; deduplicated `projects/snapsmack-ca/`.
-- **`smack-cats.php`, `smack-albums.php`, `smack-collections.php`** — Featured image picker queries `snap_images` directly (carry-over from 0.7.37).
+- **`.gitignore`** — Added `*.bak`, `.htaccess`, `smack-central/KEY-ROTATION-INSTRUCTIONS.txt`; deduplicated `projects/snapsmack-ca/`.
+- **`smack-cats.php`, `smack-albums.php`, `smack-collections.php`** — Featured image picker queries `snap_images` directly.
 
 **Commit command (run from C:\dev\snapsmack in MINGW bash):**
 ```bash
@@ -271,22 +287,24 @@ git add skins/photogram/manifest.php skins/kiosk/manifest.php
 git add smack-update.php core/updater.php migrations/048_calendar_layout.php
 git add smack-central/sc-skins.php skins/true-grit/manifest.php
 git add smack-cats.php smack-albums.php smack-collections.php
+git add core/release-pubkey.php
+git add smack-central/sc-release.php
+git add smack-central/assets/css/sc-geometry.css smack-central/assets/css/sc-admin.css
 git rm --cached .htaccess
-git commit -m "0.7.40 — archive calendar, date range filter, pre-migrate updater stage, skin packager delete"
+git commit -m "0.7.40 — archive calendar, date range filter, pre-migrate updater stage, key rotation infrastructure, SC font/layout fix"
 git tag -f v0.7.40
 git push Github master
 git push Github v0.7.40 --force
 ```
 
-**Pending — FTP to photowalk.ing (urgent):**
-- `core/release-pubkey.php` (fixes smack-update.php 500 — then updater can pull 0.7.40)
+**Pending — FTP to photowalk.ing:**
 - `.htaccess` (probe guard + snap-in route)
 - `probe-ban.php`
-- `skins/photogram/manifest.php` (black image fix — urgent)
 - `smack-cats.php`, `smack-albums.php`, `smack-collections.php`
+- `skins/photogram/manifest.php` ships with 0.7.40 update package — update via updater once 0.7.40 is pushed
 
 **Pending — after push:**
-- Build 0.7.40 release package from Smack Central
+- Rebuild 0.7.40 release package from Smack Central (keypair is now wired up — packages will be properly signed)
 - Build skin packages for 50-shades-of-noah-grey v1.1 and rational-geo v1.1 via Skin Packager
 - Update all live sites to 0.7.40 via Smack Central update system
 - Generate API key in foundtextures.ca Admin → Settings → API Access, paste into SYBU
