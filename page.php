@@ -134,4 +134,4 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
     <?php include __DIR__ . '/core/footer-scripts.php'; ?>
 </body>
 </html>
-// EOF
+<?php // EOF

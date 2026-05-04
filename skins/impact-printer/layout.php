@@ -78,4 +78,4 @@ $border_style = $settings['image_frame_style'] ?? 'box';
     <?php include('skin-footer.php'); ?>
 
 </div>
-// EOF
+<?php // EOF

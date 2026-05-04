@@ -23,4 +23,4 @@ if (!empty($requested)) {
 
 include_once(dirname(__DIR__, 2) . '/core/footer.php');
 ?>
-// EOF
+<?php // EOF

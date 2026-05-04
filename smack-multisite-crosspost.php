@@ -336,4 +336,4 @@ include 'core/sidebar.php';
 <script src="assets/js/ss-engine-crosspost.js"></script>
 
 <?php include 'core/admin-footer.php'; ?>
-// EOF
+<?php // EOF

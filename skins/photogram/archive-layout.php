@@ -49,4 +49,4 @@
     <div class="pg-grid-empty">No photos yet.</div>
 </div>
 <?php endif; ?>
-// EOF
+<?php // EOF

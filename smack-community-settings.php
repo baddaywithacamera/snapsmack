@@ -475,4 +475,4 @@ include 'core/sidebar.php';
 </script>
 
 <?php include 'core/admin-footer.php'; ?>
-// EOF
+<?php // EOF

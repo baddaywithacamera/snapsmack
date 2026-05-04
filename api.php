@@ -44,4 +44,4 @@ echo json_encode([
 ], JSON_PRETTY_PRINT);
 exit;
 ?>
-// EOF
+<?php // EOF

@@ -282,4 +282,4 @@ document.querySelectorAll('[id^="swap-input-"]').forEach(function(input) {
 </script>
 
 <?php include 'core/admin-footer.php'; ?>
-// EOF
+<?php // EOF

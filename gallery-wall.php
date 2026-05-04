@@ -135,4 +135,4 @@ try {
 <?php include __DIR__ . '/core/footer-scripts.php'; ?>
 </body>
 </html>
-// EOF
+<?php // EOF

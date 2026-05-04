@@ -166,4 +166,4 @@ include __DIR__ . '/skin-meta.php';
 <?php include __DIR__ . '/../../core/footer-scripts.php'; ?>
 </body>
 </html>
-// EOF
+<?php // EOF

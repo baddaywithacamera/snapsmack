@@ -1453,4 +1453,4 @@ function ssGo(el, idx) {
 }
 </script>
 <?php include 'core/admin-footer.php'; ?>
-// EOF
+<?php // EOF

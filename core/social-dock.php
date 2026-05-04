@@ -199,4 +199,4 @@ $_dock_style = implode('; ', [
         </a>
     <?php endforeach; ?>
 </div>
-// EOF
+<?php // EOF

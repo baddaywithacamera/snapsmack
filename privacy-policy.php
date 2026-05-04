@@ -92,4 +92,4 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
     </div>
 </body>
 </html>
-// EOF
+<?php // EOF

@@ -21,4 +21,4 @@ $_sticky_blur    = max(0, min(30, (int)($settings['sticky_header_blur'] ?? 14)))
     --sticky-blur: <?php echo $_sticky_blur; ?>px;
 }
 </style>
-// EOF
+<?php // EOF

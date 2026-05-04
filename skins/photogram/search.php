@@ -302,4 +302,4 @@ $site_title = $settings['site_title'] ?? $site_name ?? 'Photogram';
 </div><!-- /#pg-app -->
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
-// EOF
+<?php // EOF

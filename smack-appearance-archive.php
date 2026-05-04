@@ -354,4 +354,4 @@ syncAvailableCheckbox(document.getElementById('default-layout-select').value);
 </script>
 
 <?php include 'core/admin-footer.php'; ?>
-// EOF
+<?php // EOF

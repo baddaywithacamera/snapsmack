@@ -438,4 +438,4 @@ include 'core/sidebar.php';
 <script src="assets/js/ss-engine-gallery.js?v=079L"></script>
 
 <?php include 'core/admin-footer.php'; ?>
-// EOF
+<?php // EOF

@@ -323,4 +323,4 @@ if ($active_skin !== 'photogram') {
 ?>
 </body>
 </html>
-// EOF
+<?php // EOF

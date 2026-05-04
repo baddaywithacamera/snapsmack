@@ -81,4 +81,4 @@ require_once dirname(__DIR__, 2) . '/core/snap-tags.php';
     <?php include('skin-footer.php'); ?>
 
 </div>
-// EOF
+<?php // EOF

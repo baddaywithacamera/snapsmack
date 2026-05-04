@@ -301,4 +301,4 @@ require __DIR__ . '/sc-layout-top.php';
 </style>
 
 <?php require __DIR__ . '/sc-layout-bottom.php'; ?>
-// EOF
+<?php // EOF

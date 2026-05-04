@@ -883,4 +883,4 @@ include 'core/sidebar.php';
 <script src="assets/js/ss-engine-ai.js?v=<?php echo time(); ?>"></script>
 <?php endif; ?>
 <?php include 'core/admin-footer.php'; ?>
-// EOF
+<?php // EOF

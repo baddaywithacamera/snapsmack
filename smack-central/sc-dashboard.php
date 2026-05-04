@@ -63,4 +63,4 @@ require __DIR__ . '/sc-layout-top.php';
 </div>
 
 <?php require __DIR__ . '/sc-layout-bottom.php'; ?>
-// EOF
+<?php // EOF

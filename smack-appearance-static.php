@@ -86,4 +86,4 @@ $current_gutter = (int)($settings['static_content_gutter'] ?? 40);
 </div>
 
 <?php include 'core/admin-footer.php'; ?>
-// EOF
+<?php // EOF
