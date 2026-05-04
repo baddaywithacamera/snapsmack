@@ -37,3 +37,4 @@ try {
     echo "ERROR: " . $e->getMessage() . "\n";
     exit(1);
 }
+// EOF

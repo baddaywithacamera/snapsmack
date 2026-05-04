@@ -217,3 +217,4 @@ Available CSS variables for this skin:
     return { send };
 
 })();
+// EOF

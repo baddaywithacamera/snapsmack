@@ -171,3 +171,4 @@ function snapsmack_send_reset_email(
 
     return (bool) @mail($to, $subject, $body, $headers);
 }
+// EOF

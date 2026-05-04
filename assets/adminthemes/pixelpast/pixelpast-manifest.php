@@ -12,3 +12,4 @@ return [
     'css_file'    => 'admin-theme-colours-pixelpast.css', // The direct link the header needs
     'description' => "A nod to the original. Pixelpast maps the tasteful, Web 2.0 colour aesthetic of the Pixelpost photo blogging engine to SNAPSMACK. What's new is old again.",
 ];
+// EOF

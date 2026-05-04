@@ -176,3 +176,4 @@ echo "<p class='info'>Your database now contains recovery metadata for all locat
 echo "<p class='warn'>You can safely delete this file from your server after running it.</p>";
 echo "</body></html>";
 ?>
+// EOF

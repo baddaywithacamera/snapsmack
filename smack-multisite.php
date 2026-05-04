@@ -747,3 +747,4 @@ include 'core/sidebar.php';
 </div>
 
 <?php require_once 'core/admin-footer.php'; ?>
+// EOF

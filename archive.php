@@ -71,7 +71,7 @@ try {
     $available_raw    = $settings['archive_layouts_available'] ?? $archive_layout_default;
     $available_modes  = array_filter(
         array_map('trim', explode(',', $available_raw)),
-        fn($m) => in_array($m, ['square', 'cropped', 'masonry'])
+        fn($m) => in_array($m, ['square', 'cropped', 'masonry', 'croppedwithcalendar'])
     );
     if (empty($available_modes)) $available_modes = [$archive_layout_default];
     $available_modes = array_values($available_modes);
@@ -511,3 +511,4 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
 
 </body>
 </html>
+// EOF

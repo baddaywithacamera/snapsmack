@@ -29,3 +29,4 @@ if ($homepage_mode === 'latest_post') {
 $_SERVER['SNAPSMACK_FORCE_BLOG'] = true;
 
 include __DIR__ . '/index.php';
+// EOF

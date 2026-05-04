@@ -856,3 +856,4 @@ window.addEventListener('DOMContentLoaded', function () {
 <link rel="stylesheet" href="assets/css/ss-engine-photo-editor.css?v=079L">
 <script src="assets/js/ss-engine-photo-editor.js?v=079L"></script>
 <?php include 'core/admin-footer.php'; ?>
+// EOF

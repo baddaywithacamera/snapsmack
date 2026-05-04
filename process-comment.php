@@ -121,3 +121,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 } else {
     die("FORBIDDEN: Direct access to this frequency is not permitted.");
 }
+// EOF

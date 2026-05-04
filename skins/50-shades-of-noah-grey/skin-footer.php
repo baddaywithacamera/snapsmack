@@ -25,3 +25,4 @@ if (!empty($requested)) {
 // Include core footer to close the document
 include_once(dirname(__DIR__, 2) . '/core/footer.php');
 ?>
+// EOF

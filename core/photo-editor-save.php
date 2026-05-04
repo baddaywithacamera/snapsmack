@@ -120,3 +120,4 @@ echo json_encode([
     'width'  => $new_w,
     'height' => $new_h,
 ]);
+// EOF

@@ -12,3 +12,4 @@ return [
     'css_file'    => 'admin-theme-colours-purple-rain.css', // The direct link the header needs
     'description' => "Let's go crazy! Celebrating the artist formerly known as Prince.",
 ];
+// EOF

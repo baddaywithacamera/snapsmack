@@ -588,4 +588,4 @@ input[type="range"]::-webkit-slider-thumb {
 .radio-option:has(input:checked),
 .reaction-option.is-active,
 .reaction-option:has(input:checked) { background-color: #E7EDF1; }
-
+/* EOF */

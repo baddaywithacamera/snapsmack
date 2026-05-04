@@ -294,3 +294,4 @@ function ste_refresh_override_rate(PDO $pdo, int $site_id): void {
     $rate = round($overridden_count / $total_count, 4);
     $pdo->prepare("UPDATE ste_sites SET override_rate = ? WHERE id = ?")->execute([$rate, $site_id]);
 }
+// EOF

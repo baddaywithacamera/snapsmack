@@ -109,3 +109,4 @@ function sso_fail(string $reason): void {
     <p><a href="login.php">&larr; Login manually</a></p></div></body></html>';
     exit;
 }
+// EOF

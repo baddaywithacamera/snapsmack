@@ -71,3 +71,4 @@ echo json_encode([
     'success' => true,
     'html'    => '<div class="description">' . $rendered . '</div>'
 ]);
+// EOF

@@ -93,4 +93,4 @@ $loop = ($settings['htbs_slider_loop'] ?? '1') === '1';
 
     <?php include('skin-footer.php'); ?>
 </div>
-
+// EOF

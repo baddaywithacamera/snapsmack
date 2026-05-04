@@ -140,3 +140,4 @@
 
     document.addEventListener('lightbox-closed', processAll);
 })();
+// EOF

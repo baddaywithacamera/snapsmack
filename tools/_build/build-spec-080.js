@@ -565,3 +565,4 @@ Packer.toBuffer(doc).then(buf => {
   fs.writeFileSync('/sessions/youthful-eager-lovelace/mnt/snapsmack_codebase/_spec/snapsmack-feature-spec-080.docx', buf);
   console.log('Written.');
 });
+// EOF

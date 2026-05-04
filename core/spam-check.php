@@ -49,3 +49,4 @@ function is_spam($author, $email, $body, $pdo) {
     // Akismet returns "true" in the body if the comment is spam.
     return (trim($response ?: '') === 'true');
 }
+// EOF

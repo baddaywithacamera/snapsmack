@@ -274,3 +274,4 @@ function closeAllOverlays() {
 }
 
 } // end double-load guard
+// EOF

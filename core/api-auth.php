@@ -53,3 +53,4 @@ unset($_x_snap_key);
 
 // No key header — fall through to standard session auth.
 require_once __DIR__ . '/auth.php';
+// EOF

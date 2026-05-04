@@ -106,3 +106,4 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     window.smackdown.closeFooter = closeOverlay;
 });
+// EOF

@@ -216,3 +216,4 @@ document.addEventListener('DOMContentLoaded', () => {
     // Expose for external control if needed
     window._logoEngine = engine;
 });
+// EOF

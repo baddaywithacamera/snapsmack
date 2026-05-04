@@ -26,3 +26,4 @@ function migration_034(PDO $pdo): void {
         VALUES ('ban_sync_capable_spokes', '[]')
     ");
 }
+// EOF

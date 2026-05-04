@@ -32,3 +32,4 @@ session_destroy();
 // Send user back to login screen
 header("Location: snap-in.php");
 exit;
+// EOF

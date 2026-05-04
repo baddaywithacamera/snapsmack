@@ -27,3 +27,4 @@ document.querySelectorAll('.img-picker-cb').forEach(function(cb) {
         }
     });
 });
+// EOF

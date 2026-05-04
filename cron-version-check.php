@@ -130,3 +130,4 @@ try {
     fwrite(STDERR, "Failed to store update check result: " . $e->getMessage() . "\n");
     exit(1);
 }
+// EOF

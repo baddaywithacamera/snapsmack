@@ -9,3 +9,4 @@
 
 define('SC_VERSION',  '0.7.42');
 define('SC_CODENAME', 'Recliner');
+// EOF

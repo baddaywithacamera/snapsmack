@@ -165,3 +165,4 @@ function _snap_ai_post(string $url, string $payload, array $headers): array {
     }
     return ['ok' => true, 'text' => '', 'body' => $body, 'error' => ''];
 }
+// EOF

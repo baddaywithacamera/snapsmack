@@ -75,3 +75,4 @@ $total = count($images ?? []);
         </div>
     <?php endif; ?>
 </div>
+// EOF

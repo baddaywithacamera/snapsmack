@@ -90,3 +90,4 @@ if (!empty($_ohsnap_vars) && is_array($_ohsnap_vars)):
 }
 </style>
 <?php endif; ?>
+// EOF

@@ -12,3 +12,4 @@ return [
     'css_file'    => 'admin-theme-colours-green-phosphorus.css',
     'description' => "Pure P31 phosphor luminance. High-contrast terminal utility for a signal with zero noise. If it was good enough for global defense mainframes in 1983, it will handle your photo database.",
 ];
+// EOF

@@ -123,3 +123,4 @@ $slots[] = '<a href="' . $rss_url . '" class="footer-link rss-tag" title="RSS Fe
         </div>
     </div>
 </footer>
+// EOF

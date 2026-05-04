@@ -73,3 +73,4 @@ $reshuffle_label   = $settings['htbs_reshuffle_label'] ?? 'Reshuffle';
 </button>
 
 <?php include('skin-footer.php'); ?>
+// EOF

@@ -116,3 +116,4 @@ $count_stmt->execute([$post_id]);
 $count = (int)$count_stmt->fetchColumn();
 
 echo json_encode(['liked' => $liked, 'count' => $count]);
+// EOF

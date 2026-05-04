@@ -284,3 +284,4 @@ if ($is_guest) {
         'date_label'   => date('Y-m-d', strtotime($created_at)),
     ]);
 }
+// EOF

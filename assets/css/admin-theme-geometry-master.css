@@ -4394,4 +4394,6 @@ input[type="range"]:active::-webkit-slider-thumb {
 .login-tabs { margin-bottom: 24px; }
 .btn-login { width: 100%; margin-top: 20px; }
 .tab-content { display: none; }
-.tab-content.active { display: block; }
+.tab-content.active,
+.tab-content.tab-content--active { display: block; }
+/* EOF */

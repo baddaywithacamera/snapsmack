@@ -658,3 +658,4 @@ $reset_token_param = htmlspecialchars($_GET['token'] ?? '');
 
 </body>
 </html>
+// EOF

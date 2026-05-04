@@ -388,3 +388,4 @@ function parse_args(array $argv): array {
 
     return $result;
 }
+// EOF

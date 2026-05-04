@@ -130,3 +130,4 @@ foreach ($peers as $peer) {
 }
 
 $log('RSS fetch completed.');
+// EOF

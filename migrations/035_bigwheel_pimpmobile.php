@@ -32,3 +32,4 @@ function migration_035(PDO $pdo): void {
         $stmt->execute([$key, $val]);
     }
 }
+// EOF

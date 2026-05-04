@@ -808,3 +808,4 @@ loadKeywords();
 </script>
 
 <?php include 'core/admin-footer.php'; ?>
+// EOF

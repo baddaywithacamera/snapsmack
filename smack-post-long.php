@@ -746,3 +746,4 @@ document.getElementById('hero-picker-modal').addEventListener('click', function 
     if (e.target === this) closeHeroPicker();
 });
 </script>
+// EOF

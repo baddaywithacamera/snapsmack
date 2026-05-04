@@ -679,3 +679,4 @@ class SnapSmackRecovery {
         flush();
     }
 }
+// EOF

@@ -71,3 +71,4 @@ require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
     <?php include('skin-footer.php'); ?>
 
 </div>
+// EOF

@@ -80,3 +80,4 @@ header('X-Content-Type-Options: nosniff');
 
 readfile($file_path);
 exit;
+// EOF

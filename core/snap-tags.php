@@ -294,3 +294,4 @@ function snap_render_caption_html(string $text, string $base_url, string $css_cl
         $safe . ' '
     );
 }
+// EOF

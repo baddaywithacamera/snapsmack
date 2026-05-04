@@ -12,3 +12,4 @@ return [
     'css_file'    => 'admin-theme-colours-peach-melba.css',
     'description' => "A high-visibility daylight workspace built on warm peach tones and off-white bases, cut with a sharp teal accent. Designed to reduce eye strain in bright editing environments while maintaining clear data hierarchy.",
 ];
+// EOF

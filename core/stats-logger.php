@@ -273,3 +273,4 @@ function snapsmack_purge_old_stats($pdo, $days = 365) {
         return 0;
     }
 }
+// EOF

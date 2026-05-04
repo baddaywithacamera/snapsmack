@@ -153,3 +153,4 @@ if ($hero_image) {
 
     <?php include('skin-footer.php'); ?>
 </div>
+// EOF

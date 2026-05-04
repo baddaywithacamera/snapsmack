@@ -19,3 +19,4 @@ if (empty($_SESSION['sc_admin_id'])) {
     header('Location: sc-login.php' . ($redirect ? '?next=' . $redirect : ''));
     exit;
 }
+// EOF

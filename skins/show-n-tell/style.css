@@ -461,3 +461,4 @@ a:hover { color: var(--text-primary); }
 @media (max-width: 600px) {
     .snt-header .nav-menu { flex-wrap: wrap; gap: 12px; justify-content: center; }
 }
+/* EOF */

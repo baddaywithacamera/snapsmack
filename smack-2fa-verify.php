@@ -236,3 +236,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="assets/js/smack-login.js"></script>
 </body>
 </html>
+// EOF

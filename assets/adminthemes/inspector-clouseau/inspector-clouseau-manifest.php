@@ -12,3 +12,4 @@ return [
     'css_file'    => 'admin-theme-colours-inspector-clouseau.css',
     'description' => "A high-visibility investigative environment bathed in stealthy pinks and Parisian blues. Photo blogging is not all shoot-shoot, bang-bang, you know.",
 ];
+// EOF

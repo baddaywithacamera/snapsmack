@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
     if (isset($_POST['settings']) && is_array($_POST['settings'])) {
         // archive_layouts_available arrives as an array of checkboxes; serialise it.
         if (isset($_POST['settings']['archive_layouts_available']) && is_array($_POST['settings']['archive_layouts_available'])) {
-            $avail = array_intersect($_POST['settings']['archive_layouts_available'], ['square', 'cropped', 'masonry']);
+            $avail = array_intersect($_POST['settings']['archive_layouts_available'], ['square', 'cropped', 'masonry', 'croppedwithcalendar']);
             // Always include the default layout in the available set.
             $default_layout = $_POST['settings']['archive_layout'] ?? 'square';
             if (!in_array($default_layout, $avail)) $avail[] = $default_layout;
@@ -47,12 +47,16 @@ $page_title = "Archive Appearance";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 
-// All layout modes — always available to the owner regardless of skin.
+// All layout modes. croppedwithcalendar only offered if the active skin loads the calendar engine.
+$skin_has_calendar = in_array('smack-calendar', $manifest['require_scripts'] ?? []);
 $all_layouts = [
     'square'  => 'Square Grid (1:1 Cropped)',
     'cropped' => 'Cropped Grid (Natural Aspect)',
     'masonry' => 'Masonry / Justified (Flickr-Style)',
 ];
+if ($skin_has_calendar) {
+    $all_layouts['croppedwithcalendar'] = 'Cropped + Calendar (Cal toggle)';
+}
 
 $current_layout = $settings['archive_layout'] ?? 'square';
 if (!isset($all_layouts[$current_layout])) $current_layout = 'square';
@@ -350,3 +354,4 @@ syncAvailableCheckbox(document.getElementById('default-layout-select').value);
 </script>
 
 <?php include 'core/admin-footer.php'; ?>
+// EOF

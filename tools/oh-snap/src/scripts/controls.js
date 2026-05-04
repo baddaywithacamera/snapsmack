@@ -314,3 +314,4 @@ function _parseCssEditorIntoOverrides(css) {
     OhSnapPreview.applyOverrides(currentOverrides);
     markDirty();
 }
+// EOF

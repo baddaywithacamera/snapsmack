@@ -11,3 +11,4 @@ return [
     'default'     => '1',
     'description' => "High-contrast tactical interface, if Kermit the Frog was ex-military. This is SNAPSMACK's default admin theme. Deal with it (or choose something different if you're a pussy).",
 ];
+// EOF

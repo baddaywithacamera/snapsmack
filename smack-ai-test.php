@@ -52,3 +52,4 @@ if ($result['ok']) {
 } else {
     echo json_encode(['ok' => false, 'error' => $result['error']]);
 }
+// EOF

@@ -427,3 +427,4 @@ if ($route === 'optout' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 ste_json(['ok' => false, 'error' => 'Unknown route: ' . htmlspecialchars($route)], 404);
+// EOF

@@ -526,3 +526,4 @@ document.addEventListener('DOMContentLoaded', () => {
 }); // DOMContentLoaded
 
 } // double-load guard
+// EOF

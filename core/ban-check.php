@@ -197,3 +197,4 @@ function remove_ban(PDO $pdo, int $ban_id): bool {
     $stmt->execute([$ban_id]);
     return $stmt->rowCount() > 0;
 }
+// EOF

@@ -1292,3 +1292,4 @@ if ($method === 'PATCH' && $path === 'installs/me') {
 // 404 — no route matched
 // ─────────────────────────────────────────────────────────────────────────────
 api_error(404, 'NOT_FOUND', 'Endpoint not found.');
+// EOF

@@ -341,3 +341,4 @@ return [
         .hex-display { font-family: monospace; }
     "
 ];
+// EOF

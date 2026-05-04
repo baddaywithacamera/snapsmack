@@ -7,3 +7,4 @@
  * Currently empty — all JS is loaded via the manifest system.
  */
 ?>
+// EOF

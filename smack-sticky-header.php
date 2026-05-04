@@ -5,3 +5,4 @@
  */
 header("Location: smack-globalvibe.php");
 exit;
+// EOF

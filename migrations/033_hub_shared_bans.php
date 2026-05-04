@@ -84,3 +84,4 @@ function migration_033(PDO $pdo): void {
         VALUES ('hub_spoke_ban_sync', '0')
     ");
 }
+// EOF

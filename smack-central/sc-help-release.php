@@ -192,3 +192,4 @@ git push Github 0.7.9d</pre>
 </style>
 
 <?php include __DIR__ . '/sc-layout-bottom.php'; ?>
+// EOF

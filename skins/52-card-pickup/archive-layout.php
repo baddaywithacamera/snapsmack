@@ -31,3 +31,4 @@
         <p style="grid-column:1/-1;text-align:center;color:var(--text-secondary);">No images found.</p>
     <?php endif; ?>
 </div>
+// EOF

@@ -371,3 +371,4 @@ include __DIR__ . '/sc-layout-top.php';
 </style>
 
 <?php include __DIR__ . '/sc-layout-bottom.php'; ?>
+// EOF

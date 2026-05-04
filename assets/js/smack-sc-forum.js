@@ -35,3 +35,4 @@ function scfEditInstallName(el, id, current) {
     document.getElementById('scf-rename-val').value = name;
     document.getElementById('scf-rename-form').submit();
 }
+// EOF

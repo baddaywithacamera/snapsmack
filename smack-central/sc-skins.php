@@ -709,3 +709,4 @@ include __DIR__ . '/sc-layout-top.php';
 <?php endif; ?>
 
 <?php include __DIR__ . '/sc-layout-bottom.php'; ?>
+// EOF

@@ -74,3 +74,4 @@ PROMPT;
 
 $result = snap_ai_complete($system, $message, 1024);
 echo json_encode($result);
+// EOF

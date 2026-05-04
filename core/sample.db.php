@@ -37,3 +37,4 @@ try {
 } catch (\PDOException $e) {
      die("<div style='background:#200;color:#f99;padding:20px;border:1px solid red;font-family:monospace;'><h3>DATABASE_LINK_FAILURE</h3>The connection to the data vault was interrupted.</div>");
 }
+// EOF

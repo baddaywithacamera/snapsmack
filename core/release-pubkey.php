@@ -18,3 +18,4 @@
  */
 
 define('SNAPSMACK_RELEASE_PUBKEY', '4df51e2c4610a9a34913f7a52a29f8964dc2aec8448abcfe899cc4e2cf45068a');
+// EOF

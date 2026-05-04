@@ -31,3 +31,4 @@ if (!$show_map_bg): ?>
         </nav>
     </div>
 </div>
+// EOF

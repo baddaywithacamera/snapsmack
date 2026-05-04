@@ -29,3 +29,4 @@ $pdo->exec("
 
 $ins = $pdo->prepare("INSERT IGNORE INTO snap_migrations (migration_name, applied_at) VALUES (?, NOW())");
 $ins->execute([$migration_name]);
+// EOF

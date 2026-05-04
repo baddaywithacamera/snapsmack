@@ -248,3 +248,4 @@ function _ste_sentences(string $text): array {
     $parts = preg_split('/(?<=[.!?])\s+/', $text, -1, PREG_SPLIT_NO_EMPTY);
     return array_filter($parts, fn($s) => trim($s) !== '');
 }
+// EOF

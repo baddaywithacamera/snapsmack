@@ -526,3 +526,4 @@ document.querySelectorAll('.push-cloud-btn').forEach(function(btn) {
 </script>
 
 <?php include 'core/admin-footer.php'; ?>
+// EOF

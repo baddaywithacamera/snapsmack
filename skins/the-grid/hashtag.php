@@ -115,3 +115,4 @@ $has_more = ($offset + count($grid_posts)) < $total_count;
 </div><!-- /#tg-app -->
 
 <?php include('skin-footer.php'); ?>
+// EOF

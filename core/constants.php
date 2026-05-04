@@ -73,3 +73,4 @@ function snapsmack_is_mobile(): bool {
     // intentionally excluded so they receive the normal desktop skin.
     return (bool) preg_match('/Mobile|iPhone|iPod|Android.*Mobile|webOS|BlackBerry|Windows Phone|Opera Mini|IEMobile/i', $ua);
 }
+// EOF

@@ -51,3 +51,4 @@ function migration_040_down(PDO $pdo): void {
     $pdo->exec("DROP TABLE IF EXISTS `snap_collection_items`");
     $pdo->exec("DROP TABLE IF EXISTS `snap_collections`");
 }
+// EOF

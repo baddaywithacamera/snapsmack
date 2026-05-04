@@ -183,3 +183,4 @@ if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
     }
 }());
 </script>
+// EOF

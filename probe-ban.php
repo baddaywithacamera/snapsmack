@@ -36,3 +36,4 @@ if ($ip && $ip !== '0.0.0.0') {
 
 http_response_code(403);
 exit;
+// EOF
