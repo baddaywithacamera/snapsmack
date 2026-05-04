@@ -87,7 +87,7 @@ Zero nulls and a clean EOF are required before committing. This has caused repea
 - JS: `// EOF`
 - CSS: `/* EOF */`
 
-**Which form to use for PHP:** If the last content in the file is HTML (the file closes with `?>` or raw HTML tags and never re-opens a PHP block), use `<?php // EOF` so the marker stays in PHP context and is never echoed to the browser. If the file ends inside a `<?php` block (pure logic, no trailing HTML), use `// EOF`. The scanner accepts both — it looks for `// EOF` anywhere on the last non-empty line.
+**Which form to use for PHP:** Look at the last real line of content before the marker. If it's a closing HTML tag or raw text (ends with `>`), the file ends outside PHP — use `<?php // EOF`. If it's PHP code (ends with `}`, `;`, a comment, etc.), the file ends inside PHP — use `// EOF`. Do NOT use `?>` count as a heuristic — `?>` appears inside strings and regexes throughout the codebase and will give false positives. The scanner accepts both — it looks for `// EOF` anywhere on the last non-empty line.
 
 The marker must be the very last line of the file (no trailing blank line after it). If a file is truncated mid-write, the marker will be missing — that is the signal to stop and fix before committing.
 

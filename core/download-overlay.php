@@ -62,4 +62,5 @@ if ($global_downloads) {
         . '<span class="snap-download-icon"><span></span></span>'
         . '</a>';
 }
-<?php // EOF
+
+// EOF

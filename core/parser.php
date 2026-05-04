@@ -511,4 +511,5 @@ class SnapSmack {
         );
     }
 }
-<?php // EOF
+
+// EOF
