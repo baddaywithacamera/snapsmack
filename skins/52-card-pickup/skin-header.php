@@ -22,3 +22,4 @@ $nav_pages = $pdo->query("
         <?php endforeach; ?>
     </ul>
 </header>
+// EOF

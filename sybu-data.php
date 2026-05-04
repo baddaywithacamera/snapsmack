@@ -91,3 +91,4 @@ echo json_encode([
     'tags'       => $tags,
     'titles'     => $titles,
 ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+// EOF

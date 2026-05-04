@@ -366,3 +366,4 @@ class SnapSmackFTP {
         return function_exists('ftp_ssl_connect');
     }
 }
+// EOF

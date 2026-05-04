@@ -62,3 +62,4 @@ try {
 } catch (PDOException $e) {
     echo "032: Error — " . $e->getMessage() . "\n";
 }
+// EOF

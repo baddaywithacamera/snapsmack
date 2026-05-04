@@ -388,3 +388,4 @@ include __DIR__ . '/skin-header.php';
 </div><!-- /#pg-app -->
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
+// EOF

@@ -32,3 +32,4 @@ $row_height = (int)($settings['htbs_grid_row_height'] ?? 280);
         <?php endif; ?>
     </div>
 </div>
+// EOF

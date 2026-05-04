@@ -40,3 +40,4 @@ if (isset($pdo)) {
         <button id="snap-consent-decline" type="button">Decline</button>
     </span>
 </div>
+// EOF

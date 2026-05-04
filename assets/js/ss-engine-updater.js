@@ -458,3 +458,4 @@ var SnapUpdater = (function () {
     };
 
 }());
+// EOF

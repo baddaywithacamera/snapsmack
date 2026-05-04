@@ -153,3 +153,4 @@ foreach ($count_stmt->fetchAll() as $row) {
 }
 
 echo json_encode(['reaction' => $new_reaction, 'counts' => $counts]);
+// EOF

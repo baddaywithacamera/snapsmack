@@ -208,3 +208,4 @@ const OhSnapSettings = (() => {
     return { load, save, get, openModal, closeModal };
 
 })();
+// EOF

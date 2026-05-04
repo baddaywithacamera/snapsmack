@@ -16,3 +16,4 @@ define('DB_PASS', 'your_db_password');
 // Generate with: python3 -c "import secrets; print('mod_' + secrets.token_hex(32))"
 // Store this somewhere safe. Do not share it.
 define('FORUM_MOD_KEY', 'mod_replacethiswitharealsecretkey');
+// EOF

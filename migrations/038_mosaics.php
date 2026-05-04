@@ -24,3 +24,4 @@ function migration_038_up(PDO $pdo): void {
 function migration_038_down(PDO $pdo): void {
     $pdo->exec("DROP TABLE IF EXISTS `snap_mosaics`");
 }
+// EOF

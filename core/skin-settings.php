@@ -46,3 +46,4 @@ function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): voi
         }
     }
 }
+// EOF

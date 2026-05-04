@@ -13,3 +13,4 @@ function migration_044_login_slug(PDO $pdo): void {
         ('login_recovery_key', '')
     ");
 }
+// EOF

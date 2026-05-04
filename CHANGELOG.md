@@ -10,6 +10,12 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - **Smack Central CSS** — Added missing CSS classes (`sc-page-head`, `sc-card`, `sc-card-title`, `sc-btn--dim`, `sc-warn`, `sc-muted`, `sc-help-*`, `sc-step-log`) that were used in PHP templates but undefined, causing unstyled layouts across multiple SC pages.
 - **Smack Central layout** — Increased `.sc-main` padding and set `max-width: 1400px` for better readability on wide screens.
 - **Smack Central font size** — Base font bumped from 13px to 15px.
+- **`core/updater.php` literal `\r\n` corruption** — `updater_fetch_key_rotation()` and `updater_cleanup()` were squashed onto a single line with 60 literal `\r\n` sequences instead of real newlines, causing a PHP parse error on any install that extracted the file via the updater. Fixed by replacing all occurrences with actual newlines.
+- **IP Smacker tab permanently blank** (`smack-fingerprints.php`) — JS toggled class `tab-content--active` but CSS only defined `.tab-content.active`, so every tab panel stayed `display:none`. Added `tab-content--active` rule to `admin-theme-geometry-master.css`.
+- **Archive Cal button missing** (`archive.php`) — `croppedwithcalendar` was silently stripped from available modes by an `array_filter` whitelist that omitted it. Added to whitelist.
+- **Archive Appearance save stripping Cal mode** (`smack-appearance-archive.php`) — `array_intersect` on save excluded `croppedwithcalendar`, so the Cal checkbox had no effect. Fixed. Checkbox now only appears when the active skin supports the calendar engine.
+- **`smack-help.php` truncated** — Truncated mid-sentence since 0.7.39. Restored from 0.7.29 clean version and updated with new topics: Archive Calendar, Probe Guard, API Key Access, Key Rotation. Existing topics for System Updates, IP Shield, and Applying Updates revised for current behaviour.
+- **`install.php` truncated** — r4_exec recovery streaming section truncated since 0.7.39. Tail restored from 0.7.27 clean version; 0.7.39 installer overhaul content preserved.
 
 ---
 

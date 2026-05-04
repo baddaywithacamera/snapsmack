@@ -114,3 +114,4 @@ class SnapSmackAPI {
 
 // Expose globally — no bundler yet.
 window.SnapSmackAPI = SnapSmackAPI;
+// EOF

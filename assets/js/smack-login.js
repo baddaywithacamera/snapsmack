@@ -26,3 +26,4 @@
         if (btn) btn.classList.add('active');
     };
 }());
+// EOF

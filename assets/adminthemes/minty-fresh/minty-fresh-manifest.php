@@ -12,3 +12,4 @@ return [
     'css_file'    => 'admin-theme-colours-minty-fresh.css',
     'description' => "OMG, you have death breath. Do something about it. Here's a mint.",
 ];
+// EOF

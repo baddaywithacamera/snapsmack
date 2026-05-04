@@ -12,3 +12,4 @@ return [
     'css_file'    => 'admin-theme-colours-mi-casa-es-su-picasa.css',
     'description' => 'A tribute to Googles Picasa photo organizer and editor (2002–2016).',
 ];
+// EOF

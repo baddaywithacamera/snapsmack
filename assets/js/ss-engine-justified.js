@@ -42,3 +42,4 @@
         fjGallery(grid, 'resize');
     }, 300);
 })();
+// EOF

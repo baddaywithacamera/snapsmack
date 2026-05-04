@@ -34,3 +34,4 @@ function migration_039_down(PDO $pdo): void {
     $pdo->exec("ALTER TABLE `snap_categories` DROP COLUMN IF EXISTS `featured_post_id`");
     $pdo->exec("ALTER TABLE `snap_albums` DROP COLUMN IF EXISTS `featured_post_id`");
 }
+// EOF

@@ -71,3 +71,4 @@ header('Content-Disposition: attachment; filename="' . $filename . '"');
 header('Content-Length: ' . strlen($sql));
 echo $sql;
 exit;
+// EOF

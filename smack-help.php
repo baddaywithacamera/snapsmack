@@ -902,6 +902,35 @@ It also blocks public access to admin pages (<code>/smack-*</code>), <code>/core
 HTML
 ];
 
+$help_topics['api-keys'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'API Key Access',
+    'icon'     => '&#x1F5DD;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Tool API Key</h3>
+<p>Companion tools (SYBU, SUYB, and others) can authenticate with SnapSmack using a
+64-character hex API key instead of a browser session. The key is sent in the
+<code>X-Snap-Key</code> request header. Endpoints that accept the API key also accept a
+normal session cookie, so your browser-based admin access is unchanged.</p>
+
+<h4>Generating a Key</h4>
+<p>Go to <strong>Admin &rarr; Settings &rarr; API Access</strong>. Click
+<strong>Generate Key</strong> to create a cryptographically random 64-char hex key.
+Copy it immediately — it is shown only once. The key is stored as a salted hash; the
+plaintext is never saved.</p>
+
+<h4>Revoking or Regenerating</h4>
+<p>Click <strong>Regenerate</strong> to invalidate the current key and issue a new one.
+Any tool using the old key will immediately lose access. Click <strong>Revoke</strong>
+to delete the key entirely and disable API access until a new one is generated.</p>
+
+<h4>Pasting Into a Tool</h4>
+<p>In SYBU: Settings tab &rarr; API Key field. Paste the key and save. SYBU will use it
+for all subsequent requests instead of prompting for a username and password.</p>
+HTML
+];
+
 $help_topics['akismet-spam'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'Akismet Spam Filter',
@@ -1551,19 +1580,67 @@ listed in the updater's known migration registry. These appear when a migration 
 renamed or removed. The <strong>Purge Ghost Files</strong> button deletes them from disk.
 Ghost files are harmless but can clutter the Schema Recovery panel.</p>
 
+<h4>Key Rotation Detection</h4>
+<p>If the release signing key is ever rotated (i.e. the public key on your install no
+longer matches the key used to sign the latest packages), the updater detects the mismatch
+and presents an amber <strong>KEY ROTATION DETECTED</strong> panel. It fetches a
+<code>key-rotation.json</code> file from the release server, verifies it against a
+hardcoded root public key, and pre-fills the new key. Click <strong>Accept &amp; Continue</strong>
+to apply the new key in one step. No manual key paste is needed. If the rotation file
+cannot be verified, the panel falls back to a manual paste field.</p>
+
+<h4>Signing Enforcement</h4>
+<p>Updates are verified with an Ed25519 signature using <code>core/release-pubkey.php</code>.
+If the public key file is absent or contains an all-zeros placeholder, signature checking
+falls back to SHA-256 checksum only. On any install that received 0.7.41 or later, a real
+key is present and Ed25519 verification is fully enforced.</p>
+
 <h4>Skin Updates</h4>
 <p>The update page also shows notifications about new or updated skins available in the
 registry. These are installed separately from core updates via the Skin Gallery.</p>
 HTML
 ];
 
+$help_topics['key-rotation'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Key Rotation',
+    'icon'     => '&#x1F511;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Signing Key Rotation</h3>
+<p>SnapSmack uses a two-tier Ed25519 signing system to protect update packages. Understanding
+the key hierarchy helps if you ever need to intervene manually.</p>
+
+<h4>Key Hierarchy</h4>
+<p><strong>Root key</strong> — A long-lived keypair used only to sign key rotation events.
+The root public key is hardcoded in <code>core/updater.php</code> and never changes across
+releases. The root private key is held offline by the release maintainer.</p>
+<p><strong>Release key</strong> — The key that actually signs update packages. This key can
+be rotated (e.g. if it is compromised). Its public half lives in
+<code>core/release-pubkey.php</code> on your server.</p>
+
+<h4>Automatic Rotation</h4>
+<p>When the release key changes, the updater detects the signature mismatch on next update
+check. It fetches <code>key-rotation.json</code> from the release server, verifies the
+rotation event against the hardcoded root public key, and presents a
+<strong>KEY ROTATION DETECTED</strong> panel with the new key pre-filled. Click
+<strong>Accept &amp; Continue</strong> — the new key is written to
+<code>core/release-pubkey.php</code> and the update proceeds normally.</p>
+
+<h4>Manual Rotation</h4>
+<p>If automatic rotation fails (e.g. the release server is unreachable), you can paste
+the new public key manually into the text field on the Update page. The key is a 64-character
+hex string. After saving, re-check for updates.</p>
+HTML
+];
+
 $help_topics['ip_shield'] = [
     'section'  => 'Boring Ass Stuff',
-    'title'    => 'IP SMACKER & Login Security',
+    'title'    => 'IP Shield & Login Security',
     'icon'     => '&#x1F6E1;',
     'role'     => 'admin',
     'content'  => <<<'HTML'
-<h3>IP SMACKER & Login Security</h3>
+<h3>IP Shield & Login Security</h3>
 <p>SnapSmack has three layers of protection on the login endpoint.</p>
 
 <h4>1. Non-Standard Login Path</h4>
@@ -1579,11 +1656,41 @@ before any login logic runs. Real browsers always send a UA string.</p>
 <p>Every failed login attempt is counted per IP in a 10-minute sliding window. After 5 failures,
 the IP is automatically banned for 7 days. Subsequent requests from that IP are blocked before
 any credential check runs.</p>
-<p>View and lift active bans in <strong>Troll Control &rarr; IP SMACKER</strong>.</p>
+<p>View and lift active bans in <strong>Troll Control &rarr; IP Shield</strong>.</p>
 
 <h4>If You Lock Yourself Out</h4>
-<p>If your own IP is auto-banned, lift it from the IP SMACKER tab in Troll Control, or run:
+<p>If your own IP is auto-banned, lift it from the IP Shield tab in Troll Control, or run:
 <code>DELETE FROM snap_ip_bans WHERE ip = 'YOUR.IP';</code> in your database console.</p>
+HTML
+];
+
+$help_topics['probe-guard'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Probe Guard',
+    'icon'     => '&#x26D4;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Probe Guard</h3>
+<p>Probe Guard automatically bans IP addresses that probe for common scanner targets —
+WordPress login pages, xmlrpc, shell upload paths, <code>.env</code> files, phpMyAdmin,
+and similar. No configuration required; it fires before any application code runs.</p>
+
+<h4>How It Works</h4>
+<p>A rewrite rule in <code>.htaccess</code> routes known scanner paths to
+<code>probe-ban.php</code>. That file records a 30-day ban in <code>snap_ip_bans</code>
+and returns a 403. Subsequent requests from the banned IP are rejected at the
+<code>.htaccess</code> level by IP Shield's block list — no PHP execution needed.</p>
+
+<h4>Managing Probe Bans</h4>
+<p>Probe bans land in the same <code>snap_ip_bans</code> table as login brute-force bans.
+You can view and lift them in <strong>Troll Control &rarr; IP Shield</strong>. Probe bans
+are tagged with the path that triggered them, so you can see what was being scanned.</p>
+
+<h4>Adding or Removing Paths</h4>
+<p>The list of banned paths lives in <code>.htaccess</code> as a <code>RewriteRule</code>
+pattern. Edit it directly if you need to add paths specific to your environment. The
+<code>.htaccess</code> file is gitignored and server-specific — changes won't be overwritten
+by updates.</p>
 HTML
 ];
 
@@ -1593,37 +1700,38 @@ $help_topics['updater_modal'] = [
     'icon'     => '&#x21BB;',
     'role'     => 'admin',
     'content'  => <<<'HTML'
-<h3>Update Modal</h3>
-<p>Updates run in a modal overlay — no page navigation required. You can trigger it from
-the dashboard banner, the System Updates link in the sidebar, or by navigating directly
-to the Updates page.</p>
+<h3>Applying Updates</h3>
+<p>Updates run as a step-by-step process directly on the System Updates page
+(<code>smack-update.php</code>). Each stage requires a manual button click — nothing
+advances automatically.</p>
 
 <h4>How to Start an Update</h4>
-<p>When an update is available, a banner appears on the dashboard. Click <strong>VIEW UPDATES</strong>
-to open the modal. The modal immediately checks for available updates and shows a changelog
-and file change summary. Review these, then click <strong>APPLY UPDATE</strong> to proceed.</p>
+<p>When an update is available, a banner appears on the dashboard. Click
+<strong>VIEW UPDATES</strong> to go to the Updates page, review the changelog and file
+change summary, then click <strong>APPLY UPDATE</strong> to begin.</p>
 
 <h4>What Each Stage Does</h4>
-<p><strong>Download</strong> — Fetches the signed release package from the update server.
-<strong>Verify</strong> — Confirms the package hasn't been tampered with (SHA-256 checksum + Ed25519 signature).
-<strong>Backup</strong> — Creates a full zip backup of your installation before touching any files.
-<strong>Extract</strong> — Unpacks the package in chunks, skipping any protected paths.
-<strong>Migrate</strong> — Runs any new database migrations and updates the installed version number.</p>
+<p><strong>Download</strong> — Fetches the signed release package from the update server.<br>
+<strong>Verify</strong> — Confirms the package hasn't been tampered with (SHA-256 checksum +
+Ed25519 signature).<br>
+<strong>Backup</strong> — Creates a full zip backup of your installation before touching any
+files. Cannot be skipped.<br>
+<strong>Extract</strong> — Unpacks the package in chunks, skipping protected paths.<br>
+<strong>Migrate</strong> — Runs any new database migrations and stamps the new version.</p>
 
 <h4>Protected Paths</h4>
-<p>The updater never overwrites your site-specific files: <code>core/db.php</code>, <code>core/constants.php</code>,
-the <code>uploads/</code> directory, <code>.htaccess</code>, and others listed in
-<code>protected_paths.json</code>. Changes to these files are skipped — your configuration is safe.</p>
+<p>The updater never overwrites your site-specific files: <code>core/db.php</code>,
+<code>core/constants.php</code>, the <code>uploads/</code> directory, <code>.htaccess</code>,
+and others listed in <code>protected_paths.json</code>. Your configuration is safe.</p>
 
 <h4>If an Update Fails</h4>
-<p>If any stage fails, a <strong>Rollback</strong> button appears. This restores the pre-update backup,
-returning your site to the state it was in before the update began. After a rollback, check
-the error message and try again — most failures are network timeouts or disk permission issues
-that resolve on a retry.</p>
+<p>If any stage fails, a <strong>Rollback</strong> button appears. This restores the
+pre-update backup. After a rollback, check the error message and retry — most failures
+are network timeouts or disk permission issues that clear on a second attempt.</p>
 
-<h4>Skin Updates</h4>
-<p>Core updates and skin updates are separate. Skin notifications appear on the Updates page
-but are installed via the Skin Gallery, not the update modal.</p>
+<h4>Dismiss Banner Without Updating</h4>
+<p>If you see the update banner but aren't ready to update, click <strong>DISMISS</strong>
+to hide it for the rest of the session. It will reappear on next login.</p>
 HTML
 ];
 
@@ -1812,6 +1920,43 @@ descriptions, and tags. Queries starting with <code>#</code> redirect straight t
 hashtag archive for that tag.</p>
 <p>When searching, matching tags appear as clickable chips above the results with post
 counts, making it easy to discover related content.</p>
+
+<h4>Calendar View</h4>
+<p>Skins that include <code>croppedwithcalendar</code> in their archive layouts show a
+<strong>Cal</strong> toggle in the layout switcher. Selecting it slides a calendar panel in
+from the right. Click any day to browse that date; click a second day to define a date range.
+The calendar auto-sizes to fit the viewport height. Select another layout mode to dismiss it.</p>
+<p>Date ranges can also be set via URL: <code>archive.php?from=YYYY-MM-DD&amp;to=YYYY-MM-DD</code>.</p>
+HTML
+];
+
+$help_topics['archive-calendar'] = [
+    'section'  => 'Public Features',
+    'title'    => 'Archive Calendar',
+    'icon'     => '&#x1F4C5;',
+    'content'  => <<<'HTML'
+<h3>Archive Calendar</h3>
+<p>The calendar is an optional archive layout available on skins that declare
+<code>croppedwithcalendar</code> in their manifest. It lets visitors browse your posts
+by date using a visual month grid.</p>
+
+<h4>Using the Calendar</h4>
+<p>Select the <strong>Cal</strong> option in the archive layout switcher. A calendar slides
+in from the right, showing as many months as fit the viewport height. Click a single day to
+jump to that date's posts. Click a second day to filter a date range — the archive updates
+instantly to show only transmissions from that span.</p>
+<p>The calendar colour scheme inherits from the active skin's CSS custom properties, so it
+always matches your site. To dismiss the calendar, select any other layout mode.</p>
+
+<h4>Date-Range URL</h4>
+<p>Date ranges can also be applied directly via URL parameters:</p>
+<p><code>archive.php?from=2025-01-01&amp;to=2025-03-31</code></p>
+<p>Dates are sanitised and sorted server-side, so the order you pass them doesn't matter.</p>
+
+<h4>Enabling on a Skin</h4>
+<p>The Cal layout is only available on skins that have both <code>smack-calendar</code> in
+<code>require_scripts</code> and <code>croppedwithcalendar</code> in <code>archive_layouts</code>
+in their manifest. If a skin doesn't declare these, the Cal button is suppressed automatically.</p>
 HTML
 ];
 
@@ -2523,4 +2668,165 @@ foreach ($help_topics as $slug => $ht) {
 
             <div class="help-body">
                 <p>SnapSmack documentation covering every feature of the CMS. Click a topic below or use
-                the search box in the sidebar to find what you n
+                the search box in the sidebar to find what you need.</p>
+
+                <?php foreach ($sections as $section_name => $topics): ?>
+                    <div class="help-toc-section">
+                        <h3 class="help-toc-section-title"><?php echo htmlspecialchars($section_name); ?></h3>
+                        <ul class="help-toc-list">
+                            <?php foreach ($topics as $slug => $topic): ?>
+                                <?php
+                                $_first_p = '';
+                                if (preg_match('/<p>(.*?)<\/p>/s', $topic['content'], $_pm)) {
+                                    $_first_p = strip_tags($_pm[1]);
+                                }
+                                if (strlen($_first_p) > 120) $_first_p = substr($_first_p, 0, 117) . '...';
+                                ?>
+                                <li>
+                                    <a href="smack-help.php?topic=<?php echo urlencode($slug); ?>"><?php echo $topic['icon'] ?? ''; ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?></a>
+                                    <?php if (!empty($_first_p)): ?>
+                                        <div class="help-toc-desc"><?php echo htmlspecialchars($_first_p); ?></div>
+                                    <?php endif; ?>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+
+        <?php else: ?>
+            <!-- ═══ SINGLE TOPIC ═══ -->
+            <?php $topic = $help_topics[$active_topic]; ?>
+
+            <div class="help-topic-header">
+                <div class="help-topic-section">
+                    <?php echo htmlspecialchars($topic['section']); ?>
+                </div>
+                <h1 class="help-topic-title">
+                    <?php echo $topic['icon'] ?? ''; ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?>
+                </h1>
+            </div>
+
+            <div class="help-body">
+                <?php echo $topic['content']; ?>
+            </div>
+
+            <!-- Topic Navigation -->
+            <div class="help-topic-nav">
+                <?php
+                $slugs = array_keys($help_topics);
+                $current_index = array_search($active_topic, $slugs);
+                $prev = ($current_index > 0) ? $slugs[$current_index - 1] : null;
+                $next = ($current_index < count($slugs) - 1) ? $slugs[$current_index + 1] : null;
+                ?>
+                <div>
+                    <?php if ($prev): ?>
+                        <a href="smack-help.php?topic=<?php echo urlencode($prev); ?>">
+                            &larr; <?php echo htmlspecialchars($help_topics[$prev]['title']); ?>
+                        </a>
+                    <?php endif; ?>
+                </div>
+                <div>
+                    <?php if ($next): ?>
+                        <a href="smack-help.php?topic=<?php echo urlencode($next); ?>">
+                            <?php echo htmlspecialchars($help_topics[$next]['title']); ?> &rarr;
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- Search Engine -->
+<script>
+(function () {
+    'use strict';
+
+    var searchIndex = <?php echo json_encode($_search_index, JSON_UNESCAPED_UNICODE); ?>;
+    var input       = document.getElementById('help-search-input');
+    var resultsDiv  = document.getElementById('help-search-results');
+    var navSections = document.getElementById('help-nav-sections');
+
+    if (!input || !resultsDiv || !navSections) return;
+
+    input.addEventListener('input', function () {
+        var q = this.value.trim().toLowerCase();
+
+        if (q.length < 2) {
+            // Reset — show nav, hide results
+            resultsDiv.classList.remove('active');
+            navSections.style.display = '';
+            return;
+        }
+
+        // Hide nav, show results
+        navSections.style.display = 'none';
+        resultsDiv.classList.add('active');
+
+        var html = '';
+        var count = 0;
+        var terms = q.split(/\s+/);
+
+        for (var slug in searchIndex) {
+            var item = searchIndex[slug];
+            var haystack = (item.title + ' ' + item.section + ' ' + item.text).toLowerCase();
+
+            // All terms must match
+            var match = true;
+            for (var i = 0; i < terms.length; i++) {
+                if (haystack.indexOf(terms[i]) === -1) { match = false; break; }
+            }
+            if (!match) continue;
+
+            // Extract snippet around first term match in content
+            var snippet = '';
+            var textLower = item.text;
+            var pos = textLower.indexOf(terms[0]);
+            if (pos !== -1) {
+                var start = Math.max(0, pos - 40);
+                var end = Math.min(textLower.length, pos + 80);
+                snippet = (start > 0 ? '...' : '') + item.text.substring(start, end) + (end < textLower.length ? '...' : '');
+                // Highlight all terms in snippet
+                for (var j = 0; j < terms.length; j++) {
+                    var re = new RegExp('(' + terms[j].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                    snippet = snippet.replace(re, '<mark>$1</mark>');
+                }
+            }
+
+            html += '<a href="smack-help.php?topic=' + encodeURIComponent(slug) + '" class="help-search-result">';
+            html += '<div>' + (item.icon || '') + '&ensp;<strong>' + escapeHtml(item.title) + '</strong></div>';
+            html += '<div class="help-search-result-section">' + escapeHtml(item.section) + '</div>';
+            if (snippet) {
+                html += '<div class="help-search-result-snippet">' + snippet + '</div>';
+            }
+            html += '</a>';
+            count++;
+        }
+
+        if (count === 0) {
+            html = '<div class="help-search-no-results">No topics found for "' + escapeHtml(q) + '"</div>';
+        }
+
+        resultsDiv.innerHTML = html;
+    });
+
+    // Keyboard shortcut: / focuses search
+    document.addEventListener('keydown', function (e) {
+        if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            input.focus();
+            input.select();
+        }
+    });
+
+    function escapeHtml(str) {
+        var d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+})();
+</script>
+
+<?php include 'core/admin-footer.php'; ?>
+// EOF

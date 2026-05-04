@@ -13,3 +13,4 @@ function migration_037_totp_2fa(PDO $pdo): void {
         ADD COLUMN IF NOT EXISTS totp_recovery_json TEXT         DEFAULT NULL AFTER totp_enabled
     ");
 }
+// EOF

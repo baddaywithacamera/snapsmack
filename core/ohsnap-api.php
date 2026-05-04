@@ -452,3 +452,4 @@ if ($resource === 'skin' && $sub === 'vars' && $method === 'POST') {
 
 // --- FALLBACK ---
 os_err('Unknown Oh Snap! endpoint: ' . $resource . ($sub ? '/' . $sub : ''), 404);
+// EOF

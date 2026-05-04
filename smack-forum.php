@@ -719,3 +719,4 @@ function forumInsertEmoji(btn, emoji) {
 }
 </script>
 <?php require 'core/admin-footer.php'; ?>
+// EOF

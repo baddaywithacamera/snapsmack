@@ -319,3 +319,4 @@ ${bodyHtml}
     return { init, applyOverrides, switchView };
 
 })();
+// EOF

@@ -67,3 +67,4 @@ if (document.readyState === 'loading') {
 }
 
 } // end double-load guard
+// EOF

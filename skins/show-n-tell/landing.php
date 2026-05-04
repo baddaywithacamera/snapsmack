@@ -159,3 +159,4 @@ $row_height = (int)($settings['htbs_grid_row_height'] ?? 280);
 </div>
 
 <?php include('skin-footer.php'); ?>
+// EOF

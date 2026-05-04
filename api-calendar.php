@@ -152,3 +152,4 @@ echo json_encode([
     'months'       => $months_out,
     'recent_posts' => $recent_posts,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+// EOF

@@ -54,3 +54,4 @@ if (file_exists(__DIR__ . '/sc-version.php')) require_once __DIR__ . '/sc-versio
   </aside>
 
   <main class="sc-main">
+// EOF

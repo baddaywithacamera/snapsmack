@@ -13,3 +13,4 @@ function migration_043_up(PDO $pdo): void {
         VALUES ('enable_longform', '0')
     ");
 }
+// EOF

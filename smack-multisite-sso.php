@@ -108,3 +108,4 @@ function sso_hub_fail(string $reason, ?array $spoke): void {
     include 'core/admin-footer.php';
     exit;
 }
+// EOF

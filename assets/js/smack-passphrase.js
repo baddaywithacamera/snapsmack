@@ -71,3 +71,4 @@ function snapSuggestPassphrase(targetInputId, displayId) {
     if (input)   input.value = phrase;
     if (display) display.textContent = phrase;
 }
+// EOF

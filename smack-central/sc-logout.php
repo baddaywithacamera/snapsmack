@@ -5,3 +5,4 @@ $_SESSION = [];
 session_destroy();
 header('Location: sc-login.php');
 exit;
+// EOF

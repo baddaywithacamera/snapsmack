@@ -97,3 +97,4 @@ function smack_evaluate_fraction($fraction) {
     // Fallback for decimals stored as strings
     return is_numeric($fraction) ? (float)$fraction : 0.0;
 }
+// EOF

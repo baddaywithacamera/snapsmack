@@ -158,3 +158,4 @@ function totp_qr_url(string $totp_uri, int $size = 220): string {
         . '&cht=qr'
         . '&chl=' . rawurlencode($totp_uri);
 }
+// EOF

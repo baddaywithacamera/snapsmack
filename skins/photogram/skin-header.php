@@ -12,3 +12,4 @@
 
 // Nothing conditional to output in Phase 1.
 // Placeholder for future conditional CSS (dark mode toggle, etc.).
+// EOF

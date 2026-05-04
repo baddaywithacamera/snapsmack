@@ -51,3 +51,4 @@ try {
 } catch (PDOException $e) {
     return ['status' => 'error', 'message' => $e->getMessage()];
 }
+// EOF

@@ -96,3 +96,4 @@ function get_all_keywords(PDO $pdo): array {
 	$stmt->execute();
 	return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+// EOF

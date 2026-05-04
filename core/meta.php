@@ -297,3 +297,4 @@ elseif (!empty($settings['custom_head_scripts'])):
     echo $settings['custom_head_scripts'];
 endif;
 unset($_custom_head_file, $__head);
+// EOF

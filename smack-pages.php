@@ -299,3 +299,4 @@ include 'core/sidebar.php';
 <script src="assets/js/smack-asset-picker.js"></script>
 <script src="assets/js/shortcode-toolbar.js"></script>
 <?php include 'core/admin-footer.php'; ?>
+// EOF

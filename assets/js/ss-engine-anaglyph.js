@@ -195,3 +195,4 @@
     else if (cfg.animation === 'glitch') startGlitch();
 
 })();
+// EOF

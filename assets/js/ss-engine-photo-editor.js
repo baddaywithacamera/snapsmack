@@ -687,3 +687,4 @@ var SnapPhotoEditor = (function () {
     return { open: open, close: close };
 
 })();
+// EOF

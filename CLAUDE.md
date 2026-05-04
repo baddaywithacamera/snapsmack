@@ -77,6 +77,30 @@ python3 -c "d=open('path','rb').read(); print(len(d), 'bytes,', d.count(b'\x00')
 
 Zero nulls and a clean EOF are required before committing. This has caused repeated 500 errors on live sites when missed.
 
+
+## CRITICAL — EOF Markers and Pre-Commit Scan
+
+**Every PHP, JS, and CSS file in the repo ends with a canonical EOF comment as a truncation sentinel.**
+
+- PHP / JS: `// EOF`
+- CSS: `/* EOF */`
+
+The marker must be the very last line of the file (no trailing blank line after it). If a file is truncated mid-write, the marker will be missing — that is the signal to stop and fix before committing.
+
+**Before every commit, scan ALL tracked files — not just files staged in the current session.** Prior-session truncations have shipped to git undetected multiple times (`updater.php`, `smack-help.php`, `install.php`). A scan covering only the current session’s files does not catch those.
+
+Use `tools/check-eof.py` for the pre-commit scan. It checks every tracked PHP, JS, and CSS file for:
+1. Presence of the EOF marker on the last non-empty line
+2. Null bytes (`\x00`) anywhere in the file
+3. Structural `\r\n` corruption (literal backslash-r backslash-n outside PHP string literals)
+
+**Run before every commit:**
+```bash
+python3 tools/check-eof.py
+```
+
+Any file that fails must be fixed before the commit proceeds. Do not declare a commit ready without running this scan.
+
 ## CRITICAL — Skins Must Never Be Deleted
 
 **Never delete, remove, or `git rm` any skin directory.** Skins are the primary
@@ -249,14 +273,19 @@ git commit
 - Smack Central CSS: added missing classes (`sc-page-head`, `sc-card`, `sc-card-title`, `sc-btn--dim`, `sc-warn`, `sc-muted`, `sc-help-*`, `sc-step-log`)
 - `core/release-pubkey.php` — real public key replacing all-zeros placeholder
 - Archive calendar, date range filter, pre-migrate updater stage (shipped in 0.7.40/0.7.41)
+- `core/updater.php` — fixed literal `\r\n` corruption that caused 500 on photowalk.ing after update
+- `admin-theme-geometry-master.css` — IP Smacker tab was permanently blank (CSS/JS class name mismatch)
+- `archive.php` + `smack-appearance-archive.php` — Cal layout button was missing; croppedwithcalendar excluded from whitelist in both files
+- `smack-help.php` — restored from truncation, updated with new topics (Archive Calendar, Probe Guard, API Keys, Key Rotation)
+- `install.php` — restored r4_exec recovery tail from truncation
+- EOF markers added to all 454 PHP/JS/CSS files; `tools/check-eof.py` pre-commit scanner added
 
 **Commit command for 0.7.42 (run from C:\dev\snapsmack in MINGW bash):**
 ```bash
 cd /c/dev/snapsmack
-git add core/constants.php smack-central/sc-version.php CHANGELOG.md
-git add smack-central/assets/css/sc-admin.css smack-central/assets/css/sc-geometry.css
-git add CLAUDE.md
-git commit -m "0.7.42 — SC CSS missing classes, layout padding, font size fix"
+git add -u
+git add tools/check-eof.py
+git commit -m "0.7.42 — SC CSS missing classes, layout padding, font size fix; fix updater.php literal \\r\\n corruption; add EOF markers to all PHP/JS/CSS; add tools/check-eof.py"
 git tag -f v0.7.42
 git push Github master
 git push Github v0.7.42 --force

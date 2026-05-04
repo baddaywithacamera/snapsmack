@@ -327,3 +327,4 @@ document.addEventListener('DOMContentLoaded', () => {
     const engine = new PimpotronEngine(endpoint, stageId);
     engine.init();
 });
+// EOF

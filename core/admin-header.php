@@ -65,3 +65,4 @@ $active_skin_path = $theme_base . $colour_css_file;
 <body class="admin-body">
 <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open');">&#9776;</button>
 <div class="sidebar-overlay" onclick="document.querySelector('.sidebar').classList.remove('open'); this.classList.remove('open');"></div>
+// EOF

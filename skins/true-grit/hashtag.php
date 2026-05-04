@@ -142,3 +142,4 @@ $justified_row_height = (int)($settings['justified_row_height'] ?? 280);
 </div>
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
+// EOF

@@ -716,3 +716,4 @@ if ($resource === 'ban-sync' && $method === 'POST') {
 
 // Fell through — unknown endpoint
 ms_err('Unknown multisite endpoint', 404);
+// EOF

@@ -673,3 +673,4 @@ $msg = $_GET['msg'] ?? '';
 </div>
 
 <?php include 'core/admin-footer.php'; ?>
+// EOF

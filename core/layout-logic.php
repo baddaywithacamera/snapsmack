@@ -38,3 +38,4 @@ if (isset($img['id'])) {
     $stm_c->execute([$img['id']]);
     $comments = $stm_c->fetchAll();
 }
+// EOF

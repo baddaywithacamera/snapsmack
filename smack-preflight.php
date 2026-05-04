@@ -100,3 +100,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image_file'])) {
     echo json_encode($response);
     exit;
 }
+// EOF

@@ -71,3 +71,4 @@ $frame_class = 'snt-frame-' . $frame_style;
 </div>
 
 <?php include('skin-footer.php'); ?>
+// EOF

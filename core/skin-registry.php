@@ -387,3 +387,4 @@ function _skin_copy_recursive(string $src, string $dst): void {
         is_dir($s) ? _skin_copy_recursive($s, $d) : copy($s, $d);
     }
 }
+// EOF

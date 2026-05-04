@@ -12,3 +12,4 @@
     }
     echo htmlspecialchars($settings['site_name'] ?? 'SnapSmack');
 ?></title>
+// EOF

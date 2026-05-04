@@ -126,3 +126,4 @@ function _snapsmack_contact_process(string $admin_email, string $site_name): str
         return '<div class="contact-error">Message could not be sent. Please try emailing directly.</div>';
     }
 }
+// EOF

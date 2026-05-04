@@ -143,4 +143,4 @@ if ($bevel) $frame_style .= "--bevel-style:{$bevel};";
     <?php include dirname(__DIR__, 2) . '/core/community-dock.php'; ?>
     <?php include('skin-footer.php'); ?>
 </div>
-
+// EOF

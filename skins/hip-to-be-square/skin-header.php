@@ -84,3 +84,4 @@ $wood_grain  = $settings['htbs_wood_grain']  ?? 'none';
         <?php include(dirname(__DIR__, 2) . '/core/header.php'); ?>
     </div>
 </div>
+// EOF

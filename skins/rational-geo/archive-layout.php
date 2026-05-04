@@ -189,4 +189,5 @@ $show_map_bg = ($settings['show_map_background'] ?? '1') === '1';
         infobox.appendChild(toggle);
     }
 })();
-</script>
+</script>
+// EOF

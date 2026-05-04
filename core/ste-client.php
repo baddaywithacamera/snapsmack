@@ -237,3 +237,4 @@ function ste_exceeds_threshold(string $colour_level, string $threshold): bool {
     $order = STE_COLOUR_ORDER;
     return ($order[$colour_level] ?? 0) >= ($order[$threshold] ?? 99);
 }
+// EOF

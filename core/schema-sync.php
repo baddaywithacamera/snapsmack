@@ -363,3 +363,4 @@ function snap_schema_sync(PDO $pdo): array {
 
     return $report;
 }
+// EOF

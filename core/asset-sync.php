@@ -260,3 +260,4 @@ function _asset_sync_http_get(string $url): string|false {
     ]);
     return @file_get_contents($url, false, $ctx);
 }
+// EOF

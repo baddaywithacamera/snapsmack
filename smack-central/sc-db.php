@@ -66,3 +66,4 @@ function sc_forum_db(): PDO {
     }
     return $pdo;
 }
+// EOF

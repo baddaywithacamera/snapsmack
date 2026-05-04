@@ -211,3 +211,4 @@ function cosine_similarity(array $v1, array $v2): float {
 
 	return $dot_product / (sqrt($norm1) * sqrt($norm2));
 }
+// EOF

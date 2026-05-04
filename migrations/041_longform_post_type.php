@@ -75,3 +75,4 @@ function migration_041_down(PDO $pdo): void {
             COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'single'
     ");
 }
+// EOF

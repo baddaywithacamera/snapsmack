@@ -12,3 +12,4 @@ return [
     'css_file'    => 'admin-theme-colours-bumblebee.css', // The direct link the header needs
     'description' => "More than meets the eye. High-visibility yellow accents and matte black industrial plating. Autobots, transform and roll out!",
 ];
+// EOF

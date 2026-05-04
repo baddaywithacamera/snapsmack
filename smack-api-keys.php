@@ -242,3 +242,4 @@ include 'core/sidebar.php';
 </style>
 
 <?php include 'core/admin-footer.php'; ?>
+// EOF

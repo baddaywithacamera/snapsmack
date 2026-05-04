@@ -53,3 +53,4 @@ foreach ($batch as $img) {
     echo '  <img src="' . htmlspecialchars($thumb) . '" alt="Smack" loading="eager" decoding="async">';
     echo '</div>';
 }
+// EOF

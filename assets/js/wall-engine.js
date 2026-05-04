@@ -428,3 +428,4 @@ function closeZoom() {
 zoomLayer.onclick = closeZoom;
 window.addEventListener('load', initWall);
 animate();
+// EOF

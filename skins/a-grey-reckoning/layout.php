@@ -135,3 +135,4 @@ $show_comments = ($global_on && $post_on);
     <?php include('skin-footer.php'); ?>
 
 </div>
+// EOF

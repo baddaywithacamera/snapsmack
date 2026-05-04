@@ -65,3 +65,4 @@ $grid_cols = (int)($settings['htbs_archive_cols'] ?? 4);
         </div>
     <?php endif; ?>
 </div>
+// EOF

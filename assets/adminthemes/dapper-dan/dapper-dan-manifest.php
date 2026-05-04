@@ -12,3 +12,4 @@ return [
     'css_file'    => 'admin-theme-colours-dapper-dan.css', // The direct link the header needs
     'description' => "The discerning blog skin, where the pleasing colour treatment is half the point. Only for the bonafide.",
 ];
+// EOF

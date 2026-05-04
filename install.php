@@ -2257,4 +2257,92 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         echo "<!DOCTYPE html><html><head><title>SnapSmack Recovery</title>";
         echo "<style>body{background:#0e0e0e;color:#ccc;font-family:monospace;padding:30px;font-size:13px;line-height:1.7;}";
         echo ".success{color:#39FF14;} .info{color:#00bfff;} .warn{color:#ffaa00;} .error{color:#ff6b6b;}";
-        echo "h2{color:
+        echo "h2{color:#a0ff90;letter-spacing:2px;} h3{color:#eee;margin-top:24px;} hr{border-color:#333;margin:16px 0;}";
+        echo ".summary{background:#1a1a1a;border:1px solid #333;padding:14px;margin:10px 0;border-radius:4px;}";
+        echo "a{color:#a0ff90;}</style></head><body>";
+        echo "<h2>SNAPSMACK RECOVERY ENGINE</h2><hr>";
+        flush();
+
+        // Ensure we have a PDO connection
+        if (!isset($pdo)) {
+            if (file_exists(__DIR__ . '/core/db.php')) {
+                require_once __DIR__ . '/core/db.php';
+            } else {
+                echo "<span class='error'>ERROR:</span> No database connection available.<br>";
+                echo "</body></html>";
+                exit;
+            }
+        }
+
+        require_once __DIR__ . '/core/recovery-engine.php';
+        $engine = new SnapSmackRecovery($pdo, __DIR__);
+
+        $image_mode = $_SESSION['recovery_image_mode'] ?? 'in_place';
+        $flat_path  = $_SESSION['recovery_flat_path'] ?? '';
+        $flat_dir   = ($image_mode === 'flat' && !empty($flat_path)) ? __DIR__ . '/' . ltrim($flat_path, '/') : null;
+
+        // 1. Ensure directory structure
+        echo "<h3>PHASE 1: DIRECTORY STRUCTURE</h3>";
+        $engine->ensureDirectories();
+        echo "<span class='success'>OK:</span> Upload directories verified.<br>";
+        flush();
+
+        // 2. Restore image files
+        echo "<h3>PHASE 2: IMAGE FILES</h3>";
+        $img_result = $engine->restoreImages($flat_dir);
+        echo "<div class='summary'>";
+        echo "Restored: {$img_result['restored']} | Already in place: {$img_result['in_place']} | Missing: {$img_result['missing']}";
+        echo "</div>";
+        flush();
+
+        // 3. Regenerate thumbnails and compute checksums
+        echo "<h3>PHASE 3: THUMBNAILS &amp; CHECKSUMS</h3>";
+        $thumb_result = $engine->regenerateAndChecksum();
+        echo "<div class='summary'>";
+        echo "Regenerated: {$thumb_result['generated']} | Skipped: {$thumb_result['skipped']}";
+        if (!empty($thumb_result['errors'])) {
+            echo "<br>Errors: " . count($thumb_result['errors']);
+        }
+        echo "</div>";
+        flush();
+
+        // 4. Restore media assets
+        echo "<h3>PHASE 4: MEDIA ASSETS</h3>";
+        $asset_result = $engine->restoreMediaAssets($flat_dir);
+        echo "<div class='summary'>";
+        echo "Restored: {$asset_result['restored']} | In place: {$asset_result['in_place']} | Missing: {$asset_result['missing']}";
+        echo "</div>";
+        flush();
+
+        // 5. Restore branding
+        echo "<h3>PHASE 5: BRANDING</h3>";
+        $brand_result = $engine->restoreBranding($flat_dir);
+        echo "<div class='summary'>";
+        echo "Restored: {$brand_result['restored']} | In place: {$brand_result['in_place']} | Missing: {$brand_result['missing']}";
+        echo "</div>";
+        flush();
+
+        // Final summary
+        $total_restored = $img_result['restored'] + $asset_result['restored'] + $brand_result['restored'];
+        $total_missing  = $img_result['missing'] + $asset_result['missing'] + $brand_result['missing'];
+
+        echo "<hr><h2 style='margin-top:20px;'>RECOVERY COMPLETE</h2>";
+        echo "<div class='summary'>";
+        echo "<span class='success'>Files restored: {$total_restored}</span><br>";
+        echo "<span class='success'>Thumbnails regenerated: {$thumb_result['generated']}</span><br>";
+        if ($total_missing > 0) {
+            echo "<span class='warn'>Files still missing: {$total_missing}</span><br>";
+        }
+        echo "</div>";
+
+        echo "<p style='margin-top:20px;'><a href='login.php' style='display:inline-block;padding:12px 30px;background:#a0ff90;color:#0e0e0e;text-decoration:none;font-weight:700;text-transform:uppercase;letter-spacing:1px;border-radius:3px;'>Log In</a></p>";
+        echo "<p class='warn' style='margin-top:16px;'>Delete <code>install.php</code> from your server when you're done.</p>";
+        echo "</body></html>";
+        exit;
+        ?>
+    <?php endif; ?>
+
+</div>
+</body>
+</html>
+// EOF

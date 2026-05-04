@@ -117,3 +117,4 @@
     // Expose for shortcode-toolbar.js
     window.ssOpenAssetPicker = openAssetPicker;
 }());
+// EOF

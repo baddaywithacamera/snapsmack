@@ -299,3 +299,4 @@ function community_rate_limit(string $action): bool {
 
     return $count <= $limit;
 }
+// EOF

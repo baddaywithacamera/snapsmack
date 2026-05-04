@@ -19,3 +19,4 @@ $skin_variant_url = BASE_URL . 'skins/' . ($settings['active_skin'] ?? 'true-gri
 // Include core meta tags for SEO and CSS
 // meta.php will insert the variant stylesheet at the correct cascade position
 include(dirname(__DIR__, 2) . '/core/meta.php');
+// EOF

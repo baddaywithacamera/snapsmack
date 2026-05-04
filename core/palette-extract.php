@@ -167,3 +167,4 @@ function snapsmack_extract_palette(string $image_path, int $count = 5): array {
     return $palette;
 }
 ?>
+// EOF

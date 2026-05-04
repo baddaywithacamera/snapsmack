@@ -12,3 +12,4 @@ return [
     'css_file'    => 'admin-theme-colours-caribbean-blue.css', // The direct link the header needs
     'description' => "Come out, come out, wherever you are! Standing with our LGBTQ+ friends.",
 ];
+// EOF

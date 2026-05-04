@@ -66,3 +66,4 @@ try {
     echo "Migration {$migration_name} FAILED: " . $e->getMessage() . "\n";
     exit(1);
 }
+// EOF

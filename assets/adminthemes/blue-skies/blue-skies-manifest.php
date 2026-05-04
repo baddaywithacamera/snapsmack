@@ -12,3 +12,4 @@ return [
     'css_file'    => 'admin-theme-colours-blue-skies.css',
     'description' => "Clear blue skies and a clear attitude, time to share those photos.",
 ];
+// EOF

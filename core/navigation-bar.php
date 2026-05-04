@@ -60,3 +60,4 @@ $show_comments = ($global_on && $post_on);
         <?php endif; ?>
     </span>
 </div>
+// EOF

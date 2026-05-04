@@ -129,3 +129,4 @@ $pg_active_tab = 'discover'; // nearest semantic match
 </div><!-- /#pg-app -->
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
+// EOF
