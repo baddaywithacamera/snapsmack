@@ -364,4 +364,4 @@ $reaction_set = [
     <?php endif; // show_comments ?>
 
 </div><!-- /.ss-community -->
-// EOF
+<?php // EOF

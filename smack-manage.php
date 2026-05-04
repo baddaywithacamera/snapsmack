@@ -481,4 +481,4 @@ function confirmBatchDelete() {
 <?php endif; ?>
 
 <?php include 'core/admin-footer.php'; ?>
-// EOF
+<?php // EOF

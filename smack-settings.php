@@ -965,4 +965,4 @@ if (homepageMode) {
 </script>
 <script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
 <?php include 'core/admin-footer.php'; ?>
-// EOF
+<?php // EOF

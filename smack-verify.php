@@ -230,4 +230,4 @@ if ($total_issues === 0) {
 echo "<p style='margin-top:16px;'><a href='smack-backup.php'>← Back to Backup & Recovery</a></p>";
 echo "</body></html>";
 ?>
-// EOF
+<?php // EOF

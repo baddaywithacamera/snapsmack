@@ -68,4 +68,4 @@ $canonical_url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 <?php echo $settings['custom_css_public']; ?>
 </style>
 <?php endif; ?>
-// EOF
+<?php // EOF

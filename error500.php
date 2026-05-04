@@ -135,4 +135,4 @@ $page_title = '500 - Server Error';
 </div>
 </body>
 </html>
-// EOF
+<?php // EOF

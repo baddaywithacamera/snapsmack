@@ -508,4 +508,4 @@ function scTab(btn, id) {
 </script>
 
 <?php require __DIR__ . '/sc-layout-bottom.php'; ?>
-// EOF
+<?php // EOF

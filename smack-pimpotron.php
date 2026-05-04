@@ -669,4 +669,4 @@ pimpShowFields(document.getElementById('slide-type-select')?.value ?? 'image');
 </script>
 
 <?php include 'core/admin-footer.php'; ?>
-// EOF
+<?php // EOF

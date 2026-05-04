@@ -333,4 +333,4 @@ document.getElementById('featured-modal').addEventListener('click', function (e)
     if (e.target === this) closeFeaturedPicker();
 });
 </script>
-// EOF
+<?php // EOF

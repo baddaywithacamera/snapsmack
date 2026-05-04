@@ -81,4 +81,4 @@ $site_display_name = $site_name ?? 'SNAPSMACK';
     <?php endif; ?>
 
 </div>
-// EOF
+<?php // EOF

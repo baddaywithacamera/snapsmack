@@ -80,4 +80,4 @@ include 'core/sidebar.php';
 
 <?php include 'core/admin-footer.php'; ?>
 <script src="assets/js/smack-passphrase.js"></script>
-// EOF
+<?php // EOF

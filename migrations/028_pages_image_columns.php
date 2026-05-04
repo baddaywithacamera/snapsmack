@@ -38,4 +38,4 @@ try {
 
 echo "\nMigration $migration_name completed successfully.\n";
 ?>
-// EOF
+<?php // EOF

@@ -2345,4 +2345,4 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
 </div>
 </body>
 </html>
-// EOF
+<?php // EOF

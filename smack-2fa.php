@@ -259,4 +259,4 @@ require_once 'core/sidebar.php';
 
 <?php require_once 'core/admin-footer.php'; ?>
 <script src="assets/js/smack-admin-2fa.js"></script>
-// EOF
+<?php // EOF

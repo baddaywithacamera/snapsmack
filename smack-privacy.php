@@ -97,4 +97,4 @@ include 'core/sidebar.php';
 </div>
 
 <?php include 'core/admin-footer.php'; ?>
-// EOF
+<?php // EOF

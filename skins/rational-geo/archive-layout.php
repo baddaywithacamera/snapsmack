@@ -190,4 +190,4 @@ $show_map_bg = ($settings['show_map_background'] ?? '1') === '1';
     }
 })();
 </script>
-// EOF
+<?php // EOF

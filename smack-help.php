@@ -2829,4 +2829,4 @@ foreach ($help_topics as $slug => $ht) {
 </script>
 
 <?php include 'core/admin-footer.php'; ?>
-// EOF
+<?php // EOF

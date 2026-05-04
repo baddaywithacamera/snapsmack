@@ -637,4 +637,4 @@ function steTab(name) {
 </script>
 
 <?php include __DIR__ . '/sc-layout-bottom.php'; ?>
-// EOF
+<?php // EOF

@@ -43,4 +43,4 @@ require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-pimpotron.js?v=<?php echo time(); ?>"></script>
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-logo.js?v=<?php echo time(); ?>"></script>
-// EOF
+<?php // EOF

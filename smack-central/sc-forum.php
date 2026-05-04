@@ -1154,4 +1154,4 @@ $installs = $db->query("
 
 <script src="../assets/js/smack-sc-forum.js"></script>
 <?php require __DIR__ . '/sc-layout-bottom.php'; ?>
-// EOF
+<?php // EOF

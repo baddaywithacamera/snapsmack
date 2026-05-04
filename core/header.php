@@ -112,4 +112,4 @@ try {
         <?php endif; ?>
     </li>
 </ul>
-// EOF
+<?php // EOF

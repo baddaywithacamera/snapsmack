@@ -218,4 +218,4 @@ if ($above_download) $dock_classes .= ' ss-cdock-above-download';
     </div><!-- /.ss-cdock-buttons -->
 
 </div><!-- /.ss-community-dock -->
-// EOF
+<?php // EOF

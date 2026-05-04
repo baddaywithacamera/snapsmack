@@ -156,4 +156,4 @@ else:
 </div>
 
 <?php endif; ?>
-// EOF
+<?php // EOF

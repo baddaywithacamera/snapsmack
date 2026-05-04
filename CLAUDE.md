@@ -82,8 +82,12 @@ Zero nulls and a clean EOF are required before committing. This has caused repea
 
 **Every PHP, JS, and CSS file in the repo ends with a canonical EOF comment as a truncation sentinel.**
 
-- PHP / JS: `// EOF`
+- PHP (logic files — end inside a PHP block): `// EOF`
+- PHP (template/output files — end with HTML outside PHP tags): `<?php // EOF`
+- JS: `// EOF`
 - CSS: `/* EOF */`
+
+**Which form to use for PHP:** If the last content in the file is HTML (the file closes with `?>` or raw HTML tags and never re-opens a PHP block), use `<?php // EOF` so the marker stays in PHP context and is never echoed to the browser. If the file ends inside a `<?php` block (pure logic, no trailing HTML), use `// EOF`. The scanner accepts both — it looks for `// EOF` anywhere on the last non-empty line.
 
 The marker must be the very last line of the file (no trailing blank line after it). If a file is truncated mid-write, the marker will be missing — that is the signal to stop and fix before committing.
 
@@ -252,7 +256,7 @@ git commit
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
 ### SnapSmack — Alpha 0.7.42 "Recliner"
-✅ **0.7.42 ready to commit and push (not yet committed).**
+✅ **0.7.42 committed, tagged, and pushed.**
 
 **Git branch is `master` not `main`** (confirmed 2026-04-29).
 
@@ -267,38 +271,24 @@ git commit
 - `sc-assets/` directory created at `/var/www/snapsmack.ca/sc-assets/` ✅
 - Cloudflare is in front of snapsmack.ca — purge cache after FTPing CSS files
 
-**Changes in 0.7.41 + 0.7.42 (both sessions):**
+**Changes shipped in 0.7.42:**
 - Key rotation infrastructure (root key + release key two-tier system)
 - Smack Central CSS: font 13px→15px, sidebar 210→230px, max-width 1400px, padding 32px 48px
 - Smack Central CSS: added missing classes (`sc-page-head`, `sc-card`, `sc-card-title`, `sc-btn--dim`, `sc-warn`, `sc-muted`, `sc-help-*`, `sc-step-log`)
 - `core/release-pubkey.php` — real public key replacing all-zeros placeholder
-- Archive calendar, date range filter, pre-migrate updater stage (shipped in 0.7.40/0.7.41)
 - `core/updater.php` — fixed literal `\r\n` corruption that caused 500 on photowalk.ing after update
-- `admin-theme-geometry-master.css` — IP Smacker tab was permanently blank (CSS/JS class name mismatch)
-- `archive.php` + `smack-appearance-archive.php` — Cal layout button was missing; croppedwithcalendar excluded from whitelist in both files
+- `admin-theme-geometry-master.css` — IP Smacker tab permanently blank fixed (CSS/JS class name mismatch)
+- `archive.php` + `smack-appearance-archive.php` — Cal layout button missing fixed; croppedwithcalendar added to whitelist in both files; archive layout state now persists correctly via localStorage
 - `smack-help.php` — restored from truncation, updated with new topics (Archive Calendar, Probe Guard, API Keys, Key Rotation)
-- `install.php` — restored r4_exec recovery tail from truncation
+- `install.php` — r4_exec recovery tail restored from truncation
 - EOF markers added to all 454 PHP/JS/CSS files; `tools/check-eof.py` pre-commit scanner added
-
-**Commit command for 0.7.42 (run from C:\dev\snapsmack in MINGW bash):**
-```bash
-cd /c/dev/snapsmack
-git add -u
-git add tools/check-eof.py
-git commit -m "0.7.42 — SC CSS missing classes, layout padding, font size fix; fix updater.php literal \\r\\n corruption; add EOF markers to all PHP/JS/CSS; add tools/check-eof.py"
-git tag -f v0.7.42
-git push Github master
-git push Github v0.7.42 --force
-```
-
-**Pending — FTP to photowalk.ing (manual only — not in release package):**
-- `.htaccess` (probe guard + snap-in route) — gitignored by design, every server has its own
 
 **Pending — after 0.7.42 push:**
 - Build 0.7.42 release package from Smack Central → Release Packager
 - Build skin packages for 50-shades-of-noah-grey v1.1 and rational-geo v1.1 via Skin Packager
-- Update all live sites to 0.7.42 via Smack Central updater (updater handles all PHP file deployment)
-- FTP `.htaccess` to photowalk.ing manually (only file that needs manual FTP)
+- Update all live sites to 0.7.42 via Smack Central updater
+- FTP `core/updater.php` to photowalk.ing first (fixes 500 so updater can run), then update via admin
+- FTP `.htaccess` (with Probe Guard routes) to each server manually — gitignored, server-specific
 - Generate API key in foundtextures.ca Admin → Settings → API Access, paste into SYBU
 - Rebuild SYBU exe (`build.bat` in `tools/sybu/`)
 - strathmore.pics: delete duplicate snap_user 'sean', re-run install step 5

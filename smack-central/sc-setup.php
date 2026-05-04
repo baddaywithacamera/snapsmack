@@ -692,4 +692,4 @@ body {
 </div>
 </body>
 </html>
-// EOF
+<?php // EOF

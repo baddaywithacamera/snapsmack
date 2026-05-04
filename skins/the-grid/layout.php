@@ -252,4 +252,4 @@ include __DIR__ . '/skin-header.php';
 
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
-// EOF
+<?php // EOF

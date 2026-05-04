@@ -260,4 +260,4 @@ $pg_active_tab = 'home';
 </div><!-- /#pg-app -->
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
-// EOF
+<?php // EOF
