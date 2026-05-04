@@ -143,6 +143,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                             </label>
                         <?php endforeach; ?>
                     </div>
+                    <p id="layout-switch-status" style="margin:8px 0 0; font-size:0.8em; opacity:0.7;"></p>
                 </div>
 
                 <div class="lens-input-wrapper">
@@ -338,7 +339,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
 // Keep the default layout's checkbox always ticked and disabled so the owner
 // can't accidentally remove the current default from the available set.
 function syncAvailableCheckbox(defaultVal) {
-    ['square','cropped','masonry'].forEach(function(m) {
+    ['square','cropped','masonry','croppedwithcalendar'].forEach(function(m) {
         var cb = document.getElementById('avail-' + m);
         if (!cb) return;
         if (m === defaultVal) {
@@ -348,9 +349,41 @@ function syncAvailableCheckbox(defaultVal) {
             cb.disabled = false;
         }
     });
+    updateSwitchStatus();
 }
-// Run once on load to lock the current default.
-syncAvailableCheckbox(document.getElementById('default-layout-select').value);
+
+// Show visitors what toggle they will actually see based on checked count.
+var layoutLabels = {
+    'square':              'Grid',
+    'cropped':             'Crop',
+    'masonry':             'Flow',
+    'croppedwithcalendar': 'Cal'
+};
+function updateSwitchStatus() {
+    var status = document.getElementById('layout-switch-status');
+    if (!status) return;
+    var checked = [];
+    Object.keys(layoutLabels).forEach(function(m) {
+        var cb = document.getElementById('avail-' + m);
+        if (cb && cb.checked) checked.push(layoutLabels[m]);
+    });
+    if (checked.length < 2) {
+        status.textContent = 'No toggle shown — select 2 or more layouts to offer visitors a switch.';
+        status.style.color = 'var(--accent, #ff0)';
+    } else {
+        status.textContent = '✓ Visitors will see a ' + checked.length + '-way toggle: ' + checked.join(' / ');
+        status.style.color = 'var(--status-ok, #6f6)';
+    }
+}
+
+// Wire up all layout checkboxes.
+document.addEventListener('DOMContentLoaded', function() {
+    ['square','cropped','masonry','croppedwithcalendar'].forEach(function(m) {
+        var cb = document.getElementById('avail-' + m);
+        if (cb) cb.addEventListener('change', updateSwitchStatus);
+    });
+    syncAvailableCheckbox(document.getElementById('default-layout-select').value);
+});
 </script>
 
 <?php include 'core/admin-footer.php'; ?>
