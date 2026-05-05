@@ -1672,7 +1672,7 @@ include 'core/sidebar.php';
 
     <!-- UPLOAD RESULT LOG -->
     <?php if ($update_result): ?>
-    <div class="box update-section">
+    <div class="box update-section" id="upload-result-log">
         <h3>UPDATE LOG</h3>
         <div class="step-log">
             <?php foreach ($update_result as $step): ?>
@@ -1828,7 +1828,93 @@ include 'core/sidebar.php';
     </div>
     <?php endif; ?>
 
+    <!-- MANUAL UPDATE (UPLOAD) -->
+    <div class="box update-section" id="manual-upload">
+        <h3>MANUAL UPDATE (UPLOAD)</h3>
+        <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
+            If this server cannot reach snapsmack.ca, download the update package
+            on your own machine and upload it here. The same backup, verification,
+            and extraction pipeline will run.
+        </p>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+            <div style="margin-bottom:14px;">
+                <label style="font-size:0.78rem;opacity:0.6;display:block;margin-bottom:6px;">UPDATE PACKAGE (.zip)</label>
+                <input type="file" name="update_zip" accept=".zip" required style="font-size:0.85rem;padding:8px;">
+            </div>
+            <button type="submit" name="action" value="upload_zip" class="btn-smack mt-15"
+                    onclick="return confirm('Apply update from uploaded zip? A backup will be created first.');">
+                UPLOAD &amp; APPLY
+            </button>
+        </form>
+    </div>
+
+    <!-- SKIN REGISTRY NOTIFICATIONS -->
+    <?php if (!empty($cached_result['new_skins']) || !empty($cached_result['updated_skins'])): ?>
+    <div class="box update-section">
+        <h3>SKIN REGISTRY</h3>
+        <?php if (!empty($cached_result['new_skins'])): ?>
+        <label>NEW SKINS AVAILABLE</label>
+        <?php foreach ($cached_result['new_skins'] as $skin): ?>
+            <div class="skin-notify-card skin-notify-new">
+                <div>
+                    <strong><?php echo htmlspecialchars($skin['name']); ?></strong>
+                    <?php if (!empty($skin['description'])): ?>
+                        <span class="dim ml-10"><?php echo htmlspecialchars($skin['description']); ?></span>
+                    <?php endif; ?>
+                </div>
+                <span class="skin-notify-version">v<?php echo htmlspecialchars($skin['version']); ?></span>
+            </div>
+        <?php endforeach; ?>
+        <?php endif; ?>
+        <?php if (!empty($cached_result['updated_skins'])): ?>
+        <label <?php echo !empty($cached_result['new_skins']) ? 'class="mt-25"' : ''; ?>>SKIN UPDATES AVAILABLE</label>
+        <?php foreach ($cached_result['updated_skins'] as $skin): ?>
+            <div class="skin-notify-card skin-notify-update">
+                <div><strong><?php echo htmlspecialchars($skin['name']); ?></strong></div>
+                <span class="skin-notify-version">v<?php echo htmlspecialchars($skin['from']); ?> &rarr; v<?php echo htmlspecialchars($skin['to']); ?></span>
+            </div>
+        <?php endforeach; ?>
+        <?php endif; ?>
+        <a href="smack-skin.php?tab=gallery" class="btn-smack mt-25" style="display:inline-block;text-decoration:none;">OPEN SKIN GALLERY</a>
+    </div>
+    <?php endif; ?>
+
+    <!-- AUTOMATED CHECKS -->
+    <div class="box update-section" id="automated-checks">
+        <h3>AUTOMATED CHECKS</h3>
+        <?php if ($cron_supported): ?>
+            <label>VERSION CHECK JOB</label>
+            <div class="read-only-display"><?php echo $version_job_registered ? 'REGISTERED — RUNS EVERY 6 HOURS' : 'NOT REGISTERED'; ?></div>
+            <div class="recovery-actions mt-25">
+                <form method="POST">
+                    <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                    <button type="submit" name="action" value="cron_register" class="btn-smack"
+                            <?php echo $version_job_registered ? 'disabled' : ''; ?>>REGISTER VERSION CHECK</button>
+                </form>
+                <form method="POST">
+                    <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                    <button type="submit" name="action" value="cron_remove" class="btn-smack"
+                            <?php echo !$version_job_registered ? 'disabled' : ''; ?>
+                            onclick="return confirm('Remove the automatic version check cron job?');">REMOVE VERSION CHECK</button>
+                </form>
+            </div>
+            <p class="dim mt-25" style="font-size:0.8rem;">Without cron, the dashboard falls back to a 24-hour on-load check.</p>
+        <?php else: ?>
+            <label>CRON ENGINE</label>
+            <div class="read-only-display">NOT SUPPORTED ON THIS HOST</div>
+            <p class="dim mt-10" style="font-size:0.8rem;">The dashboard will fall back to checking every 24 hours on page load.</p>
+        <?php endif; ?>
+    </div>
+
 </div>
+
+<script>
+(function () {
+    var log = document.querySelector('.step-log');
+    if (log) { log.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+})();
+</script>
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
