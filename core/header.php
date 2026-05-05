@@ -70,14 +70,102 @@ try {
     </a>
 </div>
 
+<?php
+// ── NAV MENU ─────────────────────────────────────────────────────────────────
+// If nav_menu_json is configured, render from JSON. Otherwise use the legacy
+// flat nav (all items in one <li> with pipe separators).
+
+/**
+ * Resolve a nav item's URL from its type and settings.
+ */
+if (!function_exists('_snap_nav_resolve_url')) {
+    function _snap_nav_resolve_url(array $item, array $settings, $pdo): string {
+        $type = $item['type'] ?? 'custom';
+        $url  = $item['url']  ?? '';
+        $base = defined('BASE_URL') ? BASE_URL : '/';
+        switch ($type) {
+            case 'container':  return '';
+            case 'custom':     return $url;
+            case 'external':   return $url;
+            case 'home':       return $base;
+            case 'archive':    return $base . 'archive.php';
+            case 'albums':     return $base . 'albums.php';
+            case 'wall':       return $base . 'gallery-wall.php';
+            case 'blogroll':   return $base . 'blogroll.php';
+            case 'blog':       return $base . 'blog.php';
+            case 'page':
+                if (!empty($item['target_id'])) {
+                    static $_pc = [];
+                    $id = (int)$item['target_id'];
+                    if (!array_key_exists($id, $_pc)) {
+                        try {
+                            $r = $pdo->prepare("SELECT slug FROM snap_pages WHERE id = ? AND is_active = 1 LIMIT 1");
+                            $r->execute([$id]);
+                            $_pc[$id] = $r->fetchColumn() ?: null;
+                        } catch (Exception $e) { $_pc[$id] = null; }
+                    }
+                    return $_pc[$id] ? $base . 'page.php?slug=' . $_pc[$id] : '';
+                }
+                return $url;
+            case 'album':
+            case 'category':
+            case 'collection':
+                return !empty($item['target_id'])
+                    ? $base . 'archive.php?' . $type . '=' . (int)$item['target_id']
+                    : $url;
+        }
+        return $url;
+    }
+}
+
+/**
+ * Render one level of nav items into <li> elements.
+ * $depth: 0 = top level, 1 = submenu, 2 = sub-submenu (max).
+ */
+if (!function_exists('_snap_nav_render_items')) {
+    function _snap_nav_render_items(array $items, array $settings, $pdo, int $depth = 0): void {
+        $first = ($depth === 0);
+        $sep   = '<span class="sep">|</span>';
+        foreach ($items as $item) {
+            if (isset($item['active']) && !$item['active']) continue;
+            $children = array_filter($item['children'] ?? [], fn($c) => !isset($c['active']) || $c['active']);
+            $has_kids = !empty($children) && $depth < 2;
+            $li_class = $has_kids ? ' class="nav-has-children"' : '';
+            echo '<li' . $li_class . '>';
+            if ($first) { $first = false; } elseif ($depth === 0) { echo $sep; }
+            $url    = _snap_nav_resolve_url($item, $settings, $pdo);
+            $label  = htmlspecialchars($item['label'] ?? '');
+            $target = (!empty($item['target']) && $item['target'] === '_blank')
+                      ? ' target="_blank" rel="noopener noreferrer"' : '';
+            if ($item['type'] === 'container' || $url === '') {
+                echo '<span>' . $label . '</span>';
+            } else {
+                echo '<a href="' . htmlspecialchars($url) . '"' . $target . '>' . $label . '</a>';
+            }
+            if ($has_kids) {
+                echo '<ul class="nav-submenu">';
+                _snap_nav_render_items(array_values($children), $settings, $pdo, $depth + 1);
+                echo '</ul>';
+            }
+            echo '</li>';
+        }
+    }
+}
+
+$_nav_json  = $settings['nav_menu_json'] ?? '[]';
+$_nav_items = json_decode($_nav_json, true);
+$_use_json_nav = is_array($_nav_items) && count($_nav_items) > 0;
+?>
+<?php if ($_use_json_nav): ?>
+<ul class="nav-menu">
+<?php _snap_nav_render_items($_nav_items, $settings, $pdo); ?>
+</ul>
+<?php else: ?>
 <ul class="nav-menu">
     <li>
         <?php
-        // Each nav item carries its own leading separator so disabling any item
-        // (archive, blogroll, etc.) never leaves a dangling pipe.
         $archive_enabled = ($settings['archive_layout'] ?? 'square') !== 'none';
         $sep = '<span class="sep">|</span>';
-        $nav_started = true; // HOME is always first
         ?>
         <a href="<?php echo BASE_URL; ?>">HOME</a>
 
@@ -114,12 +202,11 @@ try {
                 $p_title = strtoupper(htmlspecialchars($page['title']));
                 $p_url = BASE_URL . 'page.php?slug=' . htmlspecialchars($page['slug']);
                 echo '<a href="' . $p_url . '">' . $p_title . '</a>';
-                if ($index < $count - 1) {
-                    echo $sep;
-                }
+                if ($index < $count - 1) { echo $sep; }
             endforeach;
             ?>
         <?php endif; ?>
     </li>
 </ul>
+<?php endif; ?>
 <?php // ===== SNAPSMACK EOF =====

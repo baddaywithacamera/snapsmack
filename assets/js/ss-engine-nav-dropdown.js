@@ -35,9 +35,9 @@
         link.setAttribute('aria-expanded', 'false');
 
         function openMenu() {
-            // Close any other open menus first.
+            // Close sibling menus only — do not close ancestors or descendants.
             parents.forEach(function (p) {
-                if (p !== parent) closeMenu(p);
+                if (p !== parent && !parent.contains(p) && !p.contains(parent)) closeMenu(p);
             });
             parent.classList.add('open');
             link.setAttribute('aria-expanded', 'true');

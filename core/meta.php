@@ -292,6 +292,15 @@ if (!empty($_smack_js_config)):
 <script>window.SMACK_CONFIG = <?php echo json_encode($_smack_js_config, JSON_UNESCAPED_UNICODE); ?>;</script>
 <?php endif; ?>
 
+<?php if (!empty($settings['nav_menu_json']) && $settings['nav_menu_json'] !== '[]'): ?>
+<style id="snapsmack-nav-vars">
+:root {
+    --nav-dropdown-bg: <?php echo htmlspecialchars($settings['nav_dropdown_bg'] ?? '#000000'); ?>;
+    --nav-dropdown-text: <?php echo htmlspecialchars($settings['nav_dropdown_text'] ?? '#ffffff'); ?>;
+}
+</style>
+<?php endif; ?>
+
 <?php
 /**
  * THIRD-PARTY HEAD SCRIPTS

@@ -2,11 +2,13 @@
  * ss-engine-menu-builder.js
  * SnapSmack admin drag-and-drop menu builder.
  *
- * Reads SS_BUILTIN_ITEMS, SS_PAGE_ITEMS, SS_CURRENT_MENU from the page,
+ * Reads SS_BUILTIN_ITEMS, SS_PAGE_ITEMS, SS_CURRENT_MENU (and optionally
+ * SS_ALBUM_ITEMS, SS_CATEGORY_ITEMS, SS_COLLECTION_ITEMS) from the page,
  * renders the interactive editor, and serialises the result back into
  * #menu_json_input before form submission.
  *
- * Supports one level of nesting. No third-party dependencies.
+ * Supports three levels of nesting (root → child → grandchild).
+ * Drag-and-drop at all levels. No third-party dependencies.
  */
 
 /**
@@ -20,399 +22,384 @@
     'use strict';
 
     // ── STATE ─────────────────────────────────────────────────────────────
-    // Deep-clone the current menu so we don't mutate the PHP-provided array.
-    let menu = JSON.parse(JSON.stringify(SS_CURRENT_MENU));
+    var menu = JSON.parse(JSON.stringify(SS_CURRENT_MENU));
 
-    // Ensure every top-level item has a children array.
-    menu.forEach(item => { if (!item.children) item.children = []; });
-
-    // Track which items are "used" (present in the menu at any level).
-    function usedIds() {
-        const ids = new Set();
-        menu.forEach(item => {
-            ids.add(item.id);
-            (item.children || []).forEach(child => ids.add(child.id));
+    // Normalise all items at all depths so fields are consistent.
+    function norm(items, depth) {
+        return (items || []).map(function (item) {
+            return {
+                id:        item.id        || uid(),
+                type:      item.type      || 'custom',
+                label:     item.label     || '',
+                url:       item.url       || '',
+                target:    item.target    || '_self',
+                active:    item.active    !== false,
+                target_id: item.target_id || null,
+                slug:      item.slug      || null,
+                children:  depth < 2 ? norm(item.children, depth + 1) : []
+            };
         });
+    }
+    menu = norm(menu, 0);
+
+    // IDs of all items currently in the menu (any depth).
+    function usedIds() {
+        var ids = new Set();
+        function collect(items) {
+            (items || []).forEach(function (item) {
+                ids.add(item.id);
+                collect(item.children);
+            });
+        }
+        collect(menu);
         return ids;
     }
 
-    // Generate a unique id for custom links.
-    function customId() {
-        return 'custom_' + Math.random().toString(36).slice(2, 9);
-    }
+    function uid() { return 'c_' + Math.random().toString(36).slice(2, 9); }
 
     // ── DRAG STATE ────────────────────────────────────────────────────────
-    let dragItem    = null;  // { item, fromList, fromIndex, isChild, parentItem }
-    let dragSource  = null;  // DOM element being dragged
+    // { item, fromPool, depth, parent, grandparent, fromIndex }
+    var drag = null;
 
-    // ── RENDER ────────────────────────────────────────────────────────────
+    // ── MASTER RENDER ─────────────────────────────────────────────────────
     function render() {
         renderPool();
         renderMenu();
         syncJson();
     }
 
-    // POOL — available items not yet in the menu.
+    // ── POOL ──────────────────────────────────────────────────────────────
     function renderPool() {
-        const used = usedIds();
-
-        const builtinEl = document.getElementById('pool-builtin');
-        const pagesEl   = document.getElementById('pool-pages');
-        builtinEl.innerHTML = '';
-        pagesEl.innerHTML   = '';
-
-        SS_BUILTIN_ITEMS.forEach(item => {
-            if (!used.has(item.id)) {
-                builtinEl.appendChild(makePoolItem(item));
-            }
-        });
-        SS_PAGE_ITEMS.forEach(item => {
-            if (!used.has(item.id)) {
-                pagesEl.appendChild(makePoolItem(item));
-            }
-        });
-
-        if (!builtinEl.children.length) {
-            builtinEl.innerHTML = '<span style="font-size:0.72rem;color:var(--text-dim)">All added</span>';
-        }
-        if (!pagesEl.children.length) {
-            pagesEl.innerHTML = '<span style="font-size:0.72rem;color:var(--text-dim)">All added</span>';
-        }
+        var used = usedIds();
+        poolSection('pool-builtin',     SS_BUILTIN_ITEMS,                             used);
+        poolSection('pool-pages',       SS_PAGE_ITEMS,                                used);
+        poolSection('pool-albums',      window.SS_ALBUM_ITEMS      || [],             used);
+        poolSection('pool-categories',  window.SS_CATEGORY_ITEMS   || [],             used);
+        poolSection('pool-collections', window.SS_COLLECTION_ITEMS || [],             used);
     }
 
-    function makePoolItem(item) {
-        const div = document.createElement('div');
-        div.className = 'menu-pool-item';
-        div.draggable  = true;
-        div.dataset.id   = item.id;
-        div.dataset.type = item.type;
-
-        div.innerHTML = `
-            <span class="menu-item-drag-handle">&#9776;</span>
-            <span style="flex:1">${item.label}</span>
-            <button type="button" class="pool-add-btn" title="Add to menu">&#43;</button>
-        `;
-
-        div.querySelector('.pool-add-btn').addEventListener('click', () => {
-            addToMenu(item);
+    function poolSection(elId, items, used) {
+        var el = document.getElementById(elId);
+        if (!el) return;
+        el.innerHTML = '';
+        var shown = 0;
+        items.forEach(function (item) {
+            if (!used.has(item.id)) { el.appendChild(poolItem(item)); shown++; }
         });
+        if (!shown) el.innerHTML = '<span style="font-size:0.72rem;color:var(--text-dim)">All added</span>';
+    }
 
-        div.addEventListener('dragstart', e => {
-            dragItem   = { item: cloneItem(item), fromPool: true };
-            dragSource = div;
+    function poolItem(item) {
+        var div = document.createElement('div');
+        div.className  = 'menu-pool-item';
+        div.draggable  = true;
+        div.dataset.id = item.id;
+        var icon = item.type === 'container' ? '&#9783;' : '&#9776;';
+        div.innerHTML  = '<span class="menu-item-drag-handle">' + icon + '</span>'
+                       + '<span style="flex:1">' + esc(item.label) + '</span>'
+                       + '<button type="button" class="pool-add-btn" title="Add">&#43;</button>';
+        div.querySelector('.pool-add-btn').addEventListener('click', function () {
+            var c = deepClone(item);
+            if (!c.children) c.children = [];
+            menu.push(c);
+            render();
+        });
+        div.addEventListener('dragstart', function (e) {
+            drag = { item: deepClone(item), fromPool: true, depth: -1 };
             e.dataTransfer.effectAllowed = 'move';
         });
-        div.addEventListener('dragend', () => {
-            dragItem = null; dragSource = null;
-        });
-
+        div.addEventListener('dragend', function () { drag = null; });
         return div;
     }
 
-    // MENU — current menu structure.
+    // ── MENU ──────────────────────────────────────────────────────────────
     function renderMenu() {
-        const listEl = document.getElementById('menu-list');
-        listEl.innerHTML = '';
+        var listEl = document.getElementById('menu-list');
+        // Detach event listeners by replacing the node
+        var fresh = listEl.cloneNode(false);
+        listEl.parentNode.replaceChild(fresh, listEl);
+        listEl = fresh;
 
         if (!menu.length) {
             listEl.innerHTML = '<div class="menu-empty-hint">Drag items here to build your menu.</div>';
         }
-
-        menu.forEach((item, idx) => {
-            listEl.appendChild(makeMenuRow(item, idx));
+        menu.forEach(function (item, idx) {
+            listEl.appendChild(makeTopRow(item, idx));
         });
 
-        // Drop zone at bottom of top-level list.
-        listEl.addEventListener('dragover', e => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            listEl.classList.add('drag-over');
+        // Drop zone: bottom of top-level list (append or promote)
+        listEl.addEventListener('dragover', function (e) {
+            e.preventDefault(); listEl.classList.add('drag-over');
         });
-        listEl.addEventListener('dragleave', () => listEl.classList.remove('drag-over'));
-        listEl.addEventListener('drop', e => {
-            e.stopPropagation();
-            listEl.classList.remove('drag-over');
-            if (dragItem) {
-                if (dragItem.fromPool) {
-                    menu.push(cloneItem(dragItem.item));
-                } else if (dragItem.isChild) {
-                    // Child promoted back to top level.
-                    dragItem.parentItem.children.splice(dragItem.fromIndex, 1);
-                    const promoted = cloneItem(dragItem.item);
-                    promoted.children = [];
-                    menu.push(promoted);
-                } else {
-                    // Dropped at end — remove from current pos, append.
-                    const removed = menu.splice(dragItem.fromIndex, 1)[0];
-                    menu.push(removed);
-                }
-                dragItem = null;
-                render();
-            }
+        listEl.addEventListener('dragleave', function () { listEl.classList.remove('drag-over'); });
+        listEl.addEventListener('drop', function (e) {
+            e.stopPropagation(); listEl.classList.remove('drag-over');
+            if (!drag) return;
+            dropInto(menu, null, null, 0);
         });
     }
 
-    function makeMenuRow(item, idx) {
-        const row = document.createElement('div');
-        row.className = 'menu-item-row';
+    // Generic drop handler: adds drag.item into targetList.
+    // parentItem and grandparentItem tell us where to remove from.
+    function dropInto(targetList, parentItem, grandparentItem, targetDepth) {
+        if (!drag) return;
+        var newItem = deepClone(drag.item);
+        if (targetDepth >= 2) { newItem.children = []; }
+        else if (!newItem.children) { newItem.children = []; }
 
-        const main = makeMenuItemMain(item, idx, false, null);
-        row.appendChild(main);
-
-        // Children sublist.
-        const childList = document.createElement('div');
-        const hasKids = item.children && item.children.length > 0;
-        childList.className = 'menu-children-list' + (hasKids ? ' has-children' : ' empty-children');
-        if (!hasKids) {
-            childList.innerHTML = '<div class="menu-empty-drop-hint">drop here to nest</div>';
-        } else {
-            item.children.forEach((child, cidx) => {
-                childList.appendChild(makeMenuItemMain(child, cidx, true, item));
-            });
+        // Remove from original location first
+        if (!drag.fromPool) {
+            if (drag.depth === 0) {
+                menu.splice(drag.fromIndex, 1);
+            } else if (drag.depth === 1 && drag.parent) {
+                drag.parent.children.splice(drag.fromIndex, 1);
+            } else if (drag.depth === 2 && drag.parent) {
+                drag.parent.children.splice(drag.fromIndex, 1);
+            }
         }
 
-        // Drop onto childList to nest.
-        childList.addEventListener('dragover', e => {
-            e.preventDefault();
-            e.stopPropagation();
-            e.dataTransfer.dropEffect = 'move';
-            childList.classList.add('drag-over');
-        });
-        childList.addEventListener('dragleave', () => childList.classList.remove('drag-over'));
-        childList.addEventListener('drop', e => {
-            e.preventDefault();
-            e.stopPropagation();
-            childList.classList.remove('drag-over');
-            if (!dragItem) return;
+        targetList.push(newItem);
+        drag = null;
+        render();
+    }
 
-            const newChild = cloneItem(dragItem.item || dragItem);
-            if (!item.children) item.children = [];
+    function makeTopRow(item, idx) {
+        var row = document.createElement('div');
+        row.className = 'menu-item-row';
+        row.appendChild(itemBar(item, idx, 0, null, null));
 
-            if (dragItem.fromPool) {
-                item.children.push(newChild);
-            } else if (dragItem.isChild && dragItem.parentItem === item) {
-                // Reorder within same parent — remove and append.
-                item.children.splice(dragItem.fromIndex, 1);
-                item.children.push(newChild);
-            } else if (dragItem.isChild) {
-                // Move from different parent.
-                dragItem.parentItem.children.splice(dragItem.fromIndex, 1);
-                item.children.push(newChild);
-            } else {
-                // Top-level item being nested — remove from top level.
-                if (dragItem.fromIndex !== undefined) {
-                    menu.splice(dragItem.fromIndex, 1);
-                }
-                delete newChild.children; // children can't have children
-                item.children.push(newChild);
-            }
-            dragItem = null;
-            render();
-        });
-
-        row.appendChild(childList);
+        // Children zone
+        var czone = dropZone('menu-children-list', item.children, item, null, 1);
+        if (item.children && item.children.length) {
+            item.children.forEach(function (child, cidx) {
+                czone.appendChild(makeChildRow(child, cidx, item));
+            });
+        } else {
+            czone.appendChild(emptyHint('drop here to nest'));
+        }
+        row.appendChild(czone);
         return row;
     }
 
-    function makeMenuItemMain(item, idx, isChild, parentItem) {
-        const main = document.createElement('div');
-        main.className = 'menu-item-main';
-        main.draggable  = true;
+    function makeChildRow(child, cidx, parentItem) {
+        var row = document.createElement('div');
+        row.className = 'menu-child-row';
+        row.appendChild(itemBar(child, cidx, 1, parentItem, null));
 
-        const typeLabel = item.type === 'custom' ? 'link'
-                       : item.type === 'page'   ? (item.slug || 'page')
-                       : item.type;
+        // Grandchildren zone
+        var gzone = dropZone('menu-grandchildren-list', child.children, child, parentItem, 2);
+        if (child.children && child.children.length) {
+            child.children.forEach(function (grand, gidx) {
+                gzone.appendChild(itemBar(grand, gidx, 2, child, parentItem));
+            });
+        } else {
+            gzone.appendChild(emptyHint('drop to nest deeper'));
+        }
+        row.appendChild(gzone);
+        return row;
+    }
 
-        const posLabel = isChild ? `${String.fromCharCode(97 + idx)}.` : `${idx + 1}.`;
-        main.innerHTML = `
-            <span class="menu-item-position">${posLabel}</span>
-            <span class="menu-item-drag-handle">&#9776;</span>
-            <span class="menu-item-label" data-field="label">${escHtml(item.label)}</span>
-            <span class="menu-item-type-badge">${escHtml(typeLabel)}</span>
-            <div class="menu-item-actions">
-                <button type="button" class="btn-edit" title="Edit label">&#9998;</button>
-                ${isChild ? '<button type="button" class="btn-promote" title="Move to top level">&#8593;</button>' : ''}
-                <button type="button" class="btn-remove" title="Remove">&#215;</button>
-            </div>
-        `;
+    function dropZone(className, childrenArr, parentItem, grandparentItem, depth) {
+        var zone = document.createElement('div');
+        var hasKids = childrenArr && childrenArr.length > 0;
+        zone.className = className + (hasKids ? ' has-children' : ' empty-children');
+        zone.addEventListener('dragover', function (e) {
+            e.preventDefault(); e.stopPropagation(); zone.classList.add('drag-over');
+        });
+        zone.addEventListener('dragleave', function () { zone.classList.remove('drag-over'); });
+        zone.addEventListener('drop', function (e) {
+            e.preventDefault(); e.stopPropagation(); zone.classList.remove('drag-over');
+            if (!drag) return;
+            dropInto(childrenArr, parentItem, grandparentItem, depth);
+        });
+        return zone;
+    }
 
-        // Edit label.
-        main.querySelector('.btn-edit').addEventListener('click', () => {
-            const labelEl = main.querySelector('.menu-item-label');
-            const current = item.label;
-            const input = document.createElement('input');
-            input.type      = 'text';
-            input.className = 'menu-item-label-edit';
-            input.value     = current;
-            labelEl.replaceWith(input);
-            input.focus();
-            input.select();
+    function emptyHint(text) {
+        var d = document.createElement('div');
+        d.className = 'menu-empty-drop-hint';
+        d.textContent = text;
+        return d;
+    }
 
-            function commit() {
-                const val = input.value.trim() || current;
-                item.label = val;
-                render();
-            }
-            input.addEventListener('blur',  commit);
-            input.addEventListener('keydown', e => {
+    // ── ITEM BAR ──────────────────────────────────────────────────────────
+    function itemBar(item, idx, depth, parent, grandparent) {
+        var bar = document.createElement('div');
+        bar.className = 'menu-item-main depth-' + depth;
+        bar.draggable = true;
+
+        var TYPE_LABELS = {
+            custom: 'link', external: 'ext', container: 'folder',
+            page: 'page', album: 'album', category: 'cat', collection: 'coll',
+            home: 'home', archive: 'archive', albums: 'albums',
+            wall: 'wall', blogroll: 'blogroll', blog: 'blog'
+        };
+        var typeLabel = TYPE_LABELS[item.type] || item.type;
+        var posLabel  = depth === 0 ? (idx + 1) + '.'
+                      : depth === 1 ? String.fromCharCode(97 + idx) + '.'
+                      : '– ';
+
+        var inactiveClass = item.active === false ? ' btn-inactive' : '';
+        var promoteBtn    = depth > 0
+            ? '<button type="button" class="btn-promote" title="Move up a level">&#8593;</button>' : '';
+        var inactiveBadge = item.active === false
+            ? '<span class="menu-item-inactive-badge">off</span>' : '';
+
+        bar.innerHTML =
+            '<span class="menu-item-position">' + posLabel + '</span>'
+          + '<span class="menu-item-drag-handle">&#9776;</span>'
+          + '<span class="menu-item-label" data-label>' + esc(item.label) + '</span>'
+          + inactiveBadge
+          + '<span class="menu-item-type-badge">' + esc(typeLabel) + '</span>'
+          + '<div class="menu-item-actions">'
+          + '<button type="button" class="btn-toggle-active' + inactiveClass + '" title="Toggle visibility">&#128065;</button>'
+          + '<button type="button" class="btn-edit" title="Edit label">&#9998;</button>'
+          + promoteBtn
+          + '<button type="button" class="btn-remove" title="Remove">&#215;</button>'
+          + '</div>';
+
+        // Edit label
+        bar.querySelector('.btn-edit').addEventListener('click', function () {
+            var labelEl = bar.querySelector('[data-label]');
+            var orig = item.label;
+            var inp = document.createElement('input');
+            inp.type = 'text'; inp.className = 'menu-item-label-edit'; inp.value = orig;
+            labelEl.replaceWith(inp); inp.focus(); inp.select();
+            function commit() { item.label = inp.value.trim() || orig; render(); }
+            inp.addEventListener('blur', commit);
+            inp.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') { e.preventDefault(); commit(); }
-                if (e.key === 'Escape') { input.value = current; commit(); }
+                if (e.key === 'Escape') { inp.value = orig; commit(); }
             });
         });
 
-        // Promote child to top level.
-        if (isChild && parentItem) {
-            main.querySelector('.btn-promote').addEventListener('click', () => {
-                parentItem.children.splice(idx, 1);
-                const promoted = cloneItem(item);
-                promoted.children = [];
-                menu.push(promoted);
-                render();
-            });
-        }
-
-        // Remove.
-        main.querySelector('.btn-remove').addEventListener('click', () => {
-            if (isChild && parentItem) {
-                parentItem.children.splice(idx, 1);
-            } else {
-                menu.splice(idx, 1);
-            }
+        // Active toggle
+        bar.querySelector('.btn-toggle-active').addEventListener('click', function () {
+            item.active = (item.active === false) ? true : false;
             render();
         });
 
-        // Drag start — top-level or child.
-        main.addEventListener('dragstart', e => {
-            dragItem = {
-                item:        cloneItem(item),
-                fromPool:    false,
-                isChild:     isChild,
-                parentItem:  parentItem,
-                fromIndex:   idx,
-            };
-            dragSource = main;
-            main.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.stopPropagation();
-        });
-        main.addEventListener('dragend', () => {
-            main.classList.remove('dragging');
-            clearDropTargets();
-            dragItem = null;
-            dragSource = null;
-        });
-
-        // Drop-target indicators on dragover (reorder by dragging over items).
-        if (!isChild) {
-            main.addEventListener('dragover', e => {
-                if (!dragItem || dragItem.isChild) return;
-                e.preventDefault();
-                e.stopPropagation();
-                clearDropTargets();
-                main.classList.add('drop-target-above');
-            });
-            main.addEventListener('dragleave', () => main.classList.remove('drop-target-above'));
-            main.addEventListener('drop', e => {
-                e.preventDefault();
-                e.stopPropagation();
-                clearDropTargets();
-                if (!dragItem) return;
-
-                if (dragItem.fromPool) {
-                    // Insert from pool above this item.
-                    menu.splice(idx, 0, cloneItem(dragItem.item));
-                } else if (!dragItem.isChild && dragItem.fromIndex !== idx) {
-                    const removed = menu.splice(dragItem.fromIndex, 1)[0];
-                    const insertAt = dragItem.fromIndex < idx ? idx - 1 : idx;
-                    menu.splice(insertAt, 0, removed);
+        // Promote
+        if (depth > 0) {
+            bar.querySelector('.btn-promote').addEventListener('click', function () {
+                var promoted = deepClone(item);
+                if (depth === 1 && parent) {
+                    parent.children.splice(idx, 1);
+                    promoted.children = promoted.children || [];
+                    menu.push(promoted);
+                } else if (depth === 2 && parent && grandparent) {
+                    parent.children.splice(idx, 1);
+                    promoted.children = [];
+                    grandparent.children.push(promoted);
                 }
-                dragItem = null;
-                render();
-            });
-        } else {
-            // Child reorder.
-            main.addEventListener('dragover', e => {
-                if (!dragItem || !dragItem.isChild || dragItem.parentItem !== parentItem) return;
-                e.preventDefault();
-                e.stopPropagation();
-                clearDropTargets();
-                main.classList.add('drop-target-above');
-            });
-            main.addEventListener('dragleave', () => main.classList.remove('drop-target-above'));
-            main.addEventListener('drop', e => {
-                e.preventDefault();
-                e.stopPropagation();
-                clearDropTargets();
-                if (!dragItem || !dragItem.isChild || dragItem.parentItem !== parentItem) return;
-                const removed = parentItem.children.splice(dragItem.fromIndex, 1)[0];
-                const insertAt = dragItem.fromIndex < idx ? idx - 1 : idx;
-                parentItem.children.splice(Math.max(0, insertAt), 0, removed);
-                dragItem = null;
                 render();
             });
         }
 
-        return main;
+        // Remove
+        bar.querySelector('.btn-remove').addEventListener('click', function () {
+            if (depth === 0) menu.splice(idx, 1);
+            else if (parent) parent.children.splice(idx, 1);
+            render();
+        });
+
+        // Drag events
+        bar.addEventListener('dragstart', function (e) {
+            drag = { item: deepClone(item), fromPool: false, depth: depth,
+                     parent: parent, grandparent: grandparent, fromIndex: idx };
+            bar.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.stopPropagation();
+        });
+        bar.addEventListener('dragend', function () {
+            bar.classList.remove('dragging'); drag = null;
+        });
+
+        // Reorder: drag over same-level bar → insert before
+        bar.addEventListener('dragover', function (e) {
+            if (!drag || drag.depth !== depth) return;
+            if (depth > 0 && drag.parent !== parent) return;
+            e.preventDefault(); e.stopPropagation();
+            clearDropTargets();
+            bar.classList.add('drop-target-above');
+        });
+        bar.addEventListener('dragleave', function () { bar.classList.remove('drop-target-above'); });
+        bar.addEventListener('drop', function (e) {
+            e.preventDefault(); e.stopPropagation();
+            clearDropTargets();
+            if (!drag || drag.depth !== depth) return;
+            if (depth > 0 && drag.parent !== parent) return;
+
+            var list = depth === 0 ? menu : parent.children;
+            var removed = list.splice(drag.fromIndex, 1)[0];
+            var insertAt = drag.fromIndex < idx ? idx - 1 : idx;
+            list.splice(Math.max(0, insertAt), 0, removed);
+            drag = null;
+            render();
+        });
+
+        return bar;
     }
 
     function clearDropTargets() {
-        document.querySelectorAll('.drop-target-above, .drop-target-nest').forEach(el => {
-            el.classList.remove('drop-target-above', 'drop-target-nest');
+        document.querySelectorAll('.drop-target-above').forEach(function (el) {
+            el.classList.remove('drop-target-above');
         });
     }
 
     // ── CUSTOM LINK ───────────────────────────────────────────────────────
-    document.getElementById('add-custom-btn').addEventListener('click', () => {
-        const label = document.getElementById('custom-label').value.trim();
-        const url   = document.getElementById('custom-url').value.trim();
-        if (!label || !url) {
-            alert('Enter both a label and a URL.');
-            return;
-        }
-        menu.push({ id: customId(), type: 'custom', label: label.toUpperCase(), url: url, children: [] });
+    document.getElementById('add-custom-btn').addEventListener('click', function () {
+        var label = document.getElementById('custom-label').value.trim();
+        var url   = document.getElementById('custom-url').value.trim();
+        if (!label || !url) { alert('Enter both a label and a URL.'); return; }
+        menu.push({ id: uid(), type: 'custom', label: label.toUpperCase(), url: url, active: true, children: [] });
         document.getElementById('custom-label').value = '';
         document.getElementById('custom-url').value   = '';
         render();
     });
 
-    // ── POOL HELPERS ──────────────────────────────────────────────────────
-    function addToMenu(item) {
-        menu.push(cloneItem(item));
-        render();
-    }
-
-    function cloneItem(item) {
-        const c = Object.assign({}, item);
-        if (c.children) c.children = JSON.parse(JSON.stringify(c.children));
-        return c;
+    // Container button
+    var cBtn = document.getElementById('add-container-btn');
+    if (cBtn) {
+        cBtn.addEventListener('click', function () {
+            var label = (document.getElementById('container-label').value.trim() || 'MENU').toUpperCase();
+            menu.push({ id: uid(), type: 'container', label: label, url: '', active: true, children: [] });
+            document.getElementById('container-label').value = '';
+            render();
+        });
     }
 
     // ── JSON SYNC ─────────────────────────────────────────────────────────
     function syncJson() {
-        // Strip children from child items before serialising (they can't nest).
-        const clean = menu.map(item => {
-            const top = Object.assign({}, item);
-            top.children = (item.children || []).map(child => {
-                const c = Object.assign({}, child);
-                delete c.children;
+        function clean(items, depth) {
+            return (items || []).map(function (item) {
+                var c = {
+                    id:     item.id,
+                    type:   item.type,
+                    label:  item.label,
+                    active: item.active !== false,
+                    url:    item.url    || '',
+                    target: item.target || '_self',
+                };
+                if (item.target_id) c.target_id = item.target_id;
+                if (item.slug)      c.slug      = item.slug;
+                c.children = depth < 2 ? clean(item.children, depth + 1) : [];
                 return c;
             });
-            return top;
-        });
-        document.getElementById('menu_json_input').value = JSON.stringify(clean);
+        }
+        document.getElementById('menu_json_input').value = JSON.stringify(clean(menu, 0));
     }
 
-    // ── HTML ESCAPE ───────────────────────────────────────────────────────
-    function escHtml(s) {
-        return String(s)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+    // ── HELPERS ───────────────────────────────────────────────────────────
+    function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
+
+    function esc(s) {
+        return String(s || '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    // ── FORM SUBMIT — ensure JSON is synced ───────────────────────────────
-    document.getElementById('menu-form').addEventListener('submit', () => syncJson());
+    document.getElementById('menu-form').addEventListener('submit', function () { syncJson(); });
 
     // ── INIT ──────────────────────────────────────────────────────────────
     render();
