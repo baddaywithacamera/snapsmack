@@ -225,7 +225,7 @@ $site_title = $settings['site_title'] ?? $site_name ?? 'Photogram';
                 <input type="search"
                        name="q"
                        value="<?php echo $q_safe; ?>"
-                       placeholder="Search photos or #tags…"
+                       placeholder="<?php echo htmlspecialchars($settings['search_placeholder'] ?? 'Search photos or #tags…'); ?>"
                        class="pg-search-input"
                        autocomplete="off"
                        autofocus>

@@ -307,7 +307,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
 
                     <div class="filter-group">
                         <form method="GET" action="archive.php" class="archive-search-form">
-                            <input type="search" name="q" placeholder="Search or #tag…"
+                            <input type="search" name="q" placeholder="<?php echo htmlspecialchars($settings['search_placeholder'] ?? 'Search or #tag…'); ?>"
                                    value="<?php echo htmlspecialchars($search_query); ?>"
                                    class="archive-search-input" autocomplete="off">
                         </form>
