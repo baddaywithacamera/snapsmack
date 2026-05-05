@@ -268,7 +268,7 @@ return [
         ],
 
         'archive_frame_style' => [
-            'section'  => 'VERTICAL LOCKS',
+            'section'  => 'ARCHIVE',
             'type'     => 'select',
             'label'    => 'Archive Thumb Frame',
             'default'  => 'border_thin',

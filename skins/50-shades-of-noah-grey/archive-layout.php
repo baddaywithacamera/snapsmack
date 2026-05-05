@@ -62,13 +62,29 @@ for ($i = count($rows) - 1; $i >= 0; $i--) {
 if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
 ?>
 
+<?php
+// $available_modes and $archive_layout are in scope from archive.php.
+// Render toggle only when more than one layout is available.
+$_fsog_icons  = ['square'=>'&#9638;','cropped'=>'&#9638;','croppedwithcalendar'=>'&#9637;','masonry'=>'&#9636;'];
+$_fsog_titles = ['square'=>'Square Grid','cropped'=>'Grid','croppedwithcalendar'=>'Calendar','masonry'=>'Justified'];
+$_fsog_avail  = isset($available_modes) ? $available_modes : [];
+$_fsog_cur    = isset($archive_layout)  ? $archive_layout  : ($settings['archive_layout'] ?? 'cropped');
+?>
+<?php if (count($_fsog_avail) > 1): ?>
 <!-- Floating layout toggle — fades in on hover, top-right -->
 <div class="fsog-layout-toggle">
     <div class="fsog-layout-toggle-switch">
-        <button class="fsog-toggle-btn<?php echo $archive_default === 'cropped'   ? ' active' : ''; ?>" data-layout="cropped"   title="Grid">&#9638;</button>
-        <button class="fsog-toggle-btn<?php echo $archive_default === 'justified' ? ' active' : ''; ?>" data-layout="justified" title="Justified">&#9636;</button>
+        <?php foreach ($_fsog_avail as $_fsog_mode):
+            $_icon  = $_fsog_icons[$_fsog_mode]  ?? '&#9638;';
+            $_title = $_fsog_titles[$_fsog_mode] ?? strtoupper($_fsog_mode);
+        ?>
+            <button class="fsog-toggle-btn<?php echo ($_fsog_mode === $_fsog_cur) ? ' active' : ''; ?>"
+                    data-layout="<?php echo htmlspecialchars($_fsog_mode); ?>"
+                    title="<?php echo $_title; ?>"><?php echo $_icon; ?></button>
+        <?php endforeach; ?>
     </div>
 </div>
+<?php endif; ?>
 
 <!-- Cropped grid — natural aspect ratio thumbnails -->
 <div id="browse-grid" class="fsog-archive-grid" <?php echo $archive_default !== 'cropped' ? 'style="display:none;"' : ''; ?>>
@@ -146,11 +162,19 @@ if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
     var browseGrid    = document.getElementById('browse-grid');
     var justifiedGrid = document.getElementById('justified-grid');
 
+    var calLayout = 'croppedwithcalendar';
+
     function setLayout(layout) {
+        // Calendar layout requires a page load (body class drives the calendar engine).
+        // Also navigate away from calendar layout cleanly.
+        if (layout === calLayout || document.body.classList.contains('archive-layout-' + calLayout)) {
+            location.href = 'archive.php?layout=' + encodeURIComponent(layout);
+            return;
+        }
         for (var i = 0; i < toggleBtns.length; i++) {
             toggleBtns[i].classList.toggle('active', toggleBtns[i].getAttribute('data-layout') === layout);
         }
-        if (layout === 'justified') {
+        if (layout === 'masonry' || layout === 'justified') {
             browseGrid.style.display    = 'none';
             justifiedGrid.style.display = 'block';
         } else {
@@ -163,7 +187,7 @@ if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
     function init() {
         var saved = null;
         try { saved = (window.snapConsent && window.snapConsent.ok()) ? localStorage.getItem(KEY) : null; } catch(e) {}
-        setLayout(saved || '<?php echo htmlspecialchars($archive_default); ?>');
+        setLayout(saved || '<?php echo htmlspecialchars($_fsog_cur); ?>');
     }
 
     for (var i = 0; i < toggleBtns.length; i++) {
