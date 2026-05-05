@@ -89,25 +89,55 @@ python3 -c "d=open('path','rb').read(); print(len(d), 'bytes,', d.count(b'\x00')
 Zero nulls and a clean EOF are required before committing. This has caused repeated 500 errors on live sites when missed.
 
 
-## CRITICAL — EOF Markers and Pre-Commit Scan
+## CRITICAL — EOF Markers, Header Tags, and Pre-Commit Scan
 
-**Every PHP, JS, and CSS file in the repo ends with a canonical EOF comment as a truncation sentinel.**
+**Every tracked source file (PHP/JS/CSS/HTML/HTM/MD/SQL/PY/SH) carries two truncation sentinels: a `SNAPSMACK_EOF_HEADER` block near the top, and a long-form `SNAPSMACK EOF` marker on the last non-empty line.** Either missing = file is truncated/corrupted and must be restored before saving.
 
-- PHP (logic files — end inside a PHP block): `// EOF`
-- PHP (template/output files — end with HTML outside PHP tags): `<?php // EOF`
-- JS: `// EOF`
-- CSS: `/* EOF */`
+### Bottom marker (last non-empty line)
 
-**Which form to use for PHP:** Look at the last real line of content before the marker. If it's a closing HTML tag or raw text (ends with `>`), the file ends outside PHP — use `<?php // EOF`. If it's PHP code (ends with `}`, `;`, a comment, etc.), the file ends inside PHP — use `// EOF`. Do NOT use `?>` count as a heuristic — `?>` appears inside strings and regexes throughout the codebase and will give false positives. The scanner accepts both — it looks for `// EOF` anywhere on the last non-empty line.
+| Extension | Marker |
+|---|---|
+| `.php` (logic — ends in PHP block) | `// ===== SNAPSMACK EOF =====` |
+| `.php` (template — ends after `?>`) | `<?php // ===== SNAPSMACK EOF =====` |
+| `.js` | `// ===== SNAPSMACK EOF =====` |
+| `.css` | `/* ===== SNAPSMACK EOF ===== */` |
+| `.html`, `.htm`, `.md` | `<!-- ===== SNAPSMACK EOF ===== -->` |
+| `.sql` | `-- ===== SNAPSMACK EOF =====` |
+| `.py`, `.sh` | `# ===== SNAPSMACK EOF =====` |
 
-The marker must be the very last line of the file (no trailing blank line after it). If a file is truncated mid-write, the marker will be missing — that is the signal to stop and fix before committing.
+PHP mode: if the file ends with HTML output (after `?>`), use the `<?php // …` form; if it ends inside a PHP block (`}`, `;`, a comment), use the plain `// …` form. Do not change a file's mode (logic vs HTML) without updating both the bottom marker and the header.
 
-**Before every commit, scan ALL tracked files — not just files staged in the current session.** Prior-session truncations have shipped to git undetected multiple times (`updater.php`, `smack-help.php`, `install.php`). A scan covering only the current session’s files does not catch those.
+### Top header (within first 8KB)
 
-Use `tools/check-eof.py` for the pre-commit scan. It checks every tracked PHP, JS, and CSS file for:
-1. Presence of the EOF marker on the last non-empty line
-2. Null bytes (`\x00`) anywhere in the file
-3. Structural `\r\n` corruption (literal backslash-r backslash-n outside PHP string literals)
+Every file also carries a `SNAPSMACK_EOF_HEADER` block near the top. The header names (or, where the comment syntax can't safely embed it, structurally describes) the expected bottom marker. Purpose: a stressed-context Claude reading any one file knows what to look for at the bottom — no recall of external rules required, no guessing.
+
+Placement (set by `tools/migrate-eof-marker.py`):
+- `.php`: after the existing `/** SNAPSMACK - … */` docblock
+- `.js`: after the existing top docblock
+- `.css`: after `@charset` or first `/* … */` block
+- `.html`/`.htm`: after `<!DOCTYPE>`
+- `.md`/`.sql`: at top
+- `.py`: after shebang + module docstring
+- `.sh`: after shebang
+
+**Why long form (vs the legacy `// EOF`):**
+- Greppability: `SNAPSMACK EOF` is collision-free; `EOF` alone matches shell heredocs, error strings, and incidental comments.
+- Anti-forgery: a partial-write that happens to leave `// EOF` in the file would silently pass a short-form check; the long form is hard to forge accidentally.
+- Visibility: visually obvious when tail-ing a file.
+
+The marker must be the very last non-empty line (no trailing blank line after it counts). If it's missing, the file is truncated.
+
+### Pre-commit scan
+
+**Before every commit, scan ALL tracked files — not just files staged in the current session.** Prior-session truncations have shipped to git undetected multiple times (`updater.php`, `smack-help.php`, `install.php`). Session-scoped scans don't catch those.
+
+`tools/check-eof.py` checks every tracked file in scope for:
+1. Long-form bottom marker on the last non-empty line.
+2. `SNAPSMACK_EOF_HEADER` tag within the first 8KB.
+3. Null bytes (`\x00`) anywhere in the file.
+4. Structural `\r\n` corruption (literal backslash-r backslash-n outside string/comment contexts).
+
+Excluded paths (third-party / build artifacts): `smack-central/`, `licenses/`, `vendor/`, `node_modules/`, `*.min.{js,css}`, `assets/js/fjGallery*`. Authoritative list: `EXCLUDED_PATTERNS` in `tools/check-eof.py`.
 
 **Run before every commit:**
 ```bash
@@ -115,6 +145,10 @@ python3 tools/check-eof.py
 ```
 
 Any file that fails must be fixed before the commit proceeds. Do not declare a commit ready without running this scan.
+
+### Migration tool (one-shot, retained for reference)
+
+`tools/migrate-eof-marker.py` is the script that converted the repo from the legacy `// EOF` short-form to the current long-form + header convention. Default is dry-run; `--apply` writes. Useful again only if the convention is ever extended (new file types, new sentinels). Don't run on already-migrated files — the skip rule makes that a no-op anyway.
 
 ## CRITICAL — Skins Must Never Be Deleted
 
