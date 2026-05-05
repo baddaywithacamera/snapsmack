@@ -155,163 +155,138 @@ include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
-<div class="smack-main-content">
-    <div class="smack-page-header">
-        <h2>Menu Manager</h2>
-        <?php if (isset($_GET['msg']) && $_GET['msg'] === 'SAVED'): ?>
-            <div class="smack-flash smack-flash--ok">Menu saved.</div>
-        <?php endif; ?>
-    </div>
+<div class="main">
+    <h2>MENU MANAGER</h2>
+    <?php if (isset($_GET['msg']) && $_GET['msg'] === 'SAVED'): ?>
+        <div class="alert alert-success">&gt; MENU SAVED</div>
+    <?php endif; ?>
 
     <form method="post" id="menu-form">
         <input type="hidden" name="save_nav_menu" value="1">
         <input type="hidden" name="menu_json" id="menu_json_input" value="">
 
-        <div class="smack-box">
-            <div class="smack-box-header">
-                <span class="smack-box-title">Navigation Structure</span>
-            </div>
-            <div class="smack-box-body">
-                <div class="menu-builder-layout">
+        <div class="box">
+            <h3>NAVIGATION STRUCTURE</h3>
+            <div class="menu-builder-layout">
 
-                    <!-- AVAILABLE ITEMS POOL -->
-                    <div class="menu-pool-panel">
-                        <div class="menu-panel-title">Available Items</div>
-                        <div class="menu-pool-section">
-                            <div class="menu-pool-section-label">Built-in Pages</div>
-                            <div id="pool-builtin" class="menu-pool-list">
-                                <!-- populated by JS -->
-                            </div>
-                        </div>
-                        <div class="menu-pool-section">
-                            <div class="menu-pool-section-label">Static Pages</div>
-                            <div id="pool-pages" class="menu-pool-list">
-                                <!-- populated by JS -->
-                            </div>
-                        </div>
-                        <div class="menu-pool-section">
-                            <div class="menu-pool-section-label">Custom Link</div>
-                            <div class="menu-custom-link-form">
-                                <input type="text" id="custom-label" placeholder="Label" maxlength="60">
-                                <input type="url"  id="custom-url"   placeholder="https://" maxlength="500">
-                                <button type="button" id="add-custom-btn" class="smack-btn smack-btn--sm">Add</button>
-                            </div>
-                        </div>
-                        <div class="menu-pool-section">
-                            <div class="menu-pool-section-label">Container <span class="smack-dim">(dropdown parent, no URL)</span></div>
-                            <div class="menu-custom-link-form">
-                                <input type="text" id="container-label" placeholder="Label e.g. WORKS" maxlength="60">
-                                <button type="button" id="add-container-btn" class="smack-btn smack-btn--sm">Add Container</button>
-                            </div>
-                        </div>
-                        <?php if (!empty($album_items)): ?>
-                        <div class="menu-pool-section">
-                            <div class="menu-pool-section-label">Albums</div>
-                            <div id="pool-albums" class="menu-pool-list"></div>
-                        </div>
-                        <?php endif; ?>
-                        <?php if (!empty($category_items)): ?>
-                        <div class="menu-pool-section">
-                            <div class="menu-pool-section-label">Categories</div>
-                            <div id="pool-categories" class="menu-pool-list"></div>
-                        </div>
-                        <?php endif; ?>
-                        <?php if (!empty($collection_items)): ?>
-                        <div class="menu-pool-section">
-                            <div class="menu-pool-section-label">Collections</div>
-                            <div id="pool-collections" class="menu-pool-list"></div>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-
-                    <!-- CURRENT MENU -->
-                    <div class="menu-current-panel">
-                        <div class="menu-panel-title">Current Menu</div>
-                        <div id="menu-list" class="menu-list">
+                <!-- AVAILABLE ITEMS POOL -->
+                <div class="menu-pool-panel">
+                    <div class="menu-pool-section">
+                        <div class="menu-pool-section-label">Built-in Pages</div>
+                        <div id="pool-builtin" class="menu-pool-list">
                             <!-- populated by JS -->
                         </div>
-                        <p class="menu-hint">Drag to reorder. Drop onto another item to nest (up to 3 levels). Use the eye button to hide items without removing them.</p>
                     </div>
-
+                    <div class="menu-pool-section">
+                        <div class="menu-pool-section-label">Static Pages</div>
+                        <div id="pool-pages" class="menu-pool-list">
+                            <!-- populated by JS -->
+                        </div>
+                    </div>
+                    <div class="menu-pool-section">
+                        <div class="menu-pool-section-label">Custom Link</div>
+                        <div class="menu-custom-link-form">
+                            <input type="text" id="custom-label" placeholder="Label" maxlength="60">
+                            <input type="url"  id="custom-url"   placeholder="https://" maxlength="500">
+                            <button type="button" id="add-custom-btn" class="btn-smack">Add</button>
+                        </div>
+                    </div>
+                    <div class="menu-pool-section">
+                        <div class="menu-pool-section-label">Container <span class="dim">(dropdown parent, no URL)</span></div>
+                        <div class="menu-custom-link-form">
+                            <input type="text" id="container-label" placeholder="Label e.g. WORKS" maxlength="60">
+                            <button type="button" id="add-container-btn" class="btn-smack">Add Container</button>
+                        </div>
+                    </div>
+                    <?php if (!empty($album_items)): ?>
+                    <div class="menu-pool-section">
+                        <div class="menu-pool-section-label">Albums</div>
+                        <div id="pool-albums" class="menu-pool-list"></div>
+                    </div>
+                    <?php endif; ?>
+                    <?php if (!empty($category_items)): ?>
+                    <div class="menu-pool-section">
+                        <div class="menu-pool-section-label">Categories</div>
+                        <div id="pool-categories" class="menu-pool-list"></div>
+                    </div>
+                    <?php endif; ?>
+                    <?php if (!empty($collection_items)): ?>
+                    <div class="menu-pool-section">
+                        <div class="menu-pool-section-label">Collections</div>
+                        <div id="pool-collections" class="menu-pool-list"></div>
+                    </div>
+                    <?php endif; ?>
                 </div>
+
+                <!-- CURRENT MENU -->
+                <div class="menu-current-panel">
+                    <div id="menu-list" class="menu-list">
+                        <!-- populated by JS -->
+                    </div>
+                    <p class="dim" style="margin-top:10px;font-size:0.8rem;">Drag to reorder. Drop onto another item to nest (up to 3 levels). Use the eye button to hide items without removing them.</p>
+                </div>
+
             </div>
         </div>
 
         <!-- DROPDOWN APPEARANCE -->
-        <div class="smack-box">
-            <div class="smack-box-header">
-                <span class="smack-box-title">Dropdown Appearance</span>
-            </div>
-            <div class="smack-box-body">
-                <table class="smack-settings-table">
-                    <tr>
-                        <td class="smack-setting-label">Background colour</td>
-                        <td>
-                            <input type="color" name="nav_dropdown_bg" value="<?php echo htmlspecialchars($dd_bg); ?>">
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="smack-setting-label">Background opacity <span class="smack-dim">(0–100)</span></td>
-                        <td>
-                            <input type="number" name="nav_dropdown_opacity" value="<?php echo $dd_opacity; ?>" min="0" max="100" style="width:70px">
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="smack-setting-label">Text colour</td>
-                        <td>
-                            <input type="color" name="nav_dropdown_text" value="<?php echo htmlspecialchars($dd_text); ?>">
-                        </td>
-                    </tr>
-                </table>
+        <div class="box">
+            <h3>DROPDOWN APPEARANCE</h3>
+            <div class="dash-grid">
+                <div>
+                    <label>Background colour</label>
+                    <input type="color" name="nav_dropdown_bg" value="<?php echo htmlspecialchars($dd_bg); ?>">
+                </div>
+                <div>
+                    <label>Background opacity <span class="dim">(0–100)</span></label>
+                    <input type="number" name="nav_dropdown_opacity" value="<?php echo $dd_opacity; ?>" min="0" max="100" style="width:80px">
+                </div>
+                <div>
+                    <label>Text colour</label>
+                    <input type="color" name="nav_dropdown_text" value="<?php echo htmlspecialchars($dd_text); ?>">
+                </div>
             </div>
         </div>
 
-        <div class="smack-form-actions">
-            <button type="submit" class="smack-btn smack-btn--primary" id="save-menu-btn">Save Menu</button>
+        <div class="form-action-row">
+            <button type="submit" class="btn-smack" id="save-menu-btn">Save Menu</button>
         </div>
     </form>
 
-</div><!-- .smack-main-content -->
+</div><!-- .main -->
 
 <style>
-/* ── LAYOUT ── */
+/* ── MENU BUILDER LAYOUT ─────────────────────────────────────────────────── */
+/* Colors are transparent overlays — the .box background (set by admin theme  */
+/* colour CSS) shows through, so this works on any admin theme automatically. */
+
 .menu-builder-layout {
     display: flex;
     gap: 24px;
     align-items: flex-start;
 }
+
+/* ── POOL PANEL (left column) ── */
 .menu-pool-panel {
-    width: 230px;
+    width: 220px;
     flex-shrink: 0;
-    background: #1c1c28;
-    border: 1px solid #3a3a52;
-    border-radius: 6px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 5px;
     padding: 14px;
 }
-.menu-current-panel {
-    flex: 1;
-    min-width: 340px;
-}
-.menu-panel-title {
-    font-weight: 700;
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 12px;
-    color: var(--accent);
-}
 .menu-pool-section {
-    margin-bottom: 14px;
+    margin-bottom: 16px;
 }
 .menu-pool-section:last-child { margin-bottom: 0; }
 .menu-pool-section-label {
     font-size: 0.68rem;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: #888;
-    margin-bottom: 5px;
-    border-bottom: 1px solid #3a3a52;
-    padding-bottom: 3px;
+    opacity: 0.55;
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 4px;
 }
 .menu-pool-list {
     display: flex;
@@ -323,28 +298,33 @@ include 'core/sidebar.php';
     display: flex;
     align-items: center;
     gap: 6px;
-    background: #252535;
-    border: 1px solid #3a3a52;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.14);
     border-radius: 4px;
-    padding: 6px 8px;
+    padding: 6px 9px;
     font-size: 0.76rem;
     cursor: grab;
     user-select: none;
-    transition: border-color 0.12s, background 0.12s;
-    color: #ccc;
+    transition: background 0.1s, border-color 0.1s;
 }
-.menu-pool-item:hover { border-color: var(--accent); background: #2d2d42; color: #fff; }
+.menu-pool-item:hover {
+    background: rgba(255,255,255,0.14);
+    border-color: rgba(255,255,255,0.3);
+}
 .menu-pool-item .pool-add-btn {
     margin-left: auto;
     background: none;
     border: none;
-    color: var(--accent);
+    color: inherit;
+    opacity: 0.6;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 1.1rem;
     line-height: 1;
     padding: 0 2px;
     flex-shrink: 0;
+    transition: opacity 0.1s;
 }
+.menu-pool-item:hover .pool-add-btn { opacity: 1; }
 .menu-custom-link-form {
     display: flex;
     flex-direction: column;
@@ -355,121 +335,150 @@ include 'core/sidebar.php';
     box-sizing: border-box;
     font-size: 0.76rem;
 }
+.menu-custom-link-form .btn-smack {
+    font-size: 0.72rem;
+    padding: 4px 10px;
+}
 
-/* ── MENU LIST (the main drop canvas) ── */
+/* ── CURRENT MENU PANEL (right column) ── */
+.menu-current-panel { flex: 1; min-width: 340px; }
+
+/* Drop canvas */
 .menu-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
     min-height: 80px;
     padding: 8px;
-    background: #13131e;
-    border: 2px dashed #3a3a52;
-    border-radius: 6px;
+    background: rgba(0,0,0,0.3);
+    border: 2px dashed rgba(255,255,255,0.2);
+    border-radius: 5px;
 }
 .menu-list.drag-over {
-    border-color: var(--accent);
-    background: #1a1a2a;
+    border-color: rgba(255,255,255,0.5);
+    background: rgba(0,0,0,0.2);
 }
 
-/* ── TOP-LEVEL CARD ── */
+/* ── TOP-LEVEL ITEM CARD ── */
 .menu-item-row {
-    border: 1px solid #3a3a52;
-    border-left: 4px solid var(--accent);
-    border-radius: 5px;
-    padding: 0;
-    background: #1e1e30;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-left: 4px solid rgba(255,255,255,0.5);
+    border-radius: 4px;
+    background: rgba(255,255,255,0.09);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.35);
 }
 
-/* ── ITEM BAR ── */
+/* ── ITEM BAR (the draggable strip) ── */
 .menu-item-main {
     display: flex;
     align-items: center;
     gap: 8px;
-    border-radius: 4px 4px 0 0;
     padding: 9px 10px;
     cursor: grab;
     user-select: none;
     font-size: 0.82rem;
-    background: #262638;
-    color: #e0e0e0;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px 3px 0 0;
     transition: background 0.1s;
 }
-.menu-item-main:hover { background: #2e2e46; }
-.menu-item-main.dragging { opacity: 0.3; }
-.menu-item-main.drop-target-above { box-shadow: 0 -3px 0 var(--accent); }
+.menu-item-main:hover { background: rgba(255,255,255,0.12); }
+.menu-item-main.dragging { opacity: 0.25; }
+.menu-item-main.drop-target-above { box-shadow: 0 -3px 0 rgba(255,255,255,0.6); }
 
-/* ── CHILDREN sublist ── */
+/* ── CHILDREN SUBLIST ── */
 .menu-children-list {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 6px 8px 6px 28px;
-    background: #191926;
-    border-top: 1px solid #2e2e46;
-    min-height: 36px;
+    gap: 5px;
+    padding: 8px 8px 8px 30px;
+    background: rgba(0,0,0,0.2);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    min-height: 38px;
 }
 .menu-children-list.drag-over {
-    background: #1e1e32;
-    outline: 2px dashed var(--accent);
+    outline: 2px dashed rgba(255,255,255,0.4);
     outline-offset: -3px;
+}
+.menu-children-list.empty-children {
+    display: flex;
+    align-items: center;
+    min-height: 36px;
 }
 
 /* Child item bar */
-.menu-children-list .menu-item-main {
+.menu-item-main.depth-1 {
     font-size: 0.78rem;
     padding: 7px 10px;
-    background: #232336;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.14);
     border-radius: 4px;
-    border: 1px solid #35355a;
-    color: #ccc;
 }
-.menu-children-list .menu-item-main:hover { background: #2a2a42; color: #e0e0e0; }
+.menu-item-main.depth-1:hover { background: rgba(255,255,255,0.14); }
 
-/* Empty drop zone inside children area */
-.menu-children-list.empty-children {
-    min-height: 34px;
+/* ── GRANDCHILDREN ZONE ── */
+.menu-grandchildren-list {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 5px;
+    margin-left: 16px;
+    padding: 6px 8px;
+    background: rgba(0,0,0,0.2);
+    border: 1px dashed rgba(255,255,255,0.18);
+    border-radius: 4px;
+    min-height: 34px;
 }
+.menu-grandchildren-list.drag-over {
+    border-color: rgba(255,255,255,0.45);
+    background: rgba(0,0,0,0.1);
+}
+.menu-item-main.depth-2 {
+    font-size: 0.75rem;
+    padding: 6px 10px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 4px;
+}
+.menu-item-main.depth-2:hover { background: rgba(255,255,255,0.12); }
+
+/* Empty drop hint */
 .menu-empty-drop-hint {
-    font-size: 0.68rem;
-    color: #666;
+    font-size: 0.67rem;
     text-transform: uppercase;
     letter-spacing: 0.8px;
-    padding: 4px 8px;
-    border: 1px dashed #3a3a52;
+    opacity: 0.4;
+    padding: 5px 8px;
+    border: 1px dashed rgba(255,255,255,0.3);
     border-radius: 3px;
     pointer-events: none;
     width: 100%;
     text-align: center;
+    box-sizing: border-box;
 }
 
-/* ── ITEM PARTS ── */
+/* ── ITEM PART ELEMENTS ── */
 .menu-item-position {
     font-size: 0.65rem;
-    color: #666;
+    opacity: 0.4;
     min-width: 18px;
     text-align: right;
     flex-shrink: 0;
 }
 .menu-item-drag-handle {
-    color: #666;
+    opacity: 0.4;
     cursor: grab;
     font-size: 1rem;
     flex-shrink: 0;
-    transition: color 0.1s;
+    transition: opacity 0.1s;
 }
-.menu-item-main:hover .menu-item-drag-handle { color: #aaa; }
+.menu-item-main:hover .menu-item-drag-handle { opacity: 0.8; }
 .menu-item-label { flex: 1; font-weight: 600; letter-spacing: 0.3px; }
 .menu-item-type-badge {
     font-size: 0.6rem;
-    color: #fff;
-    background: #3a3a60;
-    border: 1px solid #5a5a90;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
     border-radius: 3px;
-    padding: 2px 6px;
+    padding: 2px 7px;
     text-transform: uppercase;
     letter-spacing: 0.8px;
     flex-shrink: 0;
@@ -479,58 +488,20 @@ include 'core/sidebar.php';
 .menu-item-actions button {
     background: none;
     border: none;
-    color: #777;
+    color: inherit;
+    opacity: 0.45;
     cursor: pointer;
     padding: 3px 6px;
     font-size: 0.9rem;
     border-radius: 3px;
     line-height: 1;
-    transition: color 0.1s, background 0.1s;
+    transition: opacity 0.1s, background 0.1s;
 }
-.menu-item-actions button:hover { color: var(--accent); background: rgba(255,255,255,0.06); }
-.menu-item-actions .btn-remove:hover { color: #e05252; }
+.menu-item-actions button:hover { opacity: 1; background: rgba(255,255,255,0.08); }
+.menu-item-actions .btn-remove:hover { color: #e05252; opacity: 1; }
+.menu-child-row { margin-top: 3px; }
 
-.menu-child-row {
-    margin-top: 2px;
-}
-
-/* ── GRANDCHILDREN zone ── */
-.menu-grandchildren-list {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    margin-top: 4px;
-    margin-left: 16px;
-    padding: 5px 8px;
-    background: #161622;
-    border: 1px dashed #35355a;
-    border-radius: 4px;
-    min-height: 32px;
-}
-.menu-grandchildren-list.drag-over {
-    border-color: var(--accent);
-    background: #1c1c2e;
-}
-.menu-item-main.depth-1 {
-    font-size: 0.78rem;
-    padding: 7px 10px;
-    background: #232336;
-    border-radius: 4px;
-    border: 1px solid #35355a;
-    color: #ccc;
-}
-.menu-item-main.depth-1:hover { background: #2a2a42; color: #e0e0e0; }
-.menu-item-main.depth-2 {
-    font-size: 0.74rem;
-    padding: 6px 10px;
-    background: #1e1e30;
-    border-radius: 4px;
-    border: 1px solid #2e2e50;
-    color: #bbb;
-}
-.menu-item-main.depth-2:hover { background: #252540; color: #ddd; }
-
-/* ── INACTIVE BADGE ── */
+/* ── INACTIVE / ACTIVE TOGGLE ── */
 .menu-item-inactive-badge {
     font-size: 0.6rem;
     text-transform: uppercase;
@@ -542,25 +513,21 @@ include 'core/sidebar.php';
     flex-shrink: 0;
     font-weight: 700;
 }
-.btn-toggle-active.btn-inactive { opacity: 0.35; }
+.btn-toggle-active.btn-inactive { opacity: 0.3; }
 
-.menu-hint {
-    font-size: 0.72rem;
-    color: #666;
-    margin-top: 10px;
-}
+/* ── INLINE LABEL EDIT ── */
 .menu-item-label-edit {
     font-size: 0.8rem;
     padding: 3px 7px;
-    border: 1px solid var(--accent);
+    border: 1px solid rgba(255,255,255,0.4);
     border-radius: 3px;
-    background: #13131e;
-    color: #e0e0e0;
+    background: rgba(0,0,0,0.3);
+    color: inherit;
     flex: 1;
 }
 .menu-empty-hint {
     font-size: 0.78rem;
-    color: #555;
+    opacity: 0.4;
     text-align: center;
     padding: 16px 6px;
     pointer-events: none;
