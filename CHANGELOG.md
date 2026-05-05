@@ -15,6 +15,21 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.43 — “Ottoman” (2026-05-05)
+
+### Added
+- **Configurable archive search field placeholder** (`migrations/050_search_placeholder.php`) — new `search_placeholder` setting in `snap_settings` so each install can label the archive search box independently. Useful for multi-blog domains where one blog wants "Search articles" and another wants "Search photos". Wired into `archive.php` and `skins/photogram/search.php`. Exposed in **Settings → Site Identity & Branding** as **SEARCH FIELD LABEL**. Default: "Search or #tag…".
+- **Floating gallery wall enabled on three more skins** — `rational-geo`, `photogram`, `impact-printer` now have `supports_wall: true`. The wall engine is skin-agnostic; each skin gained a `--wall-bg` CSS variable (default `#000000`). Skin versions bumped: rational-geo 1.1→1.2, photogram 1.0→1.1, impact-printer 1.1→1.2. Galleria intentionally excluded — uses its own texture-based wall.
+- **Restored `smack-menu.php` and nav engine JS** — `smack-menu.php`, `assets/js/ss-engine-menu-builder.js`, and `assets/js/ss-engine-nav-dropdown.js` were lost from disk during a prior git index corruption incident. Restored from history (commits `d2b1da5`, `6cfdbda`). The Menu Manager UI builds a `nav_menu_json` setting; the public renderer to consume it is deferred to a future release. Existing flat-nav rendering in `core/header.php` is unchanged.
+
+### Changed
+- **EOF marker convention upgraded to long-form `===== SNAPSMACK EOF =====`** with `SNAPSMACK_EOF_HEADER` block near the top of every tracked source file. Old `// EOF` short form is retired; `tools/check-eof.py` now requires both header tag and long-form bottom marker. Migration applied via `tools/migrate-eof-marker.py` (one-shot script, retained for reference). Scope extended from PHP/JS/CSS to also include HTML/HTM/MD/SQL/PY/SH. 517 files now carry both sentinels. Rationale: greppability (long form is collision-free), anti-forgery (a partial-write can't accidentally leave a valid short-form marker), self-description (each file's top header names the marker future readers should expect at the bottom — no recall of external rules required). Rationale and per-extension forms documented in `CLAUDE.md`.
+
+### Fixed
+- **Migration commit recovery** — Cowork-session changes to `smack-settings.php`, `smack-appearance-archive.php`, `skins/50-shades-of-noah-grey/archive-layout.php`, `skins/rational-geo/archive-layout.php`, and `skins/50-shades-of-noah-grey/manifest.php` (API key UI sizing, dead TILE BORDER & SHADOW box removal, data-driven archive layout toggle, settings-key correction, manifest section move) were stuck behind a stale `.git/index.lock`. Lock cleared, changes committed. No code logic changed in this release relative to those fixes.
+
+---
+
 ## 0.7.42 — “Recliner” (2026-05-04)
 
 ### Fixed
