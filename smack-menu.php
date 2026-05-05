@@ -281,16 +281,16 @@ include 'core/sidebar.php';
     align-items: flex-start;
 }
 .menu-pool-panel {
-    width: 220px;
+    width: 230px;
     flex-shrink: 0;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
+    background: #1c1c28;
+    border: 1px solid #3a3a52;
     border-radius: 6px;
     padding: 14px;
 }
 .menu-current-panel {
     flex: 1;
-    min-width: 300px;
+    min-width: 340px;
 }
 .menu-panel-title {
     font-weight: 700;
@@ -308,9 +308,9 @@ include 'core/sidebar.php';
     font-size: 0.68rem;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: var(--text-dim);
+    color: #888;
     margin-bottom: 5px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #3a3a52;
     padding-bottom: 3px;
 }
 .menu-pool-list {
@@ -323,16 +323,17 @@ include 'core/sidebar.php';
     display: flex;
     align-items: center;
     gap: 6px;
-    background: var(--bg-primary);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    padding: 5px 8px;
+    background: #252535;
+    border: 1px solid #3a3a52;
+    border-radius: 4px;
+    padding: 6px 8px;
     font-size: 0.76rem;
     cursor: grab;
     user-select: none;
-    transition: border-color 0.1s;
+    transition: border-color 0.12s, background 0.12s;
+    color: #ccc;
 }
-.menu-pool-item:hover { border-color: var(--accent); }
+.menu-pool-item:hover { border-color: var(--accent); background: #2d2d42; color: #fff; }
 .menu-pool-item .pool-add-btn {
     margin-left: auto;
     background: none;
@@ -355,156 +356,181 @@ include 'core/sidebar.php';
     font-size: 0.76rem;
 }
 
-/* ── MENU LIST ── */
+/* ── MENU LIST (the main drop canvas) ── */
 .menu-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    min-height: 60px;
-    padding: 6px;
-    background: var(--bg-secondary);
-    border: 2px dashed var(--border);
+    gap: 8px;
+    min-height: 80px;
+    padding: 8px;
+    background: #13131e;
+    border: 2px dashed #3a3a52;
     border-radius: 6px;
 }
 .menu-list.drag-over {
     border-color: var(--accent);
-    background: rgba(255,255,255,0.02);
+    background: #1a1a2a;
 }
 
-/* ── TOP-LEVEL ROW — the card wrapping item + children ── */
+/* ── TOP-LEVEL CARD ── */
 .menu-item-row {
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--accent);
-    border-radius: 4px;
-    padding: 6px 6px 6px 8px;
-    background: var(--bg-primary);
+    border: 1px solid #3a3a52;
+    border-left: 4px solid var(--accent);
+    border-radius: 5px;
+    padding: 0;
+    background: #1e1e30;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
 }
-.menu-item-row:hover { border-left-color: var(--accent); }
 
 /* ── ITEM BAR ── */
 .menu-item-main {
     display: flex;
     align-items: center;
     gap: 8px;
-    border-radius: 3px;
-    padding: 6px 8px;
+    border-radius: 4px 4px 0 0;
+    padding: 9px 10px;
     cursor: grab;
     user-select: none;
-    font-size: 0.8rem;
-    background: transparent;
+    font-size: 0.82rem;
+    background: #262638;
+    color: #e0e0e0;
+    transition: background 0.1s;
 }
-.menu-item-main.dragging { opacity: 0.35; }
-.menu-item-main.drop-target-above { box-shadow: 0 -2px 0 var(--accent); }
+.menu-item-main:hover { background: #2e2e46; }
+.menu-item-main.dragging { opacity: 0.3; }
+.menu-item-main.drop-target-above { box-shadow: 0 -3px 0 var(--accent); }
 
 /* ── CHILDREN sublist ── */
 .menu-children-list {
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    margin-top: 4px;
-    margin-left: 22px;
-    padding: 3px 6px;
-    border-left: 2px solid var(--border);
-    border-radius: 0 3px 3px 0;
-    min-height: 10px;
-}
-.menu-children-list.has-children {
-    padding: 5px 6px;
-    background: rgba(255,255,255,0.02);
+    gap: 4px;
+    padding: 6px 8px 6px 28px;
+    background: #191926;
+    border-top: 1px solid #2e2e46;
+    min-height: 36px;
 }
 .menu-children-list.drag-over {
-    border-left-color: var(--accent);
-    background: rgba(255,255,255,0.03);
+    background: #1e1e32;
+    outline: 2px dashed var(--accent);
+    outline-offset: -3px;
 }
-/* Child items: slightly dimmer/smaller */
+
+/* Child item bar */
 .menu-children-list .menu-item-main {
-    font-size: 0.76rem;
-    padding: 4px 8px;
-    background: var(--bg-secondary);
-    border-radius: 3px;
+    font-size: 0.78rem;
+    padding: 7px 10px;
+    background: #232336;
+    border-radius: 4px;
+    border: 1px solid #35355a;
+    color: #ccc;
 }
-/* The thin "drop here" hint when no children */
+.menu-children-list .menu-item-main:hover { background: #2a2a42; color: #e0e0e0; }
+
+/* Empty drop zone inside children area */
 .menu-children-list.empty-children {
-    min-height: 10px;
-    padding: 0 6px;
+    min-height: 34px;
+    display: flex;
+    align-items: center;
 }
 .menu-empty-drop-hint {
-    font-size: 0.65rem;
-    color: var(--text-dim);
-    opacity: 0.5;
-    padding: 3px 0;
+    font-size: 0.68rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 4px 8px;
+    border: 1px dashed #3a3a52;
+    border-radius: 3px;
     pointer-events: none;
+    width: 100%;
+    text-align: center;
 }
 
 /* ── ITEM PARTS ── */
 .menu-item-position {
     font-size: 0.65rem;
-    color: var(--text-dim);
-    min-width: 16px;
+    color: #666;
+    min-width: 18px;
     text-align: right;
     flex-shrink: 0;
 }
 .menu-item-drag-handle {
-    color: var(--text-dim);
+    color: #666;
     cursor: grab;
-    font-size: 0.85rem;
+    font-size: 1rem;
     flex-shrink: 0;
+    transition: color 0.1s;
 }
-.menu-item-label { flex: 1; font-weight: 600; }
+.menu-item-main:hover .menu-item-drag-handle { color: #aaa; }
+.menu-item-label { flex: 1; font-weight: 600; letter-spacing: 0.3px; }
 .menu-item-type-badge {
-    font-size: 0.62rem;
-    color: var(--text-dim);
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
+    font-size: 0.6rem;
+    color: #fff;
+    background: #3a3a60;
+    border: 1px solid #5a5a90;
     border-radius: 3px;
-    padding: 1px 5px;
+    padding: 2px 6px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.8px;
     flex-shrink: 0;
+    font-weight: 700;
 }
 .menu-item-actions { display: flex; gap: 2px; }
 .menu-item-actions button {
     background: none;
     border: none;
-    color: var(--text-dim);
+    color: #777;
     cursor: pointer;
-    padding: 2px 5px;
-    font-size: 0.85rem;
+    padding: 3px 6px;
+    font-size: 0.9rem;
     border-radius: 3px;
     line-height: 1;
+    transition: color 0.1s, background 0.1s;
 }
-.menu-item-actions button:hover { color: var(--accent); background: var(--bg-secondary); }
+.menu-item-actions button:hover { color: var(--accent); background: rgba(255,255,255,0.06); }
 .menu-item-actions .btn-remove:hover { color: #e05252; }
 
 .menu-child-row {
     margin-top: 2px;
 }
 
-/* Grandchildren zone */
+/* ── GRANDCHILDREN zone ── */
 .menu-grandchildren-list {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    margin-top: 3px;
-    margin-left: 44px;
-    padding: 2px 6px;
-    border-left: 2px dashed var(--border);
-    min-height: 8px;
-}
-.menu-grandchildren-list.has-children {
-    padding: 4px 6px;
-    background: rgba(255,255,255,0.01);
+    gap: 3px;
+    margin-top: 4px;
+    margin-left: 16px;
+    padding: 5px 8px;
+    background: #161622;
+    border: 1px dashed #35355a;
+    border-radius: 4px;
+    min-height: 32px;
 }
 .menu-grandchildren-list.drag-over {
-    border-left-color: var(--accent);
-    background: rgba(255,255,255,0.03);
+    border-color: var(--accent);
+    background: #1c1c2e;
 }
+.menu-item-main.depth-1 {
+    font-size: 0.78rem;
+    padding: 7px 10px;
+    background: #232336;
+    border-radius: 4px;
+    border: 1px solid #35355a;
+    color: #ccc;
+}
+.menu-item-main.depth-1:hover { background: #2a2a42; color: #e0e0e0; }
+.menu-item-main.depth-2 {
+    font-size: 0.74rem;
+    padding: 6px 10px;
+    background: #1e1e30;
+    border-radius: 4px;
+    border: 1px solid #2e2e50;
+    color: #bbb;
+}
+.menu-item-main.depth-2:hover { background: #252540; color: #ddd; }
 
-/* Depth-based item bar sizing */
-.menu-item-main.depth-1 { font-size: 0.76rem; padding: 4px 8px; background: var(--bg-secondary); border-radius: 3px; }
-.menu-item-main.depth-2 { font-size: 0.72rem; padding: 3px 8px; background: var(--bg-secondary); border-radius: 3px; opacity: 0.9; }
-
-/* Inactive badge */
+/* ── INACTIVE BADGE ── */
 .menu-item-inactive-badge {
     font-size: 0.6rem;
     text-transform: uppercase;
@@ -512,33 +538,31 @@ include 'core/sidebar.php';
     color: #e05252;
     border: 1px solid #e05252;
     border-radius: 3px;
-    padding: 1px 4px;
+    padding: 1px 5px;
     flex-shrink: 0;
+    font-weight: 700;
 }
-
-/* Active toggle dimmed state */
-.btn-toggle-active.btn-inactive { opacity: 0.3; }
+.btn-toggle-active.btn-inactive { opacity: 0.35; }
 
 .menu-hint {
     font-size: 0.72rem;
-    color: var(--text-dim);
-    margin-top: 8px;
-    opacity: 0.7;
+    color: #666;
+    margin-top: 10px;
 }
 .menu-item-label-edit {
-    font-size: 0.78rem;
-    padding: 2px 6px;
+    font-size: 0.8rem;
+    padding: 3px 7px;
     border: 1px solid var(--accent);
     border-radius: 3px;
-    background: var(--bg-primary);
-    color: inherit;
+    background: #13131e;
+    color: #e0e0e0;
     flex: 1;
 }
 .menu-empty-hint {
-    font-size: 0.76rem;
-    color: var(--text-dim);
+    font-size: 0.78rem;
+    color: #555;
     text-align: center;
-    padding: 12px 6px;
+    padding: 16px 6px;
     pointer-events: none;
 }
 </style>
