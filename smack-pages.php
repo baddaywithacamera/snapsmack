@@ -6,6 +6,16 @@
  * Automatically converts plain text to HTML with paragraph wrapping.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 require_once 'core/auth.php';
 
 // --- PLAIN TEXT TO HTML CONVERTER ---
@@ -299,4 +309,4 @@ include 'core/sidebar.php';
 <script src="assets/js/smack-asset-picker.js"></script>
 <script src="assets/js/shortcode-toolbar.js"></script>
 <?php include 'core/admin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

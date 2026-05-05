@@ -8,6 +8,16 @@
  * Only one section is open at a time.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 $current_page = basename($_SERVER['PHP_SELF']);
 
 // --- UI MODE ---
@@ -261,4 +271,4 @@ foreach ($_section_map as $sec => $_sec_pages) {
         <div class="credits-admin">&copy; 2026 Sean McCormick</div>
     </div>
 </div>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

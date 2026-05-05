@@ -9,6 +9,15 @@
  *
  * $settings is available from the calling template.
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 ?>
 <header class="tg-topbar">
     <div class="tg-topbar-inner">
@@ -17,4 +26,4 @@
         </a>
     </div>
 </header>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

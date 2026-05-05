@@ -8,6 +8,14 @@
  * after 3 declines.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 function migration_035(PDO $pdo): void {
 
     $seeds = [
@@ -32,4 +40,4 @@ function migration_035(PDO $pdo): void {
         $stmt->execute([$key, $val]);
     }
 }
-// EOF
+// ===== SNAPSMACK EOF =====

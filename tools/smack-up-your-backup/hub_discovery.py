@@ -8,6 +8,12 @@ already in the multisite network, can also query them via the multisite
 API (Bearer token) to fetch their backup config.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import json
 import requests
 from typing import Dict, List, Optional, Tuple
@@ -218,3 +224,4 @@ def _name_from_url(url: str) -> str:
     from urllib.parse import urlparse
     host = urlparse(url).hostname or url
     return host.replace("www.", "")
+# ===== SNAPSMACK EOF =====

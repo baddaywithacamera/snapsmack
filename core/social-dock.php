@@ -10,6 +10,14 @@
  * Included by core/footer-scripts.php. Settings from snap_settings.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // Bail if dock is disabled
 if (empty($settings['social_dock_enabled']) || $settings['social_dock_enabled'] !== '1') {
     return;
@@ -199,4 +207,4 @@ $_dock_style = implode('; ', [
         </a>
     <?php endforeach; ?>
 </div>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

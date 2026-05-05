@@ -7,6 +7,14 @@
  * Supports a featured image (from any post) used in gallery and collection views.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 
 if (!isset($settings)) {
@@ -333,4 +341,4 @@ document.getElementById('featured-modal').addEventListener('click', function (e)
     if (e.target === this) closeFeaturedPicker();
 });
 </script>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

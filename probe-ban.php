@@ -9,6 +9,14 @@
  * Accessed only via RewriteRule — never directly by legitimate visitors.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // Bootstrap DB (defines $pdo)
 require_once __DIR__ . '/core/db.php';
 
@@ -36,4 +44,4 @@ if ($ip && $ip !== '0.0.0.0') {
 
 http_response_code(403);
 exit;
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -8,6 +8,14 @@
  * one-time token. The spoke validates the token and creates a session.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 
 // --- HUB GUARD ---
@@ -108,4 +116,4 @@ function sso_hub_fail(string $reason, ?array $spoke): void {
     include 'core/admin-footer.php';
     exit;
 }
-// EOF
+// ===== SNAPSMACK EOF =====

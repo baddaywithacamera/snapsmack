@@ -10,6 +10,14 @@
  * No external dependencies — vanilla PHP 8.0+ with GD.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 class SnapSmackRecovery {
 
     private PDO $pdo;
@@ -679,4 +687,4 @@ class SnapSmackRecovery {
         flush();
     }
 }
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -7,6 +7,14 @@
  * full-resolution upload is not touched — only the web copy and thumbs.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once __DIR__ . '/auth.php';
 
 header('Content-Type: application/json');
@@ -120,4 +128,4 @@ echo json_encode([
     'width'  => $new_w,
     'height' => $new_h,
 ]);
-// EOF
+// ===== SNAPSMACK EOF =====

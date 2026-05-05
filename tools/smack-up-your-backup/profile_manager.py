@@ -4,6 +4,14 @@ Blog profile CRUD. One JSON file per blog in profiles/.
 Passwords are base64-obfuscated (not encrypted) — matches SYBU convention.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
+
+
 import base64
 import json
 import os
@@ -139,3 +147,4 @@ def duplicate_profile(name: str, new_name: str) -> Optional[Dict]:
     profile["last_backup_date"] = ""
     save_profile(profile)
     return profile
+# ===== SNAPSMACK EOF =====

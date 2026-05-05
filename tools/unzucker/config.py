@@ -7,6 +7,12 @@ Passwords (site + FTP) are stored base64-obfuscated — not encrypted,
 just not plaintext at a glance.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import base64
 import configparser
 import os
@@ -115,3 +121,4 @@ def save(data: dict) -> None:
 
     with open(_config_path(), 'w') as f:
         cfg.write(f)
+# ===== SNAPSMACK EOF =====

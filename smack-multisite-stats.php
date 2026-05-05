@@ -8,6 +8,14 @@
  * referrers across the entire network.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 
@@ -295,4 +303,4 @@ include 'core/sidebar.php';
 </div>
 
 <?php include 'core/admin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

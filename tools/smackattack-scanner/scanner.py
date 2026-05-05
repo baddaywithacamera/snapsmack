@@ -4,6 +4,12 @@ Python port of core/ste-style.php v1 (25-dimension stylometric vector).
 Matches the PHP implementation exactly so vectors are interoperable.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import math
 import re
 from typing import Optional
@@ -181,3 +187,4 @@ def similarity_colour(sim: float) -> str:
     if sim >= 0.70: return '#D4872A'
     if sim >= 0.55: return '#D4D400'
     return '#4EC994'
+# ===== SNAPSMACK EOF =====

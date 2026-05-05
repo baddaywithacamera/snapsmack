@@ -4,6 +4,16 @@
  * Alpha v0.7.8
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 return [
 
     'skin-overview-kiosk' => [
@@ -44,4 +54,4 @@ HTML
     ],
 
 ];
-// EOF
+// ===== SNAPSMACK EOF =====

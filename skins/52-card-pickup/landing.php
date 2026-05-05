@@ -7,6 +7,14 @@
  * Variables available from index.php: $pdo, $settings, $img, $active_skin, $site_name
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // ── AJAX endpoint: return random images as JSON ──────────────────────────
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'pile') {
     header('Content-Type: application/json');
@@ -73,4 +81,4 @@ $reshuffle_label   = $settings['htbs_reshuffle_label'] ?? 'Reshuffle';
 </button>
 
 <?php include('skin-footer.php'); ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

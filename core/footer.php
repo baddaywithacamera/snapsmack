@@ -8,6 +8,14 @@
  * dynamically between visible slots only. Styling is driven by the active skin.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // --- VERSION STRING ---
 // Pull version constant if available, otherwise fall back to default
 $version_str = defined('SNAPSMACK_VERSION') ? SNAPSMACK_VERSION : 'Alpha 0.7';
@@ -123,4 +131,4 @@ $slots[] = '<a href="' . $rss_url . '" class="footer-link rss-tag" title="RSS Fe
         </div>
     </div>
 </footer>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

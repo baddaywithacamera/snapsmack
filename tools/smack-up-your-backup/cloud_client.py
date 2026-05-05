@@ -15,6 +15,12 @@ No OAuth needed for B2 — just paste the keys.
 Microsoft OneDrive is NOT supported. Use Box or B2.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import json
 import os
 from typing import Callable, List, Optional
@@ -935,3 +941,4 @@ class B2Client:
     # B2 is only used in cloud sync jobs, not backup profiles.
     # Sync jobs call B2Client(key_id, app_key, bucket_name) directly.
     return None
+# ===== SNAPSMACK EOF =====

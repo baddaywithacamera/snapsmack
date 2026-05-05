@@ -6,6 +6,14 @@
  * brute-force detection system in snap-in.php.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 $migration_name = '045_login_protection';
 
 // Already applied?
@@ -29,4 +37,4 @@ $pdo->exec("
 
 $ins = $pdo->prepare("INSERT IGNORE INTO snap_migrations (migration_name, applied_at) VALUES (?, NOW())");
 $ins->execute([$migration_name]);
-// EOF
+// ===== SNAPSMACK EOF =====

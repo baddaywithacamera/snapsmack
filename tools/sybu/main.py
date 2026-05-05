@@ -5,6 +5,12 @@ Admin-styled desktop app with thumbnail queue, drag reorder,
 per-row category/album editing, and Google Drive upload.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 BUILD_VERSION = "0.7.9e"   # bump this on every rebuild
 
 # ---------------------------------------------------------------------------
@@ -4085,3 +4091,4 @@ class App(tk.Tk):
 if __name__ == "__main__":
     app = App()
     app.mainloop()
+# ===== SNAPSMACK EOF =====

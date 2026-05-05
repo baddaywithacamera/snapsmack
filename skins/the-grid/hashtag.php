@@ -7,6 +7,14 @@
  * $requested_tag is set and validated by index.php before inclusion.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 $tag_slug    = $requested_tag;
 $tag_display = '#' . $tag_slug;
 
@@ -115,4 +123,4 @@ $has_more = ($offset + count($grid_posts)) < $total_count;
 </div><!-- /#tg-app -->
 
 <?php include('skin-footer.php'); ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

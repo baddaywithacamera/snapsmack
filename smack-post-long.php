@@ -7,6 +7,14 @@
  * media library. Categories, albums, and tags all supported.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 require_once 'core/snap-tags.php';
 
@@ -746,4 +754,4 @@ document.getElementById('hero-picker-modal').addEventListener('click', function 
     if (e.target === this) closeHeroPicker();
 });
 </script>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

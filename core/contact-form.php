@@ -11,6 +11,14 @@
  */
 
 /**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+/**
  * Processes the contact form if submitted. Returns HTML for the form.
  *
  * @param PDO    $pdo       Database connection
@@ -126,4 +134,4 @@ function _snapsmack_contact_process(string $admin_email, string $site_name): str
         return '<div class="contact-error">Message could not be sent. Please try emailing directly.</div>';
     }
 }
-// EOF
+// ===== SNAPSMACK EOF =====

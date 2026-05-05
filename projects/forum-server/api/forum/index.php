@@ -32,6 +32,14 @@
  *   PATCH  installs/me                        Update display_name when blog name changes
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once __DIR__ . '/config.php';
 
 // ── Headers ───────────────────────────────────────────────────────────────────
@@ -1292,4 +1300,4 @@ if ($method === 'PATCH' && $path === 'installs/me') {
 // 404 — no route matched
 // ─────────────────────────────────────────────────────────────────────────────
 api_error(404, 'NOT_FOUND', 'Endpoint not found.');
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -5,6 +5,14 @@
  * Displayed when a requested page or image does not exist.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 http_response_code(404);
 $page_title = '404 - Not Found';
 ?>
@@ -120,4 +128,4 @@ $page_title = '404 - Not Found';
 </div>
 </body>
 </html>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

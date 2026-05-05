@@ -11,6 +11,16 @@
  * already present, the migration is a no-op.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 $migration_name = '048_calendar_layout';
 
 try {
@@ -51,4 +61,4 @@ try {
 } catch (PDOException $e) {
     return ['status' => 'error', 'message' => $e->getMessage()];
 }
-// EOF
+// ===== SNAPSMACK EOF =====

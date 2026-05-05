@@ -14,6 +14,14 @@ Schedule is stored per-profile:
     last_scheduled_run str   — ISO-8601 timestamp of last auto-run
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
+
+
 import threading
 from datetime import datetime, date, timedelta
 from typing import Callable, List, Optional
@@ -139,3 +147,4 @@ class BackupScheduler:
             day = profile.get("schedule_day", "monday").capitalize()
             return f"Weekly — {day} at {t}"
         return f"Daily at {t}"
+# ===== SNAPSMACK EOF =====

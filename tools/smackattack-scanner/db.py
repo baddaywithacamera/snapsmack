@@ -3,6 +3,12 @@ GOBSMACKED Scanner — db.py
 Database operations: fetch comments, fetch banned vectors, upload reports.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import hashlib
 import json
 from typing import Optional
@@ -168,3 +174,4 @@ def mark_reviewed(conn, row_id: int) -> None:
     with conn.cursor() as cur:
         cur.execute("UPDATE snap_gobsmacked_scan SET reviewed = 1 WHERE id = %s", (row_id,))
     conn.commit()
+# ===== SNAPSMACK EOF =====

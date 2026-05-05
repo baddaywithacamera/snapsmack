@@ -4,6 +4,12 @@ Three-way audit: manifest vs FTP filesystem vs database image records.
 Produces a categorised AuditReport with wrong-location detection.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import os
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
@@ -208,3 +214,4 @@ class AuditEngine:
 
         self.on_progress("done", "Audit complete.", 1.0)
         return report
+# ===== SNAPSMACK EOF =====

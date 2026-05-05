@@ -7,6 +7,14 @@
  * $cat_filter, $album_filter, $archive_layout
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 $row_height = (int)($settings['htbs_grid_row_height'] ?? 280);
 ?>
 
@@ -32,4 +40,4 @@ $row_height = (int)($settings['htbs_grid_row_height'] ?? 280);
         <?php endif; ?>
     </div>
 </div>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

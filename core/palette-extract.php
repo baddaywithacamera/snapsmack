@@ -11,6 +11,14 @@
  */
 
 /**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+/**
  * Extracts a colour palette from an image file.
  *
  * @param string $image_path Path to the image file (JPEG, PNG, or WebP)
@@ -167,4 +175,4 @@ function snapsmack_extract_palette(string $image_path, int $count = 5): array {
     return $palette;
 }
 ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

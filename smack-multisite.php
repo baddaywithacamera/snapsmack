@@ -6,6 +6,16 @@
  * multi-site configurations, register new spokes, and monitor their status.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 require_once 'core/auth.php';
 
 // --- FORM SUBMISSION HANDLERS ---
@@ -747,4 +757,4 @@ include 'core/sidebar.php';
 </div>
 
 <?php require_once 'core/admin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

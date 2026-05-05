@@ -20,6 +20,14 @@
  *   type=kit              → Content-Type: application/x-gzip, streamed as download
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 require_once 'core/export-engine.php';
 
@@ -71,4 +79,4 @@ header('Content-Disposition: attachment; filename="' . $filename . '"');
 header('Content-Length: ' . strlen($sql));
 echo $sql;
 exit;
-// EOF
+// ===== SNAPSMACK EOF =====

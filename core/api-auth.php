@@ -17,6 +17,14 @@
  * and falls through to session auth.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once __DIR__ . '/db.php';
 
 $_x_snap_key = trim($_SERVER['HTTP_X_SNAP_KEY'] ?? '');
@@ -53,4 +61,4 @@ unset($_x_snap_key);
 
 // No key header — fall through to standard session auth.
 require_once __DIR__ . '/auth.php';
-// EOF
+// ===== SNAPSMACK EOF =====

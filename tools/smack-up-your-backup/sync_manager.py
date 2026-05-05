@@ -4,6 +4,14 @@ Cloud-to-cloud sync job CRUD. One JSON file per job in sync_jobs/.
 Mirrors profile_manager.py conventions exactly.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
+
+
 import json
 import os
 import sys
@@ -90,3 +98,4 @@ def new_job_template() -> Dict:
         "last_files_synced":       0,
         "last_bytes_synced":       0,
     }
+# ===== SNAPSMACK EOF =====

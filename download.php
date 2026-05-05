@@ -7,6 +7,14 @@
  * Global and per-image kill switches available for download control.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once __DIR__ . '/core/db.php';
 
 // --- REQUEST VALIDATION ---
@@ -80,4 +88,4 @@ header('X-Content-Type-Options: nosniff');
 
 readfile($file_path);
 exit;
-// EOF
+// ===== SNAPSMACK EOF =====

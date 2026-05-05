@@ -8,6 +8,18 @@
  * and overrides defaults via the same :root variables.
  */
 
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 /* ==========================================================================
    CUSTOM PROPERTY DEFAULTS
    Override these via the skin settings panel (compiled CSS blob).
@@ -589,4 +601,4 @@ img { display: block; max-width: 100%; }
 .tg-hashtag:hover {
     text-decoration: underline;
 }
-/* EOF */
+/* ===== SNAPSMACK EOF ===== */

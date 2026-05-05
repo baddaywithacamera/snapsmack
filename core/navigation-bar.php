@@ -7,6 +7,14 @@
  * settings. Chevrons appear on the outer edges for mobile responsiveness.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // --- COMMENTS VISIBILITY LOGIC ---
 // Comments are shown only if both the global setting AND the individual post
 // setting are enabled
@@ -60,4 +68,4 @@ $show_comments = ($global_on && $post_on);
         <?php endif; ?>
     </span>
 </div>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

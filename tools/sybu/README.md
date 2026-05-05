@@ -1,3 +1,14 @@
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF
+  marker for this file type: an HTML comment containing five
+  equals, space, the literal string 'SNAPSMACK EOF', space, five
+  equals.
+  (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS.)
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+
+
 # ft-batch-poster
 
 Batch posting tool for foundtextures.ca (SnapSmack). Takes a folder of images
@@ -37,3 +48,4 @@ Output: `dist\ft-batch-poster.exe` — single file, no install required.
 | `config.py` | Reads/writes `config.ini` |
 | `build.bat` | PyInstaller build script |
 | `requirements.txt` | Python dependencies |
+<!-- ===== SNAPSMACK EOF ===== -->

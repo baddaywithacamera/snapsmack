@@ -14,6 +14,12 @@ This is distinct from AuditEngine, which audits the *live server*.
 Coverage checks what actually landed in your *local backup archives*.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import os
 import shutil
 import tempfile
@@ -364,3 +370,4 @@ class DedupeEngine:
                 ok              = False,
                 error           = str(e),
             )
+# ===== SNAPSMACK EOF =====

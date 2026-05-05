@@ -13,6 +13,15 @@
  * LOAD ORDER: Consent engine FIRST — other engines check snapConsent.ok()
  * before writing to localStorage/sessionStorage.
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 ?>
 
 <?php // --- CONSENT ENGINE (must load before any storage-writing scripts) --- ?>
@@ -36,4 +45,4 @@
 <?php include __DIR__ . '/sticky-header.php'; ?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-sticky-header.css">
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-sticky-header.js?v=<?php echo time(); ?>"></script>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

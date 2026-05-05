@@ -7,6 +7,14 @@
  * 1Password, Bitwarden, and any RFC 6238 compatible app.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // ── Secret generation ──────────────────────────────────────────────────────
 
 /**
@@ -158,4 +166,4 @@ function totp_qr_url(string $totp_uri, int $size = 220): string {
         . '&cht=qr'
         . '&chl=' . rawurlencode($totp_uri);
 }
-// EOF
+// ===== SNAPSMACK EOF =====

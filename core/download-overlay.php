@@ -18,6 +18,14 @@
  *   <?php echo $download_button; ?>
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 $download_button = '';
 $_snap_download_url = '';    // consumed by social-dock.php
 
@@ -63,4 +71,4 @@ if ($global_downloads) {
         . '</a>';
 }
 
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -15,6 +15,14 @@
  * included by both a skin manifest and footer-scripts.php.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 if (!window._ssCommunityLoaded) {
 window._ssCommunityLoaded = true;
 
@@ -526,4 +534,4 @@ document.addEventListener('DOMContentLoaded', () => {
 }); // DOMContentLoaded
 
 } // double-load guard
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -16,6 +16,14 @@
  *   ollama  — Local Ollama generate endpoint (configurable model)
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 const OhSnapAI = (() => {
 
     // System prompt sent to every provider.
@@ -217,4 +225,4 @@ Available CSS variables for this skin:
     return { send };
 
 })();
-// EOF
+// ===== SNAPSMACK EOF =====

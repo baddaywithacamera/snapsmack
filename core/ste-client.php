@@ -7,6 +7,14 @@
  * Register once; all subsequent calls use the stored api_key Bearer token.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 define('STE_API_URL', 'https://snapsmack.ca/smack-central/sc-enemy-api.php');
 
 // Score thresholds — must match the server-side constants in sc-enemy-scoring.php
@@ -237,4 +245,4 @@ function ste_exceeds_threshold(string $colour_level, string $threshold): bool {
     $order = STE_COLOUR_ORDER;
     return ($order[$colour_level] ?? 0) >= ($order[$threshold] ?? 99);
 }
-// EOF
+// ===== SNAPSMACK EOF =====

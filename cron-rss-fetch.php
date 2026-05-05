@@ -7,6 +7,14 @@
  * status current. Supports both RSS 2.0 and Atom feeds.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // --- ACCESS CONTROL ---
 // Restrict execution to Command Line Interface only
 if (php_sapi_name() !== 'cli') {
@@ -130,4 +138,4 @@ foreach ($peers as $peer) {
 }
 
 $log('RSS fetch completed.');
-// EOF
+// ===== SNAPSMACK EOF =====

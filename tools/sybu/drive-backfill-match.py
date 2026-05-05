@@ -35,6 +35,12 @@ USAGE:
     --output      patch.sql
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import argparse
 import configparser
 import os
@@ -327,3 +333,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+# ===== SNAPSMACK EOF =====

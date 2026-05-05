@@ -23,6 +23,16 @@
  * Requires: snap_posts, snap_post_images tables (migrate-posts.sql).
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 require_once 'core/auth.php';
 require_once 'core/palette-extract.php';
 require_once 'core/snap-tags.php';
@@ -856,4 +866,4 @@ window.addEventListener('DOMContentLoaded', function () {
 <link rel="stylesheet" href="assets/css/ss-engine-photo-editor.css?v=079L">
 <script src="assets/js/ss-engine-photo-editor.js?v=079L"></script>
 <?php include 'core/admin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

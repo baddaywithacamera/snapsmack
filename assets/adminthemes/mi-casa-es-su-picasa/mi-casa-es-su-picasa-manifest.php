@@ -3,6 +3,14 @@
  * SNAPSMACK - Configuration manifest for the Mi Casa Es Su Picasa admin theme
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 return [
     'name'        => 'Mi Casa Es Su Picasa',
     'version'     => '1.0',
@@ -12,4 +20,4 @@ return [
     'css_file'    => 'admin-theme-colours-mi-casa-es-su-picasa.css',
     'description' => 'A tribute to Googles Picasa photo organizer and editor (2002–2016).',
 ];
-// EOF
+// ===== SNAPSMACK EOF =====

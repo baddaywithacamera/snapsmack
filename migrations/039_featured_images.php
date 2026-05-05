@@ -8,6 +8,14 @@
  * views, collection landing pages, and skin renders.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 function migration_039_up(PDO $pdo): void {
     // --- snap_categories ---
     $rows = $pdo->query("SHOW COLUMNS FROM `snap_categories` LIKE 'featured_post_id'")->fetchAll();
@@ -34,4 +42,4 @@ function migration_039_down(PDO $pdo): void {
     $pdo->exec("ALTER TABLE `snap_categories` DROP COLUMN IF EXISTS `featured_post_id`");
     $pdo->exec("ALTER TABLE `snap_albums` DROP COLUMN IF EXISTS `featured_post_id`");
 }
-// EOF
+// ===== SNAPSMACK EOF =====

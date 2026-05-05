@@ -6,6 +6,14 @@
  * and seeds the settings keys that control STE participation.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 function migration_036(PDO $pdo): void {
 
     // --- CREATE SCORE CACHE TABLE ---
@@ -50,4 +58,4 @@ function migration_036(PDO $pdo): void {
         $stmt->execute([$key, $val]);
     }
 }
-// EOF
+// ===== SNAPSMACK EOF =====

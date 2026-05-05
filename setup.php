@@ -11,6 +11,14 @@
  * This file self-deletes after a successful deploy.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // --- CONFIGURATION ---
 $api_url    = 'https://snapsmack.ca/releases/latest.json';
 $target_dir = __DIR__;
@@ -365,4 +373,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
 </div>
 </body>
 </html>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

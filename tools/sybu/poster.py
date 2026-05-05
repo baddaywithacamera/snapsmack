@@ -10,6 +10,14 @@ image resizing and renaming. Full per-image workflow:
   5. POST web version to SnapSmack with Drive link, title, tags, cat, album
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
+
+
 import os
 import re
 import shutil
@@ -407,3 +415,4 @@ def _mime(path: str) -> str:
         '.gif':  'image/gif',
         '.webp': 'image/webp',
     }.get(ext, 'image/jpeg')
+# ===== SNAPSMACK EOF =====

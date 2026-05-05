@@ -3,6 +3,18 @@
  * Alpha v0.7.5
  */
 
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 /* ==========================================================================
     GLOBAL STYLES
     ========================================================================= */
@@ -1014,4 +1026,4 @@ span.dropcap {
 .signals-table { width: 100%; margin-bottom: 40px; }
 .signal-date { font-size: 0.7rem; color: var(--text-faint); margin-top: 5px; }
 .signals-empty { text-align: center; }
-/* EOF */
+/* ===== SNAPSMACK EOF ===== */

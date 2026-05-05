@@ -5,6 +5,16 @@
  *
  * Renders a kiosk display with pimpotron slideshow, logo glitch effects, and navigation.
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
 require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 ?>
 
@@ -43,4 +53,4 @@ require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-pimpotron.js?v=<?php echo time(); ?>"></script>
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-logo.js?v=<?php echo time(); ?>"></script>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

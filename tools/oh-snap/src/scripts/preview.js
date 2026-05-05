@@ -15,6 +15,14 @@
  *   - Three view templates: post, archive, landing
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 const OhSnapPreview = (() => {
 
     // --- STATE ---
@@ -319,4 +327,4 @@ ${bodyHtml}
     return { init, applyOverrides, switchView };
 
 })();
-// EOF
+// ===== SNAPSMACK EOF =====

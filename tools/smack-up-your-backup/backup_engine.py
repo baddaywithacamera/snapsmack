@@ -10,6 +10,14 @@ Stage 5 — Cloud push (ZIP + cloud state JSON)
 Stage 6 — Verify (local checksums + cloud size + server state upload)
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
+
+
 import hashlib
 import io
 import json
@@ -833,3 +841,4 @@ class BackupEngine:
             self._log(f"✗ Backup completed with {len(result['errors'])} error(s). See log file in {backup_dir}")
 
         return result
+# ===== SNAPSMACK EOF =====

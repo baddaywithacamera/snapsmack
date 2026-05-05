@@ -34,6 +34,14 @@
  *   // data-slider-mode="carousel" on the container element activates carousel mode.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 (function(window) {
   'use strict';
 
@@ -730,4 +738,4 @@
   });
 
 })(window);
-// EOF
+// ===== SNAPSMACK EOF =====

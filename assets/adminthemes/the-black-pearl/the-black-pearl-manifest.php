@@ -3,6 +3,14 @@
  * SNAPSMACK - Configuration manifest for the The Black Pearl admin theme
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 return [
     'name'        => 'The Black Pearl',
     'version'     => '1.0',
@@ -12,4 +20,4 @@ return [
     'css_file'    => 'admin-theme-colours-the-black-pearl.css', // The direct link the header needs
     'description' => "Well, then, I confess, it is my intention to commandeer one of these ships, pick up a crew in Tortuga, raid, pillage, plunder and otherwise pilfer my weasely black guts out. ~ Jack Sparrow",
 ];
-// EOF
+// ===== SNAPSMACK EOF =====

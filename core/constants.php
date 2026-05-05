@@ -7,6 +7,14 @@
  * the application.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // --- SECURITY HEADERS ---
 // Sent on every request before any output. Skipped on CLI (e.g. migrations).
 if (PHP_SAPI !== 'cli' && !headers_sent()) {
@@ -73,4 +81,4 @@ function snapsmack_is_mobile(): bool {
     // intentionally excluded so they receive the normal desktop skin.
     return (bool) preg_match('/Mobile|iPhone|iPod|Android.*Mobile|webOS|BlackBerry|Windows Phone|Opera Mini|IEMobile/i', $ua);
 }
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -16,6 +16,14 @@
  * Guards against double-loading with internal flag.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 if (!window._ssFullscreenLoaded) {
 window._ssFullscreenLoaded = true;
 
@@ -167,4 +175,4 @@ if (document.readyState === 'loading') {
 }
 
 } // end double-load guard
-// EOF
+// ===== SNAPSMACK EOF =====

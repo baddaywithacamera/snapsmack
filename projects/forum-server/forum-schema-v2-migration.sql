@@ -1,3 +1,9 @@
+-- SNAPSMACK_EOF_HEADER
+--     -- ===== SNAPSMACK EOF =====
+-- Last non-empty line of this file MUST match the line above.
+-- Missing or different = truncated/corrupted. Restore before saving.
+
+
 -- ============================================================
 -- SNAPSMACK FORUM — v2 Migration
 -- Run this ONCE on existing installs that already have the v1 schema.
@@ -114,3 +120,4 @@ CREATE TABLE IF NOT EXISTS ss_forum_notifications (
     CONSTRAINT fk_notif_install FOREIGN KEY (install_id) REFERENCES ss_forum_installs (id),
     CONSTRAINT fk_notif_thread  FOREIGN KEY (thread_id)  REFERENCES ss_forum_threads  (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- ===== SNAPSMACK EOF =====

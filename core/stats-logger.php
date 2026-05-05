@@ -16,6 +16,14 @@
  */
 
 /**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+/**
  * Parse browser and OS from a user-agent string.
  * Intentionally simple — covers the big five browsers and major OSes.
  *
@@ -273,4 +281,4 @@ function snapsmack_purge_old_stats($pdo, $days = 365) {
         return 0;
     }
 }
-// EOF
+// ===== SNAPSMACK EOF =====

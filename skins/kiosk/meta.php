@@ -6,6 +6,16 @@
  * Generates page titles, Open Graph tags, CSS variables, and canonical URLs.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 // Prepare CSS variables for layout spacing
 $grid_gap = $settings['browse_gap'] ?? '100';
 if (is_numeric($grid_gap)) {
@@ -68,4 +78,4 @@ $canonical_url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 <?php echo $settings['custom_css_public']; ?>
 </style>
 <?php endif; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

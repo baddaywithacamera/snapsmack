@@ -24,6 +24,14 @@
  *             Changes appear immediately on the live site.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 const OhSnapProject = (() => {
 
     const DRAFT_KEY    = 'ohsnap_draft_project';
@@ -249,4 +257,4 @@ ${props}
     return { setContext, updateProjectName, save, load, exportCss, pushToSite, saveDraftNow };
 
 })();
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -7,6 +7,14 @@
  * install administrators. Auto-registers the install on first visit.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 
 // Load settings before any output — needed for API calls and registration.
@@ -719,4 +727,4 @@ function forumInsertEmoji(btn, emoji) {
 }
 </script>
 <?php require 'core/admin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

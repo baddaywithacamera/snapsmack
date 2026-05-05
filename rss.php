@@ -6,6 +6,14 @@
  * Formatted for compatibility with standard feed readers and the blogroll network.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once __DIR__ . '/core/db.php';
 
 // --- SETTINGS LOADING ---
@@ -56,4 +64,4 @@ echo '<?xml version="1.0" encoding="UTF-8" ?>';
     ?>
 </channel>
 </rss>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

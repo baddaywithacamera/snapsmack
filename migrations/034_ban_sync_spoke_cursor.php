@@ -10,6 +10,14 @@
  * which spokes have ever successfully completed a ban sync handshake.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 function migration_034(PDO $pdo): void {
 
     // Spoke: timestamp of last outbound ban push to hub.
@@ -26,4 +34,4 @@ function migration_034(PDO $pdo): void {
         VALUES ('ban_sync_capable_spokes', '[]')
     ");
 }
-// EOF
+// ===== SNAPSMACK EOF =====

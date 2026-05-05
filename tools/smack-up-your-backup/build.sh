@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  Smack Up Your Backup — build script (macOS / Linux)
 #  Requires: Python 3.11+, pip install -r requirements.txt
@@ -67,3 +74,4 @@ else
     echo "Build FAILED. Check output above for errors."
     exit 1
 fi
+# ===== SNAPSMACK EOF =====

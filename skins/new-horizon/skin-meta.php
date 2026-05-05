@@ -7,6 +7,16 @@
  * then loads the skin's main stylesheet.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 // Include core meta tags for SEO and CSS
 include(dirname(__DIR__, 2) . '/core/meta.php');
 
@@ -22,4 +32,4 @@ $skin_css_url = BASE_URL . 'skins/' . $skin_slug . '/style.css';
 ?>
 <link rel="stylesheet" href="<?php echo $variant_url; ?>?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 <link rel="stylesheet" href="<?php echo $skin_css_url; ?>?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

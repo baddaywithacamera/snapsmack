@@ -5,6 +5,14 @@
  * name editing. No dependencies — runs after DOM is ready.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 'use strict';
 
 /**
@@ -35,4 +43,4 @@ function scfEditInstallName(el, id, current) {
     document.getElementById('scf-rename-val').value = name;
     document.getElementById('scf-rename-form').submit();
 }
-// EOF
+// ===== SNAPSMACK EOF =====

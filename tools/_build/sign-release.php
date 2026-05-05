@@ -34,6 +34,16 @@
  *   6. Test: php -v
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 // ─── REQUIREMENTS CHECK ─────────────────────────────────────────────────────
 
 if (php_sapi_name() !== 'cli') {
@@ -215,4 +225,4 @@ function parse_args(array $argv): array {
 
     return $result;
 }
-// EOF
+// ===== SNAPSMACK EOF =====

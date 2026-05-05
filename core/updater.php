@@ -19,6 +19,16 @@
  * - Rollback restores from the pre-update backup on failure
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 // release-pubkey.php holds the Ed25519 public key for verifying release packages.
 // The placeholder (all-zeros key) disables signature verification, falling back
 // to SHA-256 checksum only. The file is protected from overwrites by the updater.
@@ -1662,4 +1672,4 @@ function _updater_http_get(string $url): string|false {
     ]);
     return @file_get_contents($url, false, $ctx);
 }
-// EOF
+// ===== SNAPSMACK EOF =====

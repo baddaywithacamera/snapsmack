@@ -5,6 +5,16 @@
  *
  * Renders the photo display, navigation, metadata, and comments sections.
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
 require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 
 ?>
@@ -67,4 +77,4 @@ require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
     <?php include('skin-footer.php'); ?>
 
 </div>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

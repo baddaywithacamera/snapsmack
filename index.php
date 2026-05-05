@@ -10,6 +10,14 @@
  *   - 'static_page'           — renders a chosen static page as homepage; blog moves to blog.php
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -323,4 +331,4 @@ if ($active_skin !== 'photogram') {
 ?>
 </body>
 </html>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

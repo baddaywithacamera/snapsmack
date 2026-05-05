@@ -1,3 +1,14 @@
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF
+  marker for this file type: an HTML comment containing five
+  equals, space, the literal string 'SNAPSMACK EOF', space, five
+  equals.
+  (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS.)
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+
+
 # SnapSmack Security Audit G — 2026-05-03
 **Scope:** Alpha 0.7.22 → 0.7.39 (new and changed files)
 **Files audited:** core/api-auth.php, probe-ban.php, privacy-policy.php, smack-privacy.php, smack-2fa.php, sybu-data.php, smack-cats.php, smack-albums.php, smack-collections.php
@@ -37,3 +48,4 @@ Post titles and item names were inserted into `onclick` handler strings via conc
 
 Previous audits: A (2024-04-25), B–F (2026-04-25 to 2026-04-29).
 Next audit recommended at 0.8.x (Closed Beta) or when new user-facing input handlers are added.
+<!-- ===== SNAPSMACK EOF ===== -->

@@ -7,6 +7,14 @@
  * ISO, and focal length. Supports manual overrides for lens and film type.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 function get_smack_exif($data) {
     if (!$data || !is_array($data)) return null;
 
@@ -97,4 +105,4 @@ function smack_evaluate_fraction($fraction) {
     // Fallback for decimals stored as strings
     return is_numeric($fraction) ? (float)$fraction : 0.0;
 }
-// EOF
+// ===== SNAPSMACK EOF =====

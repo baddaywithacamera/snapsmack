@@ -6,7 +6,17 @@
  * Renders static pages (page.php) inside the Galleria shell: wall background,
  * sticky header, hero image wrapped in the full frame system, proper content
  * column with gutters. Replaces the generic page.php template entirely.
- */
+ */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
 
 // Skin-level frame settings (from compiled custom_css_public / manifest defaults)
 $frame_color = $settings['htbs_frame_color'] ?? '#2c2017';
@@ -166,4 +176,4 @@ include __DIR__ . '/skin-meta.php';
 <?php include __DIR__ . '/../../core/footer-scripts.php'; ?>
 </body>
 </html>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

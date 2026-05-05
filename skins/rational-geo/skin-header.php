@@ -7,6 +7,16 @@
  * Map background is pure CSS on body — when disabled, --rg-map-pct is forced to 0
  * which makes all gradient alphas zero (invisible).
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
 $border_color = $settings['image_border_color'] ?? 'yellow';
 $site_display_name = $site_name ?? 'SNAPSMACK';
 $show_map_bg = ($settings['show_map_background'] ?? '1') === '1';
@@ -31,4 +41,4 @@ if (!$show_map_bg): ?>
         </nav>
     </div>
 </div>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

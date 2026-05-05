@@ -12,6 +12,14 @@
  *   4. Marks the project as dirty
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // --- STATE ---
 
 const currentOverrides = {};   // { '--var-name': 'value', ... }
@@ -314,4 +322,4 @@ function _parseCssEditorIntoOverrides(css) {
     OhSnapPreview.applyOverrides(currentOverrides);
     markDirty();
 }
-// EOF
+// ===== SNAPSMACK EOF =====

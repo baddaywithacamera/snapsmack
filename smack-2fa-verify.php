@@ -7,6 +7,14 @@
  * a live TOTP code or a one-time 2FA recovery code.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/db.php';
 require_once 'core/totp.php';
 
@@ -236,4 +244,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="assets/js/smack-login.js"></script>
 </body>
 </html>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

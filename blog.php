@@ -9,6 +9,16 @@
  * If homepage_mode is 'latest_post', blog IS the homepage — redirect there.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 require_once __DIR__ . '/core/db.php';
 
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -29,4 +39,4 @@ if ($homepage_mode === 'latest_post') {
 $_SERVER['SNAPSMACK_FORCE_BLOG'] = true;
 
 include __DIR__ . '/index.php';
-// EOF
+// ===== SNAPSMACK EOF =====

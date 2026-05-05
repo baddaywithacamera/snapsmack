@@ -6,6 +6,15 @@
  * section closed and the new one open. PHP sets the initial .open
  * class based on which section contains the current page.
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 (function () {
     'use strict';
 
@@ -42,4 +51,4 @@
     }
 
 })();
-// EOF
+// ===== SNAPSMACK EOF =====

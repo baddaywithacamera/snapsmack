@@ -1,3 +1,9 @@
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 BUILD_VERSION = "0.7.7a-23"   # bump this on every rebuild
 
 """
@@ -1600,3 +1606,4 @@ if __name__ == '__main__':
 
     app = App()
     app.mainloop()
+# ===== SNAPSMACK EOF =====

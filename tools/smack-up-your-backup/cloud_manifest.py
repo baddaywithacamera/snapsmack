@@ -8,6 +8,12 @@ only blog identity, FTP host/username, file checksums, and a list of
 available backup packages.  Safe to leave unencrypted.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import json
 import os
 from datetime import datetime, timezone
@@ -144,3 +150,4 @@ def list_available_backups(cloud_client, folder_id: str = "") -> List[dict]:
         ]
     except Exception:
         return []
+# ===== SNAPSMACK EOF =====

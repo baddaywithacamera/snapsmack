@@ -7,6 +7,16 @@
  *   - Standalone: full admin page at smack-gallery.php
  *   - Picker: modal launched from editors via data-gallery-picker
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
 (function () {
     'use strict';
 
@@ -526,4 +536,4 @@
     fetchImages(false);
 
 })();
-// EOF
+// ===== SNAPSMACK EOF =====

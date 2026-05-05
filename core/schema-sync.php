@@ -26,6 +26,16 @@
  */
 
 /**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
+/**
  * Parse CREATE TABLE statements from the canonical schema SQL file.
  * Returns an associative array: table_name => CREATE TABLE DDL string.
  */
@@ -363,4 +373,4 @@ function snap_schema_sync(PDO $pdo): array {
 
     return $report;
 }
-// EOF
+// ===== SNAPSMACK EOF =====

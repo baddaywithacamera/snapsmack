@@ -7,6 +7,14 @@
  * token (?key=TOKEN), which redirects to the real login slug.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/db.php';
 require_once 'core/auth-recovery.php';
 require_once 'core/totp.php';
@@ -352,4 +360,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 </body>
 </html>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

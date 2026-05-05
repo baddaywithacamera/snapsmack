@@ -10,6 +10,12 @@ Usage:
     service = local_drive.authenticate(creds_path)
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import os
 import sys
 
@@ -47,3 +53,4 @@ authenticate     = _drive.authenticate
 is_authenticated = _drive.is_authenticated
 upload           = _drive.upload
 revoke_token     = _drive.revoke_token
+# ===== SNAPSMACK EOF =====

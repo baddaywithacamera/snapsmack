@@ -1,3 +1,9 @@
+-- SNAPSMACK_EOF_HEADER
+--     -- ===== SNAPSMACK EOF =====
+-- Last non-empty line of this file MUST match the line above.
+-- Missing or different = truncated/corrupted. Restore before saving.
+
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- SNAPSMACK — Canonical Schema
 -- Alpha v0.7.9M "Maintenance Mode"
@@ -729,3 +735,4 @@ CREATE TABLE IF NOT EXISTS `snap_post_album_map` (
   PRIMARY KEY (`post_id`, `album_id`),
   KEY `idx_pam_album` (`album_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- ===== SNAPSMACK EOF =====

@@ -10,6 +10,14 @@
  *     for direct post → category/album associations
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 function migration_041_up(PDO $pdo): void {
     // --- content LONGTEXT on snap_posts ---
     $cols = $pdo->query("SHOW COLUMNS FROM `snap_posts` LIKE 'content'")->fetchAll();
@@ -75,4 +83,4 @@ function migration_041_down(PDO $pdo): void {
             COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'single'
     ");
 }
-// EOF
+// ===== SNAPSMACK EOF =====

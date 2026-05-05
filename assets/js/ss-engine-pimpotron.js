@@ -6,6 +6,14 @@
  * Config-driven via window.PIMPOTRON_CONFIG.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // --- MATRIX RAIN ANIMATION ---
 // Standalone class for Matrix-style character rain effect
 
@@ -327,4 +335,4 @@ document.addEventListener('DOMContentLoaded', () => {
     const engine = new PimpotronEngine(endpoint, stageId);
     engine.init();
 });
-// EOF
+// ===== SNAPSMACK EOF =====

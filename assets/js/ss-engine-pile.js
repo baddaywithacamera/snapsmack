@@ -20,6 +20,14 @@
  *   data-frame-styles       — comma-separated enabled frames (polaroid,print,borderless,slide)
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 (function () {
     'use strict';
 
@@ -168,4 +176,4 @@
     });
 
 })();
-// EOF
+// ===== SNAPSMACK EOF =====

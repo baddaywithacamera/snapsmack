@@ -8,6 +8,15 @@
  *
  * $settings is available from the calling template.
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 ?>
 
 <footer class="tg-footer">
@@ -43,4 +52,4 @@ if (!empty($requested)) {
 
 // ── Core footer (closes </body></html>) ────────────────────────────────────
 include_once(dirname(__DIR__, 2) . '/core/footer.php');
-// EOF
+// ===== SNAPSMACK EOF =====

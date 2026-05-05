@@ -30,6 +30,14 @@
  *   }
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/db.php';
 
 // Only respond to XHR
@@ -152,4 +160,4 @@ echo json_encode([
     'months'       => $months_out,
     'recent_posts' => $recent_posts,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -10,6 +10,14 @@
  * records with NULL values. Requires authentication.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 
 if (!isset($_SESSION['user_id'])) {
@@ -176,4 +184,4 @@ echo "<p class='info'>Your database now contains recovery metadata for all locat
 echo "<p class='warn'>You can safely delete this file from your server after running it.</p>";
 echo "</body></html>";
 ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

@@ -7,6 +7,14 @@
  * Returns false (no spam) if no key is configured.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 function is_spam($author, $email, $body, $pdo) {
     // --- API KEY LOOKUP ---
     $stmt        = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'akismet_key'");
@@ -49,4 +57,4 @@ function is_spam($author, $email, $body, $pdo) {
     // Akismet returns "true" in the body if the comment is spam.
     return (trim($response ?: '') === 'true');
 }
-// EOF
+// ===== SNAPSMACK EOF =====

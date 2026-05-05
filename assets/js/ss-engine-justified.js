@@ -5,6 +5,14 @@
  * if .justified-grid element exists. Reads row height from window.JUSTIFIED_CONFIG.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 (function() {
     'use strict';
 
@@ -42,4 +50,4 @@
         fjGallery(grid, 'resize');
     }, 300);
 })();
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -15,6 +15,15 @@
  *   #show-comments       — nav bar comments button
  *   .htbs-filmstrip-item.active — auto-scroll target
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 document.addEventListener('DOMContentLoaded', function() {
 
     // --- Filmstrip auto-scroll ---
@@ -106,4 +115,4 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     window.smackdown.closeFooter = closeOverlay;
 });
-// EOF
+// ===== SNAPSMACK EOF =====

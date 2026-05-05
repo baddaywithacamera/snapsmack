@@ -11,6 +11,12 @@ The checkpoint file is written via a temp-file + atomic rename so a
 power cut during the write itself cannot produce a corrupt checkpoint.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import json
 import os
 from datetime import datetime, timezone
@@ -131,3 +137,4 @@ class BackupCheckpoint:
                 os.unlink(tmp)
             except Exception:
                 pass
+# ===== SNAPSMACK EOF =====

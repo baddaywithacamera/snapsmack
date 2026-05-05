@@ -3,6 +3,12 @@ GOBSMACKED Scanner — config.py
 Persistent settings stored as INI file next to the executable.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import configparser
 import os
 import sys
@@ -41,3 +47,4 @@ def save(values: dict) -> None:
     cfg['settings'] = {k: str(values.get(k, DEFAULTS.get(k, ''))) for k in DEFAULTS}
     with open(_config_path(), 'w', encoding='utf-8') as f:
         cfg.write(f)
+# ===== SNAPSMACK EOF =====

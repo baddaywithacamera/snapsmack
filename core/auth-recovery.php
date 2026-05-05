@@ -7,6 +7,14 @@
  * smack-change-password.php, and password-reset.php.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // ─── ONE-TIME RECOVERY CODES ─────────────────────────────────────────────────
 
 /**
@@ -171,4 +179,4 @@ function snapsmack_send_reset_email(
 
     return (bool) @mail($to, $subject, $body, $headers);
 }
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -9,6 +9,14 @@
  * SETUP: Copy this file to db.php and fill in your real credentials.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once __DIR__ . '/constants.php';
 
 // --- DATABASE CREDENTIALS ---
@@ -37,4 +45,4 @@ try {
 } catch (\PDOException $e) {
      die("<div style='background:#200;color:#f99;padding:20px;border:1px solid red;font-family:monospace;'><h3>DATABASE_LINK_FAILURE</h3>The connection to the data vault was interrupted.</div>");
 }
-// EOF
+// ===== SNAPSMACK EOF =====

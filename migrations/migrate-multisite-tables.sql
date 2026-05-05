@@ -1,3 +1,9 @@
+-- SNAPSMACK_EOF_HEADER
+--     -- ===== SNAPSMACK EOF =====
+-- Last non-empty line of this file MUST match the line above.
+-- Missing or different = truncated/corrupted. Restore before saving.
+
+
 -- Migration: Multisite hub/spoke tables
 -- Introduced: Alpha 0.7.9
 -- Safe to run multiple times (CREATE TABLE IF NOT EXISTS, INSERT IGNORE)
@@ -46,3 +52,4 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_queue` (
 INSERT IGNORE INTO `snap_settings` (`setting_key`, `setting_val`) VALUES ('multisite_role', '');
 INSERT IGNORE INTO `snap_settings` (`setting_key`, `setting_val`) VALUES ('multisite_reg_token', '');
 INSERT IGNORE INTO `snap_settings` (`setting_key`, `setting_val`) VALUES ('multisite_reg_token_expires', '0');
+-- ===== SNAPSMACK EOF =====

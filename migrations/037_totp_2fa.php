@@ -5,6 +5,14 @@
  * Adds TOTP two-factor authentication columns to snap_users.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 function migration_037_totp_2fa(PDO $pdo): void {
     // totp_secret — Base32 TOTP secret, NULL when 2FA not set up
     $pdo->exec("ALTER TABLE snap_users
@@ -13,4 +21,4 @@ function migration_037_totp_2fa(PDO $pdo): void {
         ADD COLUMN IF NOT EXISTS totp_recovery_json TEXT         DEFAULT NULL AFTER totp_enabled
     ");
 }
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -5,6 +5,14 @@ Dark UI palette, tkinter, PyInstaller single-exe build chain.
 Same visual family as Smack Your Batch Up.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
+
+
 BUILD_VERSION = "0.7.3"
 
 import os
@@ -5371,3 +5379,4 @@ if __name__ == "__main__":
     _enforce_single_instance()
     app = App()
     app.mainloop()
+# ===== SNAPSMACK EOF =====

@@ -4,6 +4,14 @@
  * v1.0
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 $skin_manifest = include __DIR__ . '/manifest.php';
 $requested = $skin_manifest['require_scripts'] ?? [];
 
@@ -21,4 +29,4 @@ if (!empty($requested)) {
 
 include_once(dirname(__DIR__, 2) . '/core/footer.php');
 ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

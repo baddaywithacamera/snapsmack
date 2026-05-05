@@ -9,6 +9,14 @@
  * smack-preview-ajax.php?mode=full in a new tab.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 (function () {
     'use strict';
 
@@ -363,4 +371,4 @@
         initToolbars();
     }
 })();
-// EOF
+// ===== SNAPSMACK EOF =====

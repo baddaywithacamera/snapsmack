@@ -7,6 +7,16 @@
  * order: global resets → skin defaults → dynamic admin customizations.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 // --- CSS VARIABLES (GRID GAP) ---
 // Set --grid-gap as a CSS custom property for consistent spacing across skins
 $grid_gap = $settings['browse_gap'] ?? '100';
@@ -297,4 +307,4 @@ elseif (!empty($settings['custom_head_scripts'])):
     echo $settings['custom_head_scripts'];
 endif;
 unset($_custom_head_file, $__head);
-// EOF
+// ===== SNAPSMACK EOF =====

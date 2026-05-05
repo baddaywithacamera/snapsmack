@@ -10,6 +10,14 @@
  * Archive mode ownership moved from skin manifests to site owner in v0.7.9g.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 
 // --- MANIFEST (for wall/pimpotron detection only — no longer gates grid options) ---
@@ -350,4 +358,4 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <?php include 'core/admin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

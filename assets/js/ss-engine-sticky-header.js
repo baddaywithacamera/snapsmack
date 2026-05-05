@@ -15,6 +15,16 @@
  *   - Already position:fixed or position:sticky (e.g. pocket-rocket, photogram)
  *   - data-sticky-header="false"
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
 (function () {
     'use strict';
 
@@ -100,4 +110,4 @@
         }, { passive: true });
     });
 })();
-// EOF
+// ===== SNAPSMACK EOF =====

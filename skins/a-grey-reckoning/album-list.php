@@ -16,6 +16,16 @@
  *   $site_name  — Site display name
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 $site_display_name = $site_name ?? 'SNAPSMACK';
 ?>
 
@@ -81,4 +91,4 @@ $site_display_name = $site_name ?? 'SNAPSMACK';
     <?php endif; ?>
 
 </div>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

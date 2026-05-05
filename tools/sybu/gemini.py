@@ -4,6 +4,12 @@ Sends images to the Gemini API and returns AI-generated metadata
 (title, tags, category, album) as ManifestEntry updates.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import os
 import re
 from typing import Callable, List, Optional
@@ -248,3 +254,4 @@ def _load_image_part(genai, path: str):
     with open(path, 'rb') as f:
         data = f.read()
     return {'mime_type': mime, 'data': data}
+# ===== SNAPSMACK EOF =====

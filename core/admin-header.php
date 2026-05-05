@@ -8,6 +8,14 @@
  * tasks.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.gc_maxlifetime', 86400);
     ini_set('session.cookie_lifetime', 86400);
@@ -65,4 +73,4 @@ $active_skin_path = $theme_base . $colour_css_file;
 <body class="admin-body">
 <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open');">&#9776;</button>
 <div class="sidebar-overlay" onclick="document.querySelector('.sidebar').classList.remove('open'); this.classList.remove('open');"></div>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

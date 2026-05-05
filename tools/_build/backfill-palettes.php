@@ -1,3 +1,11 @@
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 #!/usr/bin/env php
 <?php
 /**
@@ -152,4 +160,4 @@ log_message('INFO', '========================================');
 
 exit($errors > 0 ? 1 : 0);
 ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

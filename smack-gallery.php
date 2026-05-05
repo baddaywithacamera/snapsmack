@@ -8,6 +8,16 @@
  * the post/page editor via data-gallery-picker attribute).
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 require_once 'core/auth.php';
 
 // ── AJAX ENDPOINT ────────────────────────────────────────────────────────────
@@ -438,4 +448,4 @@ include 'core/sidebar.php';
 <script src="assets/js/ss-engine-gallery.js?v=079L"></script>
 
 <?php include 'core/admin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

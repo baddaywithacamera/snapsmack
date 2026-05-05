@@ -9,6 +9,14 @@
  * Moved here from smack-globalvibe.php in v0.7.9f.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 
 // --- POST HANDLER ---
@@ -86,4 +94,4 @@ $current_gutter = (int)($settings['static_content_gutter'] ?? 40);
 </div>
 
 <?php include 'core/admin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

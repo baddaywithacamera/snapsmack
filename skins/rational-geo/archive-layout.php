@@ -14,6 +14,14 @@
  *   $images, $settings, $pdo, BASE_URL, $album_filter, $cat_filter
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // Use $archive_layout from archive.php scope (respects admin settings + visitor override).
 // Fall back gracefully if somehow called outside archive.php.
 $archive_default = isset($archive_layout) ? $archive_layout : ($settings['archive_layout'] ?? 'cropped');
@@ -211,4 +219,4 @@ $_rg_avail  = isset($available_modes) ? $available_modes : [];
     }
 })();
 </script>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

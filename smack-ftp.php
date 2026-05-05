@@ -7,6 +7,14 @@
  * Tracks last push timestamp and status in the snap_settings table.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 require_once 'core/ftp-engine.php';
 
@@ -404,4 +412,4 @@ function htmlEncode(str) {
 </script>
 
 <?php include 'core/admin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

@@ -24,6 +24,14 @@
  *   multisite/ban-sync      — bidirectional ban hash exchange (Shield Tier 1)
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // --- ENVIRONMENT BOOTSTRAP ---
 if (!defined('BASE_URL')) {
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') ? 'https' : 'http';
@@ -716,4 +724,4 @@ if ($resource === 'ban-sync' && $method === 'POST') {
 
 // Fell through — unknown endpoint
 ms_err('Unknown multisite endpoint', 404);
-// EOF
+// ===== SNAPSMACK EOF =====

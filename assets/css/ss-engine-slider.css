@@ -3,6 +3,16 @@
  * Minimal, clean styling for the SnapSlider component
  */
 
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 /* Main slider container */
 .ss-slider {
   position: relative;
@@ -168,4 +178,4 @@
 .ss-slider[data-slider-mode="carousel"]:hover .slider-arrow {
   opacity: 0.9;
 }
-/* EOF */
+/* ===== SNAPSMACK EOF ===== */

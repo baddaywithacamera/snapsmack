@@ -6,6 +6,14 @@
  * Recovery codes are generated at setup time and shown once.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 require_once 'core/db.php';
 require_once 'core/totp.php';
@@ -259,4 +267,4 @@ require_once 'core/sidebar.php';
 
 <?php require_once 'core/admin-footer.php'; ?>
 <script src="assets/js/smack-admin-2fa.js"></script>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

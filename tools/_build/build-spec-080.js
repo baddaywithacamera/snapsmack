@@ -1,3 +1,11 @@
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   HeadingLevel, AlignmentType, LevelFormat, BorderStyle, WidthType,
@@ -565,4 +573,4 @@ Packer.toBuffer(doc).then(buf => {
   fs.writeFileSync('/sessions/youthful-eager-lovelace/mnt/snapsmack_codebase/_spec/snapsmack-feature-spec-080.docx', buf);
   console.log('Written.');
 });
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -11,6 +11,16 @@
  * $all_albums, $cat_filter, $album_filter, $archive_layout
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 $grid_cols    = (int)($settings['htbs_browse_cols'] ?? 4);
 $border_width = (int)($settings['htbs_archive_border_width'] ?? 4);
 
@@ -75,4 +85,4 @@ $total = count($images ?? []);
         </div>
     <?php endif; ?>
 </div>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

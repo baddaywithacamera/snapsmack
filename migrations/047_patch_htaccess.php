@@ -12,6 +12,14 @@
  *               installs that updated via the in-admin updater never got it)
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 $migration_name = '047_patch_htaccess';
 
 try {
@@ -92,4 +100,4 @@ try {
 } catch (PDOException $e) {
     return ['status' => 'error', 'message' => $e->getMessage()];
 }
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -12,6 +12,16 @@
  *               skins and mobile-only skins are hidden from the gallery entirely.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 require_once 'core/auth.php';
 require_once 'core/skin-registry.php';
 require_once 'core/skin-settings.php';
@@ -1446,4 +1456,4 @@ function ssGo(el, idx) {
 }
 </script>
 <?php include 'core/admin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====
