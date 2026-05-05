@@ -15,6 +15,18 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.45 — "Chaise" (2026-05-05)
+
+### Fixed
+- core/release-pubkey.php: corrected release public key (was `4df51e2c...`, must be `b9955f78...` to match private key in sc-config.php) — signature verification was failing on all installs at 0.7.42+
+- core/updater.php: corrected hardcoded root public key (was `d4c4256853...`, must be `3287b9b29257...`) — key rotation mechanism was non-functional
+
+### Changed
+- smack-menu.php: replaced invented `smack-*` HTML classes with standard admin classes (`main`, `box`, `h3`, `btn-smack`, `dim`, `form-action-row`) so page inherits active admin theme colours automatically
+- smack-menu.php: menu builder CSS rewritten with transparent overlays — item cards, drop zones, and depth levels now render correctly on any admin theme
+
+---
+
 ## 0.7.44 — "Barstool" (2026-05-05)
 
 ### Added

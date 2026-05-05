@@ -324,8 +324,8 @@ git read-tree HEAD
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.44 "Barstool"
-✅ **0.7.44 committed and ready to push.**
+### SnapSmack — Alpha 0.7.45 "Chaise"
+✅ **0.7.45 committed and ready to push.**
 
 **What 0.7.43 shipped (Claude Code):**
 - `smack-settings.php` — API key UI fixed
