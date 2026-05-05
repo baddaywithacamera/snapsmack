@@ -71,4 +71,4 @@ define('SC_ASSETS_DIR', '/home/youruser/public_html/sc-assets/');
 
 // Public URL of the sc-assets directory (trailing slash).
 define('SC_ASSETS_URL', 'https://snapsmack.ca/sc-assets/');
-// EOF
+// ===== SNAPSMACK EOF =====

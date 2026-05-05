@@ -2,6 +2,10 @@
 core/db.php
 smack-central/sc-config.php
 
+# Server-specific signing key — never commit the real key
+# Use core/release-pubkey-sample.php as the template
+core/release-pubkey.php
+
 # Backups contain full source + database dumps — never commit
 backups/
 

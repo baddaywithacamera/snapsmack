@@ -234,6 +234,9 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         'CHANGELOG.md',
         'README.md',
         '.gitignore',
+        // Server-specific signing key — each server has its own copy via FTP.
+        // release-pubkey-sample.php ships instead so operators know what to create.
+        'core/release-pubkey.php',
         // One-off utility scripts — not part of a normal install
         'backfill-checksums.php',
         'backfill-thumbs.php',
