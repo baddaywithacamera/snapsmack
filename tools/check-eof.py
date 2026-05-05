@@ -9,12 +9,11 @@ Last non-empty line of this file MUST match the line above.
 Missing or different = truncated/corrupted. Restore before saving.
 
 Checks every tracked source file (PHP/JS/CSS/HTML/HTM/MD/SQL/PY/SH) for:
-  1. EOF marker on the last non-empty line. Long-form 'SNAPSMACK EOF' is the
-     target convention; short-form ('// EOF', '/* EOF */', '# EOF', '-- EOF',
-     '<!-- EOF -->') is temporarily accepted during the long-form migration.
-     A later phase drops short-form acceptance and also requires the header.
-  2. Null bytes anywhere in the file (truncation/encoding artifact).
-  3. Structural \\r\\n corruption (literal backslash-r backslash-n outside
+  1. Long-form 'SNAPSMACK EOF' marker on the last non-empty line.
+  2. SNAPSMACK_EOF_HEADER tag within the first 8KB (header block near top
+     names or describes the expected bottom marker — file self-describes).
+  3. Null bytes anywhere in the file (truncation/encoding artifact).
+  4. Structural \\r\\n corruption (literal backslash-r backslash-n outside
      string literals).
 
 Excluded paths (third-party / build artifacts) are listed in
@@ -34,27 +33,28 @@ import fnmatch
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Per extension: ordered list of acceptable substring markers. The long form
-# is canonical; short form is accepted during the migration. Long form is
-# listed first so error messages display it as the expected target.
+# Per extension: canonical long-form bottom marker. Short forms are no longer
+# accepted (migration complete).
 EOF_MARKERS = {
-    '.php':  [b'// ===== SNAPSMACK EOF =====', b'// EOF'],
-    '.js':   [b'// ===== SNAPSMACK EOF =====', b'// EOF'],
-    '.css':  [b'/* ===== SNAPSMACK EOF ===== */', b'/* EOF */'],
-    '.html': [b'<!-- ===== SNAPSMACK EOF ===== -->', b'<!-- EOF -->'],
-    '.htm':  [b'<!-- ===== SNAPSMACK EOF ===== -->', b'<!-- EOF -->'],
-    '.md':   [b'<!-- ===== SNAPSMACK EOF ===== -->', b'<!-- EOF -->'],
-    '.sql':  [b'-- ===== SNAPSMACK EOF =====', b'-- EOF'],
-    '.py':   [b'# ===== SNAPSMACK EOF =====', b'# EOF'],
-    '.sh':   [b'# ===== SNAPSMACK EOF =====', b'# EOF'],
+    '.php':  b'// ===== SNAPSMACK EOF =====',
+    '.js':   b'// ===== SNAPSMACK EOF =====',
+    '.css':  b'/* ===== SNAPSMACK EOF ===== */',
+    '.html': b'<!-- ===== SNAPSMACK EOF ===== -->',
+    '.htm':  b'<!-- ===== SNAPSMACK EOF ===== -->',
+    '.md':   b'<!-- ===== SNAPSMACK EOF ===== -->',
+    '.sql':  b'-- ===== SNAPSMACK EOF =====',
+    '.py':   b'# ===== SNAPSMACK EOF =====',
+    '.sh':   b'# ===== SNAPSMACK EOF =====',
 }
 
-# Active scan scope. EOF_MARKERS is pre-populated for all target extensions,
-# but during the long-form migration the scanner only enforces markers on the
-# extensions that already had them under the old convention. The remaining
-# types (.html .htm .md .sql .py .sh) are added to this set in the migration
-# wrap-up phase, after marker+header has been applied to those files.
-EXTENSIONS = {'.php', '.js', '.css'}
+# Header tag required near top of every source file (within first 8KB).
+# The header block names (or describes) the expected bottom marker so a
+# future Claude session reading the file under context strain doesn't have
+# to recall the convention from external docs — file self-describes.
+HEADER_TAG = b'SNAPSMACK_EOF_HEADER'
+HEADER_SCAN_BYTES = 8192
+
+EXTENSIONS = set(EOF_MARKERS.keys())
 
 # Paths excluded from the scan (third-party / build artifacts).
 # Mirrors the list documented in repo CLAUDE.md.
@@ -72,16 +72,27 @@ EXCLUDED_PATTERNS = [
 # i.e. the four bytes: 0x5c 0x72 0x5c 0x6e
 LITERAL_CRLF = re.compile(rb'\\r\\n')
 
-# Patterns that indicate we're inside a PHP/JS string — legitimate use of \r\n
-# We do a simple heuristic: if the line also contains a string delimiter or
-# known-safe keywords, we skip it. For now we flag all occurrences and let
-# the human decide; false positives in string literals are noted.
+# Patterns that indicate the line legitimately mentions \r\n (string literal,
+# regex, comment, markdown backtick, etc.) — i.e. NOT structural corruption.
 SAFE_LINE_PATTERNS = [
-    # PHP string contexts that legitimately use \r\n
-    re.compile(rb'''(['"])[^'"]*\\r\\n'''),          # inside quotes
-    re.compile(rb'implode\s*\('),                     # implode("\r\n", ...)
+    # Inside quotes (PHP/JS/Py/etc string literal)
+    re.compile(rb'''(['"])[^'"]*\\r\\n'''),
+    # PHP-specific: implode/header/MIME contexts
+    re.compile(rb'implode\s*\('),
     re.compile(rb'->addHeaderLine\b'),
     re.compile(rb'Content-Type|MIME|multipart'),
+    # Inside markdown / shell / Python comment backticks: `\r\n`
+    re.compile(rb'`[^`]*\\r\\n[^`]*`'),
+    # Python/shell/SQL line comments mentioning \r\n
+    re.compile(rb'^\s*#.*\\r\\n'),
+    re.compile(rb'^\s*--.*\\r\\n'),
+    # Block-comment continuation lines (PHP/JS/CSS): start with * after spaces
+    re.compile(rb'^\s*\*.*\\r\\n'),
+    # Regex patterns/raw strings explicitly referencing \\r\\n
+    re.compile(rb'rb?[\'"][^\'"]*\\\\r\\\\n'),
+    # Markdown prose mentioning literal "\r\n" (very common in changelogs)
+    re.compile(rb'literal.{0,20}\\r\\n', re.IGNORECASE),
+    re.compile(rb'\\r\\n.{0,20}corruption', re.IGNORECASE),
 ]
 
 def is_likely_string_context(line: bytes) -> bool:
@@ -130,8 +141,8 @@ def check_file(rel_path: str) -> list[str]:
     if null_count:
         issues.append(f"  NULL BYTES: {null_count} found")
 
-    # 2. EOF marker (accept any of the configured markers for this extension)
-    accepted_markers = EOF_MARKERS[ext]
+    # 2. EOF marker (long form required)
+    expected_marker = EOF_MARKERS[ext]
     lines = data.rstrip(b'\r\n').split(b'\n')
     last_nonempty = None
     for line in reversed(lines):
@@ -139,11 +150,16 @@ def check_file(rel_path: str) -> list[str]:
         if stripped.strip():
             last_nonempty = stripped
             break
-    if last_nonempty is None or not any(m in last_nonempty for m in accepted_markers):
-        long_form = accepted_markers[0].decode()
-        issues.append(f"  MISSING EOF MARKER: expected '{long_form}' as last non-empty line")
+    if last_nonempty is None or expected_marker not in last_nonempty:
+        marker_str = expected_marker.decode()
+        issues.append(f"  MISSING EOF MARKER: expected '{marker_str}' as last non-empty line")
+
+    # 3. SNAPSMACK_EOF_HEADER tag near top of file
+    if HEADER_TAG not in data[:HEADER_SCAN_BYTES]:
+        issues.append(f"  MISSING SNAPSMACK_EOF_HEADER tag in first {HEADER_SCAN_BYTES} bytes")
 
     # 3. Structural \r\n corruption
+    # 4. Structural \\r\\n corruption
     for i, line in enumerate(data.split(b'\n'), 1):
         if LITERAL_CRLF.search(line) and not is_likely_string_context(line):
             snippet = line.strip()[:80]
