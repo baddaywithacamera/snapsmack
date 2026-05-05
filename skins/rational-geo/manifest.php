@@ -39,7 +39,7 @@ return [
     'default_variant' => 'light',
 
     'features' => [
-        'supports_wall'        => false,
+        'supports_wall'        => true,
         'supports_slider'      => false,
         'has_landing'          => false,
         'post_modes'           => ['image'],
