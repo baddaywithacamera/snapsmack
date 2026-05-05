@@ -68,16 +68,7 @@ $available_modes  = array_filter(explode(',', $available_raw), fn($m) => isset($
 if (empty($available_modes)) $available_modes = [$current_layout];
 $available_modes  = array_values($available_modes);
 
-// Border/shadow
-$border_styles = [
-    'none'          => 'None',
-    'hairline'      => 'Hairline',
-    'solid'         => 'Solid',
-    'shadow'        => 'Shadow',
-    'double_shadow' => 'Double Shadow',
-];
-$current_border = $settings['archive_border_style'] ?? 'none';
-$current_shadow = (int)($settings['archive_shadow_depth'] ?? 2);
+// Note: archive_border_style / archive_shadow_depth removed — were saved but never consumed.
 
 // Grid sizing
 $current_cols   = max(2, min(8, (int)($settings['browse_cols'] ?? 4)));
@@ -190,34 +181,6 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                     </div>
                 </div>
 
-            </div>
-        </div>
-
-        <!-- ── TILE BORDER & SHADOW ──────────────────────────────────── -->
-        <div class="box">
-            <h3>TILE BORDER &amp; SHADOW</h3>
-            <div class="dash-grid">
-                <div class="lens-input-wrapper">
-                    <label>BORDER STYLE <span class="field-tip" data-tip="Applied to every tile in the archive grid.">ⓘ</span></label>
-                    <select name="settings[archive_border_style]" id="archive-border-select"
-                            onchange="document.getElementById('shadow-depth-row').classList.toggle('d-none', !['shadow','double_shadow'].includes(this.value))">
-                        <?php foreach ($border_styles as $bk => $bl): ?>
-                            <option value="<?php echo $bk; ?>" <?php echo ($current_border === $bk) ? 'selected' : ''; ?>>
-                                <?php echo strtoupper($bl); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="lens-input-wrapper<?php echo in_array($current_border, ['shadow','double_shadow']) ? '' : ' d-none'; ?>" id="shadow-depth-row">
-                    <label>SHADOW DEPTH <span class="field-tip" data-tip="1 = subtle. 5 = dramatic.">ⓘ</span></label>
-                    <div style="display:flex; align-items:center; gap:12px;">
-                        <input type="range" name="settings[archive_shadow_depth]"
-                               min="1" max="5" step="1"
-                               value="<?php echo $current_shadow; ?>"
-                               oninput="this.nextElementSibling.textContent = this.value">
-                        <span style="min-width:20px; font-family:monospace;"><?php echo $current_shadow; ?></span>
-                    </div>
-                </div>
             </div>
         </div>
 

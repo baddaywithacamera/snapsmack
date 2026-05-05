@@ -816,26 +816,26 @@ include 'core/sidebar.php';
         <?php if ($tool_api_key !== ''): ?>
             <div class="control-group" style="margin-bottom:12px;">
                 <label>CURRENT KEY</label>
-                <div style="display:flex; gap:8px; align-items:center;">
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                     <input type="text" id="tool-api-key-display"
                            value="<?php echo htmlspecialchars($tool_api_key); ?>"
-                           readonly style="font-family:monospace; font-size:0.8rem; flex:1;">
+                           readonly style="font-family:monospace; font-size:0.8rem; flex:1; min-width:200px; height:38px; padding:0 10px; margin:0;">
                     <button type="button" onclick="
                         navigator.clipboard.writeText(document.getElementById('tool-api-key-display').value);
                         this.textContent='COPIED';
                         setTimeout(()=>this.textContent='COPY',1500);
-                    " class="btn-smack" style="margin-top:0; white-space:nowrap;">COPY</button>
+                    " class="btn-smack" style="margin-top:0; white-space:nowrap; width:auto; flex-shrink:0; height:38px; padding:0 18px;">COPY</button>
                 </div>
             </div>
-            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
                 <form method="POST" style="margin:0;">
                     <input type="hidden" name="api_key_action" value="generate">
-                    <button type="submit" class="btn-smack" style="margin-top:0;">REGENERATE KEY</button>
+                    <button type="submit" class="btn-smack" style="margin-top:0; width:auto; padding:0 18px; height:38px;">REGENERATE KEY</button>
                 </form>
                 <form method="POST" style="margin:0;"
                       onsubmit="return confirm('Revoke the API key? All tools will lose access immediately.');">
                     <input type="hidden" name="api_key_action" value="revoke">
-                    <button type="submit" class="btn-smack btn-danger" style="margin-top:0;">REVOKE KEY</button>
+                    <button type="submit" class="btn-smack btn-danger" style="margin-top:0; width:auto; padding:0 18px; height:38px;">REVOKE KEY</button>
                 </form>
             </div>
         <?php else: ?>
