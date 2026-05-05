@@ -198,7 +198,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
             <div class="dash-grid">
 
                 <div class="lens-input-wrapper">
-                    <label>FLOATING GALLERY LINK</label>
+                    <label>ENABLE FLOATING GALLERY <span class="field-tip" data-tip="Enables the gallery-wall.php page. Add the link to your nav via Menu Manager.">ⓘ</span></label>
                     <?php if ($wall_unavailable): ?>
                         <select disabled class="select-locked"><option>DISABLED BY SKIN</option></select>
                         <input type="hidden" name="settings[show_wall_link]" value="0">

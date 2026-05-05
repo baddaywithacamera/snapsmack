@@ -15,6 +15,23 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.44 — "Barstool" (2026-05-05)
+
+### Added
+- Nav menu system fully wired end-to-end: Menu Manager in Pimp Your Ride sidebar, migration 049 seeds nav_menu_json and dropdown colour settings
+- core/header.php: JSON-driven nav renderer with 3-level recursion and typed URL resolution (custom, external, container, page, album, category, collection); legacy flat nav kept as fallback for unconfigured sites
+- Dropdown CSS added to all 8 skins (.nav-has-children / .nav-submenu); dropdown colours injected as CSS vars from admin settings
+- ss-engine-nav-dropdown.js: fixed openMenu() so ancestor submenus stay open on mobile (3-level fix)
+- ss-engine-menu-builder.js: full rewrite — 3-level drag-and-drop, container item type (dropdown parent with no URL), active/inactive toggle per item, album/category/collection pool
+- smack-menu.php: loads albums, categories, collections for pool; container add UI; 3-level hint
+
+### Removed
+- smack-settings.php: NAVIGATION SLOT ASSIGNMENTS box (nav_slot_1–4) removed — Menu Manager replaces it
+- smack-settings.php: PUBLIC BLOGROLL nav toggle removed — handle via Menu Manager
+- smack-appearance-archive.php: FLOATING GALLERY LINK relabelled to ENABLE FLOATING GALLERY with tip pointing to Menu Manager
+
+---
+
 ## 0.7.43 — “Ottoman” (2026-05-05)
 
 ### Added

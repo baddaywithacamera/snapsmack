@@ -130,5 +130,8 @@ $slots[] = '<a href="' . $rss_url . '" class="footer-link rss-tag" title="RSS Fe
             </p>
         </div>
     </div>
+<?php if (!empty($settings['nav_menu_json']) && $settings['nav_menu_json'] !== '[]'): ?>
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-nav-dropdown.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
+<?php endif; ?>
 </footer>
 <?php // ===== SNAPSMACK EOF =====

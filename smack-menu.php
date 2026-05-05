@@ -7,8 +7,8 @@
  * Stores the menu as a JSON array in snap_settings under the key
  * nav_menu_json. core/header.php reads this JSON to render the public nav.
  *
- * One level of nesting supported. Child items inherit the same item types
- * as top-level items (pages, custom links, built-ins).
+ * Three levels of nesting (root → child → grandchild). Item types: custom,
+ * external, container, page, album, category, collection, and built-ins.
  */
 
 /**
@@ -197,6 +197,31 @@ include 'core/sidebar.php';
                                 <button type="button" id="add-custom-btn" class="smack-btn smack-btn--sm">Add</button>
                             </div>
                         </div>
+                        <div class="menu-pool-section">
+                            <div class="menu-pool-section-label">Container <span class="smack-dim">(dropdown parent, no URL)</span></div>
+                            <div class="menu-custom-link-form">
+                                <input type="text" id="container-label" placeholder="Label e.g. WORKS" maxlength="60">
+                                <button type="button" id="add-container-btn" class="smack-btn smack-btn--sm">Add Container</button>
+                            </div>
+                        </div>
+                        <?php if (!empty($album_items)): ?>
+                        <div class="menu-pool-section">
+                            <div class="menu-pool-section-label">Albums</div>
+                            <div id="pool-albums" class="menu-pool-list"></div>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (!empty($category_items)): ?>
+                        <div class="menu-pool-section">
+                            <div class="menu-pool-section-label">Categories</div>
+                            <div id="pool-categories" class="menu-pool-list"></div>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (!empty($collection_items)): ?>
+                        <div class="menu-pool-section">
+                            <div class="menu-pool-section-label">Collections</div>
+                            <div id="pool-collections" class="menu-pool-list"></div>
+                        </div>
+                        <?php endif; ?>
                     </div>
 
                     <!-- CURRENT MENU -->
@@ -205,7 +230,7 @@ include 'core/sidebar.php';
                         <div id="menu-list" class="menu-list">
                             <!-- populated by JS -->
                         </div>
-                        <p class="menu-hint">Drag items to reorder. Drop an item onto another to nest it (one level deep).</p>
+                        <p class="menu-hint">Drag to reorder. Drop onto another item to nest (up to 3 levels). Use the eye button to hide items without removing them.</p>
                     </div>
 
                 </div>
@@ -451,6 +476,49 @@ include 'core/sidebar.php';
 .menu-item-actions button:hover { color: var(--accent); background: var(--bg-secondary); }
 .menu-item-actions .btn-remove:hover { color: #e05252; }
 
+.menu-child-row {
+    margin-top: 2px;
+}
+
+/* Grandchildren zone */
+.menu-grandchildren-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 3px;
+    margin-left: 44px;
+    padding: 2px 6px;
+    border-left: 2px dashed var(--border);
+    min-height: 8px;
+}
+.menu-grandchildren-list.has-children {
+    padding: 4px 6px;
+    background: rgba(255,255,255,0.01);
+}
+.menu-grandchildren-list.drag-over {
+    border-left-color: var(--accent);
+    background: rgba(255,255,255,0.03);
+}
+
+/* Depth-based item bar sizing */
+.menu-item-main.depth-1 { font-size: 0.76rem; padding: 4px 8px; background: var(--bg-secondary); border-radius: 3px; }
+.menu-item-main.depth-2 { font-size: 0.72rem; padding: 3px 8px; background: var(--bg-secondary); border-radius: 3px; opacity: 0.9; }
+
+/* Inactive badge */
+.menu-item-inactive-badge {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #e05252;
+    border: 1px solid #e05252;
+    border-radius: 3px;
+    padding: 1px 4px;
+    flex-shrink: 0;
+}
+
+/* Active toggle dimmed state */
+.btn-toggle-active.btn-inactive { opacity: 0.3; }
+
 .menu-hint {
     font-size: 0.72rem;
     color: var(--text-dim);
@@ -480,6 +548,9 @@ include 'core/sidebar.php';
 const SS_BUILTIN_ITEMS = <?php echo json_encode($builtin_items, JSON_UNESCAPED_UNICODE); ?>;
 const SS_PAGE_ITEMS    = <?php echo json_encode($page_items,    JSON_UNESCAPED_UNICODE); ?>;
 const SS_CURRENT_MENU  = <?php echo json_encode($current_menu,  JSON_UNESCAPED_UNICODE); ?>;
+const SS_ALBUM_ITEMS      = <?php echo json_encode($album_items,      JSON_UNESCAPED_UNICODE); ?>;
+const SS_CATEGORY_ITEMS   = <?php echo json_encode($category_items,   JSON_UNESCAPED_UNICODE); ?>;
+const SS_COLLECTION_ITEMS = <?php echo json_encode($collection_items, JSON_UNESCAPED_UNICODE); ?>;
 </script>
 <script src="assets/js/ss-engine-menu-builder.js?v=<?php echo SNAPSMACK_VERSION; ?>"></script>
 

@@ -336,13 +336,6 @@ include 'core/sidebar.php';
                     </select>
                 </div>
 
-                <div class="lens-input-wrapper">
-                    <label>PUBLIC BLOGROLL <span class="field-tip" data-tip="Controls the blogroll nav link and public blogroll page access.">ⓘ</span></label>
-                    <select name="settings[blogroll_enabled]">
-                        <option value="1" <?php echo (($settings['blogroll_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
-                        <option value="0" <?php echo (($settings['blogroll_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED</option>
-                    </select>
-                </div>
 
                 <div class="lens-input-wrapper">
                     <label>COMMUNITY FORUM <span class="field-tip" data-tip="Shows the forum client in your admin panel. Connects to the SnapSmack community hub.">ⓘ</span></label>
@@ -504,48 +497,6 @@ include 'core/sidebar.php';
             </div>
         </div>
 
-        <!-- ============================================================
-             NAVIGATION SLOT ASSIGNMENTS — post-layout-grid (2-col)
-             ============================================================ -->
-        <div class="box">
-            <h3>NAVIGATION SLOT ASSIGNMENTS</h3>
-            <div class="post-layout-grid">
-                <div class="post-col-left">
-                    <label>PRIMARY NAVIGATION (SLOT 1)</label>
-                    <select name="settings[nav_slot_1]">
-                        <option value="0">EMPTY</option>
-                        <?php foreach($pages_list as $p): ?>
-                            <option value="<?php echo $p['id']; ?>" <?php echo (($settings['nav_slot_1'] ?? 0) == $p['id']) ? 'selected' : ''; ?>><?php echo strtoupper(htmlspecialchars($p['title'])); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-
-                    <label>SECONDARY NAVIGATION (SLOT 2)</label>
-                    <select name="settings[nav_slot_2]">
-                        <option value="0">EMPTY</option>
-                        <?php foreach($pages_list as $p): ?>
-                            <option value="<?php echo $p['id']; ?>" <?php echo (($settings['nav_slot_2'] ?? 0) == $p['id']) ? 'selected' : ''; ?>><?php echo strtoupper(htmlspecialchars($p['title'])); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="post-col-right">
-                    <label>AUXILIARY NAVIGATION (SLOT 3)</label>
-                    <select name="settings[nav_slot_3]">
-                        <option value="0">EMPTY</option>
-                        <?php foreach($pages_list as $p): ?>
-                            <option value="<?php echo $p['id']; ?>" <?php echo (($settings['nav_slot_3'] ?? 0) == $p['id']) ? 'selected' : ''; ?>><?php echo strtoupper(htmlspecialchars($p['title'])); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-
-                    <label>SYSTEM NAVIGATION (SLOT 4)</label>
-                    <select name="settings[nav_slot_4]">
-                        <option value="0">EMPTY</option>
-                        <?php foreach($pages_list as $p): ?>
-                            <option value="<?php echo $p['id']; ?>" <?php echo (($settings['nav_slot_4'] ?? 0) == $p['id']) ? 'selected' : ''; ?>><?php echo strtoupper(htmlspecialchars($p['title'])); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-            </div>
-        </div>
 
         <!-- ============================================================
              IMAGE ENGINE — post-layout-grid (2-col)

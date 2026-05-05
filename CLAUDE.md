@@ -307,9 +307,9 @@ the Cowork session changes). Tasks are independent after that unless noted.
 
 **Current tasks:**
 - `000-commit-cowork-session.md` — fix git index, commit 5 Cowork fixes, READY
-- `001-nav-menu-restore-and-upgrade.md` — restore nav menu from git + 3-level upgrade, READY
+- `001-nav-menu-wire-and-upgrade.md` — wire nav menu (migration/sidebar/header/CSS) + 3-level upgrade, READY (replaces old 001)
 - `002-search-placeholder-setting.md` — configurable search field label, READY
-- `003-wall-all-skins.md` — enable wall in remaining skins, READY
+- `003-wall-all-skins.md` — enable wall in remaining skins (kiosk + true-grit still pending), READY
 
 **Git index note:** The index is corrupt again (bad signature 0x00000000). Fix before any git op:
 ```bash
@@ -324,15 +324,33 @@ git read-tree HEAD
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.42 "Recliner" + Cowork fixes (uncommitted)
-✅ **0.7.42 committed, tagged, and pushed.**
+### SnapSmack — Alpha 0.7.44 "Barstool"
+✅ **0.7.44 committed and ready to push.**
 
-**Uncommitted Cowork session changes (2026-05-04) — see `.claude-tasks/000`:**
-- `smack-settings.php` — API key UI fixed (field+button proportions)
+**What 0.7.43 shipped (Claude Code):**
+- `smack-settings.php` — API key UI fixed
 - `smack-appearance-archive.php` — dead TILE BORDER & SHADOW box removed
-- `skins/50-shades-of-noah-grey/archive-layout.php` — toggle data-driven from $available_modes
+- `skins/50-shades-of-noah-grey/archive-layout.php` — toggle data-driven
 - `skins/rational-geo/archive-layout.php` — same toggle fix + wrong settings key corrected
 - `skins/50-shades-of-noah-grey/manifest.php` — archive_frame_style moved to ARCHIVE section
+- `smack-menu.php`, `ss-engine-menu-builder.js`, `ss-engine-nav-dropdown.js` — restored from git history
+- `migrations/050_search_placeholder.php` — search placeholder setting
+- `supports_wall: true` flipped in rational-geo, photogram, impact-printer manifests
+- **NOT done in 0.7.43:** nav menu wiring (migration 049, sidebar link, header.php renderer, skin CSS) — deferred by Code
+
+**Uncommitted Cowork session changes (2026-05-05):**
+- `migrations/049_nav_menu_json.php` — seeds nav_menu_json + dropdown appearance settings
+- `core/sidebar.php` — Menu Manager link added to Pimp Your Ride
+- `core/footer.php` — loads ss-engine-nav-dropdown.js when nav_menu_json is active
+- `core/meta.php` — injects --nav-dropdown-bg/text CSS vars when nav configured
+- `core/header.php` — JSON nav renderer (3-level recursive) with flat nav fallback + _snap_nav_resolve_url()
+- All 8 skins `style.css` — .nav-has-children / .nav-submenu dropdown CSS added
+- `smack-menu.php` — container type, album/category/collection pool, 3-level hint, new CSS
+- `assets/js/ss-engine-menu-builder.js` — full rewrite: 3-level drag-and-drop, container type, active toggle, album/cat/coll pool items
+- `assets/js/ss-engine-nav-dropdown.js` — fixed openMenu() to not close ancestor submenus (3-level mobile fix)
+- `smack-settings.php` — removed blogroll_enabled nav toggle + entire NAVIGATION SLOT ASSIGNMENTS box
+- `smack-appearance-archive.php` — relabelled show_wall_link as "ENABLE FLOATING GALLERY" (feature toggle, not nav control)
+- `CLAUDE.md` — work state updated
 
 **Git branch is `master` not `main`** (confirmed 2026-04-29).
 
@@ -359,17 +377,19 @@ git read-tree HEAD
 - `install.php` — r4_exec recovery tail restored from truncation
 - EOF markers added to all 454 PHP/JS/CSS files; `tools/check-eof.py` pre-commit scanner added
 
-**Pending — after 0.7.42 push:**
-- Build 0.7.42 release package from Smack Central → Release Packager
+**Pending — after 0.7.43:**
+- Build 0.7.43 release package from Smack Central → Release Packager
 - Build skin packages for 50-shades-of-noah-grey v1.1 and rational-geo v1.1 via Skin Packager
-- Update all live sites to 0.7.42 via Smack Central updater
-- FTP `core/updater.php` to photowalk.ing first (fixes 500 so updater can run), then update via admin
+- Update all live sites to 0.7.43 via Smack Central updater
 - FTP `.htaccess` (with Probe Guard routes) to each server manually — gitignored, server-specific
 - Generate API key in foundtextures.ca Admin → Settings → API Access, paste into SYBU
 - Rebuild SYBU exe (`build.bat` in `tools/sybu/`)
 - strathmore.pics: delete duplicate snap_user 'sean', re-run install step 5
 - FTP skins to strathmore.pics: `50-shades-of-noah-grey`, `new-horizon`, `galleria`, `rational-geo`
 - FTP `projects/snapsmack-ca/` files to snapsmack.ca (untracked, manual FTP)
+- wall config move to Global Vibe (low priority, still in Archive Appearance)
+- wall in kiosk + true-grit (task 003 covers 5 skins; Code only did 3 — check which remain)
+- calendar months slider in Archive Appearance (deferred, not specced yet)
 
 **Pending — other:**
 - CSRF implementation (deferred HIGH severity — SameSite=Lax partial mitigation in place)
