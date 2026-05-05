@@ -264,6 +264,9 @@ include 'core/sidebar.php';
                     <label>TAGLINE</label>
                     <input type="text" name="settings[site_tagline]" value="<?php echo htmlspecialchars($settings['site_tagline'] ?? ''); ?>">
 
+                    <label>SEARCH FIELD LABEL <span class="field-tip" data-tip="Placeholder shown in the archive search box. Useful for multi-blog domains where each blog wants its own wording (e.g. 'Search articles', 'Search photos'). Defaults to 'Search or #tag…' if empty.">ⓘ</span></label>
+                    <input type="text" name="settings[search_placeholder]" value="<?php echo htmlspecialchars($settings['search_placeholder'] ?? 'Search or #tag…'); ?>" placeholder="Search or #tag…" maxlength="60">
+
                     <label>SITE DESCRIPTION <span class="field-tip" data-tip="Used for Open Graph link previews and feed skin profile bios.">ⓘ</span></label>
                     <textarea name="settings[site_description]" rows="3" placeholder="One or two sentences about this blog. Used for Open Graph link previews and photo-feed skin profiles."><?php echo htmlspecialchars($settings['site_description'] ?? ''); ?></textarea>
 
