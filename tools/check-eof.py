@@ -3,10 +3,22 @@
 SNAPSMACK - Pre-commit integrity scanner
 tools/check-eof.py
 
-Checks every tracked PHP, JS, and CSS file for:
-  1. EOF marker on the last non-empty line  (// EOF or /* EOF */)
-  2. Null bytes anywhere in the file
-  3. Structural \\r\\n corruption (literal backslash-r backslash-n outside string literals)
+SNAPSMACK_EOF_HEADER
+    # ===== SNAPSMACK EOF =====
+Last non-empty line of this file MUST match the line above.
+Missing or different = truncated/corrupted. Restore before saving.
+
+Checks every tracked source file (PHP/JS/CSS/HTML/HTM/MD/SQL/PY/SH) for:
+  1. EOF marker on the last non-empty line. Long-form 'SNAPSMACK EOF' is the
+     target convention; short-form ('// EOF', '/* EOF */', '# EOF', '-- EOF',
+     '<!-- EOF -->') is temporarily accepted during the long-form migration.
+     A later phase drops short-form acceptance and also requires the header.
+  2. Null bytes anywhere in the file (truncation/encoding artifact).
+  3. Structural \\r\\n corruption (literal backslash-r backslash-n outside
+     string literals).
+
+Excluded paths (third-party / build artifacts) are listed in
+EXCLUDED_PATTERNS below.
 
 Run from repo root before every commit:
     python3 tools/check-eof.py
@@ -18,16 +30,43 @@ import subprocess
 import sys
 import re
 import os
+import fnmatch
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# Per extension: ordered list of acceptable substring markers. The long form
+# is canonical; short form is accepted during the migration. Long form is
+# listed first so error messages display it as the expected target.
 EOF_MARKERS = {
-    '.php': b'// EOF',
-    '.js':  b'// EOF',
-    '.css': b'/* EOF */',
+    '.php':  [b'// ===== SNAPSMACK EOF =====', b'// EOF'],
+    '.js':   [b'// ===== SNAPSMACK EOF =====', b'// EOF'],
+    '.css':  [b'/* ===== SNAPSMACK EOF ===== */', b'/* EOF */'],
+    '.html': [b'<!-- ===== SNAPSMACK EOF ===== -->', b'<!-- EOF -->'],
+    '.htm':  [b'<!-- ===== SNAPSMACK EOF ===== -->', b'<!-- EOF -->'],
+    '.md':   [b'<!-- ===== SNAPSMACK EOF ===== -->', b'<!-- EOF -->'],
+    '.sql':  [b'-- ===== SNAPSMACK EOF =====', b'-- EOF'],
+    '.py':   [b'# ===== SNAPSMACK EOF =====', b'# EOF'],
+    '.sh':   [b'# ===== SNAPSMACK EOF =====', b'# EOF'],
 }
 
-EXTENSIONS = set(EOF_MARKERS.keys())
+# Active scan scope. EOF_MARKERS is pre-populated for all target extensions,
+# but during the long-form migration the scanner only enforces markers on the
+# extensions that already had them under the old convention. The remaining
+# types (.html .htm .md .sql .py .sh) are added to this set in the migration
+# wrap-up phase, after marker+header has been applied to those files.
+EXTENSIONS = {'.php', '.js', '.css'}
+
+# Paths excluded from the scan (third-party / build artifacts).
+# Mirrors the list documented in repo CLAUDE.md.
+EXCLUDED_PATTERNS = [
+    'smack-central/*',
+    'licenses/*',
+    'vendor/*',
+    'node_modules/*',
+    '*.min.js',
+    '*.min.css',
+    'assets/js/fjGallery*',
+]
 
 # Regex to detect literal \r\n sequences as bytes (backslash-r backslash-n)
 # i.e. the four bytes: 0x5c 0x72 0x5c 0x6e
@@ -48,6 +87,14 @@ SAFE_LINE_PATTERNS = [
 def is_likely_string_context(line: bytes) -> bool:
     for pat in SAFE_LINE_PATTERNS:
         if pat.search(line):
+            return True
+    return False
+
+
+def is_excluded(rel_path: str) -> bool:
+    rp = rel_path.replace('\\', '/')
+    for pat in EXCLUDED_PATTERNS:
+        if fnmatch.fnmatch(rp, pat):
             return True
     return False
 
@@ -83,8 +130,8 @@ def check_file(rel_path: str) -> list[str]:
     if null_count:
         issues.append(f"  NULL BYTES: {null_count} found")
 
-    # 2. EOF marker
-    expected_marker = EOF_MARKERS[ext]
+    # 2. EOF marker (accept any of the configured markers for this extension)
+    accepted_markers = EOF_MARKERS[ext]
     lines = data.rstrip(b'\r\n').split(b'\n')
     last_nonempty = None
     for line in reversed(lines):
@@ -92,9 +139,9 @@ def check_file(rel_path: str) -> list[str]:
         if stripped.strip():
             last_nonempty = stripped
             break
-    if last_nonempty is None or expected_marker not in last_nonempty:
-        marker_str = expected_marker.decode()
-        issues.append(f"  MISSING EOF MARKER: expected '{marker_str}' as last non-empty line")
+    if last_nonempty is None or not any(m in last_nonempty for m in accepted_markers):
+        long_form = accepted_markers[0].decode()
+        issues.append(f"  MISSING EOF MARKER: expected '{long_form}' as last non-empty line")
 
     # 3. Structural \r\n corruption
     for i, line in enumerate(data.split(b'\n'), 1):
@@ -109,12 +156,16 @@ def main():
     files = get_tracked_files()
     checked = 0
     failed = 0
+    skipped_excluded = 0
 
     print(f"Scanning {len(files)} tracked files in {REPO_ROOT}\n")
 
     for rel_path in sorted(files):
         ext = os.path.splitext(rel_path)[1].lower()
         if ext not in EXTENSIONS:
+            continue
+        if is_excluded(rel_path):
+            skipped_excluded += 1
             continue
         issues = check_file(rel_path)
         checked += 1
@@ -125,14 +176,18 @@ def main():
                 print(issue)
 
     print(f"\n{'='*60}")
-    print(f"Checked {checked} files ({len(EXTENSIONS)} extensions). {failed} failed.")
+    print(
+        f"Checked {checked} files across {len(EXTENSIONS)} extensions. "
+        f"{skipped_excluded} excluded by path. {failed} failed."
+    )
     if failed:
         print("Do NOT commit until all failures are resolved.")
         return 1
-    else:
-        print("All clear.")
-        return 0
+    print("All clear.")
+    return 0
 
 
 if __name__ == '__main__':
     sys.exit(main())
+
+# ===== SNAPSMACK EOF =====
