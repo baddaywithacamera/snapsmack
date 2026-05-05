@@ -356,8 +356,8 @@ git read-tree HEAD
 
 **Signing keypair status:**
 - Release private key: in `sc-config.php` on snapsmack.ca server ✅
-- Release public key: `4df51e2c4610a9a34913f7a52a29f8964dc2aec8448abcfe899cc4e2cf45068a` — in `core/release-pubkey.php` ✅
-- Root public key: `d4c4256853fc046160f0f0028f3b48548eac50defdbd0803ef545d36d100eae5` — hardcoded in `core/updater.php` ✅
+- Release public key: `b9955f78c835f964b980a104d231be8253fce59db89cb12367c9ccbbafcea297` — in `core/release-pubkey.php` ✅
+- Root public key: `3287b9b29257da6a307fc85b949c9dc52bc99c08a66db21e6fcbaab0fb324652` — hardcoded in `core/updater.php` ✅
 - Root private key + full instructions: in Bitwarden (`KEY-ROTATION-INSTRUCTIONS.txt` on disk, gitignored) ✅
 
 **snapsmack.ca server notes:**
