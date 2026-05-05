@@ -37,7 +37,7 @@ return [
     'demo_url'      => 'https://pixhellated.ca',
 
     'features' => [
-        'supports_wall'   => false,
+        'supports_wall'   => true,
         'archive_layouts' => ['square', 'cropped'],
         'has_landing'     => false,
         'post_modes'      => ['image'],
