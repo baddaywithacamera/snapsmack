@@ -6,6 +6,14 @@
  * applies optional spam filtering, checks the ban list, and stores comments for moderation.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -121,4 +129,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 } else {
     die("FORBIDDEN: Direct access to this frequency is not permitted.");
 }
-// EOF
+// ===== SNAPSMACK EOF =====

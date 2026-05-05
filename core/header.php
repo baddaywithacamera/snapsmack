@@ -8,6 +8,16 @@
  * and show_wall_link setting to hide floating gallery on mobile.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 // --- LANDING-ONLY MODE ---
 // When landing_only is active the entire nav is suppressed; the skin's header
 // wrapper div still renders (so skin-specific CSS framing is intact) but empty.
@@ -112,4 +122,4 @@ try {
         <?php endif; ?>
     </li>
 </ul>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

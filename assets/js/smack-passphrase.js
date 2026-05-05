@@ -5,6 +5,14 @@
  * and smack-change-password.php via the "Suggest a passphrase" button.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 const SNAP_WORDS = [
     // nouns — creatures
     'badger','hamster','walrus','hedgehog','platypus','narwhal','lobster',
@@ -71,4 +79,4 @@ function snapSuggestPassphrase(targetInputId, displayId) {
     if (input)   input.value = phrase;
     if (display) display.textContent = phrase;
 }
-// EOF
+// ===== SNAPSMACK EOF =====

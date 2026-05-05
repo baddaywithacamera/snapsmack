@@ -6,6 +6,16 @@
  * acknowledges PixelPost, GreyMatter, and Noah Grey; Carousel mode
  * credits Rick McGinnis. Outputs the closing </body> and </html> tags.
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
 ?>
 <footer id="admin-universal-footer">
     <div class="footer-left">
@@ -26,4 +36,4 @@
 <script src="assets/js/ss-engine-sidebar.js"></script>
 </body>
 </html>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

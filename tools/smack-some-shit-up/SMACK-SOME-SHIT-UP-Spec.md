@@ -1,3 +1,14 @@
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF
+  marker for this file type: an HTML comment containing five
+  equals, space, the literal string 'SNAPSMACK EOF', space, five
+  equals.
+  (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS.)
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+
+
 # SMACK SOME SHIT UP
 ## Release Packager — Tool Specification
 **Version:** 1.0 draft  
@@ -275,3 +286,4 @@ Double-click `sssu.bat` on Windows. Run `./sssu.sh` on Linux. That's it.
 - Uploading ZIPs to the releases server — manual step, by design
 - macOS builds
 - Automated git tagging
+<!-- ===== SNAPSMACK EOF ===== -->

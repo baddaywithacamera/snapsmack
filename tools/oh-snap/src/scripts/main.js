@@ -18,6 +18,14 @@
  * The active connection and skin data are held in memory only.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // --- STATE ---
 
 let api           = null;   // Active SnapSmackAPI instance
@@ -372,4 +380,4 @@ function esc(str) {
         .replace(/&/g, '&amp;').replace(/</g, '&lt;')
         .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
-// EOF
+// ===== SNAPSMACK EOF =====

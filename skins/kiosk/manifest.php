@@ -6,6 +6,16 @@
  * Defines layout options, pimpotron engine configuration, and customization controls.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 // Load system inventory for available fonts and features
 $inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
 $fonts = $inventory['fonts'] ?? [];
@@ -328,4 +338,4 @@ return [
         .hex-display { font-family: monospace; }
     "
 ];
-// EOF
+// ===== SNAPSMACK EOF =====

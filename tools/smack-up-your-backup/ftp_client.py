@@ -4,6 +4,12 @@ Paced FTP client: connect, upload, download, remote index, directory creation.
 Supports FTP_TLS. Sends NOOP keepalives during pacing delays.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import ftplib
 import hashlib
 import os
@@ -370,3 +376,4 @@ class FTPClient:
             for chunk in iter(lambda: f.read(65536), b""):
                 h.update(chunk)
         return f"sha256:{h.hexdigest()}"
+# ===== SNAPSMACK EOF =====

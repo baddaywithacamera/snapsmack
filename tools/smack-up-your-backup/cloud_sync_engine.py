@@ -15,6 +15,12 @@ Run in a background thread. All UI communication via callbacks.
 Callbacks: on_log, on_progress, on_stats, on_done, on_ask, cancel(), prompt_continue()
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import os
 import tempfile
 import threading
@@ -493,3 +499,4 @@ class CloudSyncEngine:
         else:
             manifest.save()
             self._log(f"  Manifest saved: {manifest.path}")
+# ===== SNAPSMACK EOF =====

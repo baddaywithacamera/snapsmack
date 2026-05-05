@@ -3,6 +3,12 @@ Smack Up Your Backup — report_writer.py
 Export audit reports as .txt or styled .html.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import os
 from typing import Optional
 
@@ -219,3 +225,4 @@ def _html_healthy(report: AuditReport) -> str:
 </summary>
 <div class="rows">{rows}</div>
 </details>"""
+# ===== SNAPSMACK EOF =====

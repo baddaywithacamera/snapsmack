@@ -3,6 +3,14 @@
  * SNAPSMACK - Configuration manifest for the Amber Phosphorus admin theme
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 return [
     'name'        => 'Amber Phosphorus',
     'version'     => '1.0',
@@ -12,4 +20,4 @@ return [
     'css_file'    => 'admin-theme-colours-amber-phosphorus.css',
     'description' => "Zero-latency monochrome phosphor aesthetic for the high-yield shooter. Pure DEC VT100 energy without the 60Hz flicker or the bulk of a CRT. If you can't read the grid in amber, you're looking at the wrong data.",
 ];
-// EOF
+// ===== SNAPSMACK EOF =====

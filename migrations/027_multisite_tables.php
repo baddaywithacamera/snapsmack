@@ -10,6 +10,14 @@
  * This migration is idempotent (safe to run multiple times).
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once __DIR__ . '/../core/db.php';
 
 $migration_name = "027_multisite_tables";
@@ -119,4 +127,4 @@ echo "\nMigration $migration_name completed successfully.\n";
 echo "Tables created: snap_multisite_nodes, snap_multisite_queue\n";
 echo "Settings added: multisite_role, multisite_reg_token, multisite_reg_token_expires\n";
 ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

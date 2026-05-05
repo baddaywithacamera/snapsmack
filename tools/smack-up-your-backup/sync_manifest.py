@@ -23,6 +23,12 @@ Stored remotely at: _suyb_manifest.json in the B2 bucket root
 On each run: whichever copy is newer wins.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import json
 import os
 from datetime import datetime, timezone
@@ -167,3 +173,4 @@ class SyncManifest:
 
     def file_count(self) -> int:
         return len(self._data.get("files", {}))
+# ===== SNAPSMACK EOF =====

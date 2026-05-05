@@ -6,6 +6,18 @@
  * Polaroid, Standard Print, Borderless, Slide Mount.
  */
 
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 /* ── CSS Custom Properties ────────────────────────────────────────────── */
 :root {
     --text-primary:    #333333;
@@ -509,4 +521,4 @@ a:hover { color: var(--text-primary); }
         padding: 0 16px;
     }
 }
-/* EOF */
+/* ===== SNAPSMACK EOF ===== */

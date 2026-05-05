@@ -5,6 +5,14 @@
  * infinite scroll, and zoomable image viewer. Keyboard and mouse controls.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 const canvas = document.getElementById('wall-canvas');
 const zoomLayer = document.getElementById('zoom-layer');
 let activeClone = null;
@@ -428,4 +436,4 @@ function closeZoom() {
 zoomLayer.onclick = closeZoom;
 window.addEventListener('load', initWall);
 animate();
-// EOF
+// ===== SNAPSMACK EOF =====

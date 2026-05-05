@@ -6,6 +6,12 @@ Detects commenters whose writing style matches banned users or each other.
 Python 3.10+ | tkinter | pymysql
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 BUILD_VERSION = "0.1.0"
 
 import os
@@ -651,3 +657,4 @@ class ResultsTab(ttk.Frame):
 if __name__ == '__main__':
     app = App()
     app.mainloop()
+# ===== SNAPSMACK EOF =====

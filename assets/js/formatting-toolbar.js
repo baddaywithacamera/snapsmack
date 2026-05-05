@@ -7,6 +7,14 @@
  * AI Assist and Spell/Grammar check via smack-ai-assist.php.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 class FormattingToolbar {
 
     constructor(textareaId, ajaxUrl) {
@@ -362,4 +370,4 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
-// EOF
+// ===== SNAPSMACK EOF =====

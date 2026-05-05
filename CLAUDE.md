@@ -1,3 +1,14 @@
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF
+  marker for this file type: an HTML comment containing five
+  equals, space, the literal string 'SNAPSMACK EOF', space, five
+  equals.
+  (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS.)
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+
+
 # SnapSmack Architecture Conventions
 
 ## CRITICAL — Promotional Site (projects/snapsmack-ca/)
@@ -251,12 +262,43 @@ git add <files>
 git commit
 ```
 
+## Claude Code Task Handoff
+
+A `.claude-tasks/` folder (gitignored) at the repo root contains work orders for Claude Code.
+Cowork sessions reason and spec; Claude Code executes git-touching work.
+
+**Convention:** Each file is `NNN-description.md` with Status, Context, numbered Steps, and
+a ready-to-paste commit message. Do task 000 first (it fixes the git index and commits
+the Cowork session changes). Tasks are independent after that unless noted.
+
+**Current tasks:**
+- `000-commit-cowork-session.md` — fix git index, commit 5 Cowork fixes, READY
+- `001-nav-menu-restore-and-upgrade.md` — restore nav menu from git + 3-level upgrade, READY
+- `002-search-placeholder-setting.md` — configurable search field label, READY
+- `003-wall-all-skins.md` — enable wall in remaining skins, READY
+
+**Git index note:** The index is corrupt again (bad signature 0x00000000). Fix before any git op:
+```bash
+cd /c/dev/snapsmack
+rm .git/index
+git read-tree HEAD
+```
+
+---
+
 ## Current Work State (as of session end)
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.42 "Recliner"
+### SnapSmack — Alpha 0.7.42 "Recliner" + Cowork fixes (uncommitted)
 ✅ **0.7.42 committed, tagged, and pushed.**
+
+**Uncommitted Cowork session changes (2026-05-04) — see `.claude-tasks/000`:**
+- `smack-settings.php` — API key UI fixed (field+button proportions)
+- `smack-appearance-archive.php` — dead TILE BORDER & SHADOW box removed
+- `skins/50-shades-of-noah-grey/archive-layout.php` — toggle data-driven from $available_modes
+- `skins/rational-geo/archive-layout.php` — same toggle fix + wrong settings key corrected
+- `skins/50-shades-of-noah-grey/manifest.php` — archive_frame_style moved to ARCHIVE section
 
 **Git branch is `master` not `main`** (confirmed 2026-04-29).
 
@@ -350,3 +392,4 @@ Directory names use hyphens only, never underscores.
 | `true-grit` | True Grit | available | skin gallery only |
 | `photogram` | Photogram | available | ✅ YES |
 | `kiosk` | Kiosk | available | skin gallery only |
+<!-- ===== SNAPSMACK EOF ===== -->

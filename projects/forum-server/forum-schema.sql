@@ -1,3 +1,9 @@
+-- SNAPSMACK_EOF_HEADER
+--     -- ===== SNAPSMACK EOF =====
+-- Last non-empty line of this file MUST match the line above.
+-- Missing or different = truncated/corrupted. Restore before saving.
+
+
 -- ============================================================
 -- SNAPSMACK FORUM — Database Schema (v2)
 -- Deploy to: squir871_smackforum on snapsmack.ca
@@ -222,3 +228,4 @@ INSERT IGNORE INTO ss_forum_categories (slug, name, description, sort_order) VAL
     ('bug-reports',      'Bug Reports',           'Something broken? Post here. Include your SnapSmack version and active skin.',   3),
     ('feature-requests', 'Feature Requests',      'Ideas for what comes next. Vote with replies.',                                  4),
     ('show-and-tell',    'Show & Tell',           'Share your site. Show what you\'ve built with SnapSmack.',                      5);
+-- ===== SNAPSMACK EOF =====

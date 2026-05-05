@@ -8,6 +8,14 @@
  * Variables available from index.php: $pdo, $settings, $img, $active_skin, $site_name
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // ── Slider config ────────────────────────────────────────────────────────
 $slider_enabled  = ($settings['htbs_slider_enabled'] ?? '1') === '1';
 $slider_autoplay = ($settings['htbs_slider_autoplay'] ?? '1') === '1';
@@ -159,4 +167,4 @@ $row_height = (int)($settings['htbs_grid_row_height'] ?? 280);
 </div>
 
 <?php include('skin-footer.php'); ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

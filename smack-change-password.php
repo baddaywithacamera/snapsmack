@@ -6,6 +6,14 @@
  * must be set. Clears the flag and the DB column on successful save.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 require_once 'core/auth-recovery.php';
 
@@ -80,4 +88,4 @@ include 'core/sidebar.php';
 
 <?php include 'core/admin-footer.php'; ?>
 <script src="assets/js/smack-passphrase.js"></script>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

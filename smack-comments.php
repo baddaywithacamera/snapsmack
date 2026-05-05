@@ -8,6 +8,14 @@
  * between the two systems. Search and pagination apply within each tab.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 require_once 'core/ban-check.php';
 require_once 'core/ste-client.php';
@@ -435,4 +443,4 @@ include 'core/sidebar.php';
 </div>
 
 <?php include 'core/admin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

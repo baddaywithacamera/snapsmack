@@ -13,6 +13,16 @@
  * Variables available from index.php: $pdo, $settings, $img, $active_skin, $site_name
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 // Fetch the most recent published image for the hero
 $now_local = date('Y-m-d H:i:s');
 $hero_stmt = $pdo->prepare("
@@ -153,4 +163,4 @@ if ($hero_image) {
 
     <?php include('skin-footer.php'); ?>
 </div>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

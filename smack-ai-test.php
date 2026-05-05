@@ -6,6 +6,14 @@
  * AI provider and API key are working. Returns JSON.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 require_once 'core/ai-provider.php';
 
@@ -52,4 +60,4 @@ if ($result['ok']) {
 } else {
     echo json_encode(['ok' => false, 'error' => $result['error']]);
 }
-// EOF
+// ===== SNAPSMACK EOF =====

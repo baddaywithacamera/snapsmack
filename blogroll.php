@@ -6,6 +6,14 @@
  * and respects the skin system for headers and footers.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -134,4 +142,4 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
     <?php include __DIR__ . '/core/footer-scripts.php'; ?>
 </body>
 </html>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

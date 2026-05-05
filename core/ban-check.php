@@ -21,6 +21,14 @@
  * if the database is compromised.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 if (!function_exists('ste_worst_colour')) {
     require_once __DIR__ . '/ste-client.php';
 }
@@ -197,4 +205,4 @@ function remove_ban(PDO $pdo, int $ban_id): bool {
     $stmt->execute([$ban_id]);
     return $stmt->rowCount() > 0;
 }
-// EOF
+// ===== SNAPSMACK EOF =====

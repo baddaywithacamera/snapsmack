@@ -11,7 +11,17 @@
  *   php cron-version-check.php
  *
  * RECOMMENDED CRON SCHEDULE:
- *   0 */6 * * * /usr/bin/php /path/to/cron-version-check.php >> /dev/null 2>&1
+ *   0 */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+6 * * * /usr/bin/php /path/to/cron-version-check.php >> /dev/null 2>&1
  *   (Every 6 hours)
  *
  * FALLBACK:
@@ -130,4 +140,4 @@ try {
     fwrite(STDERR, "Failed to store update check result: " . $e->getMessage() . "\n");
     exit(1);
 }
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -14,6 +14,16 @@
  *   $cat_filter   — active category filter
  *   $album_filter — active album filter
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
 ?>
 
 <?php if (!empty($images)): ?>
@@ -49,4 +59,4 @@
     <div class="pg-grid-empty">No photos yet.</div>
 </div>
 <?php endif; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

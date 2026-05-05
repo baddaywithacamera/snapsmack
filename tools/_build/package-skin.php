@@ -16,6 +16,14 @@
  *   php package-skin.php --all --output ./packages/
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 if (php_sapi_name() !== 'cli') {
     die("This tool must be run from the command line.\n");
 }
@@ -212,4 +220,4 @@ function parse_args(array $argv): array {
 
     return $result;
 }
-// EOF
+// ===== SNAPSMACK EOF =====

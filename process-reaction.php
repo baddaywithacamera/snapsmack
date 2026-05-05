@@ -14,6 +14,14 @@
  *   reaction_code (string, required) — pass the user's current code to toggle off
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/core/db.php';
@@ -153,4 +161,4 @@ foreach ($count_stmt->fetchAll() as $row) {
 }
 
 echo json_encode(['reaction' => $new_reaction, 'counts' => $counts]);
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -1,3 +1,9 @@
+-- SNAPSMACK_EOF_HEADER
+--     -- ===== SNAPSMACK EOF =====
+-- Last non-empty line of this file MUST match the line above.
+-- Missing or different = truncated/corrupted. Restore before saving.
+
+
 -- ============================================================
 -- SnapSmack — Legacy Install Catch-Up Migration
 -- ============================================================
@@ -540,3 +546,4 @@ ALTER TABLE `snap_users`
 -- ============================================================
 -- Done.
 -- ============================================================
+-- ===== SNAPSMACK EOF =====

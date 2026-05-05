@@ -8,6 +8,16 @@
  * $cat_filter, $album_filter, $archive_layout
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 // ── JUSTIFIED (masonry) MODE ──────────────────────────────────────────────────
 // Frames can't coexist with variable-width justified rows so this branch
 // bypasses the frame markup entirely and uses the standard justified engine.
@@ -156,4 +166,4 @@ else:
 </div>
 
 <?php endif; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

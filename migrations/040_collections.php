@@ -9,6 +9,14 @@
  * at render time.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 function migration_040_up(PDO $pdo): void {
     // snap_collections
     $pdo->exec("
@@ -51,4 +59,4 @@ function migration_040_down(PDO $pdo): void {
     $pdo->exec("DROP TABLE IF EXISTS `snap_collection_items`");
     $pdo->exec("DROP TABLE IF EXISTS `snap_collections`");
 }
-// EOF
+// ===== SNAPSMACK EOF =====

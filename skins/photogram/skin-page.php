@@ -12,6 +12,16 @@
  *   $skin_path, $snapsmack
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 $pg_active_tab = 'profile'; // About page lives under the profile nav tab
 
 include __DIR__ . '/skin-meta.php';
@@ -63,4 +73,4 @@ include __DIR__ . '/skin-meta.php';
 <?php include dirname(__DIR__, 2) . '/core/footer-scripts.php'; ?>
 </body>
 </html>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

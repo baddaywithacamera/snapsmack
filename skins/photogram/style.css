@@ -7,6 +7,18 @@
  * The compiled custom_css_public blob loads after this file and overrides them.
  */
 
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 /* ═══════════════════════════════════════════════════════════════════════════
    CSS CUSTOM PROPERTIES — DESIGN TOKENS
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -1467,4 +1479,4 @@ button {
     margin:    0 !important;
     width:     100% !important;
 }
-/* EOF */
+/* ===== SNAPSMACK EOF ===== */

@@ -5,6 +5,15 @@
  * of smack-2fa.php. Reads codes from the DOM so no PHP data is
  * embedded in JavaScript.
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 (function () {
     'use strict';
 
@@ -29,4 +38,4 @@
         });
     });
 }());
-// EOF
+// ===== SNAPSMACK EOF =====

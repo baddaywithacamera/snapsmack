@@ -3,6 +3,18 @@
  * Alpha v0.7.5
  */
 
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 /* ==========================================================================
    GLOBAL
    ========================================================================= */
@@ -1139,4 +1151,4 @@ body.landing-only .ip-header-inside,
 
     .site-title-text { font-size: 0.9rem !important; }
 }
-/* EOF */
+/* ===== SNAPSMACK EOF ===== */

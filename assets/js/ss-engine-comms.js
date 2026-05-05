@@ -10,6 +10,14 @@
  * The guard ensures only one set of event listeners is registered.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 if (!window._ssCommsLoaded) {
 window._ssCommsLoaded = true;
 
@@ -274,4 +282,4 @@ function closeAllOverlays() {
 }
 
 } // end double-load guard
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -9,6 +9,12 @@ Expected JSON: a flat array of post objects, each with:
   creation_timestamp — post-level Unix timestamp
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import json
 import os
 import re
@@ -222,3 +228,4 @@ if __name__ == '__main__':
               f"ts={p.ig_timestamp}  tags={p.hashtags[:3]}")
         print(f"  caption: {p.caption[:80]}...")
     input("\nPress Enter to close...")
+# ===== SNAPSMACK EOF =====

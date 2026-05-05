@@ -7,6 +7,12 @@ Fields written (EXIF IFD0):
   Copyright, Artist, ImageDescription, UserComment (keywords)
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import os
 import re
 import shutil
@@ -85,3 +91,4 @@ def embed(src_path: str, title: str, tags: str, copyright_text: str = '') -> str
         os.unlink(tmp_path)
         raise
     return tmp_path
+# ===== SNAPSMACK EOF =====

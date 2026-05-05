@@ -7,6 +7,16 @@
  * These are merged into smack-help.php when this skin is active.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 return [
 
     'skin-overview' => [
@@ -171,4 +181,4 @@ HTML
     ],
 
 ];
-// EOF
+// ===== SNAPSMACK EOF =====

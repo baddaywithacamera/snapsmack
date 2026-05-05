@@ -6,6 +6,14 @@
  * embedded via [mosaic:ID] shortcode in post and page content.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 function migration_038_up(PDO $pdo): void {
     // snap_mosaics — stores image ID lists and gap setting for each mosaic
     $pdo->exec("
@@ -24,4 +32,4 @@ function migration_038_up(PDO $pdo): void {
 function migration_038_down(PDO $pdo): void {
     $pdo->exec("DROP TABLE IF EXISTS `snap_mosaics`");
 }
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -12,6 +12,14 @@
  * Variables from index.php: $pdo, $settings, $active_skin, $site_name
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 $now_local   = date('Y-m-d H:i:s');
 $per_page    = 30;
 $curr_page   = max(1, (int)($_GET['p'] ?? 1));
@@ -235,4 +243,4 @@ include __DIR__ . '/skin-header.php';
 </main>
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

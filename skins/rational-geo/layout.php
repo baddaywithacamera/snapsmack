@@ -7,6 +7,16 @@
  * info/caption slides UP from bottom (like a magazine caption block).
  * No #footer element — core ss-engine-footer.js no-ops gracefully.
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
 require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 
 $global_on = (($settings['global_comments_enabled'] ?? '1') == '1');
@@ -100,4 +110,4 @@ $exif_labels = [
 
     <?php include('skin-footer.php'); ?>
 </div>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

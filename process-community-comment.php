@@ -27,6 +27,14 @@
  *   { deleted: true, comment_id: int }
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/core/db.php';
@@ -284,4 +292,4 @@ if ($is_guest) {
         'date_label'   => date('Y-m-d', strtotime($created_at)),
     ]);
 }
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -18,6 +18,14 @@
  *   - No password is transmitted at any point
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/db.php';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -109,4 +117,4 @@ function sso_fail(string $reason): void {
     <p><a href="login.php">&larr; Login manually</a></p></div></body></html>';
     exit;
 }
-// EOF
+// ===== SNAPSMACK EOF =====

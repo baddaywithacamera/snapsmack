@@ -7,6 +7,14 @@
  * Access tokens obtained silently from refresh tokens and cached in $_SESSION.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 require_once 'core/cloud-engine.php';
 
@@ -526,4 +534,4 @@ document.querySelectorAll('.push-cloud-btn').forEach(function(btn) {
 </script>
 
 <?php include 'core/admin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

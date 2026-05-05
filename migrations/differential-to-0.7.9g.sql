@@ -1,3 +1,9 @@
+-- SNAPSMACK_EOF_HEADER
+--     -- ===== SNAPSMACK EOF =====
+-- Last non-empty line of this file MUST match the line above.
+-- Missing or different = truncated/corrupted. Restore before saving.
+
+
 -- SnapSmack — Schema Differential to Alpha 0.7.9g
 -- Apply to any site running a schema older than 0.7.9g.
 -- Safe to run multiple times: ALTER TABLE will error on duplicate column
@@ -80,3 +86,4 @@ ALTER TABLE `snap_users`
 
 ALTER TABLE `snap_users`
     ADD COLUMN `force_password_change` tinyint(1) NOT NULL DEFAULT 0;
+-- ===== SNAPSMACK EOF =====

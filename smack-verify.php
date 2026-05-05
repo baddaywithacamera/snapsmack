@@ -7,6 +7,14 @@
  * checksums. Does NOT walk the filesystem — reads only from DB records.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 
 $page_title = "Verify Integrity";
@@ -230,4 +238,4 @@ if ($total_issues === 0) {
 echo "<p style='margin-top:16px;'><a href='smack-backup.php'>← Back to Backup & Recovery</a></p>";
 echo "</body></html>";
 ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

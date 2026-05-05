@@ -5,6 +5,15 @@
  * Supports three frame modes: none, pixel, galleria.
  * Variables available from index.php: $pdo, $settings, $img, $active_skin, $site_name
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 
 $frame_style = $settings['htbs_frame_style'] ?? 'none';
@@ -71,4 +80,4 @@ $frame_class = 'snt-frame-' . $frame_style;
 </div>
 
 <?php include('skin-footer.php'); ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

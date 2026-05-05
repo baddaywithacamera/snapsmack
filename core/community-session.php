@@ -16,6 +16,14 @@
  *   // $community_user is user row or null if not logged in.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 if (!isset($pdo)) {
     require_once __DIR__ . '/db.php';
 }
@@ -299,4 +307,4 @@ function community_rate_limit(string $action): bool {
 
     return $count <= $limit;
 }
-// EOF
+// ===== SNAPSMACK EOF =====

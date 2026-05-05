@@ -12,6 +12,14 @@
  *   ollama   — Local Ollama (configurable endpoint)
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 const OhSnapSettings = (() => {
 
     const STORE_KEY = 'ohsnap_settings';
@@ -208,4 +216,4 @@ const OhSnapSettings = (() => {
     return { load, save, get, openModal, closeModal };
 
 })();
-// EOF
+// ===== SNAPSMACK EOF =====

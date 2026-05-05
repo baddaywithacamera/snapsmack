@@ -8,6 +8,12 @@ shared caption). Transfer & Post pushes everything via FTP then
 creates posts through the SnapSmack admin API.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 BUILD_VERSION = "0.7.7a-01"
 
 import os
@@ -1205,3 +1211,4 @@ class App(tk.Tk):
 if __name__ == "__main__":
     app = App()
     app.mainloop()
+# ===== SNAPSMACK EOF =====

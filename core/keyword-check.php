@@ -7,6 +7,14 @@
  */
 
 /**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+/**
  * Check if comment text contains any banned keywords
  *
  * @param PDO $pdo Database connection
@@ -96,4 +104,4 @@ function get_all_keywords(PDO $pdo): array {
 	$stmt->execute();
 	return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -15,6 +15,14 @@
  *   POST ohsnap/skin/vars     — push CSS variable overrides (stored + served live)
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // --- ENVIRONMENT BOOTSTRAP ---
 if (!defined('BASE_URL')) {
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') ? 'https' : 'http';
@@ -452,4 +460,4 @@ if ($resource === 'skin' && $sub === 'vars' && $method === 'POST') {
 
 // --- FALLBACK ---
 os_err('Unknown Oh Snap! endpoint: ' . $resource . ($sub ? '/' . $sub : ''), 404);
-// EOF
+// ===== SNAPSMACK EOF =====

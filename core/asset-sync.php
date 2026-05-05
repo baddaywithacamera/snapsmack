@@ -29,6 +29,14 @@
  * If not, look it up in the remote manifest and fetch it.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 define('ASSET_SYNC_MANIFEST_URL', 'https://snapsmack.ca/releases/asset-manifest.json');
 define('ASSET_SYNC_CACHE_TTL',    3600); // seconds — 1 hour
 define('ASSET_SYNC_CACHE_FILE',   dirname(__DIR__) . '/backups/asset-manifest-cache.json');
@@ -260,4 +268,4 @@ function _asset_sync_http_get(string $url): string|false {
     ]);
     return @file_get_contents($url, false, $ctx);
 }
-// EOF
+// ===== SNAPSMACK EOF =====

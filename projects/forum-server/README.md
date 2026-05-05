@@ -1,3 +1,14 @@
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF
+  marker for this file type: an HTML comment containing five
+  equals, space, the literal string 'SNAPSMACK EOF', space, five
+  equals.
+  (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS.)
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+
+
 # SnapSmack Forum Server
 
 The server-side hub for the SnapSmack admin community forum. Deploys to any PHP/MySQL host. Each SnapSmack install connects to a hub instance; by default that is `snapsmack.ca`, but forks can run their own.
@@ -158,3 +169,4 @@ See `forum-schema.sql` for full column definitions.
 - Body text is stored as plain text and HTML-escaped on the install side. No HTML is accepted or emitted by the API.
 - `FORUM_MOD_KEY` is the only credential that bypasses ownership checks. Treat it like a root password.
 - Banned installs (`is_banned = 1` in `ss_forum_installs`) have their API key rejected with HTTP 403 on every request.
+<!-- ===== SNAPSMACK EOF ===== -->

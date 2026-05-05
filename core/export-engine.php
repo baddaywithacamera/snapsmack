@@ -8,6 +8,14 @@
  * See docs/DESIGN-backup-recovery-export.md for full architecture.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 class SnapSmackExport {
 
     private PDO $pdo;
@@ -649,4 +657,4 @@ class SnapSmackExport {
     }
 }
 
-// EOF
+// ===== SNAPSMACK EOF =====

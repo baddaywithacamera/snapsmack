@@ -9,6 +9,15 @@
  * On save, POSTs the canvas blob to core/photo-editor-save.php which
  * writes the web copy and regenerates thumbnails.
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 var SnapPhotoEditor = (function () {
     'use strict';
 
@@ -687,4 +696,4 @@ var SnapPhotoEditor = (function () {
     return { open: open, close: close };
 
 })();
-// EOF
+// ===== SNAPSMACK EOF =====

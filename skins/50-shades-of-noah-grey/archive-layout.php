@@ -14,6 +14,14 @@
  * $album_filter, $cat_filter, $thumb_px
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 $archive_default = $settings['archive_layout'] ?? 'cropped';
 // Normalise legacy 'square'/'masonry' values from DB
 if ($archive_default === 'square')  $archive_default = 'cropped';
@@ -207,4 +215,4 @@ $_fsog_cur    = isset($archive_layout)  ? $archive_layout  : ($settings['archive
     }
 }());
 </script>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

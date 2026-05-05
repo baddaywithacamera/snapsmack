@@ -9,6 +9,14 @@
  * POST ?action=update — set download_url + allow_download=1 for one record
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/api-auth.php';
 
 $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
@@ -74,4 +82,4 @@ switch ($action) {
         http_response_code(400);
         echo json_encode(['ok' => false, 'error' => 'Unknown action']);
 }
-// EOF
+// ===== SNAPSMACK EOF =====

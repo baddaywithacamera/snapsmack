@@ -8,6 +8,14 @@
  * Admin-only — requires active session.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once __DIR__ . '/core/auth.php';
 require_once __DIR__ . '/core/parser.php';
 require_once __DIR__ . '/core/skin-settings.php';
@@ -71,4 +79,4 @@ echo json_encode([
     'success' => true,
     'html'    => '<div class="description">' . $rendered . '</div>'
 ]);
-// EOF
+// ===== SNAPSMACK EOF =====

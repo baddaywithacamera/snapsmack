@@ -7,10 +7,18 @@
  * Existing installs stay in photo/solo mode unless explicitly opted in.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 function migration_043_up(PDO $pdo): void {
     $pdo->exec("
         INSERT IGNORE INTO snap_settings (setting_key, setting_val)
         VALUES ('enable_longform', '0')
     ");
 }
-// EOF
+// ===== SNAPSMACK EOF =====

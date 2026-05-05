@@ -8,6 +8,12 @@ Match local files to manifest entries using four strategies:
 Used by the restore engine to locate files in a backup package or local dir.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import os
 from typing import Dict, List, Optional
 
@@ -109,3 +115,4 @@ def match_manifest_to_local(
             results[key] = MatchResult(record, "", "unmatched")
 
     return results
+# ===== SNAPSMACK EOF =====

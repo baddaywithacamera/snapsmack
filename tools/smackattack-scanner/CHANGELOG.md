@@ -1,3 +1,14 @@
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF
+  marker for this file type: an HTML comment containing five
+  equals, space, the literal string 'SNAPSMACK EOF', space, five
+  equals.
+  (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS.)
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+
+
 # GOBSMACKED Scanner — Changelog
 
 ## 0.1.0 (2026-04-29)
@@ -16,3 +27,4 @@ Initial release.
 - Config persisted to `gobsmacked-scanner.ini` next to the exe
 - Debug log written to `gobsmacked-debug.log` next to the exe
 - Single-file exe via PyInstaller (`build.bat`)
+<!-- ===== SNAPSMACK EOF ===== -->

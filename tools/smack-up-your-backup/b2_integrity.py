@@ -18,6 +18,12 @@ The ongoing sync engine records SHA1 for all future transfers so subsequent
 runs use hash comparison directly.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import csv
 import hashlib
 import os
@@ -449,3 +455,4 @@ def _fmt(n) -> str:
         return f"{n:,} TB"
     except Exception:
         return str(n)
+# ===== SNAPSMACK EOF =====

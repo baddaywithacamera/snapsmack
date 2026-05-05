@@ -1,3 +1,14 @@
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF
+  marker for this file type: an HTML comment containing five
+  equals, space, the literal string 'SNAPSMACK EOF', space, five
+  equals.
+  (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS.)
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+
+
 # Smack Your Batch Up — Changelog
 
 Same versioning scheme as SnapSmack (0.7.9x). Letter increments per SYBU release.
@@ -86,3 +97,4 @@ Same versioning scheme as SnapSmack (0.7.9x). Letter increments per SYBU release
 - **Gemini duplicate haiku titles** — `enrich_batch()` now tracks a `used_titles` set seeded from `existing_titles` (live blog title list from `sybu-data.php`). On duplicate, retries up to 4× with "that title is taken" prepended to the prompt.
 - **`sybu-data.php`** — now returns `titles` array (all existing post titles) so SYBU can seed the uniqueness check at enrichment time.
 - **`poster.py` SiteData** — added `titles: List[str]` field; `fetch_site_data()` populates it from the API response.
+<!-- ===== SNAPSMACK EOF ===== -->

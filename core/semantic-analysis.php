@@ -8,6 +8,14 @@
  */
 
 /**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+/**
  * Store comment text and compute TF-IDF vector
  *
  * @param PDO $pdo Database connection
@@ -211,4 +219,4 @@ function cosine_similarity(array $v1, array $v2): float {
 
 	return $dot_product / (sqrt($norm1) * sqrt($norm2));
 }
-// EOF
+// ===== SNAPSMACK EOF =====

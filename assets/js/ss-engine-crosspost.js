@@ -4,6 +4,14 @@
  * Form validation and image picker interaction for the multisite cross-post page.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 function confirmCrossPost() {
     var checked = document.querySelectorAll('input[name="img_ids[]"]:checked');
     var spokes  = document.querySelectorAll('input[name="spoke_ids[]"]:checked');
@@ -27,4 +35,4 @@ document.querySelectorAll('.img-picker-cb').forEach(function(cb) {
         }
     });
 });
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -1,3 +1,9 @@
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import os
 
 for f in os.listdir('.'):
@@ -11,3 +17,4 @@ for f in os.listdir('.'):
             print(f'OK: {f}')
 
 print('Done.')
+# ===== SNAPSMACK EOF =====

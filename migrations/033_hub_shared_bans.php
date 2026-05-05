@@ -10,6 +10,14 @@
  * by default so operators consciously opt in).
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 function migration_033(PDO $pdo): void {
 
     // ── Shared ban registry (hub) ─────────────────────────────────────────────
@@ -84,4 +92,4 @@ function migration_033(PDO $pdo): void {
         VALUES ('hub_spoke_ban_sync', '0')
     ");
 }
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -9,6 +9,12 @@ SFTP (auto-detected from config).
 Retry strategy: 3 attempts with exponential backoff (2s, 4s, 8s).
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import ftplib
 import os
 import time
@@ -249,3 +255,4 @@ def _upload_one(transport, local_path: str, remote_path: str) -> UploadResult:
 
     # Should not reach here, but safety net
     return UploadResult(local_path, remote_path, False, "Upload failed")
+# ===== SNAPSMACK EOF =====

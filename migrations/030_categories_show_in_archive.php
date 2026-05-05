@@ -9,6 +9,14 @@
  * This migration is idempotent (safe to run multiple times).
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once __DIR__ . '/../core/db.php';
 
 $migration_name        = "030_categories_show_in_archive";
@@ -37,4 +45,4 @@ try {
     echo "ERROR: " . $e->getMessage() . "\n";
     exit(1);
 }
-// EOF
+// ===== SNAPSMACK EOF =====

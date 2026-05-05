@@ -14,6 +14,14 @@
  *   verify   — email verification (requires ?token=)
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/db.php';
 require_once 'core/community-session.php';
 
@@ -658,4 +666,4 @@ $reset_token_param = htmlspecialchars($_GET['token'] ?? '');
 
 </body>
 </html>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

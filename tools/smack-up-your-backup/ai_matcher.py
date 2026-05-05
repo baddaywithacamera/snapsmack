@@ -14,6 +14,12 @@ gracefully — all functions return None and callers fall back to
 the algorithmic matcher.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 from __future__ import annotations
 
 import os
@@ -169,3 +175,4 @@ def status_string() -> str:
     if model is None:
         return f"Installed but model failed to load ({_MODEL_NAME})"
     return f"Ready  —  {_MODEL_NAME}"
+# ===== SNAPSMACK EOF =====

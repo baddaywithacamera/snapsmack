@@ -12,6 +12,15 @@
  *   mode     — 'hero' | 'shortcode'
  *   textarea — the target <textarea> for shortcode insertion (shortcode mode)
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 (function () {
     var assets  = JSON.parse(document.getElementById('asset-picker-grid').dataset.assets);
     var baseUrl = document.getElementById('asset-picker-grid').dataset.baseUrl;
@@ -117,4 +126,4 @@
     // Expose for shortcode-toolbar.js
     window.ssOpenAssetPicker = openAssetPicker;
 }());
-// EOF
+// ===== SNAPSMACK EOF =====

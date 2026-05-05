@@ -7,6 +7,14 @@
  * for both native and external media sources.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // --- API SETUP ---
 // Force JSON output and prevent browser caching
 header('Content-Type: application/json');
@@ -191,4 +199,4 @@ $manifest = [
 ];
 
 echo json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-// EOF
+// ===== SNAPSMACK EOF =====

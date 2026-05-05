@@ -6,6 +6,12 @@ First run: opens a browser for OAuth consent. After that, token.json
 handles it silently — no browser, no fuss.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import os
 import sys
 from typing import Optional
@@ -126,3 +132,4 @@ def _mime(path: str) -> str:
         '.gif':  'image/gif',
         '.webp': 'image/webp',
     }.get(ext, 'image/jpeg')
+# ===== SNAPSMACK EOF =====

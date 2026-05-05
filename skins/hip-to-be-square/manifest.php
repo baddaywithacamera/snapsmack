@@ -1,4 +1,13 @@
 <?php
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 $inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
 $fonts = $inventory['fonts'] ?? [];
 foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label'];
@@ -410,4 +419,4 @@ return [
     'community_likes'     => '1',
     'community_reactions' => '0',
 ];
-// EOF
+// ===== SNAPSMACK EOF =====

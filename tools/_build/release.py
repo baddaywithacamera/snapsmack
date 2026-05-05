@@ -12,6 +12,12 @@ Patches:
 Does NOT commit. Stage and commit yourself after reviewing the diff.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import re
 import sys
 from datetime import date
@@ -105,3 +111,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+# ===== SNAPSMACK EOF =====

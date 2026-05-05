@@ -9,6 +9,16 @@
  * Variables available from index.php: $pdo, $settings, $active_skin, $site_name
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 // ── Sub-page routing: ?pg=feed | ?pg=search ──────────────────────────────
 $_pg_page = $_GET['pg'] ?? '';
 if ($_pg_page === 'feed') {
@@ -225,4 +235,4 @@ $pg_active_tab = 'home';
 </div><!-- /#pg-app -->
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

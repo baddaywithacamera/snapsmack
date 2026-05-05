@@ -18,6 +18,14 @@
  * in the skin manifest's require_scripts).
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 if (($settings['community_enabled']      ?? '1') !== '1') return;
 if (($settings['community_likes_enabled'] ?? '1') !== '1') return;
 if (empty($img['id']))                                      return;
@@ -218,4 +226,4 @@ if ($above_download) $dock_classes .= ' ss-cdock-above-download';
     </div><!-- /.ss-cdock-buttons -->
 
 </div><!-- /.ss-community-dock -->
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

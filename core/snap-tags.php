@@ -18,6 +18,14 @@
  * tagged with any hex code belonging to that family.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // ── Extract ───────────────────────────────────────────────────────────────────
 
 /**
@@ -294,4 +302,4 @@ function snap_render_caption_html(string $text, string $base_url, string $css_cl
         $safe . ' '
     );
 }
-// EOF
+// ===== SNAPSMACK EOF =====

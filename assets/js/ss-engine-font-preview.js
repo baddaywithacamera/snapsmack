@@ -6,6 +6,15 @@
  * loads the chosen font (local TTF via @font-face or Google Fonts CDN),
  * then updates the sibling .font-preview-text spans.
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 (function () {
     'use strict';
 
@@ -98,4 +107,4 @@
     }
 
 })();
-// EOF
+// ===== SNAPSMACK EOF =====

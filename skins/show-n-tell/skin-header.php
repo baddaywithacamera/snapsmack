@@ -4,6 +4,14 @@
  * v1.0
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 $nav_pages = $pdo->query("
     SELECT slug, title FROM snap_pages
     WHERE is_active = 1
@@ -21,4 +29,4 @@ $nav_pages = $pdo->query("
         <?php endforeach; ?>
     </ul>
 </header>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

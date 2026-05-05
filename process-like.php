@@ -12,6 +12,14 @@
  *   post_id  (int, required)
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/core/db.php';
@@ -116,4 +124,4 @@ $count_stmt->execute([$post_id]);
 $count = (int)$count_stmt->fetchColumn();
 
 echo json_encode(['liked' => $liked, 'count' => $count]);
-// EOF
+// ===== SNAPSMACK EOF =====

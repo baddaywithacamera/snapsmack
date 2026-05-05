@@ -4,6 +4,15 @@
  * Handles the tab strip on login.php and smack-2fa-verify.php.
  * Tabs are indexed by their panel ID suffix (e.g. "password", "recovery", "totp").
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 (function () {
     'use strict';
 
@@ -26,4 +35,4 @@
         if (btn) btn.classList.add('active');
     };
 }());
-// EOF
+// ===== SNAPSMACK EOF =====

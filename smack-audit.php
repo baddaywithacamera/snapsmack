@@ -10,6 +10,14 @@
  * POST ?action=update_title — set img_title for one record (snap_id, new_title)
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/api-auth.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -117,4 +125,4 @@ switch ($action) {
         http_response_code(400);
         echo json_encode(['ok' => false, 'error' => 'Unknown action']);
 }
-// EOF
+// ===== SNAPSMACK EOF =====

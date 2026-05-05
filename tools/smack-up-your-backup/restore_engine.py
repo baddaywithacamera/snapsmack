@@ -4,6 +4,12 @@ Restore pipeline: parse manifest, pre-create dirs, match files, paced upload.
 Accepts local ZIP, local recovery kit, or cloud-downloaded ZIP.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import os
 import zipfile
 from typing import Callable, Dict, List, Optional
@@ -263,3 +269,4 @@ class RestoreEngine:
         self._log(f"ERROR: {msg}")
         self._progress("error", msg, 1.0)
         return result
+# ===== SNAPSMACK EOF =====

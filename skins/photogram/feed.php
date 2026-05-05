@@ -14,6 +14,16 @@
  * Variables from landing.php / index.php: $pdo, $settings, $active_skin, $site_name
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 require_once dirname(__DIR__, 2) . '/core/community-session.php';
 require_once dirname(__DIR__, 2) . '/core/snap-tags.php';
 
@@ -388,4 +398,4 @@ include __DIR__ . '/skin-header.php';
 </div><!-- /#pg-app -->
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

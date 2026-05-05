@@ -7,6 +7,14 @@
  * comments without duplicating this logic in each template.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // --- EXIF PROCESSING ---
 // Include the EXIF helper which provides the get_smack_exif() function
 include_once __DIR__ . '/fix-exif.php';
@@ -38,4 +46,4 @@ if (isset($img['id'])) {
     $stm_c->execute([$img['id']]);
     $comments = $stm_c->fetchAll();
 }
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -5,6 +5,14 @@
  * on .post-image element. Only active when enabled and on public pages.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 document.addEventListener('DOMContentLoaded', () => {
 
     const postImage = document.querySelector('.post-image');
@@ -56,4 +64,4 @@ document.addEventListener('DOMContentLoaded', () => {
     const firstHit = Math.floor(Math.random() * 30000) + 10000;
     setTimeout(triggerMalfunction, firstHit);
 });
-// EOF
+// ===== SNAPSMACK EOF =====

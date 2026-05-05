@@ -1,3 +1,14 @@
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF
+  marker for this file type: an HTML comment containing five
+  equals, space, the literal string 'SNAPSMACK EOF', space, five
+  equals.
+  (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS.)
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+
+
 # SnapSmack Changelog
 
 All notable changes to SnapSmack are documented here. Newest release first.
@@ -1136,3 +1147,4 @@ Initial development. Admin interface, theme system, per-skin settings scoping,
 sidebar redesign, admin theme CSS consolidation, comment controls, footer
 configuration, and foundational CMS architecture.
 
+<!-- ===== SNAPSMACK EOF ===== -->

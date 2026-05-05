@@ -14,6 +14,16 @@
  * Prevents layout shift by keeping space reserved for images during load.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 if (!window._ssImageFadeLoaded) {
 window._ssImageFadeLoaded = true;
 
@@ -67,4 +77,4 @@ if (document.readyState === 'loading') {
 }
 
 } // end double-load guard
-// EOF
+// ===== SNAPSMACK EOF =====

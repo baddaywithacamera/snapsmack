@@ -6,6 +6,14 @@
  * other engines; works alongside Pimpotron without conflicts.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 class SnapSmackLogoEngine {
     constructor(config = {}) {
         this.config = {
@@ -216,4 +224,4 @@ document.addEventListener('DOMContentLoaded', () => {
     // Expose for external control if needed
     window._logoEngine = engine;
 });
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -7,6 +7,14 @@
  * api.php?route=multisite/heartbeat
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // --- ROUTE EXTRACTION ---
 // Parse route from query parameter or rewritten PATH_INFO
 $route = '';
@@ -44,4 +52,4 @@ echo json_encode([
 ], JSON_PRETTY_PRINT);
 exit;
 ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

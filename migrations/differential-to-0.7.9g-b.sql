@@ -1,3 +1,9 @@
+-- SNAPSMACK_EOF_HEADER
+--     -- ===== SNAPSMACK EOF =====
+-- Last non-empty line of this file MUST match the line above.
+-- Missing or different = truncated/corrupted. Restore before saving.
+
+
 -- SnapSmack SQL Differential — 0.7.9g (batch b)
 -- Generated from squir871_hkdoao dump vs snapsmack_canonical.sql
 -- Safe to run multiple times (IF NOT EXISTS / errno 1060 on duplicates).
@@ -58,3 +64,4 @@ CREATE TABLE IF NOT EXISTS `snap_ohsnap_keys` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ── Done ─────────────────────────────────────────────────────────────
+-- ===== SNAPSMACK EOF =====

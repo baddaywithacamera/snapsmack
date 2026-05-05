@@ -9,6 +9,14 @@
  * Requires authentication. Generates thumbnails in subdirectories per image folder.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 
 // --- ACCESS CONTROL ---
@@ -172,4 +180,4 @@ echo "You can safely delete any existing wall_* files from your thumbs directori
 echo "<p>You can now delete this file from your server.</p>";
 echo "</body></html>";
 ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

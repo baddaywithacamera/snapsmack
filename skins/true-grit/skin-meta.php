@@ -8,6 +8,16 @@
  * between style.css and dynamic compiled CSS (admin overrides always win).
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 // Resolve variant stylesheet URL before meta.php loads
 $allowed_variants = ['dark', 'light'];
 $active_variant   = $settings['active_skin_variant'] ?? 'dark';
@@ -19,4 +29,4 @@ $skin_variant_url = BASE_URL . 'skins/' . ($settings['active_skin'] ?? 'true-gri
 // Include core meta tags for SEO and CSS
 // meta.php will insert the variant stylesheet at the correct cascade position
 include(dirname(__DIR__, 2) . '/core/meta.php');
-// EOF
+// ===== SNAPSMACK EOF =====

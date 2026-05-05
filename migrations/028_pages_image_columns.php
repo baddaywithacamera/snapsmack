@@ -9,6 +9,14 @@
  * This migration is idempotent (safe to run multiple times).
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once __DIR__ . '/../core/db.php';
 
 $migration_name = "028_pages_image_columns";
@@ -38,4 +46,4 @@ try {
 
 echo "\nMigration $migration_name completed successfully.\n";
 ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

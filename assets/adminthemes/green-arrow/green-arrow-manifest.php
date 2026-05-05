@@ -3,6 +3,14 @@
  * SNAPSMACK - Configuration manifest for the Green Arrow admin theme
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 return [
     'name'        => 'Green Arrow',
     'version'     => '1.0',
@@ -12,4 +20,4 @@ return [
     'css_file'    => 'admin-theme-colours-green-arrow.css', // The direct link the header needs
     'description' => "For those who haven't failed their city. Ink-dark hunter greens and pure quiver accents for the hooded vigilante admin. If you don't like it, you can take an arrow to the knee.",
 ];
-// EOF
+// ===== SNAPSMACK EOF =====

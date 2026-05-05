@@ -6,6 +6,16 @@
  * Injects skin-specific JavaScript libraries and closes the document.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 // Get the requested scripts from the manifest
 $requested = $skin_manifest['require_scripts'] ?? [];
 
@@ -23,4 +33,4 @@ if (!empty($requested) && isset($inventory['scripts'])) {
 // Include core footer to close the document
 include_once(dirname(__DIR__, 2) . '/core/footer.php');
 ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

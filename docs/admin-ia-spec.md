@@ -1,3 +1,14 @@
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF
+  marker for this file type: an HTML comment containing five
+  equals, space, the literal string 'SNAPSMACK EOF', space, five
+  equals.
+  (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS.)
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+
+
 # SnapSmack Admin UI — Information Architecture Spec
 *Captured 2026-05-04. Do not commit to git — working document.*
 
@@ -143,3 +154,4 @@ A drag-and-drop nav menu editor with nesting support was previously built and li
 - Nav menu nesting: depth limit? 1 level (dropdown only) or arbitrary?
 - Blogroll: Option A or B?
 - Calendar months slider: does the calendar JS already support multiple months, or does that need to be built too?
+<!-- ===== SNAPSMACK EOF ===== -->

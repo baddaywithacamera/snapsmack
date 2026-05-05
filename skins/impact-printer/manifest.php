@@ -6,6 +6,16 @@
  * Defines layout options, features, dot-matrix typography, and customization controls.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 $inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
 
 // Build restricted font picker for dot-matrix typography
@@ -438,4 +448,4 @@ return [
     'community_likes'     => '1',
     'community_reactions' => '0',
 ];
-// EOF
+// ===== SNAPSMACK EOF =====

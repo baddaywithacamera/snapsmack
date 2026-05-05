@@ -8,6 +8,16 @@
  * Uses the same grid engine as the archive page (square/cropped/masonry).
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 require_once dirname(__DIR__, 2) . '/core/skin-settings.php';
 snapsmack_apply_skin_settings($settings, $active_skin);
 
@@ -142,4 +152,4 @@ $justified_row_height = (int)($settings['justified_row_height'] ?? 280);
 </div>
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

@@ -16,6 +16,12 @@ Designed to run in worker processes via concurrent.futures.ProcessPoolExecutor.
 match_one() must stay a module-level function to be picklable on Windows.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import os
 
 import cv2
@@ -167,3 +173,4 @@ def _empty(server_path: str) -> dict:
         'candidates':  [],
         'label':       'none',
     }
+# ===== SNAPSMACK EOF =====

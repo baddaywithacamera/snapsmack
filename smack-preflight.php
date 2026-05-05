@@ -6,6 +6,14 @@
  * Facilitates the pre-population of post metadata for technical consistency.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 
 header('Content-Type: application/json');
@@ -100,4 +108,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image_file'])) {
     echo json_encode($response);
     exit;
 }
-// EOF
+// ===== SNAPSMACK EOF =====

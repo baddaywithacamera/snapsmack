@@ -6,6 +6,15 @@
  * Variables available from archive.php: $images, $settings, $all_cats, $all_albums,
  * $cat_filter, $album_filter, $archive_layout
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 ?>
 
 <div class="pickup-archive-grid">
@@ -31,4 +40,4 @@
         <p style="grid-column:1/-1;text-align:center;color:var(--text-secondary);">No images found.</p>
     <?php endif; ?>
 </div>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

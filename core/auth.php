@@ -8,6 +8,16 @@
  * interface.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 // --- ENVIRONMENT BOOTSTRAP ---
 // Define BASE_URL if not already set by another file. This ensures all
 // relative links work correctly regardless of subdirectory deployment.
@@ -135,4 +145,4 @@ if (isset($_SESSION['user_login'])) {
         ]
     );
 }
-// EOF
+// ===== SNAPSMACK EOF =====

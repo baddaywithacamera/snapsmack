@@ -13,6 +13,14 @@
  * static pages system (smack-pages.php).
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // Don't show if already decided
 if (isset($_COOKIE['snap_consent'])) {
     return;
@@ -40,4 +48,4 @@ if (isset($pdo)) {
         <button id="snap-consent-decline" type="button">Decline</button>
     </span>
 </div>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

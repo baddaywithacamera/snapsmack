@@ -6,6 +6,14 @@
  * Handles old asset purging, new thumbnail generation, and EXIF/specification updates.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 require_once 'core/fix-exif.php';
 
@@ -248,4 +256,4 @@ include 'core/sidebar.php';
 <script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
 
 <?php include 'core/admin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

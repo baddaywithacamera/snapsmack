@@ -7,6 +7,14 @@
  * The JS engine (ss-engine-sticky-header.js) handles the actual behaviour.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // Bail if disabled
 if (empty($settings['sticky_header_enabled']) || $settings['sticky_header_enabled'] !== '1') {
     return;
@@ -21,4 +29,4 @@ $_sticky_blur    = max(0, min(30, (int)($settings['sticky_header_blur'] ?? 14)))
     --sticky-blur: <?php echo $_sticky_blur; ?>px;
 }
 </style>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

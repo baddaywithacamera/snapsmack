@@ -3,6 +3,12 @@ Smack Up Your Backup — manifest_reader.py
 Parse manifest.json from a recovery kit .tar.gz or a backup .zip.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import io
 import json
 import tarfile
@@ -119,3 +125,4 @@ def from_cloud_state(state: dict) -> Optional[Manifest]:
             restores_to = key,
         )
     return m
+# ===== SNAPSMACK EOF =====

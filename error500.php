@@ -5,6 +5,14 @@
  * Displayed when the server encounters an unexpected error.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 http_response_code(500);
 $page_title = '500 - Server Error';
 ?>
@@ -135,4 +143,4 @@ $page_title = '500 - Server Error';
 </div>
 </body>
 </html>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

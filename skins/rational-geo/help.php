@@ -3,6 +3,16 @@
  * SNAPSMACK - Help topics for the Rational Geo skin
  * v1.0
  */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
 return [
     [
         'title' => 'About This Skin',
@@ -29,4 +39,4 @@ return [
         'body'  => 'SnapSmack ships a built-in community system: likes, emoji reactions, and threaded comments — all self-hosted on your own server, no third-party tracking. A floating dock appears on every page; visitors tap it to like or react without needing an account. Comments require a free community account created directly on your site. Manage everything in Admin > Community Settings: toggle features on or off, pick your reaction set (up to 6 emoji), set rate limits, and configure comment notification emails.',
     ],
 ];
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -7,6 +7,16 @@
  * Variables available from index.php: $pdo, $settings, $img, $active_skin, $site_name
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 // Fetch recent published images for the slider
 $now_local = date('Y-m-d H:i:s');
 $slider_limit = 20; // Max images in slider
@@ -85,4 +95,4 @@ $loop = ($settings['htbs_slider_loop'] ?? '1') === '1';
 
     <?php include('skin-footer.php'); ?>
 </div>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

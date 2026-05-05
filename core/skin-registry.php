@@ -14,6 +14,14 @@
  * This prevents users from grabbing broken or incomplete work.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // --- REGISTRY FORMAT ---
 // The remote registry JSON must follow this structure:
 //
@@ -387,4 +395,4 @@ function _skin_copy_recursive(string $src, string $dst): void {
         is_dir($s) ? _skin_copy_recursive($s, $d) : copy($s, $d);
     }
 }
-// EOF
+// ===== SNAPSMACK EOF =====

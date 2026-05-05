@@ -1,3 +1,14 @@
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF
+  marker for this file type: an HTML comment containing five
+  equals, space, the literal string 'SNAPSMACK EOF', space, five
+  equals.
+  (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS.)
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+
+
 # SnapSmack
 
 **Alpha v0.7.9L "Hot Seat"**
@@ -83,3 +94,4 @@ See `CHANGELOG.md` for the full release history.
 
 SnapSmack is proprietary software. All rights reserved.
 Fonts in `/assets/fonts/` are open-licensed; see `/licenses/` for individual terms.
+<!-- ===== SNAPSMACK EOF ===== -->

@@ -11,6 +11,14 @@
  * Response: application/json
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/api-auth.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -91,4 +99,4 @@ echo json_encode([
     'tags'       => $tags,
     'titles'     => $titles,
 ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -3,6 +3,14 @@ Smack Up Your Backup — config.py
 Global config persistence (window geometry, last-used profile, defaults).
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
+
+
 import configparser
 import os
 import sys
@@ -54,3 +62,4 @@ def load() -> configparser.ConfigParser:
 def save(cfg: configparser.ConfigParser) -> None:
     with open(CONFIG_FILE, "w") as f:
         cfg.write(f)
+# ===== SNAPSMACK EOF =====

@@ -3,6 +3,14 @@
  * SNAPSMACK - Configuration manifest for the Blue Skies admin theme
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 return [
     'name'        => 'Blue Skies',
     'version'     => '1.0',
@@ -12,4 +20,4 @@ return [
     'css_file'    => 'admin-theme-colours-blue-skies.css',
     'description' => "Clear blue skies and a clear attitude, time to share those photos.",
 ];
-// EOF
+// ===== SNAPSMACK EOF =====

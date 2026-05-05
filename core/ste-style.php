@@ -10,6 +10,14 @@
  * Returns a 25-element float array, or null if text is under the minimum threshold.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 define('STE_STYLE_MIN_WORDS',   30);    // minimum word count to produce a vector
@@ -248,4 +256,4 @@ function _ste_sentences(string $text): array {
     $parts = preg_split('/(?<=[.!?])\s+/', $text, -1, PREG_SPLIT_NO_EMPTY);
     return array_filter($parts, fn($s) => trim($s) !== '');
 }
-// EOF
+// ===== SNAPSMACK EOF =====

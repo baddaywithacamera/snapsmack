@@ -7,6 +7,16 @@
  * as simple CSS custom properties (bevel style, wood grain toggle).
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 // --- Conditional settings ---
 $bevel_style  = $settings['htbs_bevel_style']  ?? 'single';
 $wood_grain   = $settings['htbs_wood_grain']    ?? 'natural';
@@ -91,4 +101,4 @@ if ($needs_overrides):
         <?php include(dirname(__DIR__, 2) . '/core/header.php'); ?>
     </div>
 </div>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

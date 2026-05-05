@@ -10,6 +10,12 @@ Changes from the batch poster version:
   - Image resize + EXIF pipeline moved to prepare_images() helper
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import os
 import re
 import secrets
@@ -379,3 +385,4 @@ def _mime(filename: str) -> str:
         '.gif':  'image/gif',
         '.webp': 'image/webp',
     }.get(ext, 'application/octet-stream')
+# ===== SNAPSMACK EOF =====

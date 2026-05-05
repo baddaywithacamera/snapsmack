@@ -7,6 +7,16 @@
  * $requested_tag is set and validated by index.php before this file is included.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
 $tag_slug    = $requested_tag; // already normalised and validated by index.php
 $tag_display = '#' . $tag_slug;
 
@@ -129,4 +139,4 @@ $pg_active_tab = 'discover'; // nearest semantic match
 </div><!-- /#pg-app -->
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

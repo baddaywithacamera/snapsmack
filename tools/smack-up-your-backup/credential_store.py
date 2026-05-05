@@ -13,6 +13,12 @@ Format:
     ]
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import json
 import os
 import sys
@@ -92,3 +98,4 @@ def rename(old_name: str, new_name: str) -> None:
         if e["name"] == old_name:
             e["name"] = new_name
     save(entries)
+# ===== SNAPSMACK EOF =====

@@ -7,6 +7,14 @@
  * Consumed by core/sidebar.php to render the F1 help modal.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 return [
     'skin_name' => 'The Grid',
     'topics' => [
@@ -56,4 +64,4 @@ return [
         ],
     ],
 ];
-// EOF
+// ===== SNAPSMACK EOF =====

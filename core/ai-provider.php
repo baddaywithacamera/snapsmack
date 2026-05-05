@@ -12,6 +12,14 @@
  * else echo $result['error'];
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // ── Configuration helpers ────────────────────────────────────────────────────
 
 function snap_ai_provider(): string {
@@ -165,4 +173,4 @@ function _snap_ai_post(string $url, string $payload, array $headers): array {
     }
     return ['ok' => true, 'text' => '', 'body' => $body, 'error' => ''];
 }
-// EOF
+// ===== SNAPSMACK EOF =====

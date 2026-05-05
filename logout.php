@@ -6,6 +6,14 @@
  * Redirects user to login screen.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // --- SESSION INITIALIZATION ---
 // Start session to access and destroy it
 session_start();
@@ -32,4 +40,4 @@ session_destroy();
 // Send user back to login screen
 header("Location: snap-in.php");
 exit;
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -28,6 +28,14 @@
  * Both are enqueued via require_scripts[] in each skin's manifest.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // --- GUARD: Don't run if community system is globally off ---
 if (($settings['community_enabled'] ?? '1') !== '1') {
     return;
@@ -364,4 +372,4 @@ $reaction_set = [
     <?php endif; // show_comments ?>
 
 </div><!-- /.ss-community -->
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

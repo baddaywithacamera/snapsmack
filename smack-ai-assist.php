@@ -13,6 +13,14 @@
  *   selected — selected text only (spellcheck falls back to content if empty)
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/auth.php';
 require_once 'core/ai-provider.php';
 
@@ -74,4 +82,4 @@ PROMPT;
 
 $result = snap_ai_complete($system, $message, 1024);
 echo json_encode($result);
-// EOF
+// ===== SNAPSMACK EOF =====

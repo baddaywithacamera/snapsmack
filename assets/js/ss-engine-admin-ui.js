@@ -5,6 +5,14 @@
  * registry filtering, file upload handling, EXIF preflight, and form submission.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 console.log("LOG: SS-ENGINE-ADMIN-UI v1.0 active.");
 
 // --- CUSTOM MULTISELECT DROPDOWNS ---
@@ -219,4 +227,4 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 });
-// EOF
+// ===== SNAPSMACK EOF =====

@@ -4,6 +4,12 @@ Per-site profile CRUD. One JSON file per site in profiles/.
 Password is base64-obfuscated (not encrypted — matches SYBU/SUYB convention).
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
+
 import base64
 import json
 import os
@@ -134,3 +140,4 @@ def blank_profile() -> Dict:
         'default_album':    '',
         'default_orientation': 'auto',
     }
+# ===== SNAPSMACK EOF =====

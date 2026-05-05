@@ -12,6 +12,14 @@
  * transparently.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): void
 {
     // Keys owned exclusively by Global Vibe — skin-scoped copies must never
@@ -46,4 +54,4 @@ function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): voi
         }
     }
 }
-// EOF
+// ===== SNAPSMACK EOF =====

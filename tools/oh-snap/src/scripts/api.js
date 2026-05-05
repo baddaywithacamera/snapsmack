@@ -6,6 +6,14 @@
  * endpoints. All methods return plain objects or throw on failure.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 class SnapSmackAPI {
 
     /** @param {string} baseUrl  Trailing-slash site URL.
@@ -114,4 +122,4 @@ class SnapSmackAPI {
 
 // Expose globally — no bundler yet.
 window.SnapSmackAPI = SnapSmackAPI;
-// EOF
+// ===== SNAPSMACK EOF =====

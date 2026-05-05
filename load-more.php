@@ -6,6 +6,14 @@
  * Matches layout settings from gallery-wall.php to ensure loaded tiles render correctly.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once 'core/db.php';
 
 // --- SETTINGS SYNCHRONIZATION ---
@@ -53,4 +61,4 @@ foreach ($batch as $img) {
     echo '  <img src="' . htmlspecialchars($thumb) . '" alt="Smack" loading="eager" decoding="async">';
     echo '</div>';
 }
-// EOF
+// ===== SNAPSMACK EOF =====

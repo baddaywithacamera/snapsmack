@@ -1,3 +1,14 @@
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF
+  marker for this file type: an HTML comment containing five
+  equals, space, the literal string 'SNAPSMACK EOF', space, five
+  equals.
+  (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS.)
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+
+
 # Smack Up Your Backup — Versioning
 
 ## Scheme
@@ -37,3 +48,4 @@ build.bat
 ```
 
 Output exe goes to `dist/`. Copy to `C:\SmackUpYourBackup\` to deploy.
+<!-- ===== SNAPSMACK EOF ===== -->

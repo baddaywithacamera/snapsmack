@@ -9,6 +9,14 @@
  * This file has no external dependencies — all CSS is inline.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 // --- CONFIGURATION ---
 // The version this installer deploys.
 $installer_version       = '0.7.27';
@@ -2345,4 +2353,4 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
 </div>
 </body>
 </html>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====
