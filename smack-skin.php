@@ -799,8 +799,10 @@ if (!empty($google_families)) {
 
             <?php
             // --- ENGINE CONTROLS: One box per engine that exposes settings ---
+            // Engines with admin_page=>'archive' are rendered on smack-appearance-archive.php instead.
             foreach ($resolved_engines as $engine_key => $engine):
                 if (empty($engine['has_settings']) || empty($engine['controls'])) continue;
+                if (($engine['admin_page'] ?? 'skin') !== 'skin') continue;
                 $engine_label = strtoupper($engine['label'] ?? $engine_key);
             ?>
             <div class="box">

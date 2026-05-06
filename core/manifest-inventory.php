@@ -751,6 +751,7 @@ return [
             'path'         => 'assets/js/ss-engine-calendar.js',
             'css'          => 'assets/css/ss-engine-calendar.css',
             'has_settings' => true,
+            'admin_page'   => 'archive',
             'controls'     => [
                 'calendar_months' => [
                     'type'    => 'select',

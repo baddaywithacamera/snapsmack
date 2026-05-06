@@ -15,6 +15,15 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.49 — "Sit Tight" (2026-05-07)
+
+### Fixed
+- calendar layout option (croppedwithcalendar) now reliably appears in Archive Appearance: detection changed from require_scripts check to features.archive_layouts check (belt + suspenders with require_scripts fallback); previous method failed when manifest didn't fully load
+- Calendar settings (months to show, panel side, recent posts listed) moved from Smooth Your Skin to Archive Appearance — smack-calendar engine now carries admin_page=>'archive' flag in manifest-inventory.php; smack-skin.php skips those controls; smack-appearance-archive.php renders engine controls flagged for 'archive' page
+- Version bump to 0.7.49 to avoid checksum collision with already-built 0.7.48 package
+
+---
+
 ## 0.7.48 — "Sit Rep" (2026-05-06)
 
 ### Fixed
