@@ -15,6 +15,19 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.48 — "Sit Rep" (2026-05-06)
+
+### Fixed
+- smack-appearance-archive.php: manifest path changed to __DIR__-based absolute path (CWD ambiguity was preventing $skin_has_calendar detection — calendar layout option now appears correctly)
+- smack-appearance-archive.php: archive display options (admin_page=>'archive' in manifest) now render in a new ARCHIVE DISPLAY section here instead of Smooth Your Skin; archive thumb frame relabelled "Thumb Border Selector"
+- smack-skin.php: skips manifest options flagged admin_page=>'archive' in UI loop (CSS generation unaffected)
+- skins/50-shades-of-noah-grey/manifest.php: archive_frame_style flagged admin_page=>'archive', relabelled Thumb Border Selector
+- skins/50-shades-of-noah-grey/archive-layout.php: layout preference localStorage no longer consent-gated (UI preference, not tracking data)
+- archive.php: layout persistence script runs unconditionally (was inside $offer_toggle block, so skins with archive-layout.php never persisted visitor layout choice)
+- smack-appearance-archive.php: status text colour no longer hardcoded green (#6f6) — falls back to accent colour
+
+---
+
 ## 0.7.47 — "Sitting Duck" (2026-05-06)
 
 ### Fixed
