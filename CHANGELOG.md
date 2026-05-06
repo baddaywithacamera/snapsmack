@@ -15,6 +15,16 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.50 — "Sit Down" (2026-05-07)
+
+### Fixed
+- smack-appearance-archive.php: calendar sidebar settings (months, panel side, recent posts) hardcoded directly — no longer depends on manifest or inventory loading; guaranteed to appear
+- smack-appearance-archive.php: croppedwithcalendar unconditionally in layout list and checkboxes; all manifest-based detection removed
+- smack-appearance-archive.php: manifest load reverted to relative path (matches smack-skin.php pattern); is_array() guard prevents PHP errors if include fails
+- Version bump to avoid checksum collision with deployed 0.7.49 package
+
+---
+
 ## 0.7.49 — "Sit Tight" (2026-05-07)
 
 ### Fixed
