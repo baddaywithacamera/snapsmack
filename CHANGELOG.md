@@ -13,6 +13,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.53 — "Stay Seated" (2026-05-04)
+
+### Fixed
+- `core/multisite-api.php` — Bearer auth now works on nginx/PHP-FPM; `$_SERVER['HTTP_AUTHORIZATION']` falls back to `getallheaders()` so Authorization header is never silently dropped by the server; fixes 401 on spoke→hub VERIFY and hub→spoke heartbeat/ping on all self-hosted Proxmox sites
+
+---
+
 ## 0.7.52 — "Stay Seated" (2026-05-06)
 
 ### Fixed

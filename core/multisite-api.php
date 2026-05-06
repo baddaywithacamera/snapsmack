@@ -66,6 +66,20 @@ try {
     ms_err('Database unavailable', 503);
 }
 
+// --- AUTHORIZATION HEADER HELPER ---
+// nginx/PHP-FPM often strips HTTP_AUTHORIZATION from $_SERVER.
+// Fall back to getallheaders() so Bearer auth works regardless of server config.
+function ms_get_auth_header(): string {
+    $h = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    if ($h === '' && function_exists('getallheaders')) {
+        $hdrs = getallheaders();
+        foreach ($hdrs as $k => $v) {
+            if (strcasecmp($k, 'Authorization') === 0) { $h = $v; break; }
+        }
+    }
+    return $h;
+}
+
 // --- HTTPS CHECK (handshake only) ---
 $is_https = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')
          || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
@@ -137,7 +151,7 @@ if ($resource === 'handshake' && $method === 'POST') {
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'ping' && $method === 'GET') {
     $ping_key = '';
-    if (preg_match('/^Bearer\s+(\S+)$/i', $_SERVER['HTTP_AUTHORIZATION'] ?? '', $pm)) {
+    if (preg_match('/^Bearer\s+(\S+)$/i', ms_get_auth_header(), $pm)) {
         $ping_key = $pm[1];
     }
     if (!$ping_key) ms_err('Authorization header required', 401);
@@ -166,9 +180,8 @@ if ($resource === 'ping' && $method === 'GET') {
 // ─────────────────────────────────────────────────────────────────────────────
 // BEARER TOKEN AUTH — all endpoints below require this
 // ─────────────────────────────────────────────────────────────────────────────
-$auth_header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-$api_key     = '';
-if (preg_match('/^Bearer\s+(\S+)$/i', $auth_header, $m)) {
+$api_key = '';
+if (preg_match('/^Bearer\s+(\S+)$/i', ms_get_auth_header(), $m)) {
     $api_key = $m[1];
 }
 if (!$api_key) {
