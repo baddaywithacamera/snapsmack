@@ -96,8 +96,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $manual_tags = trim($_POST['tags'] ?? '');
-    $selected_cats = $_POST['cat_ids'] ?? [];
-    $selected_albums = $_POST['album_ids'] ?? [];
+    $selected_cats        = $_POST['cat_ids']        ?? [];
+    $selected_albums      = $_POST['album_ids']      ?? [];
+    $selected_collections = $_POST['collection_ids'] ?? [];
 
     // Film stock field supports explicit "N/A" via checkbox.
     $film_val = $_POST['film_stock'] ?? '';
@@ -189,6 +190,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->prepare("INSERT INTO snap_image_album_map (image_id, album_id) VALUES (?, ?)")->execute([$id, (int)$aid]);
     }
 
+    // Delete and re-populate collection memberships (item_type='post').
+    $pdo->prepare("DELETE FROM snap_collection_items WHERE item_type = 'post' AND item_id = ?")->execute([$id]);
+    foreach ($selected_collections as $cid) {
+        $max = $pdo->prepare("SELECT COALESCE(MAX(sort_order),0)+1 FROM snap_collection_items WHERE collection_id=?");
+        $max->execute([(int)$cid]);
+        $pdo->prepare("INSERT IGNORE INTO snap_collection_items (collection_id, item_type, item_id, sort_order) VALUES (?, 'post', ?, ?)")
+            ->execute([(int)$cid, $id, (int)$max->fetchColumn()]);
+    }
+
     $msg = "Success: Mission parameters updated.";
 }
 
@@ -215,9 +225,15 @@ $mapped_albums = $pdo->prepare("SELECT album_id FROM snap_image_album_map WHERE 
 $mapped_albums->execute([$id]);
 $mapped_albums = $mapped_albums->fetchAll(PDO::FETCH_COLUMN);
 
-// Load all available categories and albums for the form selectors.
-$all_cats = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
-$all_albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
+// Load all available categories, albums, and collections for the form selectors.
+$all_cats        = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
+$all_albums      = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
+$all_collections = $pdo->query("SELECT * FROM snap_collections ORDER BY name ASC")->fetchAll();
+
+// Load the image's current collection memberships.
+$mapped_collections_stmt = $pdo->prepare("SELECT collection_id FROM snap_collection_items WHERE item_type = 'post' AND item_id = ?");
+$mapped_collections_stmt->execute([$id]);
+$mapped_collections = $mapped_collections_stmt->fetchAll(PDO::FETCH_COLUMN);
 
 // Load existing tags for this image (pre-populate the tags field).
 $existing_tags = snap_get_tags($pdo, $id);
@@ -258,50 +274,67 @@ include 'core/sidebar.php';
                         <input type="text" name="title" value="<?php echo htmlspecialchars($post['img_title']); ?>" required>
                     </div>
 
-                    <div class="post-layout-grid">
-                        <div class="flex-1">
-                            <div class="lens-input-wrapper">
-                                <label>REGISTRY (CATEGORIES)</label>
-                                <div class="custom-multiselect">
-                                    <div class="select-box" onclick="toggleDropdown('cat-items')">
-                                        <span id="cat-label">Select Categories...</span><span class="arrow">▼</span>
-                                    </div>
-                                    <div class="dropdown-content" id="cat-items">
-                                        <div class="dropdown-search-wrapper"><input type="text" placeholder="Filter..." onkeyup="filterRegistry(this, 'cat-list-box')"></div>
-                                        <div class="dropdown-list" id="cat-list-box">
-                                            <?php foreach($all_cats as $c): ?>
-                                                <label class="multi-cat-item">
-                                                    <input type="checkbox" name="cat_ids[]" value="<?php echo $c['id']; ?>" <?php echo in_array($c['id'], $mapped_cats) ? 'checked' : ''; ?> onchange="updateLabel('cat')">
-                                                    <span class="cat-name-text"><?php echo htmlspecialchars($c['cat_name']); ?></span>
-                                                </label>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    </div>
-                                </div>
+                    <div class="lens-input-wrapper">
+                        <label>REGISTRY (CATEGORIES)</label>
+                        <div class="custom-multiselect">
+                            <div class="select-box" onclick="toggleDropdown('cat-items')">
+                                <span id="cat-label">Select Categories...</span><span class="arrow">▼</span>
                             </div>
-                        </div>
-                        <div class="flex-1">
-                            <div class="lens-input-wrapper">
-                                <label>MISSIONS (ALBUMS)</label>
-                                <div class="custom-multiselect">
-                                    <div class="select-box" onclick="toggleDropdown('album-items')">
-                                        <span id="album-label">Select Albums...</span><span class="arrow">▼</span>
-                                    </div>
-                                    <div class="dropdown-content" id="album-items">
-                                        <div class="dropdown-search-wrapper"><input type="text" placeholder="Filter..." onkeyup="filterRegistry(this, 'album-list-box')"></div>
-                                        <div class="dropdown-list" id="album-list-box">
-                                            <?php foreach($all_albums as $a): ?>
-                                                <label class="multi-cat-item">
-                                                    <input type="checkbox" name="album_ids[]" value="<?php echo $a['id']; ?>" <?php echo in_array($a['id'], $mapped_albums) ? 'checked' : ''; ?> onchange="updateLabel('album')">
-                                                    <span class="cat-name-text"><?php echo htmlspecialchars($a['album_name']); ?></span>
-                                                </label>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    </div>
+                            <div class="dropdown-content" id="cat-items">
+                                <div class="dropdown-search-wrapper"><input type="text" placeholder="Filter..." onkeyup="filterRegistry(this, 'cat-list-box')"></div>
+                                <div class="dropdown-list" id="cat-list-box">
+                                    <?php foreach($all_cats as $c): ?>
+                                        <label class="multi-cat-item">
+                                            <input type="checkbox" name="cat_ids[]" value="<?php echo $c['id']; ?>" <?php echo in_array($c['id'], $mapped_cats) ? 'checked' : ''; ?> onchange="updateLabel('cat')">
+                                            <span class="cat-name-text"><?php echo htmlspecialchars($c['cat_name']); ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
                                 </div>
                             </div>
                         </div>
                     </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>MISSIONS (ALBUMS)</label>
+                        <div class="custom-multiselect">
+                            <div class="select-box" onclick="toggleDropdown('album-items')">
+                                <span id="album-label">Select Albums...</span><span class="arrow">▼</span>
+                            </div>
+                            <div class="dropdown-content" id="album-items">
+                                <div class="dropdown-search-wrapper"><input type="text" placeholder="Filter..." onkeyup="filterRegistry(this, 'album-list-box')"></div>
+                                <div class="dropdown-list" id="album-list-box">
+                                    <?php foreach($all_albums as $a): ?>
+                                        <label class="multi-cat-item">
+                                            <input type="checkbox" name="album_ids[]" value="<?php echo $a['id']; ?>" <?php echo in_array($a['id'], $mapped_albums) ? 'checked' : ''; ?> onchange="updateLabel('album')">
+                                            <span class="cat-name-text"><?php echo htmlspecialchars($a['album_name']); ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <?php if (!empty($all_collections)): ?>
+                    <div class="lens-input-wrapper">
+                        <label>COLLECTIONS</label>
+                        <div class="custom-multiselect">
+                            <div class="select-box" onclick="toggleDropdown('collection-items')">
+                                <span id="collection-label">Select Collections...</span><span class="arrow">▼</span>
+                            </div>
+                            <div class="dropdown-content" id="collection-items">
+                                <div class="dropdown-search-wrapper"><input type="text" placeholder="Filter..." onkeyup="filterRegistry(this, 'collection-list-box')"></div>
+                                <div class="dropdown-list" id="collection-list-box">
+                                    <?php foreach($all_collections as $col): ?>
+                                        <label class="multi-cat-item">
+                                            <input type="checkbox" name="collection_ids[]" value="<?php echo $col['id']; ?>" <?php echo in_array($col['id'], $mapped_collections) ? 'checked' : ''; ?> onchange="updateLabel('collection')">
+                                            <span class="cat-name-text"><?php echo htmlspecialchars($col['name']); ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
 
                     <div class="lens-input-wrapper post-description-wrap">
                         <label>DESCRIPTION / STORY</label>
@@ -554,9 +587,10 @@ include 'core/sidebar.php';
 <script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
 <script>
     window.addEventListener('DOMContentLoaded', () => {
-        if(typeof updateLabel === "function") { 
-            updateLabel('cat'); 
-            updateLabel('album'); 
+        if(typeof updateLabel === "function") {
+            updateLabel('cat');
+            updateLabel('album');
+            updateLabel('collection');
         }
     });
 </script>

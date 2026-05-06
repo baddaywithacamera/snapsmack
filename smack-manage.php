@@ -40,6 +40,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'batch_delete') {
         $pdo->prepare("DELETE FROM snap_images WHERE id = ?")->execute([$id]);
         $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
         $pdo->prepare("DELETE FROM snap_image_album_map WHERE image_id = ?")->execute([$id]);
+        $pdo->prepare("DELETE FROM snap_collection_items WHERE item_type = 'post' AND item_id = ?")->execute([$id]);
         $pdo->prepare("DELETE FROM snap_comments WHERE img_id = ?")->execute([$id]);
         $deleted++;
     }
@@ -111,6 +112,7 @@ if (isset($_GET['delete'])) {
     $pdo->prepare("DELETE FROM snap_images WHERE id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_image_album_map WHERE image_id = ?")->execute([$id]);
+    $pdo->prepare("DELETE FROM snap_collection_items WHERE item_type = 'post' AND item_id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_comments WHERE img_id = ?")->execute([$id]);
 
     header("Location: smack-manage.php?msg=deleted");
@@ -118,13 +120,14 @@ if (isset($_GET['delete'])) {
 }
 
 // --- FILTER PARAMETERS ---
-$search = $_GET['search'] ?? '';
-$cat_filter = $_GET['cat_id'] ?? '';
-$album_filter = $_GET['album_id'] ?? '';
-$status_filter = $_GET['status'] ?? '';
+$search            = $_GET['search']        ?? '';
+$cat_filter        = $_GET['cat_id']        ?? '';
+$album_filter      = $_GET['album_id']      ?? '';
+$collection_filter = $_GET['collection_id'] ?? '';
+$status_filter     = $_GET['status']        ?? '';
 
 // Drag reorder only available when showing all posts unfiltered.
-$filters_active = ($search !== '' || $cat_filter !== '' || $album_filter !== '' || $status_filter !== '');
+$filters_active = ($search !== '' || $cat_filter !== '' || $album_filter !== '' || $collection_filter !== '' || $status_filter !== '');
 
 // --- PAGINATION ---
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
@@ -145,6 +148,10 @@ if ($cat_filter) {
 if ($album_filter) {
     $where_clauses[] = "i.id IN (SELECT image_id FROM snap_image_album_map WHERE album_id = ?)";
     $params[] = $album_filter;
+}
+if ($collection_filter) {
+    $where_clauses[] = "i.id IN (SELECT item_id FROM snap_collection_items WHERE collection_id = ? AND item_type = 'post')";
+    $params[] = $collection_filter;
 }
 
 $now_local = date('Y-m-d H:i:s');
@@ -175,6 +182,10 @@ $sql = "SELECT i.*,
          FROM snap_albums a
          JOIN snap_image_album_map am ON a.id = am.album_id
          WHERE am.image_id = i.id) as album_list,
+        (SELECT GROUP_CONCAT(sc.name ORDER BY sc.name ASC SEPARATOR ', ')
+         FROM snap_collections sc
+         JOIN snap_collection_items sci ON sc.id = sci.collection_id
+         WHERE sci.item_id = i.id AND sci.item_type = 'post') as collection_list,
         (SELECT COUNT(*) FROM snap_comments WHERE img_id = i.id) as comment_count,
         (SELECT COUNT(*) FROM snap_likes WHERE post_id = i.id) as like_count
         FROM snap_images i
@@ -186,8 +197,9 @@ $posts = $pdo->prepare($sql);
 $posts->execute($params);
 $post_list = $posts->fetchAll();
 
-$cats = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
-$albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
+$cats        = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
+$albums      = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
+$collections = $pdo->query("SELECT * FROM snap_collections ORDER BY name ASC")->fetchAll();
 
 $success_msg = '';
 if (!empty($_GET['msg'])) {
@@ -252,6 +264,18 @@ include 'core/sidebar.php';
                         <?php endforeach; ?>
                     </select>
                 </div>
+
+                <?php if (!empty($collections)): ?>
+                <div class="lens-input-wrapper">
+                    <label>COLLECTION</label>
+                    <select name="collection_id">
+                        <option value="">ALL COLLECTIONS</option>
+                        <?php foreach($collections as $col): ?>
+                            <option value="<?php echo $col['id']; ?>" <?php echo ($collection_filter == $col['id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($col['name']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
             </div>
 
             <div class="filter-actions-group">
@@ -320,6 +344,9 @@ include 'core/sidebar.php';
                                     <?php echo date("M j, Y - H:i", strtotime($p['img_date'])); ?>
                                     <span class="meta-reg">[ REG: <?php echo htmlspecialchars($p['category_list'] ?: 'NONE'); ?> ]</span>
                                     <span class="meta-mission">[ MISSION: <?php echo htmlspecialchars($p['album_list'] ?: 'NONE'); ?> ]</span>
+                                    <?php if (!empty($p['collection_list'])): ?>
+                                    <span class="meta-collection">[ COLLECTION: <?php echo htmlspecialchars($p['collection_list']); ?> ]</span>
+                                    <?php endif; ?>
                                     <span class="meta-trans">[ TRANS: <?php echo (int)$p['comment_count']; ?> ]</span>
                                     <span class="meta-likes">[ LIKES: <?php echo (int)$p['like_count']; ?> ]</span>
                                     <span class="meta-downloads">[ DL: <?php echo (int)$p['img_download_count']; ?> ]</span>
@@ -344,10 +371,11 @@ include 'core/sidebar.php';
 
             <?php if ($total_pages > 1):
                 $qs = http_build_query(array_filter([
-                    'search'   => $search,
-                    'cat_id'   => $cat_filter,
-                    'album_id' => $album_filter,
-                    'status'   => $status_filter,
+                    'search'        => $search,
+                    'cat_id'        => $cat_filter,
+                    'album_id'      => $album_filter,
+                    'collection_id' => $collection_filter,
+                    'status'        => $status_filter,
                 ], 'strlen'));
                 $href = function($p) use ($qs) {
                     return '?page=' . $p . ($qs ? '&' . $qs : '');

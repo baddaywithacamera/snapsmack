@@ -7,6 +7,6 @@
  * to determine whether an update is available.
  */
 
-define('SC_VERSION',  '0.7.50');
-define('SC_CODENAME', 'Sit Down');
+define('SC_VERSION',  '0.7.51');
+define('SC_CODENAME', 'Sit Still');
 // ===== SNAPSMACK EOF =====
