@@ -324,21 +324,30 @@ git read-tree HEAD
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.46 "Wet Toilet Seat"
-⏳ **0.7.46 uncommitted — Cowork session changes pending commit.**
+### SnapSmack — Alpha 0.7.51 "Sit Still"
+⏳ **0.7.51 uncommitted — Cowork session changes pending commit.**
 
-**What 0.7.43 shipped (Claude Code):**
-- `smack-settings.php` — API key UI fixed
-- `smack-appearance-archive.php` — dead TILE BORDER & SHADOW box removed
-- `skins/50-shades-of-noah-grey/archive-layout.php` — toggle data-driven
-- `skins/rational-geo/archive-layout.php` — same toggle fix + wrong settings key corrected
-- `skins/50-shades-of-noah-grey/manifest.php` — archive_frame_style moved to ARCHIVE section
-- `smack-menu.php`, `ss-engine-menu-builder.js`, `ss-engine-nav-dropdown.js` — restored from git history
-- `migrations/050_search_placeholder.php` — search placeholder setting
-- `supports_wall: true` flipped in rational-geo, photogram, impact-printer manifests
-- **NOT done in 0.7.43:** nav menu wiring (migration 049, sidebar link, header.php renderer, skin CSS) — deferred by Code
+**What shipped in 0.7.51 (Cowork session):**
+- `archive.php` — croppedwithcalendar no longer stripped from $available_modes; calendar toggle no longer blips back to cropped
+- `archive.php` — manifest load changed to relative path; $skin_has_calendar detection improved (belt+suspenders)
+- Version bumped to avoid checksum collision with deployed 0.7.50
 
-**Uncommitted Cowork session changes (2026-05-05):**
+**What 0.7.48–0.7.50 shipped (Cowork session 2026-05-06/07):**
+- `smack-appearance-archive.php` — calendar option + settings (months, panel side, recent posts) on Archive Appearance; croppedwithcalendar unconditional; status text colour fixed; filter dropdown 50% wider
+- `smack-skin.php` — skips admin_page=>'archive' engine controls in UI loop
+- `core/manifest-inventory.php` — smack-calendar engine flagged admin_page=>'archive'
+- `skins/50-shades-of-noah-grey/archive-layout.php` — layout persistence localStorage no longer consent-gated
+- Multiple version bumps to avoid checksum collisions with deployed packages
+
+**Uncommitted Cowork session changes (2026-05-06, folded into 0.7.51):**
+- `smack-appearance-archive.php` — ARCHIVE THUMB BORDER box hardcoded; fallback renders when manifest pre-dates admin_page=>'archive' flag; suppressed once manifest ships the flag
+- `smack-appearance-archive.php` POST handler — CSS blob (custom_css_public) regenerated when archive_frame_style is saved; comment marker for idempotent replacement; scoped key ({skin}__archive_frame_style) also saved
+- `smack-post-solo.php` — Collections multiselect added; collection_ids[] saved to snap_collection_items on submit
+- `smack-edit.php` — Collections multiselect added; pre-populated from existing membership; delete+repopulate on save
+- `smack-manage.php` — Collection filter dropdown added; collection_list shown in post meta; snap_collection_items cleaned up on single and batch delete; collection_id preserved in pagination query string
+- `assets/js/ss-engine-admin-ui.js` — updateLabel() updated to handle 'collection' type with correct placeholder label
+
+**Earlier uncommitted changes (2026-05-05, carried forward):**
 - `migrations/049_nav_menu_json.php` — seeds nav_menu_json + dropdown appearance settings
 - `core/sidebar.php` — Menu Manager link added to Pimp Your Ride
 - `core/footer.php` — loads ss-engine-nav-dropdown.js when nav_menu_json is active
@@ -349,19 +358,16 @@ git read-tree HEAD
 - `assets/js/ss-engine-menu-builder.js` — full rewrite: 3-level drag-and-drop, container type, active toggle, album/cat/coll pool items
 - `assets/js/ss-engine-nav-dropdown.js` — fixed openMenu() to not close ancestor submenus (3-level mobile fix)
 - `smack-settings.php` — removed blogroll_enabled nav toggle + entire NAVIGATION SLOT ASSIGNMENTS box; Akismet input width fixed; enctype removed; footer config + image engine moved to globalvibe
-- `smack-appearance-archive.php` — relabelled show_wall_link as "ENABLE FLOATING GALLERY"; floating gallery box removed (moved to globalvibe)
 - `smack-globalvibe.php` — footer config + image engine + floating gallery sections added; masthead logo upload MIME check added (security fix — audit H)
 - `smack-update.php` — reapply APPLY button fix: $stage_state rebind after session update
 - `smack-central/sc-release.php` — key sync preflight check: build blocked if sc-config.php and core/release-pubkey.php disagree
 - `core/release-pubkey.php` — updated to new release public key
 - `assets/adminthemes/purple-rain/admin-theme-colours-purple-rain.css` — btn-smack + btn-danger brightness halved
-- `secaudits/2026-05-05-008-snapsmack-security-audit.pdf` — audit 008 filed (masthead logo MIME fix)
-- `secaudits/` — all audits renumbered from letter suffix (A–H) to 3-digit sequence (001–008); G converted from .md to PDF
-- `archive.php` — unified filter panel (categories + albums + collections, AND logic, debounced live); canonical mode order enforced (square→cropped→croppedwithcalendar→masonry); duplicate text toggle suppressed when skin has archive-layout.php; archive_filter manifest flag support
-- `assets/js/ss-engine-archive-filter.js` — new: filter panel engine (toggle, live text search, debounced navigation)
-- `assets/css/public-facing.css` — filter panel styles (saf-* classes)
-- `skins/photogram/manifest.php` — archive_filter: false (feed skin manages its own chrome)
-- `CLAUDE.md` — work state updated
+- `secaudits/` — audits renumbered 001–008; G converted to PDF; audit 008 filed (masthead logo MIME fix)
+- `archive.php` — unified filter panel (categories + albums + collections, AND logic, debounced live); canonical mode order; archive_filter manifest flag support
+- `assets/js/ss-engine-archive-filter.js` — new filter panel engine
+- `assets/css/public-facing.css` — filter panel styles (saf-* classes); filter dropdown 50% wider
+- `skins/photogram/manifest.php` — archive_filter: false
 
 **Git branch is `master` not `main`** (confirmed 2026-04-29).
 
@@ -389,17 +395,16 @@ git read-tree HEAD
 - `install.php` — r4_exec recovery tail restored from truncation
 - EOF markers added to all 454 PHP/JS/CSS files; `tools/check-eof.py` pre-commit scanner added
 
-**Pending — after 0.7.43:**
-- Build 0.7.43 release package from Smack Central → Release Packager
-- Build skin packages for 50-shades-of-noah-grey v1.1 and rational-geo v1.1 via Skin Packager
-- Update all live sites to 0.7.43 via Smack Central updater
+**Pending — after 0.7.51 commit:**
+- Build 0.7.51 release package from Smack Central → Release Packager
+- Build skin packages for 50-shades-of-noah-grey v1.1 and rational-geo v1.1 via Skin Packager (once skin packages deploy, $archive_manifest_opts will carry archive_frame_style and the hardcoded fallback section auto-hides)
+- Update all live sites to 0.7.52 via Smack Central updater
 - FTP `.htaccess` (with Probe Guard routes) to each server manually — gitignored, server-specific
 - Generate API key in foundtextures.ca Admin → Settings → API Access, paste into SYBU
 - Rebuild SYBU exe (`build.bat` in `tools/sybu/`)
 - strathmore.pics: delete duplicate snap_user 'sean', re-run install step 5
 - FTP skins to strathmore.pics: `50-shades-of-noah-grey`, `new-horizon`, `galleria`, `rational-geo`
 - FTP `projects/snapsmack-ca/` files to snapsmack.ca (untracked, manual FTP)
-- wall config move to Global Vibe ✅ done (Cowork session 2026-05-05)
 - wall in kiosk + true-grit (task 003 covers 5 skins; Code only did 3 — check which remain)
 - calendar months slider in Archive Appearance (deferred, not specced yet)
 
@@ -433,10 +438,10 @@ Pending: rebuild exe, test B2 credentials, run Audit & Cleanup on foundtextures 
 |---|---|---|---|
 | foundtextures.ca | Multisite Hub | Alpha 0.7.28 | self-hosted, Proxmox |
 | snapsmack.ca | Promo + Smack Central | — | self-hosted, Proxmox |
-| pixhellated.ca | Spoke | needs update to 0.7.46 | shared hosting |
-| wateronthebrain.ca | Spoke | needs update to 0.7.46 | self-hosted, Proxmox |
-| hekeepsdroningon.ca | Spoke | needs update to 0.7.46 | self-hosted, Proxmox |
-| photowalk.ing | Standalone | needs update to 0.7.46 | self-hosted, Proxmox |
+| pixhellated.ca | Spoke | needs update to 0.7.51 | shared hosting |
+| wateronthebrain.ca | Spoke | needs update to 0.7.51 | self-hosted, Proxmox |
+| hekeepsdroningon.ca | Spoke | needs update to 0.7.51 | self-hosted, Proxmox |
+| photowalk.ing | Standalone | needs update to 0.7.51 | self-hosted, Proxmox |
 | strathmore.pics | Standalone | fresh install in progress | self-hosted, Proxmox (Cloudflare Tunnel) |
 | squaredstraight.ca | Standalone | fresh install pending | self-hosted, Proxmox |
 

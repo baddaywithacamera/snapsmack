@@ -15,6 +15,22 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.51 — "Sit Still" (2026-05-07)
+
+### Added
+- smack-post-solo.php: Collections multiselect added to new post form — posts can be assigned to one or more collections at upload time
+- smack-edit.php: Collections multiselect added to edit metadata form — pre-populated from existing membership; saved on submit with full delete+repopulate
+- smack-manage.php: Collections filter added to Manage Archive filter bar; collection membership displayed in post meta row; collection items correctly cleaned up on single and batch delete
+
+### Fixed
+- archive.php: croppedwithcalendar was being stripped from $available_modes when $skin_has_calendar was false (manifest not loading); clicking calendar toggle caused page to blip back to cropped; removed the gate — croppedwithcalendar is now unconditional matching Archive Appearance policy
+- archive.php: manifest load changed to relative path (matches smack-skin.php pattern); $skin_has_calendar detection now checks features.archive_layouts as well as require_scripts
+- smack-appearance-archive.php: archive thumb border selector now appears on Archive Appearance page — hardcoded fallback renders when active skin manifest pre-dates admin_page=>'archive' flag on archive_frame_style; suppressed automatically once manifest ships the flag
+- smack-appearance-archive.php: saving archive_frame_style now regenerates the CSS blob (custom_css_public) immediately; uses comment marker for idempotent surgical replacement; also saves scoped key ({skin}__archive_frame_style) for smack-skin.php consistency
+- Version bump to avoid checksum collision with deployed 0.7.50 package
+
+---
+
 ## 0.7.50 — "Sit Down" (2026-05-07)
 
 ### Fixed

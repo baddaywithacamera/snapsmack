@@ -35,7 +35,8 @@ window.updateLabel = function (type) {
             label.innerText = checkboxes.length + " SELECTED";
             label.style.color = "var(--neon-green)";
         } else {
-            label.innerText = "SELECT " + (type === 'cat' ? 'CATEGORIES' : 'ALBUMS') + "...";
+            const defaults = { cat: 'CATEGORIES', album: 'ALBUMS', collection: 'COLLECTIONS' };
+            label.innerText = "SELECT " + (defaults[type] || type.toUpperCase()) + "...";
             label.style.color = "var(--text-main)";
         }
     }
