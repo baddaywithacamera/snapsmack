@@ -57,12 +57,17 @@ try {
     $skin_layout_fallback = 'square';
     $skin_has_calendar = false;
     $_manifest_path = __DIR__ . '/skins/' . $active_skin . '/manifest.php';
+    $skin_show_archive_filter = true;
     if (file_exists($_manifest_path)) {
         $_m = include $_manifest_path;
         if (!empty($_m['features']['archive_layout_default'])) {
             $skin_layout_fallback = $_m['features']['archive_layout_default'];
         }
         $skin_has_calendar = in_array('smack-calendar', $_m['require_scripts'] ?? []);
+        // Skins may set features.archive_filter = false to suppress the unified filter panel.
+        if (isset($_m['features']['archive_filter']) && $_m['features']['archive_filter'] === false) {
+            $skin_show_archive_filter = false;
+        }
         unset($_m, $_manifest_path);
     }
     $archive_layout_default = $settings['archive_layout'] ?? $skin_layout_fallback;
@@ -76,18 +81,20 @@ try {
     }
 
     // Which modes the owner has offered to visitors.
+    // Canonical order enforced regardless of how they were saved in the DB:
+    // square → cropped → croppedwithcalendar → masonry
+    $_canonical_order = ['square', 'cropped', 'croppedwithcalendar', 'masonry'];
     $available_raw    = $settings['archive_layouts_available'] ?? $archive_layout_default;
-    $available_modes  = array_filter(
+    $_enabled         = array_flip(array_filter(
         array_map('trim', explode(',', $available_raw)),
-        fn($m) => in_array($m, ['square', 'cropped', 'masonry', 'croppedwithcalendar'])
-    );
+        fn($m) => in_array($m, $_canonical_order)
+    ));
+    $available_modes  = array_values(array_filter($_canonical_order, fn($m) => isset($_enabled[$m])));
+    unset($_canonical_order, $_enabled);
     if (empty($available_modes)) $available_modes = [$archive_layout_default];
-    $available_modes = array_values($available_modes);
     // Only offer croppedwithcalendar if the skin has the calendar engine.
     if (!$skin_has_calendar) {
-        $available_modes = array_values(array_filter($available_modes, function($m) {
-            return $m !== 'croppedwithcalendar';
-        }));
+        $available_modes = array_values(array_filter($available_modes, fn($m) => $m !== 'croppedwithcalendar'));
     }
     if (!in_array($archive_layout_default, $available_modes)) {
         $available_modes[] = $archive_layout_default;
@@ -99,7 +106,10 @@ try {
                        ? $layout_override
                        : $archive_layout_default;
 
-    $offer_toggle = (count($available_modes) > 1);
+    // archive.php renders its own toggle only when no skin-specific archive-layout.php exists.
+    // Skins with their own archive-layout.php handle the toggle themselves.
+    $skin_archive_file = __DIR__ . '/skins/' . $active_skin . '/archive-layout.php';
+    $offer_toggle = (count($available_modes) > 1) && !file_exists($skin_archive_file);
 
     // --- THUMBNAIL SIZE RESOLUTION ---
     // Maps abstract 5-step scale (xs, s, m, l, xl) to pixel values.
@@ -128,9 +138,36 @@ try {
     $justified_row_height = (int)($settings['justified_row_height'] ?? 180);
 
     // --- FILTER PARAMETERS ---
-    // Extract category or album ID from query string
-    $cat_filter    = isset($_GET['cat']) ? (int)$_GET['cat'] : null;
-    $album_filter  = isset($_GET['album']) ? (int)$_GET['album'] : null;
+    // Unified multi-select filter: ?f[]=cat:5&f[]=alb:3&f[]=col:2
+    // AND logic: image must satisfy every selected filter to appear.
+    // Backward compat: legacy ?cat=N and ?album=N single-select links still work.
+    $filter_cats        = [];
+    $filter_albums      = [];
+    $filter_collections = [];
+
+    $raw_f = $_GET['f'] ?? [];
+    if (is_array($raw_f)) {
+        foreach ($raw_f as $token) {
+            if (preg_match('/^(cat|alb|col):(\d+)$/', trim($token), $m)) {
+                $id = (int)$m[2];
+                if ($id > 0) {
+                    if ($m[1] === 'cat') $filter_cats[]        = $id;
+                    if ($m[1] === 'alb') $filter_albums[]      = $id;
+                    if ($m[1] === 'col') $filter_collections[] = $id;
+                }
+            }
+        }
+    }
+    // Legacy single-select backwards compat
+    if (empty($filter_cats) && isset($_GET['cat']))     $filter_cats[]   = (int)$_GET['cat'];
+    if (empty($filter_albums) && isset($_GET['album'])) $filter_albums[] = (int)$_GET['album'];
+
+    $active_filter_count = count($filter_cats) + count($filter_albums) + count($filter_collections);
+
+    // Legacy vars for any skin templates that may reference them
+    $cat_filter   = $filter_cats[0]   ?? null;
+    $album_filter = $filter_albums[0] ?? null;
+
     $search_query  = trim($_GET['q'] ?? '');
     // Calendar date-range filter: ?from=YYYY-MM-DD&to=YYYY-MM-DD
     $from_filter   = (isset($_GET['from']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['from']))
@@ -186,16 +223,32 @@ try {
         // Calendar day browse — all posts published on a specific date.
         $where_clauses[] = "DATE(i.img_date) = ?";
         $params[] = $date_filter;
-    } elseif ($cat_filter) {
-        // Direct category browse — show images for this specific category
-        // regardless of its show_in_archive flag (URL is direct, not surfaced in UI).
-        $sql .= "INNER JOIN snap_image_cat_map c ON i.id = c.image_id ";
-        $where_clauses[] = "c.cat_id = ?";
-        $params[] = $cat_filter;
-    } elseif ($album_filter) {
-        $sql .= "INNER JOIN snap_image_album_map a ON i.id = a.image_id ";
-        $where_clauses[] = "a.album_id = ?";
-        $params[] = $album_filter;
+    } elseif ($active_filter_count > 0) {
+        // Unified multi-filter: AND EXISTS for each selected taxonomy item.
+        // Every clause must be satisfied — more selections = narrower results.
+
+        foreach ($filter_cats as $cid) {
+            $where_clauses[] = "EXISTS (SELECT 1 FROM snap_image_cat_map _cm WHERE _cm.image_id = i.id AND _cm.cat_id = ?)";
+            $params[] = $cid;
+        }
+        foreach ($filter_albums as $aid) {
+            $where_clauses[] = "EXISTS (SELECT 1 FROM snap_image_album_map _am WHERE _am.image_id = i.id AND _am.album_id = ?)";
+            $params[] = $aid;
+        }
+        // Collection: image qualifies if it's a direct post member, OR belongs to
+        // an album or category that is a member of the collection.
+        foreach ($filter_collections as $colid) {
+            $where_clauses[] = "EXISTS (
+                SELECT 1 FROM snap_collection_items _ci
+                WHERE _ci.collection_id = ?
+                AND (
+                    (_ci.item_type = 'post'     AND i.post_id IS NOT NULL AND _ci.item_id = i.post_id)
+                    OR (_ci.item_type = 'album'    AND EXISTS (SELECT 1 FROM snap_image_album_map _am2 WHERE _am2.image_id = i.id AND _am2.album_id = _ci.item_id))
+                    OR (_ci.item_type = 'category' AND EXISTS (SELECT 1 FROM snap_image_cat_map _cm2   WHERE _cm2.image_id = i.id AND _cm2.cat_id   = _ci.item_id))
+                )
+            )";
+            $params[] = $colid;
+        }
     } else {
         // Unfiltered browse: exclude images that belong exclusively to hidden categories.
         // Images with no category (uncategorized) always show.
@@ -218,10 +271,11 @@ try {
     $images = $stmt->fetchAll();
 
     // --- METADATA FOR FILTERS ---
-    // Fetch all categories and albums for filter dropdowns
-    // Only surface categories that are set to visible in the archive.
-    $all_cats   = $pdo->query("SELECT * FROM snap_categories WHERE show_in_archive = 1 ORDER BY cat_name ASC")->fetchAll();
-    $all_albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
+    // Fetch all categories, albums, and collections for the unified filter panel.
+    // Only surface categories set to visible in the archive.
+    $all_cats        = $pdo->query("SELECT id, cat_name FROM snap_categories WHERE show_in_archive = 1 ORDER BY cat_name ASC")->fetchAll();
+    $all_albums      = $pdo->query("SELECT id, album_name FROM snap_albums ORDER BY album_name ASC")->fetchAll();
+    $all_collections = $pdo->query("SELECT id, name FROM snap_collections ORDER BY name ASC")->fetchAll();
 
     // Matching tags (shown when searching)
     // Includes colour-family matches so searching "teal" surfaces #007a8b etc.
@@ -273,36 +327,75 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
         <div id="infobox">
             <div class="nav-links">
                 <div class="center">
-                    <a href="archive.php" class="<?php echo !$cat_filter && !$album_filter ? 'active' : 'inactive'; ?>">
+                    <a href="archive.php" class="<?php echo $active_filter_count === 0 && $search_query === '' ? 'active' : 'inactive'; ?>">
                         [ SHOW ALL ]
                     </a>
                     <span class="sep">/</span>
 
-                    <div class="filter-group">
-                        <label class="dim">REGISTRY:</label>
-                        <select onchange="location = this.value;">
-                            <option value="archive.php">-- ALL CATEGORIES --</option>
-                            <?php foreach($all_cats as $c): ?>
-                                <option value="?cat=<?php echo $c['id']; ?>" <?php echo $cat_filter == $c['id'] ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($c['cat_name']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
+                    <?php if ($skin_show_archive_filter): ?>
+                    <!-- Unified taxonomy filter panel -->
+                    <div class="filter-group saf-wrap">
+                        <button id="smack-archive-filter-btn"
+                                class="saf-btn<?php echo $active_filter_count > 0 ? ' saf-btn--active' : ''; ?>"
+                                aria-expanded="false"
+                                aria-controls="smack-archive-filter-panel"
+                                type="button">
+                            <span class="saf-btn-label"><?php echo $active_filter_count > 0 ? $active_filter_count . ' SELECTED' : 'FILTER'; ?></span>
+                            <span class="saf-btn-arrow">▾</span>
+                        </button>
 
-                    <span class="sep">|</span>
+                        <div id="smack-archive-filter-panel" class="saf-panel" role="dialog" aria-label="Filter photos">
 
-                    <div class="filter-group">
-                        <label class="dim">ALBUMS:</label>
-                        <select onchange="location = this.value;">
-                            <option value="archive.php">-- ALL ALBUMS --</option>
-                            <?php foreach($all_albums as $a): ?>
-                                <option value="?album=<?php echo $a['id']; ?>" <?php echo $album_filter == $a['id'] ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($a['album_name']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
+                            <input type="text" id="smack-archive-filter-search"
+                                   class="saf-search" placeholder="SEARCH FILTERS…"
+                                   autocomplete="off" spellcheck="false">
+
+                            <?php if ($all_cats): ?>
+                            <div class="saf-group">
+                                <div class="saf-group-header">REGISTRY</div>
+                                <?php foreach ($all_cats as $c): ?>
+                                <label class="saf-item">
+                                    <input type="checkbox" class="saf-checkbox"
+                                           data-type="cat" value="<?php echo (int)$c['id']; ?>"
+                                           <?php echo in_array((int)$c['id'], $filter_cats) ? 'checked' : ''; ?>>
+                                    <span class="saf-label"><?php echo htmlspecialchars(strtoupper($c['cat_name'])); ?></span>
+                                </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if ($all_albums): ?>
+                            <div class="saf-group">
+                                <div class="saf-group-header">ALBUMS</div>
+                                <?php foreach ($all_albums as $a): ?>
+                                <label class="saf-item">
+                                    <input type="checkbox" class="saf-checkbox"
+                                           data-type="alb" value="<?php echo (int)$a['id']; ?>"
+                                           <?php echo in_array((int)$a['id'], $filter_albums) ? 'checked' : ''; ?>>
+                                    <span class="saf-label"><?php echo htmlspecialchars(strtoupper($a['album_name'])); ?></span>
+                                </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if ($all_collections): ?>
+                            <div class="saf-group">
+                                <div class="saf-group-header">COLLECTIONS</div>
+                                <?php foreach ($all_collections as $col): ?>
+                                <label class="saf-item">
+                                    <input type="checkbox" class="saf-checkbox"
+                                           data-type="col" value="<?php echo (int)$col['id']; ?>"
+                                           <?php echo in_array((int)$col['id'], $filter_collections) ? 'checked' : ''; ?>>
+                                    <span class="saf-label"><?php echo htmlspecialchars(strtoupper($col['name'])); ?></span>
+                                </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php endif; ?>
+
+                        </div><!-- /saf-panel -->
+                    </div><!-- /saf-wrap -->
+                    <?php endif; ?>
+
                     <span class="sep">|</span>
 
                     <div class="filter-group">
@@ -445,6 +538,8 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                             <?php endforeach; ?>
                         </div>
                     <?php endforeach; ?>
+                <?php elseif ($active_filter_count > 0): ?>
+                    <div class="empty-sector-msg">NOTHING CLEARS ALL THOSE HURDLES.<br><a href="archive.php">[ EASE UP ]</a></div>
                 <?php else: ?>
                     <div class="empty-sector-msg">NO TRANSMISSIONS RECORDED IN THIS SECTOR.</div>
                 <?php endif; ?>
@@ -476,6 +571,8 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                             </a>
                         </div>
                     <?php endforeach; ?>
+                <?php elseif ($active_filter_count > 0): ?>
+                    <div class="empty-sector-msg">NOTHING CLEARS ALL THOSE HURDLES.<br><a href="archive.php">[ EASE UP ]</a></div>
                 <?php else: ?>
                     <div class="empty-sector-msg">NO TRANSMISSIONS RECORDED IN THIS SECTOR.</div>
                 <?php endif; ?>
@@ -501,6 +598,8 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                             </a>
                         </div>
                     <?php endforeach; ?>
+                <?php elseif ($active_filter_count > 0): ?>
+                    <div class="empty-sector-msg">NOTHING CLEARS ALL THOSE HURDLES.<br><a href="archive.php">[ EASE UP ]</a></div>
                 <?php else: ?>
                     <div class="empty-sector-msg">NO TRANSMISSIONS RECORDED IN THIS SECTOR.</div>
                 <?php endif; ?>
@@ -514,6 +613,9 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
         </div>
     </div>
 
+    <?php if ($skin_show_archive_filter): ?>
+    <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-archive-filter.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
+    <?php endif; ?>
     <?php include __DIR__ . '/core/footer-scripts.php'; ?>
 
 

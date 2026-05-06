@@ -41,6 +41,7 @@ return [
         'carousel'         => false,
         'community'        => ['likes', 'comments'],
         'mobile_only'      => true,   // auto-served to phones; never shown in gallery
+        'archive_filter'   => false,  // feed-style skin has its own chrome — no unified filter panel
     ],
 
     'require_scripts' => [

@@ -356,6 +356,11 @@ git read-tree HEAD
 - `core/release-pubkey.php` — updated to new release public key
 - `assets/adminthemes/purple-rain/admin-theme-colours-purple-rain.css` — btn-smack + btn-danger brightness halved
 - `secaudits/2026-05-05-008-snapsmack-security-audit.pdf` — audit 008 filed (masthead logo MIME fix)
+- `secaudits/` — all audits renumbered from letter suffix (A–H) to 3-digit sequence (001–008); G converted from .md to PDF
+- `archive.php` — unified filter panel (categories + albums + collections, AND logic, debounced live); canonical mode order enforced (square→cropped→croppedwithcalendar→masonry); duplicate text toggle suppressed when skin has archive-layout.php; archive_filter manifest flag support
+- `assets/js/ss-engine-archive-filter.js` — new: filter panel engine (toggle, live text search, debounced navigation)
+- `assets/css/public-facing.css` — filter panel styles (saf-* classes)
+- `skins/photogram/manifest.php` — archive_filter: false (feed skin manages its own chrome)
 - `CLAUDE.md` — work state updated
 
 **Git branch is `master` not `main`** (confirmed 2026-04-29).
