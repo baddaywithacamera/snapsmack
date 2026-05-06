@@ -1,3 +1,6 @@
+# One-time recovery scripts — never commit these
+recover-*.php
+
 # Live database credentials — never commit these
 core/db.php
 smack-central/sc-config.php
