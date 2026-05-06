@@ -355,10 +355,11 @@ git read-tree HEAD
 **Git branch is `master` not `main`** (confirmed 2026-04-29).
 
 **Signing keypair status:**
-- Release private key: in `sc-config.php` on snapsmack.ca server ✅
-- Release public key: `b9955f78c835f964b980a104d231be8253fce59db89cb12367c9ccbbafcea297` — in `core/release-pubkey.php` ✅
+- Release private key: `9a335726949622649d746ff40eba22e937c8eba390363dfae6594ab030a8d345519a1065cd3135c002196bab4436cd3142097cf5784eaeea31639797b070bcc0` — update `sc-config.php` on snapsmack.ca with this value, then FTP it. Also save to Bitwarden.
+- Release public key: `519a1065cd3135c002196bab4436cd3142097cf5784eaeea31639797b070bcc0` — updated in `core/release-pubkey.php` ✅
 - Root public key: `3287b9b29257da6a307fc85b949c9dc52bc99c08a66db21e6fcbaab0fb324652` — hardcoded in `core/updater.php` ✅
 - Root private key + full instructions: in Bitwarden (`KEY-ROTATION-INSTRUCTIONS.txt` on disk, gitignored) ✅
+- **sc-release.php now enforces key sync at preflight**: if sc-config.php and core/release-pubkey.php disagree, the build is blocked with an error. Key drift cannot happen silently anymore.
 
 **snapsmack.ca server notes:**
 - Snapsmack files now on SATA bulk storage via bind mount: host `/mnt/bulk-storage/snapsmack-ca` → CT101 `/var/www/snapsmack.ca`
@@ -421,11 +422,12 @@ Pending: rebuild exe, test B2 credentials, run Audit & Cleanup on foundtextures 
 |---|---|---|---|
 | foundtextures.ca | Multisite Hub | Alpha 0.7.28 | self-hosted, Proxmox |
 | snapsmack.ca | Promo + Smack Central | — | self-hosted, Proxmox |
-| pixhellated.ca | Spoke | needs update to 0.7.42 | shared hosting |
-| wateronthebrain.ca | Spoke | needs update to 0.7.42 | self-hosted, Proxmox |
-| hekeepsdroningon.ca | Spoke | needs update to 0.7.42 | self-hosted, Proxmox |
-| photowalk.ing | Standalone | needs update to 0.7.42 | self-hosted, Proxmox |
+| pixhellated.ca | Spoke | needs update to 0.7.45 | shared hosting |
+| wateronthebrain.ca | Spoke | needs update to 0.7.45 | self-hosted, Proxmox |
+| hekeepsdroningon.ca | Spoke | needs update to 0.7.45 | self-hosted, Proxmox |
+| photowalk.ing | Standalone | needs update to 0.7.45 | self-hosted, Proxmox |
 | strathmore.pics | Standalone | fresh install in progress | self-hosted, Proxmox (Cloudflare Tunnel) |
+| squaredstraight.ca | Standalone | fresh install pending | self-hosted, Proxmox |
 
 Updater confirmed: modal working on foundtextures.ca at 0.7.28. All self-hosted sites on Proxmox in Sean's basement.
 
@@ -446,4 +448,11 @@ Directory names use hyphens only, never underscores.
 | `true-grit` | True Grit | available | skin gallery only |
 | `photogram` | Photogram | available | ✅ YES |
 | `kiosk` | Kiosk | available | skin gallery only |
+| `hip-to-be-square` | Hip to be Square | available | skin gallery only |
+| `chaplin` | Chaplin | available | skin gallery only |
+| `52-card-pickup` | 52 Card Pickup | unknown | skin gallery only |
+| `a-grey-reckoning` | A Grey Reckoning | unknown | skin gallery only |
+| `in-stereo-where-available` | In Stereo Where Available | unknown | skin gallery only |
+| `show-n-tell` | Show-n-Tell | unknown | skin gallery only |
+| `the-grid` | The Grid | unknown | skin gallery only |
 <!-- ===== SNAPSMACK EOF ===== -->

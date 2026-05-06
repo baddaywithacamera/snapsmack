@@ -360,6 +360,7 @@ if ($action === 'reapply') {
                 'signature'       => $release_info['signature']       ?? '',
             ]
         ];
+        $stage_state = $_SESSION['update_state'];
         $flash_msg  = 'Reapplying v' . htmlspecialchars($installed_version) . '. Click APPLY to download and re-extract.';
         $flash_type = 'info';
     }

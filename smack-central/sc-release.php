@@ -46,8 +46,6 @@ if (!defined('RELEASES_DIR') || RELEASES_DIR === '' || RELEASES_DIR === '/') {
     $preflight[] = ['warn', 'Releases directory does not exist: ' . RELEASES_DIR . '. Create it and make it web-accessible.'];
 }
 
-$preflight_ok = !array_filter($preflight, fn($p) => $p[0] === 'err');
-
 // ── Derive the Ed25519 public key from the private key ────────────────────────
 // The sodium secret key is 64 bytes: [32-byte seed][32-byte public key].
 // We extract the last 32 bytes to get the matching public key for release-pubkey.php.
@@ -62,6 +60,32 @@ if (defined('SMACK_RELEASE_PRIVKEY') && strlen(SMACK_RELEASE_PRIVKEY) === 128) {
         $sc_derived_pubkey = '';
     }
 }
+
+// ── Key sync check: derived pubkey must match core/release-pubkey.php ─────────
+// If these differ, any package built here will be signed with a key that installs
+// don't recognise — the update will fail with a signature mismatch. Block the build.
+if ($sc_derived_pubkey) {
+    $sc_release_pubkey_path = dirname(__DIR__) . '/core/release-pubkey.php';
+    if (!file_exists($sc_release_pubkey_path)) {
+        $preflight[] = ['warn', 'core/release-pubkey.php not found — cannot verify key sync. Expected at: ' . $sc_release_pubkey_path];
+    } else {
+        $sc_pubkey_src = file_get_contents($sc_release_pubkey_path);
+        if (preg_match("/define\s*\(\s*'SNAPSMACK_RELEASE_PUBKEY'\s*,\s*'([0-9a-f]{64})'\s*\)/", $sc_pubkey_src, $_km)) {
+            if ($_km[1] !== $sc_derived_pubkey) {
+                $preflight[] = ['err',
+                    'KEY MISMATCH — core/release-pubkey.php has ' . $_km[1] . ' ' .
+                    'but sc-config.php derives ' . $sc_derived_pubkey . '. ' .
+                    'Update core/release-pubkey.php to match before building a release, ' .
+                    'or every install will reject the signature.'
+                ];
+            }
+        } else {
+            $preflight[] = ['warn', 'Could not parse SNAPSMACK_RELEASE_PUBKEY from core/release-pubkey.php — verify the file is not corrupted.'];
+        }
+    }
+}
+
+$preflight_ok = !array_filter($preflight, fn($p) => $p[0] === 'err');
 
 // ── Helper: raw HTTP GET (curl preferred, file_get_contents fallback) ─────────
 function sc_http_raw(string $url, array $extra_headers = [], int $timeout = 120): string|false {
