@@ -20,18 +20,29 @@
 
 require_once 'core/auth.php';
 
-// --- MANIFEST (for wall/pimpotron detection only — no longer gates grid options) ---
+// --- MANIFEST ---
 $active_skin = $settings['active_skin'] ?? '';
 $manifest    = [];
 if ($active_skin && file_exists(__DIR__ . "/skins/{$active_skin}/manifest.php")) {
     $manifest = include __DIR__ . "/skins/{$active_skin}/manifest.php";
 }
-// Wall/pimpotron vars removed — Floating Gallery settings moved to Global Vibe.
-// Options flagged admin_page=>'archive' in the skin manifest are rendered here instead of smack-skin.php.
+// Skin manifest options flagged admin_page=>'archive' are rendered here instead of smack-skin.php.
 $archive_manifest_opts = [];
 foreach ($manifest['options'] ?? [] as $k => $o) {
     if (($o['admin_page'] ?? 'skin') === 'archive') {
         $archive_manifest_opts[$k] = $o;
+    }
+}
+// Engine controls (from manifest-inventory.php) flagged admin_page=>'archive' are also rendered here.
+$archive_engine_opts = [];
+if (!empty($manifest['require_scripts'])) {
+    $global_inventory = (function() { return include __DIR__ . '/core/manifest-inventory.php'; })();
+    foreach ($manifest['require_scripts'] as $_ekey) {
+        $_edata = $global_inventory['scripts'][$_ekey] ?? [];
+        if (!empty($_edata['has_settings']) && !empty($_edata['controls'])
+                && ($_edata['admin_page'] ?? 'skin') === 'archive') {
+            $archive_engine_opts[$_ekey] = $_edata;
+        }
     }
 }
 
@@ -60,8 +71,11 @@ $page_title = "Archive Appearance";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 
-// All layout modes. croppedwithcalendar only offered if the active skin loads the calendar engine.
-$skin_has_calendar = in_array('smack-calendar', $manifest['require_scripts'] ?? []);
+// All layout modes. croppedwithcalendar offered if the skin declares it in features.archive_layouts.
+// Using features[] rather than require_scripts[] so the check is reliable even when the manifest
+// loading path differs from smack-skin.php.
+$skin_has_calendar = in_array('croppedwithcalendar', $manifest['features']['archive_layouts'] ?? [])
+                  || in_array('smack-calendar', $manifest['require_scripts'] ?? []);
 $all_layouts = [
     'square'  => 'Square Grid (1:1 Cropped)',
     'cropped' => 'Cropped Grid (Natural Aspect)',
@@ -226,6 +240,44 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
         </div>
     </div>
     <?php endif; ?>
+
+    <?php foreach ($archive_engine_opts as $_ekey => $_edata): ?>
+    <!-- ── ENGINE CONTROLS (engines flagged admin_page=>'archive') ── -->
+    <div id="smack-skin-config-wrap">
+        <div class="box">
+            <h3><?php echo htmlspecialchars(strtoupper($_edata['label'] ?? $_ekey)); ?> SETTINGS</h3>
+            <div class="dash-grid">
+            <?php foreach ($_edata['controls'] as $k => $o):
+                $val = ($settings[$k] ?? '') !== '' ? $settings[$k] : ($o['default'] ?? '');
+            ?>
+                <div class="lens-input-wrapper">
+                    <label><?php echo strtoupper(htmlspecialchars($o['label'] ?? $k)); ?></label>
+                    <?php if ($o['type'] === 'select'): ?>
+                    <select name="settings[<?php echo htmlspecialchars($k); ?>]">
+                        <?php foreach ($o['options'] ?? [] as $opt_val => $opt_label): ?>
+                            <option value="<?php echo htmlspecialchars($opt_val); ?>"<?php echo ($val == $opt_val) ? ' selected' : ''; ?>>
+                                <?php echo htmlspecialchars($opt_label); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php elseif ($o['type'] === 'range'): ?>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <input type="range"
+                               name="settings[<?php echo htmlspecialchars($k); ?>]"
+                               min="<?php echo (int)($o['min'] ?? 0); ?>"
+                               max="<?php echo (int)($o['max'] ?? 100); ?>"
+                               step="<?php echo (int)($o['step'] ?? 1); ?>"
+                               value="<?php echo htmlspecialchars($val); ?>"
+                               oninput="this.nextElementSibling.textContent = this.value">
+                        <span style="min-width:32px; font-family:monospace;"><?php echo htmlspecialchars($val); ?></span>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+    <?php endforeach; ?>
 
     <div class="form-action-row">
         <button type="submit" name="save_archive_appearance" class="master-update-btn">SAVE ARCHIVE APPEARANCE</button>
