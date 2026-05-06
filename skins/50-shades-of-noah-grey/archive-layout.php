@@ -189,12 +189,12 @@ $_fsog_cur    = isset($archive_layout)  ? $archive_layout  : ($settings['archive
             browseGrid.style.display    = 'grid';
             justifiedGrid.style.display = 'none';
         }
-        try { if (window.snapConsent && window.snapConsent.ok()) localStorage.setItem(KEY, layout); } catch(e) {}
+        try { localStorage.setItem(KEY, layout); } catch(e) {}
     }
 
     function init() {
         var saved = null;
-        try { saved = (window.snapConsent && window.snapConsent.ok()) ? localStorage.getItem(KEY) : null; } catch(e) {}
+        try { saved = localStorage.getItem(KEY); } catch(e) {}
         setLayout(saved || '<?php echo htmlspecialchars($_fsog_cur); ?>');
     }
 

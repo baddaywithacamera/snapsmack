@@ -278,9 +278,10 @@ return [
         ],
 
         'archive_frame_style' => [
-            'section'  => 'ARCHIVE',
-            'type'     => 'select',
-            'label'    => 'Archive Thumb Frame',
+            'section'   => 'ARCHIVE',
+            'admin_page'=> 'archive',
+            'type'      => 'select',
+            'label'     => 'Thumb Border Selector',
             'default'  => 'border_thin',
             'selector' => '.fsog-archive-item .fsog-thumb, .justified-item',
             'property' => 'custom-framing',

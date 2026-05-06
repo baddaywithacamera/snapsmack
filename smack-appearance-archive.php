@@ -23,12 +23,17 @@ require_once 'core/auth.php';
 // --- MANIFEST (for wall/pimpotron detection only — no longer gates grid options) ---
 $active_skin = $settings['active_skin'] ?? '';
 $manifest    = [];
-if ($active_skin && file_exists("skins/{$active_skin}/manifest.php")) {
-    $manifest = include "skins/{$active_skin}/manifest.php";
+if ($active_skin && file_exists(__DIR__ . "/skins/{$active_skin}/manifest.php")) {
+    $manifest = include __DIR__ . "/skins/{$active_skin}/manifest.php";
 }
-$pimpotron_active = !empty($manifest['engines']['pimpotron']);
-$supports_wall    = !empty($manifest['features']['supports_wall']);
-$wall_unavailable = $pimpotron_active || !$supports_wall;
+// Wall/pimpotron vars removed — Floating Gallery settings moved to Global Vibe.
+// Options flagged admin_page=>'archive' in the skin manifest are rendered here instead of smack-skin.php.
+$archive_manifest_opts = [];
+foreach ($manifest['options'] ?? [] as $k => $o) {
+    if (($o['admin_page'] ?? 'skin') === 'archive') {
+        $archive_manifest_opts[$k] = $o;
+    }
+}
 
 // --- POST HANDLER ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearance'])) {
@@ -192,113 +197,35 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
             </div>
         </div>
 
-        <!-- ── FLOATING GALLERY ──────────────────────────────────────── -->
+    </div><!-- /smack-skin-config-wrap -->
+    <!-- Floating Gallery settings moved to Global Vibe (smack-globalvibe.php) -->
+
+    <?php if (!empty($archive_manifest_opts)): ?>
+    <!-- ── ARCHIVE DISPLAY (skin options flagged admin_page=>'archive') ── -->
+    <div id="smack-skin-config-wrap">
         <div class="box">
-            <h3>FLOATING GALLERY</h3>
+            <h3>ARCHIVE DISPLAY</h3>
             <div class="dash-grid">
-
+            <?php foreach ($archive_manifest_opts as $k => $o):
+                $val = ($settings[$k] ?? '') !== '' ? $settings[$k] : ($o['default'] ?? '');
+            ?>
                 <div class="lens-input-wrapper">
-                    <label>ENABLE FLOATING GALLERY <span class="field-tip" data-tip="Enables the gallery-wall.php page. Add the link to your nav via Menu Manager.">ⓘ</span></label>
-                    <?php if ($wall_unavailable): ?>
-                        <select disabled class="select-locked"><option>DISABLED BY SKIN</option></select>
-                        <input type="hidden" name="settings[show_wall_link]" value="0">
-                        <span class="dim"><?php echo $pimpotron_active ? 'PIMPOTRON IS ACTIVE &mdash; FLOATING GALLERY IS INCOMPATIBLE.' : 'ACTIVE SKIN DOES NOT SUPPORT THE FLOATING GALLERY.'; ?></span>
-                    <?php else: ?>
-                        <select name="settings[show_wall_link]">
-                            <option value="1" <?php echo (($settings['show_wall_link'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
-                            <option value="0" <?php echo (($settings['show_wall_link'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED</option>
-                        </select>
-                    <?php endif; ?>
+                    <label><?php echo strtoupper($o['label']); ?></label>
+                    <select name="settings[<?php echo htmlspecialchars($k); ?>]">
+                        <?php foreach ($o['options'] ?? [] as $opt_val => $opt_data):
+                            $opt_label = is_array($opt_data) ? ($opt_data['label'] ?? $opt_val) : $opt_data;
+                        ?>
+                            <option value="<?php echo htmlspecialchars($opt_val); ?>"<?php echo ($val === $opt_val) ? ' selected' : ''; ?>>
+                                <?php echo htmlspecialchars($opt_label); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
-
-                <div class="lens-input-wrapper">
-                    <label>ROWS</label>
-                    <?php if ($wall_unavailable): ?>
-                        <select disabled class="select-locked"><option>DISABLED BY SKIN</option></select>
-                        <input type="hidden" name="settings[wall_rows]" value="2">
-                    <?php else: ?>
-                        <select name="settings[wall_rows]">
-                            <?php foreach ([2, 3, 4, 5] as $r): ?>
-                                <option value="<?php echo $r; ?>" <?php echo (($settings['wall_rows'] ?? '2') == $r) ? 'selected' : ''; ?>><?php echo $r; ?> ROWS</option>
-                            <?php endforeach; ?>
-                        </select>
-                    <?php endif; ?>
-                </div>
-
-                <div class="lens-input-wrapper">
-                    <label>IMAGE GAP</label>
-                    <?php if ($wall_unavailable): ?>
-                        <input type="range" disabled min="4" max="120" value="24">
-                        <input type="hidden" name="settings[wall_gap]" value="24">
-                    <?php else: ?>
-                        <div style="display:flex; align-items:center; gap:12px;">
-                            <input type="range" name="settings[wall_gap]" min="4" max="120" step="2"
-                                   value="<?php echo htmlspecialchars($settings['wall_gap'] ?? '24'); ?>"
-                                   oninput="this.nextElementSibling.textContent = this.value + 'px'">
-                            <span><?php echo htmlspecialchars($settings['wall_gap'] ?? '24'); ?>px</span>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <div class="lens-input-wrapper">
-                    <label>SCROLL FRICTION <span class="field-tip" data-tip="Higher = more coast. Lower = stops faster.">ⓘ</span></label>
-                    <?php if ($wall_unavailable): ?>
-                        <input type="range" disabled min="0.80" max="0.99" value="0.96">
-                        <input type="hidden" name="settings[wall_friction]" value="0.96">
-                    <?php else: ?>
-                        <div style="display:flex; align-items:center; gap:12px;">
-                            <input type="range" name="settings[wall_friction]" min="0.80" max="0.99" step="0.01"
-                                   value="<?php echo htmlspecialchars($settings['wall_friction'] ?? '0.96'); ?>"
-                                   oninput="this.nextElementSibling.textContent = this.value">
-                            <span><?php echo htmlspecialchars($settings['wall_friction'] ?? '0.96'); ?></span>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <div class="lens-input-wrapper">
-                    <label>DRAG WEIGHT <span class="field-tip" data-tip="How heavy the drag feels. Higher = more sluggish.">ⓘ</span></label>
-                    <?php if ($wall_unavailable): ?>
-                        <input type="range" disabled min="0.5" max="5.0" value="2.5">
-                        <input type="hidden" name="settings[wall_dragweight]" value="2.5">
-                    <?php else: ?>
-                        <div style="display:flex; align-items:center; gap:12px;">
-                            <input type="range" name="settings[wall_dragweight]" min="0.5" max="5.0" step="0.1"
-                                   value="<?php echo htmlspecialchars($settings['wall_dragweight'] ?? '2.5'); ?>"
-                                   oninput="this.nextElementSibling.textContent = this.value">
-                            <span><?php echo htmlspecialchars($settings['wall_dragweight'] ?? '2.5'); ?></span>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <div class="lens-input-wrapper">
-                    <label>REFLECTION <span class="field-tip" data-tip="Reflects the gallery off the floor.">ⓘ</span></label>
-                    <?php if ($wall_unavailable): ?>
-                        <select disabled class="select-locked"><option>DISABLED BY SKIN</option></select>
-                        <input type="hidden" name="settings[wall_reflect]" value="0">
-                    <?php else: ?>
-                        <select name="settings[wall_reflect]">
-                            <option value="1" <?php echo (($settings['wall_reflect'] ?? '0') == '1') ? 'selected' : ''; ?>>ENABLED</option>
-                            <option value="0" <?php echo (($settings['wall_reflect'] ?? '0') == '0') ? 'selected' : ''; ?>>DISABLED</option>
-                        </select>
-                    <?php endif; ?>
-                </div>
-
-                <div class="lens-input-wrapper">
-                    <label>WALL BACKGROUND COLOUR</label>
-                    <?php if ($wall_unavailable): ?>
-                        <input type="color" disabled value="#000000">
-                    <?php else: ?>
-                        <div class="color-picker-container">
-                            <input type="color" name="settings[wall_theme]" value="<?php echo htmlspecialchars($settings['wall_theme'] ?? '#000000'); ?>">
-                            <span class="hex-display"><?php echo strtoupper(htmlspecialchars($settings['wall_theme'] ?? '#000000')); ?></span>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
+            <?php endforeach; ?>
             </div>
         </div>
-
-    </div><!-- /smack-skin-config-wrap -->
+    </div>
+    <?php endif; ?>
 
     <div class="form-action-row">
         <button type="submit" name="save_archive_appearance" class="master-update-btn">SAVE ARCHIVE APPEARANCE</button>
@@ -343,7 +270,7 @@ function updateSwitchStatus() {
         status.style.color = 'var(--accent, #ff0)';
     } else {
         status.textContent = '✓ Visitors will see a ' + checked.length + '-way toggle: ' + checked.join(' / ');
-        status.style.color = 'var(--status-ok, #6f6)';
+        status.style.color = 'var(--status-ok, var(--accent, #fff))';
     }
 }
 

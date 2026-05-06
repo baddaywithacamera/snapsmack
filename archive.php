@@ -429,8 +429,10 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                 </a>
             <?php endforeach; ?>
         </div>
+        <?php endif; ?>
         <script>
         // Persist layout preference in localStorage so it survives navigation.
+        // Runs regardless of whether this skin owns the toggle UI.
         (function() {
             var pref = localStorage.getItem('smack_archive_layout');
             var avail = <?php echo json_encode($available_modes); ?>;
@@ -443,7 +445,6 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             }
         }());
         </script>
-        <?php endif; ?>
 
         <?php if ($search_query !== ''): ?>
         <div class="archive-search-status">

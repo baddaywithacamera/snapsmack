@@ -735,6 +735,7 @@ if (!empty($google_families)) {
             // --- SKIN OPTIONS: Grouped by manifest sections ---
             $sec = [];
             foreach ($manifest['options'] as $k => $o) {
+                if (($o['admin_page'] ?? 'skin') !== 'skin') continue; // handled by another admin page
                 $sec[$o['section'] ?? 'GENERAL'][] = ['key' => $k, 'meta' => $o];
             }
             foreach ($sec as $title => $opts):
