@@ -15,6 +15,14 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.47 — "Sitting Duck" (2026-05-06)
+
+### Fixed
+- archive.php: unified filter panel dropdown 50% wider (min 330px / max 420px)
+- Version bump to distinguish from stale 0.7.46 package during update troubleshooting
+
+---
+
 ## 0.7.46 — "Wet Toilet Seat" (2026-05-05)
 
 ### Added
