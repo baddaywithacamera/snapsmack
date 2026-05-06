@@ -299,11 +299,9 @@ CREATE TABLE IF NOT EXISTS `snap_assets` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `snap_migrations` (
-  `id`         int unsigned NOT NULL AUTO_INCREMENT,
-  `migration`  varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `migration`  varchar(100) NOT NULL,
   `applied_at` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_migration` (`migration`)
+  PRIMARY KEY (`migration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 

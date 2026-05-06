@@ -5,6 +5,7 @@
  * (midnight-lime theme) with sc- namespace so the two can be merged later
  * without collisions. sc-admin.css uses only these tokens — never raw values.
  */
+/* SNAPSMACK_EOF_HEADER: bottom marker is  /* ===== SNAPSMACK EOF ===== */  on last non-empty line */
 
 :root {
     /* ── Backgrounds ─────────────────────────────────────── */
@@ -22,8 +23,9 @@
 
     /* ── Text ────────────────────────────────────────────── */
     --sc-text:          #cccccc;
-    --sc-text-dim:      #555555;
-    --sc-text-label:    #777777;
+    --sc-text-dim:      #888888;   /* was #555 — lifted for daylight legibility */
+    --sc-text-label:    #aaaaaa;   /* was #777 — lifted for daylight legibility */
+    --sc-text-muted:    #888888;   /* sidebar version, tertiary chrome */
 
     /* ── Accent (neon lime — matches SnapSmack midnight-lime) */
     --sc-accent:        #39FF14;
@@ -51,4 +53,4 @@
     --sc-radius-sm:     2px;
     --sc-transition:    0.18s ease;
 }
-/* EOF */
+/* ===== SNAPSMACK EOF ===== */

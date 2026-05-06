@@ -696,9 +696,11 @@ include 'core/sidebar.php';
                         </div>
                     </div>
 
-                    <?php if (!empty($all_collections)): ?>
                     <div class="lens-input-wrapper">
                         <label>COLLECTIONS</label>
+                        <?php if (empty($all_collections)): ?>
+                            <p style="font-size:0.8rem;color:var(--text-muted,#888);margin:4px 0 0;">No collections yet — create one under <a href="smack-collections.php" style="color:var(--accent);">Collections</a>.</p>
+                        <?php else: ?>
                         <div class="custom-multiselect">
                             <div class="select-box" onclick="toggleDropdown('collection-items')">
                                 <span id="collection-label">Select Collections...</span><span class="arrow">▼</span>
@@ -715,8 +717,8 @@ include 'core/sidebar.php';
                                 </div>
                             </div>
                         </div>
+                        <?php endif; ?>
                     </div>
-                    <?php endif; ?>
 
                     <div class="lens-input-wrapper post-description-wrap">
                         <label>DESCRIPTION / STORY</label>

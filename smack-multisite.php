@@ -667,8 +667,8 @@ include 'core/sidebar.php';
                                         background:var(--bg,#000); word-break:break-all; line-height:1.4;">
                                 <?php echo htmlspecialchars($reg_token); ?>
                             </div>
-                            <button type="button" class="btn-smack" id="copy-token-btn"
-                                    style="border-radius:0; min-width:90px; border-left:1px solid var(--border,#333);"
+                            <button type="button" id="copy-token-btn"
+                                    style="flex-shrink:0; width:90px; height:auto; margin:0; border-radius:0; border:none; border-left:1px solid var(--border,#333); background:var(--accent,#7F007F); color:#fff; font-family:inherit; font-size:0.8rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; cursor:pointer;"
                                     onclick="navigator.clipboard.writeText(document.getElementById('reg-token-display').innerText.trim()).then(function(){ var b=document.getElementById('copy-token-btn'); b.textContent='COPIED ✓'; setTimeout(function(){ b.textContent='COPY'; }, 2000); });">
                                 COPY
                             </button>

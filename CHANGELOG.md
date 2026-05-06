@@ -13,6 +13,15 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.52 — "Stay Seated" (2026-05-06)
+
+### Fixed
+- `smack-backup.php` — backup now includes all extended tables (`snap_multisite_nodes`, `snap_multisite_queue`, `snap_hub_shared_bans`, `snap_collections`, `snap_collection_items`, `snap_blogroll_cats`); tables missing on older installs are skipped gracefully rather than hard-erroring
+- `smack-multisite.php` — registration token COPY button no longer squeezes the token display to zero width; replaced `btn-smack` (which carries `width:100%`) with a purpose-built inline button style
+- `smack-central/assets/css/sc-geometry.css` — lifted `--sc-text-dim` (#555→#888), `--sc-text-label` (#777→#aaa), added `--sc-text-muted` token (#888) for daylight legibility
+- `smack-post-solo.php` / `smack-edit.php` — Collections section now always visible; shows "No collections yet" with create link on sites with no collections, instead of hiding the field entirely
+- `database/schema/snapsmack_canonical.sql` — fixed `snap_migrations` table definition to match what the updater actually creates (migration as PRIMARY KEY, no id/AUTO_INCREMENT); canonical diff no longer attempts invalid ALTER TABLE on spoke updates
+
 ---
 
 ## 0.7.51 — "Sit Still" (2026-05-07)

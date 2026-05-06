@@ -28,14 +28,23 @@ if (isset($_POST['action']) && $_POST['action'] === 'export') {
         header('Content-Disposition: attachment; filename="' . $filename . '"');
 
         $output = "-- SnapSmack Backup Service\n-- Type: " . strtoupper($type) . "\n-- Date: " . date('Y-m-d H:i:s') . "\n\n";
-        $tables = ['snap_images', 'snap_categories', 'snap_image_cat_map', 'snap_image_album_map', 'snap_albums', 'snap_comments', 'snap_users', 'snap_settings', 'snap_pages', 'snap_blogroll', 'snap_assets'];
+        // Core tables — always present on every install.
+        $core_tables = ['snap_images', 'snap_categories', 'snap_image_cat_map', 'snap_image_album_map', 'snap_albums', 'snap_comments', 'snap_users', 'snap_settings', 'snap_pages', 'snap_blogroll', 'snap_assets'];
+        // Extended tables — added by migrations; skip gracefully if not yet created.
+        $extended_tables = ['snap_blogroll_cats', 'snap_collections', 'snap_collection_items', 'snap_multisite_nodes', 'snap_multisite_queue', 'snap_hub_shared_bans'];
+        $tables = array_merge($core_tables, $extended_tables);
 
         foreach ($tables as $table) {
-            $res = $pdo->query("SHOW CREATE TABLE $table")->fetch(PDO::FETCH_ASSOC);
+            try {
+                $res = $pdo->query("SHOW CREATE TABLE `$table`")->fetch(PDO::FETCH_ASSOC);
+            } catch (PDOException $e) {
+                // Table doesn't exist on this install — skip it.
+                continue;
+            }
             $output .= "DROP TABLE IF EXISTS `$table`;\n" . $res['Create Table'] . ";\n\n";
 
             if ($type !== 'schema') {
-                $rows = $pdo->query("SELECT * FROM $table")->fetchAll(PDO::FETCH_ASSOC);
+                $rows = $pdo->query("SELECT * FROM `$table`")->fetchAll(PDO::FETCH_ASSOC);
                 foreach ($rows as $row) {
                     $keys = array_map(function($k) { return "`$k`"; }, array_keys($row));
                     $vals = array_map(function($v) use ($pdo) { return $v === null ? "NULL" : $pdo->quote($v); }, array_values($row));
