@@ -324,8 +324,8 @@ git read-tree HEAD
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
 
-### SnapSmack — Alpha 0.7.45 "Chaise"
-✅ **0.7.45 committed and ready to push.**
+### SnapSmack — Alpha 0.7.46 "Wet Toilet Seat"
+⏳ **0.7.46 uncommitted — Cowork session changes pending commit.**
 
 **What 0.7.43 shipped (Claude Code):**
 - `smack-settings.php` — API key UI fixed
@@ -348,15 +348,21 @@ git read-tree HEAD
 - `smack-menu.php` — container type, album/category/collection pool, 3-level hint, new CSS
 - `assets/js/ss-engine-menu-builder.js` — full rewrite: 3-level drag-and-drop, container type, active toggle, album/cat/coll pool items
 - `assets/js/ss-engine-nav-dropdown.js` — fixed openMenu() to not close ancestor submenus (3-level mobile fix)
-- `smack-settings.php` — removed blogroll_enabled nav toggle + entire NAVIGATION SLOT ASSIGNMENTS box
-- `smack-appearance-archive.php` — relabelled show_wall_link as "ENABLE FLOATING GALLERY" (feature toggle, not nav control)
+- `smack-settings.php` — removed blogroll_enabled nav toggle + entire NAVIGATION SLOT ASSIGNMENTS box; Akismet input width fixed; enctype removed; footer config + image engine moved to globalvibe
+- `smack-appearance-archive.php` — relabelled show_wall_link as "ENABLE FLOATING GALLERY"; floating gallery box removed (moved to globalvibe)
+- `smack-globalvibe.php` — footer config + image engine + floating gallery sections added; masthead logo upload MIME check added (security fix — audit H)
+- `smack-update.php` — reapply APPLY button fix: $stage_state rebind after session update
+- `smack-central/sc-release.php` — key sync preflight check: build blocked if sc-config.php and core/release-pubkey.php disagree
+- `core/release-pubkey.php` — updated to new release public key
+- `assets/adminthemes/purple-rain/admin-theme-colours-purple-rain.css` — btn-smack + btn-danger brightness halved
+- `secaudits/2026-05-05-008-snapsmack-security-audit.pdf` — audit 008 filed (masthead logo MIME fix)
 - `CLAUDE.md` — work state updated
 
 **Git branch is `master` not `main`** (confirmed 2026-04-29).
 
 **Signing keypair status:**
-- Release private key: `9a335726949622649d746ff40eba22e937c8eba390363dfae6594ab030a8d345519a1065cd3135c002196bab4436cd3142097cf5784eaeea31639797b070bcc0` — update `sc-config.php` on snapsmack.ca with this value, then FTP it. Also save to Bitwarden.
-- Release public key: `519a1065cd3135c002196bab4436cd3142097cf5784eaeea31639797b070bcc0` — updated in `core/release-pubkey.php` ✅
+- Release private key: `718bb39af1ce742bd326dbd8e34639e9dc60fbb44e3e01d1782a76b5c764a835b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2` — update `sc-config.php` on snapsmack.ca with this value, then FTP it. Also save to Bitwarden.
+- Release public key: `b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2` — updated in `core/release-pubkey.php` ✅
 - Root public key: `3287b9b29257da6a307fc85b949c9dc52bc99c08a66db21e6fcbaab0fb324652` — hardcoded in `core/updater.php` ✅
 - Root private key + full instructions: in Bitwarden (`KEY-ROTATION-INSTRUCTIONS.txt` on disk, gitignored) ✅
 - **sc-release.php now enforces key sync at preflight**: if sc-config.php and core/release-pubkey.php disagree, the build is blocked with an error. Key drift cannot happen silently anymore.
@@ -388,7 +394,7 @@ git read-tree HEAD
 - strathmore.pics: delete duplicate snap_user 'sean', re-run install step 5
 - FTP skins to strathmore.pics: `50-shades-of-noah-grey`, `new-horizon`, `galleria`, `rational-geo`
 - FTP `projects/snapsmack-ca/` files to snapsmack.ca (untracked, manual FTP)
-- wall config move to Global Vibe (low priority, still in Archive Appearance)
+- wall config move to Global Vibe ✅ done (Cowork session 2026-05-05)
 - wall in kiosk + true-grit (task 003 covers 5 skins; Code only did 3 — check which remain)
 - calendar months slider in Archive Appearance (deferred, not specced yet)
 
@@ -422,10 +428,10 @@ Pending: rebuild exe, test B2 credentials, run Audit & Cleanup on foundtextures 
 |---|---|---|---|
 | foundtextures.ca | Multisite Hub | Alpha 0.7.28 | self-hosted, Proxmox |
 | snapsmack.ca | Promo + Smack Central | — | self-hosted, Proxmox |
-| pixhellated.ca | Spoke | needs update to 0.7.45 | shared hosting |
-| wateronthebrain.ca | Spoke | needs update to 0.7.45 | self-hosted, Proxmox |
-| hekeepsdroningon.ca | Spoke | needs update to 0.7.45 | self-hosted, Proxmox |
-| photowalk.ing | Standalone | needs update to 0.7.45 | self-hosted, Proxmox |
+| pixhellated.ca | Spoke | needs update to 0.7.46 | shared hosting |
+| wateronthebrain.ca | Spoke | needs update to 0.7.46 | self-hosted, Proxmox |
+| hekeepsdroningon.ca | Spoke | needs update to 0.7.46 | self-hosted, Proxmox |
+| photowalk.ing | Standalone | needs update to 0.7.46 | self-hosted, Proxmox |
 | strathmore.pics | Standalone | fresh install in progress | self-hosted, Proxmox (Cloudflare Tunnel) |
 | squaredstraight.ca | Standalone | fresh install pending | self-hosted, Proxmox |
 

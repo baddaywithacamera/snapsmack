@@ -15,6 +15,31 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ---
 
+## 0.7.46 — "Wet Toilet Seat" (2026-05-05)
+
+### Added
+- smack-globalvibe.php: Footer Configuration, Image Engine, and Floating Gallery sections moved here from smack-settings.php and smack-appearance-archive.php — all appearance/engine settings now live in Global Vibe
+- smack-menu.php: 3-level drag-and-drop nav menu builder with container type, active toggle, album/category/collection pool items
+- core/header.php: JSON nav renderer (3-level recursive) with flat nav fallback and _snap_nav_resolve_url()
+- core/meta.php: injects --nav-dropdown-bg/text CSS vars when nav is configured
+- core/footer.php: loads ss-engine-nav-dropdown.js when nav_menu_json is active
+- core/sidebar.php: Menu Manager link in Pimp Your Ride
+- migrations/049_nav_menu_json.php: seeds nav_menu_json and dropdown appearance settings
+- migrations/050_search_placeholder.php: configurable search field label
+- All 8 skins style.css: .nav-has-children / .nav-submenu dropdown CSS for 3-level nav
+- secaudits/: audit numbering converted from letter suffix (A–H) to 3-digit sequence (001–008); all audits now PDFs
+
+### Fixed
+- smack-globalvibe.php: masthead logo upload handler now validates MIME type and extension (was missing finfo_file() check present on other upload handlers — security fix, audit 008)
+- smack-update.php: reapply APPLY button now renders correctly on same page load ($stage_state rebind after session update)
+- smack-central/sc-release.php: build blocked at preflight if sc-config.php and core/release-pubkey.php keys disagree — key drift can no longer happen silently
+- core/release-pubkey.php: updated to correct release public key matching current sc-config.php
+- assets/adminthemes/purple-rain/admin-theme-colours-purple-rain.css: btn-smack and btn-danger brightness halved (was blinding magenta/orange)
+- assets/js/ss-engine-nav-dropdown.js: fixed openMenu() closing ancestor submenus on mobile (3-level nav fix)
+- smack-settings.php: Akismet input width fixed; enctype removed (file uploads moved to globalvibe); NAVIGATION SLOT ASSIGNMENTS box removed
+
+---
+
 ## 0.7.45 — "Chaise" (2026-05-05)
 
 ### Fixed
