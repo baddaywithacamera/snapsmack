@@ -335,8 +335,8 @@
     left: 50%;
     transform: translateX(-50%);
     z-index: 900;
-    min-width: 220px;
-    max-width: 280px;
+    min-width: 330px;
+    max-width: 420px;
     max-height: 380px;
     overflow-y: auto;
     background: var(--nav-bg, var(--bg, #111));
