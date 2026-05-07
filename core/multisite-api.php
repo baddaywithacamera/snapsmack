@@ -608,40 +608,55 @@ if ($resource === 'blogroll' && $sub_action === 'sync' && $method === 'POST') {
     $entries = json_decode($entries_raw, true);
     if (!is_array($entries)) ms_err('entries must be a JSON array');
 
-    // Find or create a "Hub Sync" category for this hub
-    $cat_name = 'Hub: ' . preg_replace('~^https?://~i', '', rtrim($hub_url, '/'));
-    $cat_stmt = $pdo->prepare("SELECT id FROM snap_blogroll_cats WHERE cat_name = ?");
-    $cat_stmt->execute([$cat_name]);
-    $cat_id = $cat_stmt->fetchColumn();
+    // Remove every entry previously synced from this hub. We track origin via
+    // snap_blogroll.source_hub_url (added in migration 052) so re-syncs only
+    // affect hub-pushed rows — the spoke's own locally-added peers stay put.
+    $pdo->prepare("DELETE FROM snap_blogroll WHERE source_hub_url = ?")
+        ->execute([$hub_url]);
 
-    if (!$cat_id) {
-        $pdo->prepare("INSERT INTO snap_blogroll_cats (cat_name) VALUES (?)")->execute([$cat_name]);
-        $cat_id = $pdo->lastInsertId();
+    // Lookup existing categories on the spoke once, keyed by lowercase name,
+    // so we can match the hub's category structure case-insensitively.
+    $cats_existing = [];
+    foreach ($pdo->query("SELECT id, cat_name FROM snap_blogroll_cats")->fetchAll(PDO::FETCH_ASSOC) as $_c) {
+        $cats_existing[strtolower($_c['cat_name'])] = (int)$_c['id'];
     }
+    $cat_create = $pdo->prepare("INSERT INTO snap_blogroll_cats (cat_name) VALUES (?)");
 
-    // Remove old entries in this hub's category
-    $pdo->prepare("DELETE FROM snap_blogroll WHERE cat_id = ?")->execute([$cat_id]);
+    // Resolve a category name to a cat_id, creating a new category on the
+    // spoke when needed. Empty/missing category -> 0 (uncategorized).
+    $resolve_cat = function (string $cat_name) use ($pdo, &$cats_existing, $cat_create): int {
+        $cat_name = trim($cat_name);
+        if ($cat_name === '') return 0;
+        $key = strtolower($cat_name);
+        if (isset($cats_existing[$key])) return $cats_existing[$key];
+        $cat_create->execute([$cat_name]);
+        $new_id = (int)$pdo->lastInsertId();
+        $cats_existing[$key] = $new_id;
+        return $new_id;
+    };
 
-    // Insert fresh entries
+    // Insert fresh entries — each carries its own category from the hub.
     $inserted = 0;
     $insert = $pdo->prepare("
-        INSERT INTO snap_blogroll (peer_name, peer_url, peer_rss, peer_desc, cat_id)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO snap_blogroll (peer_name, peer_url, peer_rss, peer_desc, cat_id, source_hub_url)
+        VALUES (?, ?, ?, ?, ?, ?)
     ");
     foreach ($entries as $e) {
         $url = trim($e['peer_url'] ?? '');
         if (!$url || !filter_var($url, FILTER_VALIDATE_URL)) continue;
+        $entry_cat_id = $resolve_cat((string)($e['category'] ?? ''));
         $insert->execute([
             substr(trim($e['peer_name'] ?? ''), 0, 255) ?: parse_url($url, PHP_URL_HOST),
             $url,
             substr(trim($e['peer_rss'] ?? ''), 0, 500),
             substr(trim($e['peer_desc'] ?? ''), 0, 500),
-            $cat_id,
+            $entry_cat_id,
+            $hub_url,
         ]);
         $inserted++;
     }
 
-    ms_ok(['inserted' => $inserted, 'category' => $cat_name, 'cat_id' => (int)$cat_id]);
+    ms_ok(['inserted' => $inserted, 'hub_url' => $hub_url]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

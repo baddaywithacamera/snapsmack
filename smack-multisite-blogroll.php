@@ -79,11 +79,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['push_blogroll'])) {
     if (empty($selected_spoke_ids)) {
         $err = "Select at least one spoke to push to.";
     } else {
-        // Load hub's blogroll
+        // Load hub's blogroll, including category name per entry so the
+        // spoke can preserve the hub's category structure instead of dumping
+        // everything into one bucket.
         $hub_entries = $pdo->query("
-            SELECT b.peer_name, b.peer_url, b.peer_rss, b.peer_desc
+            SELECT b.peer_name, b.peer_url, b.peer_rss, b.peer_desc,
+                   c.cat_name AS category
             FROM snap_blogroll b
-            ORDER BY b.peer_name ASC
+            LEFT JOIN snap_blogroll_cats c ON b.cat_id = c.id
+            ORDER BY c.cat_name ASC, b.peer_name ASC
         ")->fetchAll(PDO::FETCH_ASSOC);
 
         if (empty($hub_entries)) {
