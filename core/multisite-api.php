@@ -600,10 +600,13 @@ if ($resource === 'blogroll' && $sub_action === 'list' && $method === 'GET') {
 // hub-synced entries are removed before the new set is inserted.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'blogroll' && $sub_action === 'sync' && $method === 'POST') {
-    $hub_url     = trim($_POST['hub_url']   ?? '');
+    $hub_url_raw = trim($_POST['hub_url']   ?? '');
+    // Normalize to hostname-only form so storage and comparison always agree.
+    // Migration 052 stamps source_hub_url the same way (substring after 'Hub: ').
+    $hub_url     = preg_replace('~^https?://~i', '', rtrim($hub_url_raw, '/'));
     $entries_raw = trim($_POST['entries']   ?? '');
 
-    if (!$hub_url) ms_err('hub_url required');
+    if (!$hub_url_raw || !$hub_url) ms_err('hub_url required');
 
     $entries = json_decode($entries_raw, true);
     if (!is_array($entries)) ms_err('entries must be a JSON array');
