@@ -193,6 +193,10 @@ $_rg_avail  = isset($available_modes) ? $available_modes : [];
     }
 
     function init() {
+        // If the URL already specifies the calendar layout, stay on it.
+        // Reading localStorage here would trigger a setLayout() call that
+        // navigates away (the body-class check in setLayout fires a redirect).
+        if (document.body.classList.contains('archive-layout-' + calLayout)) return;
         var saved = null;
         try { saved = (window.snapConsent && window.snapConsent.ok()) ? localStorage.getItem(KEY) : null; } catch(e) {}
         setLayout(saved || '<?php echo htmlspecialchars($archive_default); ?>');

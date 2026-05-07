@@ -13,6 +13,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.60 — "Stay Seated" (2026-05-07)
+
+### Fixed
+- `skins/50-shades-of-noah-grey/archive-layout.php`, `skins/rational-geo/archive-layout.php` — `init()` was reading localStorage on page load and calling `setLayout()`, which triggered an immediate redirect away from `croppedwithcalendar` (the body-class condition in `setLayout` fires a nav); calendar page now stays put when URL specifies that layout
+- `assets/adminthemes/purple-rain/admin-theme-colours-purple-rain.css` — sidebar section headings colour corrected to saturated purple (#BB00BB) after 0.7.59 accidentally desaturated them
+
+---
+
 ## 0.7.59 — "Stay Seated" (2026-05-07)
 
 ### Fixed
