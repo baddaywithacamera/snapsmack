@@ -16,7 +16,12 @@
  *   First click on a day  → enters range-start mode (day highlighted)
  *   Second click same day → single-day navigate (?date=YYYY-MM-DD)
  *   Second click other day → range navigate (?from=DATE&to=DATE)
- *   ESC while in range-start mode → cancel, return to browsing
+ *   ESC while in range-start mode → cancel; ESC otherwise → close panel
+ *
+ * Close UX:
+ *   X button, overlay click, or ESC → slide out → navigate to fallback layout.
+ *   Fires 'smackcal:closing' CustomEvent on document so skins can update their
+ *   own localStorage before the navigation lands.
  *
  * SMACK_CONFIG.calendar keys (emitted by core/meta.php):
  *   endpoint — URL of api-calendar.php
@@ -39,13 +44,13 @@
     var ENDPOINT = cfg.endpoint || '/api-calendar.php';
 
     // Height of one rendered month block (heading + day-of-week row + grid + margin).
-    // Used to compute how many months fit in the viewport.
     var MONTH_BLOCK_H = 215;
     var PANEL_CHROME  = 120; // header + nav + padding
 
     // ── State ──────────────────────────────────────────────────────────────
 
     var panel       = null;
+    var overlay     = null;
     var calBody     = null;
     var rangeHint   = null;
     var isOpen      = false;
@@ -53,20 +58,24 @@
     var monthOffset = 0;
     var computedMonths = 1;
 
-    // Range-selection state
-    var rangeStart  = null; // 'YYYY-MM-DD' or null
-    var allDayCells = [];   // flat list of rendered {dateKey, el} for hover preview
+    var rangeStart  = null;
+    var allDayCells = [];
 
     // ── DOM construction ───────────────────────────────────────────────────
 
     function buildPanel() {
+        // Transparent overlay behind the panel — closes on click-outside
+        overlay = document.createElement('div');
+        overlay.id = 'smack-cal-overlay';
+        overlay.addEventListener('click', closePanel);
+        document.body.appendChild(overlay);
+
         panel = document.createElement('div');
         panel.id = 'smack-cal-panel';
         panel.setAttribute('aria-label', 'Archive Calendar');
         panel.setAttribute('role', 'complementary');
         panel.classList.add('smack-cal--right');
 
-        // Header
         var header = document.createElement('div');
         header.className = 'smack-cal-header';
 
@@ -79,28 +88,19 @@
         closeBtn.className = 'smack-cal-close';
         closeBtn.setAttribute('aria-label', 'Close calendar');
         closeBtn.innerHTML = '&#x2715;';
-        closeBtn.addEventListener('click', function () {
-            // Navigate to cropped layout (removes calendar)
-            var fallback = findFallbackLayoutLink();
-            slideOutThen(function () {
-                window.location.href = fallback;
-            });
-        });
+        closeBtn.addEventListener('click', closePanel);
         header.appendChild(closeBtn);
         panel.appendChild(header);
 
-        // Range hint bar (hidden until range-start is set)
         rangeHint = document.createElement('div');
         rangeHint.className = 'smack-cal-range-hint';
         rangeHint.style.display = 'none';
         panel.appendChild(rangeHint);
 
-        // Calendar body
         calBody = document.createElement('div');
         calBody.className = 'smack-cal-months';
         panel.appendChild(calBody);
 
-        // Navigation
         var navRow = document.createElement('div');
         navRow.className = 'smack-cal-nav';
 
@@ -122,6 +122,22 @@
         panel.appendChild(navRow);
 
         document.body.appendChild(panel);
+    }
+
+    // ── Close ──────────────────────────────────────────────────────────────
+
+    function closePanel() {
+        var fallback = findFallbackLayoutLink();
+        var targetLayout = getLayoutSlugFromUrl(fallback);
+        // Notify skins so they can sync localStorage before navigation
+        try {
+            document.dispatchEvent(new CustomEvent('smackcal:closing', {
+                detail: { targetLayout: targetLayout }
+            }));
+        } catch (e) {}
+        slideOutThen(function () {
+            window.location.href = fallback;
+        });
     }
 
     // ── Viewport height → month count ──────────────────────────────────────
@@ -160,7 +176,6 @@
         };
         xhr.send();
 
-        // Disable next button when at current month
         var nextBtn = document.getElementById('smack-cal-next');
         if (nextBtn) nextBtn.disabled = (monthOffset >= 0);
     }
@@ -189,13 +204,12 @@
 
         var heading = document.createElement('div');
         heading.className = 'smack-cal-month-name';
-        heading.textContent = monthData.name + ' ' + monthData.year;
+        heading.textContent = monthData.name + ' ' + monthData.year;
         wrap.appendChild(heading);
 
         var grid = document.createElement('div');
         grid.className = 'smack-cal-grid';
 
-        // Day-of-week headers Mon→Sun
         ['Mo','Tu','We','Th','Fr','Sa','Su'].forEach(function (d) {
             var hdr = document.createElement('div');
             hdr.className = 'smack-cal-dow';
@@ -210,7 +224,6 @@
         var today    = new Date();
         var todayKey = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
 
-        // Empty cells before day 1
         for (var i = 0; i < startOffset; i++) {
             var empty = document.createElement('div');
             empty.className = 'smack-cal-day smack-cal-day--empty';
@@ -251,17 +264,14 @@
         var dateKey = cell.dataset.date;
 
         if (!rangeStart) {
-            // First click — enter range-start mode
             rangeStart = dateKey;
             showRangeHint('Now click an end date — or click the same date for a single day.');
             updateRangeHighlights();
             calBody.classList.add('smack-cal-range-mode');
         } else if (dateKey === rangeStart) {
-            // Clicked same cell — single day navigation
             var url = buildArchiveUrl({ date: dateKey });
             navigateTo(url);
         } else {
-            // Second click — range navigation
             var d1 = rangeStart < dateKey ? rangeStart : dateKey;
             var d2 = rangeStart < dateKey ? dateKey : rangeStart;
             var url = buildArchiveUrl({ from: d1, to: d2 });
@@ -271,7 +281,6 @@
 
     function onDayHover(dateKey) {
         if (!rangeStart) return;
-        // Preview range between rangeStart and hovered date
         var lo = rangeStart < dateKey ? rangeStart : dateKey;
         var hi = rangeStart < dateKey ? dateKey : rangeStart;
         allDayCells.forEach(function (c) {
@@ -312,7 +321,6 @@
     // ── URL building ───────────────────────────────────────────────────────
 
     function buildArchiveUrl(params) {
-        // Preserve layout=croppedwithcalendar so the panel stays open
         var base = window.location.pathname;
         var parts = ['layout=croppedwithcalendar'];
         if (params.date) parts.push('date=' + encodeURIComponent(params.date));
@@ -325,28 +333,36 @@
         window.location.href = url;
     }
 
+    function getLayoutSlugFromUrl(url) {
+        var m = url.match(/[?&]layout=([^&]+)/);
+        return m ? decodeURIComponent(m[1]) : 'cropped';
+    }
+
     // ── Open / Close ───────────────────────────────────────────────────────
 
     function open() {
         if (isOpen) return;
         isOpen = true;
-        // Force reflow then add open class for CSS transition
+        if (overlay) overlay.classList.add('smack-cal-overlay--visible');
         panel.getBoundingClientRect();
         panel.classList.add('smack-cal-panel--open');
         loadData();
     }
 
     function slideOutThen(cb) {
+        if (overlay) overlay.classList.remove('smack-cal-overlay--visible');
         panel.classList.remove('smack-cal-panel--open');
         setTimeout(cb, 340);
     }
 
-    // Find the URL of the first non-calendar layout toggle link
+    // Find the URL for the first non-calendar layout.
+    // Skins may use <a href> or <button data-layout> — handle both.
     function findFallbackLayoutLink() {
-        var links = document.querySelectorAll('.archive-layout-toggle a[data-layout]');
-        for (var i = 0; i < links.length; i++) {
-            if (links[i].dataset.layout !== 'croppedwithcalendar') {
-                return links[i].href;
+        var els = document.querySelectorAll('[data-layout]');
+        for (var i = 0; i < els.length; i++) {
+            var layout = els[i].dataset.layout;
+            if (layout && layout !== 'croppedwithcalendar') {
+                return els[i].href || ('archive.php?layout=' + encodeURIComponent(layout));
             }
         }
         return 'archive.php';
@@ -358,20 +374,23 @@
         if (e.key === 'Escape') {
             if (rangeStart) {
                 clearRange();
+            } else if (isOpen) {
+                closePanel();
             }
         }
     }
 
-    // ── Wire layout toggle links to slide-out animation ───────────────────
+    // ── Wire layout toggle buttons/links to slide-out animation ──────────
 
     function wireLayoutLinks() {
-        var links = document.querySelectorAll('.archive-layout-toggle a[data-layout]');
-        links.forEach(function (link) {
-            if (link.dataset.layout === 'croppedwithcalendar') return;
-            link.addEventListener('click', function (e) {
+        var els = document.querySelectorAll('[data-layout]');
+        els.forEach(function (el) {
+            if (el.dataset.layout === 'croppedwithcalendar') return;
+            el.addEventListener('click', function (e) {
                 if (!isOpen) return;
                 e.preventDefault();
-                var href = this.href;
+                var layout = this.dataset.layout;
+                var href = this.href || ('archive.php?layout=' + encodeURIComponent(layout));
                 slideOutThen(function () {
                     window.location.href = href;
                 });
@@ -387,7 +406,7 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         var isCalLayout = document.body.classList.contains('archive-layout-croppedwithcalendar');
-        if (!isCalLayout) return; // Only activate on calendar layout
+        if (!isCalLayout) return;
 
         buildPanel();
         wireLayoutLinks();
@@ -401,7 +420,6 @@
             if (newCount !== computedMonths) loadData();
         });
 
-        // Public API
         window.smackCalendar = {
             open:       open,
             clearRange: clearRange,
