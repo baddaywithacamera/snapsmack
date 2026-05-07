@@ -13,6 +13,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.68 — "Cheek Mate" (2026-05-08)
+
+### Fixed
+- `core/multisite-api.php` — `source_hub_url` was being stored as the full URL the hub sent (e.g. `https://foundtextures.ca/`), but migration 052 stamped legacy rows with hostname-only form (e.g. `foundtextures.ca`). The mismatch meant `DELETE WHERE source_hub_url = ?` on re-sync didn't find the migration-stamped rows, fresh rows got inserted alongside, and spokes ended up with duplicate peers — half under the legacy `Hub:` bucket (now uncategorized after 052) and half under proper categories. Sync handler now normalizes `hub_url` to hostname-only form at the top, so storage and comparison agree
+
+### Added
+- `migrations/053_blogroll_dedupe_hub_synced.php` — one-shot cleanup that drops every hub-synced row on the spoke (identified by `source_hub_url IS NOT NULL` OR membership in any leftover `Hub: <url>` category) plus any leftover `Hub: <url>` category rows. Locally-added peers (`source_hub_url IS NULL` and not in a `Hub:` category) are untouched. After running, ask the hub to re-push so entries come back with proper categories and consistent hostname-form `source_hub_url`. Idempotent
+
 ## 0.7.67 — "Sit On It" (2026-05-08)
 
 ### Fixed
