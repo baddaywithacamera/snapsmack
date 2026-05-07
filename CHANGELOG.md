@@ -13,6 +13,37 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.63 — "Saddle Up" (2026-05-08)
+
+### Fixed
+- `skins/50-shades-of-noah-grey/archive-layout.php` and `skins/rational-geo/archive-layout.php` — when on `?layout=croppedwithcalendar`, init() now hides `#justified-grid` and shows `#browse-grid` before returning. Previously the early-return (added in 0.7.60 to break the redirect loop) skipped grid-display setup entirely, so both grids stayed visible — the masonry grid bled through behind the calendar panel and was visible during the close slide-out, giving the impression of "another calendar under it"
+- `skins/50-shades-of-noah-grey/archive-layout.php` and `skins/rational-geo/archive-layout.php` — URL is now source of truth for archive layout. When `?layout=` is explicit in the URL, the skin uses it and ignores stored localStorage preference. localStorage is consulted only when `archive.php` is hit with no params. Previously a stale `localStorage = 'masonry'` from a prior session would override every URL including `?layout=cropped`, making the cropped layout render as masonry
+
+### Changed
+- Featured image picker (used by `smack-albums.php` and `smack-collections.php`) extracted from inline CSS / inline JS into shared engine files: `assets/css/ss-engine-featured-picker.css` and `assets/js/ss-engine-featured-picker.js`. Both pages now use the engine via `window.ssFeaturedPicker.attach({...})`. Picker uses the active admin theme's CSS custom properties (`--bg`, `--card-bg`, `--border`, `--text`, `--dim`, `--input-bg`, `--accent`) so it matches whatever skin is active — no hand-picked colours
+- Featured image picker AJAX endpoints in both pages now paginate. Returns `{ posts: [...], hasMore: bool }`. Engine renders a "LOAD MORE" button at the bottom of the grid when more results are available
+
+## 0.7.62 — "Lap Dance" (2026-05-08)
+
+### Fixed
+- `smack-globalvibe.php` — Masthead Mode dropdown now writes to setting `header_type` with values `text`/`image` to match what `core/header.php` reads. Previously it saved to an orphan key `masthead_type` with value `logo`, so picking "Custom Logo Image" had no effect on the rendered masthead
+- `core/admin-footer.php` — Added missing `<script src="assets/js/ss-engine-updater.js">` tag. Without it, `SnapUpdater` was undefined globally and the sidebar's "System Updates" link silently fell through to the legacy page-load updater instead of opening the modal
+- `assets/adminthemes/purple-rain/admin-theme-colours-purple-rain.css` — `.btn-smack` background changed from `#7F007F` to `#B000B0`. Brightness still reduced from full magenta, but vivid purple character is back instead of muddy plum
+
+### Added
+- `migrations/051_snap_tags.php` — idempotent migration that creates `snap_tags` (and adds `created_at` / `color_family` columns if missing) on installs that pre-date its addition to canonical schema. Without this table, `sybu-data.php` 500s after auth, blocking SYBU connect
+
+## 0.7.61 — "Stay Seated" (2026-05-07)
+
+### Fixed
+- `assets/js/ss-engine-calendar.js` — X button and overlay click-outside now fire `smackcal:closing` CustomEvent before navigating, carrying the target layout slug so skins can update localStorage
+- `assets/js/ss-engine-calendar.js` — `findFallbackLayoutLink()` and `wireLayoutLinks()` now handle `<button data-layout>` elements (not just `<a>` tags); URL is constructed from data-layout value when no href exists
+- `assets/js/ss-engine-calendar.js` — Transparent overlay added behind panel; clicking outside the calendar panel closes it
+- `assets/js/ss-engine-calendar.js` — ESC key now closes the panel (previously only cleared range-start mode)
+- `assets/css/ss-engine-calendar.css` — Range-mode cursor changed from `crosshair` to `pointer` for consistency; added overlay CSS
+- `skins/50-shades-of-noah-grey/archive-layout.php` — `init()` no longer restores `croppedwithcalendar` from localStorage; listens for `smackcal:closing` to write correct target layout
+- `skins/rational-geo/archive-layout.php` — same localStorage guard and `smackcal:closing` listener
+
 ## 0.7.60 — "Stay Seated" (2026-05-07)
 
 ### Fixed

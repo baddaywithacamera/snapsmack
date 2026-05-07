@@ -37,19 +37,36 @@ $edit_mode = false;
 $edit_data = [];
 
 // --- AJAX: image picker for featured image ---
+// Returns { posts: [{id, title, thumb}], hasMore: bool } for ss-engine-featured-picker.js
 if (!empty($_GET['ajax']) && $_GET['ajax'] === 'posts') {
     header('Content-Type: application/json');
-    $q     = '%' . trim($_GET['q'] ?? '') . '%';
-    $posts = $pdo->prepare(
-        "SELECT i.id, i.img_title AS title, i.img_date AS created_at,
+    $q      = '%' . trim($_GET['q'] ?? '') . '%';
+    $offset = max(0, (int)($_GET['offset'] ?? 0));
+    $limit  = 30;
+    $rows = $pdo->prepare(
+        "SELECT i.id, i.img_title AS title,
                 i.img_thumb_square, i.img_thumb_aspect, i.img_file
          FROM snap_images i
          WHERE i.img_status = 'published' AND i.img_title LIKE ?
          ORDER BY i.img_date DESC
-         LIMIT 80"
+         LIMIT ? OFFSET ?"
     );
-    $posts->execute([$q]);
-    echo json_encode($posts->fetchAll(PDO::FETCH_ASSOC));
+    $rows->bindValue(1, $q,         PDO::PARAM_STR);
+    $rows->bindValue(2, $limit + 1, PDO::PARAM_INT);
+    $rows->bindValue(3, $offset,    PDO::PARAM_INT);
+    $rows->execute();
+    $raw   = $rows->fetchAll(PDO::FETCH_ASSOC);
+    $hasMore = count($raw) > $limit;
+    if ($hasMore) array_pop($raw);
+    $posts = [];
+    foreach ($raw as $r) {
+        $posts[] = [
+            'id'    => (int)$r['id'],
+            'title' => $r['title'],
+            'thumb' => $r['img_thumb_square'] ?: ($r['img_thumb_aspect'] ?: $r['img_file']),
+        ];
+    }
+    echo json_encode(['posts' => $posts, 'hasMore' => $hasMore]);
     exit;
 }
 
@@ -115,6 +132,10 @@ if ($edit_mode && !empty($edit_data['featured_post_id'])) {
 
 $page_title = "Mission registry";
 include 'core/admin-header.php';
+?>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-featured-picker.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-featured-picker.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
+<?php
 include 'core/sidebar.php';
 ?>
 
@@ -155,29 +176,7 @@ include 'core/sidebar.php';
                         <label>FEATURED IMAGE <span class="field-tip" data-tip="Pick any post — used as the representative thumbnail for this album.">ⓘ</span></label>
                         <input type="hidden" name="featured_post_id" id="album-featured-id"
                                value="<?php echo $edit_mode ? (int)($edit_data['featured_post_id'] ?? 0) : 0; ?>">
-                        <div id="album-featured-preview" style="margin-top:8px;">
-                            <?php if ($featured_thumb): ?>
-                                <?php
-                                $thumb_url = BASE_URL . ltrim($featured_thumb['img_thumb_square'] ?: $featured_thumb['img_thumb_aspect'] ?: $featured_thumb['img_file'], '/');
-                                ?>
-                                <img src="<?php echo htmlspecialchars($thumb_url); ?>"
-                                     style="width:80px;height:80px;object-fit:cover;border-radius:3px;border:1px solid var(--border);"
-                                     alt="Featured image">
-                                <span class="dim" style="display:block;font-size:11px;margin-top:4px;"><?php echo htmlspecialchars($featured_thumb['title']); ?></span>
-                            <?php else: ?>
-                                <div style="width:80px;height:80px;background:var(--card-bg);border:1px dashed var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;">
-                                    <span class="dim" style="font-size:10px;text-align:center;padding:4px;">NO IMAGE</span>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                        <div style="display:flex;gap:8px;margin-top:8px;">
-                            <button type="button" onclick="openFeaturedPicker('album')" class="btn-secondary" style="font-size:11px;padding:5px 12px;">
-                                <?php echo $featured_thumb ? 'CHANGE' : 'SELECT IMAGE'; ?>
-                            </button>
-                            <?php if ($featured_thumb): ?>
-                            <button type="button" onclick="clearFeatured('album')" class="btn-secondary" style="font-size:11px;padding:5px 12px;color:var(--dim);">REMOVE</button>
-                            <?php endif; ?>
-                        </div>
+                        <div id="album-featured-preview" class="ssfp-preview"></div>
                     </div>
 
                     <div class="lens-input-wrapper mt-20">
@@ -228,117 +227,37 @@ include 'core/sidebar.php';
 
 <?php include 'core/admin-footer.php'; ?>
 
-<!-- FEATURED IMAGE PICKER MODAL -->
-<div id="featured-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9000;overflow-y:auto;">
-    <div style="background:var(--bg);margin:40px auto;max-width:800px;border-radius:4px;border:1px solid var(--border);padding:20px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;">SELECT FEATURED IMAGE</span>
-            <button type="button" onclick="closeFeaturedPicker()" style="background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer;line-height:1;">×</button>
-        </div>
-        <input type="text" id="featured-search" placeholder="Search posts…" oninput="loadFeaturedPosts(this.value)"
-               style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--text);font-size:13px;margin-bottom:12px;box-sizing:border-box;">
-        <div id="featured-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;max-height:480px;overflow-y:auto;"></div>
-    </div>
-</div>
-
 <script>
-var _featuredCtx  = null;
-var _featuredBase = <?php echo json_encode(BASE_URL); ?>;
+// Wire the shared featured-image picker engine to the preview <div>.
+(function () {
+    if (!window.ssFeaturedPicker) return;
+    var prevEl = document.getElementById('album-featured-preview');
+    var idEl   = document.getElementById('album-featured-id');
+    if (!prevEl || !idEl) return;
 
-function openFeaturedPicker(ctx) {
-    _featuredCtx = ctx;
-    document.getElementById('featured-modal').style.display = 'block';
-    document.getElementById('featured-search').value = '';
-    loadFeaturedPosts('');
-}
-function closeFeaturedPicker() {
-    document.getElementById('featured-modal').style.display = 'none';
-}
-function clearFeatured(ctx) {
-    document.getElementById(ctx + '-featured-id').value = '0';
-    document.getElementById(ctx + '-featured-preview').innerHTML =
-        '<div style="width:80px;height:80px;background:var(--card-bg);border:1px dashed var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;">'
-        + '<span class="dim" style="font-size:10px;text-align:center;padding:4px;">NO IMAGE</span></div>'
-        + '<div style="display:flex;gap:8px;margin-top:8px;">'
-        + '<button type="button" onclick="openFeaturedPicker(\'' + ctx + '\')" class="btn-secondary" style="font-size:11px;padding:5px 12px;">SELECT IMAGE</button>'
-        + '</div>';
-}
-function loadFeaturedPosts(q) {
-    var grid = document.getElementById('featured-grid');
-    grid.innerHTML = '<p class="dim" style="font-size:12px;padding:10px;">Loading…</p>';
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', 'smack-albums.php?ajax=posts&q=' + encodeURIComponent(q), true);
-    xhr.onload = function () {
-        if (xhr.status !== 200) return;
-        var posts = JSON.parse(xhr.responseText);
-        if (!posts.length) { grid.innerHTML = '<p class="dim" style="font-size:12px;padding:10px;">No posts found.</p>'; return; }
-        var frag = document.createDocumentFragment();
-        posts.forEach(function (p) {
-            var thumb = p.img_thumb_square || p.img_thumb_aspect || p.img_file;
-            var src   = thumb ? _featuredBase + thumb.replace(/^\//, '') : '';
-            var div = document.createElement('div');
-            div.style.cssText = 'cursor:pointer;border:2px solid transparent;border-radius:3px;overflow:hidden;aspect-ratio:1;background:#111;';
-            div.dataset.id    = p.id;
-            div.dataset.src   = src;
-            div.dataset.title = p.title;
-            div.addEventListener('click', function () {
-                selectFeatured(this.dataset.id, this.dataset.src, this.dataset.title);
-            });
-            if (src) {
-                var img = document.createElement('img');
-                img.src = src;
-                img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
-                img.loading = 'lazy';
-                div.appendChild(img);
-            } else {
-                var label = document.createElement('div');
-                label.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;color:var(--dim);font-size:10px;padding:4px;text-align:center;';
-                label.textContent = p.title;
-                div.appendChild(label);
-            }
-            frag.appendChild(div);
-        });
-        grid.innerHTML = '';
-        grid.appendChild(frag);
-    };
-    xhr.send();
-}
-function selectFeatured(id, thumb, title) {
-    var ctx = _featuredCtx;
-    document.getElementById(ctx + '-featured-id').value = id;
-    var wrap = document.getElementById(ctx + '-featured-preview');
-    wrap.innerHTML = '';
-    var img = document.createElement('img');
-    img.src = thumb;
-    img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:3px;border:1px solid var(--border);';
-    img.alt = 'Featured image';
-    var span = document.createElement('span');
-    span.className = 'dim';
-    span.style.cssText = 'display:block;font-size:11px;margin-top:4px;';
-    span.textContent = title;
-    var btns = document.createElement('div');
-    btns.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
-    var btnChange = document.createElement('button');
-    btnChange.type = 'button';
-    btnChange.className = 'btn-secondary';
-    btnChange.style.cssText = 'font-size:11px;padding:5px 12px;';
-    btnChange.textContent = 'CHANGE';
-    btnChange.addEventListener('click', function () { openFeaturedPicker(ctx); });
-    var btnRemove = document.createElement('button');
-    btnRemove.type = 'button';
-    btnRemove.className = 'btn-secondary';
-    btnRemove.style.cssText = 'font-size:11px;padding:5px 12px;color:var(--dim);';
-    btnRemove.textContent = 'REMOVE';
-    btnRemove.addEventListener('click', function () { clearFeatured(ctx); });
-    btns.appendChild(btnChange);
-    btns.appendChild(btnRemove);
-    wrap.appendChild(img);
-    wrap.appendChild(span);
-    wrap.appendChild(btns);
-    closeFeaturedPicker();
-}
-document.getElementById('featured-modal').addEventListener('click', function (e) {
-    if (e.target === this) closeFeaturedPicker();
-});
+    var initialThumb = <?php
+        if (!empty($featured_thumb)) {
+            $tu = BASE_URL . ltrim(
+                ($featured_thumb['img_thumb_square']
+                 ?: $featured_thumb['img_thumb_aspect']
+                 ?: $featured_thumb['img_file']), '/');
+            echo json_encode($tu);
+        } else {
+            echo 'null';
+        }
+    ?>;
+    var initialTitle = <?php
+        echo !empty($featured_thumb) ? json_encode($featured_thumb['title']) : "''";
+    ?>;
+
+    window.ssFeaturedPicker.attach({
+        endpoint:      'smack-albums.php?ajax=posts',
+        previewEl:     prevEl,
+        hiddenInputEl: idEl,
+        baseUrl:       <?php echo json_encode(BASE_URL); ?>,
+        initialThumb:  initialThumb,
+        initialTitle:  initialTitle
+    });
+}());
 </script>
 <?php // ===== SNAPSMACK EOF =====

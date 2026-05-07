@@ -196,7 +196,25 @@ $_fsog_cur    = isset($archive_layout)  ? $archive_layout  : ($settings['archive
         // If the URL already specifies the calendar layout, stay on it.
         // Reading localStorage here would trigger a setLayout() call that
         // navigates away (the body-class check in setLayout fires a redirect).
-        if (document.body.classList.contains('archive-layout-' + calLayout)) return;
+        if (document.body.classList.contains('archive-layout-' + calLayout)) {
+            // On calendar layout: render cropped grid only. Don't call setLayout
+            // (its body-class guard would redirect). Skip localStorage write so
+            // saved preference (e.g. masonry) is preserved for when user closes
+            // the calendar via X.
+            if (browseGrid)    browseGrid.style.display    = 'grid';
+            if (justifiedGrid) justifiedGrid.style.display = 'none';
+            return;
+        }
+        // URL is source of truth. If ?layout= is explicit in the URL, use it
+        // and ignore localStorage. localStorage only kicks in when archive.php
+        // is hit with no params (so the toggle remembers preference across
+        // bare-URL visits but explicit URLs always win).
+        var _urlLayoutMatch = window.location.search.match(/[?&]layout=([^&]+)/);
+        var _urlLayout = _urlLayoutMatch ? decodeURIComponent(_urlLayoutMatch[1]) : null;
+        if (_urlLayout && _urlLayout !== calLayout) {
+            setLayout(_urlLayout);
+            return;
+        }
         var saved = null;
         try { saved = localStorage.getItem(KEY); } catch(e) {}
         // Never auto-restore calLayout from storage -- it requires an explicit click.

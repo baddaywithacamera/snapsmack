@@ -142,18 +142,27 @@ if ($is_ajax && !empty($_POST['action'])) {
 }
 
 // Featured image post picker (GET, reused across modals)
+// Returns { posts: [{id, title, thumb}], hasMore: bool } for ss-engine-featured-picker.js
 if (!empty($_GET['ajax']) && $_GET['ajax'] === 'posts') {
     header('Content-Type: application/json');
-    $q = '%' . trim($_GET['q'] ?? '') . '%';
+    $q       = '%' . trim($_GET['q'] ?? '') . '%';
+    $offset  = max(0, (int)($_GET['offset'] ?? 0));
+    $limit   = 30;
     $rows = $pdo->prepare(
         "SELECT p.id, p.title, i.img_thumb_square AS thumb
          FROM snap_posts p
          LEFT JOIN snap_images i ON i.post_id = p.id
          WHERE p.status = 'published' AND p.title LIKE ?
-         GROUP BY p.id ORDER BY p.created_at DESC LIMIT 80"
+         GROUP BY p.id ORDER BY p.created_at DESC LIMIT ? OFFSET ?"
     );
-    $rows->execute([$q]);
-    echo json_encode($rows->fetchAll(PDO::FETCH_ASSOC));
+    $rows->bindValue(1, $q,                    PDO::PARAM_STR);
+    $rows->bindValue(2, $limit + 1,            PDO::PARAM_INT);
+    $rows->bindValue(3, $offset,               PDO::PARAM_INT);
+    $rows->execute();
+    $posts = $rows->fetchAll(PDO::FETCH_ASSOC);
+    $hasMore = count($posts) > $limit;
+    if ($hasMore) array_pop($posts);
+    echo json_encode(['posts' => $posts, 'hasMore' => $hasMore]);
     exit;
 }
 
@@ -260,6 +269,10 @@ if (!empty($_GET['edit'])) {
 
 $page_title = 'Collections';
 include 'core/admin-header.php';
+?>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-featured-picker.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-featured-picker.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
+<?php
 include 'core/sidebar.php';
 ?>
 
@@ -306,26 +319,7 @@ include 'core/sidebar.php';
                     <!-- FEATURED IMAGE -->
                     <div class="lens-input-wrapper mt-20">
                         <label>FEATURED IMAGE <span class="field-tip" data-tip="Picks any post's hero image — used as the representative thumbnail for this collection.">ⓘ</span></label>
-                        <div id="col-featured-preview" style="margin-top:8px;">
-                            <?php if ($featured_thumb && !empty($featured_thumb['thumb'])): ?>
-                                <img src="<?php echo htmlspecialchars(BASE_URL . ltrim($featured_thumb['thumb'],'/'));?>"
-                                     style="width:80px;height:80px;object-fit:cover;border-radius:3px;border:1px solid var(--border);"
-                                     alt="Featured">
-                                <span class="dim" style="display:block;font-size:11px;margin-top:4px;"><?php echo htmlspecialchars($featured_thumb['title'] ?? ''); ?></span>
-                            <?php else: ?>
-                                <div style="width:80px;height:80px;background:var(--card-bg);border:1px dashed var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;">
-                                    <span class="dim" style="font-size:10px;text-align:center;padding:4px;">NO IMAGE</span>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                        <div style="display:flex;gap:8px;margin-top:8px;">
-                            <button type="button" onclick="openFeaturedPicker()" class="btn-secondary" style="font-size:11px;padding:5px 12px;">
-                                <?php echo $featured_thumb ? 'CHANGE' : 'SELECT IMAGE'; ?>
-                            </button>
-                            <?php if ($featured_thumb): ?>
-                            <button type="button" onclick="clearFeatured()" class="btn-secondary" style="font-size:11px;padding:5px 12px;color:var(--dim);">REMOVE</button>
-                            <?php endif; ?>
-                        </div>
+                        <div id="col-featured-preview" class="ssfp-preview"></div>
                         <input type="hidden" id="col-featured-id" name="col_featured_post_id"
                                value="<?php echo (int)($editing['featured_post_id'] ?? 0); ?>">
                     </div>
@@ -571,92 +565,36 @@ include 'core/sidebar.php';
     }
 
     // --- Featured image picker ---
-    var featuredPickerOpen = false;
-    function openFeaturedPicker() {
-        document.getElementById('col-featured-modal').style.display = 'block';
-        document.getElementById('col-feat-search').value = '';
-        loadFeaturedGrid('');
-    }
-    function closeFeaturedModal() {
-        document.getElementById('col-featured-modal').style.display = 'none';
-    }
-    function clearFeatured() {
-        document.getElementById('col-featured-id').value = '0';
-        document.getElementById('col-featured-preview').innerHTML =
-            '<div style="width:80px;height:80px;background:var(--card-bg);border:1px dashed var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;"><span class="dim" style="font-size:10px;text-align:center;padding:4px;">NO IMAGE</span></div>'
-            + '<div style="display:flex;gap:8px;margin-top:8px;"><button type="button" onclick="openFeaturedPicker()" class="btn-secondary" style="font-size:11px;padding:5px 12px;">SELECT IMAGE</button></div>';
-        if (COLL_ID) ajax('save_featured', { collection_id: COLL_ID, post_id: '' }, function(){});
-    }
-    function loadFeaturedGrid(q) {
-        var grid = document.getElementById('col-feat-grid');
-        grid.innerHTML = '<p class="dim" style="font-size:12px;padding:8px;">Loading…</p>';
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', 'smack-collections.php?ajax=posts&q=' + encodeURIComponent(q), true);
-        xhr.onload = function () {
-            var posts = JSON.parse(xhr.responseText);
-            if (!posts.length) { grid.innerHTML = '<p class="dim" style="font-size:12px;padding:8px;">No posts.</p>'; return; }
-            var frag = document.createDocumentFragment();
-            posts.forEach(function (p) {
-                var src = p.thumb ? BASE + p.thumb.replace(/^\//,'') : '';
-                var div = document.createElement('div');
-                div.style.cssText = 'cursor:pointer;border:2px solid transparent;border-radius:3px;overflow:hidden;aspect-ratio:1;background:#111;';
-                div.dataset.id    = p.id;
-                div.dataset.src   = src;
-                div.dataset.title = p.title;
-                div.addEventListener('click', function () {
-                    selectFeatured(this.dataset.id, this.dataset.src, this.dataset.title);
-                });
-                if (src) {
-                    var img = document.createElement('img');
-                    img.src = src;
-                    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
-                    img.loading = 'lazy';
-                    div.appendChild(img);
-                } else {
-                    var label = document.createElement('div');
-                    label.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;color:var(--dim);font-size:10px;padding:4px;text-align:center;';
-                    label.textContent = p.title;
-                    div.appendChild(label);
-                }
-                frag.appendChild(div);
-            });
-            grid.innerHTML = '';
-            grid.appendChild(frag);
-        };
-        xhr.send();
-    }
-    function selectFeatured(id, thumb, title) {
-        document.getElementById('col-featured-id').value = id;
-        var wrap = document.getElementById('col-featured-preview');
-        wrap.innerHTML = '';
-        var img = document.createElement('img');
-        img.src = thumb;
-        img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:3px;border:1px solid var(--border);';
-        img.alt = 'Featured';
-        var span = document.createElement('span');
-        span.className = 'dim';
-        span.style.cssText = 'display:block;font-size:11px;margin-top:4px;';
-        span.textContent = title;
-        var btns = document.createElement('div');
-        btns.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
-        var btnChange = document.createElement('button');
-        btnChange.type = 'button'; btnChange.className = 'btn-secondary';
-        btnChange.style.cssText = 'font-size:11px;padding:5px 12px;';
-        btnChange.textContent = 'CHANGE';
-        btnChange.addEventListener('click', openFeaturedPicker);
-        var btnRemove = document.createElement('button');
-        btnRemove.type = 'button'; btnRemove.className = 'btn-secondary';
-        btnRemove.style.cssText = 'font-size:11px;padding:5px 12px;color:var(--dim);';
-        btnRemove.textContent = 'REMOVE';
-        btnRemove.addEventListener('click', clearFeatured);
-        btns.appendChild(btnChange); btns.appendChild(btnRemove);
-        wrap.appendChild(img); wrap.appendChild(span); wrap.appendChild(btns);
-        closeFeaturedModal();
-        if (COLL_ID) ajax('save_featured', { collection_id: COLL_ID, post_id: id }, function(){});
-    }
+    // Markup + behaviour live in assets/js/ss-engine-featured-picker.js.
+    // We just attach a config to the preview <div> so the engine knows where
+    // to render/save and what AJAX endpoint to hit.
+    (function () {
+        var prevEl = document.getElementById('col-featured-preview');
+        var idEl   = document.getElementById('col-featured-id');
+        if (!prevEl || !idEl || !window.ssFeaturedPicker) return;
+        var initialThumb = <?php echo ($featured_thumb && !empty($featured_thumb['thumb']))
+            ? json_encode(BASE_URL . ltrim($featured_thumb['thumb'], '/'))
+            : 'null'; ?>;
+        var initialTitle = <?php echo ($featured_thumb && !empty($featured_thumb['title']))
+            ? json_encode($featured_thumb['title'])
+            : "''"; ?>;
+        window.ssFeaturedPicker.attach({
+            endpoint:      'smack-collections.php?ajax=posts',
+            previewEl:     prevEl,
+            hiddenInputEl: idEl,
+            baseUrl:       BASE,
+            initialThumb:  initialThumb,
+            initialTitle:  initialTitle,
+            onSelect: function (id) {
+                if (COLL_ID) ajax('save_featured', { collection_id: COLL_ID, post_id: id }, function(){});
+            },
+            onClear: function () {
+                if (COLL_ID) ajax('save_featured', { collection_id: COLL_ID, post_id: '' }, function(){});
+            }
+        });
+    }());
+
     document.addEventListener('DOMContentLoaded', function () {
-        var modal = document.getElementById('col-featured-modal');
-        if (modal) modal.addEventListener('click', function (e) { if (e.target === this) closeFeaturedModal(); });
         // Init member picker if editing
         if (COLL_ID) searchMembers('');
     });
@@ -675,19 +613,6 @@ include 'core/sidebar.php';
         xhr.send(body);
     }
     </script>
-
-    <!-- FEATURED IMAGE MODAL -->
-    <div id="col-featured-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9000;overflow-y:auto;">
-        <div style="background:var(--bg);margin:40px auto;max-width:800px;border-radius:4px;border:1px solid var(--border);padding:20px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-                <span style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;">SELECT FEATURED IMAGE</span>
-                <button type="button" onclick="closeFeaturedModal()" style="background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer;line-height:1;">×</button>
-            </div>
-            <input type="text" id="col-feat-search" placeholder="Search posts…" oninput="loadFeaturedGrid(this.value)"
-                   style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--text);font-size:13px;margin-bottom:12px;box-sizing:border-box;">
-            <div id="col-feat-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;max-height:480px;overflow-y:auto;"></div>
-        </div>
-    </div>
 
 <?php else: ?>
 
