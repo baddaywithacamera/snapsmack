@@ -40,6 +40,7 @@ if (!defined('BASE_URL')) {
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/constants.php';
+require_once __DIR__ . '/mesh-helpers.php';
 
 // --- RESPONSE HELPERS ---
 function ms_respond($data, int $status = 200): void {
@@ -174,7 +175,60 @@ if ($resource === 'ping' && $method === 'GET') {
         WHERE id = ?
     ")->execute([$spoke_row['id']]);
 
-    ms_ok(['version' => SNAPSMACK_VERSION]);
+    // Mesh: if THIS install is a hub, include the canonical roster of peers
+    // so the spoke can learn about its siblings. Excludes the caller from
+    // the roster so they don't see themselves.
+    $mesh_roster = [];
+    if (($settings['multisite_role'] ?? '') === 'hub') {
+        // Look up the calling spoke's URL so we exclude them.
+        $caller_url_stmt = $pdo->prepare(
+            "SELECT site_url FROM snap_multisite_nodes
+             WHERE api_key_remote = ? AND role = 'spoke' LIMIT 1"
+        );
+        $caller_url_stmt->execute([$ping_key]);
+        $caller_url = (string)($caller_url_stmt->fetchColumn() ?: '');
+        $mesh_roster = ms_build_roster($pdo, $caller_url);
+    }
+
+    ms_ok([
+        'version' => SNAPSMACK_VERSION,
+        'mesh'    => [
+            'role'   => $settings['multisite_role'] ?? '',
+            'peers'  => $mesh_roster,
+            'hub_url'=> ($settings['multisite_role'] ?? '') === 'hub' ? BASE_URL : '',
+        ],
+    ]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: GET multisite/peers/list
+// Hub-only. Returns the canonical roster for any authenticated peer that
+// asks. Spokes use this on demand (e.g. from a "Sync Network Roster" button)
+// in addition to the implicit roster delivery on ping.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'peers' && $sub_action === 'list' && $method === 'GET') {
+    if (($settings['multisite_role'] ?? '') !== 'hub') {
+        ms_err('Only the hub can serve the peer roster', 403);
+    }
+
+    $peers_key = '';
+    if (preg_match('/^Bearer\s+(\S+)$/i', ms_get_auth_header(), $pm2)) {
+        $peers_key = $pm2[1];
+    }
+    if (!$peers_key) ms_err('Authorization header required', 401);
+
+    $caller_stmt = $pdo->prepare(
+        "SELECT site_url FROM snap_multisite_nodes
+         WHERE api_key_remote = ? AND status = 'active' LIMIT 1"
+    );
+    $caller_stmt->execute([$peers_key]);
+    $caller_url = (string)($caller_stmt->fetchColumn() ?: '');
+    if ($caller_url === '') ms_err('Invalid key', 401);
+
+    ms_ok([
+        'hub_url' => BASE_URL,
+        'peers'   => ms_build_roster($pdo, $caller_url),
+    ]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
