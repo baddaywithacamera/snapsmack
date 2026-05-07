@@ -199,8 +199,21 @@ $_fsog_cur    = isset($archive_layout)  ? $archive_layout  : ($settings['archive
         if (document.body.classList.contains('archive-layout-' + calLayout)) return;
         var saved = null;
         try { saved = localStorage.getItem(KEY); } catch(e) {}
+        // Never auto-restore calLayout from storage -- it requires an explicit click.
+        // Without this guard, clicking X (which navigates to cropped) causes init()
+        // on the next page to read 'croppedwithcalendar' and redirect right back.
+        if (saved === calLayout) saved = null;
         setLayout(saved || '<?php echo htmlspecialchars($_fsog_cur); ?>');
     }
+
+    // When the calendar engine closes the panel it fires smackcal:closing so we
+    // can write the target layout to localStorage before the navigation lands.
+    document.addEventListener('smackcal:closing', function (e) {
+        var target = e.detail && e.detail.targetLayout;
+        if (target && target !== calLayout) {
+            try { localStorage.setItem(KEY, target); } catch(e2) {}
+        }
+    });
 
     for (var i = 0; i < toggleBtns.length; i++) {
         toggleBtns[i].addEventListener('click', function() {

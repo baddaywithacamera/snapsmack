@@ -280,6 +280,10 @@
     height: 100%;
     object-fit: cover;
     display: block;
+    /* Sub-pixel blur suppresses aliasing sparkle from browser downscaling
+       large full-res images. 0.3px is below visible softening threshold.
+       Tune up to ~0.6px if shimmer persists; remove if thumbnails are used. */
+    filter: blur(0.3px);
 }
 
 /* --- Frame reset: prevent ANY border/shadow from bleeding into justified grid --- */
@@ -527,6 +531,11 @@ body.landing-only .tg-topbar { display: none; }
 }
 .archive-layout-toggle .alt-btn:hover   { opacity: 0.85; }
 .archive-layout-toggle .alt-btn--active { opacity: 1; }
+
+/* ── Image fade-load engine: initial state ───────────────────────────────────
+   Set opacity:0 via CSS so images start invisible before any JS runs.
+   Without this, the browser paints partially-decoded images before the
+
 
 /* ── Image fade-load engine: initial state ───────────────────────────────────
    Set opacity:0 via CSS so images start invisible before any JS runs.

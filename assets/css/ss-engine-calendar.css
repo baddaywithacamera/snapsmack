@@ -43,6 +43,20 @@
     --_cal-range-start-bg: var(--cal-range-start-bg, var(--accent, rgba(255,255,255,.18)));
 }
 
+/* ── Overlay — transparent backdrop, closes panel on click-outside ───────── */
+
+#smack-cal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1199; /* one below the panel */
+    display: none;
+    cursor: default;
+}
+
+#smack-cal-overlay.smack-cal-overlay--visible {
+    display: block;
+}
+
 /* ── Panel ───────────────────────────────────────────────────────────────── */
 
 #smack-cal-panel {
@@ -223,13 +237,9 @@
     border-radius: 3px 0 0 3px;
 }
 
-/* ── In range-mode: all has-post days get a pointer even without hover ───── */
-.smack-cal-range-mode .smack-cal-day {
-    cursor: crosshair;
-}
-
+/* ── In range-mode: keep pointer cursor for consistency ─────────────────── */
 .smack-cal-range-mode .smack-cal-day--has-post {
-    cursor: crosshair;
+    cursor: pointer;
 }
 
 /* ── Nav ─────────────────────────────────────────────────────────────────── */
