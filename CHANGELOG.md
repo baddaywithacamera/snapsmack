@@ -13,6 +13,16 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.67 — "Sit On It" (2026-05-08)
+
+### Fixed
+- `core/multisite-api.php` and `smack-multisite-blogroll.php` — hub-to-spoke blogroll push was dropping the hub's category structure. The hub-side SELECT only pulled `peer_name, peer_url, peer_rss, peer_desc` (no category column), and the spoke-side endpoint dumped every received entry into a single auto-created category named `Hub: <hub_url>`. Visitors of any spoke saw all hub-pushed peers piled under one ugly heading like `HUB: FOUNDTEXTURES.CA` regardless of how the hub had organized them. Hub now sends each entry with its `category` field; spoke now matches/creates categories case-insensitively and assigns each entry to its proper bucket
+- `core/multisite-api.php` — re-sync logic now identifies hub-synced entries by their new `source_hub_url` column instead of by the legacy `Hub: <url>` category. Spoke admin's locally-added blogroll entries are no longer at risk of being deleted on hub re-sync
+
+### Added
+- `migrations/052_blogroll_source_hub_url.php` — adds `source_hub_url` to `snap_blogroll` (with index), stamps it on existing rows that landed in legacy `Hub: <url>` categories (parsing the URL out of the cat name), uncategorizes those rows, and deletes the now-empty `Hub: <url>` categories. Idempotent — safe to re-run
+- `database/schema/snapsmack_canonical.sql` — `snap_blogroll.source_hub_url` column added with `idx_source_hub_url` index
+
 ## 0.7.66 — "Hot Seat" (2026-05-08)
 
 ### Fixed
@@ -22,6 +32,9 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - `smack-blogroll.php` — MANAGE CATEGORIES section above the existing add-peer form. Lists existing categories with rename + delete buttons inline, plus a "+ ADD CATEGORY" input below. Three new POST handlers (`new_blogroll_cat`, `rename_blogroll_cat`, `delete_blogroll_cat`). Deleting a category reassigns its peers to UNCATEGORIZED before removing the row. Was either lost in a pre-March 2026 OneDrive index-corruption event or never made it into the current repo
 
 - `assets/css/admin-theme-geometry-master.css` — new utility classes used by the blogroll category rows: `.blogroll-cat-row`, `.blogroll-cat-row--new`, `.blogroll-cat-input`, and a generic small-button class `.btn-sm`
+
+### Changed
+- `core/sidebar.php` — Spoke Signals, Spoke Posts, Backup Dock, Fleet Stats, Cross-Post, and Blogroll Sync sidebar entries are now hidden on spoke installs. Previously the sidebar gate was `!empty($settings['multisite_role'])` which is true for both hubs and spokes, so spokes saw menu items that dead-ended on the target page's hub-only guard. Tightened the gate to `=== 'hub'`
 
 ## 0.7.65 — "Squat Goals" (2026-05-08)
 

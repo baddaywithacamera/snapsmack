@@ -282,7 +282,10 @@ CREATE TABLE IF NOT EXISTS `snap_blogroll` (
   `sort_order`       int          NOT NULL DEFAULT '0',
   `rss_last_fetched` datetime     DEFAULT NULL,
   `rss_last_updated` datetime     DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  `source_hub_url` varchar(255)         COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                                       COMMENT 'Hub URL that synced this entry — NULL = locally added',
+  PRIMARY KEY (`id`),
+  KEY `idx_source_hub_url` (`source_hub_url`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
