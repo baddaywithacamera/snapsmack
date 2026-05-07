@@ -220,8 +220,8 @@ if (file_exists($skin_manifest_path)) {
     $_inventory = include __DIR__ . '/manifest-inventory.php';
     foreach ($_skin_mf['require_scripts'] ?? [] as $_handle) {
         $_entry = $_inventory['scripts'][$_handle] ?? [];
-        // Skip engines scoped to admin pages only (admin_page key set)
-        if (!empty($_entry['admin_page'])) continue;
+        // Note: admin_page flag routes engine *settings* to a different admin page.
+        // It does NOT prevent the engine JS/CSS loading on public pages.
         if (!empty($_entry['css'])) {
             echo '<link rel="stylesheet" href="' . BASE_URL
                 . $_entry['css']
