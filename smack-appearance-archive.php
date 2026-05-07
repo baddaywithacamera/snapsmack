@@ -102,8 +102,8 @@ include 'core/sidebar.php';
 $all_layouts = [
     'square'               => 'Square Grid (1:1 Cropped)',
     'cropped'              => 'Cropped Grid (Natural Aspect)',
-    'masonry'              => 'Masonry / Justified (Flickr-Style)',
     'croppedwithcalendar'  => 'Cropped + Calendar (Sliding Date Panel)',
+    'masonry'              => 'Masonry / Justified (Flickr-Style)',
 ];
 
 $current_layout = $settings['archive_layout'] ?? 'square';
@@ -171,7 +171,9 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                 <div class="lens-input-wrapper">
                     <label>OFFER VISITORS A LAYOUT SWITCH? <span class="field-tip" data-tip="Checked modes appear as toggle buttons on the public archive. The default layout is always included automatically.">ⓘ</span></label>
                     <div style="display:flex; flex-direction:column; gap:6px; margin-top:4px;">
-                        <?php foreach ($all_layouts as $lk => $ll): ?>
+                        <?php foreach ($all_layouts as $lk => $ll):
+                            if ($lk === 'croppedwithcalendar') continue; // controlled by CALENDAR box below
+                        ?>
                             <label style="display:flex; align-items:center; gap:8px; font-size:0.85em; cursor:pointer;">
                                 <input type="checkbox"
                                        name="settings[archive_layouts_available][]"
@@ -349,7 +351,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
 // Keep the default layout's checkbox always ticked and disabled so the owner
 // can't accidentally remove the current default from the available set.
 function syncAvailableCheckbox(defaultVal) {
-    ['square','cropped','masonry','croppedwithcalendar'].forEach(function(m) {
+    ['square','cropped','masonry'].forEach(function(m) {
         var cb = document.getElementById('avail-' + m);
         if (!cb) return;
         if (m === defaultVal) {
@@ -388,7 +390,7 @@ function updateSwitchStatus() {
 
 // Wire up all layout checkboxes.
 document.addEventListener('DOMContentLoaded', function() {
-    ['square','cropped','masonry','croppedwithcalendar'].forEach(function(m) {
+    ['square','cropped','masonry'].forEach(function(m) {
         var cb = document.getElementById('avail-' + m);
         if (cb) cb.addEventListener('change', updateSwitchStatus);
     });

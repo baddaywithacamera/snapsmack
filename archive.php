@@ -56,14 +56,15 @@ try {
     // Skin manifest may declare a preferred default via features.archive_layout_default.
     $skin_layout_fallback = 'square';
     $skin_has_calendar = false;
-    $_manifest_path = __DIR__ . '/skins/' . $active_skin . '/manifest.php';
+    $_manifest_path = 'skins/' . $active_skin . '/manifest.php';
     $skin_show_archive_filter = true;
     if (file_exists($_manifest_path)) {
         $_m = include $_manifest_path;
         if (!empty($_m['features']['archive_layout_default'])) {
             $skin_layout_fallback = $_m['features']['archive_layout_default'];
         }
-        $skin_has_calendar = in_array('smack-calendar', $_m['require_scripts'] ?? []);
+        $skin_has_calendar = in_array('smack-calendar', $_m['require_scripts'] ?? [])
+                          || in_array('croppedwithcalendar', $_m['features']['archive_layouts'] ?? []);
         // Skins may set features.archive_filter = false to suppress the unified filter panel.
         if (isset($_m['features']['archive_filter']) && $_m['features']['archive_filter'] === false) {
             $skin_show_archive_filter = false;
@@ -92,10 +93,8 @@ try {
     $available_modes  = array_values(array_filter($_canonical_order, fn($m) => isset($_enabled[$m])));
     unset($_canonical_order, $_enabled);
     if (empty($available_modes)) $available_modes = [$archive_layout_default];
-    // Only offer croppedwithcalendar if the skin has the calendar engine.
-    if (!$skin_has_calendar) {
-        $available_modes = array_values(array_filter($available_modes, fn($m) => $m !== 'croppedwithcalendar'));
-    }
+    // croppedwithcalendar is unconditional — same policy as Archive Appearance admin page.
+    // If the skin lacks the calendar engine it degrades gracefully to cropped grid.
     if (!in_array($archive_layout_default, $available_modes)) {
         $available_modes[] = $archive_layout_default;
     }
