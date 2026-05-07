@@ -13,6 +13,19 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.58 — "Stay Seated" (2026-05-06)
+
+### Fixed
+- `smack-appearance-archive.php` — masonry/justified option moved to bottom of layout order (square → cropped → calendar → masonry)
+- `smack-appearance-archive.php` — "CROPPED + CALENDAR" removed from the layout switch checkboxes (duplicate control); calendar on/off is now controlled exclusively by the ENABLE SLIDING DATE PANEL checkbox in the CALENDAR section below
+- `archive.php` — manifest path changed to relative (`skins/{skin}/manifest.php`); calendar detection now also checks `features.archive_layouts` for `croppedwithcalendar` as belt-and-suspenders
+- `core/admin-header.php` — hardcoded `?v=076a` cache-busting string replaced with dynamic `?v=SNAPSMACK_VERSION_SHORT` on admin CSS; prevents stale styles after updates
+- `assets/adminthemes/purple-rain/admin-theme-colours-purple-rain.css` — btn-smack and btn-danger brightness halved (full-brightness magenta/orange on dark admin theme was unreadable)
+- `smack-settings.php` — logo and favicon upload handlers removed; upload is now handled exclusively in Global Vibe (`smack-globalvibe.php`) where MIME validation is enforced
+- Pre-commit EOF scan run across all 491 failing tracked files; all truncations repaired without losing any uncommitted feature work
+
+---
+
 ## 0.7.57 — "Stay Seated" (2026-05-06)
 
 ### Fixed

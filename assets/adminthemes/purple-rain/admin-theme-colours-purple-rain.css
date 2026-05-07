@@ -207,8 +207,8 @@ input:focus, textarea:focus, select:focus {
 
 /* Magenta buttons (New Post, Live Site) — go dark on hover */
 .btn-smack, .master-update-btn {
-    background-color: #FF00FF;
-    color: #000000;
+    background-color: #7F007F;
+    color: #FFFFFF;
 }
 .btn-smack:hover, .master-update-btn:hover {
     background-color: #3A003A;
@@ -242,11 +242,11 @@ input:focus, textarea:focus, select:focus {
 
 /* Danger button modifier — destructive/disconnect actions */
 .btn-smack.btn-danger {
-    background-color: #FF4500;
+    background-color: #7F2200;
     color: #FFFFFF;
 }
 .btn-smack.btn-danger:hover {
-    background-color: #cc2200;
+    background-color: #661100;
     color: #FFFFFF;
 }
 

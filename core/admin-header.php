@@ -67,8 +67,8 @@ $active_skin_path = $theme_base . $colour_css_file;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $page_title ?? 'Admin'; ?> | SnapSmack</title>
 
-    <link rel="stylesheet" href="assets/css/admin-theme-geometry-master.css?v=076a">
-    <link rel="stylesheet" href="<?php echo $active_skin_path; ?>">
+    <link rel="stylesheet" href="assets/css/admin-theme-geometry-master.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+    <link rel="stylesheet" href="<?php echo $active_skin_path; ?>?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 </head>
 <body class="admin-body">
 <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open');">&#9776;</button>
