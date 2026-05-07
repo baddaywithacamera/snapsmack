@@ -214,7 +214,10 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-multisite.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite.php">Multisite Management</a>
                     </li>
-                    <?php if (!empty($settings['multisite_role'])) : ?>
+                    <?php if (($settings['multisite_role'] ?? '') === 'hub') : ?>
+                    <!-- Hub-only management tools. Each target page also enforces this with
+                         a multisite_role !== 'hub' guard, but hiding them here keeps spokes
+                         from seeing menu items that would dead-end on a "hub only" message. -->
                     <li class="<?php echo ($current_page == 'smack-multisite-comments.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite-comments.php">Spoke Signals</a>
                     </li>
@@ -233,7 +236,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-multisite-blogroll.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite-blogroll.php">Blogroll Sync</a>
                     </li>
-                    <?php endif; // multisite ?>
+                    <?php endif; // hub-only ?>
                     <?php endif; // pimpmobile ?>
                 </ul>
             </div>

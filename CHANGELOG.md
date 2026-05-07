@@ -13,6 +13,38 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.70 — "Smack in the Middle" — mesh foundation (2026-05-08)
+
+First slice of mesh-mode (codename **Smack in the Middle**): every install
+can now hold a roster of every other install in the network, and inter-peer
+auth is in place. No features have been converted from hub-only to
+bidirectional yet — that comes in alpha-2 onward (Cross-Post first).
+
+### Added
+- `migrations/054_mesh_foundation.php` — extends `snap_multisite_nodes`
+  with `accepts_crosspost`, `accepts_blogroll`, `accepts_stats_query`,
+  `roster_source`, `last_roster_seen_at`. Existing rows stamped with
+  `roster_source = 'self'` so they are never pruned by roster sync.
+- `core/mesh-helpers.php` — shared functions: `ms_resolve_peer()`,
+  `ms_peer_allows()`, `ms_build_roster()`, `ms_ingest_roster()`.
+- `core/multisite-api.php` — `multisite/ping` response now includes
+  `mesh.peers` (canonical roster, hub-side only). New endpoint
+  `GET multisite/peers/list` for explicit on-demand roster pulls.
+- `smack-multisite.php` — verify-hub button now ingests the roster
+  returned by the hub on ping and reports added/updated/pruned counts.
+
+### Foundation only
+- No bidirectional features wired yet. Cross-Post, Blogroll Sync, Fleet
+  Stats, etc. are still hub-only as before. Coming in subsequent alphas
+  on the `dev` branch.
+- Sidebar items still gated to `=== 'hub'` from 0.7.66 — will be
+  loosened once corresponding features are mesh-aware.
+
+## 0.7.69 — "Park It" (2026-05-08)
+
+### Fixed
+- `core/sidebar.php` — the gate-on-`hub` change from 0.7.66 didn't reach all installs (probably wasn't included in the 0.7.66 deploy or was overridden somewhere). Re-shipping the file so spokes definitively stop seeing Spoke Signals / Spoke Posts / Backup Dock / Fleet Stats / Cross-Post / Blogroll Sync menu items in the sidebar. Final deploy of this fix before the 0.8.0 mesh rewrite changes the rules anyway
+
 ## 0.7.68 — "Cheek Mate" (2026-05-08)
 
 ### Fixed

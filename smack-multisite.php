@@ -1,20 +1,11 @@
 <?php
+// EOF marker required (SNAPSMACK_EOF_HEADER): file must end with `// ===== SNAPSMACK EOF =====`. If that line is missing, the file was truncated.
 /**
  * SNAPSMACK - Multisite Management
  *
  * Hub and spoke site management interface. Allows admins to set up
  * multi-site configurations, register new spokes, and monitor their status.
  */
-
-/**
- * SNAPSMACK_EOF_HEADER
- *     <?php // ===== SNAPSMACK EOF =====
- * Last non-empty line of this file MUST match the line above.
- * Missing or different = truncated/corrupted. Restore before saving.
- */
-
-
-
 
 require_once 'core/auth.php';
 
@@ -262,7 +253,22 @@ if (isset($_POST['verify_hub'])) {
             if (!empty($hb['ok'])) {
                 $pdo->prepare("UPDATE snap_multisite_nodes SET last_seen_at = NOW(), status = 'active' WHERE id = ?")
                     ->execute([$hub['id']]);
-                $msg = "Connection verified — hub responded OK (version " . htmlspecialchars($hb['version'] ?? 'unknown') . ").";
+
+                // Mesh: hub returns the canonical roster of peers. Ingest it
+                // so this spoke knows about its siblings and can talk to them.
+                $roster_msg = '';
+                if (!empty($hb['mesh']['peers']) && is_array($hb['mesh']['peers'])) {
+                    require_once __DIR__ . '/core/mesh-helpers.php';
+                    $hub_url = rtrim($hub['site_url'], '/');
+                    $r = ms_ingest_roster($pdo, $hub_url, $hb['mesh']['peers']);
+                    $roster_msg = sprintf(
+                        ' Mesh roster updated — %d added, %d updated, %d pruned.',
+                        $r['added'], $r['updated'], $r['pruned']
+                    );
+                }
+                $msg = "Connection verified — hub responded OK (version "
+                     . htmlspecialchars($hb['version'] ?? 'unknown') . ")."
+                     . $roster_msg;
             } else {
                 $msg = "Hub responded but returned an error: " . htmlspecialchars($hb['error'] ?? 'unknown');
             }
@@ -338,105 +344,6 @@ if ($multisite_role === 'hub') {
                 $n['image_count']        = $hb['image_count']        ?? $n['image_count'];
                 $n['pending_comments']   = $hb['pending_comments']   ?? $n['pending_comments'];
                 $n['last_backup_status'] = $hb['last_backup_status'] ?? $n['last_backup_status'];
-
-                // ── Shield Tier 1: Ban Sync ───────────────────────────────────
-                // Only runs when hub_spoke_ban_sync is enabled. Exchanges hashed
-                // ban lists with each active spoke. Delta-synced via ban_sync_cursor
-                // per node. Non-fatal — a failed sync just retries on next sweep.
-                if (($settings['hub_spoke_ban_sync'] ?? '0') === '1') {
-
-                    // Build outbound payload: bans added/updated since last cursor
-                    $cursor = $n['ban_sync_cursor'] ?? null;
-                    if ($cursor) {
-                        $ban_stmt = $pdo->prepare("
-                            SELECT ban_type, ban_value, reason
-                            FROM snap_hub_shared_bans
-                            WHERE removed = 0 AND last_seen > ?
-                            LIMIT 500
-                        ");
-                        $ban_stmt->execute([$cursor]);
-                    } else {
-                        $ban_stmt = $pdo->query("
-                            SELECT ban_type, ban_value, reason
-                            FROM snap_hub_shared_bans
-                            WHERE removed = 0
-                            LIMIT 500
-                        ");
-                    }
-                    $consolidated_bans = $ban_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                    // POST consolidated bans to spoke; receive new bans in return
-                    $bs_ch = curl_init();
-                    curl_setopt_array($bs_ch, [
-                        CURLOPT_URL            => rtrim($n['site_url'], '/') . '/api.php?route=multisite/ban-sync',
-                        CURLOPT_RETURNTRANSFER => true,
-                        CURLOPT_TIMEOUT        => 10,
-                        CURLOPT_POST           => true,
-                        CURLOPT_POSTFIELDS     => json_encode(['consolidated_bans' => $consolidated_bans]),
-                        CURLOPT_SSL_VERIFYPEER => true,
-                        CURLOPT_HTTPHEADER     => [
-                            'Authorization: Bearer ' . $n['api_key_local'],
-                            'Content-Type: application/json',
-                            'Accept: application/json',
-                        ],
-                    ]);
-                    $bs_raw  = curl_exec($bs_ch);
-                    $bs_code = curl_getinfo($bs_ch, CURLINFO_HTTP_CODE);
-                    curl_close($bs_ch);
-
-                    if ($bs_raw && $bs_code === 200) {
-                        $bs = json_decode($bs_raw, true);
-                        if (!empty($bs['ok'])) {
-
-                            // Ingest new bans reported by this spoke into the hub registry.
-                            // ON DUPLICATE KEY: bump report_count + refresh last_seen.
-                            // Reason is set on first insert only (keep earliest attribution).
-                            if (!empty($bs['new_bans']) && is_array($bs['new_bans'])) {
-                                $ins = $pdo->prepare("
-                                    INSERT INTO snap_hub_shared_bans
-                                        (ban_type, ban_value, reason, reported_by)
-                                    VALUES (?, ?, ?, ?)
-                                    ON DUPLICATE KEY UPDATE
-                                        report_count = report_count + 1,
-                                        last_seen    = NOW(),
-                                        reason       = IF(reason = '', VALUES(reason), reason)
-                                ");
-                                foreach ($bs['new_bans'] as $nb) {
-                                    if (empty($nb['ban_type']) || empty($nb['ban_value'])) continue;
-                                    $ins->execute([
-                                        $nb['ban_type'],
-                                        $nb['ban_value'],
-                                        $nb['reason'] ?? '',
-                                        $n['site_url'],
-                                    ]);
-                                }
-                            }
-
-                            // Advance this spoke's sync cursor so next sweep is delta-only
-                            $pdo->prepare("
-                                UPDATE snap_multisite_nodes
-                                SET ban_sync_cursor = NOW()
-                                WHERE id = ?
-                            ")->execute([$n['id']]);
-                            $n['ban_sync_cursor'] = date('Y-m-d H:i:s');
-
-                            // Record this spoke as ban-sync capable (used for status display)
-                            $capable = json_decode($settings['ban_sync_capable_spokes'] ?? '[]', true) ?: [];
-                            if (!in_array((int)$n['id'], array_map('intval', $capable))) {
-                                $capable[]    = (int)$n['id'];
-                                $capable_json = json_encode(array_values($capable));
-                                $pdo->prepare("
-                                    INSERT INTO snap_settings (setting_key, setting_val)
-                                    VALUES ('ban_sync_capable_spokes', ?)
-                                    ON DUPLICATE KEY UPDATE setting_val = ?
-                                ")->execute([$capable_json, $capable_json]);
-                                $settings['ban_sync_capable_spokes'] = $capable_json;
-                            }
-                        }
-                    }
-                    // Non-200 / disabled / network failure is non-fatal.
-                    // Spoke that hasn't updated yet returns 404 — hub will retry next sweep.
-                }
             }
         } else {
             // Mark offline if unreachable
@@ -662,17 +569,17 @@ include 'core/sidebar.php';
                         <p style="font-size:0.85rem; color:var(--text-muted,#888); margin-bottom:10px;">
                             <strong>Active Registration Token (valid for <?php echo max(1, ceil(($reg_token_expires - time()) / 60)); ?> more minutes):</strong>
                         </p>
-                        <div style="display:flex; align-items:stretch; gap:0; margin-bottom:10px; border:1px solid var(--border,#333); border-radius:4px; overflow:hidden;">
-                            <div id="reg-token-display" style="flex:1; font-family:monospace; font-size:1.1rem; letter-spacing:2px; padding:12px 14px;
-                                        background:var(--bg,#000); word-break:break-all; line-height:1.4;">
-                                <?php echo htmlspecialchars($reg_token); ?>
-                            </div>
-                            <button type="button" id="copy-token-btn"
-                                    style="flex-shrink:0; width:90px; height:auto; margin:0; border-radius:0; border:none; border-left:1px solid var(--border,#333); background:var(--accent,#7F007F); color:#fff; font-family:inherit; font-size:0.8rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; cursor:pointer;"
-                                    onclick="navigator.clipboard.writeText(document.getElementById('reg-token-display').innerText.trim()).then(function(){ var b=document.getElementById('copy-token-btn'); b.textContent='COPIED ✓'; setTimeout(function(){ b.textContent='COPY'; }, 2000); });">
-                                COPY
-                            </button>
-                        </div>
+                        <input id="reg-token-display" type="text" readonly
+                               value="<?php echo htmlspecialchars($reg_token); ?>"
+                               style="width:100%; box-sizing:border-box; font-family:monospace; font-size:1rem;
+                                      letter-spacing:2px; padding:12px 14px; margin-bottom:8px;
+                                      background:var(--input-bg,#111); border:1px solid var(--border,#333);
+                                      border-radius:4px; color:inherit; cursor:text;"
+                               onclick="this.select();">
+                        <button type="button" class="btn-smack" id="copy-token-btn" style="width:100%; margin-bottom:10px;"
+                                onclick="navigator.clipboard.writeText(document.getElementById('reg-token-display').value).then(function(){ var b=document.getElementById('copy-token-btn'); b.textContent='COPIED ✓'; setTimeout(function(){ b.textContent='COPY'; }, 2000); });">
+                            COPY
+                        </button>
                         <p style="font-size:0.8rem; color:var(--accent,#aaa); margin-top:10px;">
                             Give this token to your hub administrator. It expires at <?php echo date('H:i:s', $reg_token_expires); ?>.
                         </p>
@@ -735,12 +642,12 @@ include 'core/sidebar.php';
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($log as $row): ?>
-                            <tr style="border-bottom:1px solid var(--border,#2a2a2a);">
-                                <td style="padding:8px; color:var(--text-muted,#888); font-family:monospace; font-size:0.8rem;">
-                                    <?php echo htmlspecialchars($row['created_at']); ?>
-                                </td>
-                            </tr>
+                            <?php foreach ($log as $entry): ?>
+                                <tr style="border-bottom:1px solid var(--border,#333);">
+                                    <td style="padding:8px;">
+                                        <?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($entry['created_at']))); ?>
+                                    </td>
+                                </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
@@ -748,13 +655,9 @@ include 'core/sidebar.php';
             <?php endif; ?>
         </div>
 
-    <?php else: ?>
-        <div class="box">
-            <p style="color:var(--text-muted,#888);">Unknown multisite role configured.</p>
-        </div>
     <?php endif; ?>
 
 </div>
 
-<?php require_once 'core/admin-footer.php'; ?>
+<?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
