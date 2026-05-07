@@ -45,11 +45,19 @@ if (isset($_POST['action'])) {
         header('Location: smack-stats.php');
         exit;
     }
+    if ($_POST['action'] === 'toggle_exclude_admin') {
+        $new_val = ($_POST['enabled'] ?? '1') === '1' ? '1' : '0';
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('stats_exclude_admin', ?)
+                       ON DUPLICATE KEY UPDATE setting_val = ?")->execute([$new_val, $new_val]);
+        header('Location: smack-stats.php');
+        exit;
+    }
 }
 
 // --- LOAD SETTINGS ---
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
-$stats_enabled = ($settings['stats_enabled'] ?? '1') === '1';
+$stats_enabled    = ($settings['stats_enabled']       ?? '1') === '1';
+$exclude_admin    = ($settings['stats_exclude_admin'] ?? '1') === '1';
 
 // --- DATE RANGE ---
 $range = $_GET['range'] ?? '30';
@@ -349,6 +357,13 @@ $msg = $_GET['msg'] ?? '';
             <input type="hidden" name="enabled" value="<?php echo $stats_enabled ? '0' : '1'; ?>">
             <button type="submit" class="btn btn-small <?php echo $stats_enabled ? 'btn-danger' : 'btn-success'; ?>">
                 <?php echo $stats_enabled ? 'Disable Tracking' : 'Enable Tracking'; ?>
+            </button>
+        </form>
+        <form method="post" class="stats-action-inline">
+            <input type="hidden" name="action" value="toggle_exclude_admin">
+            <input type="hidden" name="enabled" value="<?php echo $exclude_admin ? '0' : '1'; ?>">
+            <button type="submit" class="btn btn-small btn-smack" title="<?php echo $exclude_admin ? 'Admin/editor page views are currently excluded from stats' : 'Admin/editor page views are currently counted in stats'; ?>">
+                <?php echo $exclude_admin ? 'Exclude Admin: ON' : 'Exclude Admin: OFF'; ?>
             </button>
         </form>
     </div>

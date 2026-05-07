@@ -100,6 +100,55 @@ foreach ($spokes as $spoke) {
     }
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HUB's own stats — pulled directly from local snap_stats_daily
+// ─────────────────────────────────────────────────────────────────────────────
+$hub_name      = $settings['site_name'] ?? 'Hub';
+$hub_date_from = date('Y-m-d', strtotime("-{$period} days"));
+$hub_data      = [];
+try {
+    $hub_stmt = $pdo->prepare("
+        SELECT stat_date, total_views, unique_visitors, top_referrer
+        FROM snap_stats_daily
+        WHERE stat_date >= ?
+        ORDER BY stat_date ASC
+    ");
+    $hub_stmt->execute([$hub_date_from]);
+    $hub_data = $hub_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // snap_stats_daily may not exist on older installs; silently skip
+}
+
+$hub_total_views  = array_sum(array_column($hub_data, 'total_views'));
+$hub_total_unique = array_sum(array_column($hub_data, 'unique_visitors'));
+
+// Add hub as synthetic entry so it appears in the breakdown table
+$spoke_stats['__hub__'] = [
+    'site_name'    => $hub_name . ' (Hub)',
+    'site_url'     => '',
+    'rows'         => $hub_data,
+    'total_views'  => $hub_total_views,
+    'total_unique' => $hub_total_unique,
+    'post_count'   => 0,
+    'is_hub'       => true,
+];
+
+// Merge hub daily rows into fleet totals
+foreach ($hub_data as $row) {
+    $date = $row['stat_date'] ?? '';
+    if (!$date) continue;
+    if (!isset($fleet_daily[$date])) {
+        $fleet_daily[$date] = ['views' => 0, 'unique' => 0, 'referrers' => []];
+    }
+    $fleet_daily[$date]['views']  += (int)($row['total_views']    ?? 0);
+    $fleet_daily[$date]['unique'] += (int)($row['unique_visitors'] ?? 0);
+    if (!empty($row['top_referrer'])) {
+        $ref = parse_url($row['top_referrer'], PHP_URL_HOST) ?: $row['top_referrer'];
+        $fleet_daily[$date]['referrers'][$ref] = ($fleet_daily[$date]['referrers'][$ref] ?? 0) + (int)($row['total_views'] ?? 1);
+    }
+}
+
 // Sort fleet daily by date ascending for the chart
 ksort($fleet_daily);
 
@@ -183,7 +232,7 @@ include 'core/sidebar.php';
                 <div style="font-size:0.75rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">UNIQUE VISITORS</div>
             </div>
             <div style="padding:20px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
-                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo $active_spokes; ?> / <?php echo count($spokes); ?></div>
+                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo $active_spokes + 1; ?> / <?php echo count($spokes) + 1; ?></div>
                 <div style="font-size:0.75rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">SITES REPORTING</div>
             </div>
         </div>
@@ -217,7 +266,7 @@ include 'core/sidebar.php';
 
     <!-- PER-SPOKE BREAKDOWN -->
     <div class="box">
-        <h3>SPOKE BREAKDOWN</h3>
+        <h3>NETWORK BREAKDOWN</h3>
 
         <?php if (!empty($spoke_stats)):
             $max_spoke_views = max(1, max(array_column($spoke_stats, 'total_views')));
@@ -234,13 +283,16 @@ include 'core/sidebar.php';
                 </thead>
                 <tbody>
                     <?php foreach ($spoke_stats as $node_id => $sd):
-                        $share_pct = $fleet_total_views > 0 ? ($sd['total_views'] / $fleet_total_views) * 100 : 0;
-                        $avg_day   = $period > 0 ? round($sd['total_views'] / $period) : 0;
+                        $share_pct  = $fleet_total_views > 0 ? ($sd['total_views'] / $fleet_total_views) * 100 : 0;
+                        $avg_day    = $period > 0 ? round($sd['total_views'] / $period) : 0;
+                        $is_hub_row = !empty($sd['is_hub']);
                     ?>
-                        <tr style="border-bottom:1px solid var(--border,#333);">
+                        <tr style="border-bottom:1px solid var(--border,#333);<?php echo $is_hub_row ? ' background:var(--input-bg,#111);' : ''; ?>">
                             <td style="padding:10px;">
                                 <strong><?php echo htmlspecialchars($sd['site_name']); ?></strong>
-                                <?php if (in_array($node_id, array_column(array_filter($spokes, fn($s) => $s['status'] !== 'active'), 'id'))): ?>
+                                <?php if ($is_hub_row): ?>
+                                    <span style="font-size:0.7rem; color:var(--text-muted,#888); margin-left:6px; letter-spacing:1px;">LOCAL</span>
+                                <?php elseif (in_array($node_id, array_column(array_filter($spokes, fn($s) => $s['status'] !== 'active'), 'id'))): ?>
                                     <span style="font-size:0.75rem; color:#f44336; margin-left:5px;">OFFLINE</span>
                                 <?php endif; ?>
                             </td>

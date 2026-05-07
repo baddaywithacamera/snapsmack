@@ -13,10 +13,35 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.56 — "Stay Seated" (2026-05-06)
+
+### Changed
+- Version bump only — no code changes. Allows updater to detect and pull 0.7.55 changes on existing installs.
+
+---
+
+## 0.7.55 — "Stay Seated" (2026-05-06)
+
+### Added
+- `smack-multisite-stats.php` — Fleet Stats now includes the hub's own traffic; hub rows are pulled directly from local `snap_stats_daily`, merged into fleet daily totals, and shown in the network breakdown table with a LOCAL badge; "SITES REPORTING" count includes hub
+- `smack-stats.php` — "Exclude Admin: ON/OFF" toggle button on the Traffic Stats page; controls `stats_exclude_admin` setting which gates the existing admin-exclusion logic already in `core/stats-logger.php`
+
+---
+
+## 0.7.54 — "Stay Seated" (2026-05-04)
+
+### Fixed
+- `smack-appearance-archive.php` — Calendar is now a proper ENABLE/DISABLE toggle in Archive Appearance instead of a buried dropdown option nobody can find; checking the box sets croppedwithcalendar as default layout; unchecking removes it and falls back to cropped; calendar detail settings (months, side, recent posts count) hide when disabled
+- `core/admin-header.php` + `core/meta.php` — dynamic `?v=` cache-busting on all CSS/JS links so Cloudflare serves updated files after each release (was causing old pre-fix styles to show on all sites)
+
+---
+
 ## 0.7.53 — "Stay Seated" (2026-05-04)
 
 ### Fixed
 - `core/multisite-api.php` — Bearer auth now works on nginx/PHP-FPM; `$_SERVER['HTTP_AUTHORIZATION']` falls back to `getallheaders()` so Authorization header is never silently dropped by the server; fixes 401 on spoke→hub VERIFY and hub→spoke heartbeat/ping on all self-hosted Proxmox sites
+- `core/admin-header.php` — admin CSS links now use `?v=SNAPSMACK_VERSION_SHORT` for cache-busting instead of a hardcoded stale string; fixes stale Cloudflare-cached admin theme CSS (was causing old pre-0.7.42 orange buttons to show in Purple Rain despite the brightness fix)
+- `core/meta.php` — public-facing CSS and JS also get dynamic version cache-busting strings
 
 ---
 
