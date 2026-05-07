@@ -13,6 +13,15 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.59 — "Stay Seated" (2026-05-07)
+
+### Fixed
+- `core/meta.php` — `admin_page` flag was incorrectly blocking calendar JS/CSS from loading on public pages; flag controls only where admin settings render, not whether the engine loads publicly
+- `smack-appearance-archive.php` — restored "Cropped + Calendar" checkbox to the layout switch; it was removed without authorization in 0.7.58
+- `assets/adminthemes/purple-rain/admin-theme-colours-purple-rain.css` — sidebar section headings (#444444) made readable (#886688); nav links bumped from #AAAAAA to #CCCCCC for daylight legibility
+
+---
+
 ## 0.7.58 — "Stay Seated" (2026-05-06)
 
 ### Fixed
