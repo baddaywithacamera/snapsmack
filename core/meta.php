@@ -220,17 +220,15 @@ if (file_exists($skin_manifest_path)) {
     $_inventory = include __DIR__ . '/manifest-inventory.php';
     foreach ($_skin_mf['require_scripts'] ?? [] as $_handle) {
         $_entry = $_inventory['scripts'][$_handle] ?? [];
-        // Note: admin_page flag routes engine *settings* to a different admin page.
-        // It does NOT prevent the engine JS/CSS loading on public pages.
+        // CSS only here — emit each engine stylesheet in <head> so it's
+        // available before first paint. The matching <script> tag is emitted
+        // by the active skin's skin-footer.php at end of body. Emitting it
+        // here too would double-load every engine (and silently double its
+        // DOM, which is exactly how the duplicate-calendar bug got created).
         if (!empty($_entry['css'])) {
             echo '<link rel="stylesheet" href="' . BASE_URL
                 . $_entry['css']
                 . '?v=' . SNAPSMACK_VERSION_SHORT . '">' . "\n";
-        }
-        if (!empty($_entry['path'])) {
-            echo '<script src="' . BASE_URL
-                . $_entry['path']
-                . '?v=' . SNAPSMACK_VERSION_SHORT . '" defer></script>' . "\n";
         }
     }
     unset($_skin_mf, $_inventory, $_handle, $_entry);

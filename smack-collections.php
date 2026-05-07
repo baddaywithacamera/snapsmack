@@ -143,25 +143,38 @@ if ($is_ajax && !empty($_POST['action'])) {
 
 // Featured image post picker (GET, reused across modals)
 // Returns { posts: [{id, title, thumb}], hasMore: bool } for ss-engine-featured-picker.js
+// Mirrors smack-albums.php / smack-cats.php — queries snap_images directly,
+// which is where photos live on photoblog installs (snap_posts is only used
+// when images are wrapped in a longform post, which the picker shouldn't
+// require).
 if (!empty($_GET['ajax']) && $_GET['ajax'] === 'posts') {
     header('Content-Type: application/json');
-    $q       = '%' . trim($_GET['q'] ?? '') . '%';
-    $offset  = max(0, (int)($_GET['offset'] ?? 0));
-    $limit   = 30;
+    $q      = '%' . trim($_GET['q'] ?? '') . '%';
+    $offset = max(0, (int)($_GET['offset'] ?? 0));
+    $limit  = 30;
     $rows = $pdo->prepare(
-        "SELECT p.id, p.title, i.img_thumb_square AS thumb
-         FROM snap_posts p
-         LEFT JOIN snap_images i ON i.post_id = p.id
-         WHERE p.status = 'published' AND p.title LIKE ?
-         GROUP BY p.id ORDER BY p.created_at DESC LIMIT ? OFFSET ?"
+        "SELECT i.id, i.img_title AS title,
+                i.img_thumb_square, i.img_thumb_aspect, i.img_file
+         FROM snap_images i
+         WHERE i.img_status = 'published' AND i.img_title LIKE ?
+         ORDER BY i.img_date DESC
+         LIMIT ? OFFSET ?"
     );
-    $rows->bindValue(1, $q,                    PDO::PARAM_STR);
-    $rows->bindValue(2, $limit + 1,            PDO::PARAM_INT);
-    $rows->bindValue(3, $offset,               PDO::PARAM_INT);
+    $rows->bindValue(1, $q,         PDO::PARAM_STR);
+    $rows->bindValue(2, $limit + 1, PDO::PARAM_INT);
+    $rows->bindValue(3, $offset,    PDO::PARAM_INT);
     $rows->execute();
-    $posts = $rows->fetchAll(PDO::FETCH_ASSOC);
-    $hasMore = count($posts) > $limit;
-    if ($hasMore) array_pop($posts);
+    $raw = $rows->fetchAll(PDO::FETCH_ASSOC);
+    $hasMore = count($raw) > $limit;
+    if ($hasMore) array_pop($raw);
+    $posts = [];
+    foreach ($raw as $r) {
+        $posts[] = [
+            'id'    => (int)$r['id'],
+            'title' => $r['title'],
+            'thumb' => $r['img_thumb_square'] ?: ($r['img_thumb_aspect'] ?: $r['img_file']),
+        ];
+    }
     echo json_encode(['posts' => $posts, 'hasMore' => $hasMore]);
     exit;
 }

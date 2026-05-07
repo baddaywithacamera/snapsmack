@@ -13,6 +13,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.65 — "Squat Goals" (2026-05-08)
+
+### Fixed
+- `core/meta.php` — every JS engine listed in a skin's `require_scripts` was loading TWICE. core/meta.php emitted `<script>` tags in `<head>`, and the active skin's `skin-footer.php` emitted them again at end of body. The comment in meta.php has always said "outputs only CSS links" — at some point the script emission got added and was never noticed because most engines are idempotent. The calendar engine isn't: each load builds its own panel + overlay. That's why clicking X on the calendar revealed a second calendar underneath — closePanel only closed the panel held by the second copy of the engine's closure. Removed the script emission from meta.php; skin-footer.php remains the single source of script tags. CSS link emission stays in meta.php as originally designed
+- `smack-collections.php` — featured image picker AJAX endpoint queried `snap_posts` (joined to `snap_images` via `post_id`). On photoblog installs where photos live directly in `snap_images` and aren't wrapped in longform posts, this returned zero results — picker showed "No posts." Switched to query `snap_images` directly, matching `smack-albums.php` and `smack-cats.php`
+
 ## 0.7.64 — "Bottoms Up" (2026-05-08)
 
 ### Fixed
