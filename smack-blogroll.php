@@ -20,6 +20,40 @@ require_once 'core/auth.php';
 // Load categories for dropdown menu and list grouping.
 $categories = $pdo->query("SELECT * FROM snap_blogroll_cats ORDER BY cat_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
+// --- CATEGORY MANAGEMENT ---
+// new_blogroll_cat / rename_blogroll_cat / delete_blogroll_cat
+if (isset($_POST['new_blogroll_cat'])) {
+    $cat_name = trim($_POST['cat_name'] ?? '');
+    if ($cat_name !== '') {
+        $pdo->prepare("INSERT INTO snap_blogroll_cats (cat_name) VALUES (?)")
+            ->execute([$cat_name]);
+    }
+    header("Location: smack-blogroll.php?msg=cat_added");
+    exit;
+}
+if (isset($_POST['rename_blogroll_cat'])) {
+    $cat_id   = (int)($_POST['cat_id'] ?? 0);
+    $cat_name = trim($_POST['cat_name'] ?? '');
+    if ($cat_id > 0 && $cat_name !== '') {
+        $pdo->prepare("UPDATE snap_blogroll_cats SET cat_name=? WHERE id=?")
+            ->execute([$cat_name, $cat_id]);
+    }
+    header("Location: smack-blogroll.php?msg=cat_renamed");
+    exit;
+}
+if (isset($_POST['delete_blogroll_cat'])) {
+    $cat_id = (int)($_POST['cat_id'] ?? 0);
+    if ($cat_id > 0) {
+        // Reassign affected entries to uncategorized first.
+        $pdo->prepare("UPDATE snap_blogroll SET cat_id=0 WHERE cat_id=?")
+            ->execute([$cat_id]);
+        $pdo->prepare("DELETE FROM snap_blogroll_cats WHERE id=?")
+            ->execute([$cat_id]);
+    }
+    header("Location: smack-blogroll.php?msg=cat_deleted");
+    exit;
+}
+
 // --- PERSISTENCE HANDLER ---
 if (isset($_POST['save_peer'])) {
     $id     = $_POST['peer_id'] ?? null;
@@ -77,6 +111,34 @@ include 'core/sidebar.php';
     <?php if (isset($_GET['msg'])): ?>
         <div class="alert alert-success">> THANKS FOR SHOWING SOME LINKY LOVE - YOU ROCK!</div>
     <?php endif; ?>
+
+    <!-- MANAGE CATEGORIES -->
+    <div class="box" style="margin-bottom:20px;">
+        <h3>MANAGE CATEGORIES</h3>
+
+        <?php if (!empty($categories)): ?>
+            <?php foreach ($categories as $cat): ?>
+                <div class="recent-item">
+                    <form method="POST" class="blogroll-cat-row">
+                        <input type="hidden" name="cat_id" value="<?php echo (int)$cat['id']; ?>">
+                        <input type="text" name="cat_name"
+                               value="<?php echo htmlspecialchars($cat['cat_name']); ?>"
+                               class="blogroll-cat-input">
+                        <button type="submit" name="rename_blogroll_cat" class="btn-secondary btn-sm">SAVE</button>
+                        <button type="submit" name="delete_blogroll_cat" class="btn-secondary btn-sm btn-danger"
+                                onclick="return confirm('Delete this category? Peers in it will be moved to UNCATEGORIZED.');">DELETE</button>
+                    </form>
+                </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <p class="dim empty-notice">No categories yet — add one below.</p>
+        <?php endif; ?>
+
+        <form method="POST" class="blogroll-cat-row blogroll-cat-row--new">
+            <input type="text" name="cat_name" placeholder="New category name…" required class="blogroll-cat-input">
+            <button type="submit" name="new_blogroll_cat" class="btn-smack btn-sm">+ ADD CATEGORY</button>
+        </form>
+    </div>
 
     <div class="post-layout-grid">
         <div class="post-col-left">

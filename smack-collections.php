@@ -630,7 +630,10 @@ include 'core/sidebar.php';
 
     <div class="header-row header-row--ruled">
         <h2>COLLECTIONS</h2>
-        <a href="smack-collections.php?new=1"><button type="button">+ NEW COLLECTION</button></a>
+    </div>
+
+    <div style="margin-bottom:20px;">
+        <a href="smack-collections.php?new=1" class="btn-smack">+ NEW COLLECTION</a>
     </div>
 
     <?php if (isset($_GET['msg'])): ?>

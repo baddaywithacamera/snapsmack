@@ -13,6 +13,16 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.66 — "Hot Seat" (2026-05-08)
+
+### Fixed
+- `smack-collections.php` — "+ NEW COLLECTION" button was wrapped in `<a><button>` inside the `header-row--ruled` flex container, which caused it to render above the underline rule and broke header alignment. Moved the button onto its own row below the heading rule using a single `<a class="btn-smack">` element
+
+### Added
+- `smack-blogroll.php` — MANAGE CATEGORIES section above the existing add-peer form. Lists existing categories with rename + delete buttons inline, plus a "+ ADD CATEGORY" input below. Three new POST handlers (`new_blogroll_cat`, `rename_blogroll_cat`, `delete_blogroll_cat`). Deleting a category reassigns its peers to UNCATEGORIZED before removing the row. Was either lost in a pre-March 2026 OneDrive index-corruption event or never made it into the current repo
+
+- `assets/css/admin-theme-geometry-master.css` — new utility classes used by the blogroll category rows: `.blogroll-cat-row`, `.blogroll-cat-row--new`, `.blogroll-cat-input`, and a generic small-button class `.btn-sm`
+
 ## 0.7.65 — "Squat Goals" (2026-05-08)
 
 ### Fixed
