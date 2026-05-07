@@ -193,6 +193,10 @@ $_fsog_cur    = isset($archive_layout)  ? $archive_layout  : ($settings['archive
     }
 
     function init() {
+        // If the URL already specifies the calendar layout, stay on it.
+        // Reading localStorage here would trigger a setLayout() call that
+        // navigates away (the body-class check in setLayout fires a redirect).
+        if (document.body.classList.contains('archive-layout-' + calLayout)) return;
         var saved = null;
         try { saved = localStorage.getItem(KEY); } catch(e) {}
         setLayout(saved || '<?php echo htmlspecialchars($_fsog_cur); ?>');
