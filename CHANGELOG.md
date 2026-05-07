@@ -13,6 +13,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.64 — "Bottoms Up" (2026-05-08)
+
+### Fixed
+- `smack-albums.php` and `smack-collections.php` — `ssFeaturedPicker.attach()` calls were running during HTML parse, before the deferred engine script had executed. Result: empty FEATURED IMAGE box with no SELECT IMAGE button. Calls are now wrapped in `DOMContentLoaded`, which fires after deferred scripts load, so `window.ssFeaturedPicker` is defined when attach runs
+
+### Changed
+- `smack-cats.php` — migrated to the shared `ss-engine-featured-picker` engine (matches `smack-albums.php` and `smack-collections.php` from 0.7.63). Removes inline modal CSS, inline picker JS, and the legacy 80-row LIMIT. Same theme-variable styling, same LOAD MORE pagination
+
 ## 0.7.63 — "Saddle Up" (2026-05-08)
 
 ### Fixed
@@ -20,8 +28,8 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - `skins/50-shades-of-noah-grey/archive-layout.php` and `skins/rational-geo/archive-layout.php` — URL is now source of truth for archive layout. When `?layout=` is explicit in the URL, the skin uses it and ignores stored localStorage preference. localStorage is consulted only when `archive.php` is hit with no params. Previously a stale `localStorage = 'masonry'` from a prior session would override every URL including `?layout=cropped`, making the cropped layout render as masonry
 
 ### Changed
-- Featured image picker (used by `smack-albums.php` and `smack-collections.php`) extracted from inline CSS / inline JS into shared engine files: `assets/css/ss-engine-featured-picker.css` and `assets/js/ss-engine-featured-picker.js`. Both pages now use the engine via `window.ssFeaturedPicker.attach({...})`. Picker uses the active admin theme's CSS custom properties (`--bg`, `--card-bg`, `--border`, `--text`, `--dim`, `--input-bg`, `--accent`) so it matches whatever skin is active — no hand-picked colours
-- Featured image picker AJAX endpoints in both pages now paginate. Returns `{ posts: [...], hasMore: bool }`. Engine renders a "LOAD MORE" button at the bottom of the grid when more results are available
+- Featured image picker (used by `smack-albums.php`, `smack-collections.php`, and `smack-cats.php`) extracted from inline CSS / inline JS into shared engine files: `assets/css/ss-engine-featured-picker.css` and `assets/js/ss-engine-featured-picker.js`. All three pages now use the engine via `window.ssFeaturedPicker.attach({...})` from inside `DOMContentLoaded` (the engine script is loaded with `defer`, so the listener guarantees it's defined before attach runs). Picker uses the active admin theme's CSS custom properties (`--bg`, `--card-bg`, `--border`, `--text`, `--dim`, `--input-bg`, `--accent`) so it matches whatever skin is active — no hand-picked colours
+- Featured image picker AJAX endpoints in all three pages now paginate. Each returns `{ posts: [...], hasMore: bool }`. Engine renders a "LOAD MORE" button at the bottom of the grid when more results are available
 
 ## 0.7.62 — "Lap Dance" (2026-05-08)
 

@@ -566,35 +566,34 @@ include 'core/sidebar.php';
 
     // --- Featured image picker ---
     // Markup + behaviour live in assets/js/ss-engine-featured-picker.js.
-    // We just attach a config to the preview <div> so the engine knows where
-    // to render/save and what AJAX endpoint to hit.
-    (function () {
+    // The engine script is loaded with `defer`, so it isn't defined until
+    // DOMContentLoaded fires. Wrap the attach() inside that listener so we
+    // configure the preview AFTER the engine is on the page.
+    document.addEventListener('DOMContentLoaded', function () {
         var prevEl = document.getElementById('col-featured-preview');
         var idEl   = document.getElementById('col-featured-id');
-        if (!prevEl || !idEl || !window.ssFeaturedPicker) return;
-        var initialThumb = <?php echo ($featured_thumb && !empty($featured_thumb['thumb']))
-            ? json_encode(BASE_URL . ltrim($featured_thumb['thumb'], '/'))
-            : 'null'; ?>;
-        var initialTitle = <?php echo ($featured_thumb && !empty($featured_thumb['title']))
-            ? json_encode($featured_thumb['title'])
-            : "''"; ?>;
-        window.ssFeaturedPicker.attach({
-            endpoint:      'smack-collections.php?ajax=posts',
-            previewEl:     prevEl,
-            hiddenInputEl: idEl,
-            baseUrl:       BASE,
-            initialThumb:  initialThumb,
-            initialTitle:  initialTitle,
-            onSelect: function (id) {
-                if (COLL_ID) ajax('save_featured', { collection_id: COLL_ID, post_id: id }, function(){});
-            },
-            onClear: function () {
-                if (COLL_ID) ajax('save_featured', { collection_id: COLL_ID, post_id: '' }, function(){});
-            }
-        });
-    }());
-
-    document.addEventListener('DOMContentLoaded', function () {
+        if (prevEl && idEl && window.ssFeaturedPicker) {
+            var initialThumb = <?php echo ($featured_thumb && !empty($featured_thumb['thumb']))
+                ? json_encode(BASE_URL . ltrim($featured_thumb['thumb'], '/'))
+                : 'null'; ?>;
+            var initialTitle = <?php echo ($featured_thumb && !empty($featured_thumb['title']))
+                ? json_encode($featured_thumb['title'])
+                : "''"; ?>;
+            window.ssFeaturedPicker.attach({
+                endpoint:      'smack-collections.php?ajax=posts',
+                previewEl:     prevEl,
+                hiddenInputEl: idEl,
+                baseUrl:       BASE,
+                initialThumb:  initialThumb,
+                initialTitle:  initialTitle,
+                onSelect: function (id) {
+                    if (COLL_ID) ajax('save_featured', { collection_id: COLL_ID, post_id: id }, function(){});
+                },
+                onClear: function () {
+                    if (COLL_ID) ajax('save_featured', { collection_id: COLL_ID, post_id: '' }, function(){});
+                }
+            });
+        }
         // Init member picker if editing
         if (COLL_ID) searchMembers('');
     });

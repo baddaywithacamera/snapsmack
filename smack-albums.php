@@ -229,7 +229,8 @@ include 'core/sidebar.php';
 
 <script>
 // Wire the shared featured-image picker engine to the preview <div>.
-(function () {
+// Engine script is `defer`red — wait for DOMContentLoaded so it's loaded.
+document.addEventListener('DOMContentLoaded', function () {
     if (!window.ssFeaturedPicker) return;
     var prevEl = document.getElementById('album-featured-preview');
     var idEl   = document.getElementById('album-featured-id');
@@ -258,6 +259,6 @@ include 'core/sidebar.php';
         initialThumb:  initialThumb,
         initialTitle:  initialTitle
     });
-}());
+});
 </script>
 <?php // ===== SNAPSMACK EOF =====
