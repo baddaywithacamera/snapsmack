@@ -180,11 +180,6 @@ include 'core/sidebar.php';
 <div class="main">
     <div class="header-row">
         <h2>FLEET STATS ROLLUP</h2>
-        <div class="header-actions">
-            <div class="status-pill status-online">
-                <?php echo $period; ?>-DAY WINDOW
-            </div>
-        </div>
     </div>
 
     <!-- QUICK NAV -->
@@ -196,7 +191,7 @@ include 'core/sidebar.php';
             <a href="smack-multisite-backup.php"   class="btn-clear">BACKUP DOCK</a>
             <a href="smack-multisite-stats.php"       class="btn-clear active">STATS</a>
             <a href="smack-multisite-crosspost.php"   class="btn-clear">CROSS-POST</a>
-                <a href="smack-multisite-blogroll.php"    class="btn-clear">BLOGROLL</a>
+            <a href="smack-multisite-blogroll.php"    class="btn-clear">BLOGROLL</a>
             <span class="sep">|</span>
             <a href="?days=7"  class="btn-clear <?php echo $period === 7  ? 'active' : ''; ?>">7D</a>
             <a href="?days=30" class="btn-clear <?php echo $period === 30 ? 'active' : ''; ?>">30D</a>
@@ -215,6 +210,11 @@ include 'core/sidebar.php';
     <?php else: ?>
 
     <!-- FLEET TOTALS -->
+    <div style="text-align:right; margin-bottom:8px;">
+        <div class="status-pill status-online" style="display:inline-block;">
+            <?php echo $period; ?>-DAY WINDOW
+        </div>
+    </div>
     <div class="box">
         <h3>FLEET TOTALS — LAST <?php echo $period; ?> DAYS</h3>
 

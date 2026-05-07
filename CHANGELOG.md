@@ -13,6 +13,15 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.57 — "Stay Seated" (2026-05-06)
+
+### Fixed
+- `core/meta.php` — `require_scripts` loop was only emitting CSS links, never the JS `<script>` tag; engines declared via `require_scripts[]` in skin manifests (including `smack-calendar`) were silently never loaded; calendar has never worked on any site for this reason
+- `core/meta.php` — `?v=SNAPSMACK_VERSION_SHORT` cache-busting strings restored on `public-facing.css`, `ss-engine-mosaic.css`, `ss-engine-mosaic.js` (lost when restoring from git in this session)
+- `core/meta.php` — engines flagged `admin_page` in manifest-inventory are now skipped in the public require_scripts loop (was harmless before since JS wasn't emitted, now necessary)
+
+---
+
 ## 0.7.56 — "Stay Seated" (2026-05-06)
 
 ### Changed

@@ -159,9 +159,9 @@ if (!empty($settings['favicon_url'])):
     }
 </style>
 
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css">
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-mosaic.css">
-<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js" defer></script>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-mosaic.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
 
 <?php
 /**
@@ -219,13 +219,21 @@ if (file_exists($skin_manifest_path)) {
     $_skin_mf   = include $skin_manifest_path;
     $_inventory = include __DIR__ . '/manifest-inventory.php';
     foreach ($_skin_mf['require_scripts'] ?? [] as $_handle) {
-        if (!empty($_inventory['scripts'][$_handle]['css'])) {
+        $_entry = $_inventory['scripts'][$_handle] ?? [];
+        // Skip engines scoped to admin pages only (admin_page key set)
+        if (!empty($_entry['admin_page'])) continue;
+        if (!empty($_entry['css'])) {
             echo '<link rel="stylesheet" href="' . BASE_URL
-                . $_inventory['scripts'][$_handle]['css']
+                . $_entry['css']
                 . '?v=' . SNAPSMACK_VERSION_SHORT . '">' . "\n";
         }
+        if (!empty($_entry['path'])) {
+            echo '<script src="' . BASE_URL
+                . $_entry['path']
+                . '?v=' . SNAPSMACK_VERSION_SHORT . '" defer></script>' . "\n";
+        }
     }
-    unset($_skin_mf, $_inventory, $_handle);
+    unset($_skin_mf, $_inventory, $_handle, $_entry);
 }
 ?>
 
