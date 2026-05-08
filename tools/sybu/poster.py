@@ -181,8 +181,8 @@ class SnapSmackClient:
     # ------------------------------------------------------------------
 
     def fetch_site_data(self) -> SiteData:
-        if not self._logged_in:
-            raise RuntimeError("Not logged in.")
+        if not self.api_key:
+            raise RuntimeError("No API key configured.")
 
         data = SiteData()
 

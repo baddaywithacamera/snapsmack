@@ -11,7 +11,7 @@ per-row category/album editing, and Google Drive upload.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.9e"   # bump this on every rebuild
+BUILD_VERSION = "0.7.9h"   # bump this on every rebuild
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
@@ -1220,6 +1220,7 @@ class App(tk.Tk):
         # ── Box: CONNECTION ───────────────────────────────────────────
         self._url_var     = tk.StringVar()
         self._api_key_var = tk.StringVar()
+        self._rem_var     = tk.BooleanVar()
 
         conn_box  = self._box(cols, "CONNECTION")
         conn_box.grid(row=0, column=0, sticky="nsew", padx=(0, 7))

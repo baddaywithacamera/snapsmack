@@ -15,6 +15,20 @@ Same versioning scheme as SnapSmack (0.7.9x). Letter increments per SYBU release
 
 ---
 
+## 0.7.9h — Drop legacy `_logged_in` check (2026-05-08)
+
+### Fixed
+- `poster.py` — `fetch_site_data()` raised `AttributeError: 'SnapSmackClient' object has no attribute '_logged_in'` immediately after a successful API-key auth. The `_logged_in` flag was a leftover from session-auth days; `login()` no longer sets it (and `login()` itself is gone). Replaced the check with a simple `if not self.api_key` so the client validates that the key was supplied at construction without referencing a deleted attribute.
+
+---
+
+## 0.7.9g — Restore Remember checkbox variable (2026-05-08)
+
+### Fixed
+- **AttributeError on launch** — `__init__` crashed at `_build_ui()` line 1234 with `'_tkinter.tkapp' object has no attribute '_rem_var'`. The 0.7.9e API-key-auth refactor deleted `self._pass_var = tk.StringVar()` and accidentally also deleted `self._rem_var = tk.BooleanVar()`, but the "Remember" checkbox still references it (lines 1234, 3127, 3230). Restored the BooleanVar initialization beside `_url_var` and `_api_key_var`.
+
+---
+
 ## 0.7.9e — API key authentication (2026-05-01)
 
 ### Changed
