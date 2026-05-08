@@ -13,6 +13,15 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.74 — "Easy Rider" (2026-05-08)
+
+### Changed
+- `smack-central/assets/css/sc-geometry.css` and new `sc-colours.css` — split the misnamed combined-tokens file into two: geometry (typography, spacing, sizing, transitions) and colours (backgrounds, borders, text, accent, status). Mirrors the SnapSmack admin pattern (geometry-master + per-theme colour files). Future SC theming becomes a sibling-file pattern (`sc-colours-purple-rain.css`, etc.) instead of editing one mixed file
+- `smack-central/sc-layout-top.php` and `smack-central/sc-login.php` — now load `sc-colours.css` after `sc-geometry.css` so colour declarations win on tied specificity
+
+### Fixed
+- SC text was rendering near-invisible (`#555` dim, `#777` labels) on dark grey backgrounds — Smack Central pages looked all black until selected. Lifted to `#888` / `#aaa` for daylight legibility; fix carries forward in the new `sc-colours.css` file
+
 ## 0.7.73 — "Reverse Cowgirl" (2026-05-08)
 
 ### Fixed
