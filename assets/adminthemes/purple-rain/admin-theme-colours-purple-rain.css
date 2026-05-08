@@ -39,7 +39,7 @@ a:hover { color: #cc00cc; }
 }
 
 .nav-section-toggle {
-    color: #BB00BB;
+    color: #00FFFF;
 }
 
 
@@ -207,7 +207,7 @@ input:focus, textarea:focus, select:focus {
 
 /* Magenta buttons (New Post, Live Site) — go dark on hover */
 .btn-smack, .master-update-btn {
-    background-color: #7F007F;
+    background-color: #B000B0;
     color: #FFFFFF;
 }
 .btn-smack:hover, .master-update-btn:hover {

@@ -39,7 +39,7 @@ a:hover { color: #cc8d00; }
 }
 
 .nav-section-toggle {
-    color: #664600;
+    color: #ffb000;
 }
 
 
@@ -541,7 +541,7 @@ input[type="range"]::-webkit-slider-thumb {
 .drag-handle { color: #805800; }
 .reorder-status.saving { color: #805800; }
 .reorder-status.saved  { color: #ffb000; }
-.reorder-status.error  { color: #E86060; }
+.reorder-status.error  { color: #4D3500; }
 .batch-bar { border-bottom-color: #332300; }
 
 /* ─── COMPANION TOOLS (smack-tools.php) ──────────────────────────── */
@@ -555,11 +555,11 @@ input[type="range"]::-webkit-slider-thumb {
 .cloud-progress-header { color: #cc8d00; }
 .cloud-progress-track { background-color: #332300; }
 .cloud-progress-fill { background-color: #ffb000; }
-.cloud-progress-done { color: #4EC994; }
-.cloud-progress-failed { color: #E86060; }
+.cloud-progress-done { color: #FFB000; }
+.cloud-progress-failed { color: #4D3500; }
 .cloud-progress-log { color: #805800; }
-.cloud-progress-error { color: #E86060; }
-.cloud-progress-success { color: #4EC994; }
+.cloud-progress-error { color: #4D3500; }
+.cloud-progress-success { color: #FFB000; }
 
 /* Interaction page */
 .box-desc, .toggle-desc, .reaction-count-note { color: #805800; }
