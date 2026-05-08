@@ -62,7 +62,15 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+require_once __DIR__ . '/csrf.php';
 require_once 'db.php';
+
+// --- CSRF AUTOVALIDATE ---
+// Pages that legitimately POST without a CSRF token (login form, public
+// API endpoints, multisite hub-spoke traffic) call csrf_exempt() before
+// including this file. Everything else gets enforced here so individual
+// admin pages don't have to remember to call csrf_check() themselves.
+csrf_check();
 
 // --- LOGOUT HANDLER ---
 // If the user clicks logout, destroy the session and redirect to login.
