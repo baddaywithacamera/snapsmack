@@ -17,6 +17,7 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ### Fixed
 - `sybu-data.php` — `ORDER BY img_id ASC` was wrong; `snap_images` primary key is `id`, not `img_id`. The malformed SQL was the actual cause of the empty-body 500 SYBU has been hitting on connect, not the snap_tags theory I'd been chasing. Fix is one column rename in the query
+- `smack-central/assets/css/sc-admin.css` — `.sc-page-header` flex used `align-items: center`, which aligned the vertical midpoints of the bold uppercase title and the small dim trail text. Different sizes/weights → visual baseline drift. Switched to `align-items: baseline` so the bottoms of the text characters line up regardless of size mismatch
 
 ## 0.7.72 — "Sit Tight" — CSRF protection (2026-05-08)
 
