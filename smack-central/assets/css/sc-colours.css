@@ -1,0 +1,51 @@
+/**
+ * SMACK CENTRAL - Colour Tokens
+ *
+ * Pure colour tokens. NO geometry — that lives in sc-geometry.css and
+ * loads first. This file loads second so its declarations win on tied
+ * specificity. Mirrors the SnapSmack admin convention (geometry-master
+ * + per-theme colours).
+ *
+ * Default theme: Midnight Lime — neon lime accent on dark charcoal.
+ * Future: rename to sc-colours-midnight-lime.css and add sibling files
+ * (sc-colours-purple-rain.css, etc.) once SC supports skin selection.
+ *
+ * Text values are lifted (#888 / #aaa instead of #555 / #777) for
+ * daylight legibility — older values were unreadable on dim monitors.
+ */
+/* SNAPSMACK_EOF_HEADER: bottom marker is /* ===== SNAPSMACK EOF ===== */ on last non-empty line */
+
+:root {
+    /* ── Backgrounds ─────────────────────────────────────── */
+    --sc-bg-page:       #141414;   /* body, sidebar */
+    --sc-bg-box:        #1a1a1a;   /* .sc-box content area */
+    --sc-bg-box-head:   #111111;   /* .sc-box header strip */
+    --sc-bg-input:      #111111;   /* text inputs, textareas, selects */
+    --sc-bg-row-alt:    #1e1e1e;   /* alternating table rows */
+    --sc-bg-overlay:    rgba(0,0,0,.55); /* modal backdrop */
+
+    /* ── Borders ─────────────────────────────────────────── */
+    --sc-border:        #2a2a2a;
+    --sc-border-input:  #333333;
+    --sc-border-focus:  #39FF14;
+
+    /* ── Text ────────────────────────────────────────────── */
+    --sc-text:          #cccccc;
+    --sc-text-dim:      #888888;   /* lifted from #555 */
+    --sc-text-label:    #aaaaaa;   /* lifted from #777 */
+    --sc-text-muted:    #888888;   /* sidebar version, tertiary chrome */
+
+    /* ── Accent ──────────────────────────────────────────── */
+    --sc-accent:        #39FF14;
+    --sc-accent-glow:   rgba(57,255,20,.35);
+    --sc-accent-dim:    rgba(57,255,20,.15);
+
+    /* ── Status ──────────────────────────────────────────── */
+    --sc-danger:        #ff3e3e;
+    --sc-danger-bg:     rgba(255,62,62,.12);
+    --sc-warn:          #f39c12;
+    --sc-warn-bg:       rgba(243,156,18,.12);
+    --sc-success:       #39FF14;
+    --sc-success-bg:    rgba(57,255,20,.10);
+}
+/* ===== SNAPSMACK EOF ===== */

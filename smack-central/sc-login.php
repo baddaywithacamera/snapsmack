@@ -55,6 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SMACK CENTRAL — Login</title>
 <link rel="stylesheet" href="assets/css/sc-geometry.css">
+<link rel="stylesheet" href="assets/css/sc-colours.css">
 <link rel="stylesheet" href="assets/css/sc-admin.css">
 </head>
 <body class="sc-login-page">
