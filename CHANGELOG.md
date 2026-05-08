@@ -13,6 +13,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.73 — "Reverse Cowgirl" (2026-05-08)
+
+### Fixed
+- `sybu-data.php` — `ORDER BY img_id ASC` was wrong; `snap_images` primary key is `id`, not `img_id`. The malformed SQL was the actual cause of the empty-body 500 SYBU has been hitting on connect, not the snap_tags theory I'd been chasing. Fix is one column rename in the query
+
 ## 0.7.72 — "Sit Tight" — CSRF protection (2026-05-08)
 
 ### Added

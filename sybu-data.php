@@ -86,7 +86,7 @@ sort($tags);
 // All existing post titles — used by SYBU to prevent Gemini generating duplicates.
 
 $titles_raw = $pdo->query(
-    "SELECT img_title FROM snap_images ORDER BY img_id ASC"
+    "SELECT img_title FROM snap_images ORDER BY id ASC"
 )->fetchAll(PDO::FETCH_COLUMN);
 
 $titles = array_values(array_filter(array_map('trim', $titles_raw)));
