@@ -19,6 +19,12 @@
  */
 
 
+// CSRF: this endpoint legitimately accepts POST without a session-tied
+// CSRF token (pre-auth flow / tool API authentication). Mark exempt
+// before auth.php's auto-validator fires.
+require_once __DIR__ . '/core/csrf.php';
+csrf_exempt();
+
 require_once 'core/auth.php';
 
 header('Content-Type: application/json; charset=utf-8');

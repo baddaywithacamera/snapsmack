@@ -13,6 +13,30 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.72 — "Sit Tight" — CSRF protection (2026-05-08)
+
+### Added
+- `core/csrf.php` — per-session CSRF token engine. Public API: `csrf_token()`, `csrf_field()`, `csrf_meta_tag()`, `csrf_check()`, `csrf_exempt()`, `csrf_rotate()`. Tokens generated via `random_bytes(32)` and stored in the session, validated with `hash_equals()` so failed checks don't leak via timing
+- `assets/js/ss-engine-admin-csrf.js` — wraps `window.fetch` and `XMLHttpRequest.send` to auto-attach an `X-CSRF-Token` header on every POST/PUT/PATCH/DELETE request from admin pages. Token read from `<meta name="csrf-token">` emitted by admin-header.php
+- Auto-injection of `<input type="hidden" name="csrf_token">` into every `<form method="POST">` on admin pages — handled by `core/admin-footer.php` via output buffering. No per-form code changes needed across the 60+ admin POST handlers
+
+### Changed
+- `core/auth.php` — calls `csrf_check()` automatically on POST. Pages that legitimately POST without a session-tied token (login flow, tool API endpoints) call `csrf_exempt()` first
+- `core/admin-header.php` — emits `<meta name="csrf-token">` in the document head; opens an `ob_start()` buffer so the footer can inject form tokens
+- `core/admin-footer.php` — closes the buffer, injects the hidden field into every `<form method="POST">`, then flushes
+- `suyb-data.php`, `suyb-export.php` — call `csrf_exempt()` before including auth.php; SYBU authenticates with X-Snap-Key, doesn't carry CSRF tokens
+- Tool API endpoints using `core/api-auth.php` already bypass CSRF naturally — `api-auth.php` returns early on valid X-Snap-Key, never reaching `auth.php`'s validator. Browser sessions falling through still get CSRF-checked
+
+### Notes
+- This addresses the "CSRF deferred (HIGH severity)" item from CLAUDE.md / the security audit. Combined with `SameSite=Lax` cookies (already in place), admin POSTs are now defended against forged cross-site form submissions
+- Login form (`snap-in.php`), 2FA verification, password reset, and community-auth flows don't include `core/auth.php` so they aren't auto-validated. They handle their own pre-auth security via rate limiting and one-time tokens
+- If a form anywhere on the admin breaks with "CSRF token mismatch" after this, the cause is almost always: the form lives in a partial that's rendered before `admin-header.php` runs (so the buffer isn't open yet), or the form is hand-emitted via JS without going through the engine. Fix is either move the form to inside the buffered region or call `csrf_field()` manually
+
+## 0.7.71 — "Recliner" (2026-05-08)
+
+### Changed
+- `core/sidebar.php` — multisite menu items (Spoke Signals, Spoke Posts, Backup Dock, Fleet Stats, Cross-Post, Blogroll Sync) now visible on **any** install that's part of a multisite network, not just hubs. The 0.7.66/0.7.69 hub-only gate was correct under the old "features only work on hub" architecture, but with mesh foundation in 0.7.70 spokes will progressively gain access too as each feature is converted to peer-aware. Sidebar visibility is the entry point; per-page conversion is upcoming work and not in this commit. Clicking these on a spoke right now still hits the page-level `!== 'hub'` guard until each page is converted
+
 ## 0.7.70 — "Smack in the Middle" — mesh foundation (2026-05-08)
 
 First slice of mesh-mode (codename **Smack in the Middle**): every install

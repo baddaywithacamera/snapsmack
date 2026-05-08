@@ -59,12 +59,17 @@ if (file_exists($manifest_path)) {
 }
 
 $active_skin_path = $theme_base . $colour_css_file;
+
+// Buffer the entire admin page so admin-footer.php can auto-inject CSRF
+// tokens into every <form method="POST"> before flushing to the browser.
+ob_start();
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php require_once __DIR__ . '/csrf.php'; csrf_meta_tag(); ?>
     <title><?php echo $page_title ?? 'Admin'; ?> | SnapSmack</title>
 
     <link rel="stylesheet" href="assets/css/admin-theme-geometry-master.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
