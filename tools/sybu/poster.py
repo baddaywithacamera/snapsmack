@@ -181,7 +181,7 @@ class SnapSmackClient:
     # ------------------------------------------------------------------
 
     def fetch_site_data(self) -> SiteData:
-        if not self.api_key:
+        if not self._api_key:
             raise RuntimeError("No API key configured.")
 
         data = SiteData()

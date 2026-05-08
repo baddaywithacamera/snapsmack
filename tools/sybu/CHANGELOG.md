@@ -15,10 +15,17 @@ Same versioning scheme as SnapSmack (0.7.9x). Letter increments per SYBU release
 
 ---
 
+## 0.7.9i — Fix attribute name typo in api-key check (2026-05-08)
+
+### Fixed
+- `poster.py` — `fetch_site_data()` still raised `AttributeError` after the 0.7.9h fix, this time for `'SnapSmackClient' object has no attribute 'api_key'`. The constructor stores the key as `self._api_key` (underscore prefix); 0.7.9h checked `self.api_key` instead. One-character typo. Now correctly references `self._api_key`.
+
+---
+
 ## 0.7.9h — Drop legacy `_logged_in` check (2026-05-08)
 
 ### Fixed
-- `poster.py` — `fetch_site_data()` raised `AttributeError: 'SnapSmackClient' object has no attribute '_logged_in'` immediately after a successful API-key auth. The `_logged_in` flag was a leftover from session-auth days; `login()` no longer sets it (and `login()` itself is gone). Replaced the check with a simple `if not self.api_key` so the client validates that the key was supplied at construction without referencing a deleted attribute.
+- `poster.py` — `fetch_site_data()` raised `AttributeError: 'SnapSmackClient' object has no attribute '_logged_in'` immediately after a successful API-key auth. The `_logged_in` flag was a leftover from session-auth days; `login()` no longer sets it (and `login()` itself is gone). Replaced the check with a simple `if not self._api_key` so the client validates that the key was supplied at construction without referencing a deleted attribute.
 
 ---
 
