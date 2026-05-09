@@ -147,6 +147,27 @@ foreach ($all_pages as $pg) {
     ];
 }
 
+// ── ALBUMS, CATEGORIES, COLLECTIONS POOLS ─────────────────────────────────
+// Collections: only those with is_visible=1 surface in the public-nav pool.
+// Hidden collections still appear in the admin elsewhere but cannot be added
+// to the public navigation (they would dead-end visitors at /collection.php).
+$album_items = [];
+$category_items = [];
+$collection_items = [];
+try {
+    foreach ($pdo->query("SELECT id, album_name FROM snap_albums ORDER BY album_name ASC")->fetchAll(PDO::FETCH_ASSOC) as $a) {
+        $album_items[] = ['id' => 'album_' . $a['id'], 'type' => 'album', 'label' => strtoupper($a['album_name']), 'ref_id' => (int)$a['id']];
+    }
+    foreach ($pdo->query("SELECT id, cat_name FROM snap_categories ORDER BY cat_name ASC")->fetchAll(PDO::FETCH_ASSOC) as $c) {
+        $category_items[] = ['id' => 'cat_' . $c['id'], 'type' => 'category', 'label' => strtoupper($c['cat_name']), 'ref_id' => (int)$c['id']];
+    }
+    foreach ($pdo->query("SELECT id, name, slug FROM snap_collections WHERE is_visible = 1 ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC) as $col) {
+        $collection_items[] = ['id' => 'coll_' . $col['id'], 'type' => 'collection', 'label' => strtoupper($col['name']), 'ref_id' => (int)$col['id'], 'slug' => $col['slug']];
+    }
+} catch (PDOException $e) {
+    // Tables may be missing on first load before migrations run. Pools stay empty.
+}
+
 // ── RENDER ────────────────────────────────────────────────────────────────
 $page_title = "Menu Manager";
 $current_page = 'smack-menu.php';

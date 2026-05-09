@@ -698,6 +698,8 @@ CREATE TABLE IF NOT EXISTS `snap_collections` (
   `featured_post_id` INT UNSIGNED  DEFAULT NULL
                      COMMENT 'Hero image source — NULL falls back to most recent member post',
   `sort_order`       INT           NOT NULL DEFAULT 0,
+  `is_visible`       TINYINT       NOT NULL DEFAULT 0
+                     COMMENT '0=hidden from public, 1=live (v0.2)',
   `created_at`       TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`       TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -707,9 +709,9 @@ CREATE TABLE IF NOT EXISTS `snap_collections` (
 CREATE TABLE IF NOT EXISTS `snap_collection_items` (
   `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `collection_id` INT UNSIGNED NOT NULL,
-  `item_type`     ENUM('post','album','category') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `item_type`     ENUM('image') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'image' COMMENT 'v0.2: image-only',
   `item_id`       INT UNSIGNED NOT NULL
-                  COMMENT 'ID in snap_posts, snap_albums, or snap_categories respectively',
+                  COMMENT 'snap_images.id (v0.2 image-only)',
   `sort_order`    INT          NOT NULL DEFAULT 0,
   `added_at`      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),

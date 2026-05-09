@@ -775,6 +775,12 @@ return [
                 ],
             ]
         ],
+        'smack-archive-toggle' => [
+            'label'        => 'Archive Layout Toggle (in-place T/M switch + hotkeys)',
+            'path'         => 'assets/js/ss-engine-archive-toggle.js',
+            'has_settings' => false,
+            'admin_page'   => 'archive',
+        ],
         'smack-lazyload' => [
             'label'        => 'Lazy Loading Engine (Progressive image loading)',
             'path'         => 'assets/js/ss-engine-lazyload.js',

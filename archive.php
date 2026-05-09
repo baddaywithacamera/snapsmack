@@ -77,44 +77,78 @@ try {
         header('Location: ' . $base);
         exit;
     }
-    if (!in_array($archive_layout_default, ['square', 'cropped', 'masonry', 'croppedwithcalendar'])) {
-        $archive_layout_default = 'square';
+
+    // ── 0.7.79 layout model ───────────────────────────────────────────────
+    // Layouts collapsed from 4-way (square/cropped/croppedwithcalendar/masonry)
+    // to 2-way (thumbs/masonry). Thumb style (square or cropped) is admin's
+    // choice and applies whenever layout=thumbs. Calendar is independent of
+    // layout — its own enable + open state, overlays on either layout.
+    //
+    // Pre-0.7.79 settings still exist in DB as fallbacks; migration 056
+    // populates the new keys. Old ?layout= URL params are backwards-compat'd
+    // below.
+    $archive_thumb_style          = $settings['archive_thumb_style']          ?? 'cropped';
+    $archive_calendar_enabled     = !empty($settings['archive_calendar_enabled']);
+    $archive_calendar_default_open = !empty($settings['archive_calendar_default_open']);
+    $archive_show_layout_toggle   = isset($settings['archive_show_layout_toggle'])
+                                    ? !empty($settings['archive_show_layout_toggle'])
+                                    : true;
+    if (!in_array($archive_thumb_style, ['square', 'cropped'], true)) {
+        $archive_thumb_style = 'cropped';
     }
 
-    // Which modes the owner has offered to visitors.
-    // Canonical order enforced regardless of how they were saved in the DB:
-    // square → cropped → croppedwithcalendar → masonry
-    $_canonical_order = ['square', 'cropped', 'croppedwithcalendar', 'masonry'];
-    $available_raw    = $settings['archive_layouts_available'] ?? $archive_layout_default;
-    $_enabled         = array_flip(array_filter(
-        array_map('trim', explode(',', $available_raw)),
-        fn($m) => in_array($m, $_canonical_order)
-    ));
-    $available_modes  = array_values(array_filter($_canonical_order, fn($m) => isset($_enabled[$m])));
-    unset($_canonical_order, $_enabled);
-    if (empty($available_modes)) $available_modes = [$archive_layout_default];
-    // croppedwithcalendar is unconditional — same policy as Archive Appearance admin page.
-    // If the skin lacks the calendar engine it degrades gracefully to cropped grid.
-    if (!in_array($archive_layout_default, $available_modes)) {
-        $available_modes[] = $archive_layout_default;
+    // Normalise default layout to thumbs|masonry.
+    if (in_array($archive_layout_default, ['square', 'cropped', 'croppedwithcalendar'], true)) {
+        $archive_layout_default = 'thumbs';
+    }
+    if (!in_array($archive_layout_default, ['thumbs', 'masonry'], true)) {
+        $archive_layout_default = 'thumbs';
     }
 
-    // Accept visitor ?layout= override only if it's in the allowed set.
-    // Falls back to the smack_archive_layout cookie (set by the toggle script
-    // below) so revisiting bare /archive.php remembers the last chosen layout
-    // — no JS redirect, no visible flash from re-rendering.
+    // Available layouts (just thumbs+masonry now). Toggle visibility comes
+    // from the show_layout_toggle setting, not the count.
+    $available_modes = ['thumbs', 'masonry'];
+
+    // Resolve current layout from URL → cookie → default.
+    // Backwards-compat: old ?layout=square / cropped → thumbs.
+    //                  old ?layout=croppedwithcalendar → thumbs + force calendar open.
     $layout_override = $_GET['layout'] ?? '';
-    if ($layout_override === '' && isset($_COOKIE['smack_archive_layout'])) {
-        $layout_override = $_COOKIE['smack_archive_layout'];
+    $force_calendar_open = false;
+    if ($layout_override === 'croppedwithcalendar') {
+        $layout_override = 'thumbs';
+        $force_calendar_open = true;
+    } elseif (in_array($layout_override, ['square', 'cropped'], true)) {
+        $layout_override = 'thumbs';
     }
-    $archive_layout  = (in_array($layout_override, $available_modes))
-                       ? $layout_override
-                       : $archive_layout_default;
+    if ($layout_override === '' && isset($_COOKIE['smack_archive_layout'])) {
+        $cookie_val = $_COOKIE['smack_archive_layout'];
+        // Tolerate legacy cookie values from pre-0.7.79.
+        if (in_array($cookie_val, ['square', 'cropped', 'croppedwithcalendar'], true)) {
+            $cookie_val = 'thumbs';
+        }
+        if (in_array($cookie_val, ['thumbs', 'masonry'], true)) {
+            $layout_override = $cookie_val;
+        }
+    }
+    $archive_layout = in_array($layout_override, $available_modes, true)
+                      ? $layout_override
+                      : $archive_layout_default;
+
+    // Resolve calendar open state. Disabled outright if admin off.
+    $archive_calendar_open = false;
+    if ($archive_calendar_enabled) {
+        if ($force_calendar_open) {
+            $archive_calendar_open = true;
+        } elseif (isset($_COOKIE['smack_archive_calendar'])) {
+            $archive_calendar_open = ($_COOKIE['smack_archive_calendar'] === 'open');
+        } else {
+            $archive_calendar_open = $archive_calendar_default_open;
+        }
+    }
 
     // archive.php renders its own toggle only when no skin-specific archive-layout.php exists.
-    // Skins with their own archive-layout.php handle the toggle themselves.
     $skin_archive_file = __DIR__ . '/skins/' . $active_skin . '/archive-layout.php';
-    $offer_toggle = (count($available_modes) > 1) && !file_exists($skin_archive_file);
+    $offer_toggle = $archive_show_layout_toggle && !file_exists($skin_archive_file);
 
     // --- THUMBNAIL SIZE RESOLUTION ---
     // Maps abstract 5-step scale (xs, s, m, l, xl) to pixel values.
@@ -135,8 +169,13 @@ try {
         else $thumb_step = 'xl';
     }
     if (!in_array($thumb_step, ['xs', 's', 'm', 'l', 'xl'])) $thumb_step = 'm';
-    // croppedwithcalendar renders the same grid as cropped
-    $grid_layout = ($archive_layout === 'croppedwithcalendar') ? 'cropped' : $archive_layout;
+    // 0.7.79: thumbs layout renders as square OR cropped grid based on admin's
+    // archive_thumb_style setting. Masonry is masonry. Calendar is overlay.
+    if ($archive_layout === 'thumbs') {
+        $grid_layout = $archive_thumb_style; // 'square' or 'cropped'
+    } else {
+        $grid_layout = $archive_layout; // 'masonry'
+    }
     $thumb_px = $thumb_size_map[$grid_layout][$thumb_step] ?? $thumb_size_map['square']['m'];
 
     // Justified row target height for masonry layout
@@ -414,39 +453,63 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             </div>
         </div>
 
-        <?php if ($offer_toggle): ?>
-        <div class="archive-layout-toggle" role="group" aria-label="Layout">
-            <?php
-            $toggle_labels = ['square' => 'Grid', 'cropped' => 'Crop', 'masonry' => 'Flow', 'croppedwithcalendar' => 'Cal'];
-            foreach ($available_modes as $mode):
-                $is_active = ($mode === $archive_layout);
-                // Build URL preserving existing query params except layout.
-                $qp = $_GET;
-                $qp['layout'] = $mode;
-                unset($qp['q']); // don't conflict with search — reset to all on layout switch
-                unset($qp['cat']); unset($qp['album']); unset($qp['date']); unset($qp['from']); unset($qp['to']);
-                $qs = http_build_query($qp);
-            ?>
-                <a href="archive.php?<?php echo $qs; ?>"
-                   class="alt-btn<?php echo $is_active ? ' alt-btn--active' : ''; ?>"
-                   data-layout="<?php echo htmlspecialchars($mode); ?>">
-                    <?php echo $toggle_labels[$mode] ?? strtoupper($mode); ?>
-                </a>
-            <?php endforeach; ?>
+        <?php if ($offer_toggle || $archive_calendar_enabled): ?>
+        <div class="archive-controls" role="group" aria-label="Archive controls">
+            <?php if ($offer_toggle): ?>
+            <div class="archive-layout-toggle" role="group" aria-label="Layout">
+                <?php
+                $tm_labels = ['thumbs' => 'Thumbs', 'masonry' => 'Masonry'];
+                foreach (['thumbs', 'masonry'] as $mode):
+                    $is_active = ($mode === $archive_layout);
+                    $qp = $_GET;
+                    $qp['layout'] = $mode;
+                    unset($qp['q']);
+                    unset($qp['cat']); unset($qp['album']); unset($qp['date']); unset($qp['from']); unset($qp['to']);
+                    $qs = http_build_query($qp);
+                ?>
+                    <a href="archive.php?<?php echo $qs; ?>"
+                       class="alt-btn<?php echo $is_active ? ' alt-btn--active' : ''; ?>"
+                       data-layout="<?php echo htmlspecialchars($mode); ?>">
+                        <?php echo $tm_labels[$mode]; ?>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+            <?php if ($archive_calendar_enabled): ?>
+            <button type="button"
+                    class="alt-btn archive-calendar-toggle<?php echo $archive_calendar_open ? ' alt-btn--active' : ''; ?>"
+                    aria-pressed="<?php echo $archive_calendar_open ? 'true' : 'false'; ?>"
+                    aria-label="Toggle calendar"
+                    data-calendar-toggle="1">
+                Calendar
+            </button>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
         <script>
-        // Persist layout preference in BOTH a cookie (for server-side
-        // resolution next request — no flash) and localStorage (for cross-tab
-        // sync within the same session). The server reads the cookie above
-        // when no ?layout= is on the URL, so we never need the JS-redirect
-        // pattern that caused the visible "blip back to cropped" before.
+        // 0.7.79 archive layout/calendar persistence.
+        // Server reads cookies before rendering — no JS redirect, no flash.
+        // localStorage mirror is kept for cross-tab sync.
         (function() {
-            var current = <?php echo json_encode($archive_layout); ?>;
-            try { localStorage.setItem('smack_archive_layout', current); } catch (e) {}
-            // Cookie: 1 year, root path, lax-same-site (default for navigation).
-            document.cookie = 'smack_archive_layout=' + encodeURIComponent(current) +
+            var layout      = <?php echo json_encode($archive_layout); ?>;
+            var calOpen     = <?php echo $archive_calendar_open ? 'true' : 'false'; ?>;
+            var calEnabled  = <?php echo $archive_calendar_enabled ? 'true' : 'false'; ?>;
+            try {
+                localStorage.setItem('smack_archive_layout', layout);
+                localStorage.setItem('smack_archive_calendar', calOpen ? 'open' : 'closed');
+            } catch (e) {}
+            // Cookies: 1 year, root path, lax-same-site.
+            document.cookie = 'smack_archive_layout=' + encodeURIComponent(layout) +
                               '; path=/; max-age=31536000; SameSite=Lax';
+            if (calEnabled) {
+                document.cookie = 'smack_archive_calendar=' + (calOpen ? 'open' : 'closed') +
+                                  '; path=/; max-age=31536000; SameSite=Lax';
+            }
+            // Body attributes drive CSS visibility for the calendar panel.
+            // ss-engine-archive-toggle.js reads/writes these to do in-place
+            // toggling without page reload.
+            document.documentElement.setAttribute('data-archive-layout', layout);
+            document.documentElement.setAttribute('data-archive-calendar', calOpen ? 'open' : 'closed');
         }());
         </script>
 
@@ -621,6 +684,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
     <?php if ($skin_show_archive_filter): ?>
     <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-archive-filter.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
     <?php endif; ?>
+    <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-archive-toggle.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
     <?php include __DIR__ . '/core/footer-scripts.php'; ?>
 
 

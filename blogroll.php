@@ -99,10 +99,30 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                     <p class="dim">The network is currently offline. No peers found.</p>
 
                 <?php else:
-                    // --- PEER GROUPING ---
-                    // Organize peers into an associative array keyed by category name
-                    $grouped = [];
+                    // --- PEER GROUPING + DEDUP (0.7.79) ---
+                    // Organize peers into an associative array keyed by category name.
+                    // Dedup by lowercased URL across ALL sections — when a URL appears
+                    // in both a local category AND a hub-synced category, the first
+                    // occurrence wins and subsequent ones are silently dropped.
+                    // Local entries (source_hub_url IS NULL) are returned first by
+                    // category-name sort if "" sorts before any "Hub: ..." string,
+                    // but we explicitly prefer local just in case.
+                    $grouped     = [];
+                    $seen_urls   = [];
+                    // First pass: index local-only entries.
                     foreach ($peers as $p) {
+                        $url_key = strtolower(trim((string)($p['url'] ?? '')));
+                        if ($url_key === '' || isset($seen_urls[$url_key])) continue;
+                        if (!empty($p['source_hub_url'])) continue; // skip hub-synced for first pass
+                        $seen_urls[$url_key] = true;
+                        $cat = $p['cat_name'] ?: 'UNCATEGORIZED';
+                        $grouped[$cat][] = $p;
+                    }
+                    // Second pass: add hub-synced entries that aren't already shown.
+                    foreach ($peers as $p) {
+                        $url_key = strtolower(trim((string)($p['url'] ?? '')));
+                        if ($url_key === '' || isset($seen_urls[$url_key])) continue;
+                        $seen_urls[$url_key] = true;
                         $cat = $p['cat_name'] ?: 'UNCATEGORIZED';
                         $grouped[$cat][] = $p;
                     }

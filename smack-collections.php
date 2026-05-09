@@ -1,11 +1,18 @@
 <?php
 /**
- * SNAPSMACK - Collections management
+ * SNAPSMACK - Collections management (v0.2 — image-only print folios)
  *
- * Collections are heterogeneous parent containers — they hold posts, albums,
- * and categories in any combination. Membership is live: member albums and
- * categories resolve to their current posts at render time.
- * Managed here; wired into skins when skin work begins.
+ * v0.2 (0.7.79+): a collection is a hand-curated set of individual images,
+ * capped at 30. No more albums-as-members or categories-as-members. Members
+ * are snapshots, not live-resolved. Per-collection visibility toggle gates
+ * public exposure. See _spec/collections-v0_2.md.
+ *
+ * Schema: snap_collections has is_visible TINYINT (0=hidden, 1=live).
+ *         snap_collection_items.item_type ENUM is narrowed to ('image').
+ *         item_id references snap_images.id.
+ *
+ * Hard cap: 30 members per collection, enforced server-side here AND at
+ * the DB layer (UNIQUE KEY prevents dups; ENUM rejects non-'image').
  */
 
 /**
@@ -40,41 +47,26 @@ $is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
 if ($is_ajax && !empty($_POST['action'])) {
     header('Content-Type: application/json');
 
-    // Picker: search posts / albums / categories
+    // Picker: search images only (v0.2)
     if ($_POST['action'] === 'search_items') {
-        $type = $_POST['type'] ?? 'post';
-        $q    = '%' . trim($_POST['q'] ?? '') . '%';
+        $q       = '%' . trim($_POST['q'] ?? '') . '%';
         $coll_id = (int)($_POST['collection_id'] ?? 0);
 
-        if ($type === 'post') {
-            $rows = $pdo->prepare(
-                "SELECT i.id, i.img_title AS name, i.img_date AS created_at,
-                        i.img_thumb_square AS thumb
-                 FROM snap_images i
-                 WHERE i.img_status = 'published' AND i.img_title LIKE ?
-                 ORDER BY i.img_date DESC LIMIT 60"
-            );
-            $rows->execute([$q]);
-        } elseif ($type === 'album') {
-            $rows = $pdo->prepare(
-                "SELECT id, album_name AS name, NULL AS thumb
-                 FROM snap_albums WHERE album_name LIKE ? ORDER BY album_name LIMIT 60"
-            );
-            $rows->execute([$q]);
-        } else {
-            $rows = $pdo->prepare(
-                "SELECT id, cat_name AS name, NULL AS thumb
-                 FROM snap_categories WHERE cat_name LIKE ? ORDER BY cat_name LIMIT 60"
-            );
-            $rows->execute([$q]);
-        }
+        $rows = $pdo->prepare(
+            "SELECT i.id, i.img_title AS name, i.img_date AS created_at,
+                    i.img_thumb_square AS thumb
+             FROM snap_images i
+             WHERE i.img_status = 'published' AND i.img_title LIKE ?
+             ORDER BY i.img_date DESC LIMIT 60"
+        );
+        $rows->execute([$q]);
         $items = $rows->fetchAll(PDO::FETCH_ASSOC);
 
         // Mark already-added items
         $already = [];
         if ($coll_id > 0) {
-            $ai = $pdo->prepare("SELECT item_id FROM snap_collection_items WHERE collection_id=? AND item_type=?");
-            $ai->execute([$coll_id, $type]);
+            $ai = $pdo->prepare("SELECT item_id FROM snap_collection_items WHERE collection_id=? AND item_type='image'");
+            $ai->execute([$coll_id]);
             $already = array_column($ai->fetchAll(PDO::FETCH_ASSOC), 'item_id');
         }
         foreach ($items as &$it) { $it['added'] = in_array($it['id'], $already); }
@@ -83,32 +75,55 @@ if ($is_ajax && !empty($_POST['action'])) {
         exit;
     }
 
-    // Add item to collection
+    // Add image to collection (v0.2 — image-only, hard cap 30)
     if ($_POST['action'] === 'add_item') {
         $coll_id   = (int)$_POST['collection_id'];
-        $item_type = in_array($_POST['item_type'] ?? '', ['post','album','category']) ? $_POST['item_type'] : 'post';
         $item_id   = (int)$_POST['item_id'];
 
-        if ($coll_id && $item_id) {
-            $max = $pdo->prepare("SELECT COALESCE(MAX(sort_order),0)+1 FROM snap_collection_items WHERE collection_id=?");
-            $max->execute([$coll_id]);
-            $next = (int)$max->fetchColumn();
-
-            $pdo->prepare(
-                "INSERT IGNORE INTO snap_collection_items (collection_id, item_type, item_id, sort_order) VALUES (?,?,?,?)"
-            )->execute([$coll_id, $item_type, $item_id, $next]);
+        if ($coll_id <= 0 || $item_id <= 0) {
+            echo json_encode(['ok' => false, 'error' => 'Bad request.']);
+            exit;
         }
-        echo json_encode(['ok' => true]);
+
+        // Hard cap: 30 images per collection. Reject the 31st add.
+        $count = $pdo->prepare("SELECT COUNT(*) FROM snap_collection_items WHERE collection_id=?");
+        $count->execute([$coll_id]);
+        $current = (int)$count->fetchColumn();
+        if ($current >= 30) {
+            echo json_encode([
+                'ok' => false,
+                'error' => 'Collection is full (30/30). Remove an image before adding another.',
+                'cap_reached' => true,
+            ]);
+            exit;
+        }
+
+        // Verify the image exists and is published.
+        $img = $pdo->prepare("SELECT id FROM snap_images WHERE id=? AND img_status='published'");
+        $img->execute([$item_id]);
+        if (!$img->fetchColumn()) {
+            echo json_encode(['ok' => false, 'error' => 'Image not found or not published.']);
+            exit;
+        }
+
+        $max = $pdo->prepare("SELECT COALESCE(MAX(sort_order),0)+1 FROM snap_collection_items WHERE collection_id=?");
+        $max->execute([$coll_id]);
+        $next = (int)$max->fetchColumn();
+
+        $pdo->prepare(
+            "INSERT IGNORE INTO snap_collection_items (collection_id, item_type, item_id, sort_order) VALUES (?,'image',?,?)"
+        )->execute([$coll_id, $item_id, $next]);
+
+        echo json_encode(['ok' => true, 'count' => $current + 1, 'cap' => 30]);
         exit;
     }
 
-    // Remove item from collection
+    // Remove image from collection (v0.2)
     if ($_POST['action'] === 'remove_item') {
-        $coll_id   = (int)$_POST['collection_id'];
-        $item_type = in_array($_POST['item_type'] ?? '', ['post','album','category']) ? $_POST['item_type'] : 'post';
-        $item_id   = (int)$_POST['item_id'];
-        $pdo->prepare("DELETE FROM snap_collection_items WHERE collection_id=? AND item_type=? AND item_id=?")
-            ->execute([$coll_id, $item_type, $item_id]);
+        $coll_id = (int)$_POST['collection_id'];
+        $item_id = (int)$_POST['item_id'];
+        $pdo->prepare("DELETE FROM snap_collection_items WHERE collection_id=? AND item_type='image' AND item_id=?")
+            ->execute([$coll_id, $item_id]);
         echo json_encode(['ok' => true]);
         exit;
     }
@@ -123,6 +138,16 @@ if ($is_ajax && !empty($_POST['action'])) {
             )->execute([$pos, $coll_id, $entry[0], $entry[1]]);
         }
         echo json_encode(['ok' => true]);
+        exit;
+    }
+
+    // Toggle collection visibility (v0.2 — LIVE / HIDDEN)
+    if ($_POST['action'] === 'toggle_visibility') {
+        $coll_id = (int)$_POST['collection_id'];
+        $vis     = !empty($_POST['is_visible']) ? 1 : 0;
+        $pdo->prepare("UPDATE snap_collections SET is_visible=? WHERE id=?")
+            ->execute([$vis, $coll_id]);
+        echo json_encode(['ok' => true, 'is_visible' => $vis]);
         exit;
     }
 

@@ -13,6 +13,39 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.79 — "Cross-Legged" Collections v0.2 + Archive layout/calendar decoupling (2026-05-09)
+
+### Added
+- **Collections v0.2 (image-only print folios).** Migration 055 narrows `snap_collection_items.item_type` ENUM to `('image')` and converts existing `'post'` rows to `'image'` via `snap_images.post_id` mapping; orphaned/album/category rows are deleted with reported counts. Adds `snap_collections.is_visible TINYINT` (defaults to 0 — existing collections start hidden until the admin re-curates as individual images and flips them live). Hard cap of 30 images per collection enforced in `smack-collections.php` `add_item` AJAX handler. Per spec `_spec/collections-v0_2.md`.
+- **Public collection landing page — `collection.php`.** URL `/collection.php?slug=...`. Renders only if `is_visible = 1` (404 otherwise). H1 + description + featured image hero + member grid in curator sort_order. Each tile clicks through to the single-image page.
+- **Public collections index page — `collections.php`.** Lists all visible collections as a tile grid. Sort toggle: Manual (sort_order) / A→Z / Newest / Oldest. Visitor's sort choice cookied (`smack_collections_sort`) for a year. Single or double row layout via new `collections_index_rows` setting (admin: 1 or 2; default 1).
+- **Hard 30-image cap, server-side enforced.** `smack-collections.php` `add_item` returns `{ ok: false, cap_reached: true }` on the 31st add. DB-level `UNIQUE KEY` on `(collection_id, item_type, item_id)` prevents dupes; ENUM narrowing rejects non-image inserts at the DB layer too.
+- **Per-collection visibility toggle.** New `toggle_visibility` AJAX action in `smack-collections.php`. Hidden collections excluded from `collection.php` (404), `collections.php` (filtered out), and Menu Manager pool (admin can't add a hidden collection to the public nav).
+- **`ss-engine-archive-toggle.js` (new engine).** In-place T/M layout switching with `history.pushState`, AJAX grid swap, cookie persistence. Hotkey support: T = Thumbs, M = Masonry. Replaces the full-page reload pattern that caused the visible "blip" between layouts. Registered as `smack-archive-toggle` in `core/manifest-inventory.php`; loaded automatically on `archive.php`.
+- **Calendar decoupled from layout.** Calendar is no longer a pseudo-layout (`croppedwithcalendar`); it's an independent on/off panel that overlays on either Thumbs or Masonry. Migration 056 promotes `archive_calendar_enabled` and `archive_calendar_default_open` to first-class settings. Cookie `smack_archive_calendar = open|closed` persists open state for a year.
+- **Archive hotkey: C — toggle calendar.** Wired in `ss-engine-calendar.js` alongside the calendar button click handler. Only fires when calendar is admin-enabled (no toggle button = no hotkey, same pattern as comments / download / archive layout).
+- **F1 help modal updated** to list T / M / C archive hotkeys when their controls are present on the current page — same feature-detection pattern that already gates `[2] Toggle Comments` and `[D] Download`.
+
+### Changed
+- **Archive layout vocabulary collapsed.** Old 4-way layouts (`square` / `cropped` / `croppedwithcalendar` / `masonry`) reduced to 2-way (`thumbs` / `masonry`). Thumb style (`square` or `cropped`) is now an independent admin choice via `archive_thumb_style` and applies whenever layout = thumbs, regardless of which skin is active. Old URL params (`?layout=square`, `?layout=cropped`, `?layout=croppedwithcalendar`) auto-redirect to the new model. Migration 056 maps existing settings to the new keys.
+- **Calendar engine — in-place toggle, no navigation.** `closePanel()` no longer navigates to a fallback layout URL. The calendar panel slides out, sets `<html data-archive-calendar="closed">`, updates the cookie, and stays on the current page. Same for `open()`. URLs from date-clicks no longer pin `?layout=croppedwithcalendar` either — server uses the cookie + admin defaults.
+- **Archive Appearance admin (`smack-appearance-archive.php`)** simplified. Old "Offer Visitors a Layout Switch?" four-checkbox grid replaced with: `DEFAULT LAYOUT` (Thumbs/Masonry/Disabled), `THUMB STYLE` (Cropped/Square), `VISITOR CONTROLS` (toggle thumbs↔masonry checkbox + enable calendar checkbox + calendar starts open checkbox).
+- **`smack-collections.php` `search_items` is image-only** — the album and category branches are gone, matching the v0.2 schema narrowing. Picker queries `snap_images` directly with `img_status = 'published'` filter.
+
+### Fixed
+- **Blogroll dedup across categories.** When a peer URL appeared in both a local category AND a hub-synced category, both entries rendered — visitors saw "Away With A Camera" and "Rick McGinnis Photographs" listed twice on photowalk.ing. `blogroll.php` now dedupes by lowercased URL across all sections; first occurrence wins, with a deliberate two-pass that prefers locally-added entries over hub-synced when both exist.
+- **Menu Manager pool gates hidden collections.** Previously the pool query for collections was missing entirely (variable `$collection_items` was referenced but never populated, so the pool was always empty). Now populated with `WHERE is_visible = 1` so admin can drag visible collections into the nav but hidden ones never surface.
+
+### Schema
+- Migration 055 — collections v0.2 (ENUM narrow, drop non-image rows, add is_visible)
+- Migration 056 — archive layout simplification (new keys: `archive_thumb_style`, `archive_calendar_enabled`, `archive_calendar_default_open`, `archive_show_layout_toggle`; legacy `archive_layouts_available` pinned to `thumbs,masonry`)
+- `snapsmack_canonical.sql` — `snap_collections.is_visible` and `snap_collection_items.item_type ENUM('image')` reflected
+
+### Migration notes
+- After updating each spoke, click **REPAIR** in *Maintenance → HTACCESS REPAIR* (Probe Guard rule shipped in 0.7.77 — still required if a spoke skipped that update).
+- Existing v0.1 collections lose their album/category members (re-curate as individual images). Existing collections also start hidden — admin flips visibility on after re-curating.
+- Old archive bookmarks (`?layout=square`, `?layout=cropped`, `?layout=croppedwithcalendar`) auto-redirect to the new model. No 301 needed; the resolution happens server-side in `archive.php`.
+
 ## 0.7.78 — "Bench Press" SC tag-filter fix (2026-05-09)
 
 ### Fixed
