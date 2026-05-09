@@ -786,6 +786,15 @@ include 'core/sidebar.php';
 </style>
 
 <script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        if(typeof updateLabel === "function") {
+            updateLabel('cat');
+            updateLabel('album');
+            updateLabel('collection');
+        }
+    });
+</script>
 <script src="assets/js/shortcode-toolbar.js"></script>
 <script src="assets/js/ss-engine-carousel-post.js?v=<?php echo time(); ?>"></script>
 <?php include 'core/admin-footer.php'; ?>

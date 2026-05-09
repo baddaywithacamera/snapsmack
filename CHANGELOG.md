@@ -13,6 +13,19 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.78 — "Bench Press" SC tag-filter fix (2026-05-09)
+
+### Fixed
+- **Archive layout persistence is now flash-free and server-side.** Previously the layout choice (square / cropped / cropped-with-calendar / masonry) was kept in `localStorage` and a JS redirect re-loaded the page if the saved pref differed from what the server rendered. That caused a visible "blip back to cropped" between renders, and on some skins the redirect didn't fire at all. Switched to a `smack_archive_layout` cookie that the server reads in `archive.php` *before* selecting the layout, so bare `/archive.php` resolves to the right layout on first byte. JS still mirrors to localStorage for cross-tab sync. No more flash, no more "always comes back to cropped."
+- **Calendar panel background now matches the host skin automatically.** `ss-engine-calendar.css` extended its CSS variable fallback chain: panel-specific `--cal-*` hooks first, then the admin-overridable `--page-bg`, then the standard skin convention (`--bg-primary`, `--text-primary`, `--border-color`, `--accent-color`), then short legacy names, then hardcoded dark. Skins no longer need to declare `--cal-*` hooks individually — the calendar inherits whatever the skin already sets for its body and accent colours. Same applies to text, border, dim, and accent.
+- `smack-central/sc-update.php` — SC was pulling the wrong release tag because PHP's `version_compare`, after normalising trailing patch letters, was sorting `vSYBU-0.7.9i` (and other companion-tool tags) ABOVE the real SnapSmack release tags. Result: SC clicked UPDATE, downloaded a SYBU tag's repo zip, and overwrote `smack-central/` with files frozen at the SYBU commit — i.e. before the SC CSS daylight pass. Visible symptom: SC dashboard rendered with the OLD nested-comment-broken `sc-geometry.css` and `sc-colours.css` even after a successful "update." Filter now restricts the tag list to pure semver patterns (`v?\d+\.\d+\.\d+[a-z]?`) before sorting, so only SnapSmack release tags are considered.
+- `smack-central/sc-update.php` — also upgraded from legacy `// EOF` marker to long-form `// ===== SNAPSMACK EOF =====` and added the `SNAPSMACK_EOF_HEADER` block that the rest of the codebase uses, so `tools/check-eof.py` covers it consistently.
+- `smack-post-solo.php` and `smack-post-carousel.php` — added a `DOMContentLoaded` initialiser that calls `updateLabel('cat')`, `updateLabel('album')`, and `updateLabel('collection')` on page load. Without it, the multiselect placeholder spans rendered with their hardcoded mixed-case strings (`Select Albums...`, `Select Collections...`) instead of the all-caps form (`SELECT ALBUMS...`, `SELECT COLLECTIONS...`) used everywhere else in the admin. `smack-edit.php` already had this initialiser; the two post-creation pages were missing it.
+- `assets/adminthemes/purple-rain/admin-theme-colours-purple-rain.css` — `.nav-section-toggle` was set to `#00FFFF` (pure cyan), making the accordion section headers (THE GOOD SHIT, PIMP YOUR RIDE, BORING ASS STUFF, HELP I NEED SOMEBODY, SWITCH TO BIG WHEEL) render in cyan instead of magenta on the Purple Rain skin. Copy/paste leftover from another theme. Switched to `#FF00FF` to match the brand text and active-item colour.
+
+### Migration
+- **Smack Central self-update is currently broken on snapsmack.ca because the running `sc-update.php` has the bug it's supposed to fix.** Recover by SSH'ing into snapsmack.ca and overwriting the SC files manually from the v0.7.78 tag, OR by manually pulling just the two CSS files from raw GitHub. After the fix is in place, future SC updates work normally.
+
 ## 0.7.77 — "Sit Pretty" (2026-05-09)
 
 ### Added

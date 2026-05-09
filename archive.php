@@ -100,7 +100,13 @@ try {
     }
 
     // Accept visitor ?layout= override only if it's in the allowed set.
+    // Falls back to the smack_archive_layout cookie (set by the toggle script
+    // below) so revisiting bare /archive.php remembers the last chosen layout
+    // — no JS redirect, no visible flash from re-rendering.
     $layout_override = $_GET['layout'] ?? '';
+    if ($layout_override === '' && isset($_COOKIE['smack_archive_layout'])) {
+        $layout_override = $_COOKIE['smack_archive_layout'];
+    }
     $archive_layout  = (in_array($layout_override, $available_modes))
                        ? $layout_override
                        : $archive_layout_default;
@@ -430,18 +436,17 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
         </div>
         <?php endif; ?>
         <script>
-        // Persist layout preference in localStorage so it survives navigation.
-        // Runs regardless of whether this skin owns the toggle UI.
+        // Persist layout preference in BOTH a cookie (for server-side
+        // resolution next request — no flash) and localStorage (for cross-tab
+        // sync within the same session). The server reads the cookie above
+        // when no ?layout= is on the URL, so we never need the JS-redirect
+        // pattern that caused the visible "blip back to cropped" before.
         (function() {
-            var pref = localStorage.getItem('smack_archive_layout');
-            var avail = <?php echo json_encode($available_modes); ?>;
             var current = <?php echo json_encode($archive_layout); ?>;
-            // If no explicit ?layout= in URL but a pref exists, redirect to it.
-            if (pref && pref !== current && avail.indexOf(pref) !== -1 && !location.search.match(/layout=/)) {
-                location.replace('archive.php?layout=' + encodeURIComponent(pref));
-            } else {
-                localStorage.setItem('smack_archive_layout', current);
-            }
+            try { localStorage.setItem('smack_archive_layout', current); } catch (e) {}
+            // Cookie: 1 year, root path, lax-same-site (default for navigation).
+            document.cookie = 'smack_archive_layout=' + encodeURIComponent(current) +
+                              '; path=/; max-age=31536000; SameSite=Lax';
         }());
         </script>
 
