@@ -8,6 +8,14 @@
  * Safe to run repeatedly. sc-config.php is never touched.
  */
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
 require_once __DIR__ . '/sc-auth.php';
 require_once __DIR__ . '/sc-version.php';
 
@@ -76,6 +84,18 @@ $check_error     = '';
 
 $tags_data = $preflight_errors ? false : sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/tags?per_page=20');
 if (is_array($tags_data) && !empty($tags_data)) {
+    // Filter out non-SnapSmack release tags. SYBU and other companion tools
+    // tag with prefixes (vSYBU-*) that PHP's version_compare normalises in
+    // ways that can sort them above the real release tags. Only consider
+    // pure semver tags like v0.7.77 or 0.7.77.
+    $tags_data = array_values(array_filter($tags_data, function($t) {
+        $name = $t['name'] ?? '';
+        return (bool) preg_match('/^v?\d+\.\d+\.\d+[a-z]?$/i', $name);
+    }));
+    if (empty($tags_data)) {
+        // After filtering, no SnapSmack release tags found.
+        // Fall through; the empty check below will surface a clear error.
+    }
     // Sort tags by version descending — GitHub order is unreliable.
     // Normalises trailing patch letters (0.7.9k → 0.7.9.11) so version_compare works.
     $normalise_ver = function(string $v): string {
@@ -371,4 +391,4 @@ include __DIR__ . '/sc-layout-top.php';
 </style>
 
 <?php include __DIR__ . '/sc-layout-bottom.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

@@ -894,6 +894,15 @@ include 'core/sidebar.php';
 </div>
 
 <script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        if(typeof updateLabel === "function") {
+            updateLabel('cat');
+            updateLabel('album');
+            updateLabel('collection');
+        }
+    });
+</script>
 <script src="assets/js/shortcode-toolbar.js"></script>
 <?php if (snap_ai_configured()): ?>
 <!-- AI Assist Modal -->
