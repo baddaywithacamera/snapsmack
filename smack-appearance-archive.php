@@ -130,6 +130,9 @@ $show_layout_toggle    = isset($settings['archive_show_layout_toggle'])
                           : true;
 $calendar_enabled      = !empty($settings['archive_calendar_enabled']);
 $calendar_default_open = !empty($settings['archive_calendar_default_open']);
+$calendar_months       = max(1, min(6, (int)($settings['calendar_months'] ?? 1)));
+$collections_rows      = (int)($settings['collections_index_rows'] ?? 1);
+if ($collections_rows !== 2) $collections_rows = 1;
 
 // Note: archive_border_style / archive_shadow_depth removed — were saved but never consumed.
 
@@ -251,6 +254,25 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                                oninput="this.nextElementSibling.textContent = this.value + 'px'">
                         <span style="min-width:44px; font-family:monospace;"><?php echo $current_row_h; ?>px</span>
                     </div>
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>CALENDAR MONTHS <span class="field-tip" data-tip="How many months the calendar panel shows at once. Applies only when calendar is enabled.">ⓘ</span></label>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <input type="range" name="settings[calendar_months]"
+                               min="1" max="6" step="1"
+                               value="<?php echo $calendar_months; ?>"
+                               oninput="this.nextElementSibling.textContent = this.value">
+                        <span style="min-width:24px; font-family:monospace;"><?php echo $calendar_months; ?></span>
+                    </div>
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>COLLECTIONS INDEX ROWS <span class="field-tip" data-tip="How many tile rows to show on /collections (the public collections index page). 1 = horizontal scroll-style strip, 2 = stacked.">ⓘ</span></label>
+                    <select name="settings[collections_index_rows]">
+                        <option value="1" <?php echo $collections_rows === 1 ? 'selected' : ''; ?>>1 ROW</option>
+                        <option value="2" <?php echo $collections_rows === 2 ? 'selected' : ''; ?>>2 ROWS</option>
+                    </select>
                 </div>
 
             </div>
