@@ -181,7 +181,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                         <a href="smack-settings.php">Configuration</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-update.php') ? 'active' : ''; ?>">
-                        <a href="smack-update.php" onclick="if(typeof SnapUpdater!=='undefined'){event.preventDefault();SnapUpdater.open();}">System Updates</a>
+                        <a href="smack-update.php">System Updates</a>
                     </li>
                     <?php if ($_ui_pimpmobile): ?>
                     <li class="<?php echo ($current_page == 'smack-users.php') ? 'active' : ''; ?>">
@@ -214,10 +214,11 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-multisite.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite.php">Multisite Management</a>
                     </li>
-                    <?php if (($settings['multisite_role'] ?? '') === 'hub') : ?>
-                    <!-- Hub-only management tools. Each target page also enforces this with
-                         a multisite_role !== 'hub' guard, but hiding them here keeps spokes
-                         from seeing menu items that would dead-end on a "hub only" message. -->
+                    <?php if (!empty($settings['multisite_role'])) : ?>
+                    <!-- Multisite menu items. Visible on hubs and spokes once the install
+                         is part of any mesh network (multisite_role set). Individual pages
+                         still gate themselves per-feature; conversion of each page to mesh-
+                         aware acceptance is happening incrementally. -->
                     <li class="<?php echo ($current_page == 'smack-multisite-comments.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite-comments.php">Spoke Signals</a>
                     </li>
@@ -236,7 +237,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-multisite-blogroll.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite-blogroll.php">Blogroll Sync</a>
                     </li>
-                    <?php endif; // hub-only ?>
+                    <?php endif; // multisite menu ?>
                     <?php endif; // pimpmobile ?>
                 </ul>
             </div>

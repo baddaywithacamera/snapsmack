@@ -13,6 +13,19 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.76 — "Park It" (2026-05-08)
+
+### Fixed
+- `core/sidebar.php` — the System Updates link in the admin sidebar had an inline `onclick` interceptor that called `SnapUpdater.open()` to show a modal in-place. The modal was failing silently (object exists, `.open` is a function, but the call did nothing) so clicks were swallowed and nothing happened. Removed the interceptor entirely so the link now navigates straight to `smack-update.php`, which works correctly. The modal can be re-introduced later once the JS-side problem is diagnosed; this is the pragmatic fix to unbreak the workflow now.
+
+### Changed
+- `smack-central/assets/css/sc-colours.css` — daylight contrast pass on the Smack Central dark theme. Body bg `#141414`→`#1A1A1A`, box bg `#1A1A1A`→`#232323`, primary text `#cccccc`→`#EAEAEA`, dim text (the labels everywhere) `#888888`→`#BBBBBB` (was failing WCAG AA), borders `#2A2A2A`→`#3A3A3A`. Status colours softened slightly. SC pages were unreadable in bright rooms; now legible. Smack Central version bumped to 0.7.77 to invalidate browser/CF cache via the `?v=<SC_VERSION>` query string already on the link tags.
+
+## 0.7.75 — "Bench Press" (2026-05-08)
+
+### Fixed
+- `smack-central/assets/css/sc-geometry.css` and `sc-colours.css` — both files had a nested-comment line in the EOF_HEADER docblock: `/* foo /* bar */ baz */`. CSS comments don't nest — the first `*/` closes the first `/*`, leaving "baz */" as junk top-level CSS. Browsers usually error-recover, but some parsers don't, which can prevent the `:root` variable block below from registering. Symptom: text colour variables undefined, page renders unreadable on dim monitors. Rewrote both EOF_HEADER blocks in the multiline comment style sc-admin.css already uses
+
 ## 0.7.74 — "Easy Rider" (2026-05-08)
 
 ### Changed
