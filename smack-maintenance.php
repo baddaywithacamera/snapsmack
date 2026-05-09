@@ -587,14 +587,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 // Check individual critical sections
                 $checks = [
-                    'HTTPS redirect'    => 'RewriteCond %{HTTPS} !=on',
-                    'Clean URL router'  => 'RewriteRule ^([a-zA-Z0-9_-]+)$ index.php',
-                    'Security headers'  => 'X-Frame-Options',
-                    'Sensitive files'   => 'FilesMatch "(^\\.ht',
-                    'Core PHP blocking' => 'FilesMatch "^(db|auth|constants',
-                    'Directory listings' => 'Options -Indexes',
-                    'Asset caching'     => 'mod_expires.c',
-                    'GZIP compression'  => 'mod_deflate.c',
+                    'HTTPS redirect'         => 'RewriteCond %{HTTPS} !=on',
+                    'Proxy-aware HTTPS'      => 'X-Forwarded-Proto',
+                    'Clean URL router'       => 'RewriteRule ^([a-zA-Z0-9_-]+)$ index.php',
+                    'snap-in named route'    => 'RewriteRule ^snap-in$',
+                    'Security headers'       => 'X-Frame-Options',
+                    'Sensitive files'        => 'FilesMatch "(^\\.ht',
+                    'Core PHP blocking'      => 'FilesMatch "^(db|auth|constants',
+                    'Directory listings'     => 'Options -Indexes',
+                    'Probe Guard (auto-ban)' => 'probe-ban.php',
+                    'Asset caching'          => 'mod_expires.c',
+                    'GZIP compression'       => 'mod_deflate.c',
+                    'Custom error pages'     => 'ErrorDocument 404',
                 ];
                 foreach ($checks as $label => $needle) {
                     if (strpos($content, $needle) === false) {
@@ -643,76 +647,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $existing = rtrim($existing) . "\n";
             }
 
-            $snapsmack_rules = <<<'HTACCESS'
-
-# ─────────────────────────────────────────────────────────────
-# SNAPSMACK-HTACCESS-RULES
-# Do not remove the marker above — the installer and repair
-# tool use it to detect whether these rules are present.
-# ─────────────────────────────────────────────────────────────
-
-# ─── FORCE HTTPS ─────────────────────────────────────────────
-RewriteEngine On
-RewriteCond %{HTTPS} !=on
-RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
-
-# ─── PHP LIMITS ──────────────────────────────────────────────
-php_value upload_max_filesize 64M
-php_value post_max_size 64M
-php_value memory_limit 128M
-php_value max_execution_time 120
-
-# ─── CLEAN URL ROUTER ────────────────────────────────────────
-RewriteBase /
-
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-
-RewriteRule ^archive$ archive.php [L,QSA]
-RewriteRule ^rss$ rss.php [L,QSA]
-RewriteRule ^feed$ rss.php [L,QSA]
-
-RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
-
-# ─── SECURITY HEADERS ────────────────────────────────────────
-<IfModule mod_headers.c>
-    Header always set X-Frame-Options "SAMEORIGIN"
-    Header always set X-Content-Type-Options "nosniff"
-    Header always set Referrer-Policy "strict-origin-when-cross-origin"
-</IfModule>
-
-# ─── BLOCK SENSITIVE FILES ───────────────────────────────────
-<FilesMatch "(^\.ht|\.sql$|\.log$|\.bak$|\.inc$|\.sh$|\.env$)">
-    Order Allow,Deny
-    Deny from all
-</FilesMatch>
-
-<FilesMatch "^(db|auth|constants|release-pubkey|updater|skin-registry|manifest-inventory)\.php$">
-    Order Allow,Deny
-    Deny from all
-</FilesMatch>
-
-# ─── NO DIRECTORY LISTINGS ───────────────────────────────────
-Options -Indexes
-
-# ─── STATIC ASSET CACHING ───────────────────────────────────
-<IfModule mod_expires.c>
-    ExpiresActive On
-    ExpiresByType image/jpeg "access plus 30 days"
-    ExpiresByType image/png "access plus 30 days"
-    ExpiresByType image/gif "access plus 30 days"
-    ExpiresByType image/webp "access plus 30 days"
-    ExpiresByType text/css "access plus 7 days"
-    ExpiresByType application/javascript "access plus 7 days"
-    ExpiresByType font/ttf "access plus 30 days"
-    ExpiresByType font/woff2 "access plus 30 days"
-</IfModule>
-
-# ─── GZIP COMPRESSION ───────────────────────────────────────
-<IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
-</IfModule>
-HTACCESS;
+            // Read canonical SnapSmack rules from core/htaccess-template.
+            // Single source of truth in git — edit the template, not this file.
+            $template_path = __DIR__ . '/core/htaccess-template';
+            if (!file_exists($template_path)) {
+                $log[] = 'ERROR: core/htaccess-template missing — cannot repair. '
+                       . 'Pull a fresh release package or restore from git.';
+                return;
+            }
+            $snapsmack_rules = "\n" . rtrim(file_get_contents($template_path)) . "\n";
 
             @file_put_contents($htaccess_path, $existing . $snapsmack_rules, LOCK_EX);
             $repaired[] = "Root .htaccess SnapSmack rules regenerated";
@@ -729,6 +672,26 @@ HTACCESS;
     }
 }
 
+
+    // HTACCESS VIEW — read-only display of .htaccess or template
+    if ($action === 'htaccess_view_live' || $action === 'htaccess_view_template') {
+        if ($action === 'htaccess_view_live') {
+            $htaccess_view_path  = __DIR__ . '/.htaccess';
+            $htaccess_view_label = 'Live .htaccess on this server';
+        } else {
+            $htaccess_view_path  = __DIR__ . '/core/htaccess-template';
+            $htaccess_view_label = 'core/htaccess-template (canonical rules in git)';
+        }
+        if (file_exists($htaccess_view_path)) {
+            $htaccess_view_content = file_get_contents($htaccess_view_path);
+        } else {
+            $log[] = "ERROR: " . htmlspecialchars($htaccess_view_path) . " not found.";
+            $htaccess_view_content = null;
+        }
+    }
+
+$htaccess_view_content = $htaccess_view_content ?? '';
+$htaccess_view_label = $htaccess_view_label ?? '';
 $page_title = "System Maintenance";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
@@ -829,7 +792,7 @@ include 'core/sidebar.php';
     <div class="dash-grid dash-grid-2 mt-30">
         <div class="box box-flex">
             <h3>HTACCESS DIAGNOSTICS</h3>
-            <p class="skin-desc-text">Verifies that root and upload directory .htaccess files contain all required SnapSmack rules — HTTPS, clean URLs, security headers, PHP blocking, caching, and compression.</p>
+            <p class="skin-desc-text">Verifies that root and upload directory .htaccess files contain all required SnapSmack rules — HTTPS, clean URLs, security headers, PHP blocking, Probe Guard, caching, and compression.</p>
             <form method="POST">
                 <input type="hidden" name="action" value="htaccess_check">
                 <button type="submit" class="btn-smack btn-block">RUN CHECK</button>
@@ -838,13 +801,38 @@ include 'core/sidebar.php';
 
         <div class="box box-flex">
             <h3>HTACCESS REPAIR</h3>
-            <p class="skin-desc-text">Strips any damaged SnapSmack block and writes a clean copy of all rules. Preserves any non-SnapSmack rules added by your host. Restores upload directory PHP execution block.</p>
+            <p class="skin-desc-text">Strips any damaged SnapSmack block and writes a clean copy of all rules from <code>core/htaccess-template</code>. Preserves any non-SnapSmack rules added by your host. Restores upload directory PHP execution block.</p>
             <form method="POST" onsubmit="return confirm('This will regenerate the SnapSmack .htaccess rules. Any manual edits inside the SnapSmack block will be replaced. Continue?')">
                 <input type="hidden" name="action" value="htaccess_repair">
                 <button type="submit" class="btn-smack btn-block">REPAIR</button>
             </form>
         </div>
+
+        <div class="box box-flex">
+            <h3>VIEW LIVE .HTACCESS</h3>
+            <p class="skin-desc-text">Shows the contents of this server's root <code>.htaccess</code> file. Read-only — useful for verifying what's actually deployed and comparing against the canonical template.</p>
+            <form method="POST">
+                <input type="hidden" name="action" value="htaccess_view_live">
+                <button type="submit" class="btn-smack btn-block">VIEW LIVE</button>
+            </form>
+        </div>
+
+        <div class="box box-flex">
+            <h3>VIEW TEMPLATE</h3>
+            <p class="skin-desc-text">Shows the canonical <code>core/htaccess-template</code> file shipped with SnapSmack. This is what REPAIR writes into the live <code>.htaccess</code>.</p>
+            <form method="POST">
+                <input type="hidden" name="action" value="htaccess_view_template">
+                <button type="submit" class="btn-smack btn-block">VIEW TEMPLATE</button>
+            </form>
+        </div>
     </div>
+
+    <?php if (!empty($htaccess_view_content)): ?>
+    <div class="box mt-30">
+        <h3><?php echo htmlspecialchars($htaccess_view_label); ?></h3>
+        <pre style="background:#0c0c0c;color:#cfcfcf;padding:14px;border-radius:4px;overflow:auto;max-height:560px;font-family:monospace;font-size:12px;line-height:1.5;border:1px solid #2a2a2a;"><?php echo htmlspecialchars($htaccess_view_content); ?></pre>
+    </div>
+    <?php endif; ?>
 </div>
 
 <?php include 'core/admin-footer.php'; ?>

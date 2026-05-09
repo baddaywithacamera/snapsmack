@@ -13,6 +13,23 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.77 — "Sit Pretty" (2026-05-09)
+
+### Added
+- **VIEW LIVE** and **VIEW TEMPLATE** buttons in *Boring Ass Stuff → Maintenance* — read-only display of the live `.htaccess` and the canonical `core/htaccess-template`. Useful for spotting drift between what's deployed and what should be there. No edits, just a `<pre>` block with monospace contents.
+- `core/htaccess-template` — canonical .htaccess rules now live in a tracked template file rather than a heredoc inside `smack-maintenance.php`. Single source of truth in git: edit the template, every site picks it up next time you click REPAIR. No more FTPing per-site .htaccess to add a rule.
+- **Probe Guard rule** added to the canonical template — routes scanner/exploit paths (`wp-login.php`, `xmlrpc.php`, `\.env`, `phpmyadmin`, `adminer`, `shell.php`, `c99.php`, etc.) to `probe-ban.php`, which logs a 30-day IP ban. This is what feeds the IP Smacker auto-ban list. Sites whose .htaccess pre-dates this rule see no auto-bans because the scanner traffic never reaches the counter — click REPAIR in System Maintenance to install the rule.
+- `snap-in` named route added to the canonical template — `/snap-in` resolves to `snap-in.php` directly, bypassing the catch-all router. Required by the customisable login slug feature.
+- **Proxy-aware HTTPS redirect** — `X-Forwarded-Proto` check added to the HTTPS redirect block. Prevents redirect loops behind Cloudflare Tunnel and other SSL-terminating reverse proxies that connect to origin over plain HTTP.
+- **Custom error pages** — `ErrorDocument 404 /error404.php` and `ErrorDocument 500 /error500.php` added to the template.
+
+### Changed
+- `smack-maintenance.php` HTACCESS DIAGNOSTICS now checks 12 sections (was 8): added Proxy-aware HTTPS, snap-in named route, Probe Guard, and Custom error pages. HTACCESS REPAIR rebuilds the SnapSmack block from the template instead of the embedded heredoc.
+- Core PHP file blocklist extended to include `login.php` (the legacy filename, still occasionally probed even though the live login is at `snap-in`).
+
+### Migration
+- After updating, click **REPAIR** in *Boring Ass Stuff → Maintenance → HTACCESS REPAIR* on each spoke. The repair preserves any non-SnapSmack rules already in your `.htaccess` and replaces only the SnapSmack block.
+
 ## 0.7.76 — "Park It" (2026-05-08)
 
 ### Fixed
