@@ -128,14 +128,23 @@ if ($is_ajax && !empty($_POST['action'])) {
         exit;
     }
 
-    // Reorder member list
+    // Reorder member list (v0.2 — image-only, supports both legacy
+    // [[type,id]] and new [id] payloads for transition).
     if ($_POST['action'] === 'reorder') {
         $coll_id = (int)$_POST['collection_id'];
-        $order   = json_decode($_POST['order'] ?? '[]', true); // [[type, id], ...]
+        $order   = json_decode($_POST['order'] ?? '[]', true);
+        if (!is_array($order)) $order = [];
         foreach ($order as $pos => $entry) {
+            // Legacy: [type, id]. New: scalar id, or [id].
+            if (is_array($entry)) {
+                $iid = (int)($entry[1] ?? $entry[0] ?? 0);
+            } else {
+                $iid = (int)$entry;
+            }
+            if ($iid <= 0) continue;
             $pdo->prepare(
-                "UPDATE snap_collection_items SET sort_order=? WHERE collection_id=? AND item_type=? AND item_id=?"
-            )->execute([$pos, $coll_id, $entry[0], $entry[1]]);
+                "UPDATE snap_collection_items SET sort_order=? WHERE collection_id=? AND item_type='image' AND item_id=?"
+            )->execute([$pos, $coll_id, $iid]);
         }
         echo json_encode(['ok' => true]);
         exit;
@@ -265,30 +274,19 @@ if (!empty($_GET['edit'])) {
         $items_raw->execute([$editing['id']]);
         $items_raw = $items_raw->fetchAll(PDO::FETCH_ASSOC);
 
-        // Enrich with display names / thumbs
+        // v0.2: enrich image-only members. Migration 055 narrowed the ENUM
+        // and converted/deleted any non-image rows.
         foreach ($items_raw as $item) {
             $enriched = $item;
-            if ($item['item_type'] === 'post') {
-                $r = $pdo->prepare(
-                    "SELECT i.img_title AS title, i.img_thumb_square AS thumb
-                     FROM snap_images i
-                     WHERE i.id=? LIMIT 1"
-                );
-                $r->execute([$item['item_id']]);
-                $row = $r->fetch(PDO::FETCH_ASSOC);
-                $enriched['display_name'] = $row['title'] ?? '(image ' . $item['item_id'] . ')';
-                $enriched['thumb']        = $row['thumb'] ?? null;
-            } elseif ($item['item_type'] === 'album') {
-                $r = $pdo->prepare("SELECT album_name FROM snap_albums WHERE id=?");
-                $r->execute([$item['item_id']]);
-                $enriched['display_name'] = ($r->fetchColumn() ?: '(album ' . $item['item_id'] . ')');
-                $enriched['thumb']        = null;
-            } else {
-                $r = $pdo->prepare("SELECT cat_name FROM snap_categories WHERE id=?");
-                $r->execute([$item['item_id']]);
-                $enriched['display_name'] = ($r->fetchColumn() ?: '(category ' . $item['item_id'] . ')');
-                $enriched['thumb']        = null;
-            }
+            $r = $pdo->prepare(
+                "SELECT i.img_title AS title, i.img_thumb_square AS thumb
+                 FROM snap_images i WHERE i.id=? LIMIT 1"
+            );
+            $r->execute([$item['item_id']]);
+            $row = $r->fetch(PDO::FETCH_ASSOC);
+            $enriched['display_name'] = $row['title'] ?? '(image ' . $item['item_id'] . ')';
+            $enriched['thumb']        = $row['thumb'] ?? null;
+            $enriched['item_type']    = 'image';
             $edit_items[] = $enriched;
         }
 
@@ -383,9 +381,13 @@ include 'core/sidebar.php';
                 <div class="box">
                     <h3>MEMBERS <span class="dim" style="font-weight:400;font-size:12px;">— drag to reorder</span></h3>
 
+                    <div class="collection-cap-counter" style="margin-bottom:10px;font-size:12px;font-family:monospace;">
+                        <span id="member-count"><?php echo count($edit_items); ?></span> / 30 IMAGES
+                    </div>
+
                     <div id="member-list" style="min-height:60px;">
                         <?php if (empty($edit_items)): ?>
-                            <p class="dim empty-notice" id="member-empty">No members yet. Add posts, albums, or categories below.</p>
+                            <p class="dim empty-notice" id="member-empty">No images yet. Pick from the search panel below — up to 30 per collection.</p>
                         <?php else: ?>
                             <?php foreach ($edit_items as $item): ?>
                             <div class="recent-item member-row"
@@ -416,14 +418,10 @@ include 'core/sidebar.php';
                         <?php endif; ?>
                     </div>
 
-                    <!-- ADD MEMBER PANEL -->
+                    <!-- ADD IMAGE PANEL -->
                     <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
-                        <div style="display:flex;gap:6px;margin-bottom:10px;">
-                            <button type="button" class="picker-tab active" onclick="switchTab('post',this)" style="flex:1;padding:6px;font-size:11px;">POSTS</button>
-                            <button type="button" class="picker-tab" onclick="switchTab('album',this)" style="flex:1;padding:6px;font-size:11px;">ALBUMS</button>
-                            <button type="button" class="picker-tab" onclick="switchTab('category',this)" style="flex:1;padding:6px;font-size:11px;">CATEGORIES</button>
-                        </div>
-                        <input type="text" id="member-search" placeholder="Search…" oninput="searchMembers(this.value)"
+                        <p class="dim" style="font-size:11px;margin:0 0 10px;">SEARCH IMAGES TO ADD</p>
+                        <input type="text" id="member-search" placeholder="Search image titles…" oninput="searchMembers(this.value)"
                                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--text);font-size:13px;box-sizing:border-box;margin-bottom:8px;">
                         <div id="member-picker-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;max-height:280px;overflow-y:auto;"></div>
                     </div>
@@ -460,11 +458,11 @@ include 'core/sidebar.php';
         searchMembers('');
     }
 
-    // --- Search members for picker ---
+    // --- Search images for picker (v0.2 — image-only) ---
     function searchMembers(q) {
         var grid = document.getElementById('member-picker-grid');
         grid.innerHTML = '<p class="dim" style="font-size:12px;padding:8px;grid-column:1/-1;">Loading…</p>';
-        ajax('search_items', { type: activeTab, q: q, collection_id: COLL_ID }, function (items) {
+        ajax('search_items', { q: q, collection_id: COLL_ID }, function (items) {
             if (!items.length) { grid.innerHTML = '<p class="dim" style="font-size:12px;padding:8px;grid-column:1/-1;">Nothing found.</p>'; return; }
             var frag = document.createDocumentFragment();
             items.forEach(function (it) {
@@ -568,12 +566,15 @@ include 'core/sidebar.php';
         });
     }
 
-    // --- Remove member ---
+    // --- Remove member (v0.2 image-only) ---
     function removeMember(type, id, el) {
-        ajax('remove_item', { collection_id: COLL_ID, item_type: type, item_id: id }, function (r) {
+        ajax('remove_item', { collection_id: COLL_ID, item_id: id }, function (r) {
             if (!r.ok) return;
             var row = el.closest('.member-row');
             if (row) row.remove();
+            // Update count
+            var c = document.getElementById('member-count');
+            if (c) c.textContent = document.querySelectorAll('.member-row').length;
             searchMembers(document.getElementById('member-search').value);
         });
     }
@@ -598,8 +599,10 @@ include 'core/sidebar.php';
 
     function saveOrder() {
         var rows  = document.getElementById('member-list').querySelectorAll('.member-row');
-        var order = Array.from(rows).map(function (r) { return [r.getAttribute('data-type'), r.getAttribute('data-id')]; });
+        var order = Array.from(rows).map(function (r) { return parseInt(r.getAttribute('data-id'), 10); });
         ajax('reorder', { collection_id: COLL_ID, order: JSON.stringify(order) }, function(){});
+        // Update count for visual feedback
+        var c = document.getElementById('member-count'); if (c) c.textContent = rows.length;
     }
 
     // --- Featured image picker ---

@@ -71,31 +71,16 @@ if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
 ?>
 
 <?php
-// $available_modes and $archive_layout are in scope from archive.php.
-// Render toggle only when more than one layout is available.
-$_fsog_icons  = ['square'=>'&#9638;','cropped'=>'&#9638;','croppedwithcalendar'=>'&#9637;','masonry'=>'&#9636;'];
-$_fsog_titles = ['square'=>'Square Grid','cropped'=>'Grid','croppedwithcalendar'=>'Calendar','masonry'=>'Justified'];
-$_fsog_avail  = isset($available_modes) ? $available_modes : [];
-$_fsog_cur    = isset($archive_layout)  ? $archive_layout  : ($settings['archive_layout'] ?? 'cropped');
+// 0.7.79: Toggle UI is rendered by core archive.php (not the skin). This file
+// renders only the two photo grids; archive.php's [T][M][C] header drives
+// which one is visible via <html data-archive-layout="thumbs|masonry">.
+// Calendar is independent (handled by ss-engine-calendar.js).
+$_fsog_cur = isset($archive_layout) ? $archive_layout : ($settings['archive_layout'] ?? 'thumbs');
+$_fsog_initial_thumbs = ($_fsog_cur === 'thumbs');
 ?>
-<?php if (count($_fsog_avail) > 1): ?>
-<!-- Floating layout toggle — fades in on hover, top-right -->
-<div class="fsog-layout-toggle">
-    <div class="fsog-layout-toggle-switch">
-        <?php foreach ($_fsog_avail as $_fsog_mode):
-            $_icon  = $_fsog_icons[$_fsog_mode]  ?? '&#9638;';
-            $_title = $_fsog_titles[$_fsog_mode] ?? strtoupper($_fsog_mode);
-        ?>
-            <button class="fsog-toggle-btn<?php echo ($_fsog_mode === $_fsog_cur) ? ' active' : ''; ?>"
-                    data-layout="<?php echo htmlspecialchars($_fsog_mode); ?>"
-                    title="<?php echo $_title; ?>"><?php echo $_icon; ?></button>
-        <?php endforeach; ?>
-    </div>
-</div>
-<?php endif; ?>
 
 <!-- Cropped grid — natural aspect ratio thumbnails -->
-<div id="browse-grid" class="fsog-archive-grid" <?php echo $archive_default !== 'cropped' ? 'style="display:none;"' : ''; ?>>
+<div id="browse-grid" class="fsog-archive-grid archive-grid" <?php echo $_fsog_initial_thumbs ? '' : 'style="display:none;"'; ?>>
     <?php if (!empty($images)): ?>
         <?php foreach ($images as $img):
             $link = BASE_URL . htmlspecialchars($img['img_slug']);
@@ -135,7 +120,7 @@ $_fsog_cur    = isset($archive_layout)  ? $archive_layout  : ($settings['archive
 </div>
 
 <!-- Justified grid — Flickr-style row fill with full aspect ratios -->
-<div id="justified-grid" style="--justified-gap: <?php echo $gap; ?>px; --justified-row-height: <?php echo $target_row_h; ?>px; --last-row-ar-sum: <?php echo round($last_full_ar_sum, 4); ?>; <?php echo $archive_default === 'cropped' ? 'display:none;' : ''; ?>">
+<div id="justified-grid" style="--justified-gap: <?php echo $gap; ?>px; --justified-row-height: <?php echo $target_row_h; ?>px; --last-row-ar-sum: <?php echo round($last_full_ar_sum, 4); ?>; <?php echo $_fsog_initial_thumbs ? 'display:none;' : ''; ?>">
     <?php if (!empty($images)): ?>
         <?php foreach ($rows as $row_data):
             $row = $row_data['images'];
@@ -163,91 +148,33 @@ $_fsog_cur    = isset($archive_layout)  ? $archive_layout  : ($settings['archive
 </div>
 
 <script>
+// 0.7.79: 50-shades archive — react to <html data-archive-layout> changes.
+// The [T]/[M] toggle in core archive.php updates that attribute; we just
+// show/hide the matching grid. No own toggle, no own localStorage key.
 (function() {
     'use strict';
-    var KEY           = 'fsog_gallery_layout';
-    var toggleBtns    = document.querySelectorAll('.fsog-toggle-btn');
     var browseGrid    = document.getElementById('browse-grid');
     var justifiedGrid = document.getElementById('justified-grid');
 
-    var calLayout = 'croppedwithcalendar';
-
-    function setLayout(layout) {
-        // Calendar layout requires a page load (body class drives the calendar engine).
-        // Also navigate away from calendar layout cleanly.
-        if (layout === calLayout || document.body.classList.contains('archive-layout-' + calLayout)) {
-            location.href = 'archive.php?layout=' + encodeURIComponent(layout);
-            return;
-        }
-        for (var i = 0; i < toggleBtns.length; i++) {
-            toggleBtns[i].classList.toggle('active', toggleBtns[i].getAttribute('data-layout') === layout);
-        }
-        if (layout === 'masonry' || layout === 'justified') {
+    function applyLayout(layout) {
+        if (!browseGrid || !justifiedGrid) return;
+        if (layout === 'masonry') {
             browseGrid.style.display    = 'none';
             justifiedGrid.style.display = 'block';
-        } else {
+        } else { // 'thumbs' or anything else falls through to thumbs
             browseGrid.style.display    = 'grid';
             justifiedGrid.style.display = 'none';
         }
-        try { localStorage.setItem(KEY, layout); } catch(e) {}
     }
 
-    function init() {
-        // If the URL already specifies the calendar layout, stay on it.
-        // Reading localStorage here would trigger a setLayout() call that
-        // navigates away (the body-class check in setLayout fires a redirect).
-        if (document.body.classList.contains('archive-layout-' + calLayout)) {
-            // On calendar layout: render cropped grid only. Don't call setLayout
-            // (its body-class guard would redirect). Skip localStorage write so
-            // saved preference (e.g. masonry) is preserved for when user closes
-            // the calendar via X.
-            if (browseGrid)    browseGrid.style.display    = 'grid';
-            if (justifiedGrid) justifiedGrid.style.display = 'none';
-            return;
-        }
-        // URL is source of truth. If ?layout= is explicit in the URL, use it
-        // and ignore localStorage. localStorage only kicks in when archive.php
-        // is hit with no params (so the toggle remembers preference across
-        // bare-URL visits but explicit URLs always win).
-        var _urlLayoutMatch = window.location.search.match(/[?&]layout=([^&]+)/);
-        var _urlLayout = _urlLayoutMatch ? decodeURIComponent(_urlLayoutMatch[1]) : null;
-        if (_urlLayout && _urlLayout !== calLayout) {
-            setLayout(_urlLayout);
-            return;
-        }
-        var saved = null;
-        try { saved = localStorage.getItem(KEY); } catch(e) {}
-        // Never auto-restore calLayout from storage -- it requires an explicit click.
-        // Without this guard, clicking X (which navigates to cropped) causes init()
-        // on the next page to read 'croppedwithcalendar' and redirect right back.
-        if (saved === calLayout) saved = null;
-        setLayout(saved || '<?php echo htmlspecialchars($_fsog_cur); ?>');
-    }
+    // Initial state from html data-attr (set by archive.php from cookie).
+    var initial = document.documentElement.getAttribute('data-archive-layout') || 'thumbs';
+    applyLayout(initial);
 
-    // When the calendar engine closes the panel it fires smackcal:closing so we
-    // can write the target layout to localStorage before the navigation lands.
-    document.addEventListener('smackcal:closing', function (e) {
-        var target = e.detail && e.detail.targetLayout;
-        if (target && target !== calLayout) {
-            try { localStorage.setItem(KEY, target); } catch(e2) {}
-        }
+    // React to the in-place toggle from ss-engine-archive-toggle.js.
+    document.addEventListener('smackarchive:layoutchange', function (e) {
+        applyLayout((e.detail && e.detail.layout) || 'thumbs');
     });
-
-    for (var i = 0; i < toggleBtns.length; i++) {
-        toggleBtns[i].addEventListener('click', function() {
-            setLayout(this.getAttribute('data-layout'));
-        });
-    }
-
-    init();
-
-    // Dock the layout toggle into the filter bar (right side).
-    // #infobox is already position:relative so the toggle uses position:absolute.
-    var infobox = document.getElementById('infobox');
-    var toggle  = document.querySelector('.fsog-layout-toggle');
-    if (infobox && toggle) {
-        infobox.appendChild(toggle);
-    }
 }());
 </script>
 <?php // ===== SNAPSMACK EOF =====

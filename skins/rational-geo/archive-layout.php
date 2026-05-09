@@ -164,97 +164,31 @@ $_rg_avail  = isset($available_modes) ? $available_modes : [];
     <?php endif; ?>
 </div>
 <script>
+// 0.7.79: rational-geo archive — react to <html data-archive-layout> changes.
+// The [T]/[M] toggle in core archive.php updates that attribute; we just
+// show/hide the matching grid. No own toggle, no own localStorage key.
 (function() {
     'use strict';
-    var KEY = 'rg_gallery_layout';
-    var toggleBtns    = document.querySelectorAll('.rg-toggle-btn');
     var browseGrid    = document.getElementById('browse-grid');
     var justifiedGrid = document.getElementById('justified-grid');
 
-    var calLayout = 'croppedwithcalendar';
-
-    function setLayout(layout) {
-        if (layout === calLayout || document.body.classList.contains('archive-layout-' + calLayout)) {
-            location.href = 'archive.php?layout=' + encodeURIComponent(layout);
-            return;
-        }
-        for (var i = 0; i < toggleBtns.length; i++) {
-            toggleBtns[i].classList.toggle('active', toggleBtns[i].getAttribute('data-layout') === layout);
-        }
-        if (layout === 'masonry' || layout === 'justified') {
-            browseGrid.style.display = 'none';
+    function applyLayout(layout) {
+        if (!browseGrid || !justifiedGrid) return;
+        if (layout === 'masonry') {
+            browseGrid.style.display    = 'none';
             justifiedGrid.style.display = 'block';
         } else {
-            browseGrid.style.display = 'grid';
+            browseGrid.style.display    = 'grid';
             justifiedGrid.style.display = 'none';
         }
-        try { if (window.snapConsent && window.snapConsent.ok()) localStorage.setItem(KEY, layout); } catch(e) {}
     }
 
-    function init() {
-        // If the URL already specifies the calendar layout, stay on it.
-        // Reading localStorage here would trigger a setLayout() call that
-        // navigates away (the body-class check in setLayout fires a redirect).
-        if (document.body.classList.contains('archive-layout-' + calLayout)) {
-            // On calendar layout: render cropped grid only. Don't call setLayout
-            // (its body-class guard would redirect). Skip localStorage write so
-            // saved preference (e.g. masonry) is preserved for when user closes
-            // the calendar via X.
-            if (browseGrid)    browseGrid.style.display    = 'grid';
-            if (justifiedGrid) justifiedGrid.style.display = 'none';
-            return;
-        }
-        // URL is source of truth. If ?layout= is explicit in the URL, use it
-        // and ignore localStorage. localStorage only kicks in when archive.php
-        // is hit with no params (so the toggle remembers preference across
-        // bare-URL visits but explicit URLs always win).
-        var _urlLayoutMatch = window.location.search.match(/[?&]layout=([^&]+)/);
-        var _urlLayout = _urlLayoutMatch ? decodeURIComponent(_urlLayoutMatch[1]) : null;
-        if (_urlLayout && _urlLayout !== calLayout) {
-            setLayout(_urlLayout);
-            return;
-        }
-        var saved = null;
-        try { saved = (window.snapConsent && window.snapConsent.ok()) ? localStorage.getItem(KEY) : null; } catch(e) {}
-        // Never auto-restore calLayout from storage -- it requires an explicit click.
-        // Without this guard, clicking X (which navigates to cropped) causes init()
-        // on the next page to read 'croppedwithcalendar' and redirect right back.
-        if (saved === calLayout) saved = null;
-        setLayout(saved || '<?php echo htmlspecialchars($archive_default); ?>');
-    }
+    var initial = document.documentElement.getAttribute('data-archive-layout') || 'thumbs';
+    applyLayout(initial);
 
-    // When the calendar engine closes the panel it fires smackcal:closing so we
-    // can write the target layout to localStorage before the navigation lands.
-    document.addEventListener('smackcal:closing', function (e) {
-        var target = e.detail && e.detail.targetLayout;
-        if (target && target !== calLayout) {
-            try {
-                if (window.snapConsent && window.snapConsent.ok()) {
-                    localStorage.setItem(KEY, target);
-                }
-            } catch(e2) {}
-        }
+    document.addEventListener('smackarchive:layoutchange', function (e) {
+        applyLayout((e.detail && e.detail.layout) || 'thumbs');
     });
-
-    for (var i = 0; i < toggleBtns.length; i++) {
-        toggleBtns[i].addEventListener('click', function() {
-            setLayout(this.getAttribute('data-layout'));
-        });
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-
-    // Dock the layout toggle into the filter bar (right side).
-    // #infobox is position:relative so the toggle uses position:absolute.
-    var infobox = document.getElementById('infobox');
-    var toggle  = document.querySelector('.rg-layout-toggle');
-    if (infobox && toggle) {
-        infobox.appendChild(toggle);
-    }
 })();
 </script>
 <?php // ===== SNAPSMACK EOF =====

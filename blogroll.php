@@ -107,23 +107,35 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                     // Local entries (source_hub_url IS NULL) are returned first by
                     // category-name sort if "" sorts before any "Hub: ..." string,
                     // but we explicitly prefer local just in case.
+                    // Anti-fingerprint: strip any 'Hub: ...' prefix from public
+                    // category labels. We do not advertise to visitors that this
+                    // site is part of a multisite mesh — that's an attack vector.
+                    $cleanCat = function($name) {
+                        $n = (string)($name ?? '');
+                        if (stripos($n, 'Hub:') === 0) {
+                            $n = trim(substr($n, 4));
+                            if ($n === '') $n = 'NETWORK';
+                        }
+                        return $n ?: 'UNCATEGORIZED';
+                    };
+
                     $grouped     = [];
                     $seen_urls   = [];
                     // First pass: index local-only entries.
                     foreach ($peers as $p) {
                         $url_key = strtolower(trim((string)($p['url'] ?? '')));
                         if ($url_key === '' || isset($seen_urls[$url_key])) continue;
-                        if (!empty($p['source_hub_url'])) continue; // skip hub-synced for first pass
+                        if (!empty($p['source_hub_url'])) continue;
                         $seen_urls[$url_key] = true;
-                        $cat = $p['cat_name'] ?: 'UNCATEGORIZED';
+                        $cat = $cleanCat($p['cat_name']);
                         $grouped[$cat][] = $p;
                     }
-                    // Second pass: add hub-synced entries that aren't already shown.
+                    // Second pass: hub-synced entries that aren't already shown.
                     foreach ($peers as $p) {
                         $url_key = strtolower(trim((string)($p['url'] ?? '')));
                         if ($url_key === '' || isset($seen_urls[$url_key])) continue;
                         $seen_urls[$url_key] = true;
-                        $cat = $p['cat_name'] ?: 'UNCATEGORIZED';
+                        $cat = $cleanCat($p['cat_name']);
                         $grouped[$cat][] = $p;
                     }
 

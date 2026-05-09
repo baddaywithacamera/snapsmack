@@ -37,6 +37,8 @@ RewriteRule ^archive$ archive.php [L,QSA]
 RewriteRule ^rss$ rss.php [L,QSA]
 RewriteRule ^feed$ rss.php [L,QSA]
 RewriteRule ^snap-in$ snap-in.php [L,QSA]
+RewriteRule ^collections$ collections.php [L,QSA]
+RewriteRule ^collection/([a-zA-Z0-9_-]+)$ collection.php?slug=$1 [L,QSA]
 
 # Everything else → index.php (image slugs, static pages)
 RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]

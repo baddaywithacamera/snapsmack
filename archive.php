@@ -146,9 +146,11 @@ try {
         }
     }
 
-    // archive.php renders its own toggle only when no skin-specific archive-layout.php exists.
-    $skin_archive_file = __DIR__ . '/skins/' . $active_skin . '/archive-layout.php';
-    $offer_toggle = $archive_show_layout_toggle && !file_exists($skin_archive_file);
+    // 0.7.79: core archive.php always renders the T/M toggle and the C
+    // button when the admin enables them. Skins with their own archive-layout.php
+    // render the photo grids only — they no longer render their own toggle UI.
+    // (Eliminates the duplicate-toggle problem visible in 0.7.79's first cut.)
+    $offer_toggle = $archive_show_layout_toggle;
 
     // --- THUMBNAIL SIZE RESOLUTION ---
     // Maps abstract 5-step scale (xs, s, m, l, xl) to pixel values.
@@ -458,7 +460,8 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             <?php if ($offer_toggle): ?>
             <div class="archive-layout-toggle" role="group" aria-label="Layout">
                 <?php
-                $tm_labels = ['thumbs' => 'Thumbs', 'masonry' => 'Masonry'];
+                $tm_labels = ['thumbs' => 'T', 'masonry' => 'M'];
+                $tm_titles = ['thumbs' => 'Thumbs Layout', 'masonry' => 'Masonry / Justified Layout'];
                 foreach (['thumbs', 'masonry'] as $mode):
                     $is_active = ($mode === $archive_layout);
                     $qp = $_GET;
@@ -469,7 +472,9 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                 ?>
                     <a href="archive.php?<?php echo $qs; ?>"
                        class="alt-btn<?php echo $is_active ? ' alt-btn--active' : ''; ?>"
-                       data-layout="<?php echo htmlspecialchars($mode); ?>">
+                       data-layout="<?php echo htmlspecialchars($mode); ?>"
+                       title="<?php echo htmlspecialchars($tm_titles[$mode] ?? ''); ?>"
+                       aria-label="<?php echo htmlspecialchars($tm_titles[$mode] ?? ''); ?>">
                         <?php echo $tm_labels[$mode]; ?>
                     </a>
                 <?php endforeach; ?>
@@ -479,9 +484,10 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             <button type="button"
                     class="alt-btn archive-calendar-toggle<?php echo $archive_calendar_open ? ' alt-btn--active' : ''; ?>"
                     aria-pressed="<?php echo $archive_calendar_open ? 'true' : 'false'; ?>"
-                    aria-label="Toggle calendar"
+                    aria-label="Toggle calendar panel"
+                    title="Toggle Calendar Panel"
                     data-calendar-toggle="1">
-                Calendar
+                C
             </button>
             <?php endif; ?>
         </div>

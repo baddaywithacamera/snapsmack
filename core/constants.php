@@ -23,8 +23,8 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Referrer-Policy: strict-origin-when-cross-origin');
 }
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.79');
-define('SNAPSMACK_VERSION_SHORT', '0.7.79');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.80');
+define('SNAPSMACK_VERSION_SHORT', '0.7.80');
 define('SNAPSMACK_VERSION_CODENAME', 'Cross-Legged');
 
 // --- VERSION COMPARISON ---
