@@ -225,6 +225,12 @@ function createHelpModal() {
     var commentHint = commentsEnabled ? '<strong>[ 2 ]</strong> <span>Toggle Comments</span>' : '';
     var downloadAvail = document.querySelector('.snap-download-btn') !== null;
     var downloadHint = downloadAvail ? '<strong>[ D ]</strong> <span>Download</span>' : '';
+    // 0.7.79: archive page hotkeys — only shown when controls are present.
+    var layoutToggle  = !!document.querySelector('.archive-layout-toggle');
+    var calendarBtn   = !!document.querySelector('.archive-calendar-toggle');
+    var thumbsHint    = layoutToggle ? '<strong>[ T ]</strong> <span>Thumbs Layout</span>' : '';
+    var masonryHint   = layoutToggle ? '<strong>[ M ]</strong> <span>Masonry Layout</span>' : '';
+    var calendarHint  = calendarBtn  ? '<strong>[ C ]</strong> <span>Toggle Calendar</span>' : '';
 
     // Arrow key labels adapt to slider vs single post context
     var leftLabel = sliderPresent ? 'Prev Slide' : 'Prev Image';
@@ -256,6 +262,9 @@ function createHelpModal() {
             <strong>[ 1 ]</strong> <span>Toggle Info</span>
             ${commentHint}
             ${downloadHint}
+            ${thumbsHint}
+            ${masonryHint}
+            ${calendarHint}
             <strong>[ F1 ]</strong> <span>This Menu</span>
             <strong>[ ESC ]</strong> <span>Close</span>
         </div>

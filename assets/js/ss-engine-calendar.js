@@ -127,16 +127,22 @@
     // ── Close ──────────────────────────────────────────────────────────────
 
     function closePanel() {
-        var fallback = findFallbackLayoutLink();
-        var targetLayout = getLayoutSlugFromUrl(fallback);
-        // Notify skins so they can sync localStorage before navigation
-        try {
-            document.dispatchEvent(new CustomEvent('smackcal:closing', {
-                detail: { targetLayout: targetLayout }
-            }));
-        } catch (e) {}
+        // 0.7.79: calendar is independent of layout. Just close + persist
+        // state. No navigation, no full page reload.
         slideOutThen(function () {
-            window.location.href = fallback;
+            isOpen = false;
+            document.documentElement.setAttribute('data-archive-calendar', 'closed');
+            try { localStorage.setItem('smack_archive_calendar', 'closed'); } catch (e) {}
+            document.cookie = 'smack_archive_calendar=closed; path=/; max-age=31536000; SameSite=Lax';
+            // Update the toggle button's pressed state.
+            var btn = document.querySelector('[data-calendar-toggle]');
+            if (btn) {
+                btn.setAttribute('aria-pressed', 'false');
+                btn.classList.remove('alt-btn--active');
+            }
+            try {
+                document.dispatchEvent(new CustomEvent('smackcal:closed'));
+            } catch (e) {}
         });
     }
 
@@ -321,12 +327,14 @@
     // ── URL building ───────────────────────────────────────────────────────
 
     function buildArchiveUrl(params) {
+        // 0.7.79: calendar is independent of layout. Date filter URLs no
+        // longer need a ?layout= param — server uses cookie + admin default.
         var base = window.location.pathname;
-        var parts = ['layout=croppedwithcalendar'];
+        var parts = [];
         if (params.date) parts.push('date=' + encodeURIComponent(params.date));
         if (params.from) parts.push('from=' + encodeURIComponent(params.from));
         if (params.to)   parts.push('to='   + encodeURIComponent(params.to));
-        return base + '?' + parts.join('&');
+        return parts.length ? (base + '?' + parts.join('&')) : base;
     }
 
     function navigateTo(url) {
@@ -346,7 +354,20 @@
         if (overlay) overlay.classList.add('smack-cal-overlay--visible');
         panel.getBoundingClientRect();
         panel.classList.add('smack-cal-panel--open');
+        document.documentElement.setAttribute('data-archive-calendar', 'open');
+        try { localStorage.setItem('smack_archive_calendar', 'open'); } catch (e) {}
+        document.cookie = 'smack_archive_calendar=open; path=/; max-age=31536000; SameSite=Lax';
+        var btn = document.querySelector('[data-calendar-toggle]');
+        if (btn) {
+            btn.setAttribute('aria-pressed', 'true');
+            btn.classList.add('alt-btn--active');
+        }
         loadData();
+    }
+
+    function toggle() {
+        if (isOpen) closePanel();
+        else        open();
     }
 
     function slideOutThen(cb) {
@@ -380,21 +401,26 @@
         }
     }
 
-    // ── Wire layout toggle buttons/links to slide-out animation ──────────
+    // ── Wire calendar toggle button (the [C] button in archive header) ───
+    // and hotkey handler (C key on archive page).
 
-    function wireLayoutLinks() {
-        var els = document.querySelectorAll('[data-layout]');
-        els.forEach(function (el) {
-            if (el.dataset.layout === 'croppedwithcalendar') return;
-            el.addEventListener('click', function (e) {
-                if (!isOpen) return;
+    function wireCalendarToggle() {
+        var btn = document.querySelector('[data-calendar-toggle]');
+        if (btn) {
+            btn.addEventListener('click', function (e) {
                 e.preventDefault();
-                var layout = this.dataset.layout;
-                var href = this.href || ('archive.php?layout=' + encodeURIComponent(layout));
-                slideOutThen(function () {
-                    window.location.href = href;
-                });
+                toggle();
             });
+        }
+        document.addEventListener('keydown', function (e) {
+            // Only when calendar is enabled and user isn't typing in a field.
+            if (!btn) return;
+            var t = e.target;
+            if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+            if (e.key === 'c' || e.key === 'C') {
+                e.preventDefault();
+                toggle();
+            }
         });
     }
 
@@ -405,12 +431,15 @@
     // ── Init ───────────────────────────────────────────────────────────────
 
     document.addEventListener('DOMContentLoaded', function () {
-        var isCalLayout = document.body.classList.contains('archive-layout-croppedwithcalendar');
-        if (!isCalLayout) return;
+        // 0.7.79: calendar engine activates whenever the calendar toggle
+        // button is present (admin enabled it). Initial open/closed state
+        // comes from the <html data-archive-calendar="..."> attribute set
+        // server-side from the cookie.
+        var hasToggle = !!document.querySelector('[data-calendar-toggle]');
+        if (!hasToggle) return;
 
         buildPanel();
-        wireLayoutLinks();
-        open();
+        wireCalendarToggle();
 
         document.addEventListener('keydown', onKeydown);
 
@@ -420,8 +449,17 @@
             if (newCount !== computedMonths) loadData();
         });
 
+        // Open if server said open (data-attr already set by the inline
+        // script in archive.php from the cookie).
+        var initialState = document.documentElement.getAttribute('data-archive-calendar');
+        if (initialState === 'open') {
+            open();
+        }
+
         window.smackCalendar = {
             open:       open,
+            close:      closePanel,
+            toggle:     toggle,
             clearRange: clearRange,
         };
     });

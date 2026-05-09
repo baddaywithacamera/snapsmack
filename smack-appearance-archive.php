@@ -42,13 +42,25 @@ if (is_array($manifest)) {
 // --- POST HANDLER ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearance'])) {
     if (isset($_POST['settings']) && is_array($_POST['settings'])) {
-        // archive_layouts_available arrives as an array of checkboxes; serialise it.
-        if (isset($_POST['settings']['archive_layouts_available']) && is_array($_POST['settings']['archive_layouts_available'])) {
-            $avail = array_intersect($_POST['settings']['archive_layouts_available'], ['square', 'cropped', 'masonry', 'croppedwithcalendar']);
-            // Always include the default layout in the available set.
-            $default_layout = $_POST['settings']['archive_layout'] ?? 'square';
-            if (!in_array($default_layout, $avail)) $avail[] = $default_layout;
-            $_POST['settings']['archive_layouts_available'] = implode(',', $avail);
+        // 0.7.79: archive_layouts_available is no longer authoritative — kept
+        // for legacy reads but pinned to 'thumbs,masonry' regardless of input.
+        $_POST['settings']['archive_layouts_available'] = 'thumbs,masonry';
+
+        // Normalise default layout to thumbs|masonry.
+        $_def = $_POST['settings']['archive_layout'] ?? 'thumbs';
+        if (in_array($_def, ['square', 'cropped', 'croppedwithcalendar'], true)) $_def = 'thumbs';
+        if (!in_array($_def, ['thumbs', 'masonry'], true)) $_def = 'thumbs';
+        $_POST['settings']['archive_layout'] = $_def;
+
+        // Coerce checkboxes to '0'/'1'.
+        foreach (['archive_show_layout_toggle', 'archive_calendar_enabled', 'archive_calendar_default_open'] as $_k) {
+            $_POST['settings'][$_k] = empty($_POST['settings'][$_k]) ? '0' : '1';
+        }
+
+        // Thumb style guard.
+        if (!isset($_POST['settings']['archive_thumb_style']) ||
+            !in_array($_POST['settings']['archive_thumb_style'], ['square', 'cropped'], true)) {
+            $_POST['settings']['archive_thumb_style'] = 'cropped';
         }
 
         $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
@@ -96,25 +108,28 @@ $page_title = "Archive Appearance";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 
-// All layout modes. croppedwithcalendar is always offered — no manifest detection.
-// Detection was fragile (CWD, partial loads, skin package drift). If a skin lacks
-// the calendar engine it degrades to a cropped layout; admin knows their own skin.
+// 0.7.79: layout vocabulary is just thumbs | masonry.
+// Thumb style (square or cropped) is admin's separate choice and applies
+// whenever layout=thumbs. Calendar is its own enable+default-open pair.
 $all_layouts = [
-    'square'               => 'Square Grid (1:1 Cropped)',
-    'cropped'              => 'Cropped Grid (Natural Aspect)',
-    'croppedwithcalendar'  => 'Cropped + Calendar (Sliding Date Panel)',
-    'masonry'              => 'Masonry / Justified (Flickr-Style)',
+    'thumbs'  => 'Thumbs',
+    'masonry' => 'Masonry / Justified (Flickr-Style)',
 ];
 
-$current_layout = $settings['archive_layout'] ?? 'square';
-if (!isset($all_layouts[$current_layout])) $current_layout = 'square';
+$current_layout = $settings['archive_layout'] ?? 'thumbs';
+if (in_array($current_layout, ['square', 'cropped', 'croppedwithcalendar'], true)) {
+    $current_layout = 'thumbs';
+}
+if (!isset($all_layouts[$current_layout])) $current_layout = 'thumbs';
 
-// Which modes are offered to visitors as a switch.
-// Stored as comma-separated: "square,masonry". Default = just the current layout.
-$available_raw    = $settings['archive_layouts_available'] ?? $current_layout;
-$available_modes  = array_filter(explode(',', $available_raw), fn($m) => isset($all_layouts[$m]));
-if (empty($available_modes)) $available_modes = [$current_layout];
-$available_modes  = array_values($available_modes);
+$thumb_style = $settings['archive_thumb_style'] ?? 'cropped';
+if (!in_array($thumb_style, ['square', 'cropped'], true)) $thumb_style = 'cropped';
+
+$show_layout_toggle    = isset($settings['archive_show_layout_toggle'])
+                          ? !empty($settings['archive_show_layout_toggle'])
+                          : true;
+$calendar_enabled      = !empty($settings['archive_calendar_enabled']);
+$calendar_default_open = !empty($settings['archive_calendar_default_open']);
 
 // Note: archive_border_style / archive_shadow_depth removed — were saved but never consumed.
 
@@ -155,8 +170,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
 
                 <div class="lens-input-wrapper">
                     <label>DEFAULT LAYOUT <span class="field-tip" data-tip="The layout visitors see when they first arrive. If they have previously changed it, their preference wins.">ⓘ</span></label>
-                    <select name="settings[archive_layout]" id="default-layout-select"
-                            onchange="syncAvailableCheckbox(this.value)">
+                    <select name="settings[archive_layout]" id="default-layout-select">
                         <?php foreach ($all_layouts as $lk => $ll): ?>
                             <option value="<?php echo $lk; ?>" <?php echo ($current_layout === $lk) ? 'selected' : ''; ?>>
                                 <?php echo strtoupper($ll); ?>
@@ -169,21 +183,30 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>OFFER VISITORS A LAYOUT SWITCH? <span class="field-tip" data-tip="Checked modes appear as toggle buttons on the public archive. The default layout is always included automatically.">ⓘ</span></label>
+                    <label>THUMB STYLE <span class="field-tip" data-tip="When layout is Thumbs, render images as square (1:1 cropped) or cropped (natural aspect). Pick one — applies to whichever skin is active.">ⓘ</span></label>
+                    <select name="settings[archive_thumb_style]">
+                        <option value="cropped" <?php echo $thumb_style === 'cropped' ? 'selected' : ''; ?>>CROPPED (NATURAL ASPECT)</option>
+                        <option value="square"  <?php echo $thumb_style === 'square'  ? 'selected' : ''; ?>>SQUARE (1:1 CROPPED)</option>
+                    </select>
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>VISITOR CONTROLS</label>
                     <div style="display:flex; flex-direction:column; gap:6px; margin-top:4px;">
-                        <?php foreach ($all_layouts as $lk => $ll):
-                        ?>
-                            <label style="display:flex; align-items:center; gap:8px; font-size:0.85em; cursor:pointer;">
-                                <input type="checkbox"
-                                       name="settings[archive_layouts_available][]"
-                                       value="<?php echo $lk; ?>"
-                                       id="avail-<?php echo $lk; ?>"
-                                       <?php echo in_array($lk, $available_modes) ? 'checked' : ''; ?>>
-                                <?php echo strtoupper($ll); ?>
-                            </label>
-                        <?php endforeach; ?>
+                        <label style="display:flex; align-items:center; gap:8px; font-size:0.85em; cursor:pointer;">
+                            <input type="checkbox" name="settings[archive_show_layout_toggle]" value="1" <?php echo $show_layout_toggle ? 'checked' : ''; ?>>
+                            ALLOW VISITORS TO TOGGLE THUMBS / MASONRY
+                        </label>
+                        <label style="display:flex; align-items:center; gap:8px; font-size:0.85em; cursor:pointer;">
+                            <input type="checkbox" name="settings[archive_calendar_enabled]" value="1" <?php echo $calendar_enabled ? 'checked' : ''; ?>>
+                            ENABLE CALENDAR PANEL (independent of layout)
+                        </label>
+                        <label style="display:flex; align-items:center; gap:8px; font-size:0.85em; cursor:pointer; padding-left:24px; opacity:<?php echo $calendar_enabled ? '1' : '0.5'; ?>;">
+                            <input type="checkbox" name="settings[archive_calendar_default_open]" value="1" <?php echo $calendar_default_open ? 'checked' : ''; ?>>
+                            CALENDAR STARTS OPEN BY DEFAULT
+                        </label>
                     </div>
-                    <p id="layout-switch-status" style="margin:8px 0 0; font-size:0.8em; opacity:0.7;"></p>
+                    <p style="margin:8px 0 0; font-size:0.78em; opacity:0.6;">Visitors who change these preferences have their choice cookied for a year.</p>
                 </div>
 
                 <div class="lens-input-wrapper">
