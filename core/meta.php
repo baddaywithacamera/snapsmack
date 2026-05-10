@@ -313,7 +313,7 @@ if (!empty($settings['lightbox_bg_opacity'])) {
 $_smack_skin_manifest = file_exists($skin_manifest_path) ? (include $skin_manifest_path) : [];
 if (in_array('smack-calendar', $_smack_skin_manifest['require_scripts'] ?? [])) {
     $_smack_js_config['calendar'] = [
-        'side'      => $settings['calendar_side']       ?? 'left',
+        'side'      => $settings['calendar_side']       ?? 'right',
         'months'    => (int)($settings['calendar_months']     ?? 1),
         'postCount' => (int)($settings['calendar_post_count'] ?? 10),
         'endpoint'  => BASE_URL . 'api-calendar.php',
