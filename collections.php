@@ -2,7 +2,7 @@
 /**
  * SNAPSMACK - Public collections index page (0.7.79 — v0.2)
  *
- * Lists all visible (is_visible = 1) collections as a grid of tiles.
+ * Lists all visible (published = 1) collections as a grid of tiles.
  * Each tile: featured image + name + member count, links to /collection.php.
  *
  * Sort options (visitor toggle, persisted via cookie):
@@ -36,11 +36,14 @@ if (snapsmack_is_mobile() && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)
 }
 snapsmack_apply_skin_settings($settings, $active_skin);
 
-// Sort resolution: URL → cookie → default 'manual'.
+// Sort resolution: URL → cookie → admin setting → 'manual'.
 $valid_sorts = ['manual', 'alphabetical', 'newest', 'oldest'];
 $sort = $_GET['sort'] ?? '';
 if (!in_array($sort, $valid_sorts, true)) {
-    $sort = $_COOKIE['smack_collections_sort'] ?? 'manual';
+    $sort = $_COOKIE['smack_collections_sort'] ?? '';
+}
+if (!in_array($sort, $valid_sorts, true)) {
+    $sort = $settings['collections_default_sort'] ?? 'manual';
 }
 if (!in_array($sort, $valid_sorts, true)) $sort = 'manual';
 
@@ -54,27 +57,26 @@ if (isset($_GET['sort']) && in_array($_GET['sort'], $valid_sorts, true)) {
 }
 
 $order_by = match ($sort) {
-    'alphabetical' => 'c.name ASC',
+    'alphabetical' => 'c.title ASC',
     'newest'       => 'c.created_at DESC',
     'oldest'       => 'c.created_at ASC',
     default        => 'c.sort_order ASC, c.id ASC',
 };
 
-// Rows per layout — admin setting (default 1 row, can be 2).
-$rows_per_layout = (int)($settings['collections_index_rows'] ?? 1);
-if ($rows_per_layout !== 2) $rows_per_layout = 1;
+// Rows per layout — admin setting (1–5).
+$rows_per_layout = max(1, min(5, (int)($settings['collections_index_rows'] ?? 3)));
 
 // Fetch collections + member count + featured image source.
 $query = "
-    SELECT c.id, c.name, c.slug, c.description, c.featured_post_id, c.sort_order, c.created_at,
+    SELECT c.id, c.title, c.slug, c.description, c.cover_image_id, c.sort_order, c.created_at,
            (SELECT COUNT(*) FROM snap_collection_items WHERE collection_id = c.id) AS member_count,
-           (SELECT i.img_thumb_square FROM snap_images i WHERE i.id = c.featured_post_id LIMIT 1) AS featured_thumb,
+           (SELECT i.img_thumb_square FROM snap_images i WHERE i.id = c.cover_image_id LIMIT 1) AS featured_thumb,
            (SELECT i.img_thumb_square FROM snap_collection_items ci2
-              INNER JOIN snap_images i ON i.id = ci2.item_id
-              WHERE ci2.collection_id = c.id AND ci2.item_type = 'image' AND i.img_status = 'published'
+              INNER JOIN snap_images i ON i.id = ci2.image_id
+              WHERE ci2.collection_id = c.id AND i.img_status = 'published'
               ORDER BY ci2.sort_order ASC LIMIT 1) AS first_thumb
     FROM snap_collections c
-    WHERE c.is_visible = 1
+    WHERE c.published = 1
     ORDER BY {$order_by}
 ";
 $collections = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);
@@ -135,14 +137,14 @@ $sort_labels = [
                             <a class="collections-tile" href="<?php echo $href; ?>">
                                 <?php if ($thumb): ?>
                                     <img src="<?php echo BASE_URL . 'img_uploads/' . htmlspecialchars($thumb); ?>"
-                                         alt="<?php echo htmlspecialchars($c['name']); ?>"
+                                         alt="<?php echo htmlspecialchars($c['title']); ?>"
                                          loading="lazy"
                                          class="collections-tile-img">
                                 <?php else: ?>
                                     <div class="collections-tile-img collections-tile-img--empty"></div>
                                 <?php endif; ?>
                                 <div class="collections-tile-meta">
-                                    <span class="collections-tile-name"><?php echo htmlspecialchars($c['name']); ?></span>
+                                    <span class="collections-tile-name"><?php echo htmlspecialchars($c['title']); ?></span>
                                     <span class="collections-tile-count"><?php echo (int)$c['member_count']; ?> images</span>
                                 </div>
                             </a>

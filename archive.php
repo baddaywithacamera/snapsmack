@@ -453,45 +453,45 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                     </div>
                 </div>
             </div>
-        </div>
 
-        <?php if ($offer_toggle || $archive_calendar_enabled): ?>
-        <div class="archive-controls" role="group" aria-label="Archive controls">
-            <?php if ($offer_toggle): ?>
-            <div class="archive-layout-toggle" role="group" aria-label="Layout">
-                <?php
-                $tm_labels = ['thumbs' => 'T', 'masonry' => 'M'];
-                $tm_titles = ['thumbs' => 'Thumbs Layout', 'masonry' => 'Masonry / Justified Layout'];
-                foreach (['thumbs', 'masonry'] as $mode):
-                    $is_active = ($mode === $archive_layout);
-                    $qp = $_GET;
-                    $qp['layout'] = $mode;
-                    unset($qp['q']);
-                    unset($qp['cat']); unset($qp['album']); unset($qp['date']); unset($qp['from']); unset($qp['to']);
-                    $qs = http_build_query($qp);
-                ?>
-                    <a href="archive.php?<?php echo $qs; ?>"
-                       class="alt-btn<?php echo $is_active ? ' alt-btn--active' : ''; ?>"
-                       data-layout="<?php echo htmlspecialchars($mode); ?>"
-                       title="<?php echo htmlspecialchars($tm_titles[$mode] ?? ''); ?>"
-                       aria-label="<?php echo htmlspecialchars($tm_titles[$mode] ?? ''); ?>">
-                        <?php echo $tm_labels[$mode]; ?>
-                    </a>
-                <?php endforeach; ?>
+            <?php if ($offer_toggle || $archive_calendar_enabled): ?>
+            <div class="archive-controls archive-controls--docked" role="group" aria-label="Archive controls">
+                <?php if ($offer_toggle): ?>
+                <div class="archive-layout-toggle" role="group" aria-label="Layout">
+                    <?php
+                    $tm_labels = ['thumbs' => 'T', 'masonry' => 'M'];
+                    $tm_titles = ['thumbs' => 'Thumbs Layout', 'masonry' => 'Masonry / Justified Layout'];
+                    foreach (['thumbs', 'masonry'] as $mode):
+                        $is_active = ($mode === $archive_layout);
+                        $qp = $_GET;
+                        $qp['layout'] = $mode;
+                        unset($qp['q']);
+                        unset($qp['cat']); unset($qp['album']); unset($qp['date']); unset($qp['from']); unset($qp['to']);
+                        $qs = http_build_query($qp);
+                    ?>
+                        <a href="archive.php?<?php echo $qs; ?>"
+                           class="alt-btn<?php echo $is_active ? ' alt-btn--active' : ''; ?>"
+                           data-layout="<?php echo htmlspecialchars($mode); ?>"
+                           title="<?php echo htmlspecialchars($tm_titles[$mode] ?? ''); ?>"
+                           aria-label="<?php echo htmlspecialchars($tm_titles[$mode] ?? ''); ?>">
+                            <?php echo $tm_labels[$mode]; ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+                <?php if ($archive_calendar_enabled): ?>
+                <button type="button"
+                        class="alt-btn archive-calendar-toggle<?php echo $archive_calendar_open ? ' alt-btn--active' : ''; ?>"
+                        aria-pressed="<?php echo $archive_calendar_open ? 'true' : 'false'; ?>"
+                        aria-label="Toggle calendar panel"
+                        title="Toggle Calendar Panel"
+                        data-calendar-toggle="1">
+                    C
+                </button>
+                <?php endif; ?>
             </div>
             <?php endif; ?>
-            <?php if ($archive_calendar_enabled): ?>
-            <button type="button"
-                    class="alt-btn archive-calendar-toggle<?php echo $archive_calendar_open ? ' alt-btn--active' : ''; ?>"
-                    aria-pressed="<?php echo $archive_calendar_open ? 'true' : 'false'; ?>"
-                    aria-label="Toggle calendar panel"
-                    title="Toggle Calendar Panel"
-                    data-calendar-toggle="1">
-                C
-            </button>
-            <?php endif; ?>
         </div>
-        <?php endif; ?>
         <script>
         // 0.7.79 archive layout/calendar persistence.
         // Server reads cookies before rendering — no JS redirect, no flash.

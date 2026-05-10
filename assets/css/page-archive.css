@@ -290,7 +290,7 @@
 }
 
 .archive-controls.archive-controls--docked {
-    padding: 0;
+    padding: 0 18px 0 0;
     margin-left: auto;
     flex-wrap: nowrap;
 }

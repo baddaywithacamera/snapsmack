@@ -7,9 +7,9 @@
  * are snapshots, not live-resolved. Per-collection visibility toggle gates
  * public exposure. See _spec/collections-v0_2.md.
  *
- * Schema: snap_collections has is_visible TINYINT (0=hidden, 1=live).
- *         snap_collection_items.item_type ENUM is narrowed to ('image').
- *         item_id references snap_images.id.
+ * Schema: snap_collections has published TINYINT (0=hidden, 1=live).
+ *         snap_collection_items.image_id references snap_images.id.
+ *         
  *
  * Hard cap: 30 members per collection, enforced server-side here AND at
  * the DB layer (UNIQUE KEY prevents dups; ENUM rejects non-'image').
@@ -65,9 +65,9 @@ if ($is_ajax && !empty($_POST['action'])) {
         // Mark already-added items
         $already = [];
         if ($coll_id > 0) {
-            $ai = $pdo->prepare("SELECT item_id FROM snap_collection_items WHERE collection_id=? AND item_type='image'");
+            $ai = $pdo->prepare("SELECT image_id FROM snap_collection_items WHERE collection_id=?");
             $ai->execute([$coll_id]);
-            $already = array_column($ai->fetchAll(PDO::FETCH_ASSOC), 'item_id');
+            $already = array_column($ai->fetchAll(PDO::FETCH_ASSOC), 'image_id');
         }
         foreach ($items as &$it) { $it['added'] = in_array($it['id'], $already); }
 
@@ -78,7 +78,7 @@ if ($is_ajax && !empty($_POST['action'])) {
     // Add image to collection (v0.2 — image-only, hard cap 30)
     if ($_POST['action'] === 'add_item') {
         $coll_id   = (int)$_POST['collection_id'];
-        $item_id   = (int)$_POST['item_id'];
+        $item_id   = (int)$_POST['image_id'];
 
         if ($coll_id <= 0 || $item_id <= 0) {
             echo json_encode(['ok' => false, 'error' => 'Bad request.']);
@@ -106,12 +106,12 @@ if ($is_ajax && !empty($_POST['action'])) {
             exit;
         }
 
-        $max = $pdo->prepare("SELECT COALESCE(MAX(sort_order),0)+1 FROM snap_collection_items WHERE collection_id=?");
+        $max = $pdo->prepare("SELECT COALESCE(MAX(position),0)+1 FROM snap_collection_items WHERE collection_id=?");
         $max->execute([$coll_id]);
         $next = (int)$max->fetchColumn();
 
         $pdo->prepare(
-            "INSERT IGNORE INTO snap_collection_items (collection_id, item_type, item_id, sort_order) VALUES (?,'image',?,?)"
+            "INSERT IGNORE INTO snap_collection_items (collection_id, image_id, position) VALUES (?,?,?)"
         )->execute([$coll_id, $item_id, $next]);
 
         echo json_encode(['ok' => true, 'count' => $current + 1, 'cap' => 30]);
@@ -121,8 +121,8 @@ if ($is_ajax && !empty($_POST['action'])) {
     // Remove image from collection (v0.2)
     if ($_POST['action'] === 'remove_item') {
         $coll_id = (int)$_POST['collection_id'];
-        $item_id = (int)$_POST['item_id'];
-        $pdo->prepare("DELETE FROM snap_collection_items WHERE collection_id=? AND item_type='image' AND item_id=?")
+        $item_id = (int)$_POST['image_id'];
+        $pdo->prepare("DELETE FROM snap_collection_items WHERE collection_id=? AND image_id=?")
             ->execute([$coll_id, $item_id]);
         echo json_encode(['ok' => true]);
         exit;
@@ -143,9 +143,21 @@ if ($is_ajax && !empty($_POST['action'])) {
             }
             if ($iid <= 0) continue;
             $pdo->prepare(
-                "UPDATE snap_collection_items SET sort_order=? WHERE collection_id=? AND item_type='image' AND item_id=?"
+                "UPDATE snap_collection_items SET position=? WHERE collection_id=? AND image_id=?"
             )->execute([$pos, $coll_id, $iid]);
         }
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+
+    // Save per-image caption
+    if ($_POST['action'] === 'save_caption') {
+        $coll_id  = (int)$_POST['collection_id'];
+        $image_id = (int)$_POST['image_id'];
+        $caption  = trim($_POST['caption'] ?? '');
+        $pdo->prepare(
+            "UPDATE snap_collection_items SET caption=? WHERE collection_id=? AND image_id=?"
+        )->execute([$caption ?: null, $coll_id, $image_id]);
         echo json_encode(['ok' => true]);
         exit;
     }
@@ -153,10 +165,10 @@ if ($is_ajax && !empty($_POST['action'])) {
     // Toggle collection visibility (v0.2 — LIVE / HIDDEN)
     if ($_POST['action'] === 'toggle_visibility') {
         $coll_id = (int)$_POST['collection_id'];
-        $vis     = !empty($_POST['is_visible']) ? 1 : 0;
-        $pdo->prepare("UPDATE snap_collections SET is_visible=? WHERE id=?")
+        $vis     = !empty($_POST['published']) ? 1 : 0;
+        $pdo->prepare("UPDATE snap_collections SET published=? WHERE id=?")
             ->execute([$vis, $coll_id]);
-        echo json_encode(['ok' => true, 'is_visible' => $vis]);
+        echo json_encode(['ok' => true, 'published' => $vis]);
         exit;
     }
 
@@ -164,7 +176,7 @@ if ($is_ajax && !empty($_POST['action'])) {
     if ($_POST['action'] === 'save_featured') {
         $coll_id = (int)$_POST['collection_id'];
         $post_id = !empty($_POST['post_id']) ? (int)$_POST['post_id'] : null;
-        $pdo->prepare("UPDATE snap_collections SET featured_post_id=? WHERE id=?")
+        $pdo->prepare("UPDATE snap_collections SET cover_image_id=? WHERE id=?")
             ->execute([$post_id, $coll_id]);
         echo json_encode(['ok' => true]);
         exit;
@@ -225,12 +237,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_SERVER['HTTP_X_REQUESTED_WI
             $slug = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $name));
             $slug = trim($slug, '-');
         }
+        $display = in_array($_POST['col_display'] ?? '', ['browse','slideshow']) ? $_POST['col_display'] : 'browse';
         if ($id > 0) {
-            $pdo->prepare("UPDATE snap_collections SET name=?, slug=?, description=? WHERE id=?")
-                ->execute([$name, $slug, $desc, $id]);
+            $pdo->prepare("UPDATE snap_collections SET title=?, slug=?, description=?, default_display=? WHERE id=?")
+                ->execute([$name, $slug, $desc, $display, $id]);
         } else {
-            $pdo->prepare("INSERT INTO snap_collections (name, slug, description) VALUES (?,?,?)")
-                ->execute([$name, $slug, $desc]);
+            $pdo->prepare("INSERT INTO snap_collections (title, slug, description, default_display) VALUES (?,?,?,?)")
+                ->execute([$name, $slug, $desc, $display]);
             $id = (int)$pdo->lastInsertId();
         }
         header("Location: smack-collections.php?edit=$id&msg=SAVED");
@@ -243,6 +256,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_SERVER['HTTP_X_REQUESTED_WI
         header("Location: smack-collections.php?msg=COLLECTION+PURGED");
         exit;
     }
+
+    if (!empty($_POST['action_settings'])) {
+        $rows = max(1, min(10, (int)($_POST['collections_index_rows'] ?? 3)));
+        $sort = in_array($_POST['collections_default_sort'] ?? '', ['manual','alphabetical','newest']) ? $_POST['collections_default_sort'] : 'manual';
+        foreach (['collections_index_rows' => $rows, 'collections_default_sort' => $sort] as $k => $v) {
+            $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?,?) ON DUPLICATE KEY UPDATE setting_val=?")
+                ->execute([$k, $v, $v]);
+        }
+        header("Location: smack-collections.php?msg=SETTINGS+SAVED");
+        exit;
+    }
 }
 
 // --- LOAD STATE ---
@@ -251,7 +275,7 @@ $collections = $pdo->query(
      FROM snap_collections c
      LEFT JOIN snap_collection_items ci ON ci.collection_id = c.id
      GROUP BY c.id
-     ORDER BY c.sort_order ASC, c.name ASC"
+     ORDER BY c.sort_order ASC, c.title ASC"
 )->fetchAll(PDO::FETCH_ASSOC);
 
 $editing        = null;
@@ -266,10 +290,10 @@ if (!empty($_GET['edit'])) {
     if ($editing) {
         // Load member items with their display names and thumbnails
         $items_raw = $pdo->prepare(
-            "SELECT ci.*, ci.item_type, ci.item_id, ci.sort_order
+            "SELECT ci.*, ci.image_id, ci.position
              FROM snap_collection_items ci
              WHERE ci.collection_id = ?
-             ORDER BY ci.sort_order ASC"
+             ORDER BY ci.position ASC"
         );
         $items_raw->execute([$editing['id']]);
         $items_raw = $items_raw->fetchAll(PDO::FETCH_ASSOC);
@@ -282,22 +306,22 @@ if (!empty($_GET['edit'])) {
                 "SELECT i.img_title AS title, i.img_thumb_square AS thumb
                  FROM snap_images i WHERE i.id=? LIMIT 1"
             );
-            $r->execute([$item['item_id']]);
+            $r->execute([$item['image_id']]);
             $row = $r->fetch(PDO::FETCH_ASSOC);
-            $enriched['display_name'] = $row['title'] ?? '(image ' . $item['item_id'] . ')';
+            $enriched['display_name'] = $row['title'] ?? '(image ' . $item['image_id'] . ')';
             $enriched['thumb']        = $row['thumb'] ?? null;
-            $enriched['item_type']    = 'image';
+            
             $edit_items[] = $enriched;
         }
 
         // Featured image
-        if (!empty($editing['featured_post_id'])) {
+        if (!empty($editing['cover_image_id'])) {
             $fs = $pdo->prepare(
                 "SELECT i.img_thumb_square AS thumb, i.img_title AS title
                  FROM snap_images i
                  WHERE i.id=? LIMIT 1"
             );
-            $fs->execute([$editing['featured_post_id']]);
+            $fs->execute([$editing['cover_image_id']]);
             $featured_thumb = $fs->fetch(PDO::FETCH_ASSOC) ?: null;
         }
     }
@@ -318,7 +342,7 @@ include 'core/sidebar.php';
     <?php $cid = $editing['id'] ?? 0; ?>
 
     <div class="header-row header-row--ruled">
-        <h2><?php echo $cid ? 'EDIT COLLECTION: ' . htmlspecialchars($editing['name']) : 'NEW COLLECTION'; ?></h2>
+        <h2><?php echo $cid ? 'EDIT COLLECTION: ' . htmlspecialchars($editing['title']) : 'NEW COLLECTION'; ?></h2>
         <a href="smack-collections.php" class="btn-secondary">← BACK TO LIST</a>
     </div>
 
@@ -338,7 +362,7 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper">
                         <label>NAME</label>
                         <input type="text" name="col_name" id="col-name"
-                               value="<?php echo htmlspecialchars($editing['name'] ?? ''); ?>"
+                               value="<?php echo htmlspecialchars($editing['title'] ?? ''); ?>"
                                placeholder="Collection name" required oninput="autoSlug(this.value)">
                     </div>
                     <div class="lens-input-wrapper mt-16">
@@ -351,13 +375,20 @@ include 'core/sidebar.php';
                         <label>DESCRIPTION <span class="field-tip" data-tip="Optional. Shown on the collection page.">ⓘ</span></label>
                         <textarea name="col_desc" rows="4" placeholder="A short description of this collection."><?php echo htmlspecialchars($editing['description'] ?? ''); ?></textarea>
                     </div>
+                    <div class="lens-input-wrapper mt-16">
+                        <label>DEFAULT VIEW <span class="field-tip" data-tip="How this collection is shown to visitors by default.">ⓘ</span></label>
+                        <select name="col_display">
+                            <option value="browse"<?php echo ($editing['default_display'] ?? 'browse') === 'browse' ? ' selected' : ''; ?>>Browse (grid)</option>
+                            <option value="slideshow"<?php echo ($editing['default_display'] ?? '') === 'slideshow' ? ' selected' : ''; ?>>Slideshow</option>
+                        </select>
+                    </div>
 
                     <!-- FEATURED IMAGE -->
                     <div class="lens-input-wrapper mt-20">
                         <label>FEATURED IMAGE <span class="field-tip" data-tip="Picks any post's hero image — used as the representative thumbnail for this collection.">ⓘ</span></label>
                         <div id="col-featured-preview" class="ssfp-preview"></div>
-                        <input type="hidden" id="col-featured-id" name="col_featured_post_id"
-                               value="<?php echo (int)($editing['featured_post_id'] ?? 0); ?>">
+                        <input type="hidden" id="col-featured-id" name="col_cover_image_id"
+                               value="<?php echo (int)($editing['cover_image_id'] ?? 0); ?>">
                     </div>
 
                     <div class="lens-input-wrapper mt-20">
@@ -391,8 +422,8 @@ include 'core/sidebar.php';
                         <?php else: ?>
                             <?php foreach ($edit_items as $item): ?>
                             <div class="recent-item member-row"
-                                 data-type="<?php echo $item['item_type']; ?>"
-                                 data-id="<?php echo $item['item_id']; ?>"
+                                 data-type="image"
+                                 data-id="<?php echo $item['image_id']; ?>"
                                  draggable="true"
                                  style="cursor:grab;">
                                 <div class="item-details">
@@ -401,17 +432,25 @@ include 'core/sidebar.php';
                                          style="width:40px;height:40px;object-fit:cover;border-radius:2px;flex-shrink:0;margin-right:10px;" alt="">
                                     <?php else: ?>
                                     <div style="width:40px;height:40px;background:var(--card-bg);border-radius:2px;flex-shrink:0;margin-right:10px;display:flex;align-items:center;justify-content:center;">
-                                        <span style="font-size:9px;text-transform:uppercase;color:var(--dim);"><?php echo substr($item['item_type'],0,3); ?></span>
+                                        <span style="font-size:9px;text-transform:uppercase;color:var(--dim);"><?php echo 'img'; ?></span>
                                     </div>
                                     <?php endif; ?>
                                     <div class="item-text">
                                         <strong><?php echo htmlspecialchars($item['display_name']); ?></strong>
-                                        <code class="slug-display"><?php echo strtoupper($item['item_type']); ?></code>
+                                        <code class="slug-display"><?php echo 'IMAGE'; ?></code>
                                     </div>
                                 </div>
                                 <div class="item-actions">
                                     <a href="#" class="action-delete"
-                                       onclick="removeMember('<?php echo $item['item_type']; ?>',<?php echo $item['item_id']; ?>,this);return false;">REMOVE</a>
+                                       onclick="removeMember('image',<?php echo $item['image_id']; ?>,this);return false;">REMOVE</a>
+                                </div>
+                                <div style="padding:4px 0 6px;width:100%;">
+                                    <input type="text" class="member-caption-input"
+                                           data-image-id="<?php echo $item['image_id']; ?>"
+                                           value="<?php echo htmlspecialchars($item['caption'] ?? ''); ?>"
+                                           placeholder="Caption (optional)"
+                                           style="width:100%;padding:4px 7px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--text);font-size:11px;box-sizing:border-box;"
+                                           onblur="saveCaption(this)">
                                 </div>
                             </div>
                             <?php endforeach; ?>
@@ -509,7 +548,7 @@ include 'core/sidebar.php';
 
     // --- Add member ---
     function addMember(type, id, name, thumb) {
-        ajax('add_item', { collection_id: COLL_ID, item_type: type, item_id: id }, function (r) {
+        ajax('add_item', { collection_id: COLL_ID, image_id: id }, function (r) {
             if (!r.ok) return;
             // Remove empty notice
             var empty = document.getElementById('member-empty');
@@ -568,7 +607,7 @@ include 'core/sidebar.php';
 
     // --- Remove member (v0.2 image-only) ---
     function removeMember(type, id, el) {
-        ajax('remove_item', { collection_id: COLL_ID, item_id: id }, function (r) {
+        ajax('remove_item', { collection_id: COLL_ID, image_id: id }, function (r) {
             if (!r.ok) return;
             var row = el.closest('.member-row');
             if (row) row.remove();
@@ -603,6 +642,13 @@ include 'core/sidebar.php';
         ajax('reorder', { collection_id: COLL_ID, order: JSON.stringify(order) }, function(){});
         // Update count for visual feedback
         var c = document.getElementById('member-count'); if (c) c.textContent = rows.length;
+    }
+
+    // --- Caption save ---
+    function saveCaption(input) {
+        var imageId = parseInt(input.getAttribute('data-image-id'), 10);
+        if (!imageId) return;
+        ajax('save_caption', { collection_id: COLL_ID, image_id: imageId, caption: input.value }, function(){});
     }
 
     // --- Featured image picker ---
@@ -678,7 +724,7 @@ include 'core/sidebar.php';
             <div class="recent-item">
                 <div class="item-details">
                     <div class="item-text">
-                        <strong><?php echo htmlspecialchars($col['name']); ?></strong>
+                        <strong><?php echo htmlspecialchars($col['title']); ?></strong>
                         <code class="slug-display"><?php echo (int)$col['member_count']; ?> ITEM<?php echo $col['member_count'] != 1 ? 'S' : ''; ?></code>
                         <?php if (!empty($col['description'])): ?>
                             <span class="dim" style="display:block;margin-top:4px;font-size:0.85em;"><?php echo htmlspecialchars($col['description']); ?></span>
@@ -699,6 +745,33 @@ include 'core/sidebar.php';
     <?php endif; ?>
 
 <?php endif; ?>
+
+    <div class="box" style="margin-top:24px;">
+        <h3>COLLECTION SETTINGS</h3>
+        <form method="POST">
+            <input type="hidden" name="action_settings" value="1">
+            <div class="lens-input-wrapper">
+                <label>INDEX ROWS <span class="field-tip" data-tip="Number of rows shown on the /collections public page.">ⓘ</span></label>
+                <select name="collections_index_rows">
+                    <?php foreach ([1,2,3,4,5] as $r): ?>
+                    <option value="<?php echo $r; ?>"<?php echo (int)($settings['collections_index_rows'] ?? 3) === $r ? ' selected' : ''; ?>><?php echo $r; ?> row<?php echo $r > 1 ? 's' : ''; ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="lens-input-wrapper mt-16">
+                <label>DEFAULT SORT ORDER <span class="field-tip" data-tip="How collections are ordered on the public /collections page.">ⓘ</span></label>
+                <select name="collections_default_sort">
+                    <option value="manual"<?php echo ($settings['collections_default_sort'] ?? 'manual') === 'manual' ? ' selected' : ''; ?>>Manual (drag order)</option>
+                    <option value="alphabetical"<?php echo ($settings['collections_default_sort'] ?? '') === 'alphabetical' ? ' selected' : ''; ?>>Alphabetical</option>
+                    <option value="newest"<?php echo ($settings['collections_default_sort'] ?? '') === 'newest' ? ' selected' : ''; ?>>Date created (newest first)</option>
+                </select>
+            </div>
+            <div class="lens-input-wrapper mt-20">
+                <button type="submit" class="master-update-btn">SAVE SETTINGS</button>
+            </div>
+        </form>
+    </div>
+
 </div>
 
 <?php include 'core/admin-footer.php'; ?>
