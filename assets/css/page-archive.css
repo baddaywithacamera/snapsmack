@@ -20,7 +20,7 @@
  */
 
 
-/* ─── 1. SQUARE GRID (1:1 cropped) ───────────────────────────────────────── */
+/* --- 1. SQUARE GRID (1:1 cropped) ----------------------------------------- */
 .square-grid {
     display: grid;
     grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 200px));
@@ -46,7 +46,7 @@
     display: block;
 }
 
-/* ─── 2. CROPPED GRID (clamped aspect, proportional portraits) ───────────── */
+/* --- 2. CROPPED GRID (clamped aspect, proportional portraits) ------------- */
 .cropped-grid {
     display: grid;
     grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 200px));
@@ -82,7 +82,7 @@
     display: block;
 }
 
-/* ─── 3. JUSTIFIED / MASONRY GRID ────────────────────────────────────────── */
+/* --- 3. JUSTIFIED / MASONRY GRID ------------------------------------------ */
 #justified-grid {
     position: relative;
     width: 100%;
@@ -124,7 +124,7 @@
     box-shadow: none !important;
 }
 
-/* ─── 4. UNIFIED FILTER PANEL (saf-*) ────────────────────────────────────── */
+/* --- 4. UNIFIED FILTER PANEL (saf-*) -------------------------------------- */
 .saf-wrap {
     position: relative;
     display: inline-block;
@@ -240,7 +240,7 @@
     }
 }
 
-/* ─── 5. ARCHIVE SEARCH + STATUS ─────────────────────────────────────────── */
+/* --- 5. ARCHIVE SEARCH + STATUS ------------------------------------------- */
 .archive-search-form {
     display: inline-flex;
     align-items: center;
@@ -263,7 +263,7 @@
     padding: 12px 0 0;
 }
 
-/* ─── 6. ARCHIVE RESPONSIVE ──────────────────────────────────────────────── */
+/* --- 6. ARCHIVE RESPONSIVE ------------------------------------------------ */
 @media (max-width: 768px) {
     .square-grid,
     .cropped-grid {
@@ -272,7 +272,7 @@
     .wall-nav-item { display: none !important; }
 }
 
-/* ─── 7. T / M / C ARCHIVE CONTROLS ──────────────────────────────────────── */
+/* --- 7. T / M / C ARCHIVE CONTROLS ---------------------------------------- */
 /*
  * .archive-controls wraps [T][M] segmented + [C] button. Renders inside
  * the filter row (#infobox) when ss-engine-archive-toggle.js docks it
@@ -290,9 +290,14 @@
 }
 
 .archive-controls.archive-controls--docked {
-    padding: 0 18px 0 0;
-    margin-left: auto;
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 0;
+    margin: 0;
     flex-wrap: nowrap;
+    z-index: 1;
 }
 
 .archive-layout-toggle {
