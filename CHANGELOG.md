@@ -13,6 +13,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.85 — "Front Row" (2026-05-10)
+
+### Fixed
+- `core/meta.php` calendar config now correctly reads `calendar_side` and `calendar_months` from DB settings (previously missing from pushed commits, causing hardcoded `side: left`, `months: 1` on live sites).
+
 ## 0.7.84 — "Bleacher Seat" (2026-05-10)
 
 ### Fixed
@@ -1617,11 +1622,4 @@ _Internal bump. See 0.7.5b for the full feature set._
 - Various skin display bugs in New Horizon Dark and 50 Shades of Grey.
 
 ---
-
-## 0.5.0 and earlier
-
-Initial development. Admin interface, theme system, per-skin settings scoping,
-sidebar redesign, admin theme CSS consolidation, comment controls, footer
-configuration, and foundational CMS architecture.
-
 <!-- ===== SNAPSMACK EOF ===== -->
