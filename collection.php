@@ -5,7 +5,7 @@
  * URL: /collection.php?slug=u-s-trip-best-eight
  *      Pretty rewrite to /collection/<slug> can be added later via .htaccess.
  *
- * Renders only if snap_collections.is_visible = 1. Hidden collections 404.
+ * Renders only if snap_collections.published = 1. Hidden collections 404.
  * Member order = collection's sort_order (curator's choice), not date.
  *
  * Layout contract per _spec/collections-v0_2.md:
@@ -48,9 +48,9 @@ snapsmack_apply_skin_settings($settings, $active_skin);
 
 // Fetch collection — only if visible.
 $stmt = $pdo->prepare(
-    "SELECT id, name, slug, description, featured_post_id, is_visible
+    "SELECT id, title, slug, description, cover_image_id, published
      FROM snap_collections
-     WHERE slug = ? AND is_visible = 1
+     WHERE slug = ? AND published = 1
      LIMIT 1"
 );
 $stmt->execute([$slug]);
@@ -73,9 +73,9 @@ $mstmt = $pdo->prepare(
             i.img_thumb_square, i.img_thumb_aspect, i.img_file,
             i.img_date, ci.sort_order
      FROM snap_collection_items ci
-     INNER JOIN snap_images i ON i.id = ci.item_id
+     INNER JOIN snap_images i ON i.id = ci.image_id
      WHERE ci.collection_id = ?
-       AND ci.item_type     = 'image'
+       
        AND i.img_status     = 'published'
      ORDER BY ci.sort_order ASC, ci.added_at ASC"
 );
@@ -84,19 +84,19 @@ $members = $mstmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Featured image: explicit pick if set, else first member.
 $featured = null;
-if ($collection['featured_post_id']) {
+if ($collection['cover_image_id']) {
     $fstmt = $pdo->prepare(
         "SELECT id, img_title, img_slug, img_thumb_aspect, img_file
          FROM snap_images WHERE id=? AND img_status='published' LIMIT 1"
     );
-    $fstmt->execute([(int)$collection['featured_post_id']]);
+    $fstmt->execute([(int)\$collection['cover_image_id']]);
     $featured = $fstmt->fetch(PDO::FETCH_ASSOC) ?: null;
 }
 if (!$featured && !empty($members)) {
     $featured = $members[0];
 }
 
-$page_title = $collection['name'];
+$page_title = $collection['title'];
 $skin_path  = 'skins/' . $active_skin;
 
 if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
@@ -119,7 +119,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             ?>
 
             <div class="collection-canvas">
-                <h1 class="static-page-title"><?php echo htmlspecialchars($collection['name']); ?></h1>
+                <h1 class="static-page-title"><?php echo htmlspecialchars($collection['title']); ?></h1>
 
                 <?php if (!empty($collection['description'])): ?>
                     <div class="collection-description">
@@ -131,7 +131,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                     <div class="collection-hero">
                         <a href="<?php echo BASE_URL . htmlspecialchars($featured['img_slug'] ?? ''); ?>">
                             <img src="<?php echo BASE_URL . 'img_uploads/' . htmlspecialchars($featured['img_file'] ?? ''); ?>"
-                                 alt="<?php echo htmlspecialchars($featured['img_title'] ?? $collection['name']); ?>"
+                                 alt="<?php echo htmlspecialchars($featured['img_title'] ?? $collection['title']); ?>"
                                  class="collection-hero-img">
                         </a>
                     </div>

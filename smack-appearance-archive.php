@@ -131,7 +131,6 @@ $show_layout_toggle    = isset($settings['archive_show_layout_toggle'])
 $calendar_enabled      = !empty($settings['archive_calendar_enabled']);
 $calendar_default_open = !empty($settings['archive_calendar_default_open']);
 $calendar_months       = max(1, min(6, (int)($settings['calendar_months'] ?? 1)));
-$collections_rows      = (int)($settings['collections_index_rows'] ?? 1);
 if ($collections_rows !== 2) $collections_rows = 1;
 
 // Note: archive_border_style / archive_shadow_depth removed — were saved but never consumed.
@@ -267,14 +266,6 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                     </div>
                 </div>
 
-                <div class="lens-input-wrapper">
-                    <label>COLLECTIONS INDEX ROWS <span class="field-tip" data-tip="How many tile rows to show on /collections (the public collections index page). 1 = horizontal scroll-style strip, 2 = stacked.">ⓘ</span></label>
-                    <select name="settings[collections_index_rows]">
-                        <option value="1" <?php echo $collections_rows === 1 ? 'selected' : ''; ?>>1 ROW</option>
-                        <option value="2" <?php echo $collections_rows === 2 ? 'selected' : ''; ?>>2 ROWS</option>
-                    </select>
-                </div>
-
             </div>
         </div>
 
@@ -320,7 +311,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                     <select name="settings[calendar_months]">
                         <?php
                         $cal_months = $settings['calendar_months'] ?? '1';
-                        foreach (['1'=>'1 Month','2'=>'2 Months','3'=>'3 Months'] as $mv => $ml):
+                        foreach (['1'=>'1 Month','2'=>'2 Months','3'=>'3 Months','4'=>'4 Months'] as $mv => $ml):
                         ?>
                             <option value="<?php echo $mv; ?>"<?php echo ($cal_months == $mv) ? ' selected' : ''; ?>><?php echo $ml; ?></option>
                         <?php endforeach; ?>

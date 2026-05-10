@@ -91,6 +91,20 @@
     transform: translateX(0);
 }
 
+/* ── Left-side variant ───────────────────────────────────────────────────── */
+
+#smack-cal-panel.smack-cal--left {
+    right: auto;
+    left: 0;
+    border-left: none;
+    border-right: 1px solid var(--_cal-border);
+    transform: translateX(-100%);
+}
+
+#smack-cal-panel.smack-cal--left.smack-cal-panel--open {
+    transform: translateX(0);
+}
+
 /* ── Header ──────────────────────────────────────────────────────────────── */
 
 .smack-cal-header {
@@ -144,6 +158,9 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .smack-cal-loading-msg {

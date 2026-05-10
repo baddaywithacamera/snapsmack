@@ -40,7 +40,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'batch_delete') {
         $pdo->prepare("DELETE FROM snap_images WHERE id = ?")->execute([$id]);
         $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
         $pdo->prepare("DELETE FROM snap_image_album_map WHERE image_id = ?")->execute([$id]);
-        $pdo->prepare("DELETE FROM snap_collection_items WHERE item_type = 'post' AND item_id = ?")->execute([$id]);
+        $pdo->prepare("DELETE FROM snap_collection_items WHERE image_id = ?")->execute([$id]);
         $pdo->prepare("DELETE FROM snap_comments WHERE img_id = ?")->execute([$id]);
         $deleted++;
     }
@@ -112,7 +112,7 @@ if (isset($_GET['delete'])) {
     $pdo->prepare("DELETE FROM snap_images WHERE id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_image_album_map WHERE image_id = ?")->execute([$id]);
-    $pdo->prepare("DELETE FROM snap_collection_items WHERE item_type = 'post' AND item_id = ?")->execute([$id]);
+    $pdo->prepare("DELETE FROM snap_collection_items WHERE image_id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_comments WHERE img_id = ?")->execute([$id]);
 
     header("Location: smack-manage.php?msg=deleted");
@@ -150,7 +150,7 @@ if ($album_filter) {
     $params[] = $album_filter;
 }
 if ($collection_filter) {
-    $where_clauses[] = "i.id IN (SELECT item_id FROM snap_collection_items WHERE collection_id = ? AND item_type = 'post')";
+    $where_clauses[] = "i.id IN (SELECT image_id FROM snap_collection_items WHERE collection_id = ?)";
     $params[] = $collection_filter;
 }
 
@@ -182,10 +182,10 @@ $sql = "SELECT i.*,
          FROM snap_albums a
          JOIN snap_image_album_map am ON a.id = am.album_id
          WHERE am.image_id = i.id) as album_list,
-        (SELECT GROUP_CONCAT(sc.name ORDER BY sc.name ASC SEPARATOR ', ')
+        (SELECT GROUP_CONCAT(sc.title ORDER BY sc.title ASC SEPARATOR ', ')
          FROM snap_collections sc
          JOIN snap_collection_items sci ON sc.id = sci.collection_id
-         WHERE sci.item_id = i.id AND sci.item_type = 'post') as collection_list,
+         WHERE sci.image_id = i.id) as collection_list,
         (SELECT COUNT(*) FROM snap_comments WHERE img_id = i.id) as comment_count,
         (SELECT COUNT(*) FROM snap_likes WHERE post_id = i.id) as like_count
         FROM snap_images i
@@ -199,7 +199,7 @@ $post_list = $posts->fetchAll();
 
 $cats        = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
 $albums      = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
-$collections = $pdo->query("SELECT * FROM snap_collections ORDER BY name ASC")->fetchAll();
+$collections = $pdo->query("SELECT * FROM snap_collections ORDER BY title ASC")->fetchAll();
 
 $success_msg = '';
 if (!empty($_GET['msg'])) {
@@ -271,7 +271,7 @@ include 'core/sidebar.php';
                     <select name="collection_id">
                         <option value="">ALL COLLECTIONS</option>
                         <?php foreach($collections as $col): ?>
-                            <option value="<?php echo $col['id']; ?>" <?php echo ($collection_filter == $col['id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($col['name']); ?></option>
+                            <option value="<?php echo $col['id']; ?>" <?php echo ($collection_filter == $col['id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($col['title']); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>

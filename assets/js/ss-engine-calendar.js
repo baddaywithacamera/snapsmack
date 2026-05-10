@@ -74,7 +74,7 @@
         panel.id = 'smack-cal-panel';
         panel.setAttribute('aria-label', 'Archive Calendar');
         panel.setAttribute('role', 'complementary');
-        panel.classList.add('smack-cal--right');
+        panel.classList.add(cfg.side === 'left' ? 'smack-cal--left' : 'smack-cal--right');
 
         var header = document.createElement('div');
         header.className = 'smack-cal-header';
@@ -147,8 +147,13 @@
     }
 
     // ── Viewport height → month count ──────────────────────────────────────
+    // Prefer the admin-configured value (SMACK_CONFIG.calendar.months).
+    // Fall back to viewport-derived count only when not set.
 
     function computeMonthCount() {
+        if (cfg.months && cfg.months > 0) {
+            return cfg.months;
+        }
         var available = window.innerHeight - PANEL_CHROME;
         return Math.max(1, Math.floor(available / MONTH_BLOCK_H));
     }
@@ -456,13 +461,9 @@
             open();
         }
 
-        window.smackCalendar = {
-            open:       open,
-            close:      closePanel,
-            toggle:     toggle,
-            clearRange: clearRange,
-        };
+        window.smackCalendar = { open: open, close: close, toggle: toggle };
     });
 
 }());
+
 // ===== SNAPSMACK EOF =====
