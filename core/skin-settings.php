@@ -22,7 +22,7 @@
 
 function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): void
 {
-    // Keys owned exclusively by Global Vibe — skin-scoped copies must never
+    // Keys owned exclusively by Global Vibe -- skin-scoped copies must never
     // override these, even if a stale prefixed DB row exists from a previous
     // manifest version.
     $global_only = [
@@ -40,6 +40,15 @@ function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): voi
         'thumb_size',
         'browse_cols',
         'exif_display_enabled',
+        // Archive/calendar settings are global (managed via Archive Appearance,
+        // not per-skin). Skin-scoped stale copies must never override these.
+        'archive_calendar_enabled',
+        'archive_calendar_default_open',
+        'archive_show_layout_toggle',
+        'archive_thumb_style',
+        'calendar_side',
+        'calendar_months',
+        'calendar_post_count',
     ];
 
     $prefix     = $skin_slug . '__';
