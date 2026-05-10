@@ -13,6 +13,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.87 — "Squat" (2026-05-10)
+
+### Fixed
+- Version bump to clear 0.7.86 checksum mismatch caused by post-tag commit.
+- All changes identical to 0.7.86.
+
 ## 0.7.86 — "Sit Up Straight" (2026-05-10)
 
 ### Fixed
