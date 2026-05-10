@@ -7,15 +7,17 @@ require_once __DIR__ . '/sc-auth.php';
 $sc_active_nav = 'sc-dashboard.php';
 $sc_page_title = 'Dashboard';
 
-// Quick stats from the forum db
+// Quick stats — installs/threads/replies from forum DB, releases from central DB
 $stats = ['installs' => 0, 'threads' => 0, 'replies' => 0, 'releases' => 0];
 try {
-    $db = sc_db();
-    $stats['installs'] = (int)$db->query("SELECT COUNT(*) FROM ss_forum_installs WHERE is_banned = 0")->fetchColumn();
-    $stats['threads']  = (int)$db->query("SELECT COUNT(*) FROM ss_forum_threads  WHERE is_deleted = 0")->fetchColumn();
-    $stats['replies']  = (int)$db->query("SELECT COUNT(*) FROM ss_forum_replies  WHERE is_deleted = 0")->fetchColumn();
-    $stats['releases'] = (int)$db->query("SELECT COUNT(*) FROM sc_releases")->fetchColumn();
-} catch (Exception $e) { /* tables may not exist yet */ }
+    $fdb = sc_forum_db();
+    $stats['installs'] = (int)$fdb->query("SELECT COUNT(*) FROM ss_forum_installs WHERE is_banned = 0")->fetchColumn();
+    $stats['threads']  = (int)$fdb->query("SELECT COUNT(*) FROM ss_forum_threads  WHERE is_deleted = 0")->fetchColumn();
+    $stats['replies']  = (int)$fdb->query("SELECT COUNT(*) FROM ss_forum_replies  WHERE is_deleted = 0")->fetchColumn();
+} catch (Exception $e) { /* forum tables may not exist yet */ }
+try {
+    $stats['releases'] = (int)sc_db()->query("SELECT COUNT(*) FROM sc_releases")->fetchColumn();
+} catch (Exception $e) {}
 
 $latest_release = null;
 try {
