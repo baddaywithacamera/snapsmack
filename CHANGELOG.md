@@ -17,6 +17,7 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ### Fixed
 - Archive/calendar settings (calendar_side, calendar_months, etc.) added to global_only list in skin-settings.php — skin-scoped stale DB values were clobbering Archive Appearance saves, causing calendar to always slide from left and show 1 month regardless of saved settings.
+- T/M/C archive control buttons now aligned to container inner edge (right: 40px) instead of viewport edge.
 
 ## 0.7.85 — "Front Row" (2026-05-10)
 
