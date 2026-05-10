@@ -306,7 +306,7 @@ include 'core/sidebar.php';
         </div>
     </div>
 
-    <?php if (isset($msg)) echo "<div class='msg'>> $msg</div>"; ?>
+    <?php if (isset($msg)) echo "<div class='alert alert-success'>&gt; " . htmlspecialchars($msg) . "</div>"; ?>
 
     <?php if ($system === 'bans'): ?>
     <div class="box">
