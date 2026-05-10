@@ -168,9 +168,49 @@
         });
     }
 
+    // Dock the .archive-controls row into the existing filter bar so the
+    // [T][M][C] buttons appear inline with [SHOW ALL] / [FILTER] / search
+    // (which is where the old skin-specific toggle used to live). Falls
+    // back to leaving the controls where archive.php placed them if no
+    // known dock target is present.
+    function dockControls() {
+        var ctrls = document.querySelector('.archive-controls');
+        if (!ctrls) return;
+        // Try common filter-bar containers in order; first match wins.
+        var dock = document.querySelector('#infobox')
+                || document.querySelector('.archive-filter-bar')
+                || document.querySelector('.archive-toolbar')
+                || document.querySelector('.archive-search-row');
+        if (dock && dock !== ctrls.parentNode) {
+            ctrls.classList.add('archive-controls--docked');
+            dock.appendChild(ctrls);
+        }
+        alignDockedControls(ctrls);
+    }
+
+    // Align the docked controls to the right inner edge of the photo grid.
+    function alignDockedControls(ctrls) {
+        if (!ctrls || !ctrls.classList.contains('archive-controls--docked')) return;
+        var grid = document.querySelector('.fsog-archive-grid') || document.querySelector('#justified-grid');
+        var infobox = document.getElementById('infobox');
+        if (!grid || !infobox) return;
+        var infoboxRect = infobox.getBoundingClientRect();
+        var gridRect    = grid.getBoundingClientRect();
+        var gridStyle   = window.getComputedStyle(grid);
+        var padRight    = parseFloat(gridStyle.paddingRight) || 0;
+        // Right edge of grid inner content area, measured from right of infobox.
+        var offset = infoboxRect.right - (gridRect.right - padRight);
+        ctrls.style.right = Math.max(0, offset) + 'px';
+    }
+
+    window.addEventListener('resize', function () {
+        alignDockedControls(document.querySelector('.archive-controls--docked'));
+    });
+
     document.addEventListener('DOMContentLoaded', function () {
         wireToggle();
         wireHotkeys();
+        dockControls();
     });
 }());
 // ===== SNAPSMACK EOF =====

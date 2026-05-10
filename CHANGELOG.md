@@ -13,6 +13,16 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.89 — "Park Bench" (2026-05-10)
+
+### Fixed
+- T/M/C archive controls alignment: JS now computes right offset from actual grid bounding rect instead of CSS calc — reliable across all viewport widths and max-width settings.
+
+## 0.7.88 — "Take a Load Off" (2026-05-10)
+
+### Fixed
+- T/M/C archive control buttons now aligned to content container inner edge using max(40px, calc(50% - 785px)) — previously floating against viewport edge on wide monitors.
+
 ## 0.7.87 — "Squat" (2026-05-10)
 
 ### Fixed
