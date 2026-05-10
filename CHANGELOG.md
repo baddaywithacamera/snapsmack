@@ -13,6 +13,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.84 — "Bleacher Seat" (2026-05-10)
+
+### Fixed
+- Version bump to clear 0.7.83 checksum mismatch caused by post-tag patch commit.
+- All changes identical to 0.7.83.
+
 ## 0.7.83 — "Take a Load Off" Collections v0.3 admin + archive fixes (2026-05-09)
 
 ### Added
