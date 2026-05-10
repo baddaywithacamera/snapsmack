@@ -1,0 +1,338 @@
+/**
+ * SNAPSMACK - Archive Page Styles
+ *
+ * Loaded only on archive.php. Contains:
+ *   - Square / cropped / justified grid engines
+ *   - Filter panel (saf-*) styling
+ *   - Search form + status row
+ *   - T/M/C control bar (.archive-controls + .archive-layout-toggle + .archive-calendar-toggle)
+ *   - Archive responsive breakpoints
+ *
+ * Skin's style.css loads AFTER this file. Override anything decorative
+ * (colours, opacity, hover, position) freely. Do NOT override grid
+ * structure (display:grid, gap, aspect-ratio) — the layout depends on it.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line MUST be: slash-star, space, five equals, space,
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ */
+
+
+/* ─── 1. SQUARE GRID (1:1 cropped) ───────────────────────────────────────── */
+.square-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 200px));
+    gap: var(--grid-gap, 50px);
+    padding: 0;
+    justify-content: center;
+}
+.square-grid .thumb-container {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+}
+.square-grid .thumb-link {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    box-sizing: border-box;
+}
+.square-grid .thumb-link img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* ─── 2. CROPPED GRID (clamped aspect, proportional portraits) ───────────── */
+.cropped-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 200px));
+    gap: var(--grid-gap, 50px);
+    padding: 0;
+    justify-content: center;
+}
+.cropped-grid .thumb-container {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cropped-grid .thumb-link {
+    display: block !important;
+    width: 100% !important;
+    overflow: hidden;
+    aspect-ratio: 3 / 2 !important;
+}
+.cropped-grid .thumb-link.orient-portrait {
+    width: 75% !important;
+    aspect-ratio: 2 / 3 !important;
+}
+.cropped-grid .thumb-link.orient-square {
+    width: 90% !important;
+    aspect-ratio: 1 / 1 !important;
+}
+.cropped-grid .thumb-link img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+    display: block;
+}
+
+/* ─── 3. JUSTIFIED / MASONRY GRID ────────────────────────────────────────── */
+#justified-grid {
+    position: relative;
+    width: 100%;
+}
+#justified-grid .justified-row {
+    display: flex;
+    gap: var(--justified-gap, 4px);
+    margin-bottom: var(--justified-gap, 4px);
+}
+#justified-grid .justified-row-last {
+    height: calc(100vw / var(--last-row-ar-sum, 7));
+}
+#justified-grid .justified-row-last .justified-item {
+    flex-grow: 0 !important;
+    flex-basis: auto !important;
+    height: 100%;
+}
+#justified-grid .justified-row-last .justified-item img {
+    width: auto;
+    height: 100%;
+}
+#justified-grid .justified-item {
+    display: block;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+#justified-grid .justified-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: blur(0.3px);
+}
+#justified-grid .justified-item,
+#justified-grid .justified-item a,
+#justified-grid .justified-item img {
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* ─── 4. UNIFIED FILTER PANEL (saf-*) ────────────────────────────────────── */
+.saf-wrap {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+}
+.saf-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+    color: var(--nav-text, var(--text-dim, #999));
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    line-height: inherit;
+    white-space: nowrap;
+}
+.saf-btn:hover,
+.saf-btn--active { color: var(--accent, #fff); }
+.saf-btn-arrow {
+    font-size: 0.75em;
+    opacity: 0.7;
+    transition: transform 0.15s;
+}
+.saf-btn[aria-expanded="true"] .saf-btn-arrow { transform: rotate(180deg); }
+
+.saf-panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 900;
+    min-width: 330px;
+    max-width: 420px;
+    max-height: 380px;
+    overflow-y: auto;
+    background: var(--nav-bg, var(--bg, #111));
+    border: 1px solid var(--border, rgba(255,255,255,0.12));
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    padding: 10px 0 6px;
+}
+.saf-panel.saf-panel--open { display: block; }
+
+.saf-search {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 6px 12px;
+    margin-bottom: 8px;
+    background: rgba(255,255,255,0.07);
+    border: none;
+    border-bottom: 1px solid var(--border, rgba(255,255,255,0.12));
+    color: var(--text, #fff);
+    font-family: inherit;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    outline: none;
+}
+.saf-search::placeholder { color: var(--text-dim, #666); opacity: 1; }
+
+.saf-group-header {
+    padding: 6px 12px 3px;
+    font-size: 0.68rem;
+    letter-spacing: 2px;
+    color: var(--text-dim, #666);
+    text-transform: uppercase;
+    pointer-events: none;
+}
+.saf-group + .saf-group {
+    margin-top: 4px;
+    border-top: 1px solid var(--border, rgba(255,255,255,0.08));
+    padding-top: 4px;
+}
+
+.saf-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 5px 12px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+    color: var(--text, #ddd);
+    transition: background 0.1s;
+}
+.saf-item:hover { background: rgba(255,255,255,0.07); }
+.saf-checkbox {
+    flex-shrink: 0;
+    width: 13px;
+    height: 13px;
+    accent-color: var(--accent, #fff);
+    cursor: pointer;
+}
+.saf-label {
+    flex: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1.3;
+}
+
+@media (max-width: 600px) {
+    .saf-panel {
+        left: auto;
+        right: 0;
+        transform: none;
+        max-width: calc(100vw - 24px);
+    }
+}
+
+/* ─── 5. ARCHIVE SEARCH + STATUS ─────────────────────────────────────────── */
+.archive-search-form {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+}
+.archive-search-status {
+    text-align: center;
+    padding: 15px 0 0;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+}
+.archive-search-status a { color: var(--accent); }
+.archive-tags-row {
+    justify-content: center;
+    padding: 12px 0 0;
+}
+
+/* ─── 6. ARCHIVE RESPONSIVE ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .square-grid,
+    .cropped-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .wall-nav-item { display: none !important; }
+}
+
+/* ─── 7. T / M / C ARCHIVE CONTROLS ──────────────────────────────────────── */
+/*
+ * .archive-controls wraps [T][M] segmented + [C] button. Renders inside
+ * the filter row (#infobox) when ss-engine-archive-toggle.js docks it
+ * via .archive-controls--docked, otherwise sits as its own row above the
+ * grid. Skin's style.css can override position, colour, decoration freely.
+ */
+
+.archive-controls {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0 14px;
+    flex-wrap: wrap;
+}
+
+.archive-controls.archive-controls--docked {
+    padding: 0;
+    margin-left: auto;
+    flex-wrap: nowrap;
+}
+
+.archive-layout-toggle {
+    display: inline-flex;
+    gap: 0;
+}
+
+.archive-controls .alt-btn,
+.archive-layout-toggle .alt-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    padding: 6px 14px;
+    font-size: 0.78em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border: 1px solid currentColor;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.45;
+    transition: opacity 0.15s, background-color 0.15s;
+    font-family: inherit;
+    line-height: 1;
+}
+
+.archive-layout-toggle .alt-btn:first-child { border-radius: 3px 0 0 3px; }
+.archive-layout-toggle .alt-btn:last-child  { border-radius: 0 3px 3px 0; margin-left: -1px; }
+.archive-layout-toggle .alt-btn:only-child  { border-radius: 3px; margin-left: 0; }
+
+.archive-calendar-toggle { border-radius: 3px; }
+
+.archive-controls .alt-btn:hover,
+.archive-layout-toggle .alt-btn:hover { opacity: 0.85; }
+.archive-controls .alt-btn--active,
+.archive-layout-toggle .alt-btn--active {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.10);
+}
+/* ===== SNAPSMACK EOF ===== */

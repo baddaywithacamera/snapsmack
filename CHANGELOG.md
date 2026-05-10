@@ -13,6 +13,23 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.81 — "Lotus Position" CSS architecture cleanup + skin contract (2026-05-09)
+
+### Added
+- **`_spec/skin-contract.md`** — the formal contract between the CMS and any skin. Documents every CSS class the CMS emits per page, every JS engine's expected DOM hooks, and per-class STRUCTURAL vs DECORATIVE flags so skin authors know what they can override and what they must leave alone. Lives in git, gets updated whenever new public-side widgets land. Will become the input to oh-snap's skin-author wizard.
+- **Per-page public CSS files**: `public-base.css` (every page — utilities, alignment, image fade engine), `page-archive.css` (archive only — grids, filter panel, T/M/C controls), `page-collection.css` (collection landing + index), `page-blogroll.css` (blogroll), `page-static.css` (page hero + 404). Smaller surface area per page, less FUSE-truncation risk per file, cleaner override targets for skin authors.
+
+### Changed
+- **`core/meta.php`** detects the executing page via `basename($_SERVER['SCRIPT_NAME'])` and loads only `public-base.css` plus the matching `page-*.css`. Pages that don't match a known mapping (e.g. custom skin pages) get just `public-base.css`. Versioned via `?v=<SNAPSMACK_VERSION_SHORT>` for cache-busting.
+- **`assets/css/public-facing.css`** is now a deprecation shim that `@import`s the five split files. Existing references (skin templates, third-party links to the old URL) keep working unchanged. Will be removed in a future release once all references are migrated; flagged here.
+
+### Fixed
+- **T/M/C buttons render correctly on every public skin.** 0.7.80's buttons appeared as raw `<button>` boxes on photowalk because the CSS rules for `.archive-controls` and `.archive-calendar-toggle` were either not in `public-facing.css` at the time of push, or scoped only to `.archive-layout-toggle .alt-btn` and missed the C button. The new `page-archive.css` carries the full styling and ships with this release; once 0.7.81 is live, the segmented `[T][M]` and standalone `[C]` buttons appear inside the existing filter row (`#infobox`) at the right edge, with active-state highlighting on hover. `ss-engine-archive-toggle.js` docks the bar via `dockControls()` on DOMContentLoaded.
+
+### Architecture notes
+- The previous `public-facing.css` mixed structural rules (engine plumbing) with decorative rules (button colours, opacity, hover) in one 600-line file. Skin authors couldn't tell which was safe to override. The split now separates them: STRUCTURAL rules live in `public-base.css` clearly marked, DECORATIVE rules live in their respective `page-*.css` files. See `_spec/skin-contract.md` for the per-class breakdown.
+- House standard going forward: CMS provides stock styling for every widget it ships. Skin's `style.css` overrides via standard CSS cascade — no manifest plumbing required. New widgets land with stock styling so unupdated skins still render usable controls; skin authors update on their own schedule.
+
 ## 0.7.80 — "Cross-Legged" Collections v0.2 + Archive layout/calendar decoupling + T/M/C buttons (2026-05-09)
 
 ### Added
