@@ -144,13 +144,21 @@ function updater_fetch_release_info(): array {
  * Compare the installed version against the latest available version.
  * Returns: 'up_to_date', 'update_available', or 'error'.
  */
-function updater_check_status(string $installed_version, array $release_info): string {
+function updater_check_status(string $installed_version, array $release_info, string $installed_checksum = ''): string {
     if (isset($release_info['error'])) {
         return 'error';
     }
-    return snap_version_compare($release_info['version'], $installed_version, '>')
-        ? 'update_available'
-        : 'up_to_date';
+    if (snap_version_compare($release_info['version'], $installed_version, '>')) {
+        return 'update_available';
+    }
+    // Same version number — check whether the package was rebuilt (checksum changed).
+    // This lets force-pushed tags propagate to spokes without inflating the version.
+    if ($installed_checksum !== ''
+        && !empty($release_info['checksum_sha256'])
+        && !hash_equals(strtolower($installed_checksum), strtolower($release_info['checksum_sha256']))) {
+        return 'update_available';
+    }
+    return 'up_to_date';
 }
 
 
@@ -1000,16 +1008,53 @@ function updater_run_migrations(PDO $pdo, array $migration_files): array {
 }
 
 
+// ─── MAINTENANCE LOCK ───────────────────────────────────────────────────────
+
+/**
+ * Write data/maintenance.lock before file extraction begins.
+ * Public requests hitting core/constants.php will 503 until the lock is gone.
+ */
+function updater_acquire_lock(PDO $pdo): void {
+    $lock_path = __DIR__ . '/../data/maintenance.lock';
+    $site_name = '';
+    try {
+        $row = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'site_name' LIMIT 1")->fetchColumn();
+        $site_name = $row ?: '';
+    } catch (Exception $e) {}
+    $data = json_encode([
+        'since'     => time(),
+        'reason'    => 'update',
+        'site_name' => $site_name ?: ($_SERVER['HTTP_HOST'] ?? 'This site'),
+    ]);
+    @file_put_contents($lock_path, $data, LOCK_EX);
+}
+
+/**
+ * Remove the maintenance lock. Always call this — even on extraction failure.
+ * Called in a finally block in smack-update.php so it always runs.
+ */
+function updater_release_lock(): void {
+    @unlink(__DIR__ . '/../data/maintenance.lock');
+}
+
 // ─── VERSION BOOKKEEPING ────────────────────────────────────────────────────
 
 /**
  * Update the installed version in the settings table and rewrite constants.php.
  */
-function updater_set_version(PDO $pdo, string $version_short, string $version_full, string $codename = ''): bool {
+function updater_set_version(PDO $pdo, string $version_short, string $version_full, string $codename = '', string $checksum = ''): bool {
     try {
         // Update settings table
         $stmt = $pdo->prepare("UPDATE snap_settings SET setting_val = ? WHERE setting_key = 'installed_version'");
         $stmt->execute([$version_short]);
+
+        // Store the checksum of the applied package so updater_check_status can detect
+        // a same-version rebuild (force-pushed tag) without inflating the version number.
+        if ($checksum !== '') {
+            $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('installed_checksum', ?)
+                                   ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)");
+            $stmt->execute([$checksum]);
+        }
 
         // Also store last update timestamp
         $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('last_update_check', ?)

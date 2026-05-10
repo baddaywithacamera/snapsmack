@@ -151,7 +151,7 @@ include 'core/sidebar.php';
     </div>
 
     <?php if ($msg): ?>
-        <div class="msg">> <?php echo htmlspecialchars($msg); ?></div>
+        <div class="alert alert-success">&gt; <?php echo htmlspecialchars($msg); ?></div>
     <?php endif; ?>
 
     <form method="POST">

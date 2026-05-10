@@ -244,11 +244,11 @@ include 'core/sidebar.php';
     </div>
 
     <?php if (isset($msg)): ?>
-        <div class="alert">> <?php echo htmlspecialchars($msg); ?></div>
+        <div class="alert alert-success">&gt; <?php echo htmlspecialchars($msg); ?></div>
     <?php endif; ?>
 
     <?php if (!SnapSmackCloudOAuth::isAvailable()): ?>
-        <div class="alert">> cURL EXTENSION NOT AVAILABLE — CLOUD BACKUP REQUIRES cURL</div>
+        <div class="alert alert-error">&gt; cURL EXTENSION NOT AVAILABLE — CLOUD BACKUP REQUIRES cURL</div>
     <?php endif; ?>
 
     <!-- ================================================================

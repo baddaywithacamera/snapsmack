@@ -31,6 +31,10 @@
 
 
 
+// Bypass the maintenance lock check in core/constants.php — the updater's
+// own chunk requests must not be blocked by the lock they created.
+define('SNAPSMACK_IS_UPDATER', true);
+
 require_once 'core/auth.php';
 require_once 'core/updater.php';
 
@@ -67,15 +71,19 @@ if (empty($_SESSION['update_csrf'])) {
 $csrf = $_SESSION['update_csrf'];
 
 // --- CURRENT VERSION ---
-$installed_version = SNAPSMACK_VERSION_SHORT ?? '0.0';
-$installed_full    = SNAPSMACK_VERSION ?? 'Unknown';
+$installed_version  = SNAPSMACK_VERSION_SHORT ?? '0.0';
+$installed_full     = SNAPSMACK_VERSION ?? 'Unknown';
+$installed_checksum = '';
 
 try {
-    $stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = 'installed_version'");
+    $stmt = $pdo->prepare("SELECT setting_key, setting_val FROM snap_settings WHERE setting_key IN ('installed_version','installed_checksum')");
     $stmt->execute();
-    $db_ver = $stmt->fetchColumn();
-    if ($db_ver && snap_version_compare($db_ver, $installed_version, '>')) {
-        $installed_version = $db_ver;
+    foreach ($stmt->fetchAll(PDO::FETCH_KEY_PAIR) as $k => $v) {
+        if ($k === 'installed_version' && snap_version_compare($v, $installed_version, '>')) {
+            $installed_version = $v;
+        } elseif ($k === 'installed_checksum') {
+            $installed_checksum = $v;
+        }
     }
 } catch (PDOException $e) {}
 
@@ -223,7 +231,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'stage_extract_chunk') {
     $_SESSION['update_chunk_state'] = $chunk_state;
 
     if (!$chunk['success']) {
-        // Fatal write error — surface to main page via session flash
+        // Fatal write error — release lock before surfacing error to admin.
+        updater_release_lock();
         $_SESSION['update_state']['log'][] = [
             'label'  => 'Extraction failed',
             'status' => 'fail',
@@ -237,7 +246,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'stage_extract_chunk') {
     }
 
     if ($chunk['done']) {
-        // All entries processed — advance stage and return to main page
+        // All entries processed — release maintenance lock, site is live again.
+        updater_release_lock();
         $_SESSION['update_state']['stage'] = 'extracted';
         $_SESSION['update_state']['log'][] = [
             'label'  => 'Files extracted',
@@ -369,7 +379,7 @@ if ($action === 'reapply') {
 if ($action === 'check') {
     $release_info = updater_fetch_release_info();
     $skin_info    = updater_check_skin_registry($pdo);
-    $core_status  = updater_check_status($installed_version, $release_info);
+    $core_status  = updater_check_status($installed_version, $release_info, $installed_checksum);
 
     $core_update = null;
     if ($core_status === 'update_available') {
@@ -451,6 +461,7 @@ if ($action === 'check') {
 // ── STAGED UPDATE: CANCEL ─────────────────────────────────────────────────────
 if ($action === 'cancel_update') {
     if (!empty($stage_state['zip_path'])) @unlink($stage_state['zip_path']);
+    updater_release_lock(); // no-op if lock doesn't exist; safe to call always
     unset($_SESSION['update_state'], $_SESSION['update_complete_log'], $_SESSION['update_chunk_state']);
     $stage_state = null;
     $flash_msg   = 'UPDATE CANCELLED.';
@@ -740,6 +751,10 @@ if ($action === 'stage_extract'
     && !empty($stage_state)
     && ($stage_state['stage'] ?? '') === 'premigrated'
 ) {
+    // Acquire maintenance lock before first extraction chunk.
+    // Public requests will 503 until updater_release_lock() is called.
+    updater_acquire_lock($pdo);
+
     $_SESSION['update_chunk_state'] = [
         'zip_path'      => $stage_state['zip_path'],
         'offset'        => 0,
@@ -804,7 +819,7 @@ if ($action === 'stage_migrate'
     }
 
     if ($flash_type !== 'error') {
-        updater_set_version($pdo, $update['version'], $update['version_full'] ?? "Alpha {$update['version']}", $update['codename'] ?? '');
+        updater_set_version($pdo, $update['version'], $update['version_full'] ?? "Alpha {$update['version']}", $update['codename'] ?? '', $update['checksum_sha256'] ?? '');
         $_SESSION['update_state']['log'][] = ['label' => 'Version updated', 'status' => 'ok', 'detail' => "v{$installed_version} → v{$update['version']}"];
 
         // Remove files that were deleted from the distribution in this or any earlier release

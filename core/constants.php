@@ -15,6 +15,46 @@
  */
 
 
+// --- MAINTENANCE LOCK ---
+// Checked before security headers and before any DB connection. Must remain
+// dependency-free — this runs when files may be mid-extraction.
+// SNAPSMACK_IS_UPDATER bypass: smack-update.php defines this constant before
+// its first require_once so the updater's own chunk requests are never blocked.
+if (PHP_SAPI !== 'cli' && !defined('SNAPSMACK_IS_UPDATER')) {
+    $_snap_lock = __DIR__ . '/../data/maintenance.lock';
+    if (file_exists($_snap_lock)) {
+        $_snap_maint = @json_decode(@file_get_contents($_snap_lock), true) ?? [];
+        $_snap_since = (int)($_snap_maint['since'] ?? 0);
+        if ($_snap_since > 0 && (time() - $_snap_since) > 300) {
+            @unlink($_snap_lock); // safety valve: clear locks stuck > 5 minutes
+        } else {
+            $_snap_site = htmlspecialchars($_snap_maint['site_name'] ?? 'This site');
+            http_response_code(503);
+            header('Retry-After: 30');
+            header('Content-Type: text/html; charset=utf-8');
+            // phpcs:ignore
+            echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+               . '<meta name="viewport" content="width=device-width,initial-scale=1">'
+               . '<title>Back Shortly</title>'
+               . '<style>'
+               . '*{margin:0;padding:0;box-sizing:border-box}'
+               . 'html,body{height:100%}'
+               . 'body{background:#111;color:#777;font-family:"Courier New",Courier,monospace;'
+               . 'display:flex;align-items:center;justify-content:center;text-align:center}'
+               . '.wrap{max-width:460px;padding:40px 20px}'
+               . '.site{color:#bbb;font-size:1rem;letter-spacing:.12em;text-transform:uppercase;margin-bottom:18px}'
+               . '.msg{font-size:.82rem;line-height:1.7}'
+               . '</style></head><body>'
+               . '<div class="wrap">'
+               . '<div class="site">' . $_snap_site . '</div>'
+               . '<div class="msg">Back shortly.<br>An update is being applied.</div>'
+               . '</div></body></html>';
+            exit;
+        }
+    }
+    unset($_snap_lock, $_snap_maint, $_snap_since, $_snap_site);
+}
+
 // --- SECURITY HEADERS ---
 // Sent on every request before any output. Skipped on CLI (e.g. migrations).
 if (PHP_SAPI !== 'cli' && !headers_sent()) {
@@ -23,9 +63,9 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Referrer-Policy: strict-origin-when-cross-origin');
 }
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.90');
-define('SNAPSMACK_VERSION_SHORT', '0.7.90');
-define('SNAPSMACK_VERSION_CODENAME', 'Take a Load Off');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.92');
+define('SNAPSMACK_VERSION_SHORT', '0.7.92');
+define('SNAPSMACK_VERSION_CODENAME', 'Front Row');
 
 // --- VERSION COMPARISON ---
 // Versions are standard three-part semver: 0.7.17, 0.7.18, etc.

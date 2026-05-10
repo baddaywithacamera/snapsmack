@@ -109,7 +109,7 @@ include 'core/sidebar.php';
     </div>
 
     <?php if (isset($_GET['msg'])): ?>
-        <div class="alert alert-success">> THANKS FOR SHOWING SOME LINKY LOVE - YOU ROCK!</div>
+        <div class="alert alert-success">&gt; BLOGROLL SAVED</div>
     <?php endif; ?>
 
     <!-- MANAGE CATEGORIES -->

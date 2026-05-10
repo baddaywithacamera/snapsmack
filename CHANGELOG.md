@@ -13,10 +13,23 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.92 — "Front Row" (2026-05-10)
+
+### Added
+- Maintenance lock during update extraction. `core/constants.php` checks for `data/maintenance.lock` on every web request (skipped on CLI and for `smack-update.php` itself via `SNAPSMACK_IS_UPDATER`). The updater acquires the lock immediately before the first extraction chunk and releases it on completion, failure, or cancel. A 5-minute safety valve clears stuck locks. Public visitors see a clean 503 + `Retry-After: 30` page for the ~5–10 second extraction window.
+
+## 0.7.91 — "Squat" (2026-05-10)
+
+### Fixed
+- Blogroll public page (`blogroll.php`): dedup logic used `$p['url']` but the column is `peer_url` — every entry hit the empty-key guard and was silently dropped, leaving the page blank even with entries in the DB.
+- Admin success messages: standardized `smack-comments.php`, `smack-community-settings.php`, `smack-community-users.php`, and `smack-cloud.php` from `.msg` / bare `.alert` to `.alert.alert-success` / `.alert.alert-error`. Consistent bordered box across all admin pages.
+- `smack-blogroll.php`: replaced chatty save confirmation with standard `> BLOGROLL SAVED`.
+
 ## 0.7.90 — "Take a Load Off" (2026-05-10)
 
 ### Fixed
 - T/M/C archive controls: `alignDockedControls()` now runs unconditionally on DOMContentLoaded. Previously it only ran inside `dockControls()` (which skipped when controls were already server-rendered in `#infobox`), so alignment never fired on initial page load.
+- Updater checksum tracking: `updater_check_status()` now also compares the stored applied checksum against the published package checksum. If the version is the same but the checksum differs (e.g. a force-pushed tag and rebuilt release), the updater correctly shows "update available" instead of "up to date". Applied checksum is stored in `snap_settings` as `installed_checksum` after each successful update.
 
 ## 0.7.89 — "Park Bench" (2026-05-10)
 

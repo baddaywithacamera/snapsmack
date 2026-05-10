@@ -123,7 +123,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                     $seen_urls   = [];
                     // First pass: index local-only entries.
                     foreach ($peers as $p) {
-                        $url_key = strtolower(trim((string)($p['url'] ?? '')));
+                        $url_key = strtolower(trim((string)($p['peer_url'] ?? '')));
                         if ($url_key === '' || isset($seen_urls[$url_key])) continue;
                         if (!empty($p['source_hub_url'])) continue;
                         $seen_urls[$url_key] = true;
@@ -132,7 +132,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                     }
                     // Second pass: hub-synced entries that aren't already shown.
                     foreach ($peers as $p) {
-                        $url_key = strtolower(trim((string)($p['url'] ?? '')));
+                        $url_key = strtolower(trim((string)($p['peer_url'] ?? '')));
                         if ($url_key === '' || isset($seen_urls[$url_key])) continue;
                         $seen_urls[$url_key] = true;
                         $cat = $cleanCat($p['cat_name']);
