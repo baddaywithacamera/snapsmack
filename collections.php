@@ -74,7 +74,7 @@ $query = "
            (SELECT i.img_thumb_square FROM snap_collection_items ci2
               INNER JOIN snap_images i ON i.id = ci2.image_id
               WHERE ci2.collection_id = c.id AND i.img_status = 'published'
-              ORDER BY ci2.sort_order ASC LIMIT 1) AS first_thumb
+              ORDER BY ci2.position ASC LIMIT 1) AS first_thumb
     FROM snap_collections c
     WHERE c.published = 1
     ORDER BY {$order_by}

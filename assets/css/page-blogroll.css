@@ -14,10 +14,42 @@
  */
 
 
-/* No public-side default rules yet — skin handles via .is-blogroll. */
 .blogroll-canvas {
     max-width: 800px;
     margin: 0 auto;
     padding: 40px 20px;
+}
+
+/* Category label sits inline beside the peer name */
+.blogroll-peer-name {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.blogroll-peer-cat {
+    font-size: 0.65rem;
+    font-family: 'Courier New', Courier, monospace;
+    letter-spacing: 0.1em;
+    opacity: 0.45;
+    border: 1px solid currentColor;
+    padding: 1px 5px;
+    border-radius: 2px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* URL at bottom of card — styled as a muted link */
+a.blogroll-peer-url {
+    display: block;
+    font-size: 0.75rem;
+    word-break: break-all;
+    text-decoration: none;
+    opacity: 0.5;
+}
+a.blogroll-peer-url:hover {
+    opacity: 0.85;
+    text-decoration: underline;
 }
 /* ===== SNAPSMACK EOF ===== */

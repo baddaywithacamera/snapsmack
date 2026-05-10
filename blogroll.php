@@ -151,9 +151,10 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                                         <a href="<?php echo htmlspecialchars($p['peer_url']); ?>" target="_blank" rel="noopener noreferrer">
                                             <?php echo htmlspecialchars($p['peer_name']); ?>
                                         </a>
+                                        <span class="blogroll-peer-cat"><?php echo htmlspecialchars(strtoupper($cat_name)); ?></span>
                                     </div>
                                     <p class="blogroll-peer-desc"><?php echo htmlspecialchars($p['peer_desc']); ?></p>
-                                    <span class="blogroll-peer-url dim"><?php echo htmlspecialchars($p['peer_url']); ?></span>
+                                    <a class="blogroll-peer-url dim" href="<?php echo htmlspecialchars($p['peer_url']); ?>" target="_blank" rel="noopener noreferrer"><?php echo htmlspecialchars($p['peer_url']); ?></a>
                                 </div>
                             <?php endforeach; ?>
                         </div>

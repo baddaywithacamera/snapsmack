@@ -1,5 +1,10 @@
 RewriteEngine On
 
+# Pass Authorization header through to PHP.
+# Apache strips it by default; without this, $_SERVER['HTTP_AUTHORIZATION']
+# is always empty and every API call fails with 401 MISSING_KEY.
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
 # Route all requests to index.php with path as query param
 # e.g. /api/forum/threads/42 -> index.php?path=threads/42
 RewriteCond %{REQUEST_FILENAME} !-f

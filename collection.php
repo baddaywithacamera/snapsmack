@@ -6,7 +6,7 @@
  *      Pretty rewrite to /collection/<slug> can be added later via .htaccess.
  *
  * Renders only if snap_collections.published = 1. Hidden collections 404.
- * Member order = collection's sort_order (curator's choice), not date.
+ * Member order = ci.position (curator's choice), not date.
  *
  * Layout contract per _spec/collections-v0_2.md:
  *   - <h1> collection name
@@ -48,7 +48,7 @@ snapsmack_apply_skin_settings($settings, $active_skin);
 
 // Fetch collection — only if visible.
 $stmt = $pdo->prepare(
-    "SELECT id, title, slug, description, cover_image_id, published
+    "SELECT id, title, slug, description, cover_image_id, published, default_display
      FROM snap_collections
      WHERE slug = ? AND published = 1
      LIMIT 1"
@@ -67,17 +67,16 @@ if (!$collection) {
     exit;
 }
 
-// Fetch members (images only, in curator's sort_order).
+// Fetch members (images only, in curator's position order).
 $mstmt = $pdo->prepare(
     "SELECT i.id, i.img_title AS title, i.img_slug AS slug,
             i.img_thumb_square, i.img_thumb_aspect, i.img_file,
-            i.img_date, ci.sort_order
+            i.img_date, ci.position, ci.caption
      FROM snap_collection_items ci
      INNER JOIN snap_images i ON i.id = ci.image_id
      WHERE ci.collection_id = ?
-       
        AND i.img_status     = 'published'
-     ORDER BY ci.sort_order ASC, ci.added_at ASC"
+     ORDER BY ci.position ASC, ci.added_at ASC"
 );
 $mstmt->execute([$collection['id']]);
 $members = $mstmt->fetchAll(PDO::FETCH_ASSOC);
@@ -89,7 +88,7 @@ if ($collection['cover_image_id']) {
         "SELECT id, img_title, img_slug, img_thumb_aspect, img_file
          FROM snap_images WHERE id=? AND img_status='published' LIMIT 1"
     );
-    $fstmt->execute([(int)\$collection['cover_image_id']]);
+    $fstmt->execute([(int)$collection['cover_image_id']]);
     $featured = $fstmt->fetch(PDO::FETCH_ASSOC) ?: null;
 }
 if (!$featured && !empty($members)) {
@@ -150,6 +149,9 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                                      alt="<?php echo htmlspecialchars($m['title'] ?? ''); ?>"
                                      loading="lazy">
                                 <span class="collection-tile-title"><?php echo htmlspecialchars($m['title'] ?? ''); ?></span>
+                                <?php if (!empty($m['caption'])): ?>
+                                    <span class="collection-tile-caption"><?php echo htmlspecialchars($m['caption']); ?></span>
+                                <?php endif; ?>
                             </a>
                         <?php endforeach; ?>
                     </div>
