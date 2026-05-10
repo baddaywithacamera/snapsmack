@@ -13,6 +13,23 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.83 — "Take a Load Off" Collections v0.3 admin + archive fixes (2026-05-09)
+
+### Added
+- **Collections v0.3 schema** (migration 057): `snap_collections` — `name→title`, `featured_post_id→cover_image_id`, `is_visible→published`, `+default_display ENUM('browse','slideshow')`; `snap_collection_items` — `item_type` dropped, `item_id→image_id`, `sort_order→position`, `+caption TEXT`; unique key updated to `(collection_id, image_id)`.
+- **Caption field** on collection edit page — per-image text input, saves to `snap_collection_items.caption` on blur via AJAX.
+- **Default view selector** (browse/slideshow) on collection edit form, saved per collection.
+- **Collection Settings section** in `smack-collections.php` — index rows (1–5) and default public sort order (manual/alphabetical/newest). Replaces the buried Archive Appearance control.
+
+### Fixed
+- `data-id` stray backslash in member drag rows — drag reorder AJAX was sending NaN for every image ID (reorder was silently broken).
+- `$editing['name']` / `$col['name']` / `$col['title']` references updated throughout collections admin and archive filter panel after `name→title` schema rename.
+- Archive controls (T/M/C) now `position:absolute` inside `#infobox` — previous `margin-left:auto` flex approach broke centering in skins using `justify-content:center` (50 shades, rational-geo).
+- Login page PASSWORD/RECOVERY CODE tabs reverted to `login-tab`/`login-panel` classes with proper active-state styling.
+- Calendar `side` default changed `left→right`; live sites need one Archive Appearance save to persist their choice.
+- `collections_index_rows` removed from Archive Appearance (now lives in Collections admin only).
+- `collections.php` sort fallback: URL → cookie → admin `collections_default_sort` setting → `manual`.
+
 ## 0.7.81 — "Lotus Position" CSS architecture cleanup + skin contract (2026-05-09)
 
 ### Added
