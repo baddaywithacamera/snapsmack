@@ -159,7 +159,34 @@ if (!empty($settings['favicon_url'])):
     }
 </style>
 
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-facing.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<?php
+/**
+ * 0.7.81 architecture: split CSS by responsibility.
+ *   - public-base.css always loads (utilities, alignment, image fade engine)
+ *   - page-*.css loads only on its target page (smaller surface, less churn)
+ *
+ * Page detection runs against the executing script's basename; falls back
+ * to no page-specific load if the page isn't recognised. Skin's style.css
+ * still loads after, free to override anything below.
+ *
+ * public-facing.css lingers as a backwards-compat shim that @imports the
+ * splits — old inclusions keep working until their references are cleaned
+ * up.
+ */
+$_snap_page = basename($_SERVER['SCRIPT_NAME'] ?? '', '.php');
+$_snap_page_css = [
+    'archive'     => 'page-archive.css',
+    'collection'  => 'page-collection.css',
+    'collections' => 'page-collection.css',
+    'blogroll'    => 'page-blogroll.css',
+    'page'        => 'page-static.css',
+    'index'       => 'page-static.css',
+];
+?>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/public-base.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<?php if (isset($_snap_page_css[$_snap_page])): ?>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/<?php echo $_snap_page_css[$_snap_page]; ?>?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<?php endif; ?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-mosaic.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
 

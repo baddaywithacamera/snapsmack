@@ -1,0 +1,23 @@
+/**
+ * SNAPSMACK - Blogroll Page Styles
+ *
+ * Loaded only on blogroll.php. Currently minimal — most blogroll
+ * presentation is handled by skin style.css under the .static-transmission
+ * selector. This file exists as the contract endpoint for future blogroll
+ * styling and as a hook for skins that want to scope blogroll-only rules.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line MUST be: slash-star, space, five equals, space,
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ */
+
+
+/* No public-side default rules yet — skin handles via .is-blogroll. */
+.blogroll-canvas {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+/* ===== SNAPSMACK EOF ===== */
