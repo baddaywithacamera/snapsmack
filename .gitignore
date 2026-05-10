@@ -67,6 +67,9 @@ registry.json
 # Server-side auth file (cPanel / host-generated, not source code)
 auth.php
 
+# Community encryption key — generated at install time, never commit
+core/community-key.php
+
 # Service account keys / credentials — NEVER commit
 *-drive-key*.json
 tools/*/config.json
@@ -99,6 +102,8 @@ greymatter/
 projects/snapsmack-ca/
 projects/snapsmack-ca/img/
 sc-config.php
+# Forum server live config — contains DB credentials and mod key
+projects/forum-server/api/forum/config.php
 
 # Windows corrupted NUL device artifact
 nul
@@ -126,3 +131,6 @@ smack-central/KEY-ROTATION-INSTRUCTIONS.txt
 
 # Temporary reference copy of pixhellated.ca live site
 pixhellated_reference/
+
+# Claude's session-continuity notes (gitignored — for future Claude sessions)
+_continuity/

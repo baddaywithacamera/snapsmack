@@ -265,7 +265,8 @@ include 'core/sidebar.php';
                 </div>
 
                 <div style="margin-left:auto;">
-                    <button type="submit" name="xp_submit" value="1" class="master-update-btn"
+                    <button type="submit" name="xp_submit" value="1" class="btn-smack"
+                            style="width:auto; padding:8px 18px;"
                             onclick="return confirmCrossPost();">
                         CROSS-POST SELECTED
                     </button>
@@ -278,7 +279,7 @@ include 'core/sidebar.php';
             <form method="GET" style="display:flex; gap:8px; flex:1; margin:0;" id="search-form">
                 <input type="text" name="s" value="<?php echo htmlspecialchars($search); ?>"
                        placeholder="SEARCH POSTS..." style="flex:1;">
-                <button type="submit" class="btn-smack">SCAN</button>
+                <button type="submit" class="btn-smack" style="width:auto; padding:8px 16px;">SCAN</button>
             </form>
             <div style="font-size:0.85rem; color:var(--text-muted,#888);">
                 <?php echo $total; ?> POST<?php echo $total !== 1 ? 'S' : ''; ?>

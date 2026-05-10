@@ -469,7 +469,26 @@ if (($_GET['action'] ?? '') === 'fetch_changelog') {
     $body = sc_http_raw($url);
     if ($body === false) { echo json_encode(['ok' => false, 'error' => 'Could not fetch CHANGELOG.md']); exit; }
 
-    echo json_encode(['ok' => true, 'content' => $body]);
+    // Extract only the section for the requested version — the full CHANGELOG is
+    // ~200KB and returning it as a JSON blob truncates the response. Split on ##
+    // headings, find the one that starts with the version number, return just that block.
+    $version_bare = ltrim($tag, 'v'); // e.g. "0.7.93"
+    $sections = preg_split('/^(?=## )/m', $body);
+    $matched  = '';
+    foreach ($sections as $section) {
+        // Match "## 0.7.93" or "## 0.7.93 —" etc.
+        if (preg_match('/^## ' . preg_quote($version_bare, '/') . '(\s|$)/m', $section)) {
+            $matched = trim($section);
+            break;
+        }
+    }
+    if ($matched === '') {
+        // Version heading not found — return a short diagnostic rather than the full file
+        echo json_encode(['ok' => false, 'error' => 'Version ' . $version_bare . ' not found in CHANGELOG.md']);
+        exit;
+    }
+
+    echo json_encode(['ok' => true, 'content' => $matched]);
     exit;
 }
 

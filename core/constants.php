@@ -64,8 +64,8 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
 }
 
 define('SNAPSMACK_VERSION', 'Alpha 0.7.93');
-define('SNAPSMACK_VERSION_SHORT', '0.7.93');
-define('SNAPSMACK_VERSION_CODENAME', 'Bleacher Seat');
+define('SNAPSMACK_VERSION_SHORT', '0.7.94');
+define('SNAPSMACK_VERSION_CODENAME', 'Three-Legged Stool');
 
 // --- VERSION COMPARISON ---
 // Versions are standard three-part semver: 0.7.17, 0.7.18, etc.
