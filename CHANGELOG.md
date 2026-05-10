@@ -13,6 +13,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.90 — "Take a Load Off" (2026-05-10)
+
+### Fixed
+- T/M/C archive controls: `alignDockedControls()` now runs unconditionally on DOMContentLoaded. Previously it only ran inside `dockControls()` (which skipped when controls were already server-rendered in `#infobox`), so alignment never fired on initial page load.
+
 ## 0.7.89 — "Park Bench" (2026-05-10)
 
 ### Fixed

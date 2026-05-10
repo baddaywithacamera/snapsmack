@@ -211,6 +211,9 @@
         wireToggle();
         wireHotkeys();
         dockControls();
+        // Controls may already be server-rendered inside #infobox (no move needed),
+        // so alignDockedControls must also run unconditionally on load.
+        alignDockedControls(document.querySelector('.archive-controls--docked'));
     });
 }());
 // ===== SNAPSMACK EOF =====
