@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.99 — "High Chair" (2026-05-11)
+
+### Fixed
+- smack-multisite.php: fix escaped dollar signs on early settings load (Python patch wrote \$settings instead of $settings causing line 13 parse error on hub)
+
 ## 0.7.98 — "Rocking Chair" (2026-05-11)
 
 ### Fixed
