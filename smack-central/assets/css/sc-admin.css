@@ -136,7 +136,7 @@ a:hover { filter: brightness(1.2); }
 /* ── Page header row ─────────────────────────────────────────────────────── */
 .sc-page-header {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     justify-content: space-between;
     margin-bottom: 24px;
     padding-bottom: 16px;
@@ -536,11 +536,4 @@ textarea.sc-textarea:focus {
 .sc-help-table th { text-align: left; font-size: var(--sc-size-label); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--sc-text-dim); padding: 8px 12px; border-bottom: 1px solid var(--sc-border); }
 .sc-help-table td { padding: 8px 12px; border-bottom: 1px solid var(--sc-border); font-size: var(--sc-size-base); vertical-align: top; }
 .sc-help-table tr:last-child td { border-bottom: none; }
-
-/* ── Step log (deploy/progress lists) ───────────────────────────────────── */
-.sc-step-log { list-style: none; padding: 0; margin: 0; font-family: var(--sc-font-mono); font-size: 0.8rem; }
-.sc-step-log li { padding: 4px 0; color: var(--sc-text); border-bottom: 1px solid var(--sc-border); }
-.sc-step-log li:last-child { border-bottom: none; }
-.sc-step-log li.ok  { color: var(--sc-success); }
-.sc-step-log li.err { color: var(--sc-danger); }
-/* EOF */
+/* ===== SNAPSMACK EOF ===== */

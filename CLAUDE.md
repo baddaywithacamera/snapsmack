@@ -306,10 +306,11 @@ a ready-to-paste commit message. Do task 000 first (it fixes the git index and c
 the Cowork session changes). Tasks are independent after that unless noted.
 
 **Current tasks:**
-- `000-commit-cowork-session.md` — fix git index, commit 5 Cowork fixes, READY
-- `001-nav-menu-wire-and-upgrade.md` — wire nav menu (migration/sidebar/header/CSS) + 3-level upgrade, READY (replaces old 001)
+- `000-commit-cowork-session.md` — commit 0.7.93 session changes (geometry CSS, Black Pearl, SC fixes, collection.php v0.3 fixes), READY
+- `001-nav-menu-wire-and-upgrade.md` — wire nav menu (migration/sidebar/header/CSS) + 3-level upgrade, READY
 - `002-search-placeholder-setting.md` — configurable search field label, READY
 - `003-wall-all-skins.md` — enable wall in remaining skins (kiosk + true-grit still pending), READY
+- `005-email-hashing.md` — hash guest emails (SHA-256), encrypt community user emails (AES-256-CBC), migration 058, 13 files, READY
 
 **Git index note:** The index is corrupt again (bad signature 0x00000000). Fix before any git op:
 ```bash
@@ -322,113 +323,69 @@ git read-tree HEAD
 
 ## Current Work State (as of session end)
 
-**CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions. At minimum: current version number, what just shipped, what's pending FTP, and any version bumps to companion tools.
+**CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions.
 
-### SnapSmack — Alpha 0.7.51 "Sit Still"
-⏳ **0.7.51 uncommitted — Cowork session changes pending commit.**
+### SnapSmack — Alpha 0.7.100 "Throne"
 
-**What shipped in 0.7.51 (Cowork session):**
-- `archive.php` — croppedwithcalendar no longer stripped from $available_modes; calendar toggle no longer blips back to cropped
-- `archive.php` — manifest load changed to relative path; $skin_has_calendar detection improved (belt+suspenders)
-- Version bumped to avoid checksum collision with deployed 0.7.50
+**Recently shipped (0.7.82 → 0.7.99):**
+- **0.7.82 "Take a Load Off"** — Collections v0.3 schema (migration 057)
+- 0.7.83–0.7.90 — Archive control alignment fixes, calendar settings fixes, T/M/C alignment
+- 0.7.91–0.7.92 "Front Row" — Maintenance lock during extraction; blogroll dedup fix; alert class standardisation
+- **0.7.93 "Bleacher Seat"** — Checksum seeding fix; SC dashboard 0-installs fix; blogroll category badge + URL link; SC CHANGELOG fetch fixed; Black Pearl theme; button width root fix; collection.php + collections.php v0.3 column fixes
+- **0.7.94 "Three-Legged Stool"** — RESET UPDATE STATE now clears `installed_checksum`; daily stats rollup pseudo-cron; `snapsmack_backfill_daily()` + Backfill Historical Data button
+- **0.7.95 "Saddle Up"** — Hub-to-spoke update push: per-spoke UPDATE button + UPDATE ALL BEHIND; `.action-update` CSS class
+- **0.7.97 "Footstool"** — My Blogs blogroll category; heartbeat returns `site_tagline`; mesh-helpers roster_source guard; Black Pearl bg/text fixes; 2FA layout fix; parse fixes
+- **0.7.98 "Rocking Chair"** — Theme colour fixes: Black Pearl + Noah Grey monochromatic; Bumblebee yellow/amber only; hub push_update role check fix; SC session 8 hours
+- **0.7.99 "High Chair"** — Fix smack-multisite.php line 13 parse error (escaped dollar signs)
+- **0.7.100 "Throne"** — Black Pearl colour contamination: cloud-progress and reorder-status selectors now greyscale (green/red were leaking from base defaults)
 
-**What 0.7.48–0.7.50 shipped (Cowork session 2026-05-06/07):**
-- `smack-appearance-archive.php` — calendar option + settings (months, panel side, recent posts) on Archive Appearance; croppedwithcalendar unconditional; status text colour fixed; filter dropdown 50% wider
-- `smack-skin.php` — skips admin_page=>'archive' engine controls in UI loop
-- `core/manifest-inventory.php` — smack-calendar engine flagged admin_page=>'archive'
-- `skins/50-shades-of-noah-grey/archive-layout.php` — layout persistence localStorage no longer consent-gated
-- Multiple version bumps to avoid checksum collisions with deployed packages
+**Branch:** `dev`. Releases tagged on dev, SC release packager builds from tag.
 
-**Uncommitted Cowork session changes (2026-05-06, folded into 0.7.51):**
-- `smack-appearance-archive.php` — ARCHIVE THUMB BORDER box hardcoded; fallback renders when manifest pre-dates admin_page=>'archive' flag; suppressed once manifest ships the flag
-- `smack-appearance-archive.php` POST handler — CSS blob (custom_css_public) regenerated when archive_frame_style is saved; comment marker for idempotent replacement; scoped key ({skin}__archive_frame_style) also saved
-- `smack-post-solo.php` — Collections multiselect added; collection_ids[] saved to snap_collection_items on submit
-- `smack-edit.php` — Collections multiselect added; pre-populated from existing membership; delete+repopulate on save
-- `smack-manage.php` — Collection filter dropdown added; collection_list shown in post meta; snap_collection_items cleaned up on single and batch delete; collection_id preserved in pagination query string
-- `assets/js/ss-engine-admin-ui.js` — updateLabel() updated to handle 'collection' type with correct placeholder label
+**Migrations applied:** 040–057, 059 (pending run on each site). Migration 057 = Collections v0.3 (2026-05-09). Migration 059 = multisite node tagline columns. Next numbered = 058 (email hashing, task 005 — insert before 059 or use 060).
 
-**Earlier uncommitted changes (2026-05-05, carried forward):**
-- `migrations/049_nav_menu_json.php` — seeds nav_menu_json + dropdown appearance settings
-- `core/sidebar.php` — Menu Manager link added to Pimp Your Ride
-- `core/footer.php` — loads ss-engine-nav-dropdown.js when nav_menu_json is active
-- `core/meta.php` — injects --nav-dropdown-bg/text CSS vars when nav configured
-- `core/header.php` — JSON nav renderer (3-level recursive) with flat nav fallback + _snap_nav_resolve_url()
-- All 8 skins `style.css` — .nav-has-children / .nav-submenu dropdown CSS added
-- `smack-menu.php` — container type, album/category/collection pool, 3-level hint, new CSS
-- `assets/js/ss-engine-menu-builder.js` — full rewrite: 3-level drag-and-drop, container type, active toggle, album/cat/coll pool items
-- `assets/js/ss-engine-nav-dropdown.js` — fixed openMenu() to not close ancestor submenus (3-level mobile fix)
-- `smack-settings.php` — removed blogroll_enabled nav toggle + entire NAVIGATION SLOT ASSIGNMENTS box; Akismet input width fixed; enctype removed; footer config + image engine moved to globalvibe
-- `smack-globalvibe.php` — footer config + image engine + floating gallery sections added; masthead logo upload MIME check added (security fix — audit H)
-- `smack-update.php` — reapply APPLY button fix: $stage_state rebind after session update
-- `smack-central/sc-release.php` — key sync preflight check: build blocked if sc-config.php and core/release-pubkey.php disagree
-- `core/release-pubkey.php` — updated to new release public key
-- `assets/adminthemes/purple-rain/admin-theme-colours-purple-rain.css` — btn-smack + btn-danger brightness halved
-- `secaudits/` — audits renumbered 001–008; G converted to PDF; audit 008 filed (masthead logo MIME fix)
-- `archive.php` — unified filter panel (categories + albums + collections, AND logic, debounced live); canonical mode order; archive_filter manifest flag support
-- `assets/js/ss-engine-archive-filter.js` — new filter panel engine
-- `assets/css/public-facing.css` — filter panel styles (saf-* classes); filter dropdown 50% wider
-- `skins/photogram/manifest.php` — archive_filter: false
+**Collections v0.3 schema** (migration 057 — applied):
+- `snap_collections`: title (was name), cover_image_id (was featured_post_id), published (was is_visible), default_display ENUM('browse','slideshow')
+- `snap_collection_items`: image_id (was item_id), position (was sort_order), caption TEXT; item_type dropped
+- `collection.php` and `collections.php` updated to use new column names
+- Slideshow mode (`default_display='slideshow'`) fetched but not yet wired — pending `ss-engine-lightbox.js` rewrite per `_spec/slideshow-v0_1.md`
 
-**Git branch is `master` not `main`** (confirmed 2026-04-29).
+**Skin contract:** `_spec/skin-contract.md` is the source of truth for which CSS classes the CMS emits per page and which JS engines depend on which DOM. **When adding new public-side widgets, update this doc.**
 
-**Signing keypair status:**
-- Release private key: `718bb39af1ce742bd326dbd8e34639e9dc60fbb44e3e01d1782a76b5c764a835b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2` — update `sc-config.php` on snapsmack.ca with this value, then FTP it. Also save to Bitwarden.
-- Release public key: `b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2` — updated in `core/release-pubkey.php` ✅
-- Root public key: `3287b9b29257da6a307fc85b949c9dc52bc99c08a66db21e6fcbaab0fb324652` — hardcoded in `core/updater.php` ✅
-- Root private key + full instructions: in Bitwarden (`KEY-ROTATION-INSTRUCTIONS.txt` on disk, gitignored) ✅
-- **sc-release.php now enforces key sync at preflight**: if sc-config.php and core/release-pubkey.php disagree, the build is blocked with an error. Key drift cannot happen silently anymore.
+**`assets/css/public-facing.css` is now a deprecation shim** that `@import`s the five split files. Don't add rules to it directly — write them in the appropriate `page-*.css`.
+
+**Sit-related codenames used so far** (don't repeat): Hot Seat, Bench Warmer, Sit Still, Easy Rider, Bench Press, Reverse Cowgirl, Perch, Park It, Sit Pretty, Cross-Legged, Lotus Position, Take a Load Off, Bleacher Seat, Front Row, Sit Up Straight, Park Bench, Squat, Three-Legged Stool, Saddle Up, Footstool, Rocking Chair, High Chair, Throne. Remaining ideas: Love Seat.
+
+**Signing keypair status (unchanged — still current):**
+- Release private key in `sc-config.php` on snapsmack.ca
+- Release public key in `core/release-pubkey.php` (committed)
+- Root keys in Bitwarden (`KEY-ROTATION-INSTRUCTIONS.txt` gitignored)
+- `sc-release.php` enforces key sync at preflight; filters non-SnapSmack tags
 
 **snapsmack.ca server notes:**
-- Snapsmack files now on SATA bulk storage via bind mount: host `/mnt/bulk-storage/snapsmack-ca` → CT101 `/var/www/snapsmack.ca`
-- `sc-assets/` directory created at `/var/www/snapsmack.ca/sc-assets/` ✅
-- Cloudflare is in front of snapsmack.ca — purge cache after FTPing CSS files
+- Files on SATA bulk storage via bind mount: host `/mnt/bulk-storage/snapsmack-ca` → CT101 `/var/www/snapsmack.ca`
+- Cloudflare in front — purge cache after FTPing CSS files
+- Manual FTP items (not in release package): `smack-central/sc-release.php`, `smack-central/sc-dashboard.php`, `core/release-pubkey.php`
 
-**Changes shipped in 0.7.42:**
-- Key rotation infrastructure (root key + release key two-tier system)
-- Smack Central CSS: font 13px→15px, sidebar 210→230px, max-width 1400px, padding 32px 48px
-- Smack Central CSS: added missing classes (`sc-page-head`, `sc-card`, `sc-card-title`, `sc-btn--dim`, `sc-warn`, `sc-muted`, `sc-help-*`, `sc-step-log`)
-- `core/release-pubkey.php` — real public key replacing all-zeros placeholder
-- `core/updater.php` — fixed literal `\r\n` corruption that caused 500 on photowalk.ing after update
-- `admin-theme-geometry-master.css` — IP Smacker tab permanently blank fixed (CSS/JS class name mismatch)
-- `archive.php` + `smack-appearance-archive.php` — Cal layout button missing fixed; croppedwithcalendar added to whitelist in both files; archive layout state now persists correctly via localStorage
-- `smack-help.php` — restored from truncation, updated with new topics (Archive Calendar, Probe Guard, API Keys, Key Rotation)
-- `install.php` — r4_exec recovery tail restored from truncation
-- EOF markers added to all 454 PHP/JS/CSS files; `tools/check-eof.py` pre-commit scanner added
+**Pending next session:**
+- Commit 0.7.100 (task 000) and push tag from MINGW64
+- FTP `sc-release.php` + `sc-dashboard.php` + `sc-admin.css` to snapsmack.ca (sc-admin.css fix in repo now; SC files not in release package)
+- Build and publish 0.7.100 via SC Release Packager
+- Update all sites → 0.7.100; run migration 059 on each (adds tagline/blogroll_desc columns)
+- After migration 059: run heartbeat sweep on hub, THEN re-push Blogroll Sync so My Blogs descriptions (site taglines) populate
+- Configure My Blogs on foundtextures.ca hub after update
+- Admin theme: on each site go to Admin → Global Vibe → Core Admin Theme and select The Black Pearl if desired (midnight-lime is default; Black Pearl is a separate choice)
+- Slideshow engine: `ss-engine-lightbox.js` rewrite per `_spec/slideshow-v0_1.md`
+- SUYB rebuild — v0.7.3 pending exe rebuild, B2 credential test
+- Help system + snapsmack.ca feature cards still pending (hub update push, My Blogs, blogroll sync)
 
-**Pending — after 0.7.51 commit:**
-- Build 0.7.51 release package from Smack Central → Release Packager
-- Build skin packages for 50-shades-of-noah-grey v1.1 and rational-geo v1.1 via Skin Packager (once skin packages deploy, $archive_manifest_opts will carry archive_frame_style and the hardcoded fallback section auto-hides)
-- Update all live sites to 0.7.52 via Smack Central updater
-- FTP `.htaccess` (with Probe Guard routes) to each server manually — gitignored, server-specific
-- Generate API key in foundtextures.ca Admin → Settings → API Access, paste into SYBU
-- Rebuild SYBU exe (`build.bat` in `tools/sybu/`)
-- strathmore.pics: delete duplicate snap_user 'sean', re-run install step 5
-- FTP skins to strathmore.pics: `50-shades-of-noah-grey`, `new-horizon`, `galleria`, `rational-geo`
-- FTP `projects/snapsmack-ca/` files to snapsmack.ca (untracked, manual FTP)
-- wall in kiosk + true-grit (task 003 covers 5 skins; Code only did 3 — check which remain)
-- calendar months slider in Archive Appearance (deferred, not specced yet)
+**Open architectural decisions (see `_continuity/OPEN-QUESTIONS.md`):**
+- Geometry/colour split inside each `page-*.css`
+- oh-snap consumption of `_spec/skin-contract.md` as starter template
+- Calendar engine respecting `calendar_months` admin setting as max
+- Slideshow lightbox engine (specced at `_spec/slideshow-v0_1.md`, not built)
 
-**Pending — other:**
-- CSRF implementation (deferred HIGH severity — SameSite=Lax partial mitigation in place)
-- Calendar for Photogram/GRAM OF SMACK — deferred, not designed yet
-- Enable "Require Download Link" on foundtextures.ca Admin → Settings → Downloads
-- Apply remaining enemy schema migrations (coordination_cluster_id, ste_style_vectors) via migration runner
-
-**Pending local git hygiene:**
-```bash
-git rm smack-post.php
-git mv migrations/030_semantic_analysis_tables.php migrations/042_semantic_analysis_tables.php
-git rm assets/css/impact-printer-image-borders-text-characters.txt
-git add skins/impact-printer/image-borders-text-characters.txt
-git rm core/layout_logic.php core/navigation_bar.php
-git add core/layout-logic.php core/navigation-bar.php
-git mv suyb-google-drive-setup.docx tools/smack-up-your-backup/google-drive-setup.docx
-git rm --cached snapsmack.zip smack-central-current.zip error_log
-```
-After running these: update `$migration_name` in `042_semantic_analysis_tables.php` from `'030_semantic_analysis_tables'` to `'042_semantic_analysis_tables'`.
-
-### Smack Your Batch Up (SYBU) — v0.7.9e "API key authentication"
-Tool lives in `tools/sybu/`. Pending: rebuild exe (`build.bat`), push, force-move tag.
+### Smack Your Batch Up (SYBU) — v0.7.9j
+Last shipped: 0.7.9j. Spec for next features in `tools/sybu/CHANGELOG.md`.
 
 ### Smack Up Your Backup (SUYB) — v0.7.3
 Pending: rebuild exe, test B2 credentials, run Audit & Cleanup on foundtextures job.
@@ -436,18 +393,20 @@ Pending: rebuild exe, test B2 credentials, run Audit & Cleanup on foundtextures 
 ### Live Sites
 | Site | Role | Version | Hosting |
 |---|---|---|---|
-| foundtextures.ca | Multisite Hub | Alpha 0.7.28 | self-hosted, Proxmox |
+| foundtextures.ca | Multisite Hub | needs update to 0.7.100 | self-hosted, Proxmox |
 | snapsmack.ca | Promo + Smack Central | — | self-hosted, Proxmox |
-| pixhellated.ca | Spoke | needs update to 0.7.51 | shared hosting |
-| wateronthebrain.ca | Spoke | needs update to 0.7.51 | self-hosted, Proxmox |
-| hekeepsdroningon.ca | Spoke | needs update to 0.7.51 | self-hosted, Proxmox |
-| photowalk.ing | Standalone | needs update to 0.7.51 | self-hosted, Proxmox |
+| pixhellated.ca | Spoke | needs update to 0.7.100 | shared hosting |
+| wateronthebrain.ca | Spoke | on 0.7.99; needs 0.7.100 + theme switch | self-hosted, Proxmox |
+| hekeepsdroningon.ca | Spoke | needs update to 0.7.100 | self-hosted, Proxmox |
+| photowalk.ing | Standalone | needs update to 0.7.100; update first | self-hosted, Proxmox |
 | strathmore.pics | Standalone | fresh install in progress | self-hosted, Proxmox (Cloudflare Tunnel) |
 | squaredstraight.ca | Standalone | fresh install pending | self-hosted, Proxmox |
 
-Updater confirmed: modal working on foundtextures.ca at 0.7.28. All self-hosted sites on Proxmox in Sean's basement.
+**Deployment order:** photowalk first, then foundtextures (hub), then spokes.
 
-**NOTE: All core PHP files ship in the release package via the updater. The only file requiring manual FTP per-server is `.htaccess` (gitignored, server-specific). Do not list in-package files as pending FTP.**
+**NOTE:** All core PHP/CSS/JS files ship in the release package via the updater. Manual FTP only needed for: `smack-central/sc-release.php`, `smack-central/sc-dashboard.php` (SC-only files), and `core/release-pubkey.php` on snapsmack.ca server.
+
+**`_continuity/` folder exists** at repo root (gitignored). Contains session-continuity notes — read at session start. Saves token cost and Sean's patience.
 
 ## Skin Registry
 
