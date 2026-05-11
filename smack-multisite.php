@@ -9,6 +9,10 @@
 
 require_once 'core/auth.php';
 
+// Load settings early so multisite_role is available to all POST handlers.
+\$settings       = \$pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+\$multisite_role = \$settings['multisite_role'] ?? '';
+
 // --- FORM SUBMISSION HANDLERS ---
 
 // Enable as Hub
@@ -352,8 +356,7 @@ if (isset($_POST['verify_hub'])) {
 }
 
 // --- DATA LOADING ---
-$settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
-$multisite_role = $settings['multisite_role'] ?? '';
+// (settings + multisite_role loaded at top of file before POST handlers)
 
 // Load connected nodes — fetch UNIX_TIMESTAMP to avoid strtotime/timezone issues
 $nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, connected_at DESC")->fetchAll(PDO::FETCH_ASSOC);

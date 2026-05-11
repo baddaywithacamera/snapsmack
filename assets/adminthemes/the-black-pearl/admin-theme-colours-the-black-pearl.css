@@ -515,6 +515,17 @@ input[type="range"]::-webkit-slider-thumb {
     color: #AAAAAA;
 }
 
+/* ─── ALERTS ─────────────────────────────────────────────────────────────────────── */
+.alert-success {
+    color: #AAAAAA;
+    border-color: #AAAAAA;
+}
+
+.alert-error {
+    color: #DFDFDF;
+    border-color: #DFDFDF;
+}
+
 /* ─── HELP SYSTEM (smack-help.php) ─────────────────────────────────── */
 .help-nav { background-color: #141414; border-right-color: #2C2C2C; }
 .help-nav-header { border-bottom-color: #2C2C2C; }
