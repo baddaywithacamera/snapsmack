@@ -560,7 +560,7 @@ input[type="range"]::-webkit-slider-thumb {
 .drag-handle { color: #666666; }
 .reorder-status.saving { color: #666666; }
 .reorder-status.saved  { color: #DFDFDF; }
-.reorder-status.error  { color: #E86060; }
+.reorder-status.error  { color: #888888; }
 .batch-bar { border-bottom-color: #2C2C2C; }
 
 /* ─── COMPANION TOOLS (smack-tools.php) ──────────────────────────── */
@@ -574,11 +574,11 @@ input[type="range"]::-webkit-slider-thumb {
 .cloud-progress-header { color: #AAAAAA; }
 .cloud-progress-track { background-color: #2C2C2C; }
 .cloud-progress-fill { background-color: #DFDFDF; }
-.cloud-progress-done { color: #4EC994; }
-.cloud-progress-failed { color: #E86060; }
+.cloud-progress-done { color: #CCCCCC; }
+.cloud-progress-failed { color: #888888; }
 .cloud-progress-log { color: #666666; }
-.cloud-progress-error { color: #E86060; }
-.cloud-progress-success { color: #4EC994; }
+.cloud-progress-error { color: #888888; }
+.cloud-progress-success { color: #CCCCCC; }
 
 /* Interaction page */
 .box-desc, .toggle-desc, .reaction-count-note { color: #666666; }

@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.100 — "Throne" (2026-05-10)
+
+### Fixed
+- The Black Pearl admin theme: remove colour contamination from cloud-progress and reorder-status selectors (green #4EC994 and red #E86060 replaced with greyscale — theme must be monochromatic)
+
 ## 0.7.99 — "High Chair" (2026-05-11)
 
 ### Fixed
