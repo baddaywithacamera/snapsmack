@@ -11,6 +11,8 @@ require_once __DIR__ . '/sc-db.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_name(SC_SESSION_NAME);
+    ini_set('session.gc_maxlifetime', 28800); // 8 hours
+    session_set_cookie_params(28800);
     session_start();
 }
 

@@ -5,9 +5,12 @@
 
 require_once __DIR__ . '/sc-config.php';
 require_once __DIR__ . '/sc-db.php';
+if (file_exists(__DIR__ . '/sc-version.php')) require_once __DIR__ . '/sc-version.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_name(SC_SESSION_NAME);
+    ini_set('session.gc_maxlifetime', 28800); // 8 hours
+    session_set_cookie_params(28800);
     session_start();
 }
 
@@ -53,10 +56,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SMACK CENTRAL — Login</title>
-<link rel="stylesheet" href="assets/css/sc-geometry.css">
-<link rel="stylesheet" href="assets/css/sc-colours.css">
-<link rel="stylesheet" href="assets/css/sc-admin.css">
+<title>SMACK CENTRAL â Login</title>
+<?php $sc_v = defined('SC_VERSION') ? SC_VERSION : '0'; ?>
+<link rel="stylesheet" href="assets/css/sc-geometry.css?v=<?php echo $sc_v; ?>">
+<link rel="stylesheet" href="assets/css/sc-colours.css?v=<?php echo $sc_v; ?>">
+<link rel="stylesheet" href="assets/css/sc-admin.css?v=<?php echo $sc_v; ?>">
 </head>
 <body class="sc-login-page">
 <div class="sc-login-wrap">
@@ -82,4 +86,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 </body>
 </html>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

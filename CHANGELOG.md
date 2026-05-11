@@ -12,6 +12,15 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.98 — "Rocking Chair" (2026-05-11)
+
+### Fixed
+- assets/adminthemes/the-black-pearl: alert-success/alert-error now white/grey only (no colour contamination)
+- assets/adminthemes/50-shades-of-greymatter: reorder-status.error + cloud-progress done/failed/error/success converted from red/green to grey tones
+- assets/adminthemes/bumblebee: reorder-status.error + cloud-progress done/failed/error/success converted from red/green to yellow/amber (no rainbow)
+- smack-multisite.php: settings loaded before POST handlers so multisite_role is available to push_update check (hub was showing "only a hub can push updates" on its own dashboard)
+- smack-central/sc-auth.php + sc-login.php: session lifetime set to 8 hours (gc_maxlifetime + cookie_lifetime)
+
 ## 0.7.97 — "Footstool" (2026-05-11)
 
 ### Added
