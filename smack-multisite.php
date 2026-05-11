@@ -13,6 +13,21 @@ require_once 'core/auth.php';
 $settings       = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $multisite_role = $settings['multisite_role'] ?? '';
 
+// --- SSRF GUARD ---
+// Returns true if the URL resolves to a private/loopback/reserved address.
+// Used to prevent admin-initiated cURL requests from probing internal services.
+function snap_is_private_url(string $url): bool {
+    $host = parse_url($url, PHP_URL_HOST);
+    if (!$host) return true;
+    // Block by hostname pattern first (avoids DNS lookup for obvious cases)
+    $h = strtolower($host);
+    if (in_array($h, ['localhost', 'ip6-localhost', 'ip6-loopback', '::1', '0.0.0.0'], true)) return true;
+    // Resolve hostname and check against private/reserved ranges
+    $ip = gethostbyname($host);
+    if ($ip === $host) return false; // DNS failed — allow, let cURL fail naturally
+    return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
+}
+
 // --- FORM SUBMISSION HANDLERS ---
 
 // Enable as Hub
@@ -59,6 +74,12 @@ if (isset($_POST['register_spoke'])) {
         }
         $spoke_url = rtrim($spoke_url, '/');
 
+        // SSRF guard — reject private/loopback addresses
+        if (snap_is_private_url($spoke_url)) {
+            $err = "Spoke URL must be a publicly accessible HTTPS address.";
+        }
+
+        if (!isset($err)) {
         // Call the spoke's handshake endpoint
         $handshake_data = [
             'site_url' => BASE_URL,
@@ -119,12 +140,14 @@ if (isset($_POST['register_spoke'])) {
                 }
             }
         }
+        } // end SSRF guard
     }
 }
 
 // Manual ping a spoke (hub-initiated heartbeat for a single node)
-if (isset($_GET['ping'])) {
-    $node_id = (int)$_GET['ping'];
+// POST-only: prevents CSRF via crafted links
+if (isset($_POST['ping']) && isset($_POST['ping_id'])) {
+    $node_id = (int)$_POST['ping_id'];
     $stmt = $pdo->prepare("SELECT * FROM snap_multisite_nodes WHERE id = ? AND role = 'spoke' LIMIT 1");
     $stmt->execute([$node_id]);
     $n = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -190,9 +213,9 @@ if (isset($_GET['ping'])) {
     }
 }
 
-// Disconnect spoke
-if (isset($_GET['disconnect'])) {
-    $node_id = (int)$_GET['disconnect'];
+// Disconnect spoke (POST-only: prevents CSRF via crafted links)
+if (isset($_POST['disconnect'])) {
+    $node_id = (int)$_POST['disconnect'];
 
     // Get the spoke info
     $stmt = $pdo->prepare("SELECT site_url, api_key_local FROM snap_multisite_nodes WHERE id = ? AND role = 'spoke'");
@@ -235,6 +258,7 @@ if (isset($_POST['disconnect_hub'])) {
 
 // --- PUSH UPDATE TO SPOKE(S) ---
 // Hub triggers a remote update on one or all behind-spokes.
+$is_ajax = (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest');
 if (isset($_POST['push_update']) || isset($_POST['push_update_all'])) {
     if ($multisite_role !== 'hub') {
         $err = "Only a hub can push updates.";
@@ -298,6 +322,13 @@ if (isset($_POST['push_update']) || isset($_POST['push_update_all'])) {
                 }
             }
             $update_results[] = $result;
+        }
+        // AJAX: return JSON, skip full page render
+        if ($is_ajax) {
+            if (ob_get_level()) ob_end_clean();
+            header('Content-Type: application/json');
+            echo json_encode(['results' => $update_results]);
+            exit;
         }
     }
 }
@@ -525,8 +556,9 @@ include 'core/sidebar.php';
                 ));
             ?>
 
+            <div id="update-progress-live" style="margin-bottom:6px;"></div>
             <?php if (!empty($update_results)): ?>
-                <div style="margin-bottom:18px;">
+                <div id="update-progress-php" style="margin-bottom:18px;">
                     <?php foreach ($update_results as $ur): ?>
                         <?php if ($ur['ok']): ?>
                             <?php if (($ur['status'] ?? '') === 'already_current'): ?>
@@ -555,7 +587,7 @@ include 'core/sidebar.php';
             <?php else: ?>
                 <?php if ($behind_count > 0): ?>
                     <div style="margin-bottom:14px;">
-                        <form method="POST" onsubmit="return confirm('Update all <?php echo $behind_count; ?> behind spoke<?php echo $behind_count !== 1 ? 's' : ''; ?> to <?php echo htmlspecialchars(SNAPSMACK_VERSION_SHORT); ?>? This may take a minute per spoke.');">
+                        <form method="POST" id="update-all-form">
                             <button type="submit" name="push_update_all" class="btn-smack" style="width:auto;height:auto;margin-top:0;padding:8px 18px;">
                                 UPDATE ALL BEHIND (<?php echo $behind_count; ?>)
                             </button>
@@ -580,17 +612,17 @@ include 'core/sidebar.php';
                         </thead>
                         <tbody>
                             <?php foreach ($nodes as $n): ?>
-                                <?php if ($n['role'] !== 'spoke') continue; ?>
+                                <?php if ($n['role'] !== 'spoke']) continue; ?>
                                 <?php $node_status   = $n['status'] ?? 'unknown'; ?>
                                 <?php $backup_status = $n['last_backup_status'] ?? 'unknown'; ?>
-                                <tr>
+                                <tr id="spoke-row-<?php echo $n['id']; ?>">
                                     <td><strong><?php echo htmlspecialchars($n['site_name'] ?? 'Unknown'); ?></strong></td>
                                     <td>
                                         <a href="<?php echo htmlspecialchars($n['site_url']); ?>" target="_blank">
                                             <?php echo htmlspecialchars(preg_replace('~^https?://~i', '', $n['site_url'])); ?>
                                         </a>
                                     </td>
-                                    <td class="col-center" style="font-family:monospace; font-size:0.85rem;">
+                                    <td class="col-center" id="spoke-ver-<?php echo $n['id']; ?>" style="font-family:monospace; font-size:0.85rem;">
                                         <?php
                                             $spoke_ver = $n['software_version'] ?? '';
                                             echo $spoke_ver ? htmlspecialchars($spoke_ver) : '—';
@@ -628,25 +660,31 @@ include 'core/sidebar.php';
                                     <td class="col-center">
                                         <span class="status-dot status-dot--lg status-dot--<?php echo htmlspecialchars($backup_status); ?>" title="<?php echo htmlspecialchars($backup_status); ?>"></span>
                                     </td>
-                                    <td class="col-center">
+                                    <td class="col-center" id="spoke-act-<?php echo $n['id']; ?>">
                                         <?php if ($n['status'] === 'active'): ?>
                                             <a href="smack-multisite-sso.php?spoke=<?php echo $n['id']; ?>"
                                                target="_blank"
                                                class="action-authorize"
                                                title="Open spoke admin as primary admin user">REMOTE LOGIN</a>
                                         <?php else: ?>
-                                            <a href="?ping=<?php echo $n['id']; ?>" class="action-view" title="Manually ping this spoke">PING</a>
+                                            <form method="POST" style="display:inline;">
+                                            <input type="hidden" name="ping_id" value="<?php echo $n['id']; ?>">
+                                            <button type="submit" name="ping" class="action-view" title="Manually ping this spoke">PING</button>
+                                        </form>
                                         <?php endif; ?>
                                         <?php
                                             $spoke_ver_action = $n['software_version'] ?? '';
                                             if ($n['status'] === 'active' && $spoke_ver_action && $spoke_ver_action !== SNAPSMACK_VERSION_SHORT):
                                         ?>
-                                            <form method="POST" style="display:inline;" onsubmit="return confirm('Update <?php echo htmlspecialchars(addslashes($n['site_name'] ?? $n['site_url'])); ?> to <?php echo htmlspecialchars(SNAPSMACK_VERSION_SHORT); ?>?');">
+                                            <form method="POST" class="spoke-update-form" data-spoke-id="<?php echo $n['id']; ?>" data-spoke-name="<?php echo htmlspecialchars($n['site_name'] ?? $n['site_url']); ?>" style="display:inline;">
                                                 <input type="hidden" name="spoke_id" value="<?php echo $n['id']; ?>">
                                                 <button type="submit" name="push_update" class="action-update" title="Push update to this spoke">UPDATE</button>
                                             </form>
                                         <?php endif; ?>
-                                        <a href="?disconnect=<?php echo $n['id']; ?>" class="action-delete" onclick="return confirm('Disconnect this spoke?');">DISCONNECT</a>
+                                        <form method="POST" style="display:inline;" onsubmit="return confirm('Disconnect this spoke?');">
+                                            <input type="hidden" name="disconnect" value="<?php echo $n['id']; ?>">
+                                            <button type="submit" class="action-delete">DISCONNECT</button>
+                                        </form>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -784,6 +822,105 @@ include 'core/sidebar.php';
     <?php endif; ?>
 
 </div>
+
+<script>
+(function () {
+    var liveDiv = null;
+    function getLive() {
+        if (!liveDiv) liveDiv = document.getElementById('update-progress-live');
+        return liveDiv;
+    }
+    function log(html) { var d = getLive(); if (d) d.insertAdjacentHTML('beforeend', html); }
+    function clearLog() { var d = getLive(); if (d) d.innerHTML = ''; }
+
+    function setUpdating(id) {
+        var cell = document.getElementById('spoke-act-' + id);
+        if (!cell) return;
+        var btn = cell.querySelector('.spoke-update-form button');
+        if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    }
+
+    function setDone(id, toVer, ok) {
+        var verCell = document.getElementById('spoke-ver-' + id);
+        if (verCell && toVer) verCell.innerHTML = '<span style="font-family:monospace;">' + toVer + '</span>';
+        var actCell = document.getElementById('spoke-act-' + id);
+        if (actCell) {
+            var form = actCell.querySelector('.spoke-update-form');
+            if (form) form.remove();
+        }
+        if (ok) {
+            var row = document.getElementById('spoke-row-' + id);
+            if (row) row.style.opacity = '0.65';
+        }
+    }
+
+    function setFailed(id) {
+        var actCell = document.getElementById('spoke-act-' + id);
+        if (!actCell) return;
+        var btn = actCell.querySelector('.spoke-update-form button');
+        if (btn) { btn.disabled = false; btn.textContent = 'UPDATE'; }
+    }
+
+    async function updateOne(form) {
+        var id   = form.dataset.spokeId;
+        var name = form.dataset.spokeName;
+        var csrf = (form.querySelector('[name="csrf_token"]') || {}).value || '';
+        setUpdating(id);
+        log('<div style="padding:3px 0;color:var(--text-muted,#888);">&#x21BB; Updating <strong>' + name + '</strong>&hellip;</div>');
+        var fd = new FormData();
+        fd.append('push_update', '1');
+        fd.append('spoke_id', id);
+        fd.append('csrf_token', csrf);
+        try {
+            var res = await fetch('smack-multisite.php', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: fd
+            });
+            var data = await res.json();
+            var r = data.results && data.results[0];
+            if (r && r.ok) {
+                var detail = r.status === 'already_current'
+                    ? 'already current'
+                    : r.from + ' &rarr; ' + r.to + ' (' + r.files + ' files' + (r.migs > 0 ? ', ' + r.migs + ' migration' + (r.migs !== 1 ? 's' : '') : '') + ')';
+                log('<div style="padding:3px 0;color:var(--text-bright,#DFDFDF);">&#x2713; <strong>' + name + '</strong> &mdash; ' + detail + '</div>');
+                setDone(id, r.to || null, true);
+            } else {
+                log('<div style="padding:3px 0;color:var(--alert-error,#888);">&#x2717; <strong>' + name + '</strong> &mdash; ' + ((r && r.detail) || 'unknown error') + '</div>');
+                setFailed(id);
+            }
+        } catch (e) {
+            log('<div style="padding:3px 0;color:var(--alert-error,#888);">&#x2717; <strong>' + name + '</strong> &mdash; network error</div>');
+            setFailed(id);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.spoke-update-form').forEach(function (form) {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                clearLog();
+                updateOne(form);
+            });
+        });
+
+        var allForm = document.getElementById('update-all-form');
+        if (allForm) {
+            allForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                clearLog();
+                var allBtn = allForm.querySelector('button');
+                if (allBtn) { allBtn.disabled = true; allBtn.textContent = 'UPDATING…'; }
+                var forms = Array.from(document.querySelectorAll('.spoke-update-form'));
+                for (var i = 0; i < forms.length; i++) {
+                    await updateOne(forms[i]);
+                }
+                if (allBtn) { allBtn.disabled = false; allBtn.textContent = allBtn.textContent.replace('UPDATING…', 'ALL CURRENT ✓'); }
+            });
+        }
+    });
+}());
+</script>
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

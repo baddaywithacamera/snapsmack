@@ -12,6 +12,25 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.102 — "Love Seat" (2026-05-10)
+
+### Security
+- **CSRF hardening** — `?disconnect=NODE_ID` and `?ping=NODE_ID` multisite
+  actions converted from GET links to POST forms; GET-based state mutation
+  was exploitable via crafted links against an authenticated hub admin
+- **Timing-safe token comparison** — handshake registration token now
+  compared with `hash_equals()` instead of `!==`; closes theoretical
+  timing-attack path on the handshake endpoint
+- **SSRF guard** — spoke registration now rejects URLs that resolve to
+  private/loopback/reserved IP ranges; prevents a compromised admin account
+  from using spoke registration to probe internal network services
+- **Role enforcement on comments API** — `multisite/comments/action`
+  endpoint now enforces `role = hub`; previously any valid Bearer token
+  could approve/delete comments on a spoke
+- **Image content validation in cross-post** — `multisite/posts/create`
+  now calls `getimagesizefromstring()` after fetching the hub-supplied image
+  URL; rejects non-image content before writing to disk
+
 ## 0.7.101 — "Love Seat" (2026-05-10)
 
 ### Fixed

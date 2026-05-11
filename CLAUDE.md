@@ -325,9 +325,9 @@ git read-tree HEAD
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions.
 
-### SnapSmack — Alpha 0.7.100 "Throne"
+### SnapSmack — Alpha 0.7.102 "Love Seat"
 
-**Recently shipped (0.7.82 → 0.7.99):**
+**Recently shipped (0.7.82 → 0.7.101):**
 - **0.7.82 "Take a Load Off"** — Collections v0.3 schema (migration 057)
 - 0.7.83–0.7.90 — Archive control alignment fixes, calendar settings fixes, T/M/C alignment
 - 0.7.91–0.7.92 "Front Row" — Maintenance lock during extraction; blogroll dedup fix; alert class standardisation
@@ -337,7 +337,9 @@ git read-tree HEAD
 - **0.7.97 "Footstool"** — My Blogs blogroll category; heartbeat returns `site_tagline`; mesh-helpers roster_source guard; Black Pearl bg/text fixes; 2FA layout fix; parse fixes
 - **0.7.98 "Rocking Chair"** — Theme colour fixes: Black Pearl + Noah Grey monochromatic; Bumblebee yellow/amber only; hub push_update role check fix; SC session 8 hours
 - **0.7.99 "High Chair"** — Fix smack-multisite.php line 13 parse error (escaped dollar signs)
-- **0.7.100 "Throne"** — Black Pearl colour contamination: cloud-progress and reorder-status selectors now greyscale (green/red were leaking from base defaults)
+- **0.7.100 "Throne"** — Black Pearl colour contamination greyscale fix
+- **0.7.101 "Love Seat"** — AJAX spoke update UI; hub self-entry in My Blogs; SMACKATTACK scheme fix; TEST KEY alignment
+- **0.7.102 "Love Seat"** — Security: CSRF hardening (disconnect/ping GET→POST); timing-safe handshake token comparison (hash_equals); SSRF guard on spoke registration; comments/action hub role enforcement; cross-post image content validation
 
 **Branch:** `dev`. Releases tagged on dev, SC release packager builds from tag.
 
@@ -353,7 +355,7 @@ git read-tree HEAD
 
 **`assets/css/public-facing.css` is now a deprecation shim** that `@import`s the five split files. Don't add rules to it directly — write them in the appropriate `page-*.css`.
 
-**Sit-related codenames used so far** (don't repeat): Hot Seat, Bench Warmer, Sit Still, Easy Rider, Bench Press, Reverse Cowgirl, Perch, Park It, Sit Pretty, Cross-Legged, Lotus Position, Take a Load Off, Bleacher Seat, Front Row, Sit Up Straight, Park Bench, Squat, Three-Legged Stool, Saddle Up, Footstool, Rocking Chair, High Chair, Throne. Remaining ideas: Love Seat.
+**Sit-related codenames used so far** (don't repeat): Hot Seat, Bench Warmer, Sit Still, Easy Rider, Bench Press, Reverse Cowgirl, Perch, Park It, Sit Pretty, Cross-Legged, Lotus Position, Take a Load Off, Bleacher Seat, Front Row, Sit Up Straight, Park Bench, Squat, Three-Legged Stool, Saddle Up, Footstool, Rocking Chair, High Chair, Throne, Love Seat. **All sitting codenames exhausted. Next milestone (0.8.x) needs a new theme.**
 
 **Signing keypair status (unchanged — still current):**
 - Release private key in `sc-config.php` on snapsmack.ca
@@ -367,16 +369,17 @@ git read-tree HEAD
 - Manual FTP items (not in release package): `smack-central/sc-release.php`, `smack-central/sc-dashboard.php`, `core/release-pubkey.php`
 
 **Pending next session:**
-- Commit 0.7.100 (task 000) and push tag from MINGW64
-- FTP `sc-release.php` + `sc-dashboard.php` + `sc-admin.css` to snapsmack.ca (sc-admin.css fix in repo now; SC files not in release package)
-- Build and publish 0.7.100 via SC Release Packager
-- Update all sites → 0.7.100; run migration 059 on each (adds tagline/blogroll_desc columns)
+- Commit 0.7.102 (task 000) and push tag from MINGW64
+- FTP `sc-release.php` + `sc-dashboard.php` + `sc-admin.css` to snapsmack.ca (SC files not in release package)
+- Build and publish 0.7.102 via SC Release Packager
+- Update all sites → 0.7.102; run migration 059 on each (adds tagline/blogroll_desc columns)
 - After migration 059: run heartbeat sweep on hub, THEN re-push Blogroll Sync so My Blogs descriptions (site taglines) populate
 - Configure My Blogs on foundtextures.ca hub after update
 - Admin theme: on each site go to Admin → Global Vibe → Core Admin Theme and select The Black Pearl if desired (midnight-lime is default; Black Pearl is a separate choice)
 - Slideshow engine: `ss-engine-lightbox.js` rewrite per `_spec/slideshow-v0_1.md`
 - SUYB rebuild — v0.7.3 pending exe rebuild, B2 credential test
 - Help system + snapsmack.ca feature cards still pending (hub update push, My Blogs, blogroll sync)
+- **0.8.x codename theme** — sitting codenames exhausted; need new theme for closed beta milestone
 
 **Open architectural decisions (see `_continuity/OPEN-QUESTIONS.md`):**
 - Geometry/colour split inside each `page-*.css`
@@ -393,12 +396,12 @@ Pending: rebuild exe, test B2 credentials, run Audit & Cleanup on foundtextures 
 ### Live Sites
 | Site | Role | Version | Hosting |
 |---|---|---|---|
-| foundtextures.ca | Multisite Hub | needs update to 0.7.100 | self-hosted, Proxmox |
+| foundtextures.ca | Multisite Hub | needs update to 0.7.102 | self-hosted, Proxmox |
 | snapsmack.ca | Promo + Smack Central | — | self-hosted, Proxmox |
-| pixhellated.ca | Spoke | needs update to 0.7.100 | shared hosting |
-| wateronthebrain.ca | Spoke | on 0.7.99; needs 0.7.100 + theme switch | self-hosted, Proxmox |
-| hekeepsdroningon.ca | Spoke | needs update to 0.7.100 | self-hosted, Proxmox |
-| photowalk.ing | Standalone | needs update to 0.7.100; update first | self-hosted, Proxmox |
+| pixhellated.ca | Spoke | needs update to 0.7.102 | shared hosting |
+| wateronthebrain.ca | Spoke | needs update to 0.7.102 | self-hosted, Proxmox |
+| hekeepsdroningon.ca | Spoke | needs update to 0.7.102 | self-hosted, Proxmox |
+| photowalk.ing | Standalone | needs update to 0.7.102; update first | self-hosted, Proxmox |
 | strathmore.pics | Standalone | fresh install in progress | self-hosted, Proxmox (Cloudflare Tunnel) |
 | squaredstraight.ca | Standalone | fresh install pending | self-hosted, Proxmox |
 

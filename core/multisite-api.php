@@ -105,7 +105,7 @@ if ($resource === 'handshake' && $method === 'POST') {
     $stored_token   = $settings['multisite_reg_token']         ?? '';
     $token_expires  = (int)($settings['multisite_reg_token_expires'] ?? 0);
 
-    if (!$stored_token || $token !== $stored_token || time() > $token_expires) {
+    if (!$stored_token || !hash_equals($stored_token, $token) || time() > $token_expires) {
         ms_err('Invalid or expired registration token', 401);
     }
 
@@ -325,6 +325,7 @@ if ($resource === 'comments' && $sub_action === 'pending' && $method === 'GET') 
 // Approve or delete a comment by ID.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'comments' && $sub_action === 'action' && $method === 'POST') {
+    if ($node['role'] !== 'hub') ms_err('Only a hub may moderate comments on this spoke', 403);
     $comment_id  = (int)($_POST['comment_id'] ?? 0);
     $action_type = $_POST['action'] ?? '';
 
@@ -545,6 +546,12 @@ if ($resource === 'posts' && $sub_action === 'create' && $method === 'POST') {
 
     if (!$img_binary || $fetch_code !== 200) {
         ms_err('Could not fetch image from hub: HTTP ' . $fetch_code);
+    }
+
+    // Validate the fetched bytes are actually an image before saving
+    $img_info_pre = @getimagesizefromstring($img_binary);
+    if (!$img_info_pre) {
+        ms_err('Fetched content is not a valid image');
     }
 
     // Save the image
