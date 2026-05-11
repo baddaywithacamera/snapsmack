@@ -156,6 +156,7 @@ if (isset($_GET['ping'])) {
                         last_backup_dest   = ?,
                         last_backup_status = ?,
                         disk_usage_bytes   = ?,
+                        site_tagline       = ?,
                         last_seen_at       = NOW(),
                         status             = 'active'
                     WHERE id = ?
@@ -169,6 +170,7 @@ if (isset($_GET['ping'])) {
                     $hb['last_backup_dest']   ?? null,
                     $hb['last_backup_status'] ?? 'unknown',
                     $hb['disk_usage_bytes']   ?? null,
+                    $hb['site_tagline']       ?? null,
                     $n['id'],
                 ]);
                 $msg = "Ping OK — {$n['site_name']} is online (HTTP {$hb_code}).";

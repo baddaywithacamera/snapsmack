@@ -79,19 +79,40 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
     $added     = 0;
     $updated   = 0;
 
-    $upsert = $pdo->prepare("
-        INSERT INTO snap_multisite_nodes
-            (role, site_url, site_name, api_key_local, status,
-             roster_source, last_roster_seen_at, connected_at)
-        VALUES (?, ?, ?, ?, 'active', ?, ?, NOW())
-        ON DUPLICATE KEY UPDATE
-            role                = VALUES(role),
-            site_name           = VALUES(site_name),
-            api_key_local       = VALUES(api_key_local),
-            status              = 'active',
-            roster_source       = VALUES(roster_source),
-            last_roster_seen_at = VALUES(last_roster_seen_at)
-    ");
+    // Graceful fallback: if migration 054 hasn't run on this install,
+    // roster_source / last_roster_seen_at columns won't exist yet.
+    $has_roster_cols = false;
+    try {
+        $test = $pdo->query("SELECT roster_source FROM snap_multisite_nodes LIMIT 0");
+        $has_roster_cols = ($test !== false);
+    } catch (PDOException $e) { /* columns missing */ }
+
+    if ($has_roster_cols) {
+        $upsert = $pdo->prepare("
+            INSERT INTO snap_multisite_nodes
+                (role, site_url, site_name, api_key_local, status,
+                 roster_source, last_roster_seen_at, connected_at)
+            VALUES (?, ?, ?, ?, 'active', ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE
+                role                = VALUES(role),
+                site_name           = VALUES(site_name),
+                api_key_local       = VALUES(api_key_local),
+                status              = 'active',
+                roster_source       = VALUES(roster_source),
+                last_roster_seen_at = VALUES(last_roster_seen_at)
+        ");
+    } else {
+        $upsert = $pdo->prepare("
+            INSERT INTO snap_multisite_nodes
+                (role, site_url, site_name, api_key_local, status, connected_at)
+            VALUES (?, ?, ?, ?, 'active', NOW())
+            ON DUPLICATE KEY UPDATE
+                role      = VALUES(role),
+                site_name = VALUES(site_name),
+                api_key_local = VALUES(api_key_local),
+                status    = 'active'
+        ");
+    }
 
     foreach ($peers as $p) {
         $url = trim($p['site_url']     ?? '');
@@ -105,14 +126,23 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
         $row_before->execute([$url]);
         $exists = (bool)$row_before->fetchColumn();
 
-        $upsert->execute([
-            $p['role']      ?? 'peer',
-            $url,
-            $p['site_name'] ?? parse_url($url, PHP_URL_HOST),
-            $key,
-            $hub_url,
-            $now,
-        ]);
+        if ($has_roster_cols) {
+            $upsert->execute([
+                $p['role']      ?? 'peer',
+                $url,
+                $p['site_name'] ?? parse_url($url, PHP_URL_HOST),
+                $key,
+                $hub_url,
+                $now,
+            ]);
+        } else {
+            $upsert->execute([
+                $p['role']      ?? 'peer',
+                $url,
+                $p['site_name'] ?? parse_url($url, PHP_URL_HOST),
+                $key,
+            ]);
+        }
 
         if ($exists) { $updated++; } else { $added++; }
         $seen_urls[] = $url;
@@ -122,7 +152,7 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
     // roster has left the network. Keep self-registered rows (roster_source='self')
     // and rows learned from other hubs untouched.
     $pruned = 0;
-    if ($hub_url !== '') {
+    if ($hub_url !== '' && $has_roster_cols) {
         if ($seen_urls) {
             $placeholders = implode(',', array_fill(0, count($seen_urls), '?'));
             $params = array_merge([$hub_url], $seen_urls);

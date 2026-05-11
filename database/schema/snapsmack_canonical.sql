@@ -595,6 +595,8 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
   `role`                enum('hub','spoke') COLLATE utf8mb4_unicode_ci NOT NULL,
   `site_url`            varchar(500)   COLLATE utf8mb4_unicode_ci NOT NULL,
   `site_name`           varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `site_tagline`        varchar(500)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `blogroll_desc`       varchar(500)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `api_key_local`       varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL
                         COMMENT 'Our key that the remote site uses to call us',
   `api_key_remote`      varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL
@@ -1123,6 +1125,8 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
   `role`                enum('hub','spoke') COLLATE utf8mb4_unicode_ci NOT NULL,
   `site_url`            varchar(500)   COLLATE utf8mb4_unicode_ci NOT NULL,
   `site_name`           varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `site_tagline`        varchar(500)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `blogroll_desc`       varchar(500)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `api_key_local`       varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL
                         COMMENT 'Our key that the remote site uses to call us',
   `api_key_remote`      varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL

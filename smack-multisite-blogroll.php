@@ -42,6 +42,29 @@ $spokes = $pdo->query("
 // ─────────────────────────────────────────────────────────────────────────────
 // cURL helper
 // ─────────────────────────────────────────────────────────────────────────────
+// --- MY BLOGS SETTINGS ---
+$my_blogs_enabled = ($settings['blogroll_my_blogs_enabled'] ?? '0') === '1';
+$my_blogs_cat     = $settings['blogroll_my_blogs_cat'] ?? 'My Blogs';
+
+// Spokes with tagline + per-node blogroll_desc overrides (for My Blogs entries)
+$spoke_nodes = [];
+try {
+    $spoke_nodes = $pdo->query("
+        SELECT id, site_name, site_url, site_tagline, blogroll_desc
+        FROM snap_multisite_nodes
+        WHERE role = 'spoke' AND status = 'active'
+        ORDER BY site_name ASC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    // Migration 059 not yet applied -- site_tagline/blogroll_desc columns missing
+    $spoke_nodes = $pdo->query("
+        SELECT id, site_name, site_url, NULL AS site_tagline, NULL AS blogroll_desc
+        FROM snap_multisite_nodes
+        WHERE role = 'spoke' AND status = 'active'
+        ORDER BY site_name ASC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+}
+
 function ms_blogroll_call(string $site_url, string $api_key, string $route, string $method = 'GET', array $post_data = []): ?array {
     $url = rtrim($site_url, '/') . '/api.php?route=' . $route;
     $ch  = curl_init();
@@ -73,6 +96,31 @@ function ms_blogroll_call(string $site_url, string $api_key, string $route, stri
 // ─────────────────────────────────────────────────────────────────────────────
 $push_results = [];
 
+// POST: Save My Blogs settings
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_my_blogs_settings'])) {
+    $new_enabled = isset($_POST['my_blogs_enabled']) ? '1' : '0';
+    $new_cat     = trim($_POST['my_blogs_cat'] ?? 'My Blogs') ?: 'My Blogs';
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('blogroll_my_blogs_enabled', ?)
+                    ON DUPLICATE KEY UPDATE setting_val = ?")->execute([$new_enabled, $new_enabled]);
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('blogroll_my_blogs_cat', ?)
+                    ON DUPLICATE KEY UPDATE setting_val = ?")->execute([$new_cat, $new_cat]);
+    // Save per-spoke blogroll_desc overrides
+    if (isset($_POST['spoke_blogroll_desc']) && is_array($_POST['spoke_blogroll_desc'])) {
+        foreach ($_POST['spoke_blogroll_desc'] as $node_id => $desc) {
+            $node_id = (int)$node_id;
+            $desc    = trim($desc);
+            $pdo->prepare("UPDATE snap_multisite_nodes SET blogroll_desc = ? WHERE id = ?")->execute([$desc ?: null, $node_id]);
+        }
+    }
+    $my_blogs_enabled = $new_enabled === '1';
+    $my_blogs_cat     = $new_cat;
+    $msg = "My Blogs settings saved.";
+    // Reload spoke nodes with updated descs
+    try {
+        $spoke_nodes = $pdo->query("SELECT id, site_name, site_url, site_tagline, blogroll_desc FROM snap_multisite_nodes WHERE role = 'spoke' AND status = 'active' ORDER BY site_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) { /* ignore if columns missing */ }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['push_blogroll'])) {
     $selected_spoke_ids = array_map('intval', (array)($_POST['spoke_ids'] ?? []));
 
@@ -90,13 +138,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['push_blogroll'])) {
             ORDER BY c.cat_name ASC, b.peer_name ASC
         ")->fetchAll(PDO::FETCH_ASSOC);
 
+        // Prepend My Blogs entries (hub-network spokes) when enabled
+        if ($my_blogs_enabled && !empty($spoke_nodes)) {
+            $my_blog_entries = [];
+            foreach ($spoke_nodes as $sn) {
+                $desc = trim($sn['blogroll_desc'] ?? '');
+                if ($desc === '') $desc = trim($sn['site_tagline'] ?? '');
+                $my_blog_entries[] = [
+                    'peer_name' => $sn['site_name'],
+                    'peer_url'  => rtrim($sn['site_url'], '/') . '/',
+                    'peer_rss'  => '',
+                    'peer_desc' => $desc,
+                    'category'  => $my_blogs_cat,
+                ];
+            }
+            usort($my_blog_entries, fn($a, $b) => strcasecmp($a['peer_name'], $b['peer_name']));
+            $existing_urls = array_map('strtolower', array_column($hub_entries, 'peer_url'));
+            foreach ($my_blog_entries as $mbe) {
+                if (!in_array(strtolower($mbe['peer_url']), $existing_urls)) {
+                    array_unshift($hub_entries, $mbe);
+                }
+            }
+        }
+
         if (empty($hub_entries)) {
             $err = "Hub blogroll is empty — nothing to push.";
         } else {
-            $entries_json = json_encode($hub_entries, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
             foreach ($spokes as $spoke) {
                 if (!in_array($spoke['id'], $selected_spoke_ids)) continue;
+
+                // Build per-spoke entries: exclude the receiving spoke's own URL
+                // from the My Blogs category so it doesn't link to itself.
+                $spoke_url_norm = strtolower(rtrim($spoke['site_url'], '/'));
+                $spoke_entries  = array_filter($hub_entries, function ($e) use ($spoke_url_norm) {
+                    return strtolower(rtrim($e['peer_url'], '/')) !== $spoke_url_norm;
+                });
+                $entries_json = json_encode(array_values($spoke_entries), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
                 $result = ms_blogroll_call(
                     $spoke['site_url'],
                     $spoke['api_key_local'],
@@ -284,6 +362,69 @@ include 'core/sidebar.php';
                         PUSH <?php echo count($hub_blogroll); ?> ENTRIES
                     </button>
                 <?php endif; ?>
+            </form>
+        </div>
+
+        <!-- MY BLOGS SETTINGS -->
+        <div class="box">
+            <h3>MY BLOGS</h3>
+            <p style="color:var(--text-muted,#888); font-size:0.9rem; margin-bottom:20px;">
+                When enabled, a category containing all hub-network spokes is automatically
+                prepended to every blogroll push. Each entry uses the spoke's site tagline
+                as its description by default. Hub-only &mdash; spokes cannot configure this.
+            </p>
+            <form method="POST">
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem;">
+                        <input type="checkbox" name="my_blogs_enabled" value="1"
+                               <?php echo $my_blogs_enabled ? 'checked' : ''; ?>>
+                        Enable My Blogs category in push
+                    </label>
+                </div>
+                <div style="margin-bottom:20px;">
+                    <label style="font-size:0.75rem; letter-spacing:1px; color:var(--text-muted,#888); display:block; margin-bottom:6px;">
+                        CATEGORY NAME
+                    </label>
+                    <input type="text" name="my_blogs_cat"
+                           value="<?php echo htmlspecialchars($my_blogs_cat); ?>"
+                           style="max-width:300px;"
+                           placeholder="My Blogs">
+                </div>
+                <?php if (!empty($spoke_nodes)): ?>
+                <div style="margin-bottom:20px;">
+                    <div style="font-size:0.75rem; letter-spacing:1px; color:var(--text-muted,#888); margin-bottom:10px;">
+                        DESCRIPTION OVERRIDES <span style="font-weight:400; color:var(--text-muted,#666);">(leave blank to use site tagline)</span>
+                    </div>
+                    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                        <thead>
+                            <tr style="border-bottom:1px solid var(--border,#333);">
+                                <th style="text-align:left; padding:6px 8px; color:var(--text-muted,#888); width:220px;">SPOKE</th>
+                                <th style="text-align:left; padding:6px 8px; color:var(--text-muted,#888);">TAGLINE (CURRENT)</th>
+                                <th style="text-align:left; padding:6px 8px; color:var(--text-muted,#888);">CUSTOM DESC</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($spoke_nodes as $sn): ?>
+                            <tr style="border-bottom:1px solid var(--border,#222);">
+                                <td style="padding:6px 8px;"><?php echo htmlspecialchars($sn['site_name']); ?></td>
+                                <td style="padding:6px 8px; color:var(--text-muted,#666); font-size:0.8rem;">
+                                    <?php echo htmlspecialchars($sn['site_tagline'] ?? ''); ?>
+                                </td>
+                                <td style="padding:6px 8px;">
+                                    <input type="text" name="spoke_blogroll_desc[<?php echo $sn['id']; ?>]"
+                                           value="<?php echo htmlspecialchars($sn['blogroll_desc'] ?? ''); ?>"
+                                           placeholder="<?php echo htmlspecialchars($sn['site_tagline'] ?? ''); ?>"
+                                           style="width:100%;">
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php endif; ?>
+                <button type="submit" name="save_my_blogs_settings" value="1" class="btn-smack">
+                    SAVE MY BLOGS SETTINGS
+                </button>
             </form>
         </div>
 

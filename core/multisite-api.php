@@ -289,6 +289,7 @@ if ($resource === 'heartbeat' && $method === 'GET') {
         'last_backup_dest'   => $settings['last_backup_dest']   ?? null,
         'last_backup_status' => $settings['last_backup_status'] ?? 'unknown',
         'disk_usage_bytes'   => $disk_bytes,
+        'site_tagline'       => $settings['site_tagline'] ?? '',
         'timestamp'          => date('c'),
     ]);
 }
@@ -668,8 +669,15 @@ if ($resource === 'blogroll' && $sub_action === 'sync' && $method === 'POST') {
     // Remove every entry previously synced from this hub. We track origin via
     // snap_blogroll.source_hub_url (added in migration 052) so re-syncs only
     // affect hub-pushed rows — the spoke's own locally-added peers stay put.
-    $pdo->prepare("DELETE FROM snap_blogroll WHERE source_hub_url = ?")
-        ->execute([$hub_url]);
+    // Graceful fallback: if migration 052 hasn't run, wipe all and re-import.
+    $has_source_col = false;
+    try {
+        $pdo->prepare("DELETE FROM snap_blogroll WHERE source_hub_url = ?")
+            ->execute([$hub_url]);
+        $has_source_col = true;
+    } catch (PDOException $e) {
+        $pdo->exec("DELETE FROM snap_blogroll");
+    }
 
     // Lookup existing categories on the spoke once, keyed by lowercase name,
     // so we can match the hub's category structure case-insensitively.
@@ -694,22 +702,30 @@ if ($resource === 'blogroll' && $sub_action === 'sync' && $method === 'POST') {
 
     // Insert fresh entries — each carries its own category from the hub.
     $inserted = 0;
-    $insert = $pdo->prepare("
-        INSERT INTO snap_blogroll (peer_name, peer_url, peer_rss, peer_desc, cat_id, source_hub_url)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ");
+    if ($has_source_col) {
+        $insert = $pdo->prepare("
+            INSERT INTO snap_blogroll (peer_name, peer_url, peer_rss, peer_desc, cat_id, source_hub_url)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+    } else {
+        $insert = $pdo->prepare("
+            INSERT INTO snap_blogroll (peer_name, peer_url, peer_rss, peer_desc, cat_id)
+            VALUES (?, ?, ?, ?, ?)
+        ");
+    }
     foreach ($entries as $e) {
         $url = trim($e['peer_url'] ?? '');
         if (!$url || !filter_var($url, FILTER_VALIDATE_URL)) continue;
         $entry_cat_id = $resolve_cat((string)($e['category'] ?? ''));
-        $insert->execute([
+        $row = [
             substr(trim($e['peer_name'] ?? ''), 0, 255) ?: parse_url($url, PHP_URL_HOST),
             $url,
             substr(trim($e['peer_rss'] ?? ''), 0, 500),
             substr(trim($e['peer_desc'] ?? ''), 0, 500),
             $entry_cat_id,
-            $hub_url,
-        ]);
+        ];
+        if ($has_source_col) $row[] = $hub_url;
+        $insert->execute($row);
         $inserted++;
     }
 
