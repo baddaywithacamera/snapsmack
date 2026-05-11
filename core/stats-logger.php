@@ -17,10 +17,59 @@
 
 /**
  * SNAPSMACK_EOF_HEADER
- *     // ===== SNAPSMACK EOF =====
- * Last non-empty line of this file MUST match the line above.
- * Missing or different = truncated/corrupted. Restore before saving.
+ *     /**
+ * Pseudo-cron: roll up yesterday if not already done.
+ * Call once per request from index.php / archive.php after logging the hit.
+ * Uses snap_settings key 'stats_last_rollup' to avoid redundant work.
+ *
+ * @param PDO $pdo
  */
+function snapsmack_maybe_rollup($pdo) {
+    $yesterday = date('Y-m-d', strtotime('-1 day'));
+    try {
+        $last = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'stats_last_rollup' LIMIT 1")->fetchColumn();
+        if ($last >= $yesterday) return; // already done
+        snapsmack_rollup_daily($pdo, $yesterday);
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('stats_last_rollup', ?)
+                       ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+            ->execute([$yesterday]);
+    } catch (PDOException $e) {
+        // Silently fail — stats are non-critical
+    }
+}
+
+/**
+ * Backfill snap_stats_daily for all dates present in snap_stats but missing
+ * from snap_stats_daily. Returns count of dates processed.
+ *
+ * @param PDO $pdo
+ * @return int
+ */
+function snapsmack_backfill_daily($pdo) {
+    $processed = 0;
+    try {
+        $dates = $pdo->query("
+            SELECT DISTINCT DATE(hit_at) AS d
+            FROM snap_stats
+            WHERE DATE(hit_at) < CURDATE()
+              AND DATE(hit_at) NOT IN (SELECT stat_date FROM snap_stats_daily)
+            ORDER BY d ASC
+        ")->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($dates as $date) {
+            snapsmack_rollup_daily($pdo, $date);
+            $processed++;
+        }
+        // Update last rollup marker to yesterday
+        $yesterday = date('Y-m-d', strtotime('-1 day'));
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('stats_last_rollup', ?)
+                       ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+            ->execute([$yesterday]);
+    } catch (PDOException $e) {
+        // Silently fail
+    }
+    return $processed;
+}
+
 
 
 /**

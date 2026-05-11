@@ -12,6 +12,15 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.95 — "Saddle Up" (2026-05-10)
+
+### Added
+- smack-multisite.php: hub can now push software updates to spokes directly from the dashboard — per-spoke UPDATE button (green, appears only when spoke is behind hub version) and bulk UPDATE ALL BEHIND button; results shown inline with version change, file count, migration count, and any errors
+- assets/css/admin-theme-geometry-master.css: `.action-update` class (green border/text, same geometry as other inline action links)
+
+### Fixed
+- core/multisite-api.php: `POST multisite/updates/trigger` endpoint now correctly uses `SNAPSMACK_VERSION_SHORT` (not `SNAPSMACK_VERSION`) for already-current check
+
 ## 0.7.94 — "Three-Legged Stool" (2026-05-10)
 
 ### Fixed

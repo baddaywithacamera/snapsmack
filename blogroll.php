@@ -93,7 +93,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             ?>
 
             <div class="blogroll-canvas">
-                <h1 class="static-page-title">THE NETWORK</h1>
+                <h1 class="static-page-title">BLOGROLL</h1>
 
                 <?php if (empty($peers)): ?>
                     <p class="dim">The network is currently offline. No peers found.</p>
@@ -112,11 +112,16 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                     // site is part of a multisite mesh — that's an attack vector.
                     $cleanCat = function($name) {
                         $n = (string)($name ?? '');
+                        // Strip "Hub: ..." prefix inserted by old sync code
                         if (stripos($n, 'Hub:') === 0) {
                             $n = trim(substr($n, 4));
-                            if ($n === '') $n = 'NETWORK';
                         }
-                        return $n ?: 'UNCATEGORIZED';
+                        // Replace domain-like category names (e.g. "FOUNDTEXTURES.CA") with a
+                        // generic label — we do not expose hub provenance to visitors.
+                        if (preg_match('/^[A-Z0-9][A-Z0-9\-]*(\.[A-Z0-9\-]+)+$/i', trim($n))) {
+                            $n = 'THE NETWORK';
+                        }
+                        return $n ?: 'THE NETWORK';
                     };
 
                     $grouped     = [];
@@ -143,7 +148,9 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                     foreach ($grouped as $cat_name => $cat_peers):
                 ?>
                     <div class="blogroll-category-block">
-                        <h2 class="blogroll-category-heading"><?php echo htmlspecialchars(strtoupper($cat_name)); ?></h2>
+                        <?php if ($cat_name !== ''): ?>
+                            <h2 class="blogroll-category-heading"><?php echo htmlspecialchars(strtoupper($cat_name)); ?></h2>
+                        <?php endif; ?>
                         <div class="blogroll-grid">
                             <?php foreach ($cat_peers as $p): ?>
                                 <div class="blogroll-peer">
@@ -151,7 +158,6 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                                         <a href="<?php echo htmlspecialchars($p['peer_url']); ?>" target="_blank" rel="noopener noreferrer">
                                             <?php echo htmlspecialchars($p['peer_name']); ?>
                                         </a>
-                                        <span class="blogroll-peer-cat"><?php echo htmlspecialchars(strtoupper($cat_name)); ?></span>
                                     </div>
                                     <p class="blogroll-peer-desc"><?php echo htmlspecialchars($p['peer_desc']); ?></p>
                                     <a class="blogroll-peer-url dim" href="<?php echo htmlspecialchars($p['peer_url']); ?>" target="_blank" rel="noopener noreferrer"><?php echo htmlspecialchars($p['peer_url']); ?></a>

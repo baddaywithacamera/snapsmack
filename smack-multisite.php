@@ -227,6 +227,75 @@ if (isset($_POST['disconnect_hub'])) {
     $msg = "Disconnected from hub.";
 }
 
+// --- PUSH UPDATE TO SPOKE(S) ---
+// Hub triggers a remote update on one or all behind-spokes.
+if (isset($_POST['push_update']) || isset($_POST['push_update_all'])) {
+    if ($multisite_role !== 'hub') {
+        $err = "Only a hub can push updates.";
+    } else {
+        // Build list of spoke IDs to update
+        if (isset($_POST['push_update_all'])) {
+            // All spokes that are behind the hub version
+            $stmt = $pdo->prepare("SELECT * FROM snap_multisite_nodes WHERE role = 'spoke' AND status = 'active' AND (software_version IS NULL OR software_version != ?)");
+            $stmt->execute([SNAPSMACK_VERSION_SHORT]);
+            $target_nodes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } else {
+            $spoke_id = (int)($_POST['spoke_id'] ?? 0);
+            $stmt = $pdo->prepare("SELECT * FROM snap_multisite_nodes WHERE id = ? AND role = 'spoke' LIMIT 1");
+            $stmt->execute([$spoke_id]);
+            $target_nodes = array_filter([$stmt->fetch(PDO::FETCH_ASSOC)]);
+        }
+
+        $update_results = [];
+        foreach ($target_nodes as $tn) {
+            if (!$tn) continue;
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL            => rtrim($tn['site_url'], '/') . '/api.php?route=multisite/updates/trigger',
+                CURLOPT_POST           => true,
+                CURLOPT_POSTFIELDS     => '',
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_TIMEOUT        => 120,
+                CURLOPT_HTTPHEADER     => [
+                    'Authorization: Bearer ' . $tn['api_key_local'],
+                    'Accept: application/json',
+                    'Content-Length: 0',
+                ],
+            ]);
+            $raw  = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $cerr = curl_error($ch);
+            curl_close($ch);
+
+            $result = ['name' => $tn['site_name'] ?? $tn['site_url']];
+            if ($cerr) {
+                $result['ok'] = false;
+                $result['detail'] = 'cURL error: ' . $cerr;
+            } elseif ($code !== 200) {
+                $data = json_decode($raw, true);
+                $result['ok'] = false;
+                $result['detail'] = 'HTTP ' . $code . ': ' . ($data['error'] ?? $raw);
+            } else {
+                $data = json_decode($raw, true);
+                $result['ok'] = true;
+                $result['status']   = $data['status'] ?? '';
+                $result['from']     = $data['from_version'] ?? '';
+                $result['to']       = $data['to_version'] ?? '';
+                $result['files']    = $data['files_updated'] ?? 0;
+                $result['migs']     = $data['migrations'] ?? 0;
+                $result['errors']   = $data['errors'] ?? [];
+                // Refresh DB version
+                if (!empty($data['to_version'])) {
+                    $pdo->prepare("UPDATE snap_multisite_nodes SET software_version = ?, status = 'active', last_seen_at = NOW() WHERE id = ?")
+                        ->execute([$data['to_version'], $tn['id']]);
+                }
+            }
+            $update_results[] = $result;
+        }
+    }
+}
+
 // --- VERIFY CONNECTION (spoke → hub heartbeat) ---
 if (isset($_POST['verify_hub'])) {
     $hub = $pdo->query("SELECT * FROM snap_multisite_nodes WHERE role = 'hub' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
@@ -443,9 +512,52 @@ include 'core/sidebar.php';
         <div class="box">
             <h3>CONNECTED SPOKES</h3>
 
+            <?php
+                // Count spokes that are behind and active (eligible for bulk update)
+                $behind_count = count(array_filter($nodes, fn($n) =>
+                    $n['role'] === 'spoke' && $n['status'] === 'active' &&
+                    !empty($n['software_version']) && $n['software_version'] !== SNAPSMACK_VERSION_SHORT
+                ));
+            ?>
+
+            <?php if (!empty($update_results)): ?>
+                <div style="margin-bottom:18px;">
+                    <?php foreach ($update_results as $ur): ?>
+                        <?php if ($ur['ok']): ?>
+                            <?php if (($ur['status'] ?? '') === 'already_current'): ?>
+                                <div class="alert alert-success" style="margin-bottom:6px;">
+                                    ✓ <strong><?php echo htmlspecialchars($ur['name']); ?></strong> — already on current version.
+                                </div>
+                            <?php else: ?>
+                                <div class="alert alert-success" style="margin-bottom:6px;">
+                                    ✓ <strong><?php echo htmlspecialchars($ur['name']); ?></strong>
+                                    updated <?php echo htmlspecialchars($ur['from']); ?> → <?php echo htmlspecialchars($ur['to']); ?>
+                                    (<?php echo (int)$ur['files']; ?> files<?php echo $ur['migs'] > 0 ? ', ' . (int)$ur['migs'] . ' migration' . ($ur['migs'] !== 1 ? 's' : '') : ''; ?>)<?php
+                                    if (!empty($ur['errors'])): ?> — <span style="color:var(--warning,#f90);">warnings: <?php echo htmlspecialchars(implode('; ', $ur['errors'])); ?></span><?php endif; ?>
+                                </div>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <div class="alert alert-error" style="margin-bottom:6px;">
+                                ✗ <strong><?php echo htmlspecialchars($ur['name']); ?></strong> — <?php echo htmlspecialchars($ur['detail']); ?>
+                            </div>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
             <?php if (empty($nodes) || count(array_filter($nodes, fn($n) => $n['role'] === 'spoke')) === 0): ?>
                 <p style="color:var(--text-muted,#888);">No spokes connected yet. Register one below.</p>
             <?php else: ?>
+                <?php if ($behind_count > 0): ?>
+                    <div style="margin-bottom:14px;">
+                        <form method="POST" onsubmit="return confirm('Update all <?php echo $behind_count; ?> behind spoke<?php echo $behind_count !== 1 ? 's' : ''; ?> to <?php echo htmlspecialchars(SNAPSMACK_VERSION_SHORT); ?>? This may take a minute per spoke.');">
+                            <button type="submit" name="push_update_all" class="btn-smack" style="width:auto;height:auto;margin-top:0;padding:8px 18px;">
+                                UPDATE ALL BEHIND (<?php echo $behind_count; ?>)
+                            </button>
+                        </form>
+                    </div>
+                <?php endif; ?>
+
                 <div style="overflow-x:auto;">
                     <table class="multisite-table">
                         <thead>
@@ -519,6 +631,15 @@ include 'core/sidebar.php';
                                                title="Open spoke admin as primary admin user">REMOTE LOGIN</a>
                                         <?php else: ?>
                                             <a href="?ping=<?php echo $n['id']; ?>" class="action-view" title="Manually ping this spoke">PING</a>
+                                        <?php endif; ?>
+                                        <?php
+                                            $spoke_ver_action = $n['software_version'] ?? '';
+                                            if ($n['status'] === 'active' && $spoke_ver_action && $spoke_ver_action !== SNAPSMACK_VERSION_SHORT):
+                                        ?>
+                                            <form method="POST" style="display:inline;" onsubmit="return confirm('Update <?php echo htmlspecialchars(addslashes($n['site_name'] ?? $n['site_url'])); ?> to <?php echo htmlspecialchars(SNAPSMACK_VERSION_SHORT); ?>?');">
+                                                <input type="hidden" name="spoke_id" value="<?php echo $n['id']; ?>">
+                                                <button type="submit" name="push_update" class="action-update" title="Push update to this spoke">UPDATE</button>
+                                            </form>
                                         <?php endif; ?>
                                         <a href="?disconnect=<?php echo $n['id']; ?>" class="action-delete" onclick="return confirm('Disconnect this spoke?');">DISCONNECT</a>
                                     </td>

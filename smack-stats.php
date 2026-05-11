@@ -32,6 +32,12 @@ if (isset($_POST['action'])) {
         header('Location: smack-stats.php?msg=rollup_ok');
         exit;
     }
+    if ($_POST['action'] === 'backfill') {
+        // Roll up all historical dates present in snap_stats but missing from snap_stats_daily
+        $count = snapsmack_backfill_daily($pdo);
+        header('Location: smack-stats.php?msg=backfill_ok&days=' . $count);
+        exit;
+    }
     if ($_POST['action'] === 'purge') {
         $days = (int)($settings['stats_retention_days'] ?? 365);
         $deleted = snapsmack_purge_old_stats($pdo, $days);
@@ -333,6 +339,8 @@ $msg = $_GET['msg'] ?? '';
 
     <?php if ($msg === 'rollup_ok'): ?>
         <div class="notice notice-success">Daily rollup complete.</div>
+    <?php elseif ($msg === 'backfill_ok'): ?>
+        <div class="notice notice-success">Backfill complete — <?php echo (int)($_GET['days'] ?? 0); ?> date(s) processed.</div>
     <?php elseif ($msg === 'purge_ok'): ?>
         <div class="notice notice-success">Purged <?php echo (int)($_GET['n'] ?? 0); ?> old records.</div>
     <?php endif; ?>
@@ -355,14 +363,14 @@ $msg = $_GET['msg'] ?? '';
         <form method="post" class="stats-action-inline">
             <input type="hidden" name="action" value="toggle_stats">
             <input type="hidden" name="enabled" value="<?php echo $stats_enabled ? '0' : '1'; ?>">
-            <button type="submit" class="btn btn-small <?php echo $stats_enabled ? 'btn-danger' : 'btn-success'; ?>">
+            <button type="submit" class="btn btn-small btn-smack" style="width:auto;height:auto;margin-top:0;padding:6px 16px;">
                 <?php echo $stats_enabled ? 'Disable Tracking' : 'Enable Tracking'; ?>
             </button>
         </form>
         <form method="post" class="stats-action-inline">
             <input type="hidden" name="action" value="toggle_exclude_admin">
             <input type="hidden" name="enabled" value="<?php echo $exclude_admin ? '0' : '1'; ?>">
-            <button type="submit" class="btn btn-small btn-smack" title="<?php echo $exclude_admin ? 'Admin/editor page views are currently excluded from stats' : 'Admin/editor page views are currently counted in stats'; ?>">
+            <button type="submit" class="btn btn-small btn-smack" style="width:auto;height:auto;margin-top:0;padding:6px 16px;" title="<?php echo $exclude_admin ? 'Admin/editor page views are currently excluded from stats' : 'Admin/editor page views are currently counted in stats'; ?>">
                 <?php echo $exclude_admin ? 'Exclude Admin: ON' : 'Exclude Admin: OFF'; ?>
             </button>
         </form>
@@ -683,6 +691,11 @@ $msg = $_GET['msg'] ?? '';
             <form method="post" class="stats-action-inline">
                 <input type="hidden" name="action" value="rollup">
                 <button type="submit" class="btn btn-small">Run Daily Rollup</button>
+            </form>
+            <form method="post" class="stats-action-inline"
+                  onsubmit="return confirm('Backfill all missing historical dates from raw stats?');">
+                <input type="hidden" name="action" value="backfill">
+                <button type="submit" class="btn btn-small">Backfill Historical Data</button>
             </form>
             <form method="post" class="stats-action-inline"
                   onsubmit="return confirm('Purge stats older than <?php echo (int)($settings['stats_retention_days'] ?? 365); ?> days?');">
