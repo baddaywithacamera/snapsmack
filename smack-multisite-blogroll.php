@@ -152,6 +152,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['push_blogroll'])) {
                     'category'  => $my_blogs_cat,
                 ];
             }
+            // Also include the hub itself — spokes should see all network sites
+            $hub_self_url = rtrim($settings['site_url'] ?? '', '/') . '/';
+            $hub_self_name = trim($settings['site_name'] ?? '');
+            if ($hub_self_url !== '/' && $hub_self_name !== '') {
+                $my_blog_entries[] = [
+                    'peer_name' => $hub_self_name,
+                    'peer_url'  => $hub_self_url,
+                    'peer_rss'  => '',
+                    'peer_desc' => trim($settings['site_tagline'] ?? ''),
+                    'category'  => $my_blogs_cat,
+                ];
+            }
             usort($my_blog_entries, fn($a, $b) => strcasecmp($a['peer_name'], $b['peer_name']));
             $existing_urls = array_map('strtolower', array_column($hub_entries, 'peer_url'));
             foreach ($my_blog_entries as $mbe) {

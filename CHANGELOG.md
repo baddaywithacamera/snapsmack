@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.101 — "Love Seat" (2026-05-10)
+
+### Fixed
+- smack-multisite-blogroll.php: hub was absent from its own My Blogs push — now adds itself to the network list so spokes see all sites including the hub
+- smack-settings.php: SMACKATTACK registration sent bare domain (no scheme) when site_url lacked https:// prefix — now always ensures scheme before submitting
+- smack-settings.php: TEST KEY button vertical alignment fixed (btn-mt-0 + explicit height to match input)
+
 ## 0.7.100 — "Throne" (2026-05-10)
 
 ### Fixed
