@@ -78,8 +78,9 @@ if (isset($_POST['api_key_action'])) {
 $ste_msg = '';
 $ste_err = '';
 if (isset($_POST['ste_action']) && $_POST['ste_action'] === 'register') {
-    $site_url = rtrim($settings['site_url'] ?? $_SERVER['HTTP_HOST'], '/');
-    if (empty($site_url)) $site_url = 'https://' . $_SERVER['HTTP_HOST'];
+    $site_url = rtrim($settings['site_url'] ?? '', '/');
+    if (empty($site_url)) $site_url = 'https://' . rtrim($_SERVER['HTTP_HOST'], '/');
+    if (!preg_match('#^https?://#i', $site_url)) $site_url = 'https://' . $site_url;
     $display_name = $settings['site_title'] ?? 'SnapSmack Site';
     $post_count   = (int)($pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status='published'")->fetchColumn() ?? 0);
 
@@ -269,7 +270,7 @@ include 'core/sidebar.php';
                                value="<?php echo htmlspecialchars($settings['akismet_key'] ?? ''); ?>"
                                placeholder="e.g. a1b2c3d4e5f6"
                                style="flex:1;font-family:monospace;">
-                        <button type="button" id="akismet-test-btn" class="master-update-btn" style="white-space:nowrap;padding:0 16px;flex-shrink:0;width:auto;">TEST KEY</button>
+                        <button type="button" id="akismet-test-btn" class="master-update-btn btn-mt-0" style="white-space:nowrap;padding:0 16px;flex-shrink:0;width:auto;height:40px;">TEST KEY</button>
                     </div>
                     <span id="akismet-test-result" style="display:none;margin-top:4px;font-size:11px;"></span>
                 </div>
