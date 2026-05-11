@@ -10,8 +10,8 @@
 require_once 'core/auth.php';
 
 // Load settings early so multisite_role is available to all POST handlers.
-\$settings       = \$pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
-\$multisite_role = \$settings['multisite_role'] ?? '';
+$settings       = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+$multisite_role = $settings['multisite_role'] ?? '';
 
 // --- FORM SUBMISSION HANDLERS ---
 
