@@ -514,7 +514,7 @@ if ($action === 'reset_update_state') {
     $stage_state = null;
 
     // Clear cached check results
-    $pdo->exec("DELETE FROM snap_settings WHERE setting_key IN ('update_check_result', 'last_update_check')");
+    $pdo->exec("DELETE FROM snap_settings WHERE setting_key IN ('update_check_result', 'last_update_check', 'installed_checksum')");
 
     // Reset installed_version to what constants.php says — the protected file
     // is the reliable source of truth when an update has partially applied.

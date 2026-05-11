@@ -910,6 +910,7 @@ button:active,
 .action-swap,
 .action-delete,
 .action-authorize,
+.action-update,
 .action-hide,
 .action-view {
     width: auto;
@@ -945,6 +946,20 @@ button:active,
 }
 .action-view:hover {
     background-color: #6ab0de;
+    color: #111;
+}
+
+/* action-update: green — push software update to a spoke */
+.action-update {
+    color: #5cb85c;
+    border-color: #5cb85c;
+    background: none;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: inherit;
+}
+.action-update:hover {
+    background-color: #5cb85c;
     color: #111;
 }
 

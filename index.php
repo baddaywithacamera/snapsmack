@@ -296,6 +296,7 @@ if ($img) {
         snapsmack_log_hit($pdo, $settings, ['page_type' => 'image', 'page_slug' => $img['img_slug'] ?? null, 'image_id' => $img['id'] ?? null]);
     }
 }
+snapsmack_maybe_rollup($pdo);
 
 include __DIR__ . '/' . $skin_path . '/skin-meta.php';
 ?>

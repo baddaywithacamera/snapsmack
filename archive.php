@@ -356,6 +356,7 @@ snapsmack_log_hit($pdo, $settings, [
     'page_slug'   => null,
     'search_term' => $_GET['search'] ?? null,
 ]);
+snapsmack_maybe_rollup($pdo);
 
 if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
     include __DIR__ . '/' . $skin_path . '/skin-meta.php';
@@ -432,7 +433,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                                     <input type="checkbox" class="saf-checkbox"
                                            data-type="col" value="<?php echo (int)$col['id']; ?>"
                                            <?php echo in_array((int)$col['id'], $filter_collections) ? 'checked' : ''; ?>>
-                                    <span class="saf-label"><?php echo htmlspecialchars(strtoupper($col['name'])); ?></span>
+                                    <span class="saf-label"><?php echo htmlspecialchars(strtoupper($col['title'])); ?></span>
                                 </label>
                                 <?php endforeach; ?>
                             </div>
@@ -691,9 +692,11 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
     <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-archive-filter.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
     <?php endif; ?>
     <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-archive-toggle.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
-    <?php include __DIR__ . '/core/footer-scripts.php'; ?>
+    <?php if ($archive_calendar_enabled): ?>
+    <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-calendar.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
+    <?php endif; ?>
 
-
+</div><!-- /#smack-public-wrap -->
 </body>
 </html>
 <?php // ===== SNAPSMACK EOF =====

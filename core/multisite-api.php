@@ -807,6 +807,89 @@ if ($resource === 'ban-sync' && $method === 'POST') {
     ]);
 }
 
+// ENDPOINT: POST multisite/updates/trigger
+// Hub instructs this spoke to download and apply the latest release.
+// Hub role required. Returns {ok, version, files_updated, migrations, errors[]}.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') {
+    if ($node['role'] !== 'hub') ms_err('Only a hub may trigger spoke updates', 403);
+
+    require_once __DIR__ . '/updater.php';
+
+    @set_time_limit(120);
+
+    $installed_version   = $settings['installed_version']  ?? SNAPSMACK_VERSION_SHORT;
+    $installed_checksum  = $settings['installed_checksum'] ?? '';
+
+    // 1. Fetch release info from Smack Central
+    $release_info = updater_fetch_release_info();
+    if (!$release_info || isset($release_info['error'])) {
+        ms_err('Could not fetch release info: ' . ($release_info['error'] ?? 'unknown'), 500);
+    }
+
+    // 2. Check whether an update is actually needed
+    $status = updater_check_status($installed_version, $release_info, $installed_checksum);
+    if ($status === 'up_to_date') {
+        ms_ok(['status' => 'already_current', 'version' => $installed_version]);
+    }
+
+    // 3. Download
+    $dl_error = '';
+    $zip_path = updater_download($release_info['download_url'] ?? '', $dl_error);
+    if (!$zip_path) ms_err('Download failed: ' . $dl_error, 500);
+
+    // 4. Verify checksum + signature
+    $verify_error = '';
+    if (!updater_verify_package($zip_path, $release_info['checksum_sha256'] ?? '', $release_info['signature'] ?? '', $verify_error)) {
+        @unlink($zip_path);
+        ms_err('Verification failed: ' . $verify_error, 500);
+    }
+
+    // 5. Acquire maintenance lock
+    updater_acquire_lock($pdo);
+
+    // 6. Extract
+    $extract = updater_extract($zip_path);
+    @unlink($zip_path);
+
+    if (!$extract['success']) {
+        updater_release_lock();
+        ms_err('Extraction failed: ' . implode('; ', $extract['errors']), 500);
+    }
+
+    // 7. Run migrations
+    $migration_files = updater_find_migrations($pdo);
+    $mig_result = [];
+    if (!empty($migration_files)) {
+        $mig_result = updater_run_migrations($pdo, $migration_files);
+    }
+
+    // 8. Set version + store checksum
+    updater_set_version(
+        $pdo,
+        $release_info['version']      ?? $installed_version,
+        $release_info['version_full'] ?? '',
+        $release_info['codename']     ?? '',
+        $release_info['checksum_sha256'] ?? ''
+    );
+
+    // 9. Release lock
+    updater_release_lock();
+    updater_cleanup();
+
+    $mig_count = count(array_filter($mig_result, fn($r) => ($r['status'] ?? '') === 'ok'));
+
+    ms_ok([
+        'status'        => 'updated',
+        'from_version'  => $installed_version,
+        'to_version'    => $release_info['version'] ?? '',
+        'files_updated' => $extract['files_updated'],
+        'files_skipped' => $extract['files_skipped'],
+        'migrations'    => $mig_count,
+        'errors'        => $extract['errors'],
+    ]);
+}
+
 // Fell through — unknown endpoint
 ms_err('Unknown multisite endpoint', 404);
 // ===== SNAPSMACK EOF =====
