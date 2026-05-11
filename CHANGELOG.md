@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.96 — "Ottoman" (2026-05-11)
+
+### Fixed
+- blogroll.php: page title BLOGROLL restored (was incorrectly "THE NETWORK"); suppress hub-domain category names (e.g. FOUNDTEXTURES.CA) and replace with generic label; remove per-entry source badge
+- core/stats-logger.php: remove stray SNAPSMACK_EOF_HEADER fragment injected mid-file causing PHP parse error on line 74
+
 ## 0.7.95 — "Saddle Up" (2026-05-10)
 
 ### Added
