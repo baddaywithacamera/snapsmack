@@ -162,7 +162,7 @@ try {
         $category_items[] = ['id' => 'cat_' . $c['id'], 'type' => 'category', 'label' => strtoupper($c['cat_name']), 'ref_id' => (int)$c['id']];
     }
     foreach ($pdo->query("SELECT id, title, slug FROM snap_collections WHERE published = 1 ORDER BY title ASC")->fetchAll(PDO::FETCH_ASSOC) as $col) {
-        $collection_items[] = ['id' => 'coll_' . $col['id'], 'type' => 'collection', 'label' => strtoupper(\$col['title']), 'ref_id' => (int)$col['id'], 'slug' => $col['slug']];
+        $collection_items[] = ['id' => 'coll_' . $col['id'], 'type' => 'collection', 'label' => strtoupper($col['title']), 'ref_id' => (int)$col['id'], 'slug' => $col['slug']];
     }
 } catch (PDOException $e) {
     // Tables may be missing on first load before migrations run. Pools stay empty.

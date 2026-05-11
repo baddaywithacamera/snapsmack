@@ -16,8 +16,8 @@
 
 /* 01: GLOBAL BASE */
 html, body {
-    background-color: #141414;
-    color: #AAAAAA;
+    background-color: #0D0D0D;
+    color: #BBBBBB;
     color-scheme: dark;
 }
 
@@ -29,7 +29,7 @@ a:hover { color: #c0c0c0; }
 
 /* 02: SIDEBAR NAVIGATION */
 .sidebar {
-    background-color: #141414;
+    background-color: #0D0D0D;
     border-right-color: #2C2C2C;
 }
 
@@ -54,7 +54,7 @@ a:hover { color: #c0c0c0; }
 }
 
 .sidebar-bottom {
-    background-color: #141414;
+    background-color: #0D0D0D;
     border-top-color: #212121;
 }
 
@@ -84,7 +84,6 @@ h2 {
 .box {
     background-color: #1C1C1C;
     border-color: #2C2C2C;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
 }
 
 .box h3, .section-header {
@@ -308,7 +307,7 @@ button:hover {
 /* 10: DASH/STATS */
 .stat-box {
     border-color: #2C2C2C;
-    background-color: #141414;
+    background-color: #0D0D0D;
 }
 .stat-val {
     color: #DFDFDF;
@@ -376,7 +375,7 @@ button:hover {
 }
 input[type="checkbox"] {
     border-color: #404040;
-    background-color: #141414;
+    background-color: #0D0D0D;
 }
 input[type="checkbox"]:checked {
     background-color: #DFDFDF;
@@ -393,7 +392,7 @@ input[type="checkbox"]:checked::after {
 }
 
 #admin-universal-footer {
-    background-color: #141414;
+    background-color: #0D0D0D;
     border-top-color: #2C2C2C;
 }
 .footer-left { color: #666666; }
@@ -409,7 +408,7 @@ input[type="checkbox"]:checked::after {
     background-color: #1C1C1C;
 }
 .skin-selector-wrap {
-    background-color: #141414;
+    background-color: #0D0D0D;
     border-left-color: #2C2C2C;
 }
 .theme-title-display { color: #DFDFDF !important; }
@@ -449,12 +448,12 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .asset-thumb-wrapper {
     border-bottom-color: #2C2C2C;
-    background-color: #141414;
+    background-color: #0D0D0D;
 }
 .asset-shortcode-row .shortcode-display {
     border-color: #DFDFDF;
     color: #DFDFDF;
-    background-color: #141414;
+    background-color: #0D0D0D;
 }
 .asset-no-preview {
     color: #555;

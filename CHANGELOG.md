@@ -12,6 +12,21 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.97 — "Footstool" (2026-05-11)
+
+### Added
+- smack-multisite-blogroll.php: My Blogs hub-network category — when enabled, all active spokes are auto-prepended to every blogroll push under a configurable category name (default "My Blogs"); each entry uses the spoke's site tagline as description with per-spoke override; spoke is excluded from its own push (self-exclusion); settings saved to snap_settings
+- core/multisite-api.php: heartbeat now returns `site_tagline` from spoke's snap_settings
+- smack-multisite.php: heartbeat sweep stores `site_tagline` per node
+- migrations/059_multisite_node_tagline.php: adds `site_tagline` and `blogroll_desc` columns to snap_multisite_nodes
+
+### Fixed
+- core/mesh-helpers.php: guard `roster_source` / `last_roster_seen_at` columns — detects pre-migration-054 installs, falls back to INSERT/UPDATE without those columns; prune step skipped when columns absent (fixes 500 on spoke roster sync)
+- core/multisite-api.php: blogroll sync endpoint try-catch on `source_hub_url` DELETE for pre-migration-052 installs; conditional INSERT based on column presence
+- assets/adminthemes/the-black-pearl/admin-theme-colours-the-black-pearl.css: restore #0D0D0D backgrounds; remove `box-shadow` from .box; bump body text to #BBBBBB
+- smack-2fa.php: layout fix — was using undefined `admin-content` CSS class, changed to `class="main"`
+- smack-menu.php: remove stray backslash causing PHP parse error on line 165
+
 ## 0.7.96 — "Ottoman" (2026-05-11)
 
 ### Fixed

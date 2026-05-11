@@ -136,8 +136,7 @@ require_once 'core/admin-header.php';
 require_once 'core/sidebar.php';
 ?>
 
-<div class="admin-content">
-    <div class="admin-content-inner">
+<div class="main">
         <div class="page-header-row">
             <h1 class="page-title">Two-Factor Authentication</h1>
         </div>
@@ -262,7 +261,6 @@ require_once 'core/sidebar.php';
         </div>
         <?php endif; ?>
 
-    </div>
 </div>
 
 <?php require_once 'core/admin-footer.php'; ?>
