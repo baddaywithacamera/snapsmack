@@ -445,6 +445,7 @@ if ($multisite_role === 'hub') {
                         last_backup_dest   = ?,
                         last_backup_status = ?,
                         disk_usage_bytes   = ?,
+                        site_tagline       = ?,
                         last_seen_at       = NOW(),
                         status             = 'active'
                     WHERE id = ?
@@ -468,9 +469,17 @@ if ($multisite_role === 'hub') {
                 $n['last_backup_status'] = $hb['last_backup_status'] ?? $n['last_backup_status'];
             }
         } else {
-            // Mark offline if unreachable
-            $pdo->prepare("UPDATE snap_multisite_nodes SET status = 'offline' WHERE id = ?")->execute([$n['id']]);
-            $n['status'] = 'offline';
+            // Only mark offline if the spoke hasn't been seen recently.
+            // A single failed heartbeat could be a transient blip (restart,
+            // brief downtime) — don't take the whole fleet dark on one bad curl.
+            // Require 10 minutes of silence before flipping status.
+            $grace_seconds = 600;
+            $last_seen_ts  = isset($n['last_seen_ts']) ? (int)$n['last_seen_ts'] : 0;
+            if ($last_seen_ts === 0 || (time() - $last_seen_ts) >= $grace_seconds) {
+                $pdo->prepare("UPDATE snap_multisite_nodes SET status = 'offline' WHERE id = ?")->execute([$n['id']]);
+                $n['status'] = 'offline';
+            }
+            // else: spoke was active recently — leave status unchanged, treat as blip
         }
     }
     unset($n);
