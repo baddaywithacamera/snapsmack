@@ -26,7 +26,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'            => 'Rational Geo',
-    'version'         => '1.2',
+    'version'         => '1.4',
     'author'          => 'Sean McCormick',
     'author_email'    => 'sean@baddaywithacamera.ca',
     'description'     => 'An homage to the world\'s best magazine. Editorial serif typography, the iconic yellow accent, light and dark variants. For anyone who has read it and loved it or dreamed of having their work published in it.',
@@ -143,13 +143,25 @@ return [
             'max'      => '30',
         ],
 
-        'thumb_border_width' => [
+        'masonry_border_width' => [
             'section'  => 'IMAGE PRESENTATION',
             'type'     => 'range',
-            'label'    => 'Thumbnail Border (px)',
-            'default'  => '2',
+            'label'    => 'Masonry Border Width (px)',
+            'default'  => '0',
             'min'      => '0',
-            'max'      => '8',
+            'max'      => '6',
+            'unit'     => 'px',
+            'selector' => ':root',
+            'property' => '--masonry-border-width',
+        ],
+
+        'masonry_border_color' => [
+            'section'  => 'IMAGE PRESENTATION',
+            'type'     => 'color',
+            'label'    => 'Masonry Border Colour',
+            'default'  => '#FFCC00',
+            'selector' => ':root',
+            'property' => '--masonry-border-color',
         ],
 
         'show_map_background' => [

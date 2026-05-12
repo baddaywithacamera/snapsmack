@@ -786,8 +786,8 @@ small,
 }
 
 #justified-grid .justified-item {
-  outline: 2px solid var(--rg-accent);
-  outline-offset: -2px;
+  outline: var(--masonry-border-width, 0px) solid var(--masonry-border-color, var(--rg-accent));
+  outline-offset: calc(var(--masonry-border-width, 0px) * -1);
 }
 
 #justified-grid .justified-item img {
@@ -796,52 +796,6 @@ small,
 
 #justified-grid .justified-item:hover img {
   opacity: 0.8;
-}
-
-/* --- Floating layout toggle: transparent, right-aligned, shows on hover --- */
-
-.rg-layout-toggle {
-  position: fixed;
-  top: 100px;
-  right: 2vw;
-  z-index: 100;
-  opacity: 0.15;
-  transition: opacity 0.3s ease;
-}
-
-.rg-layout-toggle:hover {
-  opacity: 1;
-}
-
-.rg-layout-toggle-switch {
-  display: flex;
-  background-color: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(6px);
-  border-radius: 3px;
-  padding: 2px;
-  gap: 2px;
-}
-
-.rg-layout-toggle-switch button {
-  padding: 6px 10px;
-  border: none;
-  background-color: transparent;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease;
-  border-radius: 2px;
-  line-height: 1;
-}
-
-.rg-layout-toggle-switch button.active {
-  background-color: var(--rg-accent);
-  color: #000;
-}
-
-.rg-layout-toggle-switch button:hover:not(.active) {
-  color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.1);
 }
 
 /* --- Breadcrumb (when filtering by album/category) --- */
@@ -945,33 +899,6 @@ body.archive-page #scroll-stage {
   cursor: text;
 }
 
-/* --- Layout toggle docked in the filter bar --- */
-
-#infobox .rg-layout-toggle {
-  position: absolute;
-  top: 50%;
-  right: 16px;
-  transform: translateY(-50%);
-  opacity: 1;
-  transition: none;
-}
-
-#infobox .rg-layout-toggle-switch {
-  background-color: rgba(0, 0, 0, 0.3);
-  backdrop-filter: none;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-#infobox .rg-layout-toggle-switch button {
-  padding: 4px 8px;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-#infobox .rg-layout-toggle-switch button.active {
-  background-color: var(--rg-accent);
-  color: #000;
-}
 
 /* ============================================================================
    STATIC PAGES & BLOGROLL
@@ -1473,10 +1400,6 @@ input[type="reset"]:active {
     padding: 20px 30px 30px;
   }
 
-  .rg-layout-toggle {
-    top: 70px;
-  }
-
   .rg-photo-title {
     font-size: var(--font-scale-2xl);
   }
@@ -1574,10 +1497,6 @@ input[type="reset"]:active {
   .rg-archive-grid {
     gap: 20px;
     padding: 15px 20px 20px;
-  }
-
-  .rg-layout-toggle {
-    top: 60px;
   }
 
   body.archive-page #scroll-stage {
@@ -1699,10 +1618,6 @@ input[type="reset"]:active {
   .rg-archive-grid {
     gap: 16px;
     padding: 10px 15px 15px;
-  }
-
-  .rg-layout-toggle {
-    top: 55px;
   }
 
   body.archive-page #scroll-stage {
@@ -1990,27 +1905,6 @@ input[type="reset"]:active {
   margin-bottom: var(--space-md);
 }
 
-.rg-toggle-btn {
-  padding: var(--space-sm) var(--space-md);
-  border: 1px solid var(--rg-border);
-  background-color: transparent;
-  color: var(--rg-text-secondary);
-  font-size: var(--font-scale-base);
-  cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-}
-
-.rg-toggle-btn:hover {
-  color: var(--rg-text-primary);
-  border-color: var(--rg-text-secondary);
-}
-
-.rg-toggle-btn.active {
-  background-color: var(--rg-accent);
-  color: #000;
-  border-color: var(--rg-accent);
-  font-weight: 700;
-}
 
 /* ============================================================================
    RESPONSIVE — LANDING

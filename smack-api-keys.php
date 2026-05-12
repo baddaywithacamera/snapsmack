@@ -72,7 +72,7 @@ include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
-<div class="smack-main">
+<div class="main">
 
     <div class="smack-topbar">
         <h1 class="smack-page-title">Oh Snap! API Keys</h1>

@@ -489,139 +489,148 @@ include 'core/sidebar.php';
 
         <?php $_ui_pimpmobile = ($settings['ui_mode'] ?? 'bigwheel') === 'pimpmobile'; ?>
         <?php if (($settings['site_mode'] ?? 'photoblog') === 'smacktalk'): ?>
-        <h3>POST MODES</h3>
-        <div class="lens-input-wrapper">
-            <label>SMACKTALK (LONGFORM POSTS) <span class="field-tip" data-tip='Enables the longform post editor and "New Longform Post" in the sidebar.'>ⓘ</span></label>
-            <label class="toggle-switch">
-                <input type="checkbox" name="settings[enable_longform]" value="1"
-                       <?php echo ($settings['enable_longform'] ?? '0') === '1' ? 'checked' : ''; ?>>
-                <span class="toggle-slider"></span>
-            </label>
+        <div class="box">
+            <h3>POST MODES</h3>
+            <div class="lens-input-wrapper">
+                <label>SMACKTALK (LONGFORM POSTS) <span class="field-tip" data-tip='Enables the longform post editor and "New Longform Post" in the sidebar.'>ⓘ</span></label>
+                <label class="toggle-switch">
+                    <input type="checkbox" name="settings[enable_longform]" value="1"
+                           <?php echo ($settings['enable_longform'] ?? '0') === '1' ? 'checked' : ''; ?>>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
         </div>
         <?php endif; ?>
 
         <?php if ($_ui_pimpmobile): ?>
-        <h3>SMACKATTACK</h3>
-        <?php if ($ste_msg): ?>
-            <div class="alert alert-success mb-25">&gt; <?php echo htmlspecialchars($ste_msg); ?></div>
-        <?php endif; ?>
-        <?php if ($ste_err): ?>
-            <div class="alert alert-danger mb-25">&gt; <?php echo htmlspecialchars($ste_err); ?></div>
-        <?php endif; ?>
+        <div class="box">
+            <h3>SMACKATTACK</h3>
+            <?php if ($ste_msg): ?>
+                <div class="alert alert-success"><?php echo htmlspecialchars($ste_msg); ?></div>
+            <?php endif; ?>
+            <?php if ($ste_err): ?>
+                <div class="alert alert-error"><?php echo htmlspecialchars($ste_err); ?></div>
+            <?php endif; ?>
 
-        <?php
-        $ste_key     = $settings['ste_api_key']           ?? '';
-        $ste_enabled = ($settings['ste_enabled']          ?? '0') === '1';
-        $ste_thresh  = $settings['ste_auto_ban_threshold'] ?? 'red';
-        $ste_cursor  = $settings['ste_scores_cursor']      ?? '';
-        ?>
+            <?php
+            $ste_key     = $settings['ste_api_key']           ?? '';
+            $ste_enabled = ($settings['ste_enabled']          ?? '0') === '1';
+            $ste_thresh  = $settings['ste_auto_ban_threshold'] ?? 'red';
+            $ste_cursor  = $settings['ste_scores_cursor']      ?? '';
+            ?>
 
-        <?php if ($ste_key === ''): ?>
-            <p class="dim" style="font-size:0.85rem; margin-bottom:16px;">
-                SMACKATTACK is a voluntary network reputation system for SnapSmack blogs.
-                Register to start receiving threat level scores on incoming comments.
-                You can opt out at any time.
-            </p>
-            <form method="POST" style="margin-top:15px;">
-                <input type="hidden" name="ste_action" value="register">
-                <button type="submit" class="btn-smack" style="width:100%;">JOIN THE NETWORK</button>
-            </form>
-        <?php else: ?>
-            <label>NETWORK STATUS</label>
-            <div class="read-only-display highlight-green">REGISTERED</div>
-            <label class="mt-20">API KEY</label>
-            <div class="read-only-display" style="font-family:monospace; font-size:0.75rem; letter-spacing:0.05em;">
-                <?php echo substr($ste_key, 0, 8); ?>…<?php echo substr($ste_key, -8); ?>
-            </div>
-
-            <label class="mt-20">PARTICIPATION</label>
-            <div class="toggle-row">
-                <input type="checkbox" id="ste_enabled" name="settings[ste_enabled]" value="1"
-                       <?php echo $ste_enabled ? 'checked' : ''; ?>>
-                <label for="ste_enabled">ACTIVE — report bans and receive threat scores</label>
-            </div>
-
-            <label class="mt-20">AUTO-BAN THRESHOLD</label>
-            <select name="settings[ste_auto_ban_threshold]" class="styled-select">
-                <?php
-                $thresholds = [
-                    'yellow' => 'YELLOW — ban anything flagged (1+ strike)',
-                    'orange' => 'ORANGE — ban confirmed threats (2+ strikes)',
-                    'red'    => 'RED — ban serious threats (3+ strikes)',
-                    'black'  => 'BLACK — ban only the worst offenders (4+ strikes)',
-                    'never'  => 'NEVER — receive scores but never auto-ban',
-                ];
-                foreach ($thresholds as $val => $label):
-                ?>
-                <option value="<?php echo $val; ?>" <?php echo $ste_thresh === $val ? 'selected' : ''; ?>>
-                    <?php echo $label; ?>
-                </option>
-                <?php endforeach; ?>
-            </select>
-            <span class="dim" style="font-size:0.8rem; display:block; margin-top:6px;">
-                Comments at or above this level are silently rejected. You still see them in Troll Control.
-            </span>
-
-            <label class="mt-20">SCORE CACHE</label>
-            <div class="read-only-display"><?php echo $ste_cursor ? 'Last synced: ' . htmlspecialchars($ste_cursor) : 'Never synced — save settings then sync'; ?></div>
-            <div class="action-grid-dual mt-15">
-                <form method="POST" style="display:contents;">
-                    <input type="hidden" name="ste_action" value="sync_now">
-                    <button type="submit" class="btn-smack">SYNC SCORES NOW</button>
+            <?php if ($ste_key === ''): ?>
+                <p class="dim" style="font-size:0.85rem; margin-bottom:16px;">
+                    SMACKATTACK is a voluntary network reputation system for SnapSmack blogs.
+                    Register to start receiving threat level scores on incoming comments.
+                    You can opt out at any time.
+                </p>
+                <form method="POST" style="margin-top:15px;">
+                    <input type="hidden" name="ste_action" value="register">
+                    <button type="submit" class="btn-smack" style="width:100%;">JOIN THE NETWORK</button>
                 </form>
-                <form method="POST" style="display:contents;" onsubmit="return confirm('This will remove your site from the network and clear your API key. Continue?');">
-                    <input type="hidden" name="ste_action" value="optout">
-                    <button type="submit" class="btn-smack btn-danger">OPT OUT</button>
-                </form>
-            </div>
-        <?php endif; ?>
+            <?php else: ?>
+                <label>NETWORK STATUS</label>
+                <div class="read-only-display highlight-green">REGISTERED</div>
+                <label class="mt-20">API KEY</label>
+                <div class="read-only-display" style="font-family:monospace; font-size:0.75rem; letter-spacing:0.05em;">
+                    <?php echo substr($ste_key, 0, 8); ?>…<?php echo substr($ste_key, -8); ?>
+                </div>
+
+                <label class="mt-20">PARTICIPATION</label>
+                <div class="lens-input-wrapper">
+                    <label>ACTIVE — report bans and receive threat scores</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="ste_enabled" name="settings[ste_enabled]" value="1"
+                               <?php echo $ste_enabled ? 'checked' : ''; ?>>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <label class="mt-20">AUTO-BAN THRESHOLD</label>
+                <select name="settings[ste_auto_ban_threshold]" class="styled-select">
+                    <?php
+                    $thresholds = [
+                        'yellow' => 'YELLOW — ban anything flagged (1+ strike)',
+                        'orange' => 'ORANGE — ban confirmed threats (2+ strikes)',
+                        'red'    => 'RED — ban serious threats (3+ strikes)',
+                        'black'  => 'BLACK — ban only the worst offenders (4+ strikes)',
+                        'never'  => 'NEVER — receive scores but never auto-ban',
+                    ];
+                    foreach ($thresholds as $val => $label):
+                    ?>
+                    <option value="<?php echo $val; ?>" <?php echo $ste_thresh === $val ? 'selected' : ''; ?>>
+                        <?php echo $label; ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <span class="dim" style="font-size:0.8rem; display:block; margin-top:6px;">
+                    Comments at or above this level are silently rejected. You still see them in Troll Control.
+                </span>
+
+                <label class="mt-20">SCORE CACHE</label>
+                <div class="read-only-display"><?php echo $ste_cursor ? 'Last synced: ' . htmlspecialchars($ste_cursor) : 'Never synced — save settings then sync'; ?></div>
+                <div class="action-grid-dual mt-15">
+                    <form method="POST" style="display:contents;">
+                        <input type="hidden" name="ste_action" value="sync_now">
+                        <button type="submit" class="btn-smack">SYNC SCORES NOW</button>
+                    </form>
+                    <form method="POST" style="display:contents;" onsubmit="return confirm('This will remove your site from the network and clear your API key. Continue?');">
+                        <input type="hidden" name="ste_action" value="optout">
+                        <button type="submit" class="btn-smack btn-danger">OPT OUT</button>
+                    </form>
+                </div>
+            <?php endif; ?>
+        </div>
         <?php endif; // pimpmobile ?>
 
-        <h3>API ACCESS</h3>
-        <?php
-        $tool_api_key = $settings['tool_api_key'] ?? '';
-        ?>
-        <?php if ($api_key_msg): ?>
-            <div class="alert alert-success mb-25">&gt; <?php echo htmlspecialchars($api_key_msg); ?></div>
-        <?php endif; ?>
-        <p class="dim" style="font-size:0.85rem; margin-bottom:16px;">
-            Generate an API key to allow companion tools (SYBU, etc.) to authenticate
-            without a login session. Send the key in the <code>X-Snap-Key</code> request header.
-            Revoking the key immediately blocks all tool access.
-        </p>
+        <div class="box">
+            <h3>API ACCESS</h3>
+            <?php
+            $tool_api_key = $settings['tool_api_key'] ?? '';
+            ?>
+            <?php if ($api_key_msg): ?>
+                <div class="alert alert-success"><?php echo htmlspecialchars($api_key_msg); ?></div>
+            <?php endif; ?>
+            <p class="dim" style="font-size:0.85rem; margin-bottom:16px;">
+                Generate an API key to allow companion tools (SYBU, etc.) to authenticate
+                without a login session. Send the key in the <code>X-Snap-Key</code> request header.
+                Revoking the key immediately blocks all tool access.
+            </p>
 
-        <?php if ($tool_api_key !== ''): ?>
-            <div class="control-group" style="margin-bottom:12px;">
-                <label>CURRENT KEY</label>
-                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                    <input type="text" id="tool-api-key-display"
-                           value="<?php echo htmlspecialchars($tool_api_key); ?>"
-                           readonly style="font-family:monospace; font-size:0.8rem; flex:1; min-width:200px; height:38px; padding:0 10px; margin:0;">
-                    <button type="button" onclick="
-                        navigator.clipboard.writeText(document.getElementById('tool-api-key-display').value);
-                        this.textContent='COPIED';
-                        setTimeout(()=>this.textContent='COPY',1500);
-                    " class="btn-smack" style="margin-top:0; white-space:nowrap; width:auto; flex-shrink:0; height:38px; padding:0 18px;">COPY</button>
+            <?php if ($tool_api_key !== ''): ?>
+                <div class="control-group" style="margin-bottom:12px;">
+                    <label>CURRENT KEY</label>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <input type="text" id="tool-api-key-display"
+                               value="<?php echo htmlspecialchars($tool_api_key); ?>"
+                               readonly style="font-family:monospace; font-size:0.8rem; flex:1; min-width:200px; height:38px; padding:0 10px; margin:0;">
+                        <button type="button" onclick="
+                            navigator.clipboard.writeText(document.getElementById('tool-api-key-display').value);
+                            this.textContent='COPIED';
+                            setTimeout(()=>this.textContent='COPY',1500);
+                        " class="btn-smack" style="margin-top:0; white-space:nowrap; width:auto; flex-shrink:0; height:38px; padding:0 18px;">COPY</button>
+                    </div>
                 </div>
-            </div>
-            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
+                    <form method="POST" style="margin:0;">
+                        <input type="hidden" name="api_key_action" value="generate">
+                        <button type="submit" class="btn-smack" style="margin-top:0; width:auto; padding:0 18px; height:38px;">REGENERATE KEY</button>
+                    </form>
+                    <form method="POST" style="margin:0;"
+                          onsubmit="return confirm('Revoke the API key? All tools will lose access immediately.');">
+                        <input type="hidden" name="api_key_action" value="revoke">
+                        <button type="submit" class="btn-smack btn-danger" style="margin-top:0; width:auto; padding:0 18px; height:38px;">REVOKE KEY</button>
+                    </form>
+                </div>
+            <?php else: ?>
+                <p class="dim" style="font-size:0.85rem; margin-bottom:12px;">No key generated. Tool API access is currently disabled.</p>
                 <form method="POST" style="margin:0;">
                     <input type="hidden" name="api_key_action" value="generate">
-                    <button type="submit" class="btn-smack" style="margin-top:0; width:auto; padding:0 18px; height:38px;">REGENERATE KEY</button>
+                    <button type="submit" class="btn-smack" style="margin-top:0;">GENERATE API KEY</button>
                 </form>
-                <form method="POST" style="margin:0;"
-                      onsubmit="return confirm('Revoke the API key? All tools will lose access immediately.');">
-                    <input type="hidden" name="api_key_action" value="revoke">
-                    <button type="submit" class="btn-smack btn-danger" style="margin-top:0; width:auto; padding:0 18px; height:38px;">REVOKE KEY</button>
-                </form>
-            </div>
-        <?php else: ?>
-            <p class="dim" style="font-size:0.85rem; margin-bottom:12px;">No key generated. Tool API access is currently disabled.</p>
-            <form method="POST" style="margin:0;">
-                <input type="hidden" name="api_key_action" value="generate">
-                <button type="submit" class="btn-smack" style="margin-top:0;">GENERATE API KEY</button>
-            </form>
-        <?php endif; ?>
+            <?php endif; ?>
+        </div>
 
         <button type="submit" name="save_settings" class="master-update-btn">SAVE GLOBAL ENGINE CONFIGURATION</button>
 

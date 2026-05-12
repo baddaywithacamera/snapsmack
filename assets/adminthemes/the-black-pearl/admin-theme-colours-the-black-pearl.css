@@ -82,7 +82,7 @@ h2 {
 
 /* 04: CONTENT BOXES */
 .box {
-    background-color: #1C1C1C;
+    background-color: #111111;
     border-color: #2C2C2C;
 }
 
@@ -183,7 +183,7 @@ input:focus, textarea:focus, select:focus {
 /* The Body Text */
 .signal-body {
     color: #AAAAAA;
-    background-color: #1C1C1C;
+    background-color: #111111;
     border-color: #2C2C2C;
 }
 
@@ -348,7 +348,7 @@ button:hover {
 }
 .file-upload-wrapper {
     border-color: #2C2C2C;
-    background-color: #1C1C1C;
+    background-color: #111111;
 }
 .file-custom-btn {
     background-color: #404040;
@@ -387,7 +387,7 @@ input[type="checkbox"]:checked::after {
 
 /* 13: LOGIN & FOOTER */
 .login-box {
-    background-color: #1C1C1C;
+    background-color: #111111;
     border-color: #2C2C2C;
 }
 
@@ -405,7 +405,7 @@ input[type="checkbox"]:checked::after {
     border-color: #2C2C2C;
 }
 .skin-meta-wrap {
-    background-color: #1C1C1C;
+    background-color: #111111;
 }
 .skin-selector-wrap {
     background-color: #0D0D0D;
@@ -444,7 +444,7 @@ input[type="range"]::-webkit-slider-thumb {
 /* Asset cards (Media Library) */
 .asset-card {
     border-color: #2C2C2C;
-    background-color: #1C1C1C;
+    background-color: #111111;
 }
 .asset-thumb-wrapper {
     border-bottom-color: #2C2C2C;

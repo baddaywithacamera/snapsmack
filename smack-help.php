@@ -2512,14 +2512,24 @@ site that reports back to the hub).</p>
     can see what's been published across the fleet.</li>
     <li><strong>Cross-Post</strong> — push an image from the hub to one or more spokes
     in a single action.</li>
-    <li><strong>Fleet Stats</strong> — traffic statistics rolled up from every spoke
-    into a combined dashboard.</li>
+    <li><strong>Fleet Stats</strong> — traffic statistics rolled up from every spoke:
+    fleet-wide totals, bot traffic visibility, daily sparkline, cross-fleet most-viewed
+    images, per-site breakdown with top image thumbnails, and top referrers. Selectable
+    time windows from 7 days to all time.</li>
     <li><strong>Backup Dock</strong> — backup health overview for every site in the fleet.
     See last backup date, size, and any sites that are overdue.</li>
     <li><strong>Blogroll Sync</strong> — keep blogrolls in sync across the fleet with push
     or pull modes.</li>
     <li><strong>SSO Drill-Through</strong> — log in to the hub once, then click through to
-    any spoke without re-authenticating.</li>
+    any spoke without re-authenticating. The <em>Remote Login</em> link next to each spoke
+    in the fleet list generates a single-use session token and redirects your browser
+    directly to that spoke's admin panel.</li>
+    <li><strong>Hub Update Push</strong> — each out-of-date spoke shows an UPDATE button
+    in the fleet list. The hub instructs the spoke to pull the latest release package,
+    verify its Ed25519 signature and SHA-256 checksum, apply pending migrations, and
+    report back. <em>UPDATE ALL BEHIND</em> does the whole fleet in sequence with
+    one click. When all spokes are current the button becomes a greyed <em>ALL UP
+    TO DATE</em> indicator.</li>
 </ul>
 
 <h4>Heartbeat Monitoring</h4>
@@ -2532,6 +2542,193 @@ the entire fleet.</p>
 <p>Hub and spoke communicate through a JSON API at <code>api.php?route=multisite/*</code>.
 All requests are authenticated with per-node API keys exchanged during the initial handshake.
 Communication uses HTTPS and keys are stored server-side — nothing is exposed to visitors.</p>
+HTML
+];
+
+$help_topics['fleet-stats'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Fleet Stats Rollup',
+    'icon'     => '&#x1F4CA;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Fleet Stats Rollup</h3>
+<p>Fleet Stats is the multisite hub's traffic intelligence page. It aggregates statistics
+from every connected spoke and the hub itself into a single view — so you can see how
+your entire network is performing without logging into each site individually.</p>
+
+<h4>Time Windows</h4>
+<p>Seven time windows are available via the nav tabs at the top of the page:
+<strong>7D</strong>, <strong>30D</strong> (default), <strong>90D</strong>,
+<strong>6M</strong>, <strong>1YR</strong>, and <strong>ALL</strong> (all-time, no
+date filter). Each spoke is queried with the same window, and the hub's own stats
+are pulled locally using the same range. The current window is shown as a badge
+in the top right corner of the page.</p>
+
+<h4>Fleet Totals</h4>
+<p>Six summary tiles at the top give you the network at a glance for the selected period:</p>
+<ul>
+    <li><strong>Total Views</strong> — every page view recorded across the fleet, excluding bots.</li>
+    <li><strong>Unique Visitors</strong> — distinct visitor count, summed across all sites.
+    Visitors who visit multiple sites in your fleet count once per site.</li>
+    <li><strong>Sites Reporting</strong> — how many sites returned data vs. total sites. A site
+    that is offline or unreachable shows in the error notice and counts as not reporting.</li>
+    <li><strong>Bot Views</strong> — views flagged as automated (crawlers, scanners, monitoring
+    pings). The percentage shows bots as a proportion of total traffic including bots.</li>
+    <li><strong>Avg Views / Day</strong> — total fleet views divided by the number of non-zero
+    days in the period. Zero-traffic days (e.g. the site was offline) are excluded from the
+    denominator so an outage doesn't drag the average down.</li>
+    <li><strong>Peak Day</strong> — the single calendar date with the highest combined fleet
+    traffic in the selected window, and the view count for that day.</li>
+</ul>
+
+<h4>Daily Traffic Sparkline</h4>
+<p>The bar chart below the tiles shows fleet-wide traffic by day across the selected period.
+Hover over any bar for the exact date, view count, and unique visitor count. The chart
+uses all sites' daily aggregates merged by date — spokes that do not have stats for a given
+date simply contribute zero for that day.</p>
+
+<h4>Fleet Top Images</h4>
+<p>The <strong>Most Viewed — Fleet Wide</strong> panel shows the top twelve most-viewed
+images across your entire network for the selected period, sorted by view count. Each card
+shows the thumbnail (linked to the live image page), the image title, which site it belongs
+to, and its view count. Bot traffic is excluded. Only images that have been directly viewed
+on their own page are counted — archive page views do not attribute to individual images.</p>
+<p>This data comes from the raw per-hit stats table on each spoke, not the daily pre-aggregated
+table, so it reflects actual views rather than rolled-up estimates. If a spoke has not yet
+accumulated any single-image traffic, it will not contribute to this panel.</p>
+
+<h4>Network Breakdown</h4>
+<p>The per-site table ranks every site in the fleet by total views. Each row shows:</p>
+<ul>
+    <li><strong>Views</strong> and <strong>Unique Visitors</strong> for the period.</li>
+    <li><strong>Avg/Day</strong> — views divided by the period length in days.</li>
+    <li><strong>Bots</strong> — bot traffic as a percentage of that site's total traffic
+    (human + bot). A high bot percentage may indicate a crawler or scan event.</li>
+    <li><strong>Top Image</strong> — the single most-viewed image on that site for the
+    period, with a small thumbnail and title linking to the live page.</li>
+    <li><strong>Share</strong> — that site's proportion of total fleet traffic, shown as
+    a bar and percentage.</li>
+</ul>
+<p>The hub's own stats appear in the table labelled <em>(Hub)</em> with a LOCAL badge,
+since the hub's data is queried directly from its own database rather than via the API.</p>
+
+<h4>Top Referrers</h4>
+<p>The referrers panel aggregates referring domain names across all sites for the selected
+period. The count reflects the number of days on which each referrer appeared as the top
+referrer for any site — it is a relative rank, not an absolute click count. Direct and
+unknown traffic appears as <em>Direct / Unknown</em>.</p>
+
+<h4>How Data Is Collected</h4>
+<p>The hub makes one API call per active spoke when the page loads, passing the selected
+time window. Each spoke queries its own <code>snap_stats_daily</code> table (for the
+sparkline and totals) and its raw <code>snap_stats</code> hit log (for top images and bot
+counts), then returns the results to the hub. The hub merges all responses and renders the
+page. Offline or slow-to-respond spokes time out after 10 seconds and are listed in the
+error notice at the top of the page — their data is absent from fleet totals for that visit.</p>
+<p>Fleet stats data is not cached between page loads. Each visit fetches fresh data from
+every spoke. On large fleets or slow connections this page may take a few seconds to load.</p>
+HTML
+];
+
+$help_topics['hub-update-push'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Hub Update Push',
+    'icon'     => '&#x2B06;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Hub Update Push</h3>
+<p>When the hub is running a newer version of SnapSmack than one or more spokes, an
+<strong>UPDATE</strong> button appears next to each out-of-date spoke in the fleet list.
+The <strong>UPDATE ALL BEHIND</strong> button at the top of the list handles the whole
+fleet in sequence with one click. When every spoke is current, the button becomes a greyed
+<em>ALL UP TO DATE</em> indicator.</p>
+
+<h4>What Happens When You Click UPDATE</h4>
+<p>The hub sends an authenticated instruction to the spoke's API. The spoke then:</p>
+<ol>
+    <li>Downloads the latest release package from the SnapSmack release server.</li>
+    <li>Verifies the Ed25519 cryptographic signature and SHA-256 checksum before extracting
+    a single file. If either check fails the package is discarded and the update aborts.</li>
+    <li>Acquires a maintenance lock so visitors see a brief maintenance notice rather than
+    a broken page during extraction.</li>
+    <li>Extracts the package to the web root, overwriting only tracked files.</li>
+    <li>Applies any pending database migrations in order. Each migration is idempotent —
+    running it twice is safe.</li>
+    <li>Releases the maintenance lock and reports the result back to the hub.</li>
+</ol>
+<p>The row in the fleet list updates in real time: a spinner while the update runs, a green
+tick and the new version number on success, a red cross with the error message on failure.
+No SSH, no FTP, no logging into each site individually.</p>
+
+<h4>Version Comparison</h4>
+<p>The hub uses semantic version comparison (not string equality) when deciding which spokes
+are "behind." A spoke that has been manually updated to a version <em>ahead</em> of the hub
+does not show as behind — only spokes running an older version are flagged. UPDATE ALL BEHIND
+targets only those older spokes.</p>
+
+<h4>If an Update Fails</h4>
+<p>The error message returned by the spoke is shown in the fleet row. Common causes:</p>
+<ul>
+    <li>The spoke cannot reach the release server (network/firewall issue).</li>
+    <li>Signature or checksum mismatch — the downloaded file is corrupt or was tampered with.
+    This should never happen with a legitimate release and is a serious warning sign if it does.</li>
+    <li>Disk space exhausted on the spoke's server.</li>
+    <li>Insufficient file permissions on the spoke's web root.</li>
+</ul>
+<p>After resolving the underlying issue, click UPDATE again for the affected spoke. You can
+also log into that spoke's admin directly and run the update there via the standard in-admin
+updater (Admin → Updates).</p>
+HTML
+];
+
+$help_topics['remote-login-sso'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Remote Login (Hub SSO)',
+    'icon'     => '&#x1F511;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Remote Login — Single Sign-On to Spokes</h3>
+<p>The <strong>Remote Login</strong> link in the fleet list lets you drill through from
+the hub to any spoke's admin panel without entering credentials on the spoke. You log in
+once to the hub; the hub handles authentication to the spoke on your behalf.</p>
+
+<h4>How It Works</h4>
+<p>When you click Remote Login:</p>
+<ol>
+    <li>The hub generates a short-lived single-use session token and sends it to the spoke
+    via an authenticated API call.</li>
+    <li>The hub redirects your browser to the spoke's login handler, passing the token as
+    a URL parameter.</li>
+    <li>The spoke validates the token — it must exist in the spoke's database, must not
+    have been used before, and must not have expired.</li>
+    <li>If valid, the spoke creates an authenticated admin session for your browser and
+    lands you on the spoke's dashboard.</li>
+</ol>
+<p>The token is single-use: once your browser presents it to the spoke, it is immediately
+invalidated. It cannot be reused even if someone intercepts the redirect URL. Tokens expire
+after a short period (regardless of whether they are used) so an unclicked link does not
+remain valid indefinitely.</p>
+
+<h4>What You Can Do Once Logged In</h4>
+<p>Remote Login gives you a full admin session on the spoke — the same as logging in
+directly. You can post, manage images, change settings, run updates, review comments, and
+do everything else a spoke admin can do. The session is tied to your browser and persists
+until you log out or the session expires normally.</p>
+
+<h4>Requirements</h4>
+<ul>
+    <li>The hub and spoke must be connected (active status in the fleet list).</li>
+    <li>The spoke must be reachable — if it is offline, the token delivery will fail and
+    you will see an error.</li>
+    <li>You must be an admin on the hub. Editors cannot use Remote Login.</li>
+</ul>
+
+<h4>Security Note</h4>
+<p>Remote Login relies on the same API key authentication used for all hub-to-spoke
+communication. The token is transmitted over HTTPS. If your spoke is not running HTTPS,
+Remote Login will still function but the redirect URL containing the token will be
+transmitted in plaintext — which is a good reason to make sure all sites in your fleet
+have valid SSL certificates.</p>
 HTML
 ];
 

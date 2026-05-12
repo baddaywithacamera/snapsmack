@@ -503,7 +503,8 @@ CREATE TABLE IF NOT EXISTS `snap_stats` (
   PRIMARY KEY (`id`),
   KEY `idx_hit_at`   (`hit_at`),
   KEY `idx_is_bot`   (`is_bot`),
-  KEY `idx_image_id` (`image_id`)
+  KEY `idx_image_id` (`image_id`),
+  KEY `idx_stats_enriched` (`is_bot`, `hit_at`, `image_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `snap_stats_daily` (
@@ -1033,7 +1034,8 @@ CREATE TABLE IF NOT EXISTS `snap_stats` (
   PRIMARY KEY (`id`),
   KEY `idx_hit_at`   (`hit_at`),
   KEY `idx_is_bot`   (`is_bot`),
-  KEY `idx_image_id` (`image_id`)
+  KEY `idx_image_id` (`image_id`),
+  KEY `idx_stats_enriched` (`is_bot`, `hit_at`, `image_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `snap_stats_daily` (

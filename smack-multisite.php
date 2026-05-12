@@ -41,6 +41,8 @@ if (isset($_POST['enable_hub'])) {
 if (isset($_POST['enable_spoke'])) {
     $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
     $stmt->execute(['multisite_role', 'spoke', 'spoke']);
+    $settings['multisite_role'] = 'spoke';
+    $multisite_role = 'spoke';
     $msg = "Enabled as Spoke. You can now generate a registration token.";
 }
 
@@ -53,6 +55,11 @@ if (isset($_POST['gen_reg_token'])) {
     $stmt->execute(['multisite_reg_token', $token, $token]);
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
         ->execute(['multisite_reg_token_expires', $expires, $expires]);
+
+    // Update in-memory $settings so the token display is correct on this same page load.
+    // $settings was loaded before this POST handler ran, so it's stale without this.
+    $settings['multisite_reg_token']         = $token;
+    $settings['multisite_reg_token_expires'] = (string)$expires;
 
     $_SESSION['multisite_reg_token'] = $token;
     $_SESSION['multisite_reg_token_expires'] = $expires;
@@ -265,10 +272,13 @@ if (isset($_POST['push_update']) || isset($_POST['push_update_all'])) {
     } else {
         // Build list of spoke IDs to update
         if (isset($_POST['push_update_all'])) {
-            // All spokes that are behind the hub version
+            // All spokes that are behind the hub version (strictly older, not just different)
             $stmt = $pdo->prepare("SELECT * FROM snap_multisite_nodes WHERE role = 'spoke' AND status = 'active' AND (software_version IS NULL OR software_version != ?)");
             $stmt->execute([SNAPSMACK_VERSION_SHORT]);
-            $target_nodes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $all_different = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $target_nodes = array_filter($all_different, fn($n) =>
+                empty($n['software_version']) || snap_version_compare(SNAPSMACK_VERSION_SHORT, $n['software_version'], '>')
+            );
         } else {
             $spoke_id = (int)($_POST['spoke_id'] ?? 0);
             $stmt = $pdo->prepare("SELECT * FROM snap_multisite_nodes WHERE id = ? AND role = 'spoke' LIMIT 1");
@@ -478,7 +488,7 @@ include 'core/sidebar.php';
     </div>
 
     <?php if(isset($msg)): ?>
-        <div class="msg">> <?php echo htmlspecialchars($msg); ?></div>
+        <div class="alert alert-success"><?php echo htmlspecialchars($msg); ?></div>
     <?php endif; ?>
 
     <?php if(isset($err)): ?>
@@ -552,7 +562,8 @@ include 'core/sidebar.php';
                 // Count spokes that are behind and active (eligible for bulk update)
                 $behind_count = count(array_filter($nodes, fn($n) =>
                     $n['role'] === 'spoke' && $n['status'] === 'active' &&
-                    !empty($n['software_version']) && $n['software_version'] !== SNAPSMACK_VERSION_SHORT
+                    !empty($n['software_version']) &&
+                    snap_version_compare(SNAPSMACK_VERSION_SHORT, $n['software_version'], '>')
                 ));
             ?>
 
@@ -585,15 +596,19 @@ include 'core/sidebar.php';
             <?php if (empty($nodes) || count(array_filter($nodes, fn($n) => $n['role'] === 'spoke')) === 0): ?>
                 <p style="color:var(--text-muted,#888);">No spokes connected yet. Register one below.</p>
             <?php else: ?>
-                <?php if ($behind_count > 0): ?>
-                    <div style="margin-bottom:14px;">
+                <div style="margin-bottom:14px;">
+                    <?php if ($behind_count > 0): ?>
                         <form method="POST" id="update-all-form">
                             <button type="submit" name="push_update_all" class="btn-smack" style="width:auto;height:auto;margin-top:0;padding:8px 18px;">
                                 UPDATE ALL BEHIND (<?php echo $behind_count; ?>)
                             </button>
                         </form>
-                    </div>
-                <?php endif; ?>
+                    <?php else: ?>
+                        <button type="button" class="btn-smack" disabled style="width:auto;height:auto;margin-top:0;padding:8px 18px;opacity:0.4;cursor:default;">
+                            ALL UP TO DATE
+                        </button>
+                    <?php endif; ?>
+                </div>
 
                 <div style="overflow-x:auto;">
                     <table class="multisite-table">
@@ -626,7 +641,7 @@ include 'core/sidebar.php';
                                         <?php
                                             $spoke_ver = $n['software_version'] ?? '';
                                             echo $spoke_ver ? htmlspecialchars($spoke_ver) : '—';
-                                            if ($spoke_ver && defined('SNAPSMACK_VERSION') && $spoke_ver !== SNAPSMACK_VERSION) {
+                                            if ($spoke_ver && snap_version_compare(SNAPSMACK_VERSION_SHORT, $spoke_ver, '>')) {
                                                 echo ' <span class="version-behind" title="Behind hub version ' . htmlspecialchars(SNAPSMACK_VERSION) . '">&#x25B2;</span>';
                                             }
                                         ?>
@@ -662,7 +677,7 @@ include 'core/sidebar.php';
                                     </td>
                                     <td class="col-center" id="spoke-act-<?php echo $n['id']; ?>">
                                         <?php if ($n['status'] === 'active'): ?>
-                                            <a href="smack-multisite-sso.php?spoke=<?php echo $n['id']; ?>"
+                                            <a href="smack-multisite-sso.php?sat=<?php echo $n['id']; ?>"
                                                target="_blank"
                                                class="action-authorize"
                                                title="Open spoke admin as primary admin user">REMOTE LOGIN</a>
@@ -674,7 +689,7 @@ include 'core/sidebar.php';
                                         <?php endif; ?>
                                         <?php
                                             $spoke_ver_action = $n['software_version'] ?? '';
-                                            if ($n['status'] === 'active' && $spoke_ver_action && $spoke_ver_action !== SNAPSMACK_VERSION_SHORT):
+                                            if ($n['status'] === 'active' && $spoke_ver_action && snap_version_compare(SNAPSMACK_VERSION_SHORT, $spoke_ver_action, '>')):
                                         ?>
                                             <form method="POST" class="spoke-update-form" data-spoke-id="<?php echo $n['id']; ?>" data-spoke-name="<?php echo htmlspecialchars($n['site_name'] ?? $n['site_url']); ?>" style="display:inline;">
                                                 <input type="hidden" name="spoke_id" value="<?php echo $n['id']; ?>">
