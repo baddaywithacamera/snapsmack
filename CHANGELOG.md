@@ -12,6 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.106 — "Bar Stool" (2026-05-12)
+
+### Added
+- **Multisite hub self-row** — Connected Spokes table now shows the hub itself as the first row, with version, post count, pending comments, and backup status. Removes the need to check the hub separately.
+
+### Fixed
+- **Login page — Return to Site link** — moved inside the login card (was floating outside the dialog box at an unpredictable position).
+
 ## 0.7.105 — "Fainting Couch" (2026-05-12)
 
 ### Added
@@ -1789,46 +1797,12 @@ _Internal bump. See 0.7.5b for the full feature set._
 - Toolbar keyboard shortcuts documented in help system.
 
 ### Fixed
-- Sidebar variable collision that broke static pages listing.
-- Skin settings form showing stale values after save.
-- Edit page album/category dropdowns loading wrong JS.
-- `smack_autop()` mangling `<ul>`, `<ol>`, and other block HTML.
-- Cropped grid forcing 1:1 aspect ratio in Impact Printer.
-- Portrait thumbnails capped to landscape height in cropped grid.
-- UL/OL buttons now split selected text into individual list items.
-- Installer progress dots skipping step 3.
+- Sidebar varia
 
----
+## 0.5.0 and earlier
 
-## 0.6.0 (2026-02)
+Initial development. Admin interface, theme system, per-skin settings scoping,
+sidebar redesign, admin theme CSS consolidation, comment controls, footer
+configuration, and foundational CMS architecture.
 
-### Added
-- Self-update system with Ed25519 signing and dual admin notifications.
-- Setup bootstrap deployer (`setup.php`) and first-run install wizard (`install.php`).
-- Floating social profile dock with glass-morphism UI and appearance customisation.
-- Sticky header engine with glass-morphism transparency.
-- Full help system with table of contents, full-text search, and skin-specific topic hooks.
-- Backup, recovery, and export system with FTP support.
-- OAuth cloud push to Google Drive and OneDrive with persistent refresh tokens.
-- Formatting toolbar with live preview, columns, and dropcap support.
-- Release signing utility with Ed25519 verification.
-- Self-update version check with cron registration UI.
-- Skin gallery for browsing and installing skins.
-- Batch throttling for all bulk thumbnail and checksum operations.
-- Recovery system, schema enrichment, integrity tools, and .htaccess repair.
-- Rational Geo skin (NatGeo-inspired editorial magazine theme).
-- Pocket Operator mobile-first skin (doomscroll feed, hamburger nav, drawer UI).
-
-### Changed
-- Documentation standardisation pass across all files.
-- Hardened .htaccess with HTTPS redirect, security headers, and asset caching.
-- Installer appends to existing .htaccess instead of skipping.
-- Removed Picasa Web Albums skin.
-
-### Fixed
-- Preflight security holes in custom JPG handling (found in audits by Claude and Gemini).
-- Google Drive share links auto-converted to direct downloads.
-- Various skin display bugs in New Horizon Dark and 50 Shades of Grey.
-
----
 <!-- ===== SNAPSMACK EOF ===== -->

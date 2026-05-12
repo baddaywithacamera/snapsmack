@@ -684,7 +684,6 @@ return [
             'selector' => ':root',
             'property' => '--masonry-border-width',
         ],
-
         'masonry_border_color' => [
             'section'  => 'ARCHIVE',
             'type'     => 'color',
@@ -693,9 +692,6 @@ return [
             'selector' => ':root',
             'property' => '--masonry-border-color',
         ],
-
-    'community_comments'  => '1',
-    'community_likes'     => '1',
-    'community_reactions' => '0',
+    ],
 ];
 // ===== SNAPSMACK EOF =====

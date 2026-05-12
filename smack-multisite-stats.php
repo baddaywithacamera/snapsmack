@@ -547,24 +547,23 @@ include 'core/sidebar.php';
             <?php
                 $max_ref = max($top_referrers);
                 foreach ($top_referrers as $ref => $count):
-                     = round(($count / $max_ref) * 100);
+                    $share_pct = round(($count / $max_ref) * 100);
             ?>
                 <div style="display:flex; align-items:center; gap:12px; font-size:0.85rem;">
                     <div style="min-width:180px; color:var(--text-muted,#888); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
                          title="<?php echo htmlspecialchars($ref); ?>">
                         <?php echo htmlspecialchars($ref ?: 'Direct / Unknown'); ?>
                     </div>
-                    <div style="flex:1; height:6px; background:var(--border,#333); radius:3px; overflow:hidden;">
-                        <div style="height:100%; width:<?php echo $ref_pct; ?>%; background:var(--accent-primary,#aaa);"></div>
+                    <div style="flex:1; height:6px; background:var(--border,#333); border-radius:4px; overflow:hidden;">
+                        <div style="height:100%; width:<?php echo $share_pct; ?>%; background:var(--accent-primary,#aaa); border-radius:4px;"></div>
                     </div>
-                    <div style="min-width:50px; text-align:right; color:var(--text-muted,#888);"><?php echo number_format($count); ?></div>
+                    <div style="min-width:40px; text-align:right; font-size:0.8rem; color:var(--text-muted,#888);"><?php echo number_format($count); ?></div>
                 </div>
             <?php endforeach; ?>
         </div>
     </div>
     <?php endif; ?>
 
-    <?php endif; ?>
 </div>
 
 <?php include 'core/admin-footer.php'; ?>

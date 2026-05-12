@@ -323,9 +323,6 @@ return [
             'selector' => ':root',
             'property' => '--masonry-border-color',
         ],
-
-    'community_comments'  => '1',
-    'community_likes'     => '1',
-    'community_reactions'  => '0',
+    ],
 ];
 // ===== SNAPSMACK EOF =====
