@@ -1698,6 +1698,21 @@ input[type="range"]:active::-webkit-slider-thumb {
     border-width: 1px;
     border-style: solid;
 }
+.alert-error {
+    background: rgba(220, 50, 50, 0.15);
+    border-color: rgba(220, 50, 50, 0.6);
+    color: #ff6b6b;
+}
+.alert-success {
+    background: rgba(50, 200, 80, 0.12);
+    border-color: rgba(50, 200, 80, 0.5);
+    color: #5dbb6f;
+}
+.alert-warning {
+    background: rgba(220, 160, 30, 0.15);
+    border-color: rgba(220, 160, 30, 0.5);
+    color: #e0a830;
+}
 
 /* Update notification banner (dashboard) */
 .alert-update {

@@ -279,78 +279,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="login-logo">
             <span class="logo-text">SNAPSMACK</span>
-            <span class="logo-sub">ADMIN</span>
         </div>
 
         <?php if ($error): ?>
         <div class="login-error"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
 
-        <div class="tab-selector login-tabs">
-            <button class="tab-btn <?php echo $active_tab === 'password' ? 'active' : ''; ?>"
+        <div class="login-tabs">
+            <button class="login-tab <?php echo $active_tab === 'password' ? 'active' : ''; ?>"
                     data-tab="login-password">PASSWORD</button>
-            <button class="tab-btn <?php echo $active_tab === 'recovery' ? 'active' : ''; ?>"
+            <button class="login-tab <?php echo $active_tab === 'recovery' ? 'active' : ''; ?>"
                     data-tab="login-recovery">RECOVERY CODE</button>
         </div>
 
         <!-- PASSWORD TAB -->
-        <div class="tab-content <?php echo $active_tab === 'password' ? 'active' : ''; ?>" id="login-password">
+        <div class="login-panel <?php echo $active_tab === 'password' ? 'active' : ''; ?>" id="login-password">
             <form method="POST" action="" autocomplete="off">
                 <input type="hidden" name="login_type" value="password">
 
-                <div class="form-group">
-                    <label for="username">Username</label>
+                <div class="control-group">
+                    <label for="username">IDENTIFIER</label>
                     <input type="text" id="username" name="username"
                            value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>"
                            autocomplete="username" required>
                 </div>
 
-                <div class="form-group">
-                    <label for="password">Password</label>
+                <div class="control-group">
+                    <label for="password">PASSCODE</label>
                     <input type="password" id="password" name="password"
                            autocomplete="current-password" required>
                 </div>
 
-                <button type="submit" class="btn-smack btn-login">LOG IN</button>
+                <button type="submit" class="btn-smack btn-login">AUTHORIZE ACCESS</button>
             </form>
         </div>
 
         <!-- RECOVERY CODE TAB -->
-        <div class="tab-content <?php echo $active_tab === 'recovery' ? 'active' : ''; ?>" id="login-recovery">
+        <div class="login-panel <?php echo $active_tab === 'recovery' ? 'active' : ''; ?>" id="login-recovery">
             <form method="POST" action="" autocomplete="off">
                 <input type="hidden" name="login_type" value="recovery">
 
-                <div class="form-group">
-                    <label for="rec_username">Username</label>
+                <div class="control-group">
+                    <label for="rec_username">IDENTIFIER</label>
                     <input type="text" id="rec_username" name="rec_username"
                            value="<?php echo htmlspecialchars($_POST['rec_username'] ?? ''); ?>"
                            autocomplete="username" required>
                 </div>
 
-                <div class="form-group">
-                    <label for="rec_code">Recovery Code</label>
+                <div class="control-group">
+                    <label for="rec_code">RECOVERY CODE</label>
                     <input type="text" id="rec_code" name="rec_code"
                            placeholder="XXXX-XXXX-XXXX"
                            autocomplete="off" required>
                     <span class="field-tip" data-tip="Find your one-time recovery code in smack-recovery-codes.txt, generated when you enabled 2FA.">&#9432;</span>
                 </div>
 
-                <button type="submit" class="btn-smack btn-login">USE RECOVERY CODE</button>
+                <button type="submit" class="btn-smack btn-login">AUTHORIZE ACCESS</button>
             </form>
         </div>
 
+        <div class="login-aux">
+            <a href="snap-in.php?tab=recovery" class="login-aux-link">Forgot password?</a>
+        </div>
+
     </div><!-- /.login-box -->
+
+    <div style="text-align:center; margin-top: 18px;">
+        <a href="/" class="login-aux-link">&larr; RETURN TO SITE</a>
+    </div>
+
 </div><!-- /.login-wrap -->
 
 <script>
 (function () {
-    document.querySelectorAll('.login-tabs .tab-btn').forEach(function (btn) {
+    document.querySelectorAll('.login-tabs .login-tab').forEach(function (btn) {
         btn.addEventListener('click', function () {
             var tab = this.dataset.tab;
-            document.querySelectorAll('.login-tabs .tab-btn').forEach(function (b) {
+            document.querySelectorAll('.login-tabs .login-tab').forEach(function (b) {
                 b.classList.toggle('active', b.dataset.tab === tab);
             });
-            document.querySelectorAll('.tab-content').forEach(function (p) {
+            document.querySelectorAll('.login-panel').forEach(function (p) {
                 p.classList.toggle('active', p.id === tab);
             });
         });

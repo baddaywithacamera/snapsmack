@@ -612,7 +612,7 @@ include 'core/sidebar.php';
                         </thead>
                         <tbody>
                             <?php foreach ($nodes as $n): ?>
-                                <?php if ($n['role'] !== 'spoke']) continue; ?>
+                                <?php if ($n['role'] !== 'spoke') continue; ?>
                                 <?php $node_status   = $n['status'] ?? 'unknown'; ?>
                                 <?php $backup_status = $n['last_backup_status'] ?? 'unknown'; ?>
                                 <tr id="spoke-row-<?php echo $n['id']; ?>">

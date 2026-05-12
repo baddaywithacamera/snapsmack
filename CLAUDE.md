@@ -325,9 +325,9 @@ git read-tree HEAD
 
 **CRITICAL — Update this section at the end of every session.** If this section is stale, the next session starts with wrong assumptions.
 
-### SnapSmack — Alpha 0.7.102 "Love Seat"
+### SnapSmack — Alpha 0.7.103 "Ottoman"
 
-**Recently shipped (0.7.82 → 0.7.101):**
+**Recently shipped (0.7.82 → 0.7.102):**
 - **0.7.82 "Take a Load Off"** — Collections v0.3 schema (migration 057)
 - 0.7.83–0.7.90 — Archive control alignment fixes, calendar settings fixes, T/M/C alignment
 - 0.7.91–0.7.92 "Front Row" — Maintenance lock during extraction; blogroll dedup fix; alert class standardisation
@@ -340,6 +340,7 @@ git read-tree HEAD
 - **0.7.100 "Throne"** — Black Pearl colour contamination greyscale fix
 - **0.7.101 "Love Seat"** — AJAX spoke update UI; hub self-entry in My Blogs; SMACKATTACK scheme fix; TEST KEY alignment
 - **0.7.102 "Love Seat"** — Security: CSRF hardening (disconnect/ping GET→POST); timing-safe handshake token comparison (hash_equals); SSRF guard on spoke registration; comments/action hub role enforcement; cross-post image content validation
+- **0.7.103 "Ottoman"** — Fix smack-multisite.php line 615 parse error (stray `]`); login page restored to IDENTIFIER/PASSCODE/AUTHORIZE ACCESS style; snap-in.php missing routes restored
 
 **Branch:** `dev`. Releases tagged on dev, SC release packager builds from tag.
 
@@ -355,7 +356,7 @@ git read-tree HEAD
 
 **`assets/css/public-facing.css` is now a deprecation shim** that `@import`s the five split files. Don't add rules to it directly — write them in the appropriate `page-*.css`.
 
-**Sit-related codenames used so far** (don't repeat): Hot Seat, Bench Warmer, Sit Still, Easy Rider, Bench Press, Reverse Cowgirl, Perch, Park It, Sit Pretty, Cross-Legged, Lotus Position, Take a Load Off, Bleacher Seat, Front Row, Sit Up Straight, Park Bench, Squat, Three-Legged Stool, Saddle Up, Footstool, Rocking Chair, High Chair, Throne, Love Seat. **All sitting codenames exhausted. Next milestone (0.8.x) needs a new theme.**
+**Sit-related codenames used so far** (don't repeat): Hot Seat, Bench Warmer, Sit Still, Easy Rider, Bench Press, Reverse Cowgirl, Perch, Park It, Sit Pretty, Cross-Legged, Lotus Position, Take a Load Off, Bleacher Seat, Front Row, Sit Up Straight, Park Bench, Squat, Three-Legged Stool, Saddle Up, Footstool, Rocking Chair, High Chair, Throne, Love Seat, Ottoman. **All sitting codenames exhausted. Next milestone (0.8.x) needs a new theme.**
 
 **Signing keypair status (unchanged — still current):**
 - Release private key in `sc-config.php` on snapsmack.ca
@@ -367,12 +368,19 @@ git read-tree HEAD
 - Files on SATA bulk storage via bind mount: host `/mnt/bulk-storage/snapsmack-ca` → CT101 `/var/www/snapsmack.ca`
 - Cloudflare in front — purge cache after FTPing CSS files
 - Manual FTP items (not in release package): `smack-central/sc-release.php`, `smack-central/sc-dashboard.php`, `core/release-pubkey.php`
+- **snapsmack.ca is now PHP** — all 6 pages converted + `includes/` directory (header.php, footer.php, site-version.php). The `includes/` dir must exist on the server. sc-release.php writes site-version.php on every publish.
+
+**snapsmack.ca PHP conversion — files to FTP (all new/changed):**
+- `projects/snapsmack-ca/includes/` (FULL DIRECTORY — create on server if not exists)
+- `projects/snapsmack-ca/index.php`, `wotcha.php`, `bugger.php`, `tnb.php`, `hairy-muff.php`, `oi.php`
+- `smack-central/sc-release.php` (has site-version.php hook)
+- `smack-central/sc-dashboard.php`, `smack-central/assets/css/sc-admin.css`, `core/release-pubkey.php`
 
 **Pending next session:**
-- Commit 0.7.102 (task 000) and push tag from MINGW64
-- FTP `sc-release.php` + `sc-dashboard.php` + `sc-admin.css` to snapsmack.ca (SC files not in release package)
-- Build and publish 0.7.102 via SC Release Packager
-- Update all sites → 0.7.102; run migration 059 on each (adds tagline/blogroll_desc columns)
+- Commit 0.7.103 and push tag `v0.7.103` from MINGW64
+- FTP all snapsmack.ca files (list above) — purge Cloudflare cache after
+- Build and publish 0.7.103 via SC Release Packager
+- Update all sites → 0.7.103; run migration 059 on each (adds tagline/blogroll_desc columns)
 - After migration 059: run heartbeat sweep on hub, THEN re-push Blogroll Sync so My Blogs descriptions (site taglines) populate
 - Configure My Blogs on foundtextures.ca hub after update
 - Admin theme: on each site go to Admin → Global Vibe → Core Admin Theme and select The Black Pearl if desired (midnight-lime is default; Black Pearl is a separate choice)

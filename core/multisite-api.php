@@ -82,8 +82,10 @@ function ms_get_auth_header(): string {
 }
 
 // --- HTTPS CHECK (handshake only) ---
+// Handles direct HTTPS, reverse proxy (X-Forwarded-Proto), and Cloudflare Tunnel (CF-Visitor).
 $is_https = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')
-         || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+         || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
+         || (json_decode($_SERVER['HTTP_CF_VISITOR'] ?? '{}', true)['scheme'] ?? '') === 'https';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: POST multisite/handshake
