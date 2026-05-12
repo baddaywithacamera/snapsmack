@@ -402,6 +402,13 @@ if (isset($_POST['verify_hub'])) {
 // Load connected nodes — fetch UNIX_TIMESTAMP to avoid strtotime/timezone issues
 $nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, connected_at DESC")->fetchAll(PDO::FETCH_ASSOC);
 
+// Hub self-entry data — shown as first row in Connected Spokes table
+$hub_post_count    = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
+$hub_pending       = (int)$pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 0")->fetchColumn();
+$hub_backup_status = $settings['last_backup_status'] ?? 'unknown';
+$hub_site_name     = $settings['site_name'] ?? 'Hub';
+$hub_site_url      = rtrim($settings['site_url'] ?? '', '/');
+
 // --- HEARTBEAT SWEEP (hub only, once per page load) ---
 // Calls each active spoke's heartbeat endpoint and caches the stats locally.
 if ($multisite_role === 'hub') {
@@ -626,6 +633,34 @@ include 'core/sidebar.php';
                             </tr>
                         </thead>
                         <tbody>
+                            <!-- HUB SELF-ROW -->
+                            <tr style="border-bottom:2px solid var(--accent,#f90); opacity:0.85;">
+                                <td>
+                                    <strong><?php echo htmlspecialchars($hub_site_name); ?></strong>
+                                    <span style="margin-left:6px; font-size:0.7rem; font-weight:700; letter-spacing:1px; color:var(--accent,#f90); opacity:0.8;">HUB</span>
+                                </td>
+                                <td>
+                                    <?php if ($hub_site_url): ?>
+                                        <a href="<?php echo htmlspecialchars($hub_site_url); ?>" target="_blank">
+                                            <?php echo htmlspecialchars(preg_replace('~^https?://~i', '', $hub_site_url)); ?>
+                                        </a>
+                                    <?php else: ?>
+                                        —
+                                    <?php endif; ?>
+                                </td>
+                                <td class="col-center" style="font-family:monospace; font-size:0.85rem;"><?php echo htmlspecialchars(SNAPSMACK_VERSION_SHORT); ?></td>
+                                <td class="col-center">
+                                    <span class="status-dot status-dot--active" title="active"></span>
+                                    <span class="status-label status-label--active">ACTIVE</span>
+                                </td>
+                                <td class="col-center">just now</td>
+                                <td class="col-center"><?php echo $hub_post_count; ?></td>
+                                <td class="col-center"><?php echo $hub_pending; ?></td>
+                                <td class="col-center">
+                                    <span class="status-dot status-dot--lg status-dot--<?php echo htmlspecialchars($hub_backup_status); ?>" title="<?php echo htmlspecialchars($hub_backup_status); ?>"></span>
+                                </td>
+                                <td class="col-center" style="font-size:0.75rem; color:var(--text-muted,#888); letter-spacing:1px;">THIS SITE</td>
+                            </tr>
                             <?php foreach ($nodes as $n): ?>
                                 <?php if ($n['role'] !== 'spoke') continue; ?>
                                 <?php $node_status   = $n['status'] ?? 'unknown'; ?>
@@ -837,105 +872,6 @@ include 'core/sidebar.php';
     <?php endif; ?>
 
 </div>
-
-<script>
-(function () {
-    var liveDiv = null;
-    function getLive() {
-        if (!liveDiv) liveDiv = document.getElementById('update-progress-live');
-        return liveDiv;
-    }
-    function log(html) { var d = getLive(); if (d) d.insertAdjacentHTML('beforeend', html); }
-    function clearLog() { var d = getLive(); if (d) d.innerHTML = ''; }
-
-    function setUpdating(id) {
-        var cell = document.getElementById('spoke-act-' + id);
-        if (!cell) return;
-        var btn = cell.querySelector('.spoke-update-form button');
-        if (btn) { btn.disabled = true; btn.textContent = '…'; }
-    }
-
-    function setDone(id, toVer, ok) {
-        var verCell = document.getElementById('spoke-ver-' + id);
-        if (verCell && toVer) verCell.innerHTML = '<span style="font-family:monospace;">' + toVer + '</span>';
-        var actCell = document.getElementById('spoke-act-' + id);
-        if (actCell) {
-            var form = actCell.querySelector('.spoke-update-form');
-            if (form) form.remove();
-        }
-        if (ok) {
-            var row = document.getElementById('spoke-row-' + id);
-            if (row) row.style.opacity = '0.65';
-        }
-    }
-
-    function setFailed(id) {
-        var actCell = document.getElementById('spoke-act-' + id);
-        if (!actCell) return;
-        var btn = actCell.querySelector('.spoke-update-form button');
-        if (btn) { btn.disabled = false; btn.textContent = 'UPDATE'; }
-    }
-
-    async function updateOne(form) {
-        var id   = form.dataset.spokeId;
-        var name = form.dataset.spokeName;
-        var csrf = (form.querySelector('[name="csrf_token"]') || {}).value || '';
-        setUpdating(id);
-        log('<div style="padding:3px 0;color:var(--text-muted,#888);">&#x21BB; Updating <strong>' + name + '</strong>&hellip;</div>');
-        var fd = new FormData();
-        fd.append('push_update', '1');
-        fd.append('spoke_id', id);
-        fd.append('csrf_token', csrf);
-        try {
-            var res = await fetch('smack-multisite.php', {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                body: fd
-            });
-            var data = await res.json();
-            var r = data.results && data.results[0];
-            if (r && r.ok) {
-                var detail = r.status === 'already_current'
-                    ? 'already current'
-                    : r.from + ' &rarr; ' + r.to + ' (' + r.files + ' files' + (r.migs > 0 ? ', ' + r.migs + ' migration' + (r.migs !== 1 ? 's' : '') : '') + ')';
-                log('<div style="padding:3px 0;color:var(--text-bright,#DFDFDF);">&#x2713; <strong>' + name + '</strong> &mdash; ' + detail + '</div>');
-                setDone(id, r.to || null, true);
-            } else {
-                log('<div style="padding:3px 0;color:var(--alert-error,#888);">&#x2717; <strong>' + name + '</strong> &mdash; ' + ((r && r.detail) || 'unknown error') + '</div>');
-                setFailed(id);
-            }
-        } catch (e) {
-            log('<div style="padding:3px 0;color:var(--alert-error,#888);">&#x2717; <strong>' + name + '</strong> &mdash; network error</div>');
-            setFailed(id);
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('.spoke-update-form').forEach(function (form) {
-            form.addEventListener('submit', function (e) {
-                e.preventDefault();
-                clearLog();
-                updateOne(form);
-            });
-        });
-
-        var allForm = document.getElementById('update-all-form');
-        if (allForm) {
-            allForm.addEventListener('submit', async function (e) {
-                e.preventDefault();
-                clearLog();
-                var allBtn = allForm.querySelector('button');
-                if (allBtn) { allBtn.disabled = true; allBtn.textContent = 'UPDATING…'; }
-                var forms = Array.from(document.querySelectorAll('.spoke-update-form'));
-                for (var i = 0; i < forms.length; i++) {
-                    await updateOne(forms[i]);
-                }
-                if (allBtn) { allBtn.disabled = false; allBtn.textContent = allBtn.textContent.replace('UPDATING…', 'ALL CURRENT ✓'); }
-            });
-        }
-    });
-}());
-</script>
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

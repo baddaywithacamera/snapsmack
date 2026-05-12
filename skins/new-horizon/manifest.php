@@ -549,7 +549,6 @@ return [
             'selector' => ':root',
             'property' => '--masonry-border-width',
         ],
-
         'masonry_border_color' => [
             'section'  => 'ARCHIVE',
             'type'     => 'color',
@@ -557,7 +556,7 @@ return [
             'default'  => '#ffffff',
             'selector' => ':root',
             'property' => '--masonry-border-color',
-        ],,
+        ],
     ],
 ];
 // ===== SNAPSMACK EOF =====
