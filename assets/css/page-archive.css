@@ -123,6 +123,10 @@
     border: none !important;
     box-shadow: none !important;
 }
+#justified-grid .justified-item {
+    outline: var(--masonry-border-width, 0px) solid var(--masonry-border-color, transparent);
+    outline-offset: calc(var(--masonry-border-width, 0px) * -1);
+}
 
 /* --- 4. UNIFIED FILTER PANEL (saf-*) -------------------------------------- */
 .saf-wrap {
@@ -323,7 +327,7 @@
     cursor: pointer;
     opacity: 0.45;
     transition: opacity 0.15s, background-color 0.15s;
-    font-family: inherit;
+    font-family: system-ui, -apple-system, sans-serif;
     line-height: 1;
 }
 
@@ -340,4 +344,4 @@
     opacity: 1;
     background: rgba(255, 255, 255, 0.10);
 }
-/* ===== SNAPSMACK EOF ===== */
+/* 

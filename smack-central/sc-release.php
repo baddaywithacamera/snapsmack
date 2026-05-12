@@ -651,6 +651,18 @@ if ($action === 'build' && $preflight_ok) {
                 file_put_contents($json_path, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
                 $build_log[] = "→ latest.json written";
 
+                // Write site-version.php for snapsmack.ca promo site
+                $site_version_path = '/var/www/snapsmack.ca/includes/site-version.php';
+                $site_version_content = "<?php\n" .
+                    "define('SS_PROMO_VERSION',  '" . addslashes($version) . "');\n" .
+                    "define('SS_PROMO_CODENAME', '" . addslashes($codename) . "');\n" .
+                    "// ===== SNAPSMACK EOF =====\n";
+                if (file_put_contents($site_version_path, $site_version_content) !== false) {
+                    $build_log[] = "→ site-version.php written (v{$version})";
+                } else {
+                    $build_log[] = "→ site-version.php write failed (check path/permissions)";
+                }
+
                 // Step 6: Persist to DB
                 try {
                     $db = sc_db();

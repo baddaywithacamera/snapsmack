@@ -1699,19 +1699,19 @@ input[type="range"]:active::-webkit-slider-thumb {
     border-style: solid;
 }
 .alert-error {
-    background: rgba(220, 50, 50, 0.15);
-    border-color: rgba(220, 50, 50, 0.6);
-    color: #ff6b6b;
+    background: #3b0d0d;
+    border-color: #cc2222;
+    color: #ff8080;
 }
 .alert-success {
-    background: rgba(50, 200, 80, 0.12);
-    border-color: rgba(50, 200, 80, 0.5);
-    color: #5dbb6f;
+    background: #0a2e12;
+    border-color: #1e8c3a;
+    color: #5ddd72;
 }
 .alert-warning {
-    background: rgba(220, 160, 30, 0.15);
-    border-color: rgba(220, 160, 30, 0.5);
-    color: #e0a830;
+    background: #2e1f00;
+    border-color: #c47f00;
+    color: #ffbb33;
 }
 
 /* Update notification banner (dashboard) */

@@ -14,9 +14,10 @@ if (file_exists(__DIR__ . '/sc-version.php')) require_once __DIR__ . '/sc-versio
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo isset($sc_page_title) ? htmlspecialchars($sc_page_title) . ' — ' : ''; ?>SMACK CENTRAL</title>
-<link rel="stylesheet" href="assets/css/sc-geometry.css">
-<link rel="stylesheet" href="assets/css/sc-colours.css">
-<link rel="stylesheet" href="assets/css/sc-admin.css">
+<?php $sc_v = defined('SC_VERSION') ? SC_VERSION : '0'; ?>
+<link rel="stylesheet" href="assets/css/sc-geometry.css?v=<?php echo $sc_v; ?>">
+<link rel="stylesheet" href="assets/css/sc-colours.css?v=<?php echo $sc_v; ?>">
+<link rel="stylesheet" href="assets/css/sc-admin.css?v=<?php echo $sc_v; ?>">
 </head>
 <body>
 <div class="sc-shell">
@@ -55,4 +56,4 @@ if (file_exists(__DIR__ . '/sc-version.php')) require_once __DIR__ . '/sc-versio
   </aside>
 
   <main class="sc-main">
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

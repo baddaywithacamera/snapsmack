@@ -244,13 +244,13 @@ include 'core/sidebar.php';
                 <div class="dash-grid">
                     <div class="lens-input-wrapper">
                         <label>MASTHEAD MODE</label>
-                        <select name="settings[masthead_type]" onchange="document.getElementById('logo-upload-group').classList.toggle('d-none', this.value !== 'logo');">
-                            <option value="text" <?php echo (($settings['masthead_type'] ?? 'text') == 'text') ? 'selected' : ''; ?>>Plain Text (Public Skin Font)</option>
-                            <option value="logo" <?php echo (($settings['masthead_type'] ?? 'text') == 'logo') ? 'selected' : ''; ?>>Custom Logo Image</option>
+                        <select name="settings[header_type]" onchange="document.getElementById('logo-upload-group').classList.toggle('d-none', this.value !== 'image');">
+                            <option value="text" <?php echo (($settings['header_type'] ?? 'text') == 'text') ? 'selected' : ''; ?>>Plain Text (Public Skin Font)</option>
+                            <option value="image" <?php echo (($settings['header_type'] ?? 'text') == 'image') ? 'selected' : ''; ?>>Custom Logo Image</option>
                         </select>
                     </div>
 
-                    <div class="lens-input-wrapper<?php echo (($settings['masthead_type'] ?? 'text') == 'logo') ? '' : ' d-none'; ?>" id="logo-upload-group">
+                    <div class="lens-input-wrapper<?php echo (($settings['header_type'] ?? 'text') == 'image') ? '' : ' d-none'; ?>" id="logo-upload-group">
                         <label>UPLOAD LOGO (PNG/SVG)</label>
                         <input type="file" name="site_logo_file" accept="image/*" class="file-input-raw">
                         <?php if (!empty($settings['site_logo'])): ?>

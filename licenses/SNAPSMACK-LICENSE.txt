@@ -1,4 +1,4 @@
-SNAPSMACK PUBLIC LICENSE
+SMACK PUBLIC LICENSE (SPL)
 
 Copyright (c) 2026 Sean McCormick (sean@baddaywithacamera.ca). Includes original code by the aforementioned with code contributed by Google Gemini Pro and Claude Pro (Sonnet 4.6 & Opus 4.7).
 

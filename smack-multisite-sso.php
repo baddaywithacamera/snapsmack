@@ -94,7 +94,7 @@ function sso_hub_fail(string $reason, ?array $spoke): void {
                        style="color:var(--accent,#aaa);"><?php echo htmlspecialchars($spoke['site_url']); ?></a>
                 </p>
             <?php endif; ?>
-            <div class="alert alert-error" style="margin-top:20px;">> <?php echo htmlspecialchars($reason); ?></div>
+            <div class="alert alert-error" style="margin-top:20px;"><?php echo htmlspecialchars($reason); ?></div>
             <p style="color:var(--text-muted,#888); font-size:0.9rem; margin-top:15px;">
                 The spoke may be offline, or it may be running an older version of SnapSmack that doesn't
                 support SSO. You can still log in manually at

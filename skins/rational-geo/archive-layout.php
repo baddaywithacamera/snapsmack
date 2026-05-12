@@ -33,26 +33,7 @@ $ratio_max = 3 / 2;  // 1.500
 $show_map_bg = ($settings['show_map_background'] ?? '1') === '1';
 ?>
 
-<?php
-$_rg_icons  = ['square'=>'&#9638;','cropped'=>'&#9638;','croppedwithcalendar'=>'&#9637;','masonry'=>'&#9636;'];
-$_rg_titles = ['square'=>'Square Grid','cropped'=>'Grid','croppedwithcalendar'=>'Calendar','masonry'=>'Justified'];
-$_rg_avail  = isset($available_modes) ? $available_modes : [];
-?>
-<?php if (count($_rg_avail) > 1): ?>
-<!-- Floating layout toggle — appears on hover, top-right -->
-<div class="rg-layout-toggle">
-    <div class="rg-layout-toggle-switch">
-        <?php foreach ($_rg_avail as $_rg_mode):
-            $_icon  = $_rg_icons[$_rg_mode]  ?? '&#9638;';
-            $_title = $_rg_titles[$_rg_mode] ?? strtoupper($_rg_mode);
-        ?>
-            <button class="rg-toggle-btn<?php echo ($_rg_mode === $archive_default) ? ' active' : ''; ?>"
-                    data-layout="<?php echo htmlspecialchars($_rg_mode); ?>"
-                    title="<?php echo $_title; ?>"><?php echo $_icon; ?></button>
-        <?php endforeach; ?>
-    </div>
-</div>
-<?php endif; ?>
+<!-- Layout toggle handled by core T/M buttons in the filter bar. -->
 
 <!-- Cropped grid — Galleria structure, RG borders -->
 <div id="browse-grid" class="rg-archive-grid" <?php echo $archive_default !== 'cropped' ? 'style="display:none;"' : ''; ?>>

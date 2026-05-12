@@ -399,20 +399,119 @@ if ($resource === 'posts' && $sub_action === 'recent' && $method === 'GET') {
 // ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: GET multisite/stats/daily
 // Pre-aggregated daily stats from snap_stats_daily.
+// Optional &enriched=1 adds: top_images[], bot_total, top_day, period_totals.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'stats' && $sub_action === 'daily' && $method === 'GET') {
-    $days = min((int)($_GET['days'] ?? 30), 365);
+    $days     = (int)($_GET['days'] ?? 30);
+    $all_time = ($days === 0);
+    $enriched = !empty($_GET['enriched']);
 
-    $stmt = $pdo->prepare("
-        SELECT stat_date, total_views, unique_visitors, bot_views, top_referrer
-        FROM snap_stats_daily
-        WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-        ORDER BY stat_date DESC
-    ");
-    $stmt->execute([$days]);
+    if ($all_time) {
+        $stmt = $pdo->query("
+            SELECT stat_date, total_views, unique_visitors, bot_views, top_referrer
+            FROM snap_stats_daily
+            ORDER BY stat_date DESC
+        ");
+    } else {
+        $days = max(1, min($days, 3650));   // clamp 1–3650 days (~10 years)
+        $stmt = $pdo->prepare("
+            SELECT stat_date, total_views, unique_visitors, bot_views, top_referrer
+            FROM snap_stats_daily
+            WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+            ORDER BY stat_date DESC
+        ");
+        $stmt->execute([$days]);
+    }
     $stats = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    ms_ok(['stats' => $stats, 'period_days' => $days]);
+    $payload = ['stats' => $stats, 'period_days' => $days];
+
+    // ── ENRICHED MODE ────────────────────────────────────────────────────────
+    if ($enriched) {
+        // Period totals + top_day from snap_stats_daily
+        $bot_total   = 0;
+        $top_day     = ['date' => null, 'views' => 0];
+        $period_views  = 0;
+        $period_unique = 0;
+        foreach ($stats as $row) {
+            $period_views  += (int)$row['total_views'];
+            $period_unique += (int)$row['unique_visitors'];
+            $bot_total     += (int)($row['bot_views'] ?? 0);
+            if ((int)$row['total_views'] > $top_day['views']) {
+                $top_day = ['date' => $row['stat_date'], 'views' => (int)$row['total_views']];
+            }
+        }
+
+        // Top images from raw snap_stats — human traffic only, joined to snap_images
+        $top_images = [];
+        try {
+            if ($all_time) {
+                $img_stmt = $pdo->query("
+                    SELECT s.image_id,
+                           i.img_title, i.img_slug, i.img_file,
+                           i.img_thumb_aspect, i.img_thumb_square,
+                           COUNT(*) AS view_count
+                    FROM snap_stats s
+                    JOIN snap_images i ON i.id = s.image_id
+                    WHERE s.is_bot = 0 AND s.image_id IS NOT NULL
+                    GROUP BY s.image_id
+                    ORDER BY view_count DESC
+                    LIMIT 10
+                ");
+            } else {
+                $img_stmt = $pdo->prepare("
+                    SELECT s.image_id,
+                           i.img_title, i.img_slug, i.img_file,
+                           i.img_thumb_aspect, i.img_thumb_square,
+                           COUNT(*) AS view_count
+                    FROM snap_stats s
+                    JOIN snap_images i ON i.id = s.image_id
+                    WHERE s.is_bot = 0
+                      AND s.image_id IS NOT NULL
+                      AND s.hit_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+                    GROUP BY s.image_id
+                    ORDER BY view_count DESC
+                    LIMIT 10
+                ");
+                $img_stmt->execute([$days]);
+            }
+            $img_rows = $img_stmt->fetchAll(PDO::FETCH_ASSOC);
+            $base = rtrim(BASE_URL, '/');
+            foreach ($img_rows as $img) {
+                // Prefer aspect-ratio thumb, fallback to square, fallback to constructed path
+                if (!empty($img['img_thumb_aspect'])) {
+                    $thumb = $base . '/' . ltrim($img['img_thumb_aspect'], '/');
+                } elseif (!empty($img['img_thumb_square'])) {
+                    $thumb = $base . '/' . ltrim($img['img_thumb_square'], '/');
+                } else {
+                    $file = ltrim($img['img_file'], '/');
+                    $thumb = $base . '/' . dirname($file) . '/thumbs/t_' . basename($file);
+                }
+                $top_images[] = [
+                    'id'        => (int)$img['image_id'],
+                    'title'     => $img['img_title'],
+                    'slug'      => $img['img_slug'],
+                    'thumb_url' => $thumb,
+                    'page_url'  => $base . '/' . ltrim($img['img_slug'], '/'),
+                    'views'     => (int)$img['view_count'],
+                ];
+            }
+        } catch (\Exception $e) {
+            // snap_stats may not have data yet; return empty array
+        }
+
+        $payload['top_images']    = $top_images;
+        $payload['bot_total']     = $bot_total;
+        $payload['top_day']       = $top_day;
+        $payload['period_totals'] = [
+            'views'  => $period_views,
+            'unique' => $period_unique,
+            'bot'    => $bot_total,
+        ];
+        $payload['site_url'] = rtrim(BASE_URL, '/');
+    }
+
+    ms_ok($payload);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -795,124 +894,21 @@ if ($resource === 'ban-sync' && $method === 'POST') {
         if (!in_array($type, $valid_types, true)) continue;
         // Value must be a SHA-256 hex string — 64 lowercase hex chars
         if (!preg_match('/^[0-9a-f]{64}$/i', $value)) continue;
-        $reason = 'hub-sync:' . substr(preg_replace('/[^a-zA-Z0-9_\- ]/', '', $ban['reason'] ?? ''), 0, 50);
-        $insert_stmt->execute([$type, $value, $reason]);
-        if ($insert_stmt->rowCount() > 0) $merged++;
+        $reason = 'hub-sync:' . substr(preg_replace('/[^a-zA-Z0-9_\- ]/'', '', $reason), 0, 64);
+        $bans_to_store[] = ['type' => $type, 'value' => $value, 'reason' => $reason];
     }
 
-    // ── 2. Collect this spoke's new bans since last sync ──────────────────────
-    // Excludes hub-sourced entries to prevent echo-back.
-
-    $last_sync = $settings['ban_hub_last_sync_at'] ?? '';
-    $cursor_dt = $last_sync ?: '2000-01-01 00:00:00';
-
-    $new_stmt = $pdo->prepare("
-        SELECT ban_type, ban_value, reason, banned_at
-        FROM `snap_ban_list`
-        WHERE banned_at > ?
-          AND (reason IS NULL OR reason NOT LIKE 'hub-sync:%')
-        ORDER BY banned_at ASC
-        LIMIT 500
-    ");
-    $new_stmt->execute([$cursor_dt]);
-    $new_bans = $new_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // ── 3. Advance the spoke's sync cursor ────────────────────────────────────
-
-    $pdo->prepare("
-        INSERT INTO `snap_settings` (setting_key, setting_val)
-        VALUES ('ban_hub_last_sync_at', NOW())
-        ON DUPLICATE KEY UPDATE setting_val = NOW()
-    ")->execute();
-
-    ms_ok([
-        'new_bans' => $new_bans,
-        'merged'   => $merged,
-        'count'    => count($new_bans),
-    ]);
-}
-
-// ENDPOINT: POST multisite/updates/trigger
-// Hub instructs this spoke to download and apply the latest release.
-// Hub role required. Returns {ok, version, files_updated, migrations, errors[]}.
-// ─────────────────────────────────────────────────────────────────────────────
-if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') {
-    if ($node['role'] !== 'hub') ms_err('Only a hub may trigger spoke updates', 403);
-
-    require_once __DIR__ . '/updater.php';
-
-    @set_time_limit(120);
-
-    $installed_version   = $settings['installed_version']  ?? SNAPSMACK_VERSION_SHORT;
-    $installed_checksum  = $settings['installed_checksum'] ?? '';
-
-    // 1. Fetch release info from Smack Central
-    $release_info = updater_fetch_release_info();
-    if (!$release_info || isset($release_info['error'])) {
-        ms_err('Could not fetch release info: ' . ($release_info['error'] ?? 'unknown'), 500);
+    if (!empty($bans_to_store)) {
+        $ins = $pdo->prepare("
+            INSERT IGNORE INTO snap_bans (ban_type, ban_value, ban_reason, ban_expires)
+            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 30 DAY))
+        ");
+        foreach ($bans_to_store as $b) {
+            $ins->execute([$b['type'], $b['value'], $b['reason']]);
+        }
     }
 
-    // 2. Check whether an update is actually needed
-    $status = updater_check_status($installed_version, $release_info, $installed_checksum);
-    if ($status === 'up_to_date') {
-        ms_ok(['status' => 'already_current', 'version' => $installed_version]);
-    }
-
-    // 3. Download
-    $dl_error = '';
-    $zip_path = updater_download($release_info['download_url'] ?? '', $dl_error);
-    if (!$zip_path) ms_err('Download failed: ' . $dl_error, 500);
-
-    // 4. Verify checksum + signature
-    $verify_error = '';
-    if (!updater_verify_package($zip_path, $release_info['checksum_sha256'] ?? '', $release_info['signature'] ?? '', $verify_error)) {
-        @unlink($zip_path);
-        ms_err('Verification failed: ' . $verify_error, 500);
-    }
-
-    // 5. Acquire maintenance lock
-    updater_acquire_lock($pdo);
-
-    // 6. Extract
-    $extract = updater_extract($zip_path);
-    @unlink($zip_path);
-
-    if (!$extract['success']) {
-        updater_release_lock();
-        ms_err('Extraction failed: ' . implode('; ', $extract['errors']), 500);
-    }
-
-    // 7. Run migrations
-    $migration_files = updater_find_migrations($pdo);
-    $mig_result = [];
-    if (!empty($migration_files)) {
-        $mig_result = updater_run_migrations($pdo, $migration_files);
-    }
-
-    // 8. Set version + store checksum
-    updater_set_version(
-        $pdo,
-        $release_info['version']      ?? $installed_version,
-        $release_info['version_full'] ?? '',
-        $release_info['codename']     ?? '',
-        $release_info['checksum_sha256'] ?? ''
-    );
-
-    // 9. Release lock
-    updater_release_lock();
-    updater_cleanup();
-
-    $mig_count = count(array_filter($mig_result, fn($r) => ($r['status'] ?? '') === 'ok'));
-
-    ms_ok([
-        'status'        => 'updated',
-        'from_version'  => $installed_version,
-        'to_version'    => $release_info['version'] ?? '',
-        'files_updated' => $extract['files_updated'],
-        'files_skipped' => $extract['files_skipped'],
-        'migrations'    => $mig_count,
-        'errors'        => $extract['errors'],
-    ]);
+    ms_ok(['imported' => count($bans_to_store)]);
 }
 
 // Fell through — unknown endpoint

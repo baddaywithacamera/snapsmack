@@ -12,6 +12,79 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.105 — "Fainting Couch" (2026-05-12)
+
+### Added
+- **Fleet Stats — enriched data** — `stats/daily` API endpoint now accepts `&enriched=1`.
+  When present the spoke returns: `top_images[]` (top 10 most-viewed images with title,
+  slug, thumb URL, view count), `bot_total`, `top_day` (peak date + views), and
+  `period_totals` convenience aggregate. Bot counts come from `snap_stats_daily.bot_views`;
+  top images from a live query against `snap_stats` grouped by `image_id`.
+- **Fleet Stats — six summary tiles** — Fleet totals box gains: BOT VIEWS (count + % of
+  all traffic), AVG VIEWS/DAY (non-zero days only), and PEAK DAY (date + views).
+- **Fleet Stats — Most Viewed panel** — cross-fleet grid of the top 12 most-viewed images
+  across all sites. Hub merges top images from every spoke + its own local query, sorts by
+  views DESC, renders linked image cards with thumbnail, title, site badge, view count.
+- **Fleet Stats — Network Breakdown enhancements** — table gains BOT % column and TOP
+  IMAGE column (36px thumb + title + link to live page for each site's #1 image).
+- **Help system — Fleet Stats** — new dedicated `fleet-stats` topic explaining all panels,
+  time windows, data collection, and how enriched API data flows from spoke to hub.
+- **Help system — Hub Update Push** — new `hub-update-push` topic covering UPDATE /
+  UPDATE ALL BEHIND, the update sequence (download → verify → extract → migrate → report),
+  version comparison logic, and failure recovery.
+- **Help system — Remote Login SSO** — new `remote-login-sso` topic explaining the
+  single-use token flow, session behaviour, requirements, and HTTPS note.
+- **Help system — Multisite topic** — updated to reference fleet stats enrichment,
+  Remote Login detail, and Hub Update Push.
+
+### Fixed
+- **Black Pearl — box backgrounds too light** — `.box`, `.signal-body`, `.login-box`,
+  `.skin-meta-wrap`, `.file-upload-wrapper`, `.asset-card` darkened from `#1C1C1C` to
+  `#111111`. Body/sidebar/footer remain `#0D0D0D`. Only the text colours were intended
+  to change in the previous session; container colours are restored to near-black.
+- **smack-settings.php — SMACKATTACK section** — POST MODES, SMACKATTACK, and API ACCESS
+  sections were bare `<h3>` tags outside `.box` containers. All three now wrapped in
+  `.box` like every other settings section.
+- **SMACKATTACK checkbox** — `ste_enabled` used a plain `<input type="checkbox">` instead
+  of the standard `.toggle-switch` / `.toggle-slider` pattern.
+
+## 0.7.104 — "Fainting Couch" (2026-05-11)
+
+### Fixed
+- **Spoke registration token mismatch (401)** — `$settings` was loaded from the
+  database before POST handlers ran, so the token just written to the DB was never
+  reflected in the in-memory array. On the same page load, the token display used
+  the stale value; if the admin clicked Generate more than once the displayed token
+  was always one generation behind what the DB held. Hub would call the handshake
+  with the shown token, DB had the newer one, `hash_equals` failed → 401. Fixed by
+  updating `$settings` in memory immediately after writing the new token (and also
+  after `enable_spoke` sets the role).
+- **Multisite "UPDATE ALL BEHIND" count** — used `!==` equality check instead of
+  `snap_version_compare()`, so a spoke ahead of the hub (e.g. updated independently)
+  counted as "behind." All four locations fixed: count, bulk-update query, per-row
+  triangle indicator, per-row UPDATE button.
+- **Remote Login redirect loop** — link passed `?spoke=` but handler read `$_GET['sat']`.
+  Node ID was always 0, triggering the guard redirect back to multisite.php.
+- **Spoke registered / alert styling** — success message used bespoke `.msg` class
+  instead of `.alert.alert-success`; also stripped legacy `> ` prefix from error alerts.
+- **Fleet Stats time windows** — added 6M (180d), 1YR (365d), ALL options. Spoke API
+  `stats/daily` endpoint now accepts `days=0` as all-time (no date filter) and lifts
+  the old 365-day hard cap to 3650.
+- **"UPDATE ALL BEHIND" greyed state** — button now shows disabled "ALL UP TO DATE"
+  when all spokes are current instead of disappearing entirely.
+
+### Changed
+- **Archive Appearance — dual thumb border pickers** — replaces the single grey-only
+  `archive_frame_style` dropdown with two independent controls: Grid/Cropped Thumb
+  Border (width 0–8px + colour picker) and Masonry/Justified Thumb Border (width
+  0/1/2px + colour picker). Masonry uses `outline` since public-facing.css resets
+  `border !important` on `.justified-item`. Migration 060 seeds defaults. Applies
+  to all skins.
+- **Rational Geo v1.3** — removed legacy floating icon toggle (`rg-layout-toggle`);
+  core T/M + C buttons in the filter bar are now the canonical toggle. Removed all
+  associated CSS (~50 lines). Removed orphaned `thumb_border_width` manifest option
+  (never wired to CSS; replaced by global border pickers above).
+
 ## 0.7.103 — "Ottoman" (2026-05-12)
 
 ### Fixed

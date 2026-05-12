@@ -3,9 +3,9 @@
  * SNAPSMACK - Multisite Stats Rollup
  *
  * Hub-only page. Fetches daily stats from all active spokes via the
- * multisite/stats/daily API endpoint, aggregates them into a fleet-wide
- * view, and presents traffic trends, per-spoke breakdowns, and top
- * referrers across the entire network.
+ * multisite/stats/daily API endpoint (with enriched=1), aggregates them
+ * into a fleet-wide view: totals, sparkline, top images, per-spoke breakdown,
+ * bot traffic, top referrers.
  */
 
 /**
@@ -18,6 +18,18 @@
 
 require_once 'core/auth.php';
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// --- SSRF GUARD (mirrors smack-multisite.php) ---
+// Returns true if the URL resolves to a private/loopback/reserved address.
+if (!function_exists('snap_is_private_url')) {
+    function snap_is_private_url(string $url): bool {
+        $h = parse_url($url, PHP_URL_HOST);
+        if (!$h) return true;
+        if (in_array($h, ['localhost', 'ip6-localhost', 'ip6-loopback', '::1', '0.0.0.0'], true)) return true;
+        $ip = filter_var($h, FILTER_VALIDATE_IP) ? $h : gethostbyname($h);
+        return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
+    }
+}
 
 // --- HUB GUARD ---
 $multisite_role = $settings['multisite_role'] ?? '';
@@ -35,24 +47,42 @@ $spokes = $pdo->query("
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 // --- PERIOD SELECTOR ---
-$period = in_array((int)($_GET['days'] ?? 30), [7, 30, 90]) ? (int)$_GET['days'] : 30;
+$period = in_array((int)($_GET['days'] ?? 30), [7, 30, 90, 180, 365, 0]) ? (int)$_GET['days'] : 30;
+$period_label = match($period) {
+    7   => '7-DAY WINDOW',
+    30  => '30-DAY WINDOW',
+    90  => '90-DAY WINDOW',
+    180 => '6-MONTH WINDOW',
+    365 => '1-YEAR WINDOW',
+    0   => 'ALL TIME',
+    default => '30-DAY WINDOW',
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FETCH daily stats from each active spoke
+// FETCH enriched stats from each active spoke
 // ─────────────────────────────────────────────────────────────────────────────
-$spoke_stats  = [];   // keyed by node_id → ['site_name' => ..., 'rows' => [...]]
+$spoke_stats  = [];   // keyed by node_id
 $fetch_errors = [];
-$fleet_daily  = [];   // date → ['views' => N, 'unique' => N]
+$fleet_daily  = [];   // date → [views, unique, referrers]
+$fleet_top_images = []; // cross-fleet image objects
 
 foreach ($spokes as $spoke) {
     if ($spoke['status'] !== 'active') continue;
 
-    $url = rtrim($spoke['site_url'], '/') . '/api.php?route=multisite/stats/daily&days=' . $period;
+    $url = rtrim($spoke['site_url'], '/') . '/api.php?route=multisite/stats/daily&days=' . $period . '&enriched=1';
+
+    // SSRF guard — reject private/loopback addresses even if stored in DB
+    if (snap_is_private_url($url)) {
+        $fetch_errors[] = $spoke['site_name'] . ' (blocked: private address)';
+        $spoke_stats[$spoke['id']] = ['site_name' => $spoke['site_name'], 'site_url' => $spoke['site_url'], 'rows' => [], 'total_views' => 0, 'total_unique' => 0, 'bot_total' => 0, 'top_day' => null, 'top_image' => null, 'post_count' => $spoke['post_count']];
+        continue;
+    }
+
     $ch  = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL            => $url,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_TIMEOUT        => 10,
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_HTTPHEADER     => [
             'Authorization: Bearer ' . $spoke['api_key_local'],
@@ -65,7 +95,16 @@ foreach ($spokes as $spoke) {
 
     if (!$raw || $code !== 200) {
         $fetch_errors[] = $spoke['site_name'];
-        $spoke_stats[$spoke['id']] = ['site_name' => $spoke['site_name'], 'rows' => [], 'total_views' => 0, 'total_unique' => 0];
+        $spoke_stats[$spoke['id']] = [
+            'site_name'    => $spoke['site_name'],
+            'site_url'     => $spoke['site_url'],
+            'rows'         => [],
+            'total_views'  => 0,
+            'total_unique' => 0,
+            'bot_total'    => 0,
+            'top_image'    => null,
+            'post_count'   => $spoke['post_count'],
+        ];
         continue;
     }
 
@@ -74,6 +113,23 @@ foreach ($spokes as $spoke) {
 
     $spoke_total_views  = array_sum(array_column($rows, 'total_views'));
     $spoke_total_unique = array_sum(array_column($rows, 'unique_visitors'));
+    $spoke_bot_total    = (int)($resp['bot_total'] ?? 0);
+    $spoke_top_day      = $resp['top_day']  ?? ['date' => null, 'views' => 0];
+    $spoke_top_images   = $resp['top_images'] ?? [];
+
+    // F-02: constrain thumb/page URLs to the spoke's trusted DB origin.
+    // A compromised spoke could return arbitrary URLs; strip thumb_url if it
+    // doesn't begin with the spoke's registered site_url.
+    $trusted_origin = rtrim($spoke['site_url'], '/');
+    foreach ($spoke_top_images as &$img) {
+        if (!empty($img['thumb_url']) && !str_starts_with($img['thumb_url'], $trusted_origin)) {
+            $img['thumb_url'] = '';
+        }
+        if (!empty($img['page_url']) && !str_starts_with($img['page_url'], $trusted_origin)) {
+            $img['page_url'] = '#';
+        }
+    }
+    unset($img);
 
     $spoke_stats[$spoke['id']] = [
         'site_name'    => $spoke['site_name'],
@@ -81,8 +137,18 @@ foreach ($spokes as $spoke) {
         'rows'         => $rows,
         'total_views'  => $spoke_total_views,
         'total_unique' => $spoke_total_unique,
+        'bot_total'    => $spoke_bot_total,
+        'top_day'      => $spoke_top_day,
+        'top_image'    => $spoke_top_images[0] ?? null,
         'post_count'   => $spoke['post_count'],
     ];
+
+    // Attach site info to each image and add to fleet pool
+    foreach ($spoke_top_images as $img) {
+        $img['_site_name'] = $spoke['site_name'];
+        $img['_site_url']  = $spoke['site_url'];
+        $fleet_top_images[] = $img;
+    }
 
     // Merge into fleet daily totals
     foreach ($rows as $row) {
@@ -91,8 +157,8 @@ foreach ($spokes as $spoke) {
         if (!isset($fleet_daily[$date])) {
             $fleet_daily[$date] = ['views' => 0, 'unique' => 0, 'referrers' => []];
         }
-        $fleet_daily[$date]['views']  += (int)($row['total_views']      ?? 0);
-        $fleet_daily[$date]['unique'] += (int)($row['unique_visitors']   ?? 0);
+        $fleet_daily[$date]['views']  += (int)($row['total_views']    ?? 0);
+        $fleet_daily[$date]['unique'] += (int)($row['unique_visitors'] ?? 0);
         if (!empty($row['top_referrer'])) {
             $ref = parse_url($row['top_referrer'], PHP_URL_HOST) ?: $row['top_referrer'];
             $fleet_daily[$date]['referrers'][$ref] = ($fleet_daily[$date]['referrers'][$ref] ?? 0) + (int)($row['total_views'] ?? 1);
@@ -102,34 +168,102 @@ foreach ($spokes as $spoke) {
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HUB's own stats — pulled directly from local snap_stats_daily
+// HUB's own stats — pulled directly from local DB
 // ─────────────────────────────────────────────────────────────────────────────
-$hub_name      = $settings['site_name'] ?? 'Hub';
-$hub_date_from = date('Y-m-d', strtotime("-{$period} days"));
-$hub_data      = [];
+$hub_name = $settings['site_name'] ?? 'Hub';
+
+// Daily rows for chart
+$hub_data = [];
 try {
-    $hub_stmt = $pdo->prepare("
-        SELECT stat_date, total_views, unique_visitors, top_referrer
-        FROM snap_stats_daily
-        WHERE stat_date >= ?
-        ORDER BY stat_date ASC
-    ");
-    $hub_stmt->execute([$hub_date_from]);
-    $hub_data = $hub_stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    // snap_stats_daily may not exist on older installs; silently skip
-}
+    if ($period === 0) {
+        $hub_data = $pdo->query("
+            SELECT stat_date, total_views, unique_visitors, bot_views, top_referrer
+            FROM snap_stats_daily
+            ORDER BY stat_date ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        $hub_stmt = $pdo->prepare("
+            SELECT stat_date, total_views, unique_visitors, bot_views, top_referrer
+            FROM snap_stats_daily
+            WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+            ORDER BY stat_date ASC
+        ");
+        $hub_stmt->execute([$period]);
+        $hub_data = $hub_stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+} catch (PDOException $e) { /* table may not exist on older installs */ }
 
 $hub_total_views  = array_sum(array_column($hub_data, 'total_views'));
 $hub_total_unique = array_sum(array_column($hub_data, 'unique_visitors'));
+$hub_bot_total    = array_sum(array_column($hub_data, 'bot_views'));
 
-// Add hub as synthetic entry so it appears in the breakdown table
+// Hub top day
+$hub_top_day = ['date' => null, 'views' => 0];
+foreach ($hub_data as $row) {
+    if ((int)$row['total_views'] > $hub_top_day['views']) {
+        $hub_top_day = ['date' => $row['stat_date'], 'views' => (int)$row['total_views']];
+    }
+}
+
+// Hub top images
+$hub_top_images = [];
+try {
+    if ($period === 0) {
+        $hi_stmt = $pdo->query("
+            SELECT s.image_id, i.img_title, i.img_slug, i.img_file,
+                   i.img_thumb_aspect, i.img_thumb_square, COUNT(*) AS view_count
+            FROM snap_stats s
+            JOIN snap_images i ON i.id = s.image_id
+            WHERE s.is_bot = 0 AND s.image_id IS NOT NULL
+            GROUP BY s.image_id ORDER BY view_count DESC LIMIT 10
+        ");
+    } else {
+        $hi_stmt = $pdo->prepare("
+            SELECT s.image_id, i.img_title, i.img_slug, i.img_file,
+                   i.img_thumb_aspect, i.img_thumb_square, COUNT(*) AS view_count
+            FROM snap_stats s
+            JOIN snap_images i ON i.id = s.image_id
+            WHERE s.is_bot = 0 AND s.image_id IS NOT NULL
+              AND s.hit_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+            GROUP BY s.image_id ORDER BY view_count DESC LIMIT 10
+        ");
+        $hi_stmt->execute([$period]);
+    }
+    $base_url = rtrim(BASE_URL, '/');
+    foreach ($hi_stmt->fetchAll(PDO::FETCH_ASSOC) as $img) {
+        if (!empty($img['img_thumb_aspect'])) {
+            $thumb = $base_url . '/' . ltrim($img['img_thumb_aspect'], '/');
+        } elseif (!empty($img['img_thumb_square'])) {
+            $thumb = $base_url . '/' . ltrim($img['img_thumb_square'], '/');
+        } else {
+            $file  = ltrim($img['img_file'], '/');
+            $thumb = $base_url . '/' . dirname($file) . '/thumbs/t_' . basename($file);
+        }
+        $entry = [
+            'id'        => (int)$img['image_id'],
+            'title'     => $img['img_title'],
+            'slug'      => $img['img_slug'],
+            'thumb_url' => $thumb,
+            'page_url'  => $base_url . '/' . ltrim($img['img_slug'], '/'),
+            'views'     => (int)$img['view_count'],
+            '_site_name'=> $hub_name . ' (Hub)',
+            '_site_url' => $base_url,
+        ];
+        $hub_top_images[] = $entry;
+        $fleet_top_images[] = $entry;
+    }
+} catch (\Exception $e) { /* snap_stats may be empty */ }
+
+// Add hub as synthetic entry for the breakdown table
 $spoke_stats['__hub__'] = [
     'site_name'    => $hub_name . ' (Hub)',
     'site_url'     => '',
     'rows'         => $hub_data,
     'total_views'  => $hub_total_views,
     'total_unique' => $hub_total_unique,
+    'bot_total'    => $hub_bot_total,
+    'top_day'      => $hub_top_day,
+    'top_image'    => $hub_top_images[0] ?? null,
     'post_count'   => 0,
     'is_hub'       => true,
 ];
@@ -155,6 +289,24 @@ ksort($fleet_daily);
 // Fleet totals
 $fleet_total_views  = array_sum(array_column($fleet_daily, 'views'));
 $fleet_total_unique = array_sum(array_column($fleet_daily, 'unique'));
+$fleet_bot_total    = array_sum(array_column($spoke_stats, 'bot_total'));
+$fleet_bot_pct      = $fleet_total_views > 0 ? round(($fleet_bot_total / ($fleet_total_views + $fleet_bot_total)) * 100, 1) : 0;
+
+// Fleet top day
+$fleet_top_day = ['date' => null, 'views' => 0];
+foreach ($fleet_daily as $date => $day) {
+    if ($day['views'] > $fleet_top_day['views']) {
+        $fleet_top_day = ['date' => $date, 'views' => $day['views']];
+    }
+}
+
+// Fleet avg daily (non-zero days only)
+$non_zero_days = count(array_filter(array_column($fleet_daily, 'views'), fn($v) => $v > 0));
+$fleet_avg_daily = $non_zero_days > 0 ? round($fleet_total_views / $non_zero_days) : 0;
+
+// Cross-fleet top images — sort by views DESC, take top 12
+usort($fleet_top_images, fn($a, $b) => $b['views'] - $a['views']);
+$fleet_top_images = array_slice($fleet_top_images, 0, 12);
 
 // Top referrers across the fleet
 $all_referrers = [];
@@ -189,18 +341,21 @@ include 'core/sidebar.php';
             <a href="smack-multisite-comments.php" class="btn-clear">SIGNALS</a>
             <a href="smack-multisite-posts.php"    class="btn-clear">POSTS</a>
             <a href="smack-multisite-backup.php"   class="btn-clear">BACKUP DOCK</a>
-            <a href="smack-multisite-stats.php"       class="btn-clear active">STATS</a>
-            <a href="smack-multisite-crosspost.php"   class="btn-clear">CROSS-POST</a>
-            <a href="smack-multisite-blogroll.php"    class="btn-clear">BLOGROLL</a>
+            <a href="smack-multisite-stats.php"    class="btn-clear active">STATS</a>
+            <a href="smack-multisite-crosspost.php" class="btn-clear">CROSS-POST</a>
+            <a href="smack-multisite-blogroll.php"  class="btn-clear">BLOGROLL</a>
             <span class="sep">|</span>
-            <a href="?days=7"  class="btn-clear <?php echo $period === 7  ? 'active' : ''; ?>">7D</a>
-            <a href="?days=30" class="btn-clear <?php echo $period === 30 ? 'active' : ''; ?>">30D</a>
-            <a href="?days=90" class="btn-clear <?php echo $period === 90 ? 'active' : ''; ?>">90D</a>
+            <a href="?days=7"   class="btn-clear <?php echo $period === 7   ? 'active' : ''; ?>">7D</a>
+            <a href="?days=30"  class="btn-clear <?php echo $period === 30  ? 'active' : ''; ?>">30D</a>
+            <a href="?days=90"  class="btn-clear <?php echo $period === 90  ? 'active' : ''; ?>">90D</a>
+            <a href="?days=180" class="btn-clear <?php echo $period === 180 ? 'active' : ''; ?>">6M</a>
+            <a href="?days=365" class="btn-clear <?php echo $period === 365 ? 'active' : ''; ?>">1YR</a>
+            <a href="?days=0"   class="btn-clear <?php echo $period === 0   ? 'active' : ''; ?>">ALL</a>
         </div>
     </div>
 
     <?php if (!empty($fetch_errors)): ?>
-        <div class="alert alert-error">> OFFLINE SPOKES (no stats): <?php echo htmlspecialchars(implode(', ', $fetch_errors)); ?></div>
+        <div class="alert alert-error">OFFLINE SPOKES (no stats): <?php echo htmlspecialchars(implode(', ', $fetch_errors)); ?></div>
     <?php endif; ?>
 
     <?php if (empty($spokes)): ?>
@@ -209,40 +364,49 @@ include 'core/sidebar.php';
         </div>
     <?php else: ?>
 
-    <!-- FLEET TOTALS -->
-    <div style="text-align:right; margin-bottom:8px;">
-        <div class="status-pill status-online" style="display:inline-block;">
-            <?php echo $period; ?>-DAY WINDOW
-        </div>
-    </div>
+    <!-- FLEET TOTALS ─────────────────────────────────────────────────────── -->
     <div class="box">
-        <h3>FLEET TOTALS — LAST <?php echo $period; ?> DAYS</h3>
+        <h3>FLEET TOTALS<?php echo $period ? ' — ' . $period_label : ' — ALL TIME'; ?></h3>
 
-        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:15px; margin-bottom:25px;">
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:25px;">
             <?php
-                $fleet_posts  = array_sum(array_column($spoke_stats, 'post_count'));
-                $active_spokes  = count(array_filter($spokes, fn($s) => $s['status'] === 'active'));
+                $active_spokes = count(array_filter($spokes, fn($s) => $s['status'] === 'active'));
             ?>
-            <div style="padding:20px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
+            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
                 <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_total_views); ?></div>
-                <div style="font-size:0.75rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">TOTAL VIEWS</div>
+                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">TOTAL VIEWS</div>
             </div>
-            <div style="padding:20px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
+            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
                 <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_total_unique); ?></div>
-                <div style="font-size:0.75rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">UNIQUE VISITORS</div>
+                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">UNIQUE VISITORS</div>
             </div>
-            <div style="padding:20px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
+            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
                 <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo $active_spokes + 1; ?> / <?php echo count($spokes) + 1; ?></div>
-                <div style="font-size:0.75rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">SITES REPORTING</div>
+                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">SITES REPORTING</div>
+            </div>
+            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
+                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_bot_total); ?></div>
+                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">BOT VIEWS <span style="color:var(--text-muted,#666)">(<?php echo $fleet_bot_pct; ?>%)</span></div>
+            </div>
+            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
+                <div style="font-size:2rem; font-weight:900; color:var(--text,#eee);"><?php echo number_format($fleet_avg_daily); ?></div>
+                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">AVG VIEWS / DAY</div>
+            </div>
+            <div style="padding:18px; border:1px solid var(--border,#333); background:var(--input-bg,#111); text-align:center;">
+                <?php if ($fleet_top_day['date']): ?>
+                    <div style="font-size:1.4rem; font-weight:900; color:var(--text,#eee);"><?php echo htmlspecialchars($fleet_top_day['date']); ?></div>
+                    <div style="font-size:0.85rem; font-weight:700; color:var(--text-muted,#aaa);"><?php echo number_format($fleet_top_day['views']); ?> views</div>
+                <?php else: ?>
+                    <div style="font-size:1.4rem; font-weight:900; color:var(--text-muted,#555);">—</div>
+                <?php endif; ?>
+                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:2px; margin-top:5px;">PEAK DAY</div>
             </div>
         </div>
 
         <!-- FLEET SPARKLINE -->
         <?php if (!empty($fleet_daily) && $max_daily_views > 0): ?>
             <div style="margin-top:10px;">
-                <div style="font-size:0.75rem; color:var(--text-muted,#888); letter-spacing:1px; margin-bottom:8px;">
-                    DAILY FLEET TRAFFIC
-                </div>
+                <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:1px; margin-bottom:8px;">DAILY FLEET TRAFFIC</div>
                 <div class="stats-sparkline" style="height:80px; display:flex; align-items:flex-end; gap:2px; width:100%;">
                     <?php
                         $bar_width = 100 / max(count($fleet_daily), 1);
@@ -264,21 +428,61 @@ include 'core/sidebar.php';
         <?php endif; ?>
     </div>
 
-    <!-- PER-SPOKE BREAKDOWN -->
+    <!-- FLEET TOP IMAGES ─────────────────────────────────────────────────── -->
+    <?php if (!empty($fleet_top_images)): ?>
+    <div class="box">
+        <h3>MOST VIEWED — FLEET WIDE</h3>
+        <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; margin-top:8px;">
+            <?php foreach ($fleet_top_images as $fi):
+                $fi_title = htmlspecialchars($fi['title'] ?? 'Untitled');
+                $fi_site  = htmlspecialchars($fi['_site_name'] ?? '');
+                $fi_thumb = htmlspecialchars($fi['thumb_url'] ?? '');
+                $fi_url   = htmlspecialchars($fi['page_url'] ?? '#');
+                $fi_views = number_format((int)($fi['views'] ?? 0));
+            ?>
+                <a href="<?php echo $fi_url; ?>" target="_blank" rel="noopener"
+                   style="display:block; border:1px solid var(--border,#333); background:var(--input-bg,#111);
+                          text-decoration:none; overflow:hidden; transition:border-color 0.15s;"
+                   onmouseover="this.style.borderColor='var(--text,#eee)'" onmouseout="this.style.borderColor='var(--border,#333)'">
+                    <?php if ($fi_thumb): ?>
+                        <div style="width:100%; aspect-ratio:1; overflow:hidden; background:#000;">
+                            <img src="<?php echo $fi_thumb; ?>" alt="<?php echo $fi_title; ?>"
+                                 loading="lazy" style="width:100%; height:100%; object-fit:cover; display:block;">
+                        </div>
+                    <?php else: ?>
+                        <div style="width:100%; aspect-ratio:1; background:var(--border,#333); display:flex; align-items:center; justify-content:center;">
+                            <span style="color:var(--text-muted,#666); font-size:0.75rem;">NO THUMB</span>
+                        </div>
+                    <?php endif; ?>
+                    <div style="padding:8px 10px;">
+                        <div style="font-size:0.78rem; font-weight:700; color:var(--text,#eee); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px;"
+                             title="<?php echo $fi_title; ?>"><?php echo $fi_title; ?></div>
+                        <div style="font-size:0.68rem; color:var(--text-muted,#888); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?php echo $fi_site; ?></div>
+                        <div style="font-size:0.72rem; font-weight:900; color:var(--text,#eee); margin-top:4px; letter-spacing:1px;"><?php echo $fi_views; ?> views</div>
+                    </div>
+                </a>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- NETWORK BREAKDOWN ───────────────────────────────────────────────── -->
     <div class="box">
         <h3>NETWORK BREAKDOWN</h3>
 
         <?php if (!empty($spoke_stats)):
             $max_spoke_views = max(1, max(array_column($spoke_stats, 'total_views')));
         ?>
-            <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
                 <thead>
                     <tr style="border-bottom:1px solid var(--border,#333);">
-                        <th style="text-align:left;   padding:10px; color:var(--text-muted,#888);">SPOKE</th>
-                        <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">VIEWS</th>
-                        <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">UNIQUE</th>
-                        <th style="text-align:center; padding:10px; color:var(--text-muted,#888);">AVG/DAY</th>
-                        <th style="text-align:left;   padding:10px; color:var(--text-muted,#888); width:35%;">SHARE</th>
+                        <th style="text-align:left;   padding:10px 8px; color:var(--text-muted,#888);">SITE</th>
+                        <th style="text-align:center; padding:10px 8px; color:var(--text-muted,#888);">VIEWS</th>
+                        <th style="text-align:center; padding:10px 8px; color:var(--text-muted,#888);">UNIQUE</th>
+                        <th style="text-align:center; padding:10px 8px; color:var(--text-muted,#888);">AVG/DAY</th>
+                        <th style="text-align:center; padding:10px 8px; color:var(--text-muted,#888);">BOTS</th>
+                        <th style="text-align:left;   padding:10px 8px; color:var(--text-muted,#888); min-width:120px;">TOP IMAGE</th>
+                        <th style="text-align:left;   padding:10px 8px; color:var(--text-muted,#888); width:25%;">SHARE</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -286,33 +490,44 @@ include 'core/sidebar.php';
                         $share_pct  = $fleet_total_views > 0 ? ($sd['total_views'] / $fleet_total_views) * 100 : 0;
                         $avg_day    = $period > 0 ? round($sd['total_views'] / $period) : 0;
                         $is_hub_row = !empty($sd['is_hub']);
+                        $bot_pct    = ($sd['total_views'] + $sd['bot_total']) > 0
+                            ? round(($sd['bot_total'] / ($sd['total_views'] + $sd['bot_total'])) * 100, 1)
+                            : 0;
+                        $top_img    = $sd['top_image'] ?? null;
                     ?>
                         <tr style="border-bottom:1px solid var(--border,#333);<?php echo $is_hub_row ? ' background:var(--input-bg,#111);' : ''; ?>">
-                            <td style="padding:10px;">
+                            <td style="padding:10px 8px;">
                                 <strong><?php echo htmlspecialchars($sd['site_name']); ?></strong>
                                 <?php if ($is_hub_row): ?>
-                                    <span style="font-size:0.7rem; color:var(--text-muted,#888); margin-left:6px; letter-spacing:1px;">LOCAL</span>
-                                <?php elseif (in_array($node_id, array_column(array_filter($spokes, fn($s) => $s['status'] !== 'active'), 'id'))): ?>
-                                    <span style="font-size:0.75rem; color:#f44336; margin-left:5px;">OFFLINE</span>
+                                    <span style="font-size:0.7rem; color:var(--text-muted,#888); margin-left:5px; letter-spacing:1px;">LOCAL</span>
                                 <?php endif; ?>
                             </td>
-                            <td style="padding:10px; text-align:center; font-weight:700;">
-                                <?php echo number_format($sd['total_views']); ?>
+                            <td style="padding:10px 8px; text-align:center; font-weight:700;"><?php echo number_format($sd['total_views']); ?></td>
+                            <td style="padding:10px 8px; text-align:center; color:var(--text-muted,#888);"><?php echo number_format($sd['total_unique']); ?></td>
+                            <td style="padding:10px 8px; text-align:center; color:var(--text-muted,#888);"><?php echo number_format($avg_day); ?></td>
+                            <td style="padding:10px 8px; text-align:center; color:var(--text-muted,#666); font-size:0.8rem;"><?php echo $bot_pct; ?>%</td>
+                            <td style="padding:10px 8px;">
+                                <?php if ($top_img): ?>
+                                    <a href="<?php echo htmlspecialchars($top_img['page_url'] ?? '#'); ?>" target="_blank" rel="noopener"
+                                       style="display:flex; align-items:center; gap:8px; text-decoration:none; color:inherit;">
+                                        <?php if (!empty($top_img['thumb_url'])): ?>
+                                            <img src="<?php echo htmlspecialchars($top_img['thumb_url']); ?>"
+                                                 alt="" loading="lazy"
+                                                 style="width:36px; height:36px; object-fit:cover; border:1px solid var(--border,#333); flex-shrink:0;">
+                                        <?php endif; ?>
+                                        <span style="font-size:0.78rem; color:var(--text-muted,#aaa); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:120px;"
+                                              title="<?php echo htmlspecialchars($top_img['title'] ?? ''); ?>"><?php echo htmlspecialchars($top_img['title'] ?? '—'); ?></span>
+                                    </a>
+                                <?php else: ?>
+                                    <span style="color:var(--text-muted,#555); font-size:0.78rem;">—</span>
+                                <?php endif; ?>
                             </td>
-                            <td style="padding:10px; text-align:center; color:var(--text-muted,#888);">
-                                <?php echo number_format($sd['total_unique']); ?>
-                            </td>
-                            <td style="padding:10px; text-align:center; color:var(--text-muted,#888);">
-                                <?php echo number_format($avg_day); ?>
-                            </td>
-                            <td style="padding:10px;">
+                            <td style="padding:10px 8px;">
                                 <div style="display:flex; align-items:center; gap:8px;">
                                     <div style="flex:1; height:8px; background:var(--border,#333); border-radius:4px; overflow:hidden;">
-                                        <div style="height:100%; width:<?php echo round($share_pct); ?>%; background:var(--accent-primary, #aaa); border-radius:4px;"></div>
+                                        <div style="height:100%; width:<?php echo round($share_pct); ?>%; background:var(--accent-primary,#aaa); border-radius:4px;"></div>
                                     </div>
-                                    <span style="font-size:0.8rem; color:var(--text-muted,#888); min-width:38px; text-align:right;">
-                                        <?php echo round($share_pct, 1); ?>%
-                                    </span>
+                                    <span style="font-size:0.8rem; color:var(--text-muted,#888); min-width:38px; text-align:right;"><?php echo round($share_pct, 1); ?>%</span>
                                 </div>
                             </td>
                         </tr>
@@ -324,7 +539,7 @@ include 'core/sidebar.php';
         <?php endif; ?>
     </div>
 
-    <!-- TOP REFERRERS ACROSS FLEET -->
+    <!-- TOP REFERRERS ───────────────────────────────────────────────────── -->
     <?php if (!empty($top_referrers)): ?>
     <div class="box">
         <h3>TOP REFERRERS — FLEET WIDE</h3>
@@ -332,19 +547,17 @@ include 'core/sidebar.php';
             <?php
                 $max_ref = max($top_referrers);
                 foreach ($top_referrers as $ref => $count):
-                    $ref_pct = round(($count / $max_ref) * 100);
+                     = round(($count / $max_ref) * 100);
             ?>
                 <div style="display:flex; align-items:center; gap:12px; font-size:0.85rem;">
                     <div style="min-width:180px; color:var(--text-muted,#888); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
                          title="<?php echo htmlspecialchars($ref); ?>">
                         <?php echo htmlspecialchars($ref ?: 'Direct / Unknown'); ?>
                     </div>
-                    <div style="flex:1; height:6px; background:var(--border,#333); border-radius:3px; overflow:hidden;">
+                    <div style="flex:1; height:6px; background:var(--border,#333); radius:3px; overflow:hidden;">
                         <div style="height:100%; width:<?php echo $ref_pct; ?>%; background:var(--accent-primary,#aaa);"></div>
                     </div>
-                    <div style="min-width:50px; text-align:right; color:var(--text-muted,#888);">
-                        <?php echo number_format($count); ?>
-                    </div>
+                    <div style="min-width:50px; text-align:right; color:var(--text-muted,#888);"><?php echo number_format($count); ?></div>
                 </div>
             <?php endforeach; ?>
         </div>

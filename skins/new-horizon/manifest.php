@@ -23,7 +23,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'          => 'New Horizon',
-    'version'       => '1.0',
+    'version'       => '1.1',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'High-contrast photography skin with archival framing, tactical layout controls, and full JS library support. Light and dark variants.',
@@ -538,6 +538,26 @@ return [
             ],
         ],
 
+        'masonry_border_width' => [
+            'section'  => 'ARCHIVE',
+            'type'     => 'range',
+            'label'    => 'Masonry Border Width (px)',
+            'default'  => '0',
+            'min'      => '0',
+            'max'      => '6',
+            'unit'     => 'px',
+            'selector' => ':root',
+            'property' => '--masonry-border-width',
+        ],
+
+        'masonry_border_color' => [
+            'section'  => 'ARCHIVE',
+            'type'     => 'color',
+            'label'    => 'Masonry Border Colour',
+            'default'  => '#ffffff',
+            'selector' => ':root',
+            'property' => '--masonry-border-color',
+        ],,
     ],
 ];
 // ===== SNAPSMACK EOF =====

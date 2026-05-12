@@ -2,7 +2,7 @@
 
                            THE THOMAS CLAUSE
 
-              A Binding Addendum to the SNAPSMACK License
+              A Binding Addendum to the Smack Public License (SPL)
 
 ================================================================================
 

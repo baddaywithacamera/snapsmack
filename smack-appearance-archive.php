@@ -68,37 +68,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
             $stmt->execute([$k, $v, $v]);
         }
 
-        // CSS regeneration for archive_frame_style (custom-framing property).
-        // smack-skin.php regenerates the full CSS blob on Smooth Your Skin save, but
-        // Archive Appearance has its own save handler and must update the blob itself.
-        // We use a comment marker so the rule is findable/replaceable on repeated saves.
-        if (isset($_POST['settings']['archive_frame_style'])) {
-            $af_val = $_POST['settings']['archive_frame_style'];
-            $af_css_map = [
-                'border_thin'   => '{ border: 1px solid #555555 !important; box-shadow: none !important; }',
-                'border_medium' => '{ border: 3px solid #555555 !important; box-shadow: none !important; }',
-                'none'          => '{ border: none !important; box-shadow: none !important; }',
-            ];
-            if (isset($af_css_map[$af_val])) {
-                // Also save scoped key so smack-skin.php CSS regen stays consistent.
-                $stmt->execute([$active_skin . '__archive_frame_style', $af_val, $af_val]);
+        // CSS regeneration for per-grid and per-masonry border settings.
+        // Each setting pair (width + color) writes its own marker-keyed rule into
+        // custom_css_public so repeated saves find and replace the existing rule.
+        $blob = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'custom_css_public'")->fetchColumn() ?: '');
 
-                $marker   = '/* arch_opt:archive_frame_style */';
-                $selector = '.fsog-archive-item .fsog-thumb, .justified-item';
-                $new_rule = "{$marker} {$selector} {$af_css_map[$af_val]}";
-
-                $blob = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'custom_css_public'")->fetchColumn() ?: '');
-                if (strpos($blob, $marker) !== false) {
-                    $blob = preg_replace('/' . preg_quote($marker, '/') . '[^\n]+/', $new_rule, $blob);
-                } elseif (strpos($blob, '/* SKIN_END */') !== false) {
-                    $blob = str_replace('/* SKIN_END */', $new_rule . "\n/* SKIN_END */", $blob);
-                } else {
-                    $blob .= ($blob !== '' ? "\n" : '') . $new_rule;
-                }
-                $pdo->prepare("REPLACE INTO snap_settings (setting_key, setting_val) VALUES ('custom_css_public', ?)")
-                    ->execute([$blob]);
+        // Helper: upsert a marker-keyed CSS rule into the blob.
+        $upsert_rule = function(string &$blob, string $marker, string $rule): void {
+            if (strpos($blob, $marker) !== false) {
+                $blob = preg_replace('/' . preg_quote($marker, '/') . '[^\n]+/', $rule, $blob);
+            } elseif (strpos($blob, '/* SKIN_END */') !== false) {
+                $blob = str_replace('/* SKIN_END */', $rule . "\n/* SKIN_END */", $blob);
+            } else {
+                $blob .= ($blob !== '' ? "\n" : '') . $rule;
             }
+        };
+
+        // Grid / cropped thumb border.
+        $gw = max(0, min(8, (int)($_POST['settings']['archive_grid_border_width'] ?? 1)));
+        $gc = preg_match('/^#[0-9a-fA-F]{6}$/', $_POST['settings']['archive_grid_border_color'] ?? '')
+              ? $_POST['settings']['archive_grid_border_color'] : '#888888';
+        if ($gw > 0) {
+            $grid_rule = "/* arch_opt:grid_border */ .fsog-archive-item .fsog-thumb, .rg-archive-item .rg-thumb { border: {$gw}px solid {$gc} !important; box-shadow: none !important; }";
+        } else {
+            $grid_rule = "/* arch_opt:grid_border */ .fsog-archive-item .fsog-thumb, .rg-archive-item .rg-thumb { border: none !important; box-shadow: none !important; }";
         }
+        $upsert_rule($blob, '/* arch_opt:grid_border */', $grid_rule);
+
+        // Masonry / justified border (outline, not border — public-facing.css resets border !important on .justified-item).
+        $mw = in_array((int)($_POST['settings']['archive_masonry_border_width'] ?? 1), [0,1,2], true)
+              ? (int)$_POST['settings']['archive_masonry_border_width'] : 1;
+        $mc = preg_match('/^#[0-9a-fA-F]{6}$/', $_POST['settings']['archive_masonry_border_color'] ?? '')
+              ? $_POST['settings']['archive_masonry_border_color'] : '#888888';
+        if ($mw > 0) {
+            $masonry_rule = "/* arch_opt:masonry_border */ .justified-item { outline: {$mw}px solid {$mc} !important; outline-offset: -{$mw}px; }";
+        } else {
+            $masonry_rule = "/* arch_opt:masonry_border */ .justified-item { outline: none !important; }";
+        }
+        $upsert_rule($blob, '/* arch_opt:masonry_border */', $masonry_rule);
+
+        $pdo->prepare("REPLACE INTO snap_settings (setting_key, setting_val) VALUES ('custom_css_public', ?)")
+            ->execute([$blob]);
     }
     header("Location: smack-appearance-archive.php?msg=SAVED");
     exit;
@@ -344,32 +354,55 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
     </div>
 
     <?php if (!isset($archive_manifest_opts['archive_frame_style'])): ?>
-    <!-- ── ARCHIVE THUMB BORDER ──────────────────────────────────────────── -->
-    <!-- Hardcoded fallback — renders until the active skin's package is rebuilt
-         with admin_page=>'archive' on archive_frame_style. Once the skin manifest
-         ships that flag, $archive_manifest_opts will contain it and this block
-         is suppressed in favour of the manifest-driven ARCHIVE DISPLAY section. -->
+    <!-- ── ARCHIVE THUMB BORDERS ─────────────────────────────────────────── -->
     <div id="smack-skin-config-wrap">
+        <?php
+        $agbw = max(0, min(8, (int)($settings['archive_grid_border_width'] ?? 1)));
+        $agbc = preg_match('/^#[0-9a-fA-F]{6}$/', $settings['archive_grid_border_color'] ?? '') ? $settings['archive_grid_border_color'] : '#888888';
+        $ambw = in_array((int)($settings['archive_masonry_border_width'] ?? 1), [0,1,2]) ? (int)$settings['archive_masonry_border_width'] : 1;
+        $ambc = preg_match('/^#[0-9a-fA-F]{6}$/', $settings['archive_masonry_border_color'] ?? '') ? $settings['archive_masonry_border_color'] : '#888888';
+        ?>
         <div class="box">
-            <h3>ARCHIVE THUMB BORDER</h3>
+            <h3>GRID THUMB BORDER <span class="field-tip" data-tip="Border applied to thumbnails in square, cropped, and calendar grid modes. Applies to all skins.">ⓘ</span></h3>
             <div class="dash-grid">
                 <div class="lens-input-wrapper">
-                    <label>THUMB BORDER STYLE <span class="field-tip" data-tip="Controls the border on archive grid thumbnails. Applies to square, cropped, and calendar grid modes.">ⓘ</span></label>
-                    <?php
-                    $af_val = $settings['archive_frame_style'] ?? 'border_thin';
-                    $af_opts = [
-                        'border_thin'   => 'Thin Grey Border (1px)',
-                        'border_medium' => 'Medium Grey Border (3px)',
-                        'none'          => 'No Frame',
-                    ];
-                    ?>
-                    <select name="settings[archive_frame_style]">
-                        <?php foreach ($af_opts as $av => $al): ?>
-                            <option value="<?php echo $av; ?>"<?php echo ($af_val === $av) ? ' selected' : ''; ?>>
-                                <?php echo strtoupper($al); ?>
-                            </option>
+                    <label>WIDTH (PX)</label>
+                    <input type="range" name="settings[archive_grid_border_width]"
+                           min="0" max="8" step="1" value="<?php echo $agbw; ?>"
+                           oninput="document.getElementById('agbw-val').textContent=this.value+'px'">
+                    <span id="agbw-val" style="font-size:0.85rem; color:var(--text-muted,#888);"><?php echo $agbw; ?>px</span>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>COLOUR</label>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="color" name="settings[archive_grid_border_color]"
+                               value="<?php echo htmlspecialchars($agbc); ?>"
+                               style="width:48px; height:36px; padding:2px; border-radius:4px; cursor:pointer; border:1px solid var(--border,#333); background:transparent;">
+                        <span style="font-family:monospace; font-size:0.85rem; color:var(--text-muted,#888);"><?php echo htmlspecialchars($agbc); ?></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="box" style="margin-top:16px;">
+            <h3>MASONRY / JUSTIFIED THUMB BORDER <span class="field-tip" data-tip="Border on justified-grid thumbnails. Uses outline rather than border so it renders correctly in all skins.">ⓘ</span></h3>
+            <div class="dash-grid">
+                <div class="lens-input-wrapper">
+                    <label>WIDTH</label>
+                    <select name="settings[archive_masonry_border_width]">
+                        <?php foreach ([0 => 'None', 1 => '1px', 2 => '2px'] as $mv => $ml): ?>
+                            <option value="<?php echo $mv; ?>"<?php echo ($ambw === $mv) ? ' selected' : ''; ?>><?php echo $ml; ?></option>
                         <?php endforeach; ?>
                     </select>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>COLOUR</label>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="color" name="settings[archive_masonry_border_color]"
+                               value="<?php echo htmlspecialchars($ambc); ?>"
+                               style="width:48px; height:36px; padding:2px; border-radius:4px; cursor:pointer; border:1px solid var(--border,#333); background:transparent;">
+                        <span style="font-family:monospace; font-size:0.85rem; color:var(--text-muted,#888);"><?php echo htmlspecialchars($ambc); ?></span>
+                    </div>
                 </div>
             </div>
         </div>

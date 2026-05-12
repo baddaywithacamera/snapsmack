@@ -23,7 +23,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'          => 'True Grit',
-    'version'       => '1.1',
+    'version'       => '1.2',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Found-texture photography skin. Photographic wall backgrounds with opacity overlay, archival framing, justified grid, and floating photo wall. Built for foundtextures.ca.',
@@ -671,7 +671,28 @@ return [
         .control-group-flex input { flex: 1; }
         .active-val { width: 50px; text-align: right; font-family: monospace; }
         .hex-display { font-family: monospace; }
-    ",
+    ",,
+
+        'masonry_border_width' => [
+            'section'  => 'ARCHIVE',
+            'type'     => 'range',
+            'label'    => 'Masonry Border Width (px)',
+            'default'  => '0',
+            'min'      => '0',
+            'max'      => '6',
+            'unit'     => 'px',
+            'selector' => ':root',
+            'property' => '--masonry-border-width',
+        ],
+
+        'masonry_border_color' => [
+            'section'  => 'ARCHIVE',
+            'type'     => 'color',
+            'label'    => 'Masonry Border Colour',
+            'default'  => '#ffffff',
+            'selector' => ':root',
+            'property' => '--masonry-border-color',
+        ],
 
     'community_comments'  => '1',
     'community_likes'     => '1',
