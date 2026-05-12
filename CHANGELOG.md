@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.103 — "Ottoman" (2026-05-12)
+
+### Fixed
+- **smack-multisite.php parse error** — stray `]` on line 615 caused a fatal
+  PHP parse error on any site running multisite pages after updating to 0.7.102.
+
 ## 0.7.102 — "Love Seat" (2026-05-10)
 
 ### Security
