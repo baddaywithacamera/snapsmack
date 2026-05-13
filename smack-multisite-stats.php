@@ -141,6 +141,12 @@ foreach ($spokes as $spoke) {
         'top_day'      => $spoke_top_day,
         'top_image'    => $spoke_top_images[0] ?? null,
         'post_count'   => $spoke['post_count'],
+        'browsers'     => $resp['browsers']     ?? [],
+        'os'           => $resp['os']           ?? [],
+        'categories'   => $resp['categories']   ?? [],
+        'search_terms' => $resp['search_terms'] ?? [],
+        'peak_hours'   => $resp['peak_hours']   ?? [],
+        'countries'    => $resp['countries']    ?? [],
     ];
 
     // Attach site info to each image and add to fleet pool
@@ -254,6 +260,18 @@ try {
     }
 } catch (\Exception $e) { /* snap_stats may be empty */ }
 
+// Hub browsers, OS, categories, search terms, peak hours, countries
+$hub_browsers = $hub_os = $hub_categories = $hub_search_terms = $hub_peak_hours = $hub_countries = [];
+try {
+    $date_sub = $period > 0 ? "AND hit_at >= DATE_SUB(NOW(), INTERVAL {$period} DAY)" : '';
+    $hub_browsers     = $pdo->query("SELECT browser, COUNT(*) AS hits FROM snap_stats WHERE is_bot = 0 AND browser IS NOT NULL AND browser != '' {$date_sub} GROUP BY browser ORDER BY hits DESC LIMIT 15")->fetchAll(PDO::FETCH_ASSOC);
+    $hub_os           = $pdo->query("SELECT os, COUNT(*) AS hits FROM snap_stats WHERE is_bot = 0 AND os IS NOT NULL AND os != '' {$date_sub} GROUP BY os ORDER BY hits DESC LIMIT 15")->fetchAll(PDO::FETCH_ASSOC);
+    $hub_categories   = $pdo->query("SELECT c.cat_name, COUNT(*) AS views FROM snap_stats s JOIN snap_image_cat_map m ON s.image_id = m.image_id JOIN snap_categories c ON m.cat_id = c.id WHERE s.is_bot = 0 AND s.image_id IS NOT NULL {$date_sub} GROUP BY c.id, c.cat_name ORDER BY views DESC LIMIT 15")->fetchAll(PDO::FETCH_ASSOC);
+    $hub_search_terms = $pdo->query("SELECT search_term, COUNT(*) AS uses FROM snap_stats WHERE is_bot = 0 AND search_term IS NOT NULL AND search_term != '' {$date_sub} GROUP BY search_term ORDER BY uses DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+    $hub_peak_hours   = $pdo->query("SELECT DAYOFWEEK(hit_at) AS dow, HOUR(hit_at) AS hour, COUNT(*) AS hits FROM snap_stats WHERE is_bot = 0 {$date_sub} GROUP BY DAYOFWEEK(hit_at), HOUR(hit_at)")->fetchAll(PDO::FETCH_ASSOC);
+    $hub_countries    = $pdo->query("SELECT country, COUNT(*) AS hits FROM snap_stats WHERE is_bot = 0 AND country IS NOT NULL AND country != '' {$date_sub} GROUP BY country ORDER BY hits DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+} catch (\Exception $e) { /* snap_stats may not exist */ }
+
 // Add hub as synthetic entry for the breakdown table
 $spoke_stats['__hub__'] = [
     'site_name'    => $hub_name . ' (Hub)',
@@ -266,6 +284,12 @@ $spoke_stats['__hub__'] = [
     'top_image'    => $hub_top_images[0] ?? null,
     'post_count'   => 0,
     'is_hub'       => true,
+    'browsers'     => $hub_browsers,
+    'os'           => $hub_os,
+    'categories'   => $hub_categories,
+    'search_terms' => $hub_search_terms,
+    'peak_hours'   => $hub_peak_hours,
+    'countries'    => $hub_countries,
 ];
 
 // Merge hub daily rows into fleet totals
@@ -320,6 +344,51 @@ $top_referrers = array_slice($all_referrers, 0, 10, true);
 
 // Spoke ranking by views
 uasort($spoke_stats, fn($a, $b) => $b['total_views'] - $a['total_views']);
+
+// ── FLEET AGGREGATION: browsers, OS, categories, search terms, peak hours, countries ──
+$fleet_browsers = $fleet_os = $fleet_categories = $fleet_search_terms = $fleet_countries = [];
+$fleet_peak_hours = [];
+for ($d = 1; $d <= 7; $d++) {
+    for ($h = 0; $h < 24; $h++) {
+        $fleet_peak_hours[$d][$h] = 0;
+    }
+}
+foreach ($spoke_stats as $sd) {
+    foreach ($sd['browsers'] ?? [] as $b) {
+        $k = $b['browser'] ?? ''; if ($k === '') continue;
+        $fleet_browsers[$k] = ($fleet_browsers[$k] ?? 0) + (int)$b['hits'];
+    }
+    foreach ($sd['os'] ?? [] as $o) {
+        $k = $o['os'] ?? ''; if ($k === '') continue;
+        $fleet_os[$k] = ($fleet_os[$k] ?? 0) + (int)$o['hits'];
+    }
+    foreach ($sd['categories'] ?? [] as $c) {
+        $k = $c['cat_name'] ?? ''; if ($k === '') continue;
+        $fleet_categories[$k] = ($fleet_categories[$k] ?? 0) + (int)$c['views'];
+    }
+    foreach ($sd['search_terms'] ?? [] as $st) {
+        $k = $st['search_term'] ?? ''; if ($k === '') continue;
+        $fleet_search_terms[$k] = ($fleet_search_terms[$k] ?? 0) + (int)$st['uses'];
+    }
+    foreach ($sd['peak_hours'] ?? [] as $ph) {
+        $d = (int)($ph['dow']  ?? 0);
+        $h = (int)($ph['hour'] ?? 0);
+        if ($d >= 1 && $d <= 7 && $h >= 0 && $h < 24) {
+            $fleet_peak_hours[$d][$h] += (int)$ph['hits'];
+        }
+    }
+    foreach ($sd['countries'] ?? [] as $c) {
+        $k = $c['country'] ?? ''; if ($k === '') continue;
+        $fleet_countries[$k] = ($fleet_countries[$k] ?? 0) + (int)$c['hits'];
+    }
+}
+arsort($fleet_browsers);    $fleet_browsers    = array_slice($fleet_browsers,    0, 15, true);
+arsort($fleet_os);          $fleet_os          = array_slice($fleet_os,          0, 15, true);
+arsort($fleet_categories);  $fleet_categories  = array_slice($fleet_categories,  0, 15, true);
+arsort($fleet_search_terms);$fleet_search_terms= array_slice($fleet_search_terms,0, 20, true);
+arsort($fleet_countries);   $fleet_countries   = array_slice($fleet_countries,   0, 20, true);
+$fleet_peak_max = 1; // avoid division by zero
+foreach ($fleet_peak_hours as $row) { foreach ($row as $v) { if ($v > $fleet_peak_max) $fleet_peak_max = $v; } }
 
 // Sparkline max for scaling
 $max_daily_views = $fleet_daily ? max(array_column(array_values($fleet_daily), 'views')) : 0;
@@ -539,7 +608,7 @@ include 'core/sidebar.php';
         <?php endif; ?>
     </div>
 
-    <!-- TOP REFERRERS ───────────────────────────────────────────────────── -->
+    <!-- TOP REFERRERS -->
     <?php if (!empty($top_referrers)): ?>
     <div class="box">
         <h3>TOP REFERRERS — FLEET WIDE</h3>
@@ -563,6 +632,158 @@ include 'core/sidebar.php';
         </div>
     </div>
     <?php endif; ?>
+
+    <!-- BROWSERS + OS -->
+    <?php if (!empty($fleet_browsers) || !empty($fleet_os)): ?>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+
+        <?php if (!empty($fleet_browsers)): ?>
+        <div class="box">
+            <h3>BROWSERS — FLEET WIDE</h3>
+            <?php $max_b = max($fleet_browsers); ?>
+            <div style="display:grid; gap:8px; margin-top:8px;">
+                <?php foreach ($fleet_browsers as $browser => $hits):
+                    $pct = round(($hits / $max_b) * 100); ?>
+                <div style="display:flex; align-items:center; gap:10px; font-size:0.85rem;">
+                    <div style="min-width:110px; color:var(--text-muted,#888); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?php echo htmlspecialchars($browser ?: 'Unknown'); ?></div>
+                    <div style="flex:1; height:6px; background:var(--border,#333); border-radius:4px; overflow:hidden;">
+                        <div style="height:100%; width:<?php echo $pct; ?>%; background:var(--accent-primary,#aaa); border-radius:4px;"></div>
+                    </div>
+                    <div style="min-width:36px; text-align:right; font-size:0.78rem; color:var(--text-muted,#888);"><?php echo number_format($hits); ?></div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($fleet_os)): ?>
+        <div class="box">
+            <h3>OPERATING SYSTEMS — FLEET WIDE</h3>
+            <?php $max_os = max($fleet_os); ?>
+            <div style="display:grid; gap:8px; margin-top:8px;">
+                <?php foreach ($fleet_os as $os => $hits):
+                    $pct = round(($hits / $max_os) * 100); ?>
+                <div style="display:flex; align-items:center; gap:10px; font-size:0.85rem;">
+                    <div style="min-width:110px; color:var(--text-muted,#888); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?php echo htmlspecialchars($os ?: 'Unknown'); ?></div>
+                    <div style="flex:1; height:6px; background:var(--border,#333); border-radius:4px; overflow:hidden;">
+                        <div style="height:100%; width:<?php echo $pct; ?>%; background:var(--accent-primary,#aaa); border-radius:4px;"></div>
+                    </div>
+                    <div style="min-width:36px; text-align:right; font-size:0.78rem; color:var(--text-muted,#888);"><?php echo number_format($hits); ?></div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+    </div>
+    <?php endif; ?>
+
+    <!-- CATEGORIES + SEARCH TERMS -->
+    <?php if (!empty($fleet_categories) || !empty($fleet_search_terms)): ?>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+
+        <?php if (!empty($fleet_categories)): ?>
+        <div class="box">
+            <h3>VIEWS BY CATEGORY — FLEET WIDE</h3>
+            <?php $max_cat = max($fleet_categories); ?>
+            <div style="display:grid; gap:8px; margin-top:8px;">
+                <?php foreach ($fleet_categories as $cat => $views):
+                    $pct = round(($views / $max_cat) * 100); ?>
+                <div style="display:flex; align-items:center; gap:10px; font-size:0.85rem;">
+                    <div style="min-width:110px; color:var(--text-muted,#888); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?php echo htmlspecialchars($cat); ?></div>
+                    <div style="flex:1; height:6px; background:var(--border,#333); border-radius:4px; overflow:hidden;">
+                        <div style="height:100%; width:<?php echo $pct; ?>%; background:var(--accent-primary,#aaa); border-radius:4px;"></div>
+                    </div>
+                    <div style="min-width:36px; text-align:right; font-size:0.78rem; color:var(--text-muted,#888);"><?php echo number_format($views); ?></div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($fleet_search_terms)): ?>
+        <div class="box">
+            <h3>SEARCH TERMS — FLEET WIDE</h3>
+            <?php $max_st = max($fleet_search_terms); ?>
+            <div style="display:grid; gap:8px; margin-top:8px;">
+                <?php foreach ($fleet_search_terms as $term => $uses):
+                    $pct = round(($uses / $max_st) * 100); ?>
+                <div style="display:flex; align-items:center; gap:10px; font-size:0.85rem;">
+                    <div style="min-width:110px; color:var(--text-muted,#888); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?php echo htmlspecialchars($term); ?></div>
+                    <div style="flex:1; height:6px; background:var(--border,#333); border-radius:4px; overflow:hidden;">
+                        <div style="height:100%; width:<?php echo $pct; ?>%; background:var(--accent-primary,#aaa); border-radius:4px;"></div>
+                    </div>
+                    <div style="min-width:36px; text-align:right; font-size:0.78rem; color:var(--text-muted,#888);"><?php echo number_format($uses); ?></div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+    </div>
+    <?php endif; ?>
+
+    <!-- PEAK HOURS HEATMAP -->
+    <?php
+    $peak_has_data = false;
+    foreach ($fleet_peak_hours as $row) { foreach ($row as $v) { if ($v > 0) { $peak_has_data = true; break 2; } } }
+    ?>
+    <?php if ($peak_has_data): ?>
+    <div class="box">
+        <h3>PEAK HOURS — FLEET WIDE</h3>
+        <?php $days_of_week = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']; ?>
+        <div style="overflow-x:auto; margin-top:8px;">
+            <table style="border-collapse:collapse; font-size:0.72rem; width:100%;">
+                <thead>
+                    <tr>
+                        <th style="padding:4px 6px; color:var(--text-muted,#888); text-align:left;"></th>
+                        <?php for ($h = 0; $h < 24; $h++): ?>
+                        <th style="padding:4px 3px; color:var(--text-muted,#888); text-align:center; font-weight:400;"><?php echo $h; ?></th>
+                        <?php endfor; ?>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php for ($d = 1; $d <= 7; $d++): ?>
+                    <tr>
+                        <td style="padding:3px 6px; color:var(--text-muted,#888); white-space:nowrap;"><?php echo $days_of_week[$d - 1]; ?></td>
+                        <?php for ($h = 0; $h < 24; $h++):
+                            $v   = $fleet_peak_hours[$d][$h];
+                            $int = $v > 0 ? min(1, round(($v / $fleet_peak_max), 2)) : 0;
+                            $bg  = $v > 0 ? 'rgba(170,170,170,' . $int . ')' : 'transparent';
+                        ?>
+                        <td style="padding:2px;" title="<?php echo $days_of_week[$d-1]; ?> <?php echo $h; ?>:00 — <?php echo number_format($v); ?> hits">
+                            <div style="width:100%; height:18px; background:<?php echo $bg; ?>; border-radius:2px;"></div>
+                        </td>
+                        <?php endfor; ?>
+                    </tr>
+                    <?php endfor; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- COUNTRIES -->
+    <?php if (!empty($fleet_countries)): ?>
+    <div class="box">
+        <h3>COUNTRIES — FLEET WIDE</h3>
+        <?php $max_co = max($fleet_countries); ?>
+        <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:8px; margin-top:8px;">
+            <?php foreach ($fleet_countries as $country => $hits):
+                $pct = round(($hits / $max_co) * 100); ?>
+            <div style="display:flex; align-items:center; gap:10px; font-size:0.85rem;">
+                <div style="min-width:130px; color:var(--text-muted,#888); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?php echo htmlspecialchars($country ?: 'Unknown'); ?></div>
+                <div style="flex:1; height:6px; background:var(--border,#333); border-radius:4px; overflow:hidden;">
+                    <div style="height:100%; width:<?php echo $pct; ?>%; background:var(--accent-primary,#aaa); border-radius:4px;"></div>
+                </div>
+                <div style="min-width:36px; text-align:right; font-size:0.78rem; color:var(--text-muted,#888);"><?php echo number_format($hits); ?></div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php endif; // empty($spokes) ?>
 
 </div>
 
