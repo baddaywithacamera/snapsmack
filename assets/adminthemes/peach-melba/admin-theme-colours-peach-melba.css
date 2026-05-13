@@ -443,7 +443,6 @@ input[type="checkbox"]:checked::after {
 }
 
 .alert-error {
-    color: #4a362d;
     border-color: #4a362d;
 }
 

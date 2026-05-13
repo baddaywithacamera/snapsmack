@@ -12,6 +12,16 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.120 — "La-Z-Boy" (2026-05-13)
+
+### Fixed
+- **alert-error text colour — correctly fixed in theme colour files** — removed
+  the dark `color:` overrides from the 14 admin theme colour CSS files that were
+  clobbering the geometry fallback (`#ff8080`) without setting their own
+  background. Geometry file left unchanged. Themes that provide both background
+  and text colour (Bumblebee, Pixelpast) are untouched. Reverts the misguided
+  0.7.119 revert and removes the `!important` that shouldn't have been in geometry.
+
 ## 0.7.119 — "La-Z-Boy" (2026-05-13)
 
 ### Fixed
