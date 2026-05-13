@@ -12,6 +12,15 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.109 — "La-Z-Boy" (2026-05-12)
+
+### Fixed
+- **Hub heartbeat sweep — PDO parameter count mismatch** — `smack-multisite.php` heartbeat
+  UPDATE had `site_tagline = ?` in the SQL (added in 0.7.107) but `$hb["site_tagline"] ?? null`
+  was missing from the execute array. PDO throws on parameter count mismatch
+  (`ERRMODE_EXCEPTION`), crashing the hub admin page on every load and causing spokes to
+  report HTTP 500 when verifying hub connectivity. Fixed by adding the missing value.
+
 ## 0.7.108 — "La-Z-Boy" (2026-05-12)
 
 ### Fixed
