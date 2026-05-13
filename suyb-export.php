@@ -34,7 +34,7 @@
 require_once __DIR__ . '/core/csrf.php';
 csrf_exempt();
 
-require_once 'core/auth.php';
+require_once 'core/api-auth.php';
 require_once 'core/export-engine.php';
 
 $type = $_GET['type'] ?? 'full';

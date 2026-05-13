@@ -12,6 +12,12 @@ any failure. Self-verifies size and EOF marker before declaring success.
 USAGE (from tools/sybu/):
     python apply_0.7.9j.py
 """
+
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
 import os
 import re
 import shutil
@@ -389,3 +395,4 @@ except Exception as e:
     shutil.copy2(CHANGELOG + '.bak', CHANGELOG)
     print("Restored. Files unchanged from before this run.")
     sys.exit(1)
+# ===== SNAPSMACK EOF =====
