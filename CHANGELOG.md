@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.114 — "La-Z-Boy" (2026-05-13)
+
+### Changed
+- **dev merged to master** — all 0.7.109–0.7.113 fixes now on master so the Skin
+  Packager (which pulls from master) sees current skin versions. Version bump required
+  to force updater refresh across all installs.
+
 ## 0.7.113 — "La-Z-Boy" (2026-05-13)
 
 ### Fixed
