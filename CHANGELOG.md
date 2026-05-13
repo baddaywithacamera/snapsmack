@@ -12,6 +12,15 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.115 — "La-Z-Boy" (2026-05-13)
+
+### Fixed
+- **Multisite update push — HTTP 404 on all spokes** — the `multisite/updates/trigger`
+  endpoint handler was accidentally dropped from `core/multisite-api.php` between 0.7.103
+  and 0.7.105 and never restored. The hub's `smack-multisite.php` continued calling it,
+  producing "HTTP 404: UNKNOWN MULTISITE ENDPOINT" on every spoke when Update All was
+  pressed. Endpoint restored from 0.7.103 source.
+
 ## 0.7.114 — "La-Z-Boy" (2026-05-13)
 
 ### Changed
