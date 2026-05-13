@@ -12,21 +12,6 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.116 — "La-Z-Boy" (2026-05-13)
-
-### Fixed
-- **Fleet Stats — PHP parse error (unexpected end of file)** — `smack-multisite-stats.php`
-  missing closing `endif` for the `if (empty($spokes)):` / `else:` block. Fatal parse
-  error on every fleet stats page load.
-
-## 0.7.115 — "La-Z-Boy" (2026-05-13)
-
-### Fixed
-- **Multisite update push — HTTP 404 on all spokes** — `multisite/updates/trigger`
-  endpoint handler dropped from `core/multisite-api.php` between 0.7.103 and 0.7.105,
-  never restored. Hub UPDATE / UPDATE ALL BEHIND returned "HTTP 404: UNKNOWN MULTISITE
-  ENDPOINT" on every spoke. Endpoint restored.
-
 ## 0.7.114 — "La-Z-Boy" (2026-05-13)
 
 ### Changed

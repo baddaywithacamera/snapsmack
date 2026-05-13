@@ -134,3 +134,13 @@ pixhellated_reference/
 
 # Claude's session-continuity notes (gitignored — for future Claude sessions)
 _continuity/
+
+# Private spec / planning documents directory
+tools/_specs/
+
+# Skin design spec documents — private planning files
+skins/**/*.docx
+
+# Claude session state and worktrees — never part of source
+_claudepowertools/
+.claude/worktrees/
