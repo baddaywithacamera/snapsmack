@@ -12,6 +12,28 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.113 — "La-Z-Boy" (2026-05-13)
+
+### Fixed
+- **Canonical schema — duplicate `snap_migrations` definition** — `snapsmack_canonical.sql`
+  contained two `CREATE TABLE IF NOT EXISTS snap_migrations` blocks. The second (erroneous)
+  definition added an `id AUTO_INCREMENT` column that no live install has and no migration
+  creates. Schema sync was fataling with `SQLSTATE[42000]: there can be only one auto column`
+  on every site. Duplicate removed; the original definition (`migration` as PRIMARY KEY)
+  is the authoritative one.
+
+## 0.7.112 — "La-Z-Boy" (2026-05-13)
+
+### Fixed
+- **Skin manifests — masonry controls still outside `options` array** — the 0.7.110 fix
+  script moved the masonry blocks but left an early-closing `],` before them, putting them
+  back outside the `options` array with an orphaned bracket after them. `galleria` caused
+  `Cannot use empty array elements in arrays`; `show-n-tell` and `true-grit` had the same
+  structural fault. All three now correctly place `masonry_border_width` and
+  `masonry_border_color` inside `options`, with `admin_styling` following the single
+  closing `],`. `50-shades-of-noah-grey` had duplicate masonry entries (no error, but
+  redundant); de-duplicated.
+
 ## 0.7.111 — "La-Z-Boy" (2026-05-12)
 
 ### Fixed
