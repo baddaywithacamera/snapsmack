@@ -12,6 +12,17 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.110 — "La-Z-Boy" (2026-05-12)
+
+### Fixed
+- **Skin manifests — masonry controls orphaned after `admin_styling`** — in four skins
+  (`50-shades-of-noah-grey`, `galleria`, `show-n-tell`, `true-grit`) the masonry border
+  controls (`masonry_border_width`, `masonry_border_color`) were placed after the
+  `admin_styling` top-level key instead of inside the `options` array. This left a
+  dangling `],` in the PHP array structure, causing a parse error (`unexpected token ","`)
+  on any site running one of these skins. `show-n-tell` and `true-grit` also had a double
+  comma (`",,`) after the `admin_styling` string. All four manifests corrected.
+
 ## 0.7.109 — "La-Z-Boy" (2026-05-12)
 
 ### Fixed

@@ -297,12 +297,6 @@ return [
         ],
     ],
 
-    'admin_styling' => "
-        .control-group-flex { display: flex; align-items: center; gap: 20px; }
-        .control-group-flex input { flex: 1; }
-        .active-val { width: 50px; text-align: right; font-family: monospace; }
-    ",,
-
         'masonry_border_width' => [
             'section'  => 'ARCHIVE',
             'type'     => 'range',
@@ -324,5 +318,12 @@ return [
             'property' => '--masonry-border-color',
         ],
     ],
+
+    'admin_styling' => "
+        .control-group-flex { display: flex; align-items: center; gap: 20px; }
+        .control-group-flex input { flex: 1; }
+        .active-val { width: 50px; text-align: right; font-family: monospace; }
+    ",
+
 ];
 // ===== SNAPSMACK EOF =====

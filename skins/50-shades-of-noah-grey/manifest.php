@@ -410,18 +410,25 @@ return [
                 'none'  => 'No — Hide URL',
             ]
         ],
-    ],
-
-    'admin_styling' => "
-        .metadata-selector-row { display: flex; justify-content: space-between; align-items: center; margin-top: -15px; margin-bottom: 50px; }
-        .skin-switcher-form { display: flex; align-items: center; gap: 10px; }
-        .skin-switcher-form label { margin: 0 !important; }
-        .control-group-flex { display: flex; align-items: center; gap: 20px; }
-        .control-group-flex input { flex: 1; }
-        .active-val { width: 50px; text-align: right; font-family: monospace; }
-        .hex-display { font-family: monospace; }
-    ",,
-
+        'masonry_border_width' => [
+            'section'  => 'ARCHIVE',
+            'type'     => 'range',
+            'label'    => 'Masonry Border Width (px)',
+            'default'  => '0',
+            'min'      => '0',
+            'max'      => '6',
+            'unit'     => 'px',
+            'selector' => ':root',
+            'property' => '--masonry-border-width',
+        ],
+        'masonry_border_color' => [
+            'section'  => 'ARCHIVE',
+            'type'     => 'color',
+            'label'    => 'Masonry Border Colour',
+            'default'  => '#ffffff',
+            'selector' => ':root',
+            'property' => '--masonry-border-color',
+        ],
         'masonry_border_width' => [
             'section'  => 'ARCHIVE',
             'type'     => 'range',
@@ -442,5 +449,15 @@ return [
             'property' => '--masonry-border-color',
         ],
     ],
+    'admin_styling' => "
+        .metadata-selector-row { display: flex; justify-content: space-between; align-items: center; margin-top: -15px; margin-bottom: 50px; }
+        .skin-switcher-form { display: flex; align-items: center; gap: 10px; }
+        .skin-switcher-form label { margin: 0 !important; }
+        .control-group-flex { display: flex; align-items: center; gap: 20px; }
+        .control-group-flex input { flex: 1; }
+        .active-val { width: 50px; text-align: right; font-family: monospace; }
+        .hex-display { font-family: monospace; }
+    ",
+
 ];
 // ===== SNAPSMACK EOF =====
