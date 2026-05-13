@@ -459,6 +459,7 @@ if ($multisite_role === 'hub') {
                     $hb['last_backup_dest']   ?? null,
                     $hb['last_backup_status'] ?? 'unknown',
                     $hb['disk_usage_bytes']   ?? null,
+                    $hb['site_tagline']       ?? null,
                     $n['id'],
                 ]);
                 // Update local array so the table renders fresh data without a reload
