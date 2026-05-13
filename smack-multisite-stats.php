@@ -564,6 +564,8 @@ include 'core/sidebar.php';
     </div>
     <?php endif; ?>
 
+    <?php endif; // empty($spokes) ?>
+
 </div>
 
 <?php include 'core/admin-footer.php'; ?>
