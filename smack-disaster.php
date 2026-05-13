@@ -15,7 +15,10 @@
  */
 
 
-require_once 'core/auth.php';
+require_once __DIR__ . '/core/csrf.php';
+csrf_exempt();
+
+require_once 'core/api-auth.php';
 
 // --- RECOVERY KIT EXPORT ---
 if (isset($_POST['action']) && $_POST['action'] === 'export') {

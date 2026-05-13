@@ -213,7 +213,7 @@ if (isset($_POST['ping']) && isset($_POST['ping_id'])) {
             }
         } else {
             $pdo->prepare("UPDATE snap_multisite_nodes SET status = 'offline' WHERE id = ?")->execute([$node_id]);
-            $msg = "Could not reach {$n['site_name']} — HTTP {$hb_code}.";
+            $err = "Could not reach {$n['site_name']} — HTTP {$hb_code}.";
         }
     } else {
         $err = "Spoke not found.";

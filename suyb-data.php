@@ -6,7 +6,7 @@
  * Returns cloud backup config, multisite node list, and site metadata
  * so SUYB can auto-populate profile fields.
  *
- * Authentication: standard session cookie (same as all admin pages).
+ * Authentication: X-Snap-Key header (API key) or session cookie (browser).
  * Method: GET
  * Response: application/json
  */
@@ -25,7 +25,7 @@
 require_once __DIR__ . '/core/csrf.php';
 csrf_exempt();
 
-require_once 'core/auth.php';
+require_once 'core/api-auth.php';
 
 header('Content-Type: application/json; charset=utf-8');
 

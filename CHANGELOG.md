@@ -12,6 +12,20 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.108 — "La-Z-Boy" (2026-05-12)
+
+### Fixed
+- **`core/multisite-api.php` truncation** — file was truncated on disk mid-line, causing HTTP 500 on all spoke API calls (`multisite/heartbeat`, `multisite/stats/daily`, etc.). All spokes appeared OFFLINE as a result. Restored from git.
+- **`core/mesh-helpers.php` truncation** — same truncation pattern, same cause. Restored from git.
+- **Widespread working-tree truncation** — 617 tracked files were found truncated on disk (CRLF padding to identical byte counts masked the damage). All restored from git HEAD. Root cause: FUSE mount write behaviour during a prior session.
+
+- **Ping failure shown as green success** — a failed manual ping ("Could not reach … HTTP 500") was displayed in a green `alert-success` box. Now correctly uses `alert-error` (red).
+
+### Changed
+- **SUYB API key auth** — `suyb-export.php`, `suyb-data.php`, `smack-disaster.php` now accept `X-Snap-Key` header authentication via `core/api-auth.php`, matching SYBU's pattern. Session cookie auth still works for browser use. Requires SUYB v0.7.4+. Get your API key from Admin → OH SNAP! API KEYS.
+
+---
+
 ## 0.7.107 — "La-Z-Boy" (2026-05-12)
 
 ### Fixed
