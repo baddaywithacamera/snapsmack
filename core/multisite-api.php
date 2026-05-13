@@ -878,37 +878,34 @@ if ($resource === 'ban-sync' && $method === 'POST') {
     $consolidated = $body['consolidated_bans'] ?? [];
     $valid_types  = ['fingerprint', 'ip', 'email_hash'];
 
-    // ── 1. Merge hub's consolidated bans into local snap_ban_list ─────────────
+    // ── Merge hub's consolidated bans into local snap_ban_list ───────────────
     // Hub-sourced bans get a 'hub-sync:' reason prefix so the spoke never
     // echoes them back as its own "new" bans on the next sync cycle.
 
     $merged      = 0;
+    $bans_to_store = [];
     $insert_stmt = $pdo->prepare("
         INSERT IGNORE INTO `snap_ban_list` (ban_type, ban_value, reason)
         VALUES (?, ?, ?)
     ");
 
     foreach ($consolidated as $ban) {
-        $type  = $ban['ban_type']  ?? '';
-        $value = $ban['ban_value'] ?? '';
+        $type        = $ban['ban_type']  ?? '';
+        $value       = $ban['ban_value'] ?? '';
+        $raw_reason  = $ban['reason']    ?? '';
         if (!in_array($type, $valid_types, true)) continue;
         // Value must be a SHA-256 hex string — 64 lowercase hex chars
         if (!preg_match('/^[0-9a-f]{64}$/i', $value)) continue;
-        $reason = 'hub-sync:' . substr(preg_replace('/[^a-zA-Z0-9_\- ]/'', '', $reason), 0, 64);
+        $reason = 'hub-sync:' . substr(preg_replace('/[^a-zA-Z0-9_\- ]/', '', $raw_reason), 0, 64);
         $bans_to_store[] = ['type' => $type, 'value' => $value, 'reason' => $reason];
     }
 
-    if (!empty($bans_to_store)) {
-        $ins = $pdo->prepare("
-            INSERT IGNORE INTO snap_bans (ban_type, ban_value, ban_reason, ban_expires)
-            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 30 DAY))
-        ");
-        foreach ($bans_to_store as $b) {
-            $ins->execute([$b['type'], $b['value'], $b['reason']]);
-        }
+    foreach ($bans_to_store as $b) {
+        $insert_stmt->execute([$b['type'], $b['value'], $b['reason']]);
+        $merged++;
     }
 
-    ms_ok(['imported' => count($bans_to_store)]);
+    ms_ok(['imported' => $merged]);
 }
 
 // Fell through — unknown endpoint
