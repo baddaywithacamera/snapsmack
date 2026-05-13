@@ -12,6 +12,31 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.117 — "La-Z-Boy" (2026-05-13)
+
+### Added
+- **Fleet Stats — browsers, OS, categories, search terms, peak hours, countries** —
+  six new panels added to the fleet stats rollup. Each spoke now returns browser
+  breakdown, OS breakdown, views by category, archive search terms, peak hours
+  heatmap (7x24 grid), and countries via the enriched stats endpoint. Hub aggregates
+  all panels fleet-wide alongside its own local data. Panels degrade gracefully if
+  a spoke is offline or on an older version.
+
+## 0.7.116 — "La-Z-Boy" (2026-05-13)
+
+### Fixed
+- **Fleet Stats — PHP parse error (unexpected end of file)** — `smack-multisite-stats.php`
+  missing closing `endif` for the `if (empty($spokes)):` / `else:` block. Fatal
+  parse error on every fleet stats page load.
+
+## 0.7.115 — "La-Z-Boy" (2026-05-13)
+
+### Fixed
+- **Multisite update push — HTTP 404 on all spokes** — `multisite/updates/trigger`
+  endpoint handler dropped from `core/multisite-api.php` between 0.7.103 and 0.7.105,
+  never restored. Hub UPDATE / UPDATE ALL BEHIND returned "HTTP 404: UNKNOWN MULTISITE
+  ENDPOINT" on every spoke. Endpoint restored from 0.7.103.
+
 ## 0.7.114 — "La-Z-Boy" (2026-05-13)
 
 ### Changed

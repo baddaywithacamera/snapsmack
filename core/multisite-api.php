@@ -509,6 +509,72 @@ if ($resource === 'stats' && $sub_action === 'daily' && $method === 'GET') {
             'bot'    => $bot_total,
         ];
         $payload['site_url'] = rtrim(BASE_URL, '/');
+
+        // ── BROWSERS ─────────────────────────────────────────────────────────
+        try {
+            if ($all_time) {
+                $b_stmt = $pdo->query("SELECT browser, COUNT(*) AS hits FROM snap_stats WHERE is_bot = 0 AND browser IS NOT NULL AND browser != '' GROUP BY browser ORDER BY hits DESC LIMIT 15");
+            } else {
+                $b_stmt = $pdo->prepare("SELECT browser, COUNT(*) AS hits FROM snap_stats WHERE is_bot = 0 AND browser IS NOT NULL AND browser != '' AND hit_at >= DATE_SUB(NOW(), INTERVAL ? DAY) GROUP BY browser ORDER BY hits DESC LIMIT 15");
+                $b_stmt->execute([$days]);
+            }
+            $payload['browsers'] = $b_stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Exception $e) { $payload['browsers'] = []; }
+
+        // ── OS ───────────────────────────────────────────────────────────────
+        try {
+            if ($all_time) {
+                $os_stmt = $pdo->query("SELECT os, COUNT(*) AS hits FROM snap_stats WHERE is_bot = 0 AND os IS NOT NULL AND os != '' GROUP BY os ORDER BY hits DESC LIMIT 15");
+            } else {
+                $os_stmt = $pdo->prepare("SELECT os, COUNT(*) AS hits FROM snap_stats WHERE is_bot = 0 AND os IS NOT NULL AND os != '' AND hit_at >= DATE_SUB(NOW(), INTERVAL ? DAY) GROUP BY os ORDER BY hits DESC LIMIT 15");
+                $os_stmt->execute([$days]);
+            }
+            $payload['os'] = $os_stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Exception $e) { $payload['os'] = []; }
+
+        // ── CATEGORIES ───────────────────────────────────────────────────────
+        try {
+            if ($all_time) {
+                $cat_stmt = $pdo->query("SELECT c.cat_name, COUNT(*) AS views FROM snap_stats s JOIN snap_image_cat_map m ON s.image_id = m.image_id JOIN snap_categories c ON m.cat_id = c.id WHERE s.is_bot = 0 AND s.image_id IS NOT NULL GROUP BY c.id, c.cat_name ORDER BY views DESC LIMIT 15");
+            } else {
+                $cat_stmt = $pdo->prepare("SELECT c.cat_name, COUNT(*) AS views FROM snap_stats s JOIN snap_image_cat_map m ON s.image_id = m.image_id JOIN snap_categories c ON m.cat_id = c.id WHERE s.is_bot = 0 AND s.image_id IS NOT NULL AND s.hit_at >= DATE_SUB(NOW(), INTERVAL ? DAY) GROUP BY c.id, c.cat_name ORDER BY views DESC LIMIT 15");
+                $cat_stmt->execute([$days]);
+            }
+            $payload['categories'] = $cat_stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Exception $e) { $payload['categories'] = []; }
+
+        // ── SEARCH TERMS ─────────────────────────────────────────────────────
+        try {
+            if ($all_time) {
+                $st_stmt = $pdo->query("SELECT search_term, COUNT(*) AS uses FROM snap_stats WHERE is_bot = 0 AND search_term IS NOT NULL AND search_term != '' GROUP BY search_term ORDER BY uses DESC LIMIT 20");
+            } else {
+                $st_stmt = $pdo->prepare("SELECT search_term, COUNT(*) AS uses FROM snap_stats WHERE is_bot = 0 AND search_term IS NOT NULL AND search_term != '' AND hit_at >= DATE_SUB(NOW(), INTERVAL ? DAY) GROUP BY search_term ORDER BY uses DESC LIMIT 20");
+                $st_stmt->execute([$days]);
+            }
+            $payload['search_terms'] = $st_stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Exception $e) { $payload['search_terms'] = []; }
+
+        // ── PEAK HOURS (dow 1=Sun..7=Sat, hour 0-23) ─────────────────────────
+        try {
+            if ($all_time) {
+                $ph_stmt = $pdo->query("SELECT DAYOFWEEK(hit_at) AS dow, HOUR(hit_at) AS hour, COUNT(*) AS hits FROM snap_stats WHERE is_bot = 0 GROUP BY DAYOFWEEK(hit_at), HOUR(hit_at)");
+            } else {
+                $ph_stmt = $pdo->prepare("SELECT DAYOFWEEK(hit_at) AS dow, HOUR(hit_at) AS hour, COUNT(*) AS hits FROM snap_stats WHERE is_bot = 0 AND hit_at >= DATE_SUB(NOW(), INTERVAL ? DAY) GROUP BY DAYOFWEEK(hit_at), HOUR(hit_at)");
+                $ph_stmt->execute([$days]);
+            }
+            $payload['peak_hours'] = $ph_stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Exception $e) { $payload['peak_hours'] = []; }
+
+        // ── COUNTRIES ────────────────────────────────────────────────────────
+        try {
+            if ($all_time) {
+                $co_stmt = $pdo->query("SELECT country, COUNT(*) AS hits FROM snap_stats WHERE is_bot = 0 AND country IS NOT NULL AND country != '' GROUP BY country ORDER BY hits DESC LIMIT 20");
+            } else {
+                $co_stmt = $pdo->prepare("SELECT country, COUNT(*) AS hits FROM snap_stats WHERE is_bot = 0 AND country IS NOT NULL AND country != '' AND hit_at >= DATE_SUB(NOW(), INTERVAL ? DAY) GROUP BY country ORDER BY hits DESC LIMIT 20");
+                $co_stmt->execute([$days]);
+            }
+            $payload['countries'] = $co_stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Exception $e) { $payload['countries'] = []; }
     }
 
     ms_ok($payload);
