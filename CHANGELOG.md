@@ -12,6 +12,21 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.111 — "La-Z-Boy" (2026-05-12)
+
+### Fixed
+- **`core/multisite-api.php` ban-sync parse error** — the `ban-sync` endpoint had a
+  stray single-quote in a `preg_replace()` call, making the entire file a PHP parse
+  error. Every API call (heartbeat, ping, stats, etc.) returned HTTP 500, taking all
+  spokes OFFLINE and causing spoke sites to report “COULD NOT REACH HUB — HTTP 500”
+  when verifying hub connectivity. The ban-sync block was also corrected: uninitialised
+  `$bans_to_store`, undefined `$reason` variable, dead duplicate prepared statement, and
+  wrong table name (`snap_bans` → `snap_ban_list`) all fixed.
+- **Spoke hub-ping error shown as green success** — a failed manual “Verify Connection”
+  (e.g. “Could not reach hub — HTTP 500”) was placed in `$msg` (displayed green) instead
+  of `$err` (displayed red). All three failure branches in the `verify_hub` handler now
+  use `$err`.
+
 ## 0.7.110 — "La-Z-Boy" (2026-05-12)
 
 ### Fixed

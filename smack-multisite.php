@@ -386,13 +386,13 @@ if (isset($_POST['verify_hub'])) {
                      . htmlspecialchars($hb['version'] ?? 'unknown') . ")."
                      . $roster_msg;
             } else {
-                $msg = "Hub responded but returned an error: " . htmlspecialchars($hb['error'] ?? 'unknown');
+                $err = "Hub responded but returned an error: " . htmlspecialchars($hb['error'] ?? 'unknown');
             }
         } else {
-            $msg = "Could not reach hub — HTTP {$code}" . ($curl_err ? " ({$curl_err})" : "") . ".";
+            $err = "Could not reach hub — HTTP {$code}" . ($curl_err ? " ({$curl_err})" : "") . ".";
         }
     } else {
-        $msg = "No hub configured.";
+        $err = "No hub configured.";
     }
 }
 
