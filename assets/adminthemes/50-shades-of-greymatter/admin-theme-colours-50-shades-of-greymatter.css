@@ -419,7 +419,6 @@ input[type="checkbox"]:checked::after {
 }
 
 .alert-error {
-    color: #999999;
     border-color: #999999;
 }
 
