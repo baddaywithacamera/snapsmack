@@ -21,7 +21,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'        => 'Chaplin',
-    'version'     => '1.1',
+    'version'     => '1.2',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Silent film era. Deep black, aged paper mats, film grain, and every photograph run through a film stock filter. Square crop. It flickers.',

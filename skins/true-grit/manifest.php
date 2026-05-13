@@ -23,7 +23,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'          => 'True Grit',
-    'version'       => '1.2',
+    'version'       => '1.3',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Found-texture photography skin. Photographic wall backgrounds with opacity overlay, archival framing, justified grid, and floating photo wall. Built for foundtextures.ca.',
@@ -660,8 +660,6 @@ return [
             'step'     => '5',
             // No selector/property — value emitted to window.SMACK_CONFIG by core/meta.php
         ],
-
-    ],
 
         'masonry_border_width' => [
             'section'  => 'ARCHIVE',
