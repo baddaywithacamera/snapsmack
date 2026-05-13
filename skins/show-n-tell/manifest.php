@@ -21,7 +21,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'        => 'Show N Tell',
-    'version'     => '1.1',
+    'version'     => '1.2',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Portfolio & photoblog hybrid. Clean hero slider fed from the media library, justified grid below. Pixel frames or Galleria frames. Optional contact form shortcode. Professional face, photoblogging soul.',
@@ -295,8 +295,6 @@ return [
             'selector' => 'body, .description, .meta',
             'property' => 'font-family',
         ],
-    ],
-
         'masonry_border_width' => [
             'section'  => 'ARCHIVE',
             'type'     => 'range',
