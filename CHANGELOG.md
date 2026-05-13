@@ -12,6 +12,20 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.118 — "La-Z-Boy" (2026-05-13)
+
+### Fixed
+- **multisite/updates/trigger endpoint restored (again)** — the endpoint was lost
+  when `core/multisite-api.php` was rebuilt for the 0.7.117 fleet stats work.
+  UPDATE ALL BEHIND / push-update calls were returning HTTP 404 on all spokes.
+  Endpoint re-spliced from the 0.7.115 source.
+- **Admin theme alert-error text unreadable** — 14 admin colour themes were
+  overriding `.alert-error` text colour with dark values (e.g. `#630D0D` on the
+  master's `#3b0d0d` dark-red background). Removed the conflicting `color:`
+  overrides from all themes that don't set their own background; master CSS
+  `#ff8080` now applies universally for those themes. Affects all error banners
+  site-wide, including the multisite connected-spokes update results panel.
+
 ## 0.7.117 — "La-Z-Boy" (2026-05-13)
 
 ### Added
