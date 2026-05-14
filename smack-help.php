@@ -890,6 +890,9 @@ on the active skin.</p>
     Individual transmissions can still be toggled independently.</li>
 </ul>
 
+<h4>Public Blogroll</h4>
+<p>Controls whether the public blogroll page (<code>/blogroll.php</code>) is accessible to visitors. When disabled, the page returns a 404 and the blogroll link is removed from navigation. Your blogroll entries and peer connections are preserved — re-enabling restores the page immediately. You can still manage blogroll entries in the admin regardless of this setting.</p>
+
 <h4>AI Training Crawlers</h4>
 <p>Controls whether AI companies can scrape your site content for model training.
 Three options:</p>
