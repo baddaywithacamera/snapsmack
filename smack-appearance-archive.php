@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
         $_POST['settings']['archive_layout'] = $_def;
 
         // Coerce checkboxes to '0'/'1'.
-        foreach (['archive_show_layout_toggle', 'archive_calendar_enabled', 'archive_calendar_default_open'] as $_k) {
+        foreach (['archive_show_layout_toggle', 'archive_calendar_enabled', 'archive_calendar_default_open', 'masonry_use_thumbs'] as $_k) {
             $_POST['settings'][$_k] = empty($_POST['settings'][$_k]) ? '0' : '1';
         }
 
@@ -146,9 +146,10 @@ if ($collections_rows !== 2) $collections_rows = 1;
 // Note: archive_border_style / archive_shadow_depth removed — were saved but never consumed.
 
 // Grid sizing
-$current_cols   = max(2, min(8, (int)($settings['browse_cols'] ?? 4)));
-$current_gutter = (int)($settings['archive_gutter'] ?? 4);
-$current_row_h  = (int)($settings['justified_row_height'] ?? 220);
+$current_cols         = max(2, min(8, (int)($settings['browse_cols'] ?? 4)));
+$current_gutter       = (int)($settings['archive_gutter'] ?? 4);
+$current_row_h        = (int)($settings['justified_row_height'] ?? 220);
+$masonry_use_thumbs   = isset($settings['masonry_use_thumbs']) ? !empty($settings['masonry_use_thumbs']) : true;
 
 // Thumbnail size — backwards-compat with old pixel values
 $size_steps   = ['xs' => 'XS — Extra Small', 's' => 'S — Small', 'm' => 'M — Medium', 'l' => 'L — Large', 'xl' => 'XL — Extra Large'];
@@ -263,6 +264,15 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                                oninput="this.nextElementSibling.textContent = this.value + 'px'">
                         <span style="min-width:44px; font-family:monospace;"><?php echo $current_row_h; ?>px</span>
                     </div>
+                </div>
+
+                <div class="lens-input-wrapper">
+                    <label>MASONRY IMAGE SOURCE <span class="field-tip" data-tip="Uses pre-generated aspect thumbnails (max 600px) instead of full-size images. Eliminates scaling artifacts on most displays. Run the thumb regenerator in Maintenance if images look soft.">ⓘ</span></label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" name="settings[masonry_use_thumbs]" value="1"<?php echo $masonry_use_thumbs ? ' checked' : ''; ?>>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="dim" style="font-size:0.85em;">Use aspect thumbnails (max 600px) for masonry — recommended. Disable to serve full-size images instead.</span>
                 </div>
 
                 <div class="lens-input-wrapper">
@@ -444,27 +454,4 @@ function updateSwitchStatus() {
     if (!status) return;
     var checked = [];
     Object.keys(layoutLabels).forEach(function(m) {
-        var cb = document.getElementById('avail-' + m);
-        if (cb && cb.checked) checked.push(layoutLabels[m]);
-    });
-    if (checked.length < 2) {
-        status.textContent = 'No toggle shown — select 2 or more layouts to offer visitors a switch.';
-        status.style.color = 'var(--accent, #ff0)';
-    } else {
-        status.textContent = '✓ Visitors will see a ' + checked.length + '-way toggle: ' + checked.join(' / ');
-        status.style.color = 'var(--status-ok, var(--accent, #fff))';
-    }
-}
-
-// Wire up all layout checkboxes.
-document.addEventListener('DOMContentLoaded', function() {
-    ['square','cropped','masonry','croppedwithcalendar'].forEach(function(m) {
-        var cb = document.getElementById('avail-' + m);
-        if (cb) cb.addEventListener('change', updateSwitchStatus);
-    });
-    syncAvailableCheckbox(document.getElementById('default-layout-select').value);
-});
-</script>
-
-<?php include 'core/admin-footer.php'; ?>
-<?php // ===== SNAPSMACK EOF =====
+        var cb = document.getElem

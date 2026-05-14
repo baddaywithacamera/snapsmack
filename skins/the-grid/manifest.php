@@ -33,8 +33,9 @@ return [
     'edit_page'   => 'carousel',
 
     'features' => [
-        'supports_wall'    => false,
-        'archive_layouts'  => ['square'],
+        'supports_wall'      => false,
+        'masonry_supported'  => false,
+        'archive_layouts'    => ['square'],
         'supports_slider'  => false,
         'has_landing'      => true,
         'post_modes'       => ['image'],
@@ -270,7 +271,3 @@ return [
             'selector' => ':root',
             'property' => '--content-max-width',
         ],
-
-    ],
-];
-// ===== SNAPSMACK EOF =====

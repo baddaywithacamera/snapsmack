@@ -58,6 +58,7 @@ try {
     $skin_has_calendar = false;
     $_manifest_path = 'skins/' . $active_skin . '/manifest.php';
     $skin_show_archive_filter = true;
+    $skin_masonry_locked = false;
     if (file_exists($_manifest_path)) {
         $_m = include $_manifest_path;
         if (!empty($_m['features']['archive_layout_default'])) {
@@ -69,6 +70,9 @@ try {
         if (isset($_m['features']['archive_filter']) && $_m['features']['archive_filter'] === false) {
             $skin_show_archive_filter = false;
         }
+        // Locked skins (e.g. Photogram, The Grid) set masonry_supported => false to
+        // prevent the CMS from offering or rendering masonry for that skin.
+        $skin_masonry_locked = (isset($_m['features']['masonry_supported']) && $_m['features']['masonry_supported'] === false);
         unset($_m, $_manifest_path);
     }
     $archive_layout_default = $settings['archive_layout'] ?? $skin_layout_fallback;
@@ -93,6 +97,11 @@ try {
     $archive_show_layout_toggle   = isset($settings['archive_show_layout_toggle'])
                                     ? !empty($settings['archive_show_layout_toggle'])
                                     : true;
+    // Default ON — use pre-generated aspect thumbs (max 600px) for masonry instead of full-size.
+    // Run the thumb regenerator in Maintenance if images look soft after enabling.
+    $masonry_use_thumbs = isset($settings['masonry_use_thumbs'])
+                          ? !empty($settings['masonry_use_thumbs'])
+                          : true;
     if (!in_array($archive_thumb_style, ['square', 'cropped'], true)) {
         $archive_thumb_style = 'cropped';
     }
@@ -151,6 +160,13 @@ try {
     // render the photo grids only — they no longer render their own toggle UI.
     // (Eliminates the duplicate-toggle problem visible in 0.7.79's first cut.)
     $offer_toggle = $archive_show_layout_toggle;
+
+    // Locked skins (masonry_supported = false in manifest) must never show the
+    // M button or render masonry regardless of URL param / cookie / admin setting.
+    if ($skin_masonry_locked) {
+        $offer_toggle   = false;
+        $archive_layout = 'thumbs';
+    }
 
     // --- THUMBNAIL SIZE RESOLUTION ---
     // Maps abstract 5-step scale (xs, s, m, l, xl) to pixel values.
@@ -537,13 +553,13 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
         <div id="scroll-stage">
 
             <?php
-            // Skin-specific archive layout: if the active skin provides archive-layout.php,
-            // use that instead of the default grid rendering. $images, $settings, $all_cats,
-            // $all_albums, $cat_filter, and $album_filter are available to the template.
+            // Layout dispatch — 0.7.125 architecture:
+            // 1. Core always owns masonry (skin_masonry_locked is already false here for
+            //    eligible skins; locked skins had $archive_layout forced to 'thumbs' above).
+            // 2. Skin archive-layout.php handles thumbs only; it never sees masonry traffic.
+            // 3. Core thumbs fallback for skins without archive-layout.php.
             $skin_archive = __DIR__ . '/' . $skin_path . '/archive-layout.php';
-            if (file_exists($skin_archive)):
-                include $skin_archive;
-            elseif ($archive_layout === 'masonry'): ?>
+            if ($archive_layout === 'masonry'): ?>
             <!-- Justified layout — Flickr-style row-fill with full aspect ratios.
                  PHP groups images into rows for semantics; CSS flexbox handles sizing.
                  Each item's flex-grow equals its aspect ratio for perfect row alignment. -->
@@ -604,7 +620,11 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                         <div class="<?php echo $row_class; ?>">
                             <?php foreach ($row as $img):
                                 $link = BASE_URL . htmlspecialchars($img['img_slug']);
-                                $img_url = BASE_URL . ltrim($img['img_file'], '/');
+                                if ($masonry_use_thumbs && !empty($img['img_thumb_aspect'])) {
+                                    $img_url = BASE_URL . ltrim($img['img_thumb_aspect'], '/');
+                                } else {
+                                    $img_url = BASE_URL . ltrim($img['img_file'], '/');
+                                }
                                 $flex_grow = round($img['_aspect'] * 100);
                             ?>
                                 <a href="<?php echo $link; ?>" class="justified-item" title="<?php echo htmlspecialchars($img['img_title']); ?>" style="flex-grow: <?php echo $flex_grow; ?>; flex-basis: 0; aspect-ratio: <?php echo round($img['_aspect'], 4); ?>;">
@@ -620,7 +640,10 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                 <?php endif; ?>
             </div>
 
-            <?php elseif ($archive_layout === 'cropped'): ?>
+            <?php elseif (file_exists($skin_archive)):
+                // Skin owns its own thumb grid — thumbs layout only.
+                include $skin_archive;
+            elseif ($archive_layout === 'cropped'): ?>
             <!-- Cropped layout — Center-cropped to max 3:2 or 2:3 aspect ratio -->
             <div id="browse-grid" class="cropped-grid archive-grid" style="--grid-cols: <?php echo htmlspecialchars($settings['browse_cols'] ?? 4); ?>; --thumb-width: <?php echo $thumb_px; ?>px;">
                 <?php if ($images): ?>
@@ -671,33 +694,4 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                             <a href="<?php echo $link; ?>" class="thumb-link" title="<?php echo htmlspecialchars($img['img_title']); ?>">
                                 <img src="<?php echo $thumb_url; ?>" alt="<?php echo htmlspecialchars($img['img_title']); ?>" loading="lazy">
                             </a>
-                        </div>
-                    <?php endforeach; ?>
-                <?php elseif ($active_filter_count > 0): ?>
-                    <div class="empty-sector-msg">NOTHING CLEARS ALL THOSE HURDLES.<br><a href="archive.php">[ EASE UP ]</a></div>
-                <?php else: ?>
-                    <div class="empty-sector-msg">NO TRANSMISSIONS RECORDED IN THIS SECTOR.</div>
-                <?php endif; ?>
-            </div>
-            <?php endif; ?>
-
-            <?php
-            $footer_file = __DIR__ . '/' . $skin_path . '/skin-footer.php';
-            if (file_exists($footer_file)) include $footer_file;
-            ?>
-        </div>
-    </div>
-
-    <?php if ($skin_show_archive_filter): ?>
-    <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-archive-filter.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
-    <?php endif; ?>
-    <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-archive-toggle.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
-    <?php if ($archive_calendar_enabled && !$skin_has_calendar): ?>
-    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-calendar.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
-    <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-calendar.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
-    <?php endif; ?>
-
-</div><!-- /#smack-public-wrap -->
-</body>
-</html>
-<?php // ===== SNAPSMACK EOF =====
+             
