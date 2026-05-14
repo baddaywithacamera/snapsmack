@@ -594,7 +594,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                 }
                 if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
             ?>
-            <div id="justified-grid" class="justified-grid" style="--justified-gap: <?php echo $gap; ?>px; --justified-row-height: <?php echo $target_row_h; ?>px; --last-row-ar-sum: <?php echo round($last_full_ar_sum, 4); ?>;">
+            <div id="justified-grid" class="justified-grid archive-masonry" style="--justified-gap: <?php echo $gap; ?>px; --justified-row-height: <?php echo $target_row_h; ?>px; --last-row-ar-sum: <?php echo round($last_full_ar_sum, 4); ?>;">
                 <?php if ($rows): ?>
                     <?php foreach ($rows as $row_data):
                         $row = $row_data['images'];
@@ -622,7 +622,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
 
             <?php elseif ($archive_layout === 'cropped'): ?>
             <!-- Cropped layout — Center-cropped to max 3:2 or 2:3 aspect ratio -->
-            <div id="browse-grid" class="cropped-grid" style="--grid-cols: <?php echo htmlspecialchars($settings['browse_cols'] ?? 4); ?>; --thumb-width: <?php echo $thumb_px; ?>px;">
+            <div id="browse-grid" class="cropped-grid archive-grid" style="--grid-cols: <?php echo htmlspecialchars($settings['browse_cols'] ?? 4); ?>; --thumb-width: <?php echo $thumb_px; ?>px;">
                 <?php if ($images): ?>
                     <?php foreach ($images as $img): ?>
                         <div class="thumb-container cropped-item">
@@ -655,7 +655,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
 
             <?php else: ?>
             <!-- Square layout — Classic 1:1 center-cropped grid (default) -->
-            <div id="browse-grid" class="square-grid" style="--grid-cols: <?php echo htmlspecialchars($settings['browse_cols'] ?? 4); ?>; --thumb-width: <?php echo $thumb_px; ?>px;">
+            <div id="browse-grid" class="square-grid archive-grid" style="--grid-cols: <?php echo htmlspecialchars($settings['browse_cols'] ?? 4); ?>; --thumb-width: <?php echo $thumb_px; ?>px;">
                 <?php if ($images): ?>
                     <?php foreach ($images as $img): ?>
                         <div class="thumb-container">
@@ -692,7 +692,8 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
     <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-archive-filter.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
     <?php endif; ?>
     <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-archive-toggle.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
-    <?php if ($archive_calendar_enabled): ?>
+    <?php if ($archive_calendar_enabled && !$skin_has_calendar): ?>
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-calendar.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
     <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-calendar.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
     <?php endif; ?>
 

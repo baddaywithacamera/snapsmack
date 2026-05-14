@@ -63,8 +63,8 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Referrer-Policy: strict-origin-when-cross-origin');
 }
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.122');
-define('SNAPSMACK_VERSION_SHORT', '0.7.122');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.123');
+define('SNAPSMACK_VERSION_SHORT', '0.7.123');
 define('SNAPSMACK_VERSION_CODENAME', 'La-Z-Boy');
 
 // --- VERSION COMPARISON ---
@@ -76,7 +76,7 @@ define('SNAPSMACK_VERSION_CODENAME', 'La-Z-Boy');
 // fourth numeric segment (a=1, b=2, ...) before delegating to version_compare().
 // Plain semver strings pass through unmodified (appended .0 is harmless).
 //
-// Usage: snap_version_compare('0.7.122', '0.7.122', '>') => true
+// Usage: snap_version_compare('0.7.123', '0.7.123', '>') => true
 //        snap_version_compare('0.7.9p', '0.7.9n', '>') => true (legacy)
 function snap_version_compare(string $v1, string $v2, string $op = '>'): bool {
     $normalise = function (string $v): string {

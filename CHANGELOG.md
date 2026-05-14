@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.123 — "La-Z-Boy" (2026-05-14)
+
+### Fixed
+- **archive.php**: Masonry toggle now works on skins without `archive-layout.php` (impact-printer and any other core-fallback skin) — grid containers now carry `archive-grid` / `archive-masonry` CSS classes so the JS fetch-and-replace can locate and swap them
+- **archive.php**: Calendar JS double-load on rational-geo (and 50-shades-of-noah-grey) — skins that declare `smack-calendar` in `require_scripts` already load it via `skin-footer.php`; `archive.php` no longer loads it a second time; added companion CSS load for non-manifest skins that have calendar enabled via settings
+
 ## 0.7.122 — "La-Z-Boy" (2026-05-13)
 
 ### Fixed
