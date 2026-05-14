@@ -39,8 +39,8 @@ bit and does not break character.</p>
     are available. No proportional fonts.</li>
     <li><strong>No floating gallery</strong> — wall support is disabled. The dot-matrix printer
     cannot render a 3D experience (it is, after all, a printer).</li>
-    <li><strong>Two archive layouts</strong> — Square and Cropped only. Masonry/justified
-    is disabled (a printer feeds paper in fixed columns).</li>
+    <li><strong>Three archive layouts</strong> — Square, Cropped, and Masonry/justified.
+    The justified grid uses the core engine; images fill rows by aspect ratio.</li>
 </ul>
 
 <h4>Design Constraints</h4>
