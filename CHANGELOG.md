@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.124 — "La-Z-Boy" (2026-05-14)
+
+### Fixed
+- **page-archive.css / impact-printer**: Justified grid last row no longer overshoots the skin's paper container — last-row height now uses `var(--justified-row-height)` directly (already set inline by PHP) instead of a `100vw`-based width calculation; impact-printer style.css cleaned up (dropped broken `--justified-content-width` calc that referenced undefined vars)
+
 ## 0.7.123 — "La-Z-Boy" (2026-05-14)
 
 ### Fixed
@@ -2085,16 +2090,4 @@ _Internal bump. See 0.7.5b for the full feature set._
 - Removed Picasa Web Albums skin.
 
 ### Fixed
-- Preflight security holes in custom JPG handling (found in audits by Claude and Gemini).
-- Google Drive share links auto-converted to direct downloads.
-- Various skin display bugs in New Horizon Dark and 50 Shades of Grey.
-
----
-
-## 0.5.0 and earlier
-
-Initial development. Admin interface, theme system, per-skin settings scoping,
-sidebar redesign, admin theme CSS consolidation, comment controls, footer
-configuration, and foundational CMS architecture.
-
-<!-- ===== SNAPSMACK EOF ===== -->
+- Preflight security holes in custom JPG handling (found in audits b
