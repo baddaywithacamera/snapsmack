@@ -562,6 +562,19 @@ body.landing-only .ip-header-inside,
    ARCHIVE GRID (Square + Cropped only — no justified)
    ========================================================================= */
 
+/* --- JUSTIFIED / MASONRY GRID ------------------------------------------ */
+/* page-archive.css sets width:100% on #justified-grid; override here to     */
+/* respect the sprocket-hole padding on #page-wrapper.                       */
+#justified-grid {
+    box-sizing: border-box;
+    padding: 0 20px;
+    margin-top: 40px;
+    margin-bottom: 40px;
+}
+#justified-grid .justified-item img {
+    opacity: var(--ip-ink-opacity, 0.65);
+}
+
 #browse-grid.square-grid,
 #browse-grid.cropped-grid {
     display: grid;
@@ -1164,49 +1177,4 @@ body.landing-only .ip-header-inside,
 /* ── NAV DROPDOWN ───────────────────────────────────────────────────────────────────────────
 Requires ss-engine-nav-dropdown.js (loaded by core/footer.php when
 nav_menu_json is configured). Classes emitted by core/header.php renderer.
-─────────────────────────────────────────────────────────────────────────── */
-.nav-has-children { position: relative; }
-
-.nav-submenu {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    min-width: 180px;
-    list-style: none;
-    margin: 0;
-    padding: 6px 0;
-    z-index: 500;
-    background: var(--nav-dropdown-bg, #000000);
-    border: 1px solid rgba(128,128,128,0.2);
-    border-radius: 3px;
-}
-
-.nav-has-children:hover > .nav-submenu,
-.nav-has-children.open > .nav-submenu {
-    display: block;
-}
-
-.nav-submenu li { display: block; }
-
-.nav-submenu a,
-.nav-submenu span {
-    display: block;
-    padding: 7px 18px;
-    white-space: nowrap;
-    color: var(--nav-dropdown-text, #cccccc);
-    text-decoration: none;
-    font-size: 0.8rem;
-    letter-spacing: 0.05em;
-    transition: opacity 0.15s;
-}
-
-.nav-submenu a:hover { opacity: 0.7; }
-
-/* Level-2 sub-submenu opens to the right */
-.nav-submenu .nav-has-children > .nav-submenu {
-    top: 0;
-    left: 100%;
-}
-
-/* ===== SNAPSMACK EOF ===== */
+──�                                                                                                                                                                      

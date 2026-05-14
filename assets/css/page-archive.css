@@ -93,7 +93,7 @@
     margin-bottom: var(--justified-gap, 4px);
 }
 #justified-grid .justified-row-last {
-    height: calc(100vw / var(--last-row-ar-sum, 7));
+    height: var(--justified-row-height, 260px);
 }
 #justified-grid .justified-row-last .justified-item {
     flex-grow: 0 !important;
@@ -345,3 +345,4 @@
     background: rgba(255, 255, 255, 0.10);
 }
 /* ===== SNAPSMACK EOF ===== */
+                                     

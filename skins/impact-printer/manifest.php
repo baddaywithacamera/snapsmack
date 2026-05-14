@@ -82,7 +82,7 @@ return [
             'default'  => '1100',
             'min'      => '700',
             'max'      => '1600',
-            'selector' => '.ip-header-inside, #system-footer .inside, .ip-photo-wrap, #browse-grid, .blogroll-canvas, .static-content, .static-page-title, .photo-title-footer, .description, .meta, .comment-form, #pane-comments, .nav-links',
+            'selector' => '.ip-header-inside, #system-footer .inside, .ip-photo-wrap, #browse-grid, #justified-grid, .blogroll-canvas, .static-content, .static-page-title, .photo-title-footer, .description, .meta, .comment-form, #pane-comments, .nav-links',
             'property' => 'max-width'
         ],
 
@@ -437,15 +437,4 @@ return [
     'admin_styling' => "
         .metadata-selector-row { display: flex; justify-content: space-between; align-items: center; margin-top: -15px; margin-bottom: 50px; }
         .skin-switcher-form { display: flex; align-items: center; gap: 10px; }
-        .skin-switcher-form label { margin: 0 !important; }
-        .control-group-flex { display: flex; align-items: center; gap: 20px; }
-        .control-group-flex input { flex: 1; }
-        .active-val { width: 50px; text-align: right; font-family: monospace; }
-        .hex-display { font-family: monospace; }
-    ",
-
-    'community_comments'  => '1',
-    'community_likes'     => '1',
-    'community_reactions' => '0',
-];
-// ===== SNAPSMACK EOF =====
+        .skin-swit
