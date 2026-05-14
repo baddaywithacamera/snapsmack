@@ -456,7 +456,7 @@ if ($resource === 'stats' && $sub_action === 'daily' && $method === 'GET') {
                     WHERE s.is_bot = 0 AND s.image_id IS NOT NULL
                     GROUP BY s.image_id
                     ORDER BY view_count DESC
-                    LIMIT 10
+                    LIMIT 30
                 ");
             } else {
                 $img_stmt = $pdo->prepare("
@@ -471,7 +471,7 @@ if ($resource === 'stats' && $sub_action === 'daily' && $method === 'GET') {
                       AND s.hit_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
                     GROUP BY s.image_id
                     ORDER BY view_count DESC
-                    LIMIT 10
+                    LIMIT 30
                 ");
                 $img_stmt->execute([$days]);
             }
