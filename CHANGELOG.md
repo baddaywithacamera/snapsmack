@@ -12,6 +12,19 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.125 — "La-Z-Boy" (2026-05-14)
+
+### Added
+- **Masonry overhaul — core CMS now owns masonry layout** (`archive.php`): masonry is always rendered by the core engine first; skin `archive-layout.php` is only invoked for the thumbs path. All eligible skins automatically get masonry — no skin-side changes needed.
+- **Masonry image quality toggle** (`smack-appearance-archive.php`, `archive.php`): new "MASONRY IMAGE SOURCE" setting in Archive Appearance — ON (default) serves pre-generated aspect thumbnails (max 600px) for masonry instead of full-size images, eliminating scaling artifacts. Off reverts to full-size.
+- **Thumb regenerator in Maintenance** (`smack-maintenance.php`, `core/thumb-generator.php`): new "REGENERATE ALL THUMBNAILS" task batch-processes all published images (50/run, resumable), force-regenerates `t_` (300×300 square) and `a_` (600px aspect) thumbnails, updates DB, and reports any files missing from disk.
+- **Locked-skin manifest flags** (`skins/photogram/manifest.php`, `skins/the-grid/manifest.php`): both locked skins now carry `masonry_supported => false` — archive.php reads this flag to suppress the M button and force thumbs layout for those skins.
+- **Migration 062** (`migrations/062_masonry_thumb_quality.php`): sets `masonry_use_thumbs = '1'` for existing installs.
+
+### Changed
+- **`justified_row_height` consolidated under Archive Appearance** (`core/skin-settings.php`, `skins/new-horizon/manifest.php`, `skins/true-grit/manifest.php`): `justified_row_height` added to `$global_only` so Archive Appearance owns it; removed from new-horizon and true-grit manifests (Smooth Your Skin no longer has a competing slider for this).
+- **`masonry_use_thumbs` added to `$global_only`** (`core/skin-settings.php`): global archive setting; skin-scoped copies discarded.
+
 ## 0.7.124 — "La-Z-Boy" (2026-05-14)
 
 ### Fixed
@@ -2066,28 +2079,4 @@ _Internal bump. See 0.7.5b for the full feature set._
 
 ## 0.6.0 (2026-02)
 
-### Added
-- Self-update system with Ed25519 signing and dual admin notifications.
-- Setup bootstrap deployer (`setup.php`) and first-run install wizard (`install.php`).
-- Floating social profile dock with glass-morphism UI and appearance customisation.
-- Sticky header engine with glass-morphism transparency.
-- Full help system with table of contents, full-text search, and skin-specific topic hooks.
-- Backup, recovery, and export system with FTP support.
-- OAuth cloud push to Google Drive and OneDrive with persistent refresh tokens.
-- Formatting toolbar with live preview, columns, and dropcap support.
-- Release signing utility with Ed25519 verification.
-- Self-update version check with cron registration UI.
-- Skin gallery for browsing and installing skins.
-- Batch throttling for all bulk thumbnail and checksum operations.
-- Recovery system, schema enrichment, integrity tools, and .htaccess repair.
-- Rational Geo skin (NatGeo-inspired editorial magazine theme).
-- Pocket Operator mobile-first skin (doomscroll feed, hamburger nav, drawer UI).
-
-### Changed
-- Documentation standardisation pass across all files.
-- Hardened .htaccess with HTTPS redirect, security headers, and asset caching.
-- Installer appends to existing .htaccess instead of skipping.
-- Removed Picasa Web Albums skin.
-
-### Fixed
-- Preflight security holes in custom JPG handling (found in audits b
+### Add

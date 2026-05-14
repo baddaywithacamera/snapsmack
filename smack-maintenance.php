@@ -690,6 +690,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // THUMB REGENERATOR
+    // Force-regenerates sq_ and a_ thumbnails for all published images.
+    // Batched at 50 per run; safe to run multiple times (idempotent).
+    // Uses snapsmack_generate_thumbs() from core/thumb-generator.php.
+    if ($action === 'regen_thumbs') {
+        require_once __DIR__ . '/core/thumb-generator.php';
+        set_time_limit(300);
+        ini_set('memory_limit', '256M');
+
+        $batch_size = 50;
+        $offset = max(0, (int)($_POST['batch_offset'] ?? 0));
+
+        $total_images = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
+        $stmt = $pdo->prepare("SELECT id, img_file FROM snap_images WHERE img_status = 'published' ORDER BY id LIMIT ? OFFSET ?");
+        $stmt->bindValue(1, $batch_size, PDO::PARAM_INT);
+        $stmt->bindValue(2, $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        $batch = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $done = 0;
+        $skipped = [];
+        $update = $pdo->prepare("UPDATE snap_images SET img_thumb_square = ?, img_thumb_aspect = ?, img_width = ?, img_height = ? WHERE id = ?");
+
+        foreach ($batch as $img) {
+            $result = snapsmack_generate_thumbs($img['img_file'], __DIR__);
+            if ($result === false) {
+                $skipped[] = htmlspecialchars($img['img_file']);
+                continue;
+            }
+            $update->execute([
+                $result['sq_path'],
+                $result['asp_path'],
+                $result['width'],
+                $result['height'],
+                $img['id'],
+            ]);
+            $done++;
+        }
+
+        $next_offset = $offset + $batch_size;
+        $has_more = $next_offset < $total_images;
+        $batch_end = min($next_offset, $total_images);
+
+        $msg = "BATCH {$offset}–{$batch_end} of {$total_images}: Regenerated {$done} thumbnails.";
+        if ($skipped) {
+            $msg .= " Skipped " . count($skipped) . " (file not found on disk).";
+        }
+        if (!$has_more) {
+            $msg .= " <strong>ALL DONE.</strong>";
+        } else {
+            $msg .= " <strong>" . ($total_images - $batch_end) . " images remaining.</strong>";
+        }
+        $log[] = "SUCCESS: " . $msg;
+        if ($skipped) {
+            foreach ($skipped as $s) {
+                $log[] = "SKIPPED: " . $s;
+            }
+        }
+
+        $regen_thumbs_has_more    = $has_more;
+        $regen_thumbs_next_offset = $next_offset;
+        $regen_thumbs_total       = $total_images;
+    }
+
 $htaccess_view_content = $htaccess_view_content ?? '';
 $htaccess_view_label = $htaccess_view_label ?? '';
 $page_title = "System Maintenance";
@@ -792,48 +856,4 @@ include 'core/sidebar.php';
     <div class="dash-grid dash-grid-2 mt-30">
         <div class="box box-flex">
             <h3>HTACCESS DIAGNOSTICS</h3>
-            <p class="skin-desc-text">Verifies that root and upload directory .htaccess files contain all required SnapSmack rules — HTTPS, clean URLs, security headers, PHP blocking, Probe Guard, caching, and compression.</p>
-            <form method="POST">
-                <input type="hidden" name="action" value="htaccess_check">
-                <button type="submit" class="btn-smack btn-block">RUN CHECK</button>
-            </form>
-        </div>
-
-        <div class="box box-flex">
-            <h3>HTACCESS REPAIR</h3>
-            <p class="skin-desc-text">Strips any damaged SnapSmack block and writes a clean copy of all rules from <code>core/htaccess-template</code>. Preserves any non-SnapSmack rules added by your host. Restores upload directory PHP execution block.</p>
-            <form method="POST" onsubmit="return confirm('This will regenerate the SnapSmack .htaccess rules. Any manual edits inside the SnapSmack block will be replaced. Continue?')">
-                <input type="hidden" name="action" value="htaccess_repair">
-                <button type="submit" class="btn-smack btn-block">REPAIR</button>
-            </form>
-        </div>
-
-        <div class="box box-flex">
-            <h3>VIEW LIVE .HTACCESS</h3>
-            <p class="skin-desc-text">Shows the contents of this server's root <code>.htaccess</code> file. Read-only — useful for verifying what's actually deployed and comparing against the canonical template.</p>
-            <form method="POST">
-                <input type="hidden" name="action" value="htaccess_view_live">
-                <button type="submit" class="btn-smack btn-block">VIEW LIVE</button>
-            </form>
-        </div>
-
-        <div class="box box-flex">
-            <h3>VIEW TEMPLATE</h3>
-            <p class="skin-desc-text">Shows the canonical <code>core/htaccess-template</code> file shipped with SnapSmack. This is what REPAIR writes into the live <code>.htaccess</code>.</p>
-            <form method="POST">
-                <input type="hidden" name="action" value="htaccess_view_template">
-                <button type="submit" class="btn-smack btn-block">VIEW TEMPLATE</button>
-            </form>
-        </div>
-    </div>
-
-    <?php if (!empty($htaccess_view_content)): ?>
-    <div class="box mt-30">
-        <h3><?php echo htmlspecialchars($htaccess_view_label); ?></h3>
-        <pre style="background:#0c0c0c;color:#cfcfcf;padding:14px;border-radius:4px;overflow:auto;max-height:560px;font-family:monospace;font-size:12px;line-height:1.5;border:1px solid #2a2a2a;"><?php echo htmlspecialchars($htaccess_view_content); ?></pre>
-    </div>
-    <?php endif; ?>
-</div>
-
-<?php include 'core/admin-footer.php'; ?>
-<?php // ===== SNAPSMACK EOF =====
+            <p class="skin-desc-text">Verifies that root and upload directory .htaccess files contain all required SnapSmack rules — HTTPS, clean URLs, security headers, PHP blocking
