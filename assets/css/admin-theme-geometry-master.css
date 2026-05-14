@@ -1701,7 +1701,7 @@ input[type="range"]:active::-webkit-slider-thumb {
 .alert-error {
     background: #3b0d0d;
     border-color: #cc2222;
-    color: #ff8080 !important; /* theme overrides must not clobber error text */
+    color: #ff8080;
 }
 .alert-success {
     background: #0a2e12;
@@ -6876,4 +6876,5 @@ input[type="range"]:active::-webkit-slider-thumb {
 .btn-login { width: 100%; margin-top: 20px; }
 .tab-content { display: none; }
 .tab-content.active,
-.tab-content.tab-content--
+.tab-content.tab-content--active { display: block; }
+/* ===== SNAPSMACK EOF ===== */
