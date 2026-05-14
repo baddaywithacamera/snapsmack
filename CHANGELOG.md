@@ -12,6 +12,20 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.122 — "La-Z-Boy" (2026-05-13)
+
+### Fixed
+- **F1 help menu missing keyboard shortcuts on all single-image pages** — the
+  detection condition checked for `.image-stage` and `.single-image-page` CSS
+  classes that don't exist in any skin. Now checks for `#snap-nav-data`
+  (the element `index.php` always emits on post pages) and `window.SNAP_DATA`
+  as the primary signals. Affects all skins — arrow keys, spacebar, and other
+  per-page shortcuts now correctly appear in the F1 overlay.
+- **F1 help: `[ 1 ]` / `[ 2 ]` info/comment toggles hidden when not available** —
+  these keys require `window.smackdown.toggleFooter` (only present in skins that
+  wire it up). Gated on that check so they don't appear as phantom shortcuts in
+  Impact Printer and other skins that don't use smackdown.
+
 ## 0.7.121 — "La-Z-Boy" (2026-05-13)
 
 ### Changed

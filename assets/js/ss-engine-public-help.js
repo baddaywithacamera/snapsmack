@@ -51,6 +51,9 @@
 
     function buildShortcutList() {
         var sliderPresent  = !!document.querySelector('.ss-slider');
+        var singleImage    = !!document.getElementById('snap-nav-data')
+                          || !!(window.SNAP_DATA && (window.SNAP_DATA.prevUrl || window.SNAP_DATA.nextUrl))
+                          || !!document.querySelector('.image-stage, .single-image-page');
         var commentsBlock  = document.getElementById('show-comments') !== null
                           || document.querySelector('.comments-section, #snap-comments') !== null;
         var downloadAvail  = document.querySelector('.snap-download-btn, [data-download]') !== null;
@@ -63,13 +66,14 @@
         var rows = [];
 
         // Image / slider navigation (single-image, slideshow, lightbox)
-        if (document.querySelector('.image-stage, .single-image-page') ||
-            sliderPresent || lightboxAvail) {
+        if (singleImage || sliderPresent || lightboxAvail) {
             rows.push(['LEFT', sliderPresent ? 'Previous slide' : 'Previous image']);
             rows.push(['RIGHT', sliderPresent ? 'Next slide' : 'Next image']);
             if (!sliderPresent) rows.push(['SPACE', 'Previous image']);
-            rows.push(['[ 1 ]', 'Toggle info']);
-            if (commentsBlock) rows.push(['[ 2 ]', 'Toggle comments']);
+            if (window.smackdown && window.smackdown.toggleFooter) {
+                rows.push(['[ 1 ]', 'Toggle info']);
+                if (commentsBlock) rows.push(['[ 2 ]', 'Toggle comments']);
+            }
             if (downloadAvail) rows.push(['[ D ]', 'Download']);
         }
 
