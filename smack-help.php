@@ -1383,6 +1383,14 @@ data files and reclaims disk space after large deletions. Safe to run at any tim
 <p>Scans the image directory and regenerates any missing thumbnails. Also identifies
 database records that point to files that no longer exist on disk (orphaned records).</p>
 
+<h4>Regenerate Thumbnails</h4>
+<p>Force-regenerates <strong>all</strong> square (<code>t_</code>, 300×300px) and aspect
+(<code>a_</code>, max 600px) thumbnails for every published image. Unlike Asset Sync,
+this rebuilds thumbnails whether or not they already exist — useful after changing image
+source preferences or if thumbnails look soft in masonry view. Runs in batches of 50;
+click <strong>Continue</strong> after each batch to resume. Images missing from disk
+are skipped and listed so you can investigate.</p>
+
 <h4>Delete Orphaned Files</h4>
 <p>Removes physical image files that have no corresponding database record. These can
 appear after failed uploads or manual file deletions.</p>
@@ -1913,7 +1921,12 @@ depends heavily on the active skin, but most skins offer multiple layout options
     <li><strong>Square</strong> — uniform 1:1 ratio tiles in a clean grid.</li>
     <li><strong>Cropped</strong> — tiles maintain a constrained aspect ratio (max 3:2 or 2:3).</li>
     <li><strong>Masonry</strong> — full aspect-ratio images in justified rows, similar to
-    Flickr or 500px.</li>
+    Flickr or 500px. Available on all eligible skins; a small number of specialised skins
+    (Photogram, The Grid) are locked to their own grid and never offer masonry.
+    <strong>Image source</strong> is configurable in Archive Appearance: use pre-generated
+    aspect thumbnails (max 600px, default) for clean scaling, or full-size images if you
+    prefer. If masonry images look soft after switching, run <strong>Regenerate
+    Thumbnails</strong> in Maintenance.</li>
     <li><strong>Disabled</strong> — removes the Archive View link from the public navigation
     entirely. Direct visits to <code>archive.php</code> redirect to the homepage. Use this
     on single-page or coming-soon installs where you don't want the archive exposed.
@@ -3004,37 +3017,4 @@ foreach ($help_topics as $slug => $ht) {
 
             html += '<a href="smack-help.php?topic=' + encodeURIComponent(slug) + '" class="help-search-result">';
             html += '<div>' + (item.icon || '') + '&ensp;<strong>' + escapeHtml(item.title) + '</strong></div>';
-            html += '<div class="help-search-result-section">' + escapeHtml(item.section) + '</div>';
-            if (snippet) {
-                html += '<div class="help-search-result-snippet">' + snippet + '</div>';
-            }
-            html += '</a>';
-            count++;
-        }
-
-        if (count === 0) {
-            html = '<div class="help-search-no-results">No topics found for "' + escapeHtml(q) + '"</div>';
-        }
-
-        resultsDiv.innerHTML = html;
-    });
-
-    // Keyboard shortcut: / focuses search
-    document.addEventListener('keydown', function (e) {
-        if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-            e.preventDefault();
-            input.focus();
-            input.select();
-        }
-    });
-
-    function escapeHtml(str) {
-        var d = document.createElement('div');
-        d.textContent = str;
-        return d.innerHTML;
-    }
-})();
-</script>
-
-<?php include 'core/admin-footer.php'; ?>
-<?php // ===== SNAPSMACK EOF =====
+            html += '<div class="help-search-result-section">' + escapeHtml(item.section) + '</d
