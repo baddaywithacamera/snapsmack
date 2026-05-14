@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.121 — "La-Z-Boy" (2026-05-13)
+
+### Changed
+- **Fleet Stats — top 30 most viewed** — increased from 12 to 30 images in
+  the fleet-wide Most Viewed grid. API spoke query and hub query both bumped
+  from LIMIT 10 to LIMIT 30.
+
 ## 0.7.120 — "La-Z-Boy" (2026-05-13)
 
 ### Fixed

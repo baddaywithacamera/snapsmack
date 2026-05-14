@@ -221,7 +221,7 @@ try {
             FROM snap_stats s
             JOIN snap_images i ON i.id = s.image_id
             WHERE s.is_bot = 0 AND s.image_id IS NOT NULL
-            GROUP BY s.image_id ORDER BY view_count DESC LIMIT 10
+            GROUP BY s.image_id ORDER BY view_count DESC LIMIT 30
         ");
     } else {
         $hi_stmt = $pdo->prepare("
@@ -231,7 +231,7 @@ try {
             JOIN snap_images i ON i.id = s.image_id
             WHERE s.is_bot = 0 AND s.image_id IS NOT NULL
               AND s.hit_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-            GROUP BY s.image_id ORDER BY view_count DESC LIMIT 10
+            GROUP BY s.image_id ORDER BY view_count DESC LIMIT 30
         ");
         $hi_stmt->execute([$period]);
     }
@@ -328,9 +328,9 @@ foreach ($fleet_daily as $date => $day) {
 $non_zero_days = count(array_filter(array_column($fleet_daily, 'views'), fn($v) => $v > 0));
 $fleet_avg_daily = $non_zero_days > 0 ? round($fleet_total_views / $non_zero_days) : 0;
 
-// Cross-fleet top images — sort by views DESC, take top 12
+// Cross-fleet top images — sort by views DESC, take top 30
 usort($fleet_top_images, fn($a, $b) => $b['views'] - $a['views']);
-$fleet_top_images = array_slice($fleet_top_images, 0, 12);
+$fleet_top_images = array_slice($fleet_top_images, 0, 30);
 
 // Top referrers across the fleet
 $all_referrers = [];
