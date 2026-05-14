@@ -12,6 +12,23 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.126 — "La-Z-Boy" (2026-05-14)
+
+### Added
+- **Masonry image source toggle**: New *Archive Appearance* setting — masonry uses pre-generated aspect thumbnails (max 600px) instead of full-size images; faster load, lower bandwidth; defaults to ON (`masonry_use_thumbs`, migration 062)
+- **Regenerate All Thumbnails**: Maintenance action force-regenerates square + aspect thumbnails for every image via `core/thumb-generator.php`; overwrites existing thumbs so quality/size changes take effect immediately
+- **Skin masonry lock flag**: Skins can set `features['masonry_supported'] = false` in manifest to permanently disable masonry toggle — Photogram and The Grid locked
+
+### Changed
+- **`justified_row_height` is now global**: Owned by Archive Appearance only; removed from per-skin manifest option blocks; skin-scoped copies ignored via `$global_only` in `core/skin-settings.php`
+- **Layout dispatch restructure**: `archive.php` handles masonry in core; skin `archive-layout.php` invoked only for thumbs path
+- **Photogram / The Grid**: `masonry_supported = false` locked in manifests
+
+### Fixed
+- **Manifest error isolation**: All skin manifest `include`s wrapped in `try/catch \Throwable` — a broken non-active skin can no longer crash the admin or archive page
+- **`tools/check-eof.py`**: Uses `dd iflag=direct` to bypass CIFS page cache — now correctly detects truncated files instead of reading stale cached content
+- **`core/thumb-generator.php`**: Extracted shared thumbnail generation logic from `photo-editor-save.php`
+
 ## 0.7.125 — "La-Z-Boy" (2026-05-14)
 
 ### Added
