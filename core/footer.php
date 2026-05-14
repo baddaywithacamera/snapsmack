@@ -65,9 +65,13 @@ if ($theme_mode === 'on') {
     // Try to get the friendly name from the manifest
     $skin_manifest_path = __DIR__ . '/../skins/' . $skin_slug . '/manifest.php';
     if (file_exists($skin_manifest_path)) {
-        $skin_manifest_data = include $skin_manifest_path;
-        if (isset($skin_manifest_data['name'])) {
-            $skin_name = $skin_manifest_data['name'];
+        try {
+            $skin_manifest_data = include $skin_manifest_path;
+            if (is_array($skin_manifest_data) && isset($skin_manifest_data['name'])) {
+                $skin_name = $skin_manifest_data['name'];
+            }
+        } catch (\Throwable $e) {
+            error_log("SnapSmack: failed to load manifest {$skin_manifest_path} — " . $e->getMessage());
         }
     }
     $slots[] = 'THEME: ' . htmlspecialchars($skin_name);

@@ -12,6 +12,23 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.125 — "La-Z-Boy" (2026-05-14)
+
+### Added
+- **Masonry image source toggle**: New *Archive Appearance* setting — masonry can now use pre-generated aspect thumbnails (max 600px) instead of full-size images; faster load, lower bandwidth; defaults to ON for new installs (`masonry_use_thumbs`, migration 062)
+- **Regenerate All Thumbnails**: New maintenance action force-regenerates square + aspect thumbnails for every image via `core/thumb-generator.php`; overwrites existing thumbs so quality/size changes take effect immediately
+- **Skin masonry lock flag**: Skins can set `features['masonry_supported'] = false` in their manifest to permanently disable the masonry toggle and force the thumbs layout — used by Photogram and The Grid
+
+### Changed
+- **`justified_row_height` is now a global setting**: Owned by Archive Appearance only; removed from per-skin manifest option blocks (new-horizon, true-grit) — skin-scoped copies are ignored via `$global_only` in `core/skin-settings.php`
+- **Layout dispatch restructure**: `archive.php` now handles masonry rendering in core; skin `archive-layout.php` is invoked only for the thumbs path — skins without `archive-layout.php` fall back to the built-in cropped grid
+- **Photogram**: `masonry_supported = false`, `supports_wall = false` locked in manifest
+- **The Grid**: `masonry_supported = false` locked in manifest
+
+### Fixed
+- **`core/thumb-generator.php`**: Extracted shared thumbnail generation logic from `photo-editor-save.php` so maintenance and future tooling can call it without duplication
+- **`tools/check-eof.py`**: Falls back to `os.walk()` filesystem scan when `git ls-files` is unavailable (CIFS-mounted repos with corrupt index)
+
 ## 0.7.124 — "La-Z-Boy" (2026-05-14)
 
 ### Fixed
@@ -2090,4 +2107,16 @@ _Internal bump. See 0.7.5b for the full feature set._
 - Removed Picasa Web Albums skin.
 
 ### Fixed
-- Preflight security holes in custom JPG handling (found in audits b
+- Preflight security holes in custom JPG handling (found in audits by Claude and Gemini).
+- Google Drive share links auto-converted to direct downloads.
+- Various skin display bugs in New Horizon Dark and 50 Shades of Grey.
+
+---
+
+## 0.5.0 and earlier
+
+Initial development. Admin interface, theme system, per-skin settings scoping,
+sidebar redesign, admin theme CSS consolidation, comment controls, footer
+configuration, and foundational CMS architecture.
+
+<!-- ===== SNAPSMACK EOF ===== -->

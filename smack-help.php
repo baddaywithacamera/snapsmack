@@ -1383,6 +1383,12 @@ data files and reclaims disk space after large deletions. Safe to run at any tim
 <p>Scans the image directory and regenerates any missing thumbnails. Also identifies
 database records that point to files that no longer exist on disk (orphaned records).</p>
 
+<h4>Regenerate All Thumbnails</h4>
+<p>Force-regenerates square and aspect thumbnails for every image in the database,
+overwriting existing ones. Run this after changing thumbnail quality settings (such as
+the masonry image source setting in Archive Appearance) to apply the new sizes to all
+existing images. Processes in batches of 25 to avoid timeouts.</p>
+
 <h4>Delete Orphaned Files</h4>
 <p>Removes physical image files that have no corresponding database record. These can
 appear after failed uploads or manual file deletions.</p>
@@ -1913,7 +1919,8 @@ depends heavily on the active skin, but most skins offer multiple layout options
     <li><strong>Square</strong> — uniform 1:1 ratio tiles in a clean grid.</li>
     <li><strong>Cropped</strong> — tiles maintain a constrained aspect ratio (max 3:2 or 2:3).</li>
     <li><strong>Masonry</strong> — full aspect-ratio images in justified rows, similar to
-    Flickr or 500px.</li>
+    Flickr or 500px. By default uses pre-generated aspect thumbnails for faster loads;
+    toggle <em>Masonry Image Source</em> in Archive Appearance to switch to full-size images.</li>
     <li><strong>Disabled</strong> — removes the Archive View link from the public navigation
     entirely. Direct visits to <code>archive.php</code> redirect to the homepage. Use this
     on single-page or coming-soon installs where you don't want the archive exposed.
