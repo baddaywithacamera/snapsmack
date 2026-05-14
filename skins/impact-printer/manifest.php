@@ -437,4 +437,15 @@ return [
     'admin_styling' => "
         .metadata-selector-row { display: flex; justify-content: space-between; align-items: center; margin-top: -15px; margin-bottom: 50px; }
         .skin-switcher-form { display: flex; align-items: center; gap: 10px; }
-        .skin-swit
+        .skin-switcher-form label { margin: 0 !important; }
+        .control-group-flex { display: flex; align-items: center; gap: 20px; }
+        .control-group-flex input { flex: 1; }
+        .active-val { width: 50px; text-align: right; font-family: monospace; }
+        .hex-display { font-family: monospace; }
+    ",
+
+    'community_comments'  => '1',
+    'community_likes'     => '1',
+    'community_reactions' => '0',
+];
+// ===== SNAPSMACK EOF =====

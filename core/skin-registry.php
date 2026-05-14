@@ -139,6 +139,22 @@ function skin_registry_clear_cache(): void {
  *
  * @return array  ['slug' => ['name'=>..., 'version'=>..., 'status'=>...], ...]
  */
+/**
+ * Safely include a skin manifest.php without a fatal error on parse or
+ * runtime failures. Returns the manifest array, or [] on any error.
+ * Failures are written to the PHP error log for debugging.
+ */
+function snapsmack_load_manifest(string $path): array {
+    if (!file_exists($path)) return [];
+    try {
+        $m = include $path;
+        return is_array($m) ? $m : [];
+    } catch (\Throwable $e) {
+        error_log("SnapSmack: failed to load manifest {$path} — " . $e->getMessage());
+        return [];
+    }
+}
+
 function skin_registry_local(): array {
     $installed = [];
     $dirs = array_filter(glob(SKINS_DIR . '/*'), 'is_dir');
@@ -147,10 +163,8 @@ function skin_registry_local(): array {
         $slug = basename($dir);
         $manifest_path = $dir . '/manifest.php';
 
-        if (!file_exists($manifest_path)) continue;
-
-        $manifest = include $manifest_path;
-        if (!is_array($manifest)) continue;
+        $manifest = snapsmack_load_manifest($manifest_path);
+        if (!$manifest) continue;
 
         $installed[$slug] = [
             'name'        => $manifest['name'] ?? ucfirst($slug),

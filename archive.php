@@ -59,7 +59,13 @@ try {
     $_manifest_path = 'skins/' . $active_skin . '/manifest.php';
     $skin_show_archive_filter = true;
     if (file_exists($_manifest_path)) {
-        $_m = include $_manifest_path;
+        try {
+            $_m = include $_manifest_path;
+            if (!is_array($_m)) $_m = [];
+        } catch (\Throwable $_e) {
+            $_m = [];
+            error_log("SnapSmack: failed to load manifest {$_manifest_path} — " . $_e->getMessage());
+        }
         if (!empty($_m['features']['archive_layout_default'])) {
             $skin_layout_fallback = $_m['features']['archive_layout_default'];
         }
@@ -69,6 +75,9 @@ try {
         if (isset($_m['features']['archive_filter']) && $_m['features']['archive_filter'] === false) {
             $skin_show_archive_filter = false;
         }
+        // Locked skins (e.g. Photogram, The Grid) set masonry_supported => false to
+        // prevent the CMS from offering or rendering masonry for that skin.
+        $skin_masonry_locked = (isset($_m['features']['masonry_supported']) && $_m['features']['masonry_supported'] === false);
         unset($_m, $_manifest_path);
     }
     $archive_layout_default = $settings['archive_layout'] ?? $skin_layout_fallback;
