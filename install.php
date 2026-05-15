@@ -1168,7 +1168,7 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'custom_css_public'         => '',
                 'custom_css_admin'          => '',
                 'footer_injection_scripts'  => '',
-                'skin_registry_url'         => 'https://snapsmack.ca/skins/registry.json',
+                'skin_registry_url'         => 'https://snapsmack.ca/releases/skins/registry.json',
                 'site_description'          => '',
                 'albums_link_enabled'       => '0',
                 'community_enabled'         => '1',
