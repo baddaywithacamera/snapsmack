@@ -25,7 +25,7 @@ return [
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Silent film era. Deep black, aged paper mats, film grain, and every photograph run through a film stock filter. Square crop. It flickers.',
-    'status'      => 'stable',
+    'status'      => 'dev',
 
     'features' => [
         'supports_wall'    => false,
