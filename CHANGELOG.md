@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.128 — "La-Z-Boy" (2026-05-14)
+
+### Fixed
+- **Impact-printer masonry grid left-aligned**: Added `margin-left: auto; margin-right: auto` to `#justified-grid` so it centres within the content column. Works at full width now; once the manifest-compiled CSS adds `max-width: 1280px` (after skin re-save), the centred 1280px column will match all other page elements.
+- **Impact-printer T/M/C controls drifting left**: `alignDockedControls()` was positioning the controls relative to the grid's right edge, which is now shorter than the infobox after the overflow fix. Added `right: 0 !important` override in skin CSS to pin controls to the infobox right edge permanently.
+- **Impact-printer manifest missing `#justified-grid`**: Committed `skins/impact-printer/manifest.php` — the `main_canvas_width` selector already included `#justified-grid` locally but was never in git. Re-saving skin settings will now regenerate the CSS blob with `max-width: 1280px` on the masonry grid.
+
 ## 0.7.127 — "La-Z-Boy" (2026-05-14)
 
 ### Fixed

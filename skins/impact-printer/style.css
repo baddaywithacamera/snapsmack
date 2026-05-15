@@ -565,14 +565,24 @@ body.landing-only .ip-header-inside,
 /* --- JUSTIFIED / MASONRY GRID ------------------------------------------ */
 /* page-archive.css sets width:100% on #justified-grid; override here to     */
 /* respect the sprocket-hole padding on #page-wrapper.                       */
-/* max-width:100% + box-sizing keep the grid inside the sprocket margins.    */
-/* The manifest-compiled CSS may also set max-width:Xpx — both apply; the    */
-/* stricter constraint wins, which is correct at all viewport widths.        */
+/* max-width:100% keeps the grid inside the sprocket margins. margin:auto    */
+/* centres it once the manifest-compiled CSS adds a px max-width (1280px);   */
+/* both constraints apply simultaneously — the stricter one wins.            */
 #justified-grid {
     max-width: 100%;
-    box-sizing: border-box;
     margin-top: 40px;
     margin-bottom: 40px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* T/M/C controls: always pin to the right edge of the infobox on this skin.
+   alignDockedControls() calculates an offset based on grid width vs infobox
+   width; on impact-printer the grid fills the full content column so the
+   correct right position is simply 0. !important overrides the inline style
+   the JS writes.                                                             */
+.archive-controls--docked {
+    right: 0 !important;
 }
 #justified-grid .justified-item img {
     opacity: var(--ip-ink-opacity, 0.65);
