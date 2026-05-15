@@ -12,7 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.130 — "La-Z-Boy" (2026-05-14)
+## 0.7.131 — "La-Z-Boy" (2026-05-15)
+
+### Fixed
+- **Skin registry URL baked into install.php**: `install.php` was writing the wrong URL (`/skins/registry.json`) into `snap_settings` on every fresh install. Corrected to `/releases/skins/registry.json`.
+
+## 0.7.130 — "La-Z-Boy" (2026-05-15)
 
 ### Fixed
 - **Multisite hub version missing "Alpha" prefix**: Hub self-row was rendering `SNAPSMACK_VERSION_SHORT` (numeric only); changed to `SNAPSMACK_VERSION` so it matches what spokes report.
