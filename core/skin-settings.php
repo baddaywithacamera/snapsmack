@@ -38,6 +38,7 @@ function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): voi
         'site_name',
         'archive_layout',
         'thumb_size',
+        'browse_cols',
         'exif_display_enabled',
         // Archive/calendar settings are global (managed via Archive Appearance,
         // not per-skin). Skin-scoped stale copies must never override these.
@@ -48,9 +49,6 @@ function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): voi
         'calendar_side',
         'calendar_months',
         'calendar_post_count',
-        // Masonry settings -- global, managed via Archive Appearance.
-        'masonry_use_thumbs',
-        'justified_row_height',
     ];
 
     $prefix     = $skin_slug . '__';

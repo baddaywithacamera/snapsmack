@@ -32,9 +32,8 @@ return [
     'status'      => 'stable',
 
     'features' => [
-        'supports_wall'      => false,
-        'masonry_supported'  => false,
-        'archive_layouts'    => ['square'],
+        'supports_wall'    => true,
+        'archive_layouts'  => ['square'],
         'supports_slider'  => false,
         'has_landing'      => true,
         'post_modes'       => ['image'],

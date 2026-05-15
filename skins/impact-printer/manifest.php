@@ -82,7 +82,7 @@ return [
             'default'  => '1100',
             'min'      => '700',
             'max'      => '1600',
-            'selector' => '.ip-header-inside, #system-footer .inside, .ip-photo-wrap, #browse-grid, #justified-grid, .blogroll-canvas, .static-content, .static-page-title, .photo-title-footer, .description, .meta, .comment-form, #pane-comments, .nav-links',
+            'selector' => '.ip-header-inside, #system-footer .inside, .ip-photo-wrap, #browse-grid, .blogroll-canvas, .static-content, .static-page-title, .photo-title-footer, .description, .meta, .comment-form, #pane-comments, .nav-links',
             'property' => 'max-width'
         ],
 

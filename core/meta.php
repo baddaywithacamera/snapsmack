@@ -243,13 +243,7 @@ if (!isset($skin_manifest_path)) {
     $skin_manifest_path = dirname(__DIR__) . '/skins/' . ($active_skin ?? '50-shades-of-noah-grey') . '/manifest.php';
 }
 if (file_exists($skin_manifest_path)) {
-    try {
-        $_skin_mf = include $skin_manifest_path;
-        if (!is_array($_skin_mf)) $_skin_mf = [];
-    } catch (\Throwable $e) {
-        $_skin_mf = [];
-        error_log("SnapSmack: failed to load manifest {$skin_manifest_path} — " . $e->getMessage());
-    }
+    $_skin_mf   = include $skin_manifest_path;
     $_inventory = include __DIR__ . '/manifest-inventory.php';
     foreach ($_skin_mf['require_scripts'] ?? [] as $_handle) {
         $_entry = $_inventory['scripts'][$_handle] ?? [];
@@ -316,15 +310,7 @@ if (!empty($settings['lightbox_bg_opacity'])) {
 }
 
 // Calendar sidebar settings — injected when the smack-calendar engine is active.
-$_smack_skin_manifest = [];
-if (file_exists($skin_manifest_path)) {
-    try {
-        $_smack_skin_manifest_raw = include $skin_manifest_path;
-        if (is_array($_smack_skin_manifest_raw)) $_smack_skin_manifest = $_smack_skin_manifest_raw;
-    } catch (\Throwable $e) {
-        error_log("SnapSmack: failed to load manifest {$skin_manifest_path} — " . $e->getMessage());
-    }
-}
+$_smack_skin_manifest = file_exists($skin_manifest_path) ? (include $skin_manifest_path) : [];
 if (in_array('smack-calendar', $_smack_skin_manifest['require_scripts'] ?? [])) {
     $_smack_js_config['calendar'] = [
         'side'      => $settings['calendar_side']       ?? 'right',
