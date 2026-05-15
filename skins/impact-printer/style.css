@@ -563,13 +563,11 @@ body.landing-only .ip-header-inside,
    ========================================================================= */
 
 /* --- JUSTIFIED / MASONRY GRID ------------------------------------------ */
-/* page-archive.css sets width:100% on #justified-grid; override here to     */
-/* respect the sprocket-hole padding on #page-wrapper.                       */
-/* max-width:100% keeps the grid inside the sprocket margins. margin:auto    */
-/* centres it once the manifest-compiled CSS adds a px max-width (1280px);   */
-/* both constraints apply simultaneously — the stricter one wins.            */
+/* page-archive.css sets width:100% and the manifest blob sets max-width to  */
+/* the configured canvas width (default 1280px). Do NOT set max-width here   */
+/* — skin CSS loads after the blob and would override it. margin:auto        */
+/* centres the grid once max-width constrains it below the container width.  */
 #justified-grid {
-    max-width: 100%;
     margin-top: 40px;
     margin-bottom: 40px;
     margin-left: auto;
