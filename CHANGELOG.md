@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.129 — "La-Z-Boy" (2026-05-14)
+
+### Fixed
+- **Skin gallery registry URL wrong**: `SKIN_REGISTRY_DEFAULT_URL` pointed to `https://snapsmack.ca/skins/registry.json` but the Skin Packager writes to `releases/skins/`. Corrected to `https://snapsmack.ca/releases/skins/registry.json`.
+- **Chaplin skin marked stable**: Set to `dev` — skin is not release-ready.
+
 ## 0.7.128 — "La-Z-Boy" (2026-05-14)
 
 ### Fixed
