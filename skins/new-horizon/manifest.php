@@ -124,6 +124,17 @@ return [
             'property' => '--grid-cols'
         ],
 
+        'justified_row_height' => [
+            'section'  => 'ARCHIVE GRID',
+            'type'     => 'range',
+            'label'    => 'Justified Row Height (px)',
+            'default'  => '280',
+            'min'      => '150',
+            'max'      => '500',
+            'selector' => '#justified-grid',
+            'property' => '--justified-row-height'
+        ],
+
         /* ---------------------------------------------------------------------
            SECTION 3: FRAMING
            --------------------------------------------------------------------- */
