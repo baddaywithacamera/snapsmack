@@ -948,7 +948,7 @@ if (!empty($google_families)) {
     }
 
     // Fetch registry and local skin data
-    $registry_url = $settings['skin_registry_url'] ?? SKIN_REGISTRY_DEFAULT_URL;
+    $registry_url = SKIN_REGISTRY_DEFAULT_URL;
     $registry     = skin_registry_fetch($registry_url);
     $local_skins  = skin_registry_local();
 

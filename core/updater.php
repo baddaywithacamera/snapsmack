@@ -1635,10 +1635,7 @@ function updater_check_skin_registry(PDO $pdo): array {
     }
     require_once $registry_file;
 
-    // Get the registry URL from settings
-    $stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = 'skin_registry_url'");
-    $stmt->execute();
-    $registry_url = $stmt->fetchColumn() ?: SKIN_REGISTRY_DEFAULT_URL;
+    $registry_url = SKIN_REGISTRY_DEFAULT_URL;
 
     // Fetch remote registry
     $remote = skin_registry_fetch($registry_url);
