@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.134 — "La-Z-Boy" (2026-05-15)
+
+### Fixed
+- **Impact-printer masonry grid left-aligned**: `max-width: 100%` in skin CSS was loading after the manifest-compiled blob and overriding `max-width: 1280px`, leaving no space for `margin: auto` to centre. Removed `max-width` from skin CSS entirely — manifest value now applies and `margin: auto` centres the grid.
+
 ## 0.7.133 — "La-Z-Boy" (2026-05-15)
 
 ### Fixed
