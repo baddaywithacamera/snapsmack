@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
         $_POST['settings']['archive_layout'] = $_def;
 
         // Coerce checkboxes to '0'/'1'.
-        foreach (['archive_show_layout_toggle', 'archive_calendar_enabled', 'archive_calendar_default_open', 'masonry_use_thumbs'] as $_k) {
+        foreach (['archive_show_layout_toggle', 'archive_calendar_enabled', 'archive_calendar_default_open'] as $_k) {
             $_POST['settings'][$_k] = empty($_POST['settings'][$_k]) ? '0' : '1';
         }
 
@@ -149,7 +149,6 @@ if ($collections_rows !== 2) $collections_rows = 1;
 $current_cols   = max(2, min(8, (int)($settings['browse_cols'] ?? 4)));
 $current_gutter = (int)($settings['archive_gutter'] ?? 4);
 $current_row_h  = (int)($settings['justified_row_height'] ?? 220);
-$masonry_use_thumbs = isset($settings['masonry_use_thumbs']) ? !empty($settings['masonry_use_thumbs']) : true;
 
 // Thumbnail size — backwards-compat with old pixel values
 $size_steps   = ['xs' => 'XS — Extra Small', 's' => 'S — Small', 'm' => 'M — Medium', 'l' => 'L — Large', 'xl' => 'XL — Extra Large'];
@@ -264,14 +263,6 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                                oninput="this.nextElementSibling.textContent = this.value + 'px'">
                         <span style="min-width:44px; font-family:monospace;"><?php echo $current_row_h; ?>px</span>
                     </div>
-                </div>
-
-                <div class="lens-input-wrapper">
-                    <label>MASONRY IMAGE SOURCE <span class="field-tip" data-tip="When enabled, masonry uses smaller pre-generated thumbnails instead of full-size images. Faster load, lower bandwidth. Recommended.">ⓘ</span></label>
-                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                        <input type="checkbox" name="settings[masonry_use_thumbs]" value="1" <?php echo $masonry_use_thumbs ? 'checked' : ''; ?>>
-                        Use thumbnail images in masonry (recommended)
-                    </label>
                 </div>
 
                 <div class="lens-input-wrapper">

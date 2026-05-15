@@ -565,9 +565,12 @@ body.landing-only .ip-header-inside,
 /* --- JUSTIFIED / MASONRY GRID ------------------------------------------ */
 /* page-archive.css sets width:100% on #justified-grid; override here to     */
 /* respect the sprocket-hole padding on #page-wrapper.                       */
+/* max-width:100% + box-sizing keep the grid inside the sprocket margins.    */
+/* The manifest-compiled CSS may also set max-width:Xpx — both apply; the    */
+/* stricter constraint wins, which is correct at all viewport widths.        */
 #justified-grid {
+    max-width: 100%;
     box-sizing: border-box;
-    padding: 0 20px;
     margin-top: 40px;
     margin-bottom: 40px;
 }
@@ -1174,7 +1177,60 @@ body.landing-only .ip-header-inside,
     .site-title-text { font-size: 0.9rem !important; }
 }
 
-/* ── NAV DROPDOWN ───────────────────────────────────────────────────────────────────────────
-Requires ss-engine-nav-dropdown.js (loaded by core/footer.php when
-nav_menu_json is configured). Classes emitted by core/header.php renderer.
-──�                                                                                                                                                                      
+/* --- ARCHIVE CONTROLS — T / M / C BUTTONS ---------------------------------
+   Core page-archive.css sets font-weight:700 and system-ui. Override here
+   to match the DotMatrix body type and drop the bold weight.              */
+.archive-controls .alt-btn,
+.archive-layout-toggle .alt-btn,
+.archive-calendar-toggle {
+    font-family: 'DotMatrix', 'Courier New', monospace;
+    font-weight: normal;
+}
+
+/* ==========================================================================
+   NAV DROPDOWN
+   Requires ss-engine-nav-dropdown.js (loaded by core/footer.php when
+   nav_menu_json is configured). Classes emitted by core/header.php renderer.
+   ========================================================================= */
+
+.nav-has-children { position: relative; }
+
+.nav-submenu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 180px;
+    list-style: none;
+    margin: 0;
+    padding: 6px 0;
+    z-index: 500;
+    background: var(--nav-dropdown-bg, #111111);
+    border: 1px solid rgba(180,180,180,0.3);
+    border-radius: 2px;
+    font-family: 'DotMatrix', 'Courier New', monospace;
+}
+
+.nav-has-children:hover > .nav-submenu,
+.nav-has-children.open > .nav-submenu {
+    display: block;
+}
+
+.nav-submenu li { display: block; }
+
+.nav-submenu a,
+.nav-submenu span {
+    display: block;
+    padding: 7px 18px;
+    white-space: nowrap;
+    color: var(--nav-dropdown-text, #cccccc);
+    text-decoration: none;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    transition: opacity 0.15s;
+    opacity: 0.75;
+}
+
+.nav-submenu a:hover { opacity: 1; }
+
+/* ===== SNAPSMACK EOF ===== */

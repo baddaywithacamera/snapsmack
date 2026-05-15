@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.127 — "La-Z-Boy" (2026-05-14)
+
+### Fixed
+- **Archive layout toggle controls hidden / misaligned**: `alignDockedControls()` in `ss-engine-archive-toggle.js` used to select `#justified-grid` directly — in thumbs mode that element is `display:none` (zero-width BoundingClientRect), causing the right-offset calculation to push the T/M/C buttons off-screen. Now loops through `['.fsog-archive-grid', '#browse-grid', '#justified-grid']` and skips any element with zero visible width, so controls stay aligned in both thumbs and masonry mode across all skins.
+- **Archive layout toggle missing on some installs**: Migration 056 incorrectly set `archive_show_layout_toggle = '0'` for any site whose old `archive_layouts_available` contained only one layout family. New migration 063 corrects this to `'1'`.
+- **Impact-printer masonry grid overflow**: `#justified-grid` had no `max-width` constraint in `style.css`, so the masonry engine could expand it past the skin's sprocket-hole margins. Added `max-width: 100%; box-sizing: border-box` to the existing `#justified-grid` rule — grid now stays within the paper container at all canvas widths.
+
 ## 0.7.126 — "La-Z-Boy" (2026-05-14)
 
 ### Added

@@ -233,6 +233,17 @@ return [
             'property' => '--grid-cols'
         ],
 
+        'justified_row_height' => [
+            'section'  => 'ARCHIVE GRID',
+            'type'     => 'range',
+            'label'    => 'Justified Row Height (px)',
+            'default'  => '280',
+            'min'      => '150',
+            'max'      => '500',
+            'selector' => '#justified-grid',
+            'property' => '--justified-row-height'
+        ],
+
         'archive_aspect_ratio' => [
             'section'  => 'ARCHIVE GRID',
             'type'     => 'select',

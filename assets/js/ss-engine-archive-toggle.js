@@ -191,7 +191,13 @@
     // Align the docked controls to the right inner edge of the photo grid.
     function alignDockedControls(ctrls) {
         if (!ctrls || !ctrls.classList.contains('archive-controls--docked')) return;
-        var grid = document.querySelector('.fsog-archive-grid') || document.querySelector('#justified-grid');
+        // Find the first visible grid — skip display:none elements (zero-width rect).
+        var gridSelectors = ['.fsog-archive-grid', '#browse-grid', '#justified-grid'];
+        var grid = null;
+        for (var i = 0; i < gridSelectors.length; i++) {
+            var el = document.querySelector(gridSelectors[i]);
+            if (el && el.getBoundingClientRect().width > 0) { grid = el; break; }
+        }
         var infobox = document.getElementById('infobox');
         if (!grid || !infobox) return;
         var infoboxRect = infobox.getBoundingClientRect();

@@ -31,28 +31,6 @@ import re
 import os
 import fnmatch
 
-def read_nocache(abs_path: str) -> bytes:
-    """Read a file bypassing the OS page cache.
-
-    On CIFS/SMB mounts the kernel page cache can return stale (pre-truncation)
-    content even after a write — the cached bytes look correct while the actual
-    bytes on the server are truncated.  Using dd with iflag=direct forces the
-    read to come from the server rather than the cache.
-
-    Falls back to a normal read on filesystems that don't support O_DIRECT
-    (e.g. tmpfs, some virtual mounts) so the scanner stays usable everywhere.
-    """
-    result = subprocess.run(
-        ['dd', f'if={abs_path}', 'bs=65536', 'iflag=direct'],
-        capture_output=True,
-    )
-    if result.returncode == 0:
-        return result.stdout
-    # Fallback: normal read — accurate on non-CIFS filesystems.
-    with open(abs_path, 'rb') as fh:
-        return fh.read()
-
-
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Per extension: canonical long-form bottom marker. Short forms are no longer
@@ -133,36 +111,16 @@ def is_excluded(rel_path: str) -> bool:
 
 
 def get_tracked_files() -> list[str]:
-    """Return repo-relative paths of all source files.
-
-    Tries git ls-files first. If the git index is corrupt (common on CIFS
-    mounts), falls back to a plain filesystem walk so the scanner still runs.
-    The fallback skips .git/, vendor/, and node_modules/ automatically.
-    """
     result = subprocess.run(
         ['git', 'ls-files'],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True
     )
-    if result.returncode == 0 and result.stdout.strip():
-        return result.stdout.splitlines()
-
-    # Fallback: walk the filesystem.
-    print("WARNING: git ls-files unavailable (index corrupt?) — falling back to filesystem walk.")
-    skip_dirs = {'.git', 'vendor', 'node_modules', '__pycache__'}
-    files = []
-    for dirpath, dirnames, filenames in os.walk(REPO_ROOT):
-        # Prune in-place so os.walk won't descend into skipped dirs.
-        dirnames[:] = [d for d in dirnames if d not in skip_dirs]
-        for fname in filenames:
-            ext = os.path.splitext(fname)[1].lower()
-            if ext not in EXTENSIONS:
-                continue
-            abs_path = os.path.join(dirpath, fname)
-            rel_path = os.path.relpath(abs_path, REPO_ROOT).replace('\\', '/')
-            files.append(rel_path)
-    return files
+    if result.returncode != 0:
+        print("ERROR: git ls-files failed:", result.stderr)
+        sys.exit(1)
+    return result.stdout.splitlines()
 
 
 def check_file(rel_path: str) -> list[str]:
@@ -172,7 +130,7 @@ def check_file(rel_path: str) -> list[str]:
 
     abs_path = os.path.join(REPO_ROOT, rel_path)
     try:
-        data = read_nocache(abs_path)
+        data = open(abs_path, 'rb').read()
     except FileNotFoundError:
         return [f"  MISSING: file tracked in git but not on disk"]
 

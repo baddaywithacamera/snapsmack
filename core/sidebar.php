@@ -30,15 +30,8 @@ if (!empty($settings['active_skin'])) {
     $_sidebar_skin_slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $settings['active_skin']);
     $_sidebar_manifest_path = "skins/{$_sidebar_skin_slug}/manifest.php";
     if (file_exists($_sidebar_manifest_path)) {
-        try {
-            $_sidebar_manifest = include $_sidebar_manifest_path;
-        } catch (\Throwable $_e) {
-            $_sidebar_manifest = [];
-            error_log("SnapSmack: failed to load manifest {$_sidebar_manifest_path} — " . $_e->getMessage());
-        }
-        if (is_array($_sidebar_manifest)) {
-            $_sidebar_pimpotron = !empty($_sidebar_manifest['engines']['pimpotron']);
-        }
+        $_sidebar_manifest = include $_sidebar_manifest_path;
+        $_sidebar_pimpotron = !empty($_sidebar_manifest['engines']['pimpotron']);
     }
 }
 
