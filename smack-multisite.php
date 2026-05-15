@@ -658,7 +658,7 @@ include 'core/sidebar.php';
                                         —
                                     <?php endif; ?>
                                 </td>
-                                <td class="col-center" style="font-family:monospace; font-size:0.85rem;"><?php echo htmlspecialchars(SNAPSMACK_VERSION_SHORT); ?></td>
+                                <td class="col-center" style="font-family:monospace; font-size:0.85rem;"><?php echo htmlspecialchars(SNAPSMACK_VERSION); ?></td>
                                 <td class="col-center">
                                     <span class="status-dot status-dot--active" title="active"></span>
                                     <span class="status-label status-label--active">ACTIVE</span>
