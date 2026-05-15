@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.133 — "La-Z-Boy" (2026-05-15)
+
+### Fixed
+- **Skin registry URL DB override**: Stopped reading `skin_registry_url` from `snap_settings` entirely in `smack-skin.php` and `core/updater.php`. Both now use `SKIN_REGISTRY_DEFAULT_URL` directly. DB value cannot override it.
+
 ## 0.7.132 — "La-Z-Boy" (2026-05-15)
 
 ### Fixed
