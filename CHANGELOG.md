@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.132 — "La-Z-Boy" (2026-05-15)
+
+### Fixed
+- **Skin registry URL still wrong after migration 064**: Migration 064 used a conditional `WHERE setting_val = '...'` that silently did nothing if the stored value differed in any way, then marked itself applied — fix never landed. Migration 065 uses `LIKE '%snapsmack.ca%'` to catch any variation of the wrong URL and force-writes the correct value.
+
 ## 0.7.131 — "La-Z-Boy" (2026-05-15)
 
 ### Fixed
