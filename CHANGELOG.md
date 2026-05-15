@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.130 — "La-Z-Boy" (2026-05-14)
+
+### Fixed
+- **Multisite hub version missing "Alpha" prefix**: Hub self-row was rendering `SNAPSMACK_VERSION_SHORT` (numeric only); changed to `SNAPSMACK_VERSION` so it matches what spokes report.
+- **`core/constants.php` version stuck at 0.7.125**: `SNAPSMACK_VERSION` and `SNAPSMACK_VERSION_SHORT` were not being updated with each release. Bumped to current. These must be kept in sync with `sc-version.php` on every version bump.
+
 ## 0.7.129 — "La-Z-Boy" (2026-05-14)
 
 ### Fixed
