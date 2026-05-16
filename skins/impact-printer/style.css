@@ -563,15 +563,15 @@ body.landing-only .ip-header-inside,
    ========================================================================= */
 
 /* --- JUSTIFIED / MASONRY GRID ------------------------------------------ */
-/* page-archive.css sets width:100% and the manifest blob sets max-width to  */
-/* the configured canvas width (default 1280px). Do NOT set max-width here   */
-/* — skin CSS loads after the blob and would override it. margin:auto        */
-/* centres the grid once max-width constrains it below the container width.  */
+/* #scroll-stage is a column flex container with align-items:stretch, which  */
+/* pins flex children to the left even with margin:auto. align-self:center   */
+/* overrides stretch so the blob's max-width + width:100% (page-archive.css) */
+/* produce a centred, width-constrained grid. Do NOT set max-width here —    */
+/* skin CSS loads after the blob and would override it.                      */
 #justified-grid {
+    align-self: center;
     margin-top: 40px;
     margin-bottom: 40px;
-    margin-left: auto;
-    margin-right: auto;
 }
 
 /* T/M/C controls: always pin to the right edge of the infobox on this skin.
