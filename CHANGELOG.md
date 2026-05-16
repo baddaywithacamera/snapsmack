@@ -12,6 +12,17 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.140 — "La-Z-Boy" (2026-05-16)
+
+### Fixed
+- **Impact Printer masonry grid still left-aligned**: `page-archive.css` sets `width:100%` on `#justified-grid`. In a flex column container with `align-items:stretch`, centering a 100%-wide item does nothing — the previous `align-self:center` fix was ineffective for this reason. Replaced with `flex:0 0 auto` (opts out of stretch sizing) + `max-width:95%` + `margin:auto`, matching the pattern already used by the square/cropped grid and 50 Shades. Impact Printer skin bumped to 1.8.
+
+## 0.7.139 — "La-Z-Boy" (2026-05-16)
+
+### Changed
+- **Update page: styled file picker**: The manual upload "Choose File" button was a plain browser widget. Replaced with a styled button that matches the SnapSmack UI and shows the selected filename below it. Turns green when a file is chosen.
+- **Update page: Advanced Options toggle cleaner**: Dashed border and arrow marker make it more obviously a collapsed section rather than an inert heading.
+
 ## 0.7.138 — "La-Z-Boy" (2026-05-16)
 
 ### Changed
