@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.135 — "La-Z-Boy" (2026-05-15)
+
+### Fixed
+- **Calendar double-loading on 50 Shades / photowalk.ing**: `archive.php` used a relative path to load the skin manifest (`'skins/...'`). If `file_exists` resolved against a different CWD on the server, the manifest silently failed to load, `$skin_has_calendar` stayed `false`, and archive.php loaded `ss-engine-calendar.js` a second time after skin-footer.php already loaded it via `require_scripts`. Changed to absolute path (`__DIR__ . '/skins/...'`) consistent with `core/meta.php`.
+- **Smack Central session timeout at 20 minutes**: `ini_set('session.gc_maxlifetime')` is unreliable when server PHP GC runs at the default 1200s. Added a rolling `sc_expires_at` timestamp stored in the session itself — expiry now works independently of server GC config. Session stays alive for 8 hours of activity.
+- **Smack Central main content right gutter too wide**: `.sc-main` padding was `32px 48px`; changed horizontal padding to `20px` to match the sidebar nav gutter.
+
 ## 0.7.134 — "La-Z-Boy" (2026-05-15)
 
 ### Fixed
