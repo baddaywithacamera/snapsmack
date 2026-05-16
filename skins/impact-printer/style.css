@@ -563,15 +563,24 @@ body.landing-only .ip-header-inside,
    ========================================================================= */
 
 /* --- JUSTIFIED / MASONRY GRID ------------------------------------------ */
-/* #scroll-stage is a column flex container with align-items:stretch, which  */
-/* pins flex children to the left even with margin:auto. align-self:center   */
-/* overrides stretch so the blob's max-width + width:100% (page-archive.css) */
-/* produce a centred, width-constrained grid. Do NOT set max-width here —    */
-/* skin CSS loads after the blob and would override it.                      */
+/* page-archive.css sets width:100% on #justified-grid. In a flex column
+   container with align-items:stretch, the item fills 100% of the parent
+   width — centering a 100%-wide item does nothing. The fix (same pattern
+   as the square grid and 50 Shades): flex:0 0 auto opts out of stretch
+   sizing, max-width:95% gives margin:auto space to distribute, and the
+   blob's pixel max-width still constrains the single-image view and other
+   elements. The 95% cap for the masonry grid is intentional — it keeps
+   the grid narrower than the sprocket strips, matching the single-image
+   layout visually.                                                          */
+body.archive-page #scroll-stage {
+    overflow: visible;
+    flex: 1;
+}
+
 #justified-grid {
-    align-self: center;
-    margin-top: 40px;
-    margin-bottom: 40px;
+    flex: 0 0 auto;
+    max-width: 95%;
+    margin: 40px auto;
 }
 
 /* T/M/C controls: always pin to the right edge of the infobox on this skin.
