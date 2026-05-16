@@ -14,7 +14,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name' => 'Hip to be Square',
-    'version' => '1.2',
+    'version' => '1.3',
     'author' => 'Sean McCormick',
     'support' => 'sean@baddaywithacamera.ca',
     'description' => "It's hip to be square. Photorealistic gallery frames with a bold teal palette, bright yellow and cyan accents, and every image cropped to a perfect square — because sometimes it's cool to be a little unconventional. Fore!",
@@ -22,7 +22,7 @@ return [
 
     'features' => [
         'supports_wall' => false,
-        'archive_layouts' => ['square'],
+        'archive_layouts' => ['square', 'masonry'],
         'supports_slider' => true,
         'has_landing'     => true,
         'post_modes'      => ['image'],

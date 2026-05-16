@@ -29,7 +29,7 @@ foreach ($dm_keys as $k) {
 
 return [
     'name'          => 'Impact Printer',
-    'version'       => '1.6',
+    'version'       => '1.7',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Designed for photographers who enjoy using instant printer cameras that output on thermal paper. Continuous-feed tractor-feed paper textures, ASCII character borders, dithered halftone image rendering, faded ribbon ink. Two paper stocks: green-bar ledger and plain white.',
@@ -38,7 +38,7 @@ return [
 
     'features' => [
         'supports_wall'   => true,
-        'archive_layouts' => ['square', 'cropped'],
+        'archive_layouts' => ['square', 'cropped', 'masonry'],
         'has_landing'     => false,
         'post_modes'      => ['image'],
         'instagram_mode'  => false,

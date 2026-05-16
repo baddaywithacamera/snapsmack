@@ -12,6 +12,16 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.138 — "La-Z-Boy" (2026-05-16)
+
+### Changed
+- **Masonry added to all eligible skins**: 52 Card Pickup, A Grey Reckoning, Chaplin, Hip to be Square, and Impact Printer were all missing `masonry` from their `archive_layouts` feature declaration. All five updated — masonry layout option now appears in Archive Appearance for each. Skin versions bumped: 52 Card Pickup 1.2→1.3, A Grey Reckoning 1.2→1.3, Chaplin 1.2→1.3, Hip to be Square 1.2→1.3, Impact Printer 1.6→1.7.
+
+## 0.7.137 — "La-Z-Boy" (2026-05-16)
+
+### Changed
+- **Update page redesigned**: Page now auto-checks on every load — no manual Check button. Simple status card shows up-to-date or update-available at a glance with inline Apply button. Skin updates surface as first-class cards with one-click UPDATE buttons (no more bouncing to the gallery). Schema recovery appears at the top only when migrations are overdue; everything else (current install details, reapply, manual upload, cron, canonical diff) lives under a collapsed Advanced Options section.
+
 ## 0.7.136 — "La-Z-Boy" (2026-05-16)
 
 ### Fixed
