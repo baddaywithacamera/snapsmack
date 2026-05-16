@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.136 — "La-Z-Boy" (2026-05-16)
+
+### Fixed
+- **Impact Printer grid left-aligned after save**: `#scroll-stage` is a column flex container with `align-items: stretch`, which pins flex children to the left even with `max-width` + `margin: auto`. Added `align-self: center` to `#justified-grid` in style.css to pull it out of the stretch behaviour. Impact Printer skin bumped to 1.6.
+
 ## 0.7.135 — "La-Z-Boy" (2026-05-15)
 
 ### Fixed
