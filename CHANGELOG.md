@@ -12,11 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.145 — "La-Z-Boy" (2026-05-17)
+## 0.7.146 — "La-Z-Boy" (2026-05-17)
 
 ### Fixed
 - **smack-update.php truncated in 0.7.144**: Edit tool clobbered the file at line 1997, removing the auto-advance JS pipeline, admin footer include, and EOF marker. Restored from 0.7.143 with the PHP parse fix correctly re-applied.
 - **Skin install fails cross-device**: skin-registry.php used rename() to move skin staging dir from /tmp to web root. Fails with a warning on servers where /tmp and the web root are on different filesystems. Suppressed warning and fallback copy already handled it correctly.
+- **Auto-advance pipeline stalls after download**: form.submit() does not include the button name/value, so PHP received no action and the pipeline looped on the downloaded stage. Fixed by using nextBtn.click() instead.
+- **Auto-advance pipeline stalls after download**: form.submit() does not include the submit button's name/value, so PHP received no action and the pipeline looped on the downloaded stage. Fixed by using nextBtn.click() instead.
 - **Impact Printer T/M/C buttons still broken after 1.9 update**: manifest.php was bumped to 1.9 in 0.7.143 before style.css fix landed, so sites that updated to 0.7.143 already had "v1.9" with the broken CSS. Bumped to v2.0 so the skin updater offers the corrected version.
 
 ## 0.7.144 — "La-Z-Boy" (2026-05-17)
@@ -2220,26 +2222,4 @@ _Internal bump. See 0.7.5b for the full feature set._
 - Skin gallery for browsing and installing skins.
 - Batch throttling for all bulk thumbnail and checksum operations.
 - Recovery system, schema enrichment, integrity tools, and .htaccess repair.
-- Rational Geo skin (NatGeo-inspired editorial magazine theme).
-- Pocket Operator mobile-first skin (doomscroll feed, hamburger nav, drawer UI).
-
-### Changed
-- Documentation standardisation pass across all files.
-- Hardened .htaccess with HTTPS redirect, security headers, and asset caching.
-- Installer appends to existing .htaccess instead of skipping.
-- Removed Picasa Web Albums skin.
-
-### Fixed
-- Preflight security holes in custom JPG handling (found in audits by Claude and Gemini).
-- Google Drive share links auto-converted to direct downloads.
-- Various skin display bugs in New Horizon Dark and 50 Shades of Grey.
-
----
-
-## 0.5.0 and earlier
-
-Initial development. Admin interface, theme system, per-skin settings scoping,
-sidebar redesign, admin theme CSS consolidation, comment controls, footer
-configuration, and foundational CMS architecture.
-
-<!-- ===== SNAPSMACK EOF ===== -->
+- Rational Geo skin (NatGeo-inspired editorial magazine t
