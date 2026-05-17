@@ -1027,10 +1027,13 @@ span.dropcap {
 .signal-date { font-size: 0.7rem; color: var(--text-faint); margin-top: 5px; }
 .signals-empty { text-align: center; }
 
-/* ── NAV DROPDOWN ───────────────────────────────────────────────────────────────────────────
-Requires ss-engine-nav-dropdown.js (loaded by core/footer.php when
-nav_menu_json is configured). Classes emitted by core/header.php renderer.
-─────────────────────────────────────────────────────────────────────────── */
+
+/* ==========================================================================
+   NAV DROPDOWN
+   Requires ss-engine-nav-dropdown.js (loaded by core/footer.php when
+   nav_menu_json is configured). Classes emitted by core/header.php renderer.
+   ========================================================================= */
+
 .nav-has-children { position: relative; }
 
 .nav-submenu {
@@ -1043,7 +1046,7 @@ nav_menu_json is configured). Classes emitted by core/header.php renderer.
     margin: 0;
     padding: 6px 0;
     z-index: 500;
-    background: var(--nav-dropdown-bg, #000000);
+    background: var(--nav-dropdown-bg, #111111);
     border: 1px solid rgba(128,128,128,0.2);
     border-radius: 3px;
 }
@@ -1065,14 +1068,9 @@ nav_menu_json is configured). Classes emitted by core/header.php renderer.
     font-size: 0.8rem;
     letter-spacing: 0.05em;
     transition: opacity 0.15s;
+    opacity: 0.75;
 }
 
-.nav-submenu a:hover { opacity: 0.7; }
-
-/* Level-2 sub-submenu opens to the right */
-.nav-submenu .nav-has-children > .nav-submenu {
-    top: 0;
-    left: 100%;
-}
+.nav-submenu a:hover { opacity: 1; }
 
 /* ===== SNAPSMACK EOF ===== */
