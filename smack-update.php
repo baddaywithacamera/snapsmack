@@ -2044,13 +2044,14 @@ include 'core/sidebar.php';
     if (stageBox && !document.querySelector('.alert-danger')) {
         var nextBtn = stageBox.querySelector('.stage-next-btn button[type="submit"]');
         if (nextBtn && !nextBtn.disabled) {
-            nextBtn.disabled    = true;
             nextBtn.style.opacity = '0.35';
             var note = document.createElement('p');
             note.style.cssText  = 'font-size:0.72rem;opacity:0.4;margin-top:8px;font-family:monospace;letter-spacing:0.05em;';
             note.textContent    = 'AUTO-CONTINUING...';
             nextBtn.parentNode.appendChild(note);
-            setTimeout(function () { nextBtn.closest('form').submit(); }, 800);
+            // Use click() not form.submit() — form.submit() omits the button
+            // name/value so PHP receives no action and the pipeline stalls.
+            setTimeout(function () { nextBtn.click(); }, 800);
         }
     }
 })();
