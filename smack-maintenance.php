@@ -215,6 +215,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $asset_sync_next_offset = $next_offset;
     }
 
+
+    // REGENERATE ALL THUMBNAILS
+    // Force-regenerates square + aspect thumbs for every image in the DB using
+    // core/thumb-generator.php. Unlike sync_assets, this overwrites existing
+    // thumbs so quality settings (e.g. masonry_use_thumbs size) take effect.
+    if ($action === 'regen_thumbs') {
+        set_time_limit(120);
+        ini_set('memory_limit', '256M');
+        require_once __DIR__ . '/core/thumb-generator.php';
+
+        $batch_size = 25;
+        $offset     = max(0, (int)($_POST['batch_offset'] ?? 0));
+        $total      = (int)$pdo->query("SELECT COUNT(*) FROM snap_images")->fetchColumn();
+        $batch_end  = min($offset + $batch_size, $total);
+        $has_more   = $batch_end < $total;
+        $next_offset = $batch_end;
+
+        $images = $pdo->prepare("SELECT id, img_file FROM snap_images ORDER BY id LIMIT ? OFFSET ?");
+        $images->execute([$batch_size, $offset]);
+        $rows = $images->fetchAll(PDO::FETCH_ASSOC);
+
+        $upd = $pdo->prepare("UPDATE snap_images SET img_thumb_square=?, img_thumb_aspect=? WHERE id=?");
+        $done = 0;
+        $fail = 0;
+        foreach ($rows as $row) {
+            $result = snapsmack_generate_thumbs($row['img_file'], __DIR__);
+            if ($result) {
+                $upd->execute([$result['sq_path'], $result['asp_path'], $row['id']]);
+                $done++;
+            } else {
+                $fail++;
+            }
+        }
+
+        $msg = "BATCH {$offset}–{$batch_end} of {$total}: Regenerated {$done} thumbs.";
+        if ($fail)    $msg .= " {$fail} skipped (missing/unreadable source).";
+        if (!$has_more) $msg .= " <strong>ALL DONE.</strong>";
+        else            $msg .= " <strong>" . ($total - $batch_end) . " images remaining.</strong>";
+        $log[] = "SUCCESS: " . $msg;
+
+        $regen_thumbs_has_more    = $has_more;
+        $regen_thumbs_next_offset = $next_offset;
+    }
+
     // SCHEMA HEALTH CHECK
     // Diffs the live DB against the canonical target schema defined here.
     // Generates ALTER TABLE / CREATE TABLE SQL for anything missing and optionally runs it.
@@ -737,6 +781,24 @@ include 'core/sidebar.php';
                     <input type="hidden" name="action" value="sync_assets">
                     <input type="hidden" name="batch_offset" value="0">
                     <button type="submit" class="btn-smack btn-block">REBUILD</button>
+                </form>
+        </div>
+
+        <div class="box box-flex">
+            <h3>REGENERATE ALL THUMBNAILS</h3>
+            <p class="skin-desc-text">Force-regenerates square and aspect thumbnails for every image, overwriting existing ones. Use this after changing thumbnail quality settings.</p>
+            <?php if (!empty($regen_thumbs_has_more)): ?>
+                <form method="POST">
+                    <input type="hidden" name="action" value="regen_thumbs">
+                    <input type="hidden" name="batch_offset" value="<?php echo $regen_thumbs_next_offset; ?>">
+                    <button type="submit" class="btn-smack btn-block btn-backup">CONTINUE (BATCH <?php echo $regen_thumbs_next_offset; ?>+)</button>
+                </form>
+            <?php else: ?>
+                <form method="POST"
+                      onsubmit="return confirm('This will overwrite all existing thumbnails. Continue?')">
+                    <input type="hidden" name="action" value="regen_thumbs">
+                    <input type="hidden" name="batch_offset" value="0">
+                    <button type="submit" class="btn-smack btn-block">REGENERATE ALL THUMBNAILS</button>
                 </form>
             <?php endif; ?>
         </div>

@@ -284,6 +284,14 @@ include 'core/sidebar.php';
                 </div>
 
                 <div class="lens-input-wrapper">
+                <div class="lens-input-wrapper">
+                    <label>PUBLIC BLOGROLL <span class="field-tip" data-tip="Shows the public blogroll page at /blogroll.php. Disable to hide it entirely.">ⓘ</span></label>
+                    <select name="settings[blogroll_enabled]">
+                        <option value="1" <?php echo (($settings['blogroll_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
+                        <option value="0" <?php echo (($settings['blogroll_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED</option>
+                    </select>
+                </div>
+
                     <label>AI TRAINING CRAWLERS <span class="field-tip" data-tip="Controls robots.txt directives for GPTBot, ClaudeBot, CCBot, Google-Extended, and ByteSpider. Regenerated on save.">ⓘ</span></label>
                     <select name="settings[ai_training_policy]">
                         <option value="no_opinion" <?php echo (($settings['ai_training_policy'] ?? 'no_opinion') == 'no_opinion') ? 'selected' : ''; ?>>NO OPINION (DEFAULT)</option>
