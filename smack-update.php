@@ -37,6 +37,7 @@ define('SNAPSMACK_IS_UPDATER', true);
 
 require_once 'core/auth.php';
 require_once 'core/updater.php';
+require_once 'core/skin-registry.php';
 
 // Fallback for sites upgrading from < 0.7.4 where constants.php
 // doesn't yet define snap_version_compare().
@@ -68,7 +69,8 @@ if (!isset($cron_supported)) {
 if (empty($_SESSION['update_csrf'])) {
     $_SESSION['update_csrf'] = bin2hex(random_bytes(32));
 }
-$csrf = $_SESSION['update_csrf'];
+$csrf       = $_SESSION['update_csrf'];
+$auto_check = false; // set true when check is triggered automatically on page load
 
 // --- CURRENT VERSION ---
 $installed_version  = SNAPSMACK_VERSION_SHORT ?? '0.0';
@@ -376,6 +378,40 @@ if ($action === 'reapply') {
     }
 }
 
+// ── SKIN UPDATE ──────────────────────────────────────────────────────────────
+if ($action === 'skin_update') {
+    $slug         = $_POST['skin_slug']    ?? '';
+    $download_url = $_POST['download_url'] ?? '';
+    $signature    = $_POST['signature']    ?? '';
+    $public_key   = SNAPSMACK_RELEASE_PUBKEY;
+
+    if (empty($slug) || empty($download_url)) {
+        $flash_msg  = 'SKIN UPDATE FAILED: MISSING DATA. TRY CHECKING FOR UPDATES AGAIN.';
+        $flash_type = 'error';
+    } else {
+        $result = skin_registry_install($slug, $download_url, $signature, $public_key);
+        if ($result['success']) {
+            skin_registry_clear_cache();
+            $flash_msg  = strtoupper($result['message']);
+            $flash_type = 'success';
+        } else {
+            $flash_msg  = 'SKIN UPDATE FAILED: ' . strtoupper($result['message']);
+            $flash_type = 'error';
+        }
+    }
+    // Re-run check so the page reflects the new skin state
+    $action     = 'check';
+    $auto_check = true;
+}
+
+// ── AUTO-CHECK ON PAGE LOAD ───────────────────────────────────────────────────
+// Fires on every normal GET so the user sees a fresh result the moment they
+// land on the page — no manual "Check" button needed.
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && !$stage_state && !$action) {
+    $action     = 'check';
+    $auto_check = true;
+}
+
 if ($action === 'check') {
     $release_info = updater_fetch_release_info();
     $skin_info    = updater_check_skin_registry($pdo);
@@ -419,19 +455,23 @@ if ($action === 'check') {
     $stmt->execute([date('Y-m-d H:i:s')]);
     $last_check = date('Y-m-d H:i:s');
 
+    // Auto-check: only surface errors as flash — the status card shows everything else.
+    // Manual check: show a flash for all outcomes.
     if ($core_status === 'error') {
         $flash_msg  = 'COULD NOT REACH UPDATE SERVER. CHECK YOUR CONNECTION.';
         $flash_type = 'error';
-    } elseif ($core_status === 'up_to_date' && $skin_info['total_notifications'] === 0) {
-        $flash_msg  = 'SYSTEM IS UP TO DATE. NO NEW SKINS AVAILABLE.';
-        $flash_type = 'success';
-    } else {
-        $notifications = [];
-        if ($core_update) $notifications[] = "Core update available: v{$core_update['version']}";
-        if (count($skin_info['new_skins'])    > 0) $notifications[] = count($skin_info['new_skins'])    . " new skin(s) available";
-        if (count($skin_info['updated_skins']) > 0) $notifications[] = count($skin_info['updated_skins']) . " skin update(s) available";
-        $flash_msg  = strtoupper(implode(' — ', $notifications));
-        $flash_type = 'warning';
+    } elseif (!$auto_check) {
+        if ($core_status === 'up_to_date' && $skin_info['total_notifications'] === 0) {
+            $flash_msg  = 'SYSTEM IS UP TO DATE. NO NEW SKINS AVAILABLE.';
+            $flash_type = 'success';
+        } else {
+            $notifications = [];
+            if ($core_update) $notifications[] = "Core update available: v{$core_update['version']}";
+            if (count($skin_info['new_skins'])    > 0) $notifications[] = count($skin_info['new_skins'])    . " new skin(s) available";
+            if (count($skin_info['updated_skins']) > 0) $notifications[] = count($skin_info['updated_skins']) . " skin update(s) available";
+            $flash_msg  = strtoupper(implode(' — ', $notifications));
+            $flash_type = 'warning';
+        }
     }
 
     if ($wants_json) {
@@ -1354,6 +1394,51 @@ include 'core/sidebar.php';
     .update-action-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
     .update-action-row form { flex: 1; min-width: 180px; }
     .update-action-row .btn-smack { margin-top: 0; width: 100%; }
+
+    /* Status badge */
+    .update-status-badge {
+        font-size: 1rem; font-weight: bold; letter-spacing: 0.06em;
+        padding: 14px 18px; border-radius: 4px; border-left: 4px solid;
+    }
+    .status-ok        { background: rgba(40,120,40,0.12);  color: #5c5; border-color: #5c5; }
+    .status-available { background: rgba(200,160,0,0.1);   color: #da4; border-color: #da4; }
+    .status-error     { background: rgba(180,40,40,0.12);  color: #d55; border-color: #d55; }
+
+    /* Skin update button layout */
+    .skin-update-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .skin-update-row form { margin: 0; }
+    .btn-sm { padding: 6px 16px !important; font-size: 0.78rem !important; margin-top: 0 !important; }
+    .skin-new-notice { font-size: 0.85rem; opacity: 0.75; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+
+    /* File picker button */
+    .file-pick-btn {
+        display: inline-flex; align-items: center; cursor: pointer;
+        padding: 8px 18px; border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 3px; font-size: 0.78rem; letter-spacing: 0.08em;
+        background: rgba(255,255,255,0.05); transition: background 0.15s, border-color 0.15s;
+        user-select: none;
+    }
+    .file-pick-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.35); }
+    .file-pick-btn.has-file { border-color: rgba(100,200,100,0.5); color: #8d8; }
+
+    /* Advanced panel */
+    .update-advanced { margin-top: 0; }
+    .update-advanced > summary {
+        cursor: pointer; padding: 13px 20px;
+        background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15);
+        border-radius: 4px; font-size: 0.78rem; letter-spacing: 0.12em;
+        opacity: 0.5; list-style: none; user-select: none; margin-bottom: 0;
+        display: flex; align-items: center; gap: 10px;
+    }
+    .update-advanced > summary::-webkit-details-marker { display: none; }
+    .update-advanced > summary::before { content: '\25B6'; font-size: 0.6rem; transition: transform 0.2s; }
+    .update-advanced[open] > summary::before { content: '\25BC'; }
+    .update-advanced > summary { gap: 8px; }
+    .update-advanced > summary:hover { opacity: 0.8; background: rgba(255,255,255,0.05); }
+    .update-advanced[open] > summary {
+        margin-bottom: 0; border-radius: 4px 4px 0 0; opacity: 0.7;
+        border-bottom-style: solid; border-bottom-color: rgba(255,255,255,0.08);
+    }
 </style>
 
 <div class="main">
@@ -1367,54 +1452,46 @@ include 'core/sidebar.php';
     </div>
     <?php endif; ?>
 
-    <!-- CURRENT VERSION INFO -->
-    <div class="box update-section">
-        <h3>CURRENT INSTALLATION</h3>
-        <div class="stat-row">
-            <span class="label">VERSION:</span>
-            <span class="version-badge version-current"><?php echo htmlspecialchars($installed_full); ?></span>
-            <?php if (defined('SNAPSMACK_VERSION_CODENAME') && SNAPSMACK_VERSION_CODENAME): ?>
-                <span class="dim ml-10">&ldquo;<?php echo htmlspecialchars(SNAPSMACK_VERSION_CODENAME); ?>&rdquo;</span>
-            <?php endif; ?>
-        </div>
-        <div class="stat-row mt-20">
-            <span class="label">LAST CHECK:</span>
-            <span class="value"><?php echo $last_check ? date('M j, Y g:ia', strtotime($last_check)) : 'NEVER'; ?></span>
-        </div>
-        <div class="stat-row mt-20">
-            <span class="label">SIGNING:</span>
-            <span class="value"><?php echo (defined('SNAPSMACK_SIGNING_ENFORCED') && SNAPSMACK_SIGNING_ENFORCED) ? 'ENFORCED' : 'ADVISORY (PLACEHOLDER KEY)'; ?></span>
-        </div>
-        <div class="update-action-row mt-25">
-            <form method="POST">
-                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                <button type="submit" name="action" value="check" class="btn-smack">CHECK FOR UPDATES NOW</button>
-            </form>
-            <form method="POST">
-                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                <button type="submit" name="action" value="reapply" class="btn-smack"
-                        onclick="return confirm('Reapply v<?php echo htmlspecialchars($installed_version); ?>? This will re-download and re-extract all files.\n\nUse this if a release was packaged incorrectly or files were missed.');"
-                        style="background:#666;">REAPPLY CURRENT VERSION</button>
-            </form>
-            <form method="POST">
-                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                <button type="submit" name="action" value="reset_update_state" class="btn-smack btn-secondary"
-                        onclick="return confirm('Reset all update state and re-sync installed version from constants.php?');"
-                        style="font-size:0.75rem;opacity:0.6;">RESET UPDATE STATE</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- REPAIR SIGNING KEY PANEL — shown when a signature failure has just occurred -->
     <?php
-    $sig_failure      = isset($flash_msg) && stripos($flash_msg, 'signature') !== false && stripos($flash_msg, 'failed') !== false;
+    // ── Pre-compute all values needed in this section ────────────────────────
+    $sig_failure      = !empty($flash_msg) && stripos($flash_msg, 'signature') !== false && stripos($flash_msg, 'failed') !== false;
     $pending_rotation = $_SESSION['pending_key_rotation'] ?? null;
+
+    $migration_status     = updater_migration_status($pdo);
+    $schema_resync_result = null;
+    if (!empty($_SESSION['schema_resync_result'])) {
+        $schema_resync_result = $_SESSION['schema_resync_result'];
+        unset($_SESSION['schema_resync_result']);
+    }
+    $has_ghosts  = !empty($migration_status['ghosts']);
+    $has_pending = !empty($migration_status['pending']);
+    $applied_map = [];
+    foreach ($migration_status['applied'] as $row) {
+        $applied_map[$row['migration']] = $row['applied_at'];
+    }
+    $pending_rows         = array_filter(UPDATER_KNOWN_MIGRATIONS, fn($n) => !isset($applied_map[$n]));
+    $show_migration_table = !empty($pending_rows) || !empty($migration_status['ghosts']);
+
+    $canonical_diff  = null;
+    $canonical_apply = null;
+    if (!empty($_SESSION['canonical_diff_result'])) {
+        $canonical_diff = $_SESSION['canonical_diff_result'];
+    }
+    if (!empty($_SESSION['canonical_apply_result'])) {
+        $canonical_apply = $_SESSION['canonical_apply_result'];
+        unset($_SESSION['canonical_apply_result']);
+    }
+    $has_canonical_url = !empty($cached_result['canonical_schema_url']);
+    $has_canonical_sig = !empty($cached_result['canonical_schema_sig']);
     ?>
-    <?php if ($sig_failure || $pending_rotation || isset($_GET['repair_key'])): ?>
+
+    <!-- EMERGENCY: REPAIR SIGNING KEY — always outside Advanced when triggered -->
+    <?php
+    if ($sig_failure || $pending_rotation || isset($_GET['repair_key'])):
+    ?>
     <div class="box update-section" id="repair-key-panel" style="border-color:#c00;">
 
         <?php if ($pending_rotation): ?>
-        <!-- Root-key-signed rotation available — no manual paste needed -->
         <h3 style="color:#fa0;">&#9888; KEY ROTATION DETECTED</h3>
         <p class="dim" style="font-size:0.8rem;margin-bottom:12px;">
             A key rotation announcement was fetched from <code>snapsmack.ca</code> and verified
@@ -1443,7 +1520,6 @@ include 'core/sidebar.php';
         </form>
 
         <?php else: ?>
-        <!-- Manual fallback — no rotation file found on server -->
         <h3 style="color:#c00;">&#9888; REPAIR SIGNING KEY</h3>
         <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
             The installed public key does not match the key used to sign this release.
@@ -1471,226 +1547,6 @@ include 'core/sidebar.php';
     </div>
     <?php endif; ?>
 
-    <!-- SCHEMA RECOVERY PANEL -->
-    <?php
-    $migration_status   = updater_migration_status($pdo);
-    $schema_resync_result = null;
-    if (!empty($_SESSION['schema_resync_result'])) {
-        $schema_resync_result = $_SESSION['schema_resync_result'];
-        unset($_SESSION['schema_resync_result']);
-    }
-    $has_ghosts  = !empty($migration_status['ghosts']);
-    $has_pending = !empty($migration_status['pending']);
-    ?>
-    <div class="box update-section">
-        <h3>SCHEMA RECOVERY</h3>
-        <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
-            Run a schema sync or inspect migration state without running a full update.
-            Use these tools after a failed update or when bringing an older install current manually.
-        </p>
-
-        <?php if ($schema_resync_result): ?>
-        <div style="margin-bottom:16px;">
-            <?php if (!empty($schema_resync_result['created'])): ?>
-                <div style="font-family:monospace;font-size:0.78rem;margin-bottom:6px;">TABLES CREATED:</div>
-                <?php foreach ($schema_resync_result['created'] as $t): ?>
-                    <code style="display:block;padding:2px 10px;font-size:0.75rem;opacity:0.85;">+ <?php echo htmlspecialchars($t); ?></code>
-                <?php endforeach; ?>
-            <?php endif; ?>
-            <?php if (!empty($schema_resync_result['columns_added'])): ?>
-                <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;">COLUMNS ADDED:</div>
-                <?php foreach ($schema_resync_result['columns_added'] as $c): ?>
-                    <code style="display:block;padding:2px 10px;font-size:0.75rem;opacity:0.85;">+ <?php echo htmlspecialchars($c); ?></code>
-                <?php endforeach; ?>
-            <?php endif; ?>
-            <?php if (!empty($schema_resync_result['errors'])): ?>
-                <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;color:#c44;">ERRORS:</div>
-                <?php foreach ($schema_resync_result['errors'] as $e): ?>
-                    <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#c44;">✗ <?php echo htmlspecialchars($e); ?></code>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
-        <?php endif; ?>
-
-        <?php if ($has_ghosts): ?>
-        <div class="update-warning" style="margin-bottom:16px;">
-            <strong>GHOST FILES DETECTED</strong> — The following migration files are on disk but are not part of any official release.
-            The updater will skip them automatically, but they should be removed to keep the directory clean.<br><br>
-            <?php foreach ($migration_status['ghosts'] as $g): ?>
-                <code style="display:block;margin-top:4px;font-size:0.8rem;" class="migration-ghost">⚠ <?php echo htmlspecialchars($g); ?></code>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
-
-        <?php
-        $applied_map = [];
-        foreach ($migration_status['applied'] as $row) {
-            $applied_map[$row['migration']] = $row['applied_at'];
-        }
-        $pending_rows = array_filter(UPDATER_KNOWN_MIGRATIONS, fn($n) => !isset($applied_map[$n]));
-        $show_table   = !empty($pending_rows) || !empty($migration_status['ghosts']);
-        ?>
-
-        <?php if ($show_table): ?>
-        <table class="recovery-table">
-            <thead>
-                <tr><th>MIGRATION</th><th>STATUS</th><th>APPLIED AT</th></tr>
-            </thead>
-            <tbody>
-            <?php foreach ($pending_rows as $name): ?>
-                <tr>
-                    <td><?php echo htmlspecialchars($name); ?></td>
-                    <td class="migration-pending">— PENDING</td>
-                    <td>—</td>
-                </tr>
-            <?php endforeach; ?>
-            <?php foreach ($migration_status['ghosts'] as $name): ?>
-                <tr>
-                    <td><?php echo htmlspecialchars($name); ?></td>
-                    <td class="migration-ghost">⚠ GHOST</td>
-                    <td>—</td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
-        <?php else: ?>
-        <p class="migration-ok" style="font-size:0.85rem; margin-bottom:16px;">✓ All <?php echo count($migration_status['applied']); ?> migrations applied. No pending work.</p>
-        <?php endif; ?>
-
-        <div class="recovery-actions">
-            <form method="POST">
-                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                <button type="submit" name="action" value="schema_resync" class="btn-smack">RUN SCHEMA SYNC</button>
-            </form>
-            <?php if ($has_pending): ?>
-            <form method="POST">
-                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                <button type="submit" name="action" value="mark_migrations_applied" class="btn-smack btn-secondary"
-                        onclick="return confirm('Mark all known migrations as applied without running them?\n\nOnly do this if you have already applied the schema changes manually (e.g. via cPanel SQL).');"
-                        style="font-size:0.75rem;">MARK ALL MIGRATIONS APPLIED</button>
-            </form>
-            <?php endif; ?>
-            <?php if ($has_ghosts):
-                $ghost_count = count($migration_status['ghosts']); ?>
-            <form method="POST">
-                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                <button type="submit" name="action" value="purge_ghosts" class="btn-smack btn-secondary"
-                        onclick="return confirm('Permanently delete <?php echo $ghost_count; ?> ghost migration file(s) from disk?\n\nThese files are not part of any official release and will never be run by the updater.');"
-                        style="font-size:0.75rem;">PURGE GHOST FILES</button>
-            </form>
-            <?php endif; ?>
-        </div>
-        <?php if ($has_pending): ?>
-        <p class="dim" style="font-size:0.72rem;margin-top:10px;">
-            &ldquo;Mark All Applied&rdquo; records all known migrations without running their SQL.
-            Use this after running a manual recovery SQL file in cPanel.
-        </p>
-        <?php endif; ?>
-    </div>
-
-    <!-- CANONICAL SCHEMA DIFF PANEL -->
-    <?php
-    $canonical_diff   = null;
-    $canonical_apply  = null;
-    if (!empty($_SESSION['canonical_diff_result'])) {
-        $canonical_diff = $_SESSION['canonical_diff_result'];
-        // Keep in session until user applies or navigates away
-    }
-    if (!empty($_SESSION['canonical_apply_result'])) {
-        $canonical_apply = $_SESSION['canonical_apply_result'];
-        unset($_SESSION['canonical_apply_result']);
-    }
-    $has_canonical_url = !empty($cached_result['canonical_schema_url']);
-    $has_canonical_sig = !empty($cached_result['canonical_schema_sig']);
-    ?>
-    <div class="box update-section">
-        <h3>CANONICAL SCHEMA DIFF</h3>
-        <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
-            Fetches <em>snapsmack_canonical.sql</em> from the release server and
-            compares it against your live database. This is the same check the
-            auto-updater runs — catches missing tables or columns including cases
-            where an update failed before the on-disk copy was replaced.
-            <?php if ($has_canonical_url && $has_canonical_sig): ?>
-                <span style="color:#0f0;"> &mdash; Remote URL + signature available.</span>
-            <?php elseif ($has_canonical_url): ?>
-                <span style="color:#fa0;"> &mdash; Remote URL available (no signature).</span>
-            <?php else: ?>
-                <span style="opacity:0.5;"> &mdash; No remote URL in manifest; will use on-disk copy.</span>
-            <?php endif; ?>
-        </p>
-
-        <?php if ($canonical_apply): ?>
-        <div style="margin-bottom:16px;">
-            <?php if (!empty($canonical_apply['created'])): ?>
-                <div style="font-family:monospace;font-size:0.78rem;margin-bottom:6px;">TABLES CREATED:</div>
-                <?php foreach ($canonical_apply['created'] as $t): ?>
-                    <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#0f0;">+ <?php echo htmlspecialchars($t); ?></code>
-                <?php endforeach; ?>
-            <?php endif; ?>
-            <?php if (!empty($canonical_apply['columns_added'])): ?>
-                <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;">COLUMNS ADDED:</div>
-                <?php foreach ($canonical_apply['columns_added'] as $c): ?>
-                    <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#0f0;">+ <?php echo htmlspecialchars($c); ?></code>
-                <?php endforeach; ?>
-            <?php endif; ?>
-            <?php if (!empty($canonical_apply['errors'])): ?>
-                <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;color:#c44;">ERRORS:</div>
-                <?php foreach ($canonical_apply['errors'] as $e): ?>
-                    <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#c44;">✗ <?php echo htmlspecialchars($e); ?></code>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
-        <?php endif; ?>
-
-        <?php if ($canonical_diff && !$canonical_diff['all_ok']): ?>
-        <div style="margin-bottom:16px;">
-            <div style="font-family:monospace;font-size:0.75rem;opacity:0.6;margin-bottom:10px;">
-                SOURCE: <?php echo strtoupper(htmlspecialchars($canonical_diff['source'])); ?>
-                &nbsp;&mdash;&nbsp;
-                <?php echo (int)$canonical_diff['canonical_tables']; ?> TABLE(S) IN CANONICAL SCHEMA
-            </div>
-            <?php if (!empty($canonical_diff['missing_tables'])): ?>
-                <div style="font-family:monospace;font-size:0.78rem;margin-bottom:6px;color:#fa0;">MISSING TABLES:</div>
-                <?php foreach ($canonical_diff['missing_tables'] as $t): ?>
-                    <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#fa0;">✗ <?php echo htmlspecialchars($t); ?></code>
-                <?php endforeach; ?>
-            <?php endif; ?>
-            <?php if (!empty($canonical_diff['missing_columns'])): ?>
-                <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;color:#fa0;">MISSING COLUMNS:</div>
-                <?php foreach ($canonical_diff['missing_columns'] as $item): ?>
-                    <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#fa0;">
-                        ✗ <?php echo htmlspecialchars($item['table'] . '.' . $item['column']); ?>
-                    </code>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
-        <?php elseif ($canonical_diff && $canonical_diff['all_ok']): ?>
-        <div style="font-family:monospace;font-size:0.78rem;color:#0f0;margin-bottom:16px;">
-            ✓ DATABASE MATCHES CANONICAL SCHEMA
-            (<?php echo (int)$canonical_diff['canonical_tables']; ?> tables,
-            source: <?php echo strtoupper(htmlspecialchars($canonical_diff['source'])); ?>)
-        </div>
-        <?php endif; ?>
-
-        <div class="recovery-actions">
-            <form method="POST">
-                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                <button type="submit" name="action" value="canonical_diff" class="btn-smack">
-                    CHECK CANONICAL SCHEMA
-                </button>
-            </form>
-            <?php if ($canonical_diff && !$canonical_diff['all_ok']): ?>
-            <form method="POST">
-                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                <button type="submit" name="action" value="apply_canonical_diff" class="btn-smack"
-                        onclick="return confirm('Apply all missing tables and columns from the canonical schema?\nThis is safe — operations are idempotent.');">
-                    APPLY ALL MISSING
-                </button>
-            </form>
-            <?php endif; ?>
-        </div>
-    </div>
-
     <!-- COMPLETED UPDATE LOG -->
     <?php if ($complete_log): ?>
     <div class="box update-section">
@@ -1698,7 +1554,7 @@ include 'core/sidebar.php';
         <div class="step-log">
             <?php foreach ($complete_log as $step): ?>
             <div class="step-row step-<?php echo $step['status']; ?>">
-                <span class="step-icon"><?php echo $step['status'] === 'ok' ? '✓' : '✗'; ?></span>
+                <span class="step-icon"><?php echo $step['status'] === 'ok' ? '&#10003;' : '&#10007;'; ?></span>
                 <span><?php echo htmlspecialchars($step['label']); ?></span>
                 <?php if ($step['detail']): ?>
                     <span class="step-detail"><?php echo htmlspecialchars($step['detail']); ?></span>
@@ -1716,7 +1572,7 @@ include 'core/sidebar.php';
         <div class="step-log">
             <?php foreach ($update_result as $step): ?>
             <div class="step-row step-<?php echo $step['status']; ?>">
-                <span class="step-icon"><?php echo $step['status'] === 'ok' ? '✓' : '✗'; ?></span>
+                <span class="step-icon"><?php echo $step['status'] === 'ok' ? '&#10003;' : '&#10007;'; ?></span>
                 <span><?php echo htmlspecialchars($step['label']); ?></span>
                 <?php if ($step['detail']): ?>
                     <span class="step-detail"><?php echo htmlspecialchars($step['detail']); ?></span>
@@ -1737,17 +1593,16 @@ include 'core/sidebar.php';
     </div>
     <?php endif; ?>
 
-    <!-- STAGED UPDATE IN PROGRESS -->
+    <!-- UPDATE IN PROGRESS (staged pipeline) -->
     <?php if ($stage_state): ?>
     <?php $stage = $stage_state['stage'] ?? ''; ?>
     <div class="stage-box" id="stage-box">
-        <h3>UPDATE IN PROGRESS — <?php echo strtoupper($stage); ?></h3>
+        <h3>UPDATE IN PROGRESS &mdash; <?php echo strtoupper($stage); ?></h3>
 
-        <!-- Accumulated log -->
         <div class="step-log">
             <?php foreach (($stage_state['log'] ?? []) as $step): ?>
             <div class="step-row step-<?php echo $step['status']; ?>">
-                <span class="step-icon"><?php echo $step['status'] === 'ok' ? '✓' : '✗'; ?></span>
+                <span class="step-icon"><?php echo $step['status'] === 'ok' ? '&#10003;' : '&#10007;'; ?></span>
                 <span><?php echo htmlspecialchars($step['label']); ?></span>
                 <?php if ($step['detail']): ?>
                     <span class="step-detail"><?php echo htmlspecialchars($step['detail']); ?></span>
@@ -1757,28 +1612,26 @@ include 'core/sidebar.php';
         </div>
 
         <?php if ($flash_type !== 'error'): ?>
-        <!-- Next stage button -->
         <form method="POST" class="stage-next-btn">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
             <?php if ($stage === 'review'): ?>
-                <button type="submit" name="action" value="stage_download" class="btn-smack">APPLY →</button>
+                <button type="submit" name="action" value="stage_download" class="btn-smack">APPLY &rarr;</button>
             <?php elseif ($stage === 'downloaded'): ?>
-                <button type="submit" name="action" value="stage_verify" class="btn-smack">VERIFY PACKAGE →</button>
+                <button type="submit" name="action" value="stage_verify" class="btn-smack">VERIFY PACKAGE &rarr;</button>
             <?php elseif ($stage === 'verified'): ?>
-                <button type="submit" name="action" value="stage_backup" class="btn-smack">CREATE BACKUP →</button>
+                <button type="submit" name="action" value="stage_backup" class="btn-smack">CREATE BACKUP &rarr;</button>
             <?php elseif ($stage === 'backed_up'): ?>
-                <button type="submit" name="action" value="stage_premigrate" class="btn-smack">PATCH DATABASE →</button>
+                <button type="submit" name="action" value="stage_premigrate" class="btn-smack">PATCH DATABASE &rarr;</button>
             <?php elseif ($stage === 'premigrated'): ?>
-                <button type="submit" name="action" value="stage_extract" class="btn-smack">EXTRACT FILES →</button>
+                <button type="submit" name="action" value="stage_extract" class="btn-smack">EXTRACT FILES &rarr;</button>
             <?php elseif ($stage === 'extracted'): ?>
-                <button type="submit" name="action" value="stage_migrate" class="btn-smack">RUN MIGRATIONS &amp; FINALIZE →</button>
+                <button type="submit" name="action" value="stage_migrate" class="btn-smack">RUN MIGRATIONS &amp; FINALIZE &rarr;</button>
             <?php endif; ?>
         </form>
         <?php else: ?>
         <div class="update-warning">The update encountered an error at this stage. Cancel to start over.</div>
         <?php endif; ?>
 
-        <!-- Cancel -->
         <form method="POST" class="stage-cancel">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
             <button type="submit" name="action" value="cancel_update" class="btn-smack"
@@ -1789,169 +1642,416 @@ include 'core/sidebar.php';
         </form>
     </div>
 
-    <?php elseif (!empty($cached_result['core_update'])): ?>
-    <!-- CORE UPDATE DETAILS (only shown when not in a staged update) -->
-    <?php $upd = $cached_result['core_update']; ?>
+    <?php else: ?>
+    <!-- ── PRIMARY STATUS CARD ── -->
     <div class="box update-section">
-        <h3>CORE UPDATE AVAILABLE</h3>
-        <div class="stat-row">
+        <?php if (!$cached_result || $cached_result['core_status'] === 'error'): ?>
+        <div class="update-status-badge status-error">&#10007; COULD NOT REACH UPDATE SERVER</div>
+        <p class="dim" style="font-size:0.8rem;margin-top:12px;">Check your server&rsquo;s outbound HTTPS connection to snapsmack.ca.</p>
+        <form method="POST" class="mt-20">
+            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+            <button type="submit" name="action" value="check" class="btn-smack">RETRY CHECK</button>
+        </form>
+
+        <?php elseif (!empty($cached_result['core_update'])): ?>
+        <?php $upd = $cached_result['core_update']; ?>
+        <div class="update-status-badge status-available">&#9888; UPDATE AVAILABLE</div>
+        <div class="stat-row mt-20">
             <span class="label">NEW VERSION:</span>
             <span class="version-badge version-available">
                 <?php echo htmlspecialchars($upd['version_full'] ?? "v{$upd['version']}"); ?>
             </span>
+            <?php if (!empty($upd['codename'])): ?>
+                <span class="dim ml-10">&ldquo;<?php echo htmlspecialchars($upd['codename']); ?>&rdquo;</span>
+            <?php endif; ?>
         </div>
-        <?php if (!empty($upd['released'])): ?>
-        <div class="stat-row mt-20">
-            <span class="label">RELEASED:</span>
-            <span class="value"><?php echo htmlspecialchars($upd['released']); ?></span>
-        </div>
-        <?php endif; ?>
-        <?php if (!empty($upd['download_size'])): ?>
-        <div class="stat-row mt-20">
-            <span class="label">PACKAGE SIZE:</span>
-            <span class="value"><?php echo number_format($upd['download_size'] / 1048576, 1); ?> MB</span>
-        </div>
-        <?php endif; ?>
-
         <?php if (!empty($upd['changelog'])): ?>
-        <label class="mt-30">CHANGELOG</label>
-        <ul class="changelog-list">
-            <?php foreach ($upd['changelog'] as $entry): ?>
+        <ul class="changelog-list mt-20">
+            <?php foreach (array_slice($upd['changelog'], 0, 5) as $entry): ?>
                 <li><?php echo htmlspecialchars($entry); ?></li>
             <?php endforeach; ?>
+            <?php if (count($upd['changelog']) > 5): ?>
+                <li style="opacity:0.4;list-style:none;margin-left:-18px;">... and <?php echo count($upd['changelog']) - 5; ?> more</li>
+            <?php endif; ?>
         </ul>
         <?php endif; ?>
-
-        <?php if (!empty($upd['file_changes'])): ?>
-        <div class="file-changes mt-20">
-            <label>FILE CHANGES</label>
-            <?php if (!empty($upd['file_changes']['added'])): ?>
-                <h4 class="file-added mt-20">ADDED (<?php echo count($upd['file_changes']['added']); ?>)</h4>
-                <?php foreach ($upd['file_changes']['added'] as $f): ?>
-                    <code class="file-added">+ <?php echo htmlspecialchars($f); ?></code>
-                <?php endforeach; ?>
-            <?php endif; ?>
-            <?php if (!empty($upd['file_changes']['modified'])): ?>
-                <h4 class="file-modified mt-20">MODIFIED (<?php echo count($upd['file_changes']['modified']); ?>)</h4>
-                <?php foreach ($upd['file_changes']['modified'] as $f): ?>
-                    <code class="file-modified">~ <?php echo htmlspecialchars($f); ?></code>
-                <?php endforeach; ?>
-            <?php endif; ?>
-            <?php if (!empty($upd['file_changes']['removed'])): ?>
-                <h4 class="file-removed mt-20">REMOVED (<?php echo count($upd['file_changes']['removed']); ?>)</h4>
-                <?php foreach ($upd['file_changes']['removed'] as $f): ?>
-                    <code class="file-removed">- <?php echo htmlspecialchars($f); ?></code>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
-        <?php endif; ?>
-
         <?php if (!empty($upd['schema_changes'])): ?>
-        <div class="update-warning mt-20">
-            THIS UPDATE INCLUDES DATABASE SCHEMA CHANGES. Migrations will run automatically during the apply step.
-        </div>
-
+        <div class="update-warning mt-15">THIS UPDATE INCLUDES DATABASE SCHEMA CHANGES. Migrations run automatically during apply.</div>
         <?php endif; ?>
-
-        <form method="POST" class="mt-30">
+        <form method="POST" class="mt-25">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
             <button type="submit" name="action" value="stage_download" class="btn-smack">APPLY UPDATE &rarr;</button>
         </form>
 
-    </div>
-
-    <?php else: ?>
-    <div class="box update-section">
-        <h3>UP TO DATE</h3>
-        <p class="dim" style="font-size:0.85rem;">No update available. Your installation is running the latest release.</p>
-    </div>
-    <?php endif; ?>
-
-    <!-- MANUAL UPDATE (UPLOAD) -->
-    <div class="box update-section" id="manual-upload">
-        <h3>MANUAL UPDATE (UPLOAD)</h3>
-        <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
-            If this server cannot reach snapsmack.ca, download the update package
-            on your own machine and upload it here. The same backup, verification,
-            and extraction pipeline will run.
-        </p>
-        <form method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <div style="margin-bottom:14px;">
-                <label style="font-size:0.78rem;opacity:0.6;display:block;margin-bottom:6px;">UPDATE PACKAGE (.zip)</label>
-                <input type="file" name="update_zip" accept=".zip" required style="font-size:0.85rem;padding:8px;">
-            </div>
-            <button type="submit" name="action" value="upload_zip" class="btn-smack mt-15"
-                    onclick="return confirm('Apply update from uploaded zip? A backup will be created first.');">
-                UPLOAD &amp; APPLY
-            </button>
-        </form>
-    </div>
-
-    <!-- SKIN REGISTRY NOTIFICATIONS -->
-    <?php if (!empty($cached_result['new_skins']) || !empty($cached_result['updated_skins'])): ?>
-    <div class="box update-section">
-        <h3>SKIN REGISTRY</h3>
-        <?php if (!empty($cached_result['new_skins'])): ?>
-        <label>NEW SKINS AVAILABLE</label>
-        <?php foreach ($cached_result['new_skins'] as $skin): ?>
-            <div class="skin-notify-card skin-notify-new">
-                <div>
-                    <strong><?php echo htmlspecialchars($skin['name']); ?></strong>
-                    <?php if (!empty($skin['description'])): ?>
-                        <span class="dim ml-10"><?php echo htmlspecialchars($skin['description']); ?></span>
-                    <?php endif; ?>
-                </div>
-                <span class="skin-notify-version">v<?php echo htmlspecialchars($skin['version']); ?></span>
-            </div>
-        <?php endforeach; ?>
-        <?php endif; ?>
-        <?php if (!empty($cached_result['updated_skins'])): ?>
-        <label <?php echo !empty($cached_result['new_skins']) ? 'class="mt-25"' : ''; ?>>SKIN UPDATES AVAILABLE</label>
-        <?php foreach ($cached_result['updated_skins'] as $skin): ?>
-            <div class="skin-notify-card skin-notify-update">
-                <div><strong><?php echo htmlspecialchars($skin['name']); ?></strong></div>
-                <span class="skin-notify-version">v<?php echo htmlspecialchars($skin['from']); ?> &rarr; v<?php echo htmlspecialchars($skin['to']); ?></span>
-            </div>
-        <?php endforeach; ?>
-        <?php endif; ?>
-        <a href="smack-skin.php?tab=gallery" class="btn-smack mt-25" style="display:inline-block;text-decoration:none;">OPEN SKIN GALLERY</a>
-    </div>
-    <?php endif; ?>
-
-    <!-- AUTOMATED CHECKS -->
-    <div class="box update-section" id="automated-checks">
-        <h3>AUTOMATED CHECKS</h3>
-        <?php if ($cron_supported): ?>
-            <label>VERSION CHECK JOB</label>
-            <div class="read-only-display"><?php echo $version_job_registered ? 'REGISTERED — RUNS EVERY 6 HOURS' : 'NOT REGISTERED'; ?></div>
-            <div class="recovery-actions mt-25">
-                <form method="POST">
-                    <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                    <button type="submit" name="action" value="cron_register" class="btn-smack"
-                            <?php echo $version_job_registered ? 'disabled' : ''; ?>>REGISTER VERSION CHECK</button>
-                </form>
-                <form method="POST">
-                    <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                    <button type="submit" name="action" value="cron_remove" class="btn-smack"
-                            <?php echo !$version_job_registered ? 'disabled' : ''; ?>
-                            onclick="return confirm('Remove the automatic version check cron job?');">REMOVE VERSION CHECK</button>
-                </form>
-            </div>
-            <p class="dim mt-25" style="font-size:0.8rem;">Without cron, the dashboard falls back to a 24-hour on-load check.</p>
         <?php else: ?>
-            <label>CRON ENGINE</label>
-            <div class="read-only-display">NOT SUPPORTED ON THIS HOST</div>
-            <p class="dim mt-10" style="font-size:0.8rem;">The dashboard will fall back to checking every 24 hours on page load.</p>
+        <div class="update-status-badge status-ok">&#10003; UP TO DATE</div>
+        <div class="stat-row mt-20">
+            <span class="label">RUNNING:</span>
+            <span class="version-badge version-current"><?php echo htmlspecialchars($installed_full); ?></span>
+            <?php if (defined('SNAPSMACK_VERSION_CODENAME') && SNAPSMACK_VERSION_CODENAME): ?>
+                <span class="dim ml-10">&ldquo;<?php echo htmlspecialchars(SNAPSMACK_VERSION_CODENAME); ?>&rdquo;</span>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+        <?php if ($last_check): ?>
+        <p class="dim" style="font-size:0.72rem;margin-top:16px;">Checked: <?php echo date('M j, Y g:ia', strtotime($last_check)); ?></p>
         <?php endif; ?>
     </div>
+    <?php endif; // $stage_state ?>
+
+    <!-- SKIN UPDATES -->
+    <?php if (!empty($cached_result['updated_skins'])): ?>
+    <div class="box update-section">
+        <h3>SKIN UPDATES</h3>
+        <?php foreach ($cached_result['updated_skins'] as $skin): ?>
+        <div class="skin-notify-card skin-notify-update skin-update-row">
+            <div>
+                <strong><?php echo htmlspecialchars($skin['name']); ?></strong>
+                <span class="skin-notify-version ml-10">v<?php echo htmlspecialchars($skin['from']); ?> &rarr; v<?php echo htmlspecialchars($skin['to']); ?></span>
+            </div>
+            <?php if (!empty($skin['download_url'])): ?>
+            <form method="POST" style="margin:0;">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <input type="hidden" name="skin_slug" value="<?php echo htmlspecialchars($skin['slug']); ?>">
+                <input type="hidden" name="download_url" value="<?php echo htmlspecialchars($skin['download_url']); ?>">
+                <input type="hidden" name="signature" value="<?php echo htmlspecialchars($skin['signature'] ?? ''); ?>">
+                <button type="submit" name="action" value="skin_update" class="btn-smack btn-sm"
+                        onclick="return confirm('Update <?php echo htmlspecialchars(addslashes($skin[\'name\'])); ?> to v<?php echo htmlspecialchars($skin[\'to\']); ?>?');">UPDATE</button>
+            </form>
+            <?php else: ?>
+            <a href="smack-skin.php?tab=gallery" class="btn-smack btn-sm" style="text-decoration:none;">VIEW IN GALLERY</a>
+            <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+    <?php if (!empty($cached_result['new_skins'])): ?>
+    <div class="box update-section">
+        <div class="skin-new-notice">
+            <?php $nc = count($cached_result['new_skins']); ?>
+            <?php echo $nc; ?> new skin<?php echo $nc !== 1 ? 's' : ''; ?> available in the Skin Gallery.
+            <a href="smack-skin.php?tab=gallery" class="btn-smack btn-sm" style="text-decoration:none;">OPEN GALLERY</a>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- SCHEMA RECOVERY — shown at top when there are pending migrations or ghost files -->
+    <?php if ($schema_resync_result || $has_pending || $has_ghosts): ?>
+    <div class="box update-section" <?php echo ($has_pending || $has_ghosts) ? 'style="border-color:rgba(200,120,0,0.5);"' : ''; ?>>
+        <h3>SCHEMA RECOVERY</h3>
+        <?php if ($schema_resync_result): ?>
+        <div style="margin-bottom:16px;">
+            <?php if (!empty($schema_resync_result['created'])): ?>
+                <div style="font-family:monospace;font-size:0.78rem;margin-bottom:6px;">TABLES CREATED:</div>
+                <?php foreach ($schema_resync_result['created'] as $t): ?>
+                    <code style="display:block;padding:2px 10px;font-size:0.75rem;opacity:0.85;">+ <?php echo htmlspecialchars($t); ?></code>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            <?php if (!empty($schema_resync_result['columns_added'])): ?>
+                <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;">COLUMNS ADDED:</div>
+                <?php foreach ($schema_resync_result['columns_added'] as $c): ?>
+                    <code style="display:block;padding:2px 10px;font-size:0.75rem;opacity:0.85;">+ <?php echo htmlspecialchars($c); ?></code>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            <?php if (!empty($schema_resync_result['errors'])): ?>
+                <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;color:#c44;">ERRORS:</div>
+                <?php foreach ($schema_resync_result['errors'] as $e): ?>
+                    <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#c44;">&#10007; <?php echo htmlspecialchars($e); ?></code>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+        <?php if ($has_ghosts): ?>
+        <div class="update-warning" style="margin-bottom:16px;">
+            <strong>GHOST FILES DETECTED</strong> &mdash; Migration files on disk not part of any release.
+            The updater skips them automatically, but they should be removed.<br><br>
+            <?php foreach ($migration_status['ghosts'] as $g): ?>
+                <code style="display:block;margin-top:4px;font-size:0.8rem;" class="migration-ghost">&#9888; <?php echo htmlspecialchars($g); ?></code>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+        <?php if ($show_migration_table): ?>
+        <table class="recovery-table">
+            <thead><tr><th>MIGRATION</th><th>STATUS</th><th>APPLIED AT</th></tr></thead>
+            <tbody>
+            <?php foreach ($pending_rows as $name): ?>
+                <tr><td><?php echo htmlspecialchars($name); ?></td><td class="migration-pending">&mdash; PENDING</td><td>&mdash;</td></tr>
+            <?php endforeach; ?>
+            <?php foreach ($migration_status['ghosts'] as $name): ?>
+                <tr><td><?php echo htmlspecialchars($name); ?></td><td class="migration-ghost">&#9888; GHOST</td><td>&mdash;</td></tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php else: ?>
+        <p class="migration-ok" style="font-size:0.85rem;margin-bottom:16px;">&#10003; All <?php echo count($migration_status['applied']); ?> migrations applied.</p>
+        <?php endif; ?>
+        <div class="recovery-actions">
+            <form method="POST">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="schema_resync" class="btn-smack">RUN SCHEMA SYNC</button>
+            </form>
+            <?php if ($has_pending): ?>
+            <form method="POST">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="mark_migrations_applied" class="btn-smack btn-secondary"
+                        onclick="return confirm('Mark all known migrations as applied without running them?\n\nOnly do this if you have already applied the schema changes manually (e.g. via cPanel SQL).');"
+                        style="font-size:0.75rem;">MARK ALL MIGRATIONS APPLIED</button>
+            </form>
+            <?php endif; ?>
+            <?php if ($has_ghosts): $ghost_count = count($migration_status['ghosts']); ?>
+            <form method="POST">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <button type="submit" name="action" value="purge_ghosts" class="btn-smack btn-secondary"
+                        onclick="return confirm('Permanently delete <?php echo $ghost_count; ?> ghost migration file(s) from disk?\n\nThese files are not part of any official release and will never be run by the updater.');"
+                        style="font-size:0.75rem;">PURGE GHOST FILES</button>
+            </form>
+            <?php endif; ?>
+        </div>
+        <?php if ($has_pending): ?>
+        <p class="dim" style="font-size:0.72rem;margin-top:10px;">
+            &ldquo;Mark All Applied&rdquo; records all known migrations without running their SQL.
+            Use this after running a manual recovery SQL file in cPanel.
+        </p>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
+    <!-- ── ADVANCED OPTIONS (collapsed) ── -->
+    <details class="update-advanced">
+        <summary>ADVANCED OPTIONS</summary>
+
+        <!-- CURRENT INSTALLATION -->
+        <div class="box update-section">
+            <h3>CURRENT INSTALLATION</h3>
+            <div class="stat-row">
+                <span class="label">VERSION:</span>
+                <span class="version-badge version-current"><?php echo htmlspecialchars($installed_full); ?></span>
+                <?php if (defined('SNAPSMACK_VERSION_CODENAME') && SNAPSMACK_VERSION_CODENAME): ?>
+                    <span class="dim ml-10">&ldquo;<?php echo htmlspecialchars(SNAPSMACK_VERSION_CODENAME); ?>&rdquo;</span>
+                <?php endif; ?>
+            </div>
+            <div class="stat-row mt-20">
+                <span class="label">LAST CHECK:</span>
+                <span class="value"><?php echo $last_check ? date('M j, Y g:ia', strtotime($last_check)) : 'NEVER'; ?></span>
+            </div>
+            <div class="stat-row mt-20">
+                <span class="label">SIGNING:</span>
+                <span class="value"><?php echo (defined('SNAPSMACK_SIGNING_ENFORCED') && SNAPSMACK_SIGNING_ENFORCED) ? 'ENFORCED' : 'ADVISORY (PLACEHOLDER KEY)'; ?></span>
+            </div>
+            <div class="update-action-row mt-25">
+                <form method="POST">
+                    <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                    <button type="submit" name="action" value="reapply" class="btn-smack"
+                            onclick="return confirm('Reapply v<?php echo htmlspecialchars($installed_version); ?>? This will re-download and re-extract all files.\n\nUse this if a release was packaged incorrectly or files were missed.');"
+                            style="background:#666;">REAPPLY CURRENT VERSION</button>
+                </form>
+                <form method="POST">
+                    <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                    <button type="submit" name="action" value="reset_update_state" class="btn-smack btn-secondary"
+                            onclick="return confirm('Reset all update state and re-sync installed version from constants.php?');"
+                            style="font-size:0.75rem;opacity:0.6;">RESET UPDATE STATE</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- SCHEMA RECOVERY (routine access — only shown here when no urgent issues) -->
+        <?php if (!$schema_resync_result && !$has_pending && !$has_ghosts): ?>
+        <div class="box update-section">
+            <h3>SCHEMA RECOVERY</h3>
+            <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
+                Run a schema sync or inspect migration state without running a full update.
+                Use these tools after a failed update or when bringing an older install current manually.
+            </p>
+            <p class="migration-ok" style="font-size:0.85rem;margin-bottom:16px;">&#10003; All <?php echo count($migration_status['applied']); ?> migrations applied. No pending work.</p>
+            <div class="recovery-actions">
+                <form method="POST">
+                    <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                    <button type="submit" name="action" value="schema_resync" class="btn-smack">RUN SCHEMA SYNC</button>
+                </form>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- CANONICAL SCHEMA DIFF -->
+        <div class="box update-section">
+            <h3>CANONICAL SCHEMA DIFF</h3>
+            <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
+                Fetches <em>snapsmack_canonical.sql</em> from the release server and
+                compares it against your live database. Catches missing tables or columns
+                including cases where an update failed before the on-disk copy was replaced.
+                <?php if ($has_canonical_url && $has_canonical_sig): ?>
+                    <span style="color:#0f0;"> &mdash; Remote URL + signature available.</span>
+                <?php elseif ($has_canonical_url): ?>
+                    <span style="color:#fa0;"> &mdash; Remote URL available (no signature).</span>
+                <?php else: ?>
+                    <span style="opacity:0.5;"> &mdash; No remote URL in manifest; will use on-disk copy.</span>
+                <?php endif; ?>
+            </p>
+            <?php if ($canonical_apply): ?>
+            <div style="margin-bottom:16px;">
+                <?php if (!empty($canonical_apply['created'])): ?>
+                    <div style="font-family:monospace;font-size:0.78rem;margin-bottom:6px;">TABLES CREATED:</div>
+                    <?php foreach ($canonical_apply['created'] as $t): ?>
+                        <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#0f0;">+ <?php echo htmlspecialchars($t); ?></code>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+                <?php if (!empty($canonical_apply['columns_added'])): ?>
+                    <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;">COLUMNS ADDED:</div>
+                    <?php foreach ($canonical_apply['columns_added'] as $c): ?>
+                        <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#0f0;">+ <?php echo htmlspecialchars($c); ?></code>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+                <?php if (!empty($canonical_apply['errors'])): ?>
+                    <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;color:#c44;">ERRORS:</div>
+                    <?php foreach ($canonical_apply['errors'] as $e): ?>
+                        <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#c44;">&#10007; <?php echo htmlspecialchars($e); ?></code>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+            <?php if ($canonical_diff && !$canonical_diff['all_ok']): ?>
+            <div style="margin-bottom:16px;">
+                <div style="font-family:monospace;font-size:0.75rem;opacity:0.6;margin-bottom:10px;">
+                    SOURCE: <?php echo strtoupper(htmlspecialchars($canonical_diff['source'])); ?>
+                    &nbsp;&mdash;&nbsp;
+                    <?php echo (int)$canonical_diff['canonical_tables']; ?> TABLE(S) IN CANONICAL SCHEMA
+                </div>
+                <?php if (!empty($canonical_diff['missing_tables'])): ?>
+                    <div style="font-family:monospace;font-size:0.78rem;margin-bottom:6px;color:#fa0;">MISSING TABLES:</div>
+                    <?php foreach ($canonical_diff['missing_tables'] as $t): ?>
+                        <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#fa0;">&#10007; <?php echo htmlspecialchars($t); ?></code>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+                <?php if (!empty($canonical_diff['missing_columns'])): ?>
+                    <div style="font-family:monospace;font-size:0.78rem;margin:10px 0 6px;color:#fa0;">MISSING COLUMNS:</div>
+                    <?php foreach ($canonical_diff['missing_columns'] as $item): ?>
+                        <code style="display:block;padding:2px 10px;font-size:0.75rem;color:#fa0;">
+                            &#10007; <?php echo htmlspecialchars($item['table'] . '.' . $item['column']); ?>
+                        </code>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+            <?php elseif ($canonical_diff && $canonical_diff['all_ok']): ?>
+            <div style="font-family:monospace;font-size:0.78rem;color:#0f0;margin-bottom:16px;">
+                &#10003; DATABASE MATCHES CANONICAL SCHEMA
+                (<?php echo (int)$canonical_diff['canonical_tables']; ?> tables,
+                source: <?php echo strtoupper(htmlspecialchars($canonical_diff['source'])); ?>)
+            </div>
+            <?php endif; ?>
+            <div class="recovery-actions">
+                <form method="POST">
+                    <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                    <button type="submit" name="action" value="canonical_diff" class="btn-smack">CHECK CANONICAL SCHEMA</button>
+                </form>
+                <?php if ($canonical_diff && !$canonical_diff['all_ok']): ?>
+                <form method="POST">
+                    <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                    <button type="submit" name="action" value="apply_canonical_diff" class="btn-smack"
+                            onclick="return confirm('Apply all missing tables and columns from the canonical schema?\nThis is safe — operations are idempotent.');">
+                        APPLY ALL MISSING
+                    </button>
+                </form>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- MANUAL UPDATE (UPLOAD) -->
+        <div class="box update-section" id="manual-upload">
+            <h3>MANUAL UPDATE (UPLOAD)</h3>
+            <p class="dim" style="font-size:0.8rem;margin-bottom:16px;">
+                If this server cannot reach snapsmack.ca, download the update package
+                on your own machine and upload it here. The same backup, verification,
+                and extraction pipeline will run.
+            </p>
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:0.78rem;opacity:0.6;display:block;margin-bottom:10px;">UPDATE PACKAGE (.ZIP)</label>
+                    <label class="file-pick-btn" id="file-pick-label">
+                        <input type="file" name="update_zip" accept=".zip" required id="upload-zip-input" style="position:absolute;opacity:0;width:0;height:0;">
+                        <span id="file-pick-text">CHOOSE FILE</span>
+                    </label>
+                    <span id="file-pick-name" style="display:block;margin-top:8px;font-size:0.78rem;opacity:0.5;font-family:monospace;">No file chosen</span>
+                </div>
+                <button type="submit" name="action" value="upload_zip" class="btn-smack mt-15"
+                        onclick="return confirm('Apply update from uploaded zip? A backup will be created first.');">
+                    UPLOAD &amp; APPLY
+                </button>
+            </form>
+        </div>
+
+        <!-- AUTOMATED CHECKS -->
+        <div class="box update-section" id="automated-checks">
+            <h3>AUTOMATED CHECKS</h3>
+            <?php if ($cron_supported): ?>
+                <label>VERSION CHECK JOB</label>
+                <div class="read-only-display"><?php echo $version_job_registered ? 'REGISTERED — RUNS EVERY 6 HOURS' : 'NOT REGISTERED'; ?></div>
+                <div class="recovery-actions mt-25">
+                    <form method="POST">
+                        <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                        <button type="submit" name="action" value="cron_register" class="btn-smack"
+                                <?php echo $version_job_registered ? 'disabled' : ''; ?>>REGISTER VERSION CHECK</button>
+                    </form>
+                    <form method="POST">
+                        <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+                        <button type="submit" name="action" value="cron_remove" class="btn-smack"
+                                <?php echo !$version_job_registered ? 'disabled' : ''; ?>
+                                onclick="return confirm('Remove the automatic version check cron job?');">REMOVE VERSION CHECK</button>
+                    </form>
+                </div>
+                <p class="dim mt-25" style="font-size:0.8rem;">Without cron, the dashboard falls back to a 24-hour on-load check.</p>
+            <?php else: ?>
+                <label>CRON ENGINE</label>
+                <div class="read-only-display">NOT SUPPORTED ON THIS HOST</div>
+                <p class="dim mt-10" style="font-size:0.8rem;">The dashboard will fall back to checking every 24 hours on page load.</p>
+            <?php endif; ?>
+        </div>
+
+    </details>
 
 </div>
+
 
 <script>
 (function () {
     var log = document.querySelector('.step-log');
     if (log) { log.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+
+    // File picker label feedback
+    var inp   = document.getElementById('upload-zip-input');
+    var lbl   = document.getElementById('file-pick-label');
+    var fname = document.getElementById('file-pick-name');
+    if (inp && lbl && fname) {
+        inp.addEventListener('change', function () {
+            if (inp.files && inp.files.length > 0) {
+                fname.textContent = inp.files[0].name;
+                lbl.classList.add('has-file');
+            } else {
+                fname.textContent = 'No file chosen';
+                lbl.classList.remove('has-file');
+            }
+        });
+    }
+
+    // Auto-advance the staged update pipeline.
+    // Once the user clicks APPLY UPDATE on the status card, every subsequent
+    // stage (download → verify → backup → premigrate → extract → migrate)
+    // runs automatically. The only manual step is the initial Apply click.
+    // Does not fire when there is an error (alert-danger is on the page).
+    var stageBox = document.getElementById('stage-box');
+    if (stageBox && !document.querySelector('.alert-danger')) {
+        var nextBtn = stageBox.querySelector('.stage-next-btn button[type="submit"]');
+        if (nextBtn && !nextBtn.disabled) {
+            nextBtn.disabled    = true;
+            nextBtn.style.opacity = '0.35';
+            var note = document.createElement('p');
+            note.style.cssText  = 'font-size:0.72rem;opacity:0.4;margin-top:8px;font-family:monospace;letter-spacing:0.05em;';
+            note.textContent    = 'AUTO-CONTINUING...';
+            nextBtn.parentNode.appendChild(note);
+            setTimeout(function () { nextBtn.closest('form').submit(); }, 800);
+        }
+    }
 })();
 </script>
 

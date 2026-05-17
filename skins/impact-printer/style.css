@@ -583,14 +583,9 @@ body.archive-page #scroll-stage {
     margin: 40px auto;
 }
 
-/* T/M/C controls: always pin to the right edge of the infobox on this skin.
-   alignDockedControls() calculates an offset based on grid width vs infobox
-   width; on impact-printer the grid fills the full content column so the
-   correct right position is simply 0. !important overrides the inline style
-   the JS writes.                                                             */
-.archive-controls--docked {
-    right: 0 !important;
-}
+/* T/M/C controls: let alignDockedControls() calculate the right offset so
+   the buttons track the right edge of the masonry grid (now 95% wide with
+   auto margins). No !important override — the JS inline style wins.        */
 #justified-grid .justified-item img {
     opacity: var(--ip-ink-opacity, 0.65);
 }
@@ -1195,13 +1190,16 @@ body.archive-page #scroll-stage {
 }
 
 /* --- ARCHIVE CONTROLS — T / M / C BUTTONS ---------------------------------
-   Core page-archive.css sets font-weight:700 and system-ui. Override here
-   to match the DotMatrix body type and drop the bold weight.              */
+   Match DotMatrix body type, drop bold weight, and trim button size down
+   so the controls don't overwhelm the infobox strip.                      */
 .archive-controls .alt-btn,
 .archive-layout-toggle .alt-btn,
 .archive-calendar-toggle {
     font-family: 'DotMatrix', 'Courier New', monospace;
     font-weight: normal;
+    font-size: 0.68em;
+    padding: 4px 9px;
+    min-width: 26px;
 }
 
 /* ==========================================================================

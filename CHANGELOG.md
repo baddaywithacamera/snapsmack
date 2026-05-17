@@ -12,6 +12,21 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.143 — "La-Z-Boy" (2026-05-16)
+
+### Fixed
+- **Update page: apply was not actually 1-click**: Clicking "APPLY UPDATE →" kicked off a staged pipeline but required manually clicking through 5 more steps (Verify → Backup → Patch DB → Extract → Migrate). JS auto-advance now fires on each stage page: if no error is present, the next stage submits automatically 800ms after the page loads. The only manual action is the initial Apply button. On error, auto-advance stops and the manual buttons remain active. The extract stage uses existing meta-refresh chunking which is unaffected.
+
+## 0.7.142 — "La-Z-Boy" (2026-05-16)
+
+### Fixed
+- **Impact Printer T/M/C buttons misaligned and oversized**: `right:0 !important` in the skin CSS was overriding `alignDockedControls()` JS calculation, pinning buttons to the scroll-stage edge instead of the masonry grid's right edge. Removed the override so JS-calculated alignment tracks the grid correctly. Reduced button `font-size` from 0.78em to 0.68em and `padding` from `6px 14px` to `4px 9px` to better fit the infobox strip. Impact Printer skin bumped to 1.9.
+
+## 0.7.141 — "La-Z-Boy" (2026-05-16)
+
+### Fixed
+- **Masonry image size setting never wired up**: `masonry_use_thumbs` existed in Archive Appearance and was saved to the DB but archive.php always loaded full-size originals regardless. Now reads the setting and uses `img_thumb_aspect` (medium ~600px aspect-ratio thumbnail) when enabled, falling back to `img_file` if no thumbnail exists. Admin control changed from a generic checkbox to an explicit select: "Medium (~600px thumbnails) — Recommended" vs "Full size (original files)".
+
 ## 0.7.140 — "La-Z-Boy" (2026-05-16)
 
 ### Fixed

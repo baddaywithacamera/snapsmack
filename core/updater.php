@@ -1667,10 +1667,12 @@ function updater_check_skin_registry(PDO $pdo): array {
         ) {
             // Installed skin has an update
             $updated_skins[] = [
-                'slug' => $slug,
-                'name' => $skin['name'] ?? $slug,
-                'from' => $local[$slug]['version'],
-                'to' => $skin['version'],
+                'slug'         => $slug,
+                'name'         => $skin['name'] ?? $slug,
+                'from'         => $local[$slug]['version'],
+                'to'           => $skin['version'],
+                'download_url' => $skin['download_url'] ?? '',
+                'signature'    => $skin['signature']    ?? '',
             ];
         }
     }

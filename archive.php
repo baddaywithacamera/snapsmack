@@ -557,9 +557,10 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                  PHP groups images into rows for semantics; CSS flexbox handles sizing.
                  Each item's flex-grow equals its aspect ratio for perfect row alignment. -->
             <?php
-                $target_row_h = (int)($settings['justified_row_height'] ?? 180);
-                $gap          = (int)($settings['justified_gap'] ?? 4);
-                $ref_w = (int)($settings['main_canvas_width'] ?? 1280);
+                $target_row_h     = (int)($settings['justified_row_height'] ?? 180);
+                $gap              = (int)($settings['justified_gap'] ?? 4);
+                $ref_w            = (int)($settings['main_canvas_width'] ?? 1280);
+                $masonry_use_thumbs = !empty($settings['masonry_use_thumbs']);
 
                 // Build rows before opening the grid div so we can pass
                 // --last-row-ar-sum as a CSS variable on the container.
@@ -612,8 +613,10 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                     ?>
                         <div class="<?php echo $row_class; ?>">
                             <?php foreach ($row as $img):
-                                $link = BASE_URL . htmlspecialchars($img['img_slug']);
-                                $img_url = BASE_URL . ltrim($img['img_file'], '/');
+                                $link      = BASE_URL . htmlspecialchars($img['img_slug']);
+                                $img_url   = ($masonry_use_thumbs && !empty($img['img_thumb_aspect']))
+                                             ? BASE_URL . ltrim($img['img_thumb_aspect'], '/')
+                                             : BASE_URL . ltrim($img['img_file'], '/');
                                 $flex_grow = round($img['_aspect'] * 100);
                             ?>
                                 <a href="<?php echo $link; ?>" class="justified-item" title="<?php echo htmlspecialchars($img['img_title']); ?>" style="flex-grow: <?php echo $flex_grow; ?>; flex-basis: 0; aspect-ratio: <?php echo round($img['_aspect'], 4); ?>;">
