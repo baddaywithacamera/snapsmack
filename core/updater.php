@@ -83,6 +83,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-multisite-tables.sql',
     'migrate-pages-image-cols.sql',
     'migrate-users-recovery-columns.sql',
+    'migrate-users-ui-mode.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
@@ -153,7 +154,12 @@ function updater_check_status(string $installed_version, array $release_info, st
     }
     // Same version number — check whether the package was rebuilt (checksum changed).
     // This lets force-pushed tags propagate to spokes without inflating the version.
-    if ($installed_checksum !== ''
+    // Only applies when versions are exactly equal — never trigger on a remote version
+    // that is older than what is installed (avoids false "update available" on stale servers).
+    $versions_equal = !snap_version_compare($release_info['version'], $installed_version, '<')
+                   && !snap_version_compare($release_info['version'], $installed_version, '>');
+    if ($versions_equal
+        && $installed_checksum !== ''
         && !empty($release_info['checksum_sha256'])
         && !hash_equals(strtolower($installed_checksum), strtolower($release_info['checksum_sha256']))) {
         return 'update_available';
