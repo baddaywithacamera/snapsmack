@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user_input = trim($_POST['username'] ?? '');
         $pass_input = $_POST['password'] ?? '';
 
-        $stmt = $pdo->prepare("SELECT id, username, password_hash, user_role, preferred_skin, force_password_change, totp_enabled, totp_secret FROM snap_users WHERE username = ?");
+        $stmt = $pdo->prepare("SELECT id, username, password_hash, user_role, preferred_skin, ui_mode, force_password_change, totp_enabled, totp_secret FROM snap_users WHERE username = ?");
         $stmt->execute([$user_input]);
         $user = $stmt->fetch();
 
@@ -113,6 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_login']          = $user['username'];
             $_SESSION['user_role']           = $user['user_role'] ?: 'editor';
             $_SESSION['user_preferred_skin'] = $user['preferred_skin'] ?: null;
+            $_SESSION['user_ui_mode']        = $user['ui_mode'] ?? 'bigwheel';
             $_SESSION['user_id']             = $user['id'];
 
             // Respect force_password_change flag set by previous recovery login
@@ -143,6 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_login']            = $user['username'];
             $_SESSION['user_role']             = $user['user_role'] ?: 'editor';
             $_SESSION['user_preferred_skin']   = $user['preferred_skin'] ?: null;
+            $_SESSION['user_ui_mode']          = $user['ui_mode'] ?? 'bigwheel';
             $_SESSION['user_id']               = $user['id'];
             $_SESSION['force_password_change'] = true;
 

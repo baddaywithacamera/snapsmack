@@ -156,7 +156,7 @@ if (!isset($_SESSION['db_lockout_until'])) $_SESSION['db_lockout_until'] = 0;
 // --- STEP TRACKING ---
 // The installer progresses linearly. Each step validates before advancing.
 // Recovery steps use string prefixes (r2, r3, r4) so we cannot blindly cast to int.
-$raw_step = $_POST['step'] ?? 1;
+$raw_step = $_POST['step'] ?? 0;
 // '1b' = edition chooser (between env check and DB config)
 // 'r*' = recovery mode steps
 $step = (is_string($raw_step) && (str_starts_with($raw_step, 'r') || $raw_step === '1b' || $raw_step === '4b'))
@@ -1849,9 +1849,31 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
 
 
     <?php // ============================================================= ?>
+    <?php // STEP 0: Security Advice ?>
+    <?php // ============================================================= ?>
+    <?php if ($step === 0): ?>
+        <h2>Before You Begin</h2>
+        <div style="background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:28px 32px;max-width:640px;margin:0 auto;">
+
+            <h3 style="margin:0 0 18px;font-size:1rem;letter-spacing:.08em;text-transform:uppercase;color:#e0e0e0;">&#128274; Use a Strong, Unique Password</h3>
+            <p style="margin:0 0 14px;line-height:1.65;color:#aaa;">Your SnapSmack admin password should be <strong style="color:#ddd;">unique to this site</strong> — never reused from another account. If one site gets compromised, reused passwords expose everything else.</p>
+            <p style="margin:0 0 20px;line-height:1.65;color:#aaa;">The easiest way to manage multiple strong passwords is a password manager. <a href="https://bitwarden.com" target="_blank" rel="noopener noreferrer" style="color:#7ec8e3;">Bitwarden</a> is free, open source, and works across all your devices.</p>
+
+            <h3 style="margin:0 0 18px;font-size:1rem;letter-spacing:.08em;text-transform:uppercase;color:#e0e0e0;">&#128272; Consider a Passphrase</h3>
+            <p style="margin:0 0 20px;line-height:1.65;color:#aaa;">A passphrase — four or more random words strung together — is both strong and memorable. <a href="https://xkcd.com/936/" target="_blank" rel="noopener noreferrer nofollow" style="color:#7ec8e3;">Here&rsquo;s why it works.</a></p>
+
+            <h3 style="margin:0 0 18px;font-size:1rem;letter-spacing:.08em;text-transform:uppercase;color:#e0e0e0;">&#128241; Set Up Two-Factor Authentication</h3>
+            <p style="margin:0 0 24px;line-height:1.65;color:#aaa;">Once your install is done, head to <strong style="color:#ddd;">Two-Factor Auth</strong> in your admin sidebar and set up TOTP 2FA with an app like Bitwarden Authenticator, Aegis (Android), or any standard TOTP app. It takes two minutes and makes brute-force attacks useless.</p>
+
+            <form method="POST">
+                <input type="hidden" name="step" value="1">
+                <button type="submit" style="background:#4caf50;color:#fff;border:none;padding:12px 32px;font-size:0.9rem;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border-radius:4px;">Got It &mdash; Start Installation &rarr;</button>
+            </form>
+        </div>
+
     <?php // STEP 1: Environment Check ?>
     <?php // ============================================================= ?>
-    <?php if ($step === 1): ?>
+    <?php elseif ($step === 1): ?>
         <h2>Step 1 — Environment Check</h2>
 
         <?php
