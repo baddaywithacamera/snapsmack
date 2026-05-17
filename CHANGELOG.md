@@ -12,6 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.147 — "La-Z-Boy" (2026-05-17)
+
+### Changed
+- **Big Wheel / Pimpmobile toggle is now per-user**: Previously stored in snap_settings (site-wide), so switching modes affected every admin. Now stored in snap_users.ui_mode and loaded into the session at login. Each admin has their own preference.
+
+### Added
+- **Installer security advice page**: Step 0 added before the environment check. Covers unique passwords, Bitwarden as a free password manager, passphrases (links to xkcd 936), and TOTP 2FA setup after install.
+
 ## 0.7.146 — "La-Z-Boy" (2026-05-17)
 
 ### Fixed
