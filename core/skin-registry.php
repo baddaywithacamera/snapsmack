@@ -319,9 +319,10 @@ function skin_registry_install(string $slug, string $download_url, string $signa
         _skin_rmdir_recursive($target_dir);
     }
 
-    // Move staging into place
-    if (!rename($source, $target_dir)) {
-        // Fallback: copy file by file
+    // Move staging into place.
+    // rename() fails across filesystems (e.g. /tmp -> web root on a different device).
+    // Suppress the cross-device warning and fall back to a recursive copy+delete.
+    if (!@rename($source, $target_dir)) {
         _skin_copy_recursive($source, $target_dir);
     }
 
