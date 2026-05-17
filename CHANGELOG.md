@@ -12,7 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.144 — "La-Z-Boy" (2026-05-16)
+## 0.7.145 — "La-Z-Boy" (2026-05-17)
+
+### Fixed
+- **smack-update.php truncated in 0.7.144**: Edit tool clobbered the file at line 1997, removing the auto-advance JS pipeline, admin footer include, and EOF marker. Restored from 0.7.143 with the PHP parse fix correctly re-applied.
+- **Skin install fails cross-device**: skin-registry.php used rename() to move skin staging dir from /tmp to web root. Fails with a warning on servers where /tmp and the web root are on different filesystems. Suppressed warning and fallback copy already handled it correctly.
+- **Impact Printer T/M/C buttons still broken after 1.9 update**: manifest.php was bumped to 1.9 in 0.7.143 before style.css fix landed, so sites that updated to 0.7.143 already had "v1.9" with the broken CSS. Bumped to v2.0 so the skin updater offers the corrected version.
+
+## 0.7.144 — "La-Z-Boy" (2026-05-17)
 
 ### Fixed
 - **smack-update.php 500 on all installs**: PHP parse error on line 1722 — `$skin[\'name\']` and `$skin[\'to\']` used backslash-escaped single quotes in PHP code context (not inside a string), which is invalid in PHP 8. Replaced with a `$skin_confirm` variable built in a clean PHP block before the button.
