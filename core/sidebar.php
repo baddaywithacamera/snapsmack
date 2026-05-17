@@ -21,7 +21,8 @@
 $current_page = basename($_SERVER['PHP_SELF']);
 
 // --- UI MODE ---
-$_ui_pimpmobile    = ($settings['ui_mode']        ?? 'bigwheel') === 'pimpmobile';
+// ui_mode is per-user — stored in snap_users, loaded into session at login
+$_ui_pimpmobile    = ($_SESSION['user_ui_mode'] ?? 'bigwheel') === 'pimpmobile';
 $_longform_enabled = ($settings['enable_longform'] ?? '0')        === '1';
 
 // --- CONDITIONAL PIMPOTRON DETECTION ---

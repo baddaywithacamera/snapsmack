@@ -231,21 +231,22 @@ if ($cron_supported) {
 }
 
 // --- BIG WHEEL / PIMPMOBILE ---
-$_ui_pimpmobile = ($settings['ui_mode'] ?? 'bigwheel') === 'pimpmobile';
+// ui_mode is per-user — read from session (loaded at login from snap_users.ui_mode)
+$_ui_pimpmobile = ($_SESSION['user_ui_mode'] ?? 'bigwheel') === 'pimpmobile';
 
 // POST handler — mode switch and offer responses
 if (isset($_POST['pimpmobile_action'])) {
     $_pm_action = $_POST['pimpmobile_action'];
 
     if ($_pm_action === 'switch_to_pimpmobile') {
-        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('ui_mode','pimpmobile') ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute();
+        $pdo->prepare("UPDATE snap_users SET ui_mode = 'pimpmobile' WHERE id = ?")->execute([$_SESSION['user_id']]);
         $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('pimpmobile_last_offer_at',?) ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$count_pub]);
-        $settings['ui_mode'] = 'pimpmobile';
+        $_SESSION['user_ui_mode'] = 'pimpmobile';
         $_ui_pimpmobile = true;
 
     } elseif ($_pm_action === 'switch_to_bigwheel') {
-        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('ui_mode','bigwheel') ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute();
-        $settings['ui_mode'] = 'bigwheel';
+        $pdo->prepare("UPDATE snap_users SET ui_mode = 'bigwheel' WHERE id = ?")->execute([$_SESSION['user_id']]);
+        $_SESSION['user_ui_mode'] = 'bigwheel';
         $_ui_pimpmobile = false;
 
     } elseif ($_pm_action === 'decline_pimpmobile_offer') {
