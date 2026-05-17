@@ -1355,8 +1355,8 @@ include 'core/sidebar.php';
         background: rgba(57, 255, 20, 0.03);
     }
     .stage-box h3 { margin-bottom: 16px; }
-    .stage-next-btn { margin-top: 16px; display: inline-block; }
-    .stage-cancel { margin-top: 10px; display: inline-block; margin-left: 12px; }
+    .stage-next-btn { margin-top: 16px; display: inline-block; vertical-align: top; }
+    .stage-cancel { margin-top: 10px; display: inline-block; margin-left: 12px; vertical-align: top; }
 
     .skin-notify-card {
         display: flex; justify-content: space-between; align-items: center;
