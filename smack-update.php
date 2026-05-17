@@ -1,4 +1,7 @@
 <?php
+
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 /**
  * SNAPSMACK - System Update Manager
  *
@@ -1715,8 +1718,9 @@ include 'core/sidebar.php';
                 <input type="hidden" name="skin_slug" value="<?php echo htmlspecialchars($skin['slug']); ?>">
                 <input type="hidden" name="download_url" value="<?php echo htmlspecialchars($skin['download_url']); ?>">
                 <input type="hidden" name="signature" value="<?php echo htmlspecialchars($skin['signature'] ?? ''); ?>">
+                <?php $skin_confirm = 'Update ' . htmlspecialchars(addslashes($skin['name'])) . ' to v' . htmlspecialchars($skin['to']) . '?'; ?>
                 <button type="submit" name="action" value="skin_update" class="btn-smack btn-sm"
-                        onclick="return confirm('Update <?php echo htmlspecialchars(addslashes($skin[\'name\'])); ?> to v<?php echo htmlspecialchars($skin[\'to\']); ?>?');">UPDATE</button>
+                        onclick="return confirm('<?php echo $skin_confirm; ?>');">UPDATE</button>
             </form>
             <?php else: ?>
             <a href="smack-skin.php?tab=gallery" class="btn-smack btn-sm" style="text-decoration:none;">VIEW IN GALLERY</a>
@@ -1991,69 +1995,4 @@ include 'core/sidebar.php';
                     <form method="POST">
                         <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
                         <button type="submit" name="action" value="cron_register" class="btn-smack"
-                                <?php echo $version_job_registered ? 'disabled' : ''; ?>>REGISTER VERSION CHECK</button>
-                    </form>
-                    <form method="POST">
-                        <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-                        <button type="submit" name="action" value="cron_remove" class="btn-smack"
-                                <?php echo !$version_job_registered ? 'disabled' : ''; ?>
-                                onclick="return confirm('Remove the automatic version check cron job?');">REMOVE VERSION CHECK</button>
-                    </form>
-                </div>
-                <p class="dim mt-25" style="font-size:0.8rem;">Without cron, the dashboard falls back to a 24-hour on-load check.</p>
-            <?php else: ?>
-                <label>CRON ENGINE</label>
-                <div class="read-only-display">NOT SUPPORTED ON THIS HOST</div>
-                <p class="dim mt-10" style="font-size:0.8rem;">The dashboard will fall back to checking every 24 hours on page load.</p>
-            <?php endif; ?>
-        </div>
-
-    </details>
-
-</div>
-
-
-<script>
-(function () {
-    var log = document.querySelector('.step-log');
-    if (log) { log.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-
-    // File picker label feedback
-    var inp   = document.getElementById('upload-zip-input');
-    var lbl   = document.getElementById('file-pick-label');
-    var fname = document.getElementById('file-pick-name');
-    if (inp && lbl && fname) {
-        inp.addEventListener('change', function () {
-            if (inp.files && inp.files.length > 0) {
-                fname.textContent = inp.files[0].name;
-                lbl.classList.add('has-file');
-            } else {
-                fname.textContent = 'No file chosen';
-                lbl.classList.remove('has-file');
-            }
-        });
-    }
-
-    // Auto-advance the staged update pipeline.
-    // Once the user clicks APPLY UPDATE on the status card, every subsequent
-    // stage (download → verify → backup → premigrate → extract → migrate)
-    // runs automatically. The only manual step is the initial Apply click.
-    // Does not fire when there is an error (alert-danger is on the page).
-    var stageBox = document.getElementById('stage-box');
-    if (stageBox && !document.querySelector('.alert-danger')) {
-        var nextBtn = stageBox.querySelector('.stage-next-btn button[type="submit"]');
-        if (nextBtn && !nextBtn.disabled) {
-            nextBtn.disabled    = true;
-            nextBtn.style.opacity = '0.35';
-            var note = document.createElement('p');
-            note.style.cssText  = 'font-size:0.72rem;opacity:0.4;margin-top:8px;font-family:monospace;letter-spacing:0.05em;';
-            note.textContent    = 'AUTO-CONTINUING...';
-            nextBtn.parentNode.appendChild(note);
-            setTimeout(function () { nextBtn.closest('form').submit(); }, 800);
-        }
-    }
-})();
-</script>
-
-<?php include 'core/admin-footer.php'; ?>
-<?php // ===== SNAPSMACK EOF =====
+                                <?php echo $version_job_registered ? 'disabled' : ''; ?>>REGISTER VERSION

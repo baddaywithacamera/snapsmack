@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.144 — "La-Z-Boy" (2026-05-16)
+
+### Fixed
+- **smack-update.php 500 on all installs**: PHP parse error on line 1722 — `$skin[\'name\']` and `$skin[\'to\']` used backslash-escaped single quotes in PHP code context (not inside a string), which is invalid in PHP 8. Replaced with a `$skin_confirm` variable built in a clean PHP block before the button.
+
 ## 0.7.143 — "La-Z-Boy" (2026-05-16)
 
 ### Fixed
