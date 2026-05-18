@@ -238,6 +238,16 @@ $_ui_pimpmobile = ($_SESSION['user_ui_mode'] ?? 'bigwheel') === 'pimpmobile';
 if (isset($_POST['pimpmobile_action'])) {
     $_pm_action = $_POST['pimpmobile_action'];
 
+    // Ensure ui_mode column exists — the SQL migration may not have run yet on
+    // sites that haven't updated since 0.7.148. Swallow errno 1060 (duplicate
+    // column) and 1091 (can't drop) which mean the column is already there.
+    try {
+        $_ps = $pdo->query("ALTER TABLE `snap_users` ADD COLUMN `ui_mode` VARCHAR(20) NOT NULL DEFAULT 'bigwheel' AFTER `preferred_skin`");
+        if ($_ps !== false) $_ps->closeCursor();
+    } catch (\PDOException $e) {
+        if (!in_array((int)$e->errorInfo[1], [1060, 1091])) throw $e;
+    }
+
     if ($_pm_action === 'switch_to_pimpmobile') {
         $pdo->prepare("UPDATE snap_users SET ui_mode = 'pimpmobile' WHERE id = ?")->execute([$_SESSION['user_id']]);
         $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('pimpmobile_last_offer_at',?) ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$count_pub]);

@@ -12,6 +12,18 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.149 — "La-Z-Boy" (2026-05-17)
+
+### Fixed
+- **Pimpmobile toggle still 500 after 0.7.148**: The SQL migration added the ui_mode column for sites applying the update, but sites already on 0.7.147 had no way to get the column without first triggering the 500. smack-admin.php now runs a defensive ALTER TABLE before the first ui_mode write, self-healing on any install where the column is missing. Idempotent — swallows errno 1060 when the column already exists.
+
+## 0.7.148 — "La-Z-Boy" (2026-05-17)
+
+### Fixed
+- **Pimpmobile toggle causes 500 on all sites**: Per-user ui_mode was implemented using a PHP migration file (066_per_user_ui_mode.php) but the migration runner only processes migrate*.sql files. The ALTER TABLE adding the ui_mode column to snap_users never ran, so UPDATE snap_users SET ui_mode crashed with "Unknown column". Replaced with a proper SQL migration (migrate-users-ui-mode.sql) added to UPDATER_KNOWN_MIGRATIONS.
+- **Update stage buttons misaligned during auto-advance**: AUTO-CONTINUING... text was appended inside the stage-next-btn form, expanding its height and pushing the CANCEL UPDATE button down. Added vertical-align:top to both inline-block forms so they stay top-aligned regardless of content height.
+- **Stale update server offers downgrade**: updater_check_status() checksum fallback path fired even when the remote version was older than installed, causing sites to show a phantom "update available" after the update server lagged behind. Checksum comparison now only applies when versions are exactly equal.
+
 ## 0.7.147 — "La-Z-Boy" (2026-05-17)
 
 ### Changed
