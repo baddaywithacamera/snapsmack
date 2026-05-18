@@ -241,6 +241,11 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         'skins/show-n-tell/',
         'skins/the-grid/',
         'skins/true-grit/',
+        // Skins distributed via Skin Packager only — NOT in base release
+        'skins/chaplin/',
+        'skins/galleria/',
+        'skins/photogram/',
+        'skins/rational-geo/',
         // Non-web directories
         'tools/',
         'projects/',
