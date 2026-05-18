@@ -12,6 +12,16 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.152 — "La-Z-Boy" (2026-05-18)
+
+### Fixed
+- **Schema sync did nothing for ui_mode column**: updater_canonical_diff() falls back to the on-disk snapsmack_canonical.sql, but ui_mode was never added to it. Schema sync can't add a column it doesn't know about. Added ui_mode to both snap_users definitions in the canonical schema. RUN SCHEMA SYNC will now add the column on any site missing it.
+
+## 0.7.151 — "La-Z-Boy" (2026-05-17)
+
+### Fixed
+- **Update stage buttons still misaligned**: vertical-align:top didn't fully fix the issue because the two forms had different margin-top values (16px vs 10px), creating a 6px offset. Replaced inline-block + vertical-align approach with a flex row wrapper (.stage-actions) using align-items:flex-start. Both forms now pin to the top of the row regardless of content height.
+
 ## 0.7.150 — "La-Z-Boy" (2026-05-17)
 
 ### Fixed
