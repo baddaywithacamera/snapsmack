@@ -1355,8 +1355,9 @@ include 'core/sidebar.php';
         background: rgba(57, 255, 20, 0.03);
     }
     .stage-box h3 { margin-bottom: 16px; }
-    .stage-next-btn { margin-top: 16px; display: inline-block; vertical-align: top; }
-    .stage-cancel { margin-top: 10px; display: inline-block; margin-left: 12px; vertical-align: top; }
+    .stage-actions { display: flex; align-items: flex-start; gap: 12px; margin-top: 16px; }
+    .stage-next-btn { display: block; }
+    .stage-cancel { display: block; }
 
     .skin-notify-card {
         display: flex; justify-content: space-between; align-items: center;
@@ -1611,6 +1612,7 @@ include 'core/sidebar.php';
             <?php endforeach; ?>
         </div>
 
+        <div class="stage-actions">
         <?php if ($flash_type !== 'error'): ?>
         <form method="POST" class="stage-next-btn">
             <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
@@ -1640,6 +1642,7 @@ include 'core/sidebar.php';
                 CANCEL UPDATE
             </button>
         </form>
+        </div>
     </div>
 
     <?php else: ?>
