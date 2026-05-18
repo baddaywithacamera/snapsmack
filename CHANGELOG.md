@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.150 — "La-Z-Boy" (2026-05-17)
+
+### Fixed
+- **Thumb style setting (Cropped / Square) had no effect**: The 0.7.79 layout refactor collapsed archive layouts from 4-way (square/cropped/croppedwithcalendar/masonry) to 2-way (thumbs/masonry), with thumb style as a separate admin setting stored in $grid_layout. The render branch in archive.php was never updated — it still checked `$archive_layout === 'cropped'`, which is permanently false in the new model. Changed to `$grid_layout === 'cropped'` so the cropped render path is reachable again.
+
 ## 0.7.149 — "La-Z-Boy" (2026-05-17)
 
 ### Fixed

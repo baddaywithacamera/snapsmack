@@ -632,7 +632,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                 <?php endif; ?>
             </div>
 
-            <?php elseif ($archive_layout === 'cropped'): ?>
+            <?php elseif ($grid_layout === 'cropped'): ?>
             <!-- Cropped layout — Center-cropped to max 3:2 or 2:3 aspect ratio -->
             <div id="browse-grid" class="cropped-grid archive-grid" style="--grid-cols: <?php echo htmlspecialchars($settings['browse_cols'] ?? 4); ?>; --thumb-width: <?php echo $thumb_px; ?>px;">
                 <?php if ($images): ?>
