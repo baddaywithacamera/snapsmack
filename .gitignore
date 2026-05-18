@@ -144,3 +144,6 @@ skins/**/*.docx
 # Claude session state and worktrees — never part of source
 _claudepowertools/
 .claude/worktrees/
+
+# Chaplin skin design reference files — private, gitignored
+skins/chaplin/reference work from Claude Design - gitignore/

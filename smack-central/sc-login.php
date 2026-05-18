@@ -8,9 +8,20 @@ require_once __DIR__ . '/sc-db.php';
 if (file_exists(__DIR__ . '/sc-version.php')) require_once __DIR__ . '/sc-version.php';
 
 if (session_status() === PHP_SESSION_NONE) {
+    $_sc_sess_dir = __DIR__ . '/.sc-sessions';
+    if (!is_dir($_sc_sess_dir)) {
+        @mkdir($_sc_sess_dir, 0700, true);
+    }
+    session_save_path($_sc_sess_dir);
+    ini_set('session.gc_maxlifetime', 28800);
     session_name(SC_SESSION_NAME);
-    ini_set('session.gc_maxlifetime', 28800); // 8 hours
-    session_set_cookie_params(28800);
+    session_set_cookie_params([
+        'lifetime' => 28800,
+        'path'     => '/',
+        'secure'   => true,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
     session_start();
 }
 
