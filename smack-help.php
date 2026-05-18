@@ -1569,15 +1569,12 @@ automatically every 6 hours. A 24-hour fallback check runs on dashboard load eve
 cron.</p>
 
 <h4>Applying an Update</h4>
-<p>The update process:</p>
-<ol>
-    <li>A full backup is created automatically (mandatory — you cannot skip this).</li>
-    <li>The update package is downloaded and verified (SHA-256 checksum + Ed25519 signature).</li>
-    <li>Files are extracted, skipping protected paths (db.php, constants.php, uploads, etc.).</li>
-    <li>If the update includes database changes, migration scripts run automatically.</li>
-    <li>The version number is updated in the database and constants file.</li>
-</ol>
-<p>If any step fails, the system automatically rolls back to the pre-update backup.</p>
+<p>Click <strong>APPLY UPDATE →</strong> to start. The pipeline runs automatically from
+there — backup, verify, extract, migrate — without further input. A status log scrolls
+as each stage completes. The only thing you do is click Apply once.</p>
+<p>If a stage fails, auto-advance stops and the manual controls stay active so you can
+review the error and decide how to proceed. A full backup is always taken before any
+files are touched; if anything goes wrong the system rolls back automatically.</p>
 
 <h4>Protected Paths</h4>
 <p>The updater never overwrites your site-specific files: database configuration, upload
