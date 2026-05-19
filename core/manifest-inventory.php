@@ -449,6 +449,7 @@ return [
         'Crimson Pro'           => 'Crimson Pro (Book Quality / Refined long text)',
         'Marcellus'             => 'Marcellus (Roman Capitals / NatGeo masthead feel)',
         'Philosopher'           => 'Philosopher (Literary / Old-World Serif)',
+        'IM Fell DW Pica'       => 'IM Fell DW Pica (Hand-Press / Old-Style Roughness)',
 
         // ----------------------------------------------------------------
         // SERIF: DISPLAY ONLY — drama at large sizes, not body text
@@ -459,6 +460,7 @@ return [
         'Ultra'                 => 'Ultra (Slab Serif / Extreme weight / Display only)',
         'Alfa Slab One'         => 'Alfa Slab One (Heavy Slab / Display only)',
         'Yeseva One'            => 'Yeseva One (Russian Constructivist DNA)',
+        'Antic Didone'          => 'Antic Didone (High-Contrast / Silent Film Display)',
 
         // ----------------------------------------------------------------
         // SLAB SERIF — structural, photographic, rugged
@@ -499,6 +501,7 @@ return [
         'Gruppo'                => 'Gruppo (Wide / Minimal Decorative Caps)',
         'Teko'                  => 'Teko (Condensed / South Asian Geometric)',
         'Stalinist One'         => 'Stalinist One (Soviet Propaganda — use knowingly)',
+        'Special Elite'         => 'Special Elite (Typewriter Stamp / Period Utility)',
 
         // ----------------------------------------------------------------
         // HANDWRITING & SCRIPT — accent use only, never body text
@@ -836,6 +839,11 @@ return [
                     'options' => ['right' => 'Bottom Right', 'left' => 'Bottom Left']
                 ]
             ]
+        ],
+        'smack-film-damage' => [
+            'label'        => 'Film Damage Overlay (scratches, dust, hair, gate weave)',
+            'path'         => 'assets/js/ss-engine-film-damage.js',
+            'has_settings' => false,
         ],
     ]
 ];

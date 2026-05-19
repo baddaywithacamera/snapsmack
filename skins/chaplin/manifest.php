@@ -91,6 +91,26 @@ return [
             'options' => ['1' => 'On', '0' => 'Off'],
             // Handled by PHP conditional in skin-header.php
         ],
+        // ── FILM DAMAGE ───────────────────────────────────────────────────────
+        'chap_film_damage' => [
+            'section' => 'FILM DAMAGE',
+            'type'    => 'select',
+            'label'   => 'Film Damage Overlay',
+            'default' => '1',
+            'options' => ['1' => 'On', '0' => 'Off'],
+            // Handled by PHP in skin-header.php — loads ss-engine-film-damage.js
+        ],
+        'chap_damage_intensity' => [
+            'section'  => 'FILM DAMAGE',
+            'type'     => 'range',
+            'label'    => 'Damage Intensity',
+            'default'  => '5',
+            'min'      => '1',
+            'max'      => '10',
+            'selector' => '',
+            'property' => '',
+            // Passed as JS init option — no CSS selector needed
+        ],
 
         // ── GALLERY WALL ──────────────────────────────────────────────────────
         'chap_wall_color' => [
