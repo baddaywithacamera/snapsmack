@@ -19,8 +19,8 @@
 
 // --- CONFIGURATION ---
 // The version this installer deploys.
-$installer_version       = '0.7.27';
-$installer_version_label = 'Alpha 0.7.27';
+$installer_version       = '0.7.154';
+$installer_version_label = 'Alpha 0.7.154';
 
 // --- HTTPS DETECTION ---
 // Defined here rather than relying on core/constants.php, which does not exist
