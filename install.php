@@ -301,13 +301,46 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
         } else {
             $raw = file_get_contents($canonical_path);
 
-            // Strip -- line comments (not inside string literals in our schema).
-            $raw = preg_replace('/--[^\n]*/', '', $raw);
-            // Strip /* ... */ block comments.
+            // Strip /* ... */ block comments (safe — our schema has none inside literals).
             $raw = preg_replace('/\/\*.*?\*\//s', '', $raw);
+            // Strip -- line comments that are NOT inside string literals.
+            $raw = preg_replace('/--[^\n]*/', '', $raw);
 
-            // Split on semicolons and execute each non-empty statement.
-            $statements = array_filter(array_map('trim', explode(';', $raw)), fn($s) => $s !== '');
+            // Split on statement-terminating semicolons, ignoring semicolons inside
+            // single-quoted string literals (e.g. COMMENT 'foo; bar'). A simple
+            // explode(';') would break on any semicolon inside a COMMENT value.
+            $statements = [];
+            $buf        = '';
+            $in_str     = false;
+            $len        = strlen($raw);
+            for ($i = 0; $i < $len; $i++) {
+                $ch = $raw[$i];
+                if ($ch === "'" && !$in_str) {
+                    $in_str = true;
+                    $buf .= $ch;
+                } elseif ($ch === "'" && $in_str) {
+                    // Handle escaped quote ''
+                    if (isset($raw[$i + 1]) && $raw[$i + 1] === "'") {
+                        $buf .= "''";
+                        $i++;
+                    } else {
+                        $in_str = false;
+                        $buf .= $ch;
+                    }
+                } elseif ($ch === ';' && !$in_str) {
+                    $trimmed = trim($buf);
+                    if ($trimmed !== '') {
+                        $statements[] = $trimmed;
+                    }
+                    $buf = '';
+                } else {
+                    $buf .= $ch;
+                }
+            }
+            $trimmed = trim($buf);
+            if ($trimmed !== '') {
+                $statements[] = $trimmed;
+            }
 
             foreach ($statements as $sql) {
                 try {
