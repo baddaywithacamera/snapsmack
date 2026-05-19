@@ -993,7 +993,7 @@ if ($step === 4 && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_
 // =====================================================================
 // STEP 5 HANDLER: Generate Config, Seed Settings, Create Dirs, Finish
 // =====================================================================
-if ($step === 5 && empty($errors)) {
+if ($step === 5 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
 
     $prefix = $_SESSION['db_prefix'];
 
@@ -1313,8 +1313,8 @@ HTACCESS;
     }
 
     // --- VERIFY SHIPPED SKINS ---
-    // The installer ships with two skins: 50 Shades of Noah Grey and Rational Geo.
-    // 50 Shades is the default and a hard requirement — the public site will 404 without it.
+    // The installer ships with two skins: New Horizon (the default) and 50 Shades of Noah Grey.
+    // New Horizon is a hard requirement — the public site will 404 without it.
     // Additional skins can be installed from the skin gallery after setup.
     $skin_warning = '';
     if (!is_dir(__DIR__ . '/skins/50-shades-of-noah-grey')) {
