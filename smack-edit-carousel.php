@@ -33,7 +33,7 @@
 
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 require_once 'core/palette-extract.php';
 require_once 'core/snap-tags.php';
 

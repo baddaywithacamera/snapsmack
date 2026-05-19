@@ -14,7 +14,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // --- TARGET CONTEXT ---
 // Determines whether we're editing public or admin styles.

@@ -35,32 +35,6 @@ if (!function_exists('snap_is_https')) {
 }
 
 // --- SESSION INIT ---
-// Use a local save path so system GC can't prune the session mid-install.
-// Set cookie params before session_start() to ensure the cookie survives
-// on HTTPS and isn't killed by SameSite or Secure mismatches.
-$install_session_dir = __DIR__ . '/core/.install-session';
-if (!is_dir($install_session_dir)) {
-    @mkdir($install_session_dir, 0700, true);
-}
-if (is_dir($install_session_dir)) {
-    // Block direct HTTP access to session files
-    $htaccess = $install_session_dir . '/.htaccess';
-    if (!file_exists($htaccess)) {
-        @file_put_contents($htaccess, "Require all denied\n");
-    }
-    if (is_writable($install_session_dir)) {
-        session_save_path($install_session_dir);
-    }
-}
-$install_is_https = snap_is_https();
-session_set_cookie_params([
-    'lifetime' => 3600,
-    'path'     => '/',
-    'secure'   => $install_is_https,
-    'httponly' => true,
-    'samesite' => 'Lax',
-]);
-session_name('snapsmack_install');
 session_start();
 
 // --- CODEBASE CHECK ---
@@ -169,10 +143,21 @@ if (file_exists(__DIR__ . '/core/db.php')) {
 }
 
 // --- CSRF TOKEN ---
-if (empty($_SESSION['install_csrf'])) {
-    $_SESSION['install_csrf'] = bin2hex(random_bytes(32));
+// File-based CSRF — avoids session persistence issues on servers where the
+// session cookie doesn't survive between GET and POST (strict GC, SameSite,
+// PHP-FPM misconfiguration, etc.). Token is written to core/.install-csrf on
+// first load and validated against on every POST. install.php's self-delete
+// removes it along with everything else on successful completion.
+$_csrf_file = __DIR__ . '/core/.install-csrf';
+if (!file_exists($_csrf_file) || filesize($_csrf_file) < 32) {
+    $csrf_token = bin2hex(random_bytes(32));
+    @file_put_contents($_csrf_file, $csrf_token, LOCK_EX);
+    @chmod($_csrf_file, 0600);
+} else {
+    $csrf_token = trim(file_get_contents($_csrf_file));
 }
-$csrf_token = $_SESSION['install_csrf'];
+// Keep session in sync for any code that still reads $_SESSION['install_csrf']
+$_SESSION['install_csrf'] = $csrf_token;
 
 // --- RATE LIMITING ---
 // Track failed DB connection attempts to prevent brute-forcing credentials.
@@ -1324,6 +1309,7 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^archive$ archive.php [L,QSA]
 RewriteRule ^rss$ rss.php [L,QSA]
 RewriteRule ^feed$ rss.php [L,QSA]
+RewriteRule ^snap-in$ snap-in.php [L,QSA]
 
 RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
 
@@ -2202,7 +2188,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
                 <div class="success-box">install.php has been deleted automatically.</div>
             <?php endif; ?>
 
-            <a href="login.php">Log In</a>
+            <a href="snap-in">Log In</a>
         </div>
     <?php endif; ?>
 

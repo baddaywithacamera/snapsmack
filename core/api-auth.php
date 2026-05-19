@@ -2,14 +2,14 @@
 /**
  * SNAPSMACK - API / Session Dual Authentication
  *
- * Drop-in replacement for require_once 'core/auth.php' on endpoints that
+ * Drop-in replacement for require_once 'core/auth-smack.php' on endpoints that
  * must serve both browser sessions (admin UI) and tool API key access (SYBU).
  *
  * Priority order:
  *   1. X-Snap-Key header present → validate against tool_api_key setting.
  *      Valid: define SNAP_API_AUTH and return (caller proceeds immediately).
  *      Invalid: 401 JSON error, exit.
- *   2. No key header → fall through to normal session auth (core/auth.php),
+ *   2. No key header → fall through to normal session auth (core/auth-smack.php),
  *      which redirects browsers to the login page if not authenticated.
  *
  * The tool_api_key setting is managed in Admin → Settings → API Access.
@@ -60,5 +60,5 @@ if ($_x_snap_key !== '') {
 unset($_x_snap_key);
 
 // No key header — fall through to standard session auth.
-require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/auth-smack.php';
 // ===== SNAPSMACK EOF =====

@@ -35,7 +35,7 @@
 // own chunk requests must not be blocked by the lock they created.
 define('SNAPSMACK_IS_UPDATER', true);
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 require_once 'core/updater.php';
 require_once 'core/skin-registry.php';
 
@@ -2060,5 +2060,4 @@ include 'core/sidebar.php';
 })();
 </script>
 
-<?php include 'core/admin-footer.php'; ?>
-<?php // ===== SNAPSMACK EOF =====
+<?

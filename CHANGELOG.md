@@ -12,6 +12,17 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.155 — "Booty Call" (2026-05-19)
+
+### Security
+- **`login.php` deleted**: Orphaned duplicate login page sitting at a predictable URL. `snap-in.php` via the configurable login slug has been the real login since the slug model was introduced. All references (recovery emails, password reset back-links, SSO fallback, post-install link) updated to point to `snap-in`. Existing installs have `login.php` auto-removed on update via `UPDATER_DEPRECATED_FILES`.
+- **`core/auth.php` renamed to `core/auth-smack.php`**: `auth.php` is a filename cPanel generates on some hosts. Having SnapSmack's auth guard share that name caused a gitignore collision and is a support nightmare waiting to happen. All 60+ requires updated. Old name added to `UPDATER_DEPRECATED_FILES`.
+- **Installer `.htaccess` template missing login protections**: Generated `.htaccess` on fresh installs was missing the `snap-in` rewrite rule (so `/snap-in` 404'd) and the `login.php` block from `FilesMatch`. Both added to the installer template.
+
+### Fixed
+- **`core/auth.php` accidentally deleted in 0.7.105**: The admin authentication guard — required by every admin page — was removed in a large commit and never restored. All admin pages were 500ing on fresh installs. Restored (as `core/auth-smack.php`).
+- **Gitignore `auth.php` rule was unanchored**: The rule intended to ignore the root-level cPanel `auth.php` was matching `core/auth.php` as well, silently preventing it from being tracked. Rule anchored to `/auth.php`.
+
 ## 0.7.154 — "Booty Call" (2026-05-18)
 
 ### Fixed

@@ -3,7 +3,7 @@
  * SNAPSMACK - Auth Recovery Engine
  *
  * Shared functions for one-time recovery codes and email-based password
- * reset tokens. Used by login.php, smack-users.php, smack-edit-user.php,
+ * reset tokens. Used by snap-in.php, smack-users.php, smack-edit-user.php,
  * smack-change-password.php, and password-reset.php.
  */
 
@@ -143,7 +143,7 @@ function snapsmack_send_recovery_email(
              . "A one-time recovery code has been generated for your SnapSmack account at {$site_url}.\n\n"
              . "Your recovery code is:\n\n"
              . "    {$code}\n\n"
-             . "Go to {$site_url}login.php and use the RECOVERY CODE tab to log in.\n"
+             . "Go to {$site_url}snap-in and use the RECOVERY CODE tab to log in.\n"
              . "You will be required to set a new password immediately after.\n\n"
              . "This code can only be used once. If you did not request this, contact your administrator.\n\n"
              . "— {$site_name}";

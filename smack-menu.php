@@ -18,7 +18,7 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // ── SETTINGS WE MANAGE ────────────────────────────────────────────────────
 // Dropdown appearance settings stored as flat keys in snap_settings.

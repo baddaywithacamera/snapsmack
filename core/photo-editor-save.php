@@ -15,7 +15,7 @@
  */
 
 
-require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/auth-smack.php';
 
 header('Content-Type: application/json');
 
