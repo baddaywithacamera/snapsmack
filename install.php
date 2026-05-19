@@ -45,7 +45,7 @@ if (!file_exists(__DIR__ . '/core/parser.php') || !is_dir(__DIR__ . '/core')) {
         header('Location: setup.php');
         exit;
     }
-    die('<!DOCTYPE html><html><head><meta charset="utf-8"><title>SnapSmack</title></head><body style="background:#111;color:#eee;font-family:monospace;padding:60px;text-align:center;"><h1>CODEBASE NOT FOUND</h1><p>The SnapSmack application files are missing. Upload the full codebase to this directory first, or use <code>setup.php</code> to deploy from GitHub.</p></body></html>');
+    die('<!DOCTYPE html><html><head><meta charset="utf-8"><title>SnapSmack</title></head><body style="background:#111;color:#eee;font-family:monospace;padding:60px;text-align:center;"><h1>CODEBASE NOT FOUND</h1><p>The SnapSmack application files are missing. Upload <code>setup.php</code> to this directory and open it in a browser — it will fetch and verify the latest signed release package from snapsmack.ca and hand off to this installer automatically.</p></body></html>');
 }
 
 // --- RECOVERY MODE DETECTION ---
