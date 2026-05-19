@@ -15,7 +15,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 require_once 'core/snap-tags.php';
 
 if (!isset($settings)) {

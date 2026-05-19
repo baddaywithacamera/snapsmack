@@ -7,7 +7,7 @@
  * multi-site configurations, register new spokes, and monitor their status.
  */
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // Load settings early so multisite_role is available to all POST handlers.
 $settings       = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);

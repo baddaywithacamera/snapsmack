@@ -17,7 +17,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // --- ACCESS CONTROL ---
 // Ensure user is authenticated before running intensive file operations

@@ -14,7 +14,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // Ensure media storage directory exists.
 $target_dir = "media_assets/";

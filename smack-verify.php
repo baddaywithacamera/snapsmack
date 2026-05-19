@@ -15,7 +15,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 $page_title = "Verify Integrity";
 $running = isset($_POST['run_verify']);

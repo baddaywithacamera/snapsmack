@@ -8,7 +8,7 @@
  * assets/js/ss-engine-admin-csrf.js, which reads the token from the
  * <meta name="csrf-token"> tag emitted by core/admin-header.php).
  *
- * Validation runs in core/auth.php before the page's POST handler executes.
+ * Validation runs in core/auth-smack.php before the page's POST handler executes.
  *
  * Public API:
  *   csrf_token()             — returns the session's current token (creates

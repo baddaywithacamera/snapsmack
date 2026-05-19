@@ -14,7 +14,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // --- SETTINGS ---
 // Must load before any logic that reads $settings (UI mode, offer card, etc.).
@@ -451,17 +451,4 @@ include 'core/sidebar.php';
                 <form method="POST" class="mt-25">
                     <div class="action-grid-dual">
                         <button type="submit" name="cron_action" value="register" class="btn-smack" <?php echo $rss_job_registered ? 'disabled' : ''; ?>>REGISTER RSS JOB</button>
-                        <button type="submit" name="cron_action" value="remove" class="btn-smack" <?php echo !$rss_job_registered ? 'disabled' : ''; ?>>REMOVE RSS JOB</button>
-                    </div>
-                </form>
-            <?php else: ?>
-                <label>CRON ENGINE</label>
-                <div class="read-only-display">NOT SUPPORTED ON THIS HOST</div>
-                <p class="dim mt-20 text-sm">RSS last-updated features are unavailable. Cron access is required.</p>
-            <?php endif; ?>
-        </div>
-    </div>
-</div>
-
-<?php include 'core/admin-footer.php'; ?>
-<?php // ===== SNAPSMACK EOF =====
+                        <button type="submit" name="cron_action" value="remove" class="btn

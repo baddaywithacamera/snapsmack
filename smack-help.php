@@ -17,7 +17,7 @@
 
 
 $page_title = 'User Manual';
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // Detect user role for contextual filtering
 $_help_user_role = $_SESSION['user_role'] ?? 'editor';
@@ -2772,7 +2772,7 @@ $help_topics['server-files'] = [
 <p>Installed themes. Each subdirectory is one skin. The base release ships with 50 Shades of Noah Grey, New Horizon, Galleria, Rational Geo, and Photogram (mobile). Additional skins can be installed from Smack Central → Skin Packager. To remove a skin, uninstall it through the admin — do not delete the directory manually while it is the active skin or you will get a 500 error.</p>
 
 <h4>Files in the Root</h4>
-<p>The PHP files in the root directory are SnapSmack's public-facing pages and admin screens — <code>index.php</code>, <code>smack-admin.php</code>, <code>login.php</code>, and so on. These are overwritten on every update. <code>install.php</code> self-deletes after a successful install; if it is still present, delete it manually. <code>.htaccess</code> handles URL rewriting and HTTPS redirection — do not delete it or your site will break.</p>
+<p>The PHP files in the root directory are SnapSmack's public-facing pages and admin screens — <code>index.php</code>, <code>smack-admin.php</code>, and so on. These are overwritten on every update. <code>install.php</code> self-deletes after a successful install; if it is still present, delete it manually. <code>.htaccess</code> handles URL rewriting and HTTPS redirection — do not delete it or your site will break.</p>
 HTML
 ];
 
@@ -3042,3 +3042,4 @@ foreach ($help_topics as $slug => $ht) {
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
+                        

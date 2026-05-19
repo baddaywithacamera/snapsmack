@@ -15,7 +15,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 require_once 'core/cloud-engine.php';
 
 // Load all settings

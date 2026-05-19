@@ -15,7 +15,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // Load settings before any output — needed for API calls and registration.
 if (!isset($settings)) {
