@@ -14,13 +14,15 @@
  */
 
 
-$film_stock    = $settings['chap_film_stock']       ?? 'nitrate';
-$grain_raw     = (int)($settings['chap_grain_intensity'] ?? 4);
-$grain_opacity = round($grain_raw / 100, 3); // 0–0.12
-$vignette      = ($settings['chap_vignette']        ?? '1') === '1';
-$flicker       = ($settings['chap_flicker']         ?? '1') === '1';
-$bevel_style   = $settings['chap_bevel_style']      ?? 'single';
-$card_style    = $settings['chap_card_style']       ?? 'card';
+$film_stock      = $settings['chap_film_stock']         ?? 'nitrate';
+$grain_raw       = (int)($settings['chap_grain_intensity'] ?? 4);
+$grain_opacity   = round($grain_raw / 100, 3); // 0–0.12
+$vignette        = ($settings['chap_vignette']          ?? '1') === '1';
+$flicker         = ($settings['chap_flicker']           ?? '1') === '1';
+$bevel_style     = $settings['chap_bevel_style']        ?? 'single';
+$card_style      = $settings['chap_card_style']         ?? 'card';
+$film_damage     = ($settings['chap_film_damage']       ?? '1') === '1';
+$damage_intensity = (int)($settings['chap_damage_intensity'] ?? 5);
 ?>
 <style>
 /* ── FILM STOCK FILTERS ─────────────────────────────────────────────────────── */
@@ -130,6 +132,15 @@ $card_style    = $settings['chap_card_style']       ?? 'card';
 .chap-gallery-room .frame-image img,
 .chap-archive-item .frame-image img { height: 100%; object-fit: cover; }
 </style>
+
+<?php if ($film_damage): ?>
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-film-damage.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    ChaplinFilmDamage.init({ intensity: <?php echo $damage_intensity; ?> });
+});
+</script>
+<?php endif; ?>
 
 <div id="header" class="chap-header">
     <div class="inside">
