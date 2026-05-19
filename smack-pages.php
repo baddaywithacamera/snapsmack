@@ -16,7 +16,7 @@
 
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // --- PLAIN TEXT TO HTML CONVERTER ---
 // Converts plain text input into properly wrapped HTML paragraphs.

@@ -15,7 +15,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // --- BATCH DELETE HANDLER ---
 // Accepts an array of image IDs and purges each one along with its files and

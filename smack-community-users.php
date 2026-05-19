@@ -15,7 +15,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // --- ACTIONS ---
 if (isset($_GET['action']) && isset($_GET['id'])) {

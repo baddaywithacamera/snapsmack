@@ -15,7 +15,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // --- EXPORT & RECOVERY HANDLERS ---
 if (isset($_POST['action']) && $_POST['action'] === 'export') {

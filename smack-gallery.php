@@ -18,7 +18,7 @@
 
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // ── AJAX ENDPOINT ────────────────────────────────────────────────────────────
 // Returns JSON for the gallery grid. Handles search, filtering, pagination.

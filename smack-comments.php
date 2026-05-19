@@ -16,7 +16,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 require_once 'core/ban-check.php';
 require_once 'core/ste-client.php';
 

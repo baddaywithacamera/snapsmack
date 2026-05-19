@@ -20,7 +20,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 require_once 'core/stats-logger.php';
 
 // --- HANDLE POST ACTIONS ---

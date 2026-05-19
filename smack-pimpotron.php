@@ -14,7 +14,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // --- ASSET INVENTORY ---
 // Loads available fonts and other assets for slideshow text styling.

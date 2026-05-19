@@ -19,7 +19,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // --- FULL REACTION REGISTRY ---
 // Mirrors core/community-dock.php and process-reaction.php.

@@ -64,7 +64,7 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
 }
 
 define('SNAPSMACK_VERSION', 'Alpha 0.7.154');
-define('SNAPSMACK_VERSION_SHORT', '0.7.154');
+define('SNAPSMACK_VERSION_SHORT', '0.7.155');
 define('SNAPSMACK_VERSION_CODENAME', 'Booty Call');
 
 // --- VERSION COMPARISON ---

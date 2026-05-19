@@ -14,7 +14,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // --- FETCH CATEGORIES ---
 // Load categories for dropdown menu and list grouping.

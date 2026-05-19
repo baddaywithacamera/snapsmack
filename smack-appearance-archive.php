@@ -18,7 +18,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // --- MANIFEST (best-effort: skin-specific options if it loads; not required for core controls) ---
 $active_skin = $settings['active_skin'] ?? '';

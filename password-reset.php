@@ -151,7 +151,7 @@ button:hover { background: #444; }
     <?php endif; ?>
 
     <?php if ($success): ?>
-        <a href="login.php" class="back">← Back to login</a>
+        <a href="snap-in" class="back">← Back to login</a>
 
     <?php elseif ($step === 'reset'): ?>
         <form method="POST">
@@ -162,7 +162,7 @@ button:hover { background: #444; }
             <input type="password" name="confirm" minlength="8" required>
             <button type="submit">Set New Password</button>
         </form>
-        <a href="login.php" class="back">← Back to login</a>
+        <a href="snap-in" class="back">← Back to login</a>
 
     <?php else: ?>
         <form method="POST">
@@ -171,7 +171,7 @@ button:hover { background: #444; }
                    value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>">
             <button type="submit">Send Reset Link</button>
         </form>
-        <a href="login.php" class="back">← Back to login</a>
+        <a href="snap-in" class="back">← Back to login</a>
     <?php endif; ?>
 </div>
 </body>

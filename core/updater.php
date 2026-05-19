@@ -101,6 +101,8 @@ const UPDATER_KNOWN_MIGRATIONS = [
  */
 const UPDATER_DEPRECATED_FILES = [
     'smack-post.php' => '0.7.20',  // renamed to smack-post-solo.php
+    'login.php'      => '0.7.155', // replaced by snap-in slug model; predictable URL attack surface
+    'core/auth.php'  => '0.7.155', // renamed to core/auth-smack.php to avoid cPanel filename collision
 ];
 
 // ─── VERSION CHECK ──────────────────────────────────────────────────────────

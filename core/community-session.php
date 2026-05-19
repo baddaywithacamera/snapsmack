@@ -3,7 +3,7 @@
  * SNAPSMACK - Community Session Manager
  *
  * Manages visitor (community user) authentication state for public-facing
- * pages. Parallel to core/auth.php but for snap_community_users, not admins.
+ * pages. Parallel to core/auth-smack.php but for snap_community_users, not admins.
  *
  * Usage — pages that require a logged-in community user:
  *   require_once 'core/community-session.php';

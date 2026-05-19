@@ -14,7 +14,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // Extend execution limits to handle bulk image processing.
 set_time_limit(600);

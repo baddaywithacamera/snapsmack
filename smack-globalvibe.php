@@ -14,7 +14,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // --- THEME DISCOVERY ---
 // Scans available skins and admin themes, populating selector dropdowns.

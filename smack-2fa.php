@@ -14,7 +14,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 require_once 'core/db.php';
 require_once 'core/totp.php';
 

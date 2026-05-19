@@ -18,7 +18,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 if (!isset($_SESSION['user_id'])) {
     die("Access Denied.");

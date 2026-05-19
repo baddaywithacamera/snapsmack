@@ -16,7 +16,7 @@
  */
 
 
-require_once __DIR__ . '/core/auth.php';
+require_once __DIR__ . '/core/auth-smack.php';
 require_once __DIR__ . '/core/parser.php';
 require_once __DIR__ . '/core/skin-settings.php';
 

@@ -17,7 +17,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // ─── FORM SUBMISSION ───────────────────────────────────────────────
 

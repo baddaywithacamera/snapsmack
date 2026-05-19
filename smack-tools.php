@@ -13,7 +13,7 @@
  */
 
 
-require_once 'core/auth.php';
+require_once 'core/auth-smack.php';
 
 // --- TOOL REGISTRY ---
 // Add new companion tools here.
