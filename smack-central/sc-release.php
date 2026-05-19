@@ -560,6 +560,38 @@ if ($action === 'build' && $preflight_ok) {
         if (!$zip_result['ok']) {
             $build_error = $zip_result['msg'];
         } else {
+            // Step 2b: Inject current Ed25519 pubkey into setup.php inside the zip.
+            // setup.php hardcodes SETUP_RELEASE_PUBKEY — if this is not refreshed at
+            // build time it will go stale whenever the signing key changes, causing
+            // every fresh install to fail signature verification.
+            if ($sc_derived_pubkey) {
+                $patcher = new ZipArchive();
+                if ($patcher->open($zip_dest) === true) {
+                    $setup_src = $patcher->getFromName('setup.php');
+                    if ($setup_src !== false) {
+                        $setup_patched = preg_replace(
+                            "/define\s*\(\s*'SETUP_RELEASE_PUBKEY'\s*,\s*'[0-9a-fA-F]{64}'\s*\)/",
+                            "define('SETUP_RELEASE_PUBKEY', '{$sc_derived_pubkey}')",
+                            $setup_src
+                        );
+                        if ($setup_patched !== $setup_src) {
+                            $patcher->deleteName('setup.php');
+                            $patcher->addFromString('setup.php', $setup_patched);
+                            $build_log[] = "→ setup.php pubkey injected ({$sc_derived_pubkey})";
+                        } else {
+                            $build_log[] = "→ setup.php pubkey already current — no patch needed";
+                        }
+                    } else {
+                        $build_log[] = "→ WARNING: setup.php not found in zip — pubkey not injected";
+                    }
+                    $patcher->close();
+                } else {
+                    $build_log[] = "→ WARNING: could not open zip to patch setup.php — pubkey not injected";
+                }
+            } else {
+                $build_log[] = "→ WARNING: sc_derived_pubkey not available — setup.php pubkey not injected";
+            }
+
             // Step 3: SHA-256
             $checksum    = hash_file('sha256', $zip_dest);
             $build_log[] = "→ SHA-256: {$checksum}";
