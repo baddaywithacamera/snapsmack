@@ -22,6 +22,9 @@ backups/
 # Session files stored in-app to avoid shared-host GC cron purges
 data/sessions/
 
+# Installer session storage — created at runtime, never commit
+core/.install-session/
+
 # Site-specific head scripts — file-based so SMACKBACK can watch for tampering.
 # Not source code — each install manages its own. Re-save in smack-scripts.php to generate.
 data/custom-head.html
