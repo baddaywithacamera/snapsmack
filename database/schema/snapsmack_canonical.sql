@@ -639,20 +639,14 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_queue` (
 
 CREATE TABLE IF NOT EXISTS `snap_hub_shared_bans` (
   `id`            int unsigned     NOT NULL AUTO_INCREMENT,
-  `ban_type`      enum('fingerprint','ip','email_hash')
-                  COLLATE utf8mb4_unicode_ci NOT NULL,
-  `ban_value`     char(64)         COLLATE utf8mb4_unicode_ci NOT NULL
-                  COMMENT 'SHA-256 hex. Never a raw IP or email.',
+  `ban_type`      enum('fingerprint','ip','email_hash') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ban_value`     char(64)         COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'SHA-256 hex. Never a raw IP or email.',
   `reason`        varchar(64)      COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
-  `reported_by`   varchar(255)     COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
-                  COMMENT 'URL of the spoke that first reported this hash.',
+  `reported_by`   varchar(255)     COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT 'URL of the spoke that first reported this hash.',
   `first_seen`    datetime         NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `last_seen`     datetime         NOT NULL DEFAULT CURRENT_TIMESTAMP
-                  ON UPDATE CURRENT_TIMESTAMP,
-  `report_count`  int unsigned     NOT NULL DEFAULT 1
-                  COMMENT 'Number of distinct spokes that have reported this hash.',
-  `removed`       tinyint(1)       NOT NULL DEFAULT 0
-                  COMMENT '1 = manually cleared by hub admin, excluded from distribution.',
+  `last_seen`     datetime         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `report_count`  int unsigned     NOT NULL DEFAULT 1 COMMENT 'Number of distinct spokes that have reported this hash.',
+  `removed`       tinyint(1)       NOT NULL DEFAULT 0 COMMENT '1 = manually cleared by hub admin, excluded from distribution.',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_type_val` (`ban_type`, `ban_value`),
   KEY `idx_last_seen` (`last_seen`),
@@ -714,11 +708,9 @@ CREATE TABLE IF NOT EXISTS `snap_collections` (
 CREATE TABLE IF NOT EXISTS `snap_collection_items` (
   `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `collection_id` INT UNSIGNED NOT NULL,
-  `image_id`      INT UNSIGNED NOT NULL
-                  COMMENT 'FK to snap_images.id',
+  `image_id`      INT UNSIGNED NOT NULL COMMENT 'FK to snap_images.id',
   `position`      INT          NOT NULL DEFAULT 0,
-  `caption`       TEXT         COLLATE utf8mb4_unicode_ci DEFAULT NULL
-                  COMMENT 'Collection-specific caption; overrides post description in collection context',
+  `caption`       TEXT         COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Collection-specific caption - overrides post description in collection context',
   `added_at`      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_collection_image` (`collection_id`, `image_id`),
