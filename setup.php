@@ -25,7 +25,7 @@ $target_dir = __DIR__;
 
 // Ed25519 public key — must match core/release-pubkey.php in the release package.
 // If the installed key ever differs, smack-update.php has a repair tool.
-define('SETUP_RELEASE_PUBKEY', '938cb27f4230122dc22bc70decac66a09c20ad5f8db5748d0f443a57b18470d7');
+define('SETUP_RELEASE_PUBKEY', 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2');
 
 // --- SAFETY CHECK ---
 if (file_exists($target_dir . '/install.php') && file_exists($target_dir . '/core/parser.php')) {
