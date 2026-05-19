@@ -12,6 +12,24 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.154 — "Booty Call" (2026-05-18)
+
+### Fixed
+- **Fresh installs failed Ed25519 signature verification**: `setup.php` hardcoded its own copy of `SETUP_RELEASE_PUBKEY` which went stale whenever the signing key changed. The release packager (`sc-release.php`) now injects the current derived pubkey into `setup.php` inside the zip at build time (Step 2b), before SHA-256 and signing. The key in the shipped `setup.php` will always match the key that signed the package.
+
+## 0.7.153 — "Booty Call" (2026-05-18)
+
+### Added
+- **Chaplin skin — stable release**: Chaplin skin marked stable. Silent-film-era Google Fonts added to `@import` (Cinzel, Cormorant Garamond, Special Elite, IM Fell DW Pica, Antic Didone, Poiret One, Josefin Slab, Playfair Display). All fonts verified OFL.
+- **Film damage overlay engine** (`assets/js/ss-engine-film-damage.js`): Canvas-based animation engine for Chaplin. Renders randomised scratches, dust spots, hair, and gate weave as a full-viewport overlay. 24fps throttled rAF loop, mix-blend-mode screen. Configurable intensity (1–10) and element types. Registered in manifest inventory. Skin-header.php loads it conditionally via admin settings.
+- **Smack Beacon spec** (`_spec/smack-beacon-spec.md`): Spec for a lightweight API-key-protected stats endpoint (`smack-beacon.php`). Exposes aggregate install metrics (post/photo/member counts, visitor stats, active skin) for snapsmack.ca skin gallery social proof. Implementation deferred pending snapsmack.ca DB schema confirmation.
+
+### Fixed
+- **Installer step 5 missing POST guard**: Step 5 (the write/self-delete step) had no `$_SERVER['REQUEST_METHOD'] === 'POST'` check, unlike steps 2–4. An attacker with a valid CSRF token could POST directly to step 5, writing `core/db.php` with empty credentials and self-deleting the installer. Added the missing guard.
+- **Installer deploy message referenced GitHub**: "CODEBASE NOT FOUND" screen told users to deploy from GitHub. Deploy model changed to signed packages fetched by `setup.php` from snapsmack.ca. Message updated.
+- **`setup.php` pubkey out of sync**: `SETUP_RELEASE_PUBKEY` in `setup.php` did not match `core/release-pubkey.php`. Synced manually; build-time injection added in 0.7.154 to prevent recurrence.
+- **Stale installer comment**: Comment in `install.php` referenced "50 Shades and Rational Geo" as default skins. Corrected to "New Horizon (the default) and 50 Shades of Noah Grey".
+
 ## 0.7.152 — "La-Z-Boy" (2026-05-18)
 
 ### Fixed
