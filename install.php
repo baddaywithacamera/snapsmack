@@ -35,6 +35,32 @@ if (!function_exists('snap_is_https')) {
 }
 
 // --- SESSION INIT ---
+// Use a local save path so system GC can't prune the session mid-install.
+// Set cookie params before session_start() to ensure the cookie survives
+// on HTTPS and isn't killed by SameSite or Secure mismatches.
+$install_session_dir = __DIR__ . '/core/.install-session';
+if (!is_dir($install_session_dir)) {
+    @mkdir($install_session_dir, 0700, true);
+}
+if (is_dir($install_session_dir)) {
+    // Block direct HTTP access to session files
+    $htaccess = $install_session_dir . '/.htaccess';
+    if (!file_exists($htaccess)) {
+        @file_put_contents($htaccess, "Require all denied\n");
+    }
+    if (is_writable($install_session_dir)) {
+        session_save_path($install_session_dir);
+    }
+}
+$install_is_https = snap_is_https();
+session_set_cookie_params([
+    'lifetime' => 3600,
+    'path'     => '/',
+    'secure'   => $install_is_https,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
+session_name('snapsmack_install');
 session_start();
 
 // --- CODEBASE CHECK ---
