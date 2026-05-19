@@ -68,7 +68,7 @@ packages/
 registry.json
 
 # Server-side auth file (cPanel / host-generated, not source code)
-auth.php
+/auth.php
 
 # Community encryption key — generated at install time, never commit
 core/community-key.php
