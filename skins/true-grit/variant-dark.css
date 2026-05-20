@@ -1,0 +1,33 @@
+/**
+ * SNAPSMACK - Dark variant for the true-grit skin
+ * Alpha v0.7.5
+ *
+ * Charcoal base. Texture shows through the dark overlay.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+:root {
+    --bg-primary:    #1a1a1a;
+    --bg-secondary:  #242424;
+    --bg-chrome:     #1e1e1e;
+    --border:        #333333;
+    --text-primary:  #e0e0e0;
+    --text-secondary:#999999;
+    --text-dim:      #555555;
+    --accent:        #b0b0b0;
+    --accent-hover:  #e8e8e8;
+    --accent-dim:    #707070;
+    --input-bg:      #1e1e1e;
+    --wall-bg:       #2a2a2a;
+}
+/* ===== SNAPSMACK EOF ===== */

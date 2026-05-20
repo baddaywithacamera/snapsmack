@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line of this file MUST be the canonical EOF
+  marker for this file type: an HTML comment containing five
+  equals, space, the literal string 'SNAPSMACK EOF', space, five
+  equals.
+  (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS.)
+  Missing or different = truncated/corrupted. Restore before saving.
+-->
+
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self' tauri: https:; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;">
+    <title>Oh Snap!</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     CONNECTION SCREEN
+     Shown on first launch and when no profile is active.
+════════════════════════════════════════════════════════════════ -->
+<div id="screen-connect" class="screen active">
+    <div class="connect-shell">
+
+        <div class="connect-brand">
+            <span class="connect-brand-oh">OH</span>
+            <span class="connect-brand-snap">SNAP!</span>
+            <p class="connect-brand-sub">SnapSmack Skin Designer</p>
+        </div>
+
+        <div class="connect-card">
+            <h2 class="connect-card-title">Connect to SnapSmack</h2>
+
+            <div id="connect-error" class="connect-error hidden"></div>
+
+            <div class="field">
+                <label for="input-url">Site URL</label>
+                <input type="url" id="input-url" placeholder="https://yoursite.com/"
+                       autocomplete="off" spellcheck="false">
+                <p class="field-hint">Your SnapSmack install — include the trailing slash.</p>
+            </div>
+
+            <div class="field">
+                <label for="input-key">API Key</label>
+                <div class="input-with-toggle">
+                    <input type="password" id="input-key" placeholder="Paste your Oh Snap! API key"
+                           autocomplete="off" spellcheck="false">
+                    <button type="button" class="key-toggle" id="btn-key-toggle"
+                            title="Show / hide key">&#x1F441;</button>
+                </div>
+                <p class="field-hint">Generate one in SnapSmack → Boring Ass Stuff → Oh Snap! API Keys.</p>
+            </div>
+
+            <div class="field">
+                <label for="input-profile">Profile Name <span class="optional">(optional)</span></label>
+                <input type="text" id="input-profile" placeholder="e.g. My Photography Site"
+                       autocomplete="off">
+            </div>
+
+            <button type="button" id="btn-connect" class="btn btn-primary btn-full">
+                <span id="btn-connect-label">Connect</span>
+                <span id="btn-connect-spinner" class="spinner hidden"></span>
+            </button>
+        </div>
+
+        <!-- Saved profiles — hidden until at least one exists -->
+        <div id="connect-profiles" class="connect-profiles hidden">
+            <p class="profiles-label">Saved profiles</p>
+            <div id="profiles-list" class="profiles-list"></div>
+        </div>
+
+        <p class="connect-footer">GPL v3 &nbsp;·&nbsp; No telemetry &nbsp;·&nbsp; No cloud &nbsp;·&nbsp; No Mac</p>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MAIN APP SHELL
+     Shown after a successful connection.
+════════════════════════════════════════════════════════════════ -->
+<div id="screen-app" class="screen hidden">
+
+    <!-- TOP TOOLBAR -->
+    <header class="toolbar">
+        <div class="toolbar-left">
+            <span class="toolbar-brand">OH SNAP!</span>
+            <div class="toolbar-sep"></div>
+            <button type="button" class="toolbar-btn" id="btn-site-switch" title="Switch site">
+                <span id="toolbar-site-name">—</span>
+                <svg class="icon" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg>
+            </button>
+        </div>
+        <div class="toolbar-centre">
+            <span id="toolbar-project-name" class="project-name">Untitled Skin</span>
+            <span id="toolbar-dirty" class="dirty-dot hidden" title="Unsaved changes">●</span>
+        </div>
+        <div class="toolbar-right">
+            <button type="button" class="toolbar-btn" id="btn-save" title="Save project (Ctrl+S)">Save</button>
+            <button type="button" class="toolbar-btn" id="btn-export" title="Export skin package">Export</button>
+            <button type="button" class="toolbar-btn toolbar-btn-push" id="btn-push" title="Push to site">Push to Site</button>
+            <div class="toolbar-sep"></div>
+            <button type="button" class="toolbar-btn toolbar-btn-icon" id="btn-settings" title="Settings">
+                <svg class="icon" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2"/><path d="M8 2v1M8 13v1M2 8h1M13 8h1M3.5 3.5l.7.7M11.8 11.8l.7.7M11.8 4.2l-.7.7M4.2 11.8l-.7.7"/></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN BODY -->
+    <div class="app-body">
+
+        <!-- LEFT SIDEBAR: CONTROLS -->
+        <aside class="sidebar" id="sidebar">
+            <nav class="sidebar-tabs">
+                <button class="tab-btn active" data-tab="colours">Colours</button>
+                <button class="tab-btn" data-tab="typography">Type</button>
+                <button class="tab-btn" data-tab="layout">Layout</button>
+                <button class="tab-btn" data-tab="css">CSS</button>
+                <button class="tab-btn" data-tab="history">History</button>
+            </nav>
+
+            <div class="tab-panel active" id="tab-colours">
+                <div class="panel-empty">
+                    <p>Connect to a site to load skin variables.</p>
+                </div>
+            </div>
+            <div class="tab-panel" id="tab-typography">
+                <div class="panel-empty"><p>Typography controls load with the skin.</p></div>
+            </div>
+            <div class="tab-panel" id="tab-layout">
+                <div class="panel-empty"><p>Layout controls load with the skin.</p></div>
+            </div>
+            <div class="tab-panel" id="tab-css">
+                <div class="panel-empty">
+                    <textarea class="css-editor" id="css-editor" placeholder="/* Direct CSS overrides — changes here reflect in the preview and vice versa. */"></textarea>
+                </div>
+            </div>
+            <div class="tab-panel" id="tab-history">
+                <div class="panel-empty"><p>No history yet. Changes are auto-saved.</p></div>
+            </div>
+        </aside>
+
+        <!-- RIGHT: LIVE PREVIEW -->
+        <main class="preview-area" id="preview-area">
+
+            <!-- Preview toolbar -->
+            <div class="preview-toolbar">
+                <div class="preview-width-btns">
+                    <button class="preview-width-btn active" data-width="1280" title="Desktop">
+                        <svg class="icon" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="9" rx="1"/><path d="M5 12v1H11v-1"/></svg>
+                    </button>
+                    <button class="preview-width-btn" data-width="768" title="Tablet">
+                        <svg class="icon" viewBox="0 0 16 16"><rect x="3" y="1" width="10" height="14" rx="1"/><circle cx="8" cy="13" r="0.8"/></svg>
+                    </button>
+                    <button class="preview-width-btn" data-width="390" title="Mobile">
+                        <svg class="icon" viewBox="0 0 16 16"><rect x="4" y="1" width="8" height="14" rx="1"/><circle cx="8" cy="13.5" r="0.7"/></svg>
+                    </button>
+                </div>
+
+                <div class="preview-view-btns">
+                    <button class="preview-view-btn active" data-view="post">Post</button>
+                    <button class="preview-view-btn" data-view="archive">Archive</button>
+                    <button class="preview-view-btn" data-view="landing">Landing</button>
+                </div>
+
+                <button type="button" class="toolbar-btn" id="btn-open-browser" title="Open in browser">
+                    <svg class="icon" viewBox="0 0 16 16"><path d="M6 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-3M10 1h5v5M9 7l6-6"/></svg>
+                </button>
+            </div>
+
+            <!-- The preview iframe -->
+            <div class="preview-frame-wrap" id="preview-wrap">
+                <iframe id="preview-frame" class="preview-frame"
+                        sandbox="allow-same-origin allow-scripts"
+                        title="Skin preview"></iframe>
+                <div class="preview-placeholder" id="preview-placeholder">
+                    <p>Preview loads after connecting to a site.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- BOTTOM: AI CHAT DRAWER -->
+    <div class="ai-drawer" id="ai-drawer">
+        <button type="button" class="ai-drawer-toggle" id="btn-ai-toggle">
+            AI Assist
+            <svg class="icon ai-chevron" viewBox="0 0 16 16"><path d="M4 10l4-4 4 4"/></svg>
+        </button>
+        <div class="ai-drawer-body" id="ai-drawer-body">
+            <div class="ai-messages" id="ai-messages">
+                <div class="ai-msg ai-msg-system">
+                    Describe the skin you want, or upload a reference image. I'll generate a starting point.
+                </div>
+            </div>
+            <div class="ai-input-row">
+                <input type="text" id="ai-input" class="ai-input" placeholder="Describe a change…">
+                <button type="button" class="btn btn-primary" id="btn-ai-send">Send</button>
+            </div>
+        </div>
+    </div>
+
+</div><!-- /#screen-app -->
+
+<script src="scripts/api.js"></script>
+<script src="scripts/settings.js"></script>
+<script src="scripts/controls.js"></script>
+<script src="scripts/preview.js"></script>
+<script src="scripts/ai.js"></script>
+<script src="scripts/project.js"></script>
+<script src="scripts/main.js"></script>
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->

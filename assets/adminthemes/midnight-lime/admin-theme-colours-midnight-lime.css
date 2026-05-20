@@ -1,0 +1,706 @@
+/**
+ * SNAPSMACK - Midnight Lime admin theme colors
+ *
+ * Dark theme with neon green accent. All color values for admin-theme-geometry-master.css.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+/* 01: GLOBAL BASE */
+html, body {
+    background-color: #141414;
+    color: #ccc;
+    color-scheme: dark;
+}
+
+/* Global link colours */
+a { color: #39FF14; text-decoration: none; }
+a:hover { color: #2ecc10; }
+.support-link { color: #39FF14; }
+.support-link:hover { color: #2ecc10; }
+
+/* 02: SIDEBAR NAVIGATION */
+.sidebar {
+    background-color: #141414;
+    border-right-color: #2a2a2a;
+}
+
+.sidebar-brand {
+    color: #39FF14;
+    border-bottom-color: #2a2a2a;
+}
+
+.nav-section-toggle {
+    color: #39FF14;
+}
+
+
+.nav-section-links a {
+    color: #777;
+}
+
+.nav-section-links a:hover,
+.nav-section-links li.active a {
+    color: #39FF14;
+    text-shadow: 0 0 8px rgba(57, 255, 20, 0.5);
+}
+
+.sidebar-bottom {
+    background-color: #141414;
+    border-top-color: #2a2a2a;
+}
+
+.sidebar .logout {
+    color: #ff3e3e;
+}
+
+.sidebar .logout:hover {
+    color: #ff6b6b;
+}
+
+.credits-admin {
+    color: #44aa00;
+}
+
+/* 03: MAIN HEADERS */
+.header-row {
+    border-bottom-color: #2a2a2a;
+}
+
+h2 {
+    color: #39FF14;
+    border-bottom-color: #2a2a2a;
+}
+
+/* 04: CONTENT BOXES */
+.box {
+    background-color: #1c1c1c;
+    border-color: #2a2a2a;
+}
+
+.box h3, .section-header {
+    color: #39FF14;
+    border-bottom-color: #2a2a2a;
+}
+
+.post-col-right {
+    border-left-color: #2a2a2a;
+}
+
+/* 05: FORM ELEMENTS */
+label {
+    color: #777;
+}
+
+input[type="text"], input[type="number"], input[type="email"], input[type="password"],
+input[type="datetime-local"], input[type="date"], select, textarea,
+.preview-box, .select-box {
+    background-color: #050505;
+    border-color: #1a1a1a;
+    color: #eee;
+}
+
+/* Custom multiselect dropdown colours */
+.dropdown-content {
+    background-color: #0a0a0a;
+    border-color: #1a1a1a;
+    box-shadow: 0 4px 12px rgba(57, 255, 20, 0.1);
+}
+
+.dropdown-search-wrapper {
+    border-bottom-color: #1a1a1a;
+}
+
+.dropdown-search-wrapper input {
+    background-color: #050505;
+    border-color: #222;
+    color: #eee;
+}
+
+.multi-cat-item {
+    border-bottom-color: #111;
+    color: #888;
+}
+
+.multi-cat-item:hover {
+    background-color: #141414;
+    color: #39FF14;
+}
+
+/* Read-only display fields get a lighter border for the inset look */
+.read-only-display {
+    background-color: #050505;
+    border-color: #333;
+    color: #eee;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: #39FF14;
+    background-color: #000;
+    box-shadow: 0 0 8px rgba(57, 255, 20, 0.2);
+    outline: none;
+}
+
+/* 06: MEDIA PREVIEWS */
+.preview-frame {
+    background-color: #000;
+    border-color: #1a1a1a;
+}
+
+/* 07: SIGNALS (The Fixes) */
+.signal-control-header {
+    /* Geometry handled in Master Geometry file */
+}
+
+/* The Status Pill */
+.status-online {
+    color: #39FF14;
+    border-color: #39FF14;
+}
+
+.status-offline {
+    color: #ff3e3e;
+    border-color: #ff3e3e;
+}
+
+/* Sender Name */
+.signal-sender {
+    color: #888;
+}
+.signal-sender span,
+.signal-sender span.dim {
+    color: #555;
+}
+
+/* The Body Text */
+.signal-body {
+    color: #ccc;
+    background-color: #050505;
+    border-color: #1a1a1a;
+}
+
+/* Metadata Links (Killing the Blue) */
+.signal-meta {
+    color: #666;
+}
+.signal-meta a {
+    color: #777 !important;
+    border-bottom-color: transparent;
+}
+.signal-meta a:hover {
+    color: #39FF14 !important;
+    border-bottom-color: #39FF14;
+}
+.signal-meta .dim {
+    color: #444;
+}
+
+/* 08: BUTTONS & ACTIONS */
+
+/* Green buttons (New Post, Live Site) — go grey on hover */
+.btn-smack, .master-update-btn {
+    background-color: #39FF14;
+    color: #000;
+}
+.btn-smack:hover, .master-update-btn:hover {
+    background-color: #2a2a2a;
+    color: #fff;
+    box-shadow: 0 0 16px rgba(57, 255, 20, 0.5);
+}
+
+/* Grey buttons (Backup, Settings) — go green on hover */
+.btn-smack.btn-backup,
+.btn-smack.btn-settings {
+    background-color: #2a2a2a;
+    color: #999;
+}
+.btn-smack.btn-backup:hover,
+.btn-smack.btn-settings:hover {
+    background-color: #39FF14;
+    color: #000;
+    box-shadow: 0 0 16px rgba(57, 255, 20, 0.5);
+}
+
+/* Live Site stays green, same hover treatment as other green buttons */
+.btn-smack.btn-live {
+    background-color: #39FF14;
+    color: #000;
+}
+.btn-smack.btn-live:hover {
+    background-color: #2a2a2a;
+    color: #fff;
+    box-shadow: 0 0 16px rgba(57, 255, 20, 0.5);
+}
+
+/* Danger button modifier — destructive/disconnect actions */
+.btn-smack.btn-danger {
+    background-color: #ff3e3e;
+    color: #fff;
+}
+.btn-smack.btn-danger:hover {
+    background-color: #cc1e1e;
+    color: #fff;
+}
+
+/* All other buttons (Manage Signals etc) — universal green glow on hover */
+button:hover {
+    box-shadow: 0 0 16px rgba(57, 255, 20, 0.4);
+}
+
+/* INCOMING / BROADCASTING nav buttons — persistent colour definition */
+.btn-clear {
+    color: #777;
+    border-color: #333;
+}
+.btn-clear:hover {
+    background-color: #2a2a2a;
+    color: #ccc;
+    border-color: #555;
+}
+.btn-clear.active {
+    background-color: #2a2a2a;
+    color: #39FF14;
+    border-color: #39FF14;
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.25);
+}
+
+/* Action Links */
+.action-authorize, .action-edit, .action-swap, .action-view {
+    color: #39FF14;
+    border-color: #39FF14;
+}
+.action-authorize:hover, .action-edit:hover, .action-swap:hover, .action-view:hover {
+    background-color: #39FF14;
+    color: #000;
+}
+
+.action-delete {
+    color: #ff3e3e;
+    border-color: #ff3e3e;
+}
+.action-delete:hover {
+    background-color: #ff3e3e;
+    color: #fff;
+}
+
+/* 09: ITEM LAYOUTS */
+.recent-item {
+    border-bottom-color: #1a1a1a;
+}
+.archive-thumb {
+    border-color: #222;
+    background-color: #000;
+}
+.item-text strong {
+    color: #eee;
+}
+.item-text .dim {
+    color: #666;
+}
+
+/* 10: DASH/STATS */
+.stat-box {
+    border-color: #1a1a1a;
+    background-color: #0d0d0d;
+}
+.stat-val {
+    color: #39FF14;
+}
+.stat-label {
+    color: #555;
+}
+.stat-row {
+    border-bottom-color: #1a1a1a;
+}
+.stat-row .label { color: #555; }
+.stat-row .value { color: #ccc; }
+.highlight-green { color: #39FF14; }
+
+/* 11: PAGINATION */
+.pagination a {
+    background-color: #0a0a0a;
+    border-color: #1a1a1a;
+    color: #666;
+}
+.pagination a.active {
+    background-color: #39FF14;
+    border-color: #39FF14;
+    color: #000;
+}
+.pagination a:hover {
+    border-color: #39FF14;
+    color: #39FF14;
+}
+
+/* 12: PROGRESS/UPLOADS */
+.progress-container {
+    background-color: #050505;
+    border-color: #1a1a1a;
+}
+.progress-bar {
+    background-color: #39FF14;
+}
+.file-upload-wrapper {
+    border-color: #1a1a1a;
+    background-color: #0a0a0a;
+}
+.file-custom-btn {
+    background-color: #2a2a2a;
+    color: #bbb;
+    border-right-color: #333;
+}
+.file-custom-btn:hover {
+    background-color: #333;
+    color: #eee;
+}
+.file-name-display {
+    color: #666;
+}
+
+/* Inline checkbox labels (Built-in, N/A) — match input border treatment */
+.built-in-label {
+    background-color: #1a1a1a;
+    border-color: #2a2a2a;
+    color: #888;
+}
+.built-in-label:hover {
+    border-color: #39FF14;
+    color: #ccc;
+}
+input[type="checkbox"] {
+    border-color: #333;
+    background-color: #050505;
+}
+input[type="checkbox"]:checked {
+    background-color: #39FF14;
+    border-color: #39FF14;
+}
+input[type="checkbox"]:checked::after {
+    border-color: #000;
+}
+
+/* 13: LOGIN & FOOTER */
+.login-box {
+    background-color: #1c1c1c;
+    border-color: #2a2a2a;
+}
+
+#admin-universal-footer {
+    background-color: #141414;
+    border-top-color: #2a2a2a;
+}
+.footer-left { color: #666; }
+.footer-left a { color: #888; border-bottom-color: #555; }
+.footer-left a:hover { color: #39FF14; border-bottom-color: #39FF14; }
+.footer-right { color: #666; }
+
+/* 14: APPEARANCE */
+.appearance-controller {
+    border-color: #1a1a1a;
+}
+.skin-meta-wrap {
+    background-color: #111;
+}
+.skin-selector-wrap {
+    background-color: #0a0a0a;
+    border-left-color: #1a1a1a;
+}
+.theme-title-display { color: #eee; }
+.skin-desc-text { color: #666; }
+
+/* Filter + Reset buttons */
+.btn-smack-filter {
+    background-color: #39FF14;
+    color: #000;
+}
+.btn-smack-filter:hover {
+    background-color: #2a2a2a;
+    color: #fff;
+    box-shadow: 0 0 16px rgba(57, 255, 20, 0.5);
+}
+.btn-reset {
+    color: #666;
+    border-color: #2a2a2a;
+}
+.btn-reset:hover {
+    border-color: #ff3e3e;
+    color: #ff3e3e;
+}
+
+
+.alert-success {
+    color: #39FF14;
+    border-color: #39FF14;
+}
+
+.alert-error {
+    border-color: #ff3e3e;
+}
+
+/* 16: INPUT RANGE (Webkit) */
+input[type="range"]::-webkit-slider-runnable-track {
+    background-color: #1a1a1a;
+}
+input[type="range"]::-webkit-slider-thumb {
+    background-color: #39FF14;
+}
+/* Asset cards (Media Library) */
+.asset-card {
+    border-color: #2a2a2a;
+    background-color: #1c1c1c;
+}
+.asset-thumb-wrapper {
+    border-bottom-color: #2a2a2a;
+    background-color: #0a0a0a;
+}
+.asset-shortcode-row .shortcode-display {
+    border-color: #39FF14;
+    color: #39FF14;
+    background-color: #0d0d0d;
+}
+.asset-no-preview {
+    color: #555;
+}
+
+/* SHORTCODE TOOLBAR */
+.sc-toolbar {
+    background-color: #1a1a1a;
+    border-color: #2a2a2a;
+}
+.sc-toolbar .sc-btn {
+    background-color: #0d0d0d;
+    color: #777;
+}
+.sc-toolbar .sc-btn:hover {
+    background-color: #2a2a2a;
+    color: #39FF14;
+}
+.sc-toolbar .sc-sep {
+    background-color: #222;
+}
+.sc-toolbar .sc-btn-preview {
+    background-color: #39FF14;
+    color: #000;
+}
+.sc-toolbar .sc-btn-preview:hover {
+    background-color: #2a2a2a;
+    color: #39FF14;
+}
+
+/* Confirmation / status messages */
+.msg {
+    color: #39FF14;
+}
+
+.alert-text {
+    color: #39FF14;
+}
+
+/* 17: BOX SUB-STRUCTURE */
+.box-header {
+    background-color: #111;
+    border-bottom-color: #2a2a2a;
+}
+
+.box-title {
+    color: #777;
+}
+
+/* 18: FORUM PAGE */
+.forum-crumbs {
+    border-bottom-color: #222;
+}
+
+.forum-crumbs a { color: #777; }
+.forum-crumbs a:hover { color: #ccc; }
+.forum-crumbs .sep { color: #333; }
+.forum-crumbs .current { color: #ccc; }
+
+.forum-cat-row { border-bottom-color: #222; }
+.forum-cat-row:hover { background-color: rgba(255,255,255,0.025); }
+.forum-cat-row__name { color: #ddd; }
+.forum-cat-row__desc { color: #666; }
+.forum-cat-row__stat-num { color: #eee; }
+.forum-cat-row__stat-label { color: #555; }
+
+.forum-thread-row { border-bottom-color: #222; }
+.forum-thread-row:hover { background-color: rgba(255,255,255,0.025); }
+.forum-thread-row--pinned { border-left-color: #e2b714; }
+.forum-thread-row__title { color: #ddd; }
+.forum-thread-row__title a:hover { color: #39FF14; }
+.forum-thread-row__byline { color: #555; }
+.forum-thread-row__replies { color: #888; }
+.forum-thread-row__replies small { color: #444; }
+.forum-thread-row__activity { color: #555; }
+
+.forum-avatar { color: #000; }
+.forum-badge--pinned { background-color: #e2b714; color: #000; }
+.forum-badge--locked { background-color: #333; color: #888; }
+
+.forum-post { border-bottom-color: #1a1a1a; }
+.forum-post__author { color: #ccc; }
+.forum-post__time { color: #555; }
+.forum-post__body { color: #bbb; }
+
+.forum-composer { background-color: #181818; }
+.forum-composer__label { color: #555; }
+.forum-composer textarea {
+    background-color: #111;
+    border-color: #2a2a2a;
+    color: #ccc;
+}
+.forum-composer textarea:focus {
+    border-color: #39FF14;
+    box-shadow: 0 0 8px rgba(57, 255, 20, 0.15);
+}
+
+.forum-thread-title { color: #eee; }
+.forum-thread-meta { color: #555; border-bottom-color: #222; }
+.forum-pagination { border-top-color: #1a1a1a; }
+.forum-header__title { color: #888; }
+
+.forum-new-btn { background-color: #39FF14; color: #000; }
+.forum-new-btn:hover {
+    background-color: #2ce00f;
+    box-shadow: 0 0 12px rgba(57, 255, 20, 0.3);
+}
+
+.forum-empty { color: #555; }
+.forum-empty strong { color: #777; }
+.forum-emoji-btn:hover { background-color: #222; border-color: #333; }
+
+/* 19: HELP PAGE */
+.help-nav { border-right-color: #2a2a2a; }
+.help-nav-header { border-bottom-color: #2a2a2a; }
+.help-nav-section-label { color: #666; }
+.help-nav-link { color: #999; }
+.help-nav-link.active {
+    color: #eee;
+    background-color: #222;
+    border-left-color: #eee;
+}
+
+.help-content { color: #ccc; }
+.help-topic-header { border-bottom-color: #2a2a2a; }
+.help-topic-section { color: #666; }
+.help-body { color: #ccc; }
+.help-body h4 { color: #aaa; }
+.help-body strong { color: #eee; }
+.help-body em { color: #aaa; }
+.help-body pre {
+    background-color: rgba(0,0,0,0.3);
+    border-color: #2a2a2a;
+}
+.help-body code {
+    background-color: rgba(0,0,0,0.2);
+}
+
+.help-search input {
+    border-color: #2a2a2a;
+    background-color: rgba(0,0,0,0.3);
+    color: #eee;
+}
+.help-search input::placeholder { color: #555; }
+.help-search input:focus { border-color: #39FF14; }
+
+.help-search-result { color: #eee; }
+.help-search-result:hover {
+    background-color: rgba(255,255,255,0.05);
+    border-color: #2a2a2a;
+}
+.help-search-result-section { color: #888; }
+.help-search-result-snippet { color: #999; }
+.help-search-result-snippet mark {
+    background-color: rgba(57, 255, 20, 0.25);
+    color: #eee;
+}
+.help-search-no-results { color: #888; }
+
+.help-toc-section-title {
+    color: #aaa;
+    border-bottom-color: #2a2a2a;
+}
+.help-toc-list a { color: #eee; }
+.help-toc-list a:hover { background-color: rgba(255,255,255,0.05); }
+.help-toc-list .help-toc-desc { color: #999; }
+.help-topic-nav { border-top-color: #2a2a2a; }
+.help-topic-nav a { color: #999; }
+
+/* ─── HELP SYSTEM (smack-help.php) ─────────────────────────────────── */
+.help-nav { background-color: #141414; border-right-color: #2a2a2a; }
+.help-nav-header { border-bottom-color: #2a2a2a; }
+.help-nav-subtitle { color: #777777; }
+.help-nav-section-label { color: #777777; }
+.help-nav-link { color: #777777; }
+.help-nav-link:hover { color: #39FF14; }
+.help-nav-link.active { color: #39FF14; background-color: #1c1c1c; border-left-color: #39FF14; }
+.help-search input { background-color: #050505; border-color: #1a1a1a; color: #cccccc; }
+.help-search-result { color: #777777; }
+.help-search-result:hover { background-color: #1c1c1c; border-color: #2a2a2a; }
+.help-search-result-section { color: #777777; }
+.help-search-no-results { color: #777777; }
+.help-topic-header { border-bottom-color: #2a2a2a; }
+.help-topic-section { color: #777777; }
+.help-topic-nav { border-top-color: #2a2a2a; }
+.help-topic-nav a { color: #777777; }
+.help-topic-nav a:hover { color: #39FF14; }
+.help-body pre { background-color: #1c1c1c; border-color: #2a2a2a; color: #cccccc; }
+.help-body code { background-color: #1c1c1c; border-color: #2a2a2a; color: #cccccc; }
+.help-toc-section-title { border-bottom-color: #2a2a2a; }
+.help-toc-list a { color: #cccccc; }
+.help-toc-list a:hover { color: #39FF14; }
+.help-toc-list .help-toc-desc { color: #777777; }
+
+/* ─── SCHEMA HEALTH (smack-maintenance.php) ─────────────────────────── */
+.schema-count { color: #39FF14; }
+.schema-section-label { color: #777777; }
+.schema-list li { border-bottom-color: #2a2a2a; color: #cccccc; }
+
+/* ─── MANAGE ARCHIVE — DRAG REORDER & BATCH DELETE ──────────────── */
+.drag-handle { color: #777777; }
+.reorder-status.saving { color: #777777; }
+.reorder-status.saved  { color: #39FF14; }
+.reorder-status.error  { color: #E86060; }
+.batch-bar { border-bottom-color: #2a2a2a; }
+
+/* ─── COMPANION TOOLS (smack-tools.php) ──────────────────────────── */
+.tool-desc { color: #cccccc; }
+
+/* ─── CLOUD BACKUP (smack-cloud.php) ─────────────────────────────── */
+.cloud-push-grid th { border-bottom-color: #2a2a2a; color: #777777; }
+.cloud-push-grid td { border-bottom-color: #2a2a2a; }
+.cloud-push-label { color: #cccccc; }
+.cloud-progress-bar { border-color: #2a2a2a; background-color: #1c1c1c; }
+.cloud-progress-header { color: #cccccc; }
+.cloud-progress-track { background-color: #2a2a2a; }
+.cloud-progress-fill { background-color: #39FF14; }
+.cloud-progress-done { color: #4EC994; }
+.cloud-progress-failed { color: #E86060; }
+.cloud-progress-log { color: #777777; }
+.cloud-progress-error { color: #E86060; }
+.cloud-progress-success { color: #4EC994; }
+
+/* Interaction page */
+.box-desc, .toggle-desc, .reaction-count-note { color: #777; }
+.toggle-row, .identity-row { border-bottom-color: #2a2a2a; }
+.toggle-row input[type="checkbox"]::before { background-color: #1E6610; }
+.toggle-row input[type="checkbox"]:checked::before { background-color: #000000; }
+.radio-option, .reaction-option { border-color: #2a2a2a; }
+.radio-option:hover,
+.radio-option:has(input:checked),
+.reaction-option:hover,
+.reaction-option.is-active,
+.reaction-option:has(input:checked) { border-color: #39FF14; }
+.radio-option:has(input:checked),
+.reaction-option.is-active,
+.reaction-option:has(input:checked) { background-color: #1E2E1B; }
+/* ===== SNAPSMACK EOF ===== */
