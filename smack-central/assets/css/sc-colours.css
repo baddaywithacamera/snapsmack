@@ -1,0 +1,63 @@
+/**
+ * SMACK CENTRAL - Colour Tokens
+ *
+ * Pure colour tokens. NO geometry — that lives in sc-geometry.css and
+ * loads first. This file loads second so its declarations win on tied
+ * specificity. Mirrors the SnapSmack admin convention (geometry-master
+ * + per-theme colours).
+ *
+ * Default theme: Midnight Lime — neon lime accent on dark charcoal.
+ *
+ * 0.7.76 — Daylight contrast pass.
+ *   - bg-page lifted #141414 -> #1A1A1A
+ *   - bg-box lifted #1A1A1A -> #232323
+ *   - text lifted #cccccc -> #EAEAEA
+ *   - text-dim lifted #888 -> #BBBBBB (was failing WCAG AA on #1A1A1A)
+ *   - text-label lifted #aaa -> #D0D0D0
+ *   - border lifted #2A2A2A -> #3A3A3A
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+:root {
+    /* Backgrounds */
+    --sc-bg-page:     #1A1A1A;
+    --sc-bg-box:      #232323;
+    --sc-bg-box-head: #181818;
+    --sc-bg-input:    #161616;
+    --sc-bg-row-alt:  #2A2A2A;
+    --sc-bg-overlay:  rgba(0,0,0,.55);
+
+    /* Borders */
+    --sc-border:       #3A3A3A;
+    --sc-border-input: #444444;
+    --sc-border-focus: #39FF14;
+
+    /* Text — daylight-legible */
+    --sc-text:       #EAEAEA;
+    --sc-text-dim:   #BBBBBB;
+    --sc-text-label: #D0D0D0;
+    --sc-text-muted: #B0B0B0;
+
+    /* Accent */
+    --sc-accent:      #39FF14;
+    --sc-accent-glow: rgba(57,255,20,.35);
+    --sc-accent-dim:  rgba(57,255,20,.15);
+
+    /* Status */
+    --sc-danger:    #ff6464;
+    --sc-danger-bg: rgba(255,62,62,.12);
+    --sc-warn:      #ffb340;
+    --sc-warn-bg:   rgba(243,156,18,.12);
+    --sc-success:   #39FF14;
+    --sc-success-bg: rgba(57,255,20,.10);
+}
+/* ===== SNAPSMACK EOF ===== */

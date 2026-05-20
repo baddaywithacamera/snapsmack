@@ -1,0 +1,228 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <!--
+    SNAPSMACK – Rational Geo topographic background v2
+    Denser cartographic detail for small-tile rendering (~480×360px).
+    Western Canada: Rockies, prairies, rivers, lakes, township grid.
+    Original artwork — no copyright encumbrance.
+  -->
+  <defs>
+    <style>
+      .grat       { stroke: #FFCC00; stroke-width: 0.5; fill: none; opacity: 0.18; }
+      .twp        { stroke: #FFCC00; stroke-width: 0.25; fill: none; opacity: 0.08; stroke-dasharray: 2,6; }
+      .c-maj      { stroke: #FFCC00; stroke-width: 1.0; fill: none; opacity: 0.22; }
+      .c-med      { stroke: #FFCC00; stroke-width: 0.6; fill: none; opacity: 0.15; }
+      .c-min      { stroke: #FFCC00; stroke-width: 0.35; fill: none; opacity: 0.10; }
+      .c-fine     { stroke: #FFCC00; stroke-width: 0.25; fill: none; opacity: 0.07; }
+      .river      { stroke: #FFCC00; stroke-width: 0.9; fill: none; opacity: 0.20; stroke-linecap: round; stroke-linejoin: round; }
+      .river-sm   { stroke: #FFCC00; stroke-width: 0.5; fill: none; opacity: 0.14; stroke-linecap: round; }
+      .creek      { stroke: #FFCC00; stroke-width: 0.3; fill: none; opacity: 0.09; stroke-linecap: round; }
+      .lake       { stroke: #FFCC00; stroke-width: 0.7; fill: rgba(255,204,0,0.03); opacity: 0.18; }
+      .lake-sm    { stroke: #FFCC00; stroke-width: 0.4; fill: rgba(255,204,0,0.02); opacity: 0.12; }
+      .peak       { fill: #FFCC00; opacity: 0.22; }
+      .boundary   { stroke: #FFCC00; stroke-width: 0.5; fill: none; opacity: 0.12; stroke-dasharray: 10,5,2,5; }
+      .label      { font-family: 'Marcellus', 'Georgia', serif; fill: #FFCC00; opacity: 0.10; font-size: 9px; letter-spacing: 2px; }
+      .label-sm   { font-family: 'DM Mono', monospace; fill: #FFCC00; opacity: 0.08; font-size: 6px; letter-spacing: 1px; }
+      .elev       { font-family: 'DM Mono', monospace; fill: #FFCC00; opacity: 0.12; font-size: 7px; }
+    </style>
+  </defs>
+
+  <!-- ═══════════ GRATICULE — lat/long lines ═══════════ -->
+  <g id="graticule">
+    <path class="grat" d="M0,150 Q300,146 600,153 Q900,148 1200,150"/>
+    <path class="grat" d="M0,300 Q300,295 600,304 Q900,297 1200,300"/>
+    <path class="grat" d="M0,450 Q300,445 600,454 Q900,447 1200,450"/>
+    <path class="grat" d="M0,600 Q300,595 600,604 Q900,597 1200,600"/>
+    <path class="grat" d="M0,750 Q300,745 600,754 Q900,747 1200,750"/>
+    <path class="grat" d="M150,0 Q147,225 153,450 Q148,675 150,900"/>
+    <path class="grat" d="M300,0 Q296,225 304,450 Q298,675 300,900"/>
+    <path class="grat" d="M450,0 Q446,225 454,450 Q448,675 450,900"/>
+    <path class="grat" d="M600,0 Q596,225 604,450 Q598,675 600,900"/>
+    <path class="grat" d="M750,0 Q746,225 754,450 Q748,675 750,900"/>
+    <path class="grat" d="M900,0 Q896,225 904,450 Q898,675 900,900"/>
+    <path class="grat" d="M1050,0 Q1046,225 1054,450 Q1048,675 1050,900"/>
+  </g>
+
+  <!-- ═══════════ TOWNSHIP GRID — faint DLS survey lines (prairie) ═══════════ -->
+  <g id="township">
+    <line class="twp" x1="500" y1="0" x2="500" y2="900"/>
+    <line class="twp" x1="550" y1="0" x2="550" y2="900"/>
+    <line class="twp" x1="650" y1="0" x2="650" y2="900"/>
+    <line class="twp" x1="700" y1="0" x2="700" y2="900"/>
+    <line class="twp" x1="800" y1="0" x2="800" y2="900"/>
+    <line class="twp" x1="850" y1="0" x2="850" y2="900"/>
+    <line class="twp" x1="950" y1="0" x2="950" y2="900"/>
+    <line class="twp" x1="1000" y1="0" x2="1000" y2="900"/>
+    <line class="twp" x1="1100" y1="0" x2="1100" y2="900"/>
+    <line class="twp" x1="1150" y1="0" x2="1150" y2="900"/>
+    <line class="twp" x1="500" y1="75" x2="1200" y2="75"/>
+    <line class="twp" x1="500" y1="225" x2="1200" y2="225"/>
+    <line class="twp" x1="500" y1="375" x2="1200" y2="375"/>
+    <line class="twp" x1="500" y1="525" x2="1200" y2="525"/>
+    <line class="twp" x1="500" y1="675" x2="1200" y2="675"/>
+    <line class="twp" x1="500" y1="825" x2="1200" y2="825"/>
+  </g>
+
+  <!-- ═══════════ ROCKY MOUNTAINS — dense contour nests ═══════════ -->
+  <g id="rockies">
+    <!-- Columbia Icefield cluster -->
+    <path class="c-maj" d="M160,200 Q210,130 320,110 Q400,100 450,150 Q500,210 475,300 Q440,380 350,410 Q260,425 200,365 Q145,295 160,200Z"/>
+    <path class="c-med" d="M195,220 Q230,165 320,150 Q385,142 425,185 Q460,235 445,305 Q415,365 345,385 Q280,395 235,350 Q190,300 195,220Z"/>
+    <path class="c-min" d="M230,245 Q255,200 325,190 Q370,185 400,215 Q425,255 415,310 Q395,350 340,365 Q290,370 255,340 Q225,305 230,245Z"/>
+    <path class="c-fine" d="M260,265 Q278,235 325,228 Q358,225 380,248 Q398,278 390,315 Q375,340 338,350 Q300,352 275,330 Q255,305 260,265Z"/>
+    <path class="c-fine" d="M285,282 Q298,260 328,255 Q350,253 365,270 Q378,292 372,318 Q362,335 340,340 Q315,342 300,325 Q285,308 285,282Z"/>
+    <polygon class="peak" points="325,288 330,275 335,288"/>
+    <text class="elev" x="340" y="286">3747</text>
+
+    <!-- Banff / Lake Louise cluster -->
+    <path class="c-maj" d="M100,420 Q150,330 270,295 Q370,270 450,320 Q530,380 510,490 Q480,585 380,630 Q270,665 180,610 Q100,540 100,420Z"/>
+    <path class="c-med" d="M145,435 Q185,360 280,335 Q360,315 425,355 Q490,400 475,490 Q455,565 370,600 Q280,625 205,580 Q140,525 145,435Z"/>
+    <path class="c-min" d="M190,455 Q220,395 295,375 Q360,360 410,395 Q455,435 440,500 Q420,555 355,580 Q285,595 230,555 Q185,510 190,455Z"/>
+    <path class="c-fine" d="M230,475 Q250,430 310,415 Q360,405 395,435 Q425,470 412,520 Q395,555 345,568 Q290,575 255,545 Q225,510 230,475Z"/>
+    <path class="c-fine" d="M265,490 Q278,460 320,450 Q355,445 378,468 Q398,498 388,535 Q375,558 340,565 Q302,568 278,545 Q260,518 265,490Z"/>
+    <path class="c-fine" d="M295,505 Q305,485 332,480 Q352,478 365,495 Q375,515 368,540 Q358,555 338,558 Q316,560 303,543 Q292,525 295,505Z"/>
+    <polygon class="peak" points="330,510 335,497 340,510"/>
+    <text class="elev" x="345" y="508">3618</text>
+    <polygon class="peak" points="380,445 385,432 390,445"/>
+    <text class="elev" x="395" y="443">3464</text>
+
+    <!-- Jasper cluster -->
+    <path class="c-maj" d="M60,60 Q120,0 240,-5 Q340,-8 410,50 Q470,115 440,210 Q400,290 300,320 Q190,340 110,270 Q35,195 60,60Z"/>
+    <path class="c-med" d="M100,85 Q145,30 240,25 Q325,22 380,75 Q430,135 410,210 Q380,275 295,300 Q200,315 140,255 Q80,190 100,85Z"/>
+    <path class="c-min" d="M140,110 Q175,65 245,60 Q315,58 360,105 Q400,155 385,215 Q360,265 290,282 Q215,292 165,242 Q120,190 140,110Z"/>
+    <path class="c-fine" d="M175,138 Q200,100 255,96 Q305,94 340,130 Q370,170 358,220 Q340,255 285,268 Q230,275 195,235 Q165,195 175,138Z"/>
+    <path class="c-fine" d="M205,162 Q225,135 265,132 Q300,130 325,158 Q345,190 335,225 Q322,250 280,258 Q240,262 218,232 Q200,200 205,162Z"/>
+    <polygon class="peak" points="270,188 275,175 280,188"/>
+    <text class="elev" x="285" y="186">3954</text>
+
+    <!-- Continental Divide ridge line -->
+    <path class="c-med" d="M270,188 Q285,240 310,288 Q325,380 320,510 Q305,620 285,700 Q270,770 258,840 Q250,870 245,900"/>
+
+    <!-- Foothills — gentler, wider contours -->
+    <path class="c-min" d="M440,75 Q510,45 570,90 Q620,150 590,230 Q550,300 480,315 Q420,310 400,250 Q385,185 440,75Z"/>
+    <path class="c-fine" d="M460,100 Q515,78 558,115 Q595,165 575,228 Q545,278 490,290 Q440,285 425,240 Q410,190 460,100Z"/>
+
+    <path class="c-min" d="M490,370 Q550,330 610,360 Q660,410 640,490 Q610,555 545,575 Q480,575 455,520 Q435,460 490,370Z"/>
+    <path class="c-fine" d="M510,395 Q555,365 600,390 Q635,430 620,490 Q598,535 548,548 Q500,546 480,505 Q462,458 510,395Z"/>
+
+    <path class="c-min" d="M450,630 Q510,590 575,615 Q630,660 610,740 Q580,800 520,820 Q455,825 425,770 Q400,710 450,630Z"/>
+    <path class="c-fine" d="M475,650 Q520,620 568,640 Q610,675 595,735 Q570,780 520,795 Q468,798 445,755 Q425,708 475,650Z"/>
+  </g>
+
+  <!-- ═══════════ PRAIRIE — gentle rolling terrain ═══════════ -->
+  <g id="prairies">
+    <path class="c-fine" d="M650,160 Q770,115 910,140 Q1020,175 1060,250 Q1080,330 1010,385 Q890,425 750,390 Q660,350 640,265 Q630,210 650,160Z"/>
+    <path class="c-fine" d="M690,490 Q820,445 960,470 Q1080,505 1110,580 Q1120,655 1040,700 Q920,735 790,705 Q700,670 675,590 Q665,535 690,490Z"/>
+    <path class="c-fine" d="M750,750 Q870,710 1000,730 Q1100,762 1130,830 Q1135,880 1080,900"/>
+    <path class="c-fine" d="M620,30 Q740,-5 870,15 Q970,50 1010,125 Q1030,200 970,248 Q870,285 750,260 Q660,225 635,150 Q620,90 620,30Z"/>
+
+    <!-- Cypress Hills — isolated uplift -->
+    <path class="c-med" d="M870,315 Q945,280 1030,305 Q1085,345 1070,405 Q1045,455 975,478 Q905,485 860,445 Q830,395 870,315Z"/>
+    <path class="c-min" d="M900,340 Q955,315 1020,335 Q1060,365 1048,410 Q1030,445 975,458 Q920,462 890,430 Q865,395 900,340Z"/>
+    <path class="c-fine" d="M925,360 Q965,345 1005,360 Q1035,385 1025,415 Q1010,440 970,448 Q935,450 915,425 Q898,398 925,360Z"/>
+    <polygon class="peak" points="968,395 973,382 978,395"/>
+    <text class="elev" x="983" y="393">1468</text>
+
+    <!-- Sweetgrass Hills -->
+    <path class="c-fine" d="M780,810 Q830,785 880,800 Q920,825 910,860 Q890,890 845,900"/>
+    <path class="c-fine" d="M1050,200 Q1100,175 1150,195 Q1180,225 1170,260 Q1150,290 1100,300 Q1055,295 1040,260 Q1030,230 1050,200Z"/>
+  </g>
+
+  <!-- ═══════════ RIVERS ═══════════ -->
+  <g id="rivers">
+    <!-- Athabasca -->
+    <path class="river" d="M270,188 Q310,155 360,130 Q420,100 490,95 Q575,90 660,120 Q750,150 840,155 Q930,155 1020,170 Q1100,185 1200,180"/>
+    <!-- North Saskatchewan -->
+    <path class="river" d="M330,288 Q410,305 500,330 Q600,355 690,340 Q790,320 880,335 Q970,355 1060,365 Q1140,370 1200,368"/>
+    <!-- Bow -->
+    <path class="river" d="M330,510 Q400,530 490,540 Q580,545 670,525 Q760,500 850,510 Q940,525 1030,540 Q1120,545 1200,540"/>
+    <!-- Red Deer -->
+    <path class="river-sm" d="M380,440 Q460,425 550,420 Q640,420 730,440 Q820,460 910,455 Q1000,450 1090,460 Q1150,465 1200,462"/>
+    <!-- Oldman -->
+    <path class="river-sm" d="M285,700 Q380,685 470,700 Q570,720 670,710 Q770,695 860,705 Q950,715 1040,725 Q1130,730 1200,728"/>
+    <!-- Peace (north) -->
+    <path class="river-sm" d="M0,45 Q100,35 200,55 Q300,80 380,65 Q460,45 550,35 Q640,30 730,45"/>
+    <!-- South Saskatchewan -->
+    <path class="river-sm" d="M1060,365 Q1080,420 1110,470 Q1130,530 1160,580 Q1180,640 1200,680"/>
+
+    <!-- Major tributaries -->
+    <path class="creek" d="M500,330 Q525,280 560,250 Q590,225 620,215"/>
+    <path class="creek" d="M490,540 Q515,490 550,460 Q575,445 610,435"/>
+    <path class="creek" d="M670,525 Q695,480 725,460 Q748,450 775,448"/>
+    <path class="creek" d="M690,340 Q715,295 745,275 Q770,262 800,258"/>
+    <path class="creek" d="M840,155 Q865,120 895,100 Q920,88 950,82"/>
+    <path class="creek" d="M880,335 Q905,295 935,275 Q955,265 980,260"/>
+    <path class="creek" d="M850,510 Q875,470 905,455"/>
+    <path class="creek" d="M670,710 Q695,670 725,650"/>
+    <path class="creek" d="M770,695 Q795,655 825,635"/>
+    <path class="creek" d="M730,440 Q755,405 785,385"/>
+    <path class="creek" d="M940,525 Q958,490 980,470"/>
+    <!-- Milk River -->
+    <path class="creek" d="M520,820 Q620,810 720,825 Q820,845 920,840 Q1020,830 1120,838 Q1160,842 1200,845"/>
+    <!-- Belly River -->
+    <path class="creek" d="M340,750 Q390,740 440,755 Q490,770 540,765"/>
+    <!-- Elbow River -->
+    <path class="creek" d="M400,530 Q420,510 445,500 Q465,495 490,500"/>
+    <!-- Clearwater -->
+    <path class="creek" d="M440,325 Q465,305 490,290 Q510,280 535,278"/>
+  </g>
+
+  <!-- ═══════════ LAKES ═══════════ -->
+  <g id="lakes">
+    <!-- Lake Louise -->
+    <path class="lake" d="M300,400 Q320,390 345,395 Q360,408 350,425 Q332,435 312,428 Q295,418 300,400Z"/>
+    <!-- Maligne Lake -->
+    <path class="lake" d="M215,195 Q238,182 260,190 Q272,205 262,222 Q245,232 225,225 Q210,215 215,195Z"/>
+    <!-- Abraham Lake -->
+    <path class="lake" d="M395,318 Q420,305 450,312 Q468,328 458,350 Q438,362 415,355 Q392,342 395,318Z"/>
+    <!-- Peyto Lake -->
+    <path class="lake-sm" d="M340,350 Q355,342 370,348 Q378,358 372,370 Q360,376 348,372 Q338,364 340,350Z"/>
+    <!-- Lesser Slave Lake -->
+    <path class="lake" d="M520,60 Q570,48 620,55 Q650,70 640,92 Q618,108 580,105 Q540,98 520,80 Q515,70 520,60Z"/>
+    <!-- Prairie potholes -->
+    <ellipse class="lake-sm" cx="720" cy="380" rx="15" ry="10"/>
+    <ellipse class="lake-sm" cx="980" cy="570" rx="18" ry="11"/>
+    <ellipse class="lake-sm" cx="1080" cy="430" rx="13" ry="8"/>
+    <ellipse class="lake-sm" cx="850" cy="620" rx="14" ry="9"/>
+    <ellipse class="lake-sm" cx="760" cy="740" rx="16" ry="10"/>
+    <ellipse class="lake-sm" cx="680" cy="590" rx="11" ry="7"/>
+    <ellipse class="lake-sm" cx="1100" cy="300" rx="12" ry="8"/>
+    <ellipse class="lake-sm" cx="920" cy="750" rx="14" ry="9"/>
+    <ellipse class="lake-sm" cx="1000" cy="680" rx="10" ry="7"/>
+    <ellipse class="lake-sm" cx="640" cy="460" rx="9" ry="6"/>
+  </g>
+
+  <!-- ═══════════ BOUNDARIES ═══════════ -->
+  <g id="boundaries">
+    <!-- BC/Alberta border (Continental Divide) -->
+    <path class="boundary" d="M220,0 Q235,80 255,160 Q275,240 265,320 Q258,400 278,480 Q290,560 270,640 Q255,720 248,800 Q244,850 240,900"/>
+    <!-- Alberta/Saskatchewan border -->
+    <line class="boundary" x1="1100" y1="0" x2="1100" y2="900" style="stroke-dasharray: 15,8;"/>
+    <!-- US border -->
+    <line class="boundary" x1="240" y1="870" x2="1200" y2="870" style="stroke-dasharray: 15,8; opacity: 0.08;"/>
+  </g>
+
+  <!-- ═══════════ ELEVATION MARKERS ═══════════ -->
+  <g id="peaks">
+    <polygon class="peak" points="325,288 330,275 335,288"/>
+    <polygon class="peak" points="270,188 275,175 280,188"/>
+    <polygon class="peak" points="330,510 335,497 340,510"/>
+    <polygon class="peak" points="380,445 385,432 390,445"/>
+    <polygon class="peak" points="200,130 205,118 210,130"/>
+    <polygon class="peak" points="415,190 420,178 425,190"/>
+  </g>
+
+  <!-- ═══════════ LABELS — place names, very faint ═══════════ -->
+  <g id="labels">
+    <text class="label" x="580" y="85" transform="rotate(-2,580,85)">LESSER SLAVE</text>
+    <text class="label" x="830" y="398" transform="rotate(-3,830,398)">CYPRESS HILLS</text>
+    <text class="label-sm" x="660" y="310">N. SASKATCHEWAN R.</text>
+    <text class="label-sm" x="660" y="520">BOW R.</text>
+    <text class="label-sm" x="660" y="695">OLDMAN R.</text>
+    <text class="label-sm" x="660" y="155">ATHABASCA R.</text>
+    <text class="label-sm" x="660" y="445">RED DEER R.</text>
+    <text class="label-sm" x="150" y="500" transform="rotate(-85,150,500)">CONTINENTAL DIVIDE</text>
+    <text class="label-sm" x="1105" y="450" transform="rotate(-90,1105,450)">AB | SK</text>
+    <text class="label-sm" x="700" y="865">49TH PARALLEL</text>
+    <text class="label-sm" x="620" y="840">MILK R.</text>
+  </g>
+</svg>

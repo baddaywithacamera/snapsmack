@@ -1,0 +1,152 @@
+# One-time recovery scripts — never commit these
+recover-*.php
+
+# Live database credentials — never commit these
+core/db.php
+smack-central/sc-config.php
+
+# Server-specific signing key — never commit the real key
+# Use core/release-pubkey-sample.php as the template
+core/release-pubkey.php
+
+# Backups contain full source + database dumps — never commit
+backups/
+
+# Schema reference file IS tracked — it is the canonical source of truth for
+# all table definitions and must stay in sync with install.php + migrations.
+# database/schema/
+
+# Updater temp files
+/tmp/snapsmack_update/
+
+# Session files stored in-app to avoid shared-host GC cron purges
+data/sessions/
+
+# Installer session storage — created at runtime, never commit
+core/.install-session/
+
+# Site-specific head scripts — file-based so SMACKBACK can watch for tampering.
+# Not source code — each install manages its own. Re-save in smack-scripts.php to generate.
+data/custom-head.html
+
+# User uploads (too large, site-specific)
+img_uploads/
+
+# Claude / AI tooling
+CLAUDE.md
+.claude-tasks/
+
+# Spec / planning documents — not part of source
+_spec/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# PHP error logs (if tracked, run: git rm --cached error_log)
+error_log
+*.log
+
+# Spec/setup documents that wound up at root — not part of source
+# If tracked, run: git rm --cached <filename>
+HIP-TO-BE-SQUARE-SPEC.docx
+PICASA-WEB-ALBUMS-SPEC.docx
+suyb-google-drive-setup.docx
+
+
+# Release packages (built by Smack Central, not stored in source)
+releases/
+
+# Smack Central one-off DB migration patches — canonical schemas are in
+# smack-central/schemas/ and ARE tracked; these ad-hoc patch files are not.
+smack-central/sc-enemy-schema.sql
+smack-central/sc-enemy-schema-patch.sql
+
+# Build artifacts from skin packaging / registry generation
+packages/
+registry.json
+
+# Server-side auth file (cPanel / host-generated, not source code)
+/auth.php
+
+# Community encryption key — generated at install time, never commit
+core/community-key.php
+
+# Service account keys / credentials — NEVER commit
+*-drive-key*.json
+tools/*/config.json
+
+# Desktop tool runtime config (contains key paths, folder IDs)
+tools/*/config.ini
+tools/*/profiles/
+
+# PyInstaller build artifacts — all tools
+tools/*/build/
+tools/*/dist/
+tools/*/*.spec
+
+# Dead tool directory (renamed to tools/sybu/)
+tools/ft-batch-poster/
+
+# Plugin builds (not part of SnapSmack core)
+sofobomo-canada.zip
+email-test.php
+
+# Accidental root-level zips — release packages should live in releases/
+# If tracked, run: git rm --cached snapsmack.zip smack-central-current.zip
+snapsmack.zip
+smack-central-current.zip
+
+# Greymatter port (work in progress — not part of SnapSmack)
+greymatter/
+
+# snapsmack.ca promo site — not part of the CMS codebase, deployed separately
+projects/snapsmack-ca/
+projects/snapsmack-ca/img/
+sc-config.php
+# Forum server live config — contains DB credentials and mod key
+projects/forum-server/api/forum/config.php
+
+# Windows corrupted NUL device artifact
+nul
+
+# One-time emergency deploy tools — FTP and delete, never store in source
+snap-bootstrap.php
+tools/smackattack-scanner/__pycache__/
+tools/claude-commander/
+
+# Claude Commander (dev scaffold — will move to own repo)
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Powertools (Claude's w
+# Claude Commander lives in its own repo
+projects/claude-commander/
+
+# Backup files and server-specific config
+*.bak
+.htaccess
+wotcha.html
+smack-central/KEY-ROTATION-INSTRUCTIONS.txt
+
+# Temporary reference copy of pixhellated.ca live site
+pixhellated_reference/
+
+# Claude's session-continuity notes (gitignored — for future Claude sessions)
+_continuity/
+
+# Private spec / planning documents directory
+tools/_specs/
+
+# Skin design spec documents — private planning files
+skins/**/*.docx
+
+# Claude session state and worktrees — never part of source
+_claudepowertools/
+.claude/worktrees/
+
+# Chaplin skin design reference files — private, gitignored
+skins/chaplin/reference work from Claude Design - gitignore/

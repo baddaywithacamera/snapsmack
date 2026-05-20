@@ -1,0 +1,31 @@
+/**
+ * SNAPSMACK - Dark variant for the 50-shades-of-noah-grey skin
+ * Alpha v0.7.5
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+:root {
+    --bg-primary:    #1e1e1e;
+    --bg-secondary:  #2b2b2b;
+    --static-card-bg:  #212121;
+    --bg-chrome:     #242424;
+    --border:        #383838;
+    --text-primary:  #e8e8e8;
+    --text-secondary:#999999;
+    --text-dim:      #555555;
+    --accent:        #b0b0b0;
+    --accent-hover:  #e0e0e0;
+    --accent-dim:    #707070;
+    --input-bg:      #222222;
+}
+/* ===== SNAPSMACK EOF ===== */

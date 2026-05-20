@@ -1,0 +1,24 @@
+/**
+ * SNAPSMACK - Static / Page Styles
+ *
+ * Loaded on page.php and other static page templates. Page hero defaults
+ * and 404/empty fallback only.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line MUST be: slash-star, space, five equals, space,
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ */
+
+
+/* ─── PAGE HERO (static pages) ─────────────────────────────────────────── */
+.page-hero { margin-bottom: 0; }
+.page-hero .main-photo { text-align: center; }
+.page-hero .main-photo img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+/* ===== SNAPSMACK EOF ===== */

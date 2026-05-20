@@ -1,0 +1,137 @@
+/**
+ * SNAPSMACK - Public Base Styles
+ *
+ * Loaded on every public-facing page. Contains:
+ *   - Utility classes shared by all pages (alignment, sizing)
+ *   - Inline image frame styling (parser shortcodes)
+ *   - Content link defaults (description / static page links)
+ *   - Reverse-email anti-scraper helper
+ *   - Engine-required structural rules (image fade-load opacity:0)
+ *   - Landing-only mode header hide
+ *   - Tablet touch target enlargement
+ *
+ * Skin's style.css loads AFTER this file and overrides freely.
+ *
+ * SKIN AUTHORS: most of this is utility/structural. Override decorative
+ * bits (link colour, hover) in your skin freely. Do NOT override the image
+ * fade-load opacity:0 rule — the JS engine depends on it.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line MUST be the canonical CSS EOF marker:
+ *   slash-star, space, five equals, space, 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ */
+
+
+/* ─── 1. GLOBAL ASSET CONTAINER ──────────────────────────────────────────── */
+.snapsmack-asset {
+    display: block;
+    height: auto;
+    max-width: 100%;
+    margin-top: 25px;
+    margin-bottom: 25px;
+}
+
+/* ─── 2. SIZE UTILITIES ──────────────────────────────────────────────────── */
+.asset-small  { width: 300px !important; }
+.asset-medium { width: 600px !important; }
+.asset-full   { width: 100%  !important; }
+
+/* ─── 3. ALIGNMENT UTILITIES ─────────────────────────────────────────────── */
+.align-left  { float: left;  margin-right: 25px; margin-bottom: 15px; }
+.align-right { float: right; margin-left:  25px; margin-bottom: 15px; }
+.align-center {
+    float: none;
+    margin-left: auto;
+    margin-right: auto;
+    clear: both;
+}
+
+/* ─── 4. INLINE IMAGE FRAMES (parser shortcodes) ─────────────────────────── */
+.snap-inline-frame {
+    margin: 1.5em auto;
+    text-align: center;
+}
+.snap-inline-frame.align-left  { float: left;  margin: 0.25em 1.5em 1em 0; }
+.snap-inline-frame.align-right { float: right; margin: 0.25em 0 1em 1.5em; }
+.snap-inline-frame img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* ─── 5. CONTENT LINKS (base fallback) ───────────────────────────────────── */
+.description a,
+.static-content a:not(.nav-menu a) {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.description a:hover,
+.static-content a:not(.nav-menu a):hover {
+    opacity: 0.8;
+}
+.description a:has(img),
+.static-content a:has(img),
+.snap-inline-frame a,
+.description a img,
+.static-content a img {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
+/* ─── 6. CLEARFIX (floated images don't overflow sections) ───────────────── */
+.description::after,
+.static-content::after,
+.post-content::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+/* ─── 7. REVERSE-EMAIL (anti-scraper, applied to footer email) ───────────── */
+.reverse-email {
+    display: inline-block;
+    unicode-bidi: bidi-override;
+    direction: rtl;
+}
+
+/* ─── 8. LANDING-ONLY MODE (hides skin headers when active) ──────────────── */
+body.landing-only #header,
+body.landing-only .ge-header,
+body.landing-only .pickup-header,
+body.landing-only .snt-header,
+body.landing-only .tg-topbar { display: none; }
+
+/* ─── 9. TABLET TOUCH TARGETS ────────────────────────────────────────────── */
+@media (pointer: coarse) {
+    .nav-menu a,
+    .nav-links a {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+    }
+}
+
+/* ─── 10. ENGINE: image fade-load (DO NOT OVERRIDE) ──────────────────────── */
+/* Initial opacity:0 so half-decoded images don't flash before paint.
+   ss-engine-image-fade-load.js transitions to opacity:1 on `load`. */
+.post-image,
+.fsog-image,
+.pg-post-image,
+.tg-image,
+img[data-lightbox-src] {
+    opacity: 0;
+    transition: opacity 0.4s ease-in-out;
+}
+
+/* ─── 11. NOT FOUND / EMPTY STATE (shared) ───────────────────────────────── */
+.not-found-msg {
+    text-align: center;
+    padding: 80px 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.2rem;
+    color: var(--text-dim, #999);
+}
+/* ===== SNAPSMACK EOF ===== */
