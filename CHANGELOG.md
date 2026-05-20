@@ -12,6 +12,15 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.160 — "Booty Call" (2026-05-20)
+
+### Fixed
+- **snap_collections column mismatch**: Fresh installs from canonical schema created `snap_collections.title`, but `archive.php`, `smack-edit.php`, and `smack-post-solo.php` queried `ORDER BY name`, causing a fatal PDO error on those pages. All three updated to use `title`. Migration `migrate-collections-name-to-title.sql` added to rename the column on existing installs.
+- **smack-admin.php truncated**: File was cut off mid-line at the RSS job remove button, causing a PHP parse error and 500 on the admin dashboard. Restored from reference copy.
+- **updater.php idempotent errno**: Added MySQL 1054 (ER_BAD_FIELD_ERROR) to the swallowed error list so CHANGE COLUMN migrations are safe to run on installs where the rename is already applied.
+
+---
+
 ## 0.7.159 — "Booty Call" (2026-05-19)
 
 ### Security
