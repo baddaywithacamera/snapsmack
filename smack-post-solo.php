@@ -627,7 +627,7 @@ render_form:
 // Load categories, albums, and collections for form selectors.
 $all_cats         = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
 $all_albums       = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
-$all_collections  = $pdo->query("SELECT * FROM snap_collections ORDER BY name ASC")->fetchAll();
+$all_collections  = $pdo->query("SELECT * FROM snap_collections ORDER BY title ASC")->fetchAll();
 
 $page_title = "Initialize Smack";
 include 'core/admin-header.php';

@@ -228,7 +228,7 @@ $mapped_albums = $mapped_albums->fetchAll(PDO::FETCH_COLUMN);
 // Load all available categories, albums, and collections for the form selectors.
 $all_cats        = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
 $all_albums      = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
-$all_collections = $pdo->query("SELECT * FROM snap_collections ORDER BY name ASC")->fetchAll();
+$all_collections = $pdo->query("SELECT * FROM snap_collections ORDER BY title ASC")->fetchAll();
 
 // Load the image's current collection memberships.
 $mapped_collections_stmt = $pdo->prepare("SELECT collection_id FROM snap_collection_items WHERE item_type = 'post' AND item_id = ?");

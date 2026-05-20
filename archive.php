@@ -330,7 +330,7 @@ try {
     // Only surface categories set to visible in the archive.
     $all_cats        = $pdo->query("SELECT id, cat_name FROM snap_categories WHERE show_in_archive = 1 ORDER BY cat_name ASC")->fetchAll();
     $all_albums      = $pdo->query("SELECT id, album_name FROM snap_albums ORDER BY album_name ASC")->fetchAll();
-    $all_collections = $pdo->query("SELECT id, name FROM snap_collections ORDER BY name ASC")->fetchAll();
+    $all_collections = $pdo->query("SELECT id, title FROM snap_collections ORDER BY title ASC")->fetchAll();
 
     // Matching tags (shown when searching)
     // Includes colour-family matches so searching "teal" surfaces #007a8b etc.
