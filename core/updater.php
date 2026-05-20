@@ -84,6 +84,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-pages-image-cols.sql',
     'migrate-users-recovery-columns.sql',
     'migrate-users-ui-mode.sql',
+    'migrate-collections-name-to-title.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
@@ -930,6 +931,7 @@ function updater_run_migrations(PDO $pdo, array $migration_files): array {
         1050, // ER_TABLE_EXISTS_ERROR   — table already exists
         1091, // ER_CANT_DROP_FIELD_OR_KEY — key/index doesn't exist
         1146, // ER_NO_SUCH_TABLE        — table not yet created (feature not migrated)
+        1054, // ER_BAD_FIELD_ERROR      — column not found; CHANGE COLUMN rename already applied
     ];
 
     foreach ($migration_files as $file) {
@@ -1705,23 +1707,4 @@ function _updater_http_get(string $url): string|false {
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS      => 5,
-            CURLOPT_TIMEOUT        => 30,
-            CURLOPT_SSL_VERIFYPEER => true,
-        ]);
-        $body = curl_exec($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        return ($body !== false && $code === 200) ? $body : false;
-    }
-
-    // Fallback
-    $ctx = stream_context_create([
-        'http' => [
-            'timeout' => 30,
-            'user_agent' => 'SnapSmack-Updater/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0.0'),
-        ],
-    ]);
-    return @file_get_contents($url, false, $ctx);
-}
-// ===== SNAPSMACK EOF =====
+            CURLOP
