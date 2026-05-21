@@ -14,23 +14,11 @@
  */
 
 
-$frame_color = $settings['chap_frame_color'] ?? '#1a1410';
-$frame_width = $settings['chap_frame_width'] ?? '10';
-$mat_color   = $settings['chap_mat_color']   ?? '#f5efdf';
-$mat_width   = $settings['chap_mat_width']   ?? '28';
-
-$frame_vars = implode('', [
-    "--frame-color:{$frame_color};",
-    "--frame-width:{$frame_width}px;",
-    "--mat-color:{$mat_color};",
-    "--mat-width:{$mat_width}px;",
-]);
-
 include __DIR__ . '/skin-meta.php';
 ?>
 <body class="static-transmission chap-page">
 <div id="page-wrapper">
-    <div id="scroll-stage" class="chap-page-stage" style="<?php echo $frame_vars; ?>">
+    <div id="scroll-stage" class="chap-page-stage">
 
         <?php include __DIR__ . '/skin-header.php'; ?>
 

@@ -64,8 +64,8 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
 }
 
 define('SNAPSMACK_VERSION', 'Alpha 0.7.154');
-define('SNAPSMACK_VERSION_SHORT', '0.7.160');
-define('SNAPSMACK_VERSION_CODENAME', 'Booty Call');
+define('SNAPSMACK_VERSION_SHORT', '0.7.161');
+define('SNAPSMACK_VERSION_CODENAME', 'Chaplin');
 
 // --- VERSION COMPARISON ---
 // Versions are standard three-part semver: 0.7.17, 0.7.18, etc.
