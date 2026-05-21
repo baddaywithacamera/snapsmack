@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.162 — "Chaplin" (2026-05-21)
+
+### Fixed
+- **smack-update.php missing admin-footer**: Sidebar accordion JS (`ss-engine-sidebar.js`) was never loading on the System Updates page — nav section toggles were dead. Added missing `include 'core/admin-footer.php'`.
+
+---
+
 ## 0.7.161 — "Chaplin" (2026-05-21)
 
 ### Added
