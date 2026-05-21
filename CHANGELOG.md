@@ -12,6 +12,21 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.161 — "Chaplin" (2026-05-21)
+
+### Added
+- **Chaplin skin v2.0 rebuilt from scratch**: Single centered framed image layout (no slider). Art Deco SVG ornament system — 4 styles (Stepped Sunburst, Minimal Chevrons, Heavy Deco Fan, Geometric Modernist) with corners-only / corners+mid / full-border modes and 1–3 configurable parallel rules. Film effects engine: canvas scratches behind image, CSS flicker and gate-slip on the frame — no overlay on the photo. Tone: sepia or B&W. New files: `frame-deco.php`, `assets/js/ss-engine-chaplin-film.js`. All 42 manifest settings are now wired.
+- **Rational Geo masonry container fix**: `#justified-grid` was `max-width: 95%` — no pixel cap, escaped the 1600px layout on wide monitors. Fixed to match `.rg-archive-grid` at 1600px. Skin bumped to v1.6.
+
+### Fixed
+- **Black Pearl admin theme description text**: `.item-text .dim` was `#444444` on `#000000` background — invisible. Raised to `#AAAAAA`. `.item-meta` (album/collection descriptions) had no colour override; added at `#999999`. Body background explicitly set to `#000000`.
+- **api-auth.php truncated EOF**: Last line was `// ===== SNAPSMAC` — repaired.
+- **core/auth-smack.php**: Session lifetime corrected; stale logout redirect fixed.
+- **Migration PHP stubs removed from git**: `migrations/027–066_*.php` were tracked but not on disk (replaced by SQL equivalents). Removed from git index.
+- **check-eof.py hangs on Windows**: `dd iflag=direct` is unsupported on Windows and stalled the scanner. Now skips `dd` on Windows (`os.name == 'nt'`), adds a 5s timeout on Linux.
+
+---
+
 ## 0.7.160 — "Booty Call" (2026-05-20)
 
 ### Fixed
@@ -2198,137 +2213,4 @@ _Internal bump. See 0.7.5b for the full feature set._
 ### Migrations
 - `migrate-rename-pocket-operator.sql`: updates any install with `active_skin = 'pocket-operator'` in `snap_settings` to `pocket-rocket`. Safe to run on installs that never used Pocket Operator (no-op).
 - Community infrastructure tables (`snap_likes`, `snap_reactions`, `snap_community_accounts`, `snap_community_sessions`) require the 0.7.1 migration to be run before community features are active.
-- `migrate-posts.sql`: creates `snap_posts`, `snap_post_images`, `snap_post_cat_map`, `snap_post_album_map`; adds `post_id` FK column to `snap_images`; wraps all existing images in single-type post records for forward compatibility. Non-destructive — legacy skins continue querying `snap_images` unchanged. Required before any skin activating `post_page` in its manifest can be used.
-- `migrate-image-style.sql`: adds five style columns to `snap_post_images` (`img_size_pct`, `img_border_px`, `img_border_color`, `img_bg_color`, `img_shadow`) and five matching columns to `snap_posts` (`post_img_size_pct`, `post_border_px`, `post_border_color`, `post_bg_color`, `post_shadow`). MySQL-safe stored procedure pattern — checks `information_schema.COLUMNS` before altering; safe to re-run. Required before The Grid image frame customisation system is active.
-- `migrate-tags.sql`: creates `snap_tags` (global tag registry) and `snap_image_tags` (image ↔ tag junction). MySQL-safe stored procedure pattern. Required before hashtag extraction and archive pages are active.
-
----
-
-## 0.7.0 — "Lapdog" (2026-03-08)
-
-### Added
-- Inline image frames: `[img:ID|size|align]` shortcodes render inside the skin's ASCII border frame on static pages.
-- Smart Open Graph tags with latest-image fallback for all skins.
-- Release packaging system (`tools/build-install-package.php`, `tools/sign-release.php`).
-- Ed25519 package signing with public key verification enforced.
-- Skin packager for building individual skin zips (`tools/build-skin-package.php`).
-- UL/OL list buttons in the shortcode toolbar with keyboard shortcuts (Ctrl+U, Ctrl+O).
-- Underline button and shortcut (Ctrl+Shift+U) in the shortcode toolbar.
-- Custom list markers so UL/OL render in the active skin font.
-- Site email field in Configuration and install wizard.
-- Cropped grid support in Impact Printer archive layout.
-- EXIF display toggle (`exif_display_enabled`) respected across all skin layouts.
-
-### Changed
-- All file headers bumped to Alpha v0.7.
-- Kiosk and Impact Printer excluded from the public install package (development/beta status).
-- Toolbar keyboard shortcuts documented in help system.
-
-### Fixed
-- Sidebar variable collision that broke static pages listing.
-- Skin settings form showing stale values after save.
-- Edit page album/category dropdowns loading wrong JS.
-- `smack_autop()` mangling `<ul>`, `<ol>`, and other block HTML.
-- Cropped grid forcing 1:1 aspect ratio in Impact Printer.
-- Portrait thumbnails capped to landscape height in cropped grid.
-- UL/OL buttons now split selected text into individual list items.
-- Installer progress dots skipping step 3.
-
----
-
-## 0.6.0 (2026-02)
-
-### Added
-- Self-update system with Ed25519 signing and dual admin notifications.
-- Setup bootstrap deployer (`setup.php`) and first-run install wizard (`install.php`).
-- Floating social profile dock with glass-morphism UI and appearance customisation.
-- Sticky header engine with glass-morphism transparency.
-- Full help system with table of contents, full-text search, and skin-specific topic hooks.
-- Backup, recovery, and export system with FTP support.
-- OAuth cloud push to Google Drive and OneDrive with persistent refresh tokens.
-- Formatting toolbar with live preview, columns, and dropcap support.
-- Release signing utility with Ed25519 verification.
-- Self-update version check with cron registration UI.
-- Skin gallery for browsing and installing skins.
-- Batch throttling for all bulk thumbnail and checksum operations.
-- Recovery system, schema enrichment, integrity tools, and .htaccess repair.
-- Rational Geo skin (NatGeo-inspired editorial magazine theme).
-- Pocket Operator skin renamed to **Pocket Rocket** throughout (`skins/pocket-operator/` → `skins/pocket-rocket/`, all internal references updated).
-- `SNAPSMACK_MOBILE_SKIN` constant changed from `pocket-operator` to `photogram`. Photogram is now the default mobile skin served automatically on phone detection.
-- Pocket Rocket status set to `beta` (functional, present in all installs, superseded by Photogram).
-- Photogram status set to `beta` (Phase 1 complete, serving as default mobile skin).
-- The Grid status set to `stable` (full carousel post system, image frame customisation, community-ready).
-- Shortcode toolbar split onto two rows to accommodate new buttons.
-- Content links in Impact Printer styled monochrome (inherit colour, underline only).
-- Build script outputs `snapsmack-{version}.zip` instead of `snapsmack-{version}-full.zip`.
-- Inline image shortcodes use `snap-framed-img` class instead of `snapsmack-asset` to avoid inherited margins inside picture frames.
-- Thomas the Bear CSS restored from correct source.
-- Font license files normalised (line endings only, no content changes).
-
-### Fixed
-- `<p>` tags no longer wrap block-level image frame divs on static pages (display-time `cleanBlockNesting` in parser).
-- ASCII border frames now shrink-wrap tightly around images (`width: fit-content`).
-- F1 help not firing on Galleria after Phase C community retrofit. Root cause: `community-component.php` and `community-dock.php` called `community_current_user()` before the community migration had been run, throwing an uncaught `PDOException` that halted rendering before `ss-engine-comms.js` loaded. Fix: added `snap_community_ready()` guard to `core/community-session.php`; both includes bail silently when the community tables are absent.
-- F1 help modal invisible on texture-background skins (Impact Printer). Root cause: Impact Printer sets `body` background via `background-image` only — `getComputedStyle(body).backgroundColor` returns `rgba(0,0,0,0)`, making the modal panel transparent. Fix: added `getThemeColors()` helper to `ss-engine-comms.js` that reads `--bg-primary` / `--text-primary` from `:root` CSS custom properties first, falls back to computed body styles, then falls back to `#1a1a1a` / `#e0e0e0` if still transparent.
-- Unsolicited Disaster Recovery button removed from `smack-backup.php` header. The button was added uninstructed when `smack-disaster.php` was split out and broke the layout.
-- Photogram `layout.php` like queries used wrong column names (`img_id` / `account_id`) against `snap_likes` which uses `post_id` / `user_id`. Fixed both queries and replaced stale `$_SESSION['community_account_id']` with `community_current_user()`.
-- Photogram system footer cut off by fixed bottom nav. Root cause: `core/footer.php` renders `#system-footer` in normal document flow below `#pg-app`, directly under the `position: fixed` nav bar. Fix: `#system-footer { display: none; }` in Photogram's `style.css`. The bottom nav replaces the site footer concept in this skin.
-
-### Migrations
-- `migrate-rename-pocket-operator.sql`: updates any install with `active_skin = 'pocket-operator'` in `snap_settings` to `pocket-rocket`. Safe to run on installs that never used Pocket Operator (no-op).
-- Community infrastructure tables (`snap_likes`, `snap_reactions`, `snap_community_accounts`, `snap_community_sessions`) require the 0.7.1 migration to be run before community features are active.
-- `migrate-posts.sql`: creates `snap_posts`, `snap_post_images`, `snap_post_cat_map`, `snap_post_album_map`; adds `post_id` FK column to `snap_images`; wraps all existing images in single-type post records for forward compatibility. Non-destructive — legacy skins continue querying `snap_images` unchanged. Required before any skin activating `post_page` in its manifest can be used.
-- `migrate-image-style.sql`: adds five style columns to `snap_post_images` (`img_size_pct`, `img_border_px`, `img_border_color`, `img_bg_color`, `img_shadow`) and five matching columns to `snap_posts` (`post_img_size_pct`, `post_border_px`, `post_border_color`, `post_bg_color`, `post_shadow`). MySQL-safe stored procedure pattern — checks `information_schema.COLUMNS` before altering; safe to re-run. Required before The Grid image frame customisation system is active.
-- `migrate-tags.sql`: creates `snap_tags` (global tag registry) and `snap_image_tags` (image ↔ tag junction). MySQL-safe stored procedure pattern. Required before hashtag extraction and archive pages are active.
-
----
-
-## 0.7.0 — "Lapdog" (2026-03-08)
-
-### Added
-- Inline image frames: `[img:ID|size|align]` shortcodes render inside the skin's ASCII border frame on static pages.
-- Smart Open Graph tags with latest-image fallback for all skins.
-- Release packaging system (`tools/build-install-package.php`, `tools/sign-release.php`).
-- Ed25519 package signing with public key verification enforced.
-- Skin packager for building individual skin zips (`tools/build-skin-package.php`).
-- UL/OL list buttons in the shortcode toolbar with keyboard shortcuts (Ctrl+U, Ctrl+O).
-- Underline button and shortcut (Ctrl+Shift+U) in the shortcode toolbar.
-- Custom list markers so UL/OL render in the active skin font.
-- Site email field in Configuration and install wizard.
-- Cropped grid support in Impact Printer archive layout.
-- EXIF display toggle (`exif_display_enabled`) respected across all skin layouts.
-
-### Changed
-- All file headers bumped to Alpha v0.7.
-- Kiosk and Impact Printer excluded from the public install package (development/beta status).
-- Toolbar keyboard shortcuts documented in help system.
-
-### Fixed
-- Sidebar variable collision that broke static pages listing.
-- Skin settings form showing stale values after save.
-- Edit page album/category dropdowns loading wrong JS.
-- `smack_autop()` mangling `<ul>`, `<ol>`, and other block HTML.
-- Cropped grid forcing 1:1 aspect ratio in Impact Printer.
-- Portrait thumbnails capped to landscape height in cropped grid.
-- UL/OL buttons now split selected text into individual list items.
-- Installer progress dots skipping step 3.
-
----
-
-## 0.6.0 (2026-02)
-
-### Added
-- Self-update system with Ed25519 signing and dual admin notifications.
-- Setup bootstrap deployer (`setup.php`) and first-run install wizard (`install.php`).
-- Floating social profile dock with glass-morphism UI and appearance customisation.
-- Sticky header engine with glass-morphism transparency.
-- Full help system with table of contents, full-text search, and skin-specific topic hooks.
-- Backup, recovery, and export system with FTP support.
-- OAuth cloud push to Google Drive and OneDrive with persistent refresh tokens.
-- Formatting toolbar with live preview, columns, and dropcap support.
-- Release signing utility with Ed25519 verification.
-- Self-update version check with cron registration UI.
-- Skin gallery for browsing and installing skins.
-- Batch throttling for all bulk thumbnail and checksum operations.
-- Recovery system, schema enrichment, integrity tools, and .htaccess repair.
-- Rational Geo skin (NatGeo-inspired editorial magazine t
+- `migrate-posts.sql`: creates `snap_posts`, `snap_post_images`, `snap_post_cat_map`, `snap_post_album_map`; adds `post_id` FK column to `snap_images`; wraps all existing images in single-type post records for forward compatibility. Non-destructive — legacy skins continue querying `snap_images` unchanged. Required before any skin activating `post_page` in its manife
