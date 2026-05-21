@@ -35,6 +35,10 @@
 // own chunk requests must not be blocked by the lock they created.
 define('SNAPSMACK_IS_UPDATER', true);
 
+// smack-update.php manages its own CSRF token (update_csrf) separately
+// from the global csrf_token. Exempt from the auto-validator in auth-smack.php
+// so the global check doesn't fire before our own check runs.
+define('SNAPSMACK_CSRF_EXEMPT', true);
 require_once 'core/auth-smack.php';
 require_once 'core/updater.php';
 require_once 'core/skin-registry.php';
@@ -2060,4 +2064,5 @@ include 'core/sidebar.php';
 })();
 </script>
 
-<?
+
+<?php // ===== SNAPSMACK EOF =====

@@ -2383,4 +2383,23 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         $total_restored = $img_result['restored'] + $asset_result['restored'] + $brand_result['restored'];
         $total_missing  = $img_result['missing'] + $asset_result['missing'] + $brand_result['missing'];
 
-        ech
+        echo "<hr><h2 style='margin-top:20px;'>RECOVERY COMPLETE</h2>";
+        echo "<div class='summary'>";
+        echo "<span class='success'>Files restored: {$total_restored}</span><br>";
+        echo "<span class='success'>Thumbnails regenerated: {$thumb_result['generated']}</span><br>";
+        if ($total_missing > 0) {
+            echo "<span class='warn'>Files still missing: {$total_missing}</span><br>";
+        }
+        echo "</div>";
+
+        echo "<p style='margin-top:20px;'><a href='login.php' style='display:inline-block;padding:12px 30px;background:#a0ff90;color:#0e0e0e;text-decoration:none;font-weight:700;text-transform:uppercase;letter-spacing:1px;border-radius:3px;'>Log In</a></p>";
+        echo "<p class='warn' style='margin-top:16px;'>Delete <code>install.php</code> from your server when you're done.</p>";
+        echo "</body></html>";
+        exit;
+        ?>
+    <?php endif; ?>
+
+</div>
+</body>
+</html>
+<?php // ===== SNAPSMACK EOF =====
