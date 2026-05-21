@@ -51,14 +51,14 @@ if (session_status() === PHP_SESSION_NONE) {
         session_save_path($ss_session_dir);
     }
     session_set_cookie_params([
-        'lifetime' => 86400,
+        'lifetime' => 3600,
         'path'     => '/',
         'secure'   => (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')
                    || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https'),
         'httponly' => true,
         'samesite' => 'Lax',
     ]);
-    ini_set('session.gc_maxlifetime', 86400);
+    ini_set('session.gc_maxlifetime', 3600);
     session_start();
 }
 
@@ -77,7 +77,7 @@ csrf_check();
 if (isset($_GET['logout'])) {
     session_unset();
     session_destroy();
-    header("Location: " . BASE_URL . "snap-in.php");
+    header("Location: " . BASE_URL . "smack-admin.php");
     exit;
 }
 
@@ -145,7 +145,7 @@ if (isset($_SESSION['user_login'])) {
         session_name(),
         session_id(),
         [
-            'expires'  => time() + 86400,
+            'expires'  => time() + 3600,
             'path'     => '/',
             'secure'   => snap_is_https(),
             'httponly' => true,
