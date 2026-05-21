@@ -37,7 +37,8 @@ if (ini_get("session.use_cookies")) {
 session_destroy();
 
 // --- REDIRECT ---
-// Send user back to login screen
-header("Location: snap-in.php");
+// Send user back to login screen.
+// auth-smack.php will bounce unauthenticated requests to the configured snap-in slug.
+header("Location: smack-admin.php");
 exit;
 // ===== SNAPSMACK EOF =====

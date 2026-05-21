@@ -4,3 +4,5 @@
 
 ALTER TABLE `snap_users`
     ADD COLUMN IF NOT EXISTS `ui_mode` VARCHAR(20) NOT NULL DEFAULT 'bigwheel' AFTER `preferred_skin`;
+
+-- ===== SNAPSMACK EOF =====
