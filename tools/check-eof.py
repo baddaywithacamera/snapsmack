@@ -42,13 +42,17 @@ def read_nocache(abs_path: str) -> bytes:
     Falls back to a normal read on filesystems that don't support O_DIRECT
     (e.g. tmpfs, some virtual mounts) so the scanner stays usable everywhere.
     """
-    result = subprocess.run(
-        ['dd', f'if={abs_path}', 'bs=65536', 'iflag=direct'],
-        capture_output=True,
-    )
-    if result.returncode == 0:
-        return result.stdout
-    # Fallback: normal read — accurate on non-CIFS filesystems.
+    # dd iflag=direct bypasses the OS page cache on CIFS/SMB mounts.
+    # Skip on Windows — dd either absent or hangs on iflag=direct.
+    if os.name != 'nt':
+        result = subprocess.run(
+            ['dd', f'if={abs_path}', 'bs=65536', 'iflag=direct'],
+            capture_output=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            return result.stdout
+    # Fallback: normal read — used on Windows and non-CIFS Linux mounts.
     with open(abs_path, 'rb') as fh:
         return fh.read()
 
