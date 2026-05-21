@@ -35,11 +35,8 @@ if (!empty($hero['img_display_options'])) {
     if ($parts) $frame_vars = implode(';', $parts);
 }
 
-include __DIR__ . '/skin-meta.php';
 ?>
-<body class="chap-landing-body">
 <canvas id="chap-film-bg" aria-hidden="true"></canvas>
-<div id="page-wrapper">
 <div id="scroll-stage" class="chap-landing">
 
     <?php include __DIR__ . '/skin-header.php'; ?>
@@ -88,8 +85,4 @@ include __DIR__ . '/skin-meta.php';
 
     <?php include __DIR__ . '/skin-footer.php'; ?>
 </div>
-</div>
-<?php include __DIR__ . '/../../core/footer-scripts.php'; ?>
-</body>
-</html>
 <?php // ===== SNAPSMACK EOF =====

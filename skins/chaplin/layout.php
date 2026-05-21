@@ -161,7 +161,4 @@ if (!empty($display_opts['mat_width']))   $frame_style .= "--mat-width:{$display
     <?php include dirname(__DIR__, 2) . '/core/community-dock.php'; ?>
     <?php include __DIR__ . '/skin-footer.php'; ?>
 </div>
-<?php include __DIR__ . '/../../core/footer-scripts.php'; ?>
-</body>
-</html>
 <?php // ===== SNAPSMACK EOF =====

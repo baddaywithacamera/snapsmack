@@ -389,7 +389,7 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
    LANDING PAGE
    ========================================================================== */
 
-.chap-landing-body, body.chap-landing-body { overflow: hidden; height: 100%; }
+body:has(.chap-landing) { overflow: hidden; height: 100%; }
 
 .chap-landing {
   display: flex;
