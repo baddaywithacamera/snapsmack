@@ -37,7 +37,7 @@ return [
     'version'     => '2.1',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
-    'description' => 'Silent film era. Near-black canvas, Art Deco ornament frame, sepia or B&W photo treatment. Film scratches animate behind the image; the frame flickers and occasionally slips. Square crop.',
+    'description' => 'Silent film era. Near-black canvas, Art Deco ornament frame, sepia or B&W photo treatment. Film scratches animate behind the image; the frame flickers and occasionally slips.',
     'status'      => 'stable',
 
     'features' => [
