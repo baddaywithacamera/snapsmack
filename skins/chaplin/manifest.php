@@ -2,35 +2,48 @@
 /**
  * SNAPSMACK - Chaplin Skin Manifest
  *
- * Silent-film-era skin. Deep black, aged paper mats, film grain overlay,
- * intertitle card captions, and every image processed through a film stock
- * filter. Square crop. Built for squaredstraight.ca.
- */
-
-/**
+ * Silent-film-era skin. Near-black canvas, Art Deco ornament frame,
+ * sepia or B&W photo treatment, film scratch animation, gate-slip flicker.
+ *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  * Last non-empty line of this file MUST match the line above.
- * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-
 $inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
-$fonts = $inventory['fonts'] ?? [];
-foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label'];
+$all_fonts = $inventory['fonts'] ?? [];
+foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $all_fonts[$_k] = $_f['label'];
+
+// Filter to vintage-appropriate typefaces only.
+// Whitelist matches against key OR label (case-insensitive).
+$vintage_keywords = [
+    'cinzel','playfair','cormorant','garamond','baskerville','old standard',
+    'fell','palatino','goudy','bodoni','caslon','crimson','spectral','cardo',
+    'lora','libre','merriweather','sorts','uncial','blackletter','didone',
+    'casper','alligator','flott','casper','night','antic','poiret',
+    'josefin','century','clarendon','cheltenham','bookman','optima',
+];
+$vintage_fonts = array_filter($all_fonts, function ($label, $key) use ($vintage_keywords) {
+    $haystack = strtolower($key . ' ' . $label);
+    foreach ($vintage_keywords as $kw) {
+        if (strpos($haystack, $kw) !== false) return true;
+    }
+    return false;
+}, ARRAY_FILTER_USE_BOTH);
+if (empty($vintage_fonts)) $vintage_fonts = $all_fonts; // safety fallback
 
 return [
     'name'        => 'Chaplin',
-    'version'     => '1.3',
+    'version'     => '2.0',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
-    'description' => 'Silent film era. Deep black, aged paper mats, film grain, and every photograph run through a film stock filter. Square crop. It flickers.',
+    'description' => 'Silent film era. Near-black canvas, Art Deco ornament frame, sepia or B&W photo treatment. Film scratches animate behind the image; the frame flickers and occasionally slips. Square crop.',
     'status'      => 'stable',
 
     'features' => [
         'supports_wall'    => false,
         'archive_layouts'  => ['square', 'masonry'],
-        'supports_slider'  => true,
+        'supports_slider'  => false,
         'has_landing'      => true,
         'post_modes'       => ['image'],
         'instagram_mode'   => false,
@@ -43,73 +56,144 @@ return [
         'smack-image-fade-load',
         'smack-lightbox',
         'smack-keyboard',
-        'smack-slider',
         'smack-community',
         'smack-overlay',
     ],
 
     'options' => [
 
-        // ── FILM STOCK ────────────────────────────────────────────────────────
-        'chap_film_stock' => [
-            'section' => 'FILM STOCK',
+        // ── FILM TONE ─────────────────────────────────────────────────────────
+        'chap_tone' => [
+            'section' => 'FILM TONE',
             'type'    => 'select',
-            'label'   => 'Film Stock',
-            'default' => 'nitrate',
+            'label'   => 'Tone',
+            'default' => 'sepia',
             'options' => [
-                'ortho'   => 'Orthochromatic (High-Contrast B&W)',
-                'nitrate' => 'Nitrate Print (Warm / Aged)',
-                'panchro' => 'Panchromatic (Standard B&W)',
-                'color'   => 'Color (No Filter)',
+                'sepia' => 'Dark Sepia (Warm / Aged)',
+                'bw'    => 'Black & White (Neutral)',
             ],
-            // No selector/property — handled by PHP conditional CSS in skin-header.php
         ],
         'chap_grain_intensity' => [
-            'section' => 'FILM STOCK',
-            'type'    => 'range',
-            'label'   => 'Grain Intensity',
-            'default' => '4',
-            'min'     => '0',
-            'max'     => '12',
+            'section'  => 'FILM TONE',
+            'type'     => 'range',
+            'label'    => 'Static Grain Intensity',
+            'default'  => '4',
+            'min'      => '0',
+            'max'      => '12',
             'selector' => ':root',
             'property' => '--chap-grain-opacity',
-            'unit'    => '', // stored as integer, divided by 100 in CSS via calc()
+            'unit'     => '',
         ],
         'chap_vignette' => [
-            'section' => 'FILM STOCK',
+            'section' => 'FILM TONE',
             'type'    => 'select',
             'label'   => 'Vignette',
             'default' => '1',
             'options' => ['1' => 'On', '0' => 'Off'],
-            // Handled by PHP conditional in skin-header.php
         ],
         'chap_flicker' => [
-            'section' => 'FILM STOCK',
+            'section' => 'FILM TONE',
             'type'    => 'select',
             'label'   => 'Load Flicker',
             'default' => '1',
             'options' => ['1' => 'On', '0' => 'Off'],
-            // Handled by PHP conditional in skin-header.php
         ],
-        // ── FILM DAMAGE ───────────────────────────────────────────────────────
-        'chap_film_damage' => [
-            'section' => 'FILM DAMAGE',
+        'chap_scratch_freq' => [
+            'section' => 'FILM TONE',
             'type'    => 'select',
-            'label'   => 'Film Damage Overlay',
-            'default' => '1',
-            'options' => ['1' => 'On', '0' => 'Off'],
-            // Handled by PHP in skin-header.php — loads ss-engine-film-damage.js
+            'label'   => 'Film Scratch Frequency',
+            'default' => 'normal',
+            'options' => [
+                'off'    => 'Off',
+                'sparse' => 'Sparse',
+                'normal' => 'Normal',
+                'heavy'  => 'Heavy',
+            ],
         ],
-        'chap_damage_intensity' => [
-            'section'  => 'FILM DAMAGE',
+
+        // ── DECO FRAME ────────────────────────────────────────────────────────
+        'chap_deco_style' => [
+            'section' => 'DECO FRAME',
+            'type'    => 'select',
+            'label'   => 'Frame Line Style',
+            'default' => 'corners',
+            'options' => [
+                'corners'    => 'Corners Only',
+                'mid-breaks' => 'Corners + Mid Breaks',
+                'full'       => 'Full Border',
+            ],
+        ],
+        'chap_ornament_style' => [
+            'section' => 'DECO FRAME',
+            'type'    => 'select',
+            'label'   => 'Ornament Style',
+            'default' => 'A',
+            'options' => [
+                'none' => 'None',
+                'A'    => 'A — Stepped Sunburst',
+                'B'    => 'B — Minimal Chevrons',
+                'C'    => 'C — Heavy Deco Fan',
+                'D'    => 'D — Geometric Modernist',
+            ],
+        ],
+        'chap_line_count' => [
+            'section' => 'DECO FRAME',
+            'type'    => 'select',
+            'label'   => 'Number of Rules',
+            'default' => '1',
+            'options' => [
+                '1' => 'Single Rule',
+                '2' => 'Double Rule',
+                '3' => 'Triple Rule',
+            ],
+        ],
+        'chap_line_1_width' => [
+            'section'  => 'DECO FRAME',
             'type'     => 'range',
-            'label'    => 'Damage Intensity',
-            'default'  => '5',
+            'label'    => 'Rule 1 Thickness (px)',
+            'default'  => '2',
             'min'      => '1',
-            'max'      => '10',
+            'max'      => '5',
             'selector' => '',
             'property' => '',
-            // Passed as JS init option — no CSS selector needed
+        ],
+        'chap_line_2_width' => [
+            'section'  => 'DECO FRAME',
+            'type'     => 'range',
+            'label'    => 'Rule 2 Thickness (px)',
+            'default'  => '1',
+            'min'      => '1',
+            'max'      => '5',
+            'selector' => '',
+            'property' => '',
+        ],
+        'chap_line_3_width' => [
+            'section'  => 'DECO FRAME',
+            'type'     => 'range',
+            'label'    => 'Rule 3 Thickness (px)',
+            'default'  => '1',
+            'min'      => '1',
+            'max'      => '5',
+            'selector' => '',
+            'property' => '',
+        ],
+        'chap_line_gap' => [
+            'section'  => 'DECO FRAME',
+            'type'     => 'range',
+            'label'    => 'Gap Between Rules (vb units)',
+            'default'  => '8',
+            'min'      => '4',
+            'max'      => '24',
+            'selector' => '',
+            'property' => '',
+        ],
+        'chap_line_color' => [
+            'section'  => 'DECO FRAME',
+            'type'     => 'color',
+            'label'    => 'Line & Ornament Colour',
+            'default'  => '#ece6d4',
+            'selector' => ':root',
+            'property' => '--chap-deco-color',
         ],
 
         // ── GALLERY WALL ──────────────────────────────────────────────────────
@@ -171,7 +255,6 @@ return [
                 'single' => 'Single Bevel',
                 'double' => 'Double Bevel',
             ],
-            // Handled by PHP in skin-header.php
         ],
 
         // ── HEADER ────────────────────────────────────────────────────────────
@@ -233,11 +316,10 @@ return [
             'label'   => 'Caption Style',
             'default' => 'card',
             'options' => [
-                'card'    => 'Intertitle Card (Full Silent Film Style)',
+                'card'    => 'Intertitle Card (Full)',
                 'minimal' => 'Minimal (Title Only)',
                 'hidden'  => 'Hidden',
             ],
-            // Handled by PHP in skin-header.php
         ],
         'chap_card_bg' => [
             'section'  => 'INTERTITLE CARD',
@@ -312,46 +394,6 @@ return [
             'unit'     => 'px',
         ],
 
-        // ── SLIDER ────────────────────────────────────────────────────────────
-        'chap_slider_per_view' => [
-            'section' => 'SLIDER',
-            'type'    => 'select',
-            'label'   => 'Images Per View',
-            'default' => '2',
-            'options' => ['1' => '1 Image', '2' => '2 Images', '3' => '3 Images'],
-            'selector' => ':root',
-            'property' => '--slider-per-view',
-        ],
-        'chap_slider_speed' => [
-            'section'  => 'SLIDER',
-            'type'     => 'range',
-            'label'    => 'Transition Speed (ms)',
-            'default'  => '1000',
-            'min'      => '400',
-            'max'      => '2000',
-            'selector' => ':root',
-            'property' => '--slider-speed',
-            'unit'     => 'ms',
-        ],
-        'chap_slider_auto' => [
-            'section' => 'SLIDER',
-            'type'    => 'select',
-            'label'   => 'Auto-Advance',
-            'default' => '0',
-            'options' => ['0' => 'Off', '1' => 'On'],
-            'selector' => ':root',
-            'property' => '--slider-auto',
-        ],
-        'chap_slider_loop' => [
-            'section' => 'SLIDER',
-            'type'    => 'select',
-            'label'   => 'Loop',
-            'default' => '1',
-            'options' => ['0' => 'Off', '1' => 'On'],
-            'selector' => ':root',
-            'property' => '--slider-loop',
-        ],
-
         // ── COLOURS ───────────────────────────────────────────────────────────
         'chap_accent' => [
             'section'  => 'COLOURS',
@@ -384,7 +426,7 @@ return [
             'type'     => 'select',
             'label'    => 'Site Title Font',
             'default'  => 'BlackCasper',
-            'options'  => $fonts,
+            'options'  => $vintage_fonts,
             'selector' => '.chap-header .site-title-text',
             'property' => 'font-family',
         ],
@@ -412,7 +454,7 @@ return [
             'type'     => 'select',
             'label'    => 'Intertitle / Heading Font',
             'default'  => 'ColdNightForAlligators',
-            'options'  => $fonts,
+            'options'  => $vintage_fonts,
             'selector' => '.chap-intertitle-title, .chap-card-heading',
             'property' => 'font-family',
         ],
@@ -421,10 +463,19 @@ return [
             'type'     => 'select',
             'label'    => 'Body Font',
             'default'  => 'FlottFlott',
-            'options'  => $fonts,
+            'options'  => $vintage_fonts,
             'selector' => 'body, .description, .meta, .chap-intertitle-body',
             'property' => 'font-family',
         ],
+
+        // ── PRESETS ───────────────────────────────────────────────────────────
+        'chap_presets' => [
+            'section' => 'PRESETS',
+            'type'    => 'hidden',
+            'label'   => 'Saved Presets (JSON)',
+            'default' => '[]',
+        ],
+
     ],
 
     'admin_styling' => "

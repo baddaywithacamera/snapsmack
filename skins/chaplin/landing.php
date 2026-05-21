@@ -1,100 +1,95 @@
 <?php
 /**
- * SNAPSMACK - Chaplin skin: slider landing page
+ * SNAPSMACK - Chaplin skin: landing page
  *
- * Full-viewport horizontal slider of framed square images.
- * Uses the reusable SnapSlider engine (ss-engine-slider.js).
+ * Single centered framed image — most recent published photo.
+ * Full-viewport presentation with Art Deco ornament frame overlay
+ * and animated film background. Replaces the broken slider layout.
  *
- * Variables from index.php: $pdo, $settings, $img, $active_skin, $site_name
- */
-
-/**
  * SNAPSMACK_EOF_HEADER
  *     <?php // ===== SNAPSMACK EOF =====
  * Last non-empty line of this file MUST match the line above.
- * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-
-$now_local   = date('Y-m-d H:i:s');
-$slider_limit = 20;
-$slider_stmt = $pdo->prepare("
-    SELECT id, img_title, img_slug, img_file, img_thumb_square, img_date, img_display_options
+$now_local = date('Y-m-d H:i:s');
+$stmt = $pdo->prepare("
+    SELECT id, img_title, img_slug, img_file, img_thumb_square,
+           img_description, img_date, img_display_options
     FROM snap_images
     WHERE img_status = 'published' AND img_date <= ?
     ORDER BY sort_order ASC, img_date DESC
-    LIMIT ?
+    LIMIT 1
 ");
-$slider_stmt->execute([$now_local, $slider_limit]);
-$slider_images = $slider_stmt->fetchAll(PDO::FETCH_ASSOC);
+$stmt->execute([$now_local]);
+$hero = $stmt->fetch(PDO::FETCH_ASSOC);
 
-$per_view    = (int)($settings['chap_slider_per_view'] ?? 2);
-$speed       = (int)($settings['chap_slider_speed']    ?? 1000);
-$auto_advance = ($settings['chap_slider_auto']  ?? '0') === '1';
-$loop        = ($settings['chap_slider_loop']   ?? '1') === '1';
+// Per-image frame overrides
+$frame_vars = '';
+if (!empty($hero['img_display_options'])) {
+    $d = json_decode($hero['img_display_options'], true) ?? [];
+    $parts = [];
+    if (!empty($d['frame_color'])) $parts[] = "--frame-color:{$d['frame_color']}";
+    if (!empty($d['frame_width'])) $parts[] = "--frame-width:{$d['frame_width']}px";
+    if (!empty($d['mat_color']))   $parts[] = "--mat-color:{$d['mat_color']}";
+    if (!empty($d['mat_width']))   $parts[] = "--mat-width:{$d['mat_width']}px";
+    if ($parts) $frame_vars = implode(';', $parts);
+}
+
+include __DIR__ . '/skin-meta.php';
 ?>
+<body class="chap-landing-body">
+<canvas id="chap-film-bg" aria-hidden="true"></canvas>
+<div id="page-wrapper">
+<div id="scroll-stage" class="chap-landing">
 
-<div id="scroll-stage" class="chap-slider-landing">
+    <?php include __DIR__ . '/skin-header.php'; ?>
 
-    <?php include('skin-header.php'); ?>
+    <?php if ($hero): ?>
+    <div class="chap-presentation">
 
-    <div class="chap-slider-container">
-        <div class="chap-slider-wrapper">
-            <div id="chap-gallery-slider" class="ss-slider" data-auto-init
-                 data-per-view="<?php echo $per_view; ?>"
-                 data-speed="<?php echo $speed; ?>"
-                 data-easing="ease-in-out"
-                 data-auto-advance="<?php echo $auto_advance ? 'true' : 'false'; ?>"
-                 data-auto-interval="6000"
-                 data-loop="<?php echo $loop ? 'true' : 'false'; ?>">
-                <div class="slider-track">
-                    <?php foreach ($slider_images as $slide):
-                        $slide_link = BASE_URL . htmlspecialchars($slide['img_slug']);
+        <?php include __DIR__ . '/frame-deco.php'; ?>
 
-                        $d_opts = [];
-                        if (!empty($slide['img_display_options'])) {
-                            $d_opts = json_decode($slide['img_display_options'], true) ?? [];
-                        }
-                        $style_parts = [];
-                        if (!empty($d_opts['frame_color'])) $style_parts[] = "--frame-color:{$d_opts['frame_color']}";
-                        if (!empty($d_opts['frame_width'])) $style_parts[] = "--frame-width:{$d_opts['frame_width']}px";
-                        if (!empty($d_opts['mat_color']))   $style_parts[] = "--mat-color:{$d_opts['mat_color']}";
-                        if (!empty($d_opts['mat_width']))   $style_parts[] = "--mat-width:{$d_opts['mat_width']}px";
-                        $inline = !empty($style_parts) ? ' style="' . implode(';', $style_parts) . '"' : '';
-
-                        if (!empty($slide['img_thumb_square'])) {
-                            $img_url = BASE_URL . ltrim($slide['img_thumb_square'], '/');
-                        } elseif (!empty($slide['img_file'])) {
-                            $pi = pathinfo($slide['img_file']);
-                            $img_url = BASE_URL . ltrim($pi['dirname'] . '/thumbs/t_' . $pi['basename'], '/');
-                        } else {
-                            $img_url = '';
-                        }
-                    ?>
-                    <div class="slider-slide">
-                        <a href="<?php echo $slide_link; ?>" class="htbs-slide-link">
-                            <div class="frame-mount"<?php echo $inline; ?>>
-                                <div class="frame-border">
-                                    <div class="frame-mat">
-                                        <div class="frame-bevel">
-                                            <div class="frame-image">
-                                                <img src="<?php echo $img_url; ?>"
-                                                     alt="<?php echo htmlspecialchars($slide['img_title']); ?>"
-                                                     loading="lazy">
-                                            </div>
-                                        </div>
-                                    </div>
+        <div class="chap-frame-area">
+            <a href="<?php echo BASE_URL . htmlspecialchars($hero['img_slug']); ?>"
+               class="chap-main-link"
+               title="<?php echo htmlspecialchars($hero['img_title']); ?>">
+                <div class="frame-mount"<?php echo $frame_vars ? " style=\"{$frame_vars}\"" : ''; ?>>
+                    <div class="frame-border">
+                        <div class="frame-mat">
+                            <div class="frame-bevel">
+                                <div class="frame-image">
+                                    <img src="<?php echo BASE_URL . ltrim($hero['img_file'], '/'); ?>"
+                                         alt="<?php echo htmlspecialchars($hero['img_title']); ?>"
+                                         loading="eager">
                                 </div>
                             </div>
-                        </a>
+                        </div>
                     </div>
-                    <?php endforeach; ?>
                 </div>
-                <!-- Arrows injected by SnapSlider engine -->
+            </a>
+        </div>
+
+        <div class="chap-intertitle">
+            <div class="chap-intertitle-title">
+                <?php echo htmlspecialchars($hero['img_title']); ?>
+            </div>
+            <div class="chap-intertitle-rule"></div>
+            <div class="chap-intertitle-date">
+                <?php echo date('F j, Y', strtotime($hero['img_date'])); ?>
             </div>
         </div>
-    </div>
 
-    <?php include('skin-footer.php'); ?>
+    </div>
+    <?php else: ?>
+    <div class="chap-presentation chap-presentation--empty">
+        <p class="chap-no-photos">The projector is dark.</p>
+    </div>
+    <?php endif; ?>
+
+    <?php include __DIR__ . '/skin-footer.php'; ?>
 </div>
+</div>
+<?php include __DIR__ . '/../../core/footer-scripts.php'; ?>
+</body>
+</html>
 <?php // ===== SNAPSMACK EOF =====
