@@ -20,7 +20,7 @@ $vintage_keywords = [
     'cinzel','playfair','cormorant','garamond','baskerville','old standard',
     'fell','palatino','goudy','bodoni','caslon','crimson','spectral','cardo',
     'lora','libre','merriweather','sorts','uncial','blackletter','didone',
-    'casper','alligator','flott','casper','night','antic','poiret',
+    'alligator','flott','night','antic','poiret',
     'josefin','century','clarendon','cheltenham','bookman','optima',
 ];
 $vintage_fonts = array_filter($all_fonts, function ($label, $key) use ($vintage_keywords) {
@@ -34,7 +34,7 @@ if (empty($vintage_fonts)) $vintage_fonts = $all_fonts; // safety fallback
 
 return [
     'name'        => 'Chaplin',
-    'version'     => '2.0',
+    'version'     => '2.1',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Silent film era. Near-black canvas, Art Deco ornament frame, sepia or B&W photo treatment. Film scratches animate behind the image; the frame flickers and occasionally slips. Square crop.',
@@ -425,7 +425,7 @@ return [
             'section'  => 'TYPOGRAPHY',
             'type'     => 'select',
             'label'    => 'Site Title Font',
-            'default'  => 'BlackCasper',
+            'default'  => 'Cinzel',
             'options'  => $vintage_fonts,
             'selector' => '.chap-header .site-title-text',
             'property' => 'font-family',
