@@ -2064,5 +2064,5 @@ include 'core/sidebar.php';
 })();
 </script>
 
-
+<?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
