@@ -120,7 +120,7 @@ if (isset($_SESSION['force_password_change'])) {
 // persists. Store both user_id and preferred_skin in the session.
 if (isset($_SESSION['user_login'])) {
     try {
-        $stmt = $pdo->prepare("SELECT id, preferred_skin FROM snap_users WHERE username = ? LIMIT 1");
+        $stmt = $pdo->prepare("SELECT id, preferred_skin, ui_mode FROM snap_users WHERE username = ? LIMIT 1");
         $stmt->execute([$_SESSION['user_login']]);
         $u_data = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -132,6 +132,11 @@ if (isset($_SESSION['user_login'])) {
             // Default to midnight-lime if the database field is empty.
             if (!isset($_SESSION['user_preferred_skin'])) {
                 $_SESSION['user_preferred_skin'] = (!empty($u_data['preferred_skin'])) ? $u_data['preferred_skin'] : 'midnight-lime';
+            }
+
+            // Load UI mode (bigwheel / pimpmobile) from DB so it persists across sessions.
+            if (!isset($_SESSION['user_ui_mode'])) {
+                $_SESSION['user_ui_mode'] = (!empty($u_data['ui_mode'])) ? $u_data['ui_mode'] : 'bigwheel';
             }
         }
     } catch (PDOException $e) {
