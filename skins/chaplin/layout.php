@@ -32,21 +32,13 @@ if (!empty($display_opts['mat_width']))   $frame_style .= "--mat-width:{$display
 
         <?php include __DIR__ . '/frame-deco.php'; ?>
 
-        <div class="chap-frame-area">
-            <div class="frame-mount"<?php echo $frame_style ? " style=\"{$frame_style}\"" : ''; ?>>
-                <div class="frame-border">
-                    <div class="frame-mat">
-                        <div class="frame-bevel">
-                            <div class="frame-image">
-                                <?php include dirname(__DIR__, 2) . '/core/download-overlay.php'; ?>
-                                <img src="<?php echo BASE_URL . ltrim($img['img_file'], '/'); ?>"
-                                     alt="<?php echo htmlspecialchars($img['img_title']); ?>"
-                                     class="post-image">
-                                <?php echo $download_button; ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <div class="chap-photo-area">
+            <div class="chap-photo-wrap"<?php echo $frame_style ? " style=\"{$frame_style}\"" : ''; ?>>
+                <?php include dirname(__DIR__, 2) . '/core/download-overlay.php'; ?>
+                <img src="<?php echo BASE_URL . ltrim($img['img_file'], '/'); ?>"
+                     alt="<?php echo htmlspecialchars($img['img_title']); ?>"
+                     class="post-image chap-photo-img">
+                <?php echo $download_button; ?>
             </div>
         </div>
 
