@@ -17,6 +17,7 @@
 
 require_once 'core/db.php';
 require_once 'core/skin-settings.php';
+require_once 'core/maintenance-gate.php';
 
 // --- SETTINGS LOADING ---
 try {
