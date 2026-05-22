@@ -523,6 +523,15 @@ include __DIR__ . '/sc-layout-top.php';
             <input type="hidden" name="ref"     value="<?php echo htmlspecialchars($ref); ?>">
             <input type="hidden" name="tmp_key" value="<?php echo htmlspecialchars($tmp_key); ?>">
 
+            <div style="margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap;">
+                <button type="button" onclick="document.querySelectorAll('input[name=\'skins[]\']').forEach(c=>c.checked=true)"
+                        class="sc-btn" style="font-size:0.8rem; padding:5px 12px;">Select All</button>
+                <button type="button" onclick="document.querySelectorAll('input[name=\'skins[]\']').forEach(c=>c.checked=c.dataset.updated==='1')"
+                        class="sc-btn" style="font-size:0.8rem; padding:5px 12px;">Select Updated</button>
+                <button type="button" onclick="document.querySelectorAll('input[name=\'skins[]\']').forEach(c=>c.checked=false)"
+                        class="sc-btn" style="font-size:0.8rem; padding:5px 12px;">Deselect All</button>
+            </div>
+
             <table class="sc-table" style="width:100%;">
                 <thead>
                     <tr>
@@ -552,6 +561,7 @@ include __DIR__ . '/sc-layout-top.php';
                             <input type="checkbox" name="skins[]"
                                    value="<?php echo htmlspecialchars($slug); ?>"
                                    id="skin_<?php echo htmlspecialchars($slug); ?>"
+                                   data-updated="<?php echo $needs_update ? '1' : '0'; ?>"
                                    <?php echo ($in_registry || $meta['status'] === 'stable') ? 'checked' : ''; ?>>
                         </td>
                         <td>

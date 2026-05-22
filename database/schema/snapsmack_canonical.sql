@@ -1147,6 +1147,4 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_queue` (
   `processed_at`        datetime       DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_node_status` (`node_id`, `status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ===== SNAPSMACK EOF =====
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicod
