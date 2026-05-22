@@ -65,6 +65,7 @@ $scratch_prob = [
 }
 /* ── FILM TONE ───────────────────────────────────────────────────────────── */
 <?php if ($tone === 'sepia'): ?>
+.chap-photo-img,
 .chap-frame-image img,
 .chap-gallery-room .frame-image img,
 .htbs-slide-link .frame-image img,
@@ -74,6 +75,7 @@ $scratch_prob = [
     filter: grayscale(0.88) sepia(0.30) contrast(1.10) brightness(0.88);
 }
 <?php else: /* bw */ ?>
+.chap-photo-img,
 .chap-frame-image img,
 .chap-gallery-room .frame-image img,
 .htbs-slide-link .frame-image img,
@@ -131,6 +133,7 @@ $scratch_prob = [
 /* ── SQUARE CROP ─────────────────────────────────────────────────────────── */
 .frame-image { aspect-ratio: 1 / 1; overflow: hidden; }
 .frame-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.chap-photo-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 </style>
 
 <script src="<?php echo BASE_URL; ?>skins/chaplin/assets/js/ss-engine-chaplin-film.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
@@ -147,6 +150,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <div id="header" class="chap-header">
     <div class="inside">
+    
         <?php include dirname(__DIR__, 2) . '/core/header.php'; ?>
     </div>
 </div>
