@@ -28,6 +28,7 @@
   --thumb-width: 210px;
   --justified-row-height: 260px;
   --infobox-height: 50px;
+  --rg-canvas-width: 1400px;   /* content max-width — overridden by main_canvas_width setting */
 
   /* Floating gallery wall */
   --wall-bg: #000000;
@@ -217,7 +218,7 @@ small,
 }
 
 .rg-header-inside {
-  max-width: 1400px;
+  max-width: var(--rg-canvas-width, 1400px);
   width: 100%;
   padding: 0 var(--space-xl);
   display: flex;
@@ -711,7 +712,7 @@ small,
   grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 250px));
   gap: 30px;
   margin: 0 auto;
-  max-width: 1600px;
+  max-width: var(--rg-canvas-width, 1400px);
   width: 100%;
   justify-content: center;
   align-content: start;
@@ -778,7 +779,8 @@ small,
        .justified-item, so we use outline (not affected by that reset). --- */
 
 #justified-grid {
-  max-width: 95%;
+  max-width: var(--rg-canvas-width, 1400px);
+  width: 100%;
   margin: 0 auto;
   padding: 30px 0;
   box-sizing: border-box;

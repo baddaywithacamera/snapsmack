@@ -12,6 +12,27 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.167 — "Chesterfield" (2026-05-22)
+
+### Fixed
+- **Rational Geo v1.8 — archive grid overflow**: `#justified-grid` and `.rg-archive-grid` were not being constrained by the `main_canvas_width` setting because they lacked `width: 100%` — flexbox `align-self: stretch` was setting the width outside the CSS cascade, leaving `max-width` with nothing to override. Fixed by: (1) adding `--rg-canvas-width` CSS variable to `:root` (default `1400px`), (2) switching header-inside, justified-grid, and archive-grid to all use `var(--rg-canvas-width)`, (3) changing the manifest `main_canvas_width` option to set `--rg-canvas-width` on `:root` instead of applying `max-width` directly to a fragile selector list. All three elements are now guaranteed to use the same width, and the admin setting controls all of them through one variable.
+
+---
+
+## 0.7.166 — "Chesterfield" (2026-05-22)
+
+### Changed
+- **Chaplin v2.4 — full rebuild as RG derivative**: Complete ground-up rewrite using Rational Geo as the base structure. All Galleria remnants removed.
+  - **B&W only**: `filter: grayscale(1) contrast(1.05) brightness(0.95)` on `.chap-photo`. Sepia and tone toggle removed.
+  - **Border system**: CSS `outline` + `box-shadow` rings stacked directly on the `<img>`. Single, double, and triple rules with per-line thickness and gap controls. Line colour fixed at `#ece6d4`.
+  - **Ornament placement**: Independent toggles for corners, mid-top/bottom, and mid-left/right. Ornament style selector (None / A–D).
+  - **Intertitle overlay**: Full-black-fade modal (`rgba(0,0,0,0.96)`) with INFO and SIGNALS tabs, replaces RG slide-up drawers.
+  - **Filmstrip**: Horizontal scroll strip below the infobox, 60 most recent images, square thumbs.
+  - **Title position**: Below photo (default), info tray only, or hidden.
+  - **Manifest cleanup**: Removed GALLERY WALL, PICTURE FRAMES, FILM TONE sepia controls. Added BORDER, ORNAMENTS, TITLE sections. Preset slot retained.
+
+---
+
 ## 0.7.165 — "Chesterfield" (2026-05-22)
 
 ### Fixed
