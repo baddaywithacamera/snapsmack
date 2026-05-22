@@ -85,6 +85,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-users-recovery-columns.sql',
     'migrate-users-ui-mode.sql',
     'migrate-collections-name-to-title.sql',
+    'migrate-chaplin-presets.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
