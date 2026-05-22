@@ -411,9 +411,38 @@ if ($action === 'skin_update') {
 // ── AUTO-CHECK ON PAGE LOAD ───────────────────────────────────────────────────
 // Fires on every normal GET so the user sees a fresh result the moment they
 // land on the page — no manual "Check" button needed.
+// Exception: if we just completed an update, skip the live check. The update
+// pipeline already confirmed this is the latest version — hitting the server
+// again immediately often fails while PHP/opcache is still settling, producing
+// a false "COULD NOT REACH UPDATE SERVER" error. Write up_to_date to cache
+// instead and let the next natural check (or RETRY CHECK) hit the server.
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && !$stage_state && !$action) {
-    $action     = 'check';
-    $auto_check = true;
+    if (!empty($_SESSION['update_complete_log'])) {
+        // Just finished an update — mark up_to_date from cache, skip live check.
+        $cached_result = [
+            'checked_at'          => date('c'),
+            'installed_version'   => $installed_version,
+            'core_status'         => 'up_to_date',
+            'core_update'         => null,
+            'new_skins'           => [],
+            'updated_skins'       => [],
+            'skin_notifications'  => 0,
+            'total_notifications' => 0,
+        ];
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('update_check_result', ?)
+                       ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+            ->execute([json_encode($cached_result, JSON_UNESCAPED_SLASHES)]);
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('last_update_check', ?)
+                       ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+            ->execute([date('Y-m-d H:i:s')]);
+        $last_check  = date('Y-m-d H:i:s');
+        $core_status = 'up_to_date';
+        $core_update = null;
+        $skin_info   = ['new_skins' => [], 'updated_skins' => [], 'total_notifications' => 0];
+    } else {
+        $action     = 'check';
+        $auto_check = true;
+    }
 }
 
 if ($action === 'check') {
