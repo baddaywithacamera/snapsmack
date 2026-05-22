@@ -324,7 +324,9 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   transform-origin: right center;
 }
 
-/* ── FRAME AREA ──────────────────────────────────────────────────────────── */
+.chap-main-link { display: block; }
+
+/* ── FRAME STRUCTURE (Galleria 5-div nest: mount > border > mat > bevel > image) ── */
 
 .chap-frame-area {
   position: relative;
@@ -332,16 +334,10 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   flex-shrink: 0;
 }
 
-.chap-main-link { display: block; }
-
-/* ── FRAME MOUNT ─────────────────────────────────────────────────────────── */
-
 .frame-mount {
   display: block;
   position: relative;
 }
-
-/* Frame stack */
 .frame-border {
   display: block;
   background-color: var(--frame-color, #1a1410);
@@ -372,7 +368,7 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   display: block;
 }
 
-/* Presentation frame sizing */
+/* Archive frame sizing */
 .chap-presentation .frame-mount {
   max-height: calc(100vh - var(--header-height, 56px) - 160px);
   max-width:  min(68vw, calc(100vh - var(--header-height, 56px) - 160px));
@@ -968,6 +964,7 @@ input[type="submit"]:hover, input[type="reset"]:hover {
   :root { --grid-cols: 3; --header-height: 50px; --chap-orn-size: 64px; --chap-orn-mid: 110px; }
   .chap-presentation { padding-left: 40px; padding-right: 40px; }
   .chap-presentation .frame-mount { max-height: calc(100vh - 50px - 140px); }
+  .chap-photo-wrap { width: min(68vw, calc(100vh - 50px - 140px)); }
   body.archive-page #infobox { margin-top: 50px; }
   .chap-archive-grid { gap: 18px; padding: 30px 30px 40px; }
 }
@@ -976,6 +973,7 @@ input[type="submit"]:hover, input[type="reset"]:hover {
   :root { --grid-cols: 2; --header-height: 48px; --chap-orn-size: 52px; --chap-orn-mid: 90px; }
   .chap-presentation { padding: calc(48px + 16px) 24px 16px; }
   .chap-presentation .frame-mount { max-height: calc(100vh - 48px - 130px); max-width: 88vw; }
+  .chap-photo-wrap { width: min(88vw, calc(100vh - 48px - 130px)); }
   .site-title-text { font-size: 1rem; letter-spacing: 0.3em; }
   .nav-menu, .nav-menu li { gap: 20px; }
   .nav-menu a { font-size: 0.6rem; }
@@ -995,6 +993,7 @@ input[type="submit"]:hover, input[type="reset"]:hover {
   :root { --grid-cols: 1; --header-height: 44px; --chap-orn-size: 40px; --chap-orn-mid: 70px; }
   .chap-presentation { padding: calc(44px + 12px) 16px 12px; }
   .chap-presentation .frame-mount { max-height: calc(100vh - 44px - 120px); max-width: 92vw; }
+  .chap-photo-wrap { width: min(92vw, calc(100vh - 44px - 120px)); }
   .nav-menu { display: none; }
   .site-title-text { font-size: 0.9rem; letter-spacing: 0.15em; }
   #infobox { height: 40px; }
@@ -1020,6 +1019,6 @@ input[type="submit"]:hover, input[type="reset"]:hover {
   body::after { display: none !important; }
   body { margin: 0; padding: 0; }
   .frame-mount { max-height: none !important; max-width: none !important; page-break-inside: avoid; }
+  .chap-photo-wrap { width: auto !important; max-width: 100% !important; page-break-inside: avoid; }
 }
-
 /* ===== SNAPSMACK EOF ===== */

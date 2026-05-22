@@ -43,6 +43,13 @@ if (strpos($route, 'ohsnap') === 0) {
     exit;
 }
 
+// --- SMACKPRESS ROUTES ---
+// Route all /api/smackpress/* requests to the SmackPress migration API handler
+if (strpos($route, 'smackpress') === 0) {
+    require_once 'core/smackpress-api.php';
+    exit;
+}
+
 // --- FALLBACK: Unknown API endpoint ---
 header('HTTP/1.1 404 Not Found');
 header('Content-Type: application/json');
