@@ -22,6 +22,7 @@
 
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/skin-settings.php';
+require_once __DIR__ . '/core/maintenance-gate.php';
 
 $settings    = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $active_skin = $settings['active_skin'] ?? 'smackdown';

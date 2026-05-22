@@ -25,6 +25,7 @@
 
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/skin-settings.php';
+require_once __DIR__ . '/core/maintenance-gate.php';
 
 $slug = trim($_GET['slug'] ?? '');
 if ($slug === '') {

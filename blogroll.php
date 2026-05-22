@@ -19,6 +19,7 @@ error_reporting(E_ALL);
 
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/skin-settings.php';
+require_once __DIR__ . '/core/maintenance-gate.php';
 
 // --- INITIALIZATION ---
 // Initialize defaults to prevent crashes if settings are missing

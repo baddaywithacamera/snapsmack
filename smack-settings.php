@@ -347,6 +347,31 @@ include 'core/sidebar.php';
         </div>
 
         <!-- ============================================================
+             MAINTENANCE MODE
+             ============================================================ -->
+        <div class="box">
+            <h3>MAINTENANCE MODE</h3>
+            <p class="dim">When on, visitors who are not logged in see a holding page instead of your site. You see the site normally.</p>
+            <div class="post-layout-grid">
+                <div class="lens-input-wrapper">
+                    <label>MAINTENANCE MODE</label>
+                    <select name="settings[maintenance_mode]">
+                        <option value="0" <?php echo (($settings['maintenance_mode'] ?? '0') == '0') ? 'selected' : ''; ?>>OFF — Site is live</option>
+                        <option value="1" <?php echo (($settings['maintenance_mode'] ?? '0') == '1') ? 'selected' : ''; ?>>ON — Show maintenance page</option>
+                    </select>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>PAGE TITLE <span class="field-tip" data-tip="Heading shown on the maintenance page.">ⓘ</span></label>
+                    <input type="text" name="settings[maintenance_title]" value="<?php echo htmlspecialchars($settings['maintenance_title'] ?? 'Under Maintenance'); ?>" placeholder="Under Maintenance">
+                </div>
+            </div>
+            <div class="lens-input-wrapper" style="margin-top:12px;">
+                <label>MESSAGE</label>
+                <textarea name="settings[maintenance_body]" rows="3" style="width:100%;resize:vertical;"><?php echo htmlspecialchars($settings['maintenance_body'] ?? "We're working on a few things. Check back soon."); ?></textarea>
+            </div>
+        </div>
+
+        <!-- ============================================================
              SECURITY
              ============================================================ -->
         <div class="box">
