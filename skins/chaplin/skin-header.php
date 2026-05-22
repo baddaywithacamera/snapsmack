@@ -15,7 +15,6 @@
 $tone          = $settings['chap_tone']            ?? 'sepia';
 $grain_raw     = (int)($settings['chap_grain_intensity'] ?? 4);
 $grain_opacity = round($grain_raw / 100, 3);
-$vignette      = ($settings['chap_vignette']       ?? '1') === '1';
 $flicker       = ($settings['chap_flicker']        ?? '1') === '1';
 $bevel_style   = $settings['chap_bevel_style']     ?? 'single';
 $card_style    = $settings['chap_card_style']      ?? 'card';
@@ -86,21 +85,6 @@ $scratch_prob = [
 <?php endif; ?>
 
 /* ── VIGNETTE ────────────────────────────────────────────────────────────── */
-<?php if ($vignette): ?>
-.frame-image {
-    position: relative;
-}
-.frame-image::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse at center,
-        transparent 52%, rgba(0,0,0,0.58) 100%);
-    pointer-events: none;
-    z-index: 2;
-}
-<?php endif; ?>
-
 /* ── LOAD FLICKER ────────────────────────────────────────────────────────── */
 <?php if ($flicker): ?>
 @keyframes chap-flicker-in {

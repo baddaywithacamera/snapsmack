@@ -1,0 +1,7 @@
+customtkinter>=5.2.0
+# All other deps (urllib, sqlite3, pathlib, threading) are stdlib.
+# Add your AI provider SDK only if you prefer it over the built-in HTTP client:
+#   google-generativeai   (Gemini)
+#   openai                (OpenAI)
+#   anthropic             (Anthropic)
+# SmackPress uses plain urllib by default so no SDK is required.

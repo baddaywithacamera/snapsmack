@@ -94,7 +94,10 @@ if (!isset($_SESSION['user_login'])) {
         echo json_encode(['status' => 'session_expired', 'msg' => 'Session expired. Please log in again.']);
         exit;
     }
-    header("Location: " . BASE_URL . "snap-in.php");
+    $login_slug = $pdo->query(
+        "SELECT setting_val FROM snap_settings WHERE setting_key = 'login_slug' LIMIT 1"
+    )->fetchColumn() ?: 'snap-in';
+    header("Location: " . BASE_URL . ltrim($login_slug, '/'));
     exit;
 }
 

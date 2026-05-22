@@ -22,18 +22,25 @@ $msg_type     = 'ok';
 $new_key_raw  = null;   // Set once after generation — shown to the user once only
 
 // --- GENERATE A NEW KEY ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'generate') {
-    $label = trim($_POST['label'] ?? 'Oh Snap! Key');
-    if (!$label) $label = 'Oh Snap! Key';
+// Ensure key_type column exists
+try { $pdo->query("SELECT key_type FROM snap_ohsnap_keys LIMIT 0");
+} catch (PDOException $e) {
+    $pdo->exec("ALTER TABLE snap_ohsnap_keys ADD COLUMN key_type VARCHAR(20) NOT NULL DEFAULT 'ohsnap' AFTER label");
+}
 
-    $raw_key   = bin2hex(random_bytes(32));   // 64-char hex key
-    $key_hash  = hash('sha256', $raw_key);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'generate') {
+    $label    = trim($_POST['label'] ?? 'Oh Snap! Key');
+    $key_type = in_array($_POST['key_type'] ?? '', ['ohsnap','smackpress']) ? $_POST['key_type'] : 'ohsnap';
+    if (!$label) $label = $key_type === 'smackpress' ? 'SmackPress Key' : 'Oh Snap! Key';
+
+    $raw_key    = bin2hex(random_bytes(32));   // 64-char hex key
+    $key_hash   = hash('sha256', $raw_key);
     $key_prefix = substr($raw_key, 0, 8);
 
     $pdo->prepare("
-        INSERT INTO snap_ohsnap_keys (label, key_hash, key_prefix)
-        VALUES (?, ?, ?)
-    ")->execute([$label, $key_hash, $key_prefix]);
+        INSERT INTO snap_ohsnap_keys (label, key_type, key_hash, key_prefix)
+        VALUES (?, ?, ?, ?)
+    ")->execute([$label, $key_type, $key_hash, $key_prefix]);
 
     $new_key_raw = $raw_key;
     $msg = 'New key generated. Copy it now — it will not be shown again.';
@@ -63,9 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // --- FETCH ALL KEYS ---
 $keys = $pdo->query("
-    SELECT id, label, key_prefix, is_active, created_at, last_used_at
+    SELECT id, label, key_type, key_prefix, is_active, created_at, last_used_at
     FROM snap_ohsnap_keys
-    ORDER BY created_at DESC
+    ORDER BY key_type ASC, created_at DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 include 'core/admin-header.php';
@@ -104,6 +111,13 @@ include 'core/sidebar.php';
         <h2 class="smack-card-title">Generate New Key</h2>
         <form method="post" action="smack-api-keys.php">
             <input type="hidden" name="action" value="generate">
+                <div class="form-row" style="margin-bottom:12px;">
+                    <label>Key Type</label>
+                    <select name="key_type" style="width:100%;padding:6px 10px;background:var(--input-bg);border:1px solid var(--border);color:var(--text-primary);border-radius:3px;">
+                        <option value="ohsnap">Oh Snap! (skin designer)</option>
+                        <option value="smackpress">SmackPress (WP migration workbench)</option>
+                    </select>
+                </div>
             <div class="smack-form-row">
                 <label for="key-label">Key Label</label>
                 <input type="text" id="key-label" name="label" value="Oh Snap! Key"
@@ -137,7 +151,10 @@ include 'core/sidebar.php';
                 <tbody>
                     <?php foreach ($active_keys as $key): ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($key['label']); ?></td>
+                            <td>
+                                <?php echo htmlspecialchars($key['label']); ?>
+                                <span style="font-size:0.7rem;opacity:0.5;margin-left:6px;"><?php echo $key['key_type'] ?? 'ohsnap'; ?></span>
+                            </td>
                             <td><code><?php echo htmlspecialchars($key['key_prefix']); ?>…</code></td>
                             <td><?php echo htmlspecialchars($key['created_at']); ?></td>
                             <td><?php echo $key['last_used_at'] ? htmlspecialchars($key['last_used_at']) : '<span class="smack-muted">Never</span>'; ?></td>
