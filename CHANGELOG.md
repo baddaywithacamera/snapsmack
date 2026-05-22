@@ -12,6 +12,17 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.168 — "Chesterfield" (2026-05-22)
+
+### Added
+- **Maintenance mode**: Admins can now put any site into maintenance mode from **Settings → Maintenance Mode**. Unauthenticated visitors see a self-contained holding page (503 + `Retry-After: 30`, `noindex,nofollow`) with a slow-rocking wrench icon, the site name, and a configurable title and message. Logged-in users see the normal site — no gate, no interruption. Implementation:
+  - `core/maintenance-gate.php` — new standalone gate file; checks `maintenance_mode` in `snap_settings` and `$_SESSION['user_login']`; renders the holding page and `exit()`s when active
+  - `smack-settings.php` — new MAINTENANCE MODE section (toggle, title field, message textarea)
+  - Gate included in all eight public entry points: `index.php`, `archive.php`, `page.php`, `gallery-wall.php`, `blogroll.php`, `collection.php`, `collections.php`, `albums.php`
+- **smack-help.php** — Maintenance Mode topic added to the Settings section
+
+---
+
 ## 0.7.167 — "Chesterfield" (2026-05-22)
 
 ### Fixed

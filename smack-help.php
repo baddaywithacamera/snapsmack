@@ -1142,6 +1142,52 @@ instantaneous with no data loss.</p>
 HTML
 ];
 
+$help_topics['maintenance-mode'] = [
+    'section'  => 'Settings',
+    'title'    => 'Maintenance Mode',
+    'icon'     => '&#x1F527;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Maintenance Mode</h3>
+<p>Maintenance mode lets you take a site offline for visitors while you work on it — useful
+when you're setting up a new install, applying a major redesign, or running migrations you don't
+want the public to stumble into mid-process.</p>
+
+<h4>Turning It On</h4>
+<p>Go to <strong>Settings</strong> and find the <strong>Maintenance Mode</strong> section near the
+top. Set the toggle to <strong>ON — Show maintenance page</strong> and save. The site immediately
+starts showing the maintenance page to anyone who isn't logged in.</p>
+
+<h4>What Visitors See</h4>
+<p>A self-contained holding page with your site name, a slowly rocking wrench icon, and whatever
+title and message you've written in the two fields below the toggle. The page returns an HTTP
+<code>503 Service Unavailable</code> with a <code>Retry-After: 30</code> header so search engines
+and feed readers know to come back later rather than deindex the site. It also carries
+<code>&lt;meta name="robots" content="noindex,nofollow"&gt;</code> as a belt-and-suspenders
+signal to crawlers.</p>
+
+<h4>Logged-In Users Are Never Blocked</h4>
+<p>If you're logged in, maintenance mode is invisible — you see the normal site. This means you
+can check your work in a real browser at full resolution while the public sees the holding page.
+No preview toggle needed; just log in.</p>
+
+<h4>Customising the Message</h4>
+<p>The <strong>Page Title</strong> field (defaults to "Under Maintenance") sets the large heading
+on the holding page. The <strong>Message</strong> textarea is a short paragraph — use it to give
+visitors an ETA, a contact address, or whatever context makes sense for your situation. Both
+fields are plain text; no HTML.</p>
+
+<h4>Turning It Off</h4>
+<p>Set the toggle back to <strong>OFF — Site is live</strong> and save. The site returns to
+normal immediately — no cache to flush, no restart required.</p>
+
+<h4>Hub Toggle (Multisite)</h4>
+<p>If you're running a SnapSmack multisite network, the <strong>Multisite Management</strong>
+page on the hub lets you toggle maintenance mode on individual spokes — or across the whole
+fleet at once — without logging into each site separately.</p>
+HTML
+];
+
 $help_topics['smack-the-enemy'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'SMACKATTACK — Network Reputation',
@@ -2983,14 +3029,12 @@ foreach ($help_topics as $slug => $ht) {
         for (var slug in searchIndex) {
             var item = searchIndex[slug];
             var haystack = (item.title + ' ' + item.section + ' ' + item.text).toLowerCase();
-
             // All terms must match
             var match = true;
             for (var i = 0; i < terms.length; i++) {
                 if (haystack.indexOf(terms[i]) === -1) { match = false; break; }
             }
             if (!match) continue;
-
             // Extract snippet around first term match in content
             var snippet = '';
             var textLower = item.text;
@@ -3001,11 +3045,10 @@ foreach ($help_topics as $slug => $ht) {
                 snippet = (start > 0 ? '...' : '') + item.text.substring(start, end) + (end < textLower.length ? '...' : '');
                 // Highlight all terms in snippet
                 for (var j = 0; j < terms.length; j++) {
-                    var re = new RegExp('(' + terms[j].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                    var re = new RegExp('(' + terms[j].replace(/[.*+?^${}()|[\\]\\]/g, '\\\\$&') + ')', 'gi');
                     snippet = snippet.replace(re, '<mark>$1</mark>');
                 }
             }
-
             html += '<a href="smack-help.php?topic=' + encodeURIComponent(slug) + '" class="help-search-result">';
             html += '<div>' + (item.icon || '') + '&ensp;<strong>' + escapeHtml(item.title) + '</strong></div>';
             html += '<div class="help-search-result-section">' + escapeHtml(item.section) + '</div>';
@@ -3015,14 +3058,11 @@ foreach ($help_topics as $slug => $ht) {
             html += '</a>';
             count++;
         }
-
         if (count === 0) {
             html = '<div class="help-search-no-results">No topics found for "' + escapeHtml(q) + '"</div>';
         }
-
         resultsDiv.innerHTML = html;
     });
-
     // Keyboard shortcut: / focuses search
     document.addEventListener('keydown', function (e) {
         if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
@@ -3031,7 +3071,6 @@ foreach ($help_topics as $slug => $ht) {
             input.select();
         }
     });
-
     function escapeHtml(str) {
         var d = document.createElement('div');
         d.textContent = str;
@@ -3042,4 +3081,3 @@ foreach ($help_topics as $slug => $ht) {
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
-                        
