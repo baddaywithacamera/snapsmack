@@ -12,6 +12,16 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.165 — "Chesterfield" (2026-05-22)
+
+### Fixed
+- **Chaplin v2.2**: Restored Galleria 5-div frame structure (`frame-mount > frame-border > frame-mat > frame-bevel > frame-image`) — a previous session had incorrectly replaced it with an RG CSS-native single-div approach.
+- **Chaplin**: Removed vignette entirely. No visual effects are applied to photos; that is the photographer's prerogative. Vignette option removed from manifest and CSS block removed from skin-header.php.
+- **Rational Geo v1.7**: Restored `#justified-grid { max-width: 95% }` — had been changed to `max-width: 1600px`, breaking masonry layout when viewport width was less than 1600px.
+- **Logout redirect**: `core/auth-smack.php` now reads `login_slug` from the database instead of hardcoding `snap-in.php`, fixing 403 errors on sites using a custom login URL.
+
+---
+
 ## 0.7.164 — "Chesterfield" (2026-05-21)
 
 ### Fixed
