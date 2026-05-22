@@ -12,17 +12,41 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.162 — "Chaplin" (2026-05-21)
+## 0.7.164 — "Chesterfield" (2026-05-21)
+
+### Fixed
+- **Changelog cleanup**: Collapsed duplicate 0.7.163 headers; added missing entries for SC Skin Packager selection controls and Pimpmobile persistence fix; corrected codename from "Chaplin" (skin name) to "Chesterfield" (sitting codename) across 0.7.161–163.
+- **SNAPSMACK_VERSION** synced to match `SNAPSMACK_VERSION_SHORT` (was stuck at Alpha 0.7.154).
+
+---
+
+## 0.7.163 — "Chesterfield" (2026-05-21)
+
+### Added
+- **SC Skin Packager — selection controls**: Phase 2 skin selection now has Select All, Select Updated, and Deselect All buttons above the skin table. Select Updated uses a `data-updated` attribute set at render time — no server round-trip.
+
+### Fixed
+- **Chaplin v2.1**: Corrected page structure — `landing.php` and `layout.php` were written as standalone pages instead of include fragments, causing doubled `<html>`, `<body>`, and `footer-scripts` on every load. Both files are now proper fragments matching the Rational Geo architecture pattern.
+- **Chaplin**: Removed BlackCasper from font picker and as title font default. Cinzel is now the default site title font.
+- **Chaplin style.css**: Replaced dead `body.chap-landing-body` selector with `body:has(.chap-landing)`.
+- **Chaplin help.php**: Rewrote to reflect current feature set — removed stale references to four film stocks, square crop, and grain overlay.
+- **Pimpmobile setting not persisting across sessions**: `auth-smack.php` was loading `preferred_skin` and `user_id` from the DB on every authenticated request but omitting `ui_mode`. Pimpmobile reverted to bigwheel on every page load. Added `ui_mode` to the SELECT and session population.
+- **foundtextures.ca logout 403**: Logout was redirecting to `snap-in.php` (removed page) instead of `smack-admin.php`. Already fixed in working copy; committed here.
+- **False "COULD NOT REACH UPDATE SERVER" after update**: Immediately after a successful update the page fired a live version check before PHP/opcache had settled, reliably producing a bogus error. Now skips the live check on the first load post-update and writes `up_to_date` to cache directly — the update pipeline already confirmed the version. RETRY CHECK still hits the server normally.
+
+---
+
+## 0.7.162 — "Chesterfield" (2026-05-21)
 
 ### Fixed
 - **smack-update.php missing admin-footer**: Sidebar accordion JS (`ss-engine-sidebar.js`) was never loading on the System Updates page — nav section toggles were dead. Added missing `include 'core/admin-footer.php'`.
 
 ---
 
-## 0.7.161 — "Chaplin" (2026-05-21)
+## 0.7.161 — "Chesterfield" (2026-05-21)
 
 ### Added
-- **Chaplin skin v2.0 rebuilt from scratch**: Single centered framed image layout (no slider). Art Deco SVG ornament system — 4 styles (Stepped Sunburst, Minimal Chevrons, Heavy Deco Fan, Geometric Modernist) with corners-only / corners+mid / full-border modes and 1–3 configurable parallel rules. Film effects engine: canvas scratches behind image, CSS flicker and gate-slip on the frame — no overlay on the photo. Tone: sepia or B&W. New files: `frame-deco.php`, `assets/js/ss-engine-chaplin-film.js`. All 42 manifest settings are now wired.
+- **Chaplin skin v1.3 rebuilt from scratch**: Single centered framed image layout (no slider). Art Deco SVG ornament system — 4 styles (Stepped Sunburst, Minimal Chevrons, Heavy Deco Fan, Geometric Modernist) with corners-only / corners+mid / full-border modes and 1–3 configurable parallel rules. Film effects engine: canvas scratches behind image, CSS flicker and gate-slip on the frame — no overlay on the photo. Tone: sepia or B&W. New files: `frame-deco.php`, `assets/js/ss-engine-chaplin-film.js`. All 42 manifest settings are now wired.
 - **Rational Geo masonry container fix**: `#justified-grid` was `max-width: 95%` — no pixel cap, escaped the 1600px layout on wide monitors. Fixed to match `.rg-archive-grid` at 1600px. Skin bumped to v1.6.
 
 ### Fixed
@@ -2218,6 +2242,4 @@ _Internal bump. See 0.7.5b for the full feature set._
 - Photogram system footer cut off by fixed bottom nav. Root cause: `core/footer.php` renders `#system-footer` in normal document flow below `#pg-app`, directly under the `position: fixed` nav bar. Fix: `#system-footer { display: none; }` in Photogram's `style.css`. The bottom nav replaces the site footer concept in this skin.
 
 ### Migrations
-- `migrate-rename-pocket-operator.sql`: updates any install with `active_skin = 'pocket-operator'` in `snap_settings` to `pocket-rocket`. Safe to run on installs that never used Pocket Operator (no-op).
-- Community infrastructure tables (`snap_likes`, `snap_reactions`, `snap_community_accounts`, `snap_community_sessions`) require the 0.7.1 migration to be run before community features are active.
-- `migrate-posts.sql`: creates `snap_posts`, `snap_post_images`, `snap_post_cat_map`, `snap_post_album_map`; adds `post_id` FK column to `snap_images`; wraps all existing images in single-type post records for forward compatibility. Non-destructive — legacy skins continue querying `snap_images` unchanged. Required before any skin activating `post_page` in its manife
+- `migrate-rename-pocket-operator.sql`:
