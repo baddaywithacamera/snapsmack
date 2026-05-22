@@ -34,7 +34,7 @@ if (empty($vintage_fonts)) $vintage_fonts = $all_fonts; // safety fallback
 
 return [
     'name'        => 'Chaplin',
-    'version'     => '2.2',
+    'version'     => '2.3',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Silent film era. Near-black canvas, Art Deco ornament frame, sepia or B&W photo treatment. Film scratches animate behind the image; the frame flickers and occasionally slips.',
