@@ -638,7 +638,7 @@ if (!empty($google_families)) {
     color: #555;
     margin-bottom: 16px;
 }
-.registry-info a { text-decoration: underline; color: inherit; opacity: 0.7; }
+.registry-info a { text-decoration: underline; color: #e8a020; opacity: 1; font-weight: 600; }
 </style>
 
 <div class="main">
