@@ -250,6 +250,14 @@ input:focus, textarea:focus, select:focus {
     background-color: #1a2e28;
     color: #3dcca6;
 }
+.btn-smack.btn-warning {
+    background-color: #1e9070;
+    color: #ffffff;
+}
+.btn-smack.btn-warning:hover {
+    background-color: #0f5040;
+    color: #3dcca6;
+}
 
 /* All other buttons */
 button:hover {

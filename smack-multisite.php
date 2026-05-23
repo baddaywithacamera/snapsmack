@@ -684,7 +684,7 @@ include 'core/sidebar.php';
             <?php if (empty($nodes) || count(array_filter($nodes, fn($n) => $n['role'] === 'spoke')) === 0): ?>
                 <p style="color:var(--text-muted,#888);">No spokes connected yet. Register one below.</p>
             <?php else: ?>
-                <div style="margin-bottom:14px;">
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
                     <?php if ($behind_count > 0): ?>
                         <form method="POST" id="update-all-form">
                             <button type="submit" name="push_update_all" class="btn-smack" style="width:auto;height:auto;margin-top:0;padding:8px 18px;">
@@ -696,15 +696,15 @@ include 'core/sidebar.php';
                             ALL UP TO DATE
                         </button>
                     <?php endif; ?>
-                    <form method="POST" style="display:inline-block; margin-left:8px;">
+                    <form method="POST">
                         <input type="hidden" name="maintenance_mode" value="1">
-                        <button type="submit" name="push_maintenance_all" class="btn-smack"
-                                style="width:auto;height:auto;margin-top:0;padding:8px 18px;background:var(--warning,#c55400);"
+                        <button type="submit" name="push_maintenance_all" class="btn-smack btn-warning"
+                                style="width:auto;height:auto;margin-top:0;padding:8px 18px;"
                                 onclick="return confirm('Put ALL active spokes into maintenance mode?');">
                             MAINTENANCE ALL ON
                         </button>
                     </form>
-                    <form method="POST" style="display:inline-block; margin-left:4px;">
+                    <form method="POST">
                         <input type="hidden" name="maintenance_mode" value="0">
                         <button type="submit" name="push_maintenance_all" class="btn-smack"
                                 style="width:auto;height:auto;margin-top:0;padding:8px 18px;"
@@ -843,9 +843,8 @@ include 'core/sidebar.php';
                                                 <input type="hidden" name="spoke_id" value="<?php echo $n['id']; ?>">
                                                 <input type="hidden" name="maintenance_mode" value="<?php echo $in_maintenance ? '0' : '1'; ?>">
                                                 <button type="submit" name="push_maintenance"
-                                                        class="<?php echo $in_maintenance ? 'action-update' : 'action-view'; ?>"
+                                                        class="<?php echo $in_maintenance ? 'action-warning' : 'action-view'; ?>"
                                                         title="<?php echo $in_maintenance ? 'Take out of maintenance mode' : 'Put into maintenance mode'; ?>"
-                                                        style="<?php echo $in_maintenance ? 'background:var(--warning,#c55400);color:#fff;' : ''; ?>"
                                                         <?php echo $in_maintenance ? '' : 'onclick="return confirm(\'Put this spoke into maintenance mode?\')"'; ?>>
                                                     <?php echo $in_maintenance ? 'MAINT OFF' : 'MAINT ON'; ?>
                                                 </button>
