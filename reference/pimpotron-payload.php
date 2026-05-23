@@ -1,0 +1,202 @@
+<?php
+/**
+ * SNAPSMACK - Pimpotron slideshow JSON payload API
+ *
+ * Generates the JSON manifest consumed by the frontend slideshow engine.
+ * Resolves glitch inheritance from slideshow defaults and constructs asset URLs
+ * for both native and external media sources.
+ */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+// --- API SETUP ---
+// Force JSON output and prevent browser caching
+header('Content-Type: application/json');
+header('Cache-Control: no-store');
+
+// Bootstrap database connection
+require_once dirname(__DIR__) . '/core/db.php';
+
+// --- BASE URL RESOLUTION ---
+// Constructs absolute BASE_URL from global settings for asset serving
+$_settings_stm = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
+$_settings     = $_settings_stm->fetchAll(PDO::FETCH_KEY_PAIR);
+$BASE_URL      = rtrim($_settings['site_url'] ?? '', '/') . '/';
+
+// --- SLIDESHOW IDENTIFICATION ---
+// Target slideshow by ID or unique slug
+$slideshow_id   = isset($_GET['slideshow_id'])   ? (int)$_GET['slideshow_id']            : null;
+$slideshow_slug = isset($_GET['slideshow_slug'])  ? trim($_GET['slideshow_slug'])          : null;
+
+if (!$slideshow_id && !$slideshow_slug) {
+    http_response_code(400);
+    echo json_encode(['error' => 'PIMPOTRON_NO_TARGET', 'message' => 'Provide slideshow_id or slideshow_slug.']);
+    exit;
+}
+
+// --- SLIDESHOW LOOKUP ---
+// Verify the slideshow exists and is currently active
+try {
+    if ($slideshow_id) {
+        $stm = $pdo->prepare("SELECT * FROM snap_pimpotron_slideshows WHERE id = ? AND is_active = 1 LIMIT 1");
+        $stm->execute([$slideshow_id]);
+    } else {
+        $stm = $pdo->prepare("SELECT * FROM snap_pimpotron_slideshows WHERE slideshow_slug = ? AND is_active = 1 LIMIT 1");
+        $stm->execute([$slideshow_slug]);
+    }
+
+    $show = $stm->fetch();
+
+    if (!$show) {
+        http_response_code(404);
+        echo json_encode(['error' => 'PIMPOTRON_NOT_FOUND', 'message' => 'Slideshow does not exist or is inactive.']);
+        exit;
+    }
+
+} catch (PDOException $e) {
+    http_response_code(500);
+    echo json_encode(['error' => 'PIMPOTRON_DB_FAILURE', 'message' => 'Could not fetch slideshow.']);
+    exit;
+}
+
+// --- SLIDE DATA FETCH ---
+// Retrieves slide metadata and joins with snap_images for native file paths
+try {
+    $stm = $pdo->prepare("
+        SELECT
+            sl.id,
+            sl.sort_order,
+            sl.slide_type,
+            sl.snap_image_id,
+            sl.external_image_url,
+            sl.bg_color_hex,
+            sl.video_url,
+            sl.video_autoplay,
+            sl.video_loop,
+            sl.video_muted,
+            sl.overlay_text,
+            sl.text_animation_type,
+            sl.word_delay_ms,
+            sl.font_color_hex,
+            sl.pos_x_pct,
+            sl.pos_y_pct,
+            sl.display_duration_ms,
+            sl.glitch_frequency,
+            sl.glitch_intensity,
+            sl.stage_shift_enabled,
+            sl.rain_speed,
+            sl.rain_density,
+            sl.rain_color_hex,
+            sl.image_glitch_enabled,
+            si.img_file AS native_img_file
+        FROM snap_pimpotron_slides sl
+        LEFT JOIN snap_images si ON sl.snap_image_id = si.id
+        WHERE sl.slideshow_id = ?
+          AND sl.is_active = 1
+        ORDER BY sl.sort_order ASC
+        LIMIT 10
+    ");
+    $stm->execute([$show['id']]);
+    $raw_slides = $stm->fetchAll();
+
+} catch (PDOException $e) {
+    http_response_code(500);
+    echo json_encode(['error' => 'PIMPOTRON_SLIDE_FAILURE', 'message' => 'Could not fetch slides.']);
+    exit;
+}
+
+// --- PAYLOAD CONSTRUCTION ---
+// Resolves inheritance: slide-level NULLs fall back to slideshow defaults.
+// Constructs image_url from native path or external URL.
+
+$slides = [];
+
+foreach ($raw_slides as $s) {
+
+    // Inherit glitch settings from parent slideshow if slide-level values are null
+    $glitch_frequency    = $s['glitch_frequency']   ?? $show['glitch_frequency'];
+    $glitch_intensity    = $s['glitch_intensity']    ?? $show['glitch_intensity'];
+    $stage_shift_enabled = ($s['stage_shift_enabled'] !== null)
+                            ? (bool)$s['stage_shift_enabled']
+                            : (bool)$show['stage_shift_enabled'];
+
+    // Resolve the primary asset URL: native image or external URL
+    $image_url = null;
+    if ($s['slide_type'] === 'image') {
+        if (!empty($s['native_img_file'])) {
+            // Native: build full URL from BASE_URL + img_file
+            $image_url = $BASE_URL . ltrim($s['native_img_file'], '/');
+        } elseif (!empty($s['external_image_url'])) {
+            $image_url = $s['external_image_url'];
+        }
+    }
+
+    // Resolve display timing from slide override or global default
+    $duration_ms = $s['display_duration_ms'] ?? $show['default_speed_ms'];
+
+    $slides[] = [
+        'id'                  => (int)$s['id'],
+        'sort_order'          => (int)$s['sort_order'],
+        'slide_type'          => $s['slide_type'],
+
+        // Content
+        'image_url'           => $image_url,
+        'image_glitch_enabled'=> (bool)($s['image_glitch_enabled'] ?? true),
+        'bg_color_hex'        => $s['bg_color_hex'],
+        'video_url'           => $s['video_url'],
+        'video_autoplay'      => (bool)$s['video_autoplay'],
+        'video_loop'          => (bool)$s['video_loop'],
+        'video_muted'         => (bool)$s['video_muted'],
+
+        // Matrix rain config (null = engine defaults)
+        'rain_speed'          => $s['rain_speed']     !== null ? (int)$s['rain_speed']    : null,
+        'rain_density'        => $s['rain_density']   !== null ? (int)$s['rain_density']  : null,
+        'rain_color_hex'      => $s['rain_color_hex'] ?? null,
+
+        // Text overlay
+        'overlay_text'        => $s['overlay_text'],
+        'text_animation_type' => $s['text_animation_type'],
+        'word_delay_ms'       => (int)$s['word_delay_ms'],
+        'font_color_hex'      => $s['font_color_hex'],
+        'pos_x_pct'           => (int)$s['pos_x_pct'],
+        'pos_y_pct'           => (int)$s['pos_y_pct'],
+
+        // Timing
+        'display_duration_ms' => (int)$duration_ms,
+
+        // Glitch config (resolved, never null in output)
+        'glitch_frequency'    => $glitch_frequency,
+        'glitch_intensity'    => $glitch_intensity,
+        'stage_shift_enabled' => $stage_shift_enabled,
+    ];
+}
+
+// --- FINAL MANIFEST ---
+// Assemble metadata and slide array for frontend consumption
+$manifest = [
+    'slideshow' => [
+        'id'                 => (int)$show['id'],
+        'name'               => $show['slideshow_name'],
+        'slug'               => $show['slideshow_slug'],
+    ],
+    'global' => [
+        'default_speed_ms'   => (int)$show['default_speed_ms'],
+        'glitch_frequency'   => $show['glitch_frequency'],
+        'glitch_intensity'   => $show['glitch_intensity'],
+        'stage_shift_enabled'=> (bool)$show['stage_shift_enabled'],
+        'stage_shift_max_px' => (int)$show['stage_shift_max_px'],
+        'stage_scale_max'    => (float)$show['stage_scale_max'],
+        'slideshow_font'     => $show['slideshow_font'] ?? 'Stalinist One',
+    ],
+    'slide_count' => count($slides),
+    'slides'      => $slides,
+];
+
+echo json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+// ===== SNAPSMACK EOF =====

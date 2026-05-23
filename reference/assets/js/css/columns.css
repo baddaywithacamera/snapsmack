@@ -1,0 +1,43 @@
+/* ─────────────────────────────────────────────────────────────
+   SNAPSMACK — Multi-Column Layout
+   Shortcode: [columns=N] ... [col] ... [/columns]
+   ───────────────────────────────────────────────────────────── */
+
+.snapsmack-columns {
+    display: grid;
+    gap: 28px;
+    margin: 24px 0;
+    align-items: start;
+}
+
+.snapsmack-columns.cols-2 { grid-template-columns: 1fr 1fr; }
+.snapsmack-columns.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.snapsmack-columns.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+.snapsmack-col {
+    min-width: 0;          /* prevent grid blowout from wide images */
+}
+
+.snapsmack-col img {
+    max-width: 100%;
+    height: auto;
+}
+
+.snapsmack-col p:first-child { margin-top: 0; }
+.snapsmack-col p:last-child  { margin-bottom: 0; }
+
+/* ─── RESPONSIVE ──────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+    .snapsmack-columns.cols-3,
+    .snapsmack-columns.cols-4 {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 540px) {
+    .snapsmack-columns {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+    }
+}

@@ -21,6 +21,21 @@ require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/parser.php';
 require_once __DIR__ . '/core/skin-settings.php';
 require_once __DIR__ . '/core/maintenance-gate.php';
+
+// SMACKBACK: silent stat check on public page loads
+try {
+    $_smack_cfg = $pdo->query(
+        "SELECT setting_key, setting_val FROM snap_settings
+         WHERE setting_key IN ('smackback_enabled', 'smackback_pageload_check')"
+    )->fetchAll(PDO::FETCH_KEY_PAIR);
+    if (($_smack_cfg['smackback_enabled'] ?? '0') === '1'
+        && ($_smack_cfg['smackback_pageload_check'] ?? '0') === '1') {
+        require_once __DIR__ . '/core/smackback.php';
+        smackback_verify_quick();
+    }
+    unset($_smack_cfg);
+} catch (PDOException $e) { /* non-fatal */ }
+
 require_once __DIR__ . '/core/stats-logger.php';
 
 // --- INITIALIZATION ---

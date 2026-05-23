@@ -1,0 +1,259 @@
+<?php
+/**
+ * SNAPSMACK - Image swap utility
+ *
+ * Replaces physical assets for an existing record while maintaining data integrity.
+ * Handles old asset purging, new thumbnail generation, and EXIF/specification updates.
+ */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+require_once 'core/auth.php';
+require_once 'core/fix-exif.php';
+
+// --- SETTINGS ---
+$settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// --- SIGNAL VALIDATION ---
+// Identify the target record and verify its existence in the archive.
+$id = (int)($_GET['id'] ?? 0);
+$stmt = $pdo->prepare("SELECT * FROM snap_images WHERE id = ?");
+$stmt->execute([$id]);
+$img = $stmt->fetch();
+if (!$img) {
+    die("Signal lost.");
+}
+
+// --- SWAP EXECUTION ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['new_image'])) {
+    if ($_FILES['new_image']['error'] === UPLOAD_ERR_OK) {
+        $tmp = $_FILES['new_image']['tmp_name'];
+        $mime = mime_content_type($tmp);
+
+        // Collect manual metadata overrides from the interface.
+        $camera_manual = $_POST['camera_model'] ?? '';
+        $lens_manual   = $_POST['lens_info'] ?? '';
+        $focal_manual  = $_POST['focal_length'] ?? '';
+        $film_manual   = $_POST['film_stock'] ?? '';
+        if (isset($_POST['film_na'])) {
+            $film_manual = 'N/A';
+        }
+        $iso_manual      = $_POST['iso_speed'] ?? '';
+        $aperture_manual = $_POST['aperture'] ?? '';
+        $shutter_manual  = $_POST['shutter_speed'] ?? '';
+        $flash_manual    = $_POST['flash_fire'] ?? 'No';
+        $orientation     = (int)($_POST['img_orientation'] ?? 0);
+
+        // Terminate existing physical assets to prevent server bloat.
+        if (file_exists($img['img_file'])) {
+            unlink($img['img_file']);
+        }
+        $old_dir  = dirname($img['img_file']);
+        $old_base = basename($img['img_file']);
+        $old_thumb_sq = $old_dir . '/thumbs/t_' . $old_base;
+        $old_thumb_a  = $old_dir . '/thumbs/a_' . $old_base;
+        if (file_exists($old_thumb_sq)) { unlink($old_thumb_sq); }
+        if (file_exists($old_thumb_a))  { unlink($old_thumb_a); }
+
+        // --- EXIF HARVESTING ---
+        // Extract technical specs from the new asset if manual fields are left blank.
+        $raw_harvest = [];
+        if ($mime === 'image/jpeg' && function_exists('exif_read_data')) {
+            $raw_exif = @exif_read_data($tmp);
+            $raw_harvest['Model'] = !empty($camera_manual) ? $camera_manual : ($raw_exif['Model'] ?? 'N/A');
+            $raw_harvest['ExposureTime'] = !empty($shutter_manual) ? $shutter_manual : ($raw_exif['ExposureTime'] ?? 'N/A');
+            $raw_harvest['FNumber'] = !empty($aperture_manual) ? $aperture_manual : ($raw_exif['FNumber'] ?? 'N/A');
+            $raw_harvest['ISOSpeedRatings'] = !empty($iso_manual) ? $iso_manual : ($raw_exif['ISOSpeedRatings'] ?? 'N/A');
+            $raw_harvest['FocalLength'] = !empty($focal_manual) ? $focal_manual : ($raw_exif['FocalLength'] ?? 'N/A');
+        }
+        $final_exif = get_smack_exif($raw_harvest);
+        $final_exif['lens'] = $lens_manual;
+        $final_exif['film'] = $film_manual;
+        $final_exif['flash'] = $flash_manual;
+
+        // --- REPLACEMENT THUMBNAIL ENGINE ---
+        list($orig_w, $orig_h) = getimagesize($tmp);
+        $thumb_size = 400;
+        $crop_size = min($orig_w, $orig_h);
+        $cx = ($orig_w - $crop_size) / 2;
+        $cy = ($orig_h - $crop_size) / 2;
+
+        if ($mime == 'image/jpeg') { $src = @imagecreatefromjpeg($tmp); }
+        elseif ($mime == 'image/png') { $src = @imagecreatefrompng($tmp); }
+        elseif ($mime == 'image/webp') { $src = @imagecreatefromwebp($tmp); }
+
+        $t_dst = imagecreatetruecolor($thumb_size, $thumb_size);
+        if ($mime != 'image/jpeg') {
+            imagealphablending($t_dst, false);
+            imagesavealpha($t_dst, true);
+        }
+        imagecopyresampled($t_dst, $src, 0, 0, $cx, $cy, $thumb_size, $thumb_size, $crop_size, $crop_size);
+
+        $dir = dirname($img['img_file']);
+        $thumb_path = $dir . '/thumbs';
+        if (!is_dir($thumb_path)) {
+            mkdir($thumb_path, 0755, true);
+        }
+
+        // Generate unique identifier for the new physical asset.
+        $base_fn = time() . '_' . preg_replace("/[^a-zA-Z0-9]/", "", $img['img_title']);
+        $ext = ($mime == 'image/png') ? '.png' : (($mime == 'image/webp') ? '.webp' : '.jpg');
+        $new_path = $dir . '/' . $base_fn . $ext;
+        $save_thumb = $thumb_path . '/t_' . $base_fn . $ext;
+
+        if (move_uploaded_file($tmp, $new_path)) {
+            if ($mime == 'image/png') { imagepng($t_dst, $save_thumb, 8); }
+            elseif ($mime == 'image/webp') { imagewebp($t_dst, $save_thumb, 60); }
+            else { imagejpeg($t_dst, $save_thumb, 70); }
+            imagedestroy($t_dst);
+
+            // --- ASPECT-PRESERVED THUMBNAIL (a_ prefix) ---
+            $aspect_long = 400;
+            if ($orig_w >= $orig_h) {
+                $a_w = $aspect_long;
+                $a_h = round($orig_h * ($aspect_long / $orig_w));
+            } else {
+                $a_h = $aspect_long;
+                $a_w = round($orig_w * ($aspect_long / $orig_h));
+            }
+            if ($orig_w < $aspect_long && $orig_h < $aspect_long) {
+                $a_w = $orig_w;
+                $a_h = $orig_h;
+            }
+
+            $a_dst = imagecreatetruecolor($a_w, $a_h);
+            if ($mime != 'image/jpeg') {
+                imagealphablending($a_dst, false);
+                imagesavealpha($a_dst, true);
+            }
+            imagecopyresampled($a_dst, $src, 0, 0, 0, 0, $a_w, $a_h, $orig_w, $orig_h);
+            $save_aspect = $thumb_path . '/a_' . $base_fn . $ext;
+
+            if ($mime == 'image/png') { imagepng($a_dst, $save_aspect, 8); }
+            elseif ($mime == 'image/webp') { imagewebp($a_dst, $save_aspect, 60); }
+            else { imagejpeg($a_dst, $save_aspect, 70); }
+            imagedestroy($a_dst);
+            imagedestroy($src);
+
+            // Compute SHA-256 checksum for recovery verification.
+            $file_checksum = hash_file('sha256', $new_path);
+
+            // Update the archive record with new file path, thumbs, checksum, and metadata.
+            $sql = "UPDATE snap_images SET img_file = ?, img_thumb_square = ?, img_thumb_aspect = ?, img_checksum = ?, img_film = ?, img_exif = ?, img_width = ?, img_height = ?, img_orientation = ? WHERE id = ?";
+            $pdo->prepare($sql)->execute([$new_path, $save_thumb, $save_aspect, $file_checksum, $film_manual, json_encode($final_exif), $orig_w, $orig_h, $orientation, $id]);
+            // The form is submitted via XHR — return plain "success" and let JS redirect.
+            echo "success";
+            exit;
+        }
+    }
+}
+
+$page_title = "SWAP IMAGE";
+include 'core/admin-header.php';
+include 'core/sidebar.php';
+?>
+
+<div class="main">
+    <div class="header-row">
+        <h2>SWAP IMAGE</h2>
+    </div>
+    <form id="smack-form" method="POST" enctype="multipart/form-data">
+        <div class="box">
+            <div class="post-layout-grid">
+                <div class="post-col-left">
+                    <div class="lens-input-wrapper">
+                        <label>CURRENT SIGNAL</label>
+                        <div class="preview-frame">
+                            <img src="<?php echo $img['img_file']; ?>" class="swap-preview">
+                        </div>
+                        <p class="dim mt-15">
+                            <strong>NOTE:</strong> Replacement is permanent. Current asset and thumbnail will be purged.
+                        </p>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="lens-input-wrapper">
+                        <label>REPLACEMENT ASSET</label>
+                        <div class="file-upload-wrapper">
+                            <div class="file-custom-btn">CHOOSE FILE</div>
+                            <div class="file-name-display" id="file-name-text">Waiting for input...</div>
+                            <input type="file" name="new_image" id="file-input" required>
+                        </div>
+                    </div>
+                    <div class="lens-input-wrapper">
+                        <label>ORIENTATION OVERRIDE</label>
+                        <select name="img_orientation">
+                            <option value="0" <?php echo ($img['img_orientation'] == 0) ? 'selected' : ''; ?>>LANDSCAPE</option>
+                            <option value="1" <?php echo ($img['img_orientation'] == 1) ? 'selected' : ''; ?>>PORTRAIT</option>
+                            <option value="2" <?php echo ($img['img_orientation'] == 2) ? 'selected' : ''; ?>>SQUARE</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <?php if (($settings['exif_display_enabled'] ?? '1') !== '0'): ?>
+            <h3>TECHNICAL OVERRIDES (OPTIONAL)</h3>
+            <div class="meta-grid">
+                <div class="lens-input-wrapper">
+                    <label>CAMERA MODEL</label>
+                    <input type="text" name="camera_model" placeholder="Auto-harvest if blank">
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>LENS INFO</label>
+                    <div class="input-control-row">
+                        <input type="text" name="lens_info" id="meta-lens">
+                        <label class="built-in-label">
+                            <input type="checkbox" name="fixed_lens" id="fixed-lens-check"> BUILT-IN
+                        </label>
+                    </div>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>FOCAL LENGTH</label>
+                    <input type="text" name="focal_length">
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>FILM STOCK</label>
+                    <div class="input-control-row">
+                        <input type="text" name="film_stock" id="meta-film">
+                        <label class="built-in-label">
+                            <input type="checkbox" name="film_na" id="film-na-check"> N/A
+                        </label>
+                    </div>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>ISO</label>
+                    <input type="text" name="iso_speed">
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>APERTURE</label>
+                    <input type="text" name="aperture">
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>SHUTTER SPEED</label>
+                    <input type="text" name="shutter_speed">
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>FLASH FIRED</label>
+                    <select name="flash_fire">
+                        <option value="No">No</option>
+                        <option value="Yes">Yes</option>
+                    </select>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
+        <div class="form-action-row">
+            <button type="submit" class="master-update-btn">PERFORM SWAP</button>
+        </div>
+    </form>
+</div>
+
+<script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
+
+<?php include 'core/admin-footer.php'; ?>
+<?php // ===== SNAPSMACK EOF =====

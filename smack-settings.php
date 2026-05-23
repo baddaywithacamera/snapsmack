@@ -389,6 +389,38 @@ include 'core/sidebar.php';
             </div>
         </div>
 
+        <!-- ============================================================
+             SMACKBACK — FILE INTEGRITY MONITORING
+             ============================================================ -->
+        <div class="box">
+            <h3>SMACKBACK — FILE INTEGRITY</h3>
+            <?php
+            $smack_enabled_s = ($settings['smackback_enabled'] ?? '0') === '1';
+            $smack_status_s  = $settings['smackback_status'] ?? 'clean';
+            $smack_mode_s    = $settings['smackback_mode']   ?? 'lockout';
+            ?>
+            <p class="dim">Automated sentinel: hashes all PHP, CSS, and JS files at install/update time and re-verifies on admin login and cron. Catches FTP credential compromise before it becomes a bigger problem.</p>
+            <div class="post-layout-grid" style="margin-top:12px;">
+                <div class="lens-input-wrapper">
+                    <label>STATUS</label>
+                    <p style="margin:0;">
+                        <?php if (!$smack_enabled_s): ?>
+                            <span class="dim">Disabled</span>
+                        <?php elseif ($smack_status_s === 'breach'): ?>
+                            <strong style="color:#cc2200">⚠ BREACH DETECTED</strong>
+                        <?php else: ?>
+                            <span style="color:#5a9a5a">✓ Clean</span>
+                        <?php endif; ?>
+                        &nbsp; Mode: <strong><?php echo strtoupper(htmlspecialchars($smack_mode_s)); ?></strong>
+                    </p>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>MANAGE</label>
+                    <a href="smack-smackback.php" class="btn btn-sm">Open SMACKBACK →</a>
+                </div>
+            </div>
+        </div>
+
         <!-- Footer Config + Image Engine moved to Global Vibe (smack-globalvibe.php) -->
 
         <!-- ============================================================

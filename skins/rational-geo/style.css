@@ -78,7 +78,7 @@
 
 html,
 body {
-  overflow: hidden; /* Prevent body scroll — spacebar navigates images, not pages */
+  overflow: auto; /* Spacebar scroll prevented by ss-engine-comms.js e.preventDefault() */
   height: 100%;
 }
 
@@ -91,7 +91,7 @@ html {
 #page-wrapper {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  min-height: 100dvh;
   position: relative;
   z-index: 1;
 }
@@ -313,7 +313,7 @@ small,
   flex-direction: column;
   min-height: 0;
   flex: 1;
-  overflow: hidden;
+  overflow: visible;
   scroll-behavior: smooth;
   align-items: stretch;
   position: relative;
@@ -325,22 +325,12 @@ small,
   display: none;
 }
 
-/* Drawers: absolute overlays — float over the photobox without compressing it.
-   Comments slide down from below the header; info slides up from above the infobox.
-   z-index sits below the fixed header (z-header: 100) but above photobox content. */
-.rg-single .rg-drawer {
-  position: absolute;
-  left: 0;
-  right: 0;
-  z-index: calc(var(--z-header) - 1);
-}
-
-.rg-single #rg-comments-drawer {
-  top: 70px; /* clear fixed header */
-}
-
-.rg-single #rg-info-drawer {
-  bottom: var(--infobox-height, 50px); /* sit flush above infobox */
+/* Standard footer — same pattern as 50-shades. Shown/hidden by ss-engine-footer.js. */
+#footer {
+  background: var(--rg-bg-secondary);
+  border-top: 1px solid var(--rg-border-light);
+  display: none;
+  flex-shrink: 0;
 }
 
 #rg-photobox {

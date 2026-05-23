@@ -1,0 +1,162 @@
+/**
+ * SNAPSMACK - Floating Gallery Engine
+ *
+ * 3D perspective gallery with zoom, smooth physics, and metadata display.
+ */
+
+:root {
+    --wall-bg: #000;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    background: var(--wall-bg) !important;
+    overflow: hidden;
+}
+
+/* ── Viewport: full-screen container with perspective ──────────────── */
+.wall-viewport {
+    width: 100vw;
+    height: 100vh;
+    background: var(--wall-bg) !important;
+    overflow: hidden;
+    perspective: 1200px;
+    display: flex;
+    align-items: center;       /* centres the canvas band vertically */
+    justify-content: flex-start; /* horizontal position controlled by JS transform */
+    position: relative;
+    touch-action: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* ── Canvas: CSS Grid, horizontal scroll via JS transform ──────────── */
+.wall-canvas {
+    display: grid;
+    grid-template-rows: repeat(var(--wall-rows, 2), 1fr);
+    grid-auto-flow: column;
+    grid-auto-columns: min-content;
+    height: 86vh;                  /* smaller than viewport so flex can centre it */
+    row-gap: var(--wall-gap, 24px);
+    column-gap: calc(var(--wall-gap, 24px) * 0.6);
+    padding: 0 15vw;
+    align-items: stretch;
+    transform-style: preserve-3d;
+    will-change: transform;
+    background: transparent;
+}
+
+/* ── Tiles ──────────────────────────────────────────────────────────── */
+.wall-tile {
+    min-width: 80px;
+    overflow: hidden;
+    cursor: pointer;
+    position: relative;
+    transform-style: preserve-3d;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), filter 0.4s ease;
+}
+
+.wall-tile:hover {
+    transform: scale(1.05) translateZ(40px);
+    z-index: 100;
+}
+
+.wall-tile.is-centered {
+    z-index: 50;
+}
+
+.wall-tile img {
+    height: 100%;
+    width: auto;
+    display: block;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    pointer-events: none;
+    -webkit-user-drag: none;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+}
+
+.wall-tile img.loaded {
+    opacity: 1;
+}
+
+/* ── Zoom layer ────────────────────────────────────────────────────── */
+#zoom-layer {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 999990;
+    background: var(--wall-bg);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+}
+
+#zoom-layer.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.zoom-clone {
+    position: fixed;
+    z-index: 999999;
+    max-width: none !important;
+    max-height: none !important;
+    transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.3s ease;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.9);
+    will-change: transform;
+}
+
+/* ── Mobile ────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .wall-canvas {
+        height: 90vh;
+        gap: 12px;
+        padding: 0 10vw;
+        --wall-rows: 1;
+    }
+}
+
+/* ── Reflection effect (toggled via body.wall-reflect) ────────────── */
+/* JS clones the canvas, flips it vertically, and syncs the transform
+   each frame.  The reflection container is pinned to the bottom of the
+   viewport with a gradient mask that fades it out.
+   Pure JS + CSS — works in Chrome, Firefox, Safari, Edge, Brave. */
+.wall-reflection {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 25vh;
+    overflow: hidden;
+    pointer-events: none;
+    transform-style: preserve-3d;
+    perspective: 1200px;
+    z-index: 0;
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.30) 0%, transparent 80%);
+            mask-image: linear-gradient(to bottom, rgba(0,0,0,0.30) 0%, transparent 80%);
+}
+.wall-reflection .wall-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: top center;
+    /* JS composes: scaleY(-1) translate3d(...) rotateY(...) */
+    height: 86vh;
+    opacity: 0.4;
+}
+
+/* ── Infinite scroll sentinel ──────────────────────────────────────── */
+#wall-sentinel {
+    width: 1px;
+    height: 1px;
+    align-self: start;
+    pointer-events: none;
+}

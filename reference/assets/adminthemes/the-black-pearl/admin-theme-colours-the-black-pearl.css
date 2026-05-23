@@ -1,0 +1,608 @@
+/**
+ * SNAPSMACK - The Black Pearl admin theme colors
+ *
+ * Dark minimalist theme with white accents. All color values for admin-theme-geometry-master.css.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+/* 01: GLOBAL BASE */
+html, body {
+    background-color: #0D0D0D;
+    color: #BBBBBB;
+    color-scheme: dark;
+}
+
+/* Global link colours */
+a { color: #DFDFDF; text-decoration: none; }
+a:hover { color: #c0c0c0; }
+.support-link { color: #DFDFDF; }
+.support-link:hover { color: #c0c0c0; }
+
+/* 02: SIDEBAR NAVIGATION */
+.sidebar {
+    background-color: #0D0D0D;
+    border-right-color: #2C2C2C;
+}
+
+.sidebar-brand {
+    color: #DFDFDF;
+    border-bottom-color: #404040;
+}
+
+.nav-section-toggle {
+    color: #DFDFDF;
+}
+
+
+.nav-section-links a {
+    color: #888888;
+}
+
+.nav-section-links a:hover,
+.nav-section-links li.active a {
+    color: #DFDFDF;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+}
+
+.sidebar-bottom {
+    background-color: #0D0D0D;
+    border-top-color: #212121;
+}
+
+.sidebar .logout {
+    color: #404040;
+}
+
+.sidebar .logout:hover {
+    color: #444444;
+}
+
+.credits-admin {
+    color: #666666;
+}
+
+/* 03: MAIN HEADERS */
+.header-row {
+    border-bottom-color: #2C2C2C;
+}
+
+h2 {
+    color: #DFDFDF;
+    border-bottom-color: #2C2C2C;
+}
+
+/* 04: CONTENT BOXES */
+.box {
+    background-color: #111111;
+    border-color: #2C2C2C;
+}
+
+.box h3, .section-header {
+    color: #DFDFDF;
+    border-bottom-color: #404040;
+}
+
+.post-col-right {
+    border-left-color: #2C2C2C;
+}
+
+/* 05: FORM ELEMENTS */
+label {
+    color: #666666;
+}
+
+input[type="text"], input[type="number"], input[type="email"], input[type="password"],
+input[type="datetime-local"], input[type="date"], select, textarea,
+.preview-box, .select-box {
+    background-color: #2C2C2C;
+    border-color: #404040;
+    color: #DFDFDF;
+}
+/* Custom multiselect dropdown colours */
+.dropdown-content {
+    background-color: #212121;
+    border-color: #404040;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
+}
+
+.dropdown-search-wrapper {
+    border-bottom-color: #2C2C2C;
+}
+
+.dropdown-search-wrapper input {
+    background-color: #1C1C1C;
+    border-color: #404040;
+    color: #DFDFDF;
+}
+
+.multi-cat-item {
+    border-bottom-color: #2C2C2C;
+    color: #888888;
+}
+
+.multi-cat-item:hover {
+    background-color: #2C2C2C;
+    color: #DFDFDF;
+}
+
+/* Read-only display fields get a darker coal look */
+.read-only-display {
+    background-color: #181818;
+    border-color: #2C2C2C;
+    color: #888888;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: #DFDFDF;
+    background-color: #2C2C2C;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+    outline: none;
+}
+
+/* 06: MEDIA PREVIEWS */
+.preview-frame {
+    background-color: #0F0F0F;
+    border-color: #2C2C2C;
+}
+
+/* 07: SIGNALS (The Fixes) */
+.signal-control-header {
+    /* Geometry handled in Master Geometry file */
+}
+
+/* The Status Pill */
+.status-online {
+    color: #DFDFDF;
+    border-color: #DFDFDF;
+}
+
+.status-offline {
+    color: #666666;
+    border-color: #404040;
+    background-color: #0F0F0F;
+}
+
+/* Sender Name */
+.signal-sender {
+    color: #DFDFDF;
+}
+.signal-sender span.dim {
+    color: #666666;
+}
+
+/* The Body Text */
+.signal-body {
+    color: #AAAAAA;
+    background-color: #111111;
+    border-color: #2C2C2C;
+}
+
+/* Metadata Links (Ghostly White) */
+.signal-meta {
+    color: #444444;
+}
+.signal-meta a {
+    color: #888888 !important;
+    border-bottom-color: transparent;
+}
+.signal-meta a:hover {
+    color: #DFDFDF !important;
+    border-bottom-color: #DFDFDF;
+}
+.signal-meta .dim {
+    color: #404040;
+}
+
+/* 08: BUTTONS & ACTIONS */
+
+/* Gunmetal primary buttons — flip to white on hover */
+.btn-smack, .master-update-btn {
+    background-color: #404040;
+    color: #DFDFDF;
+}
+.btn-smack:hover, .master-update-btn:hover {
+    background-color: #DFDFDF;
+    color: #0F0F0F;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+}
+
+/* Coal buttons (Backup, Settings) */
+.btn-smack.btn-backup,
+.btn-smack.btn-settings {
+    background-color: #2C2C2C;
+    color: #666666;
+}
+.btn-smack.btn-backup:hover,
+.btn-smack.btn-settings:hover {
+    background-color: #404040;
+    color: #DFDFDF;
+}
+
+/* Live Site stays themed white/black */
+.btn-smack.btn-live {
+    background-color: #DFDFDF;
+    color: #0F0F0F;
+}
+.btn-smack.btn-live:hover {
+    background-color: #AAAAAA;
+    color: #0F0F0F;
+}
+
+/* Danger button modifier — destructive/disconnect actions */
+.btn-smack.btn-danger {
+    background-color: #CC4444;
+    color: #DFDFDF;
+}
+.btn-smack.btn-danger:hover {
+    background-color: #aa2222;
+    color: #DFDFDF;
+}
+
+/* All other buttons universal white glow */
+button:hover {
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.3);
+}
+
+/* INCOMING / BROADCASTING nav buttons */
+.btn-clear {
+    color: #666666;
+    border-color: #2C2C2C;
+}
+.btn-clear:hover {
+    background-color: #1C1C1C;
+    color: #DFDFDF;
+    border-color: #DFDFDF;
+}
+.btn-clear.active {
+    background-color: #2C2C2C;
+    color: #DFDFDF;
+    border-color: #DFDFDF;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+/* Action Links */
+.action-authorize, .action-edit, .action-swap, .action-view {
+    color: #AAAAAA;
+    border-color: #2C2C2C;
+}
+.action-authorize:hover, .action-edit:hover, .action-swap:hover, .action-view:hover {
+    background-color: #DFDFDF;
+    color: #0F0F0F;
+}
+
+.action-delete {
+    color: #CC4444;
+    border-color: #CC4444;
+}
+.action-delete:hover {
+    background-color: #CC4444;
+    color: #DFDFDF;
+}
+
+/* 09: ITEM LAYOUTS */
+.recent-item {
+    border-bottom-color: #2C2C2C;
+}
+.archive-thumb {
+    border-color: #2C2C2C;
+    background-color: #0F0F0F;
+}
+.item-text strong {
+    color: #DFDFDF;
+}
+.item-text .dim {
+    color: #444444;
+}
+
+/* 10: DASH/STATS */
+.stat-box {
+    border-color: #2C2C2C;
+    background-color: #0D0D0D;
+}
+.stat-val {
+    color: #DFDFDF;
+}
+.stat-label {
+    color: #666666;
+}
+.stat-row {
+    border-bottom-color: #2C2C2C;
+}
+.stat-row .label { color: #444444; }
+.stat-row .value { color: #DFDFDF; }
+.highlight-green { color: #DFDFDF !important; }
+
+/* 11: PAGINATION */
+.pagination a {
+    background-color: #1C1C1C;
+    border-color: #2C2C2C;
+    color: #666666;
+}
+.pagination a.active {
+    background-color: #DFDFDF;
+    border-color: #DFDFDF;
+    color: #0F0F0F;
+}
+.pagination a:hover {
+    border-color: #DFDFDF;
+    color: #DFDFDF;
+}
+
+/* 12: PROGRESS/UPLOADS */
+.progress-container {
+    background-color: #0F0F0F;
+    border-color: #2C2C2C;
+}
+.progress-bar {
+    background-color: #DFDFDF;
+}
+.file-upload-wrapper {
+    border-color: #2C2C2C;
+    background-color: #111111;
+}
+.file-custom-btn {
+    background-color: #404040;
+    color: #DFDFDF;
+    border-right-color: #2C2C2C;
+}
+.file-custom-btn:hover {
+    background-color: #DFDFDF;
+    color: #0F0F0F;
+}
+.file-name-display {
+    color: #666666;
+}
+
+/* Inline checkbox labels (Built-in, N/A) — match input border treatment */
+.built-in-label {
+    background-color: #2C2C2C;
+    border-color: #404040;
+    color: #888888;
+}
+.built-in-label:hover {
+    border-color: #DFDFDF;
+    color: #DFDFDF;
+}
+input[type="checkbox"] {
+    border-color: #404040;
+    background-color: #0D0D0D;
+}
+input[type="checkbox"]:checked {
+    background-color: #DFDFDF;
+    border-color: #DFDFDF;
+}
+input[type="checkbox"]:checked::after {
+    border-color: #0F0F0F;
+}
+
+/* 13: LOGIN & FOOTER */
+.login-box {
+    background-color: #111111;
+    border-color: #2C2C2C;
+}
+
+#admin-universal-footer {
+    background-color: #0D0D0D;
+    border-top-color: #2C2C2C;
+}
+.footer-left { color: #666666; }
+.footer-left a { color: #888888; border-bottom-color: #444444; }
+.footer-left a:hover { color: #DFDFDF; border-bottom-color: #DFDFDF; }
+.footer-right { color: #666666; }
+
+/* 14: APPEARANCE */
+.appearance-controller {
+    border-color: #2C2C2C;
+}
+.skin-meta-wrap {
+    background-color: #111111;
+}
+.skin-selector-wrap {
+    background-color: #0D0D0D;
+    border-left-color: #2C2C2C;
+}
+.theme-title-display { color: #DFDFDF !important; }
+.skin-desc-text { color: #666666; }
+
+/* Filter + Reset buttons */
+.btn-smack-filter {
+    background-color: #404040;
+    color: #DFDFDF;
+}
+.btn-smack-filter:hover {
+    background-color: #DFDFDF;
+    color: #0F0F0F;
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.4);
+}
+.btn-reset {
+    color: #444444;
+    border-color: #2C2C2C;
+}
+.btn-reset:hover {
+    border-color: #404040;
+    color: #404040;
+}
+
+/* 16: INPUT RANGE (Webkit) */
+input[type="range"]::-webkit-slider-runnable-track {
+    background-color: #2C2C2C;
+}
+input[type="range"]::-webkit-slider-thumb {
+    background-color: #DFDFDF;
+}
+
+/* Asset cards (Media Library) */
+.asset-card {
+    border-color: #2C2C2C;
+    background-color: #111111;
+}
+.asset-thumb-wrapper {
+    border-bottom-color: #2C2C2C;
+    background-color: #0D0D0D;
+}
+.asset-shortcode-row .shortcode-display {
+    border-color: #DFDFDF;
+    color: #DFDFDF;
+    background-color: #0D0D0D;
+}
+.asset-no-preview {
+    color: #555;
+}
+
+/* 17: CSS OVERRIDE PAGE (smack-css.php) */
+.css-tab {
+    color: #444;
+    border-color: #2C2C2C;
+}
+
+.css-tab:hover {
+    color: #DFDFDF;
+    border-color: #DFDFDF;
+}
+
+.css-tab-active {
+    color: #DFDFDF;
+    border-color: #DFDFDF;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
+}
+
+.css-preview-block {
+    border-color: #2C2C2C;
+    background-color: #0F0F0F;
+}
+
+/* SHORTCODE TOOLBAR */
+.sc-toolbar {
+    background-color: #1a1a1a;
+    border-color: #404040;
+}
+.sc-toolbar .sc-btn {
+    background-color: #0d0d0d;
+    color: #666666;
+}
+.sc-toolbar .sc-btn:hover {
+    background-color: #1a1a1a;
+    color: #DFDFDF;
+}
+.sc-toolbar .sc-sep {
+    background-color: #404040;
+}
+.sc-toolbar .sc-btn-preview {
+    background-color: #DFDFDF;
+    color: #0F0F0F;
+}
+.sc-toolbar .sc-btn-preview:hover {
+    background-color: #AAAAAA;
+    color: #0F0F0F;
+}
+/* Confirmation / status messages */
+.msg {
+    color: #AAAAAA;
+}
+
+.alert-text {
+    color: #AAAAAA;
+}
+
+/* ─── ALERTS ─────────────────────────────────────────────────────────────────────── */
+.alert-success {
+    color: #AAAAAA;
+    border-color: #AAAAAA;
+}
+
+.alert-error {
+    border-color: #DFDFDF;
+}
+
+/* ─── HELP SYSTEM (smack-help.php) ─────────────────────────────────── */
+.help-nav { background-color: #141414; border-right-color: #2C2C2C; }
+.help-nav-header { border-bottom-color: #2C2C2C; }
+.help-nav-subtitle { color: #666666; }
+.help-nav-section-label { color: #666666; }
+.help-nav-link { color: #666666; }
+.help-nav-link:hover { color: #DFDFDF; }
+.help-nav-link.active { color: #DFDFDF; background-color: #1C1C1C; border-left-color: #DFDFDF; }
+.help-search input { background-color: #2C2C2C; border-color: #404040; color: #AAAAAA; }
+.help-search-result { color: #666666; }
+.help-search-result:hover { background-color: #1C1C1C; border-color: #2C2C2C; }
+.help-search-result-section { color: #666666; }
+.help-search-no-results { color: #666666; }
+.help-topic-header { border-bottom-color: #2C2C2C; }
+.help-topic-section { color: #666666; }
+.help-topic-nav { border-top-color: #2C2C2C; }
+.help-topic-nav a { color: #666666; }
+.help-topic-nav a:hover { color: #DFDFDF; }
+.help-body pre { background-color: #1C1C1C; border-color: #2C2C2C; color: #AAAAAA; }
+.help-body code { background-color: #1C1C1C; border-color: #2C2C2C; color: #AAAAAA; }
+.help-toc-section-title { border-bottom-color: #2C2C2C; }
+.help-toc-list a { color: #AAAAAA; }
+.help-toc-list a:hover { color: #DFDFDF; }
+.help-toc-list .help-toc-desc { color: #666666; }
+
+/* ─── SCHEMA HEALTH (smack-maintenance.php) ─────────────────────────── */
+.schema-count { color: #DFDFDF; }
+.schema-section-label { color: #666666; }
+.schema-list li { border-bottom-color: #2C2C2C; color: #AAAAAA; }
+
+/* ─── MANAGE ARCHIVE — DRAG REORDER & BATCH DELETE ──────────────── */
+.drag-handle { color: #666666; }
+.reorder-status.saving { color: #666666; }
+.reorder-status.saved  { color: #DFDFDF; }
+.reorder-status.error  { color: #888888; }
+.batch-bar { border-bottom-color: #2C2C2C; }
+
+/* ─── COMPANION TOOLS (smack-tools.php) ──────────────────────────── */
+.tool-desc { color: #AAAAAA; }
+
+/* ─── CLOUD BACKUP (smack-cloud.php) ─────────────────────────────── */
+.cloud-push-grid th { border-bottom-color: #2C2C2C; color: #666666; }
+.cloud-push-grid td { border-bottom-color: #2C2C2C; }
+.cloud-push-label { color: #AAAAAA; }
+.cloud-progress-bar { border-color: #2C2C2C; background-color: #1C1C1C; }
+.cloud-progress-header { color: #AAAAAA; }
+.cloud-progress-track { background-color: #2C2C2C; }
+.cloud-progress-fill { background-color: #DFDFDF; }
+.cloud-progress-done { color: #CCCCCC; }
+.cloud-progress-failed { color: #888888; }
+.cloud-progress-log { color: #666666; }
+.cloud-progress-error { color: #888888; }
+.cloud-progress-success { color: #CCCCCC; }
+
+/* Interaction page */
+.box-desc, .toggle-desc, .reaction-count-note { color: #666666; }
+.toggle-row, .identity-row { border-bottom-color: #2C2C2C; }
+.toggle-row input[type="checkbox"]::before { background-color: #505050; }
+.toggle-row input[type="checkbox"]:checked::before { background-color: #DFDFDF; }
+.radio-option, .reaction-option { border-color: #2C2C2C; }
+.radio-option:hover,
+.radio-option:has(input:checked),
+.reaction-option:hover,
+.reaction-option.is-active,
+.reaction-option:has(input:checked) { border-color: #DFDFDF; }
+.radio-option:has(input:checked),
+.reaction-option.is-active,
+.reaction-option:has(input:checked) { background-color: #202020; }
+
+/* MULTISITE STATUS — Black Pearl: muted gold/silver palette */
+.status-dot--active, .status-dot--ok       { background-color: #C9A84C; }
+.status-label--active, .status-label--ok   { color: #C9A84C; }
+.status-dot--offline, .status-dot--failed  { background-color: #666666; }
+.status-label--offline, .status-label--failed { color: #666666; }
+.status-dot--unknown                       { background-color: #888888; }
+.status-label--unknown                     { color: #888888; }
+.version-behind                            { color: #888888; }
+.hub-connected-border                      { border-left-color: #C9A84C; }
+.multisite-table tr                        { border-bottom-color: #2C2C2C; }
+.multisite-table th                        { color: #888888; }
+/* ===== SNAPSMACK EOF ===== */

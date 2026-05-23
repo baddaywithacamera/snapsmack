@@ -57,7 +57,6 @@ return [
         'smack-justified-lib',
         'smack-justified',
         'smack-community',
-        'smack-drawer',
         'smack-calendar',
     ],
 

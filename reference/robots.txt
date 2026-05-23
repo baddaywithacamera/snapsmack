@@ -1,0 +1,31 @@
+# SNAPSMACK — auto-generated robots.txt
+# Regenerated each time Global Configuration is saved.
+
+User-agent: *
+Disallow: /smack-*
+Disallow: /core/
+Disallow: /backups/
+Disallow: /migrations/
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+Sitemap: https://foundtextures.casitemap.xml

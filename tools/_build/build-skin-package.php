@@ -116,15 +116,43 @@ foreach ($skins as $skin) {
         RecursiveIteratorIterator::SELF_FIRST
     );
 
+    $smackback_files = [];
+
     foreach ($iterator as $file) {
         if (!$file->isFile()) continue;
 
         $relative = str_replace($skin_path . DIRECTORY_SEPARATOR, '', $file->getRealPath());
         $relative = str_replace('\\', '/', $relative);
+        $zip_path_in_zip = $wrapper . $relative;
 
-        $zip->addFile($file->getRealPath(), $wrapper . $relative);
+        $zip->addFile($file->getRealPath(), $zip_path_in_zip);
         $file_count++;
+
+        // Collect hash for SMACKBACK manifest (PHP/CSS/JS only, no minified)
+        $ext = strtolower(pathinfo($relative, PATHINFO_EXTENSION));
+        if (in_array($ext, ['php', 'css', 'js'], true)
+            && !str_ends_with($relative, '.min.js')
+            && !str_ends_with($relative, '.min.css')) {
+            $content = file_get_contents($file->getRealPath());
+            if ($content !== false) {
+                $smackback_files[$zip_path_in_zip] = [
+                    'hash'          => hash('sha256', $content),
+                    'size'          => strlen($content),
+                    'eof_signature' => smackback_build_eof_signature($content),
+                ];
+            }
+        }
     }
+
+    // Add SMACKBACK manifest before closing
+    $smackback_manifest = json_encode([
+        'smackback_version' => 1,
+        'package_version'   => $meta['version'] ?? 'unknown',
+        'skin_id'           => $skin,
+        'generated_at'      => gmdate('Y-m-d\TH:i:s\Z'),
+        'files'             => $smackback_files,
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    $zip->addFromString('smackback-manifest.json', $smackback_manifest);
 
     $zip->close();
 
@@ -184,6 +212,22 @@ exit(0);
 
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
+
+/**
+ * Compute the EOF signature for a file's content string.
+ * Mirrors smackback_get_eof_signature() in core/smackback.php.
+ */
+function smackback_build_eof_signature(string $content): ?string {
+    if ($content === '') { return null; }
+    if (strpos($content, "\x00") !== false) { return 'NULL_BYTES'; }
+    $tail  = substr($content, -1024);
+    $lines = explode("\n", $tail);
+    for ($i = count($lines) - 1; $i >= 0; $i--) {
+        $line = rtrim($lines[$i]);
+        if ($line !== '') { return substr($line, 0, 512); }
+    }
+    return null;
+}
 
 function extract_skin_meta(string $manifest_path): array {
     $meta = ['label' => '', 'status' => 'unknown'];

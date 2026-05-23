@@ -296,6 +296,11 @@ function skin_registry_install(string $slug, string $download_url, string $signa
     $staging = sys_get_temp_dir() . '/snapsmack-skin-staging-' . $slug . '-' . time();
     $zip->extractTo($staging);
     $zip->close();
+
+    // SMACKBACK: load file hash manifest from ZIP before deleting it
+    require_once __DIR__ . '/smackback.php';
+    smackback_init_skin_manifest($tmp_zip, $slug);
+
     @unlink($tmp_zip);
 
     // If there's a wrapper folder, the actual skin files are inside it
@@ -378,6 +383,10 @@ function skin_registry_remove(string $slug, string $active_skin): array {
     if (is_dir($target)) {
         return ['success' => false, 'message' => 'Failed to remove skin directory. Check file permissions.'];
     }
+
+    // SMACKBACK: remove manifest entries for this skin
+    require_once __DIR__ . '/smackback.php';
+    smackback_remove_skin_manifest($slug);
 
     return ['success' => true, 'message' => 'Skin "' . $slug . '" removed.'];
 }

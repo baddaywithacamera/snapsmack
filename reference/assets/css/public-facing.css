@@ -1,0 +1,36 @@
+/**
+ * SNAPSMACK - Public-facing CSS (DEPRECATION SHIM, 0.7.81)
+ *
+ * This file used to be the single global stylesheet for the public side.
+ * In 0.7.81 it was split by responsibility for cleaner skin authoring and
+ * smaller per-page payloads:
+ *
+ *   public-base.css       — utilities, alignment, image fade engine (every page)
+ *   page-archive.css      — archive grids, filter panel, T/M/C controls
+ *   page-collection.css   — collection landing + collections index
+ *   page-blogroll.css     — blogroll
+ *   page-static.css       — static pages, page hero, 404
+ *
+ * core/meta.php now loads public-base.css + the matching page-*.css for
+ * each public page. This shim @imports them all so any code or skin still
+ * referencing public-facing.css directly keeps working until those
+ * references are migrated.
+ *
+ * Skin authors: target the new files in your style.css overrides. The
+ * skin contract lives in _spec/skin-contract.md.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line MUST be the canonical CSS EOF marker:
+ *   slash-star, space, five equals, space, 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ */
+
+
+@import url('public-base.css');
+@import url('page-archive.css');
+@import url('page-collection.css');
+@import url('page-blogroll.css');
+@import url('page-static.css');
+
+/* ===== SNAPSMACK EOF ===== */
