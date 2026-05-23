@@ -15,8 +15,10 @@ if (($settings['maintenance_mode'] ?? '0') !== '1') {
     return; // Nothing to do — maintenance mode off
 }
 
-// Start session if not already active so we can check login state
-if (session_status() === PHP_SESSION_NONE) {
+// Resume an existing session to check login state — never create a new one
+// for visitors who will just see the holding page. If no cookie exists, there
+// is no logged-in session to check, so skip session_start entirely.
+if (session_status() === PHP_SESSION_NONE && !empty($_COOKIE[session_name()])) {
     session_start();
 }
 

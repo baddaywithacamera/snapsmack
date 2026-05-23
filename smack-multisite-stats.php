@@ -47,7 +47,7 @@ $spokes = $pdo->query("
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 // --- PERIOD SELECTOR ---
-$period = in_array((int)($_GET['days'] ?? 30), [7, 30, 90, 180, 365, 0]) ? (int)$_GET['days'] : 30;
+$period = in_array((int)($_GET['days'] ?? 30), [7, 30, 90, 180, 365, 0]) ? (int)($_GET['days'] ?? 30) : 30;
 $period_label = match($period) {
     7   => '7-DAY WINDOW',
     30  => '30-DAY WINDOW',
