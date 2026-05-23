@@ -293,6 +293,8 @@ if ($resource === 'heartbeat' && $method === 'GET') {
         'disk_usage_bytes'   => $disk_bytes,
         'site_tagline'       => $settings['site_tagline'] ?? '',
         'maintenance_mode'   => ($settings['maintenance_mode'] ?? '0') === '1' ? 1 : 0,
+        'smackback_status'   => $settings['smackback_status']   ?? 'unknown',
+        'smackback_breach_at'=> ($settings['smackback_breach_at'] ?? '') ?: null,
         'timestamp'          => date('c'),
     ]);
 }
@@ -1073,6 +1075,80 @@ if ($resource === 'maintenance' && $sub_action === 'set' && $method === 'POST') 
                    ON DUPLICATE KEY UPDATE setting_val = ?")
         ->execute([$mode, $mode]);
     ms_ok(['maintenance_mode' => (int)$mode]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/smackback/report
+// A spoke in paranoid mode calls this when it detects a breach.
+// Hub records the breach on the spoke's node record and runs correlation:
+// if ≥ 2 spokes are simultaneously in breach, a coordinated-attack alert fires.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'smackback' && $sub_action === 'report' && $method === 'POST') {
+    if ($node['role'] !== 'spoke') ms_err('Only spokes may report a breach', 403);
+
+    $body = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($body)) ms_err('Invalid JSON body', 400);
+
+    $tampered    = array_values(array_filter((array)($body['tampered']  ?? []), 'is_string'));
+    $missing     = array_values(array_filter((array)($body['missing']   ?? []), 'is_string'));
+    $truncated   = array_values(array_filter((array)($body['truncated'] ?? []), 'is_string'));
+    $corrupted   = array_values(array_filter((array)($body['corrupted'] ?? []), 'is_string'));
+    $detected_at = date('Y-m-d H:i:s', strtotime($body['detected_at'] ?? 'now'));
+
+    $all_files = array_merge(
+        array_map(fn($p) => ['path' => $p, 'status' => 'tampered'],  $tampered),
+        array_map(fn($p) => ['path' => $p, 'status' => 'missing'],   $missing),
+        array_map(fn($p) => ['path' => $p, 'status' => 'truncated'], $truncated),
+        array_map(fn($p) => ['path' => $p, 'status' => 'corrupted'], $corrupted)
+    );
+
+    // Store breach on this spoke's node record
+    try {
+        $pdo->prepare("
+            UPDATE snap_multisite_nodes
+            SET smackback_status      = 'breach',
+                smackback_breach_at   = ?,
+                smackback_breach_files = ?
+            WHERE id = ?
+        ")->execute([$detected_at, json_encode($all_files), $node['id']]);
+    } catch (PDOException $e) {
+        // Columns may not exist yet on older hubs — degrade gracefully
+        error_log('SMACKBACK hub report: schema not ready — ' . $e->getMessage());
+        ms_ok(['received' => true, 'correlated' => false, 'note' => 'hub schema pending migration']);
+    }
+
+    // Correlation: count spokes currently in breach
+    $breach_count = (int)$pdo->query(
+        "SELECT COUNT(*) FROM snap_multisite_nodes WHERE role = 'spoke' AND smackback_status = 'breach'"
+    )->fetchColumn();
+
+    // Fire coordinated-attack alert if ≥ 2 spokes are simultaneously in breach
+    if ($breach_count >= 2) {
+        $coord_settings = $pdo->query(
+            "SELECT setting_key, setting_val FROM snap_settings
+             WHERE setting_key IN ('admin_email', 'site_name', 'site_url')"
+        )->fetchAll(PDO::FETCH_KEY_PAIR);
+
+        $to        = $coord_settings['admin_email'] ?? '';
+        $site_name = $coord_settings['site_name']  ?? 'SnapSmack Hub';
+        $site_url  = $coord_settings['site_url']   ?? '';
+
+        if ($to) {
+            $subject = "[{$site_name}] SMACKBACK — COORDINATED BREACH DETECTED ({$breach_count} spokes)";
+            $body_txt = "SMACKBACK has detected a simultaneous breach on {$breach_count} spoke(s) in your network.\n\n"
+                      . "This may indicate a coordinated attack or a shared infrastructure compromise.\n\n"
+                      . "Log into your hub now to review the SMACKBACK panel on each spoke:\n"
+                      . rtrim($site_url, '/') . "/smack-multisite.php\n\n"
+                      . "--- Automated alert from SMACKBACK at " . date('Y-m-d H:i:s') . " ---\n";
+            @mail($to, $subject, $body_txt,
+                "From: SMACKBACK <noreply@" . (parse_url($site_url, PHP_URL_HOST) ?: 'localhost') . ">\r\n"
+                . "Content-Type: text/plain; charset=UTF-8\r\n"
+                . "X-Mailer: SnapSmack SMACKBACK"
+            );
+        }
+    }
+
+    ms_ok(['received' => true, 'breach_count' => $breach_count]);
 }
 
 // Fell through — unknown endpoint

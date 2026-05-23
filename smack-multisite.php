@@ -15,6 +15,10 @@ $multisite_role = $settings['multisite_role'] ?? '';
 
 // Defensive column add — harmless if migrate-spoke-maintenance-mode.sql already ran.
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `maintenance_mode` TINYINT(1) NOT NULL DEFAULT 0");
+// Defensive adds for SMACKBACK Phase 2 columns (harmless if migration already ran).
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackback_status` VARCHAR(20) NOT NULL DEFAULT 'unknown'");
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackback_breach_at` DATETIME NULL");
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackback_breach_files` MEDIUMTEXT NULL");
 
 // --- SSRF GUARD ---
 // Returns true if the URL resolves to a private/loopback/reserved address.
@@ -514,9 +518,11 @@ if ($multisite_role === 'hub') {
                         last_backup_status = ?,
                         disk_usage_bytes   = ?,
                         site_tagline       = ?,
-                        maintenance_mode   = ?,
-                        last_seen_at       = NOW(),
-                        status             = 'active'
+                        maintenance_mode      = ?,
+                        smackback_status      = ?,
+                        smackback_breach_at   = ?,
+                        last_seen_at          = NOW(),
+                        status                = 'active'
                     WHERE id = ?
                 ")->execute([
                     $hb['version']            ?? null,
@@ -530,6 +536,8 @@ if ($multisite_role === 'hub') {
                     $hb['disk_usage_bytes']   ?? null,
                     $hb['site_tagline']       ?? null,
                     (int)($hb['maintenance_mode'] ?? 0),
+                    $hb['smackback_status']   ?? 'unknown',
+                    $hb['smackback_breach_at'] ?? null,
                     $n['id'],
                 ]);
                 // Update local array so the table renders fresh data without a reload
@@ -539,6 +547,8 @@ if ($multisite_role === 'hub') {
                 $n['pending_comments']   = $hb['pending_comments']   ?? $n['pending_comments'];
                 $n['last_backup_status'] = $hb['last_backup_status'] ?? $n['last_backup_status'];
                 $n['maintenance_mode']   = (int)($hb['maintenance_mode'] ?? 0);
+                $n['smackback_status']   = $hb['smackback_status']   ?? 'unknown';
+                $n['smackback_breach_at'] = $hb['smackback_breach_at'] ?? null;
             }
         } else {
             // Only mark offline if the spoke hasn't been seen recently.
@@ -727,6 +737,7 @@ include 'core/sidebar.php';
                                 <th class="col-center">PENDING</th>
                                 <th class="col-center">BACKUP</th>
                                 <th class="col-center">MAINT</th>
+                                <th class="col-center">SMACKBACK</th>
                                 <th class="col-center">ACTION</th>
                             </tr>
                         </thead>
@@ -816,6 +827,21 @@ include 'core/sidebar.php';
                                         <?php else: ?>
                                             <span class="status-dot status-dot--lg status-dot--active" title="Live"></span>
                                         <?php endif; ?>
+                                    </td>
+                                    <td class="col-center">
+                                        <?php
+                                            $sb_status = $n['smackback_status'] ?? 'unknown';
+                                            $sb_at     = $n['smackback_breach_at'] ?? null;
+                                            if ($sb_status === 'breach') {
+                                                $since = $sb_at ? date('M j H:i', strtotime($sb_at)) : '';
+                                                echo '<span class="smackback-badge smackback-breach" title="Breach detected' . ($since ? ' ' . htmlspecialchars($since) : '') . '">BREACH</span>';
+                                                if ($since) echo '<br><span style="font-size:0.7rem;color:var(--text-muted,#888);">' . htmlspecialchars($since) . '</span>';
+                                            } elseif ($sb_status === 'clean') {
+                                                echo '<span class="smackback-badge smackback-clean">CLEAN</span>';
+                                            } else {
+                                                echo '<span class="smackback-badge smackback-unknown">—</span>';
+                                            }
+                                        ?>
                                     </td>
                                     <td class="col-center" id="spoke-act-<?php echo $n['id']; ?>">
                                         <?php if ($n['status'] === 'active'): ?>
@@ -991,6 +1017,13 @@ include 'core/sidebar.php';
     <?php endif; ?>
 
 </div>
+
+<style>
+.smackback-badge { display:inline-block; font-size:0.7rem; letter-spacing:.08em; padding:2px 7px; border-radius:3px; font-weight:600; }
+.smackback-breach { background:#7a1a1a; color:#ffaaaa; }
+.smackback-clean  { background:#1a4a2a; color:#88ffaa; }
+.smackback-unknown { color:var(--text-muted,#888); }
+</style>
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

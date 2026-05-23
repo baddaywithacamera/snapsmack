@@ -1,6 +1,87 @@
 <?php
 // SNAPSMACK_EOF_HEADER
-//     // ===== SNAPSMACK EOF =====
+//     
+// ─── HUB BREACH REPORTING (Phase 2 — paranoid mode) ────────────────────────
+
+/**
+ * Report a local breach to the multisite hub.
+ * Called only on spokes running in paranoid mode.
+ * Sends a POST to the hub's multisite/smackback/report endpoint.
+ * Failures are logged but do not block local breach handling.
+ *
+ * @param  string[] $tampered
+ * @param  string[] $missing
+ * @param  string[] $truncated
+ * @param  string[] $corrupted
+ * @return void
+ */
+function smackback_hub_report(
+    array $tampered,
+    array $missing,
+    array $truncated = [],
+    array $corrupted = []
+): void {
+    global $pdo;
+
+    // Find our registered hub
+    $hub = $pdo->query(
+        "SELECT site_url, api_key_remote FROM snap_multisite_nodes
+         WHERE role = 'hub' LIMIT 1"
+    )->fetch(PDO::FETCH_ASSOC);
+
+    if (!$hub || empty($hub['site_url']) || empty($hub['api_key_remote'])) {
+        error_log('SMACKBACK: No hub configured or missing API key — breach not reported to hub');
+        return;
+    }
+
+    $url     = rtrim($hub['site_url'], '/') . '/api.php?route=multisite/smackback/report';
+    $payload = json_encode([
+        'tampered'    => $tampered,
+        'missing'     => $missing,
+        'truncated'   => $truncated,
+        'corrupted'   => $corrupted,
+        'detected_at' => date('c'),
+    ]);
+
+    if (!function_exists('curl_init')) {
+        // No cURL — skip hub report (rare on modern PHP, log and bail)
+        error_log('SMACKBACK: cURL unavailable — hub breach report skipped');
+        return;
+    }
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_HTTPHEADER     => [
+            'Authorization: Bearer ' . $hub['api_key_remote'],
+            'Content-Type: application/json',
+            'Accept: application/json',
+        ],
+    ]);
+
+    $result = curl_exec($ch);
+    $code   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err    = curl_error($ch);
+    curl_close($ch);
+
+    if (!$result || $code !== 200) {
+        error_log("SMACKBACK: Hub breach report failed — HTTP {$code} {$err}");
+        return;
+    }
+
+    $data = json_decode($result, true);
+    if (!empty($data['breach_count']) && (int)$data['breach_count'] >= 2) {
+        // Hub has flagged a coordinated breach — note it locally
+        error_log("SMACKBACK: Hub reports coordinated breach on {$data['breach_count']} spokes");
+    }
+}
+
+// ===== SNAPSMACK EOF =====
 // Last non-empty line of this file MUST match the line above.
 // Missing or different = truncated/corrupted. Restore before saving.
 
@@ -700,8 +781,7 @@ function smackback_handle_breach(
     )->fetchColumn();
 
     if ($mode === 'paranoid') {
-        // Phase 2: smackback_hub_report($tampered, $missing);
-        // Stub — intentionally a no-op until Phase 2 build
+        smackback_hub_report($tampered, $missing, $truncated, $corrupted);
     }
 }
 

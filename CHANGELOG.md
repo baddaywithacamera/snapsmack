@@ -12,6 +12,22 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.175 — "Barcalounger" (2026-05-23)
+
+### Added
+- **SMACKBACK Phase 2 — hub/spoke breach correlation**: Spokes running in paranoid mode now actively report breaches to their hub via `POST multisite/smackback/report`. The hub stores the breach against the spoke's node record, displays a BREACH/CLEAN badge in the multisite table, and fires a coordinated-attack alert email if two or more spokes are simultaneously in breach. Heartbeat sweep also caches `smackback_status` passively so the hub stays current even if the push report fails. New migration: `migrate-smackback-multisite.sql` (3 columns on `snap_multisite_nodes`).
+
+## 0.7.174 — "Barcalounger" (2026-05-23)
+
+### Fixed
+- **Update check: silent JS retry loop instead of immediate red banner**: On sites with flaky connectivity to the update server, the synchronous PHP check was firing on page load and immediately showing the red COULD NOT REACH UPDATE SERVER banner. Replaced with a deferred JS fetch loop: page loads with a neutral ⌛ CHECKING badge, then retries the check_ajax POST endpoint up to 3 times (delays: 0 ms / 500 ms / 1500 ms / 3000 ms). On success the page reloads to show current status. The red banner only appears after all three retries fail, giving transient connectivity issues a chance to resolve without alarming the user.
+
+## 0.7.173 — "Barcalounger" (2026-05-23)
+
+### Fixed
+- **Chaplin single photo page — photo overflows viewport, no scroll**: `#page-wrapper` had no height set, breaking the flex chain from `body { height: 100% }` down through `.chap-single { flex: 1 }`. Photo expanded to natural height, body `overflow: hidden` trapped it with no scroll. Fix: added `#page-wrapper { height: 100%; display: flex; flex-direction: column; }` to complete the chain. Also tightened `#rg-photobox` from `overflow: visible` to `overflow: hidden` as a safety net.
+- **Chaplin v2.5** (skin version bump)
+
 ## 0.7.172 — "Barcalounger" (2026-05-23)
 
 ### Fixed
