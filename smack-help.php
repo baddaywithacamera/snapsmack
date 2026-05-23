@@ -1185,6 +1185,24 @@ normal immediately — no cache to flush, no restart required.</p>
 <p>If you're running a SnapSmack multisite network, the <strong>Multisite Management</strong>
 page on the hub lets you toggle maintenance mode on individual spokes — or across the whole
 fleet at once — without logging into each site separately.</p>
+
+<p>The dashboard shows a <strong>MAINT</strong> column for every spoke. An orange dot means
+the spoke is currently in maintenance mode; a green dot means it's live. This state is refreshed
+automatically on every heartbeat sweep, so what you see reflects the spoke's current setting.</p>
+
+<p>To toggle a single spoke, click its <strong>MAINT ON</strong> or <strong>MAINT OFF</strong>
+button in the Action column. To act on all active spokes at once, use the
+<strong>MAINTENANCE ALL ON</strong> or <strong>MAINTENANCE ALL OFF</strong> buttons above the
+table — both prompt for confirmation before firing. The hub sends the command to each spoke
+over the existing API channel; no re-login required.</p>
+
+<p>The hub cannot remotely toggle maintenance mode on a spoke that shows as
+<strong>OFFLINE</strong> — the API call would time out. Bring the spoke back online first,
+or log in locally and toggle it from that site's Settings page.</p>
+
+<p><strong>Note:</strong> The hub controls the spoke's <em>visitor-facing</em> maintenance
+gate only. Admins already logged into a spoke are never blocked by maintenance mode,
+whether it was set locally or triggered from the hub.</p>
 HTML
 ];
 

@@ -13,6 +13,9 @@ require_once 'core/auth-smack.php';
 $settings       = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $multisite_role = $settings['multisite_role'] ?? '';
 
+// Defensive column add — harmless if migrate-spoke-maintenance-mode.sql already ran.
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `maintenance_mode` TINYINT(1) NOT NULL DEFAULT 0");
+
 // --- SSRF GUARD ---
 // Returns true if the URL resolves to a private/loopback/reserved address.
 // Used to prevent admin-initiated cURL requests from probing internal services.
@@ -343,6 +346,71 @@ if (isset($_POST['push_update']) || isset($_POST['push_update_all'])) {
     }
 }
 
+// --- PUSH MAINTENANCE MODE TO SPOKE(S) ---
+if (isset($_POST['push_maintenance']) || isset($_POST['push_maintenance_all'])) {
+    if ($multisite_role !== 'hub') {
+        $err = "Only a hub can set spoke maintenance mode.";
+    } else {
+        $mode = (int)($_POST['maintenance_mode'] ?? 0); // 1 = on, 0 = off
+
+        if (isset($_POST['push_maintenance_all'])) {
+            $stmt = $pdo->prepare("SELECT * FROM snap_multisite_nodes WHERE role = 'spoke' AND status = 'active'");
+            $stmt->execute();
+            $target_nodes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } else {
+            $spoke_id = (int)($_POST['spoke_id'] ?? 0);
+            $stmt = $pdo->prepare("SELECT * FROM snap_multisite_nodes WHERE id = ? AND role = 'spoke' LIMIT 1");
+            $stmt->execute([$spoke_id]);
+            $target_nodes = array_filter([$stmt->fetch(PDO::FETCH_ASSOC)]);
+        }
+
+        $maintenance_results = [];
+        foreach ($target_nodes as $tn) {
+            if (!$tn) continue;
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL            => rtrim($tn['site_url'], '/') . '/api.php?route=multisite/maintenance/set',
+                CURLOPT_POST           => true,
+                CURLOPT_POSTFIELDS     => json_encode(['mode' => $mode]),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_TIMEOUT        => 10,
+                CURLOPT_HTTPHEADER     => [
+                    'Authorization: Bearer ' . $tn['api_key_local'],
+                    'Content-Type: application/json',
+                    'Accept: application/json',
+                ],
+            ]);
+            $raw  = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $cerr = curl_error($ch);
+            curl_close($ch);
+
+            $result = ['name' => $tn['site_name'] ?? $tn['site_url'], 'id' => $tn['id']];
+            if ($cerr || $code !== 200) {
+                $result['ok']     = false;
+                $result['detail'] = $cerr ?: ('HTTP ' . $code);
+            } else {
+                $data = json_decode($raw, true);
+                $result['ok']   = !empty($data['ok']);
+                $result['mode'] = $data['maintenance_mode'] ?? $mode;
+                if ($result['ok']) {
+                    $pdo->prepare("UPDATE snap_multisite_nodes SET maintenance_mode = ? WHERE id = ?")
+                        ->execute([$mode, $tn['id']]);
+                }
+            }
+            $maintenance_results[] = $result;
+        }
+
+        if ($is_ajax) {
+            if (ob_get_level()) ob_end_clean();
+            header('Content-Type: application/json');
+            echo json_encode(['results' => $maintenance_results]);
+            exit;
+        }
+    }
+}
+
 // --- VERIFY CONNECTION (spoke → hub heartbeat) ---
 if (isset($_POST['verify_hub'])) {
     $hub = $pdo->query("SELECT * FROM snap_multisite_nodes WHERE role = 'hub' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
@@ -446,6 +514,7 @@ if ($multisite_role === 'hub') {
                         last_backup_status = ?,
                         disk_usage_bytes   = ?,
                         site_tagline       = ?,
+                        maintenance_mode   = ?,
                         last_seen_at       = NOW(),
                         status             = 'active'
                     WHERE id = ?
@@ -460,6 +529,7 @@ if ($multisite_role === 'hub') {
                     $hb['last_backup_status'] ?? 'unknown',
                     $hb['disk_usage_bytes']   ?? null,
                     $hb['site_tagline']       ?? null,
+                    (int)($hb['maintenance_mode'] ?? 0),
                     $n['id'],
                 ]);
                 // Update local array so the table renders fresh data without a reload
@@ -468,6 +538,7 @@ if ($multisite_role === 'hub') {
                 $n['image_count']        = $hb['image_count']        ?? $n['image_count'];
                 $n['pending_comments']   = $hb['pending_comments']   ?? $n['pending_comments'];
                 $n['last_backup_status'] = $hb['last_backup_status'] ?? $n['last_backup_status'];
+                $n['maintenance_mode']   = (int)($hb['maintenance_mode'] ?? 0);
             }
         } else {
             // Only mark offline if the spoke hasn't been seen recently.
@@ -625,6 +696,22 @@ include 'core/sidebar.php';
                             ALL UP TO DATE
                         </button>
                     <?php endif; ?>
+                    <form method="POST" style="display:inline-block; margin-left:8px;">
+                        <input type="hidden" name="maintenance_mode" value="1">
+                        <button type="submit" name="push_maintenance_all" class="btn-smack"
+                                style="width:auto;height:auto;margin-top:0;padding:8px 18px;background:var(--warning,#c55400);"
+                                onclick="return confirm('Put ALL active spokes into maintenance mode?');">
+                            MAINTENANCE ALL ON
+                        </button>
+                    </form>
+                    <form method="POST" style="display:inline-block; margin-left:4px;">
+                        <input type="hidden" name="maintenance_mode" value="0">
+                        <button type="submit" name="push_maintenance_all" class="btn-smack"
+                                style="width:auto;height:auto;margin-top:0;padding:8px 18px;"
+                                onclick="return confirm('Take ALL active spokes out of maintenance mode?');">
+                            MAINTENANCE ALL OFF
+                        </button>
+                    </form>
                 </div>
 
                 <div style="overflow-x:auto;">
@@ -639,6 +726,7 @@ include 'core/sidebar.php';
                                 <th class="col-center">POSTS</th>
                                 <th class="col-center">PENDING</th>
                                 <th class="col-center">BACKUP</th>
+                                <th class="col-center">MAINT</th>
                                 <th class="col-center">ACTION</th>
                             </tr>
                         </thead>
@@ -669,12 +757,14 @@ include 'core/sidebar.php';
                                 <td class="col-center">
                                     <span class="status-dot status-dot--lg status-dot--<?php echo htmlspecialchars($hub_backup_status); ?>" title="<?php echo htmlspecialchars($hub_backup_status); ?>"></span>
                                 </td>
+                                <td class="col-center" style="font-size:0.75rem; color:var(--text-muted,#888);">—</td>
                                 <td class="col-center" style="font-size:0.75rem; color:var(--text-muted,#888); letter-spacing:1px;">THIS SITE</td>
                             </tr>
                             <?php foreach ($nodes as $n): ?>
                                 <?php if ($n['role'] !== 'spoke') continue; ?>
-                                <?php $node_status   = $n['status'] ?? 'unknown'; ?>
-                                <?php $backup_status = $n['last_backup_status'] ?? 'unknown'; ?>
+                                <?php $node_status    = $n['status'] ?? 'unknown'; ?>
+                                <?php $backup_status  = $n['last_backup_status'] ?? 'unknown'; ?>
+                                <?php $in_maintenance = !empty($n['maintenance_mode']); ?>
                                 <tr id="spoke-row-<?php echo $n['id']; ?>">
                                     <td><strong><?php echo htmlspecialchars($n['site_name'] ?? 'Unknown'); ?></strong></td>
                                     <td>
@@ -720,6 +810,13 @@ include 'core/sidebar.php';
                                     <td class="col-center">
                                         <span class="status-dot status-dot--lg status-dot--<?php echo htmlspecialchars($backup_status); ?>" title="<?php echo htmlspecialchars($backup_status); ?>"></span>
                                     </td>
+                                    <td class="col-center" id="spoke-maint-<?php echo $n['id']; ?>">
+                                        <?php if ($in_maintenance): ?>
+                                            <span class="status-dot status-dot--lg" style="background:var(--warning,#c55400);" title="In maintenance mode"></span>
+                                        <?php else: ?>
+                                            <span class="status-dot status-dot--lg status-dot--active" title="Live"></span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td class="col-center" id="spoke-act-<?php echo $n['id']; ?>">
                                         <?php if ($n['status'] === 'active'): ?>
                                             <a href="smack-multisite-sso.php?sat=<?php echo $n['id']; ?>"
@@ -739,6 +836,19 @@ include 'core/sidebar.php';
                                             <form method="POST" class="spoke-update-form" data-spoke-id="<?php echo $n['id']; ?>" data-spoke-name="<?php echo htmlspecialchars($n['site_name'] ?? $n['site_url']); ?>" style="display:inline;">
                                                 <input type="hidden" name="spoke_id" value="<?php echo $n['id']; ?>">
                                                 <button type="submit" name="push_update" class="action-update" title="Push update to this spoke">UPDATE</button>
+                                            </form>
+                                        <?php endif; ?>
+                                        <?php if ($n['status'] === 'active'): ?>
+                                            <form method="POST" style="display:inline;">
+                                                <input type="hidden" name="spoke_id" value="<?php echo $n['id']; ?>">
+                                                <input type="hidden" name="maintenance_mode" value="<?php echo $in_maintenance ? '0' : '1'; ?>">
+                                                <button type="submit" name="push_maintenance"
+                                                        class="<?php echo $in_maintenance ? 'action-update' : 'action-view'; ?>"
+                                                        title="<?php echo $in_maintenance ? 'Take out of maintenance mode' : 'Put into maintenance mode'; ?>"
+                                                        style="<?php echo $in_maintenance ? 'background:var(--warning,#c55400);color:#fff;' : ''; ?>"
+                                                        <?php echo $in_maintenance ? '' : 'onclick="return confirm(\'Put this spoke into maintenance mode?\')"'; ?>>
+                                                    <?php echo $in_maintenance ? 'MAINT OFF' : 'MAINT ON'; ?>
+                                                </button>
                                             </form>
                                         <?php endif; ?>
                                         <form method="POST" style="display:inline;" onsubmit="return confirm('Disconnect this spoke?');">

@@ -292,6 +292,7 @@ if ($resource === 'heartbeat' && $method === 'GET') {
         'last_backup_status' => $settings['last_backup_status'] ?? 'unknown',
         'disk_usage_bytes'   => $disk_bytes,
         'site_tagline'       => $settings['site_tagline'] ?? '',
+        'maintenance_mode'   => ($settings['maintenance_mode'] ?? '0') === '1' ? 1 : 0,
         'timestamp'          => date('c'),
     ]);
 }
@@ -1056,6 +1057,22 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
         'migrations'    => $mig_count,
         'errors'        => $extract['errors'],
     ]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/maintenance/set
+// Hub instructs this spoke to toggle its maintenance mode on or off.
+// Hub role required. Body: {"mode": 1} or {"mode": 0}.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'maintenance' && $sub_action === 'set' && $method === 'POST') {
+    if ($node['role'] !== 'hub') ms_err('Only a hub may set maintenance mode', 403);
+    $body = json_decode(file_get_contents('php://input'), true) ?? [];
+    if (!isset($body['mode'])) ms_err('mode parameter required', 400);
+    $mode = $body['mode'] ? '1' : '0';
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('maintenance_mode', ?)
+                   ON DUPLICATE KEY UPDATE setting_val = ?")
+        ->execute([$mode, $mode]);
+    ms_ok(['maintenance_mode' => (int)$mode]);
 }
 
 // Fell through — unknown endpoint
