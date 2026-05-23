@@ -235,6 +235,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_skin'])) {
     exit;
 }
 
+// ── Prune old versioned zips — keep only the highest version per slug ──────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['prune_old_packages'])) {
+    $skins_dir  = rtrim(RELEASES_DIR, '/') . '/skins/';
+    $prune_log  = [];
+    $prune_kept = [];
+
+    // Parse "{slug}-{semver}.zip" — slug may contain hyphens, version always
+    // starts with a digit. Walk segments right-to-left to find the split point.
+    $by_slug = [];
+    foreach (glob($skins_dir . '*.zip') ?: [] as $path) {
+        $base  = basename($path, '.zip');   // e.g. "impact-printer-2.0"
+        $parts = explode('-', $base);
+        $ver_start = null;
+        for ($i = count($parts) - 1; $i >= 1; $i--) {
+            if (ctype_digit($parts[$i][0])) { $ver_start = $i; } else { break; }
+        }
+        if ($ver_start === null) continue;  // can't parse — skip
+        $slug    = implode('-', array_slice($parts, 0, $ver_start));
+        $version = implode('.', array_slice($parts, $ver_start));  // rebuild dotted version
+        $by_slug[$slug][] = ['version' => $version, 'path' => $path, 'file' => basename($path)];
+    }
+
+    $deleted = 0;
+    foreach ($by_slug as $slug => $entries) {
+        // Sort descending by version
+        usort($entries, fn($a, $b) => version_compare($b['version'], $a['version']));
+        $keep = $entries[0];
+        $prune_kept[] = $keep['file'];
+        foreach (array_slice($entries, 1) as $old) {
+            if (@unlink($old['path'])) {
+                $prune_log[] = ['ok', 'Deleted ' . $old['file']];
+                $deleted++;
+            } else {
+                $prune_log[] = ['err', 'Could not delete ' . $old['file']];
+            }
+        }
+    }
+    if ($deleted === 0 && empty(array_filter($prune_log, fn($e) => $e[0] === 'err'))) {
+        $prune_log[] = ['ok', 'Nothing to prune — all slugs already have a single version.'];
+    } else {
+        $prune_log[] = ['ok', "Done. {$deleted} old zip(s) removed."];
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
 
     // ── Phase 2: fetch skins from GitHub ─────────────────────────────────────
@@ -447,6 +491,43 @@ include __DIR__ . '/sc-layout-top.php';
                 <?php echo htmlspecialchars($msg); ?>
             </div>
         <?php endforeach; ?>
+    </div>
+<?php endif; ?>
+
+<?php // ── Prune results ─────────────────────────────────────────────────────── ?>
+<?php if (!empty($prune_log)): ?>
+    <div class="sc-card" style="margin-bottom:20px;">
+        <h2 class="sc-card-title">Prune Results</h2>
+        <?php foreach ($prune_log as [$level, $msg]): ?>
+            <div class="sc-alert sc-alert--<?php echo $level === 'err' ? 'error' : 'ok'; ?>" style="margin-bottom:4px;">
+                <?php echo htmlspecialchars($msg); ?>
+            </div>
+        <?php endforeach; ?>
+        <?php if (!empty($prune_kept)): ?>
+            <p style="margin-top:10px; font-size:0.8rem; color:#aaa;">
+                Kept: <?php echo implode(', ', array_map('htmlspecialchars', $prune_kept)); ?>
+            </p>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
+
+<?php // ── Prune old packages button ──────────────────────────────────────────── ?>
+<?php if ($preflight_ok): ?>
+    <div class="sc-card" style="margin-bottom:20px;">
+        <h2 class="sc-card-title">Housekeeping</h2>
+        <p class="sc-dim" style="font-size:0.875rem; margin-bottom:14px;">
+            Scans <code><?php echo htmlspecialchars(rtrim(RELEASES_DIR, '/') . '/skins/'); ?></code>
+            and deletes old versioned zips, keeping only the highest version of each skin slug.
+            The registry is not modified — only orphaned files are removed.
+        </p>
+        <form method="POST" action="sc-skins.php"
+              onsubmit="return confirm('Delete all but the latest version of each skin zip?');">
+            <button type="submit" name="prune_old_packages" value="1"
+                    style="background:none; border:1px solid #888; color:#ccc; padding:7px 18px;
+                           cursor:pointer; font-size:0.8rem; letter-spacing:1px; text-transform:uppercase;">
+                PRUNE OLD PACKAGES
+            </button>
+        </form>
     </div>
 <?php endif; ?>
 

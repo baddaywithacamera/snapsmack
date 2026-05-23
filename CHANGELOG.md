@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.172 — "Barcalounger" (2026-05-23)
+
+### Fixed
+- **Admin theme colour bleed on maintenance buttons**: MAINTENANCE ALL ON and per-spoke MAINT ON/OFF buttons were using inline `style="background:var(--warning,#c55400)"`. The `--warning` CSS variable is not defined in any admin theme, so the hardcoded orange fallback fired in every theme including amber-phosphorus and green-phosphorus. Replaced with proper `.btn-smack.btn-warning` class (added to geometry master + all 16 admin theme colour files with per-theme-appropriate colours) and `.action-warning` outline class for the per-spoke table button.
+- **Multisite bulk buttons not on same row**: UPDATE ALL BEHIND / MAINTENANCE ALL ON / MAINTENANCE ALL OFF buttons were stacking because the wrapper div had no flex context. Wrapper is now `display:flex; gap:8px; align-items:center; flex-wrap:wrap`.
+
 ## 0.7.171 — "Barcalounger" (2026-05-23)
 
 ### Added
@@ -2329,4 +2335,81 @@ _Internal bump. See 0.7.5b for the full feature set._
 - Photogram system footer cut off by fixed bottom nav. Root cause: `core/footer.php` renders `#system-footer` in normal document flow below `#pg-app`, directly under the `position: fixed` nav bar. Fix: `#system-footer { display: none; }` in Photogram's `style.css`. The bottom nav replaces the site footer concept in this skin.
 
 ### Migrations
-- `migrate-rename-pocket-operator.sql`:
+- `migrate-rename-pocket-operator.sql`: updates any install with `active_skin = 'pocket-operator'` in `snap_settings` to `pocket-rocket`. Safe to run on installs that never used Pocket Operator (no-op).
+- Community infrastructure tables (`snap_likes`, `snap_reactions`, `snap_community_accounts`, `snap_community_sessions`) require the 0.7.1 migration to be run before community features are active.
+- `migrate-posts.sql`: creates `snap_posts`, `snap_post_images`, `snap_post_cat_map`, `snap_post_album_map`; adds `post_id` FK column to `snap_images`; wraps all existing images in single-type post records for forward compatibility. Non-destructive — legacy skins continue querying `snap_images` unchanged. Required before any skin activating `post_page` in its manifest can be used.
+- `migrate-image-style.sql`: adds five style columns to `snap_post_images` (`img_size_pct`, `img_border_px`, `img_border_color`, `img_bg_color`, `img_shadow`) and five matching columns to `snap_posts` (`post_img_size_pct`, `post_border_px`, `post_border_color`, `post_bg_color`, `post_shadow`). MySQL-safe stored procedure pattern — checks `information_schema.COLUMNS` before altering; safe to re-run. Required before The Grid image frame customisation system is active.
+- `migrate-tags.sql`: creates `snap_tags` (global tag registry) and `snap_image_tags` (image ↔ tag junction). MySQL-safe stored procedure pattern. Required before hashtag extraction and archive pages are active.
+
+---
+
+## 0.7.0 — "Lapdog" (2026-03-08)
+
+### Added
+- Inline image frames: `[img:ID|size|align]` shortcodes render inside the skin's ASCII border frame on static pages.
+- Smart Open Graph tags with latest-image fallback for all skins.
+- Release packaging system (`tools/build-install-package.php`, `tools/sign-release.php`).
+- Ed25519 package signing with public key verification enforced.
+- Skin packager for building individual skin zips (`tools/build-skin-package.php`).
+- UL/OL list buttons in the shortcode toolbar with keyboard shortcuts (Ctrl+U, Ctrl+O).
+- Underline button and shortcut (Ctrl+Shift+U) in the shortcode toolbar.
+- Custom list markers so UL/OL render in the active skin font.
+- Site email field in Configuration and install wizard.
+- Cropped grid support in Impact Printer archive layout.
+- EXIF display toggle (`exif_display_enabled`) respected across all skin layouts.
+
+### Changed
+- All file headers bumped to Alpha v0.7.
+- Kiosk and Impact Printer excluded from the public install package (development/beta status).
+- Toolbar keyboard shortcuts documented in help system.
+
+### Fixed
+- Sidebar variable collision that broke static pages listing.
+- Skin settings form showing stale values after save.
+- Edit page album/category dropdowns loading wrong JS.
+- `smack_autop()` mangling `<ul>`, `<ol>`, and other block HTML.
+- Cropped grid forcing 1:1 aspect ratio in Impact Printer.
+- Portrait thumbnails capped to landscape height in cropped grid.
+- UL/OL buttons now split selected text into individual list items.
+- Installer progress dots skipping step 3.
+
+---
+
+## 0.6.0 (2026-02)
+
+### Added
+- Self-update system with Ed25519 signing and dual admin notifications.
+- Setup bootstrap deployer (`setup.php`) and first-run install wizard (`install.php`).
+- Floating social profile dock with glass-morphism UI and appearance customisation.
+- Sticky header engine with glass-morphism transparency.
+- Full help system with table of contents, full-text search, and skin-specific topic hooks.
+- Backup, recovery, and export system with FTP support.
+- OAuth cloud push to Google Drive and OneDrive with persistent refresh tokens.
+- Formatting toolbar with live preview, columns, and dropcap support.
+- Release signing utility with Ed25519 verification.
+- Self-update version check with cron registration UI.
+- Skin gallery for browsing and installing skins.
+- Batch throttling for all bulk thumbnail and checksum operations.
+- Recovery system, schema enrichment, integrity tools, and .htaccess repair.
+- Rational Geo skin (NatGeo-inspired editorial magazine theme).
+- Pocket Operator mobile-first skin (doomscroll feed, hamburger nav, drawer UI).
+
+### Changed
+- Documentation standardisation pass across all files.
+- Hardened .htaccess with HTTPS redirect, security headers, and asset caching.
+- Installer appends to existing .htaccess instead of skipping.
+- Removed Picasa Web Albums skin.
+
+### Fixed
+- Preflight security holes in custom JPG handling (found in audits by Claude and Gemini).
+- Google Drive share links auto-converted to direct downloads.
+- Various skin display bugs in New Horizon Dark and 50 Shades of Grey.
+
+---
+
+## 0.5.0 and earlier
+
+Initial development. Admin interface, theme system, per-skin settings scoping,
+sidebar redesign, admin theme CSS consolidation, comment controls, footer
+configuration, and foundational CMS architecture.
+<!-- ===== SNAPSMACK EOF ===== -->

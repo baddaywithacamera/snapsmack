@@ -250,6 +250,14 @@ input:focus, textarea:focus, select:focus {
     background-color: #071407;
     color: #00C853;
 }
+.btn-smack.btn-warning {
+    background-color: #006b28;
+    color: #ffffff;
+}
+.btn-smack.btn-warning:hover {
+    background-color: #003d17;
+    color: #00C853;
+}
 
 /* All other buttons (Manage Signals etc) — universal green glow on hover */
 button:hover {

@@ -892,6 +892,20 @@ button:active,
     filter: brightness(0.9);
 }
 
+/* Warning button modifier — significant but non-destructive actions (e.g. maintenance mode) */
+.btn-smack.btn-warning {
+    background-color: #c55400;
+    color: #fff;
+}
+.btn-smack.btn-warning:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+.btn-smack.btn-warning:active {
+    transform: translateY(1px);
+    filter: brightness(0.9);
+}
+
 /* Two-button side-by-side grid */
 .action-grid-dual {
     display: grid;
@@ -911,6 +925,7 @@ button:active,
 .action-delete,
 .action-authorize,
 .action-update,
+.action-warning,
 .action-hide,
 .action-view {
     width: auto;
@@ -947,6 +962,20 @@ button:active,
 .action-view:hover {
     background-color: #6ab0de;
     color: #111;
+}
+
+/* action-warning: amber — significant but non-destructive state (e.g. spoke in maintenance mode) */
+.action-warning {
+    color: #c55400;
+    border-color: #c55400;
+    background: none;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: inherit;
+}
+.action-warning:hover {
+    background-color: #c55400;
+    color: #fff;
 }
 
 /* action-update: green — push software update to a spoke */
