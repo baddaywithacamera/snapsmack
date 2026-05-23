@@ -333,6 +333,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                     }
                 }
 
+                // Delete any old versioned zips for this skin (e.g. chaplin-2.1.zip,
+                // chaplin-2.2.zip) before writing the new one. The glob pattern matches
+                // any file starting with "$slug-" and ending in ".zip".
+                foreach (glob(rtrim(RELEASES_DIR, '/') . '/skins/' . $slug . '-*.zip') ?: [] as $old_zip) {
+                    if (basename($old_zip) !== $zip_name) @unlink($old_zip);
+                }
                 if (file_exists($zip_path)) @unlink($zip_path);
 
                 $zip = new ZipArchive();

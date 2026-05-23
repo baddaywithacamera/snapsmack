@@ -578,6 +578,8 @@ CREATE TABLE IF NOT EXISTS `snap_ohsnap_keys` (
   `id`           int            NOT NULL AUTO_INCREMENT,
   `label`        varchar(100)   COLLATE utf8mb4_unicode_ci NOT NULL
                  COMMENT 'Human-readable label assigned at creation',
+  `key_type`     varchar(20)    COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ohsnap'
+                 COMMENT 'ohsnap | smackpress',
   `key_hash`     varchar(64)    COLLATE utf8mb4_unicode_ci NOT NULL
                  COMMENT 'SHA-256 hex digest of the raw key — key itself is never stored',
   `key_prefix`   varchar(8)     COLLATE utf8mb4_unicode_ci NOT NULL
@@ -1095,6 +1097,8 @@ CREATE TABLE IF NOT EXISTS `snap_ohsnap_keys` (
   `id`           int            NOT NULL AUTO_INCREMENT,
   `label`        varchar(100)   COLLATE utf8mb4_unicode_ci NOT NULL
                  COMMENT 'Human-readable label assigned at creation',
+  `key_type`     varchar(20)    COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ohsnap'
+                 COMMENT 'ohsnap | smackpress',
   `key_hash`     varchar(64)    COLLATE utf8mb4_unicode_ci NOT NULL
                  COMMENT 'SHA-256 hex digest of the raw key — key itself is never stored',
   `key_prefix`   varchar(8)     COLLATE utf8mb4_unicode_ci NOT NULL
@@ -1148,3 +1152,43 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_queue` (
   PRIMARY KEY (`id`),
   KEY `idx_node_status` (`node_id`, `status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicod
+
+-- ─── snap_skin_presets ───────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS `snap_skin_presets` (
+  `id`           int            NOT NULL AUTO_INCREMENT,
+  `skin_slug`    varchar(80)    NOT NULL,
+  `preset_name`  varchar(120)   NOT NULL,
+  `preset_data`  json           NOT NULL,
+  `created_at`   datetime       DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_skin` (`skin_slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ─── snap_file_manifest ──────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS `snap_file_manifest` (
+  `id`             int unsigned   NOT NULL AUTO_INCREMENT,
+  `file_path`      varchar(500)   NOT NULL,
+  `expected_hash`  char(64)       NOT NULL,
+  `file_size`      int unsigned   NOT NULL,
+  `expected_mtime` int unsigned   DEFAULT NULL,
+  `eof_signature`  varchar(512)   DEFAULT NULL,
+  `skin_id`        varchar(64)    DEFAULT NULL,
+  `baseline_set`   datetime       NOT NULL,
+  `last_verified`  datetime       DEFAULT NULL,
+  `last_status`    enum('ok','tampered','truncated','corrupted','missing','pending') NOT NULL DEFAULT 'pending',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_path` (`file_path`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ─── snap_smackback_log ───────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS `snap_smackback_log` (
+  `id`             int unsigned   NOT NULL AUTO_INCREMENT,
+  `detected_at`    datetime       NOT NULL,
+  `resolved_at`    datetime       DEFAULT NULL,
+  `affected_files` text           NOT NULL,
+  `file_count`     smallint       NOT NULL DEFAULT '0',
+  `resolution`     varchar(64)    DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===== SNAPSMACK EOF =====

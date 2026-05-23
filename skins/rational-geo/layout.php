@@ -1,11 +1,10 @@
 <?php
 /**
  * SNAPSMACK - Rational Geo Single Image View
- * v1.0
+ * v1.1
  *
- * Magazine-page feel: comments slide DOWN from top (like a masthead section),
- * info/caption slides UP from bottom (like a magazine caption block).
- * No #footer element — core ss-engine-footer.js no-ops gracefully.
+ * Magazine-page feel. Standard #footer / #pane-info / #pane-comments pattern,
+ * same as 50-shades-of-noah-grey. Driven by smack-footer (ss-engine-footer.js).
  */
 
 /**
@@ -52,13 +51,6 @@ $exif_labels = [
 
     <?php include dirname(__DIR__, 2) . '/core/community-dock.php'; ?>
 
-    <!-- COMMENTS DRAWER — slides DOWN from top (masthead section feel) -->
-    <div id="rg-comments-drawer" class="rg-drawer rg-drawer-top">
-        <div class="rg-drawer-inner">
-            <?php include dirname(__DIR__, 2) . '/core/community-component.php'; ?>
-        </div>
-    </div>
-
     <!-- PHOTOBOX -->
     <div id="rg-photobox">
         <div class="rg-photo-wrap">
@@ -71,41 +63,49 @@ $exif_labels = [
         </div>
     </div>
 
-    <!-- INFO DRAWER — expands between photobox and infobox (like New Horizon #footer) -->
-    <div id="rg-info-drawer" class="rg-drawer rg-drawer-bottom">
-        <div class="rg-drawer-inner">
-            <h2 class="rg-photo-title"><?php echo htmlspecialchars($img['img_title']); ?></h2>
-            <div class="rg-photo-date"><?php echo date('F j, Y', strtotime($img['img_date'])); ?></div>
-
-            <?php if ($show_desc && !empty($img['img_description'])): ?>
-                <div class="rg-description">
-                    <?php echo $snapsmack->parseContent($img['img_description']); ?>
-                </div>
-            <?php endif; ?>
-
-            <?php if ($exif_display_enabled ?? true): ?>
-                <div class="rg-exif-section">
-                    <h4>Technical Details</h4>
-                    <table class="rg-exif-table">
-                        <tbody>
-                            <?php foreach ($exif_labels as $key => $label): ?>
-                                <?php if (!empty($exif_data[$key]) && $exif_data[$key] !== 'N/A'): ?>
-                                    <tr>
-                                        <td><?php echo $label; ?></td>
-                                        <td><?php echo htmlspecialchars($exif_data[$key]); ?></td>
-                                    </tr>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
-        </div>
-    </div>
-
     <!-- INFOBOX (core navigation bar) — in-flow, flex-shrink: 0 -->
     <div id="infobox">
         <?php include dirname(__DIR__, 2) . '/core/navigation-bar.php'; ?>
+    </div>
+
+    <!-- FOOTER — standard ss-engine-footer.js pattern (same as 50-shades) -->
+    <div id="footer">
+        <div id="pane-info" class="footer-pane">
+            <div class="rg-drawer-inner">
+                <h2 class="rg-photo-title"><?php echo htmlspecialchars($img['img_title']); ?></h2>
+                <div class="rg-photo-date"><?php echo date('F j, Y', strtotime($img['img_date'])); ?></div>
+
+                <?php if ($show_desc && !empty($img['img_description'])): ?>
+                    <div class="rg-description">
+                        <?php echo $snapsmack->parseContent($img['img_description']); ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($exif_display_enabled ?? true): ?>
+                    <div class="rg-exif-section">
+                        <h4>Technical Details</h4>
+                        <table class="rg-exif-table">
+                            <tbody>
+                                <?php foreach ($exif_labels as $key => $label): ?>
+                                    <?php if (!empty($exif_data[$key]) && $exif_data[$key] !== 'N/A'): ?>
+                                        <tr>
+                                            <td><?php echo $label; ?></td>
+                                            <td><?php echo htmlspecialchars($exif_data[$key]); ?></td>
+                                        </tr>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div id="pane-comments" class="footer-pane">
+            <div class="rg-drawer-inner">
+                <?php include dirname(__DIR__, 2) . '/core/community-component.php'; ?>
+            </div>
+        </div>
     </div>
 
     <?php include('skin-footer.php'); ?>

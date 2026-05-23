@@ -724,6 +724,23 @@ if ($action === 'build' && $preflight_ok) {
                     $build_log[] = "→ DB write failed: " . $e->getMessage();
                 }
 
+                // Step 7: Prune old release zips — keep only the 3 most recent on disk.
+                // The DB already shows only 3 in the history table; this keeps disk tidy too.
+                try {
+                    $old_rows = sc_db()->query(
+                        "SELECT download_url FROM sc_releases ORDER BY id DESC LIMIT 100 OFFSET 3"
+                    )->fetchAll(PDO::FETCH_COLUMN);
+                    foreach ($old_rows as $old_url) {
+                        $old_file = rtrim(RELEASES_DIR, '/') . '/' . basename($old_url);
+                        if (file_exists($old_file)) {
+                            @unlink($old_file);
+                            $build_log[] = "→ Pruned old release zip: " . basename($old_file);
+                        }
+                    }
+                } catch (Exception $e) {
+                    $build_log[] = "→ Zip prune skipped: " . $e->getMessage();
+                }
+
                 // Store result and redirect to avoid form resubmission
                 $_SESSION['sc_release_built'] = [
                     'version'      => $version_full,

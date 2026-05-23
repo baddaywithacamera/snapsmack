@@ -129,6 +129,36 @@ try {
     );
     $stmt->execute([date('Y-m-d H:i:s')]);
 
+    // --- SMACKBACK: file integrity verification ---
+    require_once "{$root}/core/smackback.php";
+    $smack_settings = $pdo->query(
+        "SELECT setting_key, setting_val FROM snap_settings
+         WHERE setting_key IN ('smackback_enabled', 'smackback_mode')"
+    )->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    if (($smack_settings['smackback_enabled'] ?? '0') === '1') {
+        $smack_result = smackback_verify_all();
+        if ($smack_result['status'] === 'breach') {
+            smackback_handle_breach(
+                $smack_result['tampered'],
+                $smack_result['missing'],
+                $smack_result['truncated'] ?? [],
+                $smack_result['corrupted'] ?? []
+            );
+            echo "SMACKBACK BREACH DETECTED: "
+               . count($smack_result['tampered'])  . " tampered, "
+               . count($smack_result['truncated'] ?? []) . " truncated, "
+               . count($smack_result['corrupted'] ?? []) . " corrupted, "
+               . count($smack_result['missing'])   . " missing. Alert sent.\n";
+        } else {
+            $pdo->prepare(
+                "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackback_last_full_verify', ?)
+                 ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+            )->execute([date('Y-m-d H:i:s')]);
+            echo "SMACKBACK: {$smack_result['ok']} files verified clean in {$smack_result['duration']}s.\n";
+        }
+    }
+
     // CLI output for cron logs
     $msg = "SnapSmack version check complete. ";
     $msg .= "Core: {$core_status}. ";

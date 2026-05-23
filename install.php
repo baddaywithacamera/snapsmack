@@ -1374,6 +1374,14 @@ HTACCESS;
         @chmod(__DIR__ . '/core/db.php', 0644);
     }
 
+    // --- SMACKBACK: Baseline from disk ---
+    // Hash all monitored files post-extraction. Files on disk came from
+    // an Ed25519-verified package, so this is a trusted baseline.
+    if (empty($errors)) {
+        require_once __DIR__ . '/core/smackback.php';
+        smackback_init_from_disk();
+    }
+
     // --- SELF-DELETE ---
     $self_deleted = false;
     if (empty($errors)) {

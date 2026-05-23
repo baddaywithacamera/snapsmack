@@ -123,7 +123,19 @@ foreach ($slugs as $slug) {
         continue;
     }
 
-    $file_count = add_directory_to_zip($zip, $skin_path, $slug, $exclude);
+    $file_count   = add_directory_to_zip($zip, $skin_path, $slug, $exclude);
+    $smack_hashes = collect_smackback_hashes($skin_path, $slug, $exclude);
+
+    // Add SMACKBACK manifest before signing
+    $smackback_manifest = json_encode([
+        'smackback_version' => 1,
+        'package_version'   => $version,
+        'skin_id'           => $slug,
+        'generated_at'      => gmdate('Y-m-d\TH:i:s\Z'),
+        'files'             => $smack_hashes,
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    $zip->addFromString('smackback-manifest.json', $smackback_manifest);
+
     $zip->close();
 
     // Checksum
@@ -197,6 +209,72 @@ function add_directory_to_zip(ZipArchive $zip, string $source, string $zip_prefi
     }
 
     return $count;
+}
+
+/**
+ * Collect SHA-256 hashes of all monitored skin files for the SMACKBACK manifest.
+ * Returns array keyed by zip-relative path (e.g. "slug/header.php").
+ *
+ * @param  string   $source      Absolute path to skin directory on disk.
+ * @param  string   $zip_prefix  Zip prefix (skin slug, e.g. "chaplin").
+ * @param  string[] $exclude     Filenames to exclude (same list as add_directory_to_zip).
+ * @return array<string, array{hash: string, size: int, eof_signature: string|null}>
+ */
+function collect_smackback_hashes(string $source, string $zip_prefix, array $exclude): array {
+    $hashes   = [];
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($source, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST
+    );
+
+    foreach ($iterator as $item) {
+        if (!$item->isFile()) {
+            continue;
+        }
+        if (in_array($item->getBasename(), $exclude, true)) {
+            continue;
+        }
+
+        $ext = strtolower($item->getExtension());
+        if (!in_array($ext, ['php', 'css', 'js'], true)) {
+            continue;
+        }
+
+        $basename = $item->getBasename();
+        if (str_ends_with($basename, '.min.js') || str_ends_with($basename, '.min.css')) {
+            continue;
+        }
+
+        $relative = substr($item->getPathname(), strlen($source) + 1);
+        $zip_path = $zip_prefix . '/' . str_replace('\\', '/', $relative);
+        $content  = file_get_contents($item->getPathname());
+
+        if ($content !== false) {
+            $hashes[$zip_path] = [
+                'hash'          => hash('sha256', $content),
+                'size'          => strlen($content),
+                'eof_signature' => smackback_build_eof_signature($content),
+            ];
+        }
+    }
+
+    return $hashes;
+}
+
+/**
+ * Compute the EOF signature for a file's content string.
+ * Mirrors smackback_get_eof_signature() in core/smackback.php.
+ */
+function smackback_build_eof_signature(string $content): ?string {
+    if ($content === '') { return null; }
+    if (strpos($content, "\x00") !== false) { return 'NULL_BYTES'; }
+    $tail  = substr($content, -1024);
+    $lines = explode("\n", $tail);
+    for ($i = count($lines) - 1; $i >= 0; $i--) {
+        $line = rtrim($lines[$i]);
+        if ($line !== '') { return substr($line, 0, 512); }
+    }
+    return null;
 }
 
 function parse_args(array $argv): array {

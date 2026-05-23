@@ -12,6 +12,25 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.170 — "Wingback" (2026-05-22)
+
+### Added
+- **SMACKBACK — File Integrity Monitoring**: Automated sentinel software that ships in every SnapSmack install. Generates cryptographic SHA-256 hashes of all monitored PHP, CSS, and JS files (core + skins) at install and update time. Re-verifies on admin login, cron, and optionally on public page loads (mtime-only stat check — no file reads unless mtime changes). On confirmed tamper: email alert fires immediately, admin interface switches to a high-contrast BREACH skin (all CSS hardcoded inline — cannot be neutralised by file tampering). BREACH mode prevents admin navigation until tampered files are resolved. One-click restore: downloads current release from update server, verifies SHA-256 before writing to disk.
+  - **`core/smackback.php`** — all SMACKBACK functions: `smackback_init_manifest()`, `smackback_init_from_disk()`, `smackback_verify_all()`, `smackback_verify_quick()`, `smackback_verify_file()`, `smackback_handle_breach()`, `smackback_restore_file()`, `smackback_restore_all_breached()`, `smackback_resolve_breach()`, `smackback_is_breach()`, `smackback_get_monitored_files()`, `smackback_should_monitor()`, `smackback_render_breach()`, `smackback_send_alert()`, `smackback_init_skin_manifest()`, `smackback_remove_skin_manifest()`, `smackback_get_eof_signature()`, `smackback_check_eof()`, `smackback_classify_mismatch()`
+  - **`smack-smackback.php`** — admin page: status panel, breach detail with per-file restore buttons, manual verification, incident log (last 20), settings (enable/mode/email/pageload check), re-initialise baseline
+  - **`migrations/migrate-smackback.sql`** — creates `snap_file_manifest` and `snap_smackback_log` tables; seeds SMACKBACK settings in `snap_settings`
+  - **`database/schema/snapsmack_canonical.sql`** — `snap_file_manifest` and `snap_smackback_log` tables added
+  - **EOF Sentinel**: Integrated into every SMACKBACK verification pass. At baseline time, the last non-empty line of each monitored file is recorded as `eof_signature` in `snap_file_manifest` (and in the build-time `smackback-manifest.json`). On hash mismatch, the EOF signal matrix distinguishes three causes: **Tampered** (hash changed, EOF intact — active modification), **Truncated** (last line differs — write failure or partial transfer), **Corrupted** (null bytes in last 64 bytes — filesystem fault or failed atomic write). Each cause is stored as a distinct `last_status` value, shown with distinct colours in the breach UI, and reported separately in alert emails. `snap_file_manifest.last_status` ENUM extended to include `truncated` and `corrupted`.
+  - **Build pipeline**: `tools/_build/build-release.php`, `build-skin-package.php`, `package-skin.php` now generate per-file SHA-256 hashes and EOF signatures, embedding both in `smackback-manifest.json` in every release and skin ZIP. Manifest is covered by the package-level Ed25519 signature.
+  - **Response modes**: Alert (banner only), Lockout (full admin redirect, default), Paranoid (Lockout + Phase 2 hub reporting stub)
+  - **Integration hooks**: admin login verify (smack-admin.php), cron verify (cron-version-check.php), post-update manifest refresh (smack-update.php both paths), skin install/remove (core/skin-registry.php), fresh install baseline (install.php), breach gate on all admin pages (core/auth-smack.php), public pageload stat check (all 8 public pages)
+  - **Phase 2 stub**: Hub/spoke breach correlation hook is wired in paranoid mode (no-op in this build); implementation deferred to next cycle
+  - **smack-help.php** — SMACKBACK topic updated with full operational detail including EOF Sentinel signal matrix (TAMPERED / TRUNCATED / CORRUPTED explanations for admins)
+  - **smack-settings.php** — SMACKBACK status widget + link added to the Security section
+- secaudits/2026-05-22-017-smackback-file-integrity-monitoring.pdf — security review of the SMACKBACK implementation: vaporware-to-implementation gap (Finding 1), BREACH page design rationale and re-initialise risk (Finding 2), Phase 2 cross-spoke correlation deferral (Finding 3)
+
+---
+
 ## 0.7.169 — "Chesterfield" (2026-05-22)
 
 ### Fixed

@@ -1,0 +1,30 @@
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+.fj-gallery {
+  position: relative;
+  overflow: hidden;
+}
+.fj-gallery::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+.fj-gallery .fj-gallery-item {
+  float: left;
+  top: 0;
+  left: 0;
+}
+.fj-gallery .fj-gallery-item > img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+/* ===== SNAPSMACK EOF ===== */

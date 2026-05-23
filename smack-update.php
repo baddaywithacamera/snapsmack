@@ -947,6 +947,19 @@ if ($action === 'stage_migrate'
         }
 
         $pdo->exec("DELETE FROM snap_settings WHERE setting_key = 'update_check_result'");
+
+        // SMACKBACK: refresh file integrity manifest before cleanup deletes the ZIP
+        $smack_zip = $stage_state['zip_path'] ?? '';
+        if ($smack_zip && file_exists($smack_zip)) {
+            require_once __DIR__ . '/core/smackback.php';
+            $smack_ok = smackback_init_manifest($smack_zip);
+            $_SESSION['update_state']['log'][] = [
+                'label'  => 'SMACKBACK manifest',
+                'status' => $smack_ok ? 'ok' : 'warn',
+                'detail' => $smack_ok ? 'File hashes refreshed from update package' : 'Manifest not in package — skipped',
+            ];
+        }
+
         updater_cleanup();
         updater_prune_backups(3);
 
@@ -1148,6 +1161,21 @@ if ($action === 'stage_migrate_upload' && !empty($_SESSION['upload_migrate_pendi
         }
 
         $pdo->exec("DELETE FROM snap_settings WHERE setting_key = 'update_check_result'");
+
+        // SMACKBACK: refresh file integrity manifest before cleanup (upload path)
+        $smack_upload_zip = UPDATER_TEMP_DIR . '/snapsmack-upload.zip';
+        if (file_exists($smack_upload_zip)) {
+            if (!function_exists('smackback_init_manifest')) {
+                require_once __DIR__ . '/core/smackback.php';
+            }
+            $smack_ok = smackback_init_manifest($smack_upload_zip);
+            $upload_steps[] = [
+                'label'  => 'SMACKBACK manifest',
+                'status' => $smack_ok ? 'ok' : 'warn',
+                'detail' => $smack_ok ? 'File hashes refreshed from uploaded package' : 'Manifest not in package — skipped',
+            ];
+        }
+
         updater_cleanup();
         updater_prune_backups(3);
 

@@ -228,6 +228,55 @@ foreach ($files_to_include as $file) {
     $file_count++;
 }
 
+// ─── SMACKBACK MANIFEST ─────────────────────────────────────────────────────
+// Generate per-file SHA-256 hashes for ALL monitored files at $to_tag.
+// Written into the ZIP before signing. Covered by the Ed25519 signature.
+
+echo "\nGenerating SMACKBACK manifest...\n";
+
+$all_files_raw = shell_exec(
+    'git ls-tree -r --name-only ' . escapeshellarg($to_tag) . ' 2>/dev/null'
+);
+
+$smackback_files  = [];
+$smackback_errors = 0;
+
+if ($all_files_raw) {
+    $all_files = array_filter(explode("\n", trim($all_files_raw)));
+    foreach ($all_files as $rel_path) {
+        if (!smackback_build_should_monitor($rel_path)) {
+            continue;
+        }
+        $content = shell_exec(sprintf(
+            'git show %s:%s 2>/dev/null',
+            escapeshellarg($to_tag),
+            escapeshellarg($rel_path)
+        ));
+        if ($content === null) {
+            echo "  WARN  SMACKBACK: Could not read {$rel_path}\n";
+            $smackback_errors++;
+            continue;
+        }
+        $smackback_files[$rel_path] = [
+            'hash'          => hash('sha256', $content),
+            'size'          => strlen($content),
+            'eof_signature' => smackback_build_eof_signature($content),
+        ];
+    }
+}
+
+$smackback_manifest = json_encode([
+    'smackback_version' => 1,
+    'package_version'   => $to_ver,
+    'generated_at'      => gmdate('Y-m-d\TH:i:s\Z'),
+    'files'             => $smackback_files,
+], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+$zip->addFromString('smackback-manifest.json', $smackback_manifest);
+
+$manifest_count = count($smackback_files);
+echo "  → {$manifest_count} files hashed" . ($smackback_errors ? ", {$smackback_errors} errors" : '') . "\n";
+
 $zip->close();
 
 $checksum = hash_file('sha256', $zip_path);
@@ -371,6 +420,64 @@ function is_protected(string $path, array $protected): bool {
         }
     }
     return false;
+}
+
+/**
+ * Determine if a relative path should be included in the SMACKBACK manifest.
+ * Mirrors the rules in core/smackback.php smackback_should_monitor().
+ * Standalone (no runtime dependency) so it works in the build tool context.
+ */
+function smackback_build_should_monitor(string $rel): bool {
+    $ext = strtolower(pathinfo($rel, PATHINFO_EXTENSION));
+    if (!in_array($ext, ['php', 'css', 'js'], true)) {
+        return false;
+    }
+
+    $excluded_dirs = [
+        'uploads/', 'smack-central/', 'reference/', 'node_modules/',
+        'vendor/', 'tools/', 'backups/', 'migrations/',
+    ];
+    foreach ($excluded_dirs as $dir) {
+        if (strpos($rel, $dir) === 0) {
+            return false;
+        }
+    }
+
+    $basename = basename($rel);
+    if (str_ends_with($basename, '.min.js') || str_ends_with($basename, '.min.css')) {
+        return false;
+    }
+    if (strpos($rel, 'fjGallery') !== false) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Compute the EOF signature for a file's content string.
+ * Mirrors smackback_get_eof_signature() in core/smackback.php.
+ * Used at build time so the manifest carries the expected last line.
+ *
+ * @param  string $content  Full file content.
+ * @return string|null  Last non-empty line (≤512 chars), 'NULL_BYTES', or null.
+ */
+function smackback_build_eof_signature(string $content): ?string {
+    if ($content === '') {
+        return null;
+    }
+    if (strpos($content, "\x00") !== false) {
+        return 'NULL_BYTES';
+    }
+    $tail  = substr($content, -1024);
+    $lines = explode("\n", $tail);
+    for ($i = count($lines) - 1; $i >= 0; $i--) {
+        $line = rtrim($lines[$i]);
+        if ($line !== '') {
+            return substr($line, 0, 512);
+        }
+    }
+    return null;
 }
 
 function parse_args(array $argv): array {

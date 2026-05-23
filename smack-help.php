@@ -1255,21 +1255,75 @@ $help_topics['smackback'] = [
     'role'     => 'admin',
     'content'  => <<<'HTML'
 <h3>SMACKBACK — File Integrity Monitoring</h3>
-<p>SMACKBACK is automated sentinel software that ships in every install and runs without
-configuration. It monitors SNAPSMACK's own PHP, JavaScript, and CSS files for unauthorized
-modification — hashing them at install time and re-verifying on a schedule, on every admin
-login, and on every skin load.</p>
+<p>SMACKBACK is automated sentinel software that ships in every SnapSmack install. It hashes
+every PHP, CSS, and JavaScript file at install and update time, then re-verifies those hashes
+on every admin login, every cron run, and optionally on public page loads. If a file has been
+modified since the last known good state, SMACKBACK catches it and won't let it go quietly.</p>
 
-<h4>When a Tamper Is Detected</h4>
-<p>Confirmed tamper is unmissable. The admin interface switches to a high-contrast BREACH skin
-that cannot be dismissed until the incident is resolved. An email alert fires immediately.
-The incident response procedure kicks in automatically.</p>
+<h4>What Gets Monitored</h4>
+<p>All PHP, CSS, and JS files in the install root and subdirectories are monitored — including
+skin files. Skins contain PHP templates that execute on every page load and are a prime target
+for backdoor insertion. Excluded: uploads/, user content, minified third-party assets, and
+anything in tools/ or smack-central/.</p>
 
-<h4>Hub/Spoke Escalation</h4>
-<p>On hub/spoke networks, tamper alerts are sent upstream and cross-correlated across all
-spokes. The same file modified at multiple sites in sequence isn't a coincidence — it's a
-coordinated attack. The response escalates accordingly, and the network can issue an emergency
-broadcast to put every connected admin on notice simultaneously.</p>
+<h4>How to Enable It</h4>
+<p>Go to <strong>Admin → SMACKBACK</strong> and toggle Enable on. Choose a response mode
+(Lockout is recommended). Optionally enable the pageload stat check — it's a filesystem
+metadata-only operation that costs essentially nothing per request. Save.</p>
+
+<h4>Response Modes</h4>
+<p><strong>Alert:</strong> Tamper detected → email fires → a prominent warning banner appears
+in your admin header on every page. You can still use the admin. The banner won't go away
+until you resolve the tamper.</p>
+<p><strong>Lockout (recommended):</strong> Tamper detected → email fires → all admin pages
+redirect to the SMACKBACK breach page. You can't post, configure, or navigate anywhere else
+until the tampered files are resolved. This is what it's supposed to do.</p>
+<p><strong>Paranoid:</strong> Same as Lockout, plus a hook for hub/spoke breach reporting
+(Phase 2 — coming in a future release).</p>
+
+<h4>When a Breach Fires</h4>
+<p>You'll get an email immediately. In Lockout mode, every admin page redirects to a
+high-contrast BREACH screen that lists every affected file with its status. From there you
+can restore each file individually from the update server, or run a full update instead.
+The breach cannot be dismissed — resolving it clears it.</p>
+
+<h4>EOF Sentinel — What the Status Labels Mean</h4>
+<p>SMACKBACK doesn't just detect that a file changed — it tells you how. The status label on
+each affected file tells you what kind of change was detected:</p>
+<p><strong>TAMPERED:</strong> Hash changed but the file's last line still matches the baseline.
+The content was modified but the file is structurally intact. This is what active backdoor
+insertion looks like — a PHP file with injected code at the top that ends with the same EOF
+line it always had.</p>
+<p><strong>TRUNCATED:</strong> Hash changed and the last line doesn't match the baseline. The
+file ends earlier than expected. This is what a partial write, a failed FTP transfer, or a
+write failure during an update looks like — not necessarily malicious, but the file is broken
+and needs to be restored regardless.</p>
+<p><strong>CORRUPTED:</strong> Null bytes found near the end of the file. This is what a
+filesystem fault, a disk-full write failure, or an interrupted atomic write looks like. The
+file is unreadable or partially zeroed.</p>
+<p><strong>MISSING:</strong> File not found on disk at all.</p>
+<p>TRUNCATED and CORRUPTED usually indicate an infrastructure problem rather than an attacker.
+After restoring, check disk health, FTP logs, and whether a botched update caused the damage.</p>
+
+<h4>Restoring Files</h4>
+<p>SMACKBACK downloads the current release package from the update server, extracts the
+specific file, verifies its SHA-256 hash matches the expected baseline, then writes it to
+disk. If the hash doesn't match (i.e. the update server has a different version than what
+you installed), it'll tell you and suggest running a full update instead.</p>
+
+<h4>After a Breach</h4>
+<p>Restoring files fixes the immediate problem. You still need to figure out how the files got
+modified. Check your FTP access logs, your hosting panel audit trail, and any other server
+access logs you have. Change your FTP credentials. If you can't explain the modification,
+treat it as an active compromise and act accordingly.</p>
+
+<h4>False Positives</h4>
+<p>SMACKBACK is designed to avoid false positives. Oh Snap! CSS customisations are written to
+the database, not to disk — they won't trigger SMACKBACK. Skin installs and updates via the
+Skin Gallery automatically refresh the file manifest before writing new files. SnapSmack
+updates refresh the manifest before cleanup. The Re-initialise Baseline button in SMACKBACK
+settings lets you re-hash from disk after any legitimate manual edit — use it carefully, and
+never during an active breach.</p>
 
 <h4>What It Does Not Prevent</h4>
 <p>SMACKBACK detects tampering — it does not prevent it. Total server compromise (shell,

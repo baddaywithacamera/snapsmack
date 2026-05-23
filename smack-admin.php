@@ -25,6 +25,43 @@ if (!isset($settings)) {
     $settings = $_s->fetchAll(PDO::FETCH_KEY_PAIR);
 }
 
+// --- SMACKBACK: full verify on login, breach gate on every load ---
+if (($settings['smackback_enabled'] ?? '0') === '1') {
+    require_once 'core/smackback.php';
+
+    // Lockout/paranoid: redirect all admin pages to breach page if status = breach
+    if (($settings['smackback_mode'] ?? 'lockout') !== 'alert' && smackback_is_breach()) {
+        smackback_render_breach($settings);
+        exit;
+    }
+
+    // Run full verify once per login session (not on every page load)
+    if (empty($_SESSION['smackback_verified_this_session'])) {
+        $_SESSION['smackback_verified_this_session'] = true;
+        $smack_result = smackback_verify_all();
+        if ($smack_result['status'] === 'breach') {
+            smackback_handle_breach(
+                $smack_result['tampered'],
+                $smack_result['missing'],
+                $smack_result['truncated'] ?? [],
+                $smack_result['corrupted'] ?? []
+            );
+            // Reload $settings to pick up the new breach status
+            $_s = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
+            $settings = $_s->fetchAll(PDO::FETCH_KEY_PAIR);
+            if (($settings['smackback_mode'] ?? 'lockout') !== 'alert') {
+                smackback_render_breach($settings);
+                exit;
+            }
+        } else {
+            $pdo->prepare(
+                "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackback_last_full_verify', ?)
+                 ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+            )->execute([date('Y-m-d H:i:s')]);
+        }
+    }
+}
+
 // --- EARLY CRON DETECTION ---
 // Must run before any POST handlers that depend on $cron_supported.
 // admin-header.php also sets these, but it loads after the handlers.

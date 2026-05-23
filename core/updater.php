@@ -86,6 +86,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-users-ui-mode.sql',
     'migrate-collections-name-to-title.sql',
     'migrate-chaplin-presets.sql',
+    'migrate-smackback.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────

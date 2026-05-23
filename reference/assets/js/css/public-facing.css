@@ -1,0 +1,385 @@
+/**
+ * SNAPSMACK - Global public-facing asset styles
+ *
+ * Archive grid layouts, image alignment, and shortcode styling for public site.
+ */
+
+/* --- GLOBAL ASSET CONTAINER ---
+   Applied to every image injected via shortcode */
+.snapsmack-asset {
+    display: block;
+    height: auto;
+    max-width: 100%;
+    margin-top: 25px;
+    margin-bottom: 25px;
+}
+
+/* 1. SIZE OVERRIDES
+   -------------------------------------------------------------------------
+   !important is used to ensure these override theme-specific image rules. */
+
+/* Small: 300px width */
+.asset-small {
+    width: 300px !important;
+}
+
+/* Medium: 600px width */
+.asset-medium {
+    width: 600px !important;
+}
+
+/* Full: 100% width */
+.asset-full {
+    width: 100% !important;
+}
+
+/* 2. ALIGNMENT LOGIC
+   ------------------------------------------------------------------------- */
+
+/* Left: Text wraps around the right */
+.align-left {
+    float: left;
+    margin-right: 25px;
+    margin-bottom: 15px;
+}
+
+/* Right: Text wraps around the left */
+.align-right {
+    float: right;
+    margin-left: 25px;
+    margin-bottom: 15px;
+}
+
+/* Center: No wrapping, centered in container */
+.align-center {
+    float: none;
+    margin-left: auto;
+    margin-right: auto;
+    clear: both;
+}
+
+/* 3. PAGE HERO (STATIC PAGES)
+   -------------------------------------------------------------------------
+   Base styling for the hero image on static pages (page.php).
+   Skins override via .static-transmission #photobox.page-hero. */
+.page-hero {
+    margin-bottom: 0;
+}
+.page-hero .main-photo {
+    text-align: center;
+}
+.page-hero .main-photo img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+/* 4. INLINE IMAGE FRAMES (PARSER SHORTCODES)
+   -------------------------------------------------------------------------
+   Rendered by core/parser.php from [img:ID|size|align] shortcodes.
+   Ensures block-level spacing when images sit inside .description text. */
+.snap-inline-frame {
+    margin: 1.5em auto;
+    text-align: center;
+}
+.snap-inline-frame.align-left {
+    float: left;
+    margin: 0.25em 1.5em 1em 0;
+}
+.snap-inline-frame.align-right {
+    float: right;
+    margin: 0.25em 0 1em 1.5em;
+}
+.snap-inline-frame img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* 5. CONTENT LINKS (BASE FALLBACK)
+   -------------------------------------------------------------------------
+   Ensures links inside description/static content are always visually
+   distinct even if a skin forgets to style them. Skins override. */
+.description a,
+.static-content a:not(.nav-menu a) {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.description a:hover,
+.static-content a:not(.nav-menu a):hover {
+    opacity: 0.8;
+}
+
+/* Links wrapping images — no underline or decoration */
+.description a:has(img),
+.static-content a:has(img),
+.snap-inline-frame a,
+.description a img,
+.static-content a img {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
+/* 6. CLEARFIX
+   -------------------------------------------------------------------------
+   Prevents floated images from overlapping following sections. 
+   Targeting standard SnapSmack content containers. */
+.description::after, 
+.static-content::after, 
+.post-content::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+/* 7. SCRAPER PROTECTION
+   ------------------------------------------------------------------------- 
+   Applied to the reversed email string injected via core/footer.php.
+   Thwarts automated harvesters by presenting gibberish in the source code
+   while displaying it correctly for the human eye. */
+.reverse-email {
+    display: inline-block;
+    unicode-bidi: bidi-override;
+    direction: rtl;
+}
+
+/* 8. ARCHIVE LAYOUT ENGINE
+   -------------------------------------------------------------------------
+   Three display modes for the archive grid, driven by skin manifest.
+   Square = 1:1 cropped | Cropped = clamped aspect | Justified = row-fill
+
+   CROPPED LOGIC:
+   - Landscapes wider than 3:2 are clamped to 3:2
+   - Portraits taller than 2:3 are clamped to 2:3
+   - Anything between keeps natural aspect
+   - Portrait cells are scaled down so they don't dominate landscapes.
+     A landscape at 3:2 fills the cell. A portrait at 2:3 is displayed
+     at ~67% cell width, centered, giving equal visual weight.          */
+
+/* --- SQUARE GRID (default) --- */
+/* Columns from --grid-cols (GlobalVibe BROWSE COLUMNS).
+   Thumb size from --thumb-width (GlobalVibe THUMBNAIL SIZE).
+   Gap from --grid-gap (core vars / GlobalVibe). */
+.square-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 200px));
+    gap: var(--grid-gap, 50px);
+    padding: 0;
+    justify-content: center;
+}
+.square-grid .thumb-container {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+}
+.square-grid .thumb-link {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    box-sizing: border-box;
+}
+.square-grid .thumb-link img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* --- CROPPED GRID (clamped aspect, proportional portraits) --- */
+.cropped-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 200px));
+    gap: var(--grid-gap, 50px);
+    padding: 0;
+    justify-content: center;
+}
+.cropped-grid .thumb-container {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+/* Landscape default: full cell width, 3:2 max crop */
+.cropped-grid .thumb-link {
+    display: block !important;
+    width: 100% !important;
+    overflow: hidden;
+    aspect-ratio: 3 / 2 !important;
+}
+/* Portrait: 2:3 aspect, scaled to ~75% cell width for visual balance */
+.cropped-grid .thumb-link.orient-portrait {
+    width: 75% !important;
+    aspect-ratio: 2 / 3 !important;
+}
+/* Square: 1:1 aspect, scaled to ~90% cell width */
+.cropped-grid .thumb-link.orient-square {
+    width: 90% !important;
+    aspect-ratio: 1 / 1 !important;
+}
+.cropped-grid .thumb-link img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+    display: block;
+}
+
+/* --- JUSTIFIED GRID (Own container: #justified-grid) --- */
+/* Completely separate from #browse-grid. No shared selectors.         */
+/* Each row is a flex container. Items get flex-grow proportional to    */
+/* their aspect ratio, so the browser fills the row perfectly at any    */
+/* container width. Row height is controlled by --justified-row-height. */
+#justified-grid {
+    position: relative;
+    width: 100%;
+}
+#justified-grid .justified-row {
+    display: flex;
+    gap: var(--justified-gap, 4px);
+    margin-bottom: var(--justified-gap, 4px);
+    /* No fixed height — each item's aspect-ratio + flex-basis:0 + flex-grow
+       proportional to AR means all items in a row naturally resolve to the
+       same height at the actual viewport width.  Zero cropping. */
+}
+/* Last/partial row: don't stretch to fill the width.
+   Height matches the row above via --last-row-ar-sum (the sum of aspect
+   ratios from the last full row).  100vw / ar_sum ≈ that row's height. */
+#justified-grid .justified-row-last {
+    height: calc(100vw / var(--last-row-ar-sum, 7));
+}
+#justified-grid .justified-row-last .justified-item {
+    flex-grow: 0 !important;
+    flex-basis: auto !important;
+    height: 100%;
+}
+#justified-grid .justified-row-last .justified-item img {
+    width: auto;
+    height: 100%;
+}
+#justified-grid .justified-item {
+    display: block;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+    /* flex-grow, flex-basis: 0, and aspect-ratio set inline by PHP */
+}
+#justified-grid .justified-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* --- Frame reset: prevent ANY border/shadow from bleeding into justified grid --- */
+#justified-grid .justified-item,
+#justified-grid .justified-item a,
+#justified-grid .justified-item img {
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* --- ARCHIVE SEARCH & FILTER CONTROLS --- */
+.archive-search-form {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+}
+
+.archive-search-status {
+    text-align: center;
+    padding: 15px 0 0;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+}
+
+.archive-search-status a {
+    color: var(--accent);
+}
+
+.archive-tags-row {
+    justify-content: center;
+    padding: 12px 0 0;
+}
+
+/* --- 404 / EMPTY STATE --- */
+.not-found-msg {
+    text-align: center;
+    padding: 80px 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.2rem;
+    color: var(--text-dim, #999);
+}
+
+/* --- ARCHIVE RESPONSIVE --- */
+@media (max-width: 768px) {
+    .square-grid,
+    .cropped-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+/* 9. FLOATING GALLERY — MOBILE GATE
+   -------------------------------------------------------------------------
+   Hides the wall nav link on small/touch screens. The wall is a
+   desktop-only 3D experience — mobile users get the archive grid. */
+@media (max-width: 768px) {
+    .wall-nav-item { display: none !important; }
+}
+
+/* 10. LANDING-ONLY MODE
+   -------------------------------------------------------------------------
+   When landing_only is active the body gets .landing-only and all skin
+   header wrappers are hidden, leaving a clean full-page landing experience. */
+body.landing-only #header,
+body.landing-only .ge-header,
+body.landing-only .pickup-header,
+body.landing-only .snt-header,
+body.landing-only .tg-topbar { display: none; }
+
+/* 11. TABLET TOUCH TARGETS (pointer: coarse)
+   -------------------------------------------------------------------------
+   On touch devices (tablets, touchscreens) nav links are too small for
+   reliable finger tapping. This rule enlarges the tap area to meet the
+   WCAG 2.5.5 recommended minimum of 44px without changing visual layout.
+   pointer: coarse = touch/stylus input; no effect on desktop mouse users. */
+@media (pointer: coarse) {
+    .nav-menu a,
+    .nav-links a {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+    }
+}
+
+/* 12. ARCHIVE LAYOUT TOGGLE
+   -------------------------------------------------------------------------
+   Visitor-facing layout switcher shown when the site owner has enabled
+   multiple archive modes. Skins can override via their own style.css. */
+.archive-layout-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 0 4px;
+}
+.archive-layout-toggle .alt-btn {
+    display: inline-block;
+    padding: 4px 14px;
+    font-size: 0.72em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    opacity: 0.45;
+    transition: opacity 0.15s;
+}
+.archive-layout-toggle .alt-btn:hover   { opacity: 0.85; }
+.archive-layout-toggle .alt-btn--active { opacity: 1; }

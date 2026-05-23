@@ -1,15 +1,16 @@
 /**
  * SNAPSMACK - Dual Drawer Controller
  *
- * Rational Geo drawer engine: comments slide DOWN from below the header
- * (masthead section), info/caption slides UP from above the infobox.
- * Both drawers are position:absolute overlays — they float over the photobox
- * without compressing it. Intercepts core nav-bar buttons so ss-engine-footer.js
- * is bypassed (no #footer element means it no-ops).
+ * Rational Geo drawer engine:
+ *   - Comments slide DOWN from below the header (position:absolute overlay).
+ *   - Info/caption is an in-flow footer below #infobox — same pattern as
+ *     50-shades #footer. Shown with display:block + scrollIntoView; hidden
+ *     with display:none. Page scroll is enabled (spacebar navigation still
+ *     works because ss-engine-comms.js calls e.preventDefault() on Space).
  *
  * Depends on DOM elements:
- *   #rg-info-drawer     — bottom-up caption drawer
- *   #rg-comments-drawer — top-down comments drawer
+ *   #rg-info-drawer     — in-flow info footer below #infobox
+ *   #rg-comments-drawer — top-down comments overlay (position:absolute)
  *   #show-details       — nav bar info button
  *   #show-comments      — nav bar comments button
  */
@@ -30,26 +31,28 @@ document.addEventListener('DOMContentLoaded', function() {
     var btnComm    = document.getElementById('show-comments');
     var ease       = 'max-height 0.4s cubic-bezier(.2,.9,.2,1)';
 
-    function initDrawer(el) {
+    // --- Comments drawer (position:absolute overlay — max-height animation) ---
+
+    function initCommDrawer(el) {
         if (!el) return;
         el.style.maxHeight = '0';
         el.style.overflow  = 'hidden';
         el.style.transition = ease;
     }
 
-    function openDrawer(el) {
+    function openCommDrawer(el) {
         if (!el) return;
         el.style.maxHeight = el.scrollHeight + 'px';
         var onEnd = function(ev) {
             if (ev.propertyName !== 'max-height') return;
             el.removeEventListener('transitionend', onEnd);
             el.style.maxHeight = 'none';
-            el.style.overflow  = 'auto'; /* scrollable if content taller than overlay zone */
+            el.style.overflow  = 'auto';
         };
         el.addEventListener('transitionend', onEnd);
     }
 
-    function closeDrawer(el, cb) {
+    function closeCommDrawer(el, cb) {
         if (!el) return;
         el.style.overflow  = 'hidden';
         el.style.maxHeight = el.scrollHeight + 'px';
@@ -63,39 +66,57 @@ document.addEventListener('DOMContentLoaded', function() {
         el.addEventListener('transitionend', onEnd);
     }
 
-    function isOpen(el) {
+    function isCommOpen(el) {
         return el && (el.style.maxHeight !== '0' && el.style.maxHeight !== '0px');
     }
 
-    initDrawer(infoDrawer);
-    initDrawer(commDrawer);
+    // --- Info footer (in-flow below #infobox — display toggle + scrollIntoView) ---
 
-    // --- Toggle info (bottom-up caption block) ---
+    function isInfoOpen(el) {
+        return el && el.style.display === 'block';
+    }
+
+    function openInfoFooter(el) {
+        if (!el) return;
+        el.style.display = 'block';
+        requestAnimationFrame(function() {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+
+    function closeInfoFooter(el) {
+        if (!el) return;
+        el.style.display = 'none';
+    }
+
+    // --- Initialise ---
+    initCommDrawer(commDrawer);
+    // infoDrawer starts display:none via CSS — no JS init needed
+
+    // --- Toggle info (in-flow footer below infobox) ---
     if (btnInfo) {
         btnInfo.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopImmediatePropagation();
-            if (isOpen(infoDrawer)) {
-                closeDrawer(infoDrawer);
+            if (isInfoOpen(infoDrawer)) {
+                closeInfoFooter(infoDrawer);
             } else {
-                if (isOpen(commDrawer)) closeDrawer(commDrawer);
-                openDrawer(infoDrawer);
-                /* No scrollIntoView — drawer is a position:absolute overlay, not in-flow */
+                if (isCommOpen(commDrawer)) closeCommDrawer(commDrawer);
+                openInfoFooter(infoDrawer);
             }
         });
     }
 
-    // --- Toggle comments (top-down masthead section) ---
+    // --- Toggle comments (top-down overlay) ---
     if (btnComm) {
         btnComm.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopImmediatePropagation();
-            if (isOpen(commDrawer)) {
-                closeDrawer(commDrawer);
+            if (isCommOpen(commDrawer)) {
+                closeCommDrawer(commDrawer);
             } else {
-                if (isOpen(infoDrawer)) closeDrawer(infoDrawer);
-                openDrawer(commDrawer);
-                /* No scrollIntoView — drawer is a position:absolute overlay, not in-flow */
+                if (isInfoOpen(infoDrawer)) closeInfoFooter(infoDrawer);
+                openCommDrawer(commDrawer);
             }
         });
     }
@@ -108,8 +129,8 @@ document.addEventListener('DOMContentLoaded', function() {
         else if (target === 'comments' && btnComm) btnComm.click();
     };
     window.smackdown.closeFooter = function() {
-        if (isOpen(infoDrawer)) closeDrawer(infoDrawer);
-        if (isOpen(commDrawer)) closeDrawer(commDrawer);
+        closeInfoFooter(infoDrawer);
+        if (isCommOpen(commDrawer)) closeCommDrawer(commDrawer);
     };
 
 });
