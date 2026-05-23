@@ -31,6 +31,13 @@ if (!isset($settings['show_wall_link'])) {
 if (!$show_map_bg): ?>
 <style>:root { --rg-map-pct: 0 !important; }</style>
 <?php endif; ?>
+<?php
+// Drive --rg-canvas-width from the main_canvas_width setting so the header
+// and the justified grid stay in alignment. The CSS default of 1400px is just
+// a fallback for when this file isn't loaded (e.g. skin preview).
+$rg_canvas_px = max(600, (int)($settings['main_canvas_width'] ?? 1400));
+?>
+<style>:root { --rg-canvas-width: <?php echo $rg_canvas_px; ?>px; }</style>
 <div id="rg-header">
     <div class="rg-header-inside">
         <a href="<?php echo BASE_URL; ?>" class="rg-logo-link">

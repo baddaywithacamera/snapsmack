@@ -617,6 +617,8 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
   `last_backup_dest`    varchar(100)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `last_backup_status`  enum('ok','failed','unknown') COLLATE utf8mb4_unicode_ci DEFAULT 'unknown',
   `disk_usage_bytes`    bigint unsigned DEFAULT NULL,
+  `maintenance_mode`    tinyint(1)     NOT NULL DEFAULT 0
+                        COMMENT 'Cached from heartbeat: 1 = spoke is currently in maintenance mode',
   `status`              enum('active','offline','disconnected') COLLATE utf8mb4_unicode_ci DEFAULT 'active',
   `connected_at`        datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -1134,6 +1136,8 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
   `last_backup_dest`    varchar(100)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `last_backup_status`  enum('ok','failed','unknown') COLLATE utf8mb4_unicode_ci DEFAULT 'unknown',
   `disk_usage_bytes`    bigint unsigned DEFAULT NULL,
+  `maintenance_mode`    tinyint(1)     NOT NULL DEFAULT 0
+                        COMMENT 'Cached from heartbeat: 1 = spoke is currently in maintenance mode',
   `status`              enum('active','offline','disconnected') COLLATE utf8mb4_unicode_ci DEFAULT 'active',
   `connected_at`        datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),

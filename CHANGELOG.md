@@ -12,6 +12,22 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.171 — "Barcalounger" (2026-05-23)
+
+### Added
+- **Hub maintenance mode controls**: Hub administrators can now put individual spokes into maintenance mode remotely, or toggle all active spokes at once, directly from the Multisite Management dashboard. No need to remote-login into each spoke individually.
+  - Per-spoke MAINT ON / MAINT OFF toggle button in the Connected Spokes table
+  - MAINTENANCE ALL ON / MAINTENANCE ALL OFF bulk buttons above the table (with confirmation prompt)
+  - MAINT column shows current state for each spoke: orange dot = in maintenance, green dot = live
+  - Maintenance state is cached in `snap_multisite_nodes.maintenance_mode` and refreshed on every heartbeat sweep, so the dashboard always reflects current spoke state without an extra request
+  - New API endpoint: `POST multisite/maintenance/set` — hub-authenticated, accepts `{"mode": 1}` or `{"mode": 0}`, updates `snap_settings.maintenance_mode` on the spoke
+  - Heartbeat response now includes `maintenance_mode` field
+  - **`migrations/migrate-spoke-maintenance-mode.sql`** — adds `maintenance_mode TINYINT(1)` to `snap_multisite_nodes`
+- **Rational Geo — header/archive alignment fix**: The `.rg-header-inside` CSS container was hardcoded to `1400px` regardless of the `main_canvas_width` setting. `skin-header.php` now outputs `--rg-canvas-width` as an inline `:root` variable driven by `main_canvas_width`, so the header and the justified grid stay in alignment at any canvas width.
+
+### Fixed
+- **Release package bloat**: `reference/` (111 MB of skin screenshots, assets, and SQL backups) was inadvertently committed to git and not excluded from the release packager, causing the 0.7.170 package to balloon from ~1.1 MB to 73 MB. Added `reference/` to `always_exclude` in `smack-central/sc-release.php` and to `.gitignore`.
+
 ## 0.7.170 — "Wingback" (2026-05-22)
 
 ### Added
