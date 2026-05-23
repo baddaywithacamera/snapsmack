@@ -619,6 +619,12 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
   `disk_usage_bytes`    bigint unsigned DEFAULT NULL,
   `maintenance_mode`    tinyint(1)     NOT NULL DEFAULT 0
                         COMMENT 'Cached from heartbeat: 1 = spoke is currently in maintenance mode',
+  `smackback_status`    varchar(20)    NOT NULL DEFAULT 'unknown'
+                        COMMENT 'Cached from heartbeat + push: clean|breach|unknown',
+  `smackback_breach_at` datetime       DEFAULT NULL
+                        COMMENT 'When breach was first detected on this spoke',
+  `smackback_breach_files` mediumtext  COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                        COMMENT 'JSON: affected files from last breach report',
   `status`              enum('active','offline','disconnected') COLLATE utf8mb4_unicode_ci DEFAULT 'active',
   `connected_at`        datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -1138,6 +1144,12 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
   `disk_usage_bytes`    bigint unsigned DEFAULT NULL,
   `maintenance_mode`    tinyint(1)     NOT NULL DEFAULT 0
                         COMMENT 'Cached from heartbeat: 1 = spoke is currently in maintenance mode',
+  `smackback_status`    varchar(20)    NOT NULL DEFAULT 'unknown'
+                        COMMENT 'Cached from heartbeat + push: clean|breach|unknown',
+  `smackback_breach_at` datetime       DEFAULT NULL
+                        COMMENT 'When breach was first detected on this spoke',
+  `smackback_breach_files` mediumtext  COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                        COMMENT 'JSON: affected files from last breach report',
   `status`              enum('active','offline','disconnected') COLLATE utf8mb4_unicode_ci DEFAULT 'active',
   `connected_at`        datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),

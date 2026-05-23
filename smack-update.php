@@ -455,10 +455,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && !$stage_state && !$action) {
                 'total_notifications' => $cached_result['skin_notifications'] ?? 0,
             ];
         } else {
-            $action     = 'check';
-            $auto_check = true;
+            // Cache stale/missing — defer to JS retry loop, avoid sync red-banner on page load
+            $core_status = 'checking';
         }
     }
+}
+
+// ── AJAX CHECK ENDPOINT (JS retry loop calls this) ───────────────────────────
+if ($action === 'check_ajax') {
+    header('Content-Type: application/json');
+    $release_info_ax = updater_fetch_release_info();
+    $skin_info_ax    = updater_check_skin_registry($pdo);
+    $status_ax       = updater_check_status($installed_version, $release_info_ax, $installed_checksum);
+    if ($status_ax !== 'error') {
+        $core_upd_ax = null;
+        if ($status_ax === 'update_available') {
+            $core_upd_ax = [
+                'version'         => $release_info_ax['version']         ?? '',
+                'version_full'    => $release_info_ax['version_full']    ?? '',
+                'codename'        => $release_info_ax['codename']        ?? '',
+                'released'        => $release_info_ax['released']        ?? '',
+                'changelog'       => $release_info_ax['changelog']       ?? [],
+                'file_changes'    => $release_info_ax['file_changes']    ?? [],
+                'schema_changes'  => $release_info_ax['schema_changes']  ?? false,
+                'download_size'   => $release_info_ax['download_size']   ?? 0,
+                'requires_php'    => $release_info_ax['requires_php']    ?? '8.0',
+                'download_url'    => $release_info_ax['download_url']    ?? '',
+                'checksum_sha256' => $release_info_ax['checksum_sha256'] ?? '',
+                'signature'       => $release_info_ax['signature']       ?? '',
+            ];
+        }
+        $cache_ax = [
+            'checked_at'          => date('c'),
+            'installed_version'   => $installed_version,
+            'core_status'         => $status_ax,
+            'core_update'         => $core_upd_ax,
+            'new_skins'           => $skin_info_ax['new_skins']    ?? [],
+            'updated_skins'       => $skin_info_ax['updated_skins'] ?? [],
+            'skin_notifications'  => $skin_info_ax['total_notifications'] ?? 0,
+            'total_notifications' => ($core_upd_ax ? 1 : 0) + ($skin_info_ax['total_notifications'] ?? 0),
+        ];
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('update_check_result', ?)
+                       ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+            ->execute([json_encode($cache_ax, JSON_UNESCAPED_SLASHES)]);
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('last_update_check', ?)
+                       ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+            ->execute([date('Y-m-d H:i:s')]);
+        echo json_encode(['ok' => true]);
+    } else {
+        echo json_encode(['ok' => false]);
+    }
+    exit;
 }
 
 if ($action === 'check') {
@@ -1751,7 +1798,39 @@ include 'core/sidebar.php';
     <?php else: ?>
     <!-- ── PRIMARY STATUS CARD ── -->
     <div class="box update-section">
-        <?php if (!$cached_result || $cached_result['core_status'] === 'error'): ?>
+        <?php if ($core_status === 'checking'): ?>
+        <div class="update-status-badge" id="js-check-badge" style="opacity:0.7;">&#8987; CHECKING FOR UPDATES&hellip;</div>
+        <script>
+        (function () {
+            var csrf   = <?php echo json_encode($csrf); ?>;
+            var delays = [0, 500, 1500, 3000];
+            var attempt = 0;
+            function run() {
+                var fd = new FormData();
+                fd.append('action', 'check_ajax');
+                fd.append('csrf', csrf);
+                fetch(window.location.pathname, { method: 'POST', body: fd })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) { if (d.ok) { location.reload(); } else { retry(); } })
+                    .catch(retry);
+            }
+            function retry() {
+                attempt++;
+                if (attempt < delays.length) {
+                    setTimeout(run, delays[attempt]);
+                } else {
+                    document.getElementById('js-check-badge').outerHTML =
+                        '<div class="update-status-badge status-error">&#10007; COULD NOT REACH UPDATE SERVER</div>'
+                        + '<p class="dim" style="font-size:0.8rem;margin-top:12px;">Check your server's outbound HTTPS connection to snapsmack.ca.</p>'
+                        + '<form method="POST" class="mt-20"><input type="hidden" name="csrf" value="' + csrf + '">'
+                        + '<button type="submit" name="action" value="check" class="btn-smack">RETRY CHECK</button></form>';
+                }
+            }
+            setTimeout(run, delays[attempt]);
+        })();
+        </script>
+
+        <?php elseif (!$cached_result || $cached_result['core_status'] === 'error'): ?>
         <div class="update-status-badge status-error">&#10007; COULD NOT REACH UPDATE SERVER</div>
         <p class="dim" style="font-size:0.8rem;margin-top:12px;">Check your server&rsquo;s outbound HTTPS connection to snapsmack.ca.</p>
         <form method="POST" class="mt-20">

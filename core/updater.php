@@ -88,6 +88,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-chaplin-presets.sql',
     'migrate-smackback.sql',
     'migrate-spoke-maintenance-mode.sql',
+    'migrate-smackback-multisite.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────

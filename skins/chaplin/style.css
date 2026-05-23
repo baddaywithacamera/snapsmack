@@ -72,6 +72,13 @@ html, body {
   height: 100%;
 }
 
+/* Complete the flex chain so .chap-single { flex:1 } has a sized parent */
+#page-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 body {
   background-color: var(--chap-bg);
   color: var(--chap-ink);
@@ -243,7 +250,7 @@ a:hover {
   background-color: var(--chap-bg);
   margin-top: var(--header-height);
   position: relative;
-  overflow: visible;
+  overflow: hidden;
   box-sizing: border-box;
   flex-grow: 1;
   flex-shrink: 1;
