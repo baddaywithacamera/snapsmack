@@ -135,6 +135,9 @@ smack-central/KEY-ROTATION-INSTRUCTIONS.txt
 # Temporary reference copy of pixhellated.ca live site
 pixhellated_reference/
 
+# Reference snapshots — local-only, never ship
+reference/
+
 # Claude's session-continuity notes (gitignored — for future Claude sessions)
 _continuity/
 

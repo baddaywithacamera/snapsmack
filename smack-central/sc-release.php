@@ -258,6 +258,7 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         'migrations/',
         'database/',
         'data/',
+        'reference/',
         // Dev/meta files
         'CLAUDE.md',
         'CHANGELOG.md',
