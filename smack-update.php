@@ -440,8 +440,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && !$stage_state && !$action) {
         $core_update = null;
         $skin_info   = ['new_skins' => [], 'updated_skins' => [], 'total_notifications' => 0];
     } else {
-        $action     = 'check';
-        $auto_check = true;
+        // Only fire a live check if the cache is stale (>6 h) or was an error.
+        // Fresh non-error cache: hydrate page vars directly — no server round-trip.
+        $cache_age_secs = $last_check ? (time() - strtotime($last_check)) : PHP_INT_MAX;
+        $cached_ok = is_array($cached_result)
+                  && ($cached_result['core_status'] ?? '') !== ''
+                  && ($cached_result['core_status'] ?? '') !== 'error';
+        if ($cache_age_secs < 21600 && $cached_ok) {
+            $core_status = $cached_result['core_status'];
+            $core_update = $cached_result['core_update'] ?? null;
+            $skin_info   = [
+                'new_skins'           => $cached_result['new_skins']    ?? [],
+                'updated_skins'       => $cached_result['updated_skins'] ?? [],
+                'total_notifications' => $cached_result['skin_notifications'] ?? 0,
+            ];
+        } else {
+            $action     = 'check';
+            $auto_check = true;
+        }
     }
 }
 
@@ -468,42 +484,68 @@ if ($action === 'check') {
         ];
     }
 
-    $cached_result = [
-        'checked_at'          => date('c'),
-        'installed_version'   => $installed_version,
-        'core_status'         => $core_status,
-        'core_update'         => $core_update,
-        'new_skins'           => $skin_info['new_skins'],
-        'updated_skins'       => $skin_info['updated_skins'],
-        'skin_notifications'  => $skin_info['total_notifications'],
-        'total_notifications' => ($core_update ? 1 : 0) + $skin_info['total_notifications'],
-    ];
-
-    $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('update_check_result', ?)
-                           ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)");
-    $stmt->execute([json_encode($cached_result, JSON_UNESCAPED_SLASHES)]);
-
-    $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('last_update_check', ?)
-                           ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)");
-    $stmt->execute([date('Y-m-d H:i:s')]);
-    $last_check = date('Y-m-d H:i:s');
-
-    // Auto-check: only surface errors as flash — the status card shows everything else.
-    // Manual check: show a flash for all outcomes.
     if ($core_status === 'error') {
-        $flash_msg  = 'COULD NOT REACH UPDATE SERVER. CHECK YOUR CONNECTION.';
-        $flash_type = 'error';
-    } elseif (!$auto_check) {
-        if ($core_status === 'up_to_date' && $skin_info['total_notifications'] === 0) {
-            $flash_msg  = 'SYSTEM IS UP TO DATE. NO NEW SKINS AVAILABLE.';
-            $flash_type = 'success';
+        // Don't clobber a good cache with a transient network failure.
+        // Update the check timestamp so we don't retry on the very next page load,
+        // then fall back to the last known-good cache if one exists.
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('last_update_check', ?)
+                       ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+            ->execute([date('Y-m-d H:i:s')]);
+        $last_check = date('Y-m-d H:i:s');
+
+        $prev_ok = is_array($cached_result)
+               && ($cached_result['core_status'] ?? '') !== ''
+               && ($cached_result['core_status'] ?? '') !== 'error';
+        if ($prev_ok) {
+            // Restore page vars from last good cache; show a soft warning on manual check.
+            $core_status = $cached_result['core_status'];
+            $core_update = $cached_result['core_update'] ?? null;
+            $skin_info   = [
+                'new_skins'           => $cached_result['new_skins']    ?? [],
+                'updated_skins'       => $cached_result['updated_skins'] ?? [],
+                'total_notifications' => $cached_result['skin_notifications'] ?? 0,
+            ];
+            if (!$auto_check) {
+                $checked_date = date('M j', strtotime($cached_result['checked_at'] ?? 'now'));
+                $flash_msg  = 'COULD NOT REACH UPDATE SERVER — SHOWING LAST KNOWN STATE FROM ' . strtoupper($checked_date) . '.';
+                $flash_type = 'warning';
+            }
         } else {
-            $notifications = [];
-            if ($core_update) $notifications[] = "Core update available: v{$core_update['version']}";
-            if (count($skin_info['new_skins'])    > 0) $notifications[] = count($skin_info['new_skins'])    . " new skin(s) available";
-            if (count($skin_info['updated_skins']) > 0) $notifications[] = count($skin_info['updated_skins']) . " skin update(s) available";
-            $flash_msg  = strtoupper(implode(' — ', $notifications));
-            $flash_type = 'warning';
+            $flash_msg  = 'COULD NOT REACH UPDATE SERVER. CHECK YOUR CONNECTION.';
+            $flash_type = 'error';
+        }
+    } else {
+        // Successful check — write to cache.
+        $cached_result = [
+            'checked_at'          => date('c'),
+            'installed_version'   => $installed_version,
+            'core_status'         => $core_status,
+            'core_update'         => $core_update,
+            'new_skins'           => $skin_info['new_skins'],
+            'updated_skins'       => $skin_info['updated_skins'],
+            'skin_notifications'  => $skin_info['total_notifications'],
+            'total_notifications' => ($core_update ? 1 : 0) + $skin_info['total_notifications'],
+        ];
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('update_check_result', ?)
+                       ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+            ->execute([json_encode($cached_result, JSON_UNESCAPED_SLASHES)]);
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('last_update_check', ?)
+                       ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+            ->execute([date('Y-m-d H:i:s')]);
+        $last_check = date('Y-m-d H:i:s');
+
+        if (!$auto_check) {
+            if ($core_status === 'up_to_date' && $skin_info['total_notifications'] === 0) {
+                $flash_msg  = 'SYSTEM IS UP TO DATE. NO NEW SKINS AVAILABLE.';
+                $flash_type = 'success';
+            } else {
+                $notifications = [];
+                if ($core_update) $notifications[] = "Core update available: v{$core_update['version']}";
+                if (count($skin_info['new_skins'])    > 0) $notifications[] = count($skin_info['new_skins'])    . " new skin(s) available";
+                if (count($skin_info['updated_skins']) > 0) $notifications[] = count($skin_info['updated_skins']) . " skin update(s) available";
+                $flash_msg  = strtoupper(implode(' â ', $notifications));
+                $flash_type = 'warning';
+            }
         }
     }
 

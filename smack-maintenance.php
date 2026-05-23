@@ -782,6 +782,7 @@ include 'core/sidebar.php';
                     <input type="hidden" name="batch_offset" value="0">
                     <button type="submit" class="btn-smack btn-block">REBUILD</button>
                 </form>
+            <?php endif; ?>
         </div>
 
         <div class="box box-flex">

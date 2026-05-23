@@ -12,6 +12,16 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.169 — "Chesterfield" (2026-05-22)
+
+### Fixed
+- **smack-maintenance.php — PHP parse error 500**: Missing `<?php endif; ?>` after the `else:` branch of the REBUILD THUMBNAILS batch-continue block. The unclosed `if:` caused PHP to report "unexpected end of file on line 902" and return a 500 on every visit to the Maintenance admin page. Detected immediately after the 0.7.168 deploy to foundtextures.ca.
+- **maintenance-gate.php — unnecessary anonymous session creation**: When maintenance mode was active, the gate called `session_start()` unconditionally, creating a session file and sending a `PHPSESSID` cookie to visitors about to see the holding page. Fixed to check `$_COOKIE[session_name()]` first — session infrastructure is never created for maintenance-mode visitors.
+- **smack-multisite-stats.php — undefined array key "days"**: Period selector ternary true branch read `$_GET['days']` without the `?? 30` fallback used in the validation check, producing a PHP warning when `days` was absent from the URL.
+- **smack-update.php / core/updater.php — "COULD NOT REACH UPDATE SERVER" on flaky connections**: Three-part fix for servers with intermittent outbound HTTPS (e.g. self-hosted installs behind NAT): (1) `_updater_http_get()` now uses `CURLOPT_CONNECTTIMEOUT: 8` and retries once after a 2-second gap before giving up, instead of a single 30-second blocking attempt; (2) auto-check on page load now uses the cached result if it is less than 6 hours old and non-error, avoiding a live network hit on every visit; (3) when a live check does fail, the last known-good cache is preserved and displayed — the error is not written back to cache, so a transient failure no longer overwrites valid state.
+
+---
+
 ## 0.7.168 — "Chesterfield" (2026-05-22)
 
 ### Added
