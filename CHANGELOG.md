@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.179 — "Barcalounger" (2026-05-23)
+
+### Changed
+- **Rational Geo 2.1.1**: Photo title centred, description text fully justified (`text-align: justify`), description column centred under image. Per-role typography cards (Masthead, Body, EXIF, Comment each get their own font picker + size slider).
+
 ## 0.7.178 — "Barcalounger" (2026-05-23)
 
 ### Fixed
