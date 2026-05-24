@@ -516,6 +516,7 @@ small,
   color: var(--rg-text-primary);
   margin-bottom: var(--space-lg);
   line-height: 1.3;
+  text-align: center;
 }
 
 .rg-description {
@@ -524,6 +525,9 @@ small,
   color: var(--rg-text-primary);
   margin-bottom: var(--space-xl);
   max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: right;
 }
 
 .rg-exif-section {

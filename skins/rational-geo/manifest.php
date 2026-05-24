@@ -26,7 +26,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'            => 'Rational Geo',
-    'version'         => '1.9',
+    'version'         => '2.0',
     'author'          => 'Sean McCormick',
     'author_email'    => 'sean@baddaywithacamera.ca',
     'description'     => 'An homage to the world\'s best magazine. Editorial serif typography, the iconic yellow accent, light and dark variants. For anyone who has read it and loved it or dreamed of having their work published in it.',
@@ -220,8 +220,21 @@ return [
             'label'    => 'Body / Caption Font',
             'default'  => 'Source Serif 4',
             'options'  => $fonts,
-            'selector' => '.rg-description, .rg-drawer-inner, .rg-comment-text',
+            'selector' => '.rg-description, .rg-drawer-inner',
             'property' => 'font-family',
+        ],
+
+        'body_font_size' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'range',
+            'label'    => 'Body / Caption Font Size (rem)',
+            'default'  => '1.0',
+            'min'      => '0.7',
+            'max'      => '1.6',
+            'step'     => '0.05',
+            'selector' => '.rg-description',
+            'property' => 'font-size',
+            'unit'     => 'rem',
         ],
 
         'exif_font' => [
@@ -232,6 +245,42 @@ return [
             'options'  => $fonts,
             'selector' => '.rg-exif-table, .rg-signal-date',
             'property' => 'font-family',
+        ],
+
+        'exif_font_size' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'range',
+            'label'    => 'EXIF / Data Font Size (rem)',
+            'default'  => '0.85',
+            'min'      => '0.6',
+            'max'      => '1.2',
+            'step'     => '0.05',
+            'selector' => '.rg-exif-table, .rg-signal-date',
+            'property' => 'font-size',
+            'unit'     => 'rem',
+        ],
+
+        'comment_font' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'Comment Text Font',
+            'default'  => 'Source Serif 4',
+            'options'  => $fonts,
+            'selector' => '.rg-comment-text',
+            'property' => 'font-family',
+        ],
+
+        'comment_font_size' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'range',
+            'label'    => 'Comment Text Font Size (rem)',
+            'default'  => '1.0',
+            'min'      => '0.7',
+            'max'      => '1.4',
+            'step'     => '0.05',
+            'selector' => '.rg-comment-text',
+            'property' => 'font-size',
+            'unit'     => 'rem',
         ],
 
         /* ============================================================
