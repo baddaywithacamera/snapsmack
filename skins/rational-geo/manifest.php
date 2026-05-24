@@ -189,108 +189,51 @@ return [
 
         /* ============================================================
            SECTION 3: TYPOGRAPHY
+           One box per font role — picker + inline size slider per card.
            ============================================================ */
 
-        /* row 1: masthead font + size | spacer */
         'masthead_font' => [
-            'section'  => 'TYPOGRAPHY',
+            'section'  => 'MASTHEAD TYPE',
             'type'     => 'select',
             'label'    => 'Masthead / Title Font',
             'default'  => 'Marcellus',
             'options'  => $fonts,
             'selector' => '.rg-masthead, .rg-photo-title, .rg-drawer-title',
             'property' => 'font-family',
+            'size'     => ['default' => '1.6', 'min' => '0.8', 'max' => '3.0', 'step' => '0.1'],
         ],
 
-        'masthead_font_size' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'range',
-            'label'    => 'Masthead Font Size (rem)',
-            'default'  => '1.6',
-            'min'      => '0.8',
-            'max'      => '3.0',
-            'step'     => '0.1',
-            'selector' => '.rg-masthead',
-            'property' => 'font-size',
-            'unit'     => 'rem',
-        ],
-
-        '_spacer_typo_1' => [ 'section' => 'TYPOGRAPHY', 'type' => 'spacer' ],
-
-        /* row 2: body font + size | spacer */
         'body_font' => [
-            'section'  => 'TYPOGRAPHY',
+            'section'  => 'BODY TYPE',
             'type'     => 'select',
             'label'    => 'Body / Caption Font',
             'default'  => 'Source Serif 4',
             'options'  => $fonts,
             'selector' => '.rg-description, .rg-drawer-inner',
             'property' => 'font-family',
+            'size'     => ['default' => '1.0', 'min' => '0.7', 'max' => '1.6', 'step' => '0.05'],
         ],
 
-        'body_font_size' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'range',
-            'label'    => 'Body / Caption Font Size (rem)',
-            'default'  => '1.0',
-            'min'      => '0.7',
-            'max'      => '1.6',
-            'step'     => '0.05',
-            'selector' => '.rg-description',
-            'property' => 'font-size',
-            'unit'     => 'rem',
-        ],
-
-        '_spacer_typo_2' => [ 'section' => 'TYPOGRAPHY', 'type' => 'spacer' ],
-
-        /* row 3: EXIF font + size | spacer */
         'exif_font' => [
-            'section'  => 'TYPOGRAPHY',
+            'section'  => 'EXIF TYPE',
             'type'     => 'select',
             'label'    => 'EXIF / Data Font',
             'default'  => 'DM Mono',
             'options'  => $fonts,
             'selector' => '.rg-exif-table, .rg-signal-date',
             'property' => 'font-family',
+            'size'     => ['default' => '0.85', 'min' => '0.6', 'max' => '1.2', 'step' => '0.05'],
         ],
 
-        'exif_font_size' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'range',
-            'label'    => 'EXIF / Data Font Size (rem)',
-            'default'  => '0.85',
-            'min'      => '0.6',
-            'max'      => '1.2',
-            'step'     => '0.05',
-            'selector' => '.rg-exif-table, .rg-signal-date',
-            'property' => 'font-size',
-            'unit'     => 'rem',
-        ],
-
-        '_spacer_typo_3' => [ 'section' => 'TYPOGRAPHY', 'type' => 'spacer' ],
-
-        /* row 4: comment font + size */
         'comment_font' => [
-            'section'  => 'TYPOGRAPHY',
+            'section'  => 'COMMENT TYPE',
             'type'     => 'select',
             'label'    => 'Comment Text Font',
             'default'  => 'Source Serif 4',
             'options'  => $fonts,
             'selector' => '.rg-comment-text',
             'property' => 'font-family',
-        ],
-
-        'comment_font_size' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'range',
-            'label'    => 'Comment Text Font Size (rem)',
-            'default'  => '1.0',
-            'min'      => '0.7',
-            'max'      => '1.4',
-            'step'     => '0.05',
-            'selector' => '.rg-comment-text',
-            'property' => 'font-size',
-            'unit'     => 'rem',
+            'size'     => ['default' => '1.0', 'min' => '0.7', 'max' => '1.4', 'step' => '0.05'],
         ],
 
         /* ============================================================

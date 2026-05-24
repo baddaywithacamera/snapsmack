@@ -237,6 +237,14 @@ if (isset($_POST['save_skin_settings'])) {
                 $fallback = "'Courier New', monospace";
             }
             $generated_public .= "{$meta['selector']} { font-family: \"{$val}\", {$fallback}; }\n";
+            // Companion font-size: always emit for every font picker. The 'size' key
+            // in the manifest provides custom min/max/default; falls back to generic
+            // defaults so all skins get a size slider without any manifest changes.
+            if (!empty($meta['selector'])) {
+                $sz_key = $key . '_size';
+                $sz_val = ($all_settings[$sz_key] ?? '') !== '' ? $all_settings[$sz_key] : ($meta['size']['default'] ?? '1.0');
+                $generated_public .= "{$meta['selector']} { font-size: {$sz_val}rem; }\n";
+            }
         } elseif ($meta['type'] === 'range' || $meta['type'] === 'number') {
             // Use manifest unit if declared; default to px for standard CSS properties,
             // empty for CSS custom properties (unless manifest explicitly sets a unit).
@@ -787,6 +795,23 @@ if (!empty($google_families)) {
                                         <span style="display:block; font-family: '<?php echo htmlspecialchars($val); ?>', sans-serif; font-size:13px; opacity:0.5; margin-top:4px;" class="font-preview-text">
                                             The quick brown fox jumps over the lazy dog
                                         </span>
+                                    </div>
+                                    <?php
+                                        $sz_key = $k . '_size';
+                                        $sz     = $o['size'] ?? [];
+                                        $sz_val = ($settings[$sz_key] ?? '') !== '' ? $settings[$sz_key] : ($sz['default'] ?? '1.0');
+                                    ?>
+                                    <div style="margin-top:12px;">
+                                        <label style="display:block; font-size:0.7rem; letter-spacing:1.5px; text-transform:uppercase; opacity:0.5; margin-bottom:6px;">Font Size (rem)</label>
+                                        <div class="range-wrapper">
+                                            <input type="range" name="skin_opt[<?php echo $sz_key; ?>]"
+                                                min="<?php echo $sz['min'] ?? '0.7'; ?>"
+                                                max="<?php echo $sz['max'] ?? '2.0'; ?>"
+                                                step="<?php echo $sz['step'] ?? '0.05'; ?>"
+                                                value="<?php echo htmlspecialchars($sz_val); ?>"
+                                                oninput="this.nextElementSibling.innerText = this.value + 'REM'">
+                                            <span class="active-val"><?php echo strtoupper(htmlspecialchars($sz_val)); ?>REM</span>
+                                        </div>
                                     </div>
                                 <?php endif; ?>
                             <?php else: ?>
