@@ -74,14 +74,47 @@ document.addEventListener("DOMContentLoaded", function () {
     if (clockElement && tzSelect && fmtSelect) {
         const updateClock = () => {
             const selectedTz = tzSelect.value;
-            const selectedFormatExample = fmtSelect.options[fmtSelect.selectedIndex].text;
+            const phpFormat  = fmtSelect.value;
             const now = new Date();
             try {
+                // Build a Date whose .get*() methods reflect the selected timezone
+                const tzDate   = new Date(now.toLocaleString('en-US', { timeZone: selectedTz }));
+                const dayNum   = tzDate.getDate();
+                const monthIdx = tzDate.getMonth();
+                const year4    = String(tzDate.getFullYear());
+                const year2    = year4.slice(-2);
+                const month2   = String(monthIdx + 1).padStart(2, '0');
+                const day2     = String(dayNum).padStart(2, '0');
+
+                const MONTHS = ['January','February','March','April','May','June',
+                                'July','August','September','October','November','December'];
+                const DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+                const t10    = Math.floor(dayNum / 10);
+                const t1     = dayNum % 10;
+                const ord    = (t10 === 1) ? 'th'
+                             : (t1  === 1) ? 'st'
+                             : (t1  === 2) ? 'nd'
+                             : (t1  === 3) ? 'rd' : 'th';
+
+                // Single-pass replacement — jS must precede j in the alternation
+                const tokenMap = {
+                    'jS': dayNum + ord,
+                    'F' : MONTHS[monthIdx],
+                    'M' : MONTHS[monthIdx].slice(0, 3),
+                    'D' : DAYS[tzDate.getDay()].slice(0, 3),
+                    'j' : String(dayNum),
+                    'd' : day2,
+                    'm' : month2,
+                    'Y' : year4,
+                    'y' : year2,
+                };
+                const dateStr = phpFormat.replace(/jS|[FMDjdmYy]/g, tok => tokenMap[tok] ?? tok);
+
                 const timeFmt = new Intl.DateTimeFormat('en-US', {
                     timeZone: selectedTz,
                     hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
                 });
-                clockElement.textContent = `${selectedFormatExample} - ${timeFmt.format(now)}`;
+                clockElement.textContent = `${dateStr.toUpperCase()} - ${timeFmt.format(now)}`;
             } catch (e) {
                 clockElement.textContent = "Sync Error";
             }

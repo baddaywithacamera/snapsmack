@@ -1878,6 +1878,7 @@ input[type="reset"]:active {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: var(--space-xl);
+  text-align: center;
 }
 
 .rg-comment-form-row {
