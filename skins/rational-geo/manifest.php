@@ -26,7 +26,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'            => 'Rational Geo',
-    'version'         => '2.0',
+    'version'         => '2.1.0',
     'author'          => 'Sean McCormick',
     'author_email'    => 'sean@baddaywithacamera.ca',
     'description'     => 'An homage to the world\'s best magazine. Editorial serif typography, the iconic yellow accent, light and dark variants. For anyone who has read it and loved it or dreamed of having their work published in it.',
@@ -191,6 +191,7 @@ return [
            SECTION 3: TYPOGRAPHY
            ============================================================ */
 
+        /* row 1: masthead font + size | spacer */
         'masthead_font' => [
             'section'  => 'TYPOGRAPHY',
             'type'     => 'select',
@@ -214,6 +215,9 @@ return [
             'unit'     => 'rem',
         ],
 
+        '_spacer_typo_1' => [ 'section' => 'TYPOGRAPHY', 'type' => 'spacer' ],
+
+        /* row 2: body font + size | spacer */
         'body_font' => [
             'section'  => 'TYPOGRAPHY',
             'type'     => 'select',
@@ -237,6 +241,9 @@ return [
             'unit'     => 'rem',
         ],
 
+        '_spacer_typo_2' => [ 'section' => 'TYPOGRAPHY', 'type' => 'spacer' ],
+
+        /* row 3: EXIF font + size | spacer */
         'exif_font' => [
             'section'  => 'TYPOGRAPHY',
             'type'     => 'select',
@@ -260,6 +267,9 @@ return [
             'unit'     => 'rem',
         ],
 
+        '_spacer_typo_3' => [ 'section' => 'TYPOGRAPHY', 'type' => 'spacer' ],
+
+        /* row 4: comment font + size */
         'comment_font' => [
             'section'  => 'TYPOGRAPHY',
             'type'     => 'select',

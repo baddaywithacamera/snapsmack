@@ -746,6 +746,7 @@ if (!empty($google_families)) {
                     <?php foreach ($opts as $item):
                         $k   = $item['key'];
                         $o   = $item['meta'];
+                        if ($o['type'] === 'spacer') { echo '<div class="lens-input-wrapper"></div>'; continue; }
                         $val = ($settings[$k] ?? '') !== '' ? $settings[$k] : $o['default'];
                     ?>
                         <div class="lens-input-wrapper">
