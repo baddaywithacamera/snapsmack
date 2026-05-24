@@ -12,6 +12,24 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.182 — "Barcalounger" (2026-05-24)
+
+### Fixed
+- **Configuration save button broken on all sites**: The SAVE GLOBAL ENGINE CONFIGURATION button was disconnected. The SmackAttack and API Access sections each contained `<form>` elements nested inside the main `#config-form` — illegal in HTML. Browsers implicitly close the outer form at the first nested tag, leaving the save button orphaned. Fixed by extracting all action forms outside the main form and wiring their buttons back via the HTML5 `form="id"` attribute.
+- **Update checker hanging on connectivity failure**: `check_ajax` now uses `$fast = true` mode — single 6-second cURL attempt, skin registry skipped. JS auto-check fires on stale/missing cache with a 15-second `AbortController` timeout; if PHP still hangs at OS level the browser bails and shows a manual CHECK NOW button. On success the page reloads with fresh data.
+- **Rational Geo system footer missing on single-image page**: `.rg-single #system-footer { display: none }` CSS rule was hiding the footer on the solo view. Archive page was unaffected. Removed `#system-footer` from the hide selector.
+
+### Added
+- **Chaplin v2.5**: Full rebuild from Rational Geo structural base. Previous version retained Galleria `frame-mount/frame-bevel` div structure and had an incomplete `style.css`. New build: full RG structural CSS with Chaplin palette overlay, intertitle overlay (INFO/SIGNALS tabs), filmstrip, Art Deco ornament overlay, capture-phase overlay JS with `window.smackdown` bridge. `skin-page.php` (Galleria remnant) deleted.
+- **smack-help.php**: Initial help system file.
+- **Black Pearl admin theme**: Logout grey box fixed; skin gallery REFRESH link coloured.
+
+## 0.7.181 — "Barcalounger" (2026-05-24)
+
+### Fixed
+- **Black Pearl admin theme — logout grey box**: `.sidebar-bottom` was `#0D0D0D` against the `#000000` sidebar, creating a visible grey box around the logout link. Set to `#000000` to match.
+- **Black Pearl admin theme — REFRESH link colour**: Skin gallery REFRESH link had no theme-specific colour rule. Added `.registry-info a` styling to Black Pearl only (`#666666` / `#DFDFDF` hover).
+
 ## 0.7.180 — "Barcalounger" (2026-05-23)
 
 ### Fixed

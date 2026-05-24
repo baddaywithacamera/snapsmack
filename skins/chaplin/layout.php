@@ -1,35 +1,54 @@
 <?php
 /**
  * SNAPSMACK - Chaplin skin: single image view
+ * v2.5
  *
  * Rational Geo base + Art Deco border overlay, filmstrip, intertitle overlay.
- * No Galleria structure. No wrapper divs around the photo.
+ * No Galleria structure. Border on .chap-photo via skin-header.php CSS vars.
  *
  * SNAPSMACK_EOF_HEADER
  *     <?php // ===== SNAPSMACK EOF =====
  * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
  */
 
 require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 
-$show_desc       = ($settings['single_show_description'] ?? '1') === '1';
-$title_pos       = $settings['chap_title_position'] ?? 'below_photo';
+$show_desc   = ($settings['single_show_description'] ?? '1') === '1';
+$title_pos   = $settings['chap_title_position'] ?? 'below_photo';
 
 // EXIF labels
 $exif_labels = [
-    'Model' => 'Camera', 'lens' => 'Lens', 'FNumber' => 'Aperture',
-    'ExposureTime' => 'Shutter', 'ISOSpeedRatings' => 'ISO',
-    'FocalLength' => 'Focal Length', 'film' => 'Film', 'flash' => 'Flash'
+    'Model'           => 'Camera',
+    'lens'            => 'Lens',
+    'FNumber'         => 'Aperture',
+    'ExposureTime'    => 'Shutter',
+    'ISOSpeedRatings' => 'ISO',
+    'FocalLength'     => 'Focal Length',
+    'film'            => 'Film',
+    'flash'           => 'Flash',
 ];
+
+// Filmstrip query — 60 most recent published images
+$now_local = date('Y-m-d H:i:s');
+$film_stmt = $pdo->prepare("
+    SELECT id, img_slug, img_file, img_thumb_square, img_title
+    FROM snap_images
+    WHERE img_status = 'published' AND img_date <= ?
+    ORDER BY sort_order ASC, img_date DESC
+    LIMIT 60
+");
+$film_stmt->execute([$now_local]);
+$filmstrip_images = $film_stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <canvas id="chap-film-bg" aria-hidden="true"></canvas>
-<div id="scroll-stage" class="chap-single">
+<div id="scroll-stage" class="rg-single chap-single">
 
     <?php include __DIR__ . '/skin-header.php'; ?>
 
     <?php include dirname(__DIR__, 2) . '/core/community-dock.php'; ?>
 
-    <!-- COMMENTS DRAWER — full-screen intertitle overlay -->
+    <!-- INTERTITLE OVERLAY — full-screen black fade modal -->
     <div id="chap-comments-drawer" class="chap-overlay-drawer" aria-hidden="true">
         <div class="chap-overlay-backdrop"></div>
         <div class="chap-overlay-card">
@@ -92,25 +111,13 @@ $exif_labels = [
     </div>
     <?php endif; ?>
 
-    <!-- INFOBOX -->
+    <!-- INFOBOX (core navigation bar) -->
     <div id="infobox">
         <?php include dirname(__DIR__, 2) . '/core/navigation-bar.php'; ?>
     </div>
 
     <!-- FILMSTRIP -->
-    <?php
-    $now_local = date('Y-m-d H:i:s');
-    $film_stmt = $pdo->prepare("
-        SELECT id, img_slug, img_file, img_thumb_square, img_title
-        FROM snap_images
-        WHERE img_status = 'published' AND img_date <= ?
-        ORDER BY sort_order ASC, img_date DESC
-        LIMIT 60
-    ");
-    $film_stmt->execute([$now_local]);
-    $filmstrip_images = $film_stmt->fetchAll(PDO::FETCH_ASSOC);
-    ?>
-    <div class="chap-filmstrip">
+    <div class="chap-filmstrip" id="chap-filmstrip">
         <?php foreach ($filmstrip_images as $fi):
             $fi_link = BASE_URL . htmlspecialchars($fi['img_slug']);
             if (!empty($fi['img_thumb_square'])) {
@@ -126,13 +133,22 @@ $exif_labels = [
         <a href="<?php echo $fi_link; ?>"
            class="chap-filmstrip-item<?php echo $active; ?>"
            title="<?php echo htmlspecialchars($fi['img_title']); ?>">
-            <img src="<?php echo $fi_thumb; ?>"
-                 alt="<?php echo htmlspecialchars($fi['img_title']); ?>"
+            <?php if ($fi_thumb): ?>
+            <img src="<?php echo $fi_thumb; ?>                 alt="<?php echo htmlspecialchars($fi['img_title']); ?>"
                  loading="lazy">
+            <?php endif; ?>
         </a>
         <?php endforeach; ?>
     </div>
 
+    <!-- HIDDEN FOOTER — kept so smack-footer.js and smack-keyboard.js find
+         their expected DOM elements. Never shown; overlay handles INFO/SIGNALS. -->
+    <div id="footer" style="display:none!important" aria-hidden="true">
+        <div id="pane-info"     class="footer-pane"></div>
+        <div id="pane-comments" class="footer-pane"></div>
+    </div>
+
     <?php include __DIR__ . '/skin-footer.php'; ?>
+
 </div>
 <?php // ===== SNAPSMACK EOF =====
