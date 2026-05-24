@@ -853,6 +853,15 @@ body.archive-page #scroll-stage {
   position: relative;
 }
 
+/* Archive header: remove inner padding so site name aligns flush with the
+   edge-to-edge justified grid. The canvas max-width centering provides
+   enough breathing room on wider viewports; on narrower ones the grid
+   is already flush to the screen edge and the header should match. */
+body.archive-page .rg-header-inside {
+  padding-left: 0;
+  padding-right: 0;
+}
+
 /* --- Filter bar content: groups, selects, search --- */
 
 #infobox .filter-group {
