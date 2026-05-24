@@ -12,6 +12,17 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.176 — "Barcalounger" (2026-05-23)
+
+### Added
+- **Universal font size slider**: Every font picker in every skin's settings page now includes a size slider (rem) beneath the font preview, automatically. No skin manifest changes required. Skins can optionally declare a `size` key on any font-family option to override the default 0.7–2.0rem range with values appropriate for that font role.
+- **Skin manifest: inline `size` key for font pickers**: Font picker options can now declare `'size' => ['default' => '1.0', 'min' => '0.7', 'max' => '2.0', 'step' => '0.05']` to provide a custom size range. The engine reads it automatically — no separate range entry needed.
+- **Skin manifest: `spacer` type**: Options with `'type' => 'spacer'` render an empty grid cell, allowing skin authors to control alignment in the 3-column settings grid.
+
+### Changed
+- **Rational Geo 2.1.0**: Typography section reorganised — each font role (Masthead, Body, EXIF, Comment) now has its own settings card with the font picker and size slider together. Custom size ranges declared per role. Archive page header padding removed so site name aligns flush with the edge-to-edge justified grid. Photo title centred, description text right-aligned and centred within the content column. Comment text separated into its own font picker (previously shared with body font selector).
+- **`smack-skin.php`**: CSS generator and rendering loop updated to support inline `size` companion and `spacer` type.
+
 ## 0.7.175 — "Barcalounger" (2026-05-23)
 
 ### Added
