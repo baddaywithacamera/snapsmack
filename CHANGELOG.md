@@ -12,6 +12,16 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.178 — "Barcalounger" (2026-05-23)
+
+### Fixed
+- **Maintenance mode never showed the offline page on public-facing pages**: `maintenance-gate.php` was included before `$settings` was loaded from the database in all eight public controllers (`index.php`, `archive.php`, `blogroll.php`, `page.php`, `gallery-wall.php`, `collections.php`, `collection.php`, `albums.php`). At that point `$settings` was an empty array, so `$settings['maintenance_mode'] ?? '0'` always returned `'0'` and every visitor passed through regardless of the admin setting. Moved the `require_once maintenance-gate.php` line to immediately after the `fetchAll()` settings query in every affected file.
+
+## 0.7.177 — "Barcalounger" (2026-05-23)
+
+### Fixed
+- **Multisite: UPDATE ALL BEHIND count always showed total spoke count**: Heartbeat and registration endpoints were returning `SNAPSMACK_VERSION` (`"Alpha 0.7.176"`) for the `version` field stored in `snap_multisite_nodes.software_version`. The hub's `$behind_count` compared that against `SNAPSMACK_VERSION_SHORT` (`"0.7.176"`). PHP's `version_compare()` treats the `"Alpha"` prefix as a pre-release qualifier, making every spoke appear permanently behind the hub. Both endpoints now return `SNAPSMACK_VERSION_SHORT` so the comparison is clean numeric-vs-numeric.
+
 ## 0.7.176 — "Barcalounger" (2026-05-23)
 
 ### Added
