@@ -17,7 +17,6 @@
 
 require_once 'core/db.php';
 require_once 'core/skin-settings.php';
-require_once 'core/maintenance-gate.php';
 
 // SMACKBACK: silent stat check on public page loads
 try {
@@ -38,6 +37,7 @@ try {
     $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
     $settings = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 } catch (Exception $e) { $settings = []; }
+require_once __DIR__ . '/core/maintenance-gate.php';
 
 // --- BASE URL BOOTSTRAP ---
 // Floating Gallery is standalone so it bootstraps BASE_URL here before any includes

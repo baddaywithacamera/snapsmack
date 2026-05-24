@@ -22,7 +22,6 @@
 
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/skin-settings.php';
-require_once __DIR__ . '/core/maintenance-gate.php';
 
 // SMACKBACK: silent stat check on public page loads
 try {
@@ -39,6 +38,7 @@ try {
 } catch (PDOException $e) { /* non-fatal */ }
 
 $settings    = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+require_once __DIR__ . '/core/maintenance-gate.php';
 $active_skin = $settings['active_skin'] ?? 'smackdown';
 $site_name   = $settings['site_name']   ?? 'SNAPSMACK';
 
