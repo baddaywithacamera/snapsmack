@@ -132,10 +132,13 @@ const UPDATER_DEPRECATED_FILES = [
  *   "download_size": 2450000
  * }
  */
-function updater_fetch_release_info(): array {
+function updater_fetch_release_info(bool $fast = false): array {
     $url = UPDATER_API_URL;
 
-    $json = _updater_http_get($url);
+    // $fast = true: called from JS-driven AJAX loop — single short attempt so the
+    // PHP process doesn't block for 40+ seconds while the browser shows a spinner.
+    // JS drives retries; PHP just needs to fail fast so the next retry can fire.
+    $json = $fast ? _updater_http_get($url, 6, 1) : _updater_http_get($url);
     if ($json === false) {
         return ['error' => 'Could not reach the update server. Check your internet connection.'];
     }
@@ -1641,7 +1644,14 @@ function updater_prune_backups(int $keep = 3): void {
  * Returns an array with counts and details:
  * ['new_skins' => [...], 'updated_skins' => [...], 'total_notifications' => int]
  */
-function updater_check_skin_registry(PDO $pdo): array {
+function updater_check_skin_registry(PDO $pdo, bool $fast = false): array {
+    // $fast = true: AJAX path — skip the remote skin registry fetch entirely.
+    // The JS reload after a successful check will trigger a full non-fast page load
+    // that re-runs this with $fast=false and picks up skin notifications then.
+    if ($fast) {
+        return ['new_skins' => [], 'updated_skins' => [], 'total_notifications' => 0];
+    }
+
     // Load the skin registry helper if available
     $registry_file = __DIR__ . '/skin-registry.php';
     if (!file_exists($registry_file)) {
@@ -1705,19 +1715,20 @@ function updater_check_skin_registry(PDO $pdo): array {
  * HTTP GET request via cURL or file_get_contents.
  * Returns the response body or false on failure.
  */
-function _updater_http_get(string $url): string|false {
+function _updater_http_get(string $url, int $timeout = 20, int $attempts = 2): string|false {
     if (function_exists('curl_init')) {
-        // Two attempts with a 2s gap — handles transient DNS/connection hiccups
-        // (e.g. servers with flaky outbound HTTPS) without a 30s hang per try.
-        for ($attempt = 0; $attempt < 2; $attempt++) {
+        // $attempts >= 2: gap between retries handles transient DNS/connection hiccups
+        // (e.g. servers with flaky outbound HTTPS). For fast/AJAX callers use $attempts=1
+        // so the JS retry loop drives retries instead of blocking PHP.
+        for ($attempt = 0; $attempt < $attempts; $attempt++) {
             if ($attempt > 0) sleep(2);
             $ch = curl_init($url);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_MAXREDIRS      => 5,
-                CURLOPT_CONNECTTIMEOUT => 8,
-                CURLOPT_TIMEOUT        => 20,
+                CURLOPT_CONNECTTIMEOUT => min(8, $timeout),
+                CURLOPT_TIMEOUT        => $timeout,
                 CURLOPT_SSL_VERIFYPEER => true,
                 CURLOPT_USERAGENT      => 'SnapSmack-Updater/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0.0'),
             ]);
@@ -1732,7 +1743,7 @@ function _updater_http_get(string $url): string|false {
     // Fallback
     $ctx = stream_context_create([
         'http' => [
-            'timeout'    => 20,
+            'timeout'    => $timeout,
             'user_agent' => 'SnapSmack-Updater/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0.0'),
         ],
     ]);

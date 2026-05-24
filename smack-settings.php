@@ -590,10 +590,7 @@ include 'core/sidebar.php';
                     Register to start receiving threat level scores on incoming comments.
                     You can opt out at any time.
                 </p>
-                <form method="POST" style="margin-top:15px;">
-                    <input type="hidden" name="ste_action" value="register">
-                    <button type="submit" class="btn-smack" style="width:100%;">JOIN THE NETWORK</button>
-                </form>
+                <button type="submit" form="ste-register-form" class="btn-smack" style="width:100%;margin-top:15px;">JOIN THE NETWORK</button>
             <?php else: ?>
                 <label>NETWORK STATUS</label>
                 <div class="read-only-display highlight-green">REGISTERED</div>
@@ -636,14 +633,9 @@ include 'core/sidebar.php';
                 <label class="mt-20">SCORE CACHE</label>
                 <div class="read-only-display"><?php echo $ste_cursor ? 'Last synced: ' . htmlspecialchars($ste_cursor) : 'Never synced — save settings then sync'; ?></div>
                 <div class="action-grid-dual mt-15">
-                    <form method="POST" style="display:contents;">
-                        <input type="hidden" name="ste_action" value="sync_now">
-                        <button type="submit" class="btn-smack">SYNC SCORES NOW</button>
-                    </form>
-                    <form method="POST" style="display:contents;" onsubmit="return confirm('This will remove your site from the network and clear your API key. Continue?');">
-                        <input type="hidden" name="ste_action" value="optout">
-                        <button type="submit" class="btn-smack btn-danger">OPT OUT</button>
-                    </form>
+                    <button type="submit" form="ste-sync-form" class="btn-smack">SYNC SCORES NOW</button>
+                    <button type="submit" form="ste-optout-form" class="btn-smack btn-danger"
+                            onclick="return confirm('This will remove your site from the network and clear your API key. Continue?')">OPT OUT</button>
                 </div>
             <?php endif; ?>
         </div>
@@ -678,28 +670,28 @@ include 'core/sidebar.php';
                     </div>
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
-                    <form method="POST" style="margin:0;">
-                        <input type="hidden" name="api_key_action" value="generate">
-                        <button type="submit" class="btn-smack" style="margin-top:0; width:auto; padding:0 18px; height:38px;">REGENERATE KEY</button>
-                    </form>
-                    <form method="POST" style="margin:0;"
-                          onsubmit="return confirm('Revoke the API key? All tools will lose access immediately.');">
-                        <input type="hidden" name="api_key_action" value="revoke">
-                        <button type="submit" class="btn-smack btn-danger" style="margin-top:0; width:auto; padding:0 18px; height:38px;">REVOKE KEY</button>
-                    </form>
+                    <button type="submit" form="api-regen-form" class="btn-smack" style="margin-top:0; width:auto; padding:0 18px; height:38px;">REGENERATE KEY</button>
+                    <button type="submit" form="api-revoke-form" class="btn-smack btn-danger" style="margin-top:0; width:auto; padding:0 18px; height:38px;"
+                            onclick="return confirm('Revoke the API key? All tools will lose access immediately.')">REVOKE KEY</button>
                 </div>
             <?php else: ?>
                 <p class="dim" style="font-size:0.85rem; margin-bottom:12px;">No key generated. Tool API access is currently disabled.</p>
-                <form method="POST" style="margin:0;">
-                    <input type="hidden" name="api_key_action" value="generate">
-                    <button type="submit" class="btn-smack" style="margin-top:0;">GENERATE API KEY</button>
-                </form>
+                <button type="submit" form="api-generate-form" class="btn-smack" style="margin-top:0;">GENERATE API KEY</button>
             <?php endif; ?>
         </div>
 
         <button type="submit" name="save_settings" class="master-update-btn">SAVE GLOBAL ENGINE CONFIGURATION</button>
 
     </form>
+
+    <!-- Action forms outside #config-form to avoid illegal nesting.
+         Buttons above reference these by form="id". -->
+    <form method="POST" id="ste-register-form"><input type="hidden" name="ste_action" value="register"></form>
+    <form method="POST" id="ste-sync-form"><input type="hidden" name="ste_action" value="sync_now"></form>
+    <form method="POST" id="ste-optout-form"><input type="hidden" name="ste_action" value="optout"></form>
+    <form method="POST" id="api-regen-form"><input type="hidden" name="api_key_action" value="generate"></form>
+    <form method="POST" id="api-revoke-form"><input type="hidden" name="api_key_action" value="revoke"></form>
+    <form method="POST" id="api-generate-form"><input type="hidden" name="api_key_action" value="generate"></form>
 </div>
 
 <script>

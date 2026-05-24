@@ -1,28 +1,21 @@
-/* ===== CHAPLIN SKIN — style.css v2.4 =====
- * Silent-era B&W intertitle aesthetic for SnapSmack.
- * Base: Rational Geo structure, Chaplin palette + typography.
- * B&W only — grayscale filter applied to .chap-photo via skin-header.php.
- * Border system: CSS outline + box-shadow rings on img directly (no wrapper divs).
- * Intertitle overlay: full-black fade modal (replaces RG slide-up drawers).
- * Filmstrip: horizontal scroll strip, 60 most recent.
+/* ===== CHAPLIN SKIN — style.css v2.5 =====
+ * Silent-era B&W aesthetic for SnapSmack.
+ * Structural base: Rational Geo (full). Chaplin palette + typography layered on top.
+ * --rg-* vars mapped to Chaplin palette so RG structural CSS works without
+ * per-selector colour overrides throughout the file.
  *
  * SNAPSMACK_EOF_HEADER
  * Last non-empty line of this file MUST be:
- *     /* ===== SNAPSMACK EOF ===== */
+ *     /* ===== SNAPSMACK EOF ===== *\/
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
 /* ============================================================================
-   ROOT VARIABLES
+   ROOT CUSTOM PROPERTIES
    ========================================================================== */
 
 :root {
-  /* Layout */
-  --header-height:          56px;
-  --infobox-height:         50px;
-  --filmstrip-height:       90px;
-
-  /* Chaplin palette */
+  /* ── Chaplin palette ────────────────────────────────────────────────────── */
   --chap-bg:                #0a0a0a;
   --chap-bg-chrome:         #111111;
   --chap-bg-card:           #141414;
@@ -31,62 +24,117 @@
   --chap-ink-muted:         #504840;
   --chap-accent:            #ece6d4;
   --chap-border:            #2a2520;
+  --chap-border-light:      #1e1a17;
 
-  /* Typography */
+  /* ── Typography (overridden from settings via skin-header.php) ──────────── */
   --chap-title-font:        'Cinzel', Georgia, serif;
   --chap-heading-font:      'Cinzel', Georgia, serif;
   --chap-body-font:         'Cormorant Garamond', Georgia, serif;
   --chap-title-size:        1.1rem;
   --chap-grain-opacity:     0.04;
 
-  /* Ornaments */
+  /* ── Ornaments ──────────────────────────────────────────────────────────── */
   --chap-orn-size-corner:   48px;
   --chap-orn-size-mid:      40px;
 
-  /* Archive */
-  --chap-archive-gap:       20px;
-  --chap-archive-max-width: 1400px;
-  --justified-row-height:   260px;
+  /* ── Layout ─────────────────────────────────────────────────────────────── */
+  --header-height:          56px;
+  --infobox-height:         50px;
+  --filmstrip-height:       90px;
   --grid-cols:              4;
   --thumb-width:            210px;
+  --justified-row-height:   260px;
+  --chap-archive-gap:       20px;
+  --chap-archive-max-width: 1400px;
 
-  /* Z-index */
+  /* ── Z-index ─────────────────────────────────────────────────────────────── */
+  --z-content:   2;
+  --z-drawer:    10;
   --z-header:    100;
-  --z-drawer:     90;
   --z-overlay:   200;
-  --z-content:    10;
+
+  /* ── RG vars mapped to Chaplin palette (structural CSS uses these) ──────── */
+  --rg-bg-page:       var(--chap-bg);
+  --rg-bg-secondary:  var(--chap-bg-card);
+  --rg-bg-chrome:     var(--chap-bg-chrome);
+  --rg-bg-drawer:     var(--chap-bg-chrome);
+  --rg-border:        var(--chap-border);
+  --rg-border-light:  var(--chap-border-light);
+  --rg-text-primary:  var(--chap-ink);
+  --rg-text-secondary:var(--chap-ink-dim);
+  --rg-text-dim:      var(--chap-ink-muted);
+  --rg-text-bright:   #f5f0e8;
+  --rg-accent:        var(--chap-ink);
+  --rg-accent-dark:   #cec8b8;
+  --rg-accent-muted:  rgba(236,230,212,0.08);
+  --rg-link:          var(--chap-ink);
+  --rg-link-hover:    #f5f0e8;
+  --rg-input-bg:      var(--chap-bg-card);
+  --rg-overlay-bg:    rgba(10,10,10,0.97);
+  --rg-shadow:        0 2px 8px rgba(0,0,0,0.6);
+  --rg-shadow-hover:  0 4px 16px rgba(0,0,0,0.8);
+  --rg-nav-color:     var(--chap-ink);
+  --rg-nav-dim:       var(--chap-ink-muted);
+  --rg-canvas-width:  var(--chap-archive-max-width);
+
+  /* ── Typography scale (RG) ───────────────────────────────────────────────── */
+  --font-scale-xs:   0.75rem;
+  --font-scale-sm:   0.875rem;
+  --font-scale-base: 1rem;
+  --font-scale-lg:   1.25rem;
+  --font-scale-xl:   1.5rem;
+  --font-scale-2xl:  2rem;
+  --font-scale-3xl:  2.5rem;
+  --font-scale-4xl:  3rem;
+
+  /* ── Spacing scale ───────────────────────────────────────────────────────── */
+  --space-xs:  0.25rem;
+  --space-sm:  0.5rem;
+  --space-md:  1rem;
+  --space-lg:  1.5rem;
+  --space-xl:  2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
 }
 
 /* ============================================================================
    RESET & BASE
    ========================================================================== */
 
-*, *::before, *::after {
+* {
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
 html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
   height: 100%;
 }
 
-/* Complete the flex chain so .chap-single { flex:1 } has a sized parent */
+html {
+  scroll-behavior: smooth;
+}
+
 #page-wrapper {
-  height: 100%;
   display: flex;
   flex-direction: column;
+  min-height: 100dvh;
+  position: relative;
+  z-index: 1;
+  height: 100%;
 }
 
 body {
-  background-color: var(--chap-bg);
-  color: var(--chap-ink);
   font-family: var(--chap-body-font);
+  font-size: var(--font-scale-base);
+  line-height: 1.7;
+  color: var(--chap-ink);
+  background-color: var(--chap-bg);
+  position: relative;
   overflow: hidden;
 }
 
-/* Film grain overlay on body */
+/* Film grain overlay */
 body::after {
   content: '';
   position: fixed;
@@ -98,7 +146,7 @@ body::after {
   mix-blend-mode: overlay;
 }
 
-/* Film background canvas */
+/* Film canvas (ChaplinFilm.init) */
 #chap-film-bg {
   position: fixed;
   inset: 0;
@@ -114,19 +162,28 @@ body::after {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--chap-heading-font);
+  line-height: 1.2;
+  font-weight: 700;
   color: var(--chap-ink);
   letter-spacing: 0.08em;
 }
 
-a {
-  color: var(--chap-ink);
-  text-decoration: none;
-  transition: opacity 0.2s ease;
-}
+h1 { font-size: var(--font-scale-4xl); margin-bottom: var(--space-lg); }
+h2 { font-size: var(--font-scale-3xl); margin-bottom: var(--space-md); }
+h3 { font-size: var(--font-scale-2xl); margin-bottom: var(--space-md); }
+h4 { font-size: var(--font-scale-xl);  margin-bottom: var(--space-md); }
+h5 { font-size: var(--font-scale-lg);  margin-bottom: var(--space-sm); }
+h6 { font-size: var(--font-scale-base);margin-bottom: var(--space-sm); }
 
-a:hover {
-  opacity: 0.7;
-}
+p  { margin-bottom: var(--space-md); color: var(--chap-ink); }
+
+a  { color: var(--chap-ink); text-decoration: none; transition: opacity 0.2s ease; }
+a:hover { opacity: 0.7; }
+
+strong { font-weight: 700; }
+em     { font-style: italic; }
+
+small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim); }
 
 /* ============================================================================
    HEADER & NAVIGATION
@@ -149,7 +206,7 @@ a:hover {
 .rg-header-inside {
   max-width: var(--chap-archive-max-width);
   width: 100%;
-  padding: 0 2rem;
+  padding: 0 var(--space-xl);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -161,7 +218,6 @@ a:hover {
   text-decoration: none;
   transition: opacity 0.2s ease;
 }
-
 .rg-logo-link:hover { opacity: 0.75; }
 
 .rg-masthead {
@@ -174,12 +230,11 @@ a:hover {
   line-height: 1;
 }
 
-/* Hide logo-area from core header.php — skin masthead handles it */
 .rg-header-nav .logo-area { display: none; }
 
 .rg-header-nav {
   display: flex;
-  gap: 2rem;
+  gap: var(--space-xl);
 }
 
 .rg-header-nav .nav-menu {
@@ -219,11 +274,10 @@ a:hover {
 }
 
 /* ============================================================================
-   SINGLE IMAGE VIEW — .chap-single
+   SINGLE IMAGE VIEW
    ========================================================================== */
 
-/* scroll-stage is the outermost flex column, same as .rg-single */
-.chap-single {
+.rg-single {
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -233,9 +287,19 @@ a:hover {
   position: relative;
 }
 
-.chap-single #system-footer,
-.chap-single footer {
+.chap-single {
+  overflow: hidden;
+}
+
+/* Hide generic <footer> on single view; #system-footer stays visible so it
+   appears below the filmstrip on the solo page. */
+.rg-single footer {
   display: none;
+}
+
+/* Hidden #footer kept for smack-footer / smack-keyboard compat */
+#footer {
+  display: none !important;
 }
 
 /* ============================================================================
@@ -269,7 +333,8 @@ a:hover {
   position: relative;
 }
 
-/* Photo — grayscale + border set by skin-header.php */
+/* Photo — grayscale + border applied by skin-header.php CSS vars */
+.rg-image.post-image,
 .chap-photo {
   max-width: 100%;
   max-height: 100%;
@@ -280,18 +345,24 @@ a:hover {
   z-index: 2;
 }
 
-/* Download overlay sits inside .rg-photo-wrap */
+/* Remove RG's yellow border on archive pages — Chaplin uses grayscale borders */
+.rg-archive-item .rg-thumb {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
 .rg-photo-download-overlay {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
+  top: var(--space-xl);
+  right: var(--space-xl);
   z-index: 10;
 }
 
 .rg-photo-download-overlay a {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-sm);
   padding: 0.4rem 0.75rem;
   background-color: rgba(10,10,10,0.75);
   color: var(--chap-ink);
@@ -310,10 +381,9 @@ a:hover {
 }
 
 /* ============================================================================
-   FRAME DECORATIONS (frame-deco.php overlay)
+   FRAME DECORATIONS (frame-deco.php ornament overlay)
    ========================================================================== */
 
-/* frame-deco.php renders .chap-frame-deco — let it overlay the photobox */
 .chap-frame-deco {
   position: absolute;
   inset: 0;
@@ -321,7 +391,6 @@ a:hover {
   z-index: 5;
 }
 
-/* Ornament positioning within the frame */
 .chap-orn-tl,
 .chap-orn-tr,
 .chap-orn-bl,
@@ -344,7 +413,6 @@ a:hover {
   left: 50%;
   transform: translateX(-50%);
 }
-
 .chap-orn-mid-top { top: 3vh; }
 .chap-orn-mid-bot { bottom: calc(3vh + var(--infobox-height)); transform: translateX(-50%) scaleY(-1); }
 
@@ -355,24 +423,8 @@ a:hover {
   height: var(--chap-orn-size-mid);
   top: 50%;
 }
-
 .chap-orn-mid-lft { left: 3vw; transform: translateY(-50%) rotate(-90deg); }
 .chap-orn-mid-rgt { right: 3vw; transform: translateY(-50%) rotate(90deg); }
-
-.chap-orn-tl img,
-.chap-orn-tr img,
-.chap-orn-bl img,
-.chap-orn-br img,
-.chap-orn-mid-top img,
-.chap-orn-mid-bot img,
-.chap-orn-mid-lft img,
-.chap-orn-mid-rgt img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  opacity: 0.75;
-  filter: brightness(10);  /* makes dark SVGs show as light */
-}
 
 /* ============================================================================
    INTERTITLE OVERLAY (full-screen black fade modal)
@@ -474,7 +526,6 @@ a:hover {
 
 .chap-pane.active { display: block; }
 
-/* Info pane typography */
 .chap-info-title {
   font-family: var(--chap-heading-font);
   font-size: 1.3rem;
@@ -583,7 +634,7 @@ a:hover {
    INFOBOX (Navigation Bar)
    ========================================================================== */
 
-.chap-single #infobox {
+.rg-single #infobox {
   height: var(--infobox-height);
   flex-shrink: 0;
   background-color: var(--chap-bg-chrome);
@@ -642,6 +693,7 @@ a:hover {
 #infobox .nav-links a:hover,
 #infobox .nav-links a.active {
   color: var(--chap-ink);
+  opacity: 1;
 }
 
 #infobox .nav-links .sep {
@@ -670,7 +722,7 @@ a:hover {
   border-top: 1px solid var(--chap-border);
   flex-shrink: 0;
   gap: 3px;
-  padding: 4px 4px;
+  padding: 4px;
   scrollbar-color: var(--chap-ink-muted) transparent;
   scrollbar-width: thin;
 }
@@ -708,7 +760,7 @@ a:hover {
   filter: grayscale(1) brightness(1);
 }
 
-/* Sprocket hole visual — pseudo-elements on each filmstrip item */
+/* Sprocket holes */
 .chap-filmstrip-item::before,
 .chap-filmstrip-item::after {
   content: '';
@@ -722,7 +774,6 @@ a:hover {
   border-radius: 1px;
   z-index: 2;
 }
-
 .chap-filmstrip-item::before { top: -1px; }
 .chap-filmstrip-item::after  { bottom: -1px; }
 
@@ -736,57 +787,129 @@ a:hover {
 }
 
 /* ============================================================================
-   ARCHIVE GRID
+   ARCHIVE / GRID LAYOUTS
    ========================================================================== */
 
 body.archive-page {
-  overflow: auto;
+  overflow: auto !important;
+  height: auto !important;
+}
+
+html:has(body.archive-page) {
+  overflow: auto !important;
+  height: auto !important;
+}
+
+body.archive-page #page-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  height: auto;
 }
 
 body.archive-page #infobox {
-  position: fixed;
-  top: var(--header-height);
-  left: 0;
-  right: 0;
-  z-index: calc(var(--z-header) - 1);
-  height: var(--infobox-height);
+  position: relative;
+  margin-top: var(--header-height);
+  background-color: var(--chap-bg-chrome);
   border-top: none;
   border-bottom: 1px solid var(--chap-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 54px;
+  padding: 2px 0 0 0;
+  box-sizing: border-box;
 }
 
 body.archive-page #scroll-stage {
-  margin-top: calc(var(--header-height) + var(--infobox-height));
-  overflow: visible;
-}
-
-#justified-grid {
-  max-width: 95%;
-  margin: 0 auto;
-  padding: var(--chap-archive-gap);
-}
-
-/* Thumbnail styles */
-.thumb-wrap,
-.thumb-frame {
-  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-top: 0;
   position: relative;
 }
 
-.thumb-wrap img,
-.thumb-frame img,
-#justified-grid .justified-item img {
+/* Cropped grid */
+.rg-archive-grid {
+  flex: 1;
+  padding: 30px 60px 40px;
+  display: grid;
+  grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 210px));
+  gap: 24px;
+  margin: 0 auto;
+  max-width: var(--chap-archive-max-width);
+  width: 100%;
+  justify-content: center;
+  align-content: start;
+  align-items: center;
+  justify-items: center;
+}
+
+.rg-archive-item {
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  width: 100%;
+}
+
+.rg-archive-item:hover { transform: scale(1.02); }
+
+.rg-archive-item .rg-thumb {
+  overflow: hidden;
+}
+
+.rg-archive-item .rg-thumb img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
   filter: grayscale(1) brightness(0.85);
   transition: filter 0.3s ease, transform 0.3s ease;
 }
 
-.thumb-wrap:hover img,
-.thumb-frame:hover img,
-#justified-grid .justified-item:hover img {
-  filter: grayscale(1) brightness(1);
-  transform: scale(1.03);
+.rg-archive-item:hover .rg-thumb img {
+  filter: grayscale(1) brightness(1.05);
+  transform: scale(1.04);
 }
 
-/* Grid-view thumbnails */
+.rg-archive-title {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 10px 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--chap-ink);
+  font-family: var(--chap-heading-font);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.rg-archive-item:hover .rg-archive-title { opacity: 1; }
+
+/* Justified / Masonry grid */
+#justified-grid {
+  max-width: var(--chap-archive-max-width);
+  width: 100%;
+  margin: 0 auto;
+  padding: 30px 0;
+  box-sizing: border-box;
+  flex: 1 0 auto;
+}
+
+#justified-grid .justified-item img {
+  filter: grayscale(1) brightness(0.85);
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+#justified-grid .justified-item:hover img {
+  filter: grayscale(1) brightness(1.05);
+}
+
+/* Chaplin square grid (archive-layout.php) */
 .chap-archive-grid {
   display: grid;
   grid-template-columns: repeat(var(--grid-cols), 1fr);
@@ -803,11 +926,7 @@ body.archive-page #scroll-stage {
   background-color: var(--chap-bg-card);
 }
 
-.chap-archive-item a {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
+.chap-archive-item a { display: block; width: 100%; height: 100%; }
 
 .chap-archive-item img {
   width: 100%;
@@ -822,81 +941,349 @@ body.archive-page #scroll-stage {
   transform: scale(1.04);
 }
 
-/* Archive filter bar (infobox on archive pages) */
+
+.rg-breadcrumb, .snap-breadcrumb {
+  font-family: var(--chap-heading-font);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--chap-ink-dim);
+  padding: var(--space-md) 2vw;
+}
+
+.rg-breadcrumb a, .snap-breadcrumb a { color: var(--chap-ink-dim); }
+.rg-breadcrumb a:hover, .snap-breadcrumb a:hover { color: var(--chap-ink); opacity: 1; }
+.rg-breadcrumb-sep { margin: 0 var(--space-sm); color: var(--chap-ink-muted); }
+.rg-breadcrumb-current { color: var(--chap-ink); }
+
+/* Filter bar */
 #infobox .filter-group {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0 1rem;
-  height: 100%;
+  gap: 8px;
 }
 
 #infobox .filter-group form {
+  margin: 0;
+  padding: 0;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin: 0;
 }
 
 #infobox select,
 #infobox .archive-search-input {
+  background: var(--chap-bg-chrome);
+  color: var(--chap-ink);
+  border: 1px solid var(--chap-border);
+  padding: 4px 6px;
   font-family: var(--chap-heading-font);
   font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
   text-transform: uppercase;
-  background-color: var(--chap-bg-card);
-  color: var(--chap-ink-dim);
-  border: 1px solid var(--chap-border);
-  padding: 0.3rem 0.5rem;
-  outline: none;
+  letter-spacing: 0.5px;
+  cursor: pointer;
 }
 
 #infobox select:focus,
 #infobox .archive-search-input:focus {
+  outline: none;
   border-color: var(--chap-ink-muted);
-  color: var(--chap-ink);
 }
 
 /* ============================================================================
-   CALENDAR / DATE ARCHIVE
+   STATIC PAGES & BLOGROLL
    ========================================================================== */
 
-.rg-archive-calendar,
-.archive-calendar {
-  background-color: var(--chap-bg-card);
-  border: 1px solid var(--chap-border);
+html:has(body.static-transmission) {
+  overflow: auto !important;
+  height: auto !important;
 }
 
-/* ============================================================================
-   STATIC / TRANSMISSION PAGES
-   ========================================================================== */
+body.static-transmission {
+  overflow: auto !important;
+  height: auto !important;
+  padding-top: var(--header-height);
+  background-color: var(--chap-bg);
+}
+
+body.static-transmission #page-wrapper {
+  height: auto !important;
+  min-height: 100dvh;
+}
 
 body.static-transmission #scroll-stage {
-  margin-top: var(--header-height);
-  overflow-y: auto;
-  padding: 2rem;
+  display: block !important;
+  min-height: 100dvh;
+  overflow: visible !important;
+  position: relative;
 }
 
-body.static-transmission .static-content {
+.static-content {
   max-width: 720px;
-  margin: 0 auto;
-  font-family: var(--chap-body-font);
-  font-size: 1.1rem;
-  line-height: 1.8;
-  color: var(--chap-ink);
+  margin: 60px auto 80px auto;
+  padding: 0 40px;
+  box-sizing: border-box;
+  text-align: left;
 }
 
-body.static-transmission h1,
-body.static-transmission h2,
-body.static-transmission h3 {
+.static-page-title {
+  font-family: var(--chap-title-font);
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--chap-ink);
+  margin: 0 0 40px 0;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--chap-border);
+}
+
+.static-content .description {
+  font-family: var(--chap-body-font);
+  font-size: 1.05rem;
+  line-height: 2;
+  color: var(--chap-ink-dim);
+}
+
+.static-content .description h2,
+.static-content .description h3 {
   font-family: var(--chap-heading-font);
+  color: var(--chap-ink);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 50px 0 20px 0;
+}
+
+.static-content .description h2 {
+  font-size: 1.1rem;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--chap-border);
+}
+
+.static-content .description h3 { font-size: 0.95rem; }
+.static-content .description p  { margin-bottom: 1.5em; }
+
+.static-content .description a {
+  color: var(--chap-ink);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.3s ease;
+}
+.static-content .description a:hover { border-bottom-color: var(--chap-ink-dim); opacity: 1; }
+
+.static-transmission #photobox.page-hero {
+  display: block !important;
+  height: auto !important;
+  min-height: auto !important;
+  max-width: 720px !important;
+  width: 100% !important;
+  margin: 40px auto 60px auto !important;
+  padding: 30px 40px !important;
+  box-sizing: border-box !important;
+  float: none !important;
+  background: transparent !important;
+  overflow: visible !important;
+}
+
+.static-transmission .main-photo {
+  height: auto !important;
+  padding: 0 !important;
+  width: 100% !important;
+  text-align: center !important;
+  line-height: 0;
+}
+
+.static-transmission #photobox.page-hero img.post-image {
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+  filter: grayscale(1) contrast(1.05) brightness(0.95);
+}
+
+.blogroll-canvas {
+  max-width: 720px;
+  margin: 4vw auto 6vw auto;
+  padding: 0 4vw;
+  box-sizing: border-box;
+  text-align: left;
+  flex: 1;
+}
+
+.blogroll-category-block { margin-bottom: 4vw; }
+
+.blogroll-category-heading {
+  font-family: var(--chap-heading-font);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--chap-ink);
+  margin: 0 0 2vw 0;
+  padding-bottom: 0.8vw;
+  border-bottom: 1px solid var(--chap-border);
+}
+
+.blogroll-grid { display: grid; grid-template-columns: 1fr; gap: 0; }
+
+.blogroll-peer {
+  padding: 2vw 0;
+  border-bottom: 1px solid var(--chap-border);
+}
+.blogroll-peer:first-child { padding-top: 0; }
+.blogroll-peer:last-child  { border-bottom: none; padding-bottom: 0; }
+
+.blogroll-peer-name {
+  font-family: var(--chap-heading-font);
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.4em;
+  letter-spacing: 0.1em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+.blogroll-peer-name a { color: var(--chap-ink); text-decoration: none; }
+.blogroll-peer-name a:hover { opacity: 0.7; }
+
+.blogroll-peer-desc {
+  font-family: var(--chap-body-font);
+  font-size: 0.95rem;
+  color: var(--chap-ink-dim);
+  line-height: 1.7;
+  margin: 0 0 0.5em 0;
+  max-width: 600px;
+}
+
+.blogroll-peer-url {
+  font-family: monospace;
+  font-size: 0.7rem;
+  color: var(--chap-ink-muted);
+}
+
+/* ============================================================================
+   SYSTEM FOOTER
+   ========================================================================== */
+
+#system-footer {
+  background-color: var(--chap-bg-chrome);
+  border-top: 1px solid var(--chap-border);
+  padding: 32px 0;
+  text-align: center;
+  width: 100%;
+  margin-top: auto;
+}
+
+body.archive-page #system-footer,
+body.static-transmission #system-footer {
+  display: block;
+  position: relative;
+  z-index: 100;
+}
+
+#system-footer .inside {
+  max-width: 95%;
+  margin: 0 auto;
+  font-family: monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--chap-ink-muted);
+}
+
+#system-footer p {
+  color: var(--chap-ink-muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  line-height: 1.7;
+  margin: 0;
+}
+
+#system-footer .sep {
+  display: inline-block;
+  margin: 0 12px;
+  color: var(--chap-border);
+}
+
+#system-footer a, .footer-link {
+  color: var(--chap-ink-muted);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+#system-footer a:hover, .footer-link:hover { color: var(--chap-ink); opacity: 1; }
+
+/* ============================================================================
+   FORM STYLES
+   ========================================================================== */
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="url"],
+input[type="date"],
+input[type="number"],
+select,
+textarea {
+  font-family: var(--chap-body-font);
+  font-size: var(--font-scale-base);
+  padding: var(--space-md);
+  border: 1px solid var(--chap-border);
+  background-color: var(--chap-bg-card);
+  color: var(--chap-ink);
+  transition: border-color 0.2s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--chap-ink-muted);
+}
+
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  padding: var(--space-md) var(--space-xl);
+  border: none;
+  background-color: var(--chap-ink-muted);
+  color: var(--chap-ink);
+  font-family: var(--chap-heading-font);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+button:hover,
+input[type="button"]:hover,
+input[type="submit"]:hover,
+input[type="reset"]:hover {
+  background-color: var(--chap-ink-dim);
+}
+
+.rg-comment-form {
+  margin-top: var(--space-2xl);
+  padding-top: var(--space-xl);
+  border-top: 1px solid var(--chap-border);
+}
+
+.rg-comment-form-field {
+  margin-bottom: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.rg-comment-form-field label {
+  font-family: var(--chap-heading-font);
+  font-weight: 600;
+  color: var(--chap-ink-dim);
+  margin-bottom: var(--space-sm);
+  text-transform: uppercase;
+  font-size: 0.65rem;
   letter-spacing: 0.1em;
 }
 
-/* ============================================================================
-   GATE-SLIP / LOGIN
-   ========================================================================== */
+.rg-comment-form-field textarea { resize: vertical; min-height: 100px; }
 
 .gate-slip {
   background-color: var(--chap-bg-card);
@@ -904,49 +1291,20 @@ body.static-transmission h3 {
   color: var(--chap-ink);
 }
 
-.gate-slip input[type="text"],
-.gate-slip input[type="password"],
-.gate-slip input[type="email"] {
-  background-color: var(--chap-bg);
-  color: var(--chap-ink);
-  border: 1px solid var(--chap-border);
-  font-family: var(--chap-body-font);
-}
-
-.gate-slip input:focus {
-  border-color: var(--chap-ink-muted);
-  outline: none;
-}
-
 /* ============================================================================
-   BREADCRUMB
+   UTILITIES
    ========================================================================== */
 
-.rg-breadcrumb,
-.snap-breadcrumb {
-  font-family: var(--chap-heading-font);
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--chap-ink-dim);
-  padding: 0.5rem 1rem;
+.rg-hidden       { display: none !important; }
+.rg-visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border-width: 0;
 }
 
-.rg-breadcrumb a,
-.snap-breadcrumb a {
-  color: var(--chap-ink-dim);
-}
-
-.rg-breadcrumb a:hover,
-.snap-breadcrumb a:hover {
-  color: var(--chap-ink);
-  opacity: 1;
-}
-
-/* ============================================================================
-   SCROLLBAR (global)
-   ========================================================================== */
+.dim { color: var(--chap-ink-dim); }
 
 * {
   scrollbar-color: var(--chap-ink-muted) transparent;
@@ -957,49 +1315,44 @@ body.static-transmission h3 {
    RESPONSIVE
    ========================================================================== */
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   :root {
-    --header-height:    50px;
-    --filmstrip-height: 70px;
-    --chap-title-size:  0.9rem;
-  }
-
-  .rg-header-inside {
-    padding: 0 1rem;
-  }
-
-  .rg-header-nav .nav-menu {
-    gap: 16px;
-  }
-
-  .rg-masthead {
-    font-size: 0.85rem;
-    letter-spacing: 0.2em;
+    --grid-cols:     3;
+    --header-height: 52px;
   }
 
   #rg-photobox {
     height: calc(100dvh - var(--header-height) - var(--infobox-height) - var(--filmstrip-height) - 60px);
   }
 
-  .chap-overlay-card {
-    width: 95vw;
-    max-height: 85vh;
+  .rg-photo-wrap { padding: 2.5vh 2.5vw; }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --header-height:    50px;
+    --filmstrip-height: 70px;
+    --chap-title-size:  0.9rem;
+    --grid-cols:        2;
   }
 
-  .chap-archive-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .rg-header-inside { padding: 0 1rem; }
+  .rg-header-nav .nav-menu { gap: 16px; }
+  .rg-masthead { font-size: 0.85rem; letter-spacing: 0.2em; }
+
+  #rg-photobox {
+    height: calc(100dvh - var(--header-height) - var(--infobox-height) - var(--filmstrip-height) - 60px);
   }
 
-  .rg-photo-wrap {
-    padding: 2vh 2vw;
-  }
+  .chap-overlay-card { width: 95vw; max-height: 85vh; }
+  .rg-photo-wrap { padding: 2vh 2vw; }
+  .rg-archive-grid { padding: 16px; gap: 12px; }
 }
 
 @media (max-width: 480px) {
-  .rg-header-nav .nav-menu {
-    gap: 12px;
-  }
+  .rg-header-nav .nav-menu { gap: 12px; }
 
+  .rg-archive-grid,
   .chap-archive-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
@@ -1015,19 +1368,18 @@ body.static-transmission h3 {
   #infobox,
   .chap-filmstrip,
   .community-dock,
+  .chap-overlay-drawer,
   #chap-film-bg,
   body::after {
     display: none !important;
   }
 
-  #rg-photobox {
-    height: auto;
-    margin-top: 0;
-  }
+  #rg-photobox { height: auto; margin-top: 0; }
+  body { overflow: auto; background: #fff; }
 
-  .chap-photo-wrap {
-    width: auto !important;
-    max-width: 100% !important;
+  .chap-photo, .rg-image.post-image {
+    filter: none;
+    max-width: 100%;
     page-break-inside: avoid;
   }
 }

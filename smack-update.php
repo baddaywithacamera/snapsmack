@@ -455,17 +455,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && !$stage_state && !$action) {
                 'total_notifications' => $cached_result['skin_notifications'] ?? 0,
             ];
         } else {
-            // Cache stale/missing — defer to JS retry loop, avoid sync red-banner on page load
+            // Cache stale or missing — trigger JS auto-check (fast mode, 6 s / 1 attempt).
             $core_status = 'checking';
         }
     }
 }
 
-// ── AJAX CHECK ENDPOINT (JS retry loop calls this) ───────────────────────────
+// ── AJAX CHECK ENDPOINT — unused; JS auto-check removed 2026-05-24.
+// TODO: SECAUDIT — remove check_ajax action and dead JS in a future release.
+//       Keeping for now to avoid a 404 if any cached page still posts to it.
 if ($action === 'check_ajax') {
     header('Content-Type: application/json');
-    $release_info_ax = updater_fetch_release_info();
-    $skin_info_ax    = updater_check_skin_registry($pdo);
+    // Fast mode: short timeout, single attempt, no skin registry fetch.
+    // The JS retry loop drives retries; PHP must fail fast so the next
+    // retry fires promptly rather than blocking for 40+ seconds per attempt.
+    // Skin notifications are picked up on the full page reload after ok:true.
+    $release_info_ax = updater_fetch_release_info(true);
+    $skin_info_ax    = updater_check_skin_registry($pdo, true);
     $status_ax       = updater_check_status($installed_version, $release_info_ax, $installed_checksum);
     if ($status_ax !== 'error') {
         $core_upd_ax = null;
@@ -1799,34 +1805,37 @@ include 'core/sidebar.php';
     <!-- ── PRIMARY STATUS CARD ── -->
     <div class="box update-section">
         <?php if ($core_status === 'checking'): ?>
-        <div class="update-status-badge" id="js-check-badge" style="opacity:0.7;">&#8987; CHECKING FOR UPDATES&hellip;</div>
+        <div class="update-status-badge" id="check-status-badge" style="opacity:0.7;">&#8943; CHECKING FOR UPDATES&hellip;</div>
+        <p class="dim" id="check-status-msg" style="font-size:0.85rem;margin-top:12px;">Hold on&hellip;</p>
         <script>
-        (function () {
-            var csrf   = <?php echo json_encode($csrf); ?>;
-            var delays = [0, 500, 1500, 3000];
-            var attempt = 0;
-            function run() {
-                var fd = new FormData();
-                fd.append('action', 'check_ajax');
-                fd.append('csrf', csrf);
-                fetch(window.location.pathname, { method: 'POST', body: fd })
-                    .then(function (r) { return r.json(); })
-                    .then(function (d) { if (d.ok) { location.reload(); } else { retry(); } })
-                    .catch(retry);
-            }
-            function retry() {
-                attempt++;
-                if (attempt < delays.length) {
-                    setTimeout(run, delays[attempt]);
+        (function() {
+            var csrf = <?php echo json_encode($csrf); ?>;
+            var badge = document.getElementById('check-status-badge');
+            var msg   = document.getElementById('check-status-msg');
+            var ctrl  = new AbortController();
+            var timer = setTimeout(function() { ctrl.abort(); }, 15000);
+            fetch(window.location.pathname, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'action=check_ajax&csrf=' + encodeURIComponent(csrf),
+                signal: ctrl.signal
+            }).then(function(r) {
+                clearTimeout(timer);
+                return r.json();
+            }).then(function(d) {
+                if (d.ok) {
+                    window.location.reload();
                 } else {
-                    document.getElementById('js-check-badge').outerHTML =
-                        '<div class="update-status-badge status-error">&#10007; COULD NOT REACH UPDATE SERVER</div>'
-                        + '<p class="dim" style="font-size:0.8rem;margin-top:12px;">Check your server's outbound HTTPS connection to snapsmack.ca.</p>'
-                        + '<form method="POST" class="mt-20"><input type="hidden" name="csrf" value="' + csrf + '">'
-                        + '<button type="submit" name="action" value="check" class="btn-smack">RETRY CHECK</button></form>';
+                    badge.textContent = '— COULD NOT REACH UPDATE SERVER';
+                    msg.textContent   = 'Check your server’s outbound HTTPS connection to snapsmack.ca.';
                 }
-            }
-            setTimeout(run, delays[attempt]);
+            }).catch(function(e) {
+                badge.textContent = '— CHECK TIMED OUT';
+                msg.textContent   = 'No response after 15 seconds. Use CHECK NOW to try manually.';
+                msg.insertAdjacentHTML('afterend',
+                    '<form method="POST" class="mt-20"><input type="hidden" name="csrf" value="<?php echo htmlspecialchars($csrf); ?>"><button type="submit" name="action" value="check" class="btn-smack">CHECK NOW</button></form>'
+                );
+            });
         })();
         </script>
 
@@ -1877,6 +1886,10 @@ include 'core/sidebar.php';
                 <span class="dim ml-10">&ldquo;<?php echo htmlspecialchars(SNAPSMACK_VERSION_CODENAME); ?>&rdquo;</span>
             <?php endif; ?>
         </div>
+        <form method="POST" class="mt-20">
+            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
+            <button type="submit" name="action" value="check" class="btn-smack" style="width:auto;padding:0 20px;">CHECK NOW</button>
+        </form>
         <?php endif; ?>
         <?php if ($last_check): ?>
         <p class="dim" style="font-size:0.72rem;margin-top:16px;">Checked: <?php echo date('M j, Y g:ia', strtotime($last_check)); ?></p>

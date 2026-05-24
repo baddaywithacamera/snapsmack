@@ -6,9 +6,9 @@
  * sc-update.php compares SC_COMMIT_REF against the latest master commit
  * to determine whether an update is available.
  *
- * SNAPSMACK_EOF_HEADER: bottom marker is  // ===== SNAPSMACK EOF =====  (last non-empty line)
+ * SNAPSMACK_EOF_HEADER: bottom marker is  // ===== SNAPSMACK EOF =======  (last non-empty line)
  */
 
-define('SC_VERSION',  '0.7.180');
+define('SC_VERSION',  '0.7.182');
 define('SC_CODENAME', 'Barcalounger');
 // ===== SNAPSMACK EOF =====

@@ -54,9 +54,13 @@ a:hover { color: #c0c0c0; }
 }
 
 .sidebar-bottom {
-    background-color: #0D0D0D;
+    background-color: #000000;
     border-top-color: #212121;
 }
+
+/* Registry info bar (skin gallery) */
+.registry-info a { color: #666666; text-decoration: none; }
+.registry-info a:hover { color: #DFDFDF; }
 
 .sidebar .logout {
     color: #404040;

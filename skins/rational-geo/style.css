@@ -319,8 +319,8 @@ small,
   position: relative;
 }
 
-/* Hide footer on single image view — only show on archive/static/blogroll */
-.rg-single #system-footer,
+/* Hide generic <footer> on single view; #system-footer stays visible so it
+   appears below the info/comments drawer on the solo page. */
 .rg-single footer {
   display: none;
 }
