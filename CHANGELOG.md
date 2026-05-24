@@ -15,7 +15,7 @@ All notable changes to SnapSmack are documented here. Newest release first.
 ## 0.7.180 — "Barcalounger" (2026-05-23)
 
 ### Fixed
-- **Rational Geo 2.1.1**: Post date now centred to match title and description alignment.
+- **Rational Geo 2.1.2**: Post date now centred to match title and description alignment.
 - **Date/time live preview in Configuration**: Clock was showing the hardcoded example date from the format dropdown label (always "February 1, 2026") rather than today's date. Rewrote `updateClock()` in `ss-engine-admin-ui.js` to parse the PHP format code from the select value and format the real current date using timezone-aware `Intl` APIs.
 
 ### Changed
