@@ -85,6 +85,8 @@ tools/*/profiles/
 tools/*/build/
 tools/*/dist/
 tools/*/*.spec
+tools/oh-snap/src-tauri/target/
+tools/oh-snap/node_modules/
 
 # Dead tool directory (renamed to tools/sybu/)
 tools/ft-batch-poster/
