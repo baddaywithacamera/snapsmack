@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.183 — "Barcalounger" (2026-05-25)
+
+### Fixed
+- **Multisite UPDATE ALL BEHIND false positives**: If `latest.json` on snapsmack.ca contains a non-numeric prefix in the `version` field (e.g. `Alpha 0.7.182` instead of `0.7.182`), `snap_version_compare()` treated `Alpha` as a pre-release tag and incorrectly flagged every spoke as behind. Fixed in three places: `snap_version_compare()` now strips non-numeric prefix before comparing; `multisite-api.php` normalizes `to_version` in the update response; `smack-multisite.php` normalizes before writing `software_version` to DB.
+
 ## 0.7.182 — "Barcalounger" (2026-05-24)
 
 ### Fixed

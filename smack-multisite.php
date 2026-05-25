@@ -334,8 +334,9 @@ if (isset($_POST['push_update']) || isset($_POST['push_update_all'])) {
                 $result['errors']   = $data['errors'] ?? [];
                 // Refresh DB version
                 if (!empty($data['to_version'])) {
+                    $clean_ver = preg_replace('/^[^0-9]+/', '', $data['to_version']);
                     $pdo->prepare("UPDATE snap_multisite_nodes SET software_version = ?, status = 'active', last_seen_at = NOW() WHERE id = ?")
-                        ->execute([$data['to_version'], $tn['id']]);
+                        ->execute([$clean_ver, $tn['id']]);
                 }
             }
             $update_results[] = $result;

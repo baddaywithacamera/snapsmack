@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Chaplin Skin Manifest v2.4
+ * SNAPSMACK - Chaplin Skin Manifest v0.2.5
  *
  * Silent-film-era B&W skin. RG base structure, Cinzel/Cormorant typography,
  * CSS outline+box-shadow border system, full-black intertitle overlay,
@@ -34,11 +34,11 @@ if (empty($vintage_fonts)) $vintage_fonts = $all_fonts;
 
 return [
     'name'        => 'Chaplin',
-    'version'     => '2.5',
+    'version'     => '0.2.5',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Silent-film era. Near-black canvas, B&W photo treatment, Art Deco border system with ornament placement, animated film effects. Full-screen intertitle overlay for info and signals. Horizontal filmstrip below the photo.',
-    'status'      => 'stable',
+    'status'      => 'development',
 
     'features' => [
         'supports_wall'    => false,

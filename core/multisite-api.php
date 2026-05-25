@@ -1053,7 +1053,7 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
     ms_ok([
         'status'        => 'updated',
         'from_version'  => $installed_version,
-        'to_version'    => $release_info['version']      ?? '',
+        'to_version'    => preg_replace('/^[^0-9]+/', '', $release_info['version'] ?? ''),
         'files_updated' => $extract['files_updated'],
         'files_skipped' => $extract['files_skipped'],
         'migrations'    => $mig_count,

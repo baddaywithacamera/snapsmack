@@ -63,8 +63,8 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Referrer-Policy: strict-origin-when-cross-origin');
 }
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.182');
-define('SNAPSMACK_VERSION_SHORT', '0.7.182');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.183');
+define('SNAPSMACK_VERSION_SHORT', '0.7.183');
 define('SNAPSMACK_VERSION_CODENAME', 'Barcalounger');
 
 // --- VERSION COMPARISON ---
@@ -80,6 +80,8 @@ define('SNAPSMACK_VERSION_CODENAME', 'Barcalounger');
 //        snap_version_compare('0.7.9p', '0.7.9n', '>') => true (legacy)
 function snap_version_compare(string $v1, string $v2, string $op = '>'): bool {
     $normalise = function (string $v): string {
+        // Strip non-numeric prefix (e.g. 'Alpha 0.7.182' → '0.7.182').
+        $v = preg_replace('/^[^0-9]+/', '', $v);
         if (preg_match('/^(\d+(?:\.\d+)*)([a-z])$/i', $v, $m)) {
             return $m[1] . '.' . (ord(strtolower($m[2])) - ord('a') + 1);
         }
