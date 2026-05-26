@@ -14,6 +14,12 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ## 0.7.184 — "Barcalounger" (2026-05-26)
 
+### Changed
+- **Image Sorter renamed to Light Table**: `smack-sorter.php` → `smack-lighttable.php`, `ss-engine-sorter.js` → `ss-engine-lighttable.js`, sidebar nav and all display text updated.
+- **FLKR DCKR renamed to FLKR FCKR**: Tool renamed throughout — `core/flkrfckr-api.php`, `tools/flkr-fckr/`, API route `flkrfckr/*`, key type `flkrfckr`, all UI labels, help topics, and snapsmack.ca static copy updated. (Flickr price hike. You know why.)
+
+
+
 ### Fixed
 - **Multisite "all spokes behind" false positive (root cause fix)**: The 0.7.183 fix corrected `snap_version_compare()` but the stored values in `snap_multisite_nodes.software_version` still contained the raw `"Alpha X.Y.Z"` prefix, making SQL `!=` comparisons fail even when PHP comparisons worked. Both heartbeat `UPDATE` paths in `smack-multisite.php` now normalise via `preg_replace('/^[^0-9]+/', '', ...)` before writing to the database. Belt-and-suspenders: `core/multisite-api.php` heartbeat response now sends `SNAPSMACK_VERSION_SHORT` (clean numeric string) instead of `SNAPSMACK_VERSION`.
 

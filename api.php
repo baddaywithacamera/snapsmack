@@ -50,10 +50,10 @@ if (strpos($route, 'smackpress') === 0) {
     exit;
 }
 
-// --- FLKR DCKR ROUTES ---
-// Route all /api/flkrdckr/* requests to the FLKR DCKR migration API handler
-if (strpos($route, 'flkrdckr') === 0) {
-    require_once 'core/flkrdckr-api.php';
+// --- FLKR FCKR ROUTES ---
+// Route all /api/flkrfckr/* requests to the FLKR FCKR migration API handler
+if (strpos($route, 'flkrfckr') === 0) {
+    require_once 'core/flkrfckr-api.php';
     exit;
 }
 
@@ -63,7 +63,4 @@ header('Content-Type: application/json');
 echo json_encode([
     'status' => 'error',
     'message' => 'Unknown API endpoint'
-], JSON_PRETTY_PRINT);
-exit;
-?>
-<?php // ===== SNAPSMACK EOF =====
+],

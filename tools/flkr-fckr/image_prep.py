@@ -1,5 +1,5 @@
 """
-FLKR DCKR — image_prep.py
+FLKR FCKR — image_prep.py
 Image processing pipeline: resize, thumbnail generation, EXIF extraction.
 
 Extracted and adapted from tools/unzucker/poster.py's prepare_image() helper.

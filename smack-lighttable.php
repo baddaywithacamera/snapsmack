@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Image Sorter
+ * SNAPSMACK - Light Table
  *
  * Drag-and-drop bulk organisation workbench. Albums, Categories, Collections.
  * Desktop-only (viewport < 1024px or pointer:coarse = block screen).
@@ -443,7 +443,7 @@ include 'core/admin-header.php';
 <div class="sorter-touch-block" id="sorter-touch-block" style="display:none;">
     <div class="sorter-touch-msg">
         <h2>GET YOUR ASS TO A COMPUTER.</h2>
-        <p>The Image Sorter is a desktop tool. Drag and drop with thousands of photos on a touchscreen is suffering. Come back when you're at a real keyboard.</p>
+        <p>The Light Table is a desktop tool. Drag and drop with thousands of photos on a touchscreen is suffering. Come back when you're at a real keyboard.</p>
     </div>
 </div>
 
@@ -454,7 +454,7 @@ include 'core/admin-header.php';
     <div class="sorter-topbar" id="sorter-topbar">
         <div class="sorter-topbar-left">
             <button class="sorter-rail-toggle" id="sorter-rail-toggle" title="Toggle container panel">☰</button>
-            <span class="sorter-title">SORTER</span>
+            <span class="sorter-title">LIGHT TABLE</span>
         </div>
         <div class="sorter-topbar-filters" id="sorter-topbar-filters">
             <select id="sorter-filter-membership" title="Membership filter">
@@ -688,7 +688,8 @@ include 'core/admin-header.php';
 </style>
 
 <script src="assets/js/fjGallery.min.js"></script>
-<script src="assets/js/ss-engine-sorter.js"></script>
+<script src="assets/js/ss-engine-lighttable.js"></script>
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
+                                                                                                                                          

@@ -1,5 +1,5 @@
 """
-FLKR DCKR — main.py
+FLKR FCKR — main.py
 Flickr export → SnapSmack migration desktop tool.
 
 Dark tkinter UI in the Unzucker/SmackPress/SUYB family.
@@ -70,7 +70,7 @@ class FlkrDckrApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title('FLKR DCKR')
+        self.title('FLKR FCKR')
         self.configure(bg=BG_DEEP)
         self.resizable(True, True)
         self.minsize(700, 600)
@@ -342,7 +342,7 @@ class FlkrDckrApp(tk.Tk):
     def _load_export(self):
         folder = self._v_folder.get().strip()
         if not folder or not os.path.isdir(folder):
-            messagebox.showerror('FLKR DCKR', 'Please select a valid export folder first.')
+            messagebox.showerror('FLKR FCKR', 'Please select a valid export folder first.')
             return
 
         self._log_write('Parsing Flickr export…', TEXT_DIM)
@@ -488,7 +488,7 @@ class FlkrDckrApp(tk.Tk):
     def _show_help(self):
         """Open in-app help window."""
         win = tk.Toplevel(self)
-        win.title('FLKR DCKR — Help')
+        win.title('FLKR FCKR — Help')
         win.configure(bg=BG_DEEP)
         win.geometry('640x620')
         win.resizable(True, True)
@@ -520,34 +520,34 @@ class FlkrDckrApp(tk.Tk):
         def dim(t): txt.insert('end', t + '\n', 'dim')
         def br():   txt.insert('end', '\n')
 
-        h1('FLKR DCKR — Flickr → SnapSmack Migration Tool')
+        h1('FLKR FCKR — Flickr → SnapSmack Migration Tool')
         p('Migrates your Flickr photo archive to a self-hosted SnapSmack photoblog. '
           'Runs on your computer, not on your server — because a large Flickr archive '
           '(thousands of photos, gigabytes of data) cannot run inside a PHP request. '
-          'FLKR DCKR handles the heavy work locally and talks to your server at a '
+          'FLKR FCKR handles the heavy work locally and talks to your server at a '
           'throttled rate you control.')
         br()
 
         h2('Quick Start')
         p('1. Download and unzip your Flickr data export (Account Settings → Your Flickr Data → Request your archive).')
-        p('2. In your SnapSmack admin panel, go to Boring Ass Stuff → API Keys and generate a new key with type "FLKR DCKR Import". Copy it — shown only once.')
+        p('2. In your SnapSmack admin panel, go to Boring Ass Stuff → API Keys and generate a new key with type "FLKR FCKR Import". Copy it — shown only once.')
         p('3. Enter your site URL and API key in the settings bar above. Click Test to verify.')
         p('4. Enter your FTP credentials and the remote base path (where your media files live on the server).')
         p('5. Browse to your unzipped Flickr export folder and click Load Export.')
         p('6. Review the photo grid. Click any tile to exclude it. Use the album sidebar to filter by album.')
-        p('7. Click Start Import. Pause and resume at any time. If interrupted, FLKR DCKR offers to resume on next launch.')
+        p('7. Click Start Import. Pause and resume at any time. If interrupted, FLKR FCKR offers to resume on next launch.')
         br()
 
         h2('Settings')
         h2('  Site URL')
         p('The full URL of your SnapSmack install, e.g. https://myphotoblog.com — no trailing slash.')
         h2('  API Key')
-        p('The FLKR DCKR Import key generated from your SnapSmack admin panel. '
+        p('The FLKR FCKR Import key generated from your SnapSmack admin panel. '
           'Revoke it when your import is done.')
         h2('  FTP Host / User / Pass / Path')
         p('Standard FTP credentials for your server. Remote Path is the server-side base '
           'directory for media files — usually something like /public_html/media_assets. '
-          'FLKR DCKR creates year/month subdirectories inside this path automatically.')
+          'FLKR FCKR creates year/month subdirectories inside this path automatically.')
         h2('  Export Folder')
         p('The root of your unzipped Flickr export. Should contain albums.json and '
           'many photo_XXXXXXXX.json sidecar files.')
@@ -574,20 +574,20 @@ class FlkrDckrApp(tk.Tk):
         br()
 
         h2('Resume After Interruption')
-        p('If FLKR DCKR is closed or crashes mid-import, a checkpoint file is written '
-          'after every successfully imported photo. On next launch, FLKR DCKR detects '
+        p('If FLKR FCKR is closed or crashes mid-import, a checkpoint file is written '
+          'after every successfully imported photo. On next launch, FLKR FCKR detects '
           'the checkpoint and offers to resume. Already-imported Flickr IDs are skipped '
           'instantly — no duplicates, no re-processing.')
         br()
 
         h2('After the Import')
-        p('Go back to your SnapSmack admin panel and revoke the FLKR DCKR API key — '
+        p('Go back to your SnapSmack admin panel and revoke the FLKR FCKR API key — '
           'you do not need it again. If any photos failed (usually a dropped FTP '
-          'connection), re-run FLKR DCKR against the same export folder with the same '
+          'connection), re-run FLKR FCKR against the same export folder with the same '
           'settings. Duplicates are detected and skipped automatically.')
         br()
 
-        dim('FLKR DCKR is part of the SnapSmack companion tool family alongside '
+        dim('FLKR FCKR is part of the SnapSmack companion tool family alongside '
             'Smack Your Batch Up (batch posting), Smack Up Your Backup (backups), '
             'and SmackPress (WordPress migration). All tools use the same FTP + API '
             'key pattern and ship as standalone Windows executables.')
@@ -627,7 +627,7 @@ class FlkrDckrApp(tk.Tk):
             return
         photos = [p for p in self._parse_result.photos if not p.missing_image]
         if not photos:
-            messagebox.showwarning('FLKR DCKR', 'No photos to import.')
+            messagebox.showwarning('FLKR FCKR', 'No photos to import.')
             return
 
         self._save_settings()
@@ -636,7 +636,7 @@ class FlkrDckrApp(tk.Tk):
         url = cfg.get('site_url', '').strip()
         key = cfg.get('api_key', '').strip()
         if not url or not key:
-            messagebox.showerror('FLKR DCKR', 'Site URL and API key are required.')
+            messagebox.showerror('FLKR FCKR', 'Site URL and API key are required.')
             return
 
         self._client = FlkrDckrClient(url, key)
@@ -659,7 +659,7 @@ class FlkrDckrApp(tk.Tk):
             password=cfg.get('ftp_password', ''),
         )
 
-        staging = tempfile.mkdtemp(prefix='flkrdckr_')
+        staging = tempfile.mkdtemp(prefix='flkrfckr_')
 
         # Build album map from parse result
         flickr_album_map = {
@@ -764,7 +764,7 @@ class FlkrDckrApp(tk.Tk):
             cp.delete()
             return
         answer = messagebox.askyesno(
-            'FLKR DCKR',
+            'FLKR FCKR',
             f"A previous import was interrupted.\n"
             f"{prog['imported']} photos already imported.\n\n"
             f"Resume from where it left off?"
@@ -835,28 +835,4 @@ class FlkrDckrApp(tk.Tk):
             'ftp_password':     self._v_ftp_pass.get().strip(),
             'ftp_remote_base':  self._v_ftp_path.get().strip(),
             'export_folder':    self._v_folder.get().strip(),
-            'throttle_delay':   self._v_throttle.get(),
-            'private_status':   self._v_private.get(),
-            'unalbumed_action': self._v_unalbumed.get(),
-        })
-        cfg_mod.save(data)
-
-    # ------------------------------------------------------------------
-    # Canvas resize helpers
-    # ------------------------------------------------------------------
-
-    def _on_grid_configure(self, event):
-        self._canvas.configure(scrollregion=self._canvas.bbox('all'))
-
-    def _on_canvas_configure(self, event):
-        self._canvas.itemconfig(self._canvas_window, width=event.width)
-
-
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
-
-if __name__ == '__main__':
-    app = FlkrDckrApp()
-    app.mainloop()
-# ===== SNAPSMACK EOF =====
+            'throttle_delay':   self._v_thr

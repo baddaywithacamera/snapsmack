@@ -1,12 +1,12 @@
 """
-FLKR DCKR — poster.py
-SnapSmack API client for the FLKR DCKR import pipeline.
+FLKR FCKR — poster.py
+SnapSmack API client for the FLKR FCKR import pipeline.
 
 Forked from tools/unzucker/poster.py. Key differences:
-  - No session scraping. Bearer token auth via FLKR DCKR API key.
+  - No session scraping. Bearer token auth via FLKR FCKR API key.
   - No BeautifulSoup dependency.
-  - create_image_record() calls POST flkrdckr/images.
-  - create_or_get_album() calls GET/POST flkrdckr/albums.
+  - create_image_record() calls POST flkrfckr/images.
+  - create_or_get_album() calls GET/POST flkrfckr/albums.
   - Handles duplicate detection via server response (duplicate: true).
 """
 
@@ -49,7 +49,7 @@ class FlkrDckrClient:
         self._session.headers.update({
             'Authorization': f'Bearer {api_key}',
             'Content-Type':  'application/json',
-            'User-Agent':    'flkrdckr/1.0',
+            'User-Agent':    'flkrfckr/1.0',
         })
         self._album_cache: Dict[str, int] = {}   # name.lower() → SnapSmack album ID
 
@@ -59,13 +59,13 @@ class FlkrDckrClient:
 
     def ping(self) -> tuple:
         """
-        Test connection by calling GET flkrdckr/albums.
+        Test connection by calling GET flkrfckr/albums.
         Returns (ok: bool, message: str).
         """
         try:
             resp = self._session.get(
                 f"{self.base_url}/api.php",
-                params={'route': 'flkrdckr/albums'},
+                params={'route': 'flkrfckr/albums'},
                 timeout=15,
             )
             if resp.status_code == 401:
@@ -89,7 +89,7 @@ class FlkrDckrClient:
         """
         resp = self._session.get(
             f"{self.base_url}/api.php",
-            params={'route': 'flkrdckr/albums'},
+            params={'route': 'flkrfckr/albums'},
             timeout=15,
         )
         resp.raise_for_status()
@@ -113,7 +113,7 @@ class FlkrDckrClient:
         payload = {'name': name, 'description': description}
         resp = self._session.post(
             f"{self.base_url}/api.php",
-            params={'route': 'flkrdckr/albums'},
+            params={'route': 'flkrfckr/albums'},
             data=json.dumps(payload),
             timeout=15,
         )
@@ -145,7 +145,7 @@ class FlkrDckrClient:
         status:           str = 'published',
     ) -> ImportResult:
         """
-        POST to flkrdckr/images. Handles duplicate detection.
+        POST to flkrfckr/images. Handles duplicate detection.
         Returns ImportResult.
         """
         payload = {
@@ -168,7 +168,7 @@ class FlkrDckrClient:
         try:
             resp = self._session.post(
                 f"{self.base_url}/api.php",
-                params={'route': 'flkrdckr/images'},
+                params={'route': 'flkrfckr/images'},
                 data=json.dumps(payload),
                 timeout=30,
             )
