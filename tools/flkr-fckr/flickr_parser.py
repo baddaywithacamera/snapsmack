@@ -1,5 +1,5 @@
 """
-FLKR DCKR — flickr_parser.py
+FLKR FCKR — flickr_parser.py
 Parses a Flickr data export folder into ParsedPhoto objects
 ready for migration to SnapSmack.
 

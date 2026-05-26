@@ -1,15 +1,15 @@
 <?php
 /**
- * SNAPSMACK - FLKR DCKR Migration API
+ * SNAPSMACK - FLKR FCKR Migration API
  *
- * Authenticated JSON API for the FLKR DCKR Flickr→SnapSmack migration
+ * Authenticated JSON API for the FLKR FCKR Flickr→SnapSmack migration
  * desktop tool. All requests require a Bearer token issued from
- * smack-api-keys.php (key_type = 'flkrdckr').
+ * smack-api-keys.php (key_type = 'flkrfckr').
  *
- * Routes (via api.php?route=flkrdckr/...):
- *   GET    flkrdckr/albums        — list all albums
- *   POST   flkrdckr/albums        — create album if not exists (match on name)
- *   POST   flkrdckr/images        — create image record (FTP'd file already on server)
+ * Routes (via api.php?route=flkrfckr/...):
+ *   GET    flkrfckr/albums        — list all albums
+ *   POST   flkrfckr/albums        — create album if not exists (match on name)
+ *   POST   flkrfckr/images        — create image record (FTP'd file already on server)
  *
  * SNAPSMACK_EOF_HEADER
  *     <?php // ===== SNAPSMACK EOF =====
@@ -26,7 +26,7 @@ require_once __DIR__ . '/snap-tags.php';
 // Auth
 // ---------------------------------------------------------------------------
 
-function flkrdckr_ensure_key_type(PDO $pdo): void {
+function flkrfckr_ensure_key_type(PDO $pdo): void {
     try {
         $pdo->query("SELECT key_type FROM snap_ohsnap_keys LIMIT 0");
     } catch (PDOException $e) {
@@ -34,8 +34,8 @@ function flkrdckr_ensure_key_type(PDO $pdo): void {
     }
 }
 
-function flkrdckr_auth(PDO $pdo): bool {
-    flkrdckr_ensure_key_type($pdo);
+function flkrfckr_auth(PDO $pdo): bool {
+    flkrfckr_ensure_key_type($pdo);
     $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
     if (!preg_match('/^Bearer\s+([a-f0-9]{64})$/i', $header, $m)) {
         return false;
@@ -43,7 +43,7 @@ function flkrdckr_auth(PDO $pdo): bool {
     $hash = hash('sha256', $m[1]);
     $stmt = $pdo->prepare("
         SELECT id FROM snap_ohsnap_keys
-        WHERE key_hash = ? AND is_active = 1 AND key_type = 'flkrdckr'
+        WHERE key_hash = ? AND is_active = 1 AND key_type = 'flkrfckr'
         LIMIT 1
     ");
     $stmt->execute([$hash]);
@@ -58,13 +58,13 @@ function flkrdckr_auth(PDO $pdo): bool {
 // Response helpers
 // ---------------------------------------------------------------------------
 
-function flkrdckr_error(int $code, string $message): void {
+function flkrfckr_error(int $code, string $message): void {
     http_response_code($code);
     echo json_encode(['status' => 'error', 'message' => $message]);
     exit;
 }
 
-function flkrdckr_ok(array $data): void {
+function flkrfckr_ok(array $data): void {
     echo json_encode(array_merge(['status' => 'ok'], $data));
     exit;
 }
@@ -73,8 +73,8 @@ function flkrdckr_ok(array $data): void {
 // Slug helpers
 // ---------------------------------------------------------------------------
 
-if (!function_exists('flkrdckr_slugify')) {
-    function flkrdckr_slugify(string $s): string {
+if (!function_exists('flkrfckr_slugify')) {
+    function flkrfckr_slugify(string $s): string {
         $s = mb_strtolower(trim($s), 'UTF-8');
         $s = preg_replace('/[^\p{L}\p{N}\s-]/u', '', $s);
         $s = preg_replace('/[\s_-]+/', '-', $s);
@@ -82,8 +82,8 @@ if (!function_exists('flkrdckr_slugify')) {
     }
 }
 
-function flkrdckr_unique_slug(PDO $pdo, string $title): string {
-    $base = flkrdckr_slugify($title);
+function flkrfckr_unique_slug(PDO $pdo, string $title): string {
+    $base = flkrfckr_slugify($title);
     if ($base === '') $base = 'photo';
     $slug = $base;
     $n    = 1;
@@ -100,8 +100,8 @@ function flkrdckr_unique_slug(PDO $pdo, string $title): string {
 // Gate auth
 // ---------------------------------------------------------------------------
 
-if (!flkrdckr_auth($pdo)) {
-    flkrdckr_error(401, 'Invalid or missing API key.');
+if (!flkrfckr_auth($pdo)) {
+    flkrfckr_error(401, 'Invalid or missing API key.');
 }
 
 // ---------------------------------------------------------------------------
@@ -109,11 +109,11 @@ if (!flkrdckr_auth($pdo)) {
 // ---------------------------------------------------------------------------
 
 $route  = $_GET['route'] ?? '';
-$sub    = preg_replace('#^flkrdckr/?#', '', $route);
+$sub    = preg_replace('#^flkrfckr/?#', '', $route);
 $method = $_SERVER['REQUEST_METHOD'];
 
 // ---------------------------------------------------------------------------
-// GET flkrdckr/albums
+// GET flkrfckr/albums
 // ---------------------------------------------------------------------------
 
 if ($sub === 'albums' && $method === 'GET') {
@@ -122,11 +122,11 @@ if ($sub === 'albums' && $method === 'GET') {
         FROM snap_albums
         ORDER BY album_name ASC
     ");
-    flkrdckr_ok(['albums' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    flkrfckr_ok(['albums' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
 }
 
 // ---------------------------------------------------------------------------
-// POST flkrdckr/albums
+// POST flkrfckr/albums
 // ---------------------------------------------------------------------------
 
 if ($sub === 'albums' && $method === 'POST') {
@@ -135,7 +135,7 @@ if ($sub === 'albums' && $method === 'POST') {
     $desc = trim($body['description'] ?? '');
 
     if ($name === '') {
-        flkrdckr_error(400, 'name is required.');
+        flkrfckr_error(400, 'name is required.');
     }
 
     // Case-insensitive match on name
@@ -147,7 +147,7 @@ if ($sub === 'albums' && $method === 'POST') {
     $existing = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($existing) {
-        flkrdckr_ok(['album_id' => (int)$existing['id'], 'created' => false]);
+        flkrfckr_ok(['album_id' => (int)$existing['id'], 'created' => false]);
     }
 
     $pdo->prepare("
@@ -156,11 +156,11 @@ if ($sub === 'albums' && $method === 'POST') {
     ")->execute([$name, $desc]);
 
     $album_id = (int)$pdo->lastInsertId();
-    flkrdckr_ok(['album_id' => $album_id, 'created' => true]);
+    flkrfckr_ok(['album_id' => $album_id, 'created' => true]);
 }
 
 // ---------------------------------------------------------------------------
-// POST flkrdckr/images
+// POST flkrfckr/images
 // ---------------------------------------------------------------------------
 
 if ($sub === 'images' && $method === 'POST') {
@@ -182,8 +182,8 @@ if ($sub === 'images' && $method === 'POST') {
     $tags             = $body['tags']                    ?? [];
     $status           = trim($body['status']             ?? 'published');
 
-    if ($flickr_id === '') flkrdckr_error(400, 'flickr_id is required.');
-    if ($img_file  === '') flkrdckr_error(400, 'img_file is required.');
+    if ($flickr_id === '') flkrfckr_error(400, 'flickr_id is required.');
+    if ($img_file  === '') flkrfckr_error(400, 'img_file is required.');
     if ($img_title === '') $img_title = 'Untitled';
 
     // Normalise source file key
@@ -198,7 +198,7 @@ if ($sub === 'images' && $method === 'POST') {
     $stmt->execute([$source_key]);
     $dup = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($dup) {
-        flkrdckr_ok([
+        flkrfckr_ok([
             'image_id'  => (int)$dup['id'],
             'img_slug'  => $dup['img_slug'],
             'duplicate' => true,
@@ -212,7 +212,7 @@ if ($sub === 'images' && $method === 'POST') {
     }
 
     // Generate slug
-    $slug = flkrdckr_unique_slug($pdo, $img_title);
+    $slug = flkrfckr_unique_slug($pdo, $img_title);
 
     // Validate/sanitise img_date
     if (!preg_match('/^\d{4}-\d{2}-\d{2}/', $img_date)) {
@@ -273,17 +273,8 @@ if ($sub === 'images' && $method === 'POST') {
         snap_sync_tags($pdo, $image_id, $tag_string);
     }
 
-    flkrdckr_ok([
+    flkrfckr_ok([
         'image_id'  => $image_id,
         'img_slug'  => $slug,
         'duplicate' => false,
-    ]);
-}
-
-// ---------------------------------------------------------------------------
-// Unknown sub-route
-// ---------------------------------------------------------------------------
-
-flkrdckr_error(404, 'Unknown FLKR DCKR API endpoint.');
-
-<?php // ===== SNAPSMACK EOF =====
+    

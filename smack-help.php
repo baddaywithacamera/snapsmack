@@ -947,7 +947,7 @@ type for the tool you are setting up:</p>
 <ul>
     <li><strong>Oh Snap!</strong> — for the Oh Snap! skin designer desktop app</li>
     <li><strong>SmackPress</strong> — for the SmackPress WordPress migration workbench</li>
-    <li><strong>FLKR DCKR Import</strong> — for the FLKR DCKR Flickr import tool. Revoke
+    <li><strong>FLKR FCKR Import</strong> — for the FLKR FCKR Flickr import tool. Revoke
     this key when your import is complete — it only needs to exist long enough to run the
     migration.</li>
 </ul>
@@ -955,7 +955,7 @@ type for the tool you are setting up:</p>
 <h4>Pasting Into a Tool</h4>
 <p>In SYBU: Settings tab &rarr; API Key field. Paste the key and save. SYBU will use it
 for all subsequent requests instead of prompting for a username and password.</p>
-<p>In FLKR DCKR: paste into the <em>API Key</em> field in the settings bar at the top of
+<p>In FLKR FCKR: paste into the <em>API Key</em> field in the settings bar at the top of
 the window. Click <strong>Test</strong> to verify the connection before starting your
 import.</p>
 HTML
@@ -2667,21 +2667,21 @@ files found in the wrong location. Save the report as HTML for your records.</p>
 HTML
 ];
 
-// ── FLKR DCKR ────────────────────────────────────────────────────────────
+// ── FLKR FCKR ────────────────────────────────────────────────────────────
 
-$help_topics['flkr-dckr'] = [
+$help_topics['flkr-fckr'] = [
     'section'  => 'Desktop Tools',
-    'title'    => 'FLKR DCKR — Flickr Import',
+    'title'    => 'FLKR FCKR — Flickr Import',
     'icon'     => '&#x1F4F8;',
     'role'     => 'admin',
     'content'  => <<<'HTML'
-<h3>FLKR DCKR — Flickr Import Tool</h3>
-<p>FLKR DCKR is a standalone Windows desktop tool that migrates your Flickr photo archive
+<h3>FLKR FCKR — Flickr Import Tool</h3>
+<p>FLKR FCKR is a standalone Windows desktop tool that migrates your Flickr photo archive
 into SnapSmack. It runs entirely on your computer — not on your server — because server-side
 import of a large Flickr archive is not practical. A collection of a few thousand photos
 involves gigabytes of image data, hours of processing time, and hundreds of individual API
 calls. Running that inside a PHP request on a shared host would time out, exhaust memory,
-and leave your database in a half-imported state with no way to resume. FLKR DCKR handles
+and leave your database in a half-imported state with no way to resume. FLKR FCKR handles
 all the heavy work locally: image resizing and thumbnail generation happen on your machine,
 files are sent to your server via FTP one at a time at a throttled rate you control, and
 database records are created via API only after each file is safely on the server.
@@ -2696,7 +2696,7 @@ stopped — no re-importing, no duplicates.</p>
     aspect-ratio thumbnails</li>
     <li>Uploads all three versions (main image, square thumb, aspect thumb) via FTP to
     your server's media directory</li>
-    <li>Creates the image record and album mappings in your database via the FLKR DCKR API</li>
+    <li>Creates the image record and album mappings in your database via the FLKR FCKR API</li>
     <li>Maps Flickr's privacy settings — private photos import as drafts by default
     (configurable)</li>
     <li>Detects duplicates via the Flickr photo ID so re-running the tool is always safe</li>
@@ -2706,12 +2706,12 @@ stopped — no re-importing, no duplicates.</p>
 <ol>
     <li><strong>Download your Flickr export</strong> — in Flickr, go to Account Settings →
     Your Flickr Data → Request your archive. You will receive a download link by email.
-    Unzip the archive to a folder on your computer before running FLKR DCKR.</li>
+    Unzip the archive to a folder on your computer before running FLKR FCKR.</li>
     <li><strong>Generate an API key</strong> — go to
     <strong>Admin &rarr; Boring Ass Stuff &rarr; API Keys</strong> and generate a new key
-    with type <em>FLKR DCKR Import</em>. Copy it — it is shown only once. You can revoke
+    with type <em>FLKR FCKR Import</em>. Copy it — it is shown only once. You can revoke
     it when the import is complete.</li>
-    <li><strong>Enter your credentials in FLKR DCKR</strong> — paste your site URL and API
+    <li><strong>Enter your credentials in FLKR FCKR</strong> — paste your site URL and API
     key, then enter your FTP credentials and the remote base path (the same path your images
     normally live under on the server).</li>
     <li><strong>Select the export folder</strong> — point the tool at the folder you unzipped
@@ -2723,7 +2723,7 @@ stopped — no re-importing, no duplicates.</p>
     conservative and safe for shared hosting. Increase it if your host is slow; decrease
     it carefully if you are on a fast VPS.</li>
     <li><strong>Start Import</strong> — click the button and let it run. You can pause and
-    resume at any time. If it is interrupted, FLKR DCKR offers to resume on the next
+    resume at any time. If it is interrupted, FLKR FCKR offers to resume on the next
     launch.</li>
 </ol>
 
@@ -2734,14 +2734,14 @@ default — they land in your database but are not publicly visible. Change the
 live regardless of its Flickr privacy setting.</p>
 
 <h4>After the Import</h4>
-<p>Once the import is complete, revoke the FLKR DCKR API key from the API Keys page — you
+<p>Once the import is complete, revoke the FLKR FCKR API key from the API Keys page — you
 will not need it again. If any photos failed (usually due to a dropped FTP connection), you
-can re-run FLKR DCKR against the same export folder with the same settings. Duplicate
+can re-run FLKR FCKR against the same export folder with the same settings. Duplicate
 detection via Flickr photo ID means already-imported photos are skipped instantly.</p>
 
 <h4>Why Not Just Upload a ZIP?</h4>
 <p>A ZIP upload might work for 50 photos. For 500 it will probably time out. For 5,000 it
-is not a realistic option on any normal hosting setup. FLKR DCKR was built specifically
+is not a realistic option on any normal hosting setup. FLKR FCKR was built specifically
 because there is no server-side solution that scales to a real Flickr archive. The desktop
 tool approach also gives you live progress, pause/resume control, and the ability to exclude
 specific photos or albums before the import starts.</p>
@@ -3135,175 +3135,4 @@ foreach ($help_topics as $slug => $ht) {
                            class="help-nav-link<?php echo ($slug === $active_topic) ? ' active' : ''; ?>"
                            data-slug="<?php echo htmlspecialchars($slug); ?>"
                            data-title="<?php echo htmlspecialchars(strtolower($topic['title'])); ?>"><?php echo htmlspecialchars($topic['icon'] ?? ''); ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?></a>
-                    <?php endforeach; ?>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    </div>
-
-    <!-- Help Content Area -->
-    <div class="help-content">
-
-        <?php if ($show_toc): ?>
-            <!-- ═══ TABLE OF CONTENTS ═══ -->
-            <div class="help-topic-header">
-                <h1 class="help-topic-title">&#x2630;&ensp;User Manual</h1>
-            </div>
-
-            <div class="help-body">
-                <p>SnapSmack documentation covering every feature of the CMS. Click a topic below or use
-                the search box in the sidebar to find what you need.</p>
-
-                <?php foreach ($sections as $section_name => $topics): ?>
-                    <div class="help-toc-section">
-                        <h3 class="help-toc-section-title"><?php echo htmlspecialchars($section_name); ?></h3>
-                        <ul class="help-toc-list">
-                            <?php foreach ($topics as $slug => $topic): ?>
-                                <?php
-                                $_first_p = '';
-                                if (preg_match('/<p>(.*?)<\/p>/s', $topic['content'], $_pm)) {
-                                    $_first_p = strip_tags($_pm[1]);
-                                }
-                                if (strlen($_first_p) > 120) $_first_p = substr($_first_p, 0, 117) . '...';
-                                ?>
-                                <li>
-                                    <a href="smack-help.php?topic=<?php echo urlencode($slug); ?>"><?php echo $topic['icon'] ?? ''; ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?></a>
-                                    <?php if (!empty($_first_p)): ?>
-                                        <div class="help-toc-desc"><?php echo htmlspecialchars($_first_p); ?></div>
-                                    <?php endif; ?>
-                                </li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-
-        <?php else: ?>
-            <!-- ═══ SINGLE TOPIC ═══ -->
-            <?php $topic = $help_topics[$active_topic]; ?>
-
-            <div class="help-topic-header">
-                <div class="help-topic-section">
-                    <?php echo htmlspecialchars($topic['section']); ?>
-                </div>
-                <h1 class="help-topic-title">
-                    <?php echo $topic['icon'] ?? ''; ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?>
-                </h1>
-            </div>
-
-            <div class="help-body">
-                <?php echo $topic['content']; ?>
-            </div>
-
-            <!-- Topic Navigation -->
-            <div class="help-topic-nav">
-                <?php
-                $slugs = array_keys($help_topics);
-                $current_index = array_search($active_topic, $slugs);
-                $prev = ($current_index > 0) ? $slugs[$current_index - 1] : null;
-                $next = ($current_index < count($slugs) - 1) ? $slugs[$current_index + 1] : null;
-                ?>
-                <div>
-                    <?php if ($prev): ?>
-                        <a href="smack-help.php?topic=<?php echo urlencode($prev); ?>">
-                            &larr; <?php echo htmlspecialchars($help_topics[$prev]['title']); ?>
-                        </a>
-                    <?php endif; ?>
-                </div>
-                <div>
-                    <?php if ($next): ?>
-                        <a href="smack-help.php?topic=<?php echo urlencode($next); ?>">
-                            <?php echo htmlspecialchars($help_topics[$next]['title']); ?> &rarr;
-                        </a>
-                    <?php endif; ?>
-                </div>
-            </div>
-        <?php endif; ?>
-    </div>
-</div>
-
-<!-- Search Engine -->
-<script>
-(function () {
-    'use strict';
-
-    var searchIndex = <?php echo json_encode($_search_index, JSON_UNESCAPED_UNICODE); ?>;
-    var input       = document.getElementById('help-search-input');
-    var resultsDiv  = document.getElementById('help-search-results');
-    var navSections = document.getElementById('help-nav-sections');
-
-    if (!input || !resultsDiv || !navSections) return;
-
-    input.addEventListener('input', function () {
-        var q = this.value.trim().toLowerCase();
-
-        if (q.length < 2) {
-            // Reset — show nav, hide results
-            resultsDiv.classList.remove('active');
-            navSections.style.display = '';
-            return;
-        }
-
-        // Hide nav, show results
-        navSections.style.display = 'none';
-        resultsDiv.classList.add('active');
-
-        var html = '';
-        var count = 0;
-        var terms = q.split(/\s+/);
-
-        for (var slug in searchIndex) {
-            var item = searchIndex[slug];
-            var haystack = (item.title + ' ' + item.section + ' ' + item.text).toLowerCase();
-            // All terms must match
-            var match = true;
-            for (var i = 0; i < terms.length; i++) {
-                if (haystack.indexOf(terms[i]) === -1) { match = false; break; }
-            }
-            if (!match) continue;
-            // Extract snippet around first term match in content
-            var snippet = '';
-            var textLower = item.text;
-            var pos = textLower.indexOf(terms[0]);
-            if (pos !== -1) {
-                var start = Math.max(0, pos - 40);
-                var end = Math.min(textLower.length, pos + 80);
-                snippet = (start > 0 ? '...' : '') + item.text.substring(start, end) + (end < textLower.length ? '...' : '');
-                // Highlight all terms in snippet
-                for (var j = 0; j < terms.length; j++) {
-                    var re = new RegExp('(' + terms[j].replace(/[.*+?^${}()|[\\]\\]/g, '\\\\$&') + ')', 'gi');
-                    snippet = snippet.replace(re, '<mark>$1</mark>');
-                }
-            }
-            html += '<a href="smack-help.php?topic=' + encodeURIComponent(slug) + '" class="help-search-result">';
-            html += '<div>' + (item.icon || '') + '&ensp;<strong>' + escapeHtml(item.title) + '</strong></div>';
-            html += '<div class="help-search-result-section">' + escapeHtml(item.section) + '</div>';
-            if (snippet) {
-                html += '<div class="help-search-result-snippet">' + snippet + '</div>';
-            }
-            html += '</a>';
-            count++;
-        }
-        if (count === 0) {
-            html = '<div class="help-search-no-results">No topics found for "' + escapeHtml(q) + '"</div>';
-        }
-        resultsDiv.innerHTML = html;
-    });
-    // Keyboard shortcut: / focuses search
-    document.addEventListener('keydown', function (e) {
-        if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-            e.preventDefault();
-            input.focus();
-            input.select();
-        }
-    });
-    function escapeHtml(str) {
-        var d = document.createElement('div');
-        d.textContent = str;
-        return d.innerHTML;
-    }
-})();
-</script>
-
-<?php include 'core/admin-footer.php'; ?>
-<?php // ===== SNAPSMACK EOF =====
+                    <?php endforeac

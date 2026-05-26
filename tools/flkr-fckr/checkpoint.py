@@ -1,13 +1,13 @@
 """
-FLKR DCKR — checkpoint.py
+FLKR FCKR — checkpoint.py
 Atomic crash-recovery checkpoint for the import pipeline.
 
 Adapted from tools/smack-up-your-backup/checkpoint.py — simplified
-for FLKR DCKR's needs: tracks which Flickr IDs have been imported and
+for FLKR FCKR's needs: tracks which Flickr IDs have been imported and
 their corresponding SnapSmack image IDs.
 
 Written after every successful photo import. If the process is killed
-mid-import, the checkpoint survives on disk. On next launch FLKR DCKR
+mid-import, the checkpoint survives on disk. On next launch FLKR FCKR
 detects it and offers to resume rather than restart from scratch.
 
 Atomic write: temp file + rename — safe against power cuts mid-write.
@@ -45,7 +45,7 @@ class ImportCheckpoint:
             base = os.path.dirname(sys.executable)
         else:
             base = os.path.dirname(os.path.abspath(__file__))
-        return os.path.join(base, 'flkrdckr_checkpoint.json')
+        return os.path.join(base, 'flkrfckr_checkpoint.json')
 
     @classmethod
     def load(cls) -> Optional['ImportCheckpoint']:

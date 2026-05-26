@@ -1,5 +1,5 @@
 /**
- * SNAPSMACK - Image Sorter Engine (ss-engine-sorter.js)
+ * SNAPSMACK - Light Table Engine (ss-engine-lighttable.js)
  *
  * Handles desktop detection, left-rail slide-in, accordion expand/collapse,
  * fjGallery grid, multi-select, drag-and-drop, drop handlers, visual feedback,
@@ -20,7 +20,7 @@
     // -----------------------------------------------------------------------
     var COL_CAP = 30;
     var PER_PAGE = 60;
-    var AJAX_URL = 'smack-sorter.php';
+    var AJAX_URL = 'smack-lighttable.php';
 
     // -----------------------------------------------------------------------
     // State

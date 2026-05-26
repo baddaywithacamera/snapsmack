@@ -1,6 +1,6 @@
 """
-FLKR DCKR — config.py
-Reads and writes flkrdckr.ini next to the executable.
+FLKR FCKR — config.py
+Reads and writes flkrfckr.ini next to the executable.
 Forked from tools/unzucker/config.py.
 
 Passwords (FTP) are stored base64-obfuscated — not encrypted,
@@ -20,12 +20,12 @@ import sys
 
 
 def _config_path() -> str:
-    """Return the path to flkrdckr.ini next to the exe (or script in dev)."""
+    """Return the path to flkrfckr.ini next to the exe (or script in dev)."""
     if getattr(sys, 'frozen', False):
         base = os.path.dirname(sys.executable)
     else:
         base = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base, 'flkrdckr.ini')
+    return os.path.join(base, 'flkrfckr.ini')
 
 
 def _decode_pw(raw: str) -> str:

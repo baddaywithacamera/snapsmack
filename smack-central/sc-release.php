@@ -148,6 +148,28 @@ function sc_list_tags(): array {
     return array_slice($tags, 0, 3);
 }
 
+// ── Helper: list BITCHIN' (D-suffix) dev tags from GitHub ────────────────────
+// Returns vX.Y.ZD tags sorted newest-first. At most 3.
+function sc_list_dev_tags(): array {
+    $data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/tags?per_page=50');
+    if (!is_array($data)) return [];
+    $tags = array_column($data, 'name');
+
+    // Keep only D-suffix dev tags (e.g. v0.7.184D).
+    $tags = array_values(array_filter($tags, function (string $t): bool {
+        return (bool) preg_match('/^v?\d+\.\d+\.\d+D$/i', $t);
+    }));
+
+    // Sort descending — strip D suffix before numeric version_compare.
+    usort($tags, function ($a, $b): int {
+        $na = preg_replace('/D$/i', '', ltrim($a, 'vV'));
+        $nb = preg_replace('/D$/i', '', ltrim($b, 'vV'));
+        return version_compare($nb, $na);
+    });
+
+    return array_slice($tags, 0, 3);
+}
+
 // ── Helper: file changes between two tags via GitHub compare API ──────────────
 function sc_file_changes(string $from_tag, string $to_tag): array {
     $from = urlencode($from_tag);
@@ -489,6 +511,19 @@ if (($_GET['action'] ?? '') === 'fetch_changelog') {
         }
     }
     if ($matched === '') {
+        // Dev tags (e.g. 0.7.184D) won't have their own CHANGELOG entry — strip
+        // the D suffix and fall back to the base version's section.
+        $version_stripped = preg_replace('/D$/i', '', $version_bare);
+        if ($version_stripped !== $version_bare) {
+            foreach ($sections as $section) {
+                if (preg_match('/^## ' . preg_quote($version_stripped, '/') . '(\s|$)/m', $section)) {
+                    $matched = trim($section);
+                    break;
+                }
+            }
+        }
+    }
+    if ($matched === '') {
         // Version heading not found — return a short diagnostic rather than the full file
         echo json_encode(['ok' => false, 'error' => 'Version ' . $version_bare . ' not found in CHANGELOG.md']);
         exit;
@@ -498,15 +533,22 @@ if (($_GET['action'] ?? '') === 'fetch_changelog') {
     exit;
 }
 
-$action       = $_POST['action'] ?? '';
-$build_error  = '';
-$build_log    = [];
-$build_result = null;
+$action           = $_POST['action'] ?? '';
+$build_error      = '';
+$build_log        = [];
+$build_result     = null;
+$dev_build_error  = '';
+$dev_build_log    = [];
+$dev_build_result = null;
 
-// Retrieve flash result from session after redirect.
+// Retrieve flash results from session after redirect.
 if (isset($_SESSION['sc_release_built'])) {
     $build_result = $_SESSION['sc_release_built'];
     unset($_SESSION['sc_release_built']);
+}
+if (isset($_SESSION['sc_dev_built'])) {
+    $dev_build_result = $_SESSION['sc_dev_built'];
+    unset($_SESSION['sc_dev_built']);
 }
 
 if ($action === 'build' && $preflight_ok) {
@@ -759,10 +801,126 @@ if ($action === 'build' && $preflight_ok) {
     }
 }
 
+// ── POST: Build dev release (BITCHIN' track) ──────────────────────────────────
+// Same pipeline as stable but:
+//   • Writes latest-dev.json — does NOT overwrite latest.json
+//   • Does NOT update sc_releases DB or site-version.php
+//   • Does NOT publish canonical SQL (stable build owns that)
+if ($action === 'build_dev' && $preflight_ok) {
+
+    $tag            = trim($_POST['tag']            ?? '');
+    $version        = trim($_POST['version']        ?? '');
+    $version_full   = trim($_POST['version_full']   ?? '');
+    $released       = trim($_POST['released']       ?? date('Y-m-d'));
+    $requires_php   = trim($_POST['requires_php']   ?? '8.0');
+    $requires_mysql = trim($_POST['requires_mysql'] ?? '5.7');
+    $changelog_raw  = trim($_POST['changelog'] ?? '');
+    $changelog      = array_values(array_filter(array_map('trim', explode("\n", $changelog_raw))));
+
+    if (!preg_match('/^[a-zA-Z0-9._\-]+$/', $tag)) {
+        $dev_build_error = 'Invalid tag format.';
+    } elseif ($version === '' || $version_full === '') {
+        $dev_build_error = 'Version and Version Full are required.';
+    } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $released)) {
+        $dev_build_error = 'Invalid release date.';
+    }
+
+    if (!$dev_build_error) {
+        $zip_name = 'snapsmack-' . preg_replace('/[^a-zA-Z0-9._\-]/', '', $version) . '.zip';
+        $zip_dest = rtrim(RELEASES_DIR, '/') . '/' . $zip_name;
+
+        $dev_build_log[] = "→ DEV BUILD — downloading tag {$tag} from GitHub…";
+        $zip_result      = sc_build_release_zip($tag, $zip_dest, []);
+        $dev_build_log[] = '→ ' . $zip_result['msg'];
+
+        if (!$zip_result['ok']) {
+            $dev_build_error = $zip_result['msg'];
+        } else {
+            // Inject current pubkey into setup.php
+            if ($sc_derived_pubkey) {
+                $patcher = new ZipArchive();
+                if ($patcher->open($zip_dest) === true) {
+                    $setup_src = $patcher->getFromName('setup.php');
+                    if ($setup_src !== false) {
+                        $setup_patched = preg_replace(
+                            "/define\s*\(\s*'SETUP_RELEASE_PUBKEY'\s*,\s*'[0-9a-fA-F]{64}'\s*\)/",
+                            "define('SETUP_RELEASE_PUBKEY', '{$sc_derived_pubkey}')",
+                            $setup_src
+                        );
+                        if ($setup_patched !== $setup_src) {
+                            $patcher->deleteName('setup.php');
+                            $patcher->addFromString('setup.php', $setup_patched);
+                            $dev_build_log[] = "→ setup.php pubkey injected ({$sc_derived_pubkey})";
+                        } else {
+                            $dev_build_log[] = "→ setup.php pubkey already current — no patch needed";
+                        }
+                    } else {
+                        $dev_build_log[] = "→ WARNING: setup.php not found in zip — pubkey not injected";
+                    }
+                    $patcher->close();
+                }
+            }
+
+            // SHA-256 + sign
+            $dev_checksum    = hash_file('sha256', $zip_dest);
+            $dev_build_log[] = "→ SHA-256: {$dev_checksum}";
+            $dev_sig_hex     = '';
+            try {
+                $privkey         = sodium_hex2bin(SMACK_RELEASE_PRIVKEY);
+                $sig             = sodium_crypto_sign_detached($dev_checksum, $privkey);
+                $dev_sig_hex     = sodium_bin2hex($sig);
+                $dev_build_log[] = "→ Signed OK";
+            } catch (SodiumException $e) {
+                $dev_build_error = 'Signing failed: ' . $e->getMessage();
+            }
+
+            if (!$dev_build_error) {
+                $dev_file_size    = filesize($zip_dest);
+                $dev_download_url = rtrim(RELEASES_URL, '/') . '/' . $zip_name;
+                $dev_build_log[]  = "→ Zip saved: {$zip_dest} (" . number_format($dev_file_size / 1024, 1) . " KB)";
+
+                // Write latest-dev.json — does NOT touch latest.json or canonical SQL
+                $manifest = [
+                    'version'         => $version,
+                    'version_full'    => $version_full,
+                    'released'        => $released,
+                    'download_url'    => $dev_download_url,
+                    'checksum_sha256' => $dev_checksum,
+                    'signature'       => $dev_sig_hex,
+                    'signing_pubkey'  => $sc_derived_pubkey,
+                    'changelog'       => $changelog,
+                    'schema_changes'  => false,
+                    'requires_php'    => $requires_php,
+                    'requires_mysql'  => $requires_mysql,
+                    'download_size'   => $dev_file_size,
+                    'track'           => 'dev',
+                ];
+                $dev_json_path = rtrim(RELEASES_DIR, '/') . '/latest-dev.json';
+                file_put_contents($dev_json_path, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+                $dev_build_log[] = "→ latest-dev.json written";
+
+                $_SESSION['sc_dev_built'] = [
+                    'version'      => $version_full,
+                    'tag'          => $tag,
+                    'checksum'     => $dev_checksum,
+                    'signature'    => $dev_sig_hex,
+                    'download_url' => $dev_download_url,
+                    'file_size'    => $dev_file_size,
+                    'log'          => $dev_build_log,
+                ];
+                header('Location: sc-release.php?dev_built=1');
+                exit;
+            }
+        }
+    }
+}
+
 // ── Fetch data for the form ───────────────────────────────────────────────────
 $tags = [];
+$dev_tags = [];
 if ($preflight_ok) {
-    $tags = sc_list_tags();
+    $tags     = sc_list_tags();
+    $dev_tags = sc_list_dev_tags();
 }
 
 // Previous releases for the history table
@@ -794,7 +952,7 @@ require __DIR__ . '/sc-layout-top.php';
 <?php endforeach; ?>
 
 <?php if ($build_result): ?>
-<!-- ── Build success result ─────────────────────────────────────────────── -->
+<!-- ── Stable build success result ──────────────────────────────────────── -->
 <div class="sc-alert sc-alert--success">
   Release <?php echo htmlspecialchars($build_result['version']); ?> packaged and published successfully.
 </div>
@@ -828,6 +986,42 @@ require __DIR__ . '/sc-layout-top.php';
   <details style="margin-top:12px;">
     <summary style="cursor:pointer; font-size:var(--sc-size-label); text-transform:uppercase; letter-spacing:.8px; color:var(--sc-text-dim);">Build Log</summary>
     <div class="sc-build-log"><?php echo htmlspecialchars(implode("\n", $build_result['log'])); ?></div>
+  </details>
+  <?php endif; ?>
+</div>
+<?php endif; ?>
+
+<?php if ($dev_build_result): ?>
+<!-- ── Dev build success result ─────────────────────────────────────────── -->
+<div class="sc-alert sc-alert--success" style="border-left-color:#e6a817;">
+  Dev build <?php echo htmlspecialchars($dev_build_result['version']); ?> packaged — <code>latest-dev.json</code> updated.
+</div>
+<div class="sc-release-result">
+  <div class="sc-release-result__row">
+    <span class="sc-release-result__key">Version</span>
+    <span class="sc-release-result__val"><?php echo htmlspecialchars($dev_build_result['version']); ?> <span style="font-size:0.72rem;color:var(--sc-warn);text-transform:uppercase;letter-spacing:.5px;margin-left:6px;">BITCHIN'</span></span>
+  </div>
+  <div class="sc-release-result__row">
+    <span class="sc-release-result__key">Tag</span>
+    <span class="sc-release-result__val"><?php echo htmlspecialchars($dev_build_result['tag']); ?></span>
+  </div>
+  <div class="sc-release-result__row">
+    <span class="sc-release-result__key">Download</span>
+    <span class="sc-release-result__val">
+      <a href="<?php echo htmlspecialchars($dev_build_result['download_url']); ?>" target="_blank">
+        <?php echo htmlspecialchars($dev_build_result['download_url']); ?>
+      </a>
+      &nbsp;(<?php echo number_format($dev_build_result['file_size'] / 1024, 1); ?> KB)
+    </span>
+  </div>
+  <div class="sc-release-result__row">
+    <span class="sc-release-result__key">SHA-256</span>
+    <span class="sc-release-result__val"><?php echo htmlspecialchars($dev_build_result['checksum']); ?></span>
+  </div>
+  <?php if (!empty($dev_build_result['log'])): ?>
+  <details style="margin-top:12px;">
+    <summary style="cursor:pointer; font-size:var(--sc-size-label); text-transform:uppercase; letter-spacing:.8px; color:var(--sc-text-dim);">Build Log</summary>
+    <div class="sc-build-log"><?php echo htmlspecialchars(implode("\n", $dev_build_result['log'])); ?></div>
   </details>
   <?php endif; ?>
 </div>
@@ -947,6 +1141,103 @@ require __DIR__ . '/sc-layout-top.php';
 
       </div>
     </div><!-- /.sc-box -->
+
+    <!-- ── Dev build (BITCHIN' track) ─────────────────────────────────────── -->
+    <div class="sc-box" style="margin-top:20px; border-color:#806000;">
+      <div class="sc-box-header" style="background:rgba(230,168,23,0.06);">
+        <span class="sc-box-title">Dev Build</span>
+        <span style="font-size:0.7rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#e6a817; margin-left:8px;">BITCHIN' TRACK</span>
+        <span class="sc-dim" style="font-size:var(--sc-size-label); margin-left:auto;">writes latest-dev.json only</span>
+      </div>
+      <div class="sc-box-body">
+
+        <?php if ($dev_build_error): ?>
+        <div class="sc-alert sc-alert--error"><?php echo htmlspecialchars($dev_build_error); ?></div>
+        <?php if (!empty($dev_build_log)): ?>
+        <div class="sc-build-log"><?php echo htmlspecialchars(implode("\n", $dev_build_log)); ?></div>
+        <?php endif; ?>
+        <?php endif; ?>
+
+        <?php if (!$preflight_ok): ?>
+        <p class="sc-dim">Fix the errors above before building.</p>
+
+        <?php elseif (empty($dev_tags)): ?>
+        <div class="sc-alert sc-alert--warn">
+          No D-suffix tags found (e.g. <code>v0.7.184D</code>). Tag the dev branch and push:<br>
+          <code style="display:block;margin-top:6px;">git tag v0.7.184D &amp;&amp; git push Github v0.7.184D</code>
+        </div>
+
+        <?php else: ?>
+        <form method="post" action="sc-release.php">
+          <input type="hidden" name="action" value="build_dev">
+
+          <div class="sc-field">
+            <label>Git Tag <span style="color:#e6a817; font-size:0.7rem; margin-left:4px;">D-suffix only</span></label>
+            <select name="tag" class="sc-select" id="dev-tag-select">
+              <?php foreach ($dev_tags as $t): ?>
+              <?php $dv = preg_replace('/D$/i', '', ltrim(preg_replace('/^v/i', '', $t), '')); ?>
+              <option value="<?php echo htmlspecialchars($t); ?>"
+                      data-version="<?php echo htmlspecialchars(ltrim(preg_replace('/^v/i', '', $t), '')); ?>"
+                      data-version-bare="<?php echo htmlspecialchars($dv); ?>">
+                <?php echo htmlspecialchars($t); ?>
+              </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+
+          <div class="sc-grid-2" style="gap:12px;">
+            <div class="sc-field">
+              <label>Version</label>
+              <input type="text" name="version" id="dev-version-input"
+                     value="<?php echo htmlspecialchars(ltrim(preg_replace('/^v/i', '', $dev_tags[0] ?? ''), '')); ?>">
+              <span class="sc-hint">e.g. 0.7.184D</span>
+            </div>
+            <div class="sc-field">
+              <label>Version Full</label>
+              <input type="text" name="version_full" id="dev-version-full-input"
+                     value="Alpha <?php echo htmlspecialchars(ltrim(preg_replace('/^v/i', '', $dev_tags[0] ?? ''), '')); ?>">
+            </div>
+          </div>
+
+          <div class="sc-grid-2" style="gap:12px;">
+            <div class="sc-field">
+              <label>Release Date</label>
+              <input type="date" name="released" value="<?php echo date('Y-m-d'); ?>">
+            </div>
+            <div style="display:flex; gap:12px;">
+              <div class="sc-field" style="flex:1;">
+                <label>Min PHP</label>
+                <input type="text" name="requires_php" value="8.0" style="width:100%;">
+              </div>
+              <div class="sc-field" style="flex:1;">
+                <label>Min MySQL</label>
+                <input type="text" name="requires_mysql" value="5.7" style="width:100%;">
+              </div>
+            </div>
+          </div>
+
+          <div class="sc-field">
+            <label>
+              Changelog
+              <span id="dev-changelog-status" style="font-weight:400; font-size:var(--sc-size-label); margin-left:8px;"></span>
+            </label>
+            <textarea name="changelog" id="dev-changelog-textarea" rows="5"
+                      placeholder="One entry per line. Auto-populated from CHANGELOG.md if a matching entry exists."
+                      style="font-family:var(--sc-font-mono); font-size:0.78rem;"></textarea>
+          </div>
+
+          <div class="sc-btn-row" style="justify-content:flex-end; margin-top:8px;">
+            <button type="submit" class="sc-btn" style="background:#806000; color:#fff;"
+                    onclick="return confirm('Package dev build from tag: ' + document.getElementById('dev-tag-select').value + '?\n\nThis writes latest-dev.json only — latest.json is unchanged.');">
+              BUILD DEV &amp; PUBLISH
+            </button>
+          </div>
+        </form>
+        <?php endif; ?>
+
+      </div>
+    </div><!-- /.sc-box dev -->
+
   </div>
 
   <!-- ── Right: Release history ────────────────────────────────────────────── -->
@@ -1263,23 +1554,65 @@ require __DIR__ . '/sc-layout-top.php';
         if (vfull && !vfull.value) vfull.value = 'Alpha ' + v;
         if (v && tag) fetchChangelog(tag, v);
     }
-}());
-</script>
 
-<?php require __DIR__ . '/sc-layout-bottom.php'; ?>
-        if (vinp  && !vinp.value) vinp.value  = v;
-        if (vfull && !vfull.value) vfull.value = 'Alpha ' + v;
-        if (v && tag) fetchChangelog(ttag.
-    if (sel.options.length) {
-        var opt = sel.options[sel.selectedIndex];
-        var v   = opt.dataset.version || '';
-        var tag = opt.value;
-        if (vinp  && !vinp.value) vinp.value  = v;
-        if (vfull && !vfull.value) vfull.value = 'Alpha ' + v;
-        if (v && tag) fetchChangelog(tag, v);
+    // ── Dev tag select auto-fill ──────────────────────────────────────────
+    var devSel   = document.getElementById('dev-tag-select');
+    var devVinp  = document.getElementById('dev-version-input');
+    var devVfull = document.getElementById('dev-version-full-input');
+    var devClta  = document.getElementById('dev-changelog-textarea');
+    var devClst  = document.getElementById('dev-changelog-status');
+    if (devSel) {
+        [devVinp, devVfull].forEach(function (el) {
+            if (el) el.addEventListener('input', function () { el.dataset.userEdited = '1'; });
+        });
+        if (devClta) devClta.addEventListener('input', function () { devClta.dataset.userEdited = '1'; });
+
+        function devFetchChangelog(tag, versionBare) {
+            if (!devClta || devClta.dataset.userEdited) return;
+            var url = 'sc-release.php?action=fetch_changelog&tag=' + encodeURIComponent(tag);
+            if (devClst) { devClst.textContent = '⟳ loading…'; devClst.style.color = 'var(--sc-color-dim, #888)'; }
+            fetch(url)
+                .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                .then(function (data) {
+                    if (!data.ok) throw new Error(data.error || 'proxy error');
+                    // Try with D suffix first, then bare version
+                    var entries = parseChangelog(data.content, versionBare + 'D');
+                    if (!entries.length) entries = parseChangelog(data.content, versionBare);
+                    if (!devClta.dataset.userEdited) {
+                        if (entries && entries.length) {
+                            devClta.value = entries.join('\n');
+                            if (devClst) { devClst.textContent = '✓ ' + entries.length + ' entries'; devClst.style.color = 'var(--sc-color-ok, #4caf50)'; }
+                        } else {
+                            devClta.value = '';
+                            if (devClst) { devClst.textContent = '⚠ No entry found in CHANGELOG.md — enter manually'; devClst.style.color = 'var(--sc-color-warn, #e6a817)'; }
+                        }
+                    }
+                })
+                .catch(function (err) {
+                    if (devClst) { devClst.textContent = '✗ ' + err.message; devClst.style.color = 'var(--sc-color-err, #e05252)'; }
+                });
+        }
+
+        devSel.addEventListener('change', function () {
+            var opt  = devSel.options[devSel.selectedIndex];
+            var v    = opt.dataset.version || '';
+            var vb   = opt.dataset.versionBare || v.replace(/D$/i, '');
+            var tag  = opt.value;
+            if (devVinp  && !devVinp.dataset.userEdited)  devVinp.value  = v;
+            if (devVfull && !devVfull.dataset.userEdited)  devVfull.value = 'Alpha ' + v;
+            if (tag) devFetchChangelog(tag, vb);
+        });
+
+        if (devSel.options.length) {
+            var dopt = devSel.options[devSel.selectedIndex];
+            var dv   = dopt.dataset.version || '';
+            var dvb  = dopt.dataset.versionBare || dv.replace(/D$/i, '');
+            var dtag = dopt.value;
+            if (dtag) devFetchChangelog(dtag, dvb);
+        }
     }
 }());
 </script>
 
 <?php require __DIR__ . '/sc-layout-bottom.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====
