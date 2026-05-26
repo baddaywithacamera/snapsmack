@@ -3,31 +3,30 @@
  * SNAPSMACK - Chaplin skin: Art Deco ornament overlay
  *
  * Renders positioned ornament divs around the photobox.
- * Lines/borders are handled via CSS (outline + box-shadow on .chap-photo).
- * This file handles ornament SVG placement only.
+ * Lines/borders are handled via CSS (outline + box-shadow on .chap-photo
+ * emitted by skin-header.php). This file handles ornament SVG placement only.
+ *
+ * SVG source files: skins/chaplin/assets/svg/{style}-{shape}.svg
  *
  * Include inside #rg-photobox, before .rg-photo-wrap.
  *
  * SNAPSMACK_EOF_HEADER
  *     <?php // ===== SNAPSMACK EOF =====
  * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-$orn_style     = $settings['chap_ornament_style']   ?? 'A';
-$show_corners  = ($settings['chap_corner_ornaments'] ?? '1') === '1';
-$show_mid_tb   = ($settings['chap_mid_top_bot']      ?? '0') === '1';
-$show_mid_lr   = ($settings['chap_mid_left_right']   ?? '0') === '1';
-$lcolor        = '#ece6d4';
+$orn_style    = $settings['chap_ornament_style']   ?? 'A';
+$show_corners = ($settings['chap_corner_ornaments'] ?? '1') === '1';
+$show_mid_tb  = ($settings['chap_mid_top_bot']      ?? '0') === '1';
+$show_mid_lr  = ($settings['chap_mid_left_right']   ?? '0') === '1';
+$lcolor       = '#ece6d4';
 
-// Nothing to render if ornaments are off or style is none
 if ($orn_style === 'none' || (!$show_corners && !$show_mid_tb && !$show_mid_lr)) {
     return;
 }
 
-$orn_dir    = __DIR__ . '/reference work from Claude Design - gitignore/ornaments/';
-$orn_corner = $orn_dir . $orn_style . '-corner.svg';
-$orn_top    = $orn_dir . $orn_style . '-top.svg';
-$orn_side   = $orn_dir . $orn_style . '-side.svg';
+$orn_dir = __DIR__ . '/assets/svg/';
 
 /**
  * Inline an SVG ornament file, stripping width/height attrs and injecting
@@ -41,15 +40,19 @@ function chap_orn_element(string $class, string $svg_path, string $color, string
     $raw = preg_replace('/(<svg\b[^>]*)\s+width="[^"]*"/i',  '$1', $raw);
     $raw = preg_replace('/(<svg\b[^>]*)\s+height="[^"]*"/i', '$1', $raw);
     $c   = htmlspecialchars($color);
-    $sty = $constraint === 'width'  ? 'width:100%;height:auto;'
-         : ($constraint === 'height' ? 'height:100%;width:auto;'
-         : 'width:100%;height:100%;');
+    $sty = $constraint === 'width'  ? 'width:100%;height:auto;display:block;'
+         : ($constraint === 'height' ? 'height:100%;width:auto;display:block;'
+         : 'width:100%;height:100%;display:block;');
     $raw = preg_replace('/(<svg\b[^>]*)>/i',
-        '$1 style="' . $sty . 'display:block;" stroke="' . $c . '">', $raw, 1);
+        '$1 style="' . $sty . '" stroke="' . $c . '">', $raw, 1);
     $raw = str_ireplace('fill="#ece6d4"', 'fill="' . $c . '"', $raw);
     $raw = str_ireplace('fill="#0a0a0a"', 'fill="none"',        $raw);
     return '<div class="chap-orn ' . $class . '">' . trim($raw) . '</div>' . "\n";
 }
+
+$orn_corner = $orn_dir . $orn_style . '-corner.svg';
+$orn_top    = $orn_dir . $orn_style . '-top.svg';
+$orn_side   = $orn_dir . $orn_style . '-side.svg';
 
 $orn_html = '';
 
@@ -61,8 +64,8 @@ if ($show_corners) {
 }
 
 if ($show_mid_tb) {
-    $orn_html .= chap_orn_element('chap-orn-mid-top', $orn_top, $lcolor, 'width');
-    $orn_html .= chap_orn_element('chap-orn-mid-bot', $orn_top, $lcolor, 'width');
+    $orn_html .= chap_orn_element('chap-orn-mid-top', $orn_top,  $lcolor, 'width');
+    $orn_html .= chap_orn_element('chap-orn-mid-bot', $orn_top,  $lcolor, 'width');
 }
 
 if ($show_mid_lr) {

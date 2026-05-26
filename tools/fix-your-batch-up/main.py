@@ -36,6 +36,7 @@ import requests
 from PIL import Image, ImageTk
 
 import local_drive
+import b2_migrate
 
 # Ensure matcher.py is importable by worker processes spawned from this dir
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -214,6 +215,32 @@ class BackfillClient:
         r = self.session.get(
             f'{self.base_url}/smack-backfill.php',
             params={'action': 'list'},
+            timeout=20,
+        )
+        r.raise_for_status()
+        data = r.json()
+        if not data.get('ok'):
+            raise RuntimeError(data.get('error', 'API error'))
+        return data['images']
+
+    def fetch_drive(self) -> list:
+        """Return published images whose download_url is a Google Drive link."""
+        r = self.session.get(
+            f'{self.base_url}/smack-backfill.php',
+            params={'action': 'list_drive'},
+            timeout=20,
+        )
+        r.raise_for_status()
+        data = r.json()
+        if not data.get('ok'):
+            raise RuntimeError(data.get('error', 'API error'))
+        return data['images']
+
+    def fetch_b2(self) -> list:
+        """Return published images whose download_url is a Backblaze B2 link."""
+        r = self.session.get(
+            f'{self.base_url}/smack-backfill.php',
+            params={'action': 'list_b2'},
             timeout=20,
         )
         r.raise_for_status()
@@ -715,9 +742,31 @@ class App(tk.Tk):
 
         tk.Frame(self, bg=BORDER, height=1).pack(fill='x')
 
+        # ── Tab bar ────────────────────────────────────────────────────────
+        self._tab_bar  = tk.Frame(self, bg=BG_DEEP)
+        self._tab_bar.pack(fill='x')
+        self._tab_btns: dict = {}
+        for _tid, _tlbl in [('recovery', 'Link Recovery'), ('migrate', 'Cloud Migration')]:
+            _b = tk.Button(
+                self._tab_bar, text=_tlbl,
+                bg=BG_DEEP, fg=FG_DIM, font=FONT_UI,
+                relief='flat', cursor='hand2', padx=16, pady=6,
+                command=lambda t=_tid: self._show_tab(t),
+            )
+            _b.pack(side='left')
+            self._tab_btns[_tid] = _b
+        self._tab_btns['recovery'].configure(fg=ACCENT)
+        tk.Frame(self, bg=BORDER, height=1).pack(fill='x')
+
+        # ── Content wrappers — only the active tab's wrap is packed ────────
+        self._recovery_wrap = tk.Frame(self, bg=BG_DEEP)
+        self._recovery_wrap.pack(fill='both', expand=True)
+        self._migrate_wrap = tk.Frame(self, bg=BG_DEEP)
+        # migrate_wrap packed on demand by _show_tab()
+
         # ── Config card ────────────────────────────────────────────────────
         # Outer padding frame so the card has breathing room against the edges
-        self._cfg_outer = tk.Frame(self, bg=BG_DEEP)
+        self._cfg_outer = tk.Frame(self._recovery_wrap, bg=BG_DEEP)
         self._cfg_outer.pack(fill='x', padx=12, pady=8)
         cfg_outer = self._cfg_outer
 
@@ -853,11 +902,11 @@ class App(tk.Tk):
         )
         self._start_btn.pack(side='left')
 
-        self._cfg_bottom_border = tk.Frame(self, bg=BORDER, height=1)
+        self._cfg_bottom_border = tk.Frame(self._recovery_wrap, bg=BORDER, height=1)
         self._cfg_bottom_border.pack(fill='x')
 
         # ── Progress bar ───────────────────────────────────────────────────
-        self._prog_frame = tk.Frame(self, bg=BG_DEEP, pady=6)
+        self._prog_frame = tk.Frame(self._recovery_wrap, bg=BG_DEEP, pady=6)
         self._prog_frame.pack(fill='x', padx=16)
 
         self._prog_bar = ttk.Progressbar(self._prog_frame, mode='determinate',
@@ -868,7 +917,7 @@ class App(tk.Tk):
         self._prog_lbl.pack(side='left', padx=12)
 
         # ── Scrollable review area ─────────────────────────────────────────
-        canvas_frame = tk.Frame(self, bg=BG_DEEP)
+        canvas_frame = tk.Frame(self._recovery_wrap, bg=BG_DEEP)
         canvas_frame.pack(fill='both', expand=True)
 
         self._canvas = tk.Canvas(canvas_frame, bg=BG_DEEP, highlightthickness=0,
@@ -889,8 +938,9 @@ class App(tk.Tk):
         self._canvas.bind_all('<Button-5>',   self._on_scroll)
 
         # ── Status bar ─────────────────────────────────────────────────────
-        tk.Frame(self, bg=BORDER, height=1).pack(fill='x')
-        self._status_lbl = tk.Label(self, text="Connect to site and pull records to begin.",
+        tk.Frame(self._recovery_wrap, bg=BORDER, height=1).pack(fill='x')
+        self._status_lbl = tk.Label(self._recovery_wrap,
+                                     text="Connect to site and pull records to begin.",
                                      bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL, anchor='w')
         self._status_lbl.pack(fill='x', padx=16, pady=4)
 
@@ -928,6 +978,21 @@ class App(tk.Tk):
         self._cfg_outer.pack(fill='x', padx=12, pady=8,
                              before=self._cfg_bottom_border)
         self._cfg_toggle_btn.configure(text="▲")
+
+    # ── Tab switching ─────────────────────────────────────────────────────
+
+    def _show_tab(self, tab_id: str):
+        if tab_id == 'recovery':
+            self._migrate_wrap.pack_forget()
+            self._recovery_wrap.pack(fill='both', expand=True)
+        else:
+            self._recovery_wrap.pack_forget()
+            if not hasattr(self, '_migrate_tab'):
+                self._migrate_tab = MigrateTab(self._migrate_wrap, self)
+                self._migrate_tab.pack(fill='both', expand=True)
+            self._migrate_wrap.pack(fill='both', expand=True)
+        for tid, btn in self._tab_btns.items():
+            btn.configure(fg=ACCENT if tid == tab_id else FG_DIM)
 
     # ── Config load / save ────────────────────────────────────────────────
 
@@ -1594,6 +1659,737 @@ class App(tk.Tk):
             self._canvas.yview_scroll(-1, 'units')
         else:
             self._canvas.yview_scroll(1, 'units')
+
+
+# ---------------------------------------------------------------------------
+# Drive → B2 Migration Tab
+# ---------------------------------------------------------------------------
+
+import time as _time   # stdlib time — used for per-file delay in migration thread
+
+class MigrateTab(tk.Frame):
+    """
+    Drive → B2 migration tab.
+
+    Fetches published images whose download_url is a Google Drive link,
+    downloads each from Drive, uploads to Backblaze B2, and writes the new
+    B2 URL back to the SnapSmack database.
+
+    Rate controls:
+    - Per-file delay (seconds): pause between uploads to avoid hammering B2 or
+      your upstream bandwidth.
+    - Daily cap (files/day): stop automatically when today's count reaches the
+      cap. Resets at midnight.
+
+    A migration manifest (fybu-b2-manifest.json locally + _fybu/migration-manifest.json
+    on B2) records every completed migration. Drive originals are left in place so
+    they can be batch-deleted later from the manifest.
+    """
+
+    _B2_SECTION = 'b2migrate'
+
+    def __init__(self, parent, app: 'App'):
+        super().__init__(parent, bg=BG_DEEP)
+        self._app           = app
+        self._b2_client:    Optional[b2_migrate.B2Client] = None
+        self._manifest      = b2_migrate.MigrationManifest(
+            os.path.join(_APP_DIR, 'fybu-b2-manifest.json')
+        )
+        self._manifest.load()
+        self._queue_records: list = []    # raw dicts from API
+        self._migrating     = False
+        self._stop_evt      = threading.Event()
+        self._b2cfg         = self._load_b2_config()
+        self._build()
+
+    # ── Persist ───────────────────────────────────────────────────────────────
+
+    def _load_b2_config(self) -> dict:
+        cp = configparser.ConfigParser()
+        cp.read(CONFIG_FILE)
+        s = cp[self._B2_SECTION] if self._B2_SECTION in cp else {}
+        return {
+            'account_id':  s.get('account_id',  ''),
+            'app_key':     s.get('app_key',      ''),
+            'bucket_name': s.get('bucket_name',  ''),
+            'bucket_id':   s.get('bucket_id',    ''),
+            'delay':       s.get('delay',        '3'),
+            'daily_cap':   s.get('daily_cap',    '100'),
+        }
+
+    def _save_b2_config(self):
+        cp = configparser.ConfigParser()
+        cp.read(CONFIG_FILE)
+        cp[self._B2_SECTION] = {
+            'account_id':  self._acct_var.get().strip(),
+            'app_key':     self._key_var.get().strip(),
+            'bucket_name': self._bkt_name_var.get().strip(),
+            'bucket_id':   self._bkt_id_var.get().strip(),
+            'delay':       self._delay_var.get().strip() or '3',
+            'daily_cap':   self._cap_var.get().strip() or '100',
+        }
+        try:
+            with open(CONFIG_FILE, 'w') as f:
+                cp.write(f)
+        except Exception:
+            pass
+        self._b2cfg = self._load_b2_config()
+
+    # ── UI ────────────────────────────────────────────────────────────────────
+
+    def _build(self):
+        # ── B2 settings card ─────────────────────────────────────────────────
+        self._acct_var     = tk.StringVar(value=self._b2cfg['account_id'])
+        self._key_var      = tk.StringVar(value=self._b2cfg['app_key'])
+        self._bkt_name_var = tk.StringVar(value=self._b2cfg['bucket_name'])
+        self._bkt_id_var   = tk.StringVar(value=self._b2cfg['bucket_id'])
+        self._delay_var    = tk.StringVar(value=self._b2cfg['delay'])
+        self._cap_var      = tk.StringVar(value=self._b2cfg['daily_cap'])
+
+        settings_card = tk.Frame(self, bg=BG_CARD,
+                                  highlightbackground=BORDER, highlightthickness=1)
+        settings_card.pack(fill='x', padx=12, pady=8)
+
+        # Title row
+        hdr = tk.Frame(settings_card, bg=BG_CARD, padx=12, pady=6)
+        hdr.pack(fill='x')
+        tk.Label(hdr, text="B2 SETTINGS", bg=BG_CARD, fg=FG_DIM,
+                 font=("Segoe UI", 7, "bold")).pack(side='left')
+        tk.Label(hdr,
+                 text="Bucket must be set to Public in the B2 console for download links to work.",
+                 bg=BG_CARD, fg=FG_DIM, font=("Segoe UI", 8)).pack(side='right')
+
+        tk.Frame(settings_card, bg=BORDER, height=1).pack(fill='x')
+
+        # Credentials row
+        row1 = tk.Frame(settings_card, bg=BG_CARD, padx=12, pady=6)
+        row1.pack(fill='x')
+
+        tk.Label(row1, text="Account ID:", bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_UI).pack(side='left')
+        tk.Entry(row1, textvariable=self._acct_var, bg=BG_MID, fg=FG_MAIN,
+                 font=FONT_UI, relief='flat', width=26, show='*',
+                 insertbackground=ACCENT).pack(side='left', padx=(4, 16))
+
+        tk.Label(row1, text="App Key:", bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_UI).pack(side='left')
+        tk.Entry(row1, textvariable=self._key_var, bg=BG_MID, fg=FG_MAIN,
+                 font=FONT_UI, relief='flat', width=36, show='*',
+                 insertbackground=ACCENT).pack(side='left', padx=(4, 16))
+
+        self._test_btn = tk.Button(
+            row1, text="Test B2",
+            bg=BG_HOVER, fg=FG_MAIN, font=FONT_UI,
+            relief='flat', cursor='hand2',
+            command=self._on_test_b2,
+        )
+        self._test_btn.pack(side='left')
+
+        tk.Button(
+            row1, text="Save",
+            bg=BG_HOVER, fg=FG_MAIN, font=FONT_UI,
+            relief='flat', cursor='hand2',
+            command=self._save_b2_config,
+        ).pack(side='left', padx=(6, 0))
+
+        # Bucket + rate row
+        row2 = tk.Frame(settings_card, bg=BG_CARD, padx=12, pady=6)
+        row2.pack(fill='x')
+
+        tk.Label(row2, text="Bucket name:", bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_UI).pack(side='left')
+        tk.Entry(row2, textvariable=self._bkt_name_var, bg=BG_MID, fg=FG_MAIN,
+                 font=FONT_UI, relief='flat', width=22,
+                 insertbackground=ACCENT).pack(side='left', padx=(4, 16))
+
+        tk.Label(row2, text="Bucket ID:", bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_UI).pack(side='left')
+        tk.Entry(row2, textvariable=self._bkt_id_var, bg=BG_MID, fg=FG_MAIN,
+                 font=FONT_UI, relief='flat', width=26,
+                 insertbackground=ACCENT).pack(side='left', padx=(4, 16))
+
+        tk.Label(row2, text="Delay:", bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_UI).pack(side='left')
+        tk.Entry(row2, textvariable=self._delay_var, bg=BG_MID, fg=FG_MAIN,
+                 font=FONT_UI, relief='flat', width=5,
+                 insertbackground=ACCENT).pack(side='left', padx=(4, 2))
+        tk.Label(row2, text="s  ", bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_UI).pack(side='left')
+
+        tk.Label(row2, text="Daily cap:", bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_UI).pack(side='left')
+        tk.Entry(row2, textvariable=self._cap_var, bg=BG_MID, fg=FG_MAIN,
+                 font=FONT_UI, relief='flat', width=6,
+                 insertbackground=ACCENT).pack(side='left', padx=(4, 4))
+        tk.Label(row2, text="files/day", bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_UI).pack(side='left')
+
+        # ── Direction selector ────────────────────────────────────────────────
+        dir_row = tk.Frame(self, bg=BG_DEEP, pady=6)
+        dir_row.pack(fill='x', padx=16)
+        tk.Label(dir_row, text="Direction:", bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_UI).pack(side='left')
+        self._direction_var = tk.StringVar(value='drive_to_b2')
+        for _val, _lbl in [('drive_to_b2', 'Drive → B2'), ('b2_to_drive', 'B2 → Drive')]:
+            tk.Radiobutton(
+                dir_row, text=_lbl, variable=self._direction_var, value=_val,
+                bg=BG_DEEP, fg=FG_MAIN, font=FONT_UI,
+                selectcolor=BG_MID, activebackground=BG_DEEP,
+                cursor='hand2',
+            ).pack(side='left', padx=(10, 0))
+
+        tk.Frame(self, bg=BORDER, height=1).pack(fill='x')
+
+        # ── Control bar ───────────────────────────────────────────────────────
+        ctrl = tk.Frame(self, bg=BG_DEEP, pady=6)
+        ctrl.pack(fill='x', padx=16)
+
+        self._b2_dot = tk.Label(ctrl, text="●", bg=BG_DEEP, fg=FG_DIM,
+                                 font=FONT_BOLD)
+        self._b2_dot.pack(side='left')
+        self._b2_status_lbl = tk.Label(ctrl, text="B2: Not connected",
+                                        bg=BG_DEEP, fg=FG_DIM, font=FONT_UI)
+        self._b2_status_lbl.pack(side='left', padx=(2, 20))
+
+        self._fetch_btn = tk.Button(
+            ctrl, text="Fetch Queue",
+            bg=BG_HOVER, fg=FG_MAIN, font=FONT_BOLD,
+            relief='flat', cursor='hand2', padx=10,
+            command=self._on_fetch,
+        )
+        self._fetch_btn.pack(side='left', padx=(0, 8))
+
+        self._start_btn = tk.Button(
+            ctrl, text="Start",
+            bg=ACCENT, fg="#000000", font=FONT_BOLD,
+            relief='flat', cursor='hand2', width=8,
+            command=self._on_start,
+        )
+        self._start_btn.pack(side='left', padx=(0, 6))
+
+        self._pause_btn = tk.Button(
+            ctrl, text="Pause",
+            bg=BG_MID, fg=FG_DIM, font=FONT_UI,
+            relief='flat', cursor='hand2', width=8,
+            state='disabled',
+            command=self._on_pause,
+        )
+        self._pause_btn.pack(side='left', padx=(0, 20))
+
+        self._today_lbl = tk.Label(ctrl, text="Today: 0/100",
+                                    bg=BG_DEEP, fg=FG_DIM, font=FONT_UI)
+        self._today_lbl.pack(side='left', padx=(0, 16))
+
+        self._total_lbl = tk.Label(ctrl, text="Total migrated: 0",
+                                    bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL)
+        self._total_lbl.pack(side='left')
+
+        # ── Queue treeview ────────────────────────────────────────────────────
+        tk.Frame(self, bg=BORDER, height=1).pack(fill='x')
+
+        tree_frame = tk.Frame(self, bg=BG_DEEP)
+        tree_frame.pack(fill='both', expand=True, padx=4, pady=4)
+
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.configure('Mig.Treeview',
+                         background=BG_CARD, foreground=FG_MAIN,
+                         fieldbackground=BG_CARD, rowheight=24,
+                         font=FONT_UI)
+        style.configure('Mig.Treeview.Heading',
+                         background=BG_MID, foreground=FG_DIM,
+                         font=FONT_SMALL, relief='flat')
+        style.map('Mig.Treeview', background=[('selected', BG_HOVER)])
+
+        self._tree = ttk.Treeview(
+            tree_frame,
+            style='Mig.Treeview',
+            columns=('title', 'status', 'info'),
+            show='headings',
+            selectmode='browse',
+        )
+        self._tree.heading('title',  text='Title')
+        self._tree.heading('status', text='Status')
+        self._tree.heading('info',   text='Info')
+        self._tree.column('title',  width=320, stretch=True)
+        self._tree.column('status', width=120, stretch=False)
+        self._tree.column('info',   width=480, stretch=True)
+
+        vsb = ttk.Scrollbar(tree_frame, orient='vertical',
+                             command=self._tree.yview)
+        self._tree.configure(yscrollcommand=vsb.set)
+        vsb.pack(side='right', fill='y')
+        self._tree.pack(side='left', fill='both', expand=True)
+
+        # Tag colours for status column
+        self._tree.tag_configure('done',    foreground=FG_OK)
+        self._tree.tag_configure('error',   foreground=FG_ERR)
+        self._tree.tag_configure('skip',    foreground=FG_DIM)
+        self._tree.tag_configure('active',  foreground=FG_WARN)
+        self._tree.tag_configure('pending', foreground=FG_DIM)
+
+        # ── Manifest status bar ───────────────────────────────────────────────
+        tk.Frame(self, bg=BORDER, height=1).pack(fill='x')
+        mf = tk.Frame(self, bg=BG_DEEP, pady=4)
+        mf.pack(fill='x', padx=16)
+
+        self._manifest_lbl = tk.Label(
+            mf, text="Manifest: not loaded",
+            bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL, anchor='w',
+        )
+        self._manifest_lbl.pack(side='left', fill='x', expand=True)
+
+        tk.Button(
+            mf, text="Open Manifest File",
+            bg=BG_HOVER, fg=FG_DIM, font=FONT_SMALL,
+            relief='flat', cursor='hand2',
+            command=self._open_manifest,
+        ).pack(side='right')
+
+        self._refresh_stats()
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
+
+    def _refresh_stats(self):
+        cap   = int(self._cap_var.get().strip() or 100)
+        today = self._manifest.daily_count()
+        total = self._manifest.total_migrated()
+        remaining = max(0, cap - today)
+        self._today_lbl.configure(
+            text=f"Today: {today}/{cap}",
+            fg=FG_OK if today < cap else FG_ERR,
+        )
+        self._total_lbl.configure(text=f"Total migrated: {total}")
+        self._manifest_lbl.configure(
+            text=f"Manifest: {total} migrated total  |  "
+                 f"Local: {os.path.basename(self._manifest.local_path)}  |  "
+                 f"B2: {b2_migrate.MANIFEST_B2_PATH}"
+        )
+
+    def _set_b2_status(self, ok: bool, msg: str):
+        color = FG_OK if ok else FG_ERR
+        self._b2_dot.configure(fg=color)
+        self._b2_status_lbl.configure(text=f"B2: {msg}", fg=color)
+
+    def _tree_set_status(self, iid: str, status: str, info: str = '', tag: str = ''):
+        try:
+            self._tree.set(iid, 'status', status)
+            if info:
+                self._tree.set(iid, 'info', info)
+            if tag:
+                self._tree.item(iid, tags=(tag,))
+        except Exception:
+            pass
+
+    def _open_manifest(self):
+        path = self._manifest.local_path
+        if os.path.isfile(path):
+            os.startfile(path)
+        else:
+            messagebox.showinfo(
+                "No manifest yet",
+                "No migrations have been completed yet. "
+                "The manifest file will be created after the first successful upload.",
+                parent=self,
+            )
+
+    def _b2_client_ready(self) -> bool:
+        """Return True if _b2_client is initialized and authorized."""
+        return self._b2_client is not None and self._b2_client.authorized
+
+    def _drive_service_ready(self) -> bool:
+        return self._app._drive_service is not None
+
+    # ── Actions ───────────────────────────────────────────────────────────────
+
+    def _on_test_b2(self):
+        self._save_b2_config()
+        cfg = self._b2cfg
+
+        if not cfg['account_id'] or not cfg['app_key'] or not cfg['bucket_name']:
+            messagebox.showwarning(
+                "Incomplete B2 settings",
+                "Fill in Account ID, App Key, and Bucket Name before testing.",
+                parent=self,
+            )
+            return
+
+        self._test_btn.configure(text="Testing…", state='disabled')
+        self.update_idletasks()
+
+        def _worker():
+            try:
+                client = b2_migrate.B2Client(
+                    cfg['account_id'], cfg['app_key'],
+                    cfg['bucket_name'], cfg['bucket_id'],
+                )
+                client.authorize()
+                # Save resolved bucket ID so it survives next launch
+                self._b2_client = client
+                self.after(0, lambda: self._on_b2_test_ok(client.bucket_id))
+            except Exception as exc:
+                self.after(0, lambda: self._on_b2_test_fail(str(exc)))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_b2_test_ok(self, resolved_bucket_id: str):
+        self._test_btn.configure(text="Test B2", state='normal')
+        self._bkt_id_var.set(resolved_bucket_id)
+        self._save_b2_config()
+        self._set_b2_status(True, f"Connected — {self._bkt_name_var.get().strip()}")
+
+    def _on_b2_test_fail(self, msg: str):
+        self._test_btn.configure(text="Test B2", state='normal')
+        self._set_b2_status(False, "Connection failed")
+        messagebox.showerror("B2 connection failed", msg, parent=self)
+
+    def _on_fetch(self):
+        """Pull the relevant image list from SnapSmack based on current direction."""
+        if not self._app._client:
+            messagebox.showwarning(
+                "Not connected",
+                "Connect to your SnapSmack site in the Link Recovery tab first.",
+                parent=self,
+            )
+            return
+
+        self._fetch_btn.configure(text="Fetching…", state='disabled')
+        self.update_idletasks()
+        direction = self._direction_var.get()
+
+        def _worker():
+            try:
+                if direction == 'b2_to_drive':
+                    records = self._app._client.fetch_b2()
+                else:
+                    records = self._app._client.fetch_drive()
+                self.after(0, lambda: self._on_fetched(records))
+            except Exception as exc:
+                self.after(0, lambda: self._on_fetch_fail(str(exc)))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_fetched(self, records: list):
+        self._fetch_btn.configure(text="Fetch Queue", state='normal')
+        self._queue_records = records
+
+        # Clear treeview
+        for iid in self._tree.get_children():
+            self._tree.delete(iid)
+
+        already = 0
+        for rec in records:
+            snap_id = rec.get('snap_id')
+            title   = rec.get('img_title', 'Untitled')[:80]
+            drive_url = rec.get('download_url', '')
+
+            if self._manifest.is_migrated(snap_id):
+                already += 1
+                tag, status = 'done', '✓ Migrated'
+            else:
+                tag, status = 'pending', 'Pending'
+
+            self._tree.insert(
+                '', 'end',
+                iid=str(snap_id),
+                values=(title, status, drive_url[:100]),
+                tags=(tag,),
+            )
+
+        n = len(records)
+        pending = n - already
+        self._manifest_lbl.configure(
+            text=f"Fetched {n} Drive images — {pending} pending, {already} already migrated."
+        )
+        self._refresh_stats()
+
+    def _on_fetch_fail(self, msg: str):
+        self._fetch_btn.configure(text="Fetch Queue", state='normal')
+        messagebox.showerror("Fetch failed", msg, parent=self)
+
+    def _on_start(self):
+        if self._migrating:
+            return
+
+        if not self._b2_client_ready():
+            messagebox.showwarning(
+                "B2 not connected",
+                "Click Test B2 to connect before starting the migration.",
+                parent=self,
+            )
+            return
+
+        if not self._drive_service_ready():
+            messagebox.showwarning(
+                "Drive not connected",
+                "Authenticate Google Drive in the Link Recovery tab first.",
+                parent=self,
+            )
+            return
+
+        if not self._app._client:
+            messagebox.showwarning(
+                "Site not connected",
+                "Connect to your SnapSmack site in the Link Recovery tab first.",
+                parent=self,
+            )
+            return
+
+        cap   = int(self._cap_var.get().strip() or 100)
+        today = self._manifest.daily_count()
+        if today >= cap:
+            messagebox.showinfo(
+                "Daily cap reached",
+                f"Already migrated {today} files today (cap: {cap}).\n"
+                "Come back tomorrow or raise the daily cap.",
+                parent=self,
+            )
+            return
+
+        self._migrating = True
+        self._stop_evt.clear()
+        self._start_btn.configure(text="Running…", state='disabled', bg=FG_WARN, fg="#000000")
+        self._pause_btn.configure(state='normal')
+        target = (self._migration_loop_b2_to_drive
+                  if self._direction_var.get() == 'b2_to_drive'
+                  else self._migration_loop)
+        threading.Thread(target=target, daemon=True).start()
+
+    def _on_pause(self):
+        if self._migrating:
+            self._stop_evt.set()
+            self._pause_btn.configure(text="Stopping…", state='disabled')
+
+    # ── Migration loop ────────────────────────────────────────────────────────
+
+    def _migration_loop(self):
+        """
+        Background thread: iterates pending queue items, migrates each one,
+        respects daily cap and per-file delay, stops on _stop_evt.
+        """
+        try:
+            delay = float(self._delay_var.get().strip() or 3)
+        except ValueError:
+            delay = 3.0
+
+        try:
+            cap = int(self._cap_var.get().strip() or 100)
+        except ValueError:
+            cap = 100
+
+        b2  = self._b2_client
+        drv = self._app._drive_service
+        cli = self._app._client
+        mfst = self._manifest
+
+        for rec in self._queue_records:
+            if self._stop_evt.is_set():
+                break
+
+            snap_id   = int(rec.get('snap_id', 0))
+            title     = rec.get('img_title', 'Untitled')
+            drive_url = rec.get('download_url', '')
+            img_file  = rec.get('img_file', '')
+            iid       = str(snap_id)
+
+            if mfst.is_migrated(snap_id):
+                continue   # already done in a previous session
+
+            if mfst.daily_count() >= cap:
+                self.after(0, lambda: self._on_cap_reached(cap))
+                break
+
+            # Extract Drive file ID
+            file_id = b2_migrate.extract_drive_file_id(drive_url)
+            if not file_id:
+                self.after(0, lambda i=iid: self._tree_set_status(
+                    i, 'Skipped', 'Cannot parse Drive URL', 'skip'))
+                continue
+
+            self.after(0, lambda i=iid, t=title: self._tree_set_status(
+                i, 'Downloading…', '', 'active'))
+
+            # Download from Drive
+            try:
+                data, content_type = b2_migrate.download_from_drive(drv, file_id)
+            except Exception as exc:
+                self.after(0, lambda i=iid, e=str(exc): self._tree_set_status(
+                    i, 'Error', f'Drive DL: {e[:80]}', 'error'))
+                continue
+
+            self.after(0, lambda i=iid: self._tree_set_status(
+                i, 'Uploading…', f'{len(data):,} bytes', 'active'))
+
+            # Build B2 filename from img_file basename (preserves original name)
+            b2_filename = os.path.basename(img_file) if img_file else f'snap_{snap_id}'
+            if not os.path.splitext(b2_filename)[1]:
+                ext = mimetypes.guess_extension(content_type) or ''
+                b2_filename += ext
+
+            # Upload to B2
+            try:
+                import mimetypes
+                b2_url = b2.upload(data, b2_filename, content_type)
+            except Exception as exc:
+                self.after(0, lambda i=iid, e=str(exc): self._tree_set_status(
+                    i, 'Error', f'B2 upload: {e[:80]}', 'error'))
+                continue
+
+            # Write new URL back to SnapSmack DB
+            try:
+                cli.update_link(snap_id, b2_url)
+            except Exception as exc:
+                self.after(0, lambda i=iid, e=str(exc): self._tree_set_status(
+                    i, 'Error', f'DB update: {e[:80]}', 'error'))
+                continue
+
+            # Record success
+            mfst.record(snap_id, title, drive_url, b2_url, b2_filename)
+            mfst.save(b2)
+
+            self.after(0, lambda i=iid, u=b2_url: self._tree_set_status(
+                i, '✓ Done', u[:100], 'done'))
+            self.after(0, self._refresh_stats)
+
+            if delay > 0 and not self._stop_evt.is_set():
+                _time.sleep(delay)
+
+        self.after(0, self._on_migration_done)
+
+    def _migration_loop_b2_to_drive(self):
+        """
+        Background thread: B2 → Drive direction.
+        Downloads each image from its B2 URL, uploads to Google Drive,
+        writes the new Drive URL back to SnapSmack, updates the manifest.
+        """
+        import tempfile
+        import mimetypes
+
+        try:
+            delay = float(self._delay_var.get().strip() or 3)
+        except ValueError:
+            delay = 3.0
+
+        try:
+            cap = int(self._cap_var.get().strip() or 100)
+        except ValueError:
+            cap = 100
+
+        import requests as _req
+        drv      = self._app._drive_service
+        cli      = self._app._client
+        mfst     = self._manifest
+        folder_id = self._app._folder_id_var.get().strip() or None
+
+        for rec in self._queue_records:
+            if self._stop_evt.is_set():
+                break
+
+            snap_id  = int(rec.get('snap_id', 0))
+            title    = rec.get('img_title', 'Untitled')
+            b2_url   = rec.get('download_url', '')
+            img_file = rec.get('img_file', '')
+            iid      = str(snap_id)
+
+            if mfst.is_migrated(snap_id):
+                continue
+
+            if mfst.daily_count() >= cap:
+                self.after(0, lambda: self._on_cap_reached(cap))
+                break
+
+            self.after(0, lambda i=iid: self._tree_set_status(
+                i, 'Downloading…', '', 'active'))
+
+            # Download from B2 (public URL — simple GET)
+            try:
+                resp = _req.get(b2_url, timeout=120)
+                resp.raise_for_status()
+                data = resp.content
+                content_type = resp.headers.get('Content-Type', 'application/octet-stream').split(';')[0]
+            except Exception as exc:
+                self.after(0, lambda i=iid, e=str(exc): self._tree_set_status(
+                    i, 'Error', f'B2 DL: {e[:80]}', 'error'))
+                continue
+
+            self.after(0, lambda i=iid: self._tree_set_status(
+                i, 'Uploading…', f'{len(data):,} bytes', 'active'))
+
+            # Build Drive filename
+            drive_fname = os.path.basename(img_file) if img_file else f'snap_{snap_id}'
+            if not os.path.splitext(drive_fname)[1]:
+                ext = mimetypes.guess_extension(content_type) or ''
+                drive_fname += ext
+
+            # Write to temp file so local_drive.upload() can read it
+            try:
+                suffix = os.path.splitext(drive_fname)[1] or ''
+                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                    tmp.write(data)
+                    tmp_path = tmp.name
+
+                drive_url = local_drive.upload(drv, tmp_path, drive_fname,
+                                               folder_id=folder_id)
+            except Exception as exc:
+                self.after(0, lambda i=iid, e=str(exc): self._tree_set_status(
+                    i, 'Error', f'Drive upload: {e[:80]}', 'error'))
+                continue
+            finally:
+                try:
+                    os.unlink(tmp_path)
+                except Exception:
+                    pass
+
+            # Write new URL back to SnapSmack DB
+            try:
+                cli.update_link(snap_id, drive_url)
+            except Exception as exc:
+                self.after(0, lambda i=iid, e=str(exc): self._tree_set_status(
+                    i, 'Error', f'DB update: {e[:80]}', 'error'))
+                continue
+
+            mfst.record(snap_id, title, b2_url, drive_url, drive_fname)
+            mfst.save(self._b2_client)
+
+            self.after(0, lambda i=iid, u=drive_url: self._tree_set_status(
+                i, '✓ Done', u[:100], 'done'))
+            self.after(0, self._refresh_stats)
+
+            if delay > 0 and not self._stop_evt.is_set():
+                _time.sleep(delay)
+
+        self.after(0, self._on_migration_done)
+
+    def _on_cap_reached(self, cap: int):
+        self._start_btn.configure(text="Start", state='normal', bg=ACCENT, fg="#000000")
+        self._pause_btn.configure(text="Pause", state='disabled')
+        self._migrating = False
+        messagebox.showinfo(
+            "Daily cap reached",
+            f"Migrated {self._manifest.daily_count()} files today (cap: {cap}).\n"
+            "The migration will resume tomorrow — just click Start again.",
+            parent=self,
+        )
+
+    def _on_migration_done(self):
+        self._migrating = False
+        self._start_btn.configure(text="Start", state='normal', bg=ACCENT, fg="#000000")
+        self._pause_btn.configure(text="Pause", state='disabled')
+        self._refresh_stats()
+        remaining = sum(
+            1 for iid in self._tree.get_children()
+            if self._tree.set(iid, 'status') == 'Pending'
+        )
+        if remaining == 0:
+            self._manifest_lbl.configure(
+                text=f"All done — {self._manifest.total_migrated()} images migrated. "
+                     f"Fetch again to check for new Drive links.",
+                fg=FG_OK,
+            )
+        else:
+            self._manifest_lbl.configure(
+                text=f"Paused — {remaining} items still pending. Click Start to continue.",
+            )
 
 
 # ---------------------------------------------------------------------------

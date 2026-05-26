@@ -189,4 +189,22 @@ if (!in_array($_smack_current, $_smack_exempt, true)) {
     } catch (PDOException $e) { /* non-fatal */ }
 }
 unset($_smack_current, $_smack_exempt, $_smack_row);
+
+// --- NETWORK ALERT STATUS CHECK (Layer 2 — SC global YELLOW only) ---
+// Poll SC for current alert level (throttled to every 30 min).
+// Sets banner globals picked up by admin-header.php.
+// Entirely separate from the Layer 1 hub/spoke RED above.
+if (!defined('NALERT_CHECK_DONE')) {
+    define('NALERT_CHECK_DONE', true);
+    try {
+        require_once __DIR__ . '/network-alert.php';
+        nalert_maybe_poll();
+        $_na = nalert_get_local();
+        if ($_na['receive'] && in_array($_na['status'], ['yellow_slow', 'yellow_fast'], true)) {
+            $GLOBALS['_nalert_status']  = $_na['status'];
+            $GLOBALS['_nalert_message'] = $_na['message'];
+        }
+        unset($_na);
+    } catch (Throwable $e) { /* non-fatal — network alert must never break admin access */ }
+}
 // ===== SNAPSMACK EOF =====

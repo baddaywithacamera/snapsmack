@@ -124,6 +124,20 @@ if (isset($_POST['save_settings'])) {
         if (!isset($_POST['settings'][$ck])) $_POST['settings'][$ck] = '0';
     }
 
+    // Sanitise enum fields before they hit the DB.
+    // update_track: only 'stable' or 'dev' are valid; anything else silently collapses to 'stable'.
+    if (isset($_POST['settings']['update_track']) && !in_array($_POST['settings']['update_track'], ['stable', 'dev'], true)) {
+        $_POST['settings']['update_track'] = 'stable';
+    }
+    // archive_layout: only 'grid' or 'list' are valid.
+    if (isset($_POST['settings']['archive_layout']) && !in_array($_POST['settings']['archive_layout'], ['grid', 'list'], true)) {
+        $_POST['settings']['archive_layout'] = 'grid';
+    }
+    // archive_thumb_style: only 'square' or 'natural' are valid.
+    if (isset($_POST['settings']['archive_thumb_style']) && !in_array($_POST['settings']['archive_thumb_style'], ['square', 'natural'], true)) {
+        $_POST['settings']['archive_thumb_style'] = 'square';
+    }
+
     // Persist all settings, inserting or updating as needed.
     foreach ($_POST['settings'] as $key => $val) {
         $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
@@ -315,6 +329,7 @@ include 'core/sidebar.php';
                     <label>HOMEPAGE MODE <span class="field-tip" data-tip="Latest Post shows the newest image. Skin Landing uses the skin's built-in slider/grid. Static Page uses a custom page you select.">ⓘ</span></label>
                     <select name="settings[homepage_mode]" id="homepage-mode-select">
                         <option value="latest_post" <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'latest_post') ? 'selected' : ''; ?>>LATEST POST (DEFAULT)</option>
+                        <option value="archive"     <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'archive')     ? 'selected' : ''; ?>>ARCHIVE PAGE</option>
                         <option value="skin_landing" <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'skin_landing') ? 'selected' : ''; ?>>SKIN LANDING PAGE</option>
                         <option value="static_page" <?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'static_page') ? 'selected' : ''; ?>>STATIC PAGE</option>
                     </select>
@@ -329,7 +344,26 @@ include 'core/sidebar.php';
                         </select>
                     </div>
 
-                    <div class="lens-input-wrapper homepage-blog-slug<?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'latest_post') ? ' d-none' : ''; ?>" id="homepage-blog-slug">
+                    <!-- Archive sub-options — visible when homepage_mode = archive -->
+                    <?php $show_archive_opts = ($settings['homepage_mode'] ?? 'latest_post') === 'archive'; ?>
+                    <div class="lens-input-wrapper<?php echo $show_archive_opts ? '' : ' d-none'; ?>" id="homepage-archive-options">
+                        <label>OPENING VIEW <span class="field-tip" data-tip="Layout visitors see when they first land on the archive. They can toggle between modes; this sets the starting state.">ⓘ</span></label>
+                        <select name="settings[archive_layout]" id="archive-layout-select">
+                            <option value="masonry" <?php echo (($settings['archive_layout'] ?? 'masonry') === 'masonry') ? 'selected' : ''; ?>>MASONRY (JUSTIFIED GRID)</option>
+                            <option value="thumbs"  <?php echo (($settings['archive_layout'] ?? 'masonry') === 'thumbs')  ? 'selected' : ''; ?>>THUMBS (GRID)</option>
+                        </select>
+
+                        <?php $show_thumb_style = ($settings['archive_layout'] ?? 'masonry') === 'thumbs'; ?>
+                        <div class="lens-input-wrapper<?php echo $show_thumb_style ? '' : ' d-none'; ?>" id="archive-thumb-style-wrap" style="margin-top:10px;">
+                            <label>THUMB STYLE <span class="field-tip" data-tip="How thumbnails are cropped in the thumbs grid. Cropped fills the tile; Square forces a 1:1 ratio.">ⓘ</span></label>
+                            <select name="settings[archive_thumb_style]">
+                                <option value="cropped" <?php echo (($settings['archive_thumb_style'] ?? 'cropped') === 'cropped') ? 'selected' : ''; ?>>CROPPED (DEFAULT)</option>
+                                <option value="square"  <?php echo (($settings['archive_thumb_style'] ?? 'cropped') === 'square')  ? 'selected' : ''; ?>>SQUARE</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="lens-input-wrapper homepage-blog-slug<?php echo (($settings['homepage_mode'] ?? 'latest_post') == 'latest_post' || ($settings['homepage_mode'] ?? 'latest_post') == 'archive') ? ' d-none' : ''; ?>" id="homepage-blog-slug">
                         <label>BLOG URL SLUG <span class="field-tip" data-tip="The URL where visitors find your image feed (e.g. /blog, /feed, /photos). Appears in navigation.">ⓘ</span></label>
                         <input type="text" name="settings[blog_slug]" value="<?php echo htmlspecialchars($settings['blog_slug'] ?? 'blog'); ?>" placeholder="blog">
                     </div>
@@ -342,6 +376,33 @@ include 'core/sidebar.php';
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             UPDATE TRACK
+             ============================================================ -->
+        <div class="box">
+            <h3>UPDATE TRACK</h3>
+            <p class="dim" style="margin-bottom:16px;">
+                Controls which update stream this site receives.
+                <strong>Boring</strong> is the default — stable tagged releases only, recommended for production.
+                <strong>Bitchin'</strong> is opt-in — receives dev builds (D-suffixed versions) in addition to stable releases.
+                Changing this does not modify any installed files; it only affects what the updater offers next time it checks.
+            </p>
+            <div class="post-layout-grid">
+                <div class="lens-input-wrapper">
+                    <label>TRACK <span class="field-tip" data-tip="Boring = stable releases only. Bitchin' = dev + stable releases. New installs default to Boring. If you're not sure, leave this on Boring.">ⓘ</span></label>
+                    <select name="settings[update_track]">
+                        <option value="stable" <?php echo (($settings['update_track'] ?? 'stable') === 'stable') ? 'selected' : ''; ?>>BORING — Stable releases only (default)</option>
+                        <option value="dev"    <?php echo (($settings['update_track'] ?? 'stable') === 'dev')    ? 'selected' : ''; ?>>BITCHIN' — Dev + stable releases (opt-in)</option>
+                    </select>
+                    <?php if (($settings['update_track'] ?? 'stable') === 'dev'): ?>
+                        <p style="margin-top:8px;color:var(--warning,#f90);font-size:0.85rem;">
+                            ⚠ This site is on the dev track. It may receive builds with known issues. Flip back to Boring any time.
+                        </p>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -736,16 +797,30 @@ include 'core/sidebar.php';
 </script>
 
 <script>
-// Toggle homepage page picker visibility based on homepage mode.
+// Toggle homepage sub-controls based on homepage mode.
 var homepageMode = document.getElementById('homepage-mode-select');
 if (homepageMode) {
     homepageMode.addEventListener('change', function() {
+        var v           = this.value;
         var picker      = document.getElementById('homepage-page-picker');
         var blogSlug    = document.getElementById('homepage-blog-slug');
         var landingOnly = document.getElementById('homepage-landing-only');
-        if (picker)      picker.classList.toggle('d-none', this.value !== 'static_page');
-        if (blogSlug)    blogSlug.classList.toggle('d-none', this.value === 'latest_post');
-        if (landingOnly) landingOnly.classList.toggle('d-none', this.value !== 'skin_landing' && this.value !== 'static_page');
+        var archiveOpts = document.getElementById('homepage-archive-options');
+        if (picker)      picker.classList.toggle('d-none', v !== 'static_page');
+        // Blog slug applies when homepage isn't latest_post AND isn't archive
+        // (archive lives at the fixed /archive route, no slug needed).
+        if (blogSlug)    blogSlug.classList.toggle('d-none', v === 'latest_post' || v === 'archive');
+        if (landingOnly) landingOnly.classList.toggle('d-none', v !== 'skin_landing' && v !== 'static_page');
+        if (archiveOpts) archiveOpts.classList.toggle('d-none', v !== 'archive');
+    });
+}
+
+// Toggle thumb style sub-option inside archive options.
+var archiveLayout = document.getElementById('archive-layout-select');
+if (archiveLayout) {
+    archiveLayout.addEventListener('change', function() {
+        var wrap = document.getElementById('archive-thumb-style-wrap');
+        if (wrap) wrap.classList.toggle('d-none', this.value !== 'thumbs');
     });
 }
 </script>

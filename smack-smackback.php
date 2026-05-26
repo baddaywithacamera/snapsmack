@@ -119,6 +119,32 @@ if ($action === 'run_verify' || ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POS
     exit;
 }
 
+// RUN SKIN JS SCAN
+if ($action === 'run_skin_js_scan' || ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['run_skin_js_scan'] ?? '') === '1')) {
+    $result = smackback_run_skin_js_scan();
+
+    if ($wants_json) {
+        header('Content-Type: application/json');
+        echo json_encode($result);
+        exit;
+    }
+
+    $summary = "Skin JS scan complete: {$result['violations']} violation(s), {$result['warnings']} warning(s).";
+    header('Location: smack-smackback.php?msg=' . urlencode($summary));
+    exit;
+}
+
+// SAVE SKIN JS SETTINGS
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['save_skin_js_settings'] ?? '') === '1') {
+    $allow = ($_POST['skin_allow_custom_js'] ?? '0') === '1' ? '1' : '0';
+    $pdo->prepare(
+        "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('skin_allow_custom_js', ?)
+         ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+    )->execute([$allow]);
+    header('Location: smack-smackback.php?msg=Skin+JS+settings+saved.');
+    exit;
+}
+
 // RE-INITIALISE BASELINE FROM DISK
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['reinit_baseline'] ?? '') === '1') {
     $ok = smackback_init_from_disk();
@@ -171,6 +197,13 @@ try {
         "SELECT * FROM snap_smackback_log ORDER BY detected_at DESC LIMIT 20"
     )->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { }
+
+// Skin JS scan results
+$skin_js_findings_json  = $settings['skin_js_violations_json']  ?? '[]';
+$skin_js_scan_at        = $settings['skin_js_scan_at']           ?? '';
+$skin_js_violation_count = (int)($settings['skin_js_violation_count'] ?? 0);
+$skin_js_findings       = json_decode($skin_js_findings_json, true) ?? [];
+$skin_allow_custom_js   = ($settings['skin_allow_custom_js'] ?? '0') === '1';
 
 $flash_msg = $_GET['msg'] ?? '';
 
@@ -382,6 +415,246 @@ include 'core/sidebar.php';
             </table>
 
             <button type="submit" class="btn btn-primary">Save Settings</button>
+        </form>
+    </section>
+
+    <!-- ── NETWORK ALERT (Layer 2 — SC global YELLOW) ──────────────────── -->
+    <?php
+    // Load network alert state for this section
+    require_once 'core/network-alert.php';
+
+    // Handle actions
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['save_nalert'] ?? '') === '1') {
+        $na_send    = ($_POST['network_alert_send']    ?? '0') === '1' ? '1' : '0';
+        $na_receive = ($_POST['network_alert_receive'] ?? '0') === '1' ? '1' : '0';
+        $na_sc_url  = trim($_POST['network_alert_sc_url'] ?? 'https://snapsmack.ca');
+        if (empty($na_sc_url)) $na_sc_url = 'https://snapsmack.ca';
+
+        $na_up = $pdo->prepare(
+            "INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+        );
+        $na_up->execute(['network_alert_send',    $na_send]);
+        $na_up->execute(['network_alert_receive', $na_receive]);
+        $na_up->execute(['network_alert_sc_url',  $na_sc_url]);
+
+        header('Location: smack-smackback.php?msg=Network+alert+settings+saved.');
+        exit;
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['nalert_check_now'] ?? '') === '1') {
+        $na_sc_url = trim($settings['network_alert_sc_url'] ?? 'https://snapsmack.ca');
+        $polled    = nalert_poll_sc($na_sc_url);
+        $msg       = $polled ? "Checked — status: {$polled}" : 'Check failed (SC unreachable or not opted in to receive).';
+        header('Location: smack-smackback.php?msg=' . urlencode($msg));
+        exit;
+    }
+
+    $na = nalert_get_local();
+
+    $na_status_labels = [
+        'green'       => '<span style="color:#5a9a5a">&#9679; Green — no advisory</span>',
+        'yellow_slow' => '<span style="color:#cc9900">&#9679; YELLOW (advisory) — network-wide alert active</span>',
+        'yellow_fast' => '<span style="color:#ffcc00;font-weight:700;">&#9679; YELLOW FAST — coordinated threat detected</span>',
+    ];
+    $na_status_display = $na_status_labels[$na['status']] ?? htmlspecialchars($na['status']);
+    ?>
+    <section id="network-alert" class="settings-section">
+        <h3>NETWORK ALERT <span class="dim" style="font-weight:400;font-size:0.8rem;">(Layer 2 — Smack Central global)</span></h3>
+        <p style="margin-bottom:16px;color:#999;font-size:0.88rem;line-height:1.7;">
+            Opt-in to the SnapSmack network alert system. If Smack Central detects a coordinated
+            breach affecting multiple installs, it broadcasts a YELLOW alert to all opted-in sites.
+            Entirely separate from your local SMACKBACK RED alerts — those never leave your server.
+        </p>
+
+        <table class="settings-table" style="margin-bottom:20px;">
+            <tr>
+                <td class="label">Current network status</td>
+                <td><?php echo $na_status_display; ?>
+                    <?php if ($na['since']): ?>
+                        <span class="dim" style="font-size:0.82rem;"> since <?php echo htmlspecialchars($na['since']); ?></span>
+                    <?php endif; ?>
+                </td>
+            </tr>
+            <?php if ($na['message']): ?>
+            <tr>
+                <td class="label">SC message</td>
+                <td><?php echo htmlspecialchars($na['message']); ?></td>
+            </tr>
+            <?php endif; ?>
+            <tr>
+                <td class="label">Last checked</td>
+                <td><?php echo $na['last_checked'] ? htmlspecialchars($na['last_checked']) : '<span class="dim">Never</span>'; ?>
+                    <form method="post" style="display:inline;margin-left:16px;">
+                        <?php csrf_field(); ?>
+                        <input type="hidden" name="nalert_check_now" value="1">
+                        <button type="submit" class="btn btn-sm">Check Now</button>
+                    </form>
+                </td>
+            </tr>
+        </table>
+
+        <form method="post">
+            <?php csrf_field(); ?>
+            <input type="hidden" name="save_nalert" value="1">
+
+            <table class="settings-table">
+                <tr>
+                    <td class="label">Send breach data to SC</td>
+                    <td>
+                        <label class="toggle-wrap">
+                            <input type="checkbox" name="network_alert_send" value="1"<?php echo $na['send'] ? ' checked' : ''; ?>>
+                            <span>Contribute breach reports to the network</span>
+                        </label>
+                        <p class="dim" style="font-size:0.82rem;margin-top:4px;">
+                            Reports contain: site name, server IP, affected file paths, timestamps, and SHA-256 hashes. No visitor data, no content.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Receive YELLOW alerts</td>
+                    <td>
+                        <label class="toggle-wrap">
+                            <input type="checkbox" name="network_alert_receive" value="1"<?php echo $na['receive'] ? ' checked' : ''; ?>>
+                            <span>Show SC network alerts in the admin panel</span>
+                        </label>
+                        <p class="dim" style="font-size:0.82rem;margin-top:4px;">
+                            You can receive alerts without sending data (courtesy opt-in). SC is privately hosted — we do our best but cannot guarantee uptime.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Smack Central URL</td>
+                    <td>
+                        <input type="url" name="network_alert_sc_url"
+                               value="<?php echo htmlspecialchars($na['sc_url']); ?>"
+                               style="width:320px;">
+                        <p class="dim" style="font-size:0.82rem;margin-top:4px;">Only change this if you run a private SC instance.</p>
+                    </td>
+                </tr>
+            </table>
+
+            <button type="submit" class="btn btn-primary">Save Network Alert Settings</button>
+        </form>
+    </section>
+
+    <!-- ── SKIN JS SECURITY SCAN ────────────────────────────────────────── -->
+    <section class="settings-section">
+        <h3>SKIN JS SECURITY SCAN</h3>
+        <p style="margin-bottom:16px;color:#999;font-size:0.88rem;line-height:1.7;">
+            Scans all non-base installed skins for inline JavaScript, <code>eval()</code> calls,
+            <code>atob()</code>, <code>document.write()</code>, and external scripts loaded from
+            untrusted domains. Base skins (50-shades-of-noah-grey, new-horizon) are always trusted.
+            <strong>Violations</strong> indicate active risk.
+            <strong>Warnings</strong> are suspicious but may be legitimate.
+        </p>
+
+        <!-- Status row -->
+        <table class="settings-table" style="margin-bottom:20px;">
+            <tr>
+                <td class="label">Last scan</td>
+                <td>
+                    <?php if ($skin_js_scan_at): ?>
+                        <?php echo htmlspecialchars($skin_js_scan_at); ?>
+                        —
+                        <?php if ($skin_js_violation_count > 0): ?>
+                            <strong style="color:var(--danger,#e33);"><?php echo $skin_js_violation_count; ?> violation(s)</strong>
+                        <?php else: ?>
+                            <span style="color:var(--success,#4c4);">No violations</span>
+                        <?php endif; ?>
+                        (<?php
+                            $wc = count(array_filter($skin_js_findings, fn($f) => $f['severity'] === 'warning'));
+                            echo $wc . ' warning' . ($wc !== 1 ? 's' : '');
+                        ?>)
+                    <?php else: ?>
+                        <span class="dim">Never scanned</span>
+                    <?php endif; ?>
+                    <form method="post" style="display:inline;margin-left:16px;">
+                        <?php csrf_field(); ?>
+                        <input type="hidden" name="run_skin_js_scan" value="1">
+                        <button type="submit" class="btn btn-sm">Scan Now</button>
+                    </form>
+                </td>
+            </tr>
+        </table>
+
+        <?php if (!empty($skin_js_findings)): ?>
+            <?php
+                $by_skin = [];
+                foreach ($skin_js_findings as $f) {
+                    $by_skin[$f['skin']][] = $f;
+                }
+            ?>
+            <?php foreach ($by_skin as $slug => $skin_findings): ?>
+                <?php
+                    $sv = count(array_filter($skin_findings, fn($f) => $f['severity'] === 'violation'));
+                    $sw = count(array_filter($skin_findings, fn($f) => $f['severity'] === 'warning'));
+                    $si = count(array_filter($skin_findings, fn($f) => $f['severity'] === 'info'));
+                ?>
+                <details style="margin-bottom:12px;border:1px solid var(--border,#333);padding:10px 14px;background:var(--input-bg,#111);" <?php echo $sv > 0 ? 'open' : ''; ?>>
+                    <summary style="cursor:pointer;font-weight:700;font-size:0.9rem;letter-spacing:1px;">
+                        <?php echo htmlspecialchars($slug); ?>
+                        <?php if ($sv > 0): ?><span style="margin-left:8px;color:var(--danger,#e33);font-size:0.8rem;"><?php echo $sv; ?> VIOLATION<?php echo $sv !== 1 ? 'S' : ''; ?></span><?php endif; ?>
+                        <?php if ($sw > 0): ?><span style="margin-left:6px;color:var(--warning,#f90);font-size:0.8rem;"><?php echo $sw; ?> WARNING<?php echo $sw !== 1 ? 'S' : ''; ?></span><?php endif; ?>
+                        <?php if ($si > 0 && $sv === 0 && $sw === 0): ?><span style="margin-left:6px;color:#888;font-size:0.8rem;"><?php echo $si; ?> INFO</span><?php endif; ?>
+                    </summary>
+                    <table style="width:100%;margin-top:10px;font-size:0.82rem;border-collapse:collapse;">
+                        <thead>
+                            <tr style="border-bottom:1px solid var(--border,#333);color:#888;">
+                                <th style="text-align:left;padding:4px 8px;">SEV</th>
+                                <th style="text-align:left;padding:4px 8px;">TYPE</th>
+                                <th style="text-align:left;padding:4px 8px;">FILE</th>
+                                <th style="text-align:left;padding:4px 8px;">LINE</th>
+                                <th style="text-align:left;padding:4px 8px;">DETAIL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($skin_findings as $f): ?>
+                            <?php
+                                $sev_color = match($f['severity']) {
+                                    'violation' => 'var(--danger,#e33)',
+                                    'warning'   => 'var(--warning,#f90)',
+                                    default     => '#888',
+                                };
+                            ?>
+                            <tr style="border-bottom:1px solid var(--border,#222);">
+                                <td style="padding:4px 8px;color:<?php echo $sev_color; ?>;font-weight:700;text-transform:uppercase;font-size:0.78rem;">
+                                    <?php echo htmlspecialchars($f['severity']); ?>
+                                </td>
+                                <td style="padding:4px 8px;font-family:monospace;"><?php echo htmlspecialchars($f['type']); ?></td>
+                                <td style="padding:4px 8px;font-family:monospace;font-size:0.78rem;"><?php echo htmlspecialchars($f['file']); ?></td>
+                                <td style="padding:4px 8px;text-align:center;"><?php echo (int)$f['line']; ?></td>
+                                <td style="padding:4px 8px;color:#aaa;"><?php echo htmlspecialchars($f['detail']); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </details>
+            <?php endforeach; ?>
+        <?php elseif ($skin_js_scan_at): ?>
+            <p style="color:var(--success,#4c4);margin-bottom:16px;">✓ No findings — all installed skins are clean.</p>
+        <?php endif; ?>
+
+        <!-- Settings -->
+        <form method="post" style="margin-top:16px;">
+            <?php csrf_field(); ?>
+            <input type="hidden" name="save_skin_js_settings" value="1">
+            <table class="settings-table">
+                <tr>
+                    <td class="label">Allow custom JS in skins</td>
+                    <td>
+                        <label class="toggle-wrap">
+                            <input type="checkbox" name="skin_allow_custom_js" value="1"<?php echo $skin_allow_custom_js ? ' checked' : ''; ?>>
+                            <span>Permit inline scripts and external JS in third-party skins</span>
+                        </label>
+                        <p class="dim" style="font-size:0.82rem;margin-top:4px;">
+                            When enabled, inline scripts are downgraded to info and external scripts to warnings.
+                            <code>eval()</code> is always flagged as a violation regardless of this setting.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+            <button type="submit" class="btn btn-primary" style="margin-top:12px;">Save</button>
         </form>
     </section>
 

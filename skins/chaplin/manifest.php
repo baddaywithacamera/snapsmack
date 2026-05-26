@@ -38,7 +38,7 @@ return [
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Silent-film era. Near-black canvas, B&W photo treatment, Art Deco border system with ornament placement, animated film effects. Full-screen intertitle overlay for info and signals. Horizontal filmstrip below the photo.',
-    'status'      => 'development',
+    'status'      => 'stable',
 
     'features' => [
         'supports_wall'    => false,

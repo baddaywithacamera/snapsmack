@@ -66,6 +66,36 @@ CREATE TABLE IF NOT EXISTS `sc_assets` (
     UNIQUE KEY `uq_rel_path` (`rel_path`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Network Alert: current broadcast state (single row, Sean controls via sc-network-alert.php)
+CREATE TABLE IF NOT EXISTS `sc_network_alert_state` (
+    `id`      INT UNSIGNED  NOT NULL DEFAULT 1,
+    `level`   ENUM('green','yellow_slow','yellow_fast') NOT NULL DEFAULT 'green',
+    `message` VARCHAR(500)  NOT NULL DEFAULT '',
+    `set_at`  TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `set_by`  VARCHAR(20)   NOT NULL DEFAULT 'manual' COMMENT 'manual | auto',
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Seed the single state row (safe on re-run: INSERT IGNORE)
+INSERT IGNORE INTO `sc_network_alert_state` (`id`, `level`, `message`, `set_by`)
+VALUES (1, 'green', '', 'init');
+
+-- Network Alert: breach reports received from SnapSmack installs
+CREATE TABLE IF NOT EXISTS `sc_network_alert_reports` (
+    `id`             INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    `site_name`      VARCHAR(255)  NOT NULL DEFAULT '',
+    `site_url`       VARCHAR(500)  NOT NULL DEFAULT '',
+    `request_ip`     VARCHAR(45)   NOT NULL DEFAULT '',
+    `affected_files` JSON          NULL,
+    `file_hashes`    JSON          NULL,
+    `file_count`     SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    `received_at`    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `reviewed`       TINYINT(1)    NOT NULL DEFAULT 0,
+    PRIMARY KEY (`id`),
+    KEY `idx_request_ip_received` (`request_ip`, `received_at`),
+    KEY `idx_received_at`         (`received_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `sc_rss_cache` (
     `install_id`      INT UNSIGNED   NOT NULL,
     `feed_url`        VARCHAR(500)   NOT NULL DEFAULT '',

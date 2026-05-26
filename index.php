@@ -102,6 +102,22 @@ try {
         $force_blog = true;
     }
 
+    // Archive as landing page — redirect root to /archive.
+    // The archive_layout setting controls opening view; archive.php reads it directly.
+    if (!$force_blog && !$requested_slug && $homepage_mode === 'archive') {
+        $site_url_raw = $settings['site_url'] ?? '';
+        if (!empty($site_url_raw) && preg_match('#^https?://#i', $site_url_raw)) {
+            // Trusted base URL from settings.
+            $archive_url = rtrim($site_url_raw, '/') . '/archive';
+        } else {
+            // site_url not configured — use a path-relative redirect so we can't be
+            // redirected to an attacker-controlled host via a spoofed Host header.
+            $archive_url = '/archive';
+        }
+        header('Location: ' . $archive_url, true, 302);
+        exit;
+    }
+
     if (!$force_blog && !$requested_slug && $homepage_mode === 'static_page' && $homepage_page_id > 0) {
         // Load the static page from snap_pages
         $hp_stmt = $pdo->prepare("SELECT * FROM snap_pages WHERE id = ? AND is_active = 1 LIMIT 1");

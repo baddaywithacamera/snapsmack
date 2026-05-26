@@ -216,9 +216,9 @@ require_once 'core/sidebar.php';
 
             <div class="totp-qr-row">
                 <div>
-                    <img src="<?php echo htmlspecialchars($qr_url); ?>"
-                         alt="TOTP QR Code" width="220" height="220"
-                         style="display: block; border: 4px solid var(--bg-elevated);">
+                    <canvas id="totp-qr-canvas"
+                            style="display: block; border: 4px solid var(--bg-elevated);">
+                    </canvas>
                 </div>
                 <div>
                     <p class="setting-desc"><strong>Can't scan?</strong> Enter this key manually:</p>
@@ -265,4 +265,29 @@ require_once 'core/sidebar.php';
 
 <?php require_once 'core/admin-footer.php'; ?>
 <script src="assets/js/smack-admin-2fa.js"></script>
+<?php if ($pending_secret && $totp_uri): ?>
+<script>var _smackTotpUri = <?php echo json_encode($totp_uri); ?>;</script>
+<script src="assets/js/smack-qr.min.js"></script>
+<script>
+(function () {
+    'use strict';
+    function renderQR() {
+        var canvas = document.getElementById('totp-qr-canvas');
+        if (!canvas || !window.SmackQR || !window._smackTotpUri) return;
+        SmackQR.toCanvas(canvas, _smackTotpUri, {
+            width: 220, margin: 2,
+            color: { dark: '#000000', light: '#ffffff' }
+        }, function (err) {
+            if (err) canvas.insertAdjacentHTML('afterend',
+                '<p style="color:red;font-size:12px">QR render failed — use the manual key below.</p>');
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', renderQR);
+    } else {
+        renderQR();
+    }
+}());
+</script>
+<?php endif; ?>
 <?php // ===== SNAPSMACK EOF =====

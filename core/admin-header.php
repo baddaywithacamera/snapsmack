@@ -85,4 +85,11 @@ ob_start();
     <a href="smack-smackback.php" style="color:#ff9900;text-decoration:none;border:1px solid #ff6600;padding:3px 10px;font-size:0.8rem;white-space:nowrap;">View Breach Detail &rarr;</a>
 </div>
 <?php endif; ?>
+<?php if (!empty($GLOBALS['_nalert_status'])): ?>
+<?php
+    // Network alert banner (Layer 2 — SC global YELLOW). Separate from SMACKBACK RED above.
+    require_once __DIR__ . '/network-alert.php';
+    nalert_render_banner($GLOBALS['_nalert_status'], $GLOBALS['_nalert_message'] ?? '');
+?>
+<?php endif; ?>
 <?php // ===== SNAPSMACK EOF =====
