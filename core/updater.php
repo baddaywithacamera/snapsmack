@@ -57,7 +57,8 @@ if (!defined('UPDATER_KEY_ROTATION_URL')) {
 
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
 
-define('UPDATER_API_URL', 'https://snapsmack.ca/releases/latest.json');
+define('UPDATER_API_URL',     'https://snapsmack.ca/releases/latest.json');
+define('UPDATER_API_URL_DEV', 'https://snapsmack.ca/releases/latest-dev.json');
 define('UPDATER_BACKUP_DIR', dirname(__DIR__) . '/backups');
 define('UPDATER_MIGRATIONS_DIR', dirname(__DIR__) . '/migrations');
 define('UPDATER_TEMP_DIR', sys_get_temp_dir() . '/snapsmack_update');
@@ -89,6 +90,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-smackback.sql',
     'migrate-spoke-maintenance-mode.sql',
     'migrate-smackback-multisite.sql',
+    'migrate-network-alert.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
@@ -132,8 +134,39 @@ const UPDATER_DEPRECATED_FILES = [
  *   "download_size": 2450000
  * }
  */
+/**
+ * Return true if a version string is a dev (D-suffixed) build.
+ * e.g. '0.7.184D' → true, '0.7.184' → false.
+ */
+function updater_is_dev_version(string $v): bool {
+    return (bool) preg_match('/\d[Dd]$/', trim($v));
+}
+
+/**
+ * Read the update track ('stable'|'dev') from snap_settings.
+ * Returns 'stable' if the setting is missing or DB is unavailable.
+ */
+function updater_get_track(PDO $pdo): string {
+    try {
+        $val = $pdo->query(
+            "SELECT setting_val FROM snap_settings WHERE setting_key = 'update_track' LIMIT 1"
+        )->fetchColumn();
+        return ($val === 'dev') ? 'dev' : 'stable';
+    } catch (Exception $e) {
+        return 'stable';
+    }
+}
+
 function updater_fetch_release_info(bool $fast = false): array {
-    $url = UPDATER_API_URL;
+    global $pdo;
+
+    // Determine track from settings. Default stable — safe if PDO unavailable.
+    $track = 'stable';
+    if ($pdo instanceof PDO) {
+        $track = updater_get_track($pdo);
+    }
+
+    $url = ($track === 'dev') ? UPDATER_API_URL_DEV : UPDATER_API_URL;
 
     // $fast = true: called from JS-driven AJAX loop — single short attempt so the
     // PHP process doesn't block for 40+ seconds while the browser shows a spinner.
@@ -146,6 +179,12 @@ function updater_fetch_release_info(bool $fast = false): array {
     $data = json_decode($json, true);
     if (!is_array($data) || empty($data['version'])) {
         return ['error' => 'Invalid response from update server.'];
+    }
+
+    // Safety belt: stable-tracked sites must never receive a D-suffixed version,
+    // even if the server accidentally returns one.
+    if ($track === 'stable' && updater_is_dev_version($data['version'])) {
+        return ['error' => 'Update server returned a dev build on stable track. Refusing.'];
     }
 
     return $data;

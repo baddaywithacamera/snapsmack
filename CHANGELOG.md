@@ -12,6 +12,17 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.184 — "Barcalounger" (2026-05-26)
+
+### Fixed
+- **Multisite "all spokes behind" false positive (root cause fix)**: The 0.7.183 fix corrected `snap_version_compare()` but the stored values in `snap_multisite_nodes.software_version` still contained the raw `"Alpha X.Y.Z"` prefix, making SQL `!=` comparisons fail even when PHP comparisons worked. Both heartbeat `UPDATE` paths in `smack-multisite.php` now normalise via `preg_replace('/^[^0-9]+/', '', ...)` before writing to the database. Belt-and-suspenders: `core/multisite-api.php` heartbeat response now sends `SNAPSMACK_VERSION_SHORT` (clean numeric string) instead of `SNAPSMACK_VERSION`.
+
+### Added
+- **SMACKBACK — Skin JS Security Scanner**: New section in `Admin → SMACKBACK` scans every non-base installed skin for `eval()` calls (always a violation), external scripts loaded from untrusted domains (violation), `atob()` (warning), `document.write()` (warning), and inline `<script>` blocks (info). Results persist in `snap_settings` and display per-skin with collapsible findings tables. A `skin_allow_custom_js` toggle demotes inline-script and external-script findings from violation to warning; `eval()` is always flagged as a violation regardless of this setting. Trusted CDN domains (cdnjs.cloudflare.com, fonts.googleapis.com, cdn.jsdelivr.net, code.jquery.com, unpkg.com) are never flagged for external scripts.
+- **Archive page as homepage**: `Settings → Configuration → Landing Page` now includes an `ARCHIVE PAGE` option. When selected, the root URL issues a 302 redirect to `/archive`. Two sub-controls appear: opening layout (`MASONRY` or `THUMBS`) and, when Thumbs is chosen, thumbnail crop style (`CROPPED` or `SQUARE`). These settings override the skin manifest defaults for the archive page.
+- **Update Track selector**: `Settings → Configuration` gains an `UPDATE TRACK` section. Sites choose `BORING` (stable releases only, default) or `BITCHIN'` (dev + stable releases, opt-in). The updater reads this setting and queries `latest.json` (stable) or `latest-dev.json` (dev) accordingly. A safety filter prevents D-suffixed dev builds from being offered to stable-track installs.
+- **Branching strategy infrastructure (Phase 1 + 2)**: `master` = stable, `dev` = active development. D-suffix version convention established (`0.7.184D` etc.). Per-site `update_track` setting controls which release stream a site follows. Heartbeat now reports each spoke's track back to the hub; the multisite fleet table gains a `TRACK` column showing `BORING` (grey) or `BITCHIN'` (amber) per spoke. New `BRANCHING.md` at repo root documents the strategy.
+
 ## 0.7.183 — "Barcalounger" (2026-05-25)
 
 ### Fixed

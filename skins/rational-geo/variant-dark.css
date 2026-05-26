@@ -24,14 +24,14 @@
     --rg-bg-drawer:     #111111;     /* info/comment drawers */
     --rg-border:        #2a2a2a;     /* subtle borders */
     --rg-border-light:  #1f1f1f;     /* very subtle dividers */
-    --rg-text-primary:  #e8e8e8;     /* light text */
+    --rg-text-primary:  #b8b8b8;     /* light grey body text */
     --rg-text-secondary:#aaaaaa;     /* secondary */
     --rg-text-dim:      #666666;     /* captions, labels */
     --rg-text-bright:   #ffffff;     /* headlines */
     --rg-accent:        #FFCC00;     /* NatGeo yellow */
     --rg-accent-dark:   #FFD633;     /* yellow hover (lighter on dark bg) */
     --rg-accent-muted:  rgba(255, 204, 0, 0.1);  /* yellow tint */
-    --rg-link:          #e8e8e8;     /* light links */
+    --rg-link:          #ffffff;     /* white links — stands out against grey body */
     --rg-link-hover:    #FFCC00;     /* links go yellow on hover */
     --rg-input-bg:      #1a1a1a;     /* form fields */
     --rg-overlay-bg:    rgba(10, 10, 10, 0.97);

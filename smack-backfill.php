@@ -5,8 +5,9 @@
  * JSON API for the Fix Your Batch Up desktop tool.
  * Requires an active admin session (auth.php).
  *
- * GET  ?action=list   — images missing a download_url, newest first
- * POST ?action=update — set download_url + allow_download=1 for one record
+ * GET  ?action=list       — images missing a download_url, newest first
+ * GET  ?action=list_drive — published images whose download_url is a Google Drive link
+ * POST ?action=update     — set download_url + allow_download=1 for one record
  */
 
 /**
@@ -40,6 +41,54 @@ switch ($action) {
             FROM   snap_images
             WHERE  (download_url IS NULL OR download_url = '')
               AND  img_status = 'published'
+            ORDER  BY img_date DESC
+        ");
+        $images   = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $site_url = rtrim($settings['site_url'] ?? '', '/');
+        echo json_encode(['ok' => true, 'site_url' => $site_url, 'images' => $images]);
+        break;
+
+    // ── List Drive ───────────────────────────────────────────────────────────
+    // Returns published images whose download_url is a Google Drive link.
+    // Used by the Fix Your Batch Up Drive → B2 migration tab.
+    case 'list_drive':
+        $stmt = $pdo->query("
+            SELECT id AS snap_id,
+                   img_title,
+                   img_file,
+                   img_date,
+                   allow_download,
+                   download_url
+            FROM   snap_images
+            WHERE  img_status = 'published'
+              AND  (
+                     download_url LIKE 'https://drive.google.com/%'
+                  OR download_url LIKE 'https://docs.google.com/%'
+              )
+            ORDER  BY img_date DESC
+        ");
+        $images   = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $site_url = rtrim($settings['site_url'] ?? '', '/');
+        echo json_encode(['ok' => true, 'site_url' => $site_url, 'images' => $images]);
+        break;
+
+    // ── List B2 ──────────────────────────────────────────────────────────────
+    // Returns published images whose download_url is a Backblaze B2 link.
+    // Used by the Fix Your Batch Up Cloud Migration tab (B2 → Drive direction).
+    case 'list_b2':
+        $stmt = $pdo->query("
+            SELECT id AS snap_id,
+                   img_title,
+                   img_file,
+                   img_date,
+                   allow_download,
+                   download_url
+            FROM   snap_images
+            WHERE  img_status = 'published'
+              AND  (
+                     download_url LIKE 'https://f%.backblazeb2.com/%'
+                  OR download_url LIKE 'https://%.backblazeb2.com/file/%'
+              )
             ORDER  BY img_date DESC
         ");
         $images   = $stmt->fetchAll(PDO::FETCH_ASSOC);

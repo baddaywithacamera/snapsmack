@@ -30,8 +30,12 @@ try { $pdo->query("SELECT key_type FROM snap_ohsnap_keys LIMIT 0");
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'generate') {
     $label    = trim($_POST['label'] ?? 'Oh Snap! Key');
-    $key_type = in_array($_POST['key_type'] ?? '', ['ohsnap','smackpress']) ? $_POST['key_type'] : 'ohsnap';
-    if (!$label) $label = $key_type === 'smackpress' ? 'SmackPress Key' : 'Oh Snap! Key';
+    $key_type = in_array($_POST['key_type'] ?? '', ['ohsnap','smackpress','flkrdckr']) ? $_POST['key_type'] : 'ohsnap';
+    if (!$label) $label = match($key_type) {
+        'smackpress' => 'SmackPress Key',
+        'flkrdckr'   => 'FLKR DCKR Import',
+        default      => 'Oh Snap! Key',
+    };
 
     $raw_key    = bin2hex(random_bytes(32));   // 64-char hex key
     $key_hash   = hash('sha256', $raw_key);
@@ -116,6 +120,7 @@ include 'core/sidebar.php';
                     <select name="key_type" style="width:100%;padding:6px 10px;background:var(--input-bg);border:1px solid var(--border);color:var(--text-primary);border-radius:3px;">
                         <option value="ohsnap">Oh Snap! (skin designer)</option>
                         <option value="smackpress">SmackPress (WP migration workbench)</option>
+                        <option value="flkrdckr">FLKR DCKR (Flickr import)</option>
                     </select>
                 </div>
             <div class="smack-form-row">

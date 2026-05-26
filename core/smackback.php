@@ -81,9 +81,215 @@ function smackback_hub_report(
     }
 }
 
-// ===== SNAPSMACK EOF =====
-// Last non-empty line of this file MUST match the line above.
-// Missing or different = truncated/corrupted. Restore before saving.
+// ─── SKIN JS SECURITY SCAN ───────────────────────────────────────────────────
+
+/**
+ * External script hosts that non-base skins are allowed to load from.
+ * Anything not on this list is flagged as a violation (or warning if custom JS is enabled).
+ */
+if (!defined('SMACKBACK_JS_TRUSTED_HOSTS')) {
+    define('SMACKBACK_JS_TRUSTED_HOSTS', [
+        'cdnjs.cloudflare.com',
+        'fonts.googleapis.com',
+        'fonts.gstatic.com',
+        'code.jquery.com',
+        'cdn.jsdelivr.net',
+        'unpkg.com',
+    ]);
+}
+
+/**
+ * Core skins that ship with the base release and are always trusted.
+ * Never scanned for JS violations.
+ */
+if (!defined('SMACKBACK_BASE_SKINS')) {
+    define('SMACKBACK_BASE_SKINS', ['50-shades-of-noah-grey', 'new-horizon']);
+}
+
+/**
+ * Scan all non-base installed skins for inline or unauthorized JS.
+ *
+ * Severity levels:
+ *   'violation' — eval(), external script from untrusted host
+ *   'warning'   — atob(), document.write(), inline <script> block
+ *   'info'      — inline <script> when skin_allow_custom_js is enabled
+ *
+ * Each finding array:
+ *   ['skin', 'file', 'line', 'type', 'detail', 'severity']
+ *
+ * @param  bool $allow_custom  If true (skin_allow_custom_js=1), demote violations → warnings,
+ *                             inline scripts → info. eval() is never demoted.
+ * @return array
+ */
+function smackback_scan_skin_js(bool $allow_custom = false): array {
+    $skins_dir = SNAPSMACK_ROOT . DIRECTORY_SEPARATOR . 'skins';
+    if (!is_dir($skins_dir)) {
+        return [];
+    }
+
+    $findings = [];
+
+    // Resolve the canonical skins root once. Used below to guard against symlink escape —
+    // a symlink inside a skin dir could otherwise point to an arbitrary file on the server.
+    $skins_real = realpath($skins_dir);
+
+    foreach (scandir($skins_dir) as $skin_slug) {
+        if ($skin_slug === '.' || $skin_slug === '..') continue;
+        $skin_path = $skins_dir . DIRECTORY_SEPARATOR . $skin_slug;
+        if (!is_dir($skin_path)) continue;
+        if (in_array($skin_slug, SMACKBACK_BASE_SKINS, true)) continue;
+
+        $iter = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($skin_path, FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($iter as $file) {
+            if (!$file->isFile()) continue;
+            $ext = strtolower($file->getExtension());
+            if (!in_array($ext, ['php', 'html', 'htm', 'js'], true)) continue;
+
+            $abs = $file->getPathname();
+            $abs_fwd = str_replace('\\', '/', $abs);
+
+            // Skip design-reference / gitignored dirs inside skins
+            if (strpos($abs_fwd, 'reference work from Claude Design') !== false) continue;
+            if (strpos($abs_fwd, '/.git/') !== false) continue;
+
+            // Symlink escape guard: resolve the real path and confirm it's still inside skins/.
+            // RecursiveDirectoryIterator without FOLLOW_SYMLINKS will traverse symlinks to files
+            // (though not to directories). A malicious or accidental symlink could point outside
+            // the skins tree. If realpath() returns false (broken symlink) or resolves to a path
+            // outside skins_real, skip silently.
+            if ($skins_real !== false) {
+                $real_abs = realpath($abs);
+                if ($real_abs === false || strpos($real_abs, $skins_real) !== 0) continue;
+            }
+
+            $lines = @file($abs, FILE_IGNORE_NEW_LINES);
+            if ($lines === false) continue;
+
+            $skin_path_fwd = str_replace('\\', '/', $skin_path);
+            $rel_file = 'skins/' . $skin_slug . '/' . ltrim(
+                str_replace($skin_path_fwd, '', $abs_fwd),
+                '/'
+            );
+
+            foreach ($lines as $i => $line) {
+                $lnum = $i + 1;
+
+                // ── External <script src="..."> from untrusted host ─────────
+                if (preg_match('/<script\b[^>]*\bsrc=["\']https?:\/\/([^\/\'">\s]+)/i', $line, $m)) {
+                    $host = strtolower($m[1]);
+                    $trusted = false;
+                    foreach (SMACKBACK_JS_TRUSTED_HOSTS as $th) {
+                        if ($host === $th || str_ends_with($host, '.' . $th)) {
+                            $trusted = true;
+                            break;
+                        }
+                    }
+                    if (!$trusted) {
+                        $findings[] = [
+                            'skin'     => $skin_slug,
+                            'file'     => $rel_file,
+                            'line'     => $lnum,
+                            'type'     => 'external_script',
+                            'detail'   => "External script from untrusted host: {$host}",
+                            'severity' => $allow_custom ? 'warning' : 'violation',
+                        ];
+                    }
+                }
+
+                // ── eval() call — never demoted, always a violation ─────────
+                if (preg_match('/\beval\s*\(/i', $line)) {
+                    $findings[] = [
+                        'skin'     => $skin_slug,
+                        'file'     => $rel_file,
+                        'line'     => $lnum,
+                        'type'     => 'eval',
+                        'detail'   => 'eval() call — code execution risk',
+                        'severity' => 'violation',
+                    ];
+                }
+
+                // ── atob() — common obfuscation tool ───────────────────────
+                if (preg_match('/\batob\s*\(/i', $line)) {
+                    $findings[] = [
+                        'skin'     => $skin_slug,
+                        'file'     => $rel_file,
+                        'line'     => $lnum,
+                        'type'     => 'obfuscation',
+                        'detail'   => 'atob() — base64 decode, potential code obfuscation',
+                        'severity' => 'warning',
+                    ];
+                }
+
+                // ── document.write() ───────────────────────────────────────
+                if (preg_match('/document\.write\s*\(/i', $line)) {
+                    $findings[] = [
+                        'skin'     => $skin_slug,
+                        'file'     => $rel_file,
+                        'line'     => $lnum,
+                        'type'     => 'document_write',
+                        'detail'   => 'document.write() — obsolete, sometimes used for injection',
+                        'severity' => 'warning',
+                    ];
+                }
+
+                // ── Inline <script> block (no src attribute) ───────────────
+                // Matches <script> or <script type="text/javascript"> etc. but NOT <script src=...>
+                if (preg_match('/<script\b(?![^>]*\bsrc=)[^>]*>/i', $line)) {
+                    $findings[] = [
+                        'skin'     => $skin_slug,
+                        'file'     => $rel_file,
+                        'line'     => $lnum,
+                        'type'     => 'inline_script',
+                        'detail'   => 'Inline <script> block',
+                        'severity' => $allow_custom ? 'info' : 'warning',
+                    ];
+                }
+            }
+        }
+    }
+
+    return $findings;
+}
+
+/**
+ * Run the skin JS scan and persist results to snap_settings.
+ * Reads the skin_allow_custom_js setting to set severity context.
+ *
+ * @return array{violations: int, warnings: int, infos: int, findings: array, scanned_at: string}
+ */
+function smackback_run_skin_js_scan(): array {
+    global $pdo;
+
+    $allow_custom = ($pdo->query(
+        "SELECT setting_val FROM snap_settings WHERE setting_key = 'skin_allow_custom_js'"
+    )->fetchColumn() ?: '0') === '1';
+
+    $findings  = smackback_scan_skin_js($allow_custom);
+    $now       = date('Y-m-d H:i:s');
+
+    $violations = count(array_filter($findings, fn($f) => $f['severity'] === 'violation'));
+    $warnings   = count(array_filter($findings, fn($f) => $f['severity'] === 'warning'));
+    $infos      = count(array_filter($findings, fn($f) => $f['severity'] === 'info'));
+
+    $upsert = $pdo->prepare(
+        "INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+    );
+    $upsert->execute(['skin_js_violations_json',  json_encode($findings, JSON_UNESCAPED_UNICODE)]);
+    $upsert->execute(['skin_js_scan_at',          $now]);
+    $upsert->execute(['skin_js_violation_count',  (string) $violations]);
+
+    return [
+        'violations' => $violations,
+        'warnings'   => $warnings,
+        'infos'      => $infos,
+        'findings'   => $findings,
+        'scanned_at' => $now,
+    ];
+}
 
 /**
  * SMACKBACK — File Integrity Monitoring
@@ -782,6 +988,14 @@ function smackback_handle_breach(
 
     if ($mode === 'paranoid') {
         smackback_hub_report($tampered, $missing, $truncated, $corrupted);
+    }
+
+    // Layer 2: report to Smack Central network alert system if opted in.
+    // Entirely independent of hub/spoke mode. Fire-and-forget, never blocks.
+    $na_path = __DIR__ . '/network-alert.php';
+    if (file_exists($na_path)) {
+        require_once $na_path;
+        nalert_send_report($tampered, $missing, $truncated, $corrupted);
     }
 }
 

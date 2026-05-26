@@ -19,6 +19,8 @@ $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `maintenan
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackback_status` VARCHAR(20) NOT NULL DEFAULT 'unknown'");
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackback_breach_at` DATETIME NULL");
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackback_breach_files` MEDIUMTEXT NULL");
+// Defensive add for branching track column.
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `update_track` VARCHAR(10) NOT NULL DEFAULT 'stable'");
 
 // --- SSRF GUARD ---
 // Returns true if the URL resolves to a private/loopback/reserved address.
@@ -198,11 +200,12 @@ if (isset($_POST['ping']) && isset($_POST['ping_id'])) {
                         last_backup_status = ?,
                         disk_usage_bytes   = ?,
                         site_tagline       = ?,
+                        update_track       = ?,
                         last_seen_at       = NOW(),
                         status             = 'active'
                     WHERE id = ?
                 ")->execute([
-                    $hb['version']            ?? null,
+                    preg_replace('/^[^0-9]+/', '', $hb['version'] ?? '') ?: null,
                     $hb['post_count']         ?? 0,
                     $hb['image_count']        ?? 0,
                     $hb['pending_comments']   ?? 0,
@@ -212,6 +215,7 @@ if (isset($_POST['ping']) && isset($_POST['ping_id'])) {
                     $hb['last_backup_status'] ?? 'unknown',
                     $hb['disk_usage_bytes']   ?? null,
                     $hb['site_tagline']       ?? null,
+                    $hb['update_track']       ?? 'stable',
                     $n['id'],
                 ]);
                 $msg = "Ping OK — {$n['site_name']} is online (HTTP {$hb_code}).";
@@ -519,6 +523,7 @@ if ($multisite_role === 'hub') {
                         last_backup_status = ?,
                         disk_usage_bytes   = ?,
                         site_tagline       = ?,
+                        update_track          = ?,
                         maintenance_mode      = ?,
                         smackback_status      = ?,
                         smackback_breach_at   = ?,
@@ -526,7 +531,7 @@ if ($multisite_role === 'hub') {
                         status                = 'active'
                     WHERE id = ?
                 ")->execute([
-                    $hb['version']            ?? null,
+                    preg_replace('/^[^0-9]+/', '', $hb['version'] ?? '') ?: null,
                     $hb['post_count']         ?? 0,
                     $hb['image_count']        ?? 0,
                     $hb['pending_comments']   ?? 0,
@@ -536,19 +541,21 @@ if ($multisite_role === 'hub') {
                     $hb['last_backup_status'] ?? 'unknown',
                     $hb['disk_usage_bytes']   ?? null,
                     $hb['site_tagline']       ?? null,
+                    $hb['update_track']       ?? 'stable',
                     (int)($hb['maintenance_mode'] ?? 0),
                     $hb['smackback_status']   ?? 'unknown',
                     $hb['smackback_breach_at'] ?? null,
                     $n['id'],
                 ]);
                 // Update local array so the table renders fresh data without a reload
-                $n['software_version']   = $hb['version']            ?? $n['software_version'];
-                $n['post_count']         = $hb['post_count']         ?? $n['post_count'];
-                $n['image_count']        = $hb['image_count']        ?? $n['image_count'];
-                $n['pending_comments']   = $hb['pending_comments']   ?? $n['pending_comments'];
-                $n['last_backup_status'] = $hb['last_backup_status'] ?? $n['last_backup_status'];
-                $n['maintenance_mode']   = (int)($hb['maintenance_mode'] ?? 0);
-                $n['smackback_status']   = $hb['smackback_status']   ?? 'unknown';
+                $n['software_version']    = preg_replace('/^[^0-9]+/', '', $hb['version'] ?? '') ?: $n['software_version'];
+                $n['post_count']          = $hb['post_count']         ?? $n['post_count'];
+                $n['image_count']         = $hb['image_count']        ?? $n['image_count'];
+                $n['pending_comments']    = $hb['pending_comments']   ?? $n['pending_comments'];
+                $n['last_backup_status']  = $hb['last_backup_status'] ?? $n['last_backup_status'];
+                $n['update_track']        = $hb['update_track']       ?? 'stable';
+                $n['maintenance_mode']    = (int)($hb['maintenance_mode'] ?? 0);
+                $n['smackback_status']    = $hb['smackback_status']   ?? 'unknown';
                 $n['smackback_breach_at'] = $hb['smackback_breach_at'] ?? null;
             }
         } else {
@@ -732,6 +739,7 @@ include 'core/sidebar.php';
                                 <th>NAME</th>
                                 <th>URL</th>
                                 <th class="col-center">VERSION</th>
+                                <th class="col-center">TRACK</th>
                                 <th class="col-center">STATUS</th>
                                 <th class="col-center">LAST SEEN</th>
                                 <th class="col-center">POSTS</th>
@@ -759,6 +767,9 @@ include 'core/sidebar.php';
                                     <?php endif; ?>
                                 </td>
                                 <td class="col-center" style="font-family:monospace; font-size:0.85rem;"><?php echo htmlspecialchars(SNAPSMACK_VERSION); ?></td>
+                                <td class="col-center">
+                                    <span style="font-size:0.7rem; font-weight:700; letter-spacing:1px; color:var(--text-muted,#888);">BORING</span>
+                                </td>
                                 <td class="col-center">
                                     <span class="status-dot status-dot--active" title="active"></span>
                                     <span class="status-label status-label--active">ACTIVE</span>
@@ -790,6 +801,16 @@ include 'core/sidebar.php';
                                             echo $spoke_ver ? htmlspecialchars($spoke_ver) : '—';
                                             if ($spoke_ver && snap_version_compare(SNAPSMACK_VERSION_SHORT, $spoke_ver, '>')) {
                                                 echo ' <span class="version-behind" title="Behind hub version ' . htmlspecialchars(SNAPSMACK_VERSION) . '">&#x25B2;</span>';
+                                            }
+                                        ?>
+                                    </td>
+                                    <td class="col-center">
+                                        <?php
+                                            $spoke_track = $n['update_track'] ?? 'stable';
+                                            if ($spoke_track === 'dev') {
+                                                echo '<span style="font-size:0.7rem; font-weight:700; letter-spacing:1px; color:#f90;">BITCHIN\'</span>';
+                                            } else {
+                                                echo '<span style="font-size:0.7rem; font-weight:700; letter-spacing:1px; color:var(--text-muted,#888);">BORING</span>';
                                             }
                                         ?>
                                     </td>

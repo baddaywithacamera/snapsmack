@@ -854,10 +854,15 @@ $help_topics['configuration'] = [
 </ul>
 
 <h4>Homepage Mode</h4>
-<p>Controls what visitors see when they hit your root URL. Three modes:</p>
+<p>Controls what visitors see when they hit your root URL. Four modes:</p>
 <ul>
     <li><strong>Latest Post (default)</strong> — the most recently published transmission
     is shown via the active skin's single-image layout.</li>
+    <li><strong>Archive Page</strong> — the root URL redirects to <code>/archive</code>.
+    Visitors land directly in the browsable photo archive. Two sub-options appear: opening
+    layout (<em>Masonry</em> justified grid or <em>Thumbs</em> grid) and, in Thumbs mode,
+    thumbnail crop style (<em>Cropped</em> or <em>Square</em>). These settings override the
+    skin manifest defaults for the archive page.</li>
     <li><strong>Skin Landing Page</strong> — shows the active skin's built-in landing page
     (slider, grid, or portfolio intro). Not all skins have a landing page; if the active
     skin doesn't, it falls back to Latest Post behaviour.</li>
@@ -936,9 +941,23 @@ plaintext is never saved.</p>
 Any tool using the old key will immediately lose access. Click <strong>Revoke</strong>
 to delete the key entirely and disable API access until a new one is generated.</p>
 
+<h4>Key Types</h4>
+<p>Each key has a type that restricts which API endpoints it can reach. Choose the right
+type for the tool you are setting up:</p>
+<ul>
+    <li><strong>Oh Snap!</strong> — for the Oh Snap! skin designer desktop app</li>
+    <li><strong>SmackPress</strong> — for the SmackPress WordPress migration workbench</li>
+    <li><strong>FLKR DCKR Import</strong> — for the FLKR DCKR Flickr import tool. Revoke
+    this key when your import is complete — it only needs to exist long enough to run the
+    migration.</li>
+</ul>
+
 <h4>Pasting Into a Tool</h4>
 <p>In SYBU: Settings tab &rarr; API Key field. Paste the key and save. SYBU will use it
 for all subsequent requests instead of prompting for a username and password.</p>
+<p>In FLKR DCKR: paste into the <em>API Key</em> field in the settings bar at the top of
+the window. Click <strong>Test</strong> to verify the connection before starting your
+import.</p>
 HTML
 ];
 
@@ -1343,6 +1362,35 @@ updates refresh the manifest before cleanup. The Re-initialise Baseline button i
 settings lets you re-hash from disk after any legitimate manual edit — use it carefully, and
 never during an active breach.</p>
 
+<h4>Skin JS Security Scanner</h4>
+<p>The Skin JS Security Scanner is a separate scan from the file integrity monitor. Where
+SMACKBACK checks whether a file has been <em>changed</em>, the JS scanner checks whether
+an installed skin contains <em>suspicious code patterns</em> regardless of whether the
+files have been modified.</p>
+<p>It scans every non-base installed skin (base skins — 50-shades-of-noah-grey and
+new-horizon — are always trusted). For each skin it checks all PHP, HTML, and JS files
+for five pattern types:</p>
+<ul>
+    <li><strong>eval() — Violation</strong>: Always flagged regardless of settings.
+    <code>eval()</code> in a skin is a severe red flag with no legitimate use case.</li>
+    <li><strong>External scripts from untrusted domains — Violation</strong>: Scripts
+    loaded from domains not on the trusted CDN list (cdnjs.cloudflare.com,
+    fonts.googleapis.com, fonts.gstatic.com, code.jquery.com, cdn.jsdelivr.net,
+    unpkg.com). A malicious actor who compromises a skin could use this to load
+    a remote payload.</li>
+    <li><strong>atob() — Warning</strong>: Base64 decoding. Legitimate in some contexts
+    but commonly used to obfuscate injected code.</li>
+    <li><strong>document.write() — Warning</strong>: Deprecated API still used by some
+    injection scripts for DOM manipulation.</li>
+    <li><strong>Inline &lt;script&gt; — Info</strong>: Inline script tags. Most
+    legitimate skins don't need them; third-party skins that do should be reviewed.</li>
+</ul>
+<p>The <strong>Allow Custom JS in Skins</strong> toggle demotes inline-script findings
+from info to acceptable and external-script findings from violation to warning.
+<code>eval()</code> is never demoted.</p>
+<p>Click <strong>Scan Now</strong> to run a manual scan. Results persist between scans
+so you don't need to re-scan every visit.</p>
+
 <h4>What It Does Not Prevent</h4>
 <p>SMACKBACK detects tampering — it does not prevent it. Total server compromise (shell,
 database, and filesystem access) can defeat software-only integrity monitoring. Your hosting
@@ -1726,6 +1774,26 @@ cannot be verified, the panel falls back to a manual paste field.</p>
 If the public key file is absent or contains an all-zeros placeholder, signature checking
 falls back to SHA-256 checksum only. On any install that received 0.7.41 or later, a real
 key is present and Ed25519 verification is fully enforced.</p>
+
+<h4>Update Track</h4>
+<p>The <strong>UPDATE TRACK</strong> setting in <em>Settings → Configuration</em> controls
+which release stream the updater offers:</p>
+<ul>
+    <li><strong>BORING (default)</strong> — stable tagged releases only. This is the right
+    choice for production sites. Updates that ship are tested and signed.</li>
+    <li><strong>BITCHIN' (opt-in)</strong> — receives dev builds (versions with a
+    <code>D</code> suffix, e.g. <code>0.7.184D</code>) in addition to stable releases.
+    Dev builds may contain known issues, half-finished features, or experimental changes.
+    Only enable this if you know what you're doing and have a backup strategy.</li>
+</ul>
+<p>Changing the track does not modify any installed files — it only affects what the
+updater offers the next time it checks for updates. You can flip back to Boring at any
+time. The updater's safety filter prevents a D-suffixed build from ever being offered to
+a stable-track install even if the dev endpoint is accidentally queried.</p>
+<p>In a multisite fleet, each spoke sets its own track independently. The hub's multisite
+roster shows each spoke's current track as a BORING or BITCHIN' badge in the fleet table.
+The hub itself always displays its own version; hub track is set the same way as any other
+site via its own Configuration page.</p>
 
 <h4>Skin Updates</h4>
 <p>The update page also shows notifications about new or updated skins available in the
@@ -2599,6 +2667,87 @@ files found in the wrong location. Save the report as HTML for your records.</p>
 HTML
 ];
 
+// ── FLKR DCKR ────────────────────────────────────────────────────────────
+
+$help_topics['flkr-dckr'] = [
+    'section'  => 'Desktop Tools',
+    'title'    => 'FLKR DCKR — Flickr Import',
+    'icon'     => '&#x1F4F8;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>FLKR DCKR — Flickr Import Tool</h3>
+<p>FLKR DCKR is a standalone Windows desktop tool that migrates your Flickr photo archive
+into SnapSmack. It runs entirely on your computer — not on your server — because server-side
+import of a large Flickr archive is not practical. A collection of a few thousand photos
+involves gigabytes of image data, hours of processing time, and hundreds of individual API
+calls. Running that inside a PHP request on a shared host would time out, exhaust memory,
+and leave your database in a half-imported state with no way to resume. FLKR DCKR handles
+all the heavy work locally: image resizing and thumbnail generation happen on your machine,
+files are sent to your server via FTP one at a time at a throttled rate you control, and
+database records are created via API only after each file is safely on the server.
+A crash-recovery checkpoint means an interrupted import can be resumed exactly where it
+stopped — no re-importing, no duplicates.</p>
+
+<h4>What It Does</h4>
+<ul>
+    <li>Parses your Flickr data export (albums.json + per-photo JSON sidecars)</li>
+    <li>Imports your albums, tags, titles, descriptions, dates, and GPS coordinates</li>
+    <li>Resizes images to SnapSmack's web-optimised dimensions, generates square and
+    aspect-ratio thumbnails</li>
+    <li>Uploads all three versions (main image, square thumb, aspect thumb) via FTP to
+    your server's media directory</li>
+    <li>Creates the image record and album mappings in your database via the FLKR DCKR API</li>
+    <li>Maps Flickr's privacy settings — private photos import as drafts by default
+    (configurable)</li>
+    <li>Detects duplicates via the Flickr photo ID so re-running the tool is always safe</li>
+</ul>
+
+<h4>Getting Started</h4>
+<ol>
+    <li><strong>Download your Flickr export</strong> — in Flickr, go to Account Settings →
+    Your Flickr Data → Request your archive. You will receive a download link by email.
+    Unzip the archive to a folder on your computer before running FLKR DCKR.</li>
+    <li><strong>Generate an API key</strong> — go to
+    <strong>Admin &rarr; Boring Ass Stuff &rarr; API Keys</strong> and generate a new key
+    with type <em>FLKR DCKR Import</em>. Copy it — it is shown only once. You can revoke
+    it when the import is complete.</li>
+    <li><strong>Enter your credentials in FLKR DCKR</strong> — paste your site URL and API
+    key, then enter your FTP credentials and the remote base path (the same path your images
+    normally live under on the server).</li>
+    <li><strong>Select the export folder</strong> — point the tool at the folder you unzipped
+    from Flickr. Click <strong>Load Export</strong> to parse the metadata.</li>
+    <li><strong>Review the photo grid</strong> — every photo appears as a thumbnail tile.
+    Click any tile to exclude it from the import. The album sidebar lets you filter by
+    album or see unalbumed photos separately.</li>
+    <li><strong>Set your throttle</strong> — the default 1.5 seconds between posts is
+    conservative and safe for shared hosting. Increase it if your host is slow; decrease
+    it carefully if you are on a fast VPS.</li>
+    <li><strong>Start Import</strong> — click the button and let it run. You can pause and
+    resume at any time. If it is interrupted, FLKR DCKR offers to resume on the next
+    launch.</li>
+</ol>
+
+<h4>Privacy Handling</h4>
+<p>Photos marked as private or friends-only in Flickr import as <strong>drafts</strong> by
+default — they land in your database but are not publicly visible. Change the
+<em>Private →</em> dropdown to <strong>published</strong> if you want everything to come in
+live regardless of its Flickr privacy setting.</p>
+
+<h4>After the Import</h4>
+<p>Once the import is complete, revoke the FLKR DCKR API key from the API Keys page — you
+will not need it again. If any photos failed (usually due to a dropped FTP connection), you
+can re-run FLKR DCKR against the same export folder with the same settings. Duplicate
+detection via Flickr photo ID means already-imported photos are skipped instantly.</p>
+
+<h4>Why Not Just Upload a ZIP?</h4>
+<p>A ZIP upload might work for 50 photos. For 500 it will probably time out. For 5,000 it
+is not a realistic option on any normal hosting setup. FLKR DCKR was built specifically
+because there is no server-side solution that scales to a real Flickr archive. The desktop
+tool approach also gives you live progress, pause/resume control, and the ability to exclude
+specific photos or albums before the import starts.</p>
+HTML
+];
+
 // ── MULTISITE MANAGEMENT ─────────────────────────────────────────────────
 
 $help_topics['multisite'] = [
@@ -2660,8 +2809,13 @@ site that reports back to the hub).</p>
 <h4>Heartbeat Monitoring</h4>
 <p>The hub pings each spoke on a regular schedule. If a spoke goes unresponsive, its
 status changes to <em>unreachable</em> so you can investigate. Heartbeat data includes
-software version, PHP version, and disk usage — giving you a quick health check for
-the entire fleet.</p>
+software version, PHP version, disk usage, maintenance mode state, and SMACKBACK status
+— giving you a quick health check for the entire fleet.</p>
+<p>The fleet table also shows a <strong>TRACK</strong> badge per spoke: <strong>BORING</strong>
+(grey, stable-track) or <strong>BITCHIN'</strong> (amber, dev-track). This is reported
+by the spoke at heartbeat time and reflects the spoke's own update track setting. The hub
+does not control which track its spokes run on; each spoke sets its own track in its own
+Configuration page. The hub roster shows it read-only for visibility.</p>
 
 <h4>API Communication</h4>
 <p>Hub and spoke communicate through a JSON API at <code>api.php?route=multisite/*</code>.

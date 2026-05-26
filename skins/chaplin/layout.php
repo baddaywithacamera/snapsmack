@@ -3,8 +3,8 @@
  * SNAPSMACK - Chaplin skin: single image view
  * v2.5
  *
- * Rational Geo base + Art Deco border overlay, filmstrip, intertitle overlay.
- * No Galleria structure. Border on .chap-photo via skin-header.php CSS vars.
+ * Rational Geo base + Art Deco border overlay, intertitle overlay.
+ * No Galleria structure. No filmstrip. Border on .chap-photo via skin-header.php CSS vars.
  *
  * SNAPSMACK_EOF_HEADER
  *     <?php // ===== SNAPSMACK EOF =====
@@ -29,17 +29,6 @@ $exif_labels = [
     'flash'           => 'Flash',
 ];
 
-// Filmstrip query — 60 most recent published images
-$now_local = date('Y-m-d H:i:s');
-$film_stmt = $pdo->prepare("
-    SELECT id, img_slug, img_file, img_thumb_square, img_title
-    FROM snap_images
-    WHERE img_status = 'published' AND img_date <= ?
-    ORDER BY sort_order ASC, img_date DESC
-    LIMIT 60
-");
-$film_stmt->execute([$now_local]);
-$filmstrip_images = $film_stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <canvas id="chap-film-bg" aria-hidden="true"></canvas>
 <div id="scroll-stage" class="rg-single chap-single">
@@ -114,31 +103,6 @@ $filmstrip_images = $film_stmt->fetchAll(PDO::FETCH_ASSOC);
     <!-- INFOBOX (core navigation bar) -->
     <div id="infobox">
         <?php include dirname(__DIR__, 2) . '/core/navigation-bar.php'; ?>
-    </div>
-
-    <!-- FILMSTRIP -->
-    <div class="chap-filmstrip" id="chap-filmstrip">
-        <?php foreach ($filmstrip_images as $fi):
-            $fi_link = BASE_URL . htmlspecialchars($fi['img_slug']);
-            if (!empty($fi['img_thumb_square'])) {
-                $fi_thumb = BASE_URL . ltrim($fi['img_thumb_square'], '/');
-            } elseif (!empty($fi['img_file'])) {
-                $fp = pathinfo($fi['img_file']);
-                $fi_thumb = BASE_URL . ltrim($fp['dirname'] . '/thumbs/t_' . $fp['basename'], '/');
-            } else {
-                $fi_thumb = '';
-            }
-            $active = ($fi['id'] == $img['id']) ? ' active' : '';
-        ?>
-        <a href="<?php echo $fi_link; ?>"
-           class="chap-filmstrip-item<?php echo $active; ?>"
-           title="<?php echo htmlspecialchars($fi['img_title']); ?>">
-            <?php if ($fi_thumb): ?>
-            <img src="<?php echo $fi_thumb; ?>                 alt="<?php echo htmlspecialchars($fi['img_title']); ?>"
-                 loading="lazy">
-            <?php endif; ?>
-        </a>
-        <?php endforeach; ?>
     </div>
 
     <!-- HIDDEN FOOTER — kept so smack-footer.js and smack-keyboard.js find

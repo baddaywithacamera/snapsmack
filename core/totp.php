@@ -159,11 +159,11 @@ function totp_uri(string $secret, string $label, string $issuer = 'SnapSmack'): 
  * Used once on the setup page. No data is sent to Google except
  * the URL-encoded provisioning string.
  */
+/**
+ * @deprecated QR codes are now rendered client-side via assets/js/smack-qr.min.js.
+ *             Google Charts QR API was shut down in 2019. This function is unused.
+ */
 function totp_qr_url(string $totp_uri, int $size = 220): string {
-    return 'https://chart.googleapis.com/chart'
-        . '?chs=' . $size . 'x' . $size
-        . '&chld=M|0'
-        . '&cht=qr'
-        . '&chl=' . rawurlencode($totp_uri);
+    return '';
 }
 // ===== SNAPSMACK EOF =====

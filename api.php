@@ -50,6 +50,13 @@ if (strpos($route, 'smackpress') === 0) {
     exit;
 }
 
+// --- FLKR DCKR ROUTES ---
+// Route all /api/flkrdckr/* requests to the FLKR DCKR migration API handler
+if (strpos($route, 'flkrdckr') === 0) {
+    require_once 'core/flkrdckr-api.php';
+    exit;
+}
+
 // --- FALLBACK: Unknown API endpoint ---
 header('HTTP/1.1 404 Not Found');
 header('Content-Type: application/json');

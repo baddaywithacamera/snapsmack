@@ -282,7 +282,8 @@ if ($resource === 'heartbeat' && $method === 'GET') {
     }
 
     ms_ok([
-        'version'            => SNAPSMACK_VERSION,
+        'version'            => SNAPSMACK_VERSION_SHORT,
+        'update_track'       => $settings['update_track'] ?? 'stable',
         'post_count'         => $post_count,
         'image_count'        => $image_count,
         'pending_comments'   => $pending,

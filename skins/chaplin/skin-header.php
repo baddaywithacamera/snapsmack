@@ -115,13 +115,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    /* Filmstrip: scroll active item into view */
-    var activeThumb = document.querySelector('.chap-filmstrip-item.active');
-    var activeThumb = document.querySelector('.chap-filmstrip-item.active');
-    if (activeThumb) {
-        activeThumb.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    }
-
     /* ── Chaplin Overlay Controller ──────────────────────────────────────────
        Intercepts navigation-bar.php's #show-details / #show-comments in
        capture phase (before smack-footer.js bubble-phase listeners).

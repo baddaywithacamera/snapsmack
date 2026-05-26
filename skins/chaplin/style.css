@@ -40,7 +40,6 @@
   /* ── Layout ─────────────────────────────────────────────────────────────── */
   --header-height:          56px;
   --infobox-height:         50px;
-  --filmstrip-height:       90px;
   --grid-cols:              4;
   --thumb-width:            210px;
   --justified-row-height:   260px;
@@ -250,6 +249,7 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   list-style: none;
   display: inline-flex;
   align-items: center;
+  gap: 32px;
 }
 
 .rg-header-nav .nav-menu .sep { display: none; }
@@ -319,7 +319,7 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   flex-grow: 1;
   flex-shrink: 1;
   min-height: 0;
-  height: calc(100dvh - var(--header-height) - var(--infobox-height) - var(--filmstrip-height) - 80px);
+  height: calc(100dvh - var(--header-height) - var(--infobox-height) - 80px);
 }
 
 .rg-photo-wrap {
@@ -707,75 +707,6 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   font-weight: 400;
   color: var(--chap-ink-muted);
 }
-
-/* ============================================================================
-   FILMSTRIP
-   ========================================================================== */
-
-.chap-filmstrip {
-  display: flex;
-  flex-direction: row;
-  height: var(--filmstrip-height);
-  overflow-x: auto;
-  overflow-y: hidden;
-  background-color: #050505;
-  border-top: 1px solid var(--chap-border);
-  flex-shrink: 0;
-  gap: 3px;
-  padding: 4px;
-  scrollbar-color: var(--chap-ink-muted) transparent;
-  scrollbar-width: thin;
-}
-
-.chap-filmstrip-item {
-  flex-shrink: 0;
-  width: calc(var(--filmstrip-height) - 8px);
-  height: calc(var(--filmstrip-height) - 8px);
-  display: block;
-  overflow: hidden;
-  border: 1px solid transparent;
-  transition: border-color 0.2s ease;
-  position: relative;
-}
-
-.chap-filmstrip-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  filter: grayscale(1) brightness(0.8);
-  transition: filter 0.2s ease, transform 0.2s ease;
-}
-
-.chap-filmstrip-item:hover img {
-  filter: grayscale(1) brightness(1);
-  transform: scale(1.05);
-}
-
-.chap-filmstrip-item.active {
-  border-color: var(--chap-ink);
-}
-
-.chap-filmstrip-item.active img {
-  filter: grayscale(1) brightness(1);
-}
-
-/* Sprocket holes */
-.chap-filmstrip-item::before,
-.chap-filmstrip-item::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 8px;
-  height: 6px;
-  background: #050505;
-  border: 1px solid var(--chap-border);
-  border-radius: 1px;
-  z-index: 2;
-}
-.chap-filmstrip-item::before { top: -1px; }
-.chap-filmstrip-item::after  { bottom: -1px; }
 
 /* ============================================================================
    COMMUNITY DOCK
@@ -1322,7 +1253,7 @@ input[type="reset"]:hover {
   }
 
   #rg-photobox {
-    height: calc(100dvh - var(--header-height) - var(--infobox-height) - var(--filmstrip-height) - 60px);
+    height: calc(100dvh - var(--header-height) - var(--infobox-height) - 60px);
   }
 
   .rg-photo-wrap { padding: 2.5vh 2.5vw; }
@@ -1331,17 +1262,17 @@ input[type="reset"]:hover {
 @media (max-width: 768px) {
   :root {
     --header-height:    50px;
-    --filmstrip-height: 70px;
     --chap-title-size:  0.9rem;
     --grid-cols:        2;
   }
 
   .rg-header-inside { padding: 0 1rem; }
   .rg-header-nav .nav-menu { gap: 16px; }
+  .rg-header-nav .nav-menu li { gap: 16px; }
   .rg-masthead { font-size: 0.85rem; letter-spacing: 0.2em; }
 
   #rg-photobox {
-    height: calc(100dvh - var(--header-height) - var(--infobox-height) - var(--filmstrip-height) - 60px);
+    height: calc(100dvh - var(--header-height) - var(--infobox-height) - 60px);
   }
 
   .chap-overlay-card { width: 95vw; max-height: 85vh; }
@@ -1351,6 +1282,7 @@ input[type="reset"]:hover {
 
 @media (max-width: 480px) {
   .rg-header-nav .nav-menu { gap: 12px; }
+  .rg-header-nav .nav-menu li { gap: 12px; }
 
   .rg-archive-grid,
   .chap-archive-grid {
@@ -1366,7 +1298,6 @@ input[type="reset"]:hover {
 @media print {
   #rg-header,
   #infobox,
-  .chap-filmstrip,
   .community-dock,
   .chap-overlay-drawer,
   #chap-film-bg,

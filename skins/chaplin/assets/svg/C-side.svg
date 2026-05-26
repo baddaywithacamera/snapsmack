@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 140" width="40" height="140" fill="none" stroke="#ece6d4">
+  
+  <g stroke-width="1.4">
+    <path d="M4 70 L16 58 L24 58 L36 70 L24 82 L16 82 Z" fill="#ece6d4"></path>
+    <path d="M20 58 L8 70 L20 82" stroke="#0a0a0a"></path>
+    <path d="M20 58 L32 70 L20 82" stroke="#0a0a0a"></path>
+    <path d="M20 4 L20 52 M20 88 L20 136"></path>
+    <path d="M14 10 L14 46 M14 94 L14 130"></path>
+    <path d="M26 16 L26 40 M26 100 L26 124"></path>
+    <path d="M20 4 L16 8 L20 12 L24 8 Z" fill="#ece6d4"></path>
+    <path d="M20 128 L16 132 L20 136 L24 132 Z" fill="#ece6d4"></path>
+  </g>
+</svg>
