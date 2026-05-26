@@ -83,9 +83,11 @@ $exif_labels = [
         <?php include __DIR__ . '/frame-deco.php'; ?>
         <div class="rg-photo-wrap">
             <?php include dirname(__DIR__, 2) . '/core/download-overlay.php'; ?>
-            <img class="rg-image post-image chap-photo"
-                 src="<?php echo BASE_URL . ltrim($img['img_file'], '/'); ?>"
-                 alt="<?php echo htmlspecialchars($img['img_title']); ?>">
+            <div class="chap-img-frame">
+                <img class="rg-image post-image chap-photo"
+                     src="<?php echo BASE_URL . ltrim($img['img_file'], '/'); ?>"
+                     alt="<?php echo htmlspecialchars($img['img_title']); ?>">
+            </div>
             <?php echo $download_button; ?>
         </div>
     </div>
@@ -108,11 +110,4 @@ $exif_labels = [
     <!-- HIDDEN FOOTER — kept so smack-footer.js and smack-keyboard.js find
          their expected DOM elements. Never shown; overlay handles INFO/SIGNALS. -->
     <div id="footer" style="display:none!important" aria-hidden="true">
-        <div id="pane-info"     class="footer-pane"></div>
-        <div id="pane-comments" class="footer-pane"></div>
-    </div>
-
-    <?php include __DIR__ . '/skin-footer.php'; ?>
-
-</div>
-<?php // ===== SNAPSMACK EOF =====
+        <div id="pane-info"     class="f

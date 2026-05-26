@@ -291,10 +291,16 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   overflow: hidden;
 }
 
-/* Hide generic <footer> on single view; #system-footer stays visible so it
-   appears below the filmstrip on the solo page. */
+/* Hide generic <footer> elements on single view */
 .rg-single footer {
   display: none;
+}
+
+/* But system footer IS visible — compact on single view */
+.rg-single #system-footer {
+  display: block;
+  flex-shrink: 0;
+  padding: 10px 0;
 }
 
 /* Hidden #footer kept for smack-footer / smack-keyboard compat */
@@ -319,7 +325,7 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   flex-grow: 1;
   flex-shrink: 1;
   min-height: 0;
-  height: calc(100dvh - var(--header-height) - var(--infobox-height) - 80px);
+  /* height intentionally omitted — flex handles sizing against intertitle + infobox + footer */
 }
 
 .rg-photo-wrap {
@@ -333,7 +339,7 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   position: relative;
 }
 
-/* Photo — grayscale + border applied by skin-header.php CSS vars */
+/* Photo — grayscale applied by skin-header.php */
 .rg-image.post-image,
 .chap-photo {
   max-width: 100%;
@@ -343,6 +349,20 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   display: block;
   position: relative;
   z-index: 2;
+}
+
+/* Frame wrapper — receives the Art Deco outline/box-shadow from skin-header.php.
+   Kept filter-free so outline renders correctly (filter creates a compositing
+   layer that swallows ink-overflow paint like outline and box-shadow). */
+.chap-img-frame {
+  flex: 0 1 auto;
+  align-self: center;
+  max-width: 100%;
+  max-height: 100%;
+  min-width: 0;
+  min-height: 0;
+  line-height: 0;
+  position: relative;
 }
 
 /* Remove RG's yellow border on archive pages — Chaplin uses grayscale borders */
@@ -1291,27 +1311,4 @@ input[type="reset"]:hover {
   }
 }
 
-/* ============================================================================
-   PRINT
-   ========================================================================== */
-
-@media print {
-  #rg-header,
-  #infobox,
-  .community-dock,
-  .chap-overlay-drawer,
-  #chap-film-bg,
-  body::after {
-    display: none !important;
-  }
-
-  #rg-photobox { height: auto; margin-top: 0; }
-  body { overflow: auto; background: #fff; }
-
-  .chap-photo, .rg-image.post-image {
-    filter: none;
-    max-width: 100%;
-    page-break-inside: avoid;
-  }
-}
-/* ===== SNAPSMACK EOF ===== */
+/* ============================================================================
