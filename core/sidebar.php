@@ -284,4 +284,5 @@ foreach ($_section_map as $sec => $_sec_pages) {
 
     </div>
 
-   
+</div>
+<?php // ===== SNAPSMACK EOF =====
