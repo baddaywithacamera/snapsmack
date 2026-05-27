@@ -121,6 +121,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message_type = 'error';
         }
     }
+    // ── Revoke a trusted device ───────────────────────────
+    elseif ($action === 'revoke_device') {
+        $device_id = (int)($_POST['device_id'] ?? 0);
+        if ($device_id > 0) {
+            try {
+                $pdo->prepare(
+                    "DELETE FROM snap_totp_devices WHERE id = ? AND user_id = ?"
+                )->execute([$device_id, $_SESSION['user_id']]);
+                $message      = 'Trusted device removed.';
+                $message_type = 'success';
+            } catch (PDOException $e) { /* table may not exist yet */ }
+        }
+    }
+
+    // ── Revoke all trusted devices ───────────────────────
+    elseif ($action === 'revoke_all_devices') {
+        try {
+            $pdo->prepare(
+                "DELETE FROM snap_totp_devices WHERE user_id = ?"
+            )->execute([$_SESSION['user_id']]);
+            $message      = 'All trusted devices removed.';
+            $message_type = 'success';
+        } catch (PDOException $e) { /* table may not exist yet */ }
+    }
+}
+
+// Load trusted devices for this user (only shown when 2FA is enabled)
+$trusted_devices = [];
+if ($is_enabled) {
+    try {
+        $td_stmt = $pdo->prepare(
+            "SELECT id, device_hint, created_at, expires_at
+             FROM snap_totp_devices
+             WHERE user_id = ? AND expires_at > NOW()
+             ORDER BY created_at DESC"
+        );
+        $td_stmt->execute([$_SESSION['user_id']]);
+        $trusted_devices = $td_stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) { /* table may not exist yet on older installs */ }
 }
 
 // Build QR provisioning URI if there's a pending secret
@@ -160,7 +199,7 @@ require_once 'core/sidebar.php';
                     <code class="recovery-code-item"><?php echo htmlspecialchars($code); ?></code>
                 <?php endforeach; ?>
             </div>
-            <button type="button" id="copy-recovery-codes-btn" class="ss-btn ss-btn-secondary">Copy All Codes</button>
+            <button type="button" id="copy-recovery-codes-btn" class="btn-smack">Copy All Codes</button>
             <span id="copy-confirm" class="copy-confirm-msg">Copied.</span>
         </div>
         <?php endif; ?>
@@ -186,7 +225,7 @@ require_once 'core/sidebar.php';
                            inputmode="numeric" autocomplete="one-time-code"
                            placeholder="000000" required>
                 </div>
-                <button type="submit" class="ss-btn ss-btn-secondary">Generate New Recovery Codes</button>
+                <button type="submit" class="btn-smack">Generate New Recovery Codes</button>
             </form>
         </div>
 
@@ -201,7 +240,7 @@ require_once 'core/sidebar.php';
                            inputmode="numeric" autocomplete="one-time-code"
                            placeholder="000000" required>
                 </div>
-                <button type="submit" class="ss-btn ss-btn-danger"
+                <button type="submit" class="btn-smack btn-danger"
                         onclick="return confirm('Disable 2FA? Your account will only be protected by your password.');">
                     Disable 2FA
                 </button>
@@ -238,9 +277,9 @@ require_once 'core/sidebar.php';
                            inputmode="numeric" autocomplete="one-time-code"
                            placeholder="000000" autofocus required>
                 </div>
-                <div style="display: flex; gap: 12px; align-items: center;">
-                    <button type="submit" class="master-update-btn">Activate 2FA</button>
-                    <a href="smack-2fa.php" class="ss-btn ss-btn-secondary">Start Over</a>
+                <div style="display: flex; gap: 12px; align-items: stretch;">
+                    <button type="submit" class="master-update-btn" style="flex: 2; width: auto; margin-top: 0;">ACTIVATE 2FA</button>
+                    <a href="smack-2fa.php" class="btn-smack btn-danger" style="flex: 1; width: auto; margin-top: 0;">START OVER</a>
                 </div>
             </form>
         </div>
@@ -258,6 +297,51 @@ require_once 'core/sidebar.php';
                 <input type="hidden" name="action" value="generate">
                 <button type="submit" class="master-update-btn">Set Up Two-Factor Authentication</button>
             </form>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($is_enabled): ?>
+        <div class="setting-section">
+            <h2 class="section-title">Trusted Devices</h2>
+            <p class="setting-desc">Devices where you checked &ldquo;Trust this device&rdquo; at login. These skip the authenticator code prompt until the trust expires.</p>
+
+            <?php if (empty($trusted_devices)): ?>
+                <p class="setting-desc" style="margin-top:12px;"><em>No trusted devices.</em></p>
+            <?php else: ?>
+                <table class="smack-table" style="margin-top:14px;">
+                    <thead>
+                        <tr>
+                            <th>Device</th>
+                            <th>Trusted On</th>
+                            <th>Expires</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($trusted_devices as $td): ?>
+                        <tr>
+                            <td style="font-size:0.8rem;word-break:break-all;max-width:320px;"><?php echo htmlspecialchars($td['device_hint'] ?: 'Unknown device'); ?></td>
+                            <td style="white-space:nowrap;font-size:0.8rem;"><?php echo htmlspecialchars(date('M j, Y', strtotime($td['created_at']))); ?></td>
+                            <td style="white-space:nowrap;font-size:0.8rem;"><?php echo htmlspecialchars(date('M j, Y', strtotime($td['expires_at']))); ?></td>
+                            <td>
+                                <form method="POST" style="margin:0;">
+                                    <input type="hidden" name="action" value="revoke_device">
+                                    <input type="hidden" name="device_id" value="<?php echo (int)$td['id']; ?>">
+                                    <button type="submit" class="btn-smack btn-smack-small btn-danger">REVOKE</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <form method="POST" style="margin-top:12px;">
+                    <input type="hidden" name="action" value="revoke_all_devices">
+                    <button type="submit" class="btn-smack btn-smack-small btn-danger"
+                            onclick="return confirm('Revoke all trusted devices? You will need to enter your authenticator code on next login.')">
+                        REVOKE ALL
+                    </button>
+                </form>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
 

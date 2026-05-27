@@ -211,6 +211,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($user && password_verify($pass_input, $user['password_hash'])) {
             if (!empty($user['totp_enabled']) && !empty($user['totp_secret'])) {
+                // Check for a valid long-lived TOTP trust cookie before sending
+                // the user through the interstitial. If the cookie is good, skip
+                // 2FA entirely and grant the session directly.
+                $ss_trust_skip = false;
+                $ss_trust_token = $_COOKIE['ss_totp_trust'] ?? '';
+                if (strlen($ss_trust_token) === 64) {
+                    $ss_trust_hash = hash('sha256', $ss_trust_token);
+                    try {
+                        $ss_trust_row = $pdo->prepare(
+                            "SELECT id FROM snap_totp_devices
+                             WHERE user_id = ? AND token_hash = ? AND expires_at > NOW() LIMIT 1"
+                        );
+                        $ss_trust_row->execute([$user['id'], $ss_trust_hash]);
+                        $ss_trust_skip = (bool)$ss_trust_row->fetchColumn();
+                    } catch (PDOException $e) { /* table may not exist yet on older installs */ }
+                }
+
+                if ($ss_trust_skip) {
+                    // Trusted device -- grant full session without TOTP.
+                    session_regenerate_id(true);
+                    $_SESSION['user_login']          = $user['username'];
+                    $_SESSION['user_role']           = $user['user_role'] ?: 'editor';
+                    $_SESSION['user_preferred_skin'] = $user['preferred_skin'] ?: null;
+                    $_SESSION['user_id']             = $user['id'];
+                    if (!empty($user['force_password_change'])) {
+                        $_SESSION['force_password_change'] = true;
+                        header('Location: smack-change-password.php');
+                        exit;
+                    }
+                    header('Location: smack-admin.php');
+                    exit;
+                }
+
                 session_regenerate_id(true);
                 $_SESSION['totp_pending_user_id'] = $user['id'];
                 header("Location: smack-2fa-verify.php");

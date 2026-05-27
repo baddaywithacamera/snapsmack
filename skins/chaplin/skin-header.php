@@ -78,8 +78,6 @@ $scratch_prob = [
 
 .chap-photo {
     filter: grayscale(1) contrast(1.05) brightness(0.95);
-}
-.chap-img-frame {
     <?php echo $border_css; ?>
 }
 
@@ -206,4 +204,4 @@ document.addEventListener('DOMContentLoaded', function () {
         </nav>
     </div>
 </div>
-<?php // ===== 
+<?php // ===== SNAPSMACK EOF =====

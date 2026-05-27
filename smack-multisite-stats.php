@@ -476,14 +476,14 @@ include 'core/sidebar.php';
         <?php if (!empty($fleet_daily) && $max_daily_views > 0): ?>
             <div style="margin-top:10px;">
                 <div style="font-size:0.72rem; color:var(--text-muted,#888); letter-spacing:1px; margin-bottom:8px;">DAILY FLEET TRAFFIC</div>
-                <div class="stats-sparkline" style="height:80px; display:flex; align-items:flex-end; gap:2px; width:100%;">
+                <div class="stats-sparkline" style="height:80px; display:flex; align-items:flex-end; gap:2px; width:100%; overflow:hidden;">
                     <?php
                         $bar_width = 100 / max(count($fleet_daily), 1);
                         foreach ($fleet_daily as $date => $day):
                             $pct = max(round(($day['views'] / $max_daily_views) * 100), 1);
                     ?>
                         <div class="stats-spark-bar"
-                             style="height:<?php echo $pct; ?>%; width:<?php echo $bar_width; ?>%; min-width:2px; flex-shrink:0;"
+                             style="height:<?php echo $pct; ?>%; flex:1 1 0; min-width:2px;"
                              title="<?php echo htmlspecialchars($date); ?>: <?php echo number_format($day['views']); ?> views, <?php echo number_format($day['unique']); ?> unique"></div>
                     <?php endforeach; ?>
                 </div>
