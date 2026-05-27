@@ -30,10 +30,11 @@ try { $pdo->query("SELECT key_type FROM snap_ohsnap_keys LIMIT 0");
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'generate') {
     $label    = trim($_POST['label'] ?? 'Oh Snap! Key');
-    $key_type = in_array($_POST['key_type'] ?? '', ['ohsnap','smackpress','flkrfckr']) ? $_POST['key_type'] : 'ohsnap';
+    $key_type = in_array($_POST['key_type'] ?? '', ['ohsnap','smackpress','flkrfckr','gyss']) ? $_POST['key_type'] : 'ohsnap';
     if (!$label) $label = match($key_type) {
         'smackpress' => 'SmackPress Key',
         'flkrfckr'   => 'FLKR FCKR Import',
+        'gyss'       => 'GET YOUR SHIT SORTED',
         default      => 'Oh Snap! Key',
     };
 
@@ -121,6 +122,7 @@ include 'core/sidebar.php';
                         <option value="ohsnap">Oh Snap! (skin designer)</option>
                         <option value="smackpress">SmackPress (WP migration workbench)</option>
                         <option value="flkrfckr">FLKR FCKR (Flickr import)</option>
+                        <option value="gyss">GET YOUR SHIT SORTED (photo sorter)</option>
                     </select>
                 </div>
             <div class="smack-form-row">
@@ -259,4 +261,17 @@ include 'core/sidebar.php';
     word-break: break-all;
     color: var(--text-primary, #e0e0e0);
 }
-.ohsnap-key-h
+.ohsnap-key-hint {
+    margin: 10px 0 0;
+    font-size: 0.82rem;
+    color: var(--text-muted, #888);
+}
+.ohsnap-instructions {
+    margin: 0;
+    padding-left: 20px;
+    line-height: 2;
+}
+</style>
+
+<?php include 'core/admin-footer.php'; ?>
+<?php // ===== SNAPSMACK EOF =====

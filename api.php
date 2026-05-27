@@ -57,6 +57,13 @@ if (strpos($route, 'flkrfckr') === 0) {
     exit;
 }
 
+// --- GET YOUR SHIT SORTED ROUTES ---
+// Route all /api/gyss/* requests to the GYSS desktop sorter API handler
+if (strpos($route, 'gyss') === 0) {
+    require_once 'core/gyss-api.php';
+    exit;
+}
+
 // --- FALLBACK: Unknown API endpoint ---
 header('HTTP/1.1 404 Not Found');
 header('Content-Type: application/json');
