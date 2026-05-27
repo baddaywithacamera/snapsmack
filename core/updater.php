@@ -91,6 +91,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-spoke-maintenance-mode.sql',
     'migrate-smackback-multisite.sql',
     'migrate-network-alert.sql',
+    'migrate-totp-devices.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────

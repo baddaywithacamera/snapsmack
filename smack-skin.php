@@ -622,6 +622,7 @@ if (!empty($google_families)) {
 .gallery-btn.install  { background: rgba(128,128,128,0.25); color: inherit; font-weight: 900; }
 .gallery-btn.update   { background: rgba(128,128,128,0.2); color: inherit; }
 .gallery-btn.remove   { background: rgba(128,128,128,0.08); color: inherit; opacity: 0.5; border: 1px solid rgba(128,128,128,0.2); }
+.gallery-btn.reinstall { background: rgba(128,128,128,0.18); color: inherit; border: 1px solid rgba(128,128,128,0.45); }
 .gallery-btn.disabled {
     background: rgba(128,128,128,0.05);
     color: inherit;
@@ -1166,6 +1167,18 @@ if (!empty($google_families)) {
                                 <span class="skin-status-current">
                                     UP TO DATE
                                 </span>
+                                <?php if (!empty($skin['download_url'])): ?>
+                                <form method="POST" style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                    <input type="hidden" name="gallery_action" value="install">
+                                    <input type="hidden" name="skin_slug" value="<?php echo htmlspecialchars($slug); ?>">
+                                    <input type="hidden" name="download_url" value="<?php echo htmlspecialchars($skin['download_url']); ?>">
+                                    <input type="hidden" name="signature" value="<?php echo htmlspecialchars($skin['signature'] ?? ''); ?>">
+                                    <button type="submit" class="gallery-btn reinstall">REINSTALL</button>
+                                </form>
+                                <?php else: ?>
+                                <button class="gallery-btn reinstall" disabled title="No download URL available">REINSTALL</button>
+                                <?php endif; ?>
                             <?php endif; ?>
 
                             <?php if ($skin['installed'] && $current_db_active !== $slug && !in_array($slug, $protected_skins, true)): ?>

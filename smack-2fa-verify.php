@@ -71,6 +71,78 @@ if ($_SESSION['totp_fail_count'] >= 5) {
     exit;
 }
 
+// --- TOTP TRUST COOKIE CHECK ---
+// If the user has a valid ss_totp_trust cookie, verify it against the DB and,
+// if good, skip the TOTP interstitial entirely and grant a full session now.
+// This is the "remember this device for N days" fast-path.
+function ss_totp_trust_days(PDO $pdo): int {
+    $val = $pdo->query(
+        "SELECT setting_val FROM snap_settings WHERE setting_key = 'totp_trust_days' LIMIT 1"
+    )->fetchColumn();
+    $days = (int)($val ?: 30);
+    return max(1, min(90, $days));
+}
+
+function ss_totp_grant_trust(PDO $pdo, int $user_id, string $ua): string {
+    $token      = bin2hex(random_bytes(32));   // 64-char hex raw token
+    $token_hash = hash('sha256', $token);
+    $days       = ss_totp_trust_days($pdo);
+    // Defensive CREATE in case migration hasn't run yet on older installs
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS `snap_totp_devices` (
+            `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `user_id`     INT UNSIGNED NOT NULL,
+            `token_hash`  CHAR(64) NOT NULL,
+            `device_hint` VARCHAR(120) NOT NULL DEFAULT '',
+            `created_at`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `expires_at`  DATETIME NOT NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `uq_token_hash` (`token_hash`),
+            KEY `idx_user_expires` (`user_id`, `expires_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
+    // Derive a friendly device hint from the UA string
+    $hint = substr(preg_replace('/[^\x20-\x7E]/', '', $ua), 0, 120);
+    $pdo->prepare(
+        "INSERT INTO snap_totp_devices (user_id, token_hash, device_hint, expires_at)
+         VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? DAY))"
+    )->execute([$user_id, $token_hash, $hint, $days]);
+    return $token;
+}
+
+function ss_totp_check_trust(PDO $pdo, int $user_id): bool {
+    $token = $_COOKIE['ss_totp_trust'] ?? '';
+    if (strlen($token) !== 64) return false;
+    $hash = hash('sha256', $token);
+    try {
+        $row = $pdo->prepare(
+            "SELECT id FROM snap_totp_devices
+             WHERE user_id = ? AND token_hash = ? AND expires_at > NOW() LIMIT 1"
+        );
+        $row->execute([$user_id, $hash]);
+        return (bool)$row->fetchColumn();
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+if (ss_totp_check_trust($pdo, $pending_id)) {
+    // Trusted device — grant full session, no TOTP needed.
+    session_regenerate_id(true);
+    unset($_SESSION['totp_pending_user_id'], $_SESSION['totp_fail_count']);
+    $_SESSION['user_login']          = $user['username'];
+    $_SESSION['user_role']           = $user['user_role'] ?: 'editor';
+    $_SESSION['user_preferred_skin'] = $user['preferred_skin'] ?: null;
+    $_SESSION['user_id']             = $user['id'];
+    if (!empty($user['force_password_change'])) {
+        $_SESSION['force_password_change'] = true;
+        header("Location: smack-change-password.php");
+        exit;
+    }
+    header("Location: smack-admin.php");
+    exit;
+}
+
 // --- ADMIN THEME RESOLUTION ---
 if (!isset($settings)) {
     $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
@@ -131,6 +203,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_role']           = $user['user_role'] ?: 'editor';
             $_SESSION['user_preferred_skin'] = $user['preferred_skin'] ?: null;
             $_SESSION['user_id']             = $user['id'];
+
+            // Issue long-lived trust cookie if user checked "Trust this device"
+            if (!empty($_POST['trust_device'])) {
+                $trust_token = ss_totp_grant_trust($pdo, $user['id'], $_SERVER['HTTP_USER_AGENT'] ?? '');
+                $trust_days  = ss_totp_trust_days($pdo);
+                $is_https    = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')
+                            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+                setcookie('ss_totp_trust', $trust_token, [
+                    'expires'  => time() + ($trust_days * 86400),
+                    'path'     => '/',
+                    'secure'   => $is_https,
+                    'httponly' => true,
+                    'samesite' => 'Strict',
+                ]);
+            }
 
             if (!empty($user['force_password_change'])) {
                 $_SESSION['force_password_change'] = true;
@@ -221,6 +308,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                placeholder="000000"
                                <?php echo $active_tab === 'totp' ? 'autofocus' : ''; ?>
                                required>
+                    </div>
+                    <div class="control-group" style="margin:12px 0 18px;">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.8rem;letter-spacing:0.06em;">
+                            <input type="checkbox" name="trust_device" value="1" style="width:auto;margin:0;">
+                            TRUST THIS DEVICE FOR <?php echo ss_totp_trust_days($pdo); ?> DAYS
+                        </label>
                     </div>
                     <button type="submit" class="master-update-btn">VERIFY &amp; CONTINUE</button>
                 </form>

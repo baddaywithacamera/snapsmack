@@ -1207,4 +1207,16 @@ CREATE TABLE IF NOT EXISTS `snap_smackback_log` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `snap_totp_devices` (
+    `id`          INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+    `user_id`     INT UNSIGNED    NOT NULL,
+    `token_hash`  CHAR(64)        NOT NULL COMMENT 'SHA-256 hex of the raw trust token',
+    `device_hint` VARCHAR(120)    NOT NULL DEFAULT '' COMMENT 'Browser/OS hint stored at trust time',
+    `created_at`  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `expires_at`  DATETIME        NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_token_hash` (`token_hash`),
+    KEY `idx_user_expires` (`user_id`, `expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ===== SNAPSMACK EOF =====
