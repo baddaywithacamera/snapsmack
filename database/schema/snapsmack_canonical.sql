@@ -58,6 +58,8 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
                         COMMENT 'FK to snap_posts — populated when image is wrapped in a post',
   `sort_order`          int            NOT NULL DEFAULT '0' -- 0.7.8: manual display order
                         COMMENT 'Manual display order. Lower = earlier in feed. 0 = unset (falls back to img_date DESC).',
+  `modified_at`         datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                        COMMENT 'Auto-updated on any row change. Used by GYSS for conflict detection.',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

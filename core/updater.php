@@ -93,6 +93,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-network-alert.sql',
     'migrate-totp-devices.sql',
     'migrate-multisite-api-key-default.sql',
+    'migrate-gyss-modified-at.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
