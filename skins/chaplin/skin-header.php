@@ -28,26 +28,32 @@ $l2         = (int)($settings['chap_line_2_width'] ?? 1);
 $l3         = (int)($settings['chap_line_3_width'] ?? 1);
 $lgap       = (int)($settings['chap_line_gap']     ?? 8);
 
-// outline = line 1; extra lines are box-shadow rings with transparent gap rings
+// outline = line 1; extra lines are box-shadow rings with transparent gap rings.
+// $frame_total = total px distance from element edge to outermost visible ring —
+// emitted as --chap-frame-total so ornaments can align to the outer frame edge.
 if ($line_count === 1) {
-    $border_css = "outline:{$l1}px solid #ece6d4;";
+    $border_css  = "outline:{$l1}px solid #ece6d4;outline-offset:0;";
+    $frame_total = $l1;
 } elseif ($line_count === 2) {
-    $off2 = $l1 + $lgap;
-    $border_css = "outline:{$l1}px solid #ece6d4;"
-        . "box-shadow:0 0 0 {$off2}px transparent,0 0 0 " . ($off2 + $l2) . "px #ece6d4;";
+    $off2        = $l1 + $lgap;
+    $frame_total = $off2 + $l2;
+    $border_css  = "outline:{$l1}px solid #ece6d4;outline-offset:0;"
+        . "box-shadow:0 0 0 {$off2}px transparent,0 0 0 {$frame_total}px #ece6d4;";
 } else {
-    $off2 = $l1 + $lgap;
-    $off3 = $off2 + $l2 + $lgap;
-    $border_css = "outline:{$l1}px solid #ece6d4;"
+    $off2        = $l1 + $lgap;
+    $off3        = $off2 + $l2 + $lgap;
+    $frame_total = $off3 + $l3;
+    $border_css  = "outline:{$l1}px solid #ece6d4;outline-offset:0;"
         . "box-shadow:"
         . "0 0 0 {$off2}px transparent,"
         . "0 0 0 " . ($off2 + $l2) . "px #ece6d4,"
         . "0 0 0 {$off3}px transparent,"
-        . "0 0 0 " . ($off3 + $l3) . "px #ece6d4;";
+        . "0 0 0 {$frame_total}px #ece6d4;";
 }
 
 // ── CSS vars from settings ─────────────────────────────────────────────────────
 $css_vars = [
+    '--chap-frame-total'        => $frame_total . 'px',
     '--chap-title-font'        => "'" . ($settings['chap_title_font']   ?? 'Cinzel') . "', Georgia, serif",
     '--chap-heading-font'      => "'" . ($settings['chap_heading_font'] ?? 'Cinzel') . "', Georgia, serif",
     '--chap-body-font'         => "'" . ($settings['chap_body_font']    ?? 'Cormorant Garamond') . "', Georgia, serif",
@@ -78,6 +84,8 @@ $scratch_prob = [
 
 .chap-photo {
     filter: grayscale(1) contrast(1.05) brightness(0.95);
+}
+.chap-img-frame {
     <?php echo $border_css; ?>
 }
 

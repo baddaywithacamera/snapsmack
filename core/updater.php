@@ -92,6 +92,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-smackback-multisite.sql',
     'migrate-network-alert.sql',
     'migrate-totp-devices.sql',
+    'migrate-multisite-api-key-default.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
