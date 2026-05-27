@@ -80,12 +80,14 @@ $exif_labels = [
 
     <!-- PHOTOBOX -->
     <div id="rg-photobox">
-        <?php include __DIR__ . '/frame-deco.php'; ?>
         <div class="rg-photo-wrap">
             <?php include dirname(__DIR__, 2) . '/core/download-overlay.php'; ?>
-            <img class="rg-image post-image chap-photo"
-                 src="<?php echo BASE_URL . ltrim($img['img_file'], '/'); ?>"
-                 alt="<?php echo htmlspecialchars($img['img_title']); ?>">
+            <div class="chap-img-frame">
+                <?php include __DIR__ . '/frame-deco.php'; ?>
+                <img class="rg-image post-image chap-photo"
+                     src="<?php echo BASE_URL . ltrim($img['img_file'], '/'); ?>"
+                     alt="<?php echo htmlspecialchars($img['img_title']); ?>">
+            </div>
             <?php echo $download_button; ?>
         </div>
     </div>

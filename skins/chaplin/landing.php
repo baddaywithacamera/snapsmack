@@ -2,9 +2,9 @@
 /**
  * SNAPSMACK - Chaplin skin: landing page
  *
- * Single centered framed image — most recent published photo.
- * Full-viewport presentation with Art Deco ornament frame overlay
- * and animated film background. Replaces the broken slider layout.
+ * Most recent published photo, framed identically to the solo view.
+ * Same #rg-photobox / chap-img-frame / frame-deco structure as layout.php.
+ * Clicking the image links to the solo post page.
  *
  * SNAPSMACK_EOF_HEADER
  *     <?php // ===== SNAPSMACK EOF =====
@@ -13,8 +13,7 @@
 
 $now_local = date('Y-m-d H:i:s');
 $stmt = $pdo->prepare("
-    SELECT id, img_title, img_slug, img_file, img_thumb_square,
-           img_description, img_date, img_display_options
+    SELECT id, img_title, img_slug, img_file, img_date
     FROM snap_images
     WHERE img_status = 'published' AND img_date <= ?
     ORDER BY sort_order ASC, img_date DESC
@@ -23,18 +22,6 @@ $stmt = $pdo->prepare("
 $stmt->execute([$now_local]);
 $hero = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Per-image frame overrides
-$frame_vars = '';
-if (!empty($hero['img_display_options'])) {
-    $d = json_decode($hero['img_display_options'], true) ?? [];
-    $parts = [];
-    if (!empty($d['frame_color'])) $parts[] = "--frame-color:{$d['frame_color']}";
-    if (!empty($d['frame_width'])) $parts[] = "--frame-width:{$d['frame_width']}px";
-    if (!empty($d['mat_color']))   $parts[] = "--mat-color:{$d['mat_color']}";
-    if (!empty($d['mat_width']))   $parts[] = "--mat-width:{$d['mat_width']}px";
-    if ($parts) $frame_vars = implode(';', $parts);
-}
-
 ?>
 <canvas id="chap-film-bg" aria-hidden="true"></canvas>
 <div id="scroll-stage" class="chap-landing">
@@ -42,47 +29,39 @@ if (!empty($hero['img_display_options'])) {
     <?php include __DIR__ . '/skin-header.php'; ?>
 
     <?php if ($hero): ?>
-    <div class="chap-presentation">
 
-        <?php include __DIR__ . '/frame-deco.php'; ?>
-
-        <div class="chap-frame-area">
+    <div id="rg-photobox">
+        <div class="rg-photo-wrap">
             <a href="<?php echo BASE_URL . htmlspecialchars($hero['img_slug']); ?>"
-               class="chap-main-link"
+               class="chap-landing-link"
                title="<?php echo htmlspecialchars($hero['img_title']); ?>">
-                <div class="frame-mount"<?php echo $frame_vars ? " style=\"{$frame_vars}\"" : ''; ?>>
-                    <div class="frame-border">
-                        <div class="frame-mat">
-                            <div class="frame-bevel">
-                                <div class="frame-image">
-                                    <img src="<?php echo BASE_URL . ltrim($hero['img_file'], '/'); ?>"
-                                         alt="<?php echo htmlspecialchars($hero['img_title']); ?>"
-                                         loading="eager">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="chap-img-frame">
+                    <?php include __DIR__ . '/frame-deco.php'; ?>
+                    <img class="rg-image post-image chap-photo"
+                         src="<?php echo BASE_URL . ltrim($hero['img_file'], '/'); ?>"
+                         alt="<?php echo htmlspecialchars($hero['img_title']); ?>"
+                         loading="eager">
                 </div>
             </a>
         </div>
-
-        <div class="chap-intertitle">
-            <div class="chap-intertitle-title">
-                <?php echo htmlspecialchars($hero['img_title']); ?>
-            </div>
-            <div class="chap-intertitle-rule"></div>
-            <div class="chap-intertitle-date">
-                <?php echo date('F j, Y', strtotime($hero['img_date'])); ?>
-            </div>
-        </div>
-
     </div>
+
+    <div class="chap-intertitle">
+        <div class="chap-intertitle-rule"></div>
+        <div class="chap-intertitle-title"><?php echo htmlspecialchars($hero['img_title']); ?></div>
+        <div class="chap-intertitle-date"><?php echo date('F j, Y', strtotime($hero['img_date'])); ?></div>
+        <div class="chap-intertitle-rule"></div>
+    </div>
+
     <?php else: ?>
-    <div class="chap-presentation chap-presentation--empty">
+
+    <div id="rg-photobox" class="chap-photobox-empty">
         <p class="chap-no-photos">The projector is dark.</p>
     </div>
+
     <?php endif; ?>
 
     <?php include __DIR__ . '/skin-footer.php'; ?>
+
 </div>
 <?php // ===== SNAPSMACK EOF =====

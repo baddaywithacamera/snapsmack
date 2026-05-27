@@ -282,19 +282,26 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   flex-direction: column;
   min-height: 0;
   flex: 1;
-  overflow: hidden;
   align-items: stretch;
   position: relative;
 }
 
-.chap-single {
-  overflow: hidden;
+.chap-single,
+.chap-landing {
+  /* overflow must NOT be hidden — clips outline + box-shadow border rings */
+  overflow: visible;
 }
 
-/* Hide generic <footer> on single view; #system-footer stays visible so it
-   appears below the filmstrip on the solo page. */
+/* Hide generic <footer> elements on single view */
 .rg-single footer {
   display: none;
+}
+
+/* But system footer IS visible — compact on single view */
+.rg-single #system-footer {
+  display: block;
+  flex-shrink: 0;
+  padding: 10px 0;
 }
 
 /* Hidden #footer kept for smack-footer / smack-keyboard compat */
@@ -314,12 +321,13 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   background-color: var(--chap-bg);
   margin-top: var(--header-height);
   position: relative;
-  overflow: hidden;
+  /* overflow must be visible — hidden clips outline + box-shadow border rings */
+  overflow: visible;
   box-sizing: border-box;
   flex-grow: 1;
   flex-shrink: 1;
   min-height: 0;
-  height: calc(100dvh - var(--header-height) - var(--infobox-height) - 80px);
+  /* height intentionally omitted — flex handles sizing against intertitle + infobox + footer */
 }
 
 .rg-photo-wrap {
@@ -333,7 +341,7 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   position: relative;
 }
 
-/* Photo — grayscale + border applied by skin-header.php CSS vars */
+/* Photo — grayscale applied by skin-header.php */
 .rg-image.post-image,
 .chap-photo {
   max-width: 100%;
@@ -343,6 +351,20 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   display: block;
   position: relative;
   z-index: 2;
+}
+
+/* Frame wrapper — receives the Art Deco outline/box-shadow from skin-header.php.
+   Kept filter-free so outline renders correctly (filter creates a compositing
+   layer that swallows ink-overflow paint like outline and box-shadow). */
+.chap-img-frame {
+  flex: 0 1 auto;
+  align-self: center;
+  max-width: 100%;
+  max-height: 100%;
+  min-width: 0;
+  min-height: 0;
+  line-height: 0;
+  position: relative;
 }
 
 /* Remove RG's yellow border on archive pages — Chaplin uses grayscale borders */
@@ -384,47 +406,84 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
    FRAME DECORATIONS (frame-deco.php ornament overlay)
    ========================================================================== */
 
+/* frame-deco.php is included INSIDE .chap-img-frame.
+   All ornament positions are relative to .chap-img-frame (the image element).
+   --chap-frame-total (emitted by skin-header.php) = total px width of all
+   outline + gap + box-shadow rings combined.
+   Ornament inner edges straddle the outermost frame ring. */
+
 .chap-frame-deco {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 5;
+  overflow: visible;
+}
+
+.chap-orn {
+  position: absolute;
 }
 
 .chap-orn-tl,
 .chap-orn-tr,
 .chap-orn-bl,
 .chap-orn-br {
-  position: absolute;
   width: var(--chap-orn-size-corner);
   height: var(--chap-orn-size-corner);
 }
 
-.chap-orn-tl { top: 3vh; left: 3vw; }
-.chap-orn-tr { top: 3vh; right: 3vw; transform: scaleX(-1); }
-.chap-orn-bl { bottom: calc(3vh + var(--infobox-height)); left: 3vw; transform: scaleY(-1); }
-.chap-orn-br { bottom: calc(3vh + var(--infobox-height)); right: 3vw; transform: scale(-1,-1); }
+/* Corner ornaments: inner corner sits at the outer frame edge */
+.chap-orn-tl {
+  top:  calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-corner));
+  left: calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-corner));
+}
+.chap-orn-tr {
+  top:   calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-corner));
+  right: calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-corner));
+  transform: scaleX(-1);
+}
+.chap-orn-bl {
+  bottom: calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-corner));
+  left:   calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-corner));
+  transform: scaleY(-1);
+}
+.chap-orn-br {
+  bottom: calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-corner));
+  right:  calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-corner));
+  transform: scale(-1,-1);
+}
 
 .chap-orn-mid-top,
 .chap-orn-mid-bot {
-  position: absolute;
   width: var(--chap-orn-size-mid);
   height: var(--chap-orn-size-mid);
   left: 50%;
+}
+
+/* Mid ornaments: centered on each frame edge */
+.chap-orn-mid-top {
+  top: calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-mid));
   transform: translateX(-50%);
 }
-.chap-orn-mid-top { top: 3vh; }
-.chap-orn-mid-bot { bottom: calc(3vh + var(--infobox-height)); transform: translateX(-50%) scaleY(-1); }
+.chap-orn-mid-bot {
+  bottom: calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-mid));
+  transform: translateX(-50%) scaleY(-1);
+}
 
 .chap-orn-mid-lft,
 .chap-orn-mid-rgt {
-  position: absolute;
   width: var(--chap-orn-size-mid);
   height: var(--chap-orn-size-mid);
   top: 50%;
 }
-.chap-orn-mid-lft { left: 3vw; transform: translateY(-50%) rotate(-90deg); }
-.chap-orn-mid-rgt { right: 3vw; transform: translateY(-50%) rotate(90deg); }
+.chap-orn-mid-lft {
+  left: calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-mid));
+  transform: translateY(-50%) rotate(-90deg);
+}
+.chap-orn-mid-rgt {
+  right: calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-mid));
+  transform: translateY(-50%) rotate(90deg);
+}
 
 /* ============================================================================
    INTERTITLE OVERLAY (full-screen black fade modal)
@@ -590,6 +649,41 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-size: 0.7rem;
+}
+
+/* ============================================================================
+   LANDING PAGE
+   ========================================================================== */
+
+/* Landing page is a flex column identical to .rg-single — no infobox */
+.chap-landing {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  align-items: stretch;
+  position: relative;
+}
+
+/* The link wrapping the image on landing — must not add any layout */
+.chap-landing-link {
+  display: contents;
+  cursor: pointer;
+}
+
+/* Empty state */
+.chap-photobox-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chap-no-photos {
+  font-family: var(--chap-heading-font);
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--chap-ink-dim);
 }
 
 /* ============================================================================

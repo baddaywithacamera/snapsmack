@@ -603,7 +603,7 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
   `blogroll_desc`       varchar(500)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `api_key_local`       varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL
                         COMMENT 'Our key that the remote site uses to call us',
-  `api_key_remote`      varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL
+  `api_key_remote`      varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
                         COMMENT 'Key we use to call the remote site',
   `software_version`    varchar(50)    COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `last_seen_at`        datetime       DEFAULT NULL,
@@ -1130,7 +1130,7 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
   `blogroll_desc`       varchar(500)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `api_key_local`       varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL
                         COMMENT 'Our key that the remote site uses to call us',
-  `api_key_remote`      varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL
+  `api_key_remote`      varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
                         COMMENT 'Key we use to call the remote site',
   `software_version`    varchar(50)    COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `last_seen_at`        datetime       DEFAULT NULL,
