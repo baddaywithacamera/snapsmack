@@ -387,7 +387,15 @@ h2 {
 }
 
 .post-col-right {
+    display: flex;
+    flex-direction: column;
     padding-left: 40px;
+}
+
+/* Push the last field (SOURCE ASSET / file upload) to the column bottom
+   so it aligns with TAGS at the bottom of the left column. */
+.post-col-right .lens-input-wrapper:last-child {
+    margin-top: auto;
 }
 
 .post-description-wrap {
