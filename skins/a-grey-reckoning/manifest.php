@@ -153,6 +153,21 @@ return [
             'property' => 'letter-spacing'
         ],
 
+        'header_text_transform' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'Site Title Case',
+            'default'  => 'uppercase',
+            'options'  => [
+                'uppercase'  => 'UPPERCASE',
+                'lowercase'  => 'lowercase',
+                'capitalize' => 'Capitalize Each Word',
+                'none'       => 'As Entered (No Transform)',
+            ],
+            'selector' => '.ge-site-title',
+            'property' => 'text-transform',
+        ],
+
         'nav_font' => [
             'section'  => 'TYPOGRAPHY',
             'type'     => 'select',

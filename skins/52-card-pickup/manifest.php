@@ -247,6 +247,20 @@ return [
             'selector' => '.pickup-header .site-title-text',
             'property' => 'color',
         ],
+        'header_text_transform' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'Site Title Case',
+            'default'  => 'uppercase',
+            'options'  => [
+                'uppercase'  => 'UPPERCASE',
+                'lowercase'  => 'lowercase',
+                'capitalize' => 'Capitalize Each Word',
+                'none'       => 'As Entered (No Transform)',
+            ],
+            'selector' => '.pickup-header .site-title-text',
+            'property' => 'text-transform',
+        ],
         'htbs_body_font' => [
             'section' => 'TYPOGRAPHY',
             'type' => 'select',

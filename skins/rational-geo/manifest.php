@@ -202,6 +202,20 @@ return [
             'property' => 'font-family',
             'size'     => ['default' => '1.6', 'min' => '0.8', 'max' => '3.0', 'step' => '0.1'],
         ],
+        'header_text_transform' => [
+            'section'  => 'MASTHEAD TYPE',
+            'type'     => 'select',
+            'label'    => 'Site Title Case',
+            'default'  => 'uppercase',
+            'options'  => [
+                'uppercase'  => 'UPPERCASE',
+                'lowercase'  => 'lowercase',
+                'capitalize' => 'Capitalize Each Word',
+                'none'       => 'As Entered (No Transform)',
+            ],
+            'selector' => '.rg-masthead',
+            'property' => 'text-transform',
+        ],
 
         'body_font' => [
             'section'  => 'BODY TYPE',

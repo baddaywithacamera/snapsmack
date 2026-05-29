@@ -265,6 +265,20 @@ return [
             'selector' => '.site-title-text',
             'property' => 'font-size'
         ],
+        'header_text_transform' => [
+            'section'  => 'HEADER & NAV',
+            'type'     => 'select',
+            'label'    => 'Site Title Case',
+            'default'  => 'uppercase',
+            'options'  => [
+                'uppercase'  => 'UPPERCASE',
+                'lowercase'  => 'lowercase',
+                'capitalize' => 'Capitalize Each Word',
+                'none'       => 'As Entered (No Transform)',
+            ],
+            'selector' => '.site-title-text',
+            'property' => 'text-transform',
+        ],
 
         /* ---------------------------------------------------------------------
            SECTION 7: CONTENT STYLING

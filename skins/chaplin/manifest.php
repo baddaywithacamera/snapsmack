@@ -20,7 +20,7 @@ $vintage_keywords = [
     'cinzel','playfair','cormorant','garamond','baskerville','old standard',
     'fell','palatino','goudy','bodoni','caslon','crimson','spectral','cardo',
     'lora','libre','merriweather','sorts','uncial','blackletter','didone',
-    'alligator','flott','night','antic','poiret',
+    'flott','antic','poiret',
     'josefin','century','clarendon','cheltenham','bookman','optima',
 ];
 $vintage_fonts = array_filter($all_fonts, function ($label, $key) use ($vintage_keywords) {
@@ -34,7 +34,7 @@ if (empty($vintage_fonts)) $vintage_fonts = $all_fonts;
 
 return [
     'name'        => 'Chaplin',
-    'version'     => '0.2.7',
+    'version'     => '0.2.6',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Silent-film era. Near-black canvas, B&W photo treatment, Art Deco border system with ornament placement, animated film effects. Full-screen intertitle overlay for info and signals. Horizontal filmstrip below the photo.',
@@ -52,12 +52,16 @@ return [
     ],
 
     'require_scripts' => [
-        'smack-footer',
+        // smack-footer  — REMOVED: Chaplin uses its own overlay controller in skin-header.php;
+        //   including ss-engine-footer.js overwrites window.smackdown.toggleFooter,
+        //   breaking keyboard shortcuts and the smackdown bridge.
+        // smack-overlay — REMOVED: targets #htbs-info-overlay (Galleria); doesn't exist in
+        //   Chaplin. Including it overwrites smackdown.toggleFooter with a null-overlay
+        //   version, making keyboard info/comments shortcuts non-functional.
         'smack-image-fade-load',
         'smack-lightbox',
         'smack-keyboard',
         'smack-community',
-        'smack-overlay',
     ],
 
     'options' => [
@@ -146,6 +150,16 @@ return [
             'selector' => '',
             'property' => '',
         ],
+        'chap_frame_gap' => [
+            'section'  => 'BORDER',
+            'type'     => 'range',
+            'label'    => 'Photo-to-Frame Gap (px)',
+            'default'  => '8',
+            'min'      => '0',
+            'max'      => '60',
+            'selector' => '',
+            'property' => '',
+        ],
 
         // ── ORNAMENTS ─────────────────────────────────────────────────────────
         'chap_ornament_style' => [
@@ -181,6 +195,16 @@ return [
             'label'   => 'Mid Left & Right',
             'default' => '0',
             'options' => ['1' => 'On', '0' => 'Off'],
+        ],
+        'chap_ornament_gap' => [
+            'section'  => 'ORNAMENTS',
+            'type'     => 'range',
+            'label'    => 'Decoration Spacing (px)',
+            'default'  => '8',
+            'min'      => '0',
+            'max'      => '20',
+            'selector' => '',
+            'property' => '',
         ],
 
         // ── TITLE ─────────────────────────────────────────────────────────────
@@ -242,6 +266,17 @@ return [
         ],
 
         // ── LAYOUT ────────────────────────────────────────────────────────────
+        'chap_photo_pad_v' => [
+            'section'  => 'LAYOUT',
+            'type'     => 'range',
+            'label'    => 'Photo Vertical Padding (px)',
+            'default'  => '56',
+            'min'      => '0',
+            'max'      => '120',
+            'step'     => '4',
+            'selector' => '',
+            'property' => '',
+        ],
         'chap_header_height' => [
             'section'  => 'LAYOUT',
             'type'     => 'range',
@@ -263,13 +298,15 @@ return [
 
         // ── TYPOGRAPHY ────────────────────────────────────────────────────────
         'chap_title_font' => [
-            'section'  => 'TYPOGRAPHY',
-            'type'     => 'select',
-            'label'    => 'Site Title / Nav Font',
-            'default'  => 'Cinzel',
-            'options'  => $vintage_fonts,
-            'selector' => ':root',
-            'property' => '--chap-title-font',
+            'section'        => 'TYPOGRAPHY',
+            'type'           => 'select',
+            'label'          => 'Site Title / Nav Font',
+            'default'        => 'Cinzel',
+            'options'        => $vintage_fonts,
+            'selector'       => ':root',
+            'property'       => '--chap-title-font',
+            'is_font'        => true,
+            'no_size_slider' => true,
         ],
         'chap_title_size' => [
             'section'  => 'TYPOGRAPHY',
@@ -281,6 +318,20 @@ return [
             'selector' => '',
             'property' => '',
         ],
+        'chap_title_case' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'Site Title Case',
+            'default'  => 'uppercase',
+            'options'  => [
+                'uppercase'  => 'UPPERCASE',
+                'lowercase'  => 'lowercase',
+                'capitalize' => 'Capitalize Each Word',
+                'none'       => 'As Entered (No Transform)',
+            ],
+            'selector' => '.rg-masthead',
+            'property' => 'text-transform',
+        ],
         'chap_heading_font' => [
             'section'  => 'TYPOGRAPHY',
             'type'     => 'select',
@@ -289,6 +340,7 @@ return [
             'options'  => $vintage_fonts,
             'selector' => ':root',
             'property' => '--chap-heading-font',
+            'is_font'  => true,
         ],
         'chap_body_font' => [
             'section'  => 'TYPOGRAPHY',
@@ -298,6 +350,27 @@ return [
             'options'  => $vintage_fonts,
             'selector' => ':root',
             'property' => '--chap-body-font',
+            'is_font'  => true,
+        ],
+        'chap_footer_font' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'select',
+            'label'    => 'Footer Font',
+            'default'  => 'monospace',
+            'options'  => $vintage_fonts,
+            'selector' => ':root',
+            'property' => '--chap-footer-font',
+            'is_font'  => true,
+        ],
+        'chap_footer_size' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'range',
+            'label'    => 'Footer Font Size (×0.1rem)',
+            'default'  => '7',
+            'min'      => '5',
+            'max'      => '14',
+            'selector' => '',
+            'property' => '',
         ],
 
         // ── PRESETS ───────────────────────────────────────────────────────────

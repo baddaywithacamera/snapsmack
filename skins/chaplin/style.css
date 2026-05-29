@@ -19,10 +19,10 @@
   --chap-bg:                #0a0a0a;
   --chap-bg-chrome:         #111111;
   --chap-bg-card:           #141414;
-  --chap-ink:               #ece6d4;
+  --chap-ink:               #f0f0f0;
   --chap-ink-dim:           #8a8070;
   --chap-ink-muted:         #504840;
-  --chap-accent:            #ece6d4;
+  --chap-accent:            #f0f0f0;
   --chap-border:            #2a2520;
   --chap-border-light:      #1e1a17;
 
@@ -33,9 +33,7 @@
   --chap-title-size:        1.1rem;
   --chap-grain-opacity:     0.04;
 
-  /* ── Ornaments ──────────────────────────────────────────────────────────── */
-  --chap-orn-size-corner:   48px;
-  --chap-orn-size-mid:      40px;
+  /* ── Ornaments: sizes emitted by skin-header.php (per active style) ─────── */
 
   /* ── Layout ─────────────────────────────────────────────────────────────── */
   --header-height:          56px;
@@ -261,10 +259,10 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  color: var(--chap-ink-dim);
+  color: var(--chap-ink);
   text-decoration: none;
   transition: color 0.2s ease;
-  padding: 6px 0;
+  padding: 6px 10px;
 }
 
 .rg-header-nav a:hover,
@@ -292,16 +290,23 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   overflow: visible;
 }
 
+/* Give scroll-stage a bounded flex column so max-height:100% on .chap-img-frame resolves.
+   Excludes archive and static-transmission pages which use their own layout. */
+body:not(.archive-page):not(.static-transmission) #scroll-stage {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 /* Hide generic <footer> elements on single view */
 .rg-single footer {
   display: none;
 }
 
-/* But system footer IS visible — compact on single view */
+/* System footer hidden on single photo view — infobox nav bar is the only chrome */
 .rg-single #system-footer {
-  display: block;
-  flex-shrink: 0;
-  padding: 10px 0;
+  display: none;
 }
 
 /* Hidden #footer kept for smack-footer / smack-keyboard compat */
@@ -321,13 +326,15 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   background-color: var(--chap-bg);
   margin-top: var(--header-height);
   position: relative;
-  /* overflow must be visible — hidden clips outline + box-shadow border rings */
+  /* overflow visible — ornaments extend outside .chap-img-frame border */
   overflow: visible;
   box-sizing: border-box;
-  flex-grow: 1;
-  flex-shrink: 1;
+  flex-grow: 0;
+  flex-shrink: 0;
   min-height: 0;
-  /* height intentionally omitted — flex handles sizing against intertitle + infobox + footer */
+  /* Explicit height — fills viewport minus header and infobox (no sysfooter on single view).
+     --chap-bottom-chrome = infobox(50) [+ intertitle(71) if shown below photo], from skin-header.php. */
+  height: calc(100dvh - var(--header-height) - var(--chap-bottom-chrome, 50px));
 }
 
 .rg-photo-wrap {
@@ -336,12 +343,14 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   align-items: center;
   width: 100%;
   height: 100%;
-  padding: 3vh 3vw;
+  padding: var(--chap-photo-pad-v, 56px) 3vw;
   box-sizing: border-box;
   position: relative;
 }
 
-/* Photo — grayscale applied by skin-header.php */
+/* Photo — no CSS filter. Chaplin photos are already B&W (photographer-processed).
+   No z-index — DOM order handles stacking within .chap-img-frame:
+   lines (frame-lines.php) < ornaments (frame-deco.php) < image. */
 .rg-image.post-image,
 .chap-photo {
   max-width: 100%;
@@ -350,13 +359,22 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   height: auto;
   display: block;
   position: relative;
-  z-index: 2;
 }
 
-/* Frame wrapper — receives the Art Deco outline/box-shadow from skin-header.php.
-   Kept filter-free so outline renders correctly (filter creates a compositing
-   layer that swallows ink-overflow paint like outline and box-shadow). */
+/* Direct viewport constraint — max-height:100% on img computes to 'none' because
+   .chap-img-frame has height:auto. This calc gives the img a concrete ceiling.
+   Subtracts 2×--chap-frame-gap so the image fits inside the padded content area. */
+body:not(.archive-page):not(.static-transmission) .chap-img-frame .post-image {
+  /* 2 × --chap-photo-pad-v = .rg-photo-wrap vertical padding (top + bottom).
+     Frame gap is outside the image (outer approach) so is NOT subtracted here. */
+  max-height: calc(100dvh - var(--header-height) - var(--chap-bottom-chrome, 50px) - (2 * var(--chap-photo-pad-v, 56px))) !important;
+}
+
+/* Frame wrapper — tightly wraps the image. Frame gap is created by .chap-frame-deco
+   and .chap-frame-lines extending OUTSIDE via negative inset — no padding here.
+   isolation: isolate contains the stacking context so nothing leaks outward. */
 .chap-img-frame {
+  display: inline-block;
   flex: 0 1 auto;
   align-self: center;
   max-width: 100%;
@@ -365,9 +383,11 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   min-height: 0;
   line-height: 0;
   position: relative;
+  isolation: isolate;
+  overflow: visible;
 }
 
-/* Remove RG's yellow border on archive pages — Chaplin uses grayscale borders */
+/* Remove RG's yellow border on archive pages — Chaplin handles its own border treatment */
 .rg-archive-item .rg-thumb {
   border: none;
   outline: none;
@@ -403,86 +423,131 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
 }
 
 /* ============================================================================
-   FRAME DECORATIONS (frame-deco.php ornament overlay)
+   FRAME DECORATIONS — connector geometry (spec: chaplin-frame-geometry-fix.md)
    ========================================================================== */
 
-/* frame-deco.php is included INSIDE .chap-img-frame.
-   All ornament positions are relative to .chap-img-frame (the image element).
-   --chap-frame-total (emitted by skin-header.php) = total px width of all
-   outline + gap + box-shadow rings combined.
-   Ornament inner edges straddle the outermost frame ring. */
+/* DOM-order stacking — NO z-index needed:
+   frame-deco.php (ornaments) is included BEFORE <img> in layout.php → behind image.
+   frame-lines.php (lines)    is included AFTER  <img> in layout.php → in front.
+   Both containers use negative inset to extend outside the image wrapper by the
+   frame gap, so lines and ornaments sit at --chap-frame-gap distance from the
+   image edges. */
 
-.chap-frame-deco {
+.chap-frame-deco,
+.chap-frame-lines {
   position: absolute;
-  inset: 0;
+  inset: calc(-1 * var(--chap-frame-gap, 8px));
   pointer-events: none;
-  z-index: 5;
   overflow: visible;
 }
 
+/* ── Line connectors ── */
+/* Dimensions (height/width) and background gradient set by skin-header.php.
+   Insets (--chap-line-h-inset / --chap-line-v-inset) = corner ornament size
+   when corners are on, 0 when off — prevents lines running under corners.
+   No z-index — DOM order (after <img>) guarantees lines paint in front. */
+
+.chap-line {
+  position: absolute;
+}
+
+.chap-line-top {
+  top: 0;
+  left:  var(--chap-line-h-inset, 0px);
+  right: var(--chap-line-h-inset, 0px);
+}
+
+.chap-line-bot {
+  bottom: 0;
+  left:  var(--chap-line-h-inset, 0px);
+  right: var(--chap-line-h-inset, 0px);
+}
+
+.chap-line-lft {
+  left: 0;
+  top:    var(--chap-line-v-inset, 0px);
+  bottom: var(--chap-line-v-inset, 0px);
+}
+
+.chap-line-rgt {
+  right: 0;
+  top:    var(--chap-line-v-inset, 0px);
+  bottom: var(--chap-line-v-inset, 0px);
+}
+
+/* ── Ornament base ── */
+/* No z-index — DOM order (before <img>) guarantees ornaments paint behind the image.
+   Any masking-plate box-shadows that extend over the photo are naturally hidden
+   because the image is painted on top. Ornament bodies in the gap zone (between
+   image edge and frame lines) are fully visible — the image doesn't reach that zone. */
 .chap-orn {
   position: absolute;
 }
 
+/* Masking plate: canvas-colour background + box-shadow spread creates visual
+   gap around both CORNER and CENTRE ornaments.
+   Any shadow that extends inward over the photo is hidden by the image (z:2). */
+.chap-orn-masked {
+  background: var(--chap-bg, #0a0a0a);
+  box-shadow: 0 0 0 var(--chap-orn-gap, 8px) var(--chap-bg, #0a0a0a);
+}
+
+/* ── Corner ornaments ──
+   Positioned AT the frame corners (no negative offsets).
+   The outer edge of each corner ornament IS the frame rectangle corner.
+   Lines run from corner ornament outer edge to corner ornament outer edge —
+   they terminate at the corner, never overlap it. No masking plate needed. */
 .chap-orn-tl,
 .chap-orn-tr,
 .chap-orn-bl,
 .chap-orn-br {
-  width: var(--chap-orn-size-corner);
-  height: var(--chap-orn-size-corner);
+  width:  var(--chap-orn-corner-size, 56px);
+  height: var(--chap-orn-corner-size, 56px);
 }
 
-/* Corner ornaments: inner corner sits at the outer frame edge */
-.chap-orn-tl {
-  top:  calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-corner));
-  left: calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-corner));
-}
-.chap-orn-tr {
-  top:   calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-corner));
-  right: calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-corner));
-  transform: scaleX(-1);
-}
-.chap-orn-bl {
-  bottom: calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-corner));
-  left:   calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-corner));
-  transform: scaleY(-1);
-}
-.chap-orn-br {
-  bottom: calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-corner));
-  right:  calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-corner));
-  transform: scale(-1,-1);
-}
+.chap-orn-tl { top: 0; left: 0; }
+.chap-orn-tr { top: 0; right: 0; transform: scaleX(-1); }
+.chap-orn-bl { bottom: 0; left: 0; transform: scaleY(-1); }
+.chap-orn-br { bottom: 0; right: 0; transform: scale(-1, -1); }
+
+/* ── Centre ornaments ──
+   Straddle the line midpoint: line passes through the ornament's centre.
+   calc(frame_total/2 - orn_dim/2) puts the ornament's centre on the line centre.
+   Values can go negative (ornament extends outside frame) — overflow:visible handles it. */
 
 .chap-orn-mid-top,
 .chap-orn-mid-bot {
-  width: var(--chap-orn-size-mid);
-  height: var(--chap-orn-size-mid);
+  width:  var(--chap-orn-top-w, 120px);
+  height: var(--chap-orn-top-h, 36px);
   left: 50%;
 }
 
-/* Mid ornaments: centered on each frame edge */
 .chap-orn-mid-top {
-  top: calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-mid));
+  top: calc(var(--chap-frame-total, 2px) / 2 - var(--chap-orn-top-h, 36px) / 2);
   transform: translateX(-50%);
 }
+
 .chap-orn-mid-bot {
-  bottom: calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-mid));
+  bottom: calc(var(--chap-frame-total, 2px) / 2 - var(--chap-orn-top-h, 36px) / 2);
   transform: translateX(-50%) scaleY(-1);
 }
 
+/* Side ornaments: vertically centred on the side line. */
 .chap-orn-mid-lft,
 .chap-orn-mid-rgt {
-  width: var(--chap-orn-size-mid);
-  height: var(--chap-orn-size-mid);
+  width:  var(--chap-orn-side-w, 36px);
+  height: var(--chap-orn-side-h, 120px);
   top: 50%;
 }
+
 .chap-orn-mid-lft {
-  left: calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-mid));
-  transform: translateY(-50%) rotate(-90deg);
+  left: calc(var(--chap-frame-total, 2px) / 2 - var(--chap-orn-side-w, 36px) / 2);
+  transform: translateY(-50%);
 }
+
 .chap-orn-mid-rgt {
-  right: calc(-1 * var(--chap-frame-total) - var(--chap-orn-size-mid));
-  transform: translateY(-50%) rotate(90deg);
+  right: calc(var(--chap-frame-total, 2px) / 2 - var(--chap-orn-side-w, 36px) / 2);
+  transform: translateY(-50%);
 }
 
 /* ============================================================================
@@ -506,6 +571,7 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
 .chap-overlay-backdrop {
   position: absolute;
   inset: 0;
+  z-index: 1;
   background: rgba(0, 0, 0, 0.96);
 }
 
@@ -513,6 +579,7 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
   position: absolute;
   top: 50%;
   left: 50%;
+  z-index: 2;
   transform: translate(-50%, -50%);
   width: min(640px, 90vw);
   max-height: 80vh;
@@ -888,12 +955,12 @@ body.archive-page #scroll-stage {
   height: 100%;
   display: block;
   object-fit: cover;
-  filter: grayscale(1) brightness(0.85);
+  filter: brightness(0.85);
   transition: filter 0.3s ease, transform 0.3s ease;
 }
 
 .rg-archive-item:hover .rg-thumb img {
-  filter: grayscale(1) brightness(1.05);
+  filter: brightness(1.05);
   transform: scale(1.04);
 }
 
@@ -926,12 +993,12 @@ body.archive-page #scroll-stage {
 }
 
 #justified-grid .justified-item img {
-  filter: grayscale(1) brightness(0.85);
+  filter: brightness(0.85);
   transition: filter 0.3s ease, opacity 0.3s ease;
 }
 
 #justified-grid .justified-item:hover img {
-  filter: grayscale(1) brightness(1.05);
+  filter: brightness(1.05);
 }
 
 /* Chaplin square grid (archive-layout.php) */
@@ -957,12 +1024,12 @@ body.archive-page #scroll-stage {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: grayscale(1) brightness(0.85);
+  filter: brightness(0.85);
   transition: filter 0.3s ease, transform 0.3s ease;
 }
 
 .chap-archive-item:hover img {
-  filter: grayscale(1) brightness(1.05);
+  filter: brightness(1.05);
   transform: scale(1.04);
 }
 
@@ -1121,7 +1188,6 @@ body.static-transmission #scroll-stage {
   display: block !important;
   width: 100% !important;
   height: auto !important;
-  filter: grayscale(1) contrast(1.05) brightness(0.95);
 }
 
 .blogroll-canvas {
@@ -1206,8 +1272,8 @@ body.static-transmission #system-footer {
 #system-footer .inside {
   max-width: 95%;
   margin: 0 auto;
-  font-family: monospace;
-  font-size: 0.7rem;
+  font-family: var(--chap-footer-font, monospace);
+  font-size: var(--chap-footer-size, 0.7rem);
   text-transform: uppercase;
   letter-spacing: 1.5px;
   color: var(--chap-ink-muted);
@@ -1215,7 +1281,7 @@ body.static-transmission #system-footer {
 
 #system-footer p {
   color: var(--chap-ink-muted);
-  font-size: 0.7rem;
+  font-size: var(--chap-footer-size, 0.7rem);
   text-transform: uppercase;
   letter-spacing: 1.5px;
   line-height: 1.7;

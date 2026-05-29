@@ -65,10 +65,14 @@ document.addEventListener('keydown', function(e) {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (document.getElementById('wall-canvas')) return;
 
-    // Help menu
+    // Help menu — delegate to public-help engine if loaded, else own modal.
     if (e.key === 'F1') {
         e.preventDefault();
-        toggleHelpModal();
+        if (window.snapPublicHelp) {
+            window.snapPublicHelp.toggle();
+        } else {
+            toggleHelpModal();
+        }
         return;
     }
 
@@ -280,6 +284,8 @@ function createHelpModal() {
 function closeAllOverlays() {
     const modal = document.getElementById('snap-help-modal');
     if (modal) modal.style.display = 'none';
+
+    if (window.snapPublicHelp) window.snapPublicHelp.close();
 
     if (window.smackdown && window.smackdown.closeFooter) {
         window.smackdown.closeFooter();
