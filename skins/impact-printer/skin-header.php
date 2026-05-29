@@ -13,6 +13,13 @@
 
 
 
+require_once dirname(__DIR__, 2) . '/core/font-loader.php';
+snapsmack_emit_font_tags([
+    $settings['header_font_family']  ?? 'DotMatrix-Expanded-Bold',
+    $settings['body_font_family']    ?? 'DotMatrix',
+    $settings['static_heading_font'] ?? 'DotMatrix-Bold',
+    $settings['footer_font_family']  ?? 'DotMatrix',
+], BASE_URL);
 ?>
 <div id="ip-header">
     <div class="ip-header-inside">

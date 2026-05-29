@@ -13,6 +13,13 @@
 
 
 
+require_once dirname(__DIR__, 2) . '/core/font-loader.php';
+snapsmack_emit_font_tags([
+    $settings['header_font_family']   ?? 'Playfair Display',
+    $settings['static_heading_font']  ?? 'Helvetica Neue',
+    $settings['static_body_font']     ?? 'Georgia',
+    $settings['footer_font_family']   ?? 'Inter',
+], BASE_URL);
 ?>
 <div id="header">
     <div class="inside">

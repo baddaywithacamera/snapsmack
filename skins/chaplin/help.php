@@ -12,11 +12,11 @@
 return [
     [
         'title' => 'About This Skin',
-        'body'  => 'Chaplin is a silent-film-era skin. Near-black canvas, cream-white Art Deco borders, B&W photo treatment, and an animated film-grain and scratch overlay. Every photograph is shown in grayscale — the photographer\'s prerogative on this one. The intertitle overlay (Info and Signals) fades in like a title card from the silent era.',
+        'body'  => 'Chaplin is a silent-film-era skin. Near-black canvas, near-white Art Deco borders, B&W photo treatment, and an animated film-grain and scratch overlay. Every photograph is shown in grayscale — the photographer\'s prerogative on this one. The intertitle overlay (Info and Signals) fades in like a title card from the silent era.',
     ],
     [
         'title' => 'Border System',
-        'body'  => 'Chaplin uses a CSS line-rule system on the photo: single, double, or triple rules in cream white (#ece6d4), with adjustable thickness and gap between rules. No colour options — the cream white is the skin. Adjust in the Border settings section.',
+        'body'  => 'Chaplin uses a CSS line-rule system on the photo: single, double, or triple rules in near-white (#f0f0f0), with adjustable thickness and gap between rules. No colour options — the near-white is the skin. Adjust in the Border settings section.',
     ],
     [
         'title' => 'Art Deco Ornaments',

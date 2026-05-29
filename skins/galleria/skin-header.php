@@ -24,6 +24,13 @@ $force_square = ($settings['htbs_force_square'] ?? '0') === '1';
 
 $needs_overrides = ($bevel_style !== 'single' || $wood_grain === 'none' || $force_square);
 
+require_once dirname(__DIR__, 2) . '/core/font-loader.php';
+snapsmack_emit_font_tags([
+    $settings['htbs_title_font']   ?? 'Georgia',
+    $settings['htbs_heading_font'] ?? 'Georgia',
+    $settings['htbs_body_font']    ?? 'Inter',
+], BASE_URL);
+
 if ($needs_overrides):
 ?>
 <style>

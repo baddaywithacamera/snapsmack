@@ -12,6 +12,20 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.185 — "Barcalounger" (2026-05-29)
+
+### Added
+- **`core/font-loader.php`** — Shared font loading helper `snapsmack_emit_font_tags(array $font_keys, string $base_url)`. Replaces per-skin hardcoded Google Fonts `<link>` tags. Checks each font against manifest inventory: local fonts get `@font-face` blocks, Google Fonts get a single combined API request, system fonts are silently skipped. All skins updated to use this helper.
+
+### Changed
+- **Chaplin skin (v0.2.7dev)**: Landing page bottom nav now visible (system footer was rendering on `.chap-landing`, overflowing viewport). Typography section cleaned up — no phantom size sliders. `chap_heading_size` and `chap_body_size` sliders paired with their font pickers. Palette neutralized: dim/muted ink and border vars shifted from warm sepia tones (`#8a8070`, `#504840`) to neutral greys (`#888888`, `#484848`) to match the silver Art Deco frame aesthetic.
+- **All skins with font pickers** (new-horizon, 50-shades-of-noah-grey, rational-geo, galleria, impact-printer): `skin-header.php` updated to call `snapsmack_emit_font_tags()` — selected fonts now actually load on the public page.
+
+### Fixed
+- Font picker selections were silently ignored on the public page for all skins — hardcoded font loading loaded the skin default regardless of what the user selected. Choosing a local font (FlottFlott, BlackCasper, etc.) or any non-default Google font now renders correctly.
+
+---
+
 ## 0.7.184 — "Barcalounger" (2026-05-26)
 
 ### Changed
