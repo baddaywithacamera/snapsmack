@@ -409,6 +409,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     exit;
 }
 
+// ── POST: Delete dev build ────────────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_dev_build') {
+    $del_id = (int)($_POST['del_id'] ?? 0);
+    if ($del_id > 0) {
+        $db  = sc_db();
+        $row = $db->prepare("SELECT download_url FROM sc_dev_builds WHERE id = ? LIMIT 1");
+        $row->execute([$del_id]);
+        $build = $row->fetch(PDO::FETCH_ASSOC);
+        if ($build) {
+            $zip_file = rtrim(RELEASES_DIR, '/') . '/' . basename($build['download_url']);
+            if (file_exists($zip_file)) @unlink($zip_file);
+            $db->prepare("DELETE FROM sc_dev_builds WHERE id = ?")->execute([$del_id]);
+        }
+    }
+    header('Location: sc-release.php');
+    exit;
+}
+
 // ── POST: Build release ───────────────────────────────────────────────────────
 // ── AJAX: fetch and parse CHANGELOG.md for a given tag ───────────────────────
 // Called by the packager JS instead of hitting raw.githubusercontent.com directly.
@@ -808,6 +826,23 @@ if ($action === 'build' && $preflight_ok) {
 //   • Does NOT publish canonical SQL (stable build owns that)
 if ($action === 'build_dev' && $preflight_ok) {
 
+    // Defensive table creation — sc_schema_parse() silently drops this table;
+    // create it here so the INSERT below never fails on first run.
+    try {
+        sc_db()->exec("CREATE TABLE IF NOT EXISTS `sc_dev_builds` (
+            `id`              INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+            `version`         VARCHAR(20)   NOT NULL,
+            `version_full`    VARCHAR(50)   NOT NULL,
+            `git_tag`         VARCHAR(100)  NOT NULL,
+            `checksum_sha256` VARCHAR(64)   NOT NULL,
+            `download_url`    VARCHAR(500)  NOT NULL,
+            `download_size`   INT UNSIGNED  NOT NULL DEFAULT 0,
+            `built_at`        TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `idx_built_at` (`built_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    } catch (Exception $e) {}
+
     $tag            = trim($_POST['tag']            ?? '');
     $version        = trim($_POST['version']        ?? '');
     $version_full   = trim($_POST['version_full']   ?? '');
@@ -899,6 +934,21 @@ if ($action === 'build_dev' && $preflight_ok) {
                 file_put_contents($dev_json_path, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
                 $dev_build_log[] = "→ latest-dev.json written";
 
+                // Write dev build history record
+                try {
+                    $db = sc_db();
+                    $db->prepare(
+                        "INSERT INTO sc_dev_builds
+                            (version, version_full, git_tag, checksum_sha256, download_url, download_size)
+                         VALUES (?, ?, ?, ?, ?, ?)"
+                    )->execute([$version, $version_full, $tag, $dev_checksum, $dev_download_url, $dev_file_size]);
+                    // Keep last 10 dev builds only
+                    $db->exec("DELETE FROM sc_dev_builds WHERE id NOT IN (SELECT id FROM (SELECT id FROM sc_dev_builds ORDER BY id DESC LIMIT 10) t)");
+                    $dev_build_log[] = "→ Dev build history recorded";
+                } catch (Exception $e) {
+                    $dev_build_log[] = "→ WARNING: Could not write dev build history: " . $e->getMessage();
+                }
+
                 $_SESSION['sc_dev_built'] = [
                     'version'      => $version_full,
                     'tag'          => $tag,
@@ -930,6 +980,15 @@ try {
         "SELECT version_full, git_tag, released_at, download_url, download_size,
                 schema_changes, is_latest, created_at
          FROM sc_releases ORDER BY id DESC LIMIT 3"
+    )->fetchAll();
+} catch (Exception $e) {}
+
+// Dev build history
+$dev_builds = [];
+try {
+    $dev_builds = sc_db()->query(
+        "SELECT id, version_full, git_tag, download_url, download_size, checksum_sha256, built_at
+         FROM sc_dev_builds ORDER BY id DESC LIMIT 10"
     )->fetchAll();
 } catch (Exception $e) {}
 
@@ -1243,7 +1302,10 @@ require __DIR__ . '/sc-layout-top.php';
   <!-- ── Right: Release history ────────────────────────────────────────────── -->
   <div>
     <div class="sc-box">
-      <div class="sc-box-header"><span class="sc-box-title">Release History</span></div>
+      <div class="sc-box-header">
+        <span class="sc-box-title">Release History</span>
+        <span style="font-size:var(--sc-size-label);color:var(--sc-text-dim);text-transform:uppercase;letter-spacing:.5px;">BORING TRACK</span>
+      </div>
       <div class="sc-box-body">
         <?php if (empty($releases)): ?>
         <p class="sc-dim">No releases shipped yet.</p>
@@ -1281,6 +1343,54 @@ require __DIR__ . '/sc-layout-top.php';
               <form method="post" onsubmit="return confirm('Delete <?php echo htmlspecialchars($rel['version_full']); ?>? This removes the zip and DB record.')">
                 <input type="hidden" name="action"  value="delete_release">
                 <input type="hidden" name="del_tag" value="<?php echo htmlspecialchars($rel['git_tag']); ?>">
+                <button class="sc-btn sc-btn--sm sc-btn--danger">Delete</button>
+              </form>
+            </td>
+          </tr>
+          <?php endforeach; ?>
+          </tbody>
+        </table>
+        <?php endif; ?>
+      </div>
+    </div>
+
+    <!-- ── Dev Build History ────────────────────────────────────────────── -->
+    <div class="sc-box" style="margin-top:20px;">
+      <div class="sc-box-header">
+        <span class="sc-box-title">Dev Build History</span>
+        <span style="font-size:var(--sc-size-label);color:var(--sc-warn);text-transform:uppercase;letter-spacing:.5px;">BITCHIN' track</span>
+      </div>
+      <div class="sc-box-body">
+        <?php if (empty($dev_builds)): ?>
+        <p class="sc-dim">No dev builds yet.</p>
+        <?php else: ?>
+        <table class="sc-table">
+          <thead>
+            <tr>
+              <th>Version</th>
+              <th>Tag</th>
+              <th>Size</th>
+              <th>Built</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          <?php foreach ($dev_builds as $b): ?>
+          <tr>
+            <td>
+              <a href="<?php echo htmlspecialchars($b['download_url']); ?>" target="_blank">
+                <?php echo htmlspecialchars($b['version_full']); ?>
+              </a>
+            </td>
+            <td class="sc-dim sc-mono" style="font-size:0.72rem;"><?php echo htmlspecialchars($b['git_tag']); ?></td>
+            <td class="sc-dim" style="white-space:nowrap;">
+              <?php echo $b['download_size'] ? number_format($b['download_size'] / 1024, 0) . ' KB' : '—'; ?>
+            </td>
+            <td class="sc-dim" style="white-space:nowrap;"><?php echo htmlspecialchars(substr($b['built_at'], 0, 16)); ?></td>
+            <td>
+              <form method="post" onsubmit="return confirm('Delete <?php echo htmlspecialchars($b['version_full']); ?>? This removes the zip and DB record.')">
+                <input type="hidden" name="action" value="delete_dev_build">
+                <input type="hidden" name="del_id" value="<?php echo (int)$b['id']; ?>">
                 <button class="sc-btn sc-btn--sm sc-btn--danger">Delete</button>
               </form>
             </td>
