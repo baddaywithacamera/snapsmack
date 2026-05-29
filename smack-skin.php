@@ -312,7 +312,7 @@ if (isset($_POST['save_skin_settings'])) {
     if (!empty($google_catalog)) {
         $google_needed = [];
         foreach ($manifest['options'] as $opt_key => $opt_meta) {
-            if (($opt_meta['property'] ?? '') === 'font-family') {
+            if (($opt_meta['property'] ?? '') === 'font-family' || !empty($opt_meta['is_font'])) {
                 $active_val = ($all_settings[$opt_key] ?? '') !== '' ? $all_settings[$opt_key] : ($opt_meta['default'] ?? '');
                 if ($active_val !== '' && isset($google_catalog[$active_val])) {
                     $google_needed[$active_val] = true;
@@ -777,7 +777,7 @@ if (!empty($google_families)) {
                                     <span class="active-val"><?php echo strtoupper(htmlspecialchars($val)); ?><?php echo $display_unit; ?></span>
                                 </div>
                             <?php elseif ($o['type'] === 'select'): ?>
-                                <?php $is_font = (($o['property'] ?? '') === 'font-family'); ?>
+                                <?php $is_font = (($o['property'] ?? '') === 'font-family') || !empty($o['is_font']); ?>
                                 <select name="skin_opt[<?php echo $k; ?>]"
                                     <?php if ($is_font): ?>data-font-preview="1"<?php endif; ?>>
                                     <?php foreach ($o['options'] as $sv => $sl): ?>
@@ -797,6 +797,7 @@ if (!empty($google_families)) {
                                             The quick brown fox jumps over the lazy dog
                                         </span>
                                     </div>
+                                    <?php if (empty($o['no_size_slider'])): ?>
                                     <?php
                                         $sz_key = $k . '_size';
                                         $sz     = $o['size'] ?? [];
@@ -814,6 +815,7 @@ if (!empty($google_families)) {
                                             <span class="active-val"><?php echo strtoupper(htmlspecialchars($sz_val)); ?>REM</span>
                                         </div>
                                     </div>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             <?php else: ?>
                                 <input type="text" name="skin_opt[<?php echo $k; ?>]" value="<?php echo htmlspecialchars($val); ?>">

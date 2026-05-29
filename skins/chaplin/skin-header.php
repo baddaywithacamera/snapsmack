@@ -17,9 +17,31 @@ $site_display_name = $site_name ?? 'SNAPSMACK';
 
 $flicker       = ($settings['chap_flicker']              ?? '1') === '1';
 $scratch_freq  = $settings['chap_scratch_freq']          ?? 'normal';
+$title_pos     = $settings['chap_title_position']        ?? 'below_photo';
 $grain_raw     = (int)($settings['chap_grain_intensity'] ?? 4);
 $grain_opacity = round($grain_raw / 100, 3);
 $card_style    = $settings['chap_card_style']            ?? 'card';
+$orn_style     = $settings['chap_ornament_style']        ?? 'A';
+$orn_gap       = (int)($settings['chap_ornament_gap']    ?? 8);
+$frame_gap     = (int)($settings['chap_frame_gap']       ?? 8);
+$photo_pad_v   = (int)($settings['chap_photo_pad_v']     ?? 56);
+$footer_size   = round((int)($settings['chap_footer_size'] ?? 7) / 10, 1);
+$show_corners  = ($settings['chap_corner_ornaments']     ?? '1') === '1';
+
+// Natural SVG dimensions per ornament style (px). Sizes the ornament divs so
+// each SVG renders at its designed size rather than scaled to a fixed box.
+$orn_dims = [
+    'A' => ['corner' => 56, 'top_w' => 120, 'top_h' => 36, 'side_w' => 36, 'side_h' => 120],
+    'B' => ['corner' => 48, 'top_w' => 120, 'top_h' => 28, 'side_w' => 28, 'side_h' => 120],
+    'C' => ['corner' => 64, 'top_w' => 140, 'top_h' => 40, 'side_w' => 40, 'side_h' => 140],
+    'D' => ['corner' => 48, 'top_w' => 120, 'top_h' => 24, 'side_w' => 24, 'side_h' => 120],
+];
+$dim = $orn_dims[$orn_style] ?? $orn_dims['A'];
+
+// Line insets = corner ornament size when corners are visible; 0 otherwise.
+// Prevents lines from running under corner ornaments.
+$line_h_inset  = ($show_corners && $orn_style !== 'none') ? $dim['corner'] : 0;
+$line_v_inset  = $line_h_inset;
 
 // ── Border settings ────────────────────────────────────────────────────────────
 $line_count = (int)($settings['chap_line_count']   ?? 1);
@@ -28,32 +50,47 @@ $l2         = (int)($settings['chap_line_2_width'] ?? 1);
 $l3         = (int)($settings['chap_line_3_width'] ?? 1);
 $lgap       = (int)($settings['chap_line_gap']     ?? 8);
 
-// outline = line 1; extra lines are box-shadow rings with transparent gap rings.
-// $frame_total = total px distance from element edge to outermost visible ring —
-// emitted as --chap-frame-total so ornaments can align to the outer frame edge.
+// $frame_total = total px of all rule lines + gaps.
+// Used as the cross-axis dimension of the four line connector divs.
 if ($line_count === 1) {
-    $border_css  = "outline:{$l1}px solid #ece6d4;outline-offset:0;";
     $frame_total = $l1;
 } elseif ($line_count === 2) {
-    $off2        = $l1 + $lgap;
-    $frame_total = $off2 + $l2;
-    $border_css  = "outline:{$l1}px solid #ece6d4;outline-offset:0;"
-        . "box-shadow:0 0 0 {$off2}px transparent,0 0 0 {$frame_total}px #ece6d4;";
+    $frame_total = $l1 + $lgap + $l2;
 } else {
-    $off2        = $l1 + $lgap;
-    $off3        = $off2 + $l2 + $lgap;
-    $frame_total = $off3 + $l3;
-    $border_css  = "outline:{$l1}px solid #ece6d4;outline-offset:0;"
-        . "box-shadow:"
-        . "0 0 0 {$off2}px transparent,"
-        . "0 0 0 " . ($off2 + $l2) . "px #ece6d4,"
-        . "0 0 0 {$off3}px transparent,"
-        . "0 0 0 {$frame_total}px #ece6d4;";
+    $frame_total = $l1 + $lgap + $l2 + $lgap + $l3;
 }
+
+// Build linear-gradient background strings for each line div.
+// The outermost rule (rule 1) is always at the leading edge of each div.
+if (!function_exists('chap_line_gradient')) {
+    function chap_line_gradient(string $dir, int $l1, int $l2, int $l3, int $lgap, int $lcount): string {
+        $c     = '#f0f0f0';
+        if ($lcount === 1) return $c;
+        $stops = [];
+        $pos   = 0;
+        $stops[] = "{$c} {$pos}px"; $pos += $l1; $stops[] = "{$c} {$pos}px";
+        if ($lcount >= 2) {
+            $stops[] = "transparent {$pos}px"; $pos += $lgap; $stops[] = "transparent {$pos}px";
+            $stops[] = "{$c} {$pos}px";        $pos += $l2;   $stops[] = "{$c} {$pos}px";
+        }
+        if ($lcount >= 3) {
+            $stops[] = "transparent {$pos}px"; $pos += $lgap; $stops[] = "transparent {$pos}px";
+            $stops[] = "{$c} {$pos}px";        $pos += $l3;   $stops[] = "{$c} {$pos}px";
+        }
+        return 'linear-gradient(' . $dir . ', ' . implode(', ', $stops) . ')';
+    }
+}
+$grad_top   = chap_line_gradient('to bottom', $l1, $l2, $l3, $lgap, $line_count);
+$grad_bot   = chap_line_gradient('to top',    $l1, $l2, $l3, $lgap, $line_count);
+$grad_left  = chap_line_gradient('to right',  $l1, $l2, $l3, $lgap, $line_count);
+$grad_right = chap_line_gradient('to left',   $l1, $l2, $l3, $lgap, $line_count);
 
 // ── CSS vars from settings ─────────────────────────────────────────────────────
 $css_vars = [
     '--chap-frame-total'        => $frame_total . 'px',
+    '--chap-frame-gap'          => $frame_gap    . 'px',
+    '--chap-line-h-inset'       => $line_h_inset . 'px',
+    '--chap-line-v-inset'       => $line_v_inset . 'px',
     '--chap-title-font'        => "'" . ($settings['chap_title_font']   ?? 'Cinzel') . "', Georgia, serif",
     '--chap-heading-font'      => "'" . ($settings['chap_heading_font'] ?? 'Cinzel') . "', Georgia, serif",
     '--chap-body-font'         => "'" . ($settings['chap_body_font']    ?? 'Cormorant Garamond') . "', Georgia, serif",
@@ -62,6 +99,20 @@ $css_vars = [
     '--header-height'          => ($settings['chap_header_height']      ?? '56') . 'px',
     '--chap-archive-gap'       => ($settings['chap_archive_gap']        ?? '20') . 'px',
     '--chap-archive-max-width' => ($settings['chap_archive_max_width']  ?? '1400') . 'px',
+    // Bottom chrome height = infobox(50) [+ intertitle(71) if shown below photo].
+    // System footer is hidden on single view — do NOT include its 40px here.
+    '--chap-bottom-chrome'    => ($title_pos === 'below_photo') ? '121px' : '50px',
+    // Ornament natural sizes — sized to each SVG's designed dimensions so art
+    // renders at 1:1 without scaling. Gap = masking-plate extension on each side.
+    '--chap-orn-corner-size'  => $dim['corner']  . 'px',
+    '--chap-orn-top-w'        => $dim['top_w']   . 'px',
+    '--chap-orn-top-h'        => $dim['top_h']   . 'px',
+    '--chap-orn-side-w'       => $dim['side_w']  . 'px',
+    '--chap-orn-side-h'       => $dim['side_h']  . 'px',
+    '--chap-orn-gap'          => $orn_gap         . 'px',
+    '--chap-photo-pad-v'      => $photo_pad_v     . 'px',
+    '--chap-footer-font'      => "'" . ($settings['chap_footer_font'] ?? 'monospace') . "', monospace",
+    '--chap-footer-size'      => $footer_size     . 'rem',
 ];
 
 $scratch_prob = [
@@ -82,12 +133,12 @@ $scratch_prob = [
 <?php endforeach; ?>
 }
 
-.chap-photo {
-    filter: grayscale(1) contrast(1.05) brightness(0.95);
-}
-.chap-img-frame {
-    <?php echo $border_css; ?>
-}
+.chap-line-top, .chap-line-bot { height: <?php echo $frame_total; ?>px; }
+.chap-line-lft, .chap-line-rgt { width:  <?php echo $frame_total; ?>px; }
+.chap-line-top { background: <?php echo $grad_top;   ?>; }
+.chap-line-bot { background: <?php echo $grad_bot;   ?>; }
+.chap-line-lft { background: <?php echo $grad_left;  ?>; }
+.chap-line-rgt { background: <?php echo $grad_right; ?>; }
 
 <?php if ($flicker): ?>
 @keyframes chap-flicker-in {

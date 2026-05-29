@@ -36,6 +36,7 @@ $hero = $stmt->fetch(PDO::FETCH_ASSOC);
                class="chap-landing-link"
                title="<?php echo htmlspecialchars($hero['img_title']); ?>">
                 <div class="chap-img-frame">
+                    <?php include __DIR__ . '/frame-lines.php'; ?>
                     <?php include __DIR__ . '/frame-deco.php'; ?>
                     <img class="rg-image post-image chap-photo"
                          src="<?php echo BASE_URL . ltrim($hero['img_file'], '/'); ?>"
@@ -46,12 +47,14 @@ $hero = $stmt->fetch(PDO::FETCH_ASSOC);
         </div>
     </div>
 
+    <?php if ($title_pos === 'below_photo'): ?>
     <div class="chap-intertitle">
         <div class="chap-intertitle-rule"></div>
         <div class="chap-intertitle-title"><?php echo htmlspecialchars($hero['img_title']); ?></div>
         <div class="chap-intertitle-date"><?php echo date('F j, Y', strtotime($hero['img_date'])); ?></div>
         <div class="chap-intertitle-rule"></div>
     </div>
+    <?php endif; ?>
 
     <?php else: ?>
 
@@ -60,6 +63,23 @@ $hero = $stmt->fetch(PDO::FETCH_ASSOC);
     </div>
 
     <?php endif; ?>
+
+    <!-- INFOBOX (core navigation bar) -->
+    <?php
+    // navigation-bar.php expects $comments — index.php doesn't set it for
+    // the landing path. $img, $prev_slug, $next_slug, $first_slug, $last_slug
+    // are already in scope from index.php.
+    if (!isset($comments)) $comments = [];
+    ?>
+    <div id="infobox">
+        <?php include dirname(__DIR__, 2) . '/core/navigation-bar.php'; ?>
+    </div>
+
+    <!-- HIDDEN FOOTER — kept so smack-keyboard.js finds expected DOM elements. -->
+    <div id="footer" style="display:none!important" aria-hidden="true">
+        <div id="pane-info"     class="footer-pane"></div>
+        <div id="pane-comments" class="footer-pane"></div>
+    </div>
 
     <?php include __DIR__ . '/skin-footer.php'; ?>
 

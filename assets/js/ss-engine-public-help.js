@@ -26,6 +26,9 @@
 (function () {
     'use strict';
 
+    // Guard: bail if another instance of this script already ran.
+    if (window.snapPublicHelp) return;
+
     var modal = null;
     var isOpen = false;
 
