@@ -71,4 +71,4 @@ echo json_encode([
     'status' => 'error',
     'message' => 'Unknown API endpoint'
 ]);
-<?php // ===== SNAPSMACK EOF =====
+// ===== SNAPSMACK EOF =====

@@ -408,6 +408,11 @@ if ($action === 'skin_update') {
     $auto_check = true;
 }
 
+// Safe defaults — may be overwritten by the check block below.
+$core_status = 'up_to_date';
+$core_update = null;
+$skin_info   = $skin_info ?? ['new_skins' => [], 'updated_skins' => [], 'total_notifications' => 0];
+
 // ── AUTO-CHECK ON PAGE LOAD ───────────────────────────────────────────────────
 // Fires on every normal GET so the user sees a fresh result the moment they
 // land on the page — no manual "Check" button needed.
@@ -1807,35 +1812,124 @@ include 'core/sidebar.php';
         <?php if ($core_status === 'checking'): ?>
         <div class="update-status-badge" id="check-status-badge" style="opacity:0.7;">&#8943; CHECKING FOR UPDATES&hellip;</div>
         <p class="dim" id="check-status-msg" style="font-size:0.85rem;margin-top:12px;">Hold on&hellip;</p>
+        <style>
+        @keyframes chk-pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+        #check-status-badge.checking { animation: chk-pulse 1.4s ease-in-out infinite; }
+        #check-actions { margin-top:14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+        </style>
         <script>
         (function() {
-            var csrf = <?php echo json_encode($csrf); ?>;
-            var badge = document.getElementById('check-status-badge');
-            var msg   = document.getElementById('check-status-msg');
-            var ctrl  = new AbortController();
-            var timer = setTimeout(function() { ctrl.abort(); }, 15000);
-            fetch(window.location.pathname, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: 'action=check_ajax&csrf=' + encodeURIComponent(csrf),
-                signal: ctrl.signal
-            }).then(function(r) {
-                clearTimeout(timer);
-                return r.json();
-            }).then(function(d) {
-                if (d.ok) {
-                    window.location.reload();
-                } else {
-                    badge.textContent = '— COULD NOT REACH UPDATE SERVER';
-                    msg.textContent   = 'Check your server’s outbound HTTPS connection to snapsmack.ca.';
-                }
-            }).catch(function(e) {
-                badge.textContent = '— CHECK TIMED OUT';
-                msg.textContent   = 'No response after 15 seconds. Use CHECK NOW to try manually.';
-                msg.insertAdjacentHTML('afterend',
-                    '<form method="POST" class="mt-20"><input type="hidden" name="csrf" value="<?php echo htmlspecialchars($csrf); ?>"><button type="submit" name="action" value="check" class="btn-smack">CHECK NOW</button></form>'
-                );
-            });
+            var csrf        = <?php echo json_encode($csrf); ?>;
+            var badge       = document.getElementById('check-status-badge');
+            var msg         = document.getElementById('check-status-msg');
+            var maxAttempts = 4;
+            var attempt     = 0;
+            var retryDelay  = [0, 5000, 10000, 20000]; // ms before each attempt
+            var cancelled   = false;
+            var retryTimer  = null;
+            var ctrl        = null;
+
+            // Action bar inserted below the status message
+            var actions = document.createElement('div');
+            actions.id  = 'check-actions';
+            msg.insertAdjacentElement('afterend', actions);
+
+            function setActions(html) { actions.innerHTML = html; }
+
+            function showRetry() {
+                setActions('<button class="btn-smack" id="chk-retry" style="width:auto;height:auto;padding:8px 20px;margin-top:0;">RETRY CHECK</button>');
+                document.getElementById('chk-retry').onclick = function() {
+                    cancelled = false; attempt = 0;
+                    msg.textContent = 'Hold on…';
+                    doCheck();
+                };
+            }
+
+            function wireCancel() {
+                var el = document.getElementById('chk-cancel');
+                if (!el) return;
+                el.onclick = function() {
+                    cancelled = true;
+                    if (ctrl)       ctrl.abort();
+                    if (retryTimer) clearTimeout(retryTimer);
+                    badge.className  = 'update-status-badge';
+                    badge.textContent = '— CHECK CANCELLED';
+                    msg.textContent   = 'Update check was cancelled.';
+                    showRetry();
+                };
+                var el2 = document.getElementById('chk-cancel2');
+                if (el2) el2.onclick = el.onclick;
+            }
+
+            function wireNow(id) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                el.onclick = function() { clearTimeout(retryTimer); attempt--; doCheck(); };
+            }
+
+            function showChecking(label) {
+                badge.className   = 'update-status-badge checking';
+                badge.textContent = label || '⋯ CHECKING FOR UPDATES…';
+                setActions('<button class="btn-clear" id="chk-cancel" style="font-size:.8rem;opacity:.7;">CANCEL</button>');
+                wireCancel();
+            }
+
+            function showWaiting(badgeText, msgText) {
+                badge.className   = 'update-status-badge';
+                badge.textContent = badgeText;
+                msg.textContent   = msgText;
+                setActions('<button class="btn-clear" id="chk-now"  style="font-size:.8rem;opacity:.7;">CHECK NOW</button>'
+                         + '<button class="btn-clear" id="chk-cancel2" style="font-size:.8rem;opacity:.7;">CANCEL</button>');
+                wireNow('chk-now'); wireCancel();
+            }
+
+            function doCheck() {
+                if (cancelled) return;
+                attempt++;
+                var label = attempt > 1 ? '⋯ CHECKING… (' + attempt + ' of ' + maxAttempts + ')' : null;
+                showChecking(label);
+                if (attempt > 1) msg.textContent = 'Retrying…';
+
+                ctrl  = new AbortController();
+                var timer = setTimeout(function() { ctrl.abort(); }, 15000);
+
+                fetch(window.location.pathname, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'action=check_ajax&csrf=' + encodeURIComponent(csrf),
+                    signal: ctrl.signal
+                }).then(function(r) {
+                    clearTimeout(timer);
+                    return r.json();
+                }).then(function(d) {
+                    if (cancelled) return;
+                    if (d.ok) {
+                        window.location.reload();
+                    } else if (attempt < maxAttempts) {
+                        showWaiting('— CHECK FAILED', 'Retrying in ' + (retryDelay[attempt] / 1000) + 's…');
+                        retryTimer = setTimeout(doCheck, retryDelay[attempt]);
+                    } else {
+                        badge.className   = 'update-status-badge status-error';
+                        badge.textContent = '✗ COULD NOT REACH UPDATE SERVER';
+                        msg.textContent   = 'Check your server’s outbound HTTPS connection to snapsmack.ca.';
+                        showRetry();
+                    }
+                }).catch(function() {
+                    clearTimeout(timer);
+                    if (cancelled) return;
+                    if (attempt < maxAttempts) {
+                        showWaiting('— TIMED OUT', 'No response — retrying in ' + (retryDelay[attempt] / 1000) + 's…');
+                        retryTimer = setTimeout(doCheck, retryDelay[attempt]);
+                    } else {
+                        badge.className   = 'update-status-badge status-error';
+                        badge.textContent = '✗ CHECK TIMED OUT';
+                        msg.textContent   = 'No response after ' + maxAttempts + ' attempts.';
+                        showRetry();
+                    }
+                });
+            }
+
+            doCheck();
         })();
         </script>
 

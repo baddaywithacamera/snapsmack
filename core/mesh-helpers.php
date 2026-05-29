@@ -90,9 +90,9 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
     if ($has_roster_cols) {
         $upsert = $pdo->prepare("
             INSERT INTO snap_multisite_nodes
-                (role, site_url, site_name, api_key_local, status,
+                (role, site_url, site_name, api_key_local, api_key_remote, status,
                  roster_source, last_roster_seen_at, connected_at)
-            VALUES (?, ?, ?, ?, 'active', ?, ?, NOW())
+            VALUES (?, ?, ?, ?, '', 'active', ?, ?, NOW())
             ON DUPLICATE KEY UPDATE
                 role                = VALUES(role),
                 site_name           = VALUES(site_name),
@@ -104,13 +104,13 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
     } else {
         $upsert = $pdo->prepare("
             INSERT INTO snap_multisite_nodes
-                (role, site_url, site_name, api_key_local, status, connected_at)
-            VALUES (?, ?, ?, ?, 'active', NOW())
+                (role, site_url, site_name, api_key_local, api_key_remote, status, connected_at)
+            VALUES (?, ?, ?, ?, '', 'active', NOW())
             ON DUPLICATE KEY UPDATE
-                role      = VALUES(role),
-                site_name = VALUES(site_name),
+                role          = VALUES(role),
+                site_name     = VALUES(site_name),
                 api_key_local = VALUES(api_key_local),
-                status    = 'active'
+                status        = 'active'
         ");
     }
 
