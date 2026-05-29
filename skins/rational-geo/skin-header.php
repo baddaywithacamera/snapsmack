@@ -36,6 +36,13 @@ if (!$show_map_bg): ?>
 // and the justified grid stay in alignment. The CSS default of 1400px is just
 // a fallback for when this file isn't loaded (e.g. skin preview).
 $rg_canvas_px = max(600, (int)($settings['main_canvas_width'] ?? 1400));
+require_once dirname(__DIR__, 2) . '/core/font-loader.php';
+snapsmack_emit_font_tags([
+    $settings['masthead_font'] ?? 'Marcellus',
+    $settings['body_font']     ?? 'Source Serif 4',
+    $settings['exif_font']     ?? 'DM Mono',
+    $settings['comment_font']  ?? 'Source Serif 4',
+], BASE_URL);
 ?>
 <style>:root { --rg-canvas-width: <?php echo $rg_canvas_px; ?>px; }</style>
 <div id="rg-header">

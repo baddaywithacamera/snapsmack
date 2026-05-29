@@ -111,6 +111,8 @@ $css_vars = [
     '--chap-orn-side-h'       => $dim['side_h']  . 'px',
     '--chap-orn-gap'          => $orn_gap         . 'px',
     '--chap-photo-pad-v'      => $photo_pad_v     . 'px',
+    '--chap-heading-size'     => round((int)($settings['chap_heading_size'] ?? 9)  / 10, 1) . 'rem',
+    '--chap-body-size'        => round((int)($settings['chap_body_size']    ?? 10) / 10, 1) . 'rem',
     '--chap-footer-font'      => "'" . ($settings['chap_footer_font'] ?? 'monospace') . "', monospace",
     '--chap-footer-size'      => $footer_size     . 'rem',
 ];
@@ -121,10 +123,16 @@ $scratch_prob = [
     'normal' => 0.008,
     'heavy'  => 0.02,
 ][$scratch_freq] ?? 0.008;
+
+// ── Dynamic font loading ──────────────────────────────────────────────────────
+require_once dirname(__DIR__, 2) . '/core/font-loader.php';
+snapsmack_emit_font_tags([
+    $settings['chap_title_font']   ?? 'Cinzel',
+    $settings['chap_heading_font'] ?? 'Cinzel',
+    $settings['chap_body_font']    ?? 'Cormorant Garamond',
+    $settings['chap_footer_font']  ?? '',
+], BASE_URL);
 ?>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&display=swap" rel="stylesheet">
 
 <style>
 :root {

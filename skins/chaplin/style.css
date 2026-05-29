@@ -20,11 +20,11 @@
   --chap-bg-chrome:         #111111;
   --chap-bg-card:           #141414;
   --chap-ink:               #f0f0f0;
-  --chap-ink-dim:           #8a8070;
-  --chap-ink-muted:         #504840;
+  --chap-ink-dim:           #888888;
+  --chap-ink-muted:         #484848;
   --chap-accent:            #f0f0f0;
-  --chap-border:            #2a2520;
-  --chap-border-light:      #1e1a17;
+  --chap-border:            #222222;
+  --chap-border-light:      #1a1a1a;
 
   /* ── Typography (overridden from settings via skin-header.php) ──────────── */
   --chap-title-font:        'Cinzel', Georgia, serif;
@@ -60,12 +60,12 @@
   --rg-text-primary:  var(--chap-ink);
   --rg-text-secondary:var(--chap-ink-dim);
   --rg-text-dim:      var(--chap-ink-muted);
-  --rg-text-bright:   #f5f0e8;
+  --rg-text-bright:   #f0f0f0;
   --rg-accent:        var(--chap-ink);
-  --rg-accent-dark:   #cec8b8;
-  --rg-accent-muted:  rgba(236,230,212,0.08);
+  --rg-accent-dark:   #c8c8c8;
+  --rg-accent-muted:  rgba(220,220,220,0.08);
   --rg-link:          var(--chap-ink);
-  --rg-link-hover:    #f5f0e8;
+  --rg-link-hover:    #f0f0f0;
   --rg-input-bg:      var(--chap-bg-card);
   --rg-overlay-bg:    rgba(10,10,10,0.97);
   --rg-shadow:        0 2px 8px rgba(0,0,0,0.6);
@@ -123,7 +123,7 @@ html {
 
 body {
   font-family: var(--chap-body-font);
-  font-size: var(--font-scale-base);
+  font-size: var(--chap-body-size, var(--font-scale-base));
   line-height: 1.7;
   color: var(--chap-ink);
   background-color: var(--chap-bg);
@@ -304,8 +304,9 @@ body:not(.archive-page):not(.static-transmission) #scroll-stage {
   display: none;
 }
 
-/* System footer hidden on single photo view — infobox nav bar is the only chrome */
-.rg-single #system-footer {
+/* System footer hidden on single photo and landing views — infobox nav bar is the only chrome */
+.rg-single #system-footer,
+.chap-landing #system-footer {
   display: none;
 }
 
@@ -654,7 +655,7 @@ body:not(.archive-page):not(.static-transmission) .chap-img-frame .post-image {
 
 .chap-info-title {
   font-family: var(--chap-heading-font);
-  font-size: 1.3rem;
+  font-size: calc(var(--chap-heading-size, 0.9rem) * 1.4);
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--chap-ink);
@@ -673,7 +674,7 @@ body:not(.archive-page):not(.static-transmission) .chap-img-frame .post-image {
 
 .chap-description {
   font-family: var(--chap-body-font);
-  font-size: 1.05rem;
+  font-size: var(--chap-body-size, 1.05rem);
   line-height: 1.8;
   color: var(--chap-ink);
   margin-bottom: 1.5rem;
@@ -773,7 +774,7 @@ body:not(.archive-page):not(.static-transmission) .chap-img-frame .post-image {
 
 .chap-intertitle-title {
   font-family: var(--chap-heading-font);
-  font-size: 0.85rem;
+  font-size: var(--chap-heading-size, 0.9rem);
   font-weight: 600;
   letter-spacing: 0.2em;
   color: var(--chap-ink);
@@ -812,6 +813,7 @@ body:not(.archive-page):not(.static-transmission) .chap-img-frame .post-image {
 #infobox {
   z-index: var(--z-content);
   height: var(--infobox-height);
+  flex-shrink: 0;
   background-color: var(--chap-bg-chrome);
   border-top: 1px solid var(--chap-border);
   display: flex;

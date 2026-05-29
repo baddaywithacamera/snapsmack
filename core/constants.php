@@ -63,8 +63,8 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Referrer-Policy: strict-origin-when-cross-origin');
 }
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.184D');
-define('SNAPSMACK_VERSION_SHORT', '0.7.184D');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.185D');
+define('SNAPSMACK_VERSION_SHORT', '0.7.185D');
 define('SNAPSMACK_VERSION_CODENAME', 'Barcalounger');
 
 // --- VERSION COMPARISON ---
