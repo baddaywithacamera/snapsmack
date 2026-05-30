@@ -502,6 +502,27 @@ generate CSS that is injected into the public site.</p>
 <p>Option types include colour pickers, range sliders, dropdowns, and number fields. Each
 option targets a specific CSS selector and property, so you can see exactly what it affects.</p>
 
+<h4>Typography Controls</h4>
+<p>The Typography section gives you control over fonts, sizes, and colours for distinct
+parts of your site. These are treated as separate concerns:</p>
+<ul>
+    <li><strong>Masthead Font</strong> — the publication identity font. Appears in the site
+    header on every page. This is your brand.</li>
+    <li><strong>Heading / Intertitle Font</strong> — used for post headings and intertitle
+    cards. Distinct from the masthead.</li>
+    <li><strong>Page Title Font</strong> — the h1 on section pages like Blogroll, Archive
+    View, and static pages. Separate from the masthead by design — a masthead is a
+    publication identity, a page title is a navigation landmark.</li>
+    <li><strong>Body / Description Font</strong> — post descriptions, blogroll entries, and
+    static page body text. The body size slider cascades to all of these.</li>
+    <li><strong>Nav Font &amp; Nav Color</strong> — top navigation link font, size, and
+    colour. Colour pickers on monochrome skins show a greyscale swatch selector
+    (seven steps from black to white) rather than a free colour picker.</li>
+    <li><strong>Footer Font</strong> — the system footer and bottom navigation.</li>
+</ul>
+<p>Each font picker has an adjacent size slider. Moving the slider and saving updates
+the font size site-wide without touching any CSS.</p>
+
 <h4>Gallery Tab</h4>
 <p>Browse the skin registry for new skins and updates. Each skin listing shows up to three
 screenshots (landing page, archive grid, and text page) in a carousel with navigation
@@ -2804,6 +2825,12 @@ site that reports back to the hub).</p>
     report back. <em>UPDATE ALL BEHIND</em> does the whole fleet in sequence with
     one click. When all spokes are current the button becomes a greyed <em>ALL UP
     TO DATE</em> indicator.</li>
+    <li><strong>Network Settings Push</strong> — push common settings from the hub to all
+    connected spokes from a single page (Multisite → Settings). Available groups: timezone
+    and date format, Akismet spam key, AI training crawler policy, SMACKBACK enabled/mode,
+    global comments on/off, and contact email. Each group pushes with a single button.
+    Download settings can be targeted to a custom subset of spokes — useful when only
+    some sites in your fleet need download links.</li>
 </ul>
 
 <h4>Heartbeat Monitoring</h4>

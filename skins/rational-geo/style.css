@@ -359,6 +359,9 @@ small,
   justify-content: center;
   align-items: center;
   width: 100%;
+  max-width: var(--rg-canvas-width, 1400px); /* respects Content Width skin setting */
+  margin-left: auto;
+  margin-right: auto;
   height: 100%;
   /* Equal padding on all sides — keeps image dead-center */
   padding: 4vh 4vw;

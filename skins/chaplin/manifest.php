@@ -266,6 +266,18 @@ return [
         ],
 
         // ── LAYOUT ────────────────────────────────────────────────────────────
+        'chap_photo_max_width' => [
+            'section'  => 'LAYOUT',
+            'type'     => 'range',
+            'label'    => 'Photo Max Width (px)',
+            'default'  => '1600',
+            'min'      => '800',
+            'max'      => '2560',
+            'step'     => '40',
+            'selector' => ':root',
+            'property' => '--chap-photo-max-width',
+            'unit'     => 'px',
+        ],
         'chap_photo_pad_v' => [
             'section'  => 'LAYOUT',
             'type'     => 'range',
