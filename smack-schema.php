@@ -1,0 +1,388 @@
+<?php
+/**
+ * SNAPSMACK - Database Schema Manager
+ *
+ * Diffs the live snap_* database against snapsmack_canonical.sql and can
+ * apply missing tables and columns via ALTER TABLE / CREATE TABLE.
+ *
+ * Only ADDS missing structure — never drops columns or modifies existing
+ * ones. Existing data is never touched.
+ *
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+require_once 'core/auth-smack.php';
+
+$page_title = 'Database Schema';
+
+// ── Schema parser ─────────────────────────────────────────────────────────────
+// Parse canonical SQL into ['table_name' => ['columns' => [...], 'sql' => '...']]
+// Mirrors sc-schema.php logic exactly.
+
+function snap_schema_parse(string $path): array|false {
+    if (!file_exists($path)) return false;
+    $sql = file_get_contents($path);
+    $sql = str_replace("\r\n", "\n", $sql);
+    $sql = preg_replace('/--[^\n]*/', '', $sql);
+
+    $tables     = [];
+    $statements = preg_split('/;\s*\n/', $sql);
+
+    foreach ($statements as $stmt) {
+        $stmt = trim($stmt);
+        if (!preg_match(
+            '/^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?(\w+)`?\s*\((.+)\)\s*ENGINE\s*=[^;]*/si',
+            $stmt, $m
+        )) continue;
+
+        $name = $m[1];
+        $body = $m[2];
+        $full = $stmt . ';';
+
+        $columns = [];
+        foreach (explode("\n", $body) as $raw_line) {
+            $line = trim($raw_line, " \t,");
+            if (preg_match(
+                '/^`?(\w+)`?\s+((?:INT|BIGINT|TINYINT|SMALLINT|MEDIUMINT|'
+                . 'VARCHAR|CHAR|TEXT|MEDIUMTEXT|LONGTEXT|'
+                . 'DECIMAL|FLOAT|DOUBLE|'
+                . 'TIMESTAMP|DATETIME|DATE|TIME|YEAR|'
+                . 'ENUM|SET|JSON|BLOB|MEDIUMBLOB|LONGBLOB)\b.*)/i',
+                $line, $cm
+            )) {
+                $columns[$cm[1]] = $line;
+            }
+        }
+
+        $tables[$name] = ['columns' => $columns, 'sql' => $full];
+    }
+
+    return $tables;
+}
+
+// ── Live schema reader ─────────────────────────────────────────────────────────
+// Returns ['table_name' => ['col1', 'col2', ...], ...]
+
+function snap_schema_live(PDO $pdo): array {
+    try {
+        $db_name = $pdo->query("SELECT DATABASE()")->fetchColumn();
+        $stmt    = $pdo->prepare("
+            SELECT TABLE_NAME, COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = ?
+            ORDER BY TABLE_NAME ASC, ORDINAL_POSITION ASC
+        ");
+        $stmt->execute([$db_name]);
+        $schema = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $schema[$row['TABLE_NAME']][] = $row['COLUMN_NAME'];
+        }
+        return $schema;
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+// ── Diff ──────────────────────────────────────────────────────────────────────
+
+function snap_schema_diff(array $canonical, array $live): array {
+    $missing_tables  = [];
+    $missing_columns = [];
+    $ok_tables       = [];
+
+    foreach ($canonical as $table => $def) {
+        if (!isset($live[$table])) {
+            $missing_tables[$table] = $def['sql'];
+        } else {
+            $live_cols        = array_flip($live[$table]);
+            $missing_in_table = [];
+            $ok_cols          = [];
+            foreach ($def['columns'] as $col => $col_def) {
+                if (isset($live_cols[$col])) {
+                    $ok_cols[] = $col;
+                } else {
+                    $missing_in_table[$col] = $col_def;
+                }
+            }
+            if ($missing_in_table) $missing_columns[$table] = $missing_in_table;
+            $ok_tables[$table] = $ok_cols;
+        }
+    }
+
+    return compact('missing_tables', 'missing_columns', 'ok_tables');
+}
+
+// ── DDL builder ───────────────────────────────────────────────────────────────
+
+function snap_schema_build_ddl(array $diff): array {
+    $stmts = [];
+
+    foreach ($diff['missing_tables'] as $table => $create_sql) {
+        $stmts[] = $create_sql;
+    }
+
+    foreach ($diff['missing_columns'] as $table => $cols) {
+        foreach ($cols as $col => $def) {
+            $def_clean = preg_replace('/\s+COMMENT\s+\'[^\']*\'/i', '', $def);
+            $type_part = preg_replace('/^`?' . preg_quote($col, '/') . '`?\s+/i', '', $def_clean);
+            $stmts[]   = "ALTER TABLE `{$table}` ADD COLUMN `{$col}` {$type_part};";
+        }
+    }
+
+    return $stmts;
+}
+
+// ── POST: Apply ───────────────────────────────────────────────────────────────
+
+$apply_results = [];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['apply_schema'])) {
+    $canonical_path = __DIR__ . '/database/schema/snapsmack_canonical.sql';
+    $canonical      = snap_schema_parse($canonical_path);
+
+    if ($canonical !== false) {
+        try {
+            $live  = snap_schema_live($pdo);
+            $diff  = snap_schema_diff($canonical, $live);
+            $stmts = snap_schema_build_ddl($diff);
+
+            if (empty($stmts)) {
+                $apply_results = [['ok', 'Schema is already up to date. Nothing to apply.']];
+            } else {
+                foreach ($stmts as $stmt) {
+                    try {
+                        $pdo->exec($stmt);
+                        $apply_results[] = ['ok', $stmt];
+                    } catch (PDOException $e) {
+                        $apply_results[] = ['err', $stmt . ' — ' . $e->getMessage()];
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            $apply_results = [['err', 'Error: ' . $e->getMessage()]];
+        }
+    } else {
+        $apply_results = [['err', 'Canonical schema file not found.']];
+    }
+
+    // PRG: store results in session and redirect
+    session_start();
+    $_SESSION['snap_schema_apply'] = $apply_results;
+    header('Location: smack-schema.php?applied=1');
+    exit;
+}
+
+// Retrieve apply results after redirect
+if (!empty($_GET['applied'])) {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    if (!empty($_SESSION['snap_schema_apply'])) {
+        $apply_results = $_SESSION['snap_schema_apply'];
+        unset($_SESSION['snap_schema_apply']);
+    }
+}
+
+// ── Build diff for display ────────────────────────────────────────────────────
+
+$canonical_path = __DIR__ . '/database/schema/snapsmack_canonical.sql';
+$canonical      = snap_schema_parse($canonical_path);
+$diff           = null;
+$parse_error    = null;
+$total_missing  = 0;
+
+if ($canonical === false) {
+    $parse_error = 'Canonical schema file not found at database/schema/snapsmack_canonical.sql';
+} else {
+    try {
+        $live          = snap_schema_live($pdo);
+        $diff          = snap_schema_diff($canonical, $live);
+        $total_missing = count($diff['missing_tables'])
+                       + array_sum(array_map('count', $diff['missing_columns']));
+    } catch (Exception $e) {
+        $parse_error = 'Could not read live database: ' . $e->getMessage();
+    }
+}
+
+require_once 'core/admin-header.php';
+require 'core/sidebar.php';
+?>
+
+<style>
+.schema-wrap       { max-width: 960px; padding: 0 24px 60px; }
+.schema-status-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px;
+    background: var(--admin-box-bg, #1a1a1a);
+    border: 1px solid var(--admin-border, #333);
+    border-radius: 6px;
+    margin-bottom: 24px;
+}
+.schema-status-label { font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; opacity: 0.5; }
+.schema-status-ok    { color: #4ec994; font-weight: 700; }
+.schema-status-warn  { color: #e2b714; font-weight: 700; }
+.schema-status-err   { color: #e45735; font-weight: 700; }
+
+.schema-table {
+    background: var(--admin-box-bg, #1a1a1a);
+    border: 1px solid var(--admin-border, #333);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+.schema-table-head {
+    display: grid;
+    grid-template-columns: 220px 1fr 120px;
+    align-items: center;
+    padding: 10px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: rgba(0,0,0,0.15);
+    font-size: 0.78rem;
+}
+.schema-table-name      { font-family: monospace; color: var(--admin-text, #ccc); }
+.schema-table-name--bad { color: #e45735; }
+.schema-cols            { display: flex; flex-wrap: wrap; gap: 4px 6px; padding: 10px 18px; }
+.schema-col             { font-size: 0.65rem; font-family: monospace; padding: 2px 7px; border-radius: 3px; }
+.schema-col--ok         { background: rgba(255,255,255,.06); color: #777; }
+.schema-col--missing    { background: rgba(226,183,20,.2); color: #e2b714; font-weight: 700; }
+.schema-tag             { font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+                          letter-spacing: 0.5px; padding: 2px 8px; border-radius: 3px; justify-self: end; }
+.schema-tag--ok         { background: rgba(78,201,148,.12); color: #4ec994; }
+.schema-tag--missing    { background: rgba(228,87,53,.15); color: #e45735; }
+.schema-tag--warn       { background: rgba(226,183,20,.15); color: #e2b714; }
+
+.schema-log {
+    padding: 14px 18px;
+    border-top: 1px solid var(--admin-border, #333);
+    font-family: monospace; font-size: 0.78rem; line-height: 1.9;
+    background: rgba(0,0,0,0.2);
+}
+.schema-log-ok  { color: #4ec994; }
+.schema-log-err { color: #e45735; }
+
+.schema-apply-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    border-top: 1px solid var(--admin-border, #333);
+    background: rgba(0,0,0,0.1);
+    gap: 12px;
+}
+.schema-apply-note { font-size: 0.78rem; opacity: 0.6; }
+</style>
+
+<div class="main-content">
+<div class="schema-wrap">
+
+<h2 class="page-heading">Database Schema</h2>
+<p style="font-size:0.85rem; opacity:0.6; margin-bottom:24px; max-width:640px;">
+    Diffs the live database against
+    <code>database/schema/snapsmack_canonical.sql</code>.
+    Missing tables are created in full. Missing columns are added with
+    <code>ALTER TABLE … ADD COLUMN</code>. Existing data is never modified.
+</p>
+
+<?php if ($parse_error): ?>
+<div class="schema-table">
+    <div class="schema-table-head">
+        <span class="schema-table-name--bad"><?php echo htmlspecialchars($parse_error); ?></span>
+    </div>
+</div>
+
+<?php else: ?>
+
+<!-- Status summary bar -->
+<div class="schema-status-bar">
+    <span class="schema-status-label">Status</span>
+    <?php if ($total_missing === 0): ?>
+        <span class="schema-status-ok">✓ Schema in sync — nothing to apply</span>
+    <?php else: ?>
+        <span class="schema-status-warn">
+            <?php echo $total_missing; ?> missing
+            item<?php echo $total_missing !== 1 ? 's' : ''; ?>
+            — apply to fix
+        </span>
+    <?php endif; ?>
+</div>
+
+<!-- Apply log (shown after applying) -->
+<?php if (!empty($apply_results)): ?>
+<div class="schema-table" style="margin-bottom:24px;">
+    <div class="schema-log">
+        <?php foreach ($apply_results as [$level, $msg]): ?>
+        <div class="schema-log-<?php echo $level === 'ok' ? 'ok' : 'err'; ?>">
+            <?php echo $level === 'ok' ? '✓' : '✗'; ?>
+            <?php echo htmlspecialchars($msg); ?>
+        </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- Table-by-table diff -->
+<?php foreach ($canonical as $table => $tdef):
+    $is_missing   = isset($diff['missing_tables'][$table]);
+    $missing_cols = $diff['missing_columns'][$table] ?? [];
+    $ok_cols      = $diff['ok_tables'][$table] ?? [];
+?>
+<div class="schema-table">
+    <div class="schema-table-head">
+        <span class="schema-table-name <?php echo $is_missing ? 'schema-table-name--bad' : ''; ?>">
+            `<?php echo htmlspecialchars($table); ?>`
+        </span>
+        <span></span>
+        <?php if ($is_missing): ?>
+            <span class="schema-tag schema-tag--missing">Missing table</span>
+        <?php elseif ($missing_cols): ?>
+            <span class="schema-tag schema-tag--warn">
+                <?php echo count($missing_cols); ?>
+                missing col<?php echo count($missing_cols) !== 1 ? 's' : ''; ?>
+            </span>
+        <?php else: ?>
+            <span class="schema-tag schema-tag--ok">✓ OK</span>
+        <?php endif; ?>
+    </div>
+
+    <div class="schema-cols">
+        <?php if ($is_missing): ?>
+            <?php foreach ($tdef['columns'] as $col => $def): ?>
+            <span class="schema-col schema-col--missing"
+                  title="<?php echo htmlspecialchars($def); ?>">
+                <?php echo htmlspecialchars($col); ?>
+            </span>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <?php foreach ($ok_cols as $col): ?>
+            <span class="schema-col schema-col--ok"><?php echo htmlspecialchars($col); ?></span>
+            <?php endforeach; ?>
+            <?php foreach (array_keys($missing_cols) as $col): ?>
+            <span class="schema-col schema-col--missing"
+                  title="<?php echo htmlspecialchars($missing_cols[$col]); ?>">
+                <?php echo htmlspecialchars($col); ?>
+            </span>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
+</div>
+<?php endforeach; ?>
+
+<!-- Apply button -->
+<?php if ($total_missing > 0): ?>
+<div class="schema-apply-bar" style="margin-top:24px; background:var(--admin-box-bg,#1a1a1a); border:1px solid var(--admin-border,#333); border-radius:6px;">
+    <div class="schema-apply-note">
+        Highlighted columns and tables will be created. No existing data will be modified.
+    </div>
+    <form method="POST" onsubmit="return confirm('Apply schema changes to the live database?');">
+        <input type="hidden" name="apply_schema" value="1">
+        <button type="submit" class="btn-smack">Apply Schema</button>
+    </form>
+</div>
+<?php endif; ?>
+
+<?php endif; // end parse_error check ?>
+
+</div><!-- /.schema-wrap -->
+</div><!-- /.main-content -->
+
+<?php require_once 'core/admin-footer.php'; ?>
+<?php // ===== SNAPSMACK EOF =====

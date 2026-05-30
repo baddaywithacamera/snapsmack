@@ -51,14 +51,14 @@ if (session_status() === PHP_SESSION_NONE) {
         session_save_path($ss_session_dir);
     }
     session_set_cookie_params([
-        'lifetime' => 3600,
+        'lifetime' => 86400,
         'path'     => '/',
         'secure'   => (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')
                    || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https'),
         'httponly' => true,
         'samesite' => 'Lax',
     ]);
-    ini_set('session.gc_maxlifetime', 3600);
+    ini_set('session.gc_maxlifetime', 86400);
     session_start();
 }
 
@@ -153,7 +153,7 @@ if (isset($_SESSION['user_login'])) {
         session_name(),
         session_id(),
         [
-            'expires'  => time() + 3600,
+            'expires'  => time() + 86400,
             'path'     => '/',
             'secure'   => snap_is_https(),
             'httponly' => true,

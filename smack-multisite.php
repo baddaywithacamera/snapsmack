@@ -8,6 +8,7 @@
  */
 
 require_once 'core/auth-smack.php';
+require_once 'core/skin-registry.php';
 
 // Load settings early so multisite_role is available to all POST handlers.
 $settings       = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -420,6 +421,74 @@ if (isset($_POST['push_maintenance']) || isset($_POST['push_maintenance_all'])) 
     }
 }
 
+// --- PUSH SKIN REINSTALL TO SPOKE(S) ---
+if (isset($_POST['push_skin']) || isset($_POST['push_skin_all'])) {
+    if ($multisite_role !== 'hub') {
+        $err = "Only a hub can push skin reinstalls.";
+    } else {
+        $skin_slug    = trim($_POST['skin_slug']    ?? '');
+        $download_url = trim($_POST['download_url'] ?? '');
+        $signature    = trim($_POST['signature']    ?? '');
+
+        if (!$skin_slug || !$download_url) {
+            $err = "Skin slug and download URL are required.";
+        } else {
+            if (isset($_POST['push_skin_all'])) {
+                $stmt = $pdo->prepare("SELECT * FROM snap_multisite_nodes WHERE role = 'spoke' AND status = 'active'");
+                $stmt->execute();
+                $target_nodes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } else {
+                $spoke_id = (int)($_POST['spoke_id'] ?? 0);
+                $stmt = $pdo->prepare("SELECT * FROM snap_multisite_nodes WHERE id = ? AND role = 'spoke' LIMIT 1");
+                $stmt->execute([$spoke_id]);
+                $target_nodes = array_filter([$stmt->fetch(PDO::FETCH_ASSOC)]);
+            }
+
+            $skin_results = [];
+            foreach ($target_nodes as $tn) {
+                if (!$tn) continue;
+                $ch = curl_init();
+                curl_setopt_array($ch, [
+                    CURLOPT_URL            => rtrim($tn['site_url'], '/') . '/api.php?route=multisite/skins/reinstall',
+                    CURLOPT_POST           => true,
+                    CURLOPT_POSTFIELDS     => json_encode(['skin_slug' => $skin_slug, 'download_url' => $download_url, 'signature' => $signature]),
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                    CURLOPT_TIMEOUT        => 120,
+                    CURLOPT_HTTPHEADER     => [
+                        'Authorization: Bearer ' . $tn['api_key_local'],
+                        'Content-Type: application/json',
+                        'Accept: application/json',
+                    ],
+                ]);
+                $raw  = curl_exec($ch);
+                $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $cerr = curl_error($ch);
+                curl_close($ch);
+
+                $result = ['name' => $tn['site_name'] ?? $tn['site_url']];
+                if ($cerr || $code !== 200) {
+                    $data            = $raw ? (json_decode($raw, true) ?? []) : [];
+                    $result['ok']    = false;
+                    $result['detail']= $cerr ?: ('HTTP ' . $code . (isset($data['error']) ? ': ' . $data['error'] : ''));
+                } else {
+                    $data            = json_decode($raw, true) ?? [];
+                    $result['ok']    = !empty($data['ok']);
+                    $result['detail']= $data['message'] ?? '';
+                }
+                $skin_results[] = $result;
+            }
+
+            if ($is_ajax) {
+                if (ob_get_level()) ob_end_clean();
+                header('Content-Type: application/json');
+                echo json_encode(['results' => $skin_results]);
+                exit;
+            }
+        }
+    }
+}
+
 // --- VERIFY CONNECTION (spoke → hub heartbeat) ---
 if (isset($_POST['verify_hub'])) {
     $hub = $pdo->query("SELECT * FROM snap_multisite_nodes WHERE role = 'hub' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
@@ -576,6 +645,14 @@ if ($multisite_role === 'hub') {
 
     // Reload nodes so status changes are reflected
     $nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, connected_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Fetch skin registry for push-skin UI (hub only; session-cached 10 min)
+$registry_skins = [];
+if ($multisite_role === 'hub') {
+    $registry_url   = $settings['skin_registry_url'] ?? SKIN_REGISTRY_DEFAULT_URL;
+    $reg            = skin_registry_fetch($registry_url);
+    $registry_skins = $reg['skins'] ?? [];
 }
 
 // Get registration token if it exists and is still valid (read from DB, not session)
@@ -894,7 +971,7 @@ include 'core/sidebar.php';
                                                         class="<?php echo $in_maintenance ? 'action-warning' : 'action-view'; ?>"
                                                         title="<?php echo $in_maintenance ? 'Take out of maintenance mode' : 'Put into maintenance mode'; ?>"
                                                         <?php echo $in_maintenance ? '' : 'onclick="return confirm(\'Put this spoke into maintenance mode?\')"'; ?>>
-                                                    <?php echo $in_maintenance ? 'MAINT OFF' : 'MAINT ON'; ?>
+                                                    <?php echo $in_maintenance ? 'MAINT ON' : 'MAINT OFF'; ?>
                                                 </button>
                                             </form>
                                         <?php endif; ?>
@@ -931,6 +1008,77 @@ include 'core/sidebar.php';
                 <button type="submit" name="register_spoke" class="master-update-btn">REGISTER SPOKE</button>
             </form>
         </div>
+
+        <!-- PUSH SKIN TO SPOKES -->
+        <?php
+            $active_spokes = array_filter($nodes, fn($n) => $n['role'] === 'spoke' && $n['status'] === 'active');
+        ?>
+        <?php if (!empty($active_spokes)): ?>
+        <div class="box">
+            <h3>PUSH SKIN TO SPOKES</h3>
+            <p style="font-size:0.9rem; color:var(--text-muted,#888); margin-bottom:16px;">
+                Install or reinstall a skin on one or all active spokes directly from the registry.
+                No version bump required.
+            </p>
+
+            <?php if (!empty($skin_results)): ?>
+                <div style="margin-bottom:14px;">
+                    <?php foreach ($skin_results as $sr): ?>
+                        <?php if ($sr['ok']): ?>
+                            <div class="alert alert-success" style="margin-bottom:6px;">
+                                ✓ <strong><?php echo htmlspecialchars($sr['name']); ?></strong> — <?php echo htmlspecialchars($sr['detail'] ?: 'Skin installed successfully.'); ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="alert alert-error" style="margin-bottom:6px;">
+                                ✗ <strong><?php echo htmlspecialchars($sr['name']); ?></strong> — <?php echo htmlspecialchars($sr['detail']); ?>
+                            </div>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!empty($registry_skins)): ?>
+            <form method="POST" id="push-skin-form">
+                <label>SKIN</label>
+                <select name="skin_slug" id="push-skin-select" required
+                        onchange="(function(s){var o=s.options[s.selectedIndex];document.getElementById('push-skin-url').value=o.getAttribute('data-url')||'';document.getElementById('push-skin-sig').value=o.getAttribute('data-sig')||'';})(this)">
+                    <option value="">-- choose a skin --</option>
+                    <?php foreach ($registry_skins as $rslug => $rskin): ?>
+                        <?php if (empty($rskin['download_url'])) continue; ?>
+                        <option value="<?php echo htmlspecialchars($rslug); ?>"
+                                data-url="<?php echo htmlspecialchars($rskin['download_url']); ?>"
+                                data-sig="<?php echo htmlspecialchars($rskin['signature'] ?? ''); ?>">
+                            <?php echo htmlspecialchars($rskin['name'] ?? $rslug); ?><?php echo !empty($rskin['version']) ? ' v' . htmlspecialchars($rskin['version']) : ''; ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <input type="hidden" name="download_url" id="push-skin-url">
+                <input type="hidden" name="signature"    id="push-skin-sig">
+
+                <label style="margin-top:14px;">TARGET SPOKE</label>
+                <select name="spoke_id">
+                    <?php foreach ($active_spokes as $n): ?>
+                        <option value="<?php echo $n['id']; ?>"><?php echo htmlspecialchars($n['site_name'] ?: $n['site_url']); ?></option>
+                    <?php endforeach; ?>
+                </select>
+
+                <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
+                    <button type="submit" name="push_skin" class="btn-smack"
+                            style="width:auto;height:auto;margin-top:0;padding:8px 18px;">
+                        PUSH TO SPOKE
+                    </button>
+                    <button type="submit" name="push_skin_all" class="btn-smack"
+                            style="width:auto;height:auto;margin-top:0;padding:8px 18px;"
+                            onclick="return confirm('Push this skin to ALL active spokes?');">
+                        PUSH TO ALL SPOKES
+                    </button>
+                </div>
+            </form>
+            <?php else: ?>
+                <p style="color:var(--text-muted,#888);">Skin registry unavailable -- check your connection to snapsmack.ca.</p>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
 
     <?php elseif ($multisite_role === 'spoke'): ?>
         <!-- SPOKE MODE: Connected to a hub -->
