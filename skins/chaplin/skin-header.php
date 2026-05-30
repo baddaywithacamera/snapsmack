@@ -116,6 +116,7 @@ $css_vars = [
     '--chap-body-size'        => (int)($settings['chap_body_size']        ?? 10), /* unitless, CSS uses calc(val * 0.1rem) */
     '--chap-footer-font'      => "'" . ($settings['chap_footer_font']     ?? 'monospace') . "', monospace",
     '--chap-footer-size'      => (int)($settings['chap_footer_size']      ?? 7),  /* unitless, CSS uses calc(val * 0.1rem) */
+    '--chap-photo-max-width'  => (int)($settings['chap_photo_max_width'] ?? 1600) . 'px',
     '--chap-page-title-font'  => "'" . ($settings['chap_page_title_font'] ?? 'Cinzel') . "', Georgia, serif",
     '--chap-page-title-size'  => (int)($settings['chap_page_title_size']  ?? 12), /* unitless, CSS uses calc(val * 0.1rem) */
     '--chap-nav-font'         => "'" . ($settings['chap_nav_font']        ?? 'Cinzel') . "', Georgia, serif",

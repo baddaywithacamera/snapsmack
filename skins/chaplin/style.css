@@ -30,6 +30,7 @@
   --chap-title-font:        'Cinzel', Georgia, serif;
   --chap-heading-font:      'Cinzel', Georgia, serif;
   --chap-body-font:         'Cormorant Garamond', Georgia, serif;
+  --chap-photo-max-width:   1600px;
   --chap-title-size:        11; /* unitless — consumed via calc(val * 0.1rem) */
   --chap-page-title-font:   var(--chap-heading-font);
   --chap-page-title-size:   12;
@@ -349,6 +350,9 @@ body:not(.archive-page):not(.static-transmission) #scroll-stage {
   justify-content: center;
   align-items: center;
   width: 100%;
+  max-width: var(--chap-photo-max-width, 1600px); /* respects Photo Max Width skin setting */
+  margin-left: auto;
+  margin-right: auto;
   height: 100%;
   padding: var(--chap-photo-pad-v, 56px) 3vw;
   box-sizing: border-box;

@@ -12,6 +12,34 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.188 — "Sit and Spin" (2026-05-30)
+
+### Added
+- **`stats.php`** — Public JSON stats endpoint. Returns site_name, post count, 30-day views and unique visitors, active_since date, and installed version. CORS-allowed from snapsmack.ca. No auth, no personal data. Powers skin gallery hover cards.
+- **Install phone-home** (`core/updater.php`) — Each install gets a unique `install_uid` in `snap_settings` (lazy-generated on first update check). Sent to snapsmack.ca/releases/ping.php on non-fast update checks. SC counts unique UIDs seen in 90 days for Active Installs.
+
+### Fixed
+- **SC Active Installs now counts unique phone-home UIDs** (`sc-dashboard.php`) — was counting forum registrations. Now reads `sc_phone_home` (90-day window). Falls back to 0 if table not yet created.
+- **Chaplin photo max-width** (`skins/chaplin/style.css`, `skin-header.php`, `manifest.php`) — New `chap_photo_max_width` manifest entry (default 1600px, 800–2560 range) → `--chap-photo-max-width` CSS var → `.rg-photo-wrap max-width`. Independent from archive grid width.
+- **Rational Geo photo max-width** (`skins/rational-geo/style.css`) — `.rg-photo-wrap` now respects the existing Content Width slider (`--rg-canvas-width`).
+
+## 0.7.187 — "Barcalounger" (2026-05-30)
+
+### Added
+- **Network Settings Push** (`smack-multisite-settings.php`) — Hub can push timezone, Akismet key, AI training policy, SMACKBACK enabled/mode, global comments, and contact email to all spokes from one page. Download settings push to a custom selectable subset of spokes, with the selection persisted.
+- **`POST multisite/settings/push` API endpoint** — Spoke-side receiver for hub-pushed settings. Explicit allowlist of 10 keys. Hub Bearer auth required.
+- **Multisite SETTINGS nav** — SETTINGS link added to all multisite nav tabs.
+- **Chaplin: Separate Masthead and Page Title fonts** — Masthead font (publication identity, site header) and Page Title font (h1 on Blogroll, Archive, static pages) are now independently configurable. Masthead ≠ Page Title — different semantic jobs, different controls.
+- **Chaplin: Nav font, size, and colour controls** — Top navigation has its own font, size, and colour pickers in Typography.
+- **Greyscale colour picker** — `is_greyscale: true` manifest flag renders 7 swatch buttons (black → white, even steps) instead of a free colour input. Appropriate for monochrome themes.
+- **Body size cascades to static pages** — Body size slider now affects blogroll descriptions and static page body text, not just post content.
+- **Skin version standardisation** — All 15 skin manifests now use MAJOR.MINOR.PATCH versioning. Two-part versions (e.g. 1.3) extended to three-part (1.3.0).
+
+### Fixed
+- **Post-update "Could Not Reach Update Server" false positive** — The 14-session bug. `$cached_result` was nulled after `stage_migrate` on the same POST request that renders the post-update page. The GET-only re-check block couldn't fire. Fix: write `up_to_date` to DB cache and hydrate all page vars on the POST itself. Post-update page now shows "✓ UP TO DATE".
+- **Chaplin font size sliders** — Size manifest entries had `selector: ''` and `property: ''` — CSS compiler skipped them entirely. Fix: wired to `:root` CSS variables, consumed via `calc(var * 0.1rem)` throughout. The ×0.1rem scale is preserved; `skin-header.php` updated to output unitless integers to match.
+- **Multisite action column alignment** — REMOTE LOGIN, MAINT ON/OFF, and DISCONNECT now use a flex container with `display:contents` on forms and `min-width` per button type. Columns align across all spoke rows.
+
 ## 0.7.186 — "Barcalounger" (2026-05-30)
 
 ### Added

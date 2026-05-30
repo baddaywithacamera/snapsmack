@@ -7,11 +7,16 @@ require_once __DIR__ . '/sc-auth.php';
 $sc_active_nav = 'sc-dashboard.php';
 $sc_page_title = 'Dashboard';
 
-// Quick stats — installs/threads/replies from forum DB, releases from central DB
+// Quick stats
 $stats = ['installs' => 0, 'threads' => 0, 'replies' => 0, 'releases' => 0];
 try {
+    // Active installs: unique UIDs that phoned home in the last 90 days
+    $stats['installs'] = (int)sc_db()->query(
+        "SELECT COUNT(*) FROM sc_phone_home WHERE last_seen >= DATE_SUB(NOW(), INTERVAL 90 DAY)"
+    )->fetchColumn();
+} catch (Exception $e) { /* sc_phone_home not yet created — shows 0 until first ping lands */ }
+try {
     $fdb = sc_forum_db();
-    $stats['installs'] = (int)$fdb->query("SELECT COUNT(*) FROM ss_forum_installs WHERE is_banned = 0")->fetchColumn();
     $stats['threads']  = (int)$fdb->query("SELECT COUNT(*) FROM ss_forum_threads  WHERE is_deleted = 0")->fetchColumn();
     $stats['replies']  = (int)$fdb->query("SELECT COUNT(*) FROM ss_forum_replies  WHERE is_deleted = 0")->fetchColumn();
 } catch (Exception $e) { /* forum tables may not exist yet */ }
@@ -65,4 +70,4 @@ require __DIR__ . '/sc-layout-top.php';
 </div>
 
 <?php require __DIR__ . '/sc-layout-bottom.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

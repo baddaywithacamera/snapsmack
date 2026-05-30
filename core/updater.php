@@ -161,6 +161,45 @@ function updater_get_track(PDO $pdo): string {
     }
 }
 
+/**
+ * Fire a non-blocking ping to snapsmack.ca so the dashboard can count unique installs.
+ * Privacy-respecting: only sends a random install UID (no blog name, no IP at our end).
+ * The UID is generated on first call and persisted in snap_settings.
+ * Fails silently — never blocks or errors the update check.
+ */
+function _updater_ping_home(PDO $pdo, string $version, string $track): void {
+    try {
+        // Get or generate install UID
+        $uid = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'install_uid' LIMIT 1")
+                   ->fetchColumn();
+        if (!$uid) {
+            $uid = bin2hex(random_bytes(16));
+            $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('install_uid', ?)
+                           ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+                ->execute([$uid]);
+        }
+
+        $ping_url = 'https://snapsmack.ca/releases/ping.php?'
+            . http_build_query(['uid' => $uid, 'v' => $version, 't' => $track]);
+
+        if (function_exists('curl_init')) {
+            $ch = curl_init($ping_url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 3,      // 3s max — fire and forget
+                CURLOPT_CONNECTTIMEOUT => 2,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_USERAGENT      => 'SnapSmack-Ping/' . $version,
+                CURLOPT_NOSIGNAL       => 1,
+            ]);
+            curl_exec($ch);
+            curl_close($ch);
+        }
+    } catch (Throwable $e) {
+        // Never surface ping errors — update check must not fail because of this
+    }
+}
+
 function updater_fetch_release_info(bool $fast = false): array {
     global $pdo;
 
@@ -171,6 +210,12 @@ function updater_fetch_release_info(bool $fast = false): array {
     }
 
     $url = ($track === 'dev') ? UPDATER_API_URL_DEV : UPDATER_API_URL;
+
+    // Phone-home ping — non-blocking, fails silently. Only fires on non-fast
+    // (background) checks so the AJAX spinner loop doesn't double-ping.
+    if (!$fast && $pdo instanceof PDO) {
+        _updater_ping_home($pdo, SNAPSMACK_VERSION_SHORT, $track);
+    }
 
     // $fast = true: called from JS-driven AJAX loop — single short attempt so the
     // PHP process doesn't block for 40+ seconds while the browser shows a spinner.
