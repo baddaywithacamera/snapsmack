@@ -274,17 +274,6 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                     </select>
                 </div>
 
-                <div class="lens-input-wrapper">
-                    <label>CALENDAR MONTHS <span class="field-tip" data-tip="How many months the calendar panel shows at once. Applies only when calendar is enabled.">ⓘ</span></label>
-                    <div style="display:flex; align-items:center; gap:12px;">
-                        <input type="range" name="settings[calendar_months]"
-                               min="1" max="6" step="1"
-                               value="<?php echo $calendar_months; ?>"
-                               oninput="this.nextElementSibling.textContent = this.value">
-                        <span style="min-width:24px; font-family:monospace;"><?php echo $calendar_months; ?></span>
-                    </div>
-                </div>
-
             </div>
         </div>
 
