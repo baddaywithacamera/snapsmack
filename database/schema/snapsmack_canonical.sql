@@ -720,13 +720,14 @@ CREATE TABLE IF NOT EXISTS `snap_collections` (
 CREATE TABLE IF NOT EXISTS `snap_collection_items` (
   `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `collection_id` INT UNSIGNED NOT NULL,
-  `image_id`      INT UNSIGNED NOT NULL COMMENT 'FK to snap_images.id',
-  `position`      INT          NOT NULL DEFAULT 0,
-  `caption`       TEXT         COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Collection-specific caption - overrides post description in collection context',
+  `item_type`     ENUM('post','album','category') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `item_id`       INT UNSIGNED NOT NULL,
+  `sort_order`    INT          NOT NULL DEFAULT 0,
   `added_at`      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_collection_image` (`collection_id`, `image_id`),
-  KEY `idx_collection_position` (`collection_id`, `position`),
+  UNIQUE KEY `uq_collection_item` (`collection_id`, `item_type`, `item_id`),
+  KEY `idx_collection` (`collection_id`),
+  KEY `idx_item` (`item_type`, `item_id`),
   CONSTRAINT `fk_ci_collection`
       FOREIGN KEY (`collection_id`) REFERENCES `snap_collections` (`id`)
       ON DELETE CASCADE

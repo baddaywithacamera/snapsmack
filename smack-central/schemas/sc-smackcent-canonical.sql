@@ -9,7 +9,8 @@
 -- Tables:
 --   sc_admin_users  — SC admin login accounts
 --   sc_settings     — key-value configuration store
---   sc_releases     — packaged release history
+--   sc_releases     — packaged stable release history
+--   sc_dev_builds   — packaged dev (BITCHIN' track) build history
 --   sc_assets       — font/script/CSS asset repository
 --   sc_rss_cache    — RSS feed health cache (one row per registered install)
 
@@ -96,6 +97,19 @@ CREATE TABLE IF NOT EXISTS `sc_network_alert_reports` (
     KEY `idx_received_at`         (`received_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `sc_dev_builds` (
+    `id`              INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    `version`         VARCHAR(20)   NOT NULL COMMENT 'Short version string e.g. 0.7.184D',
+    `version_full`    VARCHAR(50)   NOT NULL COMMENT 'Full display string e.g. Alpha 0.7.184D',
+    `git_tag`         VARCHAR(100)  NOT NULL COMMENT 'Git tag checked out for this build',
+    `checksum_sha256` VARCHAR(64)   NOT NULL,
+    `download_url`    VARCHAR(500)  NOT NULL,
+    `download_size`   INT UNSIGNED  NOT NULL DEFAULT 0 COMMENT 'Zip file size in bytes',
+    `built_at`        TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_built_at` (`built_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `sc_rss_cache` (
     `install_id`      INT UNSIGNED   NOT NULL,
     `feed_url`        VARCHAR(500)   NOT NULL DEFAULT '',
@@ -108,3 +122,5 @@ CREATE TABLE IF NOT EXISTS `sc_rss_cache` (
     `error_message`   TEXT           NULL,
     PRIMARY KEY (`install_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===== SNAPSMACK EOF =====
