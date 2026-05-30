@@ -1385,6 +1385,19 @@ button:active,
 }
 
 /* --- ENGINE MECHANICS (SLIDERS & COLOUR PICKERS) --- */
+.grey-picker-container { display:flex; align-items:center; gap:14px; }
+.grey-swatches { display:flex; gap:6px; }
+.grey-swatch {
+    width: 28px; height: 28px;
+    border-radius: 3px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.1s, border-color 0.15s;
+}
+.grey-swatch:hover  { transform: scale(1.15); }
+.grey-swatch.selected { border-color: var(--accent, #00bcd4); transform: scale(1.15); }
+
 .color-picker-container {
     display: flex;
     align-items: center;

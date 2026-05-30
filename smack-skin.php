@@ -760,7 +760,35 @@ if (!empty($google_families)) {
                     ?>
                         <div class="lens-input-wrapper">
                             <label><?php echo strtoupper($o['label']); ?></label>
-                            <?php if ($o['type'] === 'color'): ?>
+                            <?php if ($o['type'] === 'color' && !empty($o['is_greyscale'])): ?>
+                                <?php
+                                $grey_swatches = ['#000000','#2a2a2a','#555555','#808080','#aaaaaa','#d4d4d4','#ffffff'];
+                                $grey_safe     = htmlspecialchars($val ?: '#808080');
+                                ?>
+                                <div class="grey-picker-container">
+                                    <input type="hidden" name="skin_opt[<?php echo $k; ?>]"
+                                           id="gp-<?php echo $k; ?>"
+                                           value="<?php echo $grey_safe; ?>">
+                                    <div class="grey-swatches">
+                                        <?php foreach ($grey_swatches as $sw): ?>
+                                        <button type="button"
+                                                class="grey-swatch <?php echo strtolower($val) === strtolower($sw) ? 'selected' : ''; ?>"
+                                                style="background:<?php echo $sw; ?>;"
+                                                data-val="<?php echo $sw; ?>"
+                                                data-target="gp-<?php echo $k; ?>"
+                                                title="<?php echo strtoupper($sw); ?>"
+                                                onclick="(function(b){
+                                                    var inp=document.getElementById(b.dataset.target);
+                                                    inp.value=b.dataset.val;
+                                                    b.closest('.grey-swatches').querySelectorAll('.grey-swatch').forEach(function(s){s.classList.remove('selected');});
+                                                    b.classList.add('selected');
+                                                })(this)">
+                                        </button>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <span class="hex-display" style="font-size:0.75rem;opacity:0.5;"><?php echo strtoupper($grey_safe); ?></span>
+                                </div>
+                            <?php elseif ($o['type'] === 'color'): ?>
                                 <div class="color-picker-container">
                                     <input type="color" name="skin_opt[<?php echo $k; ?>]" value="<?php echo htmlspecialchars($val); ?>">
                                     <span class="hex-display"><?php echo strtoupper(htmlspecialchars($val)); ?></span>

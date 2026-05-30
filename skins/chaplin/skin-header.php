@@ -94,7 +94,7 @@ $css_vars = [
     '--chap-title-font'        => "'" . ($settings['chap_title_font']   ?? 'Cinzel') . "', Georgia, serif",
     '--chap-heading-font'      => "'" . ($settings['chap_heading_font'] ?? 'Cinzel') . "', Georgia, serif",
     '--chap-body-font'         => "'" . ($settings['chap_body_font']    ?? 'Cormorant Garamond') . "', Georgia, serif",
-    '--chap-title-size'        => round((int)($settings['chap_title_size'] ?? 11) / 10, 1) . 'rem',
+    '--chap-title-size'        => (int)($settings['chap_title_size'] ?? 11), /* unitless, CSS uses calc(val * 0.1rem) */
     '--chap-grain-opacity'     => $grain_opacity,
     '--header-height'          => ($settings['chap_header_height']      ?? '56') . 'px',
     '--chap-archive-gap'       => ($settings['chap_archive_gap']        ?? '20') . 'px',
@@ -112,10 +112,15 @@ $css_vars = [
     '--chap-orn-side-h'       => $dim['side_h']  . 'px',
     '--chap-orn-gap'          => $orn_gap         . 'px',
     '--chap-photo-pad-v'      => $photo_pad_v     . 'px',
-    '--chap-heading-size'     => round((int)($settings['chap_heading_size'] ?? 9)  / 10, 1) . 'rem',
-    '--chap-body-size'        => round((int)($settings['chap_body_size']    ?? 10) / 10, 1) . 'rem',
-    '--chap-footer-font'      => "'" . ($settings['chap_footer_font'] ?? 'monospace') . "', monospace",
-    '--chap-footer-size'      => $footer_size     . 'rem',
+    '--chap-heading-size'     => (int)($settings['chap_heading_size']     ?? 9),  /* unitless, CSS uses calc(val * 0.1rem) */
+    '--chap-body-size'        => (int)($settings['chap_body_size']        ?? 10), /* unitless, CSS uses calc(val * 0.1rem) */
+    '--chap-footer-font'      => "'" . ($settings['chap_footer_font']     ?? 'monospace') . "', monospace",
+    '--chap-footer-size'      => (int)($settings['chap_footer_size']      ?? 7),  /* unitless, CSS uses calc(val * 0.1rem) */
+    '--chap-page-title-font'  => "'" . ($settings['chap_page_title_font'] ?? 'Cinzel') . "', Georgia, serif",
+    '--chap-page-title-size'  => (int)($settings['chap_page_title_size']  ?? 12), /* unitless, CSS uses calc(val * 0.1rem) */
+    '--chap-nav-font'         => "'" . ($settings['chap_nav_font']        ?? 'Cinzel') . "', Georgia, serif",
+    '--chap-nav-size'         => (int)($settings['chap_nav_size']         ?? 7),  /* unitless, CSS uses calc(val * 0.1rem) */
+    '--chap-nav-color'        => $settings['chap_nav_color']              ?? '#d4d4d4',
 ];
 
 $scratch_prob = [
@@ -128,10 +133,12 @@ $scratch_prob = [
 // ── Dynamic font loading ──────────────────────────────────────────────────────
 require_once dirname(__DIR__, 2) . '/core/font-loader.php';
 snapsmack_emit_font_tags([
-    $settings['chap_title_font']   ?? 'Cinzel',
-    $settings['chap_heading_font'] ?? 'Cinzel',
-    $settings['chap_body_font']    ?? 'Cormorant Garamond',
-    $settings['chap_footer_font']  ?? '',
+    $settings['chap_title_font']      ?? 'Cinzel',
+    $settings['chap_heading_font']    ?? 'Cinzel',
+    $settings['chap_body_font']       ?? 'Cormorant Garamond',
+    $settings['chap_footer_font']     ?? '',
+    $settings['chap_page_title_font'] ?? '',
+    $settings['chap_nav_font']        ?? '',
 ], BASE_URL);
 ?>
 

@@ -293,6 +293,7 @@ include 'core/sidebar.php';
             <a href="smack-multisite-stats.php"        class="btn-clear">STATS</a>
             <a href="smack-multisite-crosspost.php"    class="btn-clear">CROSS-POST</a>
             <a href="smack-multisite-blogroll.php"     class="btn-clear active">BLOGROLL</a>
+            <a href="smack-multisite-settings.php"    class="btn-clear">SETTINGS</a>
             <span class="sep">|</span>
             <a href="?mode=push" class="btn-clear <?php echo $mode === 'push' ? 'active' : ''; ?>">PUSH</a>
             <a href="?mode=pull" class="btn-clear <?php echo $mode === 'pull' ? 'active' : ''; ?>">PULL</a>

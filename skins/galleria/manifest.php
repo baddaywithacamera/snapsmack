@@ -14,7 +14,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name' => 'Galleria',
-    'version' => '1.3',
+    'version' => '1.3.0',
     'author' => 'Sean McCormick',
     'support' => 'sean@baddaywithacamera.ca',
     'description' => 'Gallery skin with photorealistic CSS picture frames, configurable matting, bevels, and wood grain. Slider landing, framed archive grid, and filmstrip navigation. All aspect ratios supported.',

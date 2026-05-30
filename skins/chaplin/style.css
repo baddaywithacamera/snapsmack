@@ -30,7 +30,12 @@
   --chap-title-font:        'Cinzel', Georgia, serif;
   --chap-heading-font:      'Cinzel', Georgia, serif;
   --chap-body-font:         'Cormorant Garamond', Georgia, serif;
-  --chap-title-size:        1.1rem;
+  --chap-title-size:        11; /* unitless — consumed via calc(val * 0.1rem) */
+  --chap-page-title-font:   var(--chap-heading-font);
+  --chap-page-title-size:   12;
+  --chap-nav-font:          var(--chap-heading-font);
+  --chap-nav-size:          7;
+  --chap-nav-color:         #d4d4d4;
   --chap-grain-opacity:     0.04;
 
   /* ── Ornaments: sizes emitted by skin-header.php (per active style) ─────── */
@@ -123,7 +128,7 @@ html {
 
 body {
   font-family: var(--chap-body-font);
-  font-size: var(--chap-body-size, var(--font-scale-base));
+  font-size: calc(var(--chap-body-size, 10) * 0.1rem);
   line-height: 1.7;
   color: var(--chap-ink);
   background-color: var(--chap-bg);
@@ -219,7 +224,7 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
 
 .rg-masthead {
   font-family: var(--chap-title-font);
-  font-size: var(--chap-title-size);
+  font-size: calc(var(--chap-title-size, 11) * 0.1rem);
   font-weight: 900;
   color: var(--chap-ink);
   letter-spacing: 0.25em;
@@ -254,9 +259,10 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
 
 .rg-header-nav a,
 .rg-header-nav .nav-menu a {
-  font-family: var(--chap-heading-font);
-  font-size: 0.7rem;
+  font-family: var(--chap-nav-font, var(--chap-heading-font));
+  font-size: calc(var(--chap-nav-size, 7) * 0.1rem);
   font-weight: 600;
+  color: var(--chap-nav-color, var(--chap-ink));
   text-transform: uppercase;
   letter-spacing: 0.15em;
   color: var(--chap-ink);
@@ -655,7 +661,7 @@ body:not(.archive-page):not(.static-transmission) .chap-img-frame .post-image {
 
 .chap-info-title {
   font-family: var(--chap-heading-font);
-  font-size: calc(var(--chap-heading-size, 0.9rem) * 1.4);
+  font-size: calc(var(--chap-heading-size, 9) * 0.14rem);
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--chap-ink);
@@ -674,7 +680,7 @@ body:not(.archive-page):not(.static-transmission) .chap-img-frame .post-image {
 
 .chap-description {
   font-family: var(--chap-body-font);
-  font-size: var(--chap-body-size, 1.05rem);
+  font-size: calc(var(--chap-body-size, 10) * 0.1rem);
   line-height: 1.8;
   color: var(--chap-ink);
   margin-bottom: 1.5rem;
@@ -774,7 +780,7 @@ body:not(.archive-page):not(.static-transmission) .chap-img-frame .post-image {
 
 .chap-intertitle-title {
   font-family: var(--chap-heading-font);
-  font-size: var(--chap-heading-size, 0.9rem);
+  font-size: calc(var(--chap-heading-size, 9) * 0.1rem);
   font-weight: 600;
   letter-spacing: 0.2em;
   color: var(--chap-ink);
@@ -1027,6 +1033,7 @@ body.archive-page #scroll-stage {
   display: block;
   text-decoration: none;
   color: inherit;
+  min-width: 0; /* prevent grid column blowout from content minimum size */
   background-color: transparent;
 }
 
@@ -1157,8 +1164,8 @@ body.static-transmission #scroll-stage {
 }
 
 .static-page-title {
-  font-family: var(--chap-title-font);
-  font-size: 1.2rem;
+  font-family: var(--chap-page-title-font, var(--chap-heading-font));
+  font-size: calc(var(--chap-page-title-size, 12) * 0.1rem);
   font-weight: 700;
   letter-spacing: 0.25em;
   text-transform: uppercase;
@@ -1170,7 +1177,7 @@ body.static-transmission #scroll-stage {
 
 .static-content .description {
   font-family: var(--chap-body-font);
-  font-size: 1.05rem;
+  font-size: calc(var(--chap-body-size, 10) * 0.1rem);
   line-height: 2;
   color: var(--chap-ink-dim);
 }
@@ -1274,7 +1281,7 @@ body.static-transmission #scroll-stage {
 
 .blogroll-peer-desc {
   font-family: var(--chap-body-font);
-  font-size: 0.95rem;
+  font-size: calc(var(--chap-body-size, 10) * 0.1rem);
   color: var(--chap-ink-dim);
   line-height: 1.7;
   margin: 0 0 0.5em 0;
@@ -1311,7 +1318,7 @@ body.static-transmission #system-footer {
   max-width: 95%;
   margin: 0 auto;
   font-family: var(--chap-footer-font, monospace);
-  font-size: var(--chap-footer-size, 0.7rem);
+  font-size: calc(var(--chap-footer-size, 7) * 0.1rem);
   text-transform: uppercase;
   letter-spacing: 1.5px;
   color: var(--chap-ink-muted);
@@ -1319,7 +1326,7 @@ body.static-transmission #system-footer {
 
 #system-footer p {
   color: var(--chap-ink-muted);
-  font-size: var(--chap-footer-size, 0.7rem);
+  font-size: calc(var(--chap-footer-size, 7) * 0.1rem);
   text-transform: uppercase;
   letter-spacing: 1.5px;
   line-height: 1.7;
@@ -1460,7 +1467,7 @@ input[type="reset"]:hover {
 @media (max-width: 768px) {
   :root {
     --header-height:    50px;
-    --chap-title-size:  0.9rem;
+    --chap-title-size:  9; /* unitless, matches ×0.1rem scale */
     --grid-cols:        2;
   }
 

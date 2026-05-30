@@ -175,7 +175,9 @@ function updater_fetch_release_info(bool $fast = false): array {
     // $fast = true: called from JS-driven AJAX loop — single short attempt so the
     // PHP process doesn't block for 40+ seconds while the browser shows a spinner.
     // JS drives retries; PHP just needs to fail fast so the next retry can fire.
-    $json = $fast ? _updater_http_get($url, 6, 1) : _updater_http_get($url);
+    // 12s fast timeout: JS AbortController allows 15s, so this fits comfortably.
+    // Servers with slow outbound HTTPS (e.g. behind NAT/Proxmox) need the headroom.
+    $json = $fast ? _updater_http_get($url, 12, 1) : _updater_http_get($url, 30, 3);
     if ($json === false) {
         return ['error' => 'Could not reach the update server. Check your internet connection.'];
     }
