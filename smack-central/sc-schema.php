@@ -64,18 +64,24 @@ function sc_schema_parse(string $path): array|false {
 
     $tables = [];
 
-    // Match each CREATE TABLE block up to the ENGINE= line
-    preg_match_all(
-        '/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?(\w+)`?\s*\((.+?)\)\s*ENGINE\s*=[^;]+;/si',
-        $sql,
-        $matches,
-        PREG_SET_ORDER
-    );
+    // Split into individual statements first to prevent cross-statement regex
+    // matching (DOTALL non-greedy can bleed through INSERT/other statements
+    // that appear between CREATE TABLE blocks).
+    $statements = preg_split('/;\s*\n/', $sql);
 
-    foreach ($matches as $m) {
+    foreach ($statements as $stmt) {
+        $stmt = trim($stmt);
+        if (!preg_match(
+            '/^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?(\w+)`?\s*\((.+)\)\s*ENGINE\s*=[^;]*/si',
+            $stmt,
+            $m
+        )) {
+            continue;
+        }
+
         $name = $m[1];
         $body = $m[2];
-        $full = $m[0];
+        $full = $stmt . ';';
 
         $columns = [];
         foreach (explode("\n", $body) as $raw_line) {

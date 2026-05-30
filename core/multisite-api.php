@@ -1152,6 +1152,32 @@ if ($resource === 'smackback' && $sub_action === 'report' && $method === 'POST')
     ms_ok(['received' => true, 'breach_count' => $breach_count]);
 }
 
-// Fell through — unknown endpoint
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/skins/reinstall
+// Hub instructs this spoke to download and (re)install a skin from the registry.
+// Hub role required. Body: {"skin_slug":"chaplin","download_url":"https://...","signature":"..."}
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'skins' && $sub_action === 'reinstall' && $method === 'POST') {
+    if ($node['role'] !== 'hub') ms_err('Only a hub may install skins on this spoke', 403);
+
+    $body         = json_decode(file_get_contents('php://input'), true) ?? [];
+    $slug         = trim($body['skin_slug']    ?? '');
+    $download_url = trim($body['download_url'] ?? '');
+    $signature    = trim($body['signature']    ?? '');
+
+    if (!$slug || !$download_url)                         ms_err('skin_slug and download_url required');
+    if (!preg_match('/^[a-zA-Z0-9_-]+$/', $slug))        ms_err('Invalid skin slug');
+    if (!filter_var($download_url, FILTER_VALIDATE_URL))  ms_err('Invalid download_url');
+
+    require_once __DIR__ . '/skin-registry.php';
+
+    $public_key = $settings['update_public_key'] ?? '';
+    $result     = skin_registry_install($slug, $download_url, $signature, $public_key);
+
+    if ($result['success']) ms_ok(['skin' => $slug, 'message' => $result['message']]);
+    ms_err($result['message']);
+}
+
+// Fell through -- unknown endpoint
 ms_err('Unknown multisite endpoint', 404);
 // ===== SNAPSMACK EOF =====

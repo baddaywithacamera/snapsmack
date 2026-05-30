@@ -264,11 +264,14 @@ if (file_exists($skin_manifest_path)) {
                 . '?v=' . SNAPSMACK_VERSION_SHORT . '">' . "\n";
         }
     }
+    $_skin_css_version = SNAPSMACK_VERSION_SHORT . (!empty($_skin_mf['version']) ? '-' . $_skin_mf['version'] : '');
     unset($_skin_mf, $_inventory, $_handle, $_entry);
+} else {
+    $_skin_css_version = SNAPSMACK_VERSION_SHORT;
 }
 ?>
 
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>skins/<?php echo $active_skin ?? '50-shades-of-noah-grey'; ?>/style.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>skins/<?php echo $active_skin ?? '50-shades-of-noah-grey'; ?>/style.css?v=<?php echo $_skin_css_version; ?>">
 
 <?php
 /**
