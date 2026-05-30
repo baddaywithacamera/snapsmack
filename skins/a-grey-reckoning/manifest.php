@@ -25,7 +25,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'          => 'A Grey Reckoning',
-    'version'       => '1.3',
+    'version'       => '1.3.0',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'A quiet, reverent photoblog skin inspired by the 2006-era photography websites of Noah Grey. Dark backgrounds, thin borders, small-caps navigation, and nothing between the viewer and the photograph.',

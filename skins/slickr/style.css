@@ -1,0 +1,270 @@
+/**
+ * SnapSmack Slickr Skin - Main Stylesheet
+ * Spec v0.1 — Clean, system-serif free Flickr visual idiom clone.
+ * * @author Sean McCormick
+ */
+
+/* ============================================================================
+   GLOBAL TOKENS & SYSTEM PROPERTIES
+   ========================================================================== */
+
+:root {
+  /* Palette Idiom */
+  --sl-bg: #ffffff;
+  --sl-solo-bg: #1a1a1a;
+  --sl-text-primary: #222222;
+  --sl-text-secondary: #888888;
+  --sl-link: #0063dc;
+  --sl-link-hover: #004baf;
+
+  /* Typography Stack */
+  --sl-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  /* Layout Boundaries */
+  --justified-gap: 4px;
+  --justified-row-height: 240px;
+}
+
+/* ============================================================================
+   RESET & VIEWPORT TYPOGRAPHY
+   ========================================================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--sl-bg);
+  color: var(--sl-text-primary);
+  font-family: var(--sl-font-stack);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--sl-link);
+  text-decoration: none;
+  transition: color 0.1s ease;
+}
+
+a:hover {
+  color: var(--sl-link-hover);
+  text-decoration: none; /* Flickr convention: no underline on hover */
+}
+
+/* ============================================================================
+   CHROME REGION — NAVIGATION & CORE HEADER
+   ========================================================================== */
+
+#rg-header {
+  position: static; /* Unlock view; let the masonry run edge-to-edge naturally */
+  width: 100%;
+  height: auto;
+  padding: 20px 24px;
+  background-color: var(--sl-bg);
+  border-bottom: 1px solid #eeeeee;
+}
+
+.rg-header-inside {
+  max-width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rg-masthead {
+  font-family: var(--sl-font-stack);
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--sl-text-primary);
+  letter-spacing: -0.5px;
+}
+
+/* ============================================================================
+   PERSISTENT CHROME SORTER & INDICATORS
+   ========================================================================== */
+
+.sl-sorter-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  background: #f3f5f6;
+  border-bottom: 1px solid #e1e4e6;
+  font-size: 13px;
+  color: var(--sl-text-secondary);
+}
+
+/* Side-by-Side Tilted Diamonds Indicator Icon */
+.sl-idiom-icon {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.sl-diamond-pink,
+.sl-diamond-blue {
+  width: 8px;
+  height: 8px;
+  transform: rotate(45deg);
+}
+
+.sl-diamond-pink {
+  background-color: #ff0084;
+}
+
+.sl-diamond-blue {
+  background-color: #0063dc;
+}
+
+/* ============================================================================
+   ARCHIVE DISPLAY MODES (MASONRY & THUMBS)
+   ========================================================================== */
+
+#justified-grid {
+  width: 100%;
+  padding: var(--justified-gap) !important;
+  margin: 0 auto;
+}
+
+.justified-item {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Calm, un-cluttered metadata grid overlay */
+.justified-item::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0) 60%, rgba(0,0,0,0.7) 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.justified-item:hover::after {
+  opacity: 1;
+}
+
+/* Cropped layout fallback style matching Slickr standard dimensions */
+.rg-archive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  padding: 24px;
+}
+
+/* ============================================================================
+   SINGLE FOCUS VIEW (SLICKR FLOW)
+   ========================================================================== */
+
+.rg-single {
+  display: block;
+}
+
+#rg-photobox {
+  background-color: var(--sl-solo-bg);
+  padding: 40px 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  max-height: 85vh;
+  width: 100%;
+}
+
+.rg-image.post-image {
+  max-width: 100%;
+  max-height: 80vh;
+  height: auto;
+  width: auto;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+/* Core Split Layout Below Fold */
+.sl-focus-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 48px;
+}
+
+@media (max-width: 900px) {
+  .sl-focus-container {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}
+
+/* Left Metadata Column */
+.sl-main-column h1 {
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--sl-text-primary);
+  margin-bottom: 4px;
+}
+
+.sl-byline {
+  font-size: 13px;
+  color: var(--sl-text-secondary);
+  margin-bottom: 24px;
+}
+
+/* Right Metadata Sidebar */
+.sl-sidebar {
+  font-size: 14px;
+}
+
+.sl-sidebar-block {
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.sl-sidebar-block h4 {
+  font-size: 13px;
+  color: var(--sl-text-secondary);
+  text-transform: lowercase; /* Flickr style metadata rules */
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+/* ============================================================================
+   ALBUMS VIEW MODE
+   ========================================================================== */
+
+.sl-album-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+@media (max-width: 1024px) { .sl-album-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .sl-album-grid { grid-template-columns: 1fr; } }
+
+.sl-album-cover {
+  aspect-ratio: 1;
+  background-color: #eee;
+  border: 1px solid #ddd;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.sl-album-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* SNAPSMACK EOF ========================================================== */

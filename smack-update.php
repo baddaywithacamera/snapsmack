@@ -1066,7 +1066,33 @@ if ($action === 'stage_migrate'
 
         $flash_msg  = "UPDATE COMPLETE. NOW RUNNING v{$update['version']}.";
         $flash_type = 'success';
-        $cached_result = null;
+
+        // Write up_to_date to DB cache and hydrate page vars now, on this POST render.
+        // The GET-only block at line ~424 can't fire on this same request, so we do it here.
+        // Without this, $cached_result = null causes the render to show "COULD NOT REACH
+        // UPDATE SERVER" even though the update succeeded — the bug Sean reported 14 times.
+        $cached_result = [
+            'checked_at'          => date('c'),
+            'installed_version'   => $update['version'],
+            'core_status'         => 'up_to_date',
+            'core_update'         => null,
+            'new_skins'           => [],
+            'updated_skins'       => [],
+            'skin_notifications'  => 0,
+            'total_notifications' => 0,
+        ];
+        try {
+            $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('update_check_result', ?)
+                           ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+                ->execute([json_encode($cached_result, JSON_UNESCAPED_SLASHES)]);
+            $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('last_update_check', ?)
+                           ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+                ->execute([date('Y-m-d H:i:s')]);
+            $last_check  = date('Y-m-d H:i:s');
+        } catch (PDOException $e) { /* non-fatal — page still renders correctly */ }
+        $core_status = 'up_to_date';
+        $core_update = null;
+        $skin_info   = ['new_skins' => [], 'updated_skins' => [], 'total_notifications' => 0];
 
         if ($wants_json) {
             header('Content-Type: application/json');
@@ -1828,6 +1854,7 @@ include 'core/sidebar.php';
             var cancelled   = false;
             var retryTimer  = null;
             var ctrl        = null;
+            var justUpdated = <?php echo !empty($complete_log) ? 'true' : 'false'; ?>;
 
             // Action bar inserted below the status message
             var actions = document.createElement('div');
@@ -1909,21 +1936,25 @@ include 'core/sidebar.php';
                         showWaiting('— CHECK FAILED', 'Retrying in ' + (retryDelay[attempt] / 1000) + 's…');
                         retryTimer = setTimeout(doCheck, retryDelay[attempt]);
                     } else {
-                        badge.className   = 'update-status-badge status-error';
-                        badge.textContent = '✗ COULD NOT REACH UPDATE SERVER';
-                        msg.textContent   = 'Check your server’s outbound HTTPS connection to snapsmack.ca.';
+                        badge.className   = ‘update-status-badge ‘ + (justUpdated ? ‘status-warn’ : ‘status-error’);
+                        badge.textContent = justUpdated ? ‘— UPDATE SERVER UNREACHABLE’ : ‘✗ COULD NOT REACH UPDATE SERVER’;
+                        msg.textContent   = justUpdated
+                            ? ‘Your installation was updated successfully. The post-update connectivity check failed — this is harmless. Click Retry Check when your connection settles.’
+                            : ‘Check your server\’s outbound HTTPS connection to snapsmack.ca.’;
                         showRetry();
                     }
                 }).catch(function() {
                     clearTimeout(timer);
                     if (cancelled) return;
                     if (attempt < maxAttempts) {
-                        showWaiting('— TIMED OUT', 'No response — retrying in ' + (retryDelay[attempt] / 1000) + 's…');
+                        showWaiting(‘— TIMED OUT’, ‘No response — retrying in ‘ + (retryDelay[attempt] / 1000) + ‘s…’);
                         retryTimer = setTimeout(doCheck, retryDelay[attempt]);
                     } else {
-                        badge.className   = 'update-status-badge status-error';
-                        badge.textContent = '✗ CHECK TIMED OUT';
-                        msg.textContent   = 'No response after ' + maxAttempts + ' attempts.';
+                        badge.className   = ‘update-status-badge ‘ + (justUpdated ? ‘status-warn’ : ‘status-error’);
+                        badge.textContent = justUpdated ? ‘— UPDATE SERVER UNREACHABLE’ : ‘✗ CHECK TIMED OUT’;
+                        msg.textContent   = justUpdated
+                            ? ‘Your installation was updated successfully. The post-update connectivity check failed — this is harmless. Click Retry Check when your connection settles.’
+                            : ‘No response after ‘ + maxAttempts + ‘ attempts.’;
                         showRetry();
                     }
                 });

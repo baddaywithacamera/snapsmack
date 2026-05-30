@@ -734,6 +734,7 @@ include 'core/sidebar.php';
                 <a href="smack-multisite-stats.php"       class="btn-clear">STATS</a>
                 <a href="smack-multisite-crosspost.php"   class="btn-clear">CROSS-POST</a>
                 <a href="smack-multisite-blogroll.php"    class="btn-clear">BLOGROLL</a>
+                <a href="smack-multisite-settings.php"   class="btn-clear">SETTINGS</a>
             </div>
         </div>
 
@@ -943,13 +944,14 @@ include 'core/sidebar.php';
                                         ?>
                                     </td>
                                     <td class="col-center" id="spoke-act-<?php echo $n['id']; ?>">
+                                        <div class="spoke-act-wrap">
                                         <?php if ($n['status'] === 'active'): ?>
                                             <a href="smack-multisite-sso.php?sat=<?php echo $n['id']; ?>"
                                                target="_blank"
                                                class="action-authorize"
                                                title="Open spoke admin as primary admin user">REMOTE LOGIN</a>
                                         <?php else: ?>
-                                            <form method="POST" style="display:inline;">
+                                            <form method="POST">
                                             <input type="hidden" name="ping_id" value="<?php echo $n['id']; ?>">
                                             <button type="submit" name="ping" class="action-view" title="Manually ping this spoke">PING</button>
                                         </form>
@@ -958,13 +960,13 @@ include 'core/sidebar.php';
                                             $spoke_ver_action = $n['software_version'] ?? '';
                                             if ($n['status'] === 'active' && $spoke_ver_action && snap_version_compare(SNAPSMACK_VERSION_SHORT, $spoke_ver_action, '>')):
                                         ?>
-                                            <form method="POST" class="spoke-update-form" data-spoke-id="<?php echo $n['id']; ?>" data-spoke-name="<?php echo htmlspecialchars($n['site_name'] ?? $n['site_url']); ?>" style="display:inline;">
+                                            <form method="POST" class="spoke-update-form" data-spoke-id="<?php echo $n['id']; ?>" data-spoke-name="<?php echo htmlspecialchars($n['site_name'] ?? $n['site_url']); ?>">
                                                 <input type="hidden" name="spoke_id" value="<?php echo $n['id']; ?>">
                                                 <button type="submit" name="push_update" class="action-update" title="Push update to this spoke">UPDATE</button>
                                             </form>
                                         <?php endif; ?>
                                         <?php if ($n['status'] === 'active'): ?>
-                                            <form method="POST" style="display:inline;">
+                                            <form method="POST">
                                                 <input type="hidden" name="spoke_id" value="<?php echo $n['id']; ?>">
                                                 <input type="hidden" name="maintenance_mode" value="<?php echo $in_maintenance ? '0' : '1'; ?>">
                                                 <button type="submit" name="push_maintenance"
@@ -975,10 +977,11 @@ include 'core/sidebar.php';
                                                 </button>
                                             </form>
                                         <?php endif; ?>
-                                        <form method="POST" style="display:inline;" onsubmit="return confirm('Disconnect this spoke?');">
+                                        <form method="POST" onsubmit="return confirm('Disconnect this spoke?');">
                                             <input type="hidden" name="disconnect" value="<?php echo $n['id']; ?>">
                                             <button type="submit" class="action-delete">DISCONNECT</button>
                                         </form>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -1193,6 +1196,15 @@ include 'core/sidebar.php';
 .smackback-breach { background:#7a1a1a; color:#ffaaaa; }
 .smackback-clean  { background:#1a4a2a; color:#88ffaa; }
 .smackback-unknown { color:var(--text-muted,#888); }
+
+/* Action column — keep buttons in a stable flex row so they line up across all spoke rows */
+.spoke-act-wrap { display:flex; align-items:center; justify-content:flex-end; gap:6px; white-space:nowrap; }
+.spoke-act-wrap form { display:contents; } /* form is transparent to flex layout */
+.spoke-act-wrap .action-authorize { min-width:105px; text-align:center; }
+.spoke-act-wrap .action-view,
+.spoke-act-wrap .action-warning   { min-width:82px;  text-align:center; }
+.spoke-act-wrap .action-delete    { min-width:95px;  text-align:center; }
+.spoke-act-wrap .action-update    { min-width:72px;  text-align:center; }
 </style>
 
 <?php include 'core/admin-footer.php'; ?>

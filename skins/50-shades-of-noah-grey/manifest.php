@@ -22,7 +22,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'          => '50 Shades of Noah Grey',
-    'version'       => '1.4',
+    'version'       => '1.4.0',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Pure greyscale photography skin. Three monochrome variants with zero colour accents.',

@@ -34,7 +34,7 @@ if (empty($vintage_fonts)) $vintage_fonts = $all_fonts;
 
 return [
     'name'        => 'Chaplin',
-    'version'     => '0.2.8',
+    'version'     => '0.2.9',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Silent-film era. Near-black canvas, B&W photo treatment, Art Deco border system with ornament placement, animated film effects. Full-screen intertitle overlay for info and signals.',
@@ -300,7 +300,7 @@ return [
         'chap_title_font' => [
             'section'        => 'TYPOGRAPHY',
             'type'           => 'select',
-            'label'          => 'Site Title / Nav Font',
+            'label'          => 'Masthead Font',
             'default'        => 'Cinzel',
             'options'        => $vintage_fonts,
             'selector'       => ':root',
@@ -315,8 +315,8 @@ return [
             'default'  => '11',
             'min'      => '6',
             'max'      => '30',
-            'selector' => '',
-            'property' => '',
+            'selector' => ':root',
+            'property' => '--chap-title-size',
         ],
         'chap_title_case' => [
             'section'  => 'TYPOGRAPHY',
@@ -350,8 +350,8 @@ return [
             'default'  => '9',
             'min'      => '6',
             'max'      => '24',
-            'selector' => '',
-            'property' => '',
+            'selector' => ':root',
+            'property' => '--chap-heading-size',
         ],
         'chap_body_font' => [
             'section'        => 'TYPOGRAPHY',
@@ -371,8 +371,8 @@ return [
             'default'  => '10',
             'min'      => '8',
             'max'      => '16',
-            'selector' => '',
-            'property' => '',
+            'selector' => ':root',
+            'property' => '--chap-body-size',
         ],
         'chap_footer_font' => [
             'section'        => 'TYPOGRAPHY',
@@ -392,8 +392,65 @@ return [
             'default'  => '7',
             'min'      => '5',
             'max'      => '14',
-            'selector' => '',
-            'property' => '',
+            'selector' => ':root',
+            'property' => '--chap-footer-size',
+        ],
+
+        // ── PAGE TITLE ───────────────────────────────────────────────────────
+        // Controls h1 on static pages (blogroll, archive, contact, etc.).
+        // Separate from the masthead — see naming convention in continuity notes.
+        'chap_page_title_font' => [
+            'section'        => 'TYPOGRAPHY',
+            'type'           => 'select',
+            'label'          => 'Page Title Font',
+            'default'        => 'Cinzel',
+            'options'        => $vintage_fonts,
+            'selector'       => ':root',
+            'property'       => '--chap-page-title-font',
+            'is_font'        => true,
+            'no_size_slider' => true,
+        ],
+        'chap_page_title_size' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'range',
+            'label'    => 'Page Title Size (×0.1rem)',
+            'default'  => '12',
+            'min'      => '8',
+            'max'      => '24',
+            'selector' => ':root',
+            'property' => '--chap-page-title-size',
+        ],
+
+        // ── NAV ───────────────────────────────────────────────────────────────
+        'chap_nav_font' => [
+            'section'        => 'TYPOGRAPHY',
+            'type'           => 'select',
+            'label'          => 'Nav Font',
+            'default'        => 'Cinzel',
+            'options'        => $vintage_fonts,
+            'selector'       => ':root',
+            'property'       => '--chap-nav-font',
+            'is_font'        => true,
+            'no_size_slider' => true,
+        ],
+        'chap_nav_size' => [
+            'section'  => 'TYPOGRAPHY',
+            'type'     => 'range',
+            'label'    => 'Nav Size (×0.1rem)',
+            'default'  => '7',
+            'min'      => '5',
+            'max'      => '12',
+            'selector' => ':root',
+            'property' => '--chap-nav-size',
+        ],
+        'chap_nav_color' => [
+            'section'       => 'TYPOGRAPHY',
+            'type'          => 'color',
+            'label'         => 'Nav Color',
+            'default'       => '#d4d4d4',
+            'selector'      => ':root',
+            'property'      => '--chap-nav-color',
+            'is_greyscale'  => true,
         ],
 
         // ── PRESETS ───────────────────────────────────────────────────────────

@@ -14,7 +14,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name' => '52 Card Pickup',
-    'version' => '1.3',
+    'version' => '1.3.0',
     'author' => 'Sean McCormick',
     'support' => 'sean@baddaywithacamera.ca',
     'description' => 'Randomised photo pile skin. Throws a configurable number of images onto the screen like prints tossed on a table. Four frame styles (Polaroid, standard print, borderless, slide mount), reshuffle to load a fresh set, and hover-to-lift interaction. Named for the card trick where someone throws a deck on the floor.',

@@ -23,7 +23,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'          => 'Kiosk',
-    'version'       => '0.3',
+    'version'       => '0.3.0',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'What is black and white and read all over? Blogs, motherfucker! Also this skin, except we mean red too. Well, both. Shut up.',

@@ -1178,6 +1178,47 @@ if ($resource === 'skins' && $sub_action === 'reinstall' && $method === 'POST') 
     ms_err($result['message']);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/settings/push
+// Hub pushes a set of site settings to this spoke. Only keys on the explicit
+// allowlist below are accepted — the hub cannot write arbitrary settings.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
+    if ($node['role'] !== 'hub') ms_err('Only a hub can push settings', 403);
+
+    // Explicit allowlist — keep this narrow.
+    $allowed_keys = [
+        'timezone', 'date_format',
+        'akismet_key',
+        'ai_training_policy',
+        'smackback_enabled', 'smackback_mode',
+        'global_comments_enabled',
+        'site_email',
+        'download_link_required', 'download_default_mode',
+    ];
+
+    $pairs_raw = trim($_POST['settings'] ?? '');
+    $pairs     = json_decode($pairs_raw, true);
+    if (!is_array($pairs) || empty($pairs)) ms_err('settings must be a non-empty JSON object');
+
+    $applied = [];
+    $skipped = [];
+    $upsert  = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
+                               ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)");
+
+    foreach ($pairs as $key => $val) {
+        $key = (string)$key;
+        if (!in_array($key, $allowed_keys, true)) {
+            $skipped[] = $key;
+            continue;
+        }
+        $upsert->execute([$key, (string)$val]);
+        $applied[] = $key;
+    }
+
+    ms_ok(['applied' => $applied, 'skipped' => $skipped]);
+}
+
 // Fell through -- unknown endpoint
 ms_err('Unknown multisite endpoint', 404);
 // ===== SNAPSMACK EOF =====

@@ -23,7 +23,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'          => 'New Horizon',
-    'version'       => '1.3',
+    'version'       => '1.3.0',
     'author'        => 'Sean McCormick',
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'High-contrast photography skin with archival framing, tactical layout controls, and full JS library support. Light and dark variants.',
