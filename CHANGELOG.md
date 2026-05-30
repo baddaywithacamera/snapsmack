@@ -12,6 +12,23 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.186 — "Barcalounger" (2026-05-30)
+
+### Added
+- **`smack-schema.php`** — Spoke admin database schema sync tool. Diffs live snap_* database against `snapsmack_canonical.sql`, shows missing tables and columns, applies `ALTER TABLE / CREATE TABLE` with one click. Fixes the gap where canonical schema sync was SC-only and couldn't reach spoke databases.
+- **`migrations/migrate-collection-items-polymorphic.sql`** — Adds `item_type`, `item_id`, `sort_order` columns to `snap_collection_items`. Fixes 500 error on `smack-edit.php` for all installs upgraded from pre-polymorphic schema.
+
+### Changed
+- **Chaplin film engine** (`ss-engine-chaplin-film.js`): Scratches now drawn in segments with per-frame lateral drift and per-segment wobble — behave like real film scratches. Dust spots added (brief white specks, occasional clusters). Hairs added (rare curved dark strands, quadratic bezier, 15–50 frame life).
+- **Multisite management**: Maintenance mode button now shows current state (MAINT ON / MAINT OFF) rather than the action, eliminating the inverted-label confusion.
+- **`database/schema/snapsmack_canonical.sql`**: `snap_collection_items` updated to polymorphic structure.
+
+### Fixed
+- CSS custom property values were being passed through `htmlspecialchars()` in Chaplin `skin-header.php`, encoding single quotes in font-family names to `&#039;` — breaking all font selections on the live site.
+- Chaplin archive grid column count slider had no effect — `--grid-cols` was applied by admin JS preview only, never emitted server-side. Now emitted in `$css_vars`.
+
+---
+
 ## 0.7.185 — "Barcalounger" (2026-05-29)
 
 ### Added
