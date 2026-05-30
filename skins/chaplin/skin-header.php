@@ -99,6 +99,7 @@ $css_vars = [
     '--header-height'          => ($settings['chap_header_height']      ?? '56') . 'px',
     '--chap-archive-gap'       => ($settings['chap_archive_gap']        ?? '20') . 'px',
     '--chap-archive-max-width' => ($settings['chap_archive_max_width']  ?? '1400') . 'px',
+    '--grid-cols'              => ($settings['chap_archive_cols']        ?? '4'),
     // Bottom chrome height = infobox(50) [+ intertitle(71) if shown below photo].
     // System footer is hidden on single view — do NOT include its 40px here.
     '--chap-bottom-chrome'    => ($title_pos === 'below_photo') ? '121px' : '50px',
