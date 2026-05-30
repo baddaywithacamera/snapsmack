@@ -138,7 +138,7 @@ snapsmack_emit_font_tags([
 <style>
 :root {
 <?php foreach ($css_vars as $var => $val): ?>
-    <?php echo $var; ?>: <?php echo htmlspecialchars($val); ?>;
+    <?php echo $var; ?>: <?php echo $val; ?>;
 <?php endforeach; ?>
 }
 
