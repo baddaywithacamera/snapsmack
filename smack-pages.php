@@ -93,7 +93,6 @@ if (isset($_POST['save_page'])) {
     // Convert plain text to HTML before storing.
     $content = smack_autop($_POST['content']);
     $asset        = $_POST['image_asset'];
-    $order        = (int)$_POST['menu_order'];
     $raw_size     = $_POST['image_size']  ?? 'full';
     $raw_align    = $_POST['image_align'] ?? 'center';
     $image_size   = in_array($raw_size,  ['full','medium','small'])  ? $raw_size  : 'full';
@@ -101,11 +100,11 @@ if (isset($_POST['save_page'])) {
     $image_shadow = ($_POST['image_shadow'] ?? '0') === '1' ? 1 : 0;
 
     if ($id) {
-        $stmt = $pdo->prepare("UPDATE snap_pages SET title = ?, slug = ?, content = ?, image_asset = ?, menu_order = ?, image_size = ?, image_align = ?, image_shadow = ? WHERE id = ?");
-        $stmt->execute([$title, $slug, $content, $asset, $order, $image_size, $image_align, $image_shadow, $id]);
+        $stmt = $pdo->prepare("UPDATE snap_pages SET title = ?, slug = ?, content = ?, image_asset = ?, image_size = ?, image_align = ?, image_shadow = ? WHERE id = ?");
+        $stmt->execute([$title, $slug, $content, $asset, $image_size, $image_align, $image_shadow, $id]);
     } else {
-        $stmt = $pdo->prepare("INSERT INTO snap_pages (title, slug, content, image_asset, menu_order, image_size, image_align, image_shadow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$title, $slug, $content, $asset, $order, $image_size, $image_align, $image_shadow]);
+        $stmt = $pdo->prepare("INSERT INTO snap_pages (title, slug, content, image_asset, image_size, image_align, image_shadow) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$title, $slug, $content, $asset, $image_size, $image_align, $image_shadow]);
     }
 
     $msg = "Static transmission synchronized. HTML hidden in interface.";
@@ -160,9 +159,6 @@ include 'core/sidebar.php';
 
             <label>Slug (URL Hook)</label>
             <input type="text" name="slug" value="<?php echo htmlspecialchars($edit_page['slug'] ?? ''); ?>" required>
-
-            <label>Menu Order (Lower numbers first)</label>
-            <input type="number" name="menu_order" value="<?php echo htmlspecialchars($edit_page['menu_order'] ?? '0'); ?>">
 
             <label>Main Header Image (Optional)</label>
             <div class="hero-picker-wrap">
@@ -266,7 +262,7 @@ include 'core/sidebar.php';
             <div class="recent-item">
                 <div class="item-text">
                     <div class="signal-sender">
-                        [<?php echo $p['menu_order']; ?>] <?php echo htmlspecialchars($p['title']); ?>
+                        <?php echo htmlspecialchars($p['title']); ?>
                         <span class="dim text-sm ml-10">/<?php echo htmlspecialchars($p['slug']); ?></span>
                     </div>
                 </div>
