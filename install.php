@@ -1384,7 +1384,7 @@ HTACCESS;
     $skin_fetch_warning = '';
     if (empty($errors)) {
         $install_mode_str = $_SESSION['site_mode'] ?? 'photoblog';
-        $manifest_url = 'https://snapsmack.ca/releases/skins/install-manifest.php?mode=' . urlencode($install_mode_str);
+        $manifest_url = 'https://snapsmack.ca/install-manifest.php?mode=' . urlencode($install_mode_str);
 
         $manifest_json = false;
         if (function_exists('curl_init')) {
