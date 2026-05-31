@@ -252,6 +252,10 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
     // the skin registry table in CLAUDE.md.
     $always_exclude = [
         'assets/fonts/',
+        // Skins no longer bundled — installer fetches mode-appropriate skins
+        // from snapsmack.ca at install time via releases/skins/install-manifest.php
+        'skins/50-shades-of-noah-grey/',
+        'skins/new-horizon/',
         // Skins NOT included in base release package
         'skins/52-card-pickup/',
         'skins/a-grey-reckoning/',
@@ -752,8 +756,9 @@ if ($action === 'build' && $preflight_ok) {
                 // Write site-version.php for snapsmack.ca promo site
                 $site_version_path = '/var/www/snapsmack.ca/includes/site-version.php';
                 $site_version_content = "<?php\n" .
-                    "define('SS_PROMO_VERSION',  '" . addslashes($version) . "');\n" .
-                    "define('SS_PROMO_CODENAME', '" . addslashes($codename) . "');\n" .
+                    "define('SS_PROMO_VERSION',     '" . addslashes($version) . "');   // BORING track — stable\n" .
+                    "define('SS_PROMO_DEV_VERSION', '');  // BITCHIN' track — updated by dev build\n" .
+                    "define('SS_PROMO_CODENAME',    '" . addslashes($codename) . "');\n" .
                     "// ===== SNAPSMACK EOF =====\n";
                 if (file_put_contents($site_version_path, $site_version_content) !== false) {
                     $build_log[] = "→ site-version.php written (v{$version})";
@@ -933,6 +938,19 @@ if ($action === 'build_dev' && $preflight_ok) {
                 $dev_json_path = rtrim(RELEASES_DIR, '/') . '/latest-dev.json';
                 file_put_contents($dev_json_path, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
                 $dev_build_log[] = "→ latest-dev.json written";
+
+                // Update SS_PROMO_DEV_VERSION in site-version.php
+                $sv_path = '/var/www/snapsmack.ca/includes/site-version.php';
+                if (file_exists($sv_path)) {
+                    $sv = file_get_contents($sv_path);
+                    $sv = preg_replace(
+                        "/define\('SS_PROMO_DEV_VERSION',\s*'[^']*'\)/",
+                        "define('SS_PROMO_DEV_VERSION', '" . addslashes($version_full) . "')",
+                        $sv
+                    );
+                    file_put_contents($sv_path, $sv);
+                    $dev_build_log[] = "→ site-version.php dev version updated ({$version_full})";
+                }
 
                 // Write dev build history record
                 try {

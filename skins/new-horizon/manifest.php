@@ -28,6 +28,7 @@ return [
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'High-contrast photography skin with archival framing, tactical layout controls, and full JS library support. Light and dark variants.',
     'status'        => 'stable',
+    'modes'         => ['photoblog', 'smacktalk'],
 
     'variants' => [
         'dark'  => 'Dark',

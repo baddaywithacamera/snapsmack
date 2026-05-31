@@ -24,7 +24,12 @@ All notable changes to SnapSmack are documented here. Newest release first.
 ### Changed
 - **Phone-home ping** (`core/updater.php`) — Stripped to install identity only: `uid`, `version`, `track`, `spoke_count`. Post counts, traffic, and site name removed entirely. Not appropriate to collect.
 - **SHARE STATS toggle removed** (`smack-settings.php`, `projects/snapsmack-ca/releases/ping.php`) — Setting and stat columns no longer sent or stored.
-- **install.php** — Step 1b heading updated.
+- **Skins no longer bundled in release zip** (`smack-central/sc-release.php`) — `50-shades-of-noah-grey` and `new-horizon` removed from the package. Installer fetches mode-appropriate skins at install time instead.
+- **Installer fetches skins at install time** (`install.php`) — Step 5 curls `snapsmack.ca/releases/skins/install-manifest.php` and installs the correct skins for the chosen mode. Mode 1 → new-horizon + 50-shades; Mode 2 → The Grid; Mode 3 → new-horizon (placeholder). Non-fatal if unreachable.
+- **install-manifest.php** (`projects/snapsmack-ca/releases/skins/install-manifest.php`) — New registry-driven endpoint. Reads `modes` from registry.json — no hardcoded mapping. Repackaging a skin updates what the installer fetches automatically.
+- **Skin Packager** (`smack-central/sc-skins.php`) — Now reads `modes` from skin manifests and writes to registry.json.
+- **Skin manifests** — `modes` field added to `new-horizon` (`photoblog`, `smacktalk`), `50-shades-of-noah-grey` (`photoblog`), and `the-grid` (`carousel`).
+- **install.php** — Step 1b heading updated. Default skin now set per install mode before DB seed.
 
 ## 0.7.189 — "Sit and Spin" (2026-05-30)
 

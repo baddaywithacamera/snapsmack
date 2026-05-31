@@ -27,6 +27,7 @@ return [
     'support'       => 'sean@baddaywithacamera.ca',
     'description'   => 'Pure greyscale photography skin. Three monochrome variants with zero colour accents.',
     'status'        => 'stable',
+    'modes'         => ['photoblog'],
 
     'features' => [
         'supports_wall'        => true,
