@@ -22,6 +22,28 @@
 $installer_version       = '0.7.154';
 $installer_version_label = 'Alpha 0.7.154';
 
+// --- INSTALLER SKIN FETCH HELPERS ---
+// Used by the Step 5 skin fetch block. Standalone so there's no dependency on
+// core/skin-registry.php (which has smackback ties not safe at install time).
+if (!function_exists('_install_rmdir')) {
+    function _install_rmdir(string $dir): void {
+        if (!is_dir($dir)) return;
+        $it = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($it as $f) { $f->isDir() ? rmdir($f->getRealPath()) : unlink($f->getRealPath()); }
+        rmdir($dir);
+    }
+    function _install_copy_dir(string $src, string $dst): void {
+        if (!is_dir($dst)) mkdir($dst, 0755, true);
+        foreach (array_diff(scandir($src), ['.', '..']) as $item) {
+            $s = $src . '/' . $item; $d = $dst . '/' . $item;
+            is_dir($s) ? _install_copy_dir($s, $d) : copy($s, $d);
+        }
+    }
+}
+
 // --- HTTPS DETECTION ---
 // Defined here rather than relying on core/constants.php, which does not exist
 // on a fresh install. Must be available before the form renders on step 5.
@@ -1162,8 +1184,13 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
 
             $install_mode     = $_SESSION['site_mode'] ?? 'photoblog';
             $is_carousel      = ($install_mode === 'carousel');
-            $default_skin     = '50-shades-of-noah-grey';
-            $default_variant  = 'dark';
+            // Default skin per mode — fetched from snapsmack.ca during install.
+            // carousel → the-grid, everything else → new-horizon.
+            $default_skin     = match($install_mode) {
+                'carousel'  => 'the-grid',
+                default     => 'new-horizon',
+            };
+            $default_variant  = '';
 
             $defaults = [
                 'site_name'                 => $_SESSION['site_name'] ?? 'My SnapSmack Site',
@@ -1348,14 +1375,119 @@ HTACCESS;
         }
     }
 
-    // --- VERIFY SHIPPED SKINS ---
-    // The installer ships with two skins: New Horizon (the default) and 50 Shades of Noah Grey.
-    // New Horizon is a hard requirement — the public site will 404 without it.
-    // Additional skins can be installed from the skin gallery after setup.
-    $skin_warning = '';
-    if (!is_dir(__DIR__ . '/skins/50-shades-of-noah-grey')) {
-        $errors[] = 'Default skin "50 Shades of Noah Grey" not found in skins/. The public site cannot load without it. Make sure the full SnapSmack codebase (including the skins/ directory) is uploaded before running the installer.';
-        $skin_warning = $errors[count($errors) - 1];
+    // --- FETCH MODE-APPROPRIATE SKINS FROM SNAPSMACK.CA ---
+    // Skins are no longer bundled in the release zip. The installer fetches the
+    // correct skin(s) for the chosen install mode directly from snapsmack.ca.
+    // Non-fatal: if the fetch fails, the site still installs — user can install
+    // a skin from the Skin Gallery after logging in.
+    $skin_fetch_results = [];
+    $skin_fetch_warning = '';
+    if (empty($errors)) {
+        $install_mode_str = $_SESSION['site_mode'] ?? 'photoblog';
+        $manifest_url = 'https://snapsmack.ca/releases/skins/install-manifest.php?mode=' . urlencode($install_mode_str);
+
+        $manifest_json = false;
+        if (function_exists('curl_init')) {
+            $ch = curl_init($manifest_url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_TIMEOUT        => 30,
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_USERAGENT      => 'SnapSmack-Installer/' . $installer_version,
+            ]);
+            $manifest_json = curl_exec($ch);
+            $mcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            if ($mcode !== 200) $manifest_json = false;
+        }
+
+        if ($manifest_json) {
+            $skin_manifest    = json_decode($manifest_json, true);
+            $skins_to_install = $skin_manifest['skins'] ?? [];
+
+            foreach ($skins_to_install as $skin_entry) {
+                $slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $skin_entry['slug'] ?? '');
+                $url  = $skin_entry['download_url'] ?? '';
+                if (!$slug || !$url) continue;
+
+                // Download zip
+                $zip_bytes = false;
+                if (function_exists('curl_init')) {
+                    $ch2 = curl_init($url);
+                    curl_setopt_array($ch2, [
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_FOLLOWLOCATION => true,
+                        CURLOPT_TIMEOUT        => 60,
+                        CURLOPT_SSL_VERIFYPEER => true,
+                        CURLOPT_USERAGENT      => 'SnapSmack-Installer/' . $installer_version,
+                    ]);
+                    $zip_bytes = curl_exec($ch2);
+                    $zcode     = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
+                    curl_close($ch2);
+                    if ($zcode !== 200 || strlen((string)$zip_bytes) < 500) $zip_bytes = false;
+                }
+
+                if ($zip_bytes === false) {
+                    $skin_fetch_results[] = ['slug' => $slug, 'ok' => false, 'msg' => 'Download failed'];
+                    continue;
+                }
+
+                // Write + extract
+                $tmp = sys_get_temp_dir() . '/snapsmack-skin-' . $slug . '-' . time() . '.zip';
+                file_put_contents($tmp, $zip_bytes);
+
+                $zip = new ZipArchive();
+                if ($zip->open($tmp) !== true) {
+                    @unlink($tmp);
+                    $skin_fetch_results[] = ['slug' => $slug, 'ok' => false, 'msg' => 'Zip open failed'];
+                    continue;
+                }
+
+                // Detect single wrapper folder
+                $first   = $zip->getNameIndex(0);
+                $wrapper = ($first !== false && substr($first, -1) === '/' && substr_count(rtrim($first, '/'), '/') === 0) ? $first : '';
+                $staging = sys_get_temp_dir() . '/snapsmack-skin-stg-' . $slug . '-' . time();
+                $zip->extractTo($staging);
+                $zip->close();
+                @unlink($tmp);
+
+                $source = $staging;
+                if ($wrapper) {
+                    $inner = $staging . '/' . rtrim($wrapper, '/');
+                    if (is_dir($inner) && file_exists($inner . '/manifest.php')) $source = $inner;
+                }
+
+                if (!file_exists($source . '/manifest.php')) {
+                    _install_rmdir($staging);
+                    $skin_fetch_results[] = ['slug' => $slug, 'ok' => false, 'msg' => 'No manifest.php'];
+                    continue;
+                }
+
+                $target = __DIR__ . '/skins/' . $slug;
+                if (is_dir($target)) _install_rmdir($target);
+                if (!@rename($source, $target)) {
+                    _install_copy_dir($source, $target);
+                }
+                _install_rmdir($staging);
+
+                $ok = file_exists($target . '/manifest.php');
+                $skin_fetch_results[] = ['slug' => $slug, 'ok' => $ok, 'msg' => $ok ? 'Installed' : 'Extraction failed'];
+            }
+        } else {
+            $skin_fetch_warning = 'Could not reach snapsmack.ca to fetch skins. Log in and install a skin from the Skin Gallery before your site goes live.';
+        }
+
+        // Check we have at least one working skin
+        $any_skin = !empty(array_filter($skin_fetch_results, fn($r) => $r['ok']))
+                    || is_dir(__DIR__ . '/skins/new-horizon')
+                    || is_dir(__DIR__ . '/skins/50-shades-of-noah-grey');
+        if (!$any_skin && !$skin_fetch_warning) {
+            $skin_fetch_warning = 'No skins were installed. Log in and install a skin from the Skin Gallery before your site goes live.';
+        }
+        $_SESSION['skin_fetch_results'] = $skin_fetch_results;
+        $_SESSION['skin_fetch_warning'] = $skin_fetch_warning;
     }
 
     // --- FTP-FRIENDLY PERMISSIONS ---

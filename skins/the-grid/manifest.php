@@ -27,6 +27,7 @@ return [
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Classic Instagram-style 3-column square-thumbnail photo grid. Carousel and panorama post support. Clean, minimal UI keeps the focus on the photographs.',
     'status'      => 'development',
+    'modes'       => ['carousel'],
 
     // Activate carousel posting and editing interfaces
     'post_page'   => 'carousel',
