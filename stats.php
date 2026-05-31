@@ -15,7 +15,7 @@
  *   version         string  — installed SnapSmack version
  *
  * SNAPSMACK_EOF_HEADER
- *     <?php // ===== SNAPSMACK EOF =====
+ *     // ===== SNAPSMACK EOF =====
  * Last non-empty line of this file MUST match the line above.
  * Missing or different = truncated/corrupted. Restore before saving.
  */
@@ -75,4 +75,4 @@ try {
     http_response_code(500);
     echo json_encode(['error' => 'query_failed']);
 }
-<?php // ===== SNAPSMACK EOF =====
+// ===== SNAPSMACK EOF =====

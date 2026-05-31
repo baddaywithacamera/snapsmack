@@ -1,0 +1,334 @@
+/**
+ * SNAPSMACK - Shortcode Base Styles
+ *
+ * SNAPSMACK_EOF_HEADER
+ *     /* ===== SNAPSMACK EOF ===== */
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ *
+ * Base styles for all .snap-* shortcode classes.
+ * Loaded on pages that use parseContent() (page.php, blog.php).
+ * Uses CSS custom properties from :root so skin overrides work.
+ * Skins override .snap-* classes in their own style.css.
+ *
+ * SMACKONEOUT + SMACKTALK only — not used on GRAMOFSMACK/carousel installs.
+ */
+
+/* =========================================================================
+   PROSE SHORTCODES
+   ========================================================================= */
+
+/* [lede] — large grey introductory paragraph */
+.snap-lede {
+    font-size: 1.175rem;
+    color: var(--mid-grey, #777);
+    max-width: 680px;
+    line-height: 1.65;
+    margin-bottom: 1.5em;
+}
+
+/* [callout] — red left-border info/warning box */
+.snap-callout {
+    background: var(--light-grey, #f4f4f4);
+    border-left: 4px solid var(--red, #cc0000);
+    padding: 20px 24px;
+    font-size: 0.97rem;
+    margin: 1.5em 0;
+}
+.snap-callout p:last-child {
+    margin-bottom: 0;
+}
+
+/* [kicker] — small uppercase label above a heading */
+.snap-kicker {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--mid-grey, #777);
+    margin-bottom: 10px;
+}
+
+/* [dict] — full-width dictionary interstitial */
+.snap-dict-pull {
+    width: 100%;
+    background: #d0d0d0;
+    border-top: 2px solid #b0b0b0;
+    border-bottom: 2px solid #b0b0b0;
+    padding: 48px 40px;
+    text-align: center;
+    margin: 2em 0;
+    box-sizing: border-box;
+}
+.snap-dict-inner {
+    max-width: 680px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+.snap-dict-word {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 1.3rem;
+    color: var(--black, #111);
+    margin-right: 0.4em;
+}
+.snap-dict-phon {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9rem;
+    color: var(--mid-grey, #777);
+    margin-right: 0.4em;
+}
+.snap-dict-pos {
+    font-style: italic;
+    font-size: 0.9rem;
+    color: var(--mid-grey, #777);
+}
+
+/* [list] — styled unordered list */
+.snap-list {
+    list-style: none;
+    padding: 0;
+    margin: 1em 0;
+    font-size: 0.9rem;
+}
+.snap-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border, #ddd);
+    color: var(--dark-grey, #333);
+}
+.snap-list li:last-child {
+    border-bottom: none;
+}
+.snap-list--check li::before {
+    content: '✓';
+    color: var(--red, #cc0000);
+    flex-shrink: 0;
+    font-weight: 700;
+}
+.snap-list--arrow li::before {
+    content: '→';
+    color: var(--red, #cc0000);
+    flex-shrink: 0;
+}
+/* Inverted — white text on dark background (used inside .snap-feature-box) */
+.snap-list--inverted li {
+    color: #ccc;
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+.snap-list--inverted li:last-child {
+    border-bottom: none;
+}
+
+/* [btn] — call-to-action button */
+.snap-btn {
+    display: inline-block;
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 14px 28px;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+    cursor: pointer;
+    border: none;
+}
+.snap-btn--primary {
+    background: var(--red, #cc0000);
+    color: #fff;
+}
+.snap-btn--primary:hover {
+    background: #a80000;
+    color: #fff;
+}
+.snap-btn--secondary {
+    background: var(--black, #111);
+    color: #fff;
+}
+.snap-btn--secondary:hover {
+    background: #333;
+    color: #fff;
+}
+
+/* =========================================================================
+   LAYOUT SHORTCODES
+   ========================================================================= */
+
+/* [card-grid] — N-column card grid */
+.snap-card-grid {
+    display: grid;
+    gap: 28px;
+    margin: 2em 0;
+}
+.snap-card-grid--cols-2 { grid-template-columns: repeat(2, 1fr); }
+.snap-card-grid--cols-3 { grid-template-columns: repeat(3, 1fr); }
+.snap-card-grid--cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+@media (max-width: 768px) {
+    .snap-card-grid--cols-3,
+    .snap-card-grid--cols-4 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 520px) {
+    .snap-card-grid--cols-2,
+    .snap-card-grid--cols-3,
+    .snap-card-grid--cols-4 { grid-template-columns: 1fr; }
+}
+
+.snap-card {
+    border-top: 3px solid var(--red, #cc0000);
+    padding-top: 24px;
+}
+.snap-card-label {
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-size: 0.72rem;
+    color: var(--red, #cc0000);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+}
+.snap-card-title {
+    font-size: 1.05rem;
+    margin: 0 0 8px;
+    line-height: 1.3;
+}
+.snap-card-tagline {
+    font-size: 0.82rem;
+    color: var(--red, #cc0000);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+}
+.snap-card-body {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--dark-grey, #444);
+}
+.snap-card-body p:last-child { margin-bottom: 0; }
+
+/* Dark canvas variant */
+.snap-card-grid--dark {
+    background: var(--black, #111);
+    padding: 32px;
+}
+.snap-card-grid--dark .snap-card-title {
+    color: #fff;
+}
+.snap-card-grid--dark .snap-card-body {
+    color: #aaa;
+}
+
+/* [accent-grid] — cards with red left accent bar */
+.snap-accent-grid {
+    display: grid;
+    gap: 20px;
+    margin: 2em 0;
+}
+.snap-accent-grid--cols-2 { grid-template-columns: repeat(2, 1fr); }
+.snap-accent-grid--cols-3 { grid-template-columns: repeat(3, 1fr); }
+.snap-accent-grid--cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+@media (max-width: 768px) {
+    .snap-accent-grid--cols-3,
+    .snap-accent-grid--cols-4 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 520px) {
+    .snap-accent-grid--cols-2,
+    .snap-accent-grid--cols-3,
+    .snap-accent-grid--cols-4 { grid-template-columns: 1fr; }
+}
+
+.snap-accent-card {
+    background: var(--white, #fff);
+    border: 1px solid var(--border, #ddd);
+    padding: 20px 24px;
+    position: relative;
+}
+.snap-accent-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 40%;
+    background: var(--red, #cc0000);
+}
+.snap-accent-card-title {
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--black, #111);
+    margin: 0 0 10px;
+}
+.snap-accent-card-body {
+    font-size: 0.9rem;
+    color: var(--dark-grey, #444);
+    line-height: 1.55;
+}
+
+/* [feature-box] — dark box with checkmarked list */
+.snap-feature-box {
+    background: var(--black, #111);
+    padding: 32px 36px;
+    margin: 2em 0;
+}
+.snap-feature-box-title {
+    color: var(--red, #cc0000);
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 20px;
+}
+
+/* [bio] — portrait + bio copy */
+.snap-bio {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    margin: 2em 0;
+}
+.snap-bio-portrait {
+    width: 110px;
+    flex-shrink: 0;
+    border: 1px solid var(--border, #ddd);
+    overflow: hidden;
+}
+.snap-bio-portrait img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+.snap-bio-copy {
+    flex: 1;
+}
+.snap-bio-name {
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--black, #111);
+    margin-bottom: 4px;
+}
+.snap-bio-role {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.82rem;
+    color: var(--red, #cc0000);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+}
+.snap-bio-text {
+    font-size: 0.87rem;
+    color: var(--mid-grey, #666);
+    line-height: 1.6;
+}
+
+@media (max-width: 520px) {
+    .snap-bio { flex-direction: column; }
+    .snap-bio-portrait { width: 80px; }
+}
+/* ===== SNAPSMACK EOF ===== */

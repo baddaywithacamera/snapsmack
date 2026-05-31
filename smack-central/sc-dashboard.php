@@ -10,9 +10,10 @@ $sc_page_title = 'Dashboard';
 // Quick stats
 $stats = ['installs' => 0, 'threads' => 0, 'replies' => 0, 'releases' => 0];
 try {
-    // Active installs: unique UIDs that phoned home in the last 90 days
+    // Active installs: sum of (1 per pinging install) + spoke counts reported by hubs.
+    // A hub with 5 active spokes contributes 6 to the fleet total.
     $stats['installs'] = (int)sc_db()->query(
-        "SELECT COUNT(*) FROM sc_phone_home WHERE last_seen >= DATE_SUB(NOW(), INTERVAL 90 DAY)"
+        "SELECT COALESCE(SUM(1 + spoke_count), 0) FROM sc_phone_home WHERE last_seen >= DATE_SUB(NOW(), INTERVAL 90 DAY)"
     )->fetchColumn();
 } catch (Exception $e) { /* sc_phone_home not yet created — shows 0 until first ping lands */ }
 try {
