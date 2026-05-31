@@ -318,24 +318,15 @@ if (!empty($settings['lightbox_bg_opacity'])) {
     ];
 }
 
-// Calendar sidebar settings — injected when the smack-calendar engine is active.
-$_smack_skin_manifest = [];
-if (file_exists($skin_manifest_path)) {
-    try {
-        $_smack_skin_manifest_raw = include $skin_manifest_path;
-        if (is_array($_smack_skin_manifest_raw)) $_smack_skin_manifest = $_smack_skin_manifest_raw;
-    } catch (\Throwable $e) {
-        error_log("SnapSmack: failed to load manifest {$skin_manifest_path} — " . $e->getMessage());
-    }
-}
-if (in_array('smack-calendar', $_smack_skin_manifest['require_scripts'] ?? [])) {
-    $_smack_js_config['calendar'] = [
-        'side'      => $settings['calendar_side']       ?? 'right',
-        'months'    => (int)($settings['calendar_months']     ?? 1),
-        'postCount' => (int)($settings['calendar_post_count'] ?? 10),
-        'endpoint'  => BASE_URL . 'api-calendar.php',
-    ];
-}
+// Calendar sidebar settings — always output so the JS engine respects Archive
+// Appearance settings regardless of whether the skin lists smack-calendar in
+// require_scripts. The JS only reads this if it's loaded; no harm if it's not.
+$_smack_js_config['calendar'] = [
+    'side'      => $settings['calendar_side']       ?? 'right',
+    'months'    => (int)($settings['calendar_months']     ?? 1),
+    'postCount' => (int)($settings['calendar_post_count'] ?? 10),
+    'endpoint'  => BASE_URL . 'api-calendar.php',
+];
 
 if (!empty($_smack_js_config)):
 ?>

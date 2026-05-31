@@ -1530,6 +1530,7 @@ include 'core/sidebar.php';
         border-radius: 3px; font-family: monospace; font-size: 0.8rem;
     }
     .step-ok   { background: rgba(40, 120, 40, 0.15); }
+    .step-warn { background: rgba(120, 100, 40, 0.15); }
     .step-fail { background: rgba(180, 40, 40, 0.15); }
     .step-icon  { font-size: 1.1rem; }
     .step-detail { opacity: 0.75; margin-left: auto; }
@@ -1742,7 +1743,7 @@ include 'core/sidebar.php';
         <div class="step-log">
             <?php foreach ($complete_log as $step): ?>
             <div class="step-row step-<?php echo $step['status']; ?>">
-                <span class="step-icon"><?php echo $step['status'] === 'ok' ? '&#10003;' : '&#10007;'; ?></span>
+                <span class="step-icon"><?php echo $step['status'] === 'ok' ? '&#10003;' : ($step['status'] === 'warn' ? '&mdash;' : '&#10007;'); ?></span>
                 <span><?php echo htmlspecialchars($step['label']); ?></span>
                 <?php if ($step['detail']): ?>
                     <span class="step-detail"><?php echo htmlspecialchars($step['detail']); ?></span>
@@ -1760,7 +1761,7 @@ include 'core/sidebar.php';
         <div class="step-log">
             <?php foreach ($update_result as $step): ?>
             <div class="step-row step-<?php echo $step['status']; ?>">
-                <span class="step-icon"><?php echo $step['status'] === 'ok' ? '&#10003;' : '&#10007;'; ?></span>
+                <span class="step-icon"><?php echo $step['status'] === 'ok' ? '&#10003;' : ($step['status'] === 'warn' ? '&mdash;' : '&#10007;'); ?></span>
                 <span><?php echo htmlspecialchars($step['label']); ?></span>
                 <?php if ($step['detail']): ?>
                     <span class="step-detail"><?php echo htmlspecialchars($step['detail']); ?></span>
@@ -1790,7 +1791,7 @@ include 'core/sidebar.php';
         <div class="step-log">
             <?php foreach (($stage_state['log'] ?? []) as $step): ?>
             <div class="step-row step-<?php echo $step['status']; ?>">
-                <span class="step-icon"><?php echo $step['status'] === 'ok' ? '&#10003;' : '&#10007;'; ?></span>
+                <span class="step-icon"><?php echo $step['status'] === 'ok' ? '&#10003;' : ($step['status'] === 'warn' ? '&mdash;' : '&#10007;'); ?></span>
                 <span><?php echo htmlspecialchars($step['label']); ?></span>
                 <?php if ($step['detail']): ?>
                     <span class="step-detail"><?php echo htmlspecialchars($step['detail']); ?></span>

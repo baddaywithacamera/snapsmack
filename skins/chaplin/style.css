@@ -78,7 +78,7 @@
   --rg-shadow-hover:  0 4px 16px rgba(0,0,0,0.8);
   --rg-nav-color:     var(--chap-ink);
   --rg-nav-dim:       var(--chap-ink-muted);
-  --rg-canvas-width:  var(--chap-archive-max-width);
+  --rg-canvas-width:  var(--chap-photo-max-width);
 
   /* ── Typography scale (RG) ───────────────────────────────────────────────── */
   --font-scale-xs:   0.75rem;
@@ -207,9 +207,10 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
 }
 
 .rg-header-inside {
-  max-width: var(--chap-archive-max-width);
+  max-width: var(--chap-photo-max-width, 1600px);
   width: 100%;
-  padding: 0 var(--space-xl);
+  margin: 0 auto;
+  padding: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -941,7 +942,7 @@ body.archive-page #scroll-stage {
   grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 210px));
   gap: 24px;
   margin: 0 auto;
-  max-width: var(--chap-archive-max-width);
+  max-width: var(--chap-photo-max-width, 1600px);
   width: 100%;
   justify-content: center;
   align-content: start;
@@ -996,7 +997,7 @@ body.archive-page #scroll-stage {
 
 /* Justified / Masonry grid */
 #justified-grid {
-  max-width: var(--chap-archive-max-width);
+  max-width: var(--chap-photo-max-width, 1600px);
   width: 100%;
   margin: 0 auto;
   padding: 30px 0;
@@ -1013,74 +1014,78 @@ body.archive-page #scroll-stage {
   filter: brightness(1.05);
 }
 
-/* Chaplin archive layout — natural aspect ratios (50-shades approach) + NH borders */
-.chap-archive-wrapper {
-  width: 100%;
+/* Chaplin archive grid — fsog-* CSS verbatim from 50-shades-of-noah-grey.
+   archive-layout.php uses fsog- class names so this is the single source of truth. */
+
+.fsog-archive-grid {
+    flex: 1;
+    padding: 30px 60px 40px;
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 250px));
+    gap: 30px;
+    margin: 0 auto;
+    max-width: var(--chap-photo-max-width, 1600px);
+    width: 100%;
+    justify-content: center;
+    align-content: start;
+    align-items: center;
+    justify-items: center;
 }
 
-/* Grid: column count driven by --grid-cols (set from chap_archive_cols in skin-header.php) */
-.chap-archive-grid {
-  display: grid;
-  grid-template-columns: repeat(var(--grid-cols, 4), 1fr);
-  gap: var(--chap-archive-gap);
-  width: 100%;
-  max-width: var(--chap-archive-max-width);
-  margin: 0 auto;
-  align-self: center;
-  padding: var(--chap-archive-gap);
-  overflow: visible; /* let box-shadow bleed show */
+.fsog-archive-item {
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    width: 100%;
 }
 
-/* Item = anchor; no forced aspect-ratio — let .chap-thumb drive height */
-.chap-archive-item {
-  position: relative;
-  display: block;
-  text-decoration: none;
-  color: inherit;
-  min-width: 0; /* prevent grid column blowout from content minimum size */
-  background-color: transparent;
+/* Portraits: narrower so they don't dominate the row */
+.fsog-archive-item:has(.fsog-thumb-portrait) {
+    width: 70%;
 }
 
-/* New Horizon revival_double border, scaled for thumbnails */
-.chap-thumb {
-  position: relative;
-  overflow: hidden;
-  border: 3px solid #666666;
-  box-shadow: 0 0 0 8px #000000, 0 0 0 9px #555555;
-  display: block;
+.fsog-archive-item:hover {
+    transform: scale(1.02);
 }
 
-.chap-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  filter: grayscale(100%) brightness(0.85);
-  transition: filter 0.3s ease, transform 0.3s ease;
+.fsog-archive-item .fsog-thumb {
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
-.chap-archive-item:hover .chap-thumb img {
-  filter: grayscale(100%) brightness(1.05);
-  transform: scale(1.02);
+.fsog-archive-item .fsog-thumb img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    filter: grayscale(100%) brightness(0.85);
+    transition: filter 0.3s ease, opacity 0.3s ease;
 }
 
-/* Title below the thumb — fade in on hover */
-.chap-archive-title {
-  padding: 6px 2px 0;
-  font-family: var(--chap-heading-font);
-  font-size: 0.6rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--chap-ink-dim);
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.fsog-archive-item:hover .fsog-thumb img {
+    opacity: 0.75;
+    filter: grayscale(100%) brightness(1.05);
 }
 
-.chap-archive-item:hover .chap-archive-title { opacity: 1; }
+.fsog-archive-title {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 10px 8px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #ece6d4;
+    font-family: var(--chap-heading-font);
+    font-size: 12px;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    backdrop-filter: blur(2px);
+}
+
+.fsog-archive-item:hover .fsog-archive-title {
+    opacity: 1;
+}
 
 
 .rg-breadcrumb, .snap-breadcrumb {
@@ -1319,13 +1324,13 @@ body.static-transmission #system-footer {
 }
 
 #system-footer .inside {
-  max-width: 95%;
+  max-width: var(--chap-photo-max-width, 1600px);
   margin: 0 auto;
   font-family: var(--chap-footer-font, monospace);
   font-size: calc(var(--chap-footer-size, 7) * 0.1rem);
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  color: var(--chap-ink-muted);
+  color: var(--chap-footer-color, var(--chap-ink-muted));
 }
 
 #system-footer p {
@@ -1522,5 +1527,15 @@ input[type="reset"]:hover {
     max-width: 100%;
     page-break-inside: avoid;
   }
+}
+/* ============================================================================
+   CALENDAR PANEL — usability font override
+   The rest of Chaplin uses period typography. The calendar panel uses a clean
+   sans-serif so dates are readable at small size. DM Sans matches 50-shades.
+   ========================================================================== */
+
+#smack-cal-panel,
+#smack-cal-panel * {
+  font-family: 'DM Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 /* ===== SNAPSMACK EOF ===== */

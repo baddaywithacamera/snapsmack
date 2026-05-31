@@ -12,6 +12,20 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.189 — "Sit and Spin" (2026-05-30)
+
+### Fixed
+- **Chaplin archive layout** — Replaced broken chap-* archive CSS/PHP with direct 50-shades fsog-* port. Archive reads global Archive Appearance settings (browse_cols, archive_gutter, main_canvas_width) instead of skin-specific overrides.
+- **Chaplin content width unified** — Single `chap_photo_max_width` (renamed "Content Max Width") controls header, photo frame, archive grid, masonry, and footer. Previously each had its own hardcoded value.
+- **Chaplin header alignment** — Removed `padding: 0 var(--space-xl)` from `.rg-header-inside`; header text now aligns with grid edges.
+- **Chaplin font size sliders** — Embedded inside font picker box via `sz_key_override` + `size` config. Standalone `_size` manifest entries removed.
+- **Chaplin footer colour picker** — New greyscale colour picker in Typography for system footer text.
+- **Chaplin calendar** — Panel side and month count now always respect Archive Appearance settings. `core/meta.php` outputs calendar config unconditionally (was gated behind `smack-calendar` in require_scripts).
+- **Archive Appearance border** — Grid thumb border selector extended to include `fsog-` classes (Chaplin archive now respects Archive Appearance border settings).
+- **Chaplin calendar font** — Calendar panel uses DM Sans (loaded via font-loader) for readability.
+- **smack-update.php** — SMACKBACK manifest `warn` row shows `—` instead of `✗`. Adds `.step-warn` CSS class.
+- **smack-skin.php** — Embedded font size slider supports `sz_key_override` and custom `unit` display label.
+
 ## 0.7.188 — "Sit and Spin" (2026-05-30)
 
 ### Added
