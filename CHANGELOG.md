@@ -12,6 +12,20 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.190 — "Shit and Git" (2026-05-31)
+
+### Added
+- **Shortcodes system** (`core/parser.php`, `assets/css/shortcodes.css`, `smack-shortcodes.php`, `core/sidebar.php`, `core/meta.php`) — `parseAttrs()` helper; 4 layout shortcodes (`[columns]`, `[column]`, `[box]`, `[divider]`); 6 prose shortcodes (`[note]`, `[warn]`, `[tip]`, `[quote]`, `[code]`, `[kbd]`). SMACKCODES admin reference page with live previews and copy buttons (carousel-gated in sidebar).
+
+### Fixed
+- **`stats.php` parse error** — EOF marker was `<?php // ===== SNAPSMACK EOF =====` in a pure-PHP file (no closing `?>`). PHP re-open tag caused fatal parse error on every request. Corrected to `// ===== SNAPSMACK EOF =====`.
+- **snapsmack.ca skin gallery stats** — Cards now curl each site's `/stats.php` directly with a 1-hour file cache. Previous approach (SC DB populated by phone-home ping) was wrong by design; stats were never SC's data to collect. Skin card tooltip brought closer to cursor (8px offset) and uses measured tooltip width for accurate viewport-edge flip.
+
+### Changed
+- **Phone-home ping** (`core/updater.php`) — Stripped to install identity only: `uid`, `version`, `track`, `spoke_count`. Post counts, traffic, and site name removed entirely. Not appropriate to collect.
+- **SHARE STATS toggle removed** (`smack-settings.php`, `projects/snapsmack-ca/releases/ping.php`) — Setting and stat columns no longer sent or stored.
+- **install.php** — Step 1b heading updated.
+
 ## 0.7.189 — "Sit and Spin" (2026-05-30)
 
 ### Fixed

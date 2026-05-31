@@ -22,6 +22,18 @@
  *   [oldest_post]                    — date of first post
  *   [embed:key]                      — named HTML embed from Smack Your Scripts Up!
  *
+ * SMACKONEOUT + SMACKTALK only (not carousel/GRAMOFSMACK):
+ *   [lede]text[/lede]                — large grey introductory paragraph
+ *   [callout]text[/callout]          — red left-border info/warning box
+ *   [kicker]text[/kicker]            — small uppercase label above a heading
+ *   [dict word="" phon="" pos=""]def[/dict] — full-width dictionary interstitial
+ *   [list bullet="check|arrow"]a|b|c[/list] — styled list, pipe-separated items
+ *   [btn href="" style="primary|secondary"]label[/btn] — call-to-action button
+ *   [card-grid cols="N" canvas="light|dark"]...[card label="" title="" tagline=""]...[/card]...[/card-grid]
+ *   [accent-grid cols="N"]...[accent-card title=""]...[/accent-card]...[/accent-grid]
+ *   [feature-box title=""]item one|item two|item three[/feature-box]
+ *   [bio img="" name="" role=""]text[/bio] — portrait + bio copy
+ *
  * Auto-paragraph: double newlines (\n\n) become <p> tags automatically.
  * Single newlines within a paragraph become <br>.
  */
@@ -77,6 +89,15 @@ class SnapSmack {
         // auto-paragraph pass.
         $content = $this->parseColumns($content);
 
+        // --- PHASE 1b: LAYOUT SHORTCODES ---
+        // Must run before autoParagraph to avoid <p><div> nesting issues.
+        // SMACKONEOUT + SMACKTALK only — parser methods exist on all installs
+        // but these shortcodes only appear in non-carousel content.
+        $content = $this->parseCardGrids($content);
+        $content = $this->parseAccentGrids($content);
+        $content = $this->parseFeatureBoxes($content);
+        $content = $this->parseBios($content);
+
         // --- PHASE 2: AUTO-PARAGRAPH ---
         // Convert double newlines to <p> tags for any remaining top-level text.
         $content = $this->autoParagraph($content);
@@ -93,6 +114,16 @@ class SnapSmack {
 
         // --- PHASE 6: SPACER SHORTCODES ---
         $content = $this->parseSpacers($content);
+
+        // --- PHASE 6c: PROSE SHORTCODES ---
+        // Run after autoParagraph — inline/block replacements that don't
+        // conflict with <p> wrapping.
+        $content = $this->parseLede($content);
+        $content = $this->parseCallout($content);
+        $content = $this->parseKicker($content);
+        $content = $this->parseDictPull($content);
+        $content = $this->parseSnapList($content);
+        $content = $this->parseSnapBtn($content);
 
         // --- PHASE 7: BLOCK NESTING CLEANUP ---
         // When [img:] shortcodes sit inside the same <p> as text (either from
@@ -514,6 +545,270 @@ class SnapSmack {
                     htmlspecialchars($asset['name']),
                     htmlspecialchars($full_url)
                 );
+            },
+            $content
+        );
+    }
+
+    // =========================================================================
+    //  ATTRIBUTE PARSER HELPER
+    // =========================================================================
+
+    /**
+     * Parse key="value" or key='value' pairs from a shortcode tag string.
+     * Returns an associative array. Keys are lowercased.
+     */
+    private function parseAttrs(string $tag_str): array {
+        $attrs = [];
+        preg_match_all('/(\w[\w-]*)\s*=\s*(?:"([^"]*)"|\'([^\']*)\')/i', $tag_str, $m, PREG_SET_ORDER);
+        foreach ($m as $match) {
+            $attrs[strtolower($match[1])] = $match[2] !== '' ? $match[2] : ($match[3] ?? '');
+        }
+        return $attrs;
+    }
+
+    // =========================================================================
+    //  LAYOUT SHORTCODES (Phase 1b — before autoParagraph)
+    // =========================================================================
+
+    /**
+     * Parse [card-grid cols="N" canvas="light|dark"]
+     *   [card label="" title="" tagline=""]body[/card]
+     * [/card-grid]
+     */
+    private function parseCardGrids(string $content): string {
+        return preg_replace_callback(
+            '/\[card-grid([^\]]*)\](.*?)\[\/card-grid\]/si',
+            function ($matches) {
+                $attrs  = $this->parseAttrs($matches[1]);
+                $cols   = max(2, min(4, (int) ($attrs['cols'] ?? 3)));
+                $canvas = ($attrs['canvas'] ?? '') === 'dark' ? 'dark' : 'light';
+                $inner  = $matches[2];
+
+                $cards_html = '';
+                preg_match_all('/\[card([^\]]*)\](.*?)\[\/card\]/si', $inner, $cards, PREG_SET_ORDER);
+                foreach ($cards as $card) {
+                    $ca      = $this->parseAttrs($card[1]);
+                    $label   = htmlspecialchars($ca['label']   ?? '');
+                    $title   = htmlspecialchars($ca['title']   ?? '');
+                    $tagline = htmlspecialchars($ca['tagline'] ?? '');
+                    $body    = $this->autoParagraph(trim($card[2]));
+
+                    $cards_html .= '<div class="snap-card">' . "\n";
+                    if ($label   !== '') $cards_html .= '  <div class="snap-card-label">'   . $label   . '</div>' . "\n";
+                    if ($title   !== '') $cards_html .= '  <h3 class="snap-card-title">'    . $title   . '</h3>'  . "\n";
+                    if ($tagline !== '') $cards_html .= '  <div class="snap-card-tagline">' . $tagline . '</div>' . "\n";
+                    $cards_html .= '  <div class="snap-card-body">' . $body . '</div>' . "\n";
+                    $cards_html .= '</div>' . "\n";
+                }
+
+                return '<div class="snap-card-grid snap-card-grid--cols-' . $cols
+                    . ' snap-card-grid--' . $canvas . '">' . "\n"
+                    . $cards_html . '</div>';
+            },
+            $content
+        );
+    }
+
+    /**
+     * Parse [accent-grid cols="N"]
+     *   [accent-card title=""]body[/accent-card]
+     * [/accent-grid]
+     */
+    private function parseAccentGrids(string $content): string {
+        return preg_replace_callback(
+            '/\[accent-grid([^\]]*)\](.*?)\[\/accent-grid\]/si',
+            function ($matches) {
+                $attrs = $this->parseAttrs($matches[1]);
+                $cols  = max(2, min(4, (int) ($attrs['cols'] ?? 3)));
+                $inner = $matches[2];
+
+                $cards_html = '';
+                preg_match_all('/\[accent-card([^\]]*)\](.*?)\[\/accent-card\]/si', $inner, $cards, PREG_SET_ORDER);
+                foreach ($cards as $card) {
+                    $ca    = $this->parseAttrs($card[1]);
+                    $title = htmlspecialchars($ca['title'] ?? '');
+                    $body  = trim($card[2]);
+
+                    $cards_html .= '<div class="snap-accent-card">' . "\n";
+                    if ($title !== '') $cards_html .= '  <h3 class="snap-accent-card-title">' . $title . '</h3>' . "\n";
+                    $cards_html .= '  <div class="snap-accent-card-body">' . $body . '</div>' . "\n";
+                    $cards_html .= '</div>' . "\n";
+                }
+
+                return '<div class="snap-accent-grid snap-accent-grid--cols-' . $cols . '">' . "\n"
+                    . $cards_html . '</div>';
+            },
+            $content
+        );
+    }
+
+    /**
+     * Parse [feature-box title=""]item one|item two|item three[/feature-box]
+     * Dark box with heading and checkmark list. Items are pipe-separated.
+     */
+    private function parseFeatureBoxes(string $content): string {
+        return preg_replace_callback(
+            '/\[feature-box([^\]]*)\](.*?)\[\/feature-box\]/si',
+            function ($matches) {
+                $attrs = $this->parseAttrs($matches[1]);
+                $title = htmlspecialchars($attrs['title'] ?? '');
+                $items = array_filter(array_map('trim', explode('|', $matches[2])));
+
+                $html  = '<div class="snap-feature-box">' . "\n";
+                if ($title !== '') $html .= '  <h3 class="snap-feature-box-title">' . $title . '</h3>' . "\n";
+                $html .= '  <ul class="snap-list snap-list--check snap-list--inverted">' . "\n";
+                foreach ($items as $item) {
+                    $html .= '    <li>' . htmlspecialchars($item) . '</li>' . "\n";
+                }
+                $html .= '  </ul>' . "\n";
+                $html .= '</div>';
+                return $html;
+            },
+            $content
+        );
+    }
+
+    /**
+     * Parse [bio img="" name="" role=""]text[/bio]
+     * Portrait + name + role + bio copy. Portrait omitted if img is empty.
+     */
+    private function parseBios(string $content): string {
+        return preg_replace_callback(
+            '/\[bio([^\]]*)\](.*?)\[\/bio\]/si',
+            function ($matches) {
+                $attrs = $this->parseAttrs($matches[1]);
+                $img   = htmlspecialchars($attrs['img']  ?? '');
+                $name  = htmlspecialchars($attrs['name'] ?? '');
+                $role  = htmlspecialchars($attrs['role'] ?? '');
+                $text  = trim($matches[2]);
+
+                $html  = '<div class="snap-bio">' . "\n";
+                if ($img !== '') {
+                    $html .= '  <div class="snap-bio-portrait">'
+                           . '<img src="' . $img . '" alt="' . $name . '" loading="lazy">'
+                           . '</div>' . "\n";
+                }
+                $html .= '  <div class="snap-bio-copy">' . "\n";
+                if ($name !== '') $html .= '    <div class="snap-bio-name">' . $name . '</div>' . "\n";
+                if ($role !== '') $html .= '    <div class="snap-bio-role">' . $role . '</div>' . "\n";
+                $html .= '    <div class="snap-bio-text">' . $text . '</div>' . "\n";
+                $html .= '  </div>' . "\n";
+                $html .= '</div>';
+                return $html;
+            },
+            $content
+        );
+    }
+
+    // =========================================================================
+    //  PROSE SHORTCODES (Phase 6c — after autoParagraph)
+    // =========================================================================
+
+    /**
+     * Parse [lede]text[/lede] — large grey introductory paragraph.
+     */
+    private function parseLede(string $content): string {
+        return preg_replace(
+            '/\[lede\](.*?)\[\/lede\]/si',
+            '<p class="snap-lede">$1</p>',
+            $content
+        );
+    }
+
+    /**
+     * Parse [callout]text[/callout] — red left-border info box.
+     * Inner content is auto-paragraphed.
+     */
+    private function parseCallout(string $content): string {
+        return preg_replace_callback(
+            '/\[callout\](.*?)\[\/callout\]/si',
+            function ($m) {
+                return '<div class="snap-callout">' . $this->autoParagraph(trim($m[1])) . '</div>';
+            },
+            $content
+        );
+    }
+
+    /**
+     * Parse [kicker]text[/kicker] — small uppercase label above a heading.
+     */
+    private function parseKicker(string $content): string {
+        return preg_replace(
+            '/\[kicker\](.*?)\[\/kicker\]/si',
+            '<div class="snap-kicker">$1</div>',
+            $content
+        );
+    }
+
+    /**
+     * Parse [dict word="" phon="" pos=""]definition[/dict]
+     * Full-width dictionary-definition interstitial. phon and pos are optional.
+     */
+    private function parseDictPull(string $content): string {
+        return preg_replace_callback(
+            '/\[dict([^\]]*)\](.*?)\[\/dict\]/si',
+            function ($m) {
+                $attrs = $this->parseAttrs($m[1]);
+                $word  = htmlspecialchars($attrs['word'] ?? '');
+                $phon  = htmlspecialchars($attrs['phon'] ?? '');
+                $pos   = htmlspecialchars($attrs['pos']  ?? '');
+                $def   = trim($m[2]);
+
+                $meta  = '';
+                if ($word !== '') $meta .= '<span class="snap-dict-word">' . $word . '</span>';
+                if ($phon !== '') $meta .= '<span class="snap-dict-phon">/' . $phon . '/</span>';
+                if ($pos  !== '') $meta .= '<span class="snap-dict-pos">' . $pos . '</span>';
+                if ($meta !== '') $meta .= '<br>';
+
+                return '<div class="snap-dict-pull"><div class="snap-dict-inner">'
+                    . $meta . $def
+                    . '</div></div>';
+            },
+            $content
+        );
+    }
+
+    /**
+     * Parse [list bullet="check|arrow"]item one|item two[/list]
+     * Styled unordered list. Items are pipe-separated. Defaults to check.
+     */
+    private function parseSnapList(string $content): string {
+        return preg_replace_callback(
+            '/\[list([^\]]*)\](.*?)\[\/list\]/si',
+            function ($m) {
+                $attrs  = $this->parseAttrs($m[1]);
+                $bullet = ($attrs['bullet'] ?? '') === 'arrow' ? 'arrow' : 'check';
+                $items  = array_filter(array_map('trim', explode('|', $m[2])));
+
+                $html = '<ul class="snap-list snap-list--' . $bullet . '">' . "\n";
+                foreach ($items as $item) {
+                    $html .= '<li>' . htmlspecialchars($item) . '</li>' . "\n";
+                }
+                $html .= '</ul>';
+                return $html;
+            },
+            $content
+        );
+    }
+
+    /**
+     * Parse [btn href="" style="primary|secondary"]label[/btn]
+     * CTA button. Renders as <span> when href is empty.
+     */
+    private function parseSnapBtn(string $content): string {
+        return preg_replace_callback(
+            '/\[btn([^\]]*)\](.*?)\[\/btn\]/si',
+            function ($m) {
+                $attrs  = $this->parseAttrs($m[1]);
+                $href   = htmlspecialchars($attrs['href'] ?? '');
+                $style  = ($attrs['style'] ?? '') === 'secondary' ? 'secondary' : 'primary';
+                $label  = trim($m[2]);
+                $class  = 'snap-btn snap-btn--' . $style;
+
+                return $href !== ''
+                    ? '<a href="' . $href . '" class="' . $class . '">' . $label . '</a>'
+                    : '<span class="' . $class . '">' . $label . '</span>';
             },
             $content
         );

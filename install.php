@@ -1988,8 +1988,8 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
     <?php // STEP 1b: Choose Edition ?>
     <?php // ============================================================= ?>
     <?php if ($step === '1b'): ?>
-        <h2>Step 2 — Choose Your Edition</h2>
-        <p class="install-desc-note">This cannot be changed after installation.</p>
+        <h2>What's your pleasure, Mr. Cotton?</h2>
+        <p class="install-desc-note">(Choose wisely. This cannot be changed after installation.)</p>
 
         <form method="post">
             <input type="hidden" name="step" value="2">

@@ -95,6 +95,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-multisite-api-key-default.sql',
     'migrate-gyss-modified-at.sql',
     'migrate-collection-items-polymorphic.sql',
+    'migrate-comment-url.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
@@ -163,24 +164,44 @@ function updater_get_track(PDO $pdo): string {
 
 /**
  * Fire a non-blocking ping to snapsmack.ca so the dashboard can count unique installs.
- * Privacy-respecting: only sends a random install UID (no blog name, no IP at our end).
- * The UID is generated on first call and persisted in snap_settings.
+ * Privacy-respecting: UID is a one-way hash of the site URL — fleet size is visible
+ * to the operator, but the UID cannot be reversed to identify the site owner.
+ * Hubs include their active spoke count so the dashboard reflects the full fleet.
  * Fails silently — never blocks or errors the update check.
  */
 function _updater_ping_home(PDO $pdo, string $version, string $track): void {
     try {
-        // Get or generate install UID
-        $uid = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'install_uid' LIMIT 1")
-                   ->fetchColumn();
-        if (!$uid) {
-            $uid = bin2hex(random_bytes(16));
-            $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('install_uid', ?)
-                           ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
-                ->execute([$uid]);
+        // --- UID: stable hash of site URL ---
+        // SHA-256 of the normalised site URL, truncated to 32 hex chars.
+        // One-way: tells us "this same site checked in again" without revealing whose site it is.
+        // Falls back to a stored random UID if site_url is not yet configured.
+        $site_url = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'site_url' LIMIT 1")->fetchColumn() ?? '');
+        if ($site_url !== '') {
+            $uid = substr(hash('sha256', strtolower(rtrim($site_url, '/'))), 0, 32);
+        } else {
+            $uid = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'install_uid' LIMIT 1")->fetchColumn();
+            if (!$uid) {
+                $uid = bin2hex(random_bytes(16));
+            }
         }
+        // Persist so other code can read it if needed
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('install_uid', ?)
+                       ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+            ->execute([$uid]);
 
-        $ping_url = 'https://snapsmack.ca/releases/ping.php?'
-            . http_build_query(['uid' => $uid, 'v' => $version, 't' => $track]);
+        // --- SPOKE COUNT (hubs only) ---
+        $spoke_count = 0;
+        try {
+            $role = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'multisite_role' LIMIT 1")->fetchColumn();
+            if ($role === 'hub') {
+                $spoke_count = (int)$pdo->query("SELECT COUNT(*) FROM snap_multisite_nodes WHERE status = 'active'")->fetchColumn();
+            }
+        } catch (PDOException $e) {}
+
+        // Ping payload: install identity only. No stats, no site name, no traffic data.
+        $ping_params = ['uid' => $uid, 'v' => $version, 't' => $track, 's' => $spoke_count];
+
+        $ping_url = 'https://snapsmack.ca/releases/ping.php?' . http_build_query($ping_params);
 
         if (function_exists('curl_init')) {
             $ch = curl_init($ping_url);

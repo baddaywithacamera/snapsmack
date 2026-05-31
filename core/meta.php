@@ -187,6 +187,12 @@ $_snap_page_css = [
 <?php if (isset($_snap_page_css[$_snap_page])): ?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/<?php echo $_snap_page_css[$_snap_page]; ?>?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 <?php endif; ?>
+<?php
+// shortcodes.css loads on pages that run parseContent() — page.php and blog.php.
+// Safe on all install types; carousel installs simply won't use the shortcodes.
+if (in_array($_snap_page, ['page', 'blog', 'index'])): ?>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/shortcodes.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<?php endif; ?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-mosaic.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
 
