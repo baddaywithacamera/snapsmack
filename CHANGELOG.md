@@ -12,7 +12,7 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.190 — "Shit and Git" (2026-05-31)
+## 0.7.191 — "Shit and Git" (2026-05-31)
 
 ### Added
 - **Shortcodes system** (`core/parser.php`, `assets/css/shortcodes.css`, `smack-shortcodes.php`, `core/sidebar.php`, `core/meta.php`) — `parseAttrs()` helper; 4 layout shortcodes (`[columns]`, `[column]`, `[box]`, `[divider]`); 6 prose shortcodes (`[note]`, `[warn]`, `[tip]`, `[quote]`, `[code]`, `[kbd]`). SMACKCODES admin reference page with live previews and copy buttons (carousel-gated in sidebar).
@@ -20,6 +20,7 @@ All notable changes to SnapSmack are documented here. Newest release first.
 ### Fixed
 - **`stats.php` parse error** — EOF marker was `<?php // ===== SNAPSMACK EOF =====` in a pure-PHP file (no closing `?>`). PHP re-open tag caused fatal parse error on every request. Corrected to `// ===== SNAPSMACK EOF =====`.
 - **snapsmack.ca skin gallery stats** — Cards now curl each site's `/stats.php` directly with a 1-hour file cache. Previous approach (SC DB populated by phone-home ping) was wrong by design; stats were never SC's data to collect. Skin card tooltip brought closer to cursor (8px offset) and uses measured tooltip width for accurate viewport-edge flip.
+- **Hub-triggered spoke updates now phone home** (`core/multisite-api.php`) — Explicit `_updater_ping_home()` call added as step 10 of the `multisite/updates/trigger` endpoint, after extraction and migration. Bootstraps the SC Active Installs counter even on the first update that introduces the phone-home system (previously the spoke ran its old updater.php during the trigger, which predated the ping function).
 
 ### Changed
 - **Phone-home ping** (`core/updater.php`) — Stripped to install identity only: `uid`, `version`, `track`, `spoke_count`. Post counts, traffic, and site name removed entirely. Not appropriate to collect.

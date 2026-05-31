@@ -1049,6 +1049,14 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
     updater_release_lock();
     updater_cleanup();
 
+    // 10. Phone home — now running with newly-extracted code, so ping fires even on
+    //     the first update that introduces _updater_ping_home (bootstraps the counter).
+    try {
+        $new_version = preg_replace('/^[^0-9]+/', '', $release_info['version'] ?? $installed_version);
+        $new_track   = updater_get_track($pdo);
+        _updater_ping_home($pdo, $new_version, $new_track);
+    } catch (Throwable $e) {}
+
     $mig_count = count(array_filter($mig_result, fn($r) => ($r['status'] ?? '') === 'ok'));
 
     ms_ok([
