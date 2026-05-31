@@ -827,20 +827,21 @@ if (!empty($google_families)) {
                                     </div>
                                     <?php if (empty($o['no_size_slider'])): ?>
                                     <?php
-                                        $sz_key = $k . '_size';
-                                        $sz     = $o['size'] ?? [];
-                                        $sz_val = ($settings[$sz_key] ?? '') !== '' ? $settings[$sz_key] : ($sz['default'] ?? '1.0');
+                                        $sz_key  = $o['sz_key_override'] ?? ($k . '_size');
+                                        $sz      = $o['size'] ?? [];
+                                        $sz_unit = strtoupper($sz['unit'] ?? 'REM');
+                                        $sz_val  = ($settings[$sz_key] ?? '') !== '' ? $settings[$sz_key] : ($sz['default'] ?? '1.0');
                                     ?>
                                     <div style="margin-top:12px;">
-                                        <label style="display:block; font-size:0.7rem; letter-spacing:1.5px; text-transform:uppercase; opacity:0.5; margin-bottom:6px;">Font Size (rem)</label>
+                                        <label style="display:block; font-size:0.7rem; letter-spacing:1.5px; text-transform:uppercase; opacity:0.5; margin-bottom:6px;">Font Size (<?php echo strtolower($sz_unit); ?>)</label>
                                         <div class="range-wrapper">
                                             <input type="range" name="skin_opt[<?php echo $sz_key; ?>]"
                                                 min="<?php echo $sz['min'] ?? '0.7'; ?>"
                                                 max="<?php echo $sz['max'] ?? '2.0'; ?>"
                                                 step="<?php echo $sz['step'] ?? '0.05'; ?>"
                                                 value="<?php echo htmlspecialchars($sz_val); ?>"
-                                                oninput="this.nextElementSibling.innerText = this.value + 'REM'">
-                                            <span class="active-val"><?php echo strtoupper(htmlspecialchars($sz_val)); ?>REM</span>
+                                                oninput="this.nextElementSibling.innerText = this.value + '<?php echo $sz_unit; ?>'">
+                                            <span class="active-val"><?php echo htmlspecialchars($sz_val); ?><?php echo $sz_unit; ?></span>
                                         </div>
                                     </div>
                                     <?php endif; ?>

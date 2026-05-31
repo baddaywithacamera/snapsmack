@@ -97,9 +97,9 @@ $css_vars = [
     '--chap-title-size'        => (int)($settings['chap_title_size'] ?? 11), /* unitless, CSS uses calc(val * 0.1rem) */
     '--chap-grain-opacity'     => $grain_opacity,
     '--header-height'          => ($settings['chap_header_height']      ?? '56') . 'px',
-    '--chap-archive-gap'       => ($settings['chap_archive_gap']        ?? '20') . 'px',
-    '--chap-archive-max-width' => ($settings['chap_archive_max_width']  ?? '1400') . 'px',
-    '--grid-cols'              => ($settings['chap_archive_cols']        ?? '4'),
+    '--chap-archive-gap'       => ($settings['archive_gutter']          ?? '4') . 'px',
+    '--chap-archive-max-width' => ($settings['main_canvas_width']       ?? '1280') . 'px',
+    '--grid-cols'              => ($settings['browse_cols']              ?? '4'),
     // Bottom chrome height = infobox(50) [+ intertitle(71) if shown below photo].
     // System footer is hidden on single view — do NOT include its 40px here.
     '--chap-bottom-chrome'    => ($title_pos === 'below_photo') ? '121px' : '50px',
@@ -122,6 +122,7 @@ $css_vars = [
     '--chap-nav-font'         => "'" . ($settings['chap_nav_font']        ?? 'Cinzel') . "', Georgia, serif",
     '--chap-nav-size'         => (int)($settings['chap_nav_size']         ?? 7),  /* unitless, CSS uses calc(val * 0.1rem) */
     '--chap-nav-color'        => $settings['chap_nav_color']              ?? '#d4d4d4',
+    '--chap-footer-color'     => $settings['chap_footer_color']           ?? '#8a8579',
 ];
 
 $scratch_prob = [
@@ -140,6 +141,7 @@ snapsmack_emit_font_tags([
     $settings['chap_footer_font']     ?? '',
     $settings['chap_page_title_font'] ?? '',
     $settings['chap_nav_font']        ?? '',
+    'DM Sans', // calendar panel usability font
 ], BASE_URL);
 ?>
 

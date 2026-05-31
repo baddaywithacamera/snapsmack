@@ -2,9 +2,9 @@
 /**
  * SNAPSMACK - Chaplin skin: archive layout
  *
- * Structure taken from 50-shades-of-noah-grey (natural aspect ratio thumbs +
- * justified masonry). Chaplin black background, New Horizon revival_double
- * border treatment on thumbnails.
+ * Ported directly from 50-shades-of-noah-grey. Uses global Archive Appearance
+ * settings (browse_cols, archive_gutter, justified_row_height, main_canvas_width)
+ * — NOT skin-specific archive settings.
  *
  * NOTE: Included INSIDE archive.php's #scroll-stage — we only output grid content.
  * Variables provided by archive.php: $images, $settings, $pdo, BASE_URL,
@@ -16,34 +16,32 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-// Use $archive_layout from archive.php scope.
-$_chap_cur           = isset($archive_layout) ? $archive_layout : ($settings['archive_layout'] ?? 'thumbs');
-$_chap_initial_thumbs = ($_chap_cur !== 'masonry');
+$archive_default = $settings['archive_layout'] ?? 'cropped';
+if ($archive_default === 'square')  $archive_default = 'cropped';
+if ($archive_default === 'masonry') $archive_default = 'justified';
 
-// Aspect ratio bounds — clamp 2:3 → 3:2
 $ratio_min = 2 / 3;
 $ratio_max = 3 / 2;
 
-// Justified row builder
-$target_row_h      = (int)($settings['justified_row_height'] ?? 280);
-$gap               = 4;
-$ref_w             = (int)($settings['chap_archive_max_width'] ?? 1400);
-$rows              = [];
-$current_row       = [];
-$current_row_width = 0;
+$target_row_h = (int)($settings['justified_row_height'] ?? 280);
+$gap          = (int)($settings['archive_gutter'] ?? 4);
+$ref_w        = (int)($settings['main_canvas_width'] ?? 1280);
 
+$rows = [];
+$current_row = [];
+$current_row_width = 0;
 foreach ($images as $img) {
-    $iw = (int)($img['img_width']  ?? 400);
+    $iw = (int)($img['img_width'] ?? 400);
     $ih = (int)($img['img_height'] ?? 400);
     if ($ih <= 0) $ih = 400;
     if ($iw <= 0) $iw = 400;
-    $img['_aspect']    = $iw / $ih;
-    $scaled_w          = round($img['_aspect'] * $target_row_h);
-    $current_row[]     = $img;
+    $img['_aspect'] = $iw / $ih;
+    $scaled_w = round($img['_aspect'] * $target_row_h);
+    $current_row[] = $img;
     $current_row_width += $scaled_w + $gap;
     if ($current_row_width - $gap >= $ref_w) {
-        $rows[]            = ['images' => $current_row, 'full' => true];
-        $current_row       = [];
+        $rows[] = ['images' => $current_row, 'full' => true];
+        $current_row = [];
         $current_row_width = 0;
     }
 }
@@ -61,10 +59,14 @@ for ($i = count($rows) - 1; $i >= 0; $i--) {
     }
 }
 if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
+
+$_chap_cur = isset($archive_layout) ? $archive_layout : ($settings['archive_layout'] ?? 'thumbs');
+$_chap_initial_thumbs = ($_chap_cur !== 'masonry');
 ?>
 
-<!-- Chaplin cropped grid — natural aspect ratio, New Horizon borders -->
-<div id="browse-grid" class="chap-archive-grid" <?php echo $_chap_initial_thumbs ? '' : 'style="display:none;"'; ?>>
+<!-- Chaplin cropped grid — fsog classes, verbatim from 50-shades -->
+<div id="browse-grid" class="fsog-archive-grid"
+     style="--grid-cols: <?php echo (int)($settings['browse_cols'] ?? 4); ?>; --thumb-width: <?php echo (int)($thumb_px ?? 250); ?>px; <?php echo $_chap_initial_thumbs ? '' : 'display:none;'; ?>">
     <?php if (!empty($images)): ?>
         <?php foreach ($images as $img):
             $link = BASE_URL . htmlspecialchars($img['img_slug']);
@@ -76,7 +78,7 @@ if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
                 $folder    = str_replace($filename, '', $full_img_path);
                 $thumb_url = BASE_URL . $folder . 'thumbs/a_' . $filename;
             }
-            $iw = (int)($img['img_width']  ?? 0);
+            $iw = (int)($img['img_width'] ?? 0);
             $ih = (int)($img['img_height'] ?? 0);
             if ($iw > 0 && $ih > 0) {
                 $ratio = max($ratio_min, min($ratio_max, $iw / $ih));
@@ -84,16 +86,13 @@ if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
                 $ratio = 1;
             }
         ?>
-            <a href="<?php echo $link; ?>"
-               class="chap-archive-item"
-               title="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>">
-                <div class="chap-thumb<?php echo $ratio < 1 ? ' chap-thumb-portrait' : ''; ?>"
-                     style="aspect-ratio: <?php echo round($ratio, 4); ?>;">
+            <a href="<?php echo $link; ?>" class="fsog-archive-item" title="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>">
+                <div class="fsog-thumb<?php echo $ratio < 1 ? ' fsog-thumb-portrait' : ''; ?>" style="aspect-ratio: <?php echo round($ratio, 4); ?>;">
                     <img src="<?php echo $thumb_url; ?>"
                          alt="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>"
                          loading="lazy">
                 </div>
-                <div class="chap-archive-title"><?php echo htmlspecialchars($img['img_title'] ?? ''); ?></div>
+                <div class="fsog-archive-title"><?php echo htmlspecialchars($img['img_title'] ?? ''); ?></div>
             </a>
         <?php endforeach; ?>
     <?php else: ?>
@@ -103,7 +102,7 @@ if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
     <?php endif; ?>
 </div>
 
-<!-- Justified/masonry grid -->
+<!-- Justified grid — Flickr-style row fill -->
 <div id="justified-grid"
      style="--justified-gap: <?php echo $gap; ?>px; --justified-row-height: <?php echo $target_row_h; ?>px; --last-row-ar-sum: <?php echo round($last_full_ar_sum, 4); ?>; <?php echo $_chap_initial_thumbs ? 'display:none;' : ''; ?>">
     <?php if (!empty($images)): ?>
@@ -116,13 +115,10 @@ if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
                     $img_url   = BASE_URL . ltrim($img['img_file'] ?? '', '/');
                     $flex_grow = round($img['_aspect'] * 100);
                 ?>
-                    <a href="<?php echo $link; ?>"
-                       class="justified-item"
+                    <a href="<?php echo $link; ?>" class="justified-item"
                        title="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>"
                        style="flex-grow: <?php echo $flex_grow; ?>; flex-basis: 0; aspect-ratio: <?php echo round($img['_aspect'], 4); ?>;">
-                        <img src="<?php echo $img_url; ?>"
-                             alt="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>"
-                             loading="lazy">
+                        <img src="<?php echo $img_url; ?>" alt="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>" loading="lazy">
                     </a>
                 <?php endforeach; ?>
             </div>
@@ -135,7 +131,7 @@ if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
 </div>
 
 <script>
-(function () {
+(function() {
     'use strict';
     var browseGrid    = document.getElementById('browse-grid');
     var justifiedGrid = document.getElementById('justified-grid');
