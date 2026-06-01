@@ -244,7 +244,12 @@ include 'core/sidebar.php';
                     <input type="text" name="settings[site_url]" value="<?php echo htmlspecialchars($settings['site_url'] ?? 'https://example.com/'); ?>">
 
                     <label>SITE EMAIL</label>
-                    <input type="email" name="settings[site_email]" value="<?php echo htmlspecialchars($settings['site_email'] ?? ''); ?>" placeholder="e.g. contact@example.com">
+                    <?php if (($settings['hub_controls_email'] ?? '0') === '1'): ?>
+                        <div class="read-only-display"><?php echo htmlspecialchars($settings['site_email'] ?? '(not set)'); ?></div>
+                        <span class="dim" style="font-size:0.75rem;margin-top:4px;display:block;">⊘ MANAGED BY NETWORK HUB</span>
+                    <?php else: ?>
+                        <input type="email" name="settings[site_email]" value="<?php echo htmlspecialchars($settings['site_email'] ?? ''); ?>" placeholder="e.g. contact@example.com">
+                    <?php endif; ?>
                 </div>
 
                 <div class="post-col-right">
@@ -271,22 +276,34 @@ include 'core/sidebar.php';
             <div class="config-grid">
                 <div class="lens-input-wrapper">
                     <label>GLOBAL COMMENTS <span class="field-tip" data-tip="Master override for all posts. Disabling this kills comments site-wide regardless of per-post settings.">ⓘ</span></label>
-                    <select name="settings[global_comments_enabled]">
-                        <option value="1" <?php echo (($settings['global_comments_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
-                        <option value="0" <?php echo (($settings['global_comments_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
-                    </select>
+                    <?php if (($settings['hub_controls_comments'] ?? '0') === '1'): ?>
+                        <div class="read-only-display"><?php echo ($settings['global_comments_enabled'] ?? '1') === '1' ? 'ENABLED' : 'DISABLED (KILL-SWITCH)'; ?></div>
+                        <span class="dim" style="font-size:0.75rem;margin-top:4px;display:block;">⊘ MANAGED BY NETWORK HUB</span>
+                    <?php else: ?>
+                        <select name="settings[global_comments_enabled]">
+                            <option value="1" <?php echo (($settings['global_comments_enabled'] ?? '1') == '1') ? 'selected' : ''; ?>>ENABLED</option>
+                            <option value="0" <?php echo (($settings['global_comments_enabled'] ?? '1') == '0') ? 'selected' : ''; ?>>DISABLED (KILL-SWITCH)</option>
+                        </select>
+                    <?php endif; ?>
                 </div>
 
                 <div class="lens-input-wrapper">
                     <label>AKISMET API KEY <span class="field-tip" data-tip="Spam filter for comments. Leave blank to disable. Get a free key at akismet.com/signup">ⓘ</span></label>
-                    <div style="display:flex;gap:8px;align-items:center;">
-                        <input type="text" name="settings[akismet_key]"
-                               value="<?php echo htmlspecialchars($settings['akismet_key'] ?? ''); ?>"
-                               placeholder="e.g. a1b2c3d4e5f6"
-                               style="flex:1;font-family:monospace;">
-                        <button type="button" id="akismet-test-btn" class="master-update-btn btn-mt-0" style="white-space:nowrap;padding:0 16px;flex-shrink:0;width:auto;height:40px;">TEST KEY</button>
-                    </div>
-                    <span id="akismet-test-result" style="display:none;margin-top:4px;font-size:11px;"></span>
+                    <?php if (($settings['hub_controls_akismet'] ?? '0') === '1'): ?>
+                        <div class="read-only-display" style="font-family:monospace;">
+                            <?php $ak = $settings['akismet_key'] ?? ''; echo $ak ? '••••••••' . htmlspecialchars(substr($ak, -4)) : '(not set)'; ?>
+                        </div>
+                        <span class="dim" style="font-size:0.75rem;margin-top:4px;display:block;">⊘ MANAGED BY NETWORK HUB</span>
+                    <?php else: ?>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <input type="text" name="settings[akismet_key]"
+                                   value="<?php echo htmlspecialchars($settings['akismet_key'] ?? ''); ?>"
+                                   placeholder="e.g. a1b2c3d4e5f6"
+                                   style="flex:1;font-family:monospace;">
+                            <button type="button" id="akismet-test-btn" class="master-update-btn btn-mt-0" style="white-space:nowrap;padding:0 16px;flex-shrink:0;width:auto;height:40px;">TEST KEY</button>
+                        </div>
+                        <span id="akismet-test-result" style="display:none;margin-top:4px;font-size:11px;"></span>
+                    <?php endif; ?>
                 </div>
 
                 <div class="lens-input-wrapper">
@@ -477,7 +494,7 @@ include 'core/sidebar.php';
                 </div>
                 <div class="lens-input-wrapper">
                     <label>MANAGE</label>
-                    <a href="smack-smackback.php" class="btn btn-sm">Open SMACKBACK →</a>
+                    <a href="smack-back.php" class="btn-smack">OPEN SMACKBACK →</a>
                 </div>
             </div>
         </div>
@@ -516,6 +533,23 @@ include 'core/sidebar.php';
              ============================================================ -->
         <div class="box box-flush-bottom">
             <h3>TIME & LOCALIZATION</h3>
+            <?php if (($settings['hub_controls_timezone'] ?? '0') === '1'): ?>
+            <div class="dash-grid">
+                <div class="lens-input-wrapper">
+                    <label>TIMEZONE</label>
+                    <div class="read-only-display"><?php echo htmlspecialchars($settings['timezone'] ?? 'America/Edmonton'); ?></div>
+                    <span class="dim" style="font-size:0.75rem;margin-top:4px;display:block;">⊘ MANAGED BY NETWORK HUB</span>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>DATE DISPLAY FORMAT</label>
+                    <div class="read-only-display"><?php echo htmlspecialchars($settings['date_format'] ?? 'F j, Y'); ?></div>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>LIVE PREVIEW</label>
+                    <div id="local-clock" class="read-only-display clock-display">SYNCING...</div>
+                </div>
+            </div>
+            <?php else: ?>
             <div class="dash-grid">
                 <div class="lens-input-wrapper">
                     <label>TIMEZONE</label>
@@ -547,6 +581,7 @@ include 'core/sidebar.php';
                     <div id="local-clock" class="read-only-display clock-display">SYNCING...</div>
                 </div>
             </div>
+            <?php endif; // hub_controls_timezone ?>
         </div>
 
         <!-- ============================================================
@@ -554,6 +589,21 @@ include 'core/sidebar.php';
              ============================================================ -->
         <div class="box box-flush-bottom">
             <h3>AI ASSISTANT</h3>
+            <?php if (($settings['hub_controls_ai'] ?? '0') === '1'): ?>
+            <div class="dash-grid">
+                <div class="lens-input-wrapper">
+                    <label>PROVIDER</label>
+                    <div class="read-only-display"><?php
+                        $ai_prov_labels = ['claude' => 'Claude (Anthropic)', 'gemini' => 'Gemini (Google)', 'openai' => 'ChatGPT (OpenAI)', 'none' => 'None (disabled)'];
+                        echo htmlspecialchars($ai_prov_labels[$settings['ai_provider'] ?? 'none'] ?? 'None');
+                    ?></div>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>API KEY</label>
+                    <div class="read-only-display"><span class="dim">⊘ MANAGED BY NETWORK HUB</span></div>
+                </div>
+            </div>
+            <?php else: ?>
             <p class="dim" style="margin:0 0 16px;">
                 Powers the Spell/Grammar check and AI Assist panel in the post editor.
                 Your API key is stored in the database and never exposed publicly.
@@ -611,6 +661,7 @@ include 'core/sidebar.php';
                 </button>
                 <span id="ai-test-result" style="margin-left:12px; font-size:0.85em;"></span>
             </div>
+            <?php endif; // hub_controls_ai ?>
         </div>
 
         <?php $_ui_pimpmobile = ($settings['ui_mode'] ?? 'bigwheel') === 'pimpmobile'; ?>

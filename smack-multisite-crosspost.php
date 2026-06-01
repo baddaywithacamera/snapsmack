@@ -189,6 +189,7 @@ include 'core/sidebar.php';
             <a href="smack-multisite-crosspost.php"   class="btn-clear active">CROSS-POST</a>
             <a href="smack-multisite-blogroll.php"    class="btn-clear">BLOGROLL</a>
             <a href="smack-multisite-settings.php"   class="btn-clear">SETTINGS</a>
+            <a href="smack-push-it.php"               class="btn-clear">PUSH IT</a>
         </div>
     </div>
 

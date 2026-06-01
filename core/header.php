@@ -106,6 +106,10 @@ if (!function_exists('_snap_nav_resolve_url')) {
                     }
                     return $_pc[$id] ? $base . 'page.php?slug=' . $_pc[$id] : '';
                 }
+                // smack-menu.php stores slug directly on the item (no target_id)
+                if (!empty($item['slug'])) {
+                    return $base . 'page.php?slug=' . rawurlencode($item['slug']);
+                }
                 return $url;
             case 'album':
             case 'category':

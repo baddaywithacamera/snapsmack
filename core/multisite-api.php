@@ -294,8 +294,9 @@ if ($resource === 'heartbeat' && $method === 'GET') {
         'disk_usage_bytes'   => $disk_bytes,
         'site_tagline'       => $settings['site_tagline'] ?? '',
         'maintenance_mode'   => ($settings['maintenance_mode'] ?? '0') === '1' ? 1 : 0,
-        'smackback_status'   => $settings['smackback_status']   ?? 'unknown',
+        'smackback_status'   => $settings['smackback_status']   ?? (($settings['smackback_enabled'] ?? '0') === '1' ? 'pending' : 'unknown'),
         'smackback_breach_at'=> ($settings['smackback_breach_at'] ?? '') ?: null,
+        'site_mode'          => $settings['site_mode']           ?? 'photoblog',
         'timestamp'          => date('c'),
     ]);
 }

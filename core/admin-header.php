@@ -82,7 +82,7 @@ ob_start();
 <div style="background:#3a1000;border-bottom:3px solid #cc2200;padding:10px 24px;font-size:0.88rem;color:#ffccc0;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:999;">
     <strong style="color:#ff6600;letter-spacing:1px;font-size:0.82rem;">&#9888; SMACKBACK</strong>
     File tampering or corruption detected. Admin functions are unrestricted (Alert mode).
-    <a href="smack-smackback.php" style="color:#ff9900;text-decoration:none;border:1px solid #ff6600;padding:3px 10px;font-size:0.8rem;white-space:nowrap;">View Breach Detail &rarr;</a>
+    <a href="smack-back.php" style="color:#ff9900;text-decoration:none;border:1px solid #ff6600;padding:3px 10px;font-size:0.8rem;white-space:nowrap;">View Breach Detail &rarr;</a>
 </div>
 <?php endif; ?>
 <?php if (!empty($GLOBALS['_nalert_status'])): ?>

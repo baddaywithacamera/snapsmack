@@ -163,11 +163,11 @@ if (isset($_SESSION['user_login'])) {
 }
 
 // --- SMACKBACK BREACH GATE ---
-// In lockout or paranoid mode, redirect all admin pages to smack-smackback.php
-// when a breach is active. smack-smackback.php and smack-update.php are exempt
+// In lockout or paranoid mode, redirect all admin pages to smack-back.php
+// when a breach is active. smack-back.php and smack-update.php are exempt
 // (they're how you resolve the breach). Alert mode: no redirect.
 $_smack_current = basename($_SERVER['SCRIPT_FILENAME'] ?? '');
-$_smack_exempt  = ['smack-smackback.php', 'smack-update.php'];
+$_smack_exempt  = ['smack-back.php', 'smack-update.php'];
 
 if (!in_array($_smack_current, $_smack_exempt, true)) {
     try {
@@ -179,7 +179,7 @@ if (!in_array($_smack_current, $_smack_exempt, true)) {
         if (($_smack_row['smackback_enabled'] ?? '0') === '1'
             && ($_smack_row['smackback_status'] ?? 'clean') === 'breach') {
             if (($_smack_row['smackback_mode'] ?? 'lockout') !== 'alert') {
-                header('Location: ' . BASE_URL . 'smack-smackback.php');
+                header('Location: ' . BASE_URL . 'smack-back.php');
                 exit;
             } else {
                 // Alert mode: let admin through but flag a banner for admin-header.php

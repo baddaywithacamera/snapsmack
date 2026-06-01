@@ -1325,9 +1325,13 @@ for backdoor insertion. Excluded: uploads/, user content, minified third-party a
 anything in tools/ or smack-central/.</p>
 
 <h4>How to Enable It</h4>
-<p>Go to <strong>Admin → SMACKBACK</strong> and toggle Enable on. Choose a response mode
-(Lockout is recommended). Optionally enable the pageload stat check — it's a filesystem
-metadata-only operation that costs essentially nothing per request. Save.</p>
+<p>Go to <strong>Admin → SMACK-BACK</strong> (in the sidebar under Boring Ass Stuff) and
+toggle Enable on. Choose a response mode (Lockout is recommended). Optionally enable the
+pageload stat check — it's a filesystem metadata-only operation that costs essentially
+nothing per request. Save.</p>
+<p>On a multisite fleet, if the hub controls SMACKBACK via Push It, the enabled state and
+response mode are locked and managed centrally. You can still set your local alert email and
+pageload check independently.</p>
 
 <h4>Response Modes</h4>
 <p><strong>Alert:</strong> Tamper detected → email fires → a prominent warning banner appears
@@ -2825,12 +2829,14 @@ site that reports back to the hub).</p>
     report back. <em>UPDATE ALL BEHIND</em> does the whole fleet in sequence with
     one click. When all spokes are current the button becomes a greyed <em>ALL UP
     TO DATE</em> indicator.</li>
-    <li><strong>Network Settings Push</strong> — push common settings from the hub to all
-    connected spokes from a single page (Multisite → Settings). Available groups: timezone
-    and date format, Akismet spam key, AI training crawler policy, SMACKBACK enabled/mode,
-    global comments on/off, and contact email. Each group pushes with a single button.
-    Download settings can be targeted to a custom subset of spokes — useful when only
-    some sites in your fleet need download links.</li>
+    <li><strong>Push It (Push It Real Good)</strong> — fleet settings control lives on its own
+    page (Multisite → Push It). For each setting group — timezone, Akismet, AI provider and
+    keys, SMACKBACK, global comments, contact email — you can toggle <em>Hub Controls This
+    Setting</em>. When on, the hub owns that setting fleet-wide: spokes receive the value and
+    their corresponding settings UI locks to read-only with a "Managed by Network Hub" notice.
+    When off, spokes manage their own value. Push any group on demand with its own button, or
+    push everything hub-controlled at once with <em>PUSH IT ALL</em>. Download settings remain
+    on the Settings page and can be targeted to a custom subset of spokes.</li>
 </ul>
 
 <h4>Heartbeat Monitoring</h4>

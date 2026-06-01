@@ -277,4 +277,46 @@ if ($sub === 'images' && $method === 'POST') {
         'image_id'  => $image_id,
         'img_slug'  => $slug,
         'duplicate' => false,
-    
+    ]);
+}
+
+// POST flkrfckr/comments — import a single Flickr comment onto an existing post.
+// Inserts into snap_community_comments as a guest comment (status=visible, auto-approved).
+// Expects JSON body: { flickr_id, author_name, author_url, comment_text, comment_date }
+// where flickr_id is the SnapSmack image_id returned from flkrfckr/images.
+if ($method === 'POST' && $sub === 'comments') {
+    $body         = json_decode(file_get_contents('php://input'), true) ?? [];
+    $image_id     = (int)($body['image_id']     ?? 0);
+    $author_name  = trim($body['author_name']   ?? '');
+    $author_url   = trim($body['author_url']    ?? '');
+    $comment_text = trim($body['comment_text']  ?? '');
+    $comment_date = trim($body['comment_date']  ?? '');
+
+    if ($image_id <= 0)         flkrfckr_error(400, 'image_id is required.');
+    if ($comment_text === '')   flkrfckr_error(400, 'comment_text is required.');
+
+    // Validate image exists
+    $img_chk = $pdo->prepare("SELECT id FROM snap_images WHERE id = ? LIMIT 1");
+    $img_chk->execute([$image_id]);
+    if (!$img_chk->fetch()) flkrfckr_error(404, 'image_id not found.');
+
+    // Validate date or default to now
+    $dt = $comment_date ? date('Y-m-d H:i:s', strtotime($comment_date)) : date('Y-m-d H:i:s');
+
+    $stmt = $pdo->prepare("
+        INSERT INTO snap_community_comments
+            (post_id, guest_name, guest_url, comment_text, status, created_at)
+        VALUES (?, ?, ?, ?, 'visible', ?)
+    ");
+    $stmt->execute([
+        $image_id,
+        $author_name ?: 'Anonymous',
+        $author_url ?: null,
+        $comment_text,
+        $dt,
+    ]);
+    $comment_id = (int)$pdo->lastInsertId();
+
+    flkrfckr_ok(['comment_id' => $comment_id]);
+}
+<?php // ===== SNAPSMACK EOF =====

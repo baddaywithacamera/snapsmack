@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK - Configuration manifest for the Dapper Dan admin theme
+ * SNAPSMACK - Configuration manifest for the Prideful admin theme
  */
 
 /**
@@ -12,12 +12,12 @@
 
 
 return [
-    'name'        => 'Dapper Dan',
-    'version'     => '1.1',
+    'name'        => 'Prideful',
+    'version'     => '1.0',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'default'     => '0',
-    'css_file'    => 'admin-theme-colours-dapper-dan.css', // The direct link the header needs
-    'description' => "The discerning blog skin, where the pleasing colour treatment is half the point. Only for the bonafide.",
+    'css_file'    => 'admin-theme-colours-prideful.css',
+    'description' => 'Light blue canvas. A pride parade puked on your screen. Unapologetically extra.',
 ];
 // ===== SNAPSMACK EOF =====

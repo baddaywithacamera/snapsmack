@@ -84,27 +84,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
             }
         };
 
-        // Grid / cropped thumb border.
-        $gw = max(0, min(8, (int)($_POST['settings']['archive_grid_border_width'] ?? 1)));
-        $gc = preg_match('/^#[0-9a-fA-F]{6}$/', $_POST['settings']['archive_grid_border_color'] ?? '')
-              ? $_POST['settings']['archive_grid_border_color'] : '#888888';
-        if ($gw > 0) {
-            $grid_rule = "/* arch_opt:grid_border */ .fsog-archive-item .fsog-thumb, .rg-archive-item .rg-thumb { border: {$gw}px solid {$gc} !important; box-shadow: none !important; }";
-        } else {
-            $grid_rule = "/* arch_opt:grid_border */ .fsog-archive-item .fsog-thumb, .rg-archive-item .rg-thumb { border: none !important; box-shadow: none !important; }";
-        }
+        // Thumbnail frame preset — covers all grid types across all skins.
+        // Each preset carries separate CSS for grid thumbs vs justified grid:
+        //   grid: border (outside) or inset box-shadow (inside)
+        //   justified: outline with offset 0 (outside) or negative (inside)
+        $no_border_grid = 'border: none !important; box-shadow: none !important;';
+        $no_border_just = 'outline: none !important;';
+        $thumb_frame_presets = [
+            'none'                  => ['grid' => $no_border_grid,                                                              'just' => $no_border_just],
+            'out_1px_grey'          => ['grid' => 'border: 1px solid #666666 !important; box-shadow: none !important;',         'just' => 'outline: 1px solid #666666 !important; outline-offset: 0 !important;'],
+            'out_1px_white'         => ['grid' => 'border: 1px solid #ffffff !important; box-shadow: none !important;',         'just' => 'outline: 1px solid #ffffff !important; outline-offset: 0 !important;'],
+            'out_1px_dark'          => ['grid' => 'border: 1px solid #333333 !important; box-shadow: none !important;',         'just' => 'outline: 1px solid #333333 !important; outline-offset: 0 !important;'],
+            'out_3px_grey'          => ['grid' => 'border: 3px solid #666666 !important; box-shadow: none !important;',         'just' => 'outline: 3px solid #666666 !important; outline-offset: 0 !important;'],
+            'out_3px_white'         => ['grid' => 'border: 3px solid #ffffff !important; box-shadow: none !important;',         'just' => 'outline: 3px solid #ffffff !important; outline-offset: 0 !important;'],
+            'in_1px_grey'           => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 1px #666666 !important;',  'just' => 'outline: 1px solid #666666 !important; outline-offset: -1px !important;'],
+            'in_1px_white'          => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 1px #ffffff !important;',  'just' => 'outline: 1px solid #ffffff !important; outline-offset: -1px !important;'],
+            'in_3px_grey'           => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 3px #666666 !important;',  'just' => 'outline: 3px solid #666666 !important; outline-offset: -3px !important;'],
+            'in_3px_white'          => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 3px #ffffff !important;',  'just' => 'outline: 3px solid #ffffff !important; outline-offset: -3px !important;'],
+            // Double frame: 3px inner line + 5px dark gap + 1px outer line, all outside the image.
+            // Grid: layered external box-shadow. Justified: inset equivalent (external shadow overlaps tight gaps).
+            'dbl_grey'  => ['grid' => 'border: none !important; box-shadow: 0 0 0 3px #666666, 0 0 0 8px #0d0d0d, 0 0 0 9px #666666 !important;', 'just' => 'outline: none !important; box-shadow: inset 0 0 0 1px #666666, inset 0 0 0 6px #0d0d0d, inset 0 0 0 9px #666666 !important;'],
+            'dbl_white' => ['grid' => 'border: none !important; box-shadow: 0 0 0 3px #d4d4d4, 0 0 0 8px #0d0d0d, 0 0 0 9px #d4d4d4 !important;', 'just' => 'outline: none !important; box-shadow: inset 0 0 0 1px #d4d4d4, inset 0 0 0 6px #0d0d0d, inset 0 0 0 9px #d4d4d4 !important;'],
+            'dbl_dark'  => ['grid' => 'border: none !important; box-shadow: 0 0 0 3px #333333, 0 0 0 8px #0d0d0d, 0 0 0 9px #333333 !important;', 'just' => 'outline: none !important; box-shadow: inset 0 0 0 1px #333333, inset 0 0 0 6px #0d0d0d, inset 0 0 0 9px #333333 !important;'],
+        ];
+        $tfp = $_POST['settings']['archive_thumb_frame'] ?? 'none';
+        if (!isset($thumb_frame_presets[$tfp])) $tfp = 'none';
+        $tf = $thumb_frame_presets[$tfp];
+        $grid_sel = '.square-grid .thumb-link, .cropped-grid .thumb-link, .fsog-archive-item .fsog-thumb, .rg-archive-item .rg-thumb';
+        $grid_rule    = "/* arch_opt:grid_border */ {$grid_sel} { {$tf['grid']} }";
+        $masonry_rule = "/* arch_opt:masonry_border */ #justified-grid .justified-item { {$tf['just']} }";
         $upsert_rule($blob, '/* arch_opt:grid_border */', $grid_rule);
-
-        // Masonry / justified border (outline, not border — public-facing.css resets border !important on .justified-item).
-        $mw = in_array((int)($_POST['settings']['archive_masonry_border_width'] ?? 1), [0,1,2], true)
-              ? (int)$_POST['settings']['archive_masonry_border_width'] : 1;
-        $mc = preg_match('/^#[0-9a-fA-F]{6}$/', $_POST['settings']['archive_masonry_border_color'] ?? '')
-              ? $_POST['settings']['archive_masonry_border_color'] : '#888888';
-        if ($mw > 0) {
-            $masonry_rule = "/* arch_opt:masonry_border */ .justified-item { outline: {$mw}px solid {$mc} !important; outline-offset: -{$mw}px; }";
-        } else {
-            $masonry_rule = "/* arch_opt:masonry_border */ .justified-item { outline: none !important; }";
-        }
         $upsert_rule($blob, '/* arch_opt:masonry_border */', $masonry_rule);
 
         $pdo->prepare("REPLACE INTO snap_settings (setting_key, setting_val) VALUES ('custom_css_public', ?)")
@@ -248,7 +257,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                     <label>GUTTER <span class="field-tip" data-tip="Gap between grid tiles.">ⓘ</span></label>
                     <div style="display:flex; align-items:center; gap:12px;">
                         <input type="range" name="settings[archive_gutter]"
-                               min="0" max="24" step="2"
+                               min="0" max="40" step="2"
                                value="<?php echo $current_gutter; ?>"
                                oninput="this.nextElementSibling.textContent = this.value + 'px'">
                         <span style="min-width:36px; font-family:monospace;"><?php echo $current_gutter; ?>px</span>
@@ -351,61 +360,40 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
         </div>
     </div>
 
-    <?php if (!isset($archive_manifest_opts['archive_frame_style'])): ?>
     <!-- ── ARCHIVE THUMB BORDERS ─────────────────────────────────────────── -->
     <div id="smack-skin-config-wrap">
         <?php
-        $agbw = max(0, min(8, (int)($settings['archive_grid_border_width'] ?? 1)));
-        $agbc = preg_match('/^#[0-9a-fA-F]{6}$/', $settings['archive_grid_border_color'] ?? '') ? $settings['archive_grid_border_color'] : '#888888';
-        $ambw = in_array((int)($settings['archive_masonry_border_width'] ?? 1), [0,1,2]) ? (int)$settings['archive_masonry_border_width'] : 1;
-        $ambc = preg_match('/^#[0-9a-fA-F]{6}$/', $settings['archive_masonry_border_color'] ?? '') ? $settings['archive_masonry_border_color'] : '#888888';
+        $current_thumb_frame = $settings['archive_thumb_frame'] ?? 'none';
+        $thumb_frame_opts = [
+            'none'         => 'No Border',
+            'out_1px_grey'  => '1px Outside — Grey',
+            'out_1px_white' => '1px Outside — White',
+            'out_1px_dark'  => '1px Outside — Dark',
+            'out_3px_grey'  => '3px Outside — Grey',
+            'out_3px_white' => '3px Outside — White',
+            'in_1px_grey'   => '1px Inside — Grey',
+            'in_1px_white'  => '1px Inside — White',
+            'in_3px_grey'   => '3px Inside — Grey',
+            'in_3px_white'  => '3px Inside — White',
+            'dbl_grey'      => 'Double Frame Grey (3px + gap + 1px)',
+            'dbl_white'     => 'Double Frame White (3px + gap + 1px)',
+            'dbl_dark'      => 'Double Frame Dark (3px + gap + 1px)',
+        ];
         ?>
         <div class="box">
-            <h3>GRID THUMB BORDER <span class="field-tip" data-tip="Border applied to thumbnails in square, cropped, and calendar grid modes. Applies to all skins.">ⓘ</span></h3>
+            <h3>THUMBNAIL FRAME <span class="field-tip" data-tip="Border style applied to archive thumbnails in all grid modes and all skins.">ⓘ</span></h3>
             <div class="dash-grid">
                 <div class="lens-input-wrapper">
-                    <label>WIDTH (PX)</label>
-                    <input type="range" name="settings[archive_grid_border_width]"
-                           min="0" max="8" step="1" value="<?php echo $agbw; ?>"
-                           oninput="document.getElementById('agbw-val').textContent=this.value+'px'">
-                    <span id="agbw-val" style="font-size:0.85rem; color:var(--text-muted,#888);"><?php echo $agbw; ?>px</span>
-                </div>
-                <div class="lens-input-wrapper">
-                    <label>COLOUR</label>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <input type="color" name="settings[archive_grid_border_color]"
-                               value="<?php echo htmlspecialchars($agbc); ?>"
-                               style="width:48px; height:36px; padding:2px; border-radius:4px; cursor:pointer; border:1px solid var(--border,#333); background:transparent;">
-                        <span style="font-family:monospace; font-size:0.85rem; color:var(--text-muted,#888);"><?php echo htmlspecialchars($agbc); ?></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="box" style="margin-top:16px;">
-            <h3>MASONRY / JUSTIFIED THUMB BORDER <span class="field-tip" data-tip="Border on justified-grid thumbnails. Uses outline rather than border so it renders correctly in all skins.">ⓘ</span></h3>
-            <div class="dash-grid">
-                <div class="lens-input-wrapper">
-                    <label>WIDTH</label>
-                    <select name="settings[archive_masonry_border_width]">
-                        <?php foreach ([0 => 'None', 1 => '1px', 2 => '2px'] as $mv => $ml): ?>
-                            <option value="<?php echo $mv; ?>"<?php echo ($ambw === $mv) ? ' selected' : ''; ?>><?php echo $ml; ?></option>
+                    <label>FRAME STYLE</label>
+                    <select name="settings[archive_thumb_frame]">
+                        <?php foreach ($thumb_frame_opts as $tfk => $tfl): ?>
+                            <option value="<?php echo $tfk; ?>"<?php echo ($current_thumb_frame === $tfk) ? ' selected' : ''; ?>><?php echo $tfl; ?></option>
                         <?php endforeach; ?>
                     </select>
-                </div>
-                <div class="lens-input-wrapper">
-                    <label>COLOUR</label>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <input type="color" name="settings[archive_masonry_border_color]"
-                               value="<?php echo htmlspecialchars($ambc); ?>"
-                               style="width:48px; height:36px; padding:2px; border-radius:4px; cursor:pointer; border:1px solid var(--border,#333); background:transparent;">
-                        <span style="font-family:monospace; font-size:0.85rem; color:var(--text-muted,#888);"><?php echo htmlspecialchars($ambc); ?></span>
-                    </div>
                 </div>
             </div>
         </div>
     </div>
-    <?php endif; ?>
 
     <div class="form-action-row">
         <button type="submit" name="save_archive_appearance" class="master-update-btn">SAVE ARCHIVE APPEARANCE</button>

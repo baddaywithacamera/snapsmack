@@ -162,7 +162,7 @@ if ($show_comments) {
     $cc_stmt = $pdo->prepare("
         SELECT cc.id, cc.comment_text, cc.created_at, {$_edited_col},
                cu.username, cu.display_name, cu.avatar_url,
-               cc.guest_name, cc.guest_email,
+               cc.guest_name, cc.guest_email, cc.guest_url,
                CASE WHEN cc.user_id IS NULL THEN 1 ELSE 0 END AS is_guest
         FROM snap_community_comments cc
         LEFT JOIN snap_community_users cu ON cu.id = cc.user_id
@@ -293,7 +293,13 @@ $reaction_set = [
                     <?php else: ?>
                     <span class="ss-avatar-placeholder" aria-hidden="true"><?php echo $initial; ?></span>
                     <?php endif; ?>
+                    <?php if ($is_guest && !empty($c['guest_url'])): ?>
+                    <a class="ss-commenter ss-commenter-link"
+                       href="<?php echo htmlspecialchars($c['guest_url']); ?>"
+                       target="_blank" rel="noopener noreferrer"><?php echo $display; ?></a>
+                    <?php else: ?>
                     <span class="ss-commenter"><?php echo $display; ?></span>
+                    <?php endif; ?>
                     <span class="ss-comment-date"><?php echo $date; ?></span>
                     <?php if ($is_own): ?>
                     <button class="ss-comment-delete" data-comment-id="<?php echo (int)$c['id']; ?>"

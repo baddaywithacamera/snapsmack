@@ -67,9 +67,10 @@ function ms_settings_push(string $site_url, string $api_key, array $pairs): arra
 // ─────────────────────────────────────────────────────────────────────────────
 $push_results = [];
 $csrf = $_SESSION['csrf_token'] ?? '';
+$csrf_valid = !empty($_POST['csrf']) && hash_equals($csrf, $_POST['csrf']);
 
 // Save downloads spoke selection
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_dl_spokes'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $csrf_valid && isset($_POST['save_dl_spokes'])) {
     $selected = array_map('intval', (array)($_POST['dl_spoke_ids'] ?? []));
     $encoded  = json_encode(array_values($selected));
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('network_push_downloads_spokes', ?)
@@ -82,13 +83,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_dl_spokes'])) {
 $push_groups = [
     'push_timezone'  => ['timezone', 'date_format'],
     'push_akismet'   => ['akismet_key'],
-    'push_ai'        => ['ai_training_policy'],
+    'push_ai'        => ['ai_training_policy', 'ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai'],
     'push_smackback' => ['smackback_enabled', 'smackback_mode'],
     'push_comments'  => ['global_comments_enabled'],
     'push_email'     => ['site_email'],
 ];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// SMACKBACK fleet enable/mode — save to hub first, then push
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $csrf_valid && isset($_POST['push_smackback'])) {
+    $fleet_enabled = ($_POST['smackback_enabled'] ?? '0') === '1' ? '1' : '0';
+    $fleet_mode    = in_array($_POST['smackback_mode'] ?? '', ['alert','lockout','paranoid'], true)
+                     ? $_POST['smackback_mode'] : 'lockout';
+    $upsert_sb = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
+                                ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)");
+    $upsert_sb->execute(['smackback_enabled', $fleet_enabled]);
+    $upsert_sb->execute(['smackback_mode',    $fleet_mode]);
+    $settings['smackback_enabled'] = $fleet_enabled;
+    $settings['smackback_mode']    = $fleet_mode;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $csrf_valid) {
     foreach ($push_groups as $action => $keys) {
         if (!isset($_POST[$action])) continue;
         $pairs = [];
@@ -147,6 +161,7 @@ require_once 'core/admin-header.php';
             <a href="smack-multisite-crosspost.php" class="btn-clear">CROSS-POST</a>
             <a href="smack-multisite-blogroll.php"  class="btn-clear">BLOGROLL</a>
             <a href="smack-multisite-settings.php"  class="btn-clear active">SETTINGS</a>
+            <a href="smack-push-it.php"             class="btn-clear">PUSH IT</a>
         </div>
     </div>
 
@@ -157,165 +172,8 @@ require_once 'core/admin-header.php';
     <?php else: ?>
 
     <p class="dim" style="margin-bottom:24px; font-size:0.85rem;">
-        Push hub settings to all connected spokes. Each group pushes the hub&rsquo;s current value &mdash; review before pushing.
-        Downloads can be targeted to specific spokes only.
+        Downloads can be targeted to specific spokes. To push settings to your fleet, use <a href="smack-push-it.php">PUSH IT</a>.
     </p>
-
-    <?php
-    // Helper: render a push result block
-    function render_push_result(array $results): void {
-        if (empty($results)) return;
-        echo '<div class="push-result-block">';
-        foreach ($results as $name => $status) {
-            $ok  = $status === 'OK';
-            $cls = $ok ? 'push-ok' : 'push-fail';
-            echo '<span class="' . $cls . '">' . htmlspecialchars($name) . ': ' . htmlspecialchars($status) . '</span>';
-        }
-        echo '</div>';
-    }
-    ?>
-
-    <!-- TIMEZONE & DATE FORMAT -->
-    <div class="box">
-        <h3>TIMEZONE &amp; DATE FORMAT</h3>
-        <div class="dash-grid" style="margin-bottom:16px;">
-            <div class="lens-input-wrapper">
-                <label>TIMEZONE</label>
-                <div class="read-only-display"><?php echo htmlspecialchars($settings['timezone'] ?? 'America/Edmonton'); ?></div>
-            </div>
-            <div class="lens-input-wrapper">
-                <label>DATE FORMAT</label>
-                <div class="read-only-display"><?php echo htmlspecialchars($settings['date_format'] ?? 'F j, Y'); ?></div>
-            </div>
-        </div>
-        <?php if (!empty($push_results['push_timezone'])): ?>
-            <?php render_push_result($push_results['push_timezone']); ?>
-        <?php endif; ?>
-        <form method="POST">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <button type="submit" name="push_timezone" class="btn-smack" style="width:auto;height:auto;padding:8px 20px;margin-top:0;">
-                PUSH TO ALL SPOKES
-            </button>
-        </form>
-    </div>
-
-    <!-- SPAM PROTECTION -->
-    <div class="box">
-        <h3>SPAM PROTECTION</h3>
-        <div class="dash-grid" style="margin-bottom:16px;">
-            <div class="lens-input-wrapper">
-                <label>AKISMET API KEY</label>
-                <div class="read-only-display" style="font-family:monospace;">
-                    <?php
-                    $key = $settings['akismet_key'] ?? '';
-                    echo $key ? '••••••••' . substr($key, -4) : '(not set)';
-                    ?>
-                </div>
-            </div>
-        </div>
-        <?php if (!empty($push_results['push_akismet'])): ?>
-            <?php render_push_result($push_results['push_akismet']); ?>
-        <?php endif; ?>
-        <form method="POST">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <button type="submit" name="push_akismet" class="btn-smack" style="width:auto;height:auto;padding:8px 20px;margin-top:0;"
-                <?php echo empty($settings['akismet_key']) ? 'disabled title="No Akismet key set on hub"' : ''; ?>>
-                PUSH TO ALL SPOKES
-            </button>
-        </form>
-    </div>
-
-    <!-- AI TRAINING POLICY -->
-    <div class="box">
-        <h3>AI TRAINING CRAWLERS</h3>
-        <div class="dash-grid" style="margin-bottom:16px;">
-            <div class="lens-input-wrapper">
-                <label>POLICY</label>
-                <div class="read-only-display"><?php
-                    $pol = $settings['ai_training_policy'] ?? 'no_opinion';
-                    echo htmlspecialchars(strtoupper(str_replace('_', ' ', $pol)));
-                ?></div>
-            </div>
-        </div>
-        <?php if (!empty($push_results['push_ai'])): ?>
-            <?php render_push_result($push_results['push_ai']); ?>
-        <?php endif; ?>
-        <form method="POST">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <button type="submit" name="push_ai" class="btn-smack" style="width:auto;height:auto;padding:8px 20px;margin-top:0;">
-                PUSH TO ALL SPOKES
-            </button>
-        </form>
-    </div>
-
-    <!-- SMACKBACK -->
-    <div class="box">
-        <h3>SMACKBACK &mdash; FILE INTEGRITY</h3>
-        <p class="dim" style="font-size:0.85rem;margin-bottom:16px;">
-            Pushes the enabled/mode settings only. Re-baselining file hashes on each spoke
-            must be done per-site after any skin or file update.
-        </p>
-        <div class="dash-grid" style="margin-bottom:16px;">
-            <div class="lens-input-wrapper">
-                <label>ENABLED</label>
-                <div class="read-only-display"><?php echo ($settings['smackback_enabled'] ?? '0') === '1' ? 'YES' : 'NO'; ?></div>
-            </div>
-            <div class="lens-input-wrapper">
-                <label>MODE</label>
-                <div class="read-only-display"><?php echo htmlspecialchars(strtoupper($settings['smackback_mode'] ?? 'lockout')); ?></div>
-            </div>
-        </div>
-        <?php if (!empty($push_results['push_smackback'])): ?>
-            <?php render_push_result($push_results['push_smackback']); ?>
-        <?php endif; ?>
-        <form method="POST">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <button type="submit" name="push_smackback" class="btn-smack" style="width:auto;height:auto;padding:8px 20px;margin-top:0;">
-                PUSH TO ALL SPOKES
-            </button>
-        </form>
-    </div>
-
-    <!-- GLOBAL COMMENTS -->
-    <div class="box">
-        <h3>COMMENTS</h3>
-        <div class="dash-grid" style="margin-bottom:16px;">
-            <div class="lens-input-wrapper">
-                <label>GLOBAL COMMENTS</label>
-                <div class="read-only-display"><?php echo ($settings['global_comments_enabled'] ?? '1') === '1' ? 'ENABLED' : 'DISABLED'; ?></div>
-            </div>
-        </div>
-        <?php if (!empty($push_results['push_comments'])): ?>
-            <?php render_push_result($push_results['push_comments']); ?>
-        <?php endif; ?>
-        <form method="POST">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <button type="submit" name="push_comments" class="btn-smack" style="width:auto;height:auto;padding:8px 20px;margin-top:0;">
-                PUSH TO ALL SPOKES
-            </button>
-        </form>
-    </div>
-
-    <!-- CONTACT EMAIL -->
-    <div class="box">
-        <h3>CONTACT EMAIL</h3>
-        <div class="dash-grid" style="margin-bottom:16px;">
-            <div class="lens-input-wrapper">
-                <label>SITE EMAIL</label>
-                <div class="read-only-display"><?php echo htmlspecialchars($settings['site_email'] ?? '(not set)'); ?></div>
-            </div>
-        </div>
-        <?php if (!empty($push_results['push_email'])): ?>
-            <?php render_push_result($push_results['push_email']); ?>
-        <?php endif; ?>
-        <form method="POST">
-            <input type="hidden" name="csrf" value="<?php echo $csrf; ?>">
-            <button type="submit" name="push_email" class="btn-smack" style="width:auto;height:auto;padding:8px 20px;margin-top:0;"
-                <?php echo empty($settings['site_email']) ? 'disabled title="No site email set on hub"' : ''; ?>>
-                PUSH TO ALL SPOKES
-            </button>
-        </form>
-    </div>
 
     <!-- DOWNLOADS — custom spoke selector -->
     <div class="box">
@@ -379,6 +237,7 @@ require_once 'core/admin-header.php';
 .push-ok   { font-size:0.8rem; padding:3px 10px; border-radius:3px; background:rgba(76,175,80,0.15); color:#4caf50; border:1px solid rgba(76,175,80,0.3); }
 .push-fail { font-size:0.8rem; padding:3px 10px; border-radius:3px; background:rgba(197,84,0,0.15);  color:#c55400; border:1px solid rgba(197,84,0,0.3); }
 </style>
+<?php // ===== SNAPSMACK EOF =====
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

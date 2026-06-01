@@ -22,6 +22,8 @@ $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackback
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `smackback_breach_files` MEDIUMTEXT NULL");
 // Defensive add for branching track column.
 $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `update_track` VARCHAR(10) NOT NULL DEFAULT 'stable'");
+// Defensive add for install mode column.
+$pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN IF NOT EXISTS `site_mode` VARCHAR(20) NOT NULL DEFAULT 'photoblog'");
 
 // --- SSRF GUARD ---
 // Returns true if the URL resolves to a private/loopback/reserved address.
@@ -546,14 +548,16 @@ if (isset($_POST['verify_hub'])) {
 // (settings + multisite_role loaded at top of file before POST handlers)
 
 // Load connected nodes — fetch UNIX_TIMESTAMP to avoid strtotime/timezone issues
-$nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, connected_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+$nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 // Hub self-entry data — shown as first row in Connected Spokes table
-$hub_post_count    = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
-$hub_pending       = (int)$pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 0")->fetchColumn();
-$hub_backup_status = $settings['last_backup_status'] ?? 'unknown';
-$hub_site_name     = $settings['site_name'] ?? 'Hub';
-$hub_site_url      = rtrim($settings['site_url'] ?? '', '/');
+$hub_post_count      = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
+$hub_pending         = (int)$pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 0")->fetchColumn();
+$hub_backup_status   = $settings['last_backup_status']  ?? 'unknown';
+$hub_site_name       = $settings['site_name']            ?? 'Hub';
+$hub_site_url        = rtrim($settings['site_url']       ?? '', '/');
+$hub_smackback       = $settings['smackback_status']     ?? (($settings['smackback_enabled'] ?? '0') === '1' ? 'pending' : 'unknown');
+$hub_site_mode       = $settings['site_mode']            ?? 'photoblog';
 
 // --- HEARTBEAT SWEEP (hub only, once per page load) ---
 // Calls each active spoke's heartbeat endpoint and caches the stats locally.
@@ -596,6 +600,7 @@ if ($multisite_role === 'hub') {
                         maintenance_mode      = ?,
                         smackback_status      = ?,
                         smackback_breach_at   = ?,
+                        site_mode             = ?,
                         last_seen_at          = NOW(),
                         status                = 'active'
                     WHERE id = ?
@@ -614,6 +619,7 @@ if ($multisite_role === 'hub') {
                     (int)($hb['maintenance_mode'] ?? 0),
                     $hb['smackback_status']   ?? 'unknown',
                     $hb['smackback_breach_at'] ?? null,
+                    $hb['site_mode']          ?? 'photoblog',
                     $n['id'],
                 ]);
                 // Update local array so the table renders fresh data without a reload
@@ -626,6 +632,7 @@ if ($multisite_role === 'hub') {
                 $n['maintenance_mode']    = (int)($hb['maintenance_mode'] ?? 0);
                 $n['smackback_status']    = $hb['smackback_status']   ?? 'unknown';
                 $n['smackback_breach_at'] = $hb['smackback_breach_at'] ?? null;
+                $n['site_mode']           = $hb['site_mode']           ?? 'photoblog';
             }
         } else {
             // Only mark offline if the spoke hasn't been seen recently.
@@ -644,7 +651,7 @@ if ($multisite_role === 'hub') {
     unset($n);
 
     // Reload nodes so status changes are reflected
-    $nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, connected_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+    $nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, name ASC")->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // Fetch skin registry for push-skin UI (hub only; session-cached 10 min)
@@ -735,6 +742,7 @@ include 'core/sidebar.php';
                 <a href="smack-multisite-crosspost.php"   class="btn-clear">CROSS-POST</a>
                 <a href="smack-multisite-blogroll.php"    class="btn-clear">BLOGROLL</a>
                 <a href="smack-multisite-settings.php"   class="btn-clear">SETTINGS</a>
+                <a href="smack-push-it.php"               class="btn-clear">PUSH IT</a>
             </div>
         </div>
 
@@ -817,6 +825,7 @@ include 'core/sidebar.php';
                                 <th>NAME</th>
                                 <th>URL</th>
                                 <th class="col-center">VERSION</th>
+                                <th class="col-center">MODE</th>
                                 <th class="col-center">TRACK</th>
                                 <th class="col-center">STATUS</th>
                                 <th class="col-center">LAST SEEN</th>
@@ -844,7 +853,14 @@ include 'core/sidebar.php';
                                         —
                                     <?php endif; ?>
                                 </td>
-                                <td class="col-center" style="font-family:monospace; font-size:0.85rem;"><?php echo htmlspecialchars(SNAPSMACK_VERSION); ?></td>
+                                <td class="col-center" style="font-family:monospace; font-size:0.85rem;"><?php echo htmlspecialchars(SNAPSMACK_VERSION_SHORT); ?></td>
+                                <td class="col-center">
+                                    <?php
+                                        $hub_mode_map = ['photoblog' => '1.0', 'carousel' => '2.0', 'smacktalk' => '3.0'];
+                                        $hub_mode_lbl = $hub_mode_map[$hub_site_mode] ?? '1.0';
+                                        echo '<span style="font-size:0.75rem;font-family:monospace;" title="' . htmlspecialchars($hub_site_mode) . '">' . $hub_mode_lbl . '</span>';
+                                    ?>
+                                </td>
                                 <td class="col-center">
                                     <span style="font-size:0.7rem; font-weight:700; letter-spacing:1px; color:var(--text-muted,#888);">BORING</span>
                                 </td>
@@ -858,7 +874,17 @@ include 'core/sidebar.php';
                                 <td class="col-center">
                                     <span class="status-dot status-dot--lg status-dot--<?php echo htmlspecialchars($hub_backup_status); ?>" title="<?php echo htmlspecialchars($hub_backup_status); ?>"></span>
                                 </td>
-                                <td class="col-center" style="font-size:0.75rem; color:var(--text-muted,#888);">—</td>
+                                <td class="col-center">
+                                    <?php if ($hub_smackback === 'breach'): ?>
+                                        <span class="smackback-badge smackback-breach">BREACH</span>
+                                    <?php elseif ($hub_smackback === 'clean'): ?>
+                                        <span class="smackback-badge smackback-clean">CLEAN</span>
+                                    <?php elseif ($hub_smackback === 'pending'): ?>
+                                        <span class="smackback-badge" style="color:var(--warning,#c55400);" title="Enabled — awaiting first run">PENDING</span>
+                                    <?php else: ?>
+                                        <span class="smackback-badge smackback-unknown">—</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td class="col-center" style="font-size:0.75rem; color:var(--text-muted,#888); letter-spacing:1px;">THIS SITE</td>
                             </tr>
                             <?php foreach ($nodes as $n): ?>
@@ -878,8 +904,16 @@ include 'core/sidebar.php';
                                             $spoke_ver = $n['software_version'] ?? '';
                                             echo $spoke_ver ? htmlspecialchars($spoke_ver) : '—';
                                             if ($spoke_ver && snap_version_compare(SNAPSMACK_VERSION_SHORT, $spoke_ver, '>')) {
-                                                echo ' <span class="version-behind" title="Behind hub version ' . htmlspecialchars(SNAPSMACK_VERSION) . '">&#x25B2;</span>';
+                                                echo ' <span class="version-behind" title="Behind hub version ' . htmlspecialchars(SNAPSMACK_VERSION_SHORT) . '">&#x25B2;</span>';
                                             }
+                                        ?>
+                                    </td>
+                                    <td class="col-center">
+                                        <?php
+                                            $mode_map = ['photoblog' => '1.0', 'carousel' => '2.0', 'smacktalk' => '3.0'];
+                                            $mode_val = $n['site_mode'] ?? 'photoblog';
+                                            $mode_lbl = $mode_map[$mode_val] ?? '1.0';
+                                            echo '<span style="font-size:0.75rem;font-family:monospace;" title="' . htmlspecialchars($mode_val) . '">' . $mode_lbl . '</span>';
                                         ?>
                                     </td>
                                     <td class="col-center">
@@ -938,6 +972,8 @@ include 'core/sidebar.php';
                                                 if ($since) echo '<br><span style="font-size:0.7rem;color:var(--text-muted,#888);">' . htmlspecialchars($since) . '</span>';
                                             } elseif ($sb_status === 'clean') {
                                                 echo '<span class="smackback-badge smackback-clean">CLEAN</span>';
+                                            } elseif ($sb_status === 'pending') {
+                                                echo '<span class="smackback-badge" style="color:var(--warning,#c55400);" title="Enabled — awaiting first run">PENDING</span>';
                                             } else {
                                                 echo '<span class="smackback-badge smackback-unknown">—</span>';
                                             }
@@ -1106,7 +1142,7 @@ include 'core/sidebar.php';
                                style="width:100%; box-sizing:border-box; font-family:monospace; font-size:1rem;
                                       letter-spacing:2px; padding:12px 14px; margin-bottom:8px;
                                       background:var(--input-bg,#111); border:1px solid var(--border,#333);
-                                      border-radius:4px; color:inherit; cursor:text;"
+                                      border-radius:4px; color:#e0e0e0; cursor:text;"
                                onclick="this.select();">
                         <button type="button" class="btn-smack" id="copy-token-btn" style="width:100%; margin-bottom:10px;"
                                 onclick="navigator.clipboard.writeText(document.getElementById('reg-token-display').value).then(function(){ var b=document.getElementById('copy-token-btn'); b.textContent='COPIED ✓'; setTimeout(function(){ b.textContent='COPY'; }, 2000); });">
