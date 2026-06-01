@@ -18,9 +18,17 @@
 
 
 // --- CONFIGURATION ---
-// The version this installer deploys.
-$installer_version       = '0.7.154';
-$installer_version_label = 'Alpha 0.7.154';
+// Version is read from core/constants.php (always present in the release package).
+// Fallback hardcoded value is a safety net only — should never be needed.
+$installer_version       = '0.7.191';
+$installer_version_label = 'Alpha 0.7.191';
+if (file_exists(__DIR__ . '/core/constants.php') && !defined('SNAPSMACK_VERSION_SHORT')) {
+    require_once __DIR__ . '/core/constants.php';
+}
+if (defined('SNAPSMACK_VERSION_SHORT')) {
+    $installer_version       = SNAPSMACK_VERSION_SHORT;
+    $installer_version_label = SNAPSMACK_VERSION;
+}
 
 // --- INSTALLER SKIN FETCH HELPERS ---
 // Used by the Step 5 skin fetch block. Standalone so there's no dependency on
@@ -1115,7 +1123,7 @@ try {
 
 define(\'SNAPSMACK_VERSION\', \'' . $installer_version_label . '\');
 define(\'SNAPSMACK_VERSION_SHORT\', \'' . $installer_version . '\');
-define(\'SNAPSMACK_VERSION_CODENAME\', \'Lawn Chair\');
+define(\'SNAPSMACK_VERSION_CODENAME\', \'Shit and Git\');
 define(\'SNAPSMACK_TABLE_PREFIX\', \'' . $prefix . '\');
 
 // --- VERSION COMPARISON ---
@@ -1603,7 +1611,7 @@ try { $pdo = new PDO($dsn, $user, $pass, $options); } catch (\PDOException $e) {
                             $const_php = '<?php
 define(\'SNAPSMACK_VERSION\', \'' . $installer_version_label . '\');
 define(\'SNAPSMACK_VERSION_SHORT\', \'' . $installer_version . '\');
-define(\'SNAPSMACK_VERSION_CODENAME\', \'Lawn Chair\');
+define(\'SNAPSMACK_VERSION_CODENAME\', \'Shit and Git\');
 define(\'SNAPSMACK_TABLE_PREFIX\', \'snap_\');
 function snap_version_compare(string $v1, string $v2, string $op = \'>\'): bool {
     $normalise = function (string $v): string {

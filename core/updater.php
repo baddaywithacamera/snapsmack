@@ -207,8 +207,8 @@ function _updater_ping_home(PDO $pdo, string $version, string $track): void {
             $ch = curl_init($ping_url);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT        => 3,      // 3s max — fire and forget
-                CURLOPT_CONNECTTIMEOUT => 2,
+                CURLOPT_TIMEOUT        => 12,     // 12s — Proxmox/NAT servers have slow outbound HTTPS
+                CURLOPT_CONNECTTIMEOUT => 8,
                 CURLOPT_SSL_VERIFYPEER => true,
                 CURLOPT_USERAGENT      => 'SnapSmack-Ping/' . $version,
                 CURLOPT_NOSIGNAL       => 1,

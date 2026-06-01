@@ -235,6 +235,7 @@ CREATE TABLE IF NOT EXISTS `snap_comments` (
   `id`             int          NOT NULL AUTO_INCREMENT,
   `img_id`         int          NOT NULL,
   `comment_author` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `comment_url`    varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `comment_email`  varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `comment_text`   text         COLLATE utf8mb4_unicode_ci,
   `comment_date`   datetime     DEFAULT CURRENT_TIMESTAMP,
@@ -398,6 +399,7 @@ CREATE TABLE IF NOT EXISTS `snap_community_comments` (
   `user_id`      int unsigned NULL DEFAULT NULL,
   `guest_name`   varchar(100) COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,  -- 0.7.6
   `guest_email`  varchar(200) COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,  -- 0.7.6
+  `guest_url`    varchar(500) COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,  -- 0.7.189
   `comment_text` text         COLLATE utf8mb4_unicode_ci NOT NULL,
   `status`       enum('visible','hidden','deleted') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'visible',
   `ip`           varchar(45)  COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
@@ -785,6 +787,7 @@ CREATE TABLE IF NOT EXISTS `snap_comments` (
   `id`             int          NOT NULL AUTO_INCREMENT,
   `img_id`         int          NOT NULL,
   `comment_author` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `comment_url`    varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `comment_email`  varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `comment_text`   text         COLLATE utf8mb4_unicode_ci,
   `comment_date`   datetime     DEFAULT CURRENT_TIMESTAMP,
@@ -926,6 +929,7 @@ CREATE TABLE IF NOT EXISTS `snap_community_comments` (
   `user_id`      int unsigned NULL DEFAULT NULL,
   `guest_name`   varchar(100) COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,  -- 0.7.6
   `guest_email`  varchar(200) COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,  -- 0.7.6
+  `guest_url`    varchar(500) COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,  -- 0.7.189
   `comment_text` text         COLLATE utf8mb4_unicode_ci NOT NULL,
   `status`       enum('visible','hidden','deleted') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'visible',
   `ip`           varchar(45)  COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
@@ -1170,7 +1174,7 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_queue` (
   `processed_at`        datetime       DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_node_status` (`node_id`, `status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicod
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ─── snap_skin_presets ───────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS `snap_skin_presets` (
