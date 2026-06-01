@@ -64,6 +64,13 @@ if (strpos($route, 'gyss') === 0) {
     exit;
 }
 
+// --- UNZUCKER ROUTES ---
+// Route all /api/unzucker/* requests to the Unzucker Instagram import API handler
+if (strpos($route, 'unzucker') === 0) {
+    require_once 'core/unzucker-api.php';
+    exit;
+}
+
 // --- FALLBACK: Unknown API endpoint ---
 header('HTTP/1.1 404 Not Found');
 header('Content-Type: application/json');

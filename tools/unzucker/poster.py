@@ -4,10 +4,11 @@ SnapSmack API client. Forked from ft-batch-poster/poster.py.
 
 Changes from the batch poster version:
   - Removed ManifestEntry dependency (uses ParsedPost from ig_parser)
-  - Added create_carousel_post() for multi-image posts
-  - Added create_single_post() using server-side image paths (FTP'd, not uploaded)
-  - Removed Google Drive upload from post workflow
+  - Bearer token auth via API key — no session scraping, no BeautifulSoup
+  - fetch_site_data() hits GET unzucker/site
+  - create_post() calls POST unzucker/posts (handles single + carousel)
   - Image resize + EXIF pipeline moved to prepare_images() helper
+  - prepare_image() now returns (path, filename, width, height, exif_ok)
 """
 
 # SNAPSMACK_EOF_HEADER
@@ -16,8 +17,8 @@ Changes from the batch poster version:
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
+import json
 import os
-import re
 import secrets
 import shutil
 import tempfile
@@ -26,7 +27,6 @@ from datetime import datetime
 from typing import Callable, Dict, List, Optional
 
 import requests
-from bs4 import BeautifulSoup
 from PIL import Image as PILImage
 
 import exif_writer
@@ -50,7 +50,7 @@ class PostResult:
 
 @dataclass
 class SiteData:
-    """Category and album name→ID lookups fetched from smack-post.php."""
+    """Category and album name→ID lookups fetched from unzucker/site."""
     categories:     Dict[str, int] = field(default_factory=dict)
     albums:         Dict[str, int] = field(default_factory=dict)
     _cat_display:   Dict[str, str] = field(default_factory=dict)
@@ -58,161 +58,95 @@ class SiteData:
 
 
 # ---------------------------------------------------------------------------
-# SnapSmack client
+# SnapSmack client — Bearer token auth
 # ---------------------------------------------------------------------------
 
-class SnapSmackClient:
+class UnzuckerClient:
 
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, api_key: str):
         self.base_url = base_url.rstrip('/')
-        self.session  = requests.Session()
-        self.session.headers.update({'User-Agent': 'unzucker/1.0'})
-        self._logged_in = False
+        self._session = requests.Session()
+        self._session.headers.update({
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type':  'application/json',
+            'User-Agent':    'unzucker/1.0',
+        })
 
-    def login(self, username: str, password: str) -> None:
-        url  = f"{self.base_url}/login.php"
-        resp = self.session.post(
-            url,
-            data={'username': username, 'password': password},
-            timeout=15,
-            allow_redirects=True,
-        )
-        resp.raise_for_status()
-        if 'login.php' in resp.url:
-            raise RuntimeError("Login failed — check your username and password.")
-        self._logged_in = True
-
-    def is_session_alive(self) -> bool:
-        if not self._logged_in:
-            return False
+    def ping(self) -> tuple:
+        """
+        Test connection. Returns (ok: bool, message: str).
+        """
         try:
-            resp = self.session.get(
-                f"{self.base_url}/smack-admin.php",
-                timeout=10,
-                allow_redirects=True,
+            resp = self._session.get(
+                f"{self.base_url}/api.php",
+                params={'route': 'unzucker/ping'},
+                timeout=15,
             )
-            return 'login.php' not in resp.url
-        except Exception:
-            return False
+            if resp.status_code == 401:
+                return False, "Invalid API key."
+            resp.raise_for_status()
+            data = resp.json()
+            cats   = data.get('cat_count', 0)
+            albums = data.get('album_count', 0)
+            return True, f"Connected — {cats} categories, {albums} albums"
+        except requests.RequestException as e:
+            return False, f"Connection failed: {e}"
 
     def fetch_site_data(self) -> SiteData:
-        if not self._logged_in:
-            raise RuntimeError("Not logged in.")
-        url  = f"{self.base_url}/smack-post.php"
-        resp = self.session.get(url, timeout=15)
+        resp = self._session.get(
+            f"{self.base_url}/api.php",
+            params={'route': 'unzucker/site'},
+            timeout=15,
+        )
         resp.raise_for_status()
+        data = resp.json()
 
-        soup = BeautifulSoup(resp.text, 'html.parser')
-        data = SiteData()
+        site = SiteData()
+        for c in data.get('categories', []):
+            name = c.get('name', '')
+            cid  = int(c.get('id', 0))
+            site.categories[name.lower()] = cid
+            site._cat_display[name.lower()] = name
+        for a in data.get('albums', []):
+            name = a.get('name', '')
+            aid  = int(a.get('id', 0))
+            site.albums[name.lower()] = aid
+            site._album_display[name.lower()] = name
+        return site
 
-        for inp in soup.find_all('input', {'name': 'cat_ids[]'}):
-            cat_id = int(inp.get('value', 0))
-            span   = inp.find_next_sibling('span') or inp.find_next('span')
-            name   = span.get_text(strip=True) if span else f'Category {cat_id}'
-            data.categories[name.lower()] = cat_id
-            data._cat_display[name.lower()] = name
-
-        for inp in soup.find_all('input', {'name': 'album_ids[]'}):
-            album_id = int(inp.get('value', 0))
-            span     = inp.find_next_sibling('span') or inp.find_next('span')
-            name     = span.get_text(strip=True) if span else f'Album {album_id}'
-            data.albums[name.lower()] = album_id
-            data._album_display[name.lower()] = name
-
-        return data
-
-    # ------------------------------------------------------------------
-    # Post creation — carousel (multi-image)
-    # ------------------------------------------------------------------
-
-    def create_carousel_post(
+    def create_post(
         self,
         title:         str,
         body:          str,
-        tags:          str,
-        image_paths:   List[str],   # server-relative paths (already FTP'd)
+        tags:          List[str],
+        images:        List[dict],   # [{'path': str, 'width': int, 'height': int, 'orientation': str}]
+        ig_id:         str           = '',
+        post_date:     str           = '',
         category_id:   Optional[int] = None,
         album_id:      Optional[int] = None,
-        post_date:     Optional[str] = None,  # 'YYYY-MM-DD HH:MM:SS'
-    ) -> None:
+    ) -> dict:
         """
-        Create a multi-image carousel post via smack-post-carousel.php.
-        image_paths are server-relative paths to already-uploaded images.
+        Create a post via POST unzucker/posts.
+        Returns the parsed JSON response dict.
         """
-        if not self._logged_in:
-            raise RuntimeError("Not logged in.")
-
-        form_data = {
-            'title':       title,
-            'body':        body,
-            'tags':        tags,
-            'post_status': 'published',
+        payload = {
+            'title':     title,
+            'body':      body,
+            'tags':      tags,
+            'images':    images,
+            'ig_id':     ig_id,
+            'post_date': post_date,
+            'cat_ids':   [category_id] if category_id is not None else [],
+            'album_ids': [album_id]    if album_id    is not None else [],
         }
-
-        # Image paths as a JSON-encoded list or repeated form fields
-        for i, path in enumerate(image_paths):
-            form_data[f'images[{i}]'] = path
-
-        if category_id is not None:
-            form_data['cat_ids[]'] = str(category_id)
-        if album_id is not None:
-            form_data['album_ids[]'] = str(album_id)
-        if post_date:
-            form_data['post_date'] = post_date
-
-        resp = self.session.post(
-            f"{self.base_url}/smack-post-carousel.php",
-            data=form_data,
+        resp = self._session.post(
+            f"{self.base_url}/api.php",
+            params={'route': 'unzucker/posts'},
+            data=json.dumps(payload),
             timeout=120,
         )
         resp.raise_for_status()
-
-        # Check for error indicators in the response
-        if 'error' in resp.text.lower() and 'success' not in resp.text.lower():
-            raise RuntimeError(f"Server rejected carousel post: {resp.text[:200]}")
-
-    # ------------------------------------------------------------------
-    # Post creation — single image
-    # ------------------------------------------------------------------
-
-    def create_single_post(
-        self,
-        title:         str,
-        body:          str,
-        tags:          str,
-        image_path:    str,       # server-relative path (already FTP'd)
-        category_id:   Optional[int] = None,
-        album_id:      Optional[int] = None,
-        post_date:     Optional[str] = None,
-    ) -> None:
-        """
-        Create a single-image post via smack-post.php.
-        image_path is a server-relative path to an already-uploaded image.
-        """
-        if not self._logged_in:
-            raise RuntimeError("Not logged in.")
-
-        form_data = {
-            'title':       title,
-            'body':        body,
-            'tags':        tags,
-            'img_status':  'published',
-            'image_path':  image_path,
-        }
-
-        if category_id is not None:
-            form_data['cat_ids[]'] = str(category_id)
-        if album_id is not None:
-            form_data['album_ids[]'] = str(album_id)
-        if post_date:
-            form_data['post_date'] = post_date
-
-        resp = self.session.post(
-            f"{self.base_url}/smack-post.php",
-            data=form_data,
-            timeout=120,
-        )
-        resp.raise_for_status()
+        return resp.json()
 
 
 # ---------------------------------------------------------------------------
@@ -230,7 +164,7 @@ def prepare_image(
 ) -> tuple:
     """
     Resize and EXIF-embed a single image.
-    Returns (output_path, generated_filename, exif_ok).
+    Returns (output_path, generated_filename, width, height, exif_ok).
     """
     rand = secrets.token_hex(2)
     filename = f"{timestamp}_{sequence:02d}_{rand}.jpg"
@@ -238,6 +172,7 @@ def prepare_image(
 
     img = PILImage.open(src_path)
     img.thumbnail((WEB_MAX_W, WEB_MAX_H), PILImage.LANCZOS)
+    width, height = img.size
 
     exif_ok = True
     try:
@@ -247,7 +182,7 @@ def prepare_image(
         exif_ok = False
         img.save(output_path, quality=92, optimize=True)
 
-    return output_path, filename, exif_ok
+    return output_path, filename, width, height, exif_ok
 
 
 # ---------------------------------------------------------------------------
@@ -255,7 +190,7 @@ def prepare_image(
 # ---------------------------------------------------------------------------
 
 def run_migration(
-    client:          SnapSmackClient,
+    client:          UnzuckerClient,
     posts:           list,          # List[ParsedPost] from ig_parser
     site_data:       SiteData,
     ftp_transport,                  # from ftp_upload
@@ -287,21 +222,21 @@ def run_migration(
             continue
 
         try:
-            # Format tags as space-separated #tags for SnapSmack
-            tags_str = ' '.join(f'#{t}' for t in post.hashtags) if post.hashtags else ''
-
-            # Format post date from timestamp
+            tags_list = list(post.hashtags) if post.hashtags else []
+            tags_str  = ' '.join(f'#{t}' for t in tags_list)
             post_date = datetime.utcfromtimestamp(post.ig_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+            ig_id     = str(post.ig_timestamp)
 
             # ── 1. Resize + EXIF all images ──────────────────────────
             local_files  = []
             remote_files = []
+            image_meta   = []   # [{path, width, height, orientation}]
             all_exif_ok  = True
 
             remote_dir = remote_dir_for_timestamp(ftp_remote_base, post.ig_timestamp)
 
             for seq, img_path in enumerate(post.images):
-                out_path, filename, exif_ok = prepare_image(
+                out_path, filename, w, h, exif_ok = prepare_image(
                     src_path=img_path,
                     output_dir=staging_dir,
                     timestamp=post.ig_timestamp,
@@ -310,8 +245,17 @@ def run_migration(
                     title=post.body or '',
                     tags=tags_str,
                 )
+                orientation = 'portrait' if h > w else 'landscape'
+                remote_path = f"{remote_dir}/{filename}"
+
                 local_files.append(out_path)
-                remote_files.append(f"{remote_dir}/{filename}")
+                remote_files.append(remote_path)
+                image_meta.append({
+                    'path':        remote_path,
+                    'width':       w,
+                    'height':      h,
+                    'orientation': orientation,
+                })
                 if not exif_ok:
                     all_exif_ok = False
 
@@ -327,33 +271,26 @@ def run_migration(
                 continue
 
             # ── 3. Create post via API ───────────────────────────────
-            server_paths = [r.remote_path for r in ftp_results]
+            resp = client.create_post(
+                title=post.body or '',
+                body=post.caption or '',
+                tags=tags_list,
+                images=image_meta,
+                ig_id=ig_id,
+                post_date=post_date,
+                category_id=cat_id,
+                album_id=album_id,
+            )
 
-            if post.post_type == 'carousel':
-                client.create_carousel_post(
-                    title=post.body or '',
-                    body=post.caption,
-                    tags=tags_str,
-                    image_paths=server_paths,
-                    category_id=cat_id,
-                    album_id=album_id,
-                    post_date=post_date,
-                )
+            if resp.get('duplicate'):
+                msg = f"Skipped (duplicate post_id={resp.get('post_id')})"
+                result = PostResult(idx, True, msg, post.post_type, all_exif_ok)
             else:
-                client.create_single_post(
-                    title=post.body or '',
-                    body=post.caption,
-                    tags=tags_str,
-                    image_path=server_paths[0],
-                    category_id=cat_id,
-                    album_id=album_id,
-                    post_date=post_date,
-                )
-
-            msg = f"{'Carousel' if post.post_type == 'carousel' else 'Single'} — {len(post.images)} image{'s' if len(post.images) != 1 else ''}"
-            if not all_exif_ok:
-                msg += " (EXIF partial)"
-            result = PostResult(idx, True, msg, post.post_type, all_exif_ok)
+                n = len(post.images)
+                msg = f"{'Carousel' if n > 1 else 'Single'} — {n} image{'s' if n != 1 else ''}"
+                if not all_exif_ok:
+                    msg += " (EXIF partial)"
+                result = PostResult(idx, True, msg, post.post_type, all_exif_ok)
 
         except Exception as e:
             result = PostResult(idx, False, str(e), post.post_type)
@@ -370,19 +307,4 @@ def run_migration(
                 pass
 
     return results
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _mime(filename: str) -> str:
-    ext = os.path.splitext(filename)[1].lower()
-    return {
-        '.jpg':  'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.png':  'image/png',
-        '.gif':  'image/gif',
-        '.webp': 'image/webp',
-    }.get(ext, 'application/octet-stream')
 # ===== SNAPSMACK EOF =====

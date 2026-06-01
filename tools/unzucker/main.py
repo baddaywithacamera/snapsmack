@@ -14,7 +14,7 @@ creates posts through the SnapSmack admin API.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.7a-01"
+BUILD_VERSION = "0.7.8"
 
 import os
 import queue
@@ -31,7 +31,7 @@ import ig_parser
 import ftp_upload
 import poster as poster_module
 from ig_parser import ParsedPost
-from poster import SnapSmackClient, SiteData
+from poster import UnzuckerClient, SiteData
 
 
 # ---------------------------------------------------------------------------
@@ -95,7 +95,7 @@ class GridCell(tk.Frame):
         if post.post_type == 'carousel':
             self._canvas.create_text(
                 cell_size - 8, 8,
-                text=f"\u25A3 {len(post.images)}",
+                text=f"▣ {len(post.images)}",
                 anchor="ne", fill="white",
                 font=("Segoe UI", 8, "bold"),
             )
@@ -121,15 +121,15 @@ class GridCell(tk.Frame):
         if self.post.post_type == 'carousel':
             self._canvas.create_text(
                 self._cell_size - 8, 8,
-                text=f"\u25A3 {len(self.post.images)}",
+                text=f"▣ {len(self.post.images)}",
                 anchor="ne", fill="white",
                 font=("Segoe UI", 8, "bold"),
             )
 
     def set_status(self, status: str):
         self._status = status
-        icons = {'ok': '\u2713', 'error': '\u2717', 'skip': '\u2014'}
-        colors = {'ok': FG_OK, 'error': FG_ERR, 'skip': FG_WARN}
+        icons  = {'ok': '✓', 'error': '✗', 'skip': '—'}
+        colors = {'ok': FG_OK,    'error': FG_ERR,   'skip': FG_WARN}
 
         if status in icons:
             self._canvas.itemconfig(self._status_overlay,
@@ -145,7 +145,7 @@ class GridCell(tk.Frame):
             self._canvas.itemconfig(self._status_overlay,
                                     fill=BG_DEEP, stipple='gray50', state='normal')
             self._canvas.itemconfig(self._status_icon,
-                                    text='\u2205', fill=FG_DIM, state='normal')
+                                    text='∅', fill=FG_DIM, state='normal')
             self._canvas.tag_raise(self._status_overlay)
             self._canvas.tag_raise(self._status_icon)
         else:
@@ -258,7 +258,7 @@ class PostDetail(tk.Frame):
         nav.pack_propagate(False)
 
         self._back_btn = tk.Button(
-            nav, text="\u2190  BACK TO GRID", command=self._on_back,
+            nav, text="←  BACK TO GRID", command=self._on_back,
             bg=BG_CARD, fg=ACCENT, activebackground=BG_HOVER,
             activeforeground=ACCENT, relief="flat", font=FONT_BOLD,
             cursor="hand2",
@@ -266,7 +266,7 @@ class PostDetail(tk.Frame):
         self._back_btn.pack(side="left", padx=10)
 
         self._next_btn = tk.Button(
-            nav, text="NEXT \u2192", command=self._on_next,
+            nav, text="NEXT →", command=self._on_next,
             bg=BG_CARD, fg=FG_DIM, activebackground=BG_HOVER,
             activeforeground=FG_MAIN, relief="flat", font=FONT_SMALL,
             cursor="hand2",
@@ -274,7 +274,7 @@ class PostDetail(tk.Frame):
         self._next_btn.pack(side="right", padx=10)
 
         self._prev_btn = tk.Button(
-            nav, text="\u2190 PREV", command=self._on_prev,
+            nav, text="← PREV", command=self._on_prev,
             bg=BG_CARD, fg=FG_DIM, activebackground=BG_HOVER,
             activeforeground=FG_MAIN, relief="flat", font=FONT_SMALL,
             cursor="hand2",
@@ -468,25 +468,21 @@ class App(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title(f"UNZUCKER  \u2014  build {BUILD_VERSION}")
+        self.title(f"UNZUCKER  —  build {BUILD_VERSION}")
         self.geometry(f"{WIN_W}x{WIN_H}")
         self.minsize(520, 600)
         self.configure(bg=BG_DEEP)
 
         # State
         self._config         = cfg_module.load()
-        self._client:        Optional[SnapSmackClient] = None
-        self._site_data:     Optional[SiteData]        = None
-        self._posts:         List[ParsedPost]           = []
+        self._client:        Optional[UnzuckerClient] = None
+        self._site_data:     Optional[SiteData]       = None
+        self._posts:         List[ParsedPost]          = []
         self._ftp_transport  = None
         self._posting        = False
-        self._msg_queue:     queue.Queue                = queue.Queue()
+        self._msg_queue:     queue.Queue               = queue.Queue()
         self._current_view   = 'grid'   # 'grid' or 'detail'
         self._detail_index   = 0
-
-        # Session timer
-        self._session_remaining = 0
-        self._session_timer_id  = None
 
         self._apply_ttk_style()
         self._build_ui()
@@ -541,19 +537,6 @@ class App(tk.Tk):
         except Exception:
             return hex_color
 
-    @staticmethod
-    def _contrast_text(hex_bg: str) -> str:
-        """Return '#000000' or '#FFFFFF' for readable text on the given background."""
-        h = hex_bg.lstrip('#')
-        if len(h) == 3:
-            h = ''.join(c * 2 for c in h)
-        try:
-            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-            luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-            return '#000000' if luminance > 0.5 else '#FFFFFF'
-        except Exception:
-            return '#000000'
-
     # ------------------------------------------------------------------
     # UI construction
     # ------------------------------------------------------------------
@@ -568,12 +551,10 @@ class App(tk.Tk):
             header, text="UNZUCKER", bg=BG_CARD, fg=ACCENT, font=FONT_TITLE,
         ).pack(side="left", padx=16)
 
-        self._conn_dot = tk.Label(header, text="\u25CF", bg=BG_CARD, fg=FG_DIM, font=("Segoe UI", 11))
+        self._conn_dot = tk.Label(header, text="●", bg=BG_CARD, fg=FG_DIM, font=("Segoe UI", 11))
         self._conn_dot.pack(side="right", padx=(0, 14))
         self._conn_lbl = tk.Label(header, text="Not connected", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
         self._conn_lbl.pack(side="right")
-        self._session_timer_lbl = tk.Label(header, text="", bg=BG_CARD, fg=FG_DIM, font=("Segoe UI", 8))
-        self._session_timer_lbl.pack(side="right", padx=(0, 10))
         tk.Label(header, text=f"build {BUILD_VERSION}", bg=BG_CARD, fg=FG_DIM,
                  font=("Segoe UI", 8)).pack(side="right", padx=(0, 20))
 
@@ -584,7 +565,7 @@ class App(tk.Tk):
         cfg_toggle = tk.Frame(self, bg=BG_DEEP, height=26, cursor="hand2")
         cfg_toggle.pack(fill="x")
         cfg_toggle.pack_propagate(False)
-        self._cfg_arrow = tk.Label(cfg_toggle, text="\u25B2  CONFIGURATION",
+        self._cfg_arrow = tk.Label(cfg_toggle, text="▲  CONFIGURATION",
                                    bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL,
                                    cursor="hand2")
         self._cfg_arrow.pack(side="left", padx=14, pady=4)
@@ -597,11 +578,11 @@ class App(tk.Tk):
         def _toggle_cfg(e=None):
             if self._cfg_visible:
                 self._cfg_frame.pack_forget()
-                self._cfg_arrow.configure(text="\u25BC  CONFIGURATION")
+                self._cfg_arrow.configure(text="▼  CONFIGURATION")
             else:
                 self._cfg_frame.pack(fill="x", padx=14, pady=10,
                                      before=self._grid_rule)
-                self._cfg_arrow.configure(text="\u25B2  CONFIGURATION")
+                self._cfg_arrow.configure(text="▲  CONFIGURATION")
             self._cfg_visible = not self._cfg_visible
 
         cfg_toggle.bind("<Button-1>", _toggle_cfg)
@@ -610,32 +591,18 @@ class App(tk.Tk):
         cfg = self._cfg_frame
 
         # ── Box: CONNECTION ──────────────────────────────────────────
-        self._url_var  = tk.StringVar()
-        self._user_var = tk.StringVar()
-        self._pass_var = tk.StringVar()
-        self._rem_var  = tk.BooleanVar()
+        self._url_var     = tk.StringVar()
+        self._api_key_var = tk.StringVar()
 
         conn_box  = self._box(cfg, "CONNECTION")
         conn_box.pack(fill="x", pady=(0, 8))
         conn_body = self._box_body(conn_box)
 
         self._field(conn_body, "SITE URL", self._url_var)
-
-        cred_cols = tk.Frame(conn_body, bg=BG_CARD)
-        cred_cols.pack(fill="x", pady=(0, 8))
-        cred_cols.columnconfigure(0, weight=1)
-        cred_cols.columnconfigure(1, weight=1)
-        self._field_in(cred_cols, "USERNAME", self._user_var, 0, 0, padx=(0, 6))
-        self._field_in(cred_cols, "PASSWORD", self._pass_var, 0, 1, show="\u2022")
+        self._field(conn_body, "API KEY", self._api_key_var, show="•")
 
         btn_row = tk.Frame(conn_body, bg=BG_CARD)
         btn_row.pack(fill="x")
-        tk.Checkbutton(
-            btn_row, text="Remember", variable=self._rem_var,
-            bg=BG_CARD, fg=FG_DIM, selectcolor=BG_MID,
-            activebackground=BG_CARD, activeforeground=ACCENT,
-            font=FONT_SMALL, cursor="hand2",
-        ).pack(side="left")
         self._connect_btn = ttk.Button(btn_row, text="Connect", style="Accent.TButton",
                                         command=self._on_connect)
         self._connect_btn.pack(side="right")
@@ -672,7 +639,7 @@ class App(tk.Tk):
         ftp_row2.columnconfigure(0, weight=1)
         ftp_row2.columnconfigure(1, weight=1)
         self._field_in(ftp_row2, "FTP USERNAME", self._ftp_user_var, 0, 0, padx=(0, 6))
-        self._field_in(ftp_row2, "FTP PASSWORD", self._ftp_pass_var, 0, 1, show="\u2022")
+        self._field_in(ftp_row2, "FTP PASSWORD", self._ftp_pass_var, 0, 1, show="•")
 
         self._field(ftp_body, "REMOTE BASE PATH", self._ftp_base_var)
 
@@ -687,9 +654,6 @@ class App(tk.Tk):
         self._field_browse(imp_body, "INSTAGRAM EXPORT FOLDER", self._export_var, self._browse_export)
         self._field(imp_body, "COPYRIGHT STRING", self._copy_var)
 
-        # GOOGLE_DRIVE_HIDDEN — box code retained but not rendered
-        # To re-enable, uncomment the Google Drive box section here
-
         # ── Grid header ──────────────────────────────────────────────
         self._grid_rule = tk.Frame(self, bg=BORDER, height=1)
         self._grid_rule.pack(fill="x")
@@ -699,7 +663,7 @@ class App(tk.Tk):
         g_hdr.pack_propagate(False)
 
         self._grid_lbl = tk.Label(
-            g_hdr, text="POSTS \u2014 0", bg=BG_DEEP, fg=FG_DIM, font=FONT_BOLD,
+            g_hdr, text="POSTS — 0", bg=BG_DEEP, fg=FG_DIM, font=FONT_BOLD,
         )
         self._grid_lbl.pack(side="left", padx=14, pady=6)
 
@@ -795,7 +759,7 @@ class App(tk.Tk):
         row.pack(fill="x", pady=(2, 8))
         self._entry(row, var).pack(side="left", fill="x", expand=True, padx=(0, 4))
         tk.Button(
-            row, text="\u2026", command=cmd,
+            row, text="…", command=cmd,
             bg=BG_MID, fg=FG_DIM, activebackground=BG_HOVER,
             activeforeground=FG_MAIN, relief="flat",
             font=FONT_SMALL, padx=5, pady=2, cursor="hand2",
@@ -823,9 +787,7 @@ class App(tk.Tk):
     def _load_config_to_ui(self):
         c = self._config
         self._url_var.set(c.get('url', ''))
-        self._user_var.set(c.get('username', ''))
-        self._pass_var.set(c.get('password', ''))
-        self._rem_var.set(c.get('remember', False))
+        self._api_key_var.set(c.get('api_key', ''))
         self._ftp_host_var.set(c.get('ftp_host', ''))
         self._ftp_port_var.set(str(c.get('ftp_port', 21)))
         self._ftp_user_var.set(c.get('ftp_username', ''))
@@ -838,9 +800,7 @@ class App(tk.Tk):
     def _save_config(self):
         cfg_module.save({
             'url':              self._url_var.get().strip(),
-            'username':         self._user_var.get().strip(),
-            'password':         self._pass_var.get(),
-            'remember':         self._rem_var.get(),
+            'api_key':          self._api_key_var.get(),
             'ftp_host':         self._ftp_host_var.get().strip(),
             'ftp_port':         int(self._ftp_port_var.get() or 21),
             'ftp_username':     self._ftp_user_var.get().strip(),
@@ -900,7 +860,7 @@ class App(tk.Tk):
             messagebox.showerror("No folder", "Select an Instagram export folder.")
             return
 
-        self._set_status("Parsing\u2026", FG_WARN)
+        self._set_status("Parsing…", FG_WARN)
         self.update_idletasks()
 
         result = ig_parser.parse(export_folder)
@@ -917,9 +877,9 @@ class App(tk.Tk):
 
         s = result.stats
         self._grid_lbl.configure(
-            text=f"POSTS \u2014 {s['total_posts']}  "
+            text=f"POSTS — {s['total_posts']}  "
                  f"({s['carousel_posts']} carousel, {s['single_posts']} single)  "
-                 f"\u00B7  {s['total_images']} images"
+                 f"·  {s['total_images']} images"
         )
 
         self._progress['maximum'] = len(self._posts)
@@ -937,22 +897,25 @@ class App(tk.Tk):
     # ------------------------------------------------------------------
 
     def _on_connect(self):
-        url  = self._url_var.get().strip()
-        user = self._user_var.get().strip()
-        pw   = self._pass_var.get()
+        url     = self._url_var.get().strip()
+        api_key = self._api_key_var.get().strip()
 
-        if not url or not user or not pw:
-            messagebox.showerror("Missing credentials", "Fill in Site URL, Username, and Password.")
+        if not url or not api_key:
+            messagebox.showerror("Missing credentials", "Fill in Site URL and API Key.")
             return
 
-        self._set_status("Connecting\u2026", FG_WARN)
+        self._set_status("Connecting…", FG_WARN)
         self._conn_dot.configure(fg=FG_WARN)
-        self._conn_lbl.configure(text="Connecting\u2026", fg=FG_WARN)
+        self._conn_lbl.configure(text="Connecting…", fg=FG_WARN)
         self.update_idletasks()
 
         try:
-            client    = SnapSmackClient(url)
-            client.login(user, pw)
+            client    = UnzuckerClient(url, api_key)
+            ok, msg   = client.ping()
+
+            if not ok:
+                raise RuntimeError(msg)
+
             site_data = client.fetch_site_data()
 
             self._client    = client
@@ -963,9 +926,8 @@ class App(tk.Tk):
 
             self._conn_dot.configure(fg=FG_OK)
             self._conn_lbl.configure(
-                text=f"Connected \u2014 {len(cats)} cats, {len(albums)} albums", fg=FG_OK)
+                text=f"Connected — {len(cats)} cats, {len(albums)} albums", fg=FG_OK)
             self._set_status("Connected. Ready to transfer & post.", FG_OK)
-            self._start_session_timer()
             self._save_config()
 
         except Exception as e:
@@ -993,13 +955,13 @@ class App(tk.Tk):
 
         if not issues:
             active = sum(1 for p in self._posts if not p.excluded)
-            self._set_status(f"\u2713 {active} posts validated OK.", FG_OK)
+            self._set_status(f"✓ {active} posts validated OK.", FG_OK)
             messagebox.showinfo("Validation passed", f"All {active} posts look good.")
         else:
             self._set_status(f"{len(issues)} issues found.", FG_WARN)
             messagebox.showwarning("Issues found",
                                    "\n".join(issues[:20]) +
-                                   (f"\n\u2026and {len(issues) - 20} more" if len(issues) > 20 else ""))
+                                   (f"\n…and {len(issues) - 20} more" if len(issues) > 20 else ""))
 
     # ------------------------------------------------------------------
     # Transfer & Post
@@ -1013,13 +975,6 @@ class App(tk.Tk):
             return
         if not self._client or not self._site_data:
             messagebox.showinfo("Not connected", "Click Connect first.")
-            return
-
-        # Verify session
-        if not self._client.is_session_alive():
-            self._conn_lbl.configure(text="Session expired \u2014 reconnect", fg=FG_ERR)
-            messagebox.showwarning("Session Expired",
-                                   "Your login session has timed out.\nClick Connect to log in again.")
             return
 
         active = [p for p in self._posts if not p.excluded]
@@ -1054,7 +1009,7 @@ class App(tk.Tk):
         self._prog_var.set(0)
         self._progress['maximum'] = count
         self._prog_lbl.configure(text=f"0 / {count}")
-        self._set_status("Migrating\u2026", FG_WARN)
+        self._set_status("Migrating…", FG_WARN)
         self._save_config()
 
         # Make sure we're on the grid view during posting
@@ -1117,55 +1072,20 @@ class App(tk.Tk):
                         status = 'skip'
                     self._grid.set_cell_status(result.post_index, status)
 
-                    color = FG_OK if result.success else FG_ERR
+                    icon  = '✓' if result.success else '✗'
+                    color = FG_OK   if result.success else FG_ERR
                     self._set_status(
-                        f"{'\\u2713' if result.success else '\\u2717'}  "
-                        f"Post {current}/{total} \u2014 {result.message}",
+                        f"{icon}  Post {current}/{total} — {result.message}",
                         color,
                     )
 
                 elif msg[0] == 'done':
                     total = msg[1]
                     self._set_posting(False)
-                    self._set_status(f"Migration complete \u2014 {total} processed.", FG_OK)
+                    self._set_status(f"Migration complete — {total} processed.", FG_OK)
         except queue.Empty:
             pass
         self.after(100, self._poll_queue)
-
-    # ------------------------------------------------------------------
-    # Session timer
-    # ------------------------------------------------------------------
-    SESSION_LIFETIME = 2880  # 48 minutes
-
-    def _start_session_timer(self):
-        if self._session_timer_id:
-            self.after_cancel(self._session_timer_id)
-        self._session_remaining = self.SESSION_LIFETIME
-        self._tick_session_timer()
-
-    def _tick_session_timer(self):
-        s = self._session_remaining
-        if s <= 0:
-            self._session_timer_lbl.configure(text="SESSION EXPIRED", fg=FG_ERR)
-            self._conn_dot.configure(fg=FG_ERR)
-            self._conn_lbl.configure(text="Session expired \u2014 reconnect", fg=FG_ERR)
-            messagebox.showwarning("Session Expired",
-                                   "Your login session has timed out.\n"
-                                   "Click Connect to log in again.")
-            return
-
-        mins, secs = divmod(s, 60)
-        self._session_timer_lbl.configure(text=f"{mins:02d}:{secs:02d}")
-
-        if s <= 120:
-            self._session_timer_lbl.configure(fg=FG_ERR)
-        elif s <= 600:
-            self._session_timer_lbl.configure(fg=FG_WARN)
-        else:
-            self._session_timer_lbl.configure(fg=FG_DIM)
-
-        self._session_remaining -= 1
-        self._session_timer_id = self.after(1000, self._tick_session_timer)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -1190,18 +1110,6 @@ class App(tk.Tk):
         self._validate_btn.configure(state=state)
         self._connect_btn.configure(state=state)
         self._parse_btn.configure(state=state)
-
-    def _ensure_connected(self) -> bool:
-        if not self._client or not self._site_data:
-            messagebox.showinfo("Not connected", "Click Connect first.")
-            return False
-        if not self._client.is_session_alive():
-            self._conn_lbl.configure(text="Session expired \u2014 reconnect", fg=FG_ERR)
-            messagebox.showwarning("Session Expired",
-                                   "Your login session has timed out.\nClick Connect to log in again.")
-            return False
-        return True
-
 
 
 # ---------------------------------------------------------------------------
