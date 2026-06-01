@@ -548,7 +548,7 @@ if (isset($_POST['verify_hub'])) {
 // (settings + multisite_role loaded at top of file before POST handlers)
 
 // Load connected nodes — fetch UNIX_TIMESTAMP to avoid strtotime/timezone issues
-$nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, name ASC")->fetchAll(PDO::FETCH_ASSOC);
+$nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, site_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 // Hub self-entry data — shown as first row in Connected Spokes table
 $hub_post_count      = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
