@@ -548,7 +548,7 @@ if (isset($_POST['verify_hub'])) {
 // (settings + multisite_role loaded at top of file before POST handlers)
 
 // Load connected nodes — fetch UNIX_TIMESTAMP to avoid strtotime/timezone issues
-$nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, name ASC")->fetchAll(PDO::FETCH_ASSOC);
+$nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, site_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 // Hub self-entry data — shown as first row in Connected Spokes table
 $hub_post_count      = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
@@ -651,7 +651,7 @@ if ($multisite_role === 'hub') {
     unset($n);
 
     // Reload nodes so status changes are reflected
-    $nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, name ASC")->fetchAll(PDO::FETCH_ASSOC);
+    $nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, site_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // Fetch skin registry for push-skin UI (hub only; session-cached 10 min)
@@ -1166,82 +1166,4 @@ include 'core/sidebar.php';
                     <p><strong>Connected to Hub:</strong> <?php echo htmlspecialchars($hub['site_name']); ?></p>
                     <p style="color:var(--text-muted,#888); font-size:0.9rem;">
                         URL: <a href="<?php echo htmlspecialchars($hub['site_url']); ?>" target="_blank" style="color:var(--accent,#aaa);">
-                            <?php echo htmlspecialchars($hub['site_url']); ?>
-                        </a>
-                    </p>
-                    <p style="color:var(--text-muted,#888); font-size:0.9rem;">
-                        Connected at: <?php echo date('Y-m-d H:i:s', strtotime($hub['connected_at'])); ?>
-                    </p>
-                </div>
-
-                <div style="margin-top:20px; display:flex; gap:10px; align-items:center;">
-                    <form method="POST">
-                        <button type="submit" name="verify_hub" class="btn-smack btn-mt-0">
-                            VERIFY CONNECTION
-                        </button>
-                    </form>
-                    <form method="POST">
-                        <button type="submit" name="disconnect_hub" class="btn-smack btn-mt-0 btn-danger" onclick="return confirm('Disconnect from hub? The hub will no longer be able to monitor this site.');">
-                            DISCONNECT FROM HUB
-                        </button>
-                    </form>
-                </div>
-            <?php endif; ?>
-        </div>
-
-        <!-- API ACCESS LOG -->
-        <div class="box">
-            <h3>API ACCESS LOG (Last 50 Calls)</h3>
-            <?php
-                $log = $pdo->query("
-                    SELECT created_at FROM snap_multisite_queue
-                    ORDER BY created_at DESC
-                    LIMIT 50
-                ")->fetchAll(PDO::FETCH_ASSOC);
-            ?>
-            <?php if (empty($log)): ?>
-                <p style="color:var(--text-muted,#888);">No API calls recorded yet.</p>
-            <?php else: ?>
-                <div style="overflow-x:auto;">
-                    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
-                        <thead>
-                            <tr style="border-bottom:1px solid var(--border,#333);">
-                                <th style="text-align:left; padding:8px; color:var(--text-muted,#888);">TIMESTAMP</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($log as $entry): ?>
-                                <tr style="border-bottom:1px solid var(--border,#333);">
-                                    <td style="padding:8px;">
-                                        <?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($entry['created_at']))); ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
-        </div>
-
-    <?php endif; ?>
-
-</div>
-
-<style>
-.smackback-badge { display:inline-block; font-size:0.7rem; letter-spacing:.08em; padding:2px 7px; border-radius:3px; font-weight:600; }
-.smackback-breach { background:#7a1a1a; color:#ffaaaa; }
-.smackback-clean  { background:#1a4a2a; color:#88ffaa; }
-.smackback-unknown { color:var(--text-muted,#888); }
-
-/* Action column — keep buttons in a stable flex row so they line up across all spoke rows */
-.spoke-act-wrap { display:flex; align-items:center; justify-content:flex-end; gap:6px; white-space:nowrap; }
-.spoke-act-wrap form { display:contents; } /* form is transparent to flex layout */
-.spoke-act-wrap .action-authorize { min-width:105px; text-align:center; }
-.spoke-act-wrap .action-view,
-.spoke-act-wrap .action-warning   { min-width:82px;  text-align:center; }
-.spoke-act-wrap .action-delete    { min-width:95px;  text-align:center; }
-.spoke-act-wrap .action-update    { min-width:72px;  text-align:center; }
-</style>
-
-<?php include 'core/admin-footer.php'; ?>
-<?php // ===== SNAPSMACK EOF =====
+                            <?php ech
