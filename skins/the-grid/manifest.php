@@ -4,7 +4,7 @@
  * Alpha v0.7.9
  *
  * Classic Instagram-style 3-column photo grid skin.
- * Activates the carousel posting interface (post_page => carousel)
+ * Activates the GramOfSmack posting interface (post_page => gram)
  * and the carousel edit interface (edit_page => carousel).
  */
 
@@ -29,8 +29,8 @@ return [
     'status'      => 'development',
     'modes'       => ['carousel'],
 
-    // Activate carousel posting and editing interfaces
-    'post_page'   => 'carousel',
+    // Activate GramOfSmack posting and carousel editing interfaces
+    'post_page'   => 'gram',
     'edit_page'   => 'carousel',
 
     'features' => [
