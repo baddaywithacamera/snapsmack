@@ -1,7 +1,7 @@
 /**
  * SNAPSMACK - Dapper Dan admin theme colors
  *
- * Dark theme with yellow and red accents. All color values for admin-theme-geometry-master.css.
+ * Dark red canvas with gold primary and bright red accents. All color values for admin-theme-geometry-master.css.
  */
 
 /*
@@ -16,7 +16,7 @@
 
 /* 01: GLOBAL BASE */
 html, body {
-    background-color: #0D0D0D;
+    background-color: #1a0808;
     color: #F5F5DC;
     color-scheme: dark;
 }
@@ -29,17 +29,17 @@ a:hover { color: #c89906; }
 
 /* 02: SIDEBAR NAVIGATION */
 .sidebar {
-    background-color: #0D0D0D;
-    border-right-color: #630D0D;
+    background-color: #1a0808;
+    border-right-color: #CC1111;
 }
 
 .sidebar-brand {
     color: #EAB308;
-    border-bottom-color: #630D0D;
+    border-bottom-color: #CC1111;
 }
 
 .nav-section-toggle {
-    color: #630D0D;
+    color: #CC1111;
 }
 
 
@@ -54,16 +54,16 @@ a:hover { color: #c89906; }
 }
 
 .sidebar-bottom {
-    background-color: #0D0D0D;
+    background-color: #1a0808;
     border-top-color: #222222;
 }
 
 .sidebar .logout {
-    color: #630D0D;
+    color: #CC1111;
 }
 
 .sidebar .logout:hover {
-    color: #8B0000;
+    color: #dd1111;
 }
 
 .credits-admin {
@@ -72,23 +72,23 @@ a:hover { color: #c89906; }
 
 /* 03: MAIN HEADERS */
 .header-row {
-    border-bottom-color: #630D0D;
+    border-bottom-color: #CC1111;
 }
 
 h2 {
     color: #EAB308;
-    border-bottom-color: #630D0D;
+    border-bottom-color: #CC1111;
 }
 
 /* 04: CONTENT BOXES */
 .box {
-    background-color: #141414;
+    background-color: #220c0c;
     border-color: #222222;
 }
 
 .box h3, .section-header {
     color: #EAB308;
-    border-bottom-color: #630D0D;
+    border-bottom-color: #CC1111;
 }
 
 .post-col-right {
@@ -103,14 +103,14 @@ label {
 input[type="text"], input[type="number"], input[type="email"], input[type="password"],
 input[type="datetime-local"], input[type="date"], select, textarea,
 .preview-box, .select-box {
-    background-color: #050505;
+    background-color: #0f0404;
     border-color: #222222;
     color: #F5F5DC;
 }
 
 /* Custom multiselect dropdown colours */
 .dropdown-content {
-    background-color: #0A0A0A;
+    background-color: #150606;
     border-color: #222222;
     box-shadow: 0 4px 12px rgba(234, 179, 8, 0.1);
 }
@@ -120,24 +120,24 @@ input[type="datetime-local"], input[type="date"], select, textarea,
 }
 
 .dropdown-search-wrapper input {
-    background-color: #050505;
+    background-color: #0f0404;
     border-color: #333333;
     color: #F5F5DC;
 }
 
 .multi-cat-item {
-    border-bottom-color: #111111;
+    border-bottom-color: #180808;
     color: #BBBBBB;
 }
 
 .multi-cat-item:hover {
-    background-color: #141414;
+    background-color: #220c0c;
     color: #EAB308;
 }
 
 /* Read-only display fields get a lighter border for the inset look */
 .read-only-display {
-    background-color: #050505;
+    background-color: #0f0404;
     border-color: #333333;
     color: #F5F5DC;
     box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
@@ -168,8 +168,8 @@ input:focus, textarea:focus, select:focus {
 }
 
 .status-offline {
-    color: #630D0D;
-    border-color: #630D0D;
+    color: #CC1111;
+    border-color: #CC1111;
 }
 
 /* Sender Name */
@@ -184,7 +184,7 @@ input:focus, textarea:focus, select:focus {
 /* The Body Text */
 .signal-body {
     color: #F5F5DC;
-    background-color: #050505;
+    background-color: #0f0404;
     border-color: #222222;
 }
 
@@ -232,22 +232,22 @@ input:focus, textarea:focus, select:focus {
 
 /* Live Site stays red/oxblood */
 .btn-smack.btn-live {
-    background-color: #630D0D;
+    background-color: #CC1111;
     color: #F5F5DC;
 }
 .btn-smack.btn-live:hover {
     background-color: #222222;
     color: #F5F5DC;
-    box-shadow: 0 0 16px rgba(99, 13, 13, 0.5);
+    box-shadow: 0 0 16px rgba(204, 17, 17, 0.5);
 }
 
 /* Danger button modifier — destructive/disconnect actions */
 .btn-smack.btn-danger {
-    background-color: #630D0D;
+    background-color: #CC1111;
     color: #FFFFFF;
 }
 .btn-smack.btn-danger:hover {
-    background-color: #4a0000;
+    background-color: #aa0000;
     color: #FFFFFF;
 }
 .btn-smack.btn-warning {
@@ -292,11 +292,11 @@ button:hover {
 }
 
 .action-delete {
-    color: #630D0D;
-    border-color: #630D0D;
+    color: #CC1111;
+    border-color: #CC1111;
 }
 .action-delete:hover {
-    background-color: #630D0D;
+    background-color: #CC1111;
     color: #FFFFFF;
 }
 
@@ -318,7 +318,7 @@ button:hover {
 /* 10: DASH/STATS */
 .stat-box {
     border-color: #222222;
-    background-color: #0D0D0D;
+    background-color: #1a0808;
 }
 .stat-val {
     color: #EAB308;
@@ -335,7 +335,7 @@ button:hover {
 
 /* 11: PAGINATION */
 .pagination a {
-    background-color: #0A0A0A;
+    background-color: #150606;
     border-color: #222222;
     color: #777777;
 }
@@ -351,7 +351,7 @@ button:hover {
 
 /* 12: PROGRESS/UPLOADS */
 .progress-container {
-    background-color: #050505;
+    background-color: #0f0404;
     border-color: #222222;
 }
 .progress-bar {
@@ -359,7 +359,7 @@ button:hover {
 }
 .file-upload-wrapper {
     border-color: #222222;
-    background-color: #0A0A0A;
+    background-color: #150606;
 }
 .file-custom-btn {
     background-color: #222222;
@@ -376,7 +376,7 @@ button:hover {
 
 /* Inline checkbox labels (Built-in, N/A) — match input border treatment */
 .built-in-label {
-    background-color: #141414;
+    background-color: #220c0c;
     border-color: #222222;
     color: #888888;
 }
@@ -386,7 +386,7 @@ button:hover {
 }
 input[type="checkbox"] {
     border-color: #333333;
-    background-color: #050505;
+    background-color: #0f0404;
 }
 input[type="checkbox"]:checked {
     background-color: #EAB308;
@@ -398,13 +398,13 @@ input[type="checkbox"]:checked::after {
 
 /* 13: LOGIN & FOOTER */
 .login-box {
-    background-color: #141414;
+    background-color: #220c0c;
     border-color: #222222;
 }
 
 #admin-universal-footer {
-    background-color: #0D0D0D;
-    border-top-color: #630D0D;
+    background-color: #1a0808;
+    border-top-color: #CC1111;
 }
 .footer-left { color: #555555; }
 .footer-left a { color: #777777; border-bottom-color: #333333; }
@@ -416,10 +416,10 @@ input[type="checkbox"]:checked::after {
     border-color: #222222;
 }
 .skin-meta-wrap {
-    background-color: #111111;
+    background-color: #180808;
 }
 .skin-selector-wrap {
-    background-color: #0A0A0A;
+    background-color: #150606;
     border-left-color: #222222;
 }
 .theme-title-display { color: #EAB308; }
@@ -440,8 +440,8 @@ input[type="checkbox"]:checked::after {
     border-color: #222222;
 }
 .btn-reset:hover {
-    border-color: #630D0D;
-    color: #630D0D;
+    border-color: #CC1111;
+    color: #CC1111;
 }
 
 .alert-success {
@@ -450,7 +450,7 @@ input[type="checkbox"]:checked::after {
 }
 
 .alert-error {
-    border-color: #630D0D;
+    border-color: #CC1111;
 }
 
 /* 16: INPUT RANGE (Webkit) */
@@ -463,16 +463,16 @@ input[type="range"]::-webkit-slider-thumb {
 /* Asset cards (Media Library) */
 .asset-card {
     border-color: #222222;
-    background-color: #141414;
+    background-color: #220c0c;
 }
 .asset-thumb-wrapper {
     border-bottom-color: #222222;
-    background-color: #0A0A0A;
+    background-color: #150606;
 }
 .asset-shortcode-row .shortcode-display {
     border-color: #EAB308;
     color: #EAB308;
-    background-color: #0D0D0D;
+    background-color: #1a0808;
 }
 .asset-no-preview {
     color: #555;
@@ -498,16 +498,16 @@ input[type="range"]::-webkit-slider-thumb {
 
 .css-preview-block {
     border-color: #222222;
-    background-color: #0D0D0D;
+    background-color: #1a0808;
 }
 
 /* SHORTCODE TOOLBAR */
 .sc-toolbar {
-    background-color: #1c1c1c;
+    background-color: #201010;
     border-color: #222222;
 }
 .sc-toolbar .sc-btn {
-    background-color: #141414;
+    background-color: #220c0c;
     color: #AAAAAA;
 }
 .sc-toolbar .sc-btn:hover {
@@ -535,25 +535,25 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 /* ─── HELP SYSTEM (smack-help.php) ─────────────────────────────────── */
-.help-nav { background-color: #0D0D0D; border-right-color: #630D0D; }
-.help-nav-header { border-bottom-color: #630D0D; }
+.help-nav { background-color: #1a0808; border-right-color: #CC1111; }
+.help-nav-header { border-bottom-color: #CC1111; }
 .help-nav-subtitle { color: #888888; }
 .help-nav-section-label { color: #888888; }
 .help-nav-link { color: #888888; }
 .help-nav-link:hover { color: #EAB308; }
-.help-nav-link.active { color: #EAB308; background-color: #141414; border-left-color: #EAB308; }
-.help-search input { background-color: #050505; border-color: #222222; color: #F5F5DC; }
+.help-nav-link.active { color: #EAB308; background-color: #220c0c; border-left-color: #EAB308; }
+.help-search input { background-color: #0f0404; border-color: #222222; color: #F5F5DC; }
 .help-search-result { color: #888888; }
-.help-search-result:hover { background-color: #141414; border-color: #630D0D; }
+.help-search-result:hover { background-color: #220c0c; border-color: #CC1111; }
 .help-search-result-section { color: #888888; }
 .help-search-no-results { color: #888888; }
-.help-topic-header { border-bottom-color: #630D0D; }
+.help-topic-header { border-bottom-color: #CC1111; }
 .help-topic-section { color: #888888; }
-.help-topic-nav { border-top-color: #630D0D; }
+.help-topic-nav { border-top-color: #CC1111; }
 .help-topic-nav a { color: #888888; }
 .help-topic-nav a:hover { color: #EAB308; }
-.help-body pre { background-color: #141414; border-color: #222222; color: #F5F5DC; }
-.help-body code { background-color: #141414; border-color: #222222; color: #F5F5DC; }
+.help-body pre { background-color: #220c0c; border-color: #222222; color: #F5F5DC; }
+.help-body code { background-color: #220c0c; border-color: #222222; color: #F5F5DC; }
 .help-toc-section-title { border-bottom-color: #222222; }
 .help-toc-list a { color: #F5F5DC; }
 .help-toc-list a:hover { color: #EAB308; }
@@ -562,7 +562,7 @@ input[type="range"]::-webkit-slider-thumb {
 /* ─── SCHEMA HEALTH (smack-maintenance.php) ─────────────────────────── */
 .schema-count { color: #EAB308; }
 .schema-section-label { color: #888888; }
-.schema-list li { border-bottom-color: #630D0D; color: #F5F5DC; }
+.schema-list li { border-bottom-color: #CC1111; color: #F5F5DC; }
 
 /* ─── MANAGE ARCHIVE — DRAG REORDER & BATCH DELETE ──────────────── */
 .drag-handle { color: #888888; }
@@ -576,11 +576,11 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* ─── CLOUD BACKUP (smack-cloud.php) ─────────────────────────────── */
 .cloud-push-grid th { border-bottom-color: #222222; color: #888888; }
-.cloud-push-grid td { border-bottom-color: #630D0D; }
+.cloud-push-grid td { border-bottom-color: #CC1111; }
 .cloud-push-label { color: #F5F5DC; }
-.cloud-progress-bar { border-color: #222222; background-color: #141414; }
+.cloud-progress-bar { border-color: #222222; background-color: #220c0c; }
 .cloud-progress-header { color: #F5F5DC; }
-.cloud-progress-track { background-color: #630D0D; }
+.cloud-progress-track { background-color: #CC1111; }
 .cloud-progress-fill { background-color: #EAB308; }
 .cloud-progress-done { color: #4EC994; }
 .cloud-progress-failed { color: #E86060; }

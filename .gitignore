@@ -103,9 +103,8 @@ smack-central-current.zip
 # Greymatter port (work in progress — not part of SnapSmack)
 greymatter/
 
-# snapsmack.ca promo site — not part of the CMS codebase, deployed separately
-projects/snapsmack-ca/
-projects/snapsmack-ca/img/
+# snapsmack.ca promo site — tracked so we have restore capability
+# Runtime-generated exclusions are in projects/snapsmack-ca/.gitignore
 sc-config.php
 # Forum server live config — contains DB credentials and mod key
 projects/forum-server/api/forum/config.php

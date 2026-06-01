@@ -1,0 +1,9 @@
+# Runtime-generated — rebuilt on every page load
+includes/stats-cache.json
+
+# Auto-written by sc-release.php on publish — not hand-edited source
+includes/site-version.php
+
+# Uploaded/generated release artifacts
+releases/*.zip
+releases/*.sig

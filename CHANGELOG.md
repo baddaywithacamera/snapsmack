@@ -12,6 +12,27 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.192 — "Push It Real Good" (2026-05-31)
+
+### Added
+- **Push It (Push It Real Good)** (`smack-push-it.php`) — dedicated hub-only fleet settings control page. Per-group toggles for hub ownership: when Hub Controls is on for a group, the hub owns that setting fleet-wide and spoke UI for that section locks to read-only ("Managed by Network Hub"). Groups: timezone/date format, Akismet key, AI provider + API keys + crawler policy, SMACKBACK enabled/mode, global comments, contact email. PUSH IT ALL button pushes every hub-controlled group simultaneously. Spoke-side gating implemented in `smack-settings.php` and `smack-back.php` — locked fields show current value with ⊘ notice; form save skips locked fields so hub-pushed values persist.
+- **SMACK-BACK** (`smack-back.php`) — SMACKBACK integrity monitor UI renamed from `smack-smackback.php`. Full restyle to standard box/lens-input-wrapper/dash-grid patterns. Old URL kept as a 301 redirect stub.
+- Admin themes: **Prideful** and **Red John** manifests (`prideful-manifest.php`, `red-john-manifest.php`) — both themes existed but lacked manifest files, causing blank entries in the Core Admin Theme dropdown. Manifests created.
+
+### Fixed
+- **Admin theme dropdown blank entries** — `smack-globalvibe.php` discovery returns an empty array when no manifest exists; the fallback only fires on non-array, so missing manifests silently produced blank `<option>` entries. Fixed by creating the missing manifests for Prideful and Red John.
+- **Multisite registration token contrast** (`smack-multisite.php`) — token display used `color:inherit` which inherited a dark colour on some themes, making the token nearly invisible on the dark input background. Hardcoded to `color:#e0e0e0`.
+- **smack-multisite-settings.php CSRF theater** — CSRF token was rendered in all push forms but never validated server-side. POST handlers now check `hash_equals()` before executing.
+- **smack-push-it.php SSL verification** — cURL push helper was missing `CURLOPT_SSL_VERIFYPEER` and `CURLOPT_SSL_VERIFYHOST`. Added. Hub-guard added (spoke admins redirected to dashboard).
+
+### Changed
+- **Fleet settings push** moved from `smack-multisite-settings.php` to `smack-push-it.php`. Settings page now shows only the Downloads section. PUSH IT nav tab added to all multisite sub-pages.
+- **AI push group** expanded (`smack-push-it.php`) — now pushes `ai_provider`, `ai_key_claude`, `ai_key_gemini`, `ai_key_openai`, `ai_training_policy`, and `hub_controls_ai`. Was AI training policy only.
+- **Multisite spoke sort order** (`smack-multisite.php`, `smack-multisite-settings.php`) — fleet roster now sorted A→Z by name. Was insertion order (connected_at DESC).
+- **Dapper Dan admin theme** (`admin-theme-colours-dapper-dan.css`) v1.1 — background restored to dark red canvas (`#1a0808`) from near-black (`#0D0D0D`). Red accent restored to bright `#CC1111` from oxblood `#630D0D`.
+- **Prideful admin theme** (`admin-theme-colours-prideful.css`) — full rewrite. Light blue canvas (`#cce4ff`), purple sidebar, red page headers, orange section titles, green stats and action buttons, orange footer, rainbow progress bar. Previous version was a tasteful white background. It was lame.
+- **Red John admin theme** (`admin-theme-colours-red-john.css`) — contrast pass. All low-contrast muted text colours raised to readable levels on the dark red background. (`#662222`→`#bb5555`, `#551111`→`#993333`, `#441111`→`#883333`, `#440000`→`#772222`).
+
 ## 0.7.191 — "Shit and Git" (2026-05-31)
 
 ### Added

@@ -1331,7 +1331,7 @@ Detected: {$timestamp}
 Affected files:
 {$file_lines}
 Your admin interface is now in lockout mode. Log in to begin recovery:
-{$admin_url}/smack-smackback.php
+{$admin_url}/smack-back.php
 
 What to do:
 1. Log in to your SnapSmack admin
@@ -1382,7 +1382,7 @@ function smackback_render_breach(array $settings): void {
             <td style=\"padding:8px 16px;font-family:monospace;font-size:0.88rem;color:#eee;\">{$path}</td>
             <td style=\"padding:8px 16px;font-weight:700;color:{$colour};white-space:nowrap;\">{$status}</td>
             <td style=\"padding:8px 16px;\">
-                <a href=\"{$base_url}/smack-smackback.php?action=restore&restore=" . urlencode($entry['path'] ?? '') . "\"
+                <a href=\"{$base_url}/smack-back.php?action=restore&restore=" . urlencode($entry['path'] ?? '') . "\"
                    style=\"color:#ff9900;font-size:0.8rem;text-decoration:none;border:1px solid #ff9900;padding:4px 10px;\">
                    RESTORE
                 </a>
@@ -1442,7 +1442,7 @@ tbody tr+tr{border-top:1px solid #220000}
     <tbody>{$rows_html}</tbody>
   </table>
   <div class="breach-actions">
-    <a href="{$base_url}/smack-smackback.php?restore_all=1" class="btn-restore-all">
+    <a href="{$base_url}/smack-back.php?restore_all=1" class="btn-restore-all">
       Restore All Tampered Files
     </a>
     <a href="{$base_url}/smack-update.php" class="btn-update">
