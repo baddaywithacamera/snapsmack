@@ -651,7 +651,7 @@ if ($multisite_role === 'hub') {
     unset($n);
 
     // Reload nodes so status changes are reflected
-    $nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, name ASC")->fetchAll(PDO::FETCH_ASSOC);
+    $nodes = $pdo->query("SELECT *, UNIX_TIMESTAMP(last_seen_at) AS last_seen_ts FROM snap_multisite_nodes ORDER BY role ASC, site_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // Fetch skin registry for push-skin UI (hub only; session-cached 10 min)
