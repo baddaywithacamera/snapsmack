@@ -71,8 +71,7 @@ function uz_slugify(string $s): string {
     return trim($s, '-');
 }
 
-function uz_unique_post_slug(PDO $pdo, string $title): string {
-    $base = uz_slugify($title);
+function uz_unique_post_slug(PDO $pdo, string $base): string {
     if ($base === '') $base = 'post';
     $slug = $base;
     $n    = 1;
@@ -85,8 +84,7 @@ function uz_unique_post_slug(PDO $pdo, string $title): string {
     return $slug;
 }
 
-function uz_unique_img_slug(PDO $pdo, string $title): string {
-    $base = uz_slugify($title);
+function uz_unique_img_slug(PDO $pdo, string $base): string {
     if ($base === '') $base = 'photo';
     $slug = $base;
     $n    = 1;
@@ -97,6 +95,17 @@ function uz_unique_img_slug(PDO $pdo, string $title): string {
         $slug = $base . '-' . $n++;
     }
     return $slug;
+}
+
+// Generate a slug base from ig_id (preferred) or timestamp.
+// ig_id is the IG media ID from the export filename — already URL-safe digits.
+function uz_slug_base(string $ig_id, string $post_date, int $seq = 0): string {
+    if ($ig_id !== '') {
+        $base = 'ig-' . $ig_id;
+    } else {
+        $base = 'ig-' . date('Ymd-His', strtotime($post_date) ?: time());
+    }
+    return $seq > 0 ? $base . '-' . $seq : $base;
 }
 
 // ---------------------------------------------------------------------------
@@ -159,16 +168,12 @@ if ($sub === 'site' && $method === 'GET') {
 if ($sub === 'posts' && $method === 'POST') {
     $body = json_decode(file_get_contents('php://input'), true) ?? [];
 
-    $title     = trim($body['title']     ?? '');
     $desc      = trim($body['body']      ?? '');
     $post_date = trim($body['post_date'] ?? '');
     $ig_id     = trim($body['ig_id']     ?? '');
     $images    = $body['images']    ?? [];
-    $cat_ids   = $body['cat_ids']   ?? [];
-    $album_ids = $body['album_ids'] ?? [];
     $tags      = $body['tags']      ?? [];
 
-    if ($title === '') $title = 'Untitled';
     if (!preg_match('/^\d{4}-\d{2}-\d{2}/', $post_date)) {
         $post_date = date('Y-m-d H:i:s');
     }
@@ -218,8 +223,7 @@ if ($sub === 'posts' && $method === 'POST') {
             }
         }
 
-        $label    = $title . ($seq > 0 ? ' ' . ($seq + 1) : '');
-        $img_slug = uz_unique_img_slug($pdo, $label);
+        $img_slug = uz_unique_img_slug($pdo, uz_slug_base($ig_id, $post_date, $seq));
 
         $sort_row   = $pdo->query("SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM snap_images")->fetch(PDO::FETCH_ASSOC);
         $sort_order = (int)($sort_row['n'] ?? 1);
@@ -231,22 +235,13 @@ if ($sub === 'posts' && $method === 'POST') {
                 img_source_file, img_status, sort_order, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, NOW())
         ")->execute([
-            $img_slug, $img_path, $title, $desc,
+            $img_slug, $img_path, '', $desc,
             $post_date, $img_w, $img_h, $img_ori,
             $img_source ?: null, $sort_order,
         ]);
 
         $img_id    = (int)$pdo->lastInsertId();
         $image_ids[] = $img_id;
-
-        // Album map for image
-        if (is_array($album_ids) && count($album_ids) > 0) {
-            $map_stmt = $pdo->prepare("INSERT IGNORE INTO snap_image_album_map (image_id, album_id) VALUES (?, ?)");
-            foreach ($album_ids as $aid) {
-                $aid = (int)$aid;
-                if ($aid > 0) $map_stmt->execute([$img_id, $aid]);
-            }
-        }
 
         // Tags
         if ($tag_string !== '') {
@@ -257,7 +252,7 @@ if ($sub === 'posts' && $method === 'POST') {
     if (empty($image_ids)) uz_error(422, 'No valid images could be created.');
 
     // --- Create snap_posts record ---
-    $post_slug       = uz_unique_post_slug($pdo, $title);
+    $post_slug       = uz_unique_post_slug($pdo, uz_slug_base($ig_id, $post_date));
     $post_type_final = count($image_ids) > 1 ? 'carousel' : 'single';
 
     $pdo->prepare("
@@ -266,7 +261,7 @@ if ($sub === 'posts' && $method === 'POST') {
             import_source, import_id, created_at, updated_at
         ) VALUES (?, ?, ?, ?, 'published', 'instagram', ?, ?, NOW())
     ")->execute([
-        $title, $post_slug, $desc, $post_type_final,
+        '', $post_slug, $desc, $post_type_final,
         $ig_id ?: null,
         $post_date,
     ]);
@@ -280,24 +275,6 @@ if ($sub === 'posts' && $method === 'POST') {
     ");
     foreach ($image_ids as $pos => $img_id) {
         $pi_stmt->execute([$post_id, $img_id, $pos, ($pos === 0 ? 1 : 0)]);
-    }
-
-    // --- Category map ---
-    if (is_array($cat_ids) && count($cat_ids) > 0) {
-        $cat_stmt = $pdo->prepare("INSERT IGNORE INTO snap_post_cat_map (post_id, cat_id) VALUES (?, ?)");
-        foreach ($cat_ids as $cid) {
-            $cid = (int)$cid;
-            if ($cid > 0) $cat_stmt->execute([$post_id, $cid]);
-        }
-    }
-
-    // --- Album map ---
-    if (is_array($album_ids) && count($album_ids) > 0) {
-        $alb_stmt = $pdo->prepare("INSERT IGNORE INTO snap_post_album_map (post_id, album_id) VALUES (?, ?)");
-        foreach ($album_ids as $aid) {
-            $aid = (int)$aid;
-            if ($aid > 0) $alb_stmt->execute([$post_id, $aid]);
-        }
     }
 
     uz_ok([

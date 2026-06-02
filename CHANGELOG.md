@@ -12,6 +12,16 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.197 — "Push It Real Good" (2026-06-02)
+
+### Changed — GramOfSmack mode gating
+- **Admin sidebar** (`core/sidebar.php`) — Categories, Albums, and Collections nav items are now hidden when `site_mode = 'carousel'`. GramOfSmack installs see a clean sidebar without photoblog-only taxonomy UI.
+- **GramOfSmack posting page** (`smack-post-gram.php`) — removed Categories and Albums selectors, their DB queries, and their insert logic. GramOfSmack posts have no taxonomy assignment.
+- **Carousel editor** (`smack-edit-carousel.php`) — Categories and Albums selectors, DB queries, and map rebuilds are now gated behind `site_mode !== 'carousel'`. Photoblog carousel edits unchanged. GramOfSmack edits skip taxonomy entirely.
+
+### Changed — Unzucker API cleanup
+- **Unzucker import API** (`core/unzucker-api.php`) — `title`, `cat_ids`, and `album_ids` fields removed from the `POST unzucker/posts` request. Instagram exports have no titles and GramOfSmack has no taxonomy. Post and image slugs now generated from IG media ID (`ig_id`) or timestamp. Empty string stored in `title` column to preserve schema.
+
 ## 0.7.196 — "Push It Real Good" (2026-06-02)
 
 ### Fixed

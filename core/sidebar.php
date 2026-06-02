@@ -24,6 +24,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 // ui_mode is per-user — stored in snap_users, loaded into session at login
 $_ui_pimpmobile    = ($_SESSION['user_ui_mode'] ?? 'bigwheel') === 'pimpmobile';
 $_longform_enabled = ($settings['enable_longform'] ?? '0')        === '1';
+$_site_is_carousel = ($settings['site_mode']      ?? 'photoblog') === 'carousel';
 
 // --- CONDITIONAL PIMPOTRON DETECTION ---
 $_sidebar_pimpotron = false;
@@ -90,13 +91,15 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-lighttable.php') ? 'active' : ''; ?>">
                         <a href="smack-lighttable.php">Light Table</a>
                     </li>
+                    <?php if (!$_site_is_carousel): ?>
                     <li class="<?php echo ($current_page == 'smack-cats.php') ? 'active' : ''; ?>">
                         <a href="smack-cats.php">Categories</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-albums.php') ? 'active' : ''; ?>">
                         <a href="smack-albums.php">Albums</a>
                     </li>
-                    <?php if ($_ui_pimpmobile): ?>
+                    <?php endif; ?>
+                    <?php if ($_ui_pimpmobile && !$_site_is_carousel): ?>
                     <li class="<?php echo ($current_page == 'smack-collections.php') ? 'active' : ''; ?>">
                         <a href="smack-collections.php">Collections</a>
                     </li>
