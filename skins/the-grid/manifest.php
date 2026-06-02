@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK - The Grid Skin Manifest
- * Alpha v0.7.9
+ * Alpha v0.7.196
  *
  * Classic Instagram-style 3-column photo grid skin.
  * Activates the GramOfSmack posting interface (post_page => gram)
@@ -22,11 +22,11 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'        => 'The Grid',
-    'version'     => '1.2.1',
+    'version'     => '1.2.2',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Classic Instagram-style 3-column square-thumbnail photo grid. Carousel and panorama post support. Clean, minimal UI keeps the focus on the photographs.',
-    'status'      => 'development',
+    'status'      => 'stable',
     'modes'       => ['carousel'],
 
     // Activate GramOfSmack posting and carousel editing interfaces
