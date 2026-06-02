@@ -1228,6 +1228,26 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
     ms_ok(['applied' => $applied, 'skipped' => $skipped]);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/auth/sso-token
+// Hub requests a one-time SSO token so it can bounce an admin's browser into
+// this spoke's admin session. Token is 64 hex chars, valid 5 minutes, single-use.
+// Hub role required.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'auth' && $sub_action === 'sso-token' && $method === 'POST') {
+    if ($node['role'] !== 'hub') ms_err('Only a hub may request an SSO token', 403);
+
+    $token   = bin2hex(random_bytes(32)); // 64 hex chars
+    $expires = time() + 300;             // 5 minutes
+
+    $upsert = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
+                              ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)");
+    $upsert->execute(['multisite_sso_token',         $token]);
+    $upsert->execute(['multisite_sso_token_expires', (string)$expires]);
+
+    ms_ok(['sso_token' => $token]);
+}
+
 // Fell through -- unknown endpoint
 ms_err('Unknown multisite endpoint', 404);
 // ===== SNAPSMACK EOF =====

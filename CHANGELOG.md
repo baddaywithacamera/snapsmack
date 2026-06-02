@@ -12,6 +12,36 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.196 — "Push It Real Good" (2026-06-02)
+
+### Fixed
+- **stats.php** — added all-time views and unique visitor totals (`views_all`, `unique_all`) to the public stats endpoint for snapsmack.ca skin gallery tooltips.
+
+## 0.7.195 — "Push It Real Good" (2026-06-01)
+
+### Added
+- **GramOfSmack post page** (`smack-post-gram.php`) — dedicated posting UI for mode 2.0 / The Grid installs. Carousel backend, stripped of per-image EXIF panels and frame style controls. Routed via skin manifest `post_page => gram`.
+- **Multisite SSO token endpoint** (`core/multisite-api.php`) — implements `POST multisite/auth/sso-token`. Generates a 64-hex one-time token stored in snap_settings, valid 5 minutes. Enables REMOTE LOGIN from the hub multisite dashboard.
+
+### Fixed
+- **The Grid manifest** (`skins/the-grid/manifest.php`) — `post_page` set to `gram` so new posts route to `smack-post-gram.php` instead of falling through to solo.
+
+## 0.7.194 — "Push It Real Good" (2026-06-01)
+
+### Fixed
+- **stats.php DB bootstrap** — `stats.php` was requiring `core/constants.php` only, making `DB_HOST` undefined and returning 500 on every request. Switched to `core/db.php` (which defines the DB constants and provides `$pdo`). snapsmack.ca skin gallery stats now populate correctly.
+- **Multisite manual ping** (`smack-multisite.php`) — VERIFY CONNECTION single-node UPDATE was missing `site_mode`, `maintenance_mode`, `smackback_status`, and `smackback_breach_at`. Now matches the fleet sweep.
+- **snapsmack.ca install counter** (`projects/snapsmack-ca/releases/ping.php`) — `sc-config.php` was required via `../../` (two levels up, outside web root). Corrected to `../` — `releases/` and `smack-central/` are siblings under the web root.
+
+### Changed
+- **Admin footer** (`core/admin-footer.php`) — Install mode (1.0 / 2.0 / 3.0) now shown in footer alongside version string.
+- **Installer fallback version** (`install.php`) — Hardcoded fallback bumped to current. Live path via `core/constants.php` was already correct; fallback was stale.
+
+## 0.7.193 — "Push It Real Good" (2026-06-01)
+
+### Fixed
+- **Multisite spoke sort** (`smack-multisite.php`) — `ORDER BY role ASC, name ASC` referenced non-existent column `name`; corrected to `site_name`. Caused 500 on all multisite pages.
+
 ## 0.7.192 — "Push It Real Good" (2026-05-31)
 
 ### Added

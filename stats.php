@@ -27,19 +27,14 @@ header('Cache-Control: public, max-age=3600'); // 1-hour browser cache
 
 // Bootstrap: constants + DB only, no session, no auth
 define('SNAPSMACK_STATS_REQUEST', true);
-require_once __DIR__ . '/core/constants.php';
-
 try {
-    $pdo = new PDO(
-        'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
-        DB_USER, DB_PASS,
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
-    );
-} catch (Exception $e) {
+    require_once __DIR__ . '/core/db.php';
+} catch (Throwable $e) {
     http_response_code(503);
     echo json_encode(['error' => 'unavailable']);
     exit;
 }
+require_once __DIR__ . '/core/constants.php';
 
 try {
     // Settings
@@ -57,6 +52,13 @@ try {
         WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
     ")->fetch();
 
+    // Stats — all time
+    $stats_all = $pdo->query("
+        SELECT COALESCE(SUM(total_views), 0)     AS views_all,
+               COALESCE(SUM(unique_visitors), 0) AS unique_all
+        FROM snap_stats_daily
+    ")->fetch();
+
     // Active since — date of first published post
     $since = $pdo->query("
         SELECT DATE(MIN(img_date)) FROM snap_images WHERE img_status = 'published'
@@ -65,8 +67,10 @@ try {
     echo json_encode([
         'site_name'    => $settings['site_name']    ?? 'SnapSmack Site',
         'posts'        => $posts,
-        'views_30d'    => (int)($stats['views_30d'] ?? 0),
-        'unique_30d'   => (int)($stats['unique_30d'] ?? 0),
+        'views_30d'    => (int)($stats['views_30d']       ?? 0),
+        'unique_30d'   => (int)($stats['unique_30d']      ?? 0),
+        'views_all'    => (int)($stats_all['views_all']   ?? 0),
+        'unique_all'   => (int)($stats_all['unique_all']  ?? 0),
         'active_since' => $since ?: null,
         'version'      => SNAPSMACK_VERSION_SHORT,
     ], JSON_UNESCAPED_SLASHES);
