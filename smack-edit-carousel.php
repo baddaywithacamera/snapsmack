@@ -79,8 +79,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $allow_cmt    = (int)($_POST['allow_comments'] ?? 1);
     $allow_dl     = (int)($_POST['allow_download'] ?? 0);
     $dl_url       = trim($_POST['download_url']    ?? '');
-    $selected_cats   = $_POST['cat_ids']           ?? [];
-    $selected_albums = $_POST['album_ids']         ?? [];
     $raw_date     = $_POST['img_date']             ?? '';
     $post_date    = !empty($raw_date) ? str_replace('T', ' ', $raw_date) : date('Y-m-d H:i:s');
     $sort_order   = $_POST['sort_order']           ?? [];      // array of image IDs in new order
@@ -124,16 +122,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  $post_style_bg,   $post_style_shadow,
                  $post_id]);
 
-    // --- Rebuild category / album maps ---
-    $pdo->prepare("DELETE FROM snap_post_cat_map WHERE post_id = ?")->execute([$post_id]);
-    foreach ($selected_cats as $cid) {
-        $pdo->prepare("INSERT IGNORE INTO snap_post_cat_map (post_id, cat_id) VALUES (?,?)")
-            ->execute([$post_id, (int)$cid]);
-    }
-    $pdo->prepare("DELETE FROM snap_post_album_map WHERE post_id = ?")->execute([$post_id]);
-    foreach ($selected_albums as $aid) {
-        $pdo->prepare("INSERT IGNORE INTO snap_post_album_map (post_id, album_id) VALUES (?,?)")
-            ->execute([$post_id, (int)$aid]);
+    // --- Rebuild category / album maps (photoblog mode only) ---
+    if (($settings['site_mode'] ?? 'photoblog') !== 'carousel') {
+        $selected_cats   = $_POST['cat_ids']   ?? [];
+        $selected_albums = $_POST['album_ids'] ?? [];
+        $pdo->prepare("DELETE FROM snap_post_cat_map WHERE post_id = ?")->execute([$post_id]);
+        foreach ($selected_cats as $cid) {
+            $pdo->prepare("INSERT IGNORE INTO snap_post_cat_map (post_id, cat_id) VALUES (?,?)")
+                ->execute([$post_id, (int)$cid]);
+        }
+        $pdo->prepare("DELETE FROM snap_post_album_map WHERE post_id = ?")->execute([$post_id]);
+        foreach ($selected_albums as $aid) {
+            $pdo->prepare("INSERT IGNORE INTO snap_post_album_map (post_id, album_id) VALUES (?,?)")
+                ->execute([$post_id, (int)$aid]);
+        }
     }
 
     // --- Remove images from post (unlink only; snap_images row is preserved) ---
@@ -440,17 +442,24 @@ $images_stmt = $pdo->prepare("
 $images_stmt->execute([$post_id]);
 $post_images = $images_stmt->fetchAll();
 
-// Load categories and albums
-$mapped_cats = $pdo->prepare("SELECT cat_id FROM snap_post_cat_map WHERE post_id = ?");
-$mapped_cats->execute([$post_id]);
-$mapped_cats = $mapped_cats->fetchAll(PDO::FETCH_COLUMN);
+// Load categories and albums (photoblog mode only)
+$_edit_is_carousel = ($settings['site_mode'] ?? 'photoblog') === 'carousel';
+$mapped_cats   = [];
+$mapped_albums = [];
+$all_cats      = [];
+$all_albums    = [];
+if (!$_edit_is_carousel) {
+    $mapped_cats = $pdo->prepare("SELECT cat_id FROM snap_post_cat_map WHERE post_id = ?");
+    $mapped_cats->execute([$post_id]);
+    $mapped_cats = $mapped_cats->fetchAll(PDO::FETCH_COLUMN);
 
-$mapped_albums = $pdo->prepare("SELECT album_id FROM snap_post_album_map WHERE post_id = ?");
-$mapped_albums->execute([$post_id]);
-$mapped_albums = $mapped_albums->fetchAll(PDO::FETCH_COLUMN);
+    $mapped_albums = $pdo->prepare("SELECT album_id FROM snap_post_album_map WHERE post_id = ?");
+    $mapped_albums->execute([$post_id]);
+    $mapped_albums = $mapped_albums->fetchAll(PDO::FETCH_COLUMN);
 
-$all_cats   = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
-$all_albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
+    $all_cats   = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
+    $all_albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
+}
 
 // Build EXIF map for JS (image_id → exif object)
 $exif_map = [];
@@ -507,6 +516,7 @@ include 'core/sidebar.php';
                     </div>
                     <?php endif; ?>
 
+                    <?php if (!$_edit_is_carousel): ?>
                     <div class="post-layout-grid">
                         <div class="flex-1">
                             <div class="lens-input-wrapper">
@@ -561,6 +571,7 @@ include 'core/sidebar.php';
                             </div>
                         </div>
                     </div>
+                    <?php endif; ?>
 
                     <div class="lens-input-wrapper post-description-wrap">
                         <label>CAPTION / STORY</label>
