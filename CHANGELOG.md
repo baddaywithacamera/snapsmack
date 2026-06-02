@@ -12,6 +12,15 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.195 — "Push It Real Good" (2026-06-01)
+
+### Added
+- **GramOfSmack post page** (`smack-post-gram.php`) — dedicated posting UI for mode 2.0 / The Grid installs. Carousel backend, stripped of per-image EXIF panels and frame style controls. Routed via skin manifest `post_page => gram`.
+- **Multisite SSO token endpoint** (`core/multisite-api.php`) — implements `POST multisite/auth/sso-token`. Generates a 64-hex one-time token stored in snap_settings, valid 5 minutes. Enables REMOTE LOGIN from the hub multisite dashboard.
+
+### Fixed
+- **The Grid manifest** (`skins/the-grid/manifest.php`) — `post_page` set to `gram` so new posts route to `smack-post-gram.php` instead of falling through to solo.
+
 ## 0.7.194 — "Push It Real Good" (2026-06-01)
 
 ### Fixed
