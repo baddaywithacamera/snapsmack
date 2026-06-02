@@ -49,8 +49,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
     $allow_cmt    = (int)($_POST['allow_comments']  ?? 1);
     $allow_dl     = (int)($_POST['allow_download']  ?? 0);
     $dl_url       = trim($_POST['download_url'] ?? '');
-    $selected_cats   = $_POST['cat_ids']   ?? [];
-    $selected_albums = $_POST['album_ids'] ?? [];
     $manual_tags     = trim($_POST['tags'] ?? '');
 
     $raw_date  = $_POST['img_date'] ?? '';
@@ -280,24 +278,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
         $tag_source = $title . ' ' . $desc . ' ' . $manual_tags;
         snap_sync_tags($pdo, $cover_id, $tag_source);
 
-        // Category maps
-        foreach ($selected_cats as $cid) {
-            $cid = (int)$cid;
-            $pdo->prepare("INSERT INTO snap_image_cat_map (image_id, cat_id) VALUES (?, ?)")
-                ->execute([$cover_id, $cid]);
-            $pdo->prepare("INSERT IGNORE INTO snap_post_cat_map (post_id, cat_id) VALUES (?, ?)")
-                ->execute([$post_id, $cid]);
-        }
-
-        // Album maps
-        foreach ($selected_albums as $aid) {
-            $aid = (int)$aid;
-            $pdo->prepare("INSERT INTO snap_image_album_map (image_id, album_id) VALUES (?, ?)")
-                ->execute([$cover_id, $aid]);
-            $pdo->prepare("INSERT IGNORE INTO snap_post_album_map (post_id, album_id) VALUES (?, ?)")
-                ->execute([$post_id, $aid]);
-        }
-
         if ($is_ajax) { echo 'success'; exit; }
         header('Location: smack-manage.php?msg=TRANSMISSION_LIVE');
         exit;
@@ -307,9 +287,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
 // =============================================================================
 // PAGE RENDER
 // =============================================================================
-
-$all_cats   = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
-$all_albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
 
 $page_title = "New Post";
 include 'core/admin-header.php';
@@ -364,65 +341,6 @@ include 'core/sidebar.php';
                             <option value="2">2 Rows — 6 tiles</option>
                             <option value="3">3 Rows — 9 tiles (full grid takeover)</option>
                         </select>
-                    </div>
-
-                    <div class="post-layout-grid">
-                        <div class="flex-1">
-                            <div class="lens-input-wrapper">
-                                <label>CATEGORIES</label>
-                                <div class="custom-multiselect">
-                                    <div class="select-box" onclick="toggleDropdown('cat-items')">
-                                        <span id="cat-label">Select Categories...</span><span class="arrow">▼</span>
-                                    </div>
-                                    <div class="dropdown-content" id="cat-items">
-                                        <div class="dropdown-search-wrapper">
-                                            <input type="text" placeholder="Filter..."
-                                                   onkeyup="filterRegistry(this, 'cat-list-box')">
-                                        </div>
-                                        <div class="dropdown-list" id="cat-list-box">
-                                            <?php foreach ($all_cats as $c): ?>
-                                                <label class="multi-cat-item">
-                                                    <input type="checkbox" name="cat_ids[]"
-                                                           value="<?php echo $c['id']; ?>"
-                                                           onchange="updateLabel('cat')">
-                                                    <span class="cat-name-text">
-                                                        <?php echo htmlspecialchars($c['cat_name']); ?>
-                                                    </span>
-                                                </label>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex-1">
-                            <div class="lens-input-wrapper">
-                                <label>ALBUMS</label>
-                                <div class="custom-multiselect">
-                                    <div class="select-box" onclick="toggleDropdown('album-items')">
-                                        <span id="album-label">Select Albums...</span><span class="arrow">▼</span>
-                                    </div>
-                                    <div class="dropdown-content" id="album-items">
-                                        <div class="dropdown-search-wrapper">
-                                            <input type="text" placeholder="Filter..."
-                                                   onkeyup="filterRegistry(this, 'album-list-box')">
-                                        </div>
-                                        <div class="dropdown-list" id="album-list-box">
-                                            <?php foreach ($all_albums as $a): ?>
-                                                <label class="multi-cat-item">
-                                                    <input type="checkbox" name="album_ids[]"
-                                                           value="<?php echo $a['id']; ?>"
-                                                           onchange="updateLabel('album')">
-                                                    <span class="cat-name-text">
-                                                        <?php echo htmlspecialchars($a['album_name']); ?>
-                                                    </span>
-                                                </label>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     <div class="lens-input-wrapper post-description-wrap">
@@ -530,14 +448,6 @@ include 'core/sidebar.php';
 </div>
 
 <script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
-<script>
-window.addEventListener('DOMContentLoaded', () => {
-    if (typeof updateLabel === 'function') {
-        updateLabel('cat');
-        updateLabel('album');
-    }
-});
-</script>
 <script src="assets/js/shortcode-toolbar.js"></script>
 <script>
 // GramOfSmack post composer — drop zone, preview strip, drag-reorder, submit.
