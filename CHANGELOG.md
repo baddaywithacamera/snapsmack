@@ -12,6 +12,11 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.196 — "Push It Real Good" (2026-06-02)
+
+### Fixed
+- **stats.php** — added all-time views and unique visitor totals (`views_all`, `unique_all`) to the public stats endpoint for snapsmack.ca skin gallery tooltips.
+
 ## 0.7.195 — "Push It Real Good" (2026-06-01)
 
 ### Added
