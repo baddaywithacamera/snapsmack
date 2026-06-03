@@ -96,6 +96,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-gyss-modified-at.sql',
     'migrate-collection-items-polymorphic.sql',
     'migrate-comment-url.sql',
+    'migrate-trigrams.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
@@ -194,7 +195,7 @@ function _updater_ping_home(PDO $pdo, string $version, string $track): void {
         try {
             $role = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'multisite_role' LIMIT 1")->fetchColumn();
             if ($role === 'hub') {
-                $spoke_count = (int)$pdo->query("SELECT COUNT(*) FROM snap_multisite_nodes WHERE status = 'active'")->fetchColumn();
+                $spoke_count = (int)$pdo->query("SELECT COUNT(*) FROM snap_multisite_nodes WHERE status = 'active' AND role = 'spoke'")->fetchColumn();
             }
         } catch (PDOException $e) {}
 
