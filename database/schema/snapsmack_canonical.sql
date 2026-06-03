@@ -93,6 +93,8 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
                       COMMENT 'Hero image for longform posts — FK to snap_assets.id — migration 041',
   `trigram_id`        int unsigned   DEFAULT NULL
                       COMMENT 'FK to snap_trigrams.id — NULL = normal post cover',
+  `sort_order`        int            NOT NULL DEFAULT 0
+                      COMMENT 'Manual feed order. 0 = unset (falls back to created_at DESC).',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_slug` (`slug`),
   KEY `idx_status` (`status`),
@@ -105,18 +107,19 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
 -- ─── TRIGRAMS ─────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS `snap_trigrams` (
-  `id`          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-  `source_path` VARCHAR(500)  NOT NULL COMMENT 'Original uploaded source image path',
-  `cut_left`    SMALLINT      NOT NULL COMMENT 'Pixel x of left cut point',
-  `cut_right`   SMALLINT      NOT NULL COMMENT 'Pixel x of right cut point',
-  `post_id_l`   INT UNSIGNED  NOT NULL COMMENT 'Post assigned the L slice',
-  `post_id_m`   INT UNSIGNED  NOT NULL COMMENT 'Post assigned the M slice',
-  `post_id_r`   INT UNSIGNED  NOT NULL COMMENT 'Post assigned the R slice',
-  `created_at`  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `id`          INT UNSIGNED        NOT NULL AUTO_INCREMENT,
+  `source_path` VARCHAR(500)        NOT NULL COMMENT 'Original uploaded source image path',
+  `orientation` ENUM('h','v')       NOT NULL DEFAULT 'h' COMMENT 'h=horizontal L/M/R, v=vertical T/M/B',
+  `cut_a`       SMALLINT UNSIGNED   NOT NULL COMMENT 'First cut point in pixels',
+  `cut_b`       SMALLINT UNSIGNED   NOT NULL COMMENT 'Second cut point in pixels',
+  `post_id_1`   INT UNSIGNED        NOT NULL COMMENT 'Post assigned slice 1 (L or T)',
+  `post_id_2`   INT UNSIGNED        NOT NULL COMMENT 'Post assigned slice 2 (middle)',
+  `post_id_3`   INT UNSIGNED        NOT NULL COMMENT 'Post assigned slice 3 (R or B)',
+  `created_at`  DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_post_l` (`post_id_l`),
-  KEY `idx_post_m` (`post_id_m`),
-  KEY `idx_post_r` (`post_id_r`)
+  KEY `idx_post_1` (`post_id_1`),
+  KEY `idx_post_2` (`post_id_2`),
+  KEY `idx_post_3` (`post_id_3`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 

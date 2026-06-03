@@ -12,6 +12,33 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.199 — "Grid Lighttable" (2026-06-02)
+
+### Added — smack-lt-gram.php
+- New visual 3-column feed reorder tool for Grid (GramOfSmack) installs.
+- All posts (published + draft) rendered as a live grid preview matching the live skin layout.
+- Drag-to-reorder via SortableJS; sort order auto-saved on drop.
+- Draft badges, carousel image count indicators, per-tile publish button, bulk publish.
+- Trigram grouping: tiles with a `trigram_id` are visually outlined. Alignment check runs after every drag — warns if a trigram's three tiles don't form a valid horizontal row or vertical column.
+- Sidebar shows "Grid Lighttable" link on carousel installs, "Light Table" on all others.
+
+### Added — migrations
+- `migrate-trigrams.sql` — creates `snap_trigrams` table (id, source_path, orientation h/v, cut_a, cut_b, post_id_1/2/3, created_at) and adds `trigram_id` FK column to `snap_posts`.
+- `migrate-posts-sort-order.sql` — adds `sort_order` column to `snap_posts` for manual feed ordering.
+
+### Changed
+- `skins/the-grid/landing.php` — ORDER BY now uses `p.sort_order ASC, p.created_at DESC` so lighttable reorders are reflected on the live grid.
+- `database/schema/snapsmack_canonical.sql` — `snap_trigrams` table added; `trigram_id` and `sort_order` columns added to `snap_posts`.
+- `core/updater.php` — both new migrations registered in `UPDATER_KNOWN_MIGRATIONS`.
+
+## 0.7.198 — "Trigram Schema" (2026-06-02)
+
+### Added
+- `migrations/migrate-trigrams.sql` — snap_trigrams table + trigram_id FK on snap_posts (orientation-aware: h/v, cut_a/cut_b, post_id_1/2/3).
+- `migrations/migrate-posts-sort-order.sql` — sort_order column on snap_posts.
+- Both migrations registered in `UPDATER_KNOWN_MIGRATIONS`.
+- Canonical schema updated accordingly.
+
 ## 0.7.197 — "Push It Real Good" (2026-06-02)
 
 ### Changed — GramOfSmack mode gating
