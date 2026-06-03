@@ -114,7 +114,7 @@ $grid_stmt = $pdo->prepare("
     JOIN snap_images i       ON i.id = pi.image_id
     WHERE p.status = 'published'
       AND p.created_at <= ?
-    ORDER BY p.created_at DESC
+    ORDER BY p.sort_order ASC, p.created_at DESC
     LIMIT ? OFFSET ?
 ");
 $grid_stmt->execute([$now_local, $per_page, $offset]);
