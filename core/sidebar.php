@@ -47,7 +47,7 @@ if (!empty($settings['active_skin'])) {
 // --- SECTION / PAGE MAP ---
 // Determine which accordion section to auto-open based on the current page.
 $_section_map = [
-    'good-shit'  => ['smack-admin.php','smack-post-solo.php','smack-post-long.php','smack-manage.php','smack-edit.php','smack-lighttable.php','smack-cats.php','smack-albums.php','smack-collections.php','smack-mosaics.php','smack-media.php','smack-gallery.php','smack-comments.php','smack-blogroll.php','smack-pages.php','smack-shortcodes.php','smack-privacy.php','smack-community-settings.php','smack-community-users.php','smack-tools.php'],
+    'good-shit'  => ['smack-admin.php','smack-post-solo.php','smack-post-long.php','smack-manage.php','smack-edit.php','smack-lighttable.php','smack-lt-gram.php','smack-cats.php','smack-albums.php','smack-collections.php','smack-mosaics.php','smack-media.php','smack-gallery.php','smack-comments.php','smack-blogroll.php','smack-pages.php','smack-shortcodes.php','smack-privacy.php','smack-community-settings.php','smack-community-users.php','smack-tools.php'],
     'pimp'       => ['smack-globalvibe.php','smack-skin.php','smack-menu.php','smack-pimpotron.php','smack-social-dock.php','smack-css.php','smack-scripts.php','smack-appearance-archive.php','smack-appearance-solo.php','smack-appearance-static.php'],
     'boring'     => ['smack-settings.php','smack-users.php','smack-maintenance.php','smack-fingerprints.php','smack-backup.php','smack-disaster.php','smack-ftp.php','smack-cloud.php','smack-verify.php','smack-update.php','smack-schema.php','smack-stats.php','smack-api-keys.php','smack-back.php','smack-multisite.php','smack-multisite-comments.php','smack-multisite-posts.php','smack-multisite-backup.php','smack-multisite-stats.php','smack-multisite-crosspost.php','smack-multisite-blogroll.php','smack-multisite-settings.php','smack-push-it.php'],
     'help'       => ['smack-help.php','smack-forum.php'],
@@ -77,8 +77,8 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-admin.php') ? 'active' : ''; ?>">
                         <a href="smack-admin.php">Dashboard</a>
                     </li>
-                    <li class="<?php echo ($current_page == 'smack-post-solo.php') ? 'active' : ''; ?>">
-                        <a href="smack-post-solo.php">New Post</a>
+                    <li class="<?php echo in_array($current_page, ['smack-post-solo.php','smack-post-gram.php']) ? 'active' : ''; ?>">
+                        <a href="<?php echo $_site_is_carousel ? 'smack-post-gram.php' : 'smack-post-solo.php'; ?>">New Post</a>
                     </li>
                     <?php if ($_ui_pimpmobile && $_longform_enabled): ?>
                     <li class="<?php echo ($current_page == 'smack-post-long.php') ? 'active' : ''; ?>">
@@ -88,9 +88,15 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-manage.php' || $current_page == 'smack-edit.php') ? 'active' : ''; ?>">
                         <a href="smack-manage.php">Manage Archive</a>
                     </li>
+                    <?php if ($_site_is_carousel): ?>
+                    <li class="<?php echo ($current_page == 'smack-lt-gram.php') ? 'active' : ''; ?>">
+                        <a href="smack-lt-gram.php">Grid Lighttable</a>
+                    </li>
+                    <?php else: ?>
                     <li class="<?php echo ($current_page == 'smack-lighttable.php') ? 'active' : ''; ?>">
                         <a href="smack-lighttable.php">Light Table</a>
                     </li>
+                    <?php endif; ?>
                     <?php if (!$_site_is_carousel): ?>
                     <li class="<?php echo ($current_page == 'smack-cats.php') ? 'active' : ''; ?>">
                         <a href="smack-cats.php">Categories</a>

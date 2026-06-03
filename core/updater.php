@@ -97,6 +97,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-collection-items-polymorphic.sql',
     'migrate-comment-url.sql',
     'migrate-trigrams.sql',
+    'migrate-posts-sort-order.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
