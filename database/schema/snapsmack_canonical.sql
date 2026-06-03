@@ -91,11 +91,32 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
                       COMMENT 'Body content for longform (SmackTalk) posts — migration 041',
   `featured_asset_id` int unsigned   DEFAULT NULL
                       COMMENT 'Hero image for longform posts — FK to snap_assets.id — migration 041',
+  `trigram_id`        int unsigned   DEFAULT NULL
+                      COMMENT 'FK to snap_trigrams.id — NULL = normal post cover',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_slug` (`slug`),
   KEY `idx_status` (`status`),
   KEY `idx_created_at` (`created_at`),
-  KEY `idx_post_type` (`post_type`)
+  KEY `idx_post_type` (`post_type`),
+  KEY `idx_trigram` (`trigram_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ─── TRIGRAMS ─────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS `snap_trigrams` (
+  `id`          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  `source_path` VARCHAR(500)  NOT NULL COMMENT 'Original uploaded source image path',
+  `cut_left`    SMALLINT      NOT NULL COMMENT 'Pixel x of left cut point',
+  `cut_right`   SMALLINT      NOT NULL COMMENT 'Pixel x of right cut point',
+  `post_id_l`   INT UNSIGNED  NOT NULL COMMENT 'Post assigned the L slice',
+  `post_id_m`   INT UNSIGNED  NOT NULL COMMENT 'Post assigned the M slice',
+  `post_id_r`   INT UNSIGNED  NOT NULL COMMENT 'Post assigned the R slice',
+  `created_at`  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_post_l` (`post_id_l`),
+  KEY `idx_post_m` (`post_id_m`),
+  KEY `idx_post_r` (`post_id_r`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
