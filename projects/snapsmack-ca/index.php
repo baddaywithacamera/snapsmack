@@ -99,6 +99,41 @@ $page_og_url      = 'https://snapsmack.ca/';
 $nav_active       = 'index';
 
 $page_css = <<<'CSS'
+/* ─── BUILD BADGES ──────────────────────────────────────────────────────── */
+.build-badges {
+    position: absolute;
+    top: 0;
+    right: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex-shrink: 0;
+}
+.build-badge {
+    display: flex;
+    align-items: center;
+    font-family: 'Courier New', monospace;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.build-badge-track {
+    padding: 4px 10px;
+    color: var(--white);
+    min-width: 90px;
+    text-align: left;
+}
+.build-badge-ver {
+    padding: 4px 10px;
+    background: var(--black);
+    color: var(--white);
+}
+.build-badge--boring .build-badge-track  { background: #555; }
+.build-badge--bitchin .build-badge-track { background: var(--red); }
+
 /* ─── HERO ──────────────────────────────────────────────────────────────── */
 #hero {
     background: var(--white);
@@ -1247,6 +1282,16 @@ require_once __DIR__ . '/includes/header.php';
 <!-- ── HERO ───────────────────────────────────────────────────────────────── -->
 <section id="hero">
     <div class="hero-inner">
+        <div class="build-badges">
+            <div class="build-badge build-badge--boring">
+                <span class="build-badge-track">Boring</span>
+                <span class="build-badge-ver">v<?php echo SS_PROMO_VERSION; ?></span>
+            </div>
+            <div class="build-badge build-badge--bitchin">
+                <span class="build-badge-track">Bitchin&#x27;</span>
+                <span class="build-badge-ver">v<?php echo defined('SS_PROMO_DEV_VERSION') ? preg_replace('/^Alpha\s+/i', '', SS_PROMO_DEV_VERSION) : ''; ?></span>
+            </div>
+        </div>
         <h1 class="hero-headline">A photo blog platform that doesn't treat you like a <span>product.</span></h1>
         <p class="hero-kicker">SnapSmack lets you smack your snaps up.</p>
         <p class="hero-sub">Self-hosted, free and open-source, built for photographers who got tired of Instagram, Facebook, and every other platform deciding what happens to their work. Own your archive. Own your audience. No middleman.</p>
@@ -2011,9 +2056,10 @@ document.getElementById('yr').textContent = new Date().getFullYear();
 
     var tip = document.createElement('div');
     tip.id = 'skin-stats-tooltip';
-    document.body.appendChild(tip);
+    // Append to <html> not <body> — body has zoom:1.25 which scales fixed-position
+    // elements and makes clientX/Y coordinates mismatch. Outside body = no zoom effect.
+    document.documentElement.appendChild(tip);
 
-    // Global cursor tracker — position:fixed + clientX/Y, always viewport-relative
     var mx = 0, my = 0;
     document.addEventListener('mousemove', function(e) {
         mx = e.clientX;
@@ -2045,7 +2091,8 @@ document.getElementById('yr').textContent = new Date().getFullYear();
                 (stats.active_since ? '<div class="stt-since">Since ' + stats.active_since.substring(0,4) + '</div>' : '');
         }
 
-        card.addEventListener('mouseenter', function() {
+        card.addEventListener('mouseenter', function(e) {
+            mx = e.clientX; my = e.clientY; // seed from entry point, don't rely on stale mousemove
             tip.innerHTML = html;
             tip.classList.add('visible');
             reposition();
