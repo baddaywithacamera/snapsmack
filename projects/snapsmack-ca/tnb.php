@@ -73,7 +73,7 @@ include __DIR__ . '/includes/header.php';
 
             <h2>The short version</h2>
             <p>SnapSmack is software you install on your own server. Your blog, your posts, your visitors — that data lives on your machine and nowhere else. The SnapSmack project does not collect it, see it, or have any access to it.</p>
-            <p>The only time any information about your site reaches the SnapSmack network is when you choose to connect to community features — the spam protection network or the community forum. Both are opt-in. Neither is required to run SnapSmack.</p>
+            <p>Opt-in features — the spam protection network and the community forum — are the only ones that identify your site to us by name. SnapSmack does send two automatic pings: a version check when your installation looks for updates (so we can count installs and track which versions need support), and a counter ping when someone discovers the Thomas the Bear Easter egg. Both use pseudonymous hashed IDs. We get a count — not a name, not a URL, nothing that identifies you. Nothing is installed on your system by us. Nothing identifies you to us unless you choose to connect.</p>
 
             <h2>Your blog and your visitors</h2>
             <p>SnapSmack is self-hosted software. When someone visits your blog, comments on a post, or sends you a message through your site, that data goes to your server — not ours. We have no access to your posts, your images, your visitors, or your comment data.</p>
@@ -133,6 +133,24 @@ include __DIR__ . '/includes/header.php';
             </ul>
             <p>You can disconnect your site from the forum at any time. When you do, or if you request it, your posts are <strong>anonymized</strong> rather than deleted — your display name, site URL, and identifying information are stripped, but the discussion thread stays intact so the support history remains useful to others. If a post contains a screenshot with sensitive site information visible, moderators can swap it for a pixelated version on request, or remove it entirely if it adds nothing to the discussion.</p>
 
+            <h2>Version checks and install counting</h2>
+            <p>When your SnapSmack installation checks for updates, it sends a brief ping to snapsmack.ca. This is how we count active installs and understand what versions are in the wild — useful for knowing how much support a given version might need. Here is what that ping contains:</p>
+            <ul>
+                <li>A pseudonymous ID derived from your site's URL using a one-way hash. The original URL cannot be recovered from it.</li>
+                <li>Your installed version and update track.</li>
+                <li>If your install is a hub, the number of active spokes it manages (so the fleet is counted once, not once per site).</li>
+            </ul>
+            <p>No site name, no traffic data, no content. If your install is a spoke in a multisite network, it skips the ping entirely — your hub's count already includes you.</p>
+
+            <h2>Thomas the Bear (the Easter egg)</h2>
+            <p>SnapSmack contains a hidden Easter egg called Thomas the Bear, a tribute to Noah Grey. When a visitor to your site discovers it, a single silent ping is sent to snapsmack.ca. Here is exactly what that ping contains:</p>
+            <ul>
+                <li>A pseudonymous random ID generated when SnapSmack is installed, stored in your site's database. It is not derived from your site's URL or any identifying information and cannot be linked back to you or your site.</li>
+                <li>Which part of the Easter egg was triggered (the bears, or the Noah Grey dedication modal).</li>
+                <li>Whether this is the first time the Easter egg has been found in the visitor's current browser session.</li>
+            </ul>
+            <p>Nothing else. No IP addresses, no site URL, no visitor data. We get a count. If you want to suppress the ping anyway, block outbound requests to snapsmack.ca at your firewall or web server — the Easter egg keeps working either way.</p>
+
             <h2>This website (snapsmack.ca)</h2>
             <p>This site does not use analytics, tracking pixels, or advertising scripts of any kind. Our web server access logs record the standard information any web server records — IP address, browser, referring page, page requested. We do not use that data for any purpose beyond diagnosing server problems.</p>
             <p>There are no cookies on this site other than any your browser sets on its own.</p>
@@ -148,7 +166,7 @@ include __DIR__ . '/includes/header.php';
             })();
             </script>
 
-            <p class="updated">Last updated: May 2026</p>
+            <p class="updated">Last updated: June 2026</p>
 
         </div>
     </div>
