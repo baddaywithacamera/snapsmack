@@ -23,7 +23,8 @@
 
     // --- THOMAS PING ---
     // One silent ping per browser session when Thomas is first found.
-    // Uses the install UID (window.ssUid, set by footer-scripts.php).
+    // Uses window.ssUid — a random anonymous ID stored per install in snap_settings.
+    // Not derived from site URL; cannot be reverse-engineered to identify the site.
     // &s=1 marks the first find in this browser session (sessionStorage flag)
     // for unique-finder counting. No personal data leaves the browser.
     // type: 'y' = bear spawned, 'z' = Noah modal opened
