@@ -12,6 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.202 — "Push It Real Good" (2026-06-04)
+
+### Changed — Thomas the Bear privacy
+- `core/footer-scripts.php` — Thomas ping UID is now a random 32-char hex generated at install time and stored in `snap_settings` as `thomas_uid`. Previously it was SHA-256 of the site URL, which could be reverse-engineered by anyone who knew the URL. The new UID is anonymous and not linkable to any site.
+- `assets/js/ss-engine-thomas.js` — updated comment to document the anonymous UID approach.
+- `projects/snapsmack-ca/releases/thomas-ping.php` — updated comment to match.
+- `projects/snapsmack-ca/tnb.php` (snapsmack.ca privacy page) — added "Version checks and install counting" section documenting the update ping payload (pseudonymous UID, version, track, spoke count); added "Thomas the Bear" section disclosing the Easter egg ping; updated "short version" to correctly distinguish pseudonymous automatic pings from opt-in features that identify your site by name.
+
 ## 0.7.201 — "Push It Real Good" (2026-06-04)
 
 ### Added — SMACKBACK admin UI

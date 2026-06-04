@@ -37,16 +37,21 @@
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-thomas.css">
 <?php
-// Expose install UID to JS so Thomas can include it in the discover ping.
-// Same hash as _updater_ping_home() — SHA-256 of normalised site URL, first 32 chars.
+// Expose Thomas UID to JS for the Easter egg discover ping.
+// Random 32-char hex generated once and stored in snap_settings — not derived
+// from site URL and cannot be reverse-engineered to identify this install.
 $_ss_uid = '';
 try {
     if ($pdo instanceof PDO) {
-        $_ss_site_url = $pdo->query(
-            "SELECT setting_val FROM snap_settings WHERE setting_key = 'site_url' LIMIT 1"
+        $_ss_uid = $pdo->query(
+            "SELECT setting_val FROM snap_settings WHERE setting_key = 'thomas_uid' LIMIT 1"
         )->fetchColumn() ?: '';
-        if ($_ss_site_url !== '') {
-            $_ss_uid = substr(hash('sha256', strtolower(rtrim($_ss_site_url, '/'))), 0, 32);
+        if ($_ss_uid === '' || strlen($_ss_uid) !== 32) {
+            $_ss_uid = bin2hex(random_bytes(16));
+            $pdo->prepare(
+                "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('thomas_uid', ?)
+                 ON DUPLICATE KEY UPDATE setting_val = setting_val"
+            )->execute([$_ss_uid]);
         }
     }
 } catch (Throwable $_ss_e) {}
