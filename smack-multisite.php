@@ -1128,9 +1128,17 @@ include 'core/sidebar.php';
             <h3>HUB CONNECTION STATUS</h3>
 
             <?php if (empty($hub_node)): ?>
-                <p style="color:var(--text-muted,#888); margin-bottom:20px;">
+                <p style="color:var(--text-muted,#888); margin-bottom:12px;">
                     Not connected to a hub. Generate a registration token below and share it with your hub administrator.
                 </p>
+
+                <div style="padding:12px 15px; background:rgba(200,140,0,0.12); border:1px solid rgba(200,140,0,0.45); border-radius:4px; margin-bottom:20px;">
+                    <p style="margin:0; font-size:0.85rem; color:#c88c00;">
+                        <strong>⚠ Security note:</strong> Only connect to a hub you personally own and control.
+                        The hub will have admin-level access to this site — including the ability to push settings, deploy updates, and trigger maintenance mode.
+                        Never connect to a hub operated by a third party.
+                    </p>
+                </div>
 
                 <?php if ($reg_token_valid): ?>
                     <div style="padding:15px; background:var(--input-bg,#111); border:1px solid var(--border,#333); border-radius:4px; margin-bottom:20px;">

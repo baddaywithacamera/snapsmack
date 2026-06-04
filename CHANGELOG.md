@@ -12,6 +12,31 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.201 — "Push It Real Good" (2026-06-04)
+
+### Added — SMACKBACK admin UI
+- `smack-back.php` — master toggle now uses a proper toggle-switch; dependent settings (threshold, notifications, auto-restore) visually grey out when SMACKBACK is disabled.
+- Hub pending-disable flow: when a hub pushes a SMACKBACK disable request to a spoke, the spoke's SMACKBACK page shows an orange warning box with APPROVE and REJECT buttons instead of silently disabling. Spoke remains active until the admin explicitly approves.
+
+### Changed — smack-push-it.php
+- All 6 hub control checkbox groups converted to toggle-switches for visual consistency.
+
+### Fixed — smack-settings.php
+- Hub is now exempt from its own `hub_controls_*` lock gates. Hubs were incorrectly seeing "MANAGED BY NETWORK HUB" banners on their own settings page.
+
+### Fixed — multisite sidebar
+- `core/sidebar.php` — multisite quick-links hidden when already on a smack-multisite-* or smack-push-it.php page.
+
+### Security — SSRF
+- `core/mesh-helpers.php` — new `ms_is_safe_remote_url()` rejects RFC1918, loopback, and link-local addresses before any outbound multisite request.
+- `core/multisite-api.php` — `posts/create` (img_url) and `skins/reinstall` (download_url) now validated through `ms_is_safe_remote_url()`. Forged internal URLs rejected with 400.
+
+### Security — hub trust model
+- Hub can no longer silently disable SMACKBACK on a spoke via push. Disable requests are stored as `smackback_hub_pending_disable` and require explicit spoke admin approval before taking effect.
+
+### Added — smack-multisite.php
+- Security warning on the spoke token-generation page: "Only connect to a hub you personally own and control." Hub gets admin-level access to the spoke; users should understand this before connecting.
+
 ## 0.7.200 — (2026-06-03)
 
 ### Fixed
