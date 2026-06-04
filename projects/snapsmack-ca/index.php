@@ -663,7 +663,7 @@ $page_css = <<<'CSS'
 
 /* ─── SKIN CARD STATS TOOLTIP ───────────────────────────────────────────── */
 #skin-stats-tooltip {
-    position: absolute;
+    position: fixed;
     z-index: 9999;
     pointer-events: none;
     background: #111;
@@ -2056,14 +2056,14 @@ document.getElementById('yr').textContent = new Date().getFullYear();
 
     var tip = document.createElement('div');
     tip.id = 'skin-stats-tooltip';
-    document.body.appendChild(tip);
+    // Append to <html> not <body> — body has zoom:1.25 which scales fixed-position
+    // elements and makes clientX/Y coordinates mismatch. Outside body = no zoom effect.
+    document.documentElement.appendChild(tip);
 
-    // Global cursor tracker using page coordinates — works with position:absolute
-    // and immune to any transform/filter on ancestors that breaks position:fixed
     var mx = 0, my = 0;
     document.addEventListener('mousemove', function(e) {
-        mx = e.pageX;
-        my = e.pageY;
+        mx = e.clientX;
+        my = e.clientY;
         if (tip.classList.contains('visible')) reposition();
     });
 
@@ -2091,7 +2091,8 @@ document.getElementById('yr').textContent = new Date().getFullYear();
                 (stats.active_since ? '<div class="stt-since">Since ' + stats.active_since.substring(0,4) + '</div>' : '');
         }
 
-        card.addEventListener('mouseenter', function() {
+        card.addEventListener('mouseenter', function(e) {
+            mx = e.clientX; my = e.clientY; // seed from entry point, don't rely on stale mousemove
             tip.innerHTML = html;
             tip.classList.add('visible');
             reposition();

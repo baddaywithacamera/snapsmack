@@ -242,11 +242,9 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-multisite.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite.php">Multisite Management</a>
                     </li>
-                    <?php if (!empty($settings['multisite_role'])) : ?>
-                    <!-- Multisite menu items. Visible on hubs and spokes once the install
-                         is part of any mesh network (multisite_role set). Individual pages
-                         still gate themselves per-feature; conversion of each page to mesh-
-                         aware acceptance is happening incrementally. -->
+                    <?php if (!empty($settings['multisite_role']) && strpos($current_page, 'smack-multisite') !== 0 && $current_page !== 'smack-push-it.php') : ?>
+                    <!-- Multisite quick-links. Hidden on multisite pages — top nav covers them there.
+                         Visible from everywhere else so you can jump directly from any admin page. -->
                     <li class="<?php echo ($current_page == 'smack-multisite-comments.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite-comments.php">Spoke Signals</a>
                     </li>
@@ -265,7 +263,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-multisite-blogroll.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite-blogroll.php">Blogroll Sync</a>
                     </li>
-                    <?php endif; // multisite menu ?>
+                    <?php endif; // multisite quick-links ?>
                     <?php endif; // pimpmobile ?>
                 </ul>
             </div>
