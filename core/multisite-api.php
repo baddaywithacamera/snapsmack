@@ -698,6 +698,7 @@ if ($resource === 'posts' && $sub_action === 'create' && $method === 'POST') {
 
     if (!$title) ms_err('title is required');
     if (!$img_url || !filter_var($img_url, FILTER_VALIDATE_URL)) ms_err('valid img_url is required');
+    if (!ms_is_safe_remote_url($img_url)) ms_err('img_url must be a public host — private/loopback addresses are not permitted', 403);
 
     $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'];
     if (!in_array($img_ext, $allowed_exts)) ms_err('unsupported image format');
@@ -1177,6 +1178,7 @@ if ($resource === 'skins' && $sub_action === 'reinstall' && $method === 'POST') 
     if (!$slug || !$download_url)                         ms_err('skin_slug and download_url required');
     if (!preg_match('/^[a-zA-Z0-9_-]+$/', $slug))        ms_err('Invalid skin slug');
     if (!filter_var($download_url, FILTER_VALIDATE_URL))  ms_err('Invalid download_url');
+    if (!ms_is_safe_remote_url($download_url))            ms_err('download_url must resolve to a public host', 403);
 
     require_once __DIR__ . '/skin-registry.php';
 
@@ -1212,6 +1214,7 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
 
     $applied = [];
     $skipped = [];
+    $pending = [];
     $upsert  = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
                                ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)");
 
@@ -1221,11 +1224,21 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
             $skipped[] = $key;
             continue;
         }
+
+        // Hub/spoke safety: disabling SMACKBACK remotely is high-risk.
+        // A compromised hub could silence file integrity monitoring before attacking.
+        // Store as pending — spoke admin must confirm locally before it takes effect.
+        if ($key === 'smackback_enabled' && (string)$val === '0') {
+            $upsert->execute(['smackback_hub_pending_disable', '1']);
+            $pending[] = $key;
+            continue;
+        }
+
         $upsert->execute([$key, (string)$val]);
         $applied[] = $key;
     }
 
-    ms_ok(['applied' => $applied, 'skipped' => $skipped]);
+    ms_ok(['applied' => $applied, 'skipped' => $skipped, 'pending_confirmation' => $pending]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

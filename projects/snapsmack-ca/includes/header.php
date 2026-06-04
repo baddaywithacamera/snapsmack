@@ -284,16 +284,6 @@ nav a.active::after { width: 100%; }
             <nav>
 <?php echo $_nav($nav_active); ?>
             </nav>
-            <div class="header-build-badges">
-                <div class="header-badge header-badge--boring">
-                    <span class="header-badge-track">Boring</span>
-                    <span class="header-badge-ver">v<?php echo SS_PROMO_VERSION; ?></span>
-                </div>
-                <div class="header-badge header-badge--bitchin">
-                    <span class="header-badge-track">Bitchin'</span>
-                    <span class="header-badge-ver">v<?php echo SS_PROMO_DEV_VERSION; ?></span>
-                </div>
-            </div>
         </div>
     </div>
 </header>
