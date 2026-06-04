@@ -154,3 +154,6 @@ _claudepowertools/
 
 # Chaplin skin design reference files — private, gitignored
 skins/chaplin/reference work from Claude Design - gitignore/
+
+# Instagram export reference data — private, never commit
+dropagram/

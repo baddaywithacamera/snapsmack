@@ -191,14 +191,21 @@ function _updater_ping_home(PDO $pdo, string $version, string $track): void {
                        ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
             ->execute([$uid]);
 
-        // --- SPOKE COUNT (hubs only) ---
+        // --- ROLE + SPOKE COUNT ---
+        // Spokes are already counted by their hub via spoke_count.
+        // If this install is a spoke, skip the ping entirely to avoid double-counting.
         $spoke_count = 0;
+        $role = null;
         try {
-            $role = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'multisite_role' LIMIT 1")->fetchColumn();
+            $role = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'multisite_role' LIMIT 1")->fetchColumn() ?: null;
             if ($role === 'hub') {
                 $spoke_count = (int)$pdo->query("SELECT COUNT(*) FROM snap_multisite_nodes WHERE status = 'active' AND role = 'spoke'")->fetchColumn();
             }
         } catch (PDOException $e) {}
+
+        if ($role === 'spoke') {
+            return; // Hub counts us; pinging independently would double the tally
+        }
 
         // Ping payload: install identity only. No stats, no site name, no traffic data.
         $ping_params = ['uid' => $uid, 'v' => $version, 't' => $track, 's' => $spoke_count];

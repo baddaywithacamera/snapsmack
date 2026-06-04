@@ -36,6 +36,22 @@
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-comms.js?v=<?php echo time(); ?>"></script>
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-thomas.css">
+<?php
+// Expose install UID to JS so Thomas can include it in the discover ping.
+// Same hash as _updater_ping_home() — SHA-256 of normalised site URL, first 32 chars.
+$_ss_uid = '';
+try {
+    if ($pdo instanceof PDO) {
+        $_ss_site_url = $pdo->query(
+            "SELECT setting_val FROM snap_settings WHERE setting_key = 'site_url' LIMIT 1"
+        )->fetchColumn() ?: '';
+        if ($_ss_site_url !== '') {
+            $_ss_uid = substr(hash('sha256', strtolower(rtrim($_ss_site_url, '/'))), 0, 32);
+        }
+    }
+} catch (Throwable $_ss_e) {}
+?>
+<script>window.ssUid='<?php echo htmlspecialchars($_ss_uid, ENT_QUOTES); ?>';</script>
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-thomas.js?v=<?php echo time(); ?>"></script>
 
 <?php include __DIR__ . '/social-dock.php'; ?>
