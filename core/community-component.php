@@ -159,10 +159,15 @@ if ($show_comments) {
     $_cc_cols = $pdo->query("SHOW COLUMNS FROM snap_community_comments LIKE 'edited_at'")->fetchColumn();
     $_edited_col = $_cc_cols ? 'cc.edited_at' : 'NULL AS edited_at';
 
+    // Same defensive check for guest_url (added in 0.7.189 — sites that haven't
+    // run migrate-comment-url.sql would blow up with a fatal PDOException otherwise).
+    $_url_col = $pdo->query("SHOW COLUMNS FROM snap_community_comments LIKE 'guest_url'")->fetchColumn()
+                ? 'cc.guest_url' : 'NULL AS guest_url';
+
     $cc_stmt = $pdo->prepare("
         SELECT cc.id, cc.comment_text, cc.created_at, {$_edited_col},
                cu.username, cu.display_name, cu.avatar_url,
-               cc.guest_name, cc.guest_email, cc.guest_url,
+               cc.guest_name, cc.guest_email, {$_url_col},
                CASE WHEN cc.user_id IS NULL THEN 1 ELSE 0 END AS is_guest
         FROM snap_community_comments cc
         LEFT JOIN snap_community_users cu ON cu.id = cc.user_id
