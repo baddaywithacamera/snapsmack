@@ -12,6 +12,22 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.203 — "Push It Real Good" (2026-06-04)
+
+### Security — Hub/spoke attack surface (audit 021 F4, F5, F6)
+
+- `core/multisite-api.php` — `settings/push` allowlist now includes all six `hub_controls_*` keys
+  (`hub_controls_timezone`, `hub_controls_akismet`, `hub_controls_ai`, `hub_controls_smackback`,
+  `hub_controls_comments`, `hub_controls_email`). Previously these were pushed by the hub but silently
+  dropped on the spoke, so spoke setting-lock UI never activated. (audit 021 F5)
+- `core/multisite-api.php` — `settings/push` allowlist now includes `ai_provider`, `ai_key_claude`,
+  `ai_key_gemini`, `ai_key_openai`. Hub AI key push previously silently failed. (audit 021 F6)
+- `core/multisite-api.php` — `smackback_mode` downgrades (lockout → alert) via hub push are now gated
+  to pending-confirmation, same as `smackback_enabled = 0`. A compromised hub can no longer silently
+  weaken protection mode before attacking. Stored as `smackback_hub_pending_mode`. (audit 021 F4)
+- `smack-back.php` — New APPROVE / REJECT UI box for hub-requested mode downgrades, matching the
+  existing pending-disable flow. Confirm/reject POST handlers clear the pending flag. (audit 021 F4)
+
 ## 0.7.202 — "Push It Real Good" (2026-06-04)
 
 ### Changed — Thomas the Bear privacy

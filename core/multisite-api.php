@@ -1201,11 +1201,13 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
     $allowed_keys = [
         'timezone', 'date_format',
         'akismet_key',
-        'ai_training_policy',
+        'ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_training_policy',
         'smackback_enabled', 'smackback_mode',
         'global_comments_enabled',
         'site_email',
         'download_link_required', 'download_default_mode',
+        'hub_controls_timezone', 'hub_controls_akismet', 'hub_controls_ai',
+        'hub_controls_smackback', 'hub_controls_comments', 'hub_controls_email',
     ];
 
     $pairs_raw = trim($_POST['settings'] ?? '');
@@ -1230,6 +1232,16 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
         // Store as pending — spoke admin must confirm locally before it takes effect.
         if ($key === 'smackback_enabled' && (string)$val === '0') {
             $upsert->execute(['smackback_hub_pending_disable', '1']);
+            $pending[] = $key;
+            continue;
+        }
+
+        // Gate smackback_mode downgrades (lockout → alert) — same threat model as disabling.
+        // A compromised hub could weaken the protection mode before attacking.
+        if ($key === 'smackback_mode'
+            && ($settings['smackback_mode'] ?? 'lockout') === 'lockout'
+            && (string)$val === 'alert') {
+            $upsert->execute(['smackback_hub_pending_mode', 'alert']);
             $pending[] = $key;
             continue;
         }
