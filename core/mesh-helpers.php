@@ -29,6 +29,22 @@
  */
 
 
+/**
+ * Returns true if the URL is safe to fetch from hub-originated requests.
+ * Rejects private/loopback/reserved IPs to prevent SSRF attacks where a
+ * compromised hub sends internal-network URLs for the spoke to fetch.
+ */
+function ms_is_safe_remote_url(string $url): bool {
+    if (!filter_var($url, FILTER_VALIDATE_URL)) return false;
+    $scheme = strtolower(parse_url($url, PHP_URL_SCHEME) ?? '');
+    if (!in_array($scheme, ['http', 'https'], true)) return false;
+    $host = parse_url($url, PHP_URL_HOST) ?? '';
+    if ($host === '') return false;
+    if (in_array(strtolower($host), ['localhost', 'ip6-localhost', 'ip6-loopback', '::1', '0.0.0.0'], true)) return false;
+    $ip = filter_var($host, FILTER_VALIDATE_IP) ? $host : (string)@gethostbyname($host);
+    return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
+}
+
 function ms_resolve_peer(PDO $pdo, string $bearer): ?array
 {
     if ($bearer === '') return null;

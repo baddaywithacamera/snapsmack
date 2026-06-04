@@ -33,6 +33,7 @@ $smack_breach_files = json_decode($smack_breach_files_json, true) ?? [];
 $smack_last_verify = $settings['smackback_last_full_verify'] ?? '';
 $smack_alert_email = $settings['smackback_alert_email']    ?? '';
 $smack_pageload   = ($settings['smackback_pageload_check'] ?? '0') === '1';
+$smack_hub_pending_disable = ($settings['smackback_hub_pending_disable'] ?? '0') === '1';
 
 $is_breach = ($smack_status === 'breach');
 
@@ -149,6 +150,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['reinit_baseline'] ?? '') =
     $ok = smackback_init_from_disk();
     $msg = $ok ? 'Baseline re-initialised from disk. All files re-hashed.' : 'Re-init failed — check error log.';
     header('Location: smack-back.php?msg=' . urlencode($msg));
+    exit;
+}
+
+// CONFIRM HUB-REQUESTED SMACKBACK DISABLE
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['smackback_hub_confirm_disable'] ?? '') === '1') {
+    $upsert = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)");
+    $upsert->execute(['smackback_enabled',            '0']);
+    $upsert->execute(['smackback_hub_pending_disable', '0']);
+    header('Location: smack-back.php?msg=SMACKBACK+disabled+as+requested+by+hub.');
+    exit;
+}
+
+// REJECT HUB-REQUESTED SMACKBACK DISABLE
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['smackback_hub_reject_disable'] ?? '') === '1') {
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+        ->execute(['smackback_hub_pending_disable', '0']);
+    header('Location: smack-back.php?msg=Hub+disable+request+rejected.+SMACKBACK+remains+active.');
     exit;
 }
 
@@ -357,6 +375,31 @@ include 'core/sidebar.php';
         <?php endif; ?>
     </div>
 
+    <!-- ── HUB PENDING DISABLE ───────────────────────────────────────────── -->
+    <?php if ($smack_hub_pending_disable): ?>
+    <div class="box" style="border:2px solid #cc6600;background:rgba(204,102,0,0.08);">
+        <h3 style="color:#cc6600;">⚠ HUB HAS REQUESTED SMACKBACK BE DISABLED</h3>
+        <p style="line-height:1.7;margin-bottom:20px;">
+            Your network hub has pushed a request to turn off file integrity monitoring on this site.
+            This was held for your confirmation because disabling SMACKBACK is a high-risk action —
+            a compromised hub could use it to silence tamper detection before attacking a spoke.<br><br>
+            <strong>Only approve if you made this change yourself from your own hub.</strong>
+        </p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <form method="post" onsubmit="return confirm('Disable SMACKBACK on this site as requested by hub?');">
+                <?php csrf_field(); ?>
+                <input type="hidden" name="smackback_hub_confirm_disable" value="1">
+                <button type="submit" class="btn-smack btn-danger">APPROVE — DISABLE SMACKBACK</button>
+            </form>
+            <form method="post">
+                <?php csrf_field(); ?>
+                <input type="hidden" name="smackback_hub_reject_disable" value="1">
+                <button type="submit" class="btn-smack">REJECT — KEEP SMACKBACK ACTIVE</button>
+            </form>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- ── SETTINGS ─────────────────────────────────────────────────────── -->
     <div class="box">
         <h3>SETTINGS</h3>
@@ -401,49 +444,71 @@ include 'core/sidebar.php';
         <form method="post">
             <?php csrf_field(); ?>
             <input type="hidden" name="save_settings" value="1">
-            <div class="dash-grid">
-                <div class="lens-input-wrapper">
-                    <label>
-                        <input type="checkbox" name="smackback_enabled" value="1"<?php echo $smack_enabled ? ' checked' : ''; ?>>
-                        ENABLE SMACKBACK
-                    </label>
-                </div>
 
-                <div class="lens-input-wrapper">
-                    <label>RESPONSE MODE</label>
-                    <label class="radio-option" style="margin-bottom:8px;">
-                        <input type="radio" name="smackback_mode" value="alert"<?php echo $smack_mode === 'alert' ? ' checked' : ''; ?>>
-                        <strong>ALERT</strong> — banner in admin, no lockout
-                    </label>
-                    <label class="radio-option" style="margin-bottom:8px;">
-                        <input type="radio" name="smackback_mode" value="lockout"<?php echo $smack_mode === 'lockout' ? ' checked' : ''; ?>>
-                        <strong>LOCKOUT</strong> (recommended) — all admin pages redirect here until resolved
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="smackback_mode" value="paranoid"<?php echo $smack_mode === 'paranoid' ? ' checked' : ''; ?>>
-                        <strong>PARANOID</strong> — lockout + hub breach reporting (Phase 2)
-                    </label>
-                </div>
-
-                <div class="lens-input-wrapper">
-                    <label>
-                        <input type="checkbox" name="smackback_pageload_check" value="1"<?php echo $smack_pageload ? ' checked' : ''; ?>>
-                        PAGELOAD STAT CHECK
-                    </label>
-                    <span class="dim" style="font-size:0.82rem;">Check file mtimes on public page loads (very fast — no file reads unless mtime changed)</span>
-                </div>
-
-                <div class="lens-input-wrapper">
-                    <label>ALERT EMAIL <span class="field-tip" data-tip="Leave blank to use the site admin email.">ⓘ</span></label>
-                    <input type="email" name="smackback_alert_email"
-                           value="<?php echo htmlspecialchars($smack_alert_email); ?>"
-                           placeholder="<?php echo htmlspecialchars($settings['admin_email'] ?? $settings['site_email'] ?? ''); ?>">
+            <!-- ── MASTER SWITCH ── -->
+            <div style="display:flex;align-items:center;gap:16px;padding:16px 0 20px;border-bottom:1px solid var(--border,#333);margin-bottom:24px;">
+                <label class="toggle-switch" style="flex-shrink:0;margin:0;">
+                    <input type="checkbox" id="smackback_enabled_toggle" name="smackback_enabled" value="1"<?php echo $smack_enabled ? ' checked' : ''; ?>>
+                    <span class="toggle-slider"></span>
+                </label>
+                <div>
+                    <div style="font-size:1rem;font-weight:700;letter-spacing:.08em;">ENABLE SMACKBACK</div>
+                    <div class="dim" style="font-size:0.82rem;margin-top:2px;">File integrity monitoring. Hashes PHP, JS, and CSS at baseline; re-verifies on schedule and every admin login.</div>
                 </div>
             </div>
+
+            <!-- ── DEPENDENT SETTINGS ── -->
+            <div id="smackback-sub-settings"<?php echo $smack_enabled ? '' : ' style="opacity:0.38;pointer-events:none;"'; ?>>
+                <div class="dash-grid">
+                    <div class="lens-input-wrapper">
+                        <label>RESPONSE MODE</label>
+                        <label class="radio-option" style="margin-bottom:8px;">
+                            <input type="radio" name="smackback_mode" value="alert"<?php echo $smack_mode === 'alert' ? ' checked' : ''; ?>>
+                            <strong>ALERT</strong> — banner in admin, no lockout
+                        </label>
+                        <label class="radio-option" style="margin-bottom:8px;">
+                            <input type="radio" name="smackback_mode" value="lockout"<?php echo $smack_mode === 'lockout' ? ' checked' : ''; ?>>
+                            <strong>LOCKOUT</strong> (recommended) — all admin pages redirect here until resolved
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="smackback_mode" value="paranoid"<?php echo $smack_mode === 'paranoid' ? ' checked' : ''; ?>>
+                            <strong>PARANOID</strong> — lockout + hub breach reporting (Phase 2)
+                        </label>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>PAGELOAD STAT CHECK</label>
+                        <label class="toggle-switch" style="margin:8px 0;">
+                            <input type="checkbox" name="smackback_pageload_check" value="1"<?php echo $smack_pageload ? ' checked' : ''; ?>>
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="dim" style="font-size:0.82rem;">Check file mtimes on public page loads (very fast — no file reads unless mtime changed)</span>
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>ALERT EMAIL <span class="field-tip" data-tip="Leave blank to use the site admin email.">ⓘ</span></label>
+                        <input type="email" name="smackback_alert_email"
+                               value="<?php echo htmlspecialchars($smack_alert_email); ?>"
+                               placeholder="<?php echo htmlspecialchars($settings['admin_email'] ?? $settings['site_email'] ?? ''); ?>">
+                    </div>
+                </div>
+            </div>
+
             <div class="form-action-row">
                 <button type="submit" class="master-update-btn">SAVE SETTINGS</button>
             </div>
         </form>
+        <script>
+        (function(){
+            var tog = document.getElementById('smackback_enabled_toggle');
+            var sub = document.getElementById('smackback-sub-settings');
+            if (!tog || !sub) return;
+            tog.addEventListener('change', function(){
+                sub.style.opacity       = this.checked ? '' : '0.38';
+                sub.style.pointerEvents = this.checked ? '' : 'none';
+            });
+        })();
+        </script>
         <?php endif; // hub_controls_smackback ?>
     </div>
 

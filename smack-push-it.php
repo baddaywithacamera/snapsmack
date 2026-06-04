@@ -225,10 +225,11 @@ include 'core/sidebar.php';
                     <div class="read-only-display"><?php echo htmlspecialchars($settings['date_format'] ?? 'F j, Y'); ?></div>
                 </div>
                 <div class="lens-input-wrapper">
-                    <label>
+                    <label>HUB CONTROLS THIS SETTING</label>
+                    <label class="toggle-switch">
                         <input type="checkbox" name="hub_controls[timezone]" value="1"
                                <?php echo ($settings['hub_controls_timezone'] ?? '0') === '1' ? 'checked' : ''; ?>>
-                        HUB CONTROLS THIS SETTING
+                        <span class="toggle-slider"></span>
                     </label>
                     <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their timezone or date format.</span>
                 </div>
@@ -249,10 +250,11 @@ include 'core/sidebar.php';
                     </div>
                 </div>
                 <div class="lens-input-wrapper">
-                    <label>
+                    <label>HUB CONTROLS THIS SETTING</label>
+                    <label class="toggle-switch">
                         <input type="checkbox" name="hub_controls[akismet]" value="1"
                                <?php echo ($settings['hub_controls_akismet'] ?? '0') === '1' ? 'checked' : ''; ?>>
-                        HUB CONTROLS THIS SETTING
+                        <span class="toggle-slider"></span>
                     </label>
                     <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their Akismet key.</span>
                 </div>
@@ -284,10 +286,11 @@ include 'core/sidebar.php';
                     ?></div>
                 </div>
                 <div class="lens-input-wrapper">
-                    <label>
+                    <label>HUB CONTROLS THIS SETTING</label>
+                    <label class="toggle-switch">
                         <input type="checkbox" name="hub_controls[ai]" value="1"
                                <?php echo ($settings['hub_controls_ai'] ?? '0') === '1' ? 'checked' : ''; ?>>
-                        HUB CONTROLS THIS SETTING
+                        <span class="toggle-slider"></span>
                     </label>
                     <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their AI provider, keys, or crawler policy.</span>
                 </div>
@@ -312,10 +315,11 @@ include 'core/sidebar.php';
                     <div class="read-only-display"><?php echo htmlspecialchars(strtoupper($settings['smackback_mode'] ?? 'lockout')); ?></div>
                 </div>
                 <div class="lens-input-wrapper">
-                    <label>
+                    <label>HUB CONTROLS THIS SETTING</label>
+                    <label class="toggle-switch">
                         <input type="checkbox" name="hub_controls[smackback]" value="1"
                                <?php echo ($settings['hub_controls_smackback'] ?? '0') === '1' ? 'checked' : ''; ?>>
-                        HUB CONTROLS THIS SETTING
+                        <span class="toggle-slider"></span>
                     </label>
                     <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their SMACKBACK enabled state or response mode.</span>
                 </div>
@@ -333,10 +337,11 @@ include 'core/sidebar.php';
                     <div class="read-only-display"><?php echo ($settings['global_comments_enabled'] ?? '1') === '1' ? 'ENABLED' : 'DISABLED (KILL-SWITCH)'; ?></div>
                 </div>
                 <div class="lens-input-wrapper">
-                    <label>
+                    <label>HUB CONTROLS THIS SETTING</label>
+                    <label class="toggle-switch">
                         <input type="checkbox" name="hub_controls[comments]" value="1"
                                <?php echo ($settings['hub_controls_comments'] ?? '0') === '1' ? 'checked' : ''; ?>>
-                        HUB CONTROLS THIS SETTING
+                        <span class="toggle-slider"></span>
                     </label>
                     <span class="dim" style="font-size:0.82rem;">When on, spokes cannot toggle their global comments switch.</span>
                 </div>
@@ -354,10 +359,11 @@ include 'core/sidebar.php';
                     <div class="read-only-display"><?php echo htmlspecialchars($settings['site_email'] ?? '(not set)'); ?></div>
                 </div>
                 <div class="lens-input-wrapper">
-                    <label>
+                    <label>HUB CONTROLS THIS SETTING</label>
+                    <label class="toggle-switch">
                         <input type="checkbox" name="hub_controls[email]" value="1"
                                <?php echo ($settings['hub_controls_email'] ?? '0') === '1' ? 'checked' : ''; ?>>
-                        HUB CONTROLS THIS SETTING
+                        <span class="toggle-slider"></span>
                     </label>
                     <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their site contact email.</span>
                 </div>

@@ -244,7 +244,7 @@ include 'core/sidebar.php';
                     <input type="text" name="settings[site_url]" value="<?php echo htmlspecialchars($settings['site_url'] ?? 'https://example.com/'); ?>">
 
                     <label>SITE EMAIL</label>
-                    <?php if (($settings['hub_controls_email'] ?? '0') === '1'): ?>
+                    <?php if (($settings['hub_controls_email'] ?? '0') === '1' && ($settings['multisite_role'] ?? '') !== 'hub'): ?>
                         <div class="read-only-display"><?php echo htmlspecialchars($settings['site_email'] ?? '(not set)'); ?></div>
                         <span class="dim" style="font-size:0.75rem;margin-top:4px;display:block;">⊘ MANAGED BY NETWORK HUB</span>
                     <?php else: ?>
@@ -276,7 +276,7 @@ include 'core/sidebar.php';
             <div class="config-grid">
                 <div class="lens-input-wrapper">
                     <label>GLOBAL COMMENTS <span class="field-tip" data-tip="Master override for all posts. Disabling this kills comments site-wide regardless of per-post settings.">ⓘ</span></label>
-                    <?php if (($settings['hub_controls_comments'] ?? '0') === '1'): ?>
+                    <?php if (($settings['hub_controls_comments'] ?? '0') === '1' && ($settings['multisite_role'] ?? '') !== 'hub'): ?>
                         <div class="read-only-display"><?php echo ($settings['global_comments_enabled'] ?? '1') === '1' ? 'ENABLED' : 'DISABLED (KILL-SWITCH)'; ?></div>
                         <span class="dim" style="font-size:0.75rem;margin-top:4px;display:block;">⊘ MANAGED BY NETWORK HUB</span>
                     <?php else: ?>
@@ -289,7 +289,7 @@ include 'core/sidebar.php';
 
                 <div class="lens-input-wrapper">
                     <label>AKISMET API KEY <span class="field-tip" data-tip="Spam filter for comments. Leave blank to disable. Get a free key at akismet.com/signup">ⓘ</span></label>
-                    <?php if (($settings['hub_controls_akismet'] ?? '0') === '1'): ?>
+                    <?php if (($settings['hub_controls_akismet'] ?? '0') === '1' && ($settings['multisite_role'] ?? '') !== 'hub'): ?>
                         <div class="read-only-display" style="font-family:monospace;">
                             <?php $ak = $settings['akismet_key'] ?? ''; echo $ak ? '••••••••' . htmlspecialchars(substr($ak, -4)) : '(not set)'; ?>
                         </div>
@@ -533,7 +533,7 @@ include 'core/sidebar.php';
              ============================================================ -->
         <div class="box box-flush-bottom">
             <h3>TIME & LOCALIZATION</h3>
-            <?php if (($settings['hub_controls_timezone'] ?? '0') === '1'): ?>
+            <?php if (($settings['hub_controls_timezone'] ?? '0') === '1' && ($settings['multisite_role'] ?? '') !== 'hub'): ?>
             <div class="dash-grid">
                 <div class="lens-input-wrapper">
                     <label>TIMEZONE</label>
@@ -589,7 +589,7 @@ include 'core/sidebar.php';
              ============================================================ -->
         <div class="box box-flush-bottom">
             <h3>AI ASSISTANT</h3>
-            <?php if (($settings['hub_controls_ai'] ?? '0') === '1'): ?>
+            <?php if (($settings['hub_controls_ai'] ?? '0') === '1' && ($settings['multisite_role'] ?? '') !== 'hub'): ?>
             <div class="dash-grid">
                 <div class="lens-input-wrapper">
                     <label>PROVIDER</label>
