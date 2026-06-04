@@ -34,6 +34,7 @@ $smack_last_verify = $settings['smackback_last_full_verify'] ?? '';
 $smack_alert_email = $settings['smackback_alert_email']    ?? '';
 $smack_pageload   = ($settings['smackback_pageload_check'] ?? '0') === '1';
 $smack_hub_pending_disable = ($settings['smackback_hub_pending_disable'] ?? '0') === '1';
+$smack_hub_pending_mode    = $settings['smackback_hub_pending_mode'] ?? '';
 
 $is_breach = ($smack_status === 'breach');
 
@@ -167,6 +168,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['smackback_hub_reject_disab
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
         ->execute(['smackback_hub_pending_disable', '0']);
     header('Location: smack-back.php?msg=Hub+disable+request+rejected.+SMACKBACK+remains+active.');
+    exit;
+}
+
+// CONFIRM HUB-REQUESTED SMACKBACK MODE DOWNGRADE
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['smackback_hub_confirm_mode'] ?? '') === '1') {
+    $upsert = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)");
+    $upsert->execute(['smackback_mode',            'alert']);
+    $upsert->execute(['smackback_hub_pending_mode', '']);
+    header('Location: smack-back.php?msg=SMACKBACK+mode+changed+to+alert+as+requested+by+hub.');
+    exit;
+}
+
+// REJECT HUB-REQUESTED SMACKBACK MODE DOWNGRADE
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['smackback_hub_reject_mode'] ?? '') === '1') {
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+        ->execute(['smackback_hub_pending_mode', '']);
+    header('Location: smack-back.php?msg=Hub+mode+change+rejected.+SMACKBACK+remains+in+lockout+mode.');
     exit;
 }
 
@@ -395,6 +413,32 @@ include 'core/sidebar.php';
                 <?php csrf_field(); ?>
                 <input type="hidden" name="smackback_hub_reject_disable" value="1">
                 <button type="submit" class="btn-smack">REJECT — KEEP SMACKBACK ACTIVE</button>
+            </form>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- ── HUB PENDING MODE DOWNGRADE ───────────────────────────────────── -->
+    <?php if ($smack_hub_pending_mode !== ''): ?>
+    <div class="box" style="border:2px solid #cc6600;background:rgba(204,102,0,0.08);">
+        <h3 style="color:#cc6600;">⚠ HUB HAS REQUESTED SMACKBACK MODE CHANGE</h3>
+        <p style="line-height:1.7;margin-bottom:20px;">
+            Your network hub has pushed a request to change SMACKBACK protection mode from
+            <strong>LOCKOUT</strong> to <strong><?php echo strtoupper(htmlspecialchars($smack_hub_pending_mode)); ?></strong>.
+            This was held for your confirmation because downgrading protection mode is high-risk —
+            a compromised hub could weaken tamper detection before attacking a spoke.<br><br>
+            <strong>Only approve if you made this change yourself from your own hub.</strong>
+        </p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <form method="post" onsubmit="return confirm('Change SMACKBACK mode as requested by hub?');">
+                <?php csrf_field(); ?>
+                <input type="hidden" name="smackback_hub_confirm_mode" value="1">
+                <button type="submit" class="btn-smack btn-danger">APPROVE — CHANGE TO <?php echo strtoupper(htmlspecialchars($smack_hub_pending_mode)); ?></button>
+            </form>
+            <form method="post">
+                <?php csrf_field(); ?>
+                <input type="hidden" name="smackback_hub_reject_mode" value="1">
+                <button type="submit" class="btn-smack">REJECT — KEEP LOCKOUT MODE</button>
             </form>
         </div>
     </div>
