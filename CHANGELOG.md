@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.200 — (2026-06-03)
+
+### Fixed
+- `core/updater.php` — spokes no longer phone home independently. Spokes are already counted via their hub's `spoke_count`; independent pings were causing every spoke to be double-counted on the SC dashboard install tally. Spokes with `multisite_role = 'spoke'` now skip the ping entirely. Existing spoke rows in `sc_phone_home` will age out of the 90-day active window once they stop updating their `last_seen`.
+- `core/community-component.php` — added defensive `SHOW COLUMNS` guard for `guest_url` (added in 0.7.189). Sites that haven't run `migrate-comment-url.sql` were throwing a fatal PDOException mid-layout, which killed `skin-footer.php` before it could output manifest JS — including `ss-engine-image-fade-load`. Net effect: hero images invisible site-wide. Guard matches the existing `edited_at` pattern; column falls back to `NULL AS guest_url` on unmigrated sites.
+
 ## 0.7.199 — "Grid Lighttable" (2026-06-02)
 
 ### Added — smack-lt-gram.php
