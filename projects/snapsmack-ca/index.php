@@ -73,6 +73,8 @@ if (empty($_demo_stats)) {
                     'posts'        => (int)($_data['posts']        ?? 0),
                     'views_30d'    => (int)($_data['views_30d']    ?? 0),
                     'unique_30d'   => (int)($_data['unique_30d']   ?? 0),
+                    'views_all'    => (int)($_data['views_all']    ?? 0),
+                    'unique_all'   => (int)($_data['unique_all']   ?? 0),
                     'version'      => $_data['version']      ?? '',
                     'active_since' => $_data['active_since'] ?? null,
                 ];
@@ -121,6 +123,8 @@ $page_css = <<<'CSS'
 .build-badge-track {
     padding: 4px 10px;
     color: var(--white);
+    min-width: 90px;
+    text-align: left;
 }
 .build-badge-ver {
     padding: 4px 10px;
@@ -659,7 +663,7 @@ $page_css = <<<'CSS'
 
 /* ─── SKIN CARD STATS TOOLTIP ───────────────────────────────────────────── */
 #skin-stats-tooltip {
-    position: fixed;
+    position: absolute;
     z-index: 9999;
     pointer-events: none;
     background: #111;
@@ -703,13 +707,13 @@ $page_css = <<<'CSS'
     font-size: 0.6rem;
     text-transform: uppercase;
     letter-spacing: 0.07em;
-    color: #666;
+    color: #999;
     margin-top: 2px;
 }
 .stt-since {
     font-family: 'Courier New', monospace;
     font-size: 0.65rem;
-    color: #555;
+    color: #888;
     letter-spacing: 0.05em;
 }
 .stt-unavailable {
@@ -1270,57 +1274,6 @@ form.ml-block-form {
     color: var(--mid-grey);
 }
 
-/* ─── THOMAS THE BEAR ───────────────────────────────────────────────────── */
-.thomas-bear {
-    position: fixed;
-    transform-origin: bottom center;
-    animation: bearDrop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    cursor: pointer;
-    z-index: 99999;
-    filter: drop-shadow(0 8px 20px rgba(0,0,0,0.6));
-}
-
-@keyframes bearDrop {
-    0%   { transform: translateY(-120%) scale(0.3) rotate(-15deg); opacity: 0; }
-    60%  { transform: translateY(5%) scale(1.05) rotate(3deg); opacity: 1; }
-    80%  { transform: translateY(-3%) scale(0.97) rotate(-1deg); }
-    100% { transform: translateY(0%) scale(1) rotate(0deg); opacity: 1; }
-}
-
-.thomas-bear img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    pointer-events: none;
-}
-
-#thomas-dedication {
-    position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
-    background: rgba(10,10,10,0.92); border: 1px solid #4ecdc4;
-    color: #ccc; padding: 16px 28px;
-    font-family: 'Courier New', monospace; font-size: 11px;
-    letter-spacing: 2px; text-transform: uppercase; text-align: center;
-    z-index: 999999; opacity: 0; transition: opacity 0.8s ease;
-    pointer-events: none; white-space: nowrap;
-}
-#thomas-dedication span { color: #4ecdc4; }
-#thomas-dedication.visible { opacity: 1; }
-
-/* ─── STATS HOVER CARD ───────────────────────────────────────────────────── */
-#ss-stats-hover {
-    position: fixed; z-index: 9999; pointer-events: none;
-    background: #111; border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 6px; padding: 14px 18px;
-    font-family: 'Courier New', monospace; font-size: 0.75rem;
-    color: #ccc; line-height: 1.8; min-width: 190px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-    opacity: 0; transition: opacity 0.15s ease;
-}
-#ss-stats-hover.visible { opacity: 1; }
-#ss-stats-hover .sh-site { color: #fff; font-weight: 700; margin-bottom: 6px; font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; }
-#ss-stats-hover .sh-row  { display: flex; justify-content: space-between; gap: 16px; }
-#ss-stats-hover .sh-val  { color: #fff; font-weight: 700; }
-#ss-stats-hover .sh-none { color: rgba(255,255,255,0.3); font-style: italic; }
 CSS;
 
 require_once __DIR__ . '/includes/header.php';
@@ -1336,7 +1289,7 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="build-badge build-badge--bitchin">
                 <span class="build-badge-track">Bitchin&#x27;</span>
-                <span class="build-badge-ver">v<?php echo defined('SS_PROMO_DEV_VERSION') ? SS_PROMO_DEV_VERSION : ''; ?></span>
+                <span class="build-badge-ver">v<?php echo defined('SS_PROMO_DEV_VERSION') ? preg_replace('/^Alpha\s+/i', '', SS_PROMO_DEV_VERSION) : ''; ?></span>
             </div>
         </div>
         <h1 class="hero-headline">A photo blog platform that doesn't treat you like a <span>product.</span></h1>
@@ -1996,81 +1949,6 @@ require_once __DIR__ . '/includes/header.php';
 </section>
 
 <!-- ── FOOTER ──────────────────────────────────────────────────────────────── -->
-<!-- STATS HOVER CARD — populated by JS from data-stats attributes on .theme-card -->
-<div id="ss-stats-hover" aria-hidden="true"></div>
-
-<script>
-(function () {
-    var hover = document.getElementById('ss-stats-hover');
-    if (!hover) return;
-
-    var activeCard = null;
-    var hideTimer  = null;
-
-    function fmt(n) {
-        if (n === null || n === undefined) return '—';
-        if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-        if (n >= 1000)    return (n / 1000).toFixed(1)    + 'K';
-        return String(n);
-    }
-
-    function show(card, e) {
-        var raw = card.getAttribute('data-stats');
-        if (!raw || raw === 'null') return;
-        var d;
-        try { d = JSON.parse(raw); } catch (ex) { return; }
-        if (!d) return;
-
-        var since = d.active_since
-            ? new Date(d.active_since).getFullYear()
-            : null;
-
-        hover.innerHTML =
-            '<div class="sh-site">' + (d.site_name || '') + '</div>' +
-            '<div class="sh-row"><span>Posts</span><span class="sh-val">' + fmt(d.posts) + '</span></div>' +
-            '<div class="sh-row"><span>Views (30d)</span><span class="sh-val">' + fmt(d.views_30d) + '</span></div>' +
-            '<div class="sh-row"><span>Visitors (30d)</span><span class="sh-val">' + fmt(d.unique_30d) + '</span></div>' +
-            (since ? '<div class="sh-row"><span>Active since</span><span class="sh-val">' + since + '</span></div>' : '');
-
-        position(e);
-        hover.classList.add('visible');
-        clearTimeout(hideTimer);
-    }
-
-    function position(e) {
-        var x = e.clientX + 8;
-        var y = e.clientY + 8;
-        var w = hover.offsetWidth  || 210;
-        var h = hover.offsetHeight || 120;
-        if (x + w > window.innerWidth  - 8) x = e.clientX - w - 8;
-        if (y + h > window.innerHeight - 8) y = e.clientY - h - 8;
-        hover.style.left = x + 'px';
-        hover.style.top  = y + 'px';
-    }
-
-    function hide() {
-        hideTimer = setTimeout(function () {
-            hover.classList.remove('visible');
-            activeCard = null;
-        }, 120);
-    }
-
-    document.querySelectorAll('.theme-card[data-stats]').forEach(function (card) {
-        card.addEventListener('mouseenter', function (e) {
-            clearTimeout(hideTimer);
-            activeCard = card;
-            show(card, e);
-        });
-        card.addEventListener('mousemove', function (e) {
-            if (activeCard === card) position(e);
-        });
-        card.addEventListener('mouseleave', function () {
-            hide();
-        });
-    });
-})();
-</script>
-
 <footer id="site-footer">
     <div class="wrap">
         <div class="footer-inner">
@@ -2167,161 +2045,64 @@ document.getElementById('yr').textContent = new Date().getFullYear();
 </script>
 
 <script>
-/* Thomas the Bear — Ctrl+Shift+Y spawns bears, Ctrl+Shift+Z opens story modal.
-   Tribute to Noah Grey (Greymatter). Mirrors the Picasa easter egg. */
+/* ── SKIN CARD STATS TOOLTIP ─────────────────────────────────────────────── */
 (function() {
-    'use strict';
-
-    var BEAR_IMG = 'img/thomas-transparent.png';
-    var dedicationShown = false;
-    var bearsActive = false;
-
-    function clearAllBears() {
-        var bears = document.querySelectorAll('.thomas-bear');
-        if (bears.length === 0) return false;
-        bears.forEach(function(bear) {
-            bear.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
-            bear.style.transform = 'scale(0) rotate(20deg)';
-            bear.style.opacity = '0';
-            setTimeout(function() { bear.remove(); }, 300);
-        });
-        bearsActive = false;
-        return true;
+    function fmt(n) {
+        if (n == null) return '—';
+        if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+        if (n >= 1000)    return (n / 1000).toFixed(1) + 'K';
+        return String(n);
     }
 
-    function buildBear() {
-        var size = Math.floor(Math.random() * 120) + 80;
-        var bear = document.createElement('div');
-        bear.className = 'thomas-bear';
-        bear.style.width  = size + 'px';
-        bear.style.height = Math.floor(size * 1.3) + 'px';
-        var maxX = window.innerWidth  - size - 20;
-        var maxY = window.innerHeight - size - 20;
-        bear.style.left = Math.max(10, Math.floor(Math.random() * maxX)) + 'px';
-        bear.style.top  = Math.max(10, Math.floor(Math.random() * maxY)) + 'px';
-        bear.innerHTML = '<img src="' + BEAR_IMG + '" alt="Thomas the Bear">';
-        document.body.appendChild(bear);
-        bearsActive = true;
+    var tip = document.createElement('div');
+    tip.id = 'skin-stats-tooltip';
+    document.body.appendChild(tip);
+
+    // Global cursor tracker using page coordinates — works with position:absolute
+    // and immune to any transform/filter on ancestors that breaks position:fixed
+    var mx = 0, my = 0;
+    document.addEventListener('mousemove', function(e) {
+        mx = e.pageX;
+        my = e.pageY;
+        if (tip.classList.contains('visible')) reposition();
+    });
+
+    function reposition() {
+        tip.style.left = (mx + 14) + 'px';
+        tip.style.top  = (my + 14) + 'px';
     }
 
-    function showNoahModal() {
-        if (document.getElementById('thomas-noah-modal')) {
-            document.getElementById('thomas-noah-modal').style.display = 'flex';
-            return;
+    document.querySelectorAll('.theme-card[data-stats]').forEach(function(card) {
+        var raw = card.getAttribute('data-stats');
+        var stats = null;
+        try { stats = raw ? JSON.parse(raw) : null; } catch(e) {}
+
+        var html;
+        if (!stats || stats.error) {
+            html = '<div class="stt-unavailable">Stats unavailable</div>';
+        } else {
+            html = '<div class="stt-site">' + (stats.site_name || '') + '</div>' +
+                '<div class="stt-grid">' +
+                    '<div><span class="stt-stat-val">' + fmt(stats.posts) + '</span><span class="stt-stat-label">Photos</span></div>' +
+                    '<div><span class="stt-stat-val">' + fmt(stats.views_all || stats.views_30d) + '</span><span class="stt-stat-label">Views</span></div>' +
+                    '<div><span class="stt-stat-val">' + fmt(stats.unique_all || stats.unique_30d) + '</span><span class="stt-stat-label">Visitors</span></div>' +
+                    '<div><span class="stt-stat-val">' + (stats.version || '—') + '</span><span class="stt-stat-label">Version</span></div>' +
+                '</div>' +
+                (stats.active_since ? '<div class="stt-since">Since ' + stats.active_since.substring(0,4) + '</div>' : '');
         }
-        var backdrop = document.createElement('div');
-        backdrop.id = 'thomas-noah-modal';
-        backdrop.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;' +
-            'background:rgba(0,0,0,0.75);display:flex;align-items:center;' +
-            'justify-content:center;z-index:99999;padding:48px 24px;box-sizing:border-box;';
-        var panel = document.createElement('div');
-        panel.style.cssText = 'background:#111111;color:#e0e0e0;' +
-            'border:1px solid #e0e0e0;padding:56px 48px;max-width:660px;width:100%;' +
-            'border-radius:4px;font-family:"Courier New",monospace;' +
-            'box-shadow:0 20px 50px rgba(0,0,0,0.9);overflow-y:auto;box-sizing:border-box;';
-        panel.innerHTML =
-            '<h2 style="margin-top:0;margin-bottom:20px;font-size:1.1rem;letter-spacing:2px;' +
-                'border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:10px;' +
-                'text-align:center;text-transform:uppercase;color:#ffffff;">' +
-                'Noah Grey &amp; Thomas the Bear</h2>' +
-            '<div style="font-size:13px;line-height:1.8;text-transform:none;">' +
-                '<p style="margin-top:0;">In November 2000, Noah Grey released Greymatter — the original ' +
-                'open-source blogging software, written in Perl, requiring nothing but a webserver. ' +
-                'He pioneered personal blogging and photoblogging before either word was common. ' +
-                'To many people in the early days of the web, Noah Grey was photography on the web. ' +
-                'Bloggers built their entire lives on what he created.</p>' +
-                '<p>In 2004, Noah worked with the Google Picasa team, helping to shape what photo ' +
-                'software could feel like in the hands of someone who actually cared about photographs.</p>' +
-                '<p>The Picasa developers put Thomas inside their software as a gift to Noah — ' +
-                'a tribute hiding in plain sight, accessible to anyone who knew to look. ' +
-                'Thomas is a real bear. He lives with Sean. He does not blog but he has opinions.</p>' +
-                '<p>SnapSmack carries Thomas forward. Every installation, every fork, every skin ' +
-                'is required by license to keep him. He is the continuity. Press Ctrl+Shift+Y for bears. ' +
-                'Press it again to clear them. This modal closes on Escape or by clicking outside it.</p>' +
-            '</div>' +
-            '<button onclick="document.getElementById(\'thomas-noah-modal\').style.display=\'none\'" ' +
-                'style="margin-top:24px;padding:10px 28px;background:#e0e0e0;color:#111;' +
-                'border:none;font-family:\'Courier New\',monospace;font-size:0.85rem;' +
-                'letter-spacing:0.05em;cursor:pointer;border-radius:2px;">CLOSE</button>';
-        backdrop.appendChild(panel);
-        document.body.appendChild(backdrop);
-        backdrop.addEventListener('click', function(e) {
-            if (e.target === backdrop) backdrop.style.display = 'none';
+
+        card.addEventListener('mouseenter', function() {
+            tip.innerHTML = html;
+            tip.classList.add('visible');
+            reposition();
         });
-    }
-
-    // ── SKIN CARD STATS TOOLTIP ──────────────────────────────────────────────
-    // Single tooltip div that follows the mouse. pointer-events:none so it
-    // never blocks clicks or hovers on card content beneath it.
-    (function() {
-        function fmt(n) {
-            if (n == null) return '—';
-            if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-            if (n >= 1000)    return (n / 1000).toFixed(1) + 'K';
-            return String(n);
-        }
-
-        var tip = document.createElement('div');
-        tip.id = 'skin-stats-tooltip';
-        document.body.appendChild(tip);
-
-        var OFFSET_X = 8, OFFSET_Y = 8;
-
-        function position(e) {
-            var w = tip.offsetWidth  || 240;
-            var h = tip.offsetHeight || 160;
-            var x = e.clientX + OFFSET_X;
-            var y = e.clientY + OFFSET_Y;
-            if (x + w > window.innerWidth  - 8) x = e.clientX - w - OFFSET_X;
-            if (y + h > window.innerHeight - 8) y = e.clientY - h - OFFSET_Y;
-            tip.style.left = x + 'px';
-            tip.style.top  = y + 'px';
-        }
-
-        document.querySelectorAll('.theme-card[data-stats]').forEach(function(card) {
-            var raw = card.getAttribute('data-stats');
-            var stats = null;
-            try { stats = raw ? JSON.parse(raw) : null; } catch(e) {}
-
-            var html;
-            if (!stats || stats.error) {
-                html = '<div class="stt-unavailable">Stats unavailable</div>';
-            } else {
-                html = '<div class="stt-site">' + (stats.site_name || '') + '</div>' +
-                    '<div class="stt-grid">' +
-                        '<div><span class="stt-stat-val">' + fmt(stats.posts) + '</span><span class="stt-stat-label">Photos</span></div>' +
-                        '<div><span class="stt-stat-val">' + fmt(stats.views_30d) + '</span><span class="stt-stat-label">Views / 30d</span></div>' +
-                        '<div><span class="stt-stat-val">' + fmt(stats.unique_30d) + '</span><span class="stt-stat-label">Visitors / 30d</span></div>' +
-                        '<div><span class="stt-stat-val">' + (stats.version || '—') + '</span><span class="stt-stat-label">Version</span></div>' +
-                    '</div>' +
-                    (stats.active_since ? '<div class="stt-since">Since ' + stats.active_since.substring(0,4) + '</div>' : '');
-            }
-
-            card.addEventListener('mouseenter', function(e) {
-                tip.innerHTML = html;
-                tip.classList.add('visible');
-                position(e);
-            });
-            card.addEventListener('mousemove', position);
-            card.addEventListener('mouseleave', function() {
-                tip.classList.remove('visible');
-            });
+        card.addEventListener('mouseleave', function() {
+            tip.classList.remove('visible');
         });
-    })();
-
-    document.addEventListener('keydown', function(e) {
-        if (!e.ctrlKey || !e.shiftKey) return;
-        if (e.key === 'Y' || e.key === 'y') {
-            e.preventDefault();
-            if (bearsActive) { clearAllBears(); return; }
-            for (var i = 0; i < 8; i++) buildBear();
-        }
-        if (e.key === 'Z' || e.key === 'z') {
-            e.preventDefault();
-            clearAllBears();
-            showNoahModal();
-        }
     });
 })();
 </script>
+
+<link rel="stylesheet" href="assets/css/ss-engine-thomas.css">
+<script src="assets/js/ss-engine-thomas.js"></script>
 <?php // ===== SNAPSMACK EOF =====

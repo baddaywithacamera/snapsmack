@@ -265,6 +265,7 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         'skins/kiosk/',
         'skins/pocket-rocket/',
         'skins/show-n-tell/',
+        'skins/slickr/',
         'skins/the-grid/',
         'skins/true-grit/',
         // Skins distributed via Skin Packager only — NOT in base release
@@ -945,11 +946,11 @@ if ($action === 'build_dev' && $preflight_ok) {
                     $sv = file_get_contents($sv_path);
                     $sv = preg_replace(
                         "/define\('SS_PROMO_DEV_VERSION',\s*'[^']*'\)/",
-                        "define('SS_PROMO_DEV_VERSION', '" . addslashes($version_full) . "')",
+                        "define('SS_PROMO_DEV_VERSION', '" . addslashes($version) . "')",
                         $sv
                     );
                     file_put_contents($sv_path, $sv);
-                    $dev_build_log[] = "→ site-version.php dev version updated ({$version_full})";
+                    $dev_build_log[] = "→ site-version.php dev version updated ({$version})";
                 }
 
                 // Write dev build history record
