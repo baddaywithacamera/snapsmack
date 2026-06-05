@@ -28,6 +28,12 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - `smack-back.php` — New APPROVE / REJECT UI box for hub-requested mode downgrades, matching the
   existing pending-disable flow. Confirm/reject POST handlers clear the pending flag. (audit 021 F4)
 
+### Fixed — smack-skin.php fatal crash on carousel sites with no carousel skin installed
+- `smack-skin.php` — mode filter could empty `$available_skins` on carousel installs
+  (The Grid is not in the base release), causing `array_key_first()` to return null and
+  PHP 8 strict typing to throw a TypeError. Now falls back to unfiltered skins if the
+  mode filter produces no results, keeping the admin page accessible.
+
 ### Fixed — smack-edit.php 500 on missing collection columns
 - `smack-edit.php` — defensive `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` for
   `snap_collection_items.item_type`, `item_id`, and `sort_order`. Sites that received
