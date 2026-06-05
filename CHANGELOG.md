@@ -28,6 +28,11 @@ All notable changes to SnapSmack are documented here. Newest release first.
 - `smack-back.php` — New APPROVE / REJECT UI box for hub-requested mode downgrades, matching the
   existing pending-disable flow. Confirm/reject POST handlers clear the pending flag. (audit 021 F4)
 
+### Fixed — smack-edit.php 500 on missing collection columns
+- `smack-edit.php` — defensive `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` for
+  `snap_collection_items.item_type`, `item_id`, and `sort_order`. Sites that received
+  the table before the polymorphic migration ran were hitting a hard 500.
+
 ## 0.7.202 — "Push It Real Good" (2026-06-04)
 
 ### Changed — Thomas the Bear privacy
