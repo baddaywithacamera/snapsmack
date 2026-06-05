@@ -1,29 +1,27 @@
 <?php
 /**
- * SMACK CENTRAL — Network Alert Public API
+ * SNAPSMACK.CA — Network Alert Public API
  *
  * Public endpoint — no admin session required.
+ * This file lives at the snapsmack.ca web root so spokes can reach it at
+ * https://snapsmack.ca/sc-network-api.php (the default network_alert_sc_url).
  *
  * Routes:
  *   GET  ?route=status  — Returns current alert level for polling installs.
  *   POST ?route=report  — Receives breach report from a SnapSmack install.
  *
- * Rate limit on reports: max 3 POSTs per IP per hour (stored in sc_network_alert_reports).
- * Caller does not need to be registered — any SnapSmack install can report.
- * Data is non-sensitive (site name, IP, file paths, timestamps, hashes).
+ * Rate limit on reports: max 3 POSTs per IP per hour.
+ * Auto-escalation: 5+ distinct IPs within 2 hours → yellow_fast.
  *
- * Auto-escalation: if 5+ distinct IPs report within 2 hours and level is green/yellow_slow,
- * automatically escalates to yellow_fast. Sean can override at any time via sc-network-alert.php.
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-// SNAPSMACK_EOF_HEADER
-//     // ===== SNAPSMACK EOF =====
-// Last non-empty line of this file MUST match the line above.
-// Missing or different = truncated/corrupted. Restore before saving.
-
-require_once __DIR__ . '/sc-config.php';
-require_once __DIR__ . '/sc-db.php';
-require_once __DIR__ . '/sc-network-fanout.php';
+require_once __DIR__ . '/../smack-central/sc-config.php';
+require_once __DIR__ . '/../smack-central/sc-db.php';
+require_once __DIR__ . '/../smack-central/sc-network-fanout.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache');
@@ -48,7 +46,6 @@ function na_err(string $msg, int $code = 400): never {
 function na_get_state(PDO $db): array {
     $row = $db->query("SELECT * FROM sc_network_alert_state WHERE id = 1")->fetch();
     if (!$row) {
-        // Seed — sc-schema.php should have done this but be defensive
         $db->exec("INSERT IGNORE INTO sc_network_alert_state (id,level,message,set_by) VALUES (1,'green','','init')");
         $row = ['id' => 1, 'level' => 'green', 'message' => '', 'set_at' => date('Y-m-d H:i:s'), 'set_by' => 'init'];
     }
@@ -58,7 +55,6 @@ function na_get_state(PDO $db): array {
 $db = sc_db();
 
 // ─── GET ?route=status ─────────────────────────────────────────────────────────
-// Returns current alert level. Polled by opted-in installs every 30 min.
 
 if ($route === 'status' && $method === 'GET') {
     $state = na_get_state($db);
@@ -70,13 +66,9 @@ if ($route === 'status' && $method === 'GET') {
 }
 
 // ─── POST ?route=report ────────────────────────────────────────────────────────
-// Receives breach report from a SnapSmack install.
 
 if ($route === 'report' && $method === 'POST') {
 
-    // Use REMOTE_ADDR only — X-Forwarded-For is client-controlled and spoofable.
-    // Using it for rate limiting would let an attacker cycle fake IPs to bypass
-    // the limit and fabricate distinct-IP counts for false auto-escalation.
     $request_ip = substr(($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'), 0, 45);
 
     // Rate limit: max 3 reports per IP per hour
@@ -85,15 +77,12 @@ if ($route === 'report' && $method === 'POST') {
          WHERE request_ip = ? AND received_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)"
     );
     $rate_stmt->execute([$request_ip]);
-    $rate_count = (int)$rate_stmt->fetchColumn();
-
-    if ($rate_count >= 3) {
-        na_err('Rate limit exceeded. Maximum 3 reports per hour per IP.', 429);
+    if ((int)$rate_stmt->fetchColumn() >= 3) {
+        na_err('Rate limit exceeded.', 429);
     }
 
     // Parse body
-    $raw  = file_get_contents('php://input');
-    $body = json_decode($raw, true);
+    $body = json_decode(file_get_contents('php://input'), true);
     if (!is_array($body)) {
         na_err('Invalid JSON body.', 400);
     }
@@ -101,8 +90,6 @@ if ($route === 'report' && $method === 'POST') {
     $site_name = substr(trim((string)($body['site_name'] ?? '')), 0, 255);
     $site_url  = substr(trim((string)($body['site_url']  ?? '')), 0, 500);
 
-    // Cap arrays and their string entries to bound storage size.
-    // 200 files per report is well above any realistic breach payload.
     $affected_files_raw = $body['affected_files'] ?? null;
     $file_hashes_raw    = $body['file_hashes']    ?? null;
 
@@ -114,10 +101,8 @@ if ($route === 'report' && $method === 'POST') {
 
     $file_hashes = null;
     if (is_array($file_hashes_raw)) {
-        $file_hashes = array_slice($file_hashes_raw, 0, 200);
-        // Hashes are key→value pairs; preserve structure but cap values
         $capped = [];
-        foreach ($file_hashes as $k => $v) {
+        foreach (array_slice($file_hashes_raw, 0, 200, true) as $k => $v) {
             $capped[substr((string)$k, 0, 500)] = substr((string)$v, 0, 128);
         }
         $file_hashes = $capped;
@@ -125,12 +110,10 @@ if ($route === 'report' && $method === 'POST') {
 
     $file_count = is_array($affected_files) ? count($affected_files) : 0;
 
-    // Validate — at minimum we need something useful
     if (empty($site_name) && empty($site_url) && $file_count === 0) {
         na_err('Report contains no useful data.', 422);
     }
 
-    // Store
     $db->prepare(
         "INSERT INTO sc_network_alert_reports
              (site_name, site_url, request_ip, affected_files, file_hashes, file_count)
@@ -144,10 +127,9 @@ if ($route === 'report' && $method === 'POST') {
         $file_count,
     ]);
 
-    // ── Auto-escalation check ─────────────────────────────────────────────
-    // 5+ distinct IPs reporting within 2 hours → escalate to yellow_fast
-    $state     = na_get_state($db);
-    $current   = $state['level'];
+    // ── Auto-escalation ───────────────────────────────────────────────────────
+    $state   = na_get_state($db);
+    $current = $state['level'];
 
     if ($current !== 'yellow_fast') {
         $distinct_stmt = $db->prepare(
@@ -166,8 +148,6 @@ if ($route === 'report' && $method === 'POST') {
                  WHERE id = 1"
             )->execute(['Coordinated breach activity detected across the SnapSmack network.']);
 
-            // Push escalation to all subscribers immediately
-            // Flush response first so the reporting install doesn't wait
             ob_start();
             na_ok(['received' => true]);
             $out = ob_get_clean();
@@ -205,8 +185,6 @@ if ($route === 'report' && $method === 'POST') {
 }
 
 // ─── POST ?route=register ──────────────────────────────────────────────────────
-// Spoke opts in to receive push notifications. Stores site_url, site_name,
-// push_token, and push_url. Upserts on site_url — safe to re-call.
 
 if ($route === 'register' && $method === 'POST') {
     $body = json_decode(file_get_contents('php://input'), true);
@@ -218,11 +196,9 @@ if ($route === 'register' && $method === 'POST') {
     $push_token = preg_replace('/[^a-f0-9]/', '', strtolower((string)($body['push_token'] ?? '')));
     $push_url   = substr(trim((string)($body['push_url']   ?? '')), 0, 600);
 
-    // Validate
     if (!filter_var($site_url, FILTER_VALIDATE_URL))  na_err('Invalid site_url.', 422);
-    if (strlen($push_token) !== 64)                   na_err('Invalid push_token (must be 64 hex chars).', 422);
+    if (strlen($push_token) !== 64)                   na_err('Invalid push_token.', 422);
     if (!filter_var($push_url, FILTER_VALIDATE_URL))  na_err('Invalid push_url.', 422);
-    // push_url must be on the same host as site_url
     if (parse_url($push_url, PHP_URL_HOST) !== parse_url($site_url, PHP_URL_HOST)) {
         na_err('push_url host must match site_url host.', 422);
     }
@@ -237,13 +213,7 @@ if ($route === 'register' && $method === 'POST') {
                  push_token = VALUES(push_token),
                  push_url   = VALUES(push_url),
                  push_failures = 0"
-        )->execute([
-            substr($uid, 0, 32),
-            $site_url,
-            $site_name,
-            $push_token,
-            $push_url,
-        ]);
+        )->execute([substr($uid, 0, 32), $site_url, $site_name, $push_token, $push_url]);
     } catch (PDOException $e) {
         na_err('Registration failed.', 500);
     }
@@ -252,7 +222,6 @@ if ($route === 'register' && $method === 'POST') {
 }
 
 // ─── POST ?route=unregister ────────────────────────────────────────────────────
-// Spoke opts out. Validates push_token before deleting — prevents third-party removal.
 
 if ($route === 'unregister' && $method === 'POST') {
     $body = json_decode(file_get_contents('php://input'), true);
@@ -264,18 +233,12 @@ if ($route === 'unregister' && $method === 'POST') {
     if (!$site_url || strlen($push_token) !== 64) na_err('Missing site_url or push_token.', 422);
 
     try {
-        // Fetch stored token — constant-time comparison before delete
-        $stored = $db->prepare("SELECT push_token FROM sc_push_subscribers WHERE site_url = ?")->execute([$site_url])
-            ? $db->query("SELECT push_token FROM sc_push_subscribers WHERE site_url = " . $db->quote($site_url))->fetchColumn()
-            : '';
-
         $stmt = $db->prepare("SELECT push_token FROM sc_push_subscribers WHERE site_url = ?");
         $stmt->execute([$site_url]);
         $row = $stmt->fetch();
 
         if (!$row || !hash_equals($row['push_token'], $push_token)) {
-            // Return 200 even on mismatch — don't reveal whether record exists
-            na_ok(['unregistered' => true]);
+            na_ok(['unregistered' => true]); // Don't reveal whether record exists
         }
 
         $db->prepare("DELETE FROM sc_push_subscribers WHERE site_url = ? AND push_token = ?")

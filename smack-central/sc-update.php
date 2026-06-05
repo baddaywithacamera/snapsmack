@@ -165,15 +165,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull'
             throw new RuntimeException('smack-central/ not found in extracted archive.');
         }
 
-        // 3. Copy files into place ────────────────────────────────────────────
-        // Skip sc-config.php — always preserve the live config.
-        // Skip sc-db.php — paired with sc-config.php; adding/changing DB connections
-        // requires manual deployment so a bad tag cannot silently drop sc_enemy_db()
-        // or sc_forum_db() from a running install.
-        $protected = ['sc-config.php', 'sc-db.php'];
-        $dest_dir  = __DIR__ . '/';
-        $copied    = 0;
-        $skipped   = 0;
+        // 3. Copy smack-central/ files into place ─────────────────────────────
+        // sc-config.php: never touched — live server config.
+        // sc-db.php: never touched — DB connection changes require manual deploy
+        //   so a bad tag cannot silently drop sc_enemy_db() or sc_forum_db().
+        $protected_files = ['sc-config.php', 'sc-db.php'];
+        $dest_dir        = __DIR__ . '/';
+        $copied          = 0;
+        $skipped         = 0;
 
         $iter = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($sc_src, FilesystemIterator::SKIP_DOTS),
@@ -188,8 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull'
                 continue;
             }
 
-            // Protect config and any other sensitive files
-            if (in_array(basename($rel), $protected, true)) {
+            if (in_array(basename($rel), $protected_files, true)) {
                 $skipped++;
                 continue;
             }
@@ -197,15 +195,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull'
             copy($item->getPathname(), $dest);
             $copied++;
         }
-        $result_log[] = ['ok', "Installed {$copied} files" . ($skipped ? ", skipped {$skipped} protected" : '')];
+        $result_log[] = ['ok', "smack-central/: {$copied} files installed" . ($skipped ? ", {$skipped} protected skipped" : '')];
 
-        // 4. Schema sync ──────────────────────────────────────────────────────
-        $schema_sql  = file_get_contents(__DIR__ . '/sc-schema.sql');
-        $schema_errs = sc_apply_schema($sc_db, $schema_sql);
-        if ($schema_errs) {
-            $result_log[] = ['warn', 'Schema: ' . implode('; ', $schema_errs)];
+        // 3b. Copy projects/snapsmack-ca/ files to web root ───────────────────
+        // These are the public-facing SC API endpoints and snapsmack.ca assets.
+        // Protected: release zips/manifests (managed by Release Packager),
+        //   .gitignore, .sc-sessions/ session storage.
+        $webroot_src = $wrapper . 'projects/snapsmack-ca/';
+
+        if (is_dir($webroot_src)) {
+            $webroot_dest    = dirname(__DIR__) . '/';
+            $skip_dirs       = ['.sc-sessions', '.git'];
+            $skip_extensions = ['zip'];
+            $skip_files      = ['.gitignore'];
+            $wr_copied       = 0;
+
+            $wr_iter = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($webroot_src, FilesystemIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::SELF_FIRST
+            );
+            foreach ($wr_iter as $wr_item) {
+                $rel  = $wr_iter->getSubPathname();
+                $dest = $webroot_dest . $rel;
+
+                // Skip protected directories (check any path segment)
+                $skip = false;
+                foreach (explode('/', str_replace('\\', '/', $rel)) as $seg) {
+                    if (in_array($seg, $skip_dirs, true)) { $skip = true; break; }
+                }
+                if ($skip) continue;
+
+                if ($wr_item->isDir()) {
+                    if (!is_dir($dest)) mkdir($dest, 0755, true);
+                    continue;
+                }
+
+                $fname = basename($rel);
+                $ext   = strtolower(pathinfo($fname, PATHINFO_EXTENSION));
+
+                if (in_array($fname, $skip_files, true)) continue;
+                if (in_array($ext, $skip_extensions, true)) continue;
+
+                copy($wr_item->getPathname(), $dest);
+                $wr_copied++;
+            }
+            $result_log[] = ['ok', "snapsmack.ca web root: {$wr_copied} files installed"];
         } else {
-            $result_log[] = ['ok', 'Schema sync complete'];
+            $result_log[] = ['warn', 'projects/snapsmack-ca/ not found in archive — web-root files not updated'];
+        }
+
+        // 4. Schema sync — smackcent canonical ────────────────────────────────
+        // Use the canonical schema file (schemas/sc-smackcent-canonical.sql),
+        // not the legacy sc-schema.sql stub. All statements use IF NOT EXISTS
+        // guards so this is safe to run on every update.
+        $canonical_path = __DIR__ . '/schemas/sc-smackcent-canonical.sql';
+        if (file_exists($canonical_path)) {
+            $schema_sql  = file_get_contents($canonical_path);
+            $schema_errs = sc_apply_schema($sc_db, $schema_sql);
+            if ($schema_errs) {
+                $result_log[] = ['warn', 'Schema: ' . implode('; ', $schema_errs)];
+            } else {
+                $result_log[] = ['ok', 'Schema sync complete (sc-smackcent-canonical.sql)'];
+            }
+        } else {
+            $result_log[] = ['warn', 'Canonical schema file not found — schema sync skipped'];
         }
 
         // 5. Record installed tag ─────────────────────────────────────────────

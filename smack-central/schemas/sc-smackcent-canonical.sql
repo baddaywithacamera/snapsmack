@@ -97,6 +97,22 @@ CREATE TABLE IF NOT EXISTS `sc_network_alert_reports` (
     KEY `idx_received_at`         (`received_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Network Alert: installs opted in to receive SC push notifications on breach
+CREATE TABLE IF NOT EXISTS `sc_push_subscribers` (
+    `id`            INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    `uid`           CHAR(32)      NOT NULL DEFAULT '' COMMENT 'Anonymous install uid — for correlation only',
+    `site_url`      VARCHAR(500)  NOT NULL DEFAULT '',
+    `site_name`     VARCHAR(255)  NOT NULL DEFAULT '',
+    `push_token`    CHAR(64)      NOT NULL DEFAULT '' COMMENT '64-char hex secret — SC must include in push, spoke validates',
+    `push_url`      VARCHAR(600)  NOT NULL DEFAULT '' COMMENT 'site_url + /network-alert-push.php',
+    `registered_at` TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `last_push_at`  TIMESTAMP     NULL DEFAULT NULL,
+    `push_failures` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Consecutive delivery failures — auto-pruned at 5',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_site_url` (`site_url`(255)),
+    KEY `idx_push_failures` (`push_failures`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `sc_dev_builds` (
     `id`              INT UNSIGNED  NOT NULL AUTO_INCREMENT,
     `version`         VARCHAR(20)   NOT NULL COMMENT 'Short version string e.g. 0.7.184D',

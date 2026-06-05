@@ -1416,6 +1416,42 @@ from info to acceptable and external-script findings from violation to warning.
 <p>Click <strong>Scan Now</strong> to run a manual scan. Results persist between scans
 so you don't need to re-scan every visit.</p>
 
+<h4>Network Alert — Layer 2 (Global SC Broadcast)</h4>
+<p>SMACKBACK's local detection is Layer 1 — RED alerts that never leave your server. Layer 2
+is the global network: Smack Central watches for coordinated breach activity across the
+SnapSmack install fleet and can broadcast a YELLOW advisory to every opted-in site.</p>
+<p>Layer 1 and Layer 2 are entirely separate. A local RED breach never triggers a global
+alert automatically, and a global YELLOW alert does not lock down your admin — it shows an
+advisory banner only.</p>
+
+<h4>Receiving Network Alerts</h4>
+<p>In Admin → SMACK-BACK → Network Alert, check <strong>Receive Yellow Alerts</strong>.
+Your site will poll Smack Central every 30 minutes and display a pulsing yellow banner at
+the top of every admin page if an advisory is active. The banner links to this page.
+You can also hit <strong>Check Now</strong> to force an immediate poll.</p>
+
+<h4>Contributing Breach Reports</h4>
+<p>Check <strong>Contribute Breach Reports to the Network</strong> to send your SMACKBACK
+breach data to Smack Central when a local breach fires. Reports contain: site name, server
+IP, affected file paths, timestamps, and SHA-256 hashes. No visitor data, no post content,
+no admin credentials. If enough distinct sites report breaches within a short window, SC
+automatically escalates the global alert — helping warn the rest of the fleet.</p>
+
+<h4>Immediate Push Notifications</h4>
+<p>The 30-minute poll means a new global alert might take up to half an hour to reach you.
+Enable <strong>Immediate Breach Push Notifications</strong> to receive alerts within seconds.</p>
+<p>When enabled, Smack Central will POST directly to your site the moment a coordinated
+breach is detected — no waiting for the next poll. A local file (<code>network-alert-push.php</code>)
+receives the push, validates it, and updates your alert state immediately.</p>
+<p><strong>Privacy trade-off:</strong> To push to your site, SC needs to know where it is.
+Enabling this transmits your site URL and site name to Smack Central, where they are stored.
+A unique push token — generated on your server, never derived from your URL — is also stored
+so SC can authenticate pushes and no third party can spoof a network alert. Turning this off
+sends a deletion request to SC on every admin page load until SC confirms removal.</p>
+<p>This is opt-in and transparent. You can verify your data has been removed by contacting
+privacy@snapsmack.ca. Contributing breach reports and receiving push alerts are independent
+options — you can mix and match as you see fit.</p>
+
 <h4>What It Does Not Prevent</h4>
 <p>SMACKBACK detects tampering — it does not prevent it. Total server compromise (shell,
 database, and filesystem access) can defeat software-only integrity monitoring. Your hosting

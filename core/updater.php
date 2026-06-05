@@ -98,6 +98,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-comment-url.sql',
     'migrate-trigrams.sql',
     'migrate-posts-sort-order.sql',
+    'migrate-network-alert-push.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
