@@ -20,6 +20,11 @@ require_once 'core/auth-smack.php';
 require_once 'core/snap-tags.php';
 require_once 'core/skin-settings.php';
 
+// Defensive column adds — harmless if migrations already ran.
+$pdo->exec("ALTER TABLE snap_collection_items ADD COLUMN IF NOT EXISTS `item_type` ENUM('post','album','category') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'post'");
+$pdo->exec("ALTER TABLE snap_collection_items ADD COLUMN IF NOT EXISTS `item_id`   INT UNSIGNED NOT NULL DEFAULT 0");
+$pdo->exec("ALTER TABLE snap_collection_items ADD COLUMN IF NOT EXISTS `sort_order` INT NOT NULL DEFAULT 0");
+
 // Load and apply skin-aware settings early so the frame save handler and
 // form rendering both use the actual skin defaults, not hardcoded fallbacks.
 // admin-header.php checks isset($settings) and skips its own load if set.
