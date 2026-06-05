@@ -183,7 +183,7 @@ if (!isset($_SESSION['db_lockout_until'])) $_SESSION['db_lockout_until'] = 0;
 $raw_step = $_POST['step'] ?? 0;
 // '1b' = edition chooser (between env check and DB config)
 // 'r*' = recovery mode steps
-$step = (is_string($raw_step) && (str_starts_with($raw_step, 'r') || $raw_step === '1b' || $raw_step === '4b'))
+$step = (is_string($raw_step) && (str_starts_with($raw_step, 'r') || $raw_step === '1b' || $raw_step === '4b' || $raw_step === 'secopt'))
     ? $raw_step
     : (int)$raw_step;
 $errors = [];
@@ -1045,7 +1045,10 @@ if ($step === 4 && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_
             $_SESSION['site_tagline'] = $site_tagline;
             $_SESSION['site_url']     = $site_url;
             $_SESSION['admin_email']  = $admin_email;
-            $step = 5;
+            // Divert to the security opt-in screen (string sub-step, like '4b').
+            // The security form then POSTs step=5 to run the final write handler
+            // below. Do NOT fall straight through to step 5 here.
+            $step = 'secopt';
         } catch (PDOException $e) {
             $errors[] = 'Failed to create admin user: ' . htmlspecialchars($e->getMessage());
             $step = 4;
@@ -1061,6 +1064,23 @@ if ($step === 4 && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_
 if ($step === 5 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
 
     $prefix = $_SESSION['db_prefix'];
+
+    // --- SECURITY OPT-IN (from the Step 6 security screen) ---
+    // Unchecked checkboxes are not posted, so absence = opt-out ('0'). The
+    // screen pre-checks every box, so a normal user opts IN by default; a
+    // forged/direct POST that skips the screen correctly defaults to OFF and
+    // never silently enables off-box data sharing. Consent is always recorded.
+    $sec_smackback  = isset($_POST['smackback_enabled'])          ? '1' : '0';
+    $sec_na_receive = isset($_POST['network_alert_receive'])      ? '1' : '0';
+    $sec_na_send    = isset($_POST['network_alert_send'])         ? '1' : '0';
+    $sec_na_push    = isset($_POST['network_alert_push_enabled']) ? '1' : '0';
+    $sec_consent    = json_encode([
+        'smackback_enabled'          => $sec_smackback  === '1',
+        'network_alert_receive'      => $sec_na_receive === '1',
+        'network_alert_send'         => $sec_na_send    === '1',
+        'network_alert_push_enabled' => $sec_na_push    === '1',
+    ]);
+    $sec_consent_at = gmdate('Y-m-d H:i:s'); // UTC, server clock
 
     // --- GENERATE core/db.php ---
     $db_php = '<?php
@@ -1265,6 +1285,14 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'privacy_policy_content'    => '',
                 // --- TOOL API KEY ---
                 'tool_api_key'              => bin2hex(random_bytes(32)),
+                // --- SECURITY OPT-IN (installer Step 6) ---
+                'smackback_enabled'            => $sec_smackback,
+                'smackback_mode'               => 'lockout',
+                'network_alert_receive'        => $sec_na_receive,
+                'network_alert_send'           => $sec_na_send,
+                'network_alert_push_enabled'   => $sec_na_push,
+                'network_alert_consent_choice' => $sec_consent,
+                'network_alert_consent_at'     => $sec_consent_at,
             ];
 
             $stmt = $pdo->prepare("INSERT INTO `{$prefix}settings` (setting_key, setting_val) VALUES (?, ?)");
@@ -1273,6 +1301,19 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
             }
         } catch (PDOException $e) {
             $errors[] = 'Failed to seed settings: ' . htmlspecialchars($e->getMessage());
+        }
+    }
+
+    // --- NETWORK ALERT: register immediate-push if opted in ---
+    // Non-blocking by design (spec §8): a failure here must never stop the
+    // install. site_url / site_name were just seeded above; nalert_register_push
+    // reads them from snap_settings and reconciles via the admin-load retry path
+    // if SC is unreachable now.
+    if (empty($errors) && $sec_na_push === '1' && file_exists(__DIR__ . '/core/network-alert.php')) {
+        require_once __DIR__ . '/core/network-alert.php';
+        if (function_exists('nalert_register_push')) {
+            try { nalert_register_push('https://snapsmack.ca'); }
+            catch (\Throwable $e) { /* soft-fail: retry on next admin load */ }
         }
     }
 
@@ -1990,10 +2031,10 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
 
     <?php
     // --- STEP DOTS ---
-    // Visual steps: 1=Env Check, 2=Edition, 3=Database, 4=Admin, 5=Done
+    // Visual steps: 1=Env Check, 2=Edition, 3=Database, 4=Admin, 5=Security, 6=Done
     // Internal step 3 (schema) is processing-only and skips straight to 4.
-    // Visual mapping: 1→1, 1b→2, 2→3, 3→3, 4→4, 5→5, complete→done
-    $total_steps = $recovery_mode ? 3 : 5;
+    // Visual mapping: 1→1, 1b→2, 2→3, 3→3, 4/4b→4, secopt→5, complete→done
+    $total_steps = $recovery_mode ? 3 : 6;
     if ($step === 'complete') {
         $current_num = $total_steps + 1; // all dots "done"
     } elseif ($recovery_mode) {
@@ -2005,14 +2046,14 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         $current_num = 3;
     } elseif ($step === 3) {
         $current_num = 3;
-    } elseif ($step === 4) {
+    } elseif ($step === 4 || $step === '4b') {
         $current_num = 4;
-    } elseif ($step === '4b') {
+    } elseif ($step === 'secopt') {
         $current_num = 5;
-    } elseif ($step >= 4) {
+    } elseif (is_int($step) && $step >= 4) {
         $current_num = $step;
     } else {
-        $current_num = $step; // 1→1
+        $current_num = is_int($step) ? $step : 1; // 1→1
     }
     echo '<div class="step-indicator">';
     for ($i = 1; $i <= $total_steps; $i++) {
@@ -2268,7 +2309,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             </div>
             <div id="pass-match-msg" class="hint" style="display:none;"></div>
 
-            <button type="submit" id="btn-finish">Create Site &amp; Finish</button>
+            <button type="submit" id="btn-finish">Create Account &amp; Continue &rarr;</button>
             <script>
             (function() {
                 var p1 = document.getElementById('admin_pass');
@@ -2299,6 +2340,56 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
 
 
     <?php // Step 4 validation error re-display is handled by the combined 4b block above ?>
+
+
+    <?php // ============================================================= ?>
+    <?php // STEP 6: Security Opt-In (SmackBack + SmackAttack) ?>
+    <?php // Non-blocking. Every box pre-checked. Submits step=5 to finish. ?>
+    <?php // ============================================================= ?>
+    <?php if ($step === 'secopt'): ?>
+        <h2>Step 6 — Security Setup</h2>
+        <p style="color:#aaa;max-width:640px;margin:0 auto 22px;line-height:1.65;">Recommended — leave these on. SnapSmack can protect this install from day one. You can change any of this later in <strong style="color:#ddd;">SmackBack</strong>.</p>
+
+        <form method="post" style="max-width:640px;margin:0 auto;text-align:left;">
+            <input type="hidden" name="step" value="5">
+
+            <div style="background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:22px 26px;margin-bottom:18px;">
+                <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin:0;">
+                    <input type="checkbox" name="smackback_enabled" value="1" checked style="margin-top:4px;flex-shrink:0;">
+                    <span>
+                        <strong style="color:#e0e0e0;display:block;margin-bottom:4px;">SmackBack &mdash; File Integrity Monitoring</strong>
+                        <span style="color:#999;font-size:.9rem;line-height:1.6;">Hashes your PHP, CSS, and JS and re-checks them on admin login to catch tampering from a compromised FTP account. <strong style="color:#bbb;">All alerts stay on this server &mdash; nothing leaves the box.</strong></span>
+                    </span>
+                </label>
+            </div>
+
+            <div style="background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:22px 26px;margin-bottom:22px;">
+                <strong style="color:#e0e0e0;display:block;margin-bottom:16px;">SmackAttack &mdash; Network Alerts</strong>
+
+                <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin:0 0 16px;">
+                    <input type="checkbox" name="network_alert_receive" value="1" checked style="margin-top:4px;flex-shrink:0;">
+                    <span><strong style="color:#ddd;">Receive yellow alerts</strong><span style="color:#999;font-size:.9rem;display:block;line-height:1.6;">Show Smack Central network warnings in your admin panel. Poll-only &mdash; sends nothing.</span></span>
+                </label>
+
+                <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin:0 0 16px;">
+                    <input type="checkbox" name="network_alert_send" value="1" checked style="margin-top:4px;flex-shrink:0;">
+                    <span><strong style="color:#ddd;">Contribute breach reports</strong><span style="color:#999;font-size:.9rem;display:block;line-height:1.6;">Share breach indicators with the network so other installs get protected too.</span></span>
+                </label>
+
+                <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin:0;">
+                    <input type="checkbox" name="network_alert_push_enabled" value="1" checked style="margin-top:4px;flex-shrink:0;">
+                    <span><strong style="color:#ddd;">Immediate breach push</strong><span style="color:#999;font-size:.9rem;display:block;line-height:1.6;">Get pushed alerts the moment a coordinated breach is detected, instead of waiting for the next poll.</span></span>
+                </label>
+
+                <div style="margin-top:18px;padding:12px 16px;background:#111;border-left:3px solid #cc9900;font-size:.82rem;line-height:1.75;color:#999;">
+                    <strong style="color:#ddd;display:block;margin-bottom:4px;">&#9432; What gets shared</strong>
+                    Reports contain site name, server IP, affected file paths, timestamps, and SHA-256 hashes. No visitor data, no post content. Immediate push additionally transmits your site URL and site name and stores a locally-generated push token at Smack Central. You can change or revoke any of this later in SmackBack.
+                </div>
+            </div>
+
+            <button type="submit" style="background:#4caf50;color:#fff;border:none;padding:12px 32px;font-size:.9rem;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border-radius:4px;">Finish Installation &rarr;</button>
+        </form>
+    <?php endif; ?>
 
 
     <?php // ============================================================= ?>
