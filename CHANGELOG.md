@@ -12,6 +12,97 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.207 — "Privy Council" (2026-06-05)
+
+### Feature — Installer security opt-in (SmackBack + SmackAttack)
+
+- `install.php` — New security step added to the first-run wizard. After the admin
+  account is created, the installer now shows a **Security Setup** screen (internal
+  string sub-step `secopt`, modelled on the existing `4b` pattern) before the final
+  write. Every option is pre-checked (default opt-IN) and individually un-checkable;
+  the step is **non-blocking** — a user can untick everything and still finish.
+  - **SmackBack file integrity** (`smackback_enabled`, `smackback_mode = lockout`) —
+    local-only, no privacy cost.
+  - **SmackAttack / Network Alert** — receive yellow alerts (`network_alert_receive`),
+    contribute breach reports (`network_alert_send`), immediate breach push
+    (`network_alert_push_enabled`). Inline privacy disclosure mirrors the SmackBack
+    admin copy.
+  - **Consent audit** — records the four choices as JSON (`network_alert_consent_choice`)
+    plus a UTC submit timestamp (`network_alert_consent_at`), written even when the user
+    opts out of everything.
+  - If immediate push is left on, the installer calls `nalert_register_push()` after the
+    settings seed. Registration failure is soft — it never blocks install; the existing
+    admin-load retry path reconciles.
+  - All seven keys are plain `snap_settings` key/value rows (no schema change). The
+    step-4 success path now diverts to `secopt` instead of falling straight through to
+    the step-5 writer; the security screen POSTs `step=5` to run the final write.
+  - **Audit gates preserved:** the existing-admin block (finding #013) still runs before
+    account creation; the step-5 `REQUEST_METHOD === 'POST'` guard (finding #012) is
+    unchanged. The new screen adds no path that reaches the final write without a POST.
+- `core/constants.php` — Bumped to `Alpha 0.7.207`. Codename "Privy Council".
+- `smack-central/sc-version.php` — `SC_VERSION` `0.7.206D` → `0.7.207D`; `SC_CODENAME`
+  → "Privy Council".
+
+---
+
+## 0.7.206 — "Bodacious Bidet" (2026-06-05)
+
+### Change — Version tracking + SC "Running" version fix
+
+- `core/constants.php` — Bumped to `Alpha 0.7.206`. Codename "Bodacious Bidet".
+- `smack-central/sc-version.php` — `SC_VERSION` bumped `0.7.190` → `0.7.206D`;
+  `SC_CODENAME` → "Bodacious Bidet". `SC_VERSION` is a hand-maintained constant that
+  the SC Update page's "Running" row reads directly. It had fallen far behind (stuck on
+  `0.7.190` / "Shit and Git") while the self-updater was correctly pulling current
+  releases — making it look like SC wasn't updating itself. It now tracks the release
+  line so "Running" reflects reality after a pull. The functional update check (Installed
+  marker vs latest GitHub tag) was never affected.
+
+---
+
+## 0.7.205 — "Boring and Bitchin'" (2026-06-05)
+
+### Fix — sc-network-api.php web-root stub + unregister dead code
+
+- `projects/snapsmack-ca/sc-subscribe-redirect.php` — Replaces the broken
+  `sc-network-api.php` web-root stub. Previous stub duplicated the implementation
+  with wrong `require_once` paths (`__DIR__ . '/sc-config.php'` resolves to the
+  web root, not smack-central). New stub is a single `require_once` that delegates
+  to `smack-central/sc-network-api.php` where all includes resolve correctly. Deploys
+  to the web root as `sc-network-api.php`.
+- `smack-central/sc-network-api.php` — Removed dead code block in `unregister` route:
+  a spurious `$stored` assignment using a chained `prepare()->execute()` pattern that
+  was immediately shadowed by the correct `$stmt`/`fetch()` below it. No functional
+  change; dead code could not have caused a regression but was confusing.
+
+### Security — Purge inline JS from skins
+
+- `skins/chaplin/archive-layout.php`, `skins/chaplin/skin-header.php` — Removed all
+  inline `<script>` tags. Archive toggle and film-grain/overlay init now loaded via manifest.
+  `data-chaplin-scratch-freq` attribute preserved on `#rg-header` for the JS to read.
+- `skins/chaplin/manifest.php` — Added `smack-archive-toggle`, `smack-chaplin-film`,
+  `smack-chaplin-overlay` to `require_scripts`.
+- `skins/chaplin/assets/js/ss-engine-chaplin-overlay.js` — New file: overlay controller
+  extracted from inline script. Handles INFO/SIGNALS overlay open/close and wires up
+  `ChaplinFilm` auto-init via `data-chaplin-scratch-freq`.
+- `skins/rational-geo/archive-layout.php`, `skins/rational-geo/manifest.php` — Inline
+  archive-toggle script removed; loaded via `smack-archive-toggle` in manifest.
+- `skins/slickr/archive-layout.php`, `skins/slickr/manifest.php` — Same as rational-geo.
+- `core/manifest-inventory.php` — `smack-chaplin-film` and `smack-chaplin-overlay`
+  registered as named script entries.
+
+### Change — SmackBack settings button + SC dashboard fleet-count maintenance
+
+- `smack-settings.php` — "OPEN SMACKBACK" button moved out of the two-column MANAGE
+  grid to full width below the STATUS row.
+- `smack-central/sc-dashboard.php` — New "Maintenance" box with a guarded "Rebuild
+  Fleet Count" action that `TRUNCATE`s `sc_phone_home`. Clears stale spoke rows left
+  over from before the 0.7.200 spoke-skip fix, which were double-counting the Active
+  Installs tally (dashboard showed 16 vs the true ~8). Live hubs and standalone installs
+  re-populate the table on their next update check; spokes no longer ping independently.
+
+---
+
 ## 0.7.204 — "Neighbourhood Watch" (2026-06-04)
 
 ### Feature — Immediate push notifications on network breach
@@ -2681,3 +2772,5 @@ _Internal bump. See 0.7.5b for the full feature set._
 - The Grid skin (`skins/the-grid/`): Instagram-style 3-column square tile feed with full carousel post support. Configurable tile gap, corner radius, hover overlay style, optional profile header (avatar initials or image, post count, bio), and grid max-width (735/935/1080 px). Carousel view has swipe/arrow navigation, EXIF panel updating per-slide, and slide counter. Status: `stable`.
 - Image frame customisation for The Grid: a three-level style cascade giving photographers per-image control over image presentation. The skin admin `IMAGE FRAME` section sets the mode (`per_grid` / `per_carousel` / `per_image`) and style defaults. Controllable per image: size within the square (75–100% in 5% steps), border width (0–20 px), border colour, background colour, and drop shadow intensity (none / soft / medium / heavy). Framed tiles switch from `object-fit: cover` to flex-centred `contain` with a configurable background colour — the compositing work photographers previously did in Photoshop actions or phone apps. Schema: `migrate-image-style.sql` (see Migrations).
 - Hashtag system (`core/snap-tags.php`, `migrations/migrate-tags.sql`): `#hashtags` parsed from image descriptions at save time. `snap_extract_tags()` extracts slugs; `snap_sync_tags()` upserts to `snap_tags` and maintains `snap_image_tags` junction with rolling `use_count`. `snap_render_caption()` renders captions with `#tags` as tappable archive links. Hooks added to `sm
+
+<!-- ===== SNAPSMACK EOF ===== -->

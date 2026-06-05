@@ -9,6 +9,6 @@
  * SNAPSMACK_EOF_HEADER: bottom marker is  // ===== SNAPSMACK EOF =======  (last non-empty line)
  */
 
-define('SC_VERSION',  '0.7.206D');
-define('SC_CODENAME', 'Bodacious Bidet');
+define('SC_VERSION',  '0.7.207D');
+define('SC_CODENAME', 'Privy Council');
 // ===== SNAPSMACK EOF =====
