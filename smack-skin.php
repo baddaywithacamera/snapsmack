@@ -141,10 +141,24 @@ foreach ($skin_dirs as $dir) {
     }
 }
 
+// If the mode filter wiped out all skins (e.g. carousel site with no carousel skin
+// installed yet), fall back to unfiltered so the admin page stays accessible.
+if (empty($available_skins)) {
+    foreach ($skin_dirs as $dir) {
+        $slug = basename($dir);
+        if (defined('SNAPSMACK_MOBILE_SKIN') && $slug === SNAPSMACK_MOBILE_SKIN) continue;
+        if (file_exists($dir . '/manifest.php')) {
+            $temp = include $dir . '/manifest.php';
+            if (($temp['status'] ?? 'stable') === 'development') continue;
+            $available_skins[$slug] = $temp['name'] ?? ucfirst($slug);
+        }
+    }
+}
+
 $current_db_active = $settings['active_skin'] ?? array_key_first($available_skins);
 $target_skin       = $_GET['s'] ?? $current_db_active;
 if (!isset($available_skins[$target_skin])) $target_skin = array_key_first($available_skins);
-snapsmack_apply_skin_settings($settings, $target_skin);
+if ($target_skin) snapsmack_apply_skin_settings($settings, $target_skin);
 $manifest = include "skins/{$target_skin}/manifest.php";
 
 // --- 3. ENGINE RESOLUTION ---
