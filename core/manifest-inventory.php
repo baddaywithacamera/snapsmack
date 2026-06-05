@@ -784,6 +784,16 @@ return [
             'has_settings' => false,
             'admin_page'   => 'archive',
         ],
+        'smack-chaplin-film' => [
+            'label'        => 'Chaplin Film Effects Engine (scratches, flicker, grain)',
+            'path'         => 'skins/chaplin/assets/js/ss-engine-chaplin-film.js',
+            'has_settings' => false,
+        ],
+        'smack-chaplin-overlay' => [
+            'label'        => 'Chaplin Overlay Controller + Film Init',
+            'path'         => 'skins/chaplin/assets/js/ss-engine-chaplin-overlay.js',
+            'has_settings' => false,
+        ],
         'smack-lazyload' => [
             'label'        => 'Lazy Loading Engine (Progressive image loading)',
             'path'         => 'assets/js/ss-engine-lazyload.js',

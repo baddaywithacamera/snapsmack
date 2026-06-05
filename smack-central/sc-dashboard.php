@@ -7,6 +7,31 @@ require_once __DIR__ . '/sc-auth.php';
 $sc_active_nav = 'sc-dashboard.php';
 $sc_page_title = 'Dashboard';
 
+// ── POST: Maintenance — rebuild fleet count (purge phone-home table) ──
+// Clears sc_phone_home so stale spoke rows (recorded before the spoke-skip
+// fix) are removed. Live hubs + standalone installs re-ping on their next
+// update check; spokes no longer ping, so the rebuilt count is accurate.
+$sc_maint_msg = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['maint_action'] ?? '') === 'purge_phone_home') {
+    try {
+        sc_db()->exec("TRUNCATE TABLE sc_phone_home");
+        $msg = 'ok|Phone-home table cleared. Active Installs will rebuild as installs check in.';
+    } catch (Exception $e) {
+        $msg = 'err|Could not clear table: ' . $e->getMessage();
+    }
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    $_SESSION['sc_dash_maint'] = $msg;
+    header('Location: sc-dashboard.php?maint=1');
+    exit;
+}
+if (!empty($_GET['maint'])) {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    if (!empty($_SESSION['sc_dash_maint'])) {
+        $sc_maint_msg = $_SESSION['sc_dash_maint'];
+        unset($_SESSION['sc_dash_maint']);
+    }
+}
+
 // Quick stats
 $stats = ['installs' => 0, 'threads' => 0, 'replies' => 0, 'releases' => 0,
           'thomas_y' => 0, 'thomas_z' => 0, 'thomas_unique' => 0, 'thomas_sites' => 0];
@@ -100,6 +125,24 @@ require __DIR__ . '/sc-layout-top.php';
       <a href="sc-release.php" class="sc-btn">Release Packager</a>
       <a href="sc-forum.php"   class="sc-btn">Forum Admin</a>
     </div>
+  </div>
+</div>
+
+<div class="sc-box">
+  <div class="sc-box-header"><span class="sc-box-title">Maintenance</span></div>
+  <div class="sc-box-body">
+    <?php if ($sc_maint_msg):
+        [$mtype, $mtext] = array_pad(explode('|', $sc_maint_msg, 2), 2, ''); ?>
+      <p style="margin-top:0;color:<?php echo $mtype === 'ok' ? '#5a9a5a' : '#cc2200'; ?>;">
+        <?php echo htmlspecialchars($mtext); ?></p>
+    <?php endif; ?>
+    <p class="sc-dim">Rebuild the Active Installs tally. Clears the phone-home table so
+       stale spoke rows are removed; live hubs and standalone installs re-populate it on
+       their next update check. Spokes are excluded by design and will not be double-counted.</p>
+    <form method="post" onsubmit="return confirm('Clear the phone-home table and rebuild the fleet count?\n\nActive Installs will read low until installs check back in.');">
+      <input type="hidden" name="maint_action" value="purge_phone_home">
+      <button type="submit" class="sc-btn">Rebuild Fleet Count</button>
+    </form>
   </div>
 </div>
 

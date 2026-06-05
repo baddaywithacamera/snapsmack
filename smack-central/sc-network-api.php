@@ -264,11 +264,6 @@ if ($route === 'unregister' && $method === 'POST') {
     if (!$site_url || strlen($push_token) !== 64) na_err('Missing site_url or push_token.', 422);
 
     try {
-        // Fetch stored token — constant-time comparison before delete
-        $stored = $db->prepare("SELECT push_token FROM sc_push_subscribers WHERE site_url = ?")->execute([$site_url])
-            ? $db->query("SELECT push_token FROM sc_push_subscribers WHERE site_url = " . $db->quote($site_url))->fetchColumn()
-            : '';
-
         $stmt = $db->prepare("SELECT push_token FROM sc_push_subscribers WHERE site_url = ?");
         $stmt->execute([$site_url]);
         $row = $stmt->fetch();

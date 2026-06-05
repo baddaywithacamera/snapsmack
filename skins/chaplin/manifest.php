@@ -62,6 +62,9 @@ return [
         'smack-lightbox',
         'smack-keyboard',
         'smack-community',
+        'smack-archive-toggle',
+        'smack-chaplin-film',
+        'smack-chaplin-overlay',
     ],
 
     'options' => [

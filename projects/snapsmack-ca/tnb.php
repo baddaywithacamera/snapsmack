@@ -124,6 +124,28 @@ include __DIR__ . '/includes/header.php';
                 <p>If your blog has SMACK UP enabled, you should disclose to your own visitors that when a commenter is banned, a writing style fingerprint derived from their comments may be transmitted to the SMACK CENTRAL network. The actual comment text is never transmitted — only the derived numeric fingerprint. You can copy and adapt the language above for your own privacy policy.</p>
             </div>
 
+            <h2>When you opt into Network Alert</h2>
+            <p>Network Alert is SnapSmack's coordinated breach warning system. If Smack Central detects a file-integrity breach affecting multiple installations simultaneously — suggesting a coordinated attack rather than an isolated incident — it broadcasts a YELLOW alert to all opted-in sites. Participation is entirely voluntary. You can receive alerts without sending anything.</p>
+
+            <p><strong>Receiving alerts (polling):</strong> If you opt in to receive, your site periodically checks snapsmack.ca for the current alert level. This is a one-way read — your site asks, Smack Central responds, nothing is transmitted about your site in the process.</p>
+
+            <p><strong>Contributing breach reports:</strong> If you opt in to send, your site will transmit a report to Smack Central when your local SMACKBACK file integrity monitor detects a breach. Here is exactly what that report contains:</p>
+            <ul>
+                <li>Your site's name and URL.</li>
+                <li>Your server's IP address.</li>
+                <li>A list of affected file paths and their SHA-256 checksums.</li>
+                <li>Timestamps.</li>
+            </ul>
+            <p>No post content, no visitor data, no admin credentials are included.</p>
+
+            <p><strong>Immediate push notifications:</strong> Enabling push notifications lets Smack Central contact your site directly the moment a coordinated breach is confirmed — instead of waiting for your site's next scheduled poll. When you enable this, your site registers with Smack Central by transmitting:</p>
+            <ul>
+                <li>Your site's URL and name.</li>
+                <li>A push token — a randomly generated 64-character string created locally on your server. It is never derived from your URL or any identifying information. Smack Central stores this token to authenticate incoming pushes so no third party can spoof a network alert to your site.</li>
+                <li>The URL of your push endpoint (<code>network-alert-push.php</code>), which is where Smack Central delivers alerts.</li>
+            </ul>
+            <p>To opt out of push notifications, turn off the toggle and save. Your site will send a deletion request to Smack Central on every admin page load until Smack Central confirms removal. You can verify removal by contacting <a href="mailto:privacy@snapsmack.ca">privacy@snapsmack.ca</a>.</p>
+
             <h2>When you opt into the community forum</h2>
             <p>The SnapSmack community forum is a place for site owners to talk to each other. When you connect your site to the forum:</p>
             <ul>
@@ -166,7 +188,7 @@ include __DIR__ . '/includes/header.php';
             })();
             </script>
 
-            <p class="updated">Last updated: June 2026</p>
+            <p class="updated">Last updated: June 4, 2026</p>
 
         </div>
     </div>
