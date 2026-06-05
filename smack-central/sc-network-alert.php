@@ -15,6 +15,7 @@
 // Missing or different = truncated/corrupted. Restore before saving.
 
 require_once __DIR__ . '/sc-auth.php';
+require_once __DIR__ . '/sc-network-fanout.php';
 $sc_active_nav = 'sc-network-alert.php';
 $sc_page_title = 'Network Alert';
 
@@ -38,7 +39,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             "UPDATE sc_network_alert_state SET level = ?, message = ?, set_by = 'manual' WHERE id = 1"
         )->execute([$level, $message]);
 
-        $msg = 'Alert level set to ' . strtoupper($level) . '.';
+        // Fan-out immediately to all push subscribers
+        $set_at = $db->query("SELECT set_at FROM sc_network_alert_state WHERE id = 1")->fetchColumn();
+        na_fanout($db, $level, $message, (string)$set_at);
+
+        $sub_count = (int)$db->query("SELECT COUNT(*) FROM sc_push_subscribers WHERE push_failures < 5")->fetchColumn();
+        $msg = 'Alert level set to ' . strtoupper($level) . '.'
+             . ($sub_count > 0 ? " Push sent to {$sub_count} subscriber(s)." : '');
+    }
+
+    // Manual push to all subscribers without changing level
+    if (isset($_POST['manual_push'])) {
+        $state = $db->query("SELECT * FROM sc_network_alert_state WHERE id = 1")->fetch();
+        if ($state) {
+            na_fanout($db, $state['level'], $state['message'], $state['set_at']);
+            $sub_count = (int)$db->query("SELECT COUNT(*) FROM sc_push_subscribers WHERE push_failures < 5")->fetchColumn();
+            $msg = "Manual push sent to {$sub_count} subscriber(s).";
+        }
     }
 
     // Mark a report reviewed
@@ -91,6 +108,16 @@ $reports = $db->query(
     "SELECT * FROM sc_network_alert_reports ORDER BY received_at DESC LIMIT 100"
 )->fetchAll();
 
+// Push subscriber stats
+$push_subs       = [];
+$push_sub_count  = 0;
+$push_fail_count = 0;
+try {
+    $push_subs       = $db->query("SELECT * FROM sc_push_subscribers ORDER BY registered_at DESC LIMIT 100")->fetchAll();
+    $push_sub_count  = (int)$db->query("SELECT COUNT(*) FROM sc_push_subscribers WHERE push_failures < 5")->fetchColumn();
+    $push_fail_count = (int)$db->query("SELECT COUNT(*) FROM sc_push_subscribers WHERE push_failures >= 5")->fetchColumn();
+} catch (PDOException $e) { }
+
 // Stats
 $total_reports  = (int)$db->query("SELECT COUNT(*) FROM sc_network_alert_reports")->fetchColumn();
 $unreviewed     = (int)$db->query("SELECT COUNT(*) FROM sc_network_alert_reports WHERE reviewed = 0")->fetchColumn();
@@ -141,7 +168,7 @@ require __DIR__ . '/sc-layout-top.php';
     </div>
     <?php endif; ?>
 
-    <div class="sc-stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">
+    <div class="sc-stat-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px;">
       <div class="sc-stat">
         <div class="sc-stat__val"><?php echo $total_reports; ?></div>
         <div class="sc-stat__label">Total Reports</div>
@@ -157,6 +184,10 @@ require __DIR__ . '/sc-layout-top.php';
       <div class="sc-stat">
         <div class="sc-stat__val" style="<?php echo $distinct_2h >= 5 ? 'color:#ffcc00' : ($distinct_2h >= 2 ? 'color:#cc9900' : ''); ?>"><?php echo $distinct_2h; ?></div>
         <div class="sc-stat__label">Distinct IPs (2h)</div>
+      </div>
+      <div class="sc-stat">
+        <div class="sc-stat__val" style="color:#5c9cff;"><?php echo $push_sub_count; ?></div>
+        <div class="sc-stat__label">Push Subscribers</div>
       </div>
     </div>
 
@@ -267,6 +298,58 @@ require __DIR__ . '/sc-layout-top.php';
                 <input type="hidden" name="report_id" value="<?php echo (int)$r['id']; ?>">
                 <button type="submit" name="mark_reviewed" value="1" class="sc-btn sc-btn--sm">Review</button>
               </form>
+              <?php endif; ?>
+            </td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
+    <?php endif; ?>
+  </div>
+</div>
+
+<!-- ── PUSH SUBSCRIBERS ───────────────────────────────────────────────────── -->
+<div class="sc-box">
+  <div class="sc-box-header">
+    <span class="sc-box-title">Push Subscribers</span>
+    <span class="sc-dim" style="font-size:0.8rem;"><?php echo $push_sub_count; ?> active<?php echo $push_fail_count > 0 ? " &bull; {$push_fail_count} failed (auto-pruned at 5 failures)" : ''; ?></span>
+    <?php if ($push_sub_count > 0): ?>
+    <form method="post" style="display:inline;margin-left:auto;">
+      <button type="submit" name="manual_push" value="1" class="sc-btn">
+        &#9654; Push Current Level Now
+      </button>
+    </form>
+    <?php endif; ?>
+  </div>
+  <div class="sc-box-body" style="padding:0;">
+    <?php if (empty($push_subs)): ?>
+      <div style="padding:20px;color:#666;">No subscribers registered yet. Installs opt in via Admin → SMACKBACK → Network Alert.</div>
+    <?php else: ?>
+      <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+        <thead>
+          <tr style="border-bottom:1px solid #2a2a2a;">
+            <th style="padding:10px 16px;text-align:left;color:#666;font-weight:600;">Site</th>
+            <th style="padding:10px 16px;text-align:left;color:#666;font-weight:600;">Registered</th>
+            <th style="padding:10px 16px;text-align:left;color:#666;font-weight:600;">Last Push</th>
+            <th style="padding:10px 16px;text-align:left;color:#666;font-weight:600;">Failures</th>
+          </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($push_subs as $s): ?>
+          <tr style="border-bottom:1px solid #1e1e1e;<?php echo $s['push_failures'] >= 3 ? 'background:#1a0000;' : ''; ?>">
+            <td style="padding:8px 16px;">
+              <div style="font-weight:600;color:#ddd;"><?php echo htmlspecialchars($s['site_name'] ?: '—'); ?></div>
+              <div style="font-size:0.78rem;color:#555;"><?php echo htmlspecialchars($s['site_url']); ?></div>
+            </td>
+            <td style="padding:8px 16px;color:#666;white-space:nowrap;"><?php echo htmlspecialchars($s['registered_at']); ?></td>
+            <td style="padding:8px 16px;color:#666;white-space:nowrap;"><?php echo $s['last_push_at'] ? htmlspecialchars($s['last_push_at']) : '<span style="color:#444;">Never</span>'; ?></td>
+            <td style="padding:8px 16px;">
+              <?php if ($s['push_failures'] === 0): ?>
+                <span style="color:#5a9a5a;">&#10003;</span>
+              <?php elseif ($s['push_failures'] < 3): ?>
+                <span style="color:#cc9900;"><?php echo (int)$s['push_failures']; ?></span>
+              <?php else: ?>
+                <span style="color:#e45735;font-weight:700;"><?php echo (int)$s['push_failures']; ?> &#9888;</span>
               <?php endif; ?>
             </td>
           </tr>

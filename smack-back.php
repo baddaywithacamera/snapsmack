@@ -212,9 +212,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['save_settings'] ?? '') ===
 // SAVE NETWORK ALERT SETTINGS
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['save_nalert'] ?? '') === '1') {
     require_once 'core/network-alert.php';
-    $na_send    = ($_POST['network_alert_send']    ?? '0') === '1' ? '1' : '0';
-    $na_receive = ($_POST['network_alert_receive'] ?? '0') === '1' ? '1' : '0';
-    $na_sc_url  = trim($_POST['network_alert_sc_url'] ?? 'https://snapsmack.ca');
+    $na_send        = ($_POST['network_alert_send']    ?? '0') === '1' ? '1' : '0';
+    $na_receive     = ($_POST['network_alert_receive'] ?? '0') === '1' ? '1' : '0';
+    $na_sc_url      = trim($_POST['network_alert_sc_url'] ?? 'https://snapsmack.ca');
+    $na_push_enable = ($_POST['network_alert_push_enabled'] ?? '0') === '1';
     if (empty($na_sc_url)) $na_sc_url = 'https://snapsmack.ca';
 
     $na_up = $pdo->prepare(
@@ -224,6 +225,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['save_nalert'] ?? '') === '
     $na_up->execute(['network_alert_send',    $na_send]);
     $na_up->execute(['network_alert_receive', $na_receive]);
     $na_up->execute(['network_alert_sc_url',  $na_sc_url]);
+
+    // ── Push subscription ─────────────────────────────────────────────────────
+    // Load current push state to detect a change
+    $cur_push_rows = $pdo->query(
+        "SELECT setting_key, setting_val FROM snap_settings
+         WHERE setting_key IN ('network_alert_push_enabled','network_alert_push_registered')"
+    )->fetchAll(PDO::FETCH_KEY_PAIR);
+    $was_push_enabled    = ($cur_push_rows['network_alert_push_enabled'] ?? '0') === '1';
+    $is_push_registered  = ($cur_push_rows['network_alert_push_registered'] ?? '0') === '1';
+
+    if ($na_push_enable && !$was_push_enabled) {
+        // Turning on: save enabled flag, then register with SC
+        $na_up->execute(['network_alert_push_enabled', '1']);
+        $na_up->execute(['network_alert_push_unregister_pending', '0']);
+        nalert_register_push($na_sc_url);
+    } elseif (!$na_push_enable && $was_push_enabled) {
+        // Turning off: mark unregister pending, attempt now, clear if successful
+        $na_up->execute(['network_alert_push_enabled',            '0']);
+        $na_up->execute(['network_alert_push_unregister_pending', '1']);
+        if ($is_push_registered) {
+            nalert_unregister_push($na_sc_url);
+        }
+    }
+    // No change — leave push state alone
 
     header('Location: smack-back.php?msg=Network+alert+settings+saved.');
     exit;
@@ -268,6 +293,23 @@ $skin_allow_custom_js    = ($settings['skin_allow_custom_js'] ?? '0') === '1';
 
 require_once 'core/network-alert.php';
 $na = nalert_get_local();
+
+// Push subscription state
+$na_push_rows = [];
+try {
+    $na_push_rows = $pdo->query(
+        "SELECT setting_key, setting_val FROM snap_settings
+         WHERE setting_key IN (
+             'network_alert_push_enabled',
+             'network_alert_push_registered',
+             'network_alert_push_unregister_pending'
+         )"
+    )->fetchAll(PDO::FETCH_KEY_PAIR);
+} catch (PDOException $e) { }
+$na_push_enabled    = ($na_push_rows['network_alert_push_enabled']            ?? '0') === '1';
+$na_push_registered = ($na_push_rows['network_alert_push_registered']         ?? '0') === '1';
+$na_push_unregpend  = ($na_push_rows['network_alert_push_unregister_pending'] ?? '0') === '1';
+
 $na_status_labels = [
     'green'       => '<span style="color:var(--success,#5a9a5a)">&#9679; Green — no advisory</span>',
     'yellow_slow' => '<span style="color:#cc9900">&#9679; YELLOW (advisory) — network-wide alert active</span>',
@@ -611,6 +653,45 @@ include 'core/sidebar.php';
                     <input type="url" name="network_alert_sc_url" value="<?php echo htmlspecialchars($na['sc_url']); ?>">
                 </div>
             </div>
+
+            <!-- ── PUSH NOTIFICATIONS ──────────────────────────────────────── -->
+            <div style="margin-top:24px;border-top:1px solid var(--border,#2a2a2a);padding-top:20px;">
+                <div style="display:flex;align-items:flex-start;gap:16px;">
+                    <label class="toggle-switch" style="flex-shrink:0;margin-top:2px;">
+                        <input type="checkbox" name="network_alert_push_enabled" value="1"<?php echo $na_push_enabled ? ' checked' : ''; ?> id="nalert-push-toggle">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <div>
+                        <div style="font-weight:700;font-size:0.88rem;letter-spacing:0.05em;margin-bottom:6px;">
+                            IMMEDIATE BREACH PUSH NOTIFICATIONS
+                            <?php if ($na_push_enabled && $na_push_registered): ?>
+                                <span style="color:var(--success,#5a9a5a);font-size:0.75rem;font-weight:400;margin-left:8px;">&#10003; Registered with SC</span>
+                            <?php elseif ($na_push_enabled && !$na_push_registered): ?>
+                                <span style="color:#cc9900;font-size:0.75rem;font-weight:400;margin-left:8px;">&#9888; Registration pending</span>
+                            <?php elseif ($na_push_unregpend): ?>
+                                <span style="color:#cc9900;font-size:0.75rem;font-weight:400;margin-left:8px;">&#9888; Removal pending SC confirmation</span>
+                            <?php endif; ?>
+                        </div>
+                        <div style="font-size:0.82rem;line-height:1.7;color:var(--text-dim,#888);max-width:640px;">
+                            When enabled, Smack Central will push an alert directly to this site the moment
+                            a coordinated breach is detected across the network — instead of waiting up to
+                            30 minutes for the next poll.
+                        </div>
+                        <div style="margin-top:10px;padding:12px 16px;background:var(--bg-offset,#111);border-left:3px solid #cc9900;font-size:0.8rem;line-height:1.8;color:var(--text-dim,#888);max-width:640px;">
+                            <strong style="color:var(--text,#ddd);display:block;margin-bottom:4px;">&#9432; Privacy disclosure — read before enabling</strong>
+                            Enabling this transmits your <strong>site URL</strong> and <strong>site name</strong> to Smack Central,
+                            where they are stored to enable delivery. A unique push token (generated locally on your server,
+                            never derived from your URL) is also stored — SC uses it to authenticate pushes so no other party
+                            can spoof a network alert to your site.<br><br>
+                            This is the <strong>only</strong> information retained. No visitor data, no post content, no admin credentials.<br><br>
+                            <strong>To opt out:</strong> turn this off and save. Your site will send a deletion request to SC on every admin
+                            page load until SC confirms the record has been removed. You can verify removal by contacting
+                            <a href="mailto:privacy@snapsmack.ca" style="color:var(--accent,#0af);">privacy@snapsmack.ca</a>.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-action-row">
                 <button type="submit" class="master-update-btn">SAVE NETWORK ALERT SETTINGS</button>
             </div>

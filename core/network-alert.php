@@ -153,20 +153,25 @@ function nalert_maybe_poll(): void {
              WHERE setting_key IN (
                  'network_alert_receive',
                  'network_alert_last_checked',
-                 'network_alert_sc_url'
+                 'network_alert_sc_url',
+                 'network_alert_push_unregister_pending'
              )"
         )->fetchAll(PDO::FETCH_KEY_PAIR);
     } catch (PDOException $e) {
         return;
     }
 
+    $sc_url = rtrim($rows['network_alert_sc_url'] ?? 'https://snapsmack.ca', '/');
+
+    // Always retry a pending unregister — independent of poll throttle
+    nalert_maybe_retry_unregister($sc_url);
+
     // Only poll if receive is opted in
     if (($rows['network_alert_receive'] ?? '0') !== '1') {
         return;
     }
 
-    $last   = $rows['network_alert_last_checked'] ?? '';
-    $sc_url = rtrim($rows['network_alert_sc_url'] ?? 'https://snapsmack.ca', '/');
+    $last = $rows['network_alert_last_checked'] ?? '';
 
     // 30-minute throttle
     if ($last && (time() - strtotime($last) < 1800)) {
@@ -273,6 +278,190 @@ function nalert_send_report(
 
     if (!$resp || ($code !== 200 && $code !== 202)) {
         error_log("NETWORK ALERT: SC report failed — HTTP {$code}");
+    }
+}
+
+
+// ─── PUSH SUBSCRIPTION ───────────────────────────────────────────────────────
+
+/**
+ * Generate a cryptographically random 64-char hex push token.
+ * Stored locally; never changes after first generation.
+ */
+function nalert_generate_push_token(): string {
+    return bin2hex(random_bytes(32));
+}
+
+/**
+ * Register this install for SC push notifications.
+ * POSTs site_url, site_name, uid, and push_token to SC.
+ * On success, marks network_alert_push_registered = 1.
+ * On failure, silently no-ops — retry happens on next admin load.
+ *
+ * @param string $sc_url  Base SC URL (no trailing slash).
+ */
+function nalert_register_push(string $sc_url): void {
+    global $pdo;
+
+    if (!function_exists('curl_init')) return;
+
+    try {
+        $rows = $pdo->query(
+            "SELECT setting_key, setting_val FROM snap_settings
+             WHERE setting_key IN (
+                 'network_alert_push_token',
+                 'network_alert_push_registered',
+                 'site_url', 'site_name', 'thomas_uid'
+             )"
+        )->fetchAll(PDO::FETCH_KEY_PAIR);
+    } catch (PDOException $e) { return; }
+
+    // Generate token if missing
+    $token = $rows['network_alert_push_token'] ?? '';
+    if (!$token || strlen($token) !== 64) {
+        $token = nalert_generate_push_token();
+        try {
+            $pdo->prepare(
+                "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('network_alert_push_token', ?)
+                 ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+            )->execute([$token]);
+        } catch (PDOException $e) { return; }
+    }
+
+    $site_url  = rtrim($rows['site_url']  ?? '', '/');
+    $site_name = $rows['site_name'] ?? '';
+    $uid       = preg_replace('/[^a-f0-9]/', '', strtolower($rows['thomas_uid'] ?? ''));
+    $push_url  = $site_url . '/network-alert-push.php';
+
+    $payload = json_encode([
+        'uid'        => $uid,
+        'site_url'   => $site_url,
+        'site_name'  => $site_name,
+        'push_token' => $token,
+        'push_url'   => $push_url,
+    ]);
+
+    $ch = curl_init(rtrim($sc_url, '/') . '/sc-network-api.php?route=register');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_CONNECTTIMEOUT => 4,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'User-Agent: SnapSmack-NetworkAlert/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
+        ],
+    ]);
+
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($resp && $code === 200) {
+        $data = json_decode($resp, true);
+        if (!empty($data['registered'])) {
+            try {
+                $pdo->prepare(
+                    "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('network_alert_push_registered', '1')
+                     ON DUPLICATE KEY UPDATE setting_val = '1'"
+                )->execute();
+            } catch (PDOException $e) { /* non-fatal */ }
+        }
+    }
+}
+
+/**
+ * Unregister this install from SC push notifications.
+ * On success, clears token and pending flag.
+ * On failure, leaves network_alert_push_unregister_pending = 1 for retry.
+ *
+ * @param string $sc_url  Base SC URL (no trailing slash).
+ */
+function nalert_unregister_push(string $sc_url): void {
+    global $pdo;
+
+    if (!function_exists('curl_init')) return;
+
+    try {
+        $rows = $pdo->query(
+            "SELECT setting_key, setting_val FROM snap_settings
+             WHERE setting_key IN ('network_alert_push_token', 'site_url')"
+        )->fetchAll(PDO::FETCH_KEY_PAIR);
+    } catch (PDOException $e) { return; }
+
+    $token    = $rows['network_alert_push_token'] ?? '';
+    $site_url = rtrim($rows['site_url'] ?? '', '/');
+
+    if (!$token || !$site_url) {
+        // Nothing registered — clear pending flag and bail
+        _nalert_clear_push_state($pdo);
+        return;
+    }
+
+    $payload = json_encode(['site_url' => $site_url, 'push_token' => $token]);
+
+    $ch = curl_init(rtrim($sc_url, '/') . '/sc-network-api.php?route=unregister');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_CONNECTTIMEOUT => 4,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'User-Agent: SnapSmack-NetworkAlert/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
+        ],
+    ]);
+
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($resp && $code === 200) {
+        $data = json_decode($resp, true);
+        if (!empty($data['unregistered'])) {
+            _nalert_clear_push_state($pdo);
+        }
+    }
+    // On failure: pending flag stays set; retry fires on next admin load
+}
+
+/** @internal Clear all push state after successful unregister. */
+function _nalert_clear_push_state(PDO $pdo): void {
+    try {
+        $clear = $pdo->prepare(
+            "INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+        );
+        $clear->execute(['network_alert_push_enabled',            '0']);
+        $clear->execute(['network_alert_push_token',              '']);
+        $clear->execute(['network_alert_push_registered',         '0']);
+        $clear->execute(['network_alert_push_unregister_pending', '0']);
+    } catch (PDOException $e) { /* non-fatal */ }
+}
+
+/**
+ * Check for a pending unregister request and retry it.
+ * Called from nalert_maybe_poll() — runs on every admin page load,
+ * independent of the 30-minute poll throttle.
+ *
+ * @param string $sc_url
+ */
+function nalert_maybe_retry_unregister(string $sc_url): void {
+    global $pdo;
+    try {
+        $pending = $pdo->query(
+            "SELECT setting_val FROM snap_settings WHERE setting_key = 'network_alert_push_unregister_pending'"
+        )->fetchColumn();
+    } catch (PDOException $e) { return; }
+
+    if ($pending === '1') {
+        nalert_unregister_push($sc_url);
     }
 }
 

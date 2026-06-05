@@ -12,6 +12,58 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.204 — "Neighbourhood Watch" (2026-06-04)
+
+### Feature — Immediate push notifications on network breach
+
+- `network-alert-push.php` — New public endpoint on spoke installs. Smack Central calls this
+  directly when a network-wide breach is detected, delivering alerts in seconds rather than
+  waiting up to 30 minutes for the next poll cycle. Validates SC pushes via a per-install
+  64-char hex push token (generated locally, constant-time compared). Rate-limited at 10/min by IP.
+- `smack-back.php` — New "Immediate Breach Push Notifications" toggle in the Network Alert section.
+  Full privacy disclosure: opt-in transmits site URL and site name to SC for push delivery.
+  Shows live registration status. Opt-out triggers a deletion request loop that retries on every
+  admin page load until SC confirms removal.
+- `core/network-alert.php` — `nalert_register_push()` and `nalert_unregister_push()` handle SC
+  registration handshake. `nalert_maybe_retry_unregister()` retries pending removals independently
+  of the 30-minute poll throttle. Token generation via `random_bytes(32)`.
+- `smack-central/sc-network-api.php` / `projects/snapsmack-ca/sc-network-api.php` — New
+  `?route=register` and `?route=unregister` routes. host-match validation on push_url prevents
+  register-then-redirect attacks. Unregister uses `hash_equals()` and returns 200 regardless of
+  match to avoid record enumeration. Auto-escalation fan-out now uses `fastcgi_finish_request()`
+  so breach-reporting installs aren't blocked while SC fans out.
+- `smack-central/sc-network-fanout.php` — Shared curl_multi fan-out helper. Parallel delivery
+  to all subscribers with 6s timeout per request. Auto-prunes subscribers at 5 consecutive
+  delivery failures. Used by both the public API (auto-escalation) and admin console (manual push).
+- `smack-central/sc-network-alert.php` — Push Subscribers panel: active count, per-site last-push
+  timestamp, failure count (highlighted red at 3+), manual push button. Fan-out fires immediately
+  when Sean sets a new alert level via the admin UI.
+- `smack-central/schemas/sc-smackcent-canonical.sql` — New `sc_push_subscribers` table.
+- `migrations/migrate-network-alert-push.sql` — Seeds four new `snap_settings` keys.
+- `core/updater.php` — Migration registered in `UPDATER_KNOWN_MIGRATIONS`.
+
+### Fix — SC self-updater now deploys web-root files and uses correct schema
+
+- `smack-central/sc-update.php` — Pull now copies `projects/snapsmack-ca/` files to the
+  snapsmack.ca web root (step 3b) in addition to `smack-central/`. Skips release zips,
+  `.gitignore`, and `.sc-sessions/`. This means SC endpoints like `sc-network-api.php`
+  at the web root self-update on pull — no manual FTP needed.
+- Schema sync step now reads `schemas/sc-smackcent-canonical.sql` (the authoritative
+  canonical file used by Schema Manager) instead of the legacy 78-line `sc-schema.sql`
+  stub. New tables like `sc_push_subscribers` and `sc_network_alert_state` are now
+  created automatically on SC pull.
+
+### Fix — Network Alert API accessible at correct public URL
+
+- `projects/snapsmack-ca/sc-network-api.php` — New file at the snapsmack.ca web root.
+  The spoke-side network alert poller defaults to `https://snapsmack.ca/sc-network-api.php`
+  but the API only existed inside `smack-central/` (served at `/smack-central/sc-network-api.php`).
+  All polls were silently 404-ing, so no installs were receiving SC broadcast alerts or sending
+  breach reports. Root-level file now resolves correctly with adjusted include paths
+  (matches ping.php pattern). Both status and report routes present; auto-escalation logic intact.
+
+---
+
 ## 0.7.203 — "Push It Real Good" (2026-06-04)
 
 ### Security — Hub/spoke attack surface (audit 021 F4, F5, F6)

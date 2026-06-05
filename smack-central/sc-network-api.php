@@ -23,6 +23,7 @@
 
 require_once __DIR__ . '/sc-config.php';
 require_once __DIR__ . '/sc-db.php';
+require_once __DIR__ . '/sc-network-fanout.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache');
@@ -164,8 +165,21 @@ if ($route === 'report' && $method === 'POST') {
                      set_by = 'auto'
                  WHERE id = 1"
             )->execute(['Coordinated breach activity detected across the SnapSmack network.']);
+
+            // Push escalation to all subscribers immediately
+            // Flush response first so the reporting install doesn't wait
+            ob_start();
+            na_ok(['received' => true]);
+            $out = ob_get_clean();
+            echo $out;
+            if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+            else { header('Content-Length: ' . strlen($out)); flush(); }
+
+            $new_state = na_get_state($db);
+            na_fanout($db, $new_state['level'], $new_state['message'], $new_state['set_at']);
+            exit;
+
         } elseif ($distinct_ips >= 2 && $current === 'green') {
-            // 2–4 distinct IPs: escalate to yellow_slow automatically
             $db->prepare(
                 "UPDATE sc_network_alert_state
                  SET level = 'yellow_slow',
@@ -173,10 +187,105 @@ if ($route === 'report' && $method === 'POST') {
                      set_by = 'auto'
                  WHERE id = 1"
             )->execute(['Elevated breach activity reported on the SnapSmack network. Monitor your site.']);
+
+            ob_start();
+            na_ok(['received' => true]);
+            $out = ob_get_clean();
+            echo $out;
+            if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+            else { header('Content-Length: ' . strlen($out)); flush(); }
+
+            $new_state = na_get_state($db);
+            na_fanout($db, $new_state['level'], $new_state['message'], $new_state['set_at']);
+            exit;
         }
     }
 
     na_ok(['received' => true]);
+}
+
+// ─── POST ?route=register ──────────────────────────────────────────────────────
+// Spoke opts in to receive push notifications. Stores site_url, site_name,
+// push_token, and push_url. Upserts on site_url — safe to re-call.
+
+if ($route === 'register' && $method === 'POST') {
+    $body = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($body)) na_err('Invalid JSON.', 400);
+
+    $uid        = preg_replace('/[^a-f0-9]/', '', strtolower((string)($body['uid']        ?? '')));
+    $site_url   = substr(trim((string)($body['site_url']   ?? '')), 0, 500);
+    $site_name  = substr(trim((string)($body['site_name']  ?? '')), 0, 255);
+    $push_token = preg_replace('/[^a-f0-9]/', '', strtolower((string)($body['push_token'] ?? '')));
+    $push_url   = substr(trim((string)($body['push_url']   ?? '')), 0, 600);
+
+    // Validate
+    if (!filter_var($site_url, FILTER_VALIDATE_URL))  na_err('Invalid site_url.', 422);
+    if (strlen($push_token) !== 64)                   na_err('Invalid push_token (must be 64 hex chars).', 422);
+    if (!filter_var($push_url, FILTER_VALIDATE_URL))  na_err('Invalid push_url.', 422);
+    // push_url must be on the same host as site_url
+    if (parse_url($push_url, PHP_URL_HOST) !== parse_url($site_url, PHP_URL_HOST)) {
+        na_err('push_url host must match site_url host.', 422);
+    }
+
+    try {
+        $db->prepare(
+            "INSERT INTO sc_push_subscribers (uid, site_url, site_name, push_token, push_url)
+             VALUES (?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                 uid        = VALUES(uid),
+                 site_name  = VALUES(site_name),
+                 push_token = VALUES(push_token),
+                 push_url   = VALUES(push_url),
+                 push_failures = 0"
+        )->execute([
+            substr($uid, 0, 32),
+            $site_url,
+            $site_name,
+            $push_token,
+            $push_url,
+        ]);
+    } catch (PDOException $e) {
+        na_err('Registration failed.', 500);
+    }
+
+    na_ok(['registered' => true]);
+}
+
+// ─── POST ?route=unregister ────────────────────────────────────────────────────
+// Spoke opts out. Validates push_token before deleting — prevents third-party removal.
+
+if ($route === 'unregister' && $method === 'POST') {
+    $body = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($body)) na_err('Invalid JSON.', 400);
+
+    $site_url   = substr(trim((string)($body['site_url']   ?? '')), 0, 500);
+    $push_token = preg_replace('/[^a-f0-9]/', '', strtolower((string)($body['push_token'] ?? '')));
+
+    if (!$site_url || strlen($push_token) !== 64) na_err('Missing site_url or push_token.', 422);
+
+    try {
+        // Fetch stored token — constant-time comparison before delete
+        $stored = $db->prepare("SELECT push_token FROM sc_push_subscribers WHERE site_url = ?")->execute([$site_url])
+            ? $db->query("SELECT push_token FROM sc_push_subscribers WHERE site_url = " . $db->quote($site_url))->fetchColumn()
+            : '';
+
+        $stmt = $db->prepare("SELECT push_token FROM sc_push_subscribers WHERE site_url = ?");
+        $stmt->execute([$site_url]);
+        $row = $stmt->fetch();
+
+        if (!$row || !hash_equals($row['push_token'], $push_token)) {
+            // Return 200 even on mismatch — don't reveal whether record exists
+            na_ok(['unregistered' => true]);
+        }
+
+        $db->prepare("DELETE FROM sc_push_subscribers WHERE site_url = ? AND push_token = ?")
+           ->execute([$site_url, $push_token]);
+
+    } catch (PDOException $e) {
+        na_err('Unregister failed.', 500);
+    }
+
+    na_ok(['unregistered' => true]);
 }
 
 // Unknown route
