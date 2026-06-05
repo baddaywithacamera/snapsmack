@@ -130,29 +130,5 @@ $_chap_initial_thumbs = ($_chap_cur !== 'masonry');
     <?php endif; ?>
 </div>
 
-<script>
-(function() {
-    'use strict';
-    var browseGrid    = document.getElementById('browse-grid');
-    var justifiedGrid = document.getElementById('justified-grid');
 
-    function applyLayout(layout) {
-        if (!browseGrid || !justifiedGrid) return;
-        if (layout === 'masonry') {
-            browseGrid.style.display    = 'none';
-            justifiedGrid.style.display = 'block';
-        } else {
-            browseGrid.style.display    = 'grid';
-            justifiedGrid.style.display = 'none';
-        }
-    }
-
-    var initial = document.documentElement.getAttribute('data-archive-layout') || 'thumbs';
-    applyLayout(initial);
-
-    document.addEventListener('smackarchive:layoutchange', function (e) {
-        applyLayout((e.detail && e.detail.layout) || 'thumbs');
-    });
-}());
-</script>
 <?php // ===== SNAPSMACK EOF =====

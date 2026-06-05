@@ -58,6 +58,7 @@ return [
         'smack-justified',
         'smack-community',
         'smack-calendar',
+        'smack-archive-toggle',
     ],
 
     'community_comments'  => '1',

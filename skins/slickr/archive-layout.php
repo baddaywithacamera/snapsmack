@@ -144,32 +144,4 @@ $show_map_bg = ($settings['show_map_background'] ?? '1') === '1';
         </div>
     <?php endif; ?>
 </div>
-<script>
-// 0.7.79: rational-geo archive — react to <html data-archive-layout> changes.
-// The [T]/[M] toggle in core archive.php updates that attribute; we just
-// show/hide the matching grid. No own toggle, no own localStorage key.
-(function() {
-    'use strict';
-    var browseGrid    = document.getElementById('browse-grid');
-    var justifiedGrid = document.getElementById('justified-grid');
-
-    function applyLayout(layout) {
-        if (!browseGrid || !justifiedGrid) return;
-        if (layout === 'masonry') {
-            browseGrid.style.display    = 'none';
-            justifiedGrid.style.display = 'block';
-        } else {
-            browseGrid.style.display    = 'grid';
-            justifiedGrid.style.display = 'none';
-        }
-    }
-
-    var initial = document.documentElement.getAttribute('data-archive-layout') || 'thumbs';
-    applyLayout(initial);
-
-    document.addEventListener('smackarchive:layoutchange', function (e) {
-        applyLayout((e.detail && e.detail.layout) || 'thumbs');
-    });
-})();
-</script>
 <?php // ===== SNAPSMACK EOF =====

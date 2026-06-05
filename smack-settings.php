@@ -492,11 +492,8 @@ include 'core/sidebar.php';
                         &nbsp; Mode: <strong><?php echo strtoupper(htmlspecialchars($smack_mode_s)); ?></strong>
                     </p>
                 </div>
-                <div class="lens-input-wrapper">
-                    <label>MANAGE</label>
-                    <a href="smack-back.php" class="btn-smack">OPEN SMACKBACK →</a>
-                </div>
             </div>
+            <a href="smack-back.php" class="btn-smack" style="display:block;width:100%;box-sizing:border-box;text-align:center;margin-top:12px;">OPEN SMACKBACK →</a>
         </div>
 
         <!-- Footer Config + Image Engine moved to Global Vibe (smack-globalvibe.php) -->
