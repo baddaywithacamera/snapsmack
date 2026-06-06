@@ -98,6 +98,12 @@ if ($action === 'run_verify' || ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POS
             "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackback_last_full_verify', ?)
              ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
         )->execute([date('Y-m-d H:i:s')]);
+        // A clean full verify means any prior breach is resolved. Clear the flag so the
+        // admin isn't left locked out — previously only RESTORE cleared a breach, and
+        // RESTORE reverts files to the old baseline (undoing legitimate changes).
+        if ($is_breach) {
+            smackback_resolve_breach('manual');
+        }
     }
 
     if ($wants_json) {
@@ -149,6 +155,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['save_skin_js_settings'] ??
 // RE-INITIALISE BASELINE FROM DISK
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['reinit_baseline'] ?? '') === '1') {
     $ok = smackback_init_from_disk();
+    if ($ok && $is_breach) {
+        // Re-baselining accepts the current disk as authoritative, so the breach is
+        // resolved. Clear it here — re-init alone never cleared smackback_status before,
+        // which left the admin stuck on the breach screen with RESTORE (a code revert)
+        // as the only exit. This path is distinct from RESTORE: no files are reverted.
+        smackback_resolve_breach('reinit');
+    }
     $msg = $ok ? 'Baseline re-initialised from disk. All files re-hashed.' : 'Re-init failed — check error log.';
     header('Location: smack-back.php?msg=' . urlencode($msg));
     exit;

@@ -1010,11 +1010,37 @@ if ($action === 'stage_migrate'
         $smack_zip = $stage_state['zip_path'] ?? '';
         if ($smack_zip && file_exists($smack_zip)) {
             require_once __DIR__ . '/core/smackback.php';
-            $smack_ok = smackback_init_manifest($smack_zip);
+            $smack_ok     = smackback_init_manifest($smack_zip);
+            $smack_signed = $smack_ok;   // true only if baselined from the in-zip (Ed25519-signed) manifest
+            if ($smack_ok) {
+                $smack_detail = 'File hashes refreshed from update package';
+            } else {
+                // No smackback-manifest.json in the package (e.g. a zip built by the SC
+                // Release Packager from the GitHub archive, which carries no manifest).
+                // Re-baseline from the freshly-extracted disk instead — the files came
+                // from an Ed25519-verified package, the same trust basis as a fresh
+                // install. Without this, every legitimately-changed file reads as TAMPERED.
+                $smack_ok     = smackback_init_from_disk();
+                $smack_detail = $smack_ok
+                    ? 'No manifest in package — baseline rebuilt from disk'
+                    : 'Re-baseline failed — check error log';
+            }
+            // Auto-clear a stale breach ONLY when the new baseline came from the SIGNED
+            // in-zip manifest (cryptographically anchored to this release). On the disk
+            // fallback we deliberately do NOT auto-clear — disk is less trustworthy, so any
+            // breach is left for admin review on smack-back.php instead of silently cleared.
+            if ($smack_signed && function_exists('smackback_resolve_breach')) {
+                $smack_prev_status = $pdo->query(
+                    "SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_status'"
+                )->fetchColumn();
+                if ($smack_prev_status === 'breach') {
+                    smackback_resolve_breach('update');
+                }
+            }
             $_SESSION['update_state']['log'][] = [
                 'label'  => 'SMACKBACK manifest',
                 'status' => $smack_ok ? 'ok' : 'warn',
-                'detail' => $smack_ok ? 'File hashes refreshed from update package' : 'Manifest not in package — skipped',
+                'detail' => $smack_detail,
             ];
         }
 
