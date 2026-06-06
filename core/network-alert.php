@@ -154,7 +154,9 @@ function nalert_maybe_poll(): void {
                  'network_alert_receive',
                  'network_alert_last_checked',
                  'network_alert_sc_url',
-                 'network_alert_push_unregister_pending'
+                 'network_alert_push_unregister_pending',
+                 'network_alert_push_enabled',
+                 'network_alert_push_registered'
              )"
         )->fetchAll(PDO::FETCH_KEY_PAIR);
     } catch (PDOException $e) {
@@ -165,6 +167,13 @@ function nalert_maybe_poll(): void {
 
     // Always retry a pending unregister — independent of poll throttle
     nalert_maybe_retry_unregister($sc_url);
+
+    // Auto-register push if enabled but not yet registered (covers stuck installs
+    // that tried when the endpoint was broken, and hub-reset registrations).
+    if (($rows['network_alert_push_enabled']    ?? '0') === '1'
+     && ($rows['network_alert_push_registered'] ?? '0') !== '1') {
+        nalert_register_push($sc_url);
+    }
 
     // Only poll if receive is opted in
     if (($rows['network_alert_receive'] ?? '0') !== '1') {
@@ -482,19 +491,26 @@ function nalert_render_banner(string $status, string $message = ''): void {
     }
 
     $duration = ($status === 'yellow_fast') ? '2s' : '4s';
-    $safe_msg = $message
-        ? htmlspecialchars($message, ENT_QUOTES)
-        : 'SnapSmack network advisory active. Check your site\'s file integrity.';
+    $raw_msg  = $message ?: 'SnapSmack network advisory active. Check your site\'s file integrity.';
+    $safe_msg = htmlspecialchars($raw_msg, ENT_QUOTES);
+    // Dismiss key is a hash of status+message so a new SC broadcast resets the dismissal.
+    $dismiss_key = 'nalert_dismissed_' . substr(md5($status . $raw_msg), 0, 12);
 
     echo <<<HTML
 <style>
 @keyframes nalert-pulse{0%,100%{background:#3a2e00;border-bottom-color:#c8a800}50%{background:#4d3c00;border-bottom-color:#ffe040}}
+#nalert-banner{margin-left:240px;}
+@media(max-width:1024px){#nalert-banner{margin-left:0;}}
 </style>
 <div id="nalert-banner" style="background:#3a2e00;border-bottom:3px solid #c8a800;padding:10px 24px;font-size:0.88rem;color:#ffe680;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:998;animation:nalert-pulse {$duration} ease-in-out infinite;">
     <strong style="color:#ffcc00;letter-spacing:1px;font-size:0.82rem;white-space:nowrap;">&#9888;&nbsp;NETWORK ALERT</strong>
     <span>{$safe_msg}</span>
     <a href="smack-smackback.php#network-alert" style="color:#ffcc00;text-decoration:none;border:1px solid #997700;padding:3px 10px;font-size:0.8rem;white-space:nowrap;margin-left:auto;">Details &rarr;</a>
+    <button onclick="localStorage.setItem('{$dismiss_key}','1');document.getElementById('nalert-banner').style.display='none';"
+            title="Dismiss alert"
+            style="background:transparent;border:none;color:#997700;font-size:1.1rem;cursor:pointer;padding:0 0 0 8px;line-height:1;">&times;</button>
 </div>
+<script>if(localStorage.getItem('{$dismiss_key}')==='1'){var b=document.getElementById('nalert-banner');if(b)b.style.display='none';}</script>
 
 HTML;
 }

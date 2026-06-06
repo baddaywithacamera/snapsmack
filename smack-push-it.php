@@ -47,6 +47,7 @@ $push_group_keys = [
     'smackback' => ['smackback_enabled', 'smackback_mode', 'hub_controls_smackback'],
     'comments'  => ['global_comments_enabled',           'hub_controls_comments'],
     'email'     => ['site_email',                        'hub_controls_email'],
+    'netalert'  => ['network_alert_receive', 'network_alert_send', 'hub_controls_netalert'],
 ];
 
 // ─── cURL PUSH HELPER ────────────────────────────────────────────────────────
@@ -117,6 +118,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['csrf']) && hash_equa
             'hub_controls_' . $group,
             $ctrl_val
         );
+    }
+
+    // Force push re-registration — resets push_registered=0 on all spokes so they
+    // re-register on their next admin page load via nalert_maybe_poll() auto-register.
+    if (isset($_POST['push_force_register'])) {
+        $pairs = ['network_alert_push_registered' => '0'];
+        foreach ($spokes as $spoke) {
+            $r = pushit_push($spoke['site_url'], $spoke['api_key_local'], $pairs);
+            $push_results['force_register'][$spoke['site_name'] ?: $spoke['site_url']] =
+                ($r['ok'] ?? false) ? 'OK' : ($r['error'] ?? 'Failed');
+        }
     }
 
     // PUSH IT ALL — push every hub-controlled group
@@ -373,6 +385,44 @@ include 'core/sidebar.php';
                     <?php echo empty($settings['site_email']) ? 'disabled title="No site email set on hub"' : ''; ?>>
                 PUSH TO ALL SPOKES
             </button>
+        </div>
+
+        <!-- ── NETWORK ALERT (SMACKATTACK) ─────────────────────────────── -->
+        <div class="box">
+            <h3>SMACKATTACK — NETWORK ALERT</h3>
+            <div class="dash-grid" style="margin-bottom:16px;">
+                <div class="lens-input-wrapper">
+                    <label>RECEIVE SC ALERTS</label>
+                    <div class="read-only-display"><?php echo ($settings['network_alert_receive'] ?? '0') === '1' ? 'YES' : 'NO'; ?></div>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>SEND BREACH REPORTS</label>
+                    <div class="read-only-display"><?php echo ($settings['network_alert_send'] ?? '0') === '1' ? 'YES' : 'NO'; ?></div>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>HUB CONTROLS THIS SETTING</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" name="hub_controls[netalert]" value="1"
+                               <?php echo ($settings['hub_controls_netalert'] ?? '0') === '1' ? 'checked' : ''; ?>>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="dim" style="font-size:0.82rem;">When on, spokes cannot change their network alert receive/send settings.</span>
+                </div>
+            </div>
+            <?php $render_result('netalert'); ?>
+            <button type="submit" name="push_netalert" class="btn-smack">PUSH TO ALL SPOKES</button>
+            <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-color,#333);">
+                <p class="dim" style="font-size:0.82rem;margin:0 0 10px;">
+                    <strong>FORCE RE-REGISTER PUSH</strong> — resets push subscription state on all spokes.
+                    Spokes with push enabled will automatically re-register on their next admin page load.
+                    Use this when subscribers are stuck at 0 after fixing the SC endpoint.
+                </p>
+                <?php $render_result('force_register'); ?>
+                <button type="submit" name="push_force_register" class="btn-smack"
+                        onclick="return confirm('Reset push registration on all spokes?')">
+                    FORCE RE-REGISTER PUSH
+                </button>
+            </div>
         </div>
 
         <!-- ── PUSH ALL ──────────────────────────────────────────────────── -->
