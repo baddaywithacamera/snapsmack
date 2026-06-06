@@ -1208,6 +1208,9 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
         'download_link_required', 'download_default_mode',
         'hub_controls_timezone', 'hub_controls_akismet', 'hub_controls_ai',
         'hub_controls_smackback', 'hub_controls_comments', 'hub_controls_email',
+        'network_alert_receive', 'network_alert_send',
+        'hub_controls_netalert',
+        'network_alert_push_registered',
     ];
 
     $pairs_raw = trim($_POST['settings'] ?? '');

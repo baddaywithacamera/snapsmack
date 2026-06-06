@@ -12,6 +12,53 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.210 — "TBD" (2026-06-06)
+
+### Feature — SC dashboard: fleet mixed-track detection + accordion
+
+- `smack-central/sc-dashboard.php` — Fleet count is now hub-only (spokes excluded from the
+  headline number). Sites on a different track than the hub get an amber "mixed" label with a
+  tooltip. Hub row expands to show each spoke's uid, version, and track in a collapsible accordion.
+- `smack-central/schemas/sc-smackcent-canonical.sql` — `role` and `hub_uid` columns added to
+  `sc_phone_home`.
+- `core/updater.php` — Spoke slim ping now includes `role=spoke` and `hub_uid` so SC can
+  associate spokes with their hub. Migration registered in `UPDATER_KNOWN_MIGRATIONS`.
+- `migrations/migrate-phone-home-spoke-rows.sql` — New migration: adds `role` + `hub_uid`
+  columns to `sc_phone_home`, adds index on `hub_uid`.
+- `projects/snapsmack-ca/releases/ping.php` — Accepts and stores `role` + `hub_uid` params from
+  spoke pings.
+
+### Feature — Network alert: sidebar margin, dismiss button, auto-register on poll
+
+- `core/network-alert.php` — Yellow alert banner now has correct `margin-left:240px` to clear
+  the admin sidebar. Dismiss button (×) added — stores dismissal in `localStorage` keyed by
+  alert hash so the banner stays gone on reload until a new alert arrives. Auto-registers for
+  push when `push_enabled=1` and `push_registered!=1` during a poll cycle, so spokes that
+  missed registration self-heal without manual intervention.
+- `core/admin-header.php` — SMACKBACK red breach banner gets matching `margin-left:240px`
+  sidebar clearance.
+- `core/multisite-api.php` — `network_alert_push_registered` added to `$allowed_keys` so hubs
+  can push the registration state to spokes.
+
+### Feature — Push It: force re-register push button
+
+- `smack-push-it.php` — New FORCE RE-REGISTER PUSH button. Pushes `push_registered=0` to all
+  spokes via the existing fanout; spokes auto-register on their next admin page load. Recovery
+  tool for fleets where push registration got out of sync.
+
+### Fix — Chaplin archive thumbnails 15% too dark
+
+- `skins/chaplin/style.css` — Removed `brightness(0.85)` and `grayscale(100%)` from
+  `.rg-archive-item img`, `#justified-grid img`, and `.fsog-thumb img`. Chaplin photos are
+  already B&W (photographer-processed) — the CSS filter was darkening thumbnails relative to the
+  individual photo view. Hover states simplified to opacity-only.
+
+### Fix — SMACKBACK breach page: misaligned RESTORE button left edges
+
+- `smack-back.php` — Breach file rows switched from `flex` to `grid`
+  (`1fr 90px 130px`) so filename, status label, and RESTORE button columns are always
+  pixel-aligned regardless of filename length.
+
 ## 0.7.209 — "Courtesy Flush" (2026-06-05)
 
 ### Fix — SmackBack false positive on every release (legit core files read as TAMPERED)

@@ -968,12 +968,10 @@ body.archive-page #scroll-stage {
   height: 100%;
   display: block;
   object-fit: cover;
-  filter: brightness(0.85);
-  transition: filter 0.3s ease, transform 0.3s ease;
+  transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
 .rg-archive-item:hover .rg-thumb img {
-  filter: brightness(1.05);
   transform: scale(1.04);
 }
 
@@ -1006,12 +1004,11 @@ body.archive-page #scroll-stage {
 }
 
 #justified-grid .justified-item img {
-  filter: brightness(0.85);
-  transition: filter 0.3s ease, opacity 0.3s ease;
+  transition: opacity 0.3s ease;
 }
 
 #justified-grid .justified-item:hover img {
-  filter: brightness(1.05);
+  opacity: 0.9;
 }
 
 /* Chaplin archive grid — fsog-* CSS verbatim from 50-shades-of-noah-grey.
@@ -1058,13 +1055,11 @@ body.archive-page #scroll-stage {
     height: 100%;
     display: block;
     object-fit: cover;
-    filter: grayscale(100%) brightness(0.85);
-    transition: filter 0.3s ease, opacity 0.3s ease;
+    transition: opacity 0.3s ease;
 }
 
 .fsog-archive-item:hover .fsog-thumb img {
-    opacity: 0.75;
-    filter: grayscale(100%) brightness(1.05);
+    opacity: 0.85;
 }
 
 .fsog-archive-title {
