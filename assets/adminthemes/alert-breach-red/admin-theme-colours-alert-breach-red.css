@@ -1,0 +1,47 @@
+/**
+ * SNAPSMACK - Alert: Breach Red (pulsing) admin theme colours
+ *
+ * HIDDEN system theme. Auto-applied by core/admin-header.php when SmackBack
+ * status is 'breach' (any mode). Not user-selectable — excluded from the theme
+ * pickers via the manifest 'hidden' flag. Inherits the full Red John palette
+ * and adds a full-screen pulse (dark <-> light) so a breach is unmissable
+ * across the entire admin UI.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+/* Inherit the complete Red John colour palette. @import MUST precede all rules.
+   Depends on assets/adminthemes/red-john/ remaining present (core theme). */
+@import url("../red-john/admin-theme-colours-red-john.css");
+
+/* Full-screen breathing pulse: fixed, click-through, screen-blended so it
+   lightens the whole admin chrome at each peak and recedes at each trough —
+   a smooth dark<->light pulse, not a hard flash. */
+@keyframes ss-alert-pulse-red {
+    0%, 100% { opacity: 0.10; }
+    50%      { opacity: 0.50; }
+}
+body.admin-body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2147483646;
+    background: radial-gradient(ellipse at 50% 40%, #ff2a2a 0%, #b00000 85%);
+    mix-blend-mode: screen;
+    animation: ss-alert-pulse-red 2s ease-in-out infinite;
+    will-change: opacity;
+}
+
+/* Reduced-motion: hold a steady elevated red tint instead of pulsing. */
+@media (prefers-reduced-motion: reduce) {
+    body.admin-body::after { animation: none; opacity: 0.34; }
+}
+/* ===== SNAPSMACK EOF ===== */

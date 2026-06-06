@@ -12,6 +12,7 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+<<<<<<< HEAD
 ## 0.7.207 — "Privy Council" (2026-06-05)
 
 ### Feature — Installer security opt-in (SmackBack + SmackAttack)
@@ -102,6 +103,68 @@ All notable changes to SnapSmack are documented here. Newest release first.
   re-populate the table on their next update check; spokes no longer ping independently.
 
 ---
+=======
+## 0.7.208 — "Privy Council" (2026-06-05)
+
+(0.7.207 "Privy Council" shipped the installer security opt-in and is already pushed. Codename
+carried forward to 0.7.208.)
+
+### Feature — Pulsing alert admin themes (whole-screen breach/advisory signal)
+
+- `assets/adminthemes/alert-breach-red/`, `assets/adminthemes/alert-yellow-fast/`,
+  `assets/adminthemes/alert-yellow-slow/` — Three new HIDDEN admin themes. Each `@import`s a base
+  palette (Red John for breach, Amber Phosphorus for the yellows) and adds a fixed, click-through,
+  screen-blended full-viewport `body.admin-body::after` overlay that pulses the entire admin UI
+  dark↔light (smooth pulse, not a flash). Pulse speeds: breach 2s, yellow-fast 1.6s, yellow-slow 4s.
+  Includes a `prefers-reduced-motion` steady-tint fallback.
+- `core/admin-header.php` — Auto-applies the alert theme, overriding the user's chosen theme:
+  `smackback_status == 'breach'` → breach red (read from `$settings` directly, so it pulses even
+  in lockout mode on smack-back.php); otherwise `$_nalert_status` yellow_fast/slow → the matching
+  yellow theme.
+- `smack-globalvibe.php`, `smack-admin.php`, `smack-admin-reference.php` — Theme discovery now
+  skips any manifest with `'hidden' => '1'`, so the alert themes never appear in the picker while
+  remaining applicable by slug.
+
+### Fix — Network Alert public API include paths (0 subscribers / no YELLOW root cause)
+
+- `projects/snapsmack-ca/sc-network-api.php` — The web-root endpoint used
+  `require_once __DIR__ . '/../smack-central/...'`, but this file deploys to the snapsmack.ca web
+  root, so `../smack-central` resolved above the web root → fatal `require_once` → HTTP 500 on every
+  status/report/register call. That single failure caused both 0 push subscribers and no YELLOW
+  polling. Corrected to `__DIR__ . '/smack-central/...'`. (The earlier "matches ping.php pattern"
+  note was wrong — ping.php lives in releases/, one level deeper, where `../` is correct.)
+>>>>>>> dev
+
+## 0.7.207 — "Privy Council" (2026-06-05)
+
+### Feature — Installer security opt-in step
+
+- `install.php` — New security step in the installer: opt-in to SmackBack (file integrity) and
+  SmackAttack / network-alert breach-intel sharing. Both default opt-in with a clear opt-out,
+  non-blocking, with an inline privacy disclosure and the consent decision + UTC timestamp logged.
+  Seeds the relevant `snap_settings` keys and registers for push when opted in. Existing CSRF /
+  admin-bypass installer audit gates preserved.
+
+## 0.7.206 — "Bodacious Bidet" (2026-06-05)
+
+### Fixed — Stale Smack Central version display
+
+- `core/constants.php`, `smack-central/sc-version.php` — Version bump to 0.7.206 / 0.7.206D to
+  correct the Smack Central update page reporting a stale "Running 0.7.190". Hand-bumped constant;
+  the updater itself was not at fault.
+
+## 0.7.205 — (2026-06-05)
+
+### Changed — Inline JS purged from skins
+
+- `skins/chaplin/`, `skins/rational-geo/`, `skins/slickr/` — Inline `<script>` removed from skin
+  templates and moved into CMS-manifest-registered JS modules, so skins ship zero inline script.
+
+### UI / Maintenance
+
+- `smack-settings.php` — "Open SmackBack" button is now full-width.
+- `smack-central/sc-dashboard.php` — New "Rebuild Fleet Count" maintenance action that truncates
+  the phone-home table to clear stale spoke rows causing a doubled active-installs count.
 
 ## 0.7.204 — "Neighbourhood Watch" (2026-06-04)
 

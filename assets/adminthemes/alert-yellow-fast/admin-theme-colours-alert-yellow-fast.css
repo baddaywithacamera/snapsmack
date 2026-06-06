@@ -1,0 +1,44 @@
+/**
+ * SNAPSMACK - Alert: Yellow Fast (pulsing) admin theme colours
+ *
+ * HIDDEN system theme. Auto-applied by core/admin-header.php when the Layer-2
+ * network alert status is 'yellow_fast'. Not user-selectable — excluded from
+ * the theme pickers via the manifest 'hidden' flag. Inherits the full Amber
+ * Phosphorus palette and adds a fast full-screen pulse (dark <-> light).
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+/* Inherit the complete Amber Phosphorus palette. @import MUST precede all rules.
+   Depends on assets/adminthemes/amber-phosphorus/ remaining present. */
+@import url("../amber-phosphorus/admin-theme-colours-amber-phosphorus.css");
+
+/* Fast full-screen breathing pulse — smooth dark<->light, not a hard flash. */
+@keyframes ss-alert-pulse-yellow-fast {
+    0%, 100% { opacity: 0.10; }
+    50%      { opacity: 0.45; }
+}
+body.admin-body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2147483646;
+    background: radial-gradient(ellipse at 50% 40%, #ffd11a 0%, #b38600 85%);
+    mix-blend-mode: screen;
+    animation: ss-alert-pulse-yellow-fast 1.6s ease-in-out infinite;
+    will-change: opacity;
+}
+
+/* Reduced-motion: hold a steady elevated amber tint instead of pulsing. */
+@media (prefers-reduced-motion: reduce) {
+    body.admin-body::after { animation: none; opacity: 0.30; }
+}
+/* ===== SNAPSMACK EOF ===== */
