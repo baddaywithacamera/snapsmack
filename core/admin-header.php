@@ -44,6 +44,23 @@ if (function_exists('exec')) {
 // Use the user's session preference, fall back to the global setting,
 // then default to midnight-lime
 $active_theme = $_SESSION['user_preferred_skin'] ?? $settings['active_theme'] ?? 'midnight-lime';
+
+// --- ALERT THEME OVERRIDE ---
+// Hidden pulsing themes auto-applied on an active alert, replacing the user's
+// theme entirely so the whole admin UI signals the state. A SmackBack breach
+// outranks the Layer-2 network YELLOW. $settings is loaded above; $_nalert_status
+// is set by core/auth-smack.php before this header is included. Reading
+// smackback_status directly means breach pulses even in lockout mode, where the
+// admin is forced to smack-back.php and no _smackback_alert_breach flag is set.
+if (($settings['smackback_enabled'] ?? '0') === '1'
+    && ($settings['smackback_status'] ?? 'clean') === 'breach') {
+    $active_theme = 'alert-breach-red';
+} elseif (!empty($GLOBALS['_nalert_status'])) {
+    $active_theme = ($GLOBALS['_nalert_status'] === 'yellow_fast')
+        ? 'alert-yellow-fast'
+        : 'alert-yellow-slow';
+}
+
 $theme_base = "assets/adminthemes/{$active_theme}/";
 $manifest_path = $theme_base . "{$active_theme}-manifest.php";
 
