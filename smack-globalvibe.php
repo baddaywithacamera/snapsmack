@@ -71,6 +71,8 @@ foreach ($theme_dirs as $dir) {
             'author'      => 'System'
         ];
     }
+    // Skip hidden system themes (e.g. pulsing alert themes) — not user-selectable.
+    if (!empty($meta['hidden'])) continue;
     $admin_themes[$slug] = $meta;
 }
 

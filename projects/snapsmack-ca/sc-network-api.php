@@ -19,9 +19,13 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-require_once __DIR__ . '/../smack-central/sc-config.php';
-require_once __DIR__ . '/../smack-central/sc-db.php';
-require_once __DIR__ . '/../smack-central/sc-network-fanout.php';
+// NOTE: this file sits at the snapsmack.ca WEB ROOT, so smack-central/ is a direct
+// subdirectory (__DIR__ . '/smack-central/'). Do NOT copy ping.php's '../smack-central'
+// path — ping.php lives in releases/, one level deeper, where '../' is correct. Here it
+// would resolve ABOVE the web root and fatal (500 → 0 subscribers, no yellow polling).
+require_once __DIR__ . '/smack-central/sc-config.php';
+require_once __DIR__ . '/smack-central/sc-db.php';
+require_once __DIR__ . '/smack-central/sc-network-fanout.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache');

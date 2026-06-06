@@ -153,7 +153,10 @@ foreach ($theme_dirs as $dir) {
     $slug = basename($dir);
     $manifest_path = "{$dir}/{$slug}-manifest.php";
     if (file_exists($manifest_path)) {
-        $admin_themes[$slug] = include $manifest_path;
+        $m = include $manifest_path;
+        // Skip hidden system themes (e.g. pulsing alert themes) — not user-selectable.
+        if (is_array($m) && !empty($m['hidden'])) continue;
+        $admin_themes[$slug] = $m;
     }
 }
 

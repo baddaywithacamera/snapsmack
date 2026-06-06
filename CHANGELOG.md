@@ -12,6 +12,36 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.208 — "Privy Council" (2026-06-05)
+
+(0.7.207 "Privy Council" shipped the installer security opt-in and is already pushed. Codename
+carried forward to 0.7.208.)
+
+### Feature — Pulsing alert admin themes (whole-screen breach/advisory signal)
+
+- `assets/adminthemes/alert-breach-red/`, `assets/adminthemes/alert-yellow-fast/`,
+  `assets/adminthemes/alert-yellow-slow/` — Three new HIDDEN admin themes. Each `@import`s a base
+  palette (Red John for breach, Amber Phosphorus for the yellows) and adds a fixed, click-through,
+  screen-blended full-viewport `body.admin-body::after` overlay that pulses the entire admin UI
+  dark↔light (smooth pulse, not a flash). Pulse speeds: breach 2s, yellow-fast 1.6s, yellow-slow 4s.
+  Includes a `prefers-reduced-motion` steady-tint fallback.
+- `core/admin-header.php` — Auto-applies the alert theme, overriding the user's chosen theme:
+  `smackback_status == 'breach'` → breach red (read from `$settings` directly, so it pulses even
+  in lockout mode on smack-back.php); otherwise `$_nalert_status` yellow_fast/slow → the matching
+  yellow theme.
+- `smack-globalvibe.php`, `smack-admin.php`, `smack-admin-reference.php` — Theme discovery now
+  skips any manifest with `'hidden' => '1'`, so the alert themes never appear in the picker while
+  remaining applicable by slug.
+
+### Fix — Network Alert public API include paths (0 subscribers / no YELLOW root cause)
+
+- `projects/snapsmack-ca/sc-network-api.php` — The web-root endpoint used
+  `require_once __DIR__ . '/../smack-central/...'`, but this file deploys to the snapsmack.ca web
+  root, so `../smack-central` resolved above the web root → fatal `require_once` → HTTP 500 on every
+  status/report/register call. That single failure caused both 0 push subscribers and no YELLOW
+  polling. Corrected to `__DIR__ . '/smack-central/...'`. (The earlier "matches ping.php pattern"
+  note was wrong — ping.php lives in releases/, one level deeper, where `../` is correct.)
+
 ## 0.7.204 — "Neighbourhood Watch" (2026-06-04)
 
 ### Feature — Immediate push notifications on network breach
