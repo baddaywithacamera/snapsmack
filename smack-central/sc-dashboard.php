@@ -7,41 +7,59 @@ require_once __DIR__ . '/sc-auth.php';
 $sc_active_nav = 'sc-dashboard.php';
 $sc_page_title = 'Dashboard';
 
-// ── POST: Maintenance — rebuild fleet count (purge phone-home table) ──
-// Clears sc_phone_home so stale spoke rows (recorded before the spoke-skip
-// fix) are removed. Live hubs + standalone installs re-ping on their next
-// update check; spokes no longer ping, so the rebuilt count is accurate.
-$sc_maint_msg = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['maint_action'] ?? '') === 'purge_phone_home') {
-    try {
-        sc_db()->exec("TRUNCATE TABLE sc_phone_home");
-        $msg = 'ok|Phone-home table cleared. Active Installs will rebuild as installs check in.';
-    } catch (Exception $e) {
-        $msg = 'err|Could not clear table: ' . $e->getMessage();
-    }
-    if (session_status() === PHP_SESSION_NONE) session_start();
-    $_SESSION['sc_dash_maint'] = $msg;
-    header('Location: sc-dashboard.php?maint=1');
-    exit;
-}
-if (!empty($_GET['maint'])) {
-    if (session_status() === PHP_SESSION_NONE) session_start();
-    if (!empty($_SESSION['sc_dash_maint'])) {
-        $sc_maint_msg = $_SESSION['sc_dash_maint'];
-        unset($_SESSION['sc_dash_maint']);
+// Handle fleet pruning action
+$fleet_prune_msg = null;
+if (isset($_POST['prune_uid'])) {
+    $prune_uid = preg_replace('/[^a-f0-9]/', '', strtolower($_POST['prune_uid']));
+    if (strlen($prune_uid) === 32) {
+        try {
+            $del = sc_db()->prepare("DELETE FROM sc_phone_home WHERE uid = ?");
+            $del->execute([$prune_uid]);
+            $fleet_prune_msg = $del->rowCount() ? "Pruned UID {$prune_uid}." : "UID not found.";
+        } catch (Exception $e) { $fleet_prune_msg = "Error: " . $e->getMessage(); }
     }
 }
 
 // Quick stats
 $stats = ['installs' => 0, 'threads' => 0, 'replies' => 0, 'releases' => 0,
           'thomas_y' => 0, 'thomas_z' => 0, 'thomas_unique' => 0, 'thomas_sites' => 0];
+$fleet_rows  = [];
+$spoke_by_hub = []; // hub_uid => [ spoke rows ]
 try {
-    // Active installs: sum of (1 per pinging install) + spoke counts reported by hubs.
-    // A hub with 5 active spokes contributes 6 to the fleet total.
-    $stats['installs'] = (int)sc_db()->query(
-        "SELECT COALESCE(SUM(1 + spoke_count), 0) FROM sc_phone_home WHERE last_seen >= DATE_SUB(NOW(), INTERVAL 90 DAY)"
+    // Active installs: only hub/standalone rows; spoke rows are already counted
+    // inside hub's spoke_count. WHERE role='hub' excludes slim spoke pings.
+    $db = sc_db();
+    $stats['installs'] = (int)$db->query(
+        "SELECT COALESCE(SUM(1 + spoke_count), 0) FROM sc_phone_home
+         WHERE role = 'hub' AND last_seen >= DATE_SUB(NOW(), INTERVAL 90 DAY)"
     )->fetchColumn();
-} catch (Exception $e) { /* sc_phone_home not yet created — shows 0 until first ping lands */ }
+    // Hub/standalone rows for the diagnostics table
+    $fleet_rows = $db->query(
+        "SELECT uid, version, track, spoke_count, role, hub_uid, first_seen, last_seen
+         FROM sc_phone_home WHERE role = 'hub' ORDER BY last_seen DESC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    // Spoke rows grouped by hub_uid for accordion display
+    $spoke_rows_raw = $db->query(
+        "SELECT uid, version, track, hub_uid, last_seen
+         FROM sc_phone_home WHERE role = 'spoke' ORDER BY last_seen DESC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($spoke_rows_raw as $sr) {
+        if ($sr['hub_uid']) {
+            $spoke_by_hub[$sr['hub_uid']][] = $sr;
+        }
+    }
+} catch (Exception $e) {
+    // role column may not exist yet — fall back to old query without role filter
+    try {
+        $db = sc_db();
+        $stats['installs'] = (int)$db->query(
+            "SELECT COALESCE(SUM(1 + spoke_count), 0) FROM sc_phone_home WHERE last_seen >= DATE_SUB(NOW(), INTERVAL 90 DAY)"
+        )->fetchColumn();
+        $fleet_rows = $db->query(
+            "SELECT uid, version, track, spoke_count, NULL AS role, NULL AS hub_uid, first_seen, last_seen FROM sc_phone_home ORDER BY last_seen DESC"
+        )->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e2) { /* sc_phone_home not yet created */ }
+}
 try {
     $fdb = sc_forum_db();
     $stats['threads']  = (int)$fdb->query("SELECT COUNT(*) FROM ss_forum_threads  WHERE is_deleted = 0")->fetchColumn();
@@ -128,23 +146,110 @@ require __DIR__ . '/sc-layout-top.php';
   </div>
 </div>
 
+<?php if (!empty($fleet_rows)): ?>
 <div class="sc-box">
-  <div class="sc-box-header"><span class="sc-box-title">Maintenance</span></div>
-  <div class="sc-box-body">
-    <?php if ($sc_maint_msg):
-        [$mtype, $mtext] = array_pad(explode('|', $sc_maint_msg, 2), 2, ''); ?>
-      <p style="margin-top:0;color:<?php echo $mtype === 'ok' ? '#5a9a5a' : '#cc2200'; ?>;">
-        <?php echo htmlspecialchars($mtext); ?></p>
+  <div class="sc-box-header"><span class="sc-box-title">Fleet Diagnostics</span>
+    <span class="sc-dim" style="font-size:0.8em;margin-left:8px;"><?php echo count($fleet_rows); ?> hub row(s) &mdash; active window counts <?php echo $stats['installs']; ?></span>
+  </div>
+  <div class="sc-box-body" style="padding:0;">
+    <?php if ($fleet_prune_msg): ?>
+      <div style="padding:8px 12px;background:var(--sc-accent-dim,#1a1a1a);font-size:0.85em;"><?php echo htmlspecialchars($fleet_prune_msg); ?></div>
     <?php endif; ?>
-    <p class="sc-dim">Rebuild the Active Installs tally. Clears the phone-home table so
-       stale spoke rows are removed; live hubs and standalone installs re-populate it on
-       their next update check. Spokes are excluded by design and will not be double-counted.</p>
-    <form method="post" onsubmit="return confirm('Clear the phone-home table and rebuild the fleet count?\n\nActive Installs will read low until installs check back in.');">
-      <input type="hidden" name="maint_action" value="purge_phone_home">
-      <button type="submit" class="sc-btn">Rebuild Fleet Count</button>
-    </form>
+    <table style="width:100%;border-collapse:collapse;font-size:0.82em;font-family:monospace;">
+      <thead>
+        <tr style="border-bottom:1px solid var(--sc-border,#333);">
+          <th style="padding:6px 10px;text-align:left;color:var(--sc-dim,#888);width:22px;"></th>
+          <th style="padding:6px 10px;text-align:left;color:var(--sc-dim,#888);">UID (first 12)</th>
+          <th style="padding:6px 10px;text-align:left;color:var(--sc-dim,#888);">Version</th>
+          <th style="padding:6px 10px;text-align:left;color:var(--sc-dim,#888);">Track</th>
+          <th style="padding:6px 10px;text-align:right;color:var(--sc-dim,#888);">Spokes</th>
+          <th style="padding:6px 10px;text-align:right;color:var(--sc-dim,#888);">Counts as</th>
+          <th style="padding:6px 10px;text-align:left;color:var(--sc-dim,#888);">Last Seen</th>
+          <th style="padding:6px 10px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php
+        $now = new DateTime();
+        $fleet_idx = 0;
+        foreach ($fleet_rows as $row):
+            $fleet_idx++;
+            $age_days  = $now->diff(new DateTime($row['last_seen']))->days;
+            $stale     = $age_days > 90;
+            $row_style = $stale ? 'opacity:0.45;' : '';
+            $counts_as = 1 + (int)$row['spoke_count'];
+            $hub_spokes = $spoke_by_hub[$row['uid']] ?? [];
+            $has_spokes = !empty($hub_spokes);
+            $accord_id  = 'fleet-acc-' . $fleet_idx;
+
+            // Compute display track: aggregate hub track + all linked spoke tracks
+            $all_tracks     = array_merge([$row['track']], array_column($hub_spokes, 'track'));
+            $unique_tracks  = array_unique($all_tracks);
+            $track_label    = count($unique_tracks) > 1 ? 'mixed' : $unique_tracks[0];
+            $track_counts   = array_count_values($all_tracks);
+            $track_tooltip  = implode(' · ', array_map(fn($t, $c) => "{$c} {$t}", array_keys($track_counts), $track_counts));
+        ?>
+        <tr style="border-bottom:1px solid var(--sc-border,#222);<?php echo $row_style; ?>">
+          <td style="padding:5px 6px 5px 10px;">
+            <?php if ($has_spokes): ?>
+            <button onclick="(function(b,r){r.style.display=r.style.display==='none'?'table-row':'none';b.textContent=r.style.display==='none'?'▶':'▼';})(this,document.getElementById('<?php echo $accord_id; ?>'))"
+                    style="background:transparent;border:none;color:var(--sc-dim,#888);cursor:pointer;font-size:0.8em;padding:0;line-height:1;"
+                    title="Show/hide <?php echo count($hub_spokes); ?> spoke(s)">▶</button>
+            <?php endif; ?>
+          </td>
+          <td style="padding:5px 10px;" title="<?php echo htmlspecialchars($row['uid']); ?>"><?php echo htmlspecialchars(substr($row['uid'], 0, 12)); ?>&hellip;</td>
+          <td style="padding:5px 10px;"><?php echo htmlspecialchars($row['version']); ?></td>
+          <td style="padding:5px 10px;" title="<?php echo htmlspecialchars($track_tooltip); ?>">
+            <?php if ($track_label === 'mixed'): ?>
+              <span style="color:#e8a838;">mixed</span>
+            <?php else: ?>
+              <?php echo htmlspecialchars($track_label); ?>
+            <?php endif; ?>
+          </td>
+          <td style="padding:5px 10px;text-align:right;"><?php echo (int)$row['spoke_count']; ?></td>
+          <td style="padding:5px 10px;text-align:right;font-weight:bold;"><?php echo $counts_as; ?></td>
+          <td style="padding:5px 10px;color:var(--sc-dim,#888);" title="First seen: <?php echo htmlspecialchars($row['first_seen']); ?>"><?php echo htmlspecialchars($row['last_seen']); ?> (<?php echo $age_days; ?>d ago)</td>
+          <td style="padding:5px 10px;">
+            <form method="post" style="margin:0;" onsubmit="return confirm('Prune this UID?');">
+              <input type="hidden" name="prune_uid" value="<?php echo htmlspecialchars($row['uid']); ?>">
+              <button type="submit" style="font-size:0.8em;padding:2px 8px;cursor:pointer;background:transparent;border:1px solid var(--sc-border,#444);color:var(--sc-dim,#888);border-radius:3px;">Prune</button>
+            </form>
+          </td>
+        </tr>
+        <?php if ($has_spokes): ?>
+        <tr id="<?php echo $accord_id; ?>" style="display:none;background:var(--sc-accent-dim,#111);">
+          <td colspan="8" style="padding:0 0 0 32px;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85em;font-family:monospace;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--sc-border,#2a2a2a);">
+                  <th style="padding:4px 10px;text-align:left;color:var(--sc-dim,#666);">Spoke UID</th>
+                  <th style="padding:4px 10px;text-align:left;color:var(--sc-dim,#666);">Version</th>
+                  <th style="padding:4px 10px;text-align:left;color:var(--sc-dim,#666);">Track</th>
+                  <th style="padding:4px 10px;text-align:left;color:var(--sc-dim,#666);">Last Seen</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($hub_spokes as $sp):
+                    $sp_age = $now->diff(new DateTime($sp['last_seen']))->days;
+                ?>
+                <tr style="border-bottom:1px solid var(--sc-border,#1a1a1a);">
+                  <td style="padding:3px 10px;" title="<?php echo htmlspecialchars($sp['uid']); ?>"><?php echo htmlspecialchars(substr($sp['uid'], 0, 12)); ?>&hellip;</td>
+                  <td style="padding:3px 10px;"><?php echo htmlspecialchars($sp['version']); ?></td>
+                  <td style="padding:3px 10px;"><?php echo htmlspecialchars($sp['track']); ?></td>
+                  <td style="padding:3px 10px;color:var(--sc-dim,#666);"><?php echo htmlspecialchars($sp['last_seen']); ?> (<?php echo $sp_age; ?>d ago)</td>
+                </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </td>
+        </tr>
+        <?php endif; ?>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
   </div>
 </div>
+<?php endif; ?>
 
 <?php require __DIR__ . '/sc-layout-bottom.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

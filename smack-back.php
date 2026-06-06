@@ -225,19 +225,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['save_settings'] ?? '') ===
 // SAVE NETWORK ALERT SETTINGS
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['save_nalert'] ?? '') === '1') {
     require_once 'core/network-alert.php';
-    $na_send        = ($_POST['network_alert_send']    ?? '0') === '1' ? '1' : '0';
-    $na_receive     = ($_POST['network_alert_receive'] ?? '0') === '1' ? '1' : '0';
-    $na_sc_url      = trim($_POST['network_alert_sc_url'] ?? 'https://snapsmack.ca');
+    $hub_owns_netalert = ($settings['hub_controls_netalert'] ?? '0') === '1';
     $na_push_enable = ($_POST['network_alert_push_enabled'] ?? '0') === '1';
+    if (empty($_POST['network_alert_sc_url'])) $_POST['network_alert_sc_url'] = 'https://snapsmack.ca';
+    $na_sc_url = trim($_POST['network_alert_sc_url'] ?? 'https://snapsmack.ca');
     if (empty($na_sc_url)) $na_sc_url = 'https://snapsmack.ca';
 
     $na_up = $pdo->prepare(
         "INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
          ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
     );
-    $na_up->execute(['network_alert_send',    $na_send]);
-    $na_up->execute(['network_alert_receive', $na_receive]);
-    $na_up->execute(['network_alert_sc_url',  $na_sc_url]);
+
+    // Only write send/receive if hub doesn't own them — otherwise it would wipe hub-set values
+    if (!$hub_owns_netalert) {
+        $na_send    = ($_POST['network_alert_send']    ?? '0') === '1' ? '1' : '0';
+        $na_receive = ($_POST['network_alert_receive'] ?? '0') === '1' ? '1' : '0';
+        $na_up->execute(['network_alert_send',    $na_send]);
+        $na_up->execute(['network_alert_receive', $na_receive]);
+        $na_up->execute(['network_alert_sc_url',  $na_sc_url]);
+    }
 
     // ── Push subscription ─────────────────────────────────────────────────────
     // Load current push state to detect a change
@@ -395,11 +401,12 @@ include 'core/sidebar.php';
             $bst  = strtoupper($entry['status'] ?? 'UNKNOWN');
             $bcol = $breach_status_colours[$bst] ?? '#cc2200';
         ?>
-        <div class="stat-row" style="display:flex;align-items:center;gap:16px;padding:10px 0;">
-            <span style="font-family:monospace;font-size:0.88rem;flex:1;"><?php echo $bp; ?></span>
-            <span style="color:<?php echo $bcol; ?>;font-weight:700;min-width:90px;"><?php echo $bst; ?></span>
+        <div class="stat-row" style="display:grid;grid-template-columns:1fr 90px 130px;align-items:center;gap:16px;padding:10px 0;">
+            <span style="font-family:monospace;font-size:0.88rem;"><?php echo $bp; ?></span>
+            <span style="color:<?php echo $bcol; ?>;font-weight:700;"><?php echo $bst; ?></span>
             <a href="smack-back.php?action=restore&restore=<?php echo urlencode($entry['path'] ?? ''); ?>"
                class="btn-smack btn-warning"
+               style="width:100%;margin-top:0;"
                onclick="return confirm('Restore <?php echo $bp; ?> from update server?');">
                 RESTORE
             </a>
@@ -646,6 +653,24 @@ include 'core/sidebar.php';
         <form method="post">
             <?php csrf_field(); ?>
             <input type="hidden" name="save_nalert" value="1">
+            <?php if (($settings['hub_controls_netalert'] ?? '0') === '1'): ?>
+            <div class="dash-grid">
+                <div class="lens-input-wrapper">
+                    <label>CONTRIBUTE BREACH REPORTS</label>
+                    <div class="read-only-display"><?php echo $na['send'] ? 'YES' : 'NO'; ?></div>
+                    <span class="dim" style="font-size:0.75rem;margin-top:4px;display:block;">⊘ MANAGED BY NETWORK HUB</span>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>RECEIVE YELLOW ALERTS</label>
+                    <div class="read-only-display"><?php echo $na['receive'] ? 'YES' : 'NO'; ?></div>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>SMACK CENTRAL URL</label>
+                    <div class="read-only-display"><?php echo htmlspecialchars($na['sc_url']); ?></div>
+                </div>
+            </div>
+            <p class="dim" style="font-size:0.85rem;margin-top:8px;">Send and receive settings are controlled by the network hub. Push subscription below is yours to manage.</p>
+            <?php else: ?>
             <div class="dash-grid">
                 <div class="lens-input-wrapper">
                     <label>
@@ -666,6 +691,7 @@ include 'core/sidebar.php';
                     <input type="url" name="network_alert_sc_url" value="<?php echo htmlspecialchars($na['sc_url']); ?>">
                 </div>
             </div>
+            <?php endif; // hub_controls_netalert ?>
 
             <!-- ── PUSH NOTIFICATIONS ──────────────────────────────────────── -->
             <div style="margin-top:24px;border-top:1px solid var(--border,#2a2a2a);padding-top:20px;">

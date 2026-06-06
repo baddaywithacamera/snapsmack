@@ -58,6 +58,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // Reset push failures for a subscriber
+    if (isset($_POST['reset_sub_failures'])) {
+        $sub_id = (int)($_POST['sub_id'] ?? 0);
+        if ($sub_id > 0) {
+            $db->prepare("UPDATE sc_push_subscribers SET push_failures = 0 WHERE id = ?")->execute([$sub_id]);
+            $msg = "Push failures reset for subscriber #{$sub_id}.";
+        }
+    }
+
+    // Delete a subscriber
+    if (isset($_POST['delete_sub'])) {
+        $sub_id = (int)($_POST['sub_id'] ?? 0);
+        if ($sub_id > 0) {
+            $db->prepare("DELETE FROM sc_push_subscribers WHERE id = ?")->execute([$sub_id]);
+            $msg = "Subscriber #{$sub_id} removed.";
+        }
+    }
+
     // Mark a report reviewed
     if (isset($_POST['mark_reviewed'])) {
         $rid = (int)($_POST['report_id'] ?? 0);
@@ -113,7 +131,7 @@ $push_subs       = [];
 $push_sub_count  = 0;
 $push_fail_count = 0;
 try {
-    $push_subs       = $db->query("SELECT * FROM sc_push_subscribers ORDER BY registered_at DESC LIMIT 100")->fetchAll();
+    $push_subs       = $db->query("SELECT * FROM sc_push_subscribers ORDER BY push_failures ASC, registered_at DESC LIMIT 100")->fetchAll();
     $push_sub_count  = (int)$db->query("SELECT COUNT(*) FROM sc_push_subscribers WHERE push_failures < 5")->fetchColumn();
     $push_fail_count = (int)$db->query("SELECT COUNT(*) FROM sc_push_subscribers WHERE push_failures >= 5")->fetchColumn();
 } catch (PDOException $e) { }
@@ -312,10 +330,11 @@ require __DIR__ . '/sc-layout-top.php';
 <div class="sc-box">
   <div class="sc-box-header">
     <span class="sc-box-title">Push Subscribers</span>
-    <span class="sc-dim" style="font-size:0.8rem;"><?php echo $push_sub_count; ?> active<?php echo $push_fail_count > 0 ? " &bull; {$push_fail_count} failed (auto-pruned at 5 failures)" : ''; ?></span>
-    <?php if ($push_sub_count > 0): ?>
+    <span class="sc-dim" style="font-size:0.8rem;"><?php echo $push_sub_count; ?> active<?php echo $push_fail_count > 0 ? " &bull; <span style=\"color:#e45735;\">{$push_fail_count} failed</span> (reset failures to re-enable)" : ''; ?></span>
+    <?php if ($push_sub_count > 0 || $push_fail_count > 0): ?>
     <form method="post" style="display:inline;margin-left:auto;">
-      <button type="submit" name="manual_push" value="1" class="sc-btn">
+      <button type="submit" name="manual_push" value="1" class="sc-btn"
+              <?php echo $push_sub_count === 0 ? 'disabled title="No active subscribers — reset failures first"' : ''; ?>>
         &#9654; Push Current Level Now
       </button>
     </form>
@@ -332,14 +351,18 @@ require __DIR__ . '/sc-layout-top.php';
             <th style="padding:10px 16px;text-align:left;color:#666;font-weight:600;">Registered</th>
             <th style="padding:10px 16px;text-align:left;color:#666;font-weight:600;">Last Push</th>
             <th style="padding:10px 16px;text-align:left;color:#666;font-weight:600;">Failures</th>
+            <th style="padding:10px 16px;"></th>
           </tr>
         </thead>
         <tbody>
         <?php foreach ($push_subs as $s): ?>
-          <tr style="border-bottom:1px solid #1e1e1e;<?php echo $s['push_failures'] >= 3 ? 'background:#1a0000;' : ''; ?>">
+          <tr style="border-bottom:1px solid #1e1e1e;<?php echo $s['push_failures'] >= 5 ? 'background:#1a0000;' : ($s['push_failures'] >= 3 ? 'background:#140a00;' : ''); ?>">
             <td style="padding:8px 16px;">
               <div style="font-weight:600;color:#ddd;"><?php echo htmlspecialchars($s['site_name'] ?: '—'); ?></div>
               <div style="font-size:0.78rem;color:#555;"><?php echo htmlspecialchars($s['site_url']); ?></div>
+              <?php if ($s['push_failures'] >= 5): ?>
+                <div style="font-size:0.75rem;color:#e45735;margin-top:2px;">&#9888; Inactive — 5+ failures</div>
+              <?php endif; ?>
             </td>
             <td style="padding:8px 16px;color:#666;white-space:nowrap;"><?php echo htmlspecialchars($s['registered_at']); ?></td>
             <td style="padding:8px 16px;color:#666;white-space:nowrap;"><?php echo $s['last_push_at'] ? htmlspecialchars($s['last_push_at']) : '<span style="color:#444;">Never</span>'; ?></td>
@@ -351,6 +374,18 @@ require __DIR__ . '/sc-layout-top.php';
               <?php else: ?>
                 <span style="color:#e45735;font-weight:700;"><?php echo (int)$s['push_failures']; ?> &#9888;</span>
               <?php endif; ?>
+            </td>
+            <td style="padding:8px 16px;white-space:nowrap;">
+              <?php if ($s['push_failures'] > 0): ?>
+              <form method="post" style="display:inline;">
+                <input type="hidden" name="sub_id" value="<?php echo (int)$s['id']; ?>">
+                <button type="submit" name="reset_sub_failures" value="1" class="sc-btn sc-btn--sm" title="Reset failure count to 0 — re-enables this subscriber">Reset</button>
+              </form>
+              <?php endif; ?>
+              <form method="post" style="display:inline;margin-left:4px;" onsubmit="return confirm('Remove this subscriber?');">
+                <input type="hidden" name="sub_id" value="<?php echo (int)$s['id']; ?>">
+                <button type="submit" name="delete_sub" value="1" class="sc-btn sc-btn--sm sc-btn--danger">Remove</button>
+              </form>
             </td>
           </tr>
         <?php endforeach; ?>

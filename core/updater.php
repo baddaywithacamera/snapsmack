@@ -99,6 +99,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-trigrams.sql',
     'migrate-posts-sort-order.sql',
     'migrate-network-alert-push.sql',
+    'migrate-phone-home-spoke-rows.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
@@ -205,11 +206,35 @@ function _updater_ping_home(PDO $pdo, string $version, string $track): void {
         } catch (PDOException $e) {}
 
         if ($role === 'spoke') {
-            return; // Hub counts us; pinging independently would double the tally
+            // Send a slim spoke ping so SC can show per-spoke track/version in the accordion
+            // without counting this install separately (hub's spoke_count already covers it).
+            $hub_url = '';
+            try {
+                $hub_url = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'multisite_hub_url' LIMIT 1")->fetchColumn() ?? '');
+            } catch (PDOException $e) {}
+            $hub_uid = ($hub_url !== '') ? substr(hash('sha256', strtolower(rtrim($hub_url, '/'))), 0, 32) : '';
+
+            $spoke_params = ['uid' => $uid, 'v' => $version, 't' => $track, 's' => 0, 'role' => 'spoke', 'hub_uid' => $hub_uid];
+            $spoke_url = 'https://snapsmack.ca/releases/ping.php?' . http_build_query($spoke_params);
+
+            if (function_exists('curl_init')) {
+                $ch = curl_init($spoke_url);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT        => 12,
+                    CURLOPT_CONNECTTIMEOUT => 8,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                    CURLOPT_USERAGENT      => 'SnapSmack-Ping/' . $version,
+                    CURLOPT_NOSIGNAL       => 1,
+                ]);
+                curl_exec($ch);
+                curl_close($ch);
+            }
+            return;
         }
 
         // Ping payload: install identity only. No stats, no site name, no traffic data.
-        $ping_params = ['uid' => $uid, 'v' => $version, 't' => $track, 's' => $spoke_count];
+        $ping_params = ['uid' => $uid, 'v' => $version, 't' => $track, 's' => $spoke_count, 'role' => 'hub'];
 
         $ping_url = 'https://snapsmack.ca/releases/ping.php?' . http_build_query($ping_params);
 
