@@ -12,98 +12,36 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-<<<<<<< HEAD
-## 0.7.207 — "Privy Council" (2026-06-05)
+## 0.7.209 — "Courtesy Flush" (2026-06-05)
 
-### Feature — Installer security opt-in (SmackBack + SmackAttack)
+### Fix — SmackBack false positive on every release (legit core files read as TAMPERED)
 
-- `install.php` — New security step added to the first-run wizard. After the admin
-  account is created, the installer now shows a **Security Setup** screen (internal
-  string sub-step `secopt`, modelled on the existing `4b` pattern) before the final
-  write. Every option is pre-checked (default opt-IN) and individually un-checkable;
-  the step is **non-blocking** — a user can untick everything and still finish.
-  - **SmackBack file integrity** (`smackback_enabled`, `smackback_mode = lockout`) —
-    local-only, no privacy cost.
-  - **SmackAttack / Network Alert** — receive yellow alerts (`network_alert_receive`),
-    contribute breach reports (`network_alert_send`), immediate breach push
-    (`network_alert_push_enabled`). Inline privacy disclosure mirrors the SmackBack
-    admin copy.
-  - **Consent audit** — records the four choices as JSON (`network_alert_consent_choice`)
-    plus a UTC submit timestamp (`network_alert_consent_at`), written even when the user
-    opts out of everything.
-  - If immediate push is left on, the installer calls `nalert_register_push()` after the
-    settings seed. Registration failure is soft — it never blocks install; the existing
-    admin-load retry path reconciles.
-  - All seven keys are plain `snap_settings` key/value rows (no schema change). The
-    step-4 success path now diverts to `secopt` instead of falling straight through to
-    the step-5 writer; the security screen POSTs `step=5` to run the final write.
-  - **Audit gates preserved:** the existing-admin block (finding #013) still runs before
-    account creation; the step-5 `REQUEST_METHOD === 'POST'` guard (finding #012) is
-    unchanged. The new screen adds no path that reaches the final write without a POST.
-- `core/constants.php` — Bumped to `Alpha 0.7.207`. Codename "Privy Council".
-- `smack-central/sc-version.php` — `SC_VERSION` `0.7.206D` → `0.7.207D`; `SC_CODENAME`
-  → "Privy Council".
+- `smack-central/sc-release.php` — The SC Release Packager builds the deployed zip from the GitHub
+  tag archive, which carries no `smackback-manifest.json`. `sc_build_release_zip()` now generates the
+  manifest itself — per-file SHA-256, size, and EOF signature for every monitored `.php`/`.css`/`.js`,
+  computed from the exact bytes written to the package — and adds it before the zip is closed, so it
+  is covered by the existing Ed25519 package signature. Without this, the post-update re-baseline had
+  no manifest to read and every legitimately-changed file reported as TAMPERED on the live fleet.
+- `smack-update.php` — If a package has no `smackback-manifest.json`, the updater now falls back to
+  re-baselining from the freshly-extracted (Ed25519-verified) disk instead of skipping. A stale breach
+  is auto-cleared only when the baseline came from the signed in-zip manifest; the disk fallback never
+  auto-clears.
 
----
+### Fix — SmackBack breach could only be cleared by RESTORE (which reverts code)
 
-## 0.7.206 — "Bodacious Bidet" (2026-06-05)
+- `smack-back.php` — RE-INITIALISE BASELINE now calls `smackback_resolve_breach('reinit')` after a
+  successful re-hash, and a clean RUN FULL VERIFY now clears an active breach
+  (`smackback_resolve_breach('manual')`). Previously neither cleared `smackback_status`, leaving
+  RESTORE — which reverts files to the old baseline — as the only exit from the breach screen.
 
-### Change — Version tracking + SC "Running" version fix
+### Security
 
-- `core/constants.php` — Bumped to `Alpha 0.7.206`. Codename "Bodacious Bidet".
-- `smack-central/sc-version.php` — `SC_VERSION` bumped `0.7.190` → `0.7.206D`;
-  `SC_CODENAME` → "Bodacious Bidet". `SC_VERSION` is a hand-maintained constant that
-  the SC Update page's "Running" row reads directly. It had fallen far behind (stuck on
-  `0.7.190` / "Shit and Git") while the self-updater was correctly pulling current
-  releases — making it look like SC wasn't updating itself. It now tracks the release
-  line so "Running" reflects reality after a pull. The functional update check (Installed
-  marker vs latest GitHub tag) was never affected.
+- `secaudits/secaudit-0.7.209.md` — Full review of this release. Net-positive: file integrity is now
+  cryptographically anchored on deployed releases (previously absent), and the one moved surface
+  (breach auto-clear) is gated to the signed path. Two follow-ups flagged: the SC skin packager
+  (`sc-skins.php`) has the same missing-manifest gap, and `smackback-manifest.json` should get a
+  web-root `.htaccess` deny.
 
----
-
-## 0.7.205 — "Boring and Bitchin'" (2026-06-05)
-
-### Fix — sc-network-api.php web-root stub + unregister dead code
-
-- `projects/snapsmack-ca/sc-subscribe-redirect.php` — Replaces the broken
-  `sc-network-api.php` web-root stub. Previous stub duplicated the implementation
-  with wrong `require_once` paths (`__DIR__ . '/sc-config.php'` resolves to the
-  web root, not smack-central). New stub is a single `require_once` that delegates
-  to `smack-central/sc-network-api.php` where all includes resolve correctly. Deploys
-  to the web root as `sc-network-api.php`.
-- `smack-central/sc-network-api.php` — Removed dead code block in `unregister` route:
-  a spurious `$stored` assignment using a chained `prepare()->execute()` pattern that
-  was immediately shadowed by the correct `$stmt`/`fetch()` below it. No functional
-  change; dead code could not have caused a regression but was confusing.
-
-### Security — Purge inline JS from skins
-
-- `skins/chaplin/archive-layout.php`, `skins/chaplin/skin-header.php` — Removed all
-  inline `<script>` tags. Archive toggle and film-grain/overlay init now loaded via manifest.
-  `data-chaplin-scratch-freq` attribute preserved on `#rg-header` for the JS to read.
-- `skins/chaplin/manifest.php` — Added `smack-archive-toggle`, `smack-chaplin-film`,
-  `smack-chaplin-overlay` to `require_scripts`.
-- `skins/chaplin/assets/js/ss-engine-chaplin-overlay.js` — New file: overlay controller
-  extracted from inline script. Handles INFO/SIGNALS overlay open/close and wires up
-  `ChaplinFilm` auto-init via `data-chaplin-scratch-freq`.
-- `skins/rational-geo/archive-layout.php`, `skins/rational-geo/manifest.php` — Inline
-  archive-toggle script removed; loaded via `smack-archive-toggle` in manifest.
-- `skins/slickr/archive-layout.php`, `skins/slickr/manifest.php` — Same as rational-geo.
-- `core/manifest-inventory.php` — `smack-chaplin-film` and `smack-chaplin-overlay`
-  registered as named script entries.
-
-### Change — SmackBack settings button + SC dashboard fleet-count maintenance
-
-- `smack-settings.php` — "OPEN SMACKBACK" button moved out of the two-column MANAGE
-  grid to full width below the STATUS row.
-- `smack-central/sc-dashboard.php` — New "Maintenance" box with a guarded "Rebuild
-  Fleet Count" action that `TRUNCATE`s `sc_phone_home`. Clears stale spoke rows left
-  over from before the 0.7.200 spoke-skip fix, which were double-counting the Active
-  Installs tally (dashboard showed 16 vs the true ~8). Live hubs and standalone installs
-  re-populate the table on their next update check; spokes no longer ping independently.
-
----
-=======
 ## 0.7.208 — "Privy Council" (2026-06-05)
 
 (0.7.207 "Privy Council" shipped the installer security opt-in and is already pushed. Codename
@@ -133,7 +71,6 @@ carried forward to 0.7.208.)
   status/report/register call. That single failure caused both 0 push subscribers and no YELLOW
   polling. Corrected to `__DIR__ . '/smack-central/...'`. (The earlier "matches ping.php pattern"
   note was wrong — ping.php lives in releases/, one level deeper, where `../` is correct.)
->>>>>>> dev
 
 ## 0.7.207 — "Privy Council" (2026-06-05)
 
