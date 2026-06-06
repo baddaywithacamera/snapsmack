@@ -96,7 +96,8 @@ ob_start();
 <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open');">&#9776;</button>
 <div class="sidebar-overlay" onclick="document.querySelector('.sidebar').classList.remove('open'); this.classList.remove('open');"></div>
 <?php if (!empty($GLOBALS['_smackback_alert_breach'])): ?>
-<div style="background:#3a1000;border-bottom:3px solid #cc2200;padding:10px 24px;font-size:0.88rem;color:#ffccc0;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:999;">
+<style>#smackback-banner{margin-left:240px;}@media(max-width:1024px){#smackback-banner{margin-left:0;}}</style>
+<div id="smackback-banner" style="background:#3a1000;border-bottom:3px solid #cc2200;padding:10px 24px;font-size:0.88rem;color:#ffccc0;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:999;">
     <strong style="color:#ff6600;letter-spacing:1px;font-size:0.82rem;">&#9888; SMACKBACK</strong>
     File tampering or corruption detected. Admin functions are unrestricted (Alert mode).
     <a href="smack-back.php" style="color:#ff9900;text-decoration:none;border:1px solid #ff6600;padding:3px 10px;font-size:0.8rem;white-space:nowrap;">View Breach Detail &rarr;</a>

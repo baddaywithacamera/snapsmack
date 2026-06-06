@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS `sc_releases` (
 CREATE TABLE IF NOT EXISTS `sc_assets` (
     `id`           INT UNSIGNED   NOT NULL AUTO_INCREMENT,
     `asset_type`   ENUM('font','script','css') NOT NULL,
-    `family`       VARCHAR(100)   NOT NULL DEFAULT '' COMMENT 'Font family folder name; empty for scripts',
+    `family`       VARCHAR(100)   NOT NULL DEFAULT '' COMMENT 'Font family folder name — empty for scripts',
     `filename`     VARCHAR(200)   NOT NULL,
     `rel_path`     VARCHAR(300)   NOT NULL COMMENT 'Path relative to CMS root e.g. assets/fonts/Foo/foo.ttf',
     `file_path`    VARCHAR(500)   NOT NULL COMMENT 'Absolute path on this server',
@@ -137,6 +137,24 @@ CREATE TABLE IF NOT EXISTS `sc_rss_cache` (
     `latest_pub_date` TIMESTAMP      NULL     DEFAULT NULL,
     `error_message`   TEXT           NULL,
     PRIMARY KEY (`install_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Phone-home ping log (written by snapsmack.ca/releases/ping.php)
+-- role=hub: standalone or hub install (counted in fleet total)
+-- role=spoke: slim ping from a spoke; hub already counts it via spoke_count
+CREATE TABLE IF NOT EXISTS `sc_phone_home` (
+    `id`          INT UNSIGNED      NOT NULL AUTO_INCREMENT,
+    `uid`         CHAR(32)          NOT NULL,
+    `version`     VARCHAR(20)       NOT NULL DEFAULT '',
+    `track`       VARCHAR(10)       NOT NULL DEFAULT 'stable',
+    `spoke_count` SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    `role`        VARCHAR(10)       NOT NULL DEFAULT 'hub',
+    `hub_uid`     CHAR(32)          NULL     DEFAULT NULL COMMENT 'For spoke rows: the hub uid they belong to',
+    `first_seen`  DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `last_seen`   DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_uid`     (`uid`),
+    KEY           `idx_hub_uid` (`hub_uid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ===== SNAPSMACK EOF =====

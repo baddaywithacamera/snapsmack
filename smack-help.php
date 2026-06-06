@@ -1428,7 +1428,10 @@ advisory banner only.</p>
 <p>In Admin → SMACK-BACK → Network Alert, check <strong>Receive Yellow Alerts</strong>.
 Your site will poll Smack Central every 30 minutes and display a pulsing yellow banner at
 the top of every admin page if an advisory is active. The banner links to this page.
-You can also hit <strong>Check Now</strong> to force an immediate poll.</p>
+You can also hit <strong>Check Now</strong> to force an immediate poll.
+To dismiss the banner temporarily, click the × on its right edge — it won't reappear until
+a new advisory arrives. Dismissal is per-browser; other admins on other devices will still
+see the banner.</p>
 
 <h4>Contributing Breach Reports</h4>
 <p>Check <strong>Contribute Breach Reports to the Network</strong> to send your SMACKBACK
@@ -1451,6 +1454,11 @@ sends a deletion request to SC on every admin page load until SC confirms remova
 <p>This is opt-in and transparent. You can verify your data has been removed by contacting
 privacy@snapsmack.ca. Contributing breach reports and receiving push alerts are independent
 options — you can mix and match as you see fit.</p>
+<p>On a multisite fleet, if push registration gets out of sync across spokes — for example
+after a re-init or a spoke that was offline during initial registration — a hub admin can
+hit <strong>Force Re-Register Push</strong> on the Push It page. This pushes
+<code>push_registered=0</code> to all spokes; each spoke then self-registers on its next
+admin page load.</p>
 
 <h4>What It Does Not Prevent</h4>
 <p>SMACKBACK detects tampering — it does not prevent it. Total server compromise (shell,

@@ -47,6 +47,8 @@ if (file_exists(__DIR__ . '/sc-version.php')) require_once __DIR__ . '/sc-versio
          class="<?php echo $sc_active_nav === 'sc-update.php'         ? 'active' : ''; ?>">Update</a>
       <a href="sc-schema.php"
          class="<?php echo $sc_active_nav === 'sc-schema.php'         ? 'active' : ''; ?>">Schema Manager</a>
+      <a href="sc-backup.php"
+         class="<?php echo $sc_active_nav === 'sc-backup.php'         ? 'active' : ''; ?>">DB Backup</a>
       <a href="sc-help-release.php"
          class="<?php echo $sc_active_nav === 'sc-help-release.php'   ? 'active' : ''; ?>">Release Guide</a>
     </nav>
