@@ -12,6 +12,36 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.209 — "Courtesy Flush" (2026-06-05)
+
+### Fix — SmackBack false positive on every release (legit core files read as TAMPERED)
+
+- `smack-central/sc-release.php` — The SC Release Packager builds the deployed zip from the GitHub
+  tag archive, which carries no `smackback-manifest.json`. `sc_build_release_zip()` now generates the
+  manifest itself — per-file SHA-256, size, and EOF signature for every monitored `.php`/`.css`/`.js`,
+  computed from the exact bytes written to the package — and adds it before the zip is closed, so it
+  is covered by the existing Ed25519 package signature. Without this, the post-update re-baseline had
+  no manifest to read and every legitimately-changed file reported as TAMPERED on the live fleet.
+- `smack-update.php` — If a package has no `smackback-manifest.json`, the updater now falls back to
+  re-baselining from the freshly-extracted (Ed25519-verified) disk instead of skipping. A stale breach
+  is auto-cleared only when the baseline came from the signed in-zip manifest; the disk fallback never
+  auto-clears.
+
+### Fix — SmackBack breach could only be cleared by RESTORE (which reverts code)
+
+- `smack-back.php` — RE-INITIALISE BASELINE now calls `smackback_resolve_breach('reinit')` after a
+  successful re-hash, and a clean RUN FULL VERIFY now clears an active breach
+  (`smackback_resolve_breach('manual')`). Previously neither cleared `smackback_status`, leaving
+  RESTORE — which reverts files to the old baseline — as the only exit from the breach screen.
+
+### Security
+
+- `secaudits/secaudit-0.7.209.md` — Full review of this release. Net-positive: file integrity is now
+  cryptographically anchored on deployed releases (previously absent), and the one moved surface
+  (breach auto-clear) is gated to the signed path. Two follow-ups flagged: the SC skin packager
+  (`sc-skins.php`) has the same missing-manifest gap, and `smackback-manifest.json` should get a
+  web-root `.htaccess` deny.
+
 ## 0.7.208 — "Privy Council" (2026-06-05)
 
 (0.7.207 "Privy Council" shipped the installer security opt-in and is already pushed. Codename

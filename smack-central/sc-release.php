@@ -315,6 +315,7 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
 
     $count   = 0;
     $skipped = 0;
+    $smackback_files = [];   // SMACKBACK integrity manifest, built from the exact bytes shipped
     for ($i = 0; $i < $src->numFiles; $i++) {
         $name = $src->getNameIndex($i);
         $rel  = $prefix ? substr($name, strlen($prefix)) : $name;
@@ -349,7 +350,47 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         if ($content === false) continue;
         $dst->addFromString($rel, $content);
         $count++;
+
+        // SMACKBACK: record hash/size/EOF for monitored source files (php/css/js) using
+        // the SAME bytes written to the zip. core/smackback.php reads this on update
+        // (smackback_init_manifest) to re-baseline. Mirrors smackback_should_monitor() +
+        // smackback_get_eof_signature(). Without it, no manifest ships, the post-update
+        // re-baseline is skipped, and every legitimately-changed file reads as TAMPERED.
+        $ext = strtolower(pathinfo($rel, PATHINFO_EXTENSION));
+        if (in_array($ext, ['php', 'css', 'js'], true)
+            && !str_ends_with($basename, '.min.js')
+            && !str_ends_with($basename, '.min.css')
+            && strpos($rel, 'fjGallery') === false
+        ) {
+            if ($content === '') {
+                $eof_sig = null;
+            } elseif (strpos($content, "\x00") !== false) {
+                $eof_sig = 'NULL_BYTES';
+            } else {
+                $eof_sig   = null;
+                $eof_lines = explode("\n", substr($content, -1024));
+                for ($li = count($eof_lines) - 1; $li >= 0; $li--) {
+                    $eof_line = rtrim($eof_lines[$li]);
+                    if ($eof_line !== '') { $eof_sig = substr($eof_line, 0, 512); break; }
+                }
+            }
+            $smackback_files[$rel] = [
+                'hash'          => hash('sha256', $content),
+                'size'          => strlen($content),
+                'eof_signature' => $eof_sig,
+            ];
+        }
     }
+
+    // SMACKBACK: write the integrity manifest into the zip BEFORE closing, so it is part
+    // of the package bytes — and therefore covered by the Ed25519 signature, which signs
+    // the SHA-256 of the finished zip (Step 4 below). Parity with build-release.php.
+    $dst->addFromString('smackback-manifest.json', json_encode([
+        'smackback_version' => 1,
+        'package_version'   => $tag,
+        'generated_at'      => gmdate('Y-m-d\TH:i:s\Z'),
+        'files'             => $smackback_files,
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
     $src->close();
     $dst->close();
