@@ -100,6 +100,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-posts-sort-order.sql',
     'migrate-network-alert-push.sql',
     'migrate-phone-home-spoke-rows.sql',
+    'migrate-ohsnap-keys-type.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
@@ -1057,13 +1058,21 @@ function updater_migration_status(PDO $pdo): array {
  *
  * Returns ['success' => bool, 'applied' => [...filenames...], 'errors' => [...]]
  */
-function updater_run_migrations(PDO $pdo, array $migration_files): array {
+function updater_run_migrations(
+    PDO    $pdo,
+    array  $migration_files,
+    string $canonical_url     = '',
+    string $canonical_sig_url = ''
+): array {
     $result = ['success' => true, 'applied' => [], 'errors' => [], 'schema' => []];
 
     // Diff the live database against snapsmack_canonical.sql and apply anything
     // missing before migration files run. This is the authoritative schema source.
     // schema-sync.php is called AFTER migrations for enum repairs (Section 4).
-    $diff = updater_canonical_diff($pdo);
+    // Remote URL (from latest.json canonical_schema_url) is tried first so the
+    // comparison is always against the published release, not a possibly-stale
+    // on-disk copy left over from a failed update.
+    $diff = updater_canonical_diff($pdo, $canonical_url, $canonical_sig_url);
     if (isset($diff['error'])) {
         // Canonical SQL unavailable — non-fatal, log and continue.
         $result['errors'][] = '[canonical-diff] ' . $diff['error'];

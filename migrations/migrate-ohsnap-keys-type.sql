@@ -5,7 +5,7 @@
 ALTER TABLE `snap_ohsnap_keys`
     ADD COLUMN IF NOT EXISTS `key_type` VARCHAR(20)
         NOT NULL DEFAULT 'ohsnap'
-        COMMENT 'ohsnap | smackpress'
+        COMMENT 'ohsnap | smackpress | unzucker'
         AFTER `label`;
 
 -- ===== SNAPSMACK EOF =====

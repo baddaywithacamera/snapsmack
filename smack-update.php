@@ -601,7 +601,7 @@ if ($action === 'check') {
                 if ($core_update) $notifications[] = "Core update available: v{$core_update['version']}";
                 if (count($skin_info['new_skins'])    > 0) $notifications[] = count($skin_info['new_skins'])    . " new skin(s) available";
                 if (count($skin_info['updated_skins']) > 0) $notifications[] = count($skin_info['updated_skins']) . " skin update(s) available";
-                $flash_msg  = strtoupper(implode(' â ', $notifications));
+                $flash_msg  = strtoupper(implode(' / ', $notifications));
                 $flash_type = 'warning';
             }
         }
@@ -874,7 +874,13 @@ if ($action === 'stage_premigrate'
         ];
 
         $migrations     = updater_find_migrations($pdo);
-        $migrate_result = updater_run_migrations($pdo, $migrations);
+        $_premig_update = $stage_state['update'] ?? [];
+        $migrate_result = updater_run_migrations(
+            $pdo,
+            $migrations,
+            (string)($_premig_update['canonical_schema_url'] ?? ''),
+            (string)($_premig_update['canonical_schema_sig'] ?? '')
+        );
 
         if (!$migrate_result['success']) {
             $rb_error = '';
@@ -958,7 +964,14 @@ if ($action === 'stage_migrate'
     // opens with a canonical schema diff that creates any missing tables or columns.
     // Skipping this when $migrations is empty was causing new tables (e.g.
     // snap_ohsnap_keys) to never be created on installs that had no pending SQL files.
-    $migrate_result = updater_run_migrations($pdo, $migrations);
+    // Pass the remote canonical schema URL so the updater fetches the authoritative
+    // schema from snapsmack.ca rather than relying solely on the on-disk copy.
+    $migrate_result = updater_run_migrations(
+        $pdo,
+        $migrations,
+        (string)($update['canonical_schema_url'] ?? ''),
+        (string)($update['canonical_schema_sig']  ?? '')
+    );
 
     if (!$migrate_result['success']) {
         $rb_error = '';
@@ -2087,8 +2100,8 @@ include 'core/sidebar.php';
     </div>
     <?php endif; ?>
 
-    <!-- SCHEMA RECOVERY — shown at top when there are pending migrations or ghost files -->
-    <?php if ($schema_resync_result || $has_pending || $has_ghosts): ?>
+    <!-- SCHEMA RECOVERY — always visible; border-highlights when action needed -->
+    <?php if (true): ?>
     <div class="box update-section" <?php echo ($has_pending || $has_ghosts) ? 'style="border-color:rgba(200,120,0,0.5);"' : ''; ?>>
         <h3>SCHEMA RECOVERY</h3>
         <?php if ($schema_resync_result): ?>

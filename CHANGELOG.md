@@ -12,6 +12,32 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.213 — "Flush Protocol" (2026-06-07)
+
+### Fix — Canonical schema: duplicate blocks, incomplete definitions
+
+- `database/schema/snapsmack_canonical.sql` — Rewrote the file from scratch. The previous version had grown two complete halves: a comprehensive first half and a second half that duplicated many tables with older, less-complete definitions. The `updater_canonical_diff()` regex processes tables in order, so the second (stale) definition silently overwrote the first (complete) one in the diff map. The result: columns like `totp_secret/totp_enabled/totp_recovery_json` (snap_users) and `source_hub_url` (snap_blogroll) and `ban_sync_cursor` (snap_multisite_nodes) were treated as "not expected" and therefore never created on new installs running schema sync. The new file has exactly one definition per table, all authoritative. Version header updated to 0.7.213.
+
+### Fix — Canonical schema URL never used during updates
+
+- `core/updater.php` — `updater_run_migrations()` called `updater_canonical_diff($pdo)` with no URL, meaning the remote `canonical_schema_url` from latest.json was never fetched. The function supports remote-first fetch but the call site never passed the URL. Fixed: `updater_run_migrations` now accepts optional `$canonical_url` and `$canonical_sig_url` parameters and passes them to `updater_canonical_diff`.
+- `smack-update.php` — Both migration call sites (`stage_premigrate` and `stage_migrate`) now extract `canonical_schema_url` and `canonical_schema_sig` from the update manifest and pass them through.
+
+### Fix — Dev builds didn't publish canonical schema
+
+- `smack-central/sc-release.php` — Dev builds (`build_dev`) were explicitly skipping the canonical schema publish step ("stable build owns that"). On dev-track installs (like unzucked.ca), the remote URL was always empty, forcing disk-only fallback. Fixed: dev builds now also read the canonical schema from the zip and publish + sign it to `releases/snapsmack_canonical.sql`, and the URL is included in `latest-dev.json`.
+
+### Fix — Schema Recovery section vanished after all migrations applied
+
+- `smack-update.php` — The Schema Recovery box was gated on `$has_pending || $has_ghosts || $schema_resync_result`. Once all migrations ran successfully (like after 0.7.212D), the section disappeared entirely, leaving no way to manually trigger RUN SCHEMA SYNC. Fixed: section is always visible. The orange border highlight remains when there are pending migrations or ghost files.
+
+### Also in this release
+
+- `smack-backup.php` — DB download filenames include the site URL slug (e.g. `snapsmack_full_unzucked.ca_2026-06-07_13-43.sql`) to avoid filename collisions when managing multiple sites.
+- `core/unzucker-api.php` — Defensive `CREATE TABLE IF NOT EXISTS snap_ohsnap_keys` + `ALTER TABLE ... ADD COLUMN IF NOT EXISTS key_type` at startup, handles installs that predate the key table or the key_type column.
+
+---
+
 ## 0.7.212 — "Courtesy Wipe" (2026-06-07)
 
 ### Fix — Unzucker API parse error
