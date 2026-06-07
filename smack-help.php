@@ -1,4 +1,7 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 /**
  * SNAPSMACK - User Manual
  *
@@ -3211,5 +3214,117 @@ foreach ($help_topics as $slug => $ht) {
                         <a href="smack-help.php?topic=<?php echo urlencode($slug); ?>"
                            class="help-nav-link<?php echo ($slug === $active_topic) ? ' active' : ''; ?>"
                            data-slug="<?php echo htmlspecialchars($slug); ?>"
-                           data-title="<?php echo htmlspecialchars(strtolower($topic['title'])); ?>"><?php echo htmlspecialchars($topic['icon'] ?? ''); ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?></a>
-                    <?php endforeac
+                           data-title="<?php echo htmlspecialchars(strtolower($topic['title'])); ?>"><?php echo $topic['icon'] ?? ''; ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?></a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <!-- ─── Help Content ────────────────────────────────────────────────────── -->
+    <div class="help-content">
+
+        <?php if ($show_toc): ?>
+        <!-- Table of Contents -->
+        <div class="help-topic-header">
+            <h1 class="help-topic-title">Table of Contents</h1>
+        </div>
+        <div class="help-body">
+            <?php foreach ($sections as $section_name => $section_topics): ?>
+            <div class="help-toc-section">
+                <div class="help-toc-section-title"><?php echo htmlspecialchars($section_name); ?></div>
+                <ul class="help-toc-list">
+                    <?php foreach ($section_topics as $slug => $topic): ?>
+                    <li>
+                        <a href="smack-help.php?topic=<?php echo urlencode($slug); ?>">
+                            <?php echo $topic['icon'] ?? ''; ?>&ensp;<?php echo htmlspecialchars($topic['title']); ?>
+                        </a>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <?php else: ?>
+        <!-- Topic View -->
+        <?php $topic = $help_topics[$active_topic]; ?>
+        <div class="help-topic-header">
+            <div class="help-topic-section"><?php echo htmlspecialchars($topic['section']); ?></div>
+            <h1 class="help-topic-title"><?php echo htmlspecialchars($topic['title']); ?></h1>
+        </div>
+        <div class="help-body">
+            <?php echo $topic['content']; ?>
+        </div>
+        <div class="help-topic-nav">
+            <?php
+            $topic_keys  = array_keys($help_topics);
+            $current_idx = array_search($active_topic, $topic_keys);
+            $prev_slug   = ($current_idx > 0) ? $topic_keys[$current_idx - 1] : null;
+            $next_slug   = ($current_idx !== false && $current_idx < count($topic_keys) - 1)
+                         ? $topic_keys[$current_idx + 1] : null;
+            ?>
+            <div>
+                <?php if ($prev_slug): ?>
+                <a href="smack-help.php?topic=<?php echo urlencode($prev_slug); ?>">&larr; <?php echo htmlspecialchars($help_topics[$prev_slug]['title']); ?></a>
+                <?php endif; ?>
+            </div>
+            <div>
+                <?php if ($next_slug): ?>
+                <a href="smack-help.php?topic=<?php echo urlencode($next_slug); ?>"><?php echo htmlspecialchars($help_topics[$next_slug]['title']); ?> &rarr;</a>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+    </div><!-- /.help-content -->
+</div><!-- /.help-layout -->
+
+<script>
+/* Help sidebar search */
+(function () {
+    var idx = <?php echo json_encode($_search_index, JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+    var inp = document.getElementById('help-search-input');
+    var box = document.getElementById('help-search-results');
+    var nav = document.getElementById('help-nav-sections');
+    if (!inp || !box || !nav) return;
+
+    inp.addEventListener('input', function () {
+        var q = this.value.trim().toLowerCase();
+        if (!q) {
+            box.innerHTML = '';
+            box.classList.remove('active');
+            nav.style.display = '';
+            return;
+        }
+        nav.style.display = 'none';
+        var html = '';
+        for (var slug in idx) {
+            var t = idx[slug];
+            var title_match   = t.title.toLowerCase().indexOf(q) !== -1;
+            var content_match = t.text.indexOf(q) !== -1;
+            if (!title_match && !content_match) continue;
+
+            var snip = '';
+            var pos = t.text.indexOf(q);
+            if (pos !== -1) {
+                var raw = t.text.substring(Math.max(0, pos - 25), pos + q.length + 45);
+                snip = raw.replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'),
+                                   '<mark>$&</mark>');
+            }
+            html += '<a class="help-search-result" href="smack-help.php?topic='
+                  + encodeURIComponent(slug) + '">'
+                  + '<div>' + (t.icon ? t.icon + '&ensp;' : '') + t.title + '</div>'
+                  + (t.section ? '<div class="help-search-result-section">' + t.section + '</div>' : '')
+                  + (snip ? '<div class="help-search-result-snippet">&hellip;' + snip + '&hellip;</div>' : '')
+                  + '</a>';
+        }
+        if (!html) html = '<div class="help-search-no-results">No results found.</div>';
+        box.innerHTML = html;
+        box.classList.add('active');
+    });
+})();
+</script>
+
+<?php require 'core/admin-footer.php'; ?>
+<?php // ===== SNAPSMACK EOF =====

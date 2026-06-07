@@ -197,19 +197,20 @@ if ($sub === 'posts' && $method === 'POST') {
         $tag_string = implode(' ', array_map(fn($t) => '#' . ltrim($t, '#'), $tags));
     }
 
+    $pdo->beginTransaction();
+    try {
+
     // --- Create snap_images records ---
     $image_ids = [];
     foreach ($images as $seq => $img_data) {
-        $img_path = trim($img_data['path']        ?? '');
-        $img_w    = (int)($img_data['width']      ?? 0);
-        $img_h    = (int)($img_data['height']     ?? 0);
-        $img_ori  = trim($img_data['orientation'] ?? '');
+        $img_path = trim($img_data['path'] ?? '');
+        $img_w    = (int)($img_data['width']  ?? 0);
+        $img_h    = (int)($img_data['height'] ?? 0);
 
         if ($img_path === '') continue;
 
-        if ($img_ori === '') {
-            $img_ori = ($img_w > 0 && $img_h > 0 && $img_h > $img_w) ? 'portrait' : 'landscape';
-        }
+        // All Instagram imports are square; img_orientation is INT (0=landscape/square)
+        $img_ori = 0;
 
         $img_source = $ig_id !== '' ? "instagram:{$ig_id}_{$seq}" : '';
 
@@ -232,15 +233,15 @@ if ($sub === 'posts' && $method === 'POST') {
             INSERT INTO snap_images (
                 img_slug, img_file, img_title, img_description,
                 img_date, img_width, img_height, img_orientation,
-                img_source_file, img_status, sort_order, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, NOW())
+                img_source_file, img_status, sort_order
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?)
         ")->execute([
             $img_slug, $img_path, '', $desc,
             $post_date, $img_w, $img_h, $img_ori,
             $img_source ?: null, $sort_order,
         ]);
 
-        $img_id    = (int)$pdo->lastInsertId();
+        $img_id      = (int)$pdo->lastInsertId();
         $image_ids[] = $img_id;
 
         // Tags
@@ -268,13 +269,22 @@ if ($sub === 'posts' && $method === 'POST') {
 
     $post_id = (int)$pdo->lastInsertId();
 
-    // --- snap_post_images pivot ---
-    $pi_stmt = $pdo->prepare("
+    // --- snap_post_images pivot + denormalized post_id on snap_images ---
+    $pi_stmt  = $pdo->prepare("
         INSERT INTO snap_post_images (post_id, image_id, sort_position, is_cover)
         VALUES (?, ?, ?, ?)
     ");
+    $upd_stmt = $pdo->prepare("UPDATE snap_images SET post_id = ? WHERE id = ?");
     foreach ($image_ids as $pos => $img_id) {
         $pi_stmt->execute([$post_id, $img_id, $pos, ($pos === 0 ? 1 : 0)]);
+        $upd_stmt->execute([$post_id, $img_id]);
+    }
+
+    $pdo->commit();
+
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        uz_error(500, 'Import failed: ' . $e->getMessage());
     }
 
     uz_ok([

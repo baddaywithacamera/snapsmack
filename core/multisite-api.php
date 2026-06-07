@@ -918,6 +918,22 @@ if ($resource === 'blogroll' && $sub_action === 'sync' && $method === 'POST') {
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'disconnect' && $method === 'POST') {
     $pdo->prepare("DELETE FROM snap_multisite_nodes WHERE id = ?")->execute([$node_id]);
+
+    // Clear all hub_controls_* flags — the spoke is now standalone and its settings
+    // sections must no longer be locked. Idempotent: sets to '0' whether or not the
+    // hub ever pushed a value.
+    $clear_ctrl = $pdo->prepare(
+        "INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, '0')
+         ON DUPLICATE KEY UPDATE setting_val = '0'"
+    );
+    foreach ([
+        'hub_controls_timezone', 'hub_controls_akismet', 'hub_controls_ai',
+        'hub_controls_smackback', 'hub_controls_comments', 'hub_controls_email',
+        'hub_controls_netalert',
+    ] as $_ctrl_key) {
+        $clear_ctrl->execute([$_ctrl_key]);
+    }
+
     ms_ok(['message' => 'Disconnected']);
 }
 
