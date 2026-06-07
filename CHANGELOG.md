@@ -12,7 +12,31 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.210 — "TBD" (2026-06-06)
+## 0.7.211 — "Phantom Flush" (2026-06-06)
+
+### Fix — Unzucker import API
+
+- `core/unzucker-api.php` — Three bugs fixed before first production use:
+  - Removed `created_at` from `snap_images` INSERT (column doesn't exist — hard SQL error on every import).
+  - `img_orientation` hardcoded to `0` (INT column was receiving `'portrait'`/`'landscape'` strings, silently stored as 0 anyway; all IG imports are square).
+  - `snap_images.post_id` now SET after pivot insert, matching normal post-creation path (`smack-post-gram.php`) so photo editor links back correctly.
+  - Entire POST handler wrapped in a PDO transaction with rollback on any `Throwable` — partial imports no longer possible.
+
+### Fix — SSO session
+
+- `sso.php` — Was not setting `$_SESSION['user_role']` after SSO login; now SELECTs `user_role` from `snap_users` and assigns it to session. Resolves role-gated page failures after SSO entry.
+
+### Fix — Push It stale lock
+
+- `core/multisite-api.php` — Disconnect endpoint now clears all 7 `hub_controls_*` session keys. Previously left stale lock state that prevented re-registration after a force disconnect.
+
+### Fix — smack-help.php
+
+- `smack-help.php` — File tail reconstructed after truncation; nav icon double-encoding fixed. Confirmed working on foundtextures.ca.
+
+---
+
+## 0.7.210 — "Courtesy Flush" (2026-06-06)
 
 ### Feature — SC dashboard: fleet mixed-track detection + accordion
 
