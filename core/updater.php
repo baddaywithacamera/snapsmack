@@ -1335,14 +1335,33 @@ function updater_canonical_diff(PDO $pdo, string $canonical_url = '', string $ca
     $sql    = '';
     $source = 'none';
 
-    // Try remote first — authoritative even when on-disk copy is from a failed update
-    if ($canonical_url !== '') {
+    // Try remote first — authoritative even when on-disk copy is from a failed update.
+    //
+    // SECURITY: remote SQL is only accepted when its Ed25519 signature can be fully
+    // verified against the installed release public key.  Three conditions are checked
+    // before the remote copy is used:
+    //   (a) SNAPSMACK_SIGNING_ENFORCED is true (real pubkey installed, not placeholder)
+    //   (b) a signature URL was provided in the manifest
+    //   (c) the sodium extension is present so we can actually run the check
+    // If any condition is unmet the remote copy is silently discarded and we fall
+    // through to the on-disk copy, which was extracted from a sig-verified zip.
+    // This means a MITM or compromised server can never inject schema changes on a
+    // production install — the worst outcome is falling back to disk.
+    if ($canonical_url !== '' && SNAPSMACK_SIGNING_ENFORCED) {
         $fetched = _updater_http_get($canonical_url);
         if ($fetched !== false && strlen($fetched) > 256 && str_contains($fetched, 'CREATE TABLE')) {
-            // Verify signature when available
-            if ($canonical_sig_url !== '') {
+            $accepted = false;
+            if ($canonical_sig_url === '') {
+                // Signing enforced but no sig URL in manifest — reject remote
+                error_log('SnapSmack updater: canonical schema sig URL absent — using on-disk fallback');
+            } elseif (!function_exists('sodium_crypto_sign_verify_detached')) {
+                // Signing enforced but sodium not available — cannot verify, reject remote
+                error_log('SnapSmack updater: sodium unavailable, cannot verify canonical schema — using on-disk fallback');
+            } else {
                 $sig_hex = trim((string) _updater_http_get($canonical_sig_url));
-                if ($sig_hex !== '' && function_exists('sodium_crypto_sign_verify_detached')) {
+                if ($sig_hex === '') {
+                    error_log('SnapSmack updater: canonical schema sig fetch returned empty — using on-disk fallback');
+                } else {
                     try {
                         $checksum = hash('sha256', $fetched);
                         $verified = sodium_crypto_sign_verify_detached(
@@ -1350,23 +1369,24 @@ function updater_canonical_diff(PDO $pdo, string $canonical_url = '', string $ca
                             $checksum,
                             sodium_hex2bin(SNAPSMACK_RELEASE_PUBKEY)
                         );
-                        if (!$verified) {
-                            // Signature mismatch — reject remote copy, fall through to disk
-                            error_log('SnapSmack updater: canonical schema signature verification failed — using on-disk fallback');
-                            $fetched = false;
+                        if ($verified) {
+                            $accepted = true;
+                        } else {
+                            error_log('SnapSmack updater: canonical schema signature mismatch — using on-disk fallback');
                         }
                     } catch (\SodiumException $e) {
-                        error_log('SnapSmack updater: canonical schema sig verify error — ' . $e->getMessage());
-                        $fetched = false;
+                        error_log('SnapSmack updater: canonical schema sig verify error — ' . $e->getMessage() . ' — using on-disk fallback');
                     }
                 }
             }
-            if ($fetched !== false) {
+            if ($accepted) {
                 $sql    = $fetched;
                 $source = 'remote';
             }
         }
     }
+    // Note: when SNAPSMACK_SIGNING_ENFORCED is false (placeholder pubkey / dev install)
+    // the remote fetch is skipped entirely — no point fetching what cannot be authenticated.
 
     // Fall back to on-disk copy
     if ($sql === '') {
