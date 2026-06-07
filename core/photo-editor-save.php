@@ -63,7 +63,7 @@ $new_w = imagesx($src);
 $new_h = imagesy($src);
 
 // Read the max image size from settings (respects user's configured limit)
-$max_stmt = $pdo->prepare("SELECT setting_value FROM snap_settings WHERE setting_key = 'max_image_size'");
+$max_stmt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = 'max_image_size'");
 $max_stmt->execute();
 $max_size = (int)($max_stmt->fetchColumn() ?: 1900);
 

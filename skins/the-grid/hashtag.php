@@ -23,52 +23,87 @@ $per_page  = 30;
 $curr_page = max(1, (int)($_GET['p'] ?? 1));
 $offset    = ($curr_page - 1) * $per_page;
 
-// Read skin settings (already loaded by index.php but re-scoped here for clarity)
-$tg_tile_gap     = (int)($settings['tg_tile_gap']     ?? 2);
-$tg_tile_radius  = (int)($settings['tg_tile_radius']  ?? 0);
-$tg_grid_width   = (int)($settings['tg_grid_max_width'] ?? 935);
-$tg_hover_style  = $settings['tg_hover_overlay'] ?? 'count';
+// Read skin settings using the correct manifest keys
+$tg_grid_width = (int)($settings['tg_max_width']     ?? 935);
+$carousel_ind  = $settings['tg_carousel_indicator']  ?? 'icon';
+$hover_overlay = $settings['tg_hover_overlay']       ?? 'title';
 
 // ── Fetch tag record ──────────────────────────────────────────────────────────
 $tag_stmt = $pdo->prepare("SELECT id, use_count FROM snap_tags WHERE slug = ? LIMIT 1");
 $tag_stmt->execute([$tag_slug]);
 $tag_row = $tag_stmt->fetch(PDO::FETCH_ASSOC);
 
-// ── Fetch tagged images ───────────────────────────────────────────────────────
+// ── Fetch tagged images (with post_id for dedup) ──────────────────────────────
 if ($tag_row) {
-    $grid_stmt = $pdo->prepare("
+    $img_stmt = $pdo->prepare("
         SELECT
-            i.id          AS img_id,
-            i.img_title   AS title,
+            i.id              AS img_id,
+            i.img_title       AS title,
             i.img_slug,
             i.img_file,
             i.img_thumb_square,
-            1             AS image_count
+            i.post_id
         FROM snap_images i
         JOIN snap_image_tags it ON it.image_id = i.id
-        WHERE it.tag_id     = ?
-          AND i.img_status  = 'published'
-          AND i.img_date   <= ?
+        WHERE it.tag_id    = ?
+          AND i.img_status = 'published'
+          AND i.img_date  <= ?
         ORDER BY i.sort_order ASC, i.img_date DESC
         LIMIT ? OFFSET ?
     ");
-    $grid_stmt->execute([$tag_row['id'], $now_local, $per_page, $offset]);
-    $grid_posts  = $grid_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $img_stmt->execute([$tag_row['id'], $now_local, $per_page, $offset]);
+    $raw_images  = $img_stmt->fetchAll(PDO::FETCH_ASSOC);
     $total_count = (int)$tag_row['use_count'];
 } else {
-    $grid_posts  = [];
+    $raw_images  = [];
     $total_count = 0;
 }
-$has_more = ($offset + count($grid_posts)) < $total_count;
+
+// ── Build tile list: deduplicate carousel posts, fetch cover + count ──────────
+$tiles         = [];
+$seen_post_ids = [];
+
+foreach ($raw_images as $img_row) {
+    if (!empty($img_row['post_id'])) {
+        if (isset($seen_post_ids[$img_row['post_id']])) continue;
+        $seen_post_ids[$img_row['post_id']] = true;
+
+        $cover_stmt = $pdo->prepare("
+            SELECT i.id AS img_id, i.img_file, i.img_thumb_square, i.img_slug,
+                   p.title,
+                   (SELECT COUNT(*) FROM snap_post_images spi
+                    WHERE spi.post_id = p.id AND spi.sort_position >= 0) AS image_count
+            FROM snap_posts p
+            JOIN snap_post_images pi ON pi.post_id = p.id AND pi.is_cover = 1
+            JOIN snap_images i ON i.id = pi.image_id
+            WHERE p.id = ?
+        ");
+        $cover_stmt->execute([$img_row['post_id']]);
+        $tile = $cover_stmt->fetch(PDO::FETCH_ASSOC);
+        if ($tile) $tiles[] = $tile;
+    } else {
+        // Standalone image — no post container
+        $tiles[] = [
+            'img_id'           => $img_row['img_id'],
+            'img_file'         => $img_row['img_file'],
+            'img_thumb_square' => $img_row['img_thumb_square'],
+            'img_slug'         => $img_row['img_slug'],
+            'title'            => $img_row['title'],
+            'image_count'      => 1,
+        ];
+    }
+}
+
+$has_more = ($offset + count($raw_images)) < $total_count;
 ?>
 
-<?php include('skin-meta.php'); ?>
-<?php include('skin-header.php'); ?>
+<?php include(__DIR__ . '/skin-meta.php'); ?>
+<?php include(__DIR__ . '/skin-header.php'); ?>
 
 <div id="tg-app">
 
     <!-- ── Tag Header ──────────────────────────────────────────────────────── -->
-    <div class="tg-archive-header" style="max-width:<?php echo $tg_grid_width; ?>px;">
+    <div class="tg-archive-header">
         <a href="<?php echo BASE_URL; ?>" class="tg-back-link">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             Back
@@ -78,31 +113,46 @@ $has_more = ($offset + count($grid_posts)) < $total_count;
     </div>
 
     <!-- ── Grid ────────────────────────────────────────────────────────────── -->
-    <main class="tg-grid" style="
-        max-width: <?php echo $tg_grid_width; ?>px;
-        --tg-gap: <?php echo $tg_tile_gap; ?>px;
-        --tg-radius: <?php echo $tg_tile_radius; ?>px;
-    " aria-label="<?php echo htmlspecialchars($tag_display); ?> photos">
+    <main class="tg-grid" aria-label="<?php echo htmlspecialchars($tag_display); ?> photos">
 
-        <?php if (!empty($grid_posts)): ?>
-            <?php foreach ($grid_posts as $post):
-                $thumb_src   = $post['img_thumb_square'] ?: $post['img_file'];
-                $post_url    = BASE_URL . $post['img_slug'];
-                $title_safe  = htmlspecialchars($post['title']);
+        <?php if (!empty($tiles)): ?>
+            <?php foreach ($tiles as $tile):
+                $thumb_src   = $tile['img_thumb_square'] ?: $tile['img_file'];
+                $post_url    = BASE_URL . '?id=' . (int)$tile['img_id'];
+                $image_count = (int)($tile['image_count'] ?? 1);
+                $is_carousel = $image_count > 1;
+                $title_safe  = htmlspecialchars($tile['title'] ?? '');
             ?>
             <div class="tg-tile">
-                <a href="<?php echo htmlspecialchars($post_url); ?>"
+                <a href="<?php echo $post_url; ?>"
                    title="<?php echo $title_safe; ?>"
                    aria-label="<?php echo $title_safe; ?>">
-                    <?php if ($thumb_src): ?>
-                        <img src="<?php echo BASE_URL . ltrim($thumb_src, '/'); ?>"
-                             alt="<?php echo $title_safe; ?>"
-                             loading="lazy">
-                    <?php endif; ?>
-                    <?php if ($tg_hover_style === 'title'): ?>
-                        <div class="tg-tile-overlay"><span><?php echo $title_safe; ?></span></div>
-                    <?php endif; ?>
+                    <img src="<?php echo htmlspecialchars($thumb_src); ?>"
+                         alt="<?php echo $title_safe; ?>"
+                         loading="lazy">
                 </a>
+
+                <?php if ($is_carousel && $carousel_ind !== 'none'): ?>
+                    <div class="tg-tile-indicator">
+                        <?php if ($carousel_ind === 'icon'): ?>
+                            <span class="tg-tile-indicator--icon" aria-label="<?php echo $image_count; ?> images">⧉</span>
+                        <?php else: ?>
+                            <span class="tg-tile-indicator--count"><?php echo $image_count; ?></span>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($hover_overlay !== 'none'): ?>
+                    <div class="tg-tile-overlay" aria-hidden="true">
+                        <span class="tg-tile-overlay-text">
+                            <?php if ($hover_overlay === 'title'): ?>
+                                <?php echo $title_safe; ?>
+                            <?php else: ?>
+                                <?php echo $image_count; ?> image<?php echo $image_count !== 1 ? 's' : ''; ?>
+                            <?php endif; ?>
+                        </span>
+                    </div>
+                <?php endif; ?>
             </div>
             <?php endforeach; ?>
         <?php else: ?>
