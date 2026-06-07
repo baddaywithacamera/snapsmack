@@ -12,6 +12,28 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.216 — "Splash Zone" (2026-06-07)
+
+### Fix — SC update page "Running" row showed stale version permanently
+
+- `smack-central/sc-version.php` — Hardcoded to 0.7.209D since that release; never updated. SC's update page "Running" row reads SC_VERSION from this file, so it showed 0.7.209D regardless of what was actually installed.
+- `smack-central/sc-release.php` — Both stable and dev build pipelines now auto-patch `smack-central/sc-version.php` inside the release zip at build time (same mechanism as the pubkey injection on setup.php). SC_VERSION and SC_CODENAME will always match the build that was pulled going forward.
+
+### Fix — Unzucker API key silently not stored due to missing key_prefix column
+
+- `core/unzucker-api.php` — The defensive `CREATE TABLE IF NOT EXISTS snap_ohsnap_keys` was missing the `key_prefix` column. When unzucker-api.php created the table on installs where it didn't exist yet, the table was created without `key_prefix`. `smack-api-keys.php` then tried to INSERT with `key_prefix` in the column list — the statement failed silently (no try/catch), so "KEY GENERATED" was shown to the user and a value was displayed, but nothing was written to the DB. Every subsequent connection attempt returned "Invalid API key." Fixed: `key_prefix` added to the defensive CREATE TABLE and an ALTER TABLE ADD COLUMN IF NOT EXISTS guard added for existing tables.
+
+### Feature — Schema completeness audit in admin
+
+- `smack-schema.php` — PHP Reference Audit panel added above the live DB diff. Scans PHP source files on disk for snap_* SQL table references and flags any absent from the canonical schema. Same check the SC build gate runs — now visible to the operator without needing CLI access.
+
+### Tooling — Schema completeness audit gate in SC release packager
+
+- `tools/check-schema.php` — Standalone CLI audit tool. Scans all PHP files for SQL table references, cross-references against canonical schema, exits 1 on any gap.
+- `smack-central/sc-release.php` — Step 4d: `sc_audit_schema_completeness()` scans PHP files inside the freshly-built zip against the canonical schema extracted from the same zip. Build aborts if any referenced table is absent from the schema. Makes it structurally impossible to ship a release with a schema gap.
+
+---
+
 ## 0.7.215 — "Flush Protocol" (2026-06-07)
 
 ### Fix — 31 tables missing from installs predating canonical schema system
