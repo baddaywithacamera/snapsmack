@@ -599,7 +599,7 @@ class App(tk.Tk):
         conn_body = self._box_body(conn_box)
 
         self._field(conn_body, "SITE URL", self._url_var)
-        self._field(conn_body, "API KEY", self._api_key_var, show="•")
+        self._field_password(conn_body, "API KEY", self._api_key_var)
 
         btn_row = tk.Frame(conn_body, bg=BG_CARD)
         btn_row.pack(fill="x")
@@ -639,9 +639,15 @@ class App(tk.Tk):
         ftp_row2.columnconfigure(0, weight=1)
         ftp_row2.columnconfigure(1, weight=1)
         self._field_in(ftp_row2, "FTP USERNAME", self._ftp_user_var, 0, 0, padx=(0, 6))
-        self._field_in(ftp_row2, "FTP PASSWORD", self._ftp_pass_var, 0, 1, show="•")
+        self._field_in_password(ftp_row2, "FTP PASSWORD", self._ftp_pass_var, 0, 1)
 
         self._field(ftp_body, "REMOTE BASE PATH", self._ftp_base_var)
+
+        ftp_btn_row = tk.Frame(ftp_body, bg=BG_CARD)
+        ftp_btn_row.pack(fill="x")
+        self._test_ftp_btn = ttk.Button(ftp_btn_row, text="Test FTP", style="Ghost.TButton",
+                                         command=self._on_test_ftp)
+        self._test_ftp_btn.pack(side="right")
 
         # ── Box: IMPORT SETTINGS ─────────────────────────────────────
         self._export_var   = tk.StringVar()
@@ -746,6 +752,49 @@ class App(tk.Tk):
         body = tk.Frame(box, bg=BG_CARD, padx=12, pady=10)
         body.pack(fill="both", expand=True)
         return body
+
+    def _field_password(self, parent, label, var):
+        """Label + masked entry + show/hide toggle."""
+        tk.Label(parent, text=label, bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w")
+        row = tk.Frame(parent, bg=BG_CARD)
+        row.pack(fill="x", pady=(2, 8))
+        e = self._entry(row, var, width=0, show="•")
+        e.pack(side="left", fill="x", expand=True, padx=(0, 4))
+        _vis = [False]
+        def _toggle():
+            _vis[0] = not _vis[0]
+            e.configure(show="" if _vis[0] else "•")
+            btn.configure(text="hide" if _vis[0] else "show")
+        btn = tk.Button(
+            row, text="show", command=_toggle,
+            bg=BG_MID, fg=FG_DIM, activebackground=BG_HOVER,
+            activeforeground=FG_MAIN, relief="flat",
+            font=FONT_SMALL, padx=5, pady=2, cursor="hand2",
+        )
+        btn.pack(side="left")
+        return e
+
+    def _field_in_password(self, grid_parent, label, var, row, col, padx=(0, 0)):
+        """Grid cell: masked entry + show/hide toggle."""
+        cell = tk.Frame(grid_parent, bg=BG_CARD)
+        cell.grid(row=row, column=col, sticky="ew", padx=padx)
+        tk.Label(cell, text=label, bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w")
+        inner = tk.Frame(cell, bg=BG_CARD)
+        inner.pack(fill="x", pady=(2, 0))
+        e = self._entry(inner, var, width=0, show="•")
+        e.pack(side="left", fill="x", expand=True, padx=(0, 2))
+        _vis = [False]
+        def _toggle():
+            _vis[0] = not _vis[0]
+            e.configure(show="" if _vis[0] else "•")
+            btn.configure(text="hide" if _vis[0] else "show")
+        btn = tk.Button(
+            inner, text="show", command=_toggle,
+            bg=BG_MID, fg=FG_DIM, activebackground=BG_HOVER,
+            activeforeground=FG_MAIN, relief="flat",
+            font=FONT_SMALL, padx=4, pady=0, cursor="hand2",
+        )
+        btn.pack(side="left")
 
     def _field(self, parent, label, var, show=""):
         tk.Label(parent, text=label, bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w")
@@ -937,6 +986,33 @@ class App(tk.Tk):
             messagebox.showerror("Connection failed", str(e))
 
     # ------------------------------------------------------------------
+    # Test FTP
+    # ------------------------------------------------------------------
+
+    def _on_test_ftp(self):
+        host = self._ftp_host_var.get().strip()
+        if not host:
+            messagebox.showerror("Missing", "Enter FTP host first.")
+            return
+        self._set_status("Testing FTP…", FG_WARN)
+        self.update_idletasks()
+        try:
+            transport = ftp_upload.create_transport(
+                protocol=self._ftp_proto_var.get(),
+                host=host,
+                port=int(self._ftp_port_var.get() or 21),
+                username=self._ftp_user_var.get().strip(),
+                password=self._ftp_pass_var.get(),
+            )
+            transport.connect()
+            transport.disconnect()
+            self._set_status("FTP connection OK.", FG_OK)
+            messagebox.showinfo("FTP OK", "FTP connection successful.")
+        except Exception as e:
+            self._set_status(f"FTP failed: {e}", FG_ERR)
+            messagebox.showerror("FTP failed", str(e))
+
+    # ------------------------------------------------------------------
     # Validate
     # ------------------------------------------------------------------
 
@@ -1110,6 +1186,7 @@ class App(tk.Tk):
         self._validate_btn.configure(state=state)
         self._connect_btn.configure(state=state)
         self._parse_btn.configure(state=state)
+        self._test_ftp_btn.configure(state=state)
 
 
 # ---------------------------------------------------------------------------

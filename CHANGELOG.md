@@ -12,6 +12,18 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.212 — "Courtesy Wipe" (2026-06-07)
+
+### Fix — Unzucker API parse error
+
+- `core/unzucker-api.php` — PHP parse error on line 299: EOF marker was written as `<?php // ===== SNAPSMACK EOF =====` in a pure-PHP file (no `?>` close tag), producing a syntax error on every request. Changed to `// ===== SNAPSMACK EOF =====`. The API was completely non-functional in production.
+
+### Unzucker desktop — QoL
+
+- `tools/unzucker/main.py` — Show/hide toggle buttons added to API key and FTP password fields. Test FTP button added to the FTP settings box — connects and disconnects without running a full migration, reports success/failure in the status bar and a dialog. Both buttons disable during active transfer.
+
+---
+
 ## 0.7.211 — "Phantom Flush" (2026-06-06)
 
 ### Fix — Unzucker import API
