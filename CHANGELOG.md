@@ -12,6 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.214 — "Flush Protocol (Hardened)" (2026-06-07)
+
+### Security — Canonical schema remote fetch now requires verified signature
+
+- `core/updater.php` — `updater_canonical_diff()` previously accepted a remotely-fetched canonical schema even when signature verification could not be performed (sodium extension absent, sig URL missing from manifest, or empty sig response). An attacker with access to snapsmack.ca or a MITM position could have served a malicious schema and had it applied to the target database (CREATE TABLE / ALTER TABLE — no DROP or DELETE possible, but still unacceptable). Fixed with an explicit gate: the remote copy is accepted **only** when all three conditions hold: (a) `SNAPSMACK_SIGNING_ENFORCED` is true (real pubkey installed), (b) a sig URL is present in the manifest, and (c) the sodium extension is available. Any failure in the chain rejects the remote copy and logs a specific error. When `SNAPSMACK_SIGNING_ENFORCED` is false (placeholder pubkey / dev install), the remote fetch is skipped entirely — no point fetching content that cannot be authenticated. The on-disk fallback (extracted from a sig-verified zip) is always trustworthy.
+
+---
+
 ## 0.7.213 — "Flush Protocol" (2026-06-07)
 
 ### Fix — Canonical schema: duplicate blocks, incomplete definitions
