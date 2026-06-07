@@ -20,7 +20,7 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ### Unzucker desktop — QoL
 
-- `tools/unzucker/main.py` — Show/hide toggle buttons added to API key and FTP password fields. Test FTP button added to the FTP settings box — connects and disconnects without running a full migration, reports success/failure in the status bar and a dialog. Both buttons disable during active transfer.
+- `tools/unzucker/main.py` — Show/hide toggle buttons added to API key and FTP password fields. Test FTP button added to the FTP settings box — connects and disconnects without running a full migration, reports success/failure in the status bar and a dialog. Both buttons disable during active transfer. Settings now also saved on window close (previously only saved on Connect/Parse/Transfer). Build version bumped to 0.7.12.
 
 ---
 

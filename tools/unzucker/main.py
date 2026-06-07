@@ -14,7 +14,7 @@ creates posts through the SnapSmack admin API.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.8"
+BUILD_VERSION = "0.7.12"
 
 import os
 import queue
@@ -488,6 +488,7 @@ class App(tk.Tk):
         self._build_ui()
         self._load_config_to_ui()
         self.after(100, self._poll_queue)
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
 
     # ------------------------------------------------------------------
     # TTK style
@@ -1166,6 +1167,10 @@ class App(tk.Tk):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _on_close(self):
+        self._save_config()
+        self.destroy()
 
     def _set_status(self, text: str, color: str = FG_DIM):
         self._status_lbl.configure(text=text, fg=color)
