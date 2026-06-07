@@ -810,4 +810,29 @@ CREATE TABLE IF NOT EXISTS `snap_smackback_log` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+-- ─── SMACKPRESS CATEGORIES ───────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS `snap_cats` (
+  `id`   int          NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='SmackPress post categories (distinct from snap_categories / photo taxonomy)';
+
+
+-- ─── BACKUP LOG ──────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS `snap_backup_log` (
+  `id`          int unsigned   NOT NULL AUTO_INCREMENT,
+  `created_at`  datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `status`      varchar(20)    COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ok',
+  `size_bytes`  bigint unsigned DEFAULT NULL,
+  `destination` varchar(100)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `notes`       text           COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ===== SNAPSMACK EOF =====
