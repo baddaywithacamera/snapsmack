@@ -193,6 +193,81 @@ function sc_file_changes(string $from_tag, string $to_tag): array {
     return ['added' => $added, 'modified' => $modified, 'removed' => $removed];
 }
 
+// ── Helper: canonical schema completeness audit ───────────────────────────────
+/**
+ * Audit PHP files inside a release zip against a canonical schema SQL string.
+ *
+ * Scans every .php entry in the zip (excluding smack-central/ and vendor/)
+ * for SQL keyword + snap_* table-name references, then checks each referenced
+ * table exists in the canonical schema.
+ *
+ * @param  string $schema_sql  Contents of snapsmack_canonical.sql
+ * @param  string $zip_path    Path to the release zip to inspect
+ * @return array{
+ *   missing:      string[],   // tables in PHP but NOT in schema
+ *   schema_count: int,        // tables defined in schema
+ *   ref_count:    int,        // unique snap_* tables referenced in PHP
+ * }
+ */
+function sc_audit_schema_completeness(string $schema_sql, string $zip_path): array {
+    // Parse schema: collect every CREATE TABLE name
+    $schema_tables = [];
+    preg_match_all(
+        '/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`"]?(snap_[a-z_]+)[`"]?/i',
+        $schema_sql,
+        $sm
+    );
+    foreach ($sm[1] as $t) {
+        $schema_tables[strtolower($t)] = true;
+    }
+
+    // Scan PHP files in zip for SQL table references
+    $table_ref_pattern =
+        '/\b(?:FROM|JOIN|INTO|UPDATE|ALTER\s+TABLE|TRUNCATE(?:\s+TABLE)?|' .
+        'CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?|DROP\s+TABLE(?:\s+IF\s+EXISTS)?)\s+[`"]?(snap_[a-z_]+)[`"]?/i';
+
+    $refs    = [];
+    $reader  = new ZipArchive();
+    $skip    = ['smack-central/', 'vendor/', 'node_modules/'];
+
+    if ($reader->open($zip_path) === true) {
+        for ($i = 0; $i < $reader->numFiles; $i++) {
+            $entry = $reader->getNameIndex($i);
+            if (!str_ends_with($entry, '.php')) continue;
+
+            $skip_this = false;
+            foreach ($skip as $s) {
+                if (str_contains($entry, $s)) { $skip_this = true; break; }
+            }
+            if ($skip_this) continue;
+
+            $src = $reader->getFromIndex($i);
+            if ($src === false) continue;
+
+            preg_match_all($table_ref_pattern, $src, $m);
+            foreach ($m[1] as $t) {
+                $refs[strtolower($t)] = true;
+            }
+        }
+        $reader->close();
+    }
+
+    // Find gaps
+    $missing = [];
+    foreach (array_keys($refs) as $table) {
+        if (!isset($schema_tables[$table])) {
+            $missing[] = $table;
+        }
+    }
+    sort($missing);
+
+    return [
+        'missing'      => $missing,
+        'schema_count' => count($schema_tables),
+        'ref_count'    => count($refs),
+    ];
+}
+
 // ── Helper: download GitHub tag zip and repackage as clean release zip ────────
 // GitHub zips include a wrapper directory (e.g. "snapsmack-0.7.1/"). This
 // function strips that prefix so the release zip contains files at their
@@ -691,6 +766,19 @@ if ($action === 'build' && $preflight_ok) {
                     } else {
                         $build_log[] = "→ WARNING: setup.php not found in zip — pubkey not injected";
                     }
+                    // Patch smack-central/sc-version.php with the correct version/codename.
+                    // Without this, SC's own update page shows stale version info after every pull.
+                    $sc_ver_content =
+                        "<?php\n/**\n * SMACK CENTRAL - Version constants\n *\n"
+                        . " * Auto-patched at build time by sc-release.php.\n"
+                        . " *\n * SNAPSMACK_EOF_HEADER\n"
+                        . " *     // ===== SNAPSMACK EOF =====\n */\n\n"
+                        . "define('SC_VERSION',  '" . addslashes($version) . "');\n"
+                        . "define('SC_CODENAME', '" . addslashes($codename) . "');\n"
+                        . "// ===== SNAPSMACK EOF =====\n";
+                    $patcher->deleteName('smack-central/sc-version.php');
+                    $patcher->addFromString('smack-central/sc-version.php', $sc_ver_content);
+                    $build_log[] = "→ sc-version.php patched ({$version} / {$codename})";
                     $patcher->close();
                 } else {
                     $build_log[] = "→ WARNING: could not open zip to patch setup.php — pubkey not injected";
@@ -751,6 +839,23 @@ if ($action === 'build' && $preflight_ok) {
                     $schema_content = $zip_reader->getFromName('database/schema/snapsmack_canonical.sql');
                     $zip_reader->close();
                 }
+
+                // Step 4d: Schema completeness audit.
+                // Verify every snap_* table referenced in PHP exists in the canonical schema.
+                // A gap here means installs that receive this release will be missing tables.
+                // Abort the build rather than ship a broken schema.
+                if ($schema_content !== false && $schema_content !== '' && !$build_error) {
+                    $audit = sc_audit_schema_completeness($schema_content, $zip_dest);
+                    if (!empty($audit['missing'])) {
+                        $missing_list = implode(', ', $audit['missing']);
+                        $build_error  = "Schema audit FAILED — PHP references tables absent from canonical schema: {$missing_list}. "
+                                      . "Add them to database/schema/snapsmack_canonical.sql and a migrations/migrate-*.sql before building.";
+                        $build_log[]  = "→ SCHEMA AUDIT FAILED: {$missing_list}";
+                    } else {
+                        $build_log[] = "→ Schema audit passed ({$audit['schema_count']} tables defined, {$audit['ref_count']} referenced in PHP)";
+                    }
+                }
+
                 if ($schema_content !== false && $schema_content !== '') {
                     if (file_put_contents($canonical_dst, $schema_content) !== false) {
                         $canonical_url = rtrim(RELEASES_URL, '/') . '/snapsmack_canonical.sql';
@@ -939,6 +1044,18 @@ if ($action === 'build_dev' && $preflight_ok) {
                     } else {
                         $dev_build_log[] = "→ WARNING: setup.php not found in zip — pubkey not injected";
                     }
+                    // Patch smack-central/sc-version.php — same as stable build.
+                    $sc_ver_content =
+                        "<?php\n/**\n * SMACK CENTRAL - Version constants\n *\n"
+                        . " * Auto-patched at build time by sc-release.php.\n"
+                        . " *\n * SNAPSMACK_EOF_HEADER\n"
+                        . " *     // ===== SNAPSMACK EOF =====\n */\n\n"
+                        . "define('SC_VERSION',  '" . addslashes($version) . "');\n"
+                        . "define('SC_CODENAME', '" . addslashes($codename) . "');\n"
+                        . "// ===== SNAPSMACK EOF =====\n";
+                    $patcher->deleteName('smack-central/sc-version.php');
+                    $patcher->addFromString('smack-central/sc-version.php', $sc_ver_content);
+                    $dev_build_log[] = "→ sc-version.php patched ({$version} / {$codename})";
                     $patcher->close();
                 }
             }

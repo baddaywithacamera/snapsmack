@@ -9,6 +9,6 @@
  * SNAPSMACK_EOF_HEADER: bottom marker is  // ===== SNAPSMACK EOF =======  (last non-empty line)
  */
 
-define('SC_VERSION',  '0.7.209D');
-define('SC_CODENAME', 'Courtesy Flush');
+define('SC_VERSION',  '0.7.215D');
+define('SC_CODENAME', 'Flush Protocol');
 // ===== SNAPSMACK EOF =====
