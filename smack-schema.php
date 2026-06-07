@@ -115,6 +115,54 @@ function snap_schema_diff(array $canonical, array $live): array {
     return compact('missing_tables', 'missing_columns', 'ok_tables');
 }
 
+// ── PHP reference audit ───────────────────────────────────────────────────────
+// Scans PHP files on disk for snap_* SQL references and returns any that are
+// absent from the canonical schema. Same logic as tools/check-schema.php.
+
+function snap_schema_audit_php(string $root, array $canonical_tables): array {
+    $skip    = ['smack-central', 'vendor', 'node_modules', '.git'];
+    $pattern =
+        '/\b(?:FROM|JOIN|INTO|UPDATE|ALTER\s+TABLE|TRUNCATE(?:\s+TABLE)?|' .
+        'CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?|DROP\s+TABLE(?:\s+IF\s+EXISTS)?)' .
+        '\s+[`"]?(snap_[a-z_]+)[`"]?/i';
+
+    $refs = [];
+    try {
+        $it = new RecursiveIteratorIterator(
+            new RecursiveCallbackFilterIterator(
+                new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
+                function ($file, $key, $it) use ($skip) {
+                    if ($it->hasChildren()) {
+                        return !in_array($file->getFilename(), $skip, true);
+                    }
+                    return $file->getExtension() === 'php';
+                }
+            ),
+            RecursiveIteratorIterator::LEAVES_ONLY
+        );
+        foreach ($it as $file) {
+            $src = @file_get_contents($file->getPathname());
+            if ($src === false) continue;
+            preg_match_all($pattern, $src, $m);
+            foreach ($m[1] as $t) {
+                $refs[strtolower($t)] = true;
+            }
+        }
+    } catch (Exception $e) {
+        // Scan failed — return empty; caller treats as inconclusive
+        return [];
+    }
+
+    $missing = [];
+    foreach (array_keys($refs) as $table) {
+        if (!isset($canonical_tables[$table])) {
+            $missing[] = $table;
+        }
+    }
+    sort($missing);
+    return $missing;
+}
+
 // ── DDL builder ───────────────────────────────────────────────────────────────
 
 function snap_schema_build_ddl(array $diff): array {
@@ -192,6 +240,8 @@ $diff           = null;
 $parse_error    = null;
 $total_missing  = 0;
 
+$php_audit_missing = [];
+
 if ($canonical === false) {
     $parse_error = 'Canonical schema file not found at database/schema/snapsmack_canonical.sql';
 } else {
@@ -203,6 +253,13 @@ if ($canonical === false) {
     } catch (Exception $e) {
         $parse_error = 'Could not read live database: ' . $e->getMessage();
     }
+
+    // PHP reference audit — compare source files against canonical table list
+    $canonical_table_keys = array_combine(
+        array_map('strtolower', array_keys($canonical)),
+        array_fill(0, count($canonical), true)
+    );
+    $php_audit_missing = snap_schema_audit_php(__DIR__, $canonical_table_keys);
 }
 
 require_once 'core/admin-header.php';
@@ -318,6 +375,43 @@ require 'core/sidebar.php';
     </div>
 </div>
 <?php endif; ?>
+
+<!-- PHP Reference Audit -->
+<h3 style="font-size:0.8rem; letter-spacing:1px; text-transform:uppercase; opacity:0.5; margin:28px 0 10px;">
+    PHP Reference Audit
+</h3>
+<p style="font-size:0.82rem; opacity:0.5; margin-bottom:14px; max-width:600px;">
+    Tables referenced in PHP source that are absent from the canonical schema.
+    Any gap here would cause the SC release packager to abort the build.
+</p>
+<div class="schema-status-bar" style="margin-bottom:24px;">
+    <span class="schema-status-label">PHP → Schema</span>
+    <?php if (empty($php_audit_missing)): ?>
+        <span class="schema-status-ok">✓ All PHP-referenced tables present in canonical schema</span>
+    <?php else: ?>
+        <span class="schema-status-err">
+            <?php echo count($php_audit_missing); ?> table<?php echo count($php_audit_missing) !== 1 ? 's' : ''; ?>
+            referenced in PHP but missing from canonical schema
+        </span>
+    <?php endif; ?>
+</div>
+<?php if (!empty($php_audit_missing)): ?>
+<div class="schema-table" style="margin-bottom:24px;">
+    <div class="schema-cols" style="padding:14px 18px;">
+        <?php foreach ($php_audit_missing as $t): ?>
+        <span class="schema-col schema-col--missing"><?php echo htmlspecialchars($t); ?></span>
+        <?php endforeach; ?>
+    </div>
+    <div style="padding:10px 18px 14px; font-size:0.78rem; opacity:0.55; border-top:1px solid rgba(255,255,255,0.05);">
+        Fix: add each table to <code>database/schema/snapsmack_canonical.sql</code>
+        and create a <code>migrations/migrate-*.sql</code> with IF NOT EXISTS DDL.
+    </div>
+</div>
+<?php endif; ?>
+
+<h3 style="font-size:0.8rem; letter-spacing:1px; text-transform:uppercase; opacity:0.5; margin:28px 0 10px;">
+    Live Database vs Canonical Schema
+</h3>
 
 <!-- Table-by-table diff -->
 <?php foreach ($canonical as $table => $tdef):
