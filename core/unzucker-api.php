@@ -23,13 +23,14 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/snap-tags.php';
 
 // Defensive schema guard — table may be absent on installs that predate
-// the Oh Snap! key table; column key_type may be absent on installs that
-// predate the migrate-ohsnap-keys-type migration.
+// the Oh Snap! key table; columns key_type and key_prefix may be absent
+// on installs that predate their respective migrations.
 $pdo->exec("CREATE TABLE IF NOT EXISTS snap_ohsnap_keys (
     id           INT UNSIGNED     NOT NULL AUTO_INCREMENT,
     label        VARCHAR(100)     NOT NULL DEFAULT '',
     key_type     VARCHAR(20)      NOT NULL DEFAULT 'ohsnap',
     key_hash     VARCHAR(64)      NOT NULL,
+    key_prefix   VARCHAR(8)       NOT NULL DEFAULT '',
     created_at   DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_used_at DATETIME         DEFAULT NULL,
     is_active    TINYINT(1)       NOT NULL DEFAULT 1,
@@ -39,6 +40,9 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS snap_ohsnap_keys (
 $pdo->exec("ALTER TABLE snap_ohsnap_keys
     ADD COLUMN IF NOT EXISTS key_type VARCHAR(20)
     NOT NULL DEFAULT 'ohsnap' AFTER label");
+$pdo->exec("ALTER TABLE snap_ohsnap_keys
+    ADD COLUMN IF NOT EXISTS key_prefix VARCHAR(8)
+    NOT NULL DEFAULT '' AFTER key_hash");
 
 // ---------------------------------------------------------------------------
 // Auth
