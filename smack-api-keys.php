@@ -20,10 +20,14 @@ require_once 'core/auth-smack.php';
 $msg         = '';
 $new_key_raw = null;   // Set once after generation — shown to the user once only
 
-// Ensure key_type column exists
+// Ensure key_type and key_prefix columns exist
 try { $pdo->query("SELECT key_type FROM snap_ohsnap_keys LIMIT 0");
 } catch (PDOException $e) {
     $pdo->exec("ALTER TABLE snap_ohsnap_keys ADD COLUMN key_type VARCHAR(20) NOT NULL DEFAULT 'ohsnap' AFTER label");
+}
+try { $pdo->query("SELECT key_prefix FROM snap_ohsnap_keys LIMIT 0");
+} catch (PDOException $e) {
+    $pdo->exec("ALTER TABLE snap_ohsnap_keys ADD COLUMN key_prefix VARCHAR(8) NOT NULL DEFAULT '' AFTER key_hash");
 }
 
 // --- GENERATE ---
@@ -122,11 +126,11 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper">
                         <label>KEY TYPE</label>
                         <select name="key_type">
-                            <option value="ohsnap">Oh Snap! (skin designer)</option>
-                            <option value="smackpress">SmackPress (WP migration)</option>
-                            <option value="flkrfckr">FLKR FCKR (Flickr import)</option>
-                            <option value="gyss">GET YOUR SHIT SORTED (photo sorter)</option>
-                            <option value="unzucker">Unzucker (Instagram import)</option>
+                            <option value="ohsnap">OH SNAP! (SKIN DESIGNER)</option>
+                            <option value="smackpress">SMACKPRESS (WP MIGRATION)</option>
+                            <option value="flkrfckr">FLKR FCKR (FLICKR IMPORT)</option>
+                            <option value="gyss">GET YOUR SHIT SORTED (PHOTO SORTER)</option>
+                            <option value="unzucker">UNZUCKER (INSTAGRAM IMPORT)</option>
                         </select>
                     </div>
 
