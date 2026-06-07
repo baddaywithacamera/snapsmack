@@ -869,8 +869,8 @@ if ($action === 'build' && $preflight_ok) {
 // ── POST: Build dev release (BITCHIN' track) ──────────────────────────────────
 // Same pipeline as stable but:
 //   • Writes latest-dev.json — does NOT overwrite latest.json
-//   • Does NOT update sc_releases DB or site-version.php
-//   • Does NOT publish canonical SQL (stable build owns that)
+//   • Does NOT update sc_releases DB
+//   • DOES publish canonical SQL (both tracks must keep it current)
 if ($action === 'build_dev' && $preflight_ok) {
 
     // Defensive table creation — sc_schema_parse() silently drops this table;
@@ -961,21 +961,55 @@ if ($action === 'build_dev' && $preflight_ok) {
                 $dev_download_url = rtrim(RELEASES_URL, '/') . '/' . $zip_name;
                 $dev_build_log[]  = "→ Zip saved: {$zip_dest} (" . number_format($dev_file_size / 1024, 1) . " KB)";
 
-                // Write latest-dev.json — does NOT touch latest.json or canonical SQL
+                // Publish canonical schema — dev builds need this too so dev-track
+                // installs always have the authoritative schema for remote diff.
+                $dev_canonical_url = '';
+                $dev_canonical_sig = '';
+                $dev_schema_content = false;
+                $zip_reader2 = new ZipArchive();
+                if ($zip_reader2->open($zip_dest) === true) {
+                    $dev_schema_content = $zip_reader2->getFromName('database/schema/snapsmack_canonical.sql');
+                    $zip_reader2->close();
+                }
+                if ($dev_schema_content !== false && $dev_schema_content !== '') {
+                    $can_dst = rtrim(RELEASES_DIR, '/') . '/snapsmack_canonical.sql';
+                    $can_sig_dst = rtrim(RELEASES_DIR, '/') . '/snapsmack_canonical.sql.sig';
+                    if (file_put_contents($can_dst, $dev_schema_content) !== false) {
+                        $dev_canonical_url = rtrim(RELEASES_URL, '/') . '/snapsmack_canonical.sql';
+                        try {
+                            $can_checksum    = hash('sha256', $dev_schema_content);
+                            $can_sig_bin     = sodium_crypto_sign_detached($can_checksum, sodium_hex2bin(SMACK_RELEASE_PRIVKEY));
+                            $can_sig_hex_str = sodium_bin2hex($can_sig_bin);
+                            file_put_contents($can_sig_dst, $can_sig_hex_str);
+                            $dev_canonical_sig = rtrim(RELEASES_URL, '/') . '/snapsmack_canonical.sql.sig';
+                            $dev_build_log[]   = "→ snapsmack_canonical.sql published + signed (dev)";
+                        } catch (SodiumException $e) {
+                            $dev_build_log[] = "→ WARNING: canonical SQL published (dev) but signing failed: " . $e->getMessage();
+                        }
+                    } else {
+                        $dev_build_log[] = "→ WARNING: could not write snapsmack_canonical.sql to releases dir";
+                    }
+                } else {
+                    $dev_build_log[] = "→ WARNING: database/schema/snapsmack_canonical.sql not found in dev zip";
+                }
+
+                // Write latest-dev.json
                 $manifest = [
-                    'version'         => $version,
-                    'version_full'    => $version_full,
-                    'released'        => $released,
-                    'download_url'    => $dev_download_url,
-                    'checksum_sha256' => $dev_checksum,
-                    'signature'       => $dev_sig_hex,
-                    'signing_pubkey'  => $sc_derived_pubkey,
-                    'changelog'       => $changelog,
-                    'schema_changes'  => false,
-                    'requires_php'    => $requires_php,
-                    'requires_mysql'  => $requires_mysql,
-                    'download_size'   => $dev_file_size,
-                    'track'           => 'dev',
+                    'version'              => $version,
+                    'version_full'         => $version_full,
+                    'released'             => $released,
+                    'download_url'         => $dev_download_url,
+                    'checksum_sha256'      => $dev_checksum,
+                    'signature'            => $dev_sig_hex,
+                    'signing_pubkey'       => $sc_derived_pubkey,
+                    'changelog'            => $changelog,
+                    'schema_changes'       => false,
+                    'requires_php'         => $requires_php,
+                    'requires_mysql'       => $requires_mysql,
+                    'download_size'        => $dev_file_size,
+                    'track'                => 'dev',
+                    'canonical_schema_url' => $dev_canonical_url,
+                    'canonical_schema_sig' => $dev_canonical_sig,
                 ];
                 $dev_json_path = rtrim(RELEASES_DIR, '/') . '/latest-dev.json';
                 file_put_contents($dev_json_path, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));

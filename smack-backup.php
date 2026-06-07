@@ -23,7 +23,10 @@ if (isset($_POST['action']) && $_POST['action'] === 'export') {
 
     // SQL EXTRACTION: Processes Full Dumps, Schemas, or User Keys.
     if (in_array($type, ['full', 'schema'])) {
-        $filename = "snapsmack_" . $type . "_" . date('Y-m-d_H-i') . ".sql";
+        $site_slug = preg_replace('#^https?://#', '', BASE_URL);
+        $site_slug = trim($site_slug, '/');
+        $site_slug = preg_replace('/[^a-z0-9\-\.]/i', '-', $site_slug);
+        $filename  = "snapsmack_" . $type . "_" . $site_slug . "_" . date('Y-m-d_H-i') . ".sql";
         header('Content-Type: application/octet-stream');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
 
