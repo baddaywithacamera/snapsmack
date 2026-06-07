@@ -12,6 +12,16 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.215 — "Flush Protocol" (2026-06-07)
+
+### Fix — 31 tables missing from installs predating canonical schema system
+
+- `migrations/migrate-create-missing-tables.sql` — The canonical schema diff system was never successfully applied on installs that ran before 0.7.213 fixed the zip packaging. 33 tables were absent. Additionally, snap_cats (SmackPress categories) and snap_backup_log were missing from the canonical schema entirely — found by auditing every SQL query in the PHP codebase. All 33 tables created with IF NOT EXISTS — idempotent on clean installs.
+- `database/schema/snapsmack_canonical.sql` — Added snap_cats and snap_backup_log, which were referenced in smackpress-api.php and multisite-api.php but never defined in the schema.
+- `core/updater.php` — Added migrate-create-missing-tables.sql to UPDATER_KNOWN_MIGRATIONS.
+
+---
+
 ## 0.7.214 — "Flush Protocol (Hardened)" (2026-06-07)
 
 ### Security — Canonical schema remote fetch now requires verified signature

@@ -101,6 +101,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-network-alert-push.sql',
     'migrate-phone-home-spoke-rows.sql',
     'migrate-ohsnap-keys-type.sql',
+    'migrate-create-missing-tables.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
