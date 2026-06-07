@@ -296,4 +296,4 @@ if ($sub === 'posts' && $method === 'POST') {
 }
 
 uz_error(404, 'Unknown unzucker route.');
-<?php // ===== SNAPSMACK EOF =====
+// ===== SNAPSMACK EOF =====
