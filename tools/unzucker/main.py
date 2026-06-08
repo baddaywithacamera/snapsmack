@@ -1,4 +1,4 @@
-﻿"""
+"""
 Unzucker — main.py
 Instagram export migration tool for SnapSmack (The Grid / Carousel mode).
 
@@ -14,10 +14,13 @@ creates posts through the SnapSmack admin API. No FTP required.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.16"
+BUILD_VERSION = "0.7.20"
 
+import logging
+import logging.handlers
 import os
 import queue
+import sys
 import tempfile
 import threading
 import tkinter as tk
@@ -31,6 +34,32 @@ import ig_parser
 import poster as poster_module
 from ig_parser import ParsedPost
 from poster import UnzuckerClient, SiteData
+
+# ---------------------------------------------------------------------------
+# Logging — rotating daily, 7-day retention, %APPDATA%\Unzucker\unzucker.log
+# ---------------------------------------------------------------------------
+
+_LOG_DIR  = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'Unzucker')
+_LOG_FILE = os.path.join(_LOG_DIR, 'unzucker.log')
+os.makedirs(_LOG_DIR, exist_ok=True)
+
+_log_handler = logging.handlers.TimedRotatingFileHandler(
+    _LOG_FILE, when='D', interval=1, backupCount=7, encoding='utf-8',
+)
+_log_handler.setFormatter(logging.Formatter(
+    '%(asctime)s  %(levelname)-8s  %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+))
+log = logging.getLogger('unzucker')
+log.setLevel(logging.DEBUG)
+log.addHandler(_log_handler)
+
+def _excepthook(exc_type, exc_value, exc_tb):
+    if not issubclass(exc_type, KeyboardInterrupt):
+        log.critical('Unhandled exception', exc_info=(exc_type, exc_value, exc_tb))
+    sys.__excepthook__(exc_type, exc_value, exc_tb)
+
+sys.excepthook = _excepthook
 
 # Surface keyring availability for the UI indicator
 _KEYRING_OK = cfg_module.has_keyring()
@@ -247,6 +276,7 @@ class PostGrid(tk.Frame):
                  on_right_click_cb=None, **kwargs):
         super().__init__(parent, bg=BG_DEEP, **kwargs)
         self._cells:             List[GridCell] = []
+        self._posts_cache:       List          = []
         self._on_click           = on_cell_click
         self._on_ctrl_click      = on_ctrl_click
         self._on_right_click_cb  = on_right_click_cb
@@ -265,15 +295,30 @@ class PostGrid(tk.Frame):
         self._inner.bind("<Configure>", lambda e: self._canvas.configure(
             scrollregion=self._canvas.bbox("all")))
         self._canvas.bind("<Configure>", self._on_canvas_resize)
-        self._canvas.bind("<MouseWheel>", lambda e: self._canvas.yview_scroll(
-            int(-1 * (e.delta / 120)), "units"))
+
+        # Scroll: bind_all when pointer is inside the grid so cell widgets
+        # don't steal the event.  Unbound on leave so other scrollable widgets
+        # (e.g. the detail view) aren't affected.
+        self._canvas.bind("<Enter>", lambda e: self.bind_all("<MouseWheel>", self._on_scroll))
+        self._canvas.bind("<Leave>", lambda e: self.unbind_all("<MouseWheel>"))
+        self._inner.bind("<Enter>",  lambda e: self.bind_all("<MouseWheel>", self._on_scroll))
+        self._inner.bind("<Leave>",  lambda e: self.unbind_all("<MouseWheel>"))
 
     def _on_canvas_resize(self, event):
         self._canvas.itemconfig(self._window, width=event.width)
 
+    def _on_scroll(self, event):
+        self._canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    def reflow(self):
+        """Reload the grid at the current canvas width — call after window resize."""
+        if self._posts_cache:
+            self.clear()
+            self.load(self._posts_cache)
+
     def load(self, posts: List[ParsedPost]):
         """Populate the grid with parsed posts."""
-        self.clear()
+        self._posts_cache = posts
         canvas_w = self._canvas.winfo_width()
         if canvas_w < 100:
             canvas_w = WIN_W - 30  # scrollbar allowance
@@ -369,7 +414,7 @@ class PostDetail(tk.Frame):
         nav.pack_propagate(False)
 
         self._back_btn = tk.Button(
-            nav, text="â†  BACK TO GRID", command=self._on_back,
+            nav, text="←  BACK TO GRID", command=self._on_back,
             bg=BG_CARD, fg=ACCENT, activebackground=BG_HOVER,
             activeforeground=ACCENT, relief="flat", font=FONT_BOLD,
             cursor="hand2",
@@ -385,7 +430,7 @@ class PostDetail(tk.Frame):
         self._next_btn.pack(side="right", padx=10)
 
         self._prev_btn = tk.Button(
-            nav, text="â† PREV", command=self._on_prev,
+            nav, text="← PREV", command=self._on_prev,
             bg=BG_CARD, fg=FG_DIM, activebackground=BG_HOVER,
             activeforeground=FG_MAIN, relief="flat", font=FONT_SMALL,
             cursor="hand2",
@@ -597,10 +642,11 @@ class TrigramPanel(tk.Toplevel):
         self.grab_set()
         self.transient(parent)
 
-        self._on_lock = on_lock
+        self._on_lock  = on_lock
         # Work with a mutable list of (post, original_index) pairs
-        self._order   = list(zip(posts, indices))  # current L/M/R order
-        self._thumbs  = [None, None, None]         # PhotoImage refs
+        self._order    = list(zip(posts, indices))  # current L/M/R order
+        self._thumbs   = [None, None, None]         # PhotoImage refs
+        self._drag_src = None                        # slot index being dragged
 
         self._build()
         self._load_thumbs()
@@ -616,7 +662,7 @@ class TrigramPanel(tk.Toplevel):
     def _build(self):
         tk.Label(self, text="TRIGRAM SLOT ORDER", bg=BG_DEEP, fg=FG_DIM,
                  font=FONT_SMALL).pack(padx=14, pady=(12, 4))
-        tk.Label(self, text="Swap adjacent thumbnails to set L / M / R order.",
+        tk.Label(self, text="Drag thumbnails to reorder  ·  or use ⇄ to swap adjacent.",
                  bg=BG_DEEP, fg=FG_DIM, font=("Segoe UI", 8)).pack(padx=14, pady=(0, 8))
 
         tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
@@ -640,11 +686,16 @@ class TrigramPanel(tk.Toplevel):
             sl.pack()
             self._slot_labels.append(sl)
 
-            # Thumbnail canvas
+            # Thumbnail canvas — drag-and-drop reorder
             c = tk.Canvas(col, width=T, height=T, bg="#0A0A0E",
-                          highlightthickness=1, highlightbackground=BORDER)
+                          highlightthickness=1, highlightbackground=BORDER,
+                          cursor="fleur")
             c.pack()
             self._thumb_labels.append(c)
+            slot_i = i  # capture
+            c.bind("<ButtonPress-1>",   lambda e, s=slot_i: self._start_drag(e, s))
+            c.bind("<B1-Motion>",       lambda e, s=slot_i: self._on_drag_motion(e, s))
+            c.bind("<ButtonRelease-1>", lambda e, s=slot_i: self._end_drag(e, s))
 
             # Swap button between positions (not after the last one)
             if i < 2:
@@ -697,8 +748,62 @@ class TrigramPanel(tk.Toplevel):
     def _swap(self, i: int):
         """Swap position i with position i+1."""
         self._order[i], self._order[i + 1] = self._order[i + 1], self._order[i]
+        self._thumbs[i], self._thumbs[i + 1] = self._thumbs[i + 1], self._thumbs[i]
         self._update_titles()
-        self._load_thumbs()
+        self._refresh_thumb_display()
+
+    def _swap_to(self, src: int, dest: int):
+        """Move the item at src to dest, shifting others."""
+        if src == dest:
+            return
+        item = self._order.pop(src)
+        self._order.insert(dest, item)
+        photo = self._thumbs.pop(src)
+        self._thumbs.insert(dest, photo)
+        self._update_titles()
+        self._refresh_thumb_display()
+
+    def _refresh_thumb_display(self):
+        """Repaint all three thumbnail canvases from the cached PhotoImages."""
+        T = self.THUMB
+        for slot, photo in enumerate(self._thumbs):
+            canvas = self._thumb_labels[slot]
+            canvas.delete("all")
+            if photo:
+                canvas.create_image(T // 2, T // 2, image=photo, anchor="center")
+            else:
+                canvas.create_text(T // 2, T // 2, text="?",
+                                   fill=FG_DIM, font=FONT_BOLD)
+
+    # ---- drag-and-drop handlers ----
+
+    def _start_drag(self, event, slot: int):
+        self._drag_src = slot
+        self._thumb_labels[slot].configure(highlightbackground=ACCENT, highlightthickness=2)
+
+    def _on_drag_motion(self, event, slot: int):
+        # Highlight potential drop target
+        w = event.widget.winfo_containing(event.x_root, event.y_root)
+        for i, canvas in enumerate(self._thumb_labels):
+            if canvas is w and i != self._drag_src:
+                canvas.configure(highlightbackground=FG_WARN, highlightthickness=2)
+            elif i != self._drag_src:
+                canvas.configure(highlightbackground=BORDER, highlightthickness=1)
+
+    def _end_drag(self, event, slot: int):
+        if self._drag_src is None:
+            return
+        src = self._drag_src
+        self._drag_src = None
+        # Reset all highlights
+        for c in self._thumb_labels:
+            c.configure(highlightbackground=BORDER, highlightthickness=1)
+        # Find which canvas the pointer landed on
+        w = event.widget.winfo_containing(event.x_root, event.y_root)
+        for i, canvas in enumerate(self._thumb_labels):
+            if canvas is w and i != src:
+                self._swap_to(src, i)
+                return
 
     def _update_titles(self):
         for i, (post, _) in enumerate(self._order):
@@ -754,12 +859,26 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(f"UNZUCKER  —  build {BUILD_VERSION}")
-        self.geometry(f"{WIN_W}x{WIN_H}")
         self.minsize(520, 600)
+
+        # State — load config first so geometry restore can use it
+        self._config         = cfg_module.load()
+
+        # Restore saved geometry / maximised state
+        saved_geo   = self._config.get('window_geometry', '')
+        saved_state = self._config.get('window_state', 'normal')
+        if saved_geo:
+            try:
+                self.geometry(saved_geo)
+            except tk.TclError:
+                self.geometry(f"{WIN_W}x{WIN_H}")
+        else:
+            self.geometry(f"{WIN_W}x{WIN_H}")
+        if saved_state == 'zoomed':
+            self.after(50, lambda: self.state('zoomed'))
         self.configure(bg=BG_DEEP)
 
-        # State
-        self._config         = cfg_module.load()
+        # Remaining state
         self._client:        Optional[UnzuckerClient] = None
         self._site_data:     Optional[SiteData]       = None
         self._posts:         List[ParsedPost]          = []
@@ -844,7 +963,7 @@ class App(tk.Tk):
             header, text="UNZUCKER", bg=BG_CARD, fg=ACCENT, font=FONT_TITLE,
         ).pack(side="left", padx=16)
 
-        self._conn_dot = tk.Label(header, text="â—", bg=BG_CARD, fg=FG_DIM, font=("Segoe UI", 11))
+        self._conn_dot = tk.Label(header, text="●", bg=BG_CARD, fg=FG_DIM, font=("Segoe UI", 11))
         self._conn_dot.pack(side="right", padx=(0, 14))
         self._conn_lbl = tk.Label(header, text="Not connected", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
         self._conn_lbl.pack(side="right")
@@ -852,7 +971,7 @@ class App(tk.Tk):
                  font=("Segoe UI", 8)).pack(side="right", padx=(0, 20))
 
         # Keyring indicator
-        kr_text  = "🔒 keyring" if _KEYRING_OK else "âš  no keyring"
+        kr_text  = "🔒 keyring" if _KEYRING_OK else "⚠ no keyring"
         kr_color = FG_OK       if _KEYRING_OK else FG_WARN
         tk.Label(header, text=kr_text, bg=BG_CARD, fg=kr_color,
                  font=("Segoe UI", 8)).pack(side="right", padx=(0, 10))
@@ -1002,6 +1121,26 @@ class App(tk.Tk):
                                      bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
         self._status_lbl.pack(side="right", padx=14)
 
+        # Reflow grid when window is resized
+        self._resize_job = None
+        self.bind("<Configure>", self._on_win_resize)
+
+    # ------------------------------------------------------------------
+    # Window resize → grid reflow
+    # ------------------------------------------------------------------
+
+    def _on_win_resize(self, event):
+        if event.widget is not self:
+            return
+        if self._resize_job:
+            self.after_cancel(self._resize_job)
+        self._resize_job = self.after(150, self._do_reflow)
+
+    def _do_reflow(self):
+        self._resize_job = None
+        if self._posts and self._current_view == 'grid':
+            self._grid.reflow()
+
     # ------------------------------------------------------------------
     # Box layout helpers
     # ------------------------------------------------------------------
@@ -1108,11 +1247,15 @@ class App(tk.Tk):
         self._copy_var.set(c.get('copyright_text', ''))
 
     def _save_config(self):
+        win_state = self.state()
         cfg_module.save({
-            'url':            self._url_var.get().strip(),
-            'api_key':        self._api_key_var.get(),
-            'export_folder':  self._export_var.get().strip(),
-            'copyright_text': self._copy_var.get().strip(),
+            'url':             self._url_var.get().strip(),
+            'api_key':         self._api_key_var.get(),
+            'export_folder':   self._export_var.get().strip(),
+            'copyright_text':  self._copy_var.get().strip(),
+            'window_state':    win_state,
+            # Only save normal-mode geometry; zoomed geometry is wrong on restore
+            'window_geometry': self.geometry() if win_state != 'zoomed' else '',
         })
 
     # ------------------------------------------------------------------
@@ -1192,8 +1335,14 @@ class App(tk.Tk):
         self._prog_lbl.configure(text=f"0 / {len(self._posts)}")
         self._set_status(
             f"Parsed {s['total_posts']} posts. "
-            f"Click a cell to inspect. Right-click to exclude.",
+            f"Right-click a cell to exclude or start a trigram group. "
+            f"Ctrl+click 3 posts to group them.",
             FG_MAIN
+        )
+        log.info(
+            f"Parsed {s['total_posts']} posts "
+            f"({s['carousel_posts']} carousel, {s['single_posts']} single, "
+            f"{s['total_images']} images) from {export_folder}"
         )
         self._save_config()
 
@@ -1233,12 +1382,14 @@ class App(tk.Tk):
             self._conn_lbl.configure(
                 text=f"Connected — {len(cats)} cats, {len(albums)} albums", fg=FG_OK)
             self._set_status("Connected. Ready to transfer & post.", FG_OK)
+            log.info(f"Connected to {url} — {len(cats)} cats, {len(albums)} albums")
             self._save_config()
 
         except Exception as e:
             self._conn_dot.configure(fg=FG_ERR)
             self._conn_lbl.configure(text="Connection failed", fg=FG_ERR)
             self._set_status(f"Error: {e}", FG_ERR)
+            log.error(f"Connection failed to {url}: {e}")
             messagebox.showerror("Connection failed", str(e))
 
     # ------------------------------------------------------------------
@@ -1381,6 +1532,7 @@ class App(tk.Tk):
                     total = msg[1]
                     self._set_posting(False)
                     self._set_status(f"Migration complete — {total} processed.", FG_OK)
+                    log.info(f"Migration complete — {total} posts processed")
         except queue.Empty:
             pass
         self.after(100, self._poll_queue)
@@ -1445,14 +1597,57 @@ class App(tk.Tk):
             'indices':     indices,
             'slots':       slots,
             'orientation': 'h',
+            'num':         self._tg_group_ctr,
         }
         self._tg_groups.append(group)
-        self._grid.set_trigram_cells(self._tg_group_ctr, indices, slots)
+        # Reorder grid so L/M/R appear left-to-right on the same row, then reload.
+        self._reorder_posts_for_trigram(indices)
         self._update_tg_label()
+        new_idx = self._tg_groups[-1]['indices']
         self._set_status(
-            f"Trigram T{self._tg_group_ctr} locked ({indices[0]+1}, {indices[1]+1}, {indices[2]+1}).",
+            f"Trigram T{self._tg_group_ctr} locked "
+            f"({new_idx[0]+1}, {new_idx[1]+1}, {new_idx[2]+1}).",
             FG_OK,
         )
+
+    def _reorder_posts_for_trigram(self, lmr_indices: list):
+        """
+        Move the three trigram posts to a row-aligned run in L/M/R order and
+        reload the grid.  All existing trigram group indices are remapped to
+        match the new post order.
+        """
+        old_posts = list(self._posts)
+        lmr_set   = set(lmr_indices)
+
+        # Row-align: put L at the first cell of the row that contains min(lmr_indices)
+        row_start  = (min(lmr_indices) // GRID_COLS) * GRID_COLS
+
+        # Posts that are NOT in this trigram, preserving order
+        other_posts = [p for i, p in enumerate(old_posts) if i not in lmr_set]
+
+        # L/M/R posts in slot order
+        lmr_posts   = [old_posts[i] for i in lmr_indices]
+
+        # Adjust insertion point: some lmr_indices may be < row_start and
+        # have already been removed from other_posts, shifting it left.
+        lmr_before  = sum(1 for i in lmr_indices if i < row_start)
+        adj_start   = row_start - lmr_before
+
+        new_posts   = other_posts[:adj_start] + lmr_posts + other_posts[adj_start:]
+
+        # Build post-identity → new-index map
+        new_idx_map = {id(p): ni for ni, p in enumerate(new_posts)}
+
+        # Remap every group's indices (including the one we just appended)
+        for grp in self._tg_groups:
+            grp['indices'] = [new_idx_map[id(old_posts[oi])] for oi in grp['indices']]
+
+        self._posts = new_posts
+        self._grid.load(self._posts)
+
+        # Re-apply all trigram badges with updated indices
+        for grp in self._tg_groups:
+            self._grid.set_trigram_cells(grp['num'], grp['indices'], grp['slots'])
 
     def _remove_trigram(self, index: int):
         """Remove the trigram group containing index."""
