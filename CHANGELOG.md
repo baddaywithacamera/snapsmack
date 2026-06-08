@@ -12,6 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.217 — "Splash Zone" (2026-06-07)
+
+### Fix — key_prefix column guard added to smack-api-keys.php
+
+- `smack-api-keys.php` — The 0.7.216 fix added a `key_prefix` ALTER TABLE guard to `unzucker-api.php`, but key generation (and the INSERT) happens in `smack-api-keys.php`. If smack-api-keys.php was hit before the Unzucker API endpoint, `key_prefix` still didn't exist at INSERT time, causing the same silent failure. Guard added here as well.
+
+---
+
 ## 0.7.216 — "Splash Zone" (2026-06-07)
 
 ### Fix — SC update page "Running" row showed stale version permanently
