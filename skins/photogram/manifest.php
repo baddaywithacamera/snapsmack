@@ -25,7 +25,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'        => 'Photogram',
-    'version'     => '1.3.0',
+    'version'     => '2.0.0',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'A shadow of what a photo-sharing app used to be. Phone-native layout: 3-column archive grid, full-aspect post view, inline likes, bottom-sheet comments. Reproduces the Pixelfed / classic Instagram experience in a self-hosted blog.',
@@ -39,7 +39,7 @@ return [
         'has_landing'      => true,
         'post_modes'       => ['image'],
         'instagram_mode'   => true,
-        'carousel'         => false,
+        'carousel'         => true,
         'community'        => ['likes', 'comments'],
         'mobile_only'      => true,   // auto-served to phones; never shown in gallery
         'archive_filter'   => false,  // feed-style skin has its own chrome — no unified filter panel
@@ -49,6 +49,7 @@ return [
         'smack-community',
         'smack-photogram',
         'smack-image-fade-load',
+        'smack-slider',
     ],
 
     'options' => [

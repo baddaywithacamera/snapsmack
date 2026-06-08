@@ -28,11 +28,38 @@ require_once dirname(__DIR__, 2) . '/core/snap-tags.php';
 $site_title  = $settings['site_title']       ?? $site_name ?? 'Photogram';
 $avatar_file = $settings['site_avatar'] ?? $settings['site_logo'] ?? $settings['favicon_url'] ?? '';
 
+// ── Carousel: load post + all images if this image belongs to a post ──────
+$_pg_post       = null;
+$_pg_post_images = [];
+
+if (!empty($img['post_id'])) {
+    $_pg_post_stmt = $pdo->prepare("SELECT * FROM snap_posts WHERE id = ?");
+    $_pg_post_stmt->execute([$img['post_id']]);
+    $_pg_post = $_pg_post_stmt->fetch();
+}
+
+if ($_pg_post) {
+    $_pg_pi_stmt = $pdo->prepare("
+        SELECT i.*, pi.sort_position, pi.is_cover
+        FROM snap_post_images pi
+        JOIN snap_images i ON i.id = pi.image_id
+        WHERE pi.post_id = ?
+        ORDER BY pi.sort_position ASC
+    ");
+    $_pg_pi_stmt->execute([$_pg_post['id']]);
+    $_pg_post_images = $_pg_pi_stmt->fetchAll();
+}
+
+$_pg_is_carousel = count($_pg_post_images) > 1;
+
 // ── Like state for current viewer ─────────────────────────────────────────
 // Uses the same community session pattern as ss-engine-community.js
 require_once dirname(__DIR__, 2) . '/core/community-session.php';
 
-$image_id     = (int)$img['id'];
+$image_id  = (int)$img['id'];
+// Likes and comments key on post_id when available, image_id otherwise
+$_pg_community_id = !empty($_pg_post['id']) ? (int)$_pg_post['id'] : $image_id;
+
 $is_liked     = false;
 $like_count   = 0;
 $comment_count = count($comments);
@@ -41,13 +68,13 @@ $comment_count = count($comments);
 // Wrapped in try/catch — snap_likes only exists if the community migration has been run.
 try {
     $like_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_likes WHERE post_id = ?");
-    $like_stmt->execute([$image_id]);
+    $like_stmt->execute([$_pg_community_id]);
     $like_count = (int)$like_stmt->fetchColumn();
 
     $_pg_community_user = community_current_user();
     if ($_pg_community_user) {
         $lc_stmt = $pdo->prepare("SELECT 1 FROM snap_likes WHERE post_id = ? AND user_id = ?");
-        $lc_stmt->execute([$image_id, (int)$_pg_community_user['id']]);
+        $lc_stmt->execute([$_pg_community_id, (int)$_pg_community_user['id']]);
         $is_liked = (bool)$lc_stmt->fetchColumn();
     }
 } catch (Exception $_pg_likes_ex) {
@@ -56,8 +83,11 @@ try {
 }
 
 // ── Caption / description ─────────────────────────────────────────────────
-$caption_raw = $img['img_description'] ?? $img['img_title'] ?? '';
-// Phase 2: prefer snap_posts.caption when available
+// Prefer post-level caption (imported from Instagram) over image description
+$caption_raw = (!empty($_pg_post['caption']) ? $_pg_post['caption'] : null)
+            ?? $img['img_description']
+            ?? $img['img_title']
+            ?? '';
 
 // ── Post date ─────────────────────────────────────────────────────────────
 $post_time = '';
@@ -140,14 +170,43 @@ $pg_active_tab = 'home';
         </button>
     </div>
 
-    <!-- ── Image ────────────────────────────────────────────────────────── -->
+    <!-- ── Image / Carousel ─────────────────────────────────────────────── -->
+    <?php if ($_pg_is_carousel): ?>
+
+    <div class="pg-carousel-wrap">
+        <div id="pg-carousel"
+             class="ss-slider"
+             data-slider-mode="carousel"
+             data-community-id="<?php echo $_pg_community_id; ?>">
+            <div class="slider-track">
+                <?php foreach ($_pg_post_images as $_pgci):
+                    $_pgci_url = BASE_URL . ltrim($_pgci['img_file'], '/');
+                    $_pgci_orient = (int)($_pgci['img_orientation'] ?? 0);
+                    $_pgci_class  = $_pgci_orient === 1 ? 'pg-orient-portrait' : 'pg-orient-landscape';
+                ?>
+                <div class="slider-slide <?php echo $_pgci_class; ?>"
+                     data-image-id="<?php echo (int)$_pgci['id']; ?>">
+                    <img src="<?php echo htmlspecialchars($_pgci_url); ?>"
+                         alt="<?php echo htmlspecialchars($_pgci['img_title']); ?>"
+                         class="pg-post-image"
+                         draggable="false"
+                         loading="lazy">
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </div><!-- /.pg-carousel-wrap -->
+
+    <?php else: ?>
+
     <?php
     // 0 = landscape, 1 = portrait, 2 = square — from upload-time classification
     $img_orient = (int)($img['img_orientation'] ?? 0);
     $orient_class = ($img_orient === 1) ? 'pg-orient-portrait' : 'pg-orient-landscape';
     ?>
     <div class="pg-post-image-wrap <?php echo $orient_class; ?>" id="pg-image-wrap"
-         data-orientation="<?php echo $img_orient; ?>">
+         data-orientation="<?php echo $img_orient; ?>"
+         data-community-id="<?php echo $_pg_community_id; ?>">
         <?php include dirname(__DIR__, 2) . '/core/download-overlay.php'; ?>
         <img src="<?php echo htmlspecialchars($img_url); ?>"
              alt="<?php echo htmlspecialchars($img['img_title']); ?>"
@@ -158,13 +217,15 @@ $pg_active_tab = 'home';
         <!-- Heart burst injected by JS on double-tap -->
     </div>
 
+    <?php endif; ?>
+
     <!-- ── Action Bar ───────────────────────────────────────────────────── -->
     <div class="pg-action-bar">
 
         <!-- Like button -->
         <button class="pg-action-btn pg-like-btn<?php echo $is_liked ? ' liked' : ''; ?>"
                 id="pg-like-btn"
-                data-image-id="<?php echo $image_id; ?>"
+                data-image-id="<?php echo $_pg_community_id; ?>"
                 data-liked="<?php echo $is_liked ? '1' : '0'; ?>"
                 aria-label="<?php echo $is_liked ? 'Unlike' : 'Like'; ?>">
             <!-- Outline heart -->

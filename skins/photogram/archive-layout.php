@@ -24,6 +24,19 @@
 
 
 
+// ── Carousel image counts — single query for all posts in this page ─────────
+$_pg_post_image_counts = [];
+if (!empty($images)) {
+    $_pg_post_ids = array_filter(array_unique(array_column($images, 'post_id')));
+    if ($_pg_post_ids) {
+        $_pg_ph  = implode(',', array_fill(0, count($_pg_post_ids), '?'));
+        $_pg_cnt = $pdo->prepare(
+            "SELECT post_id, COUNT(*) AS cnt FROM snap_post_images WHERE post_id IN ($_pg_ph) GROUP BY post_id"
+        );
+        $_pg_cnt->execute(array_values($_pg_post_ids));
+        $_pg_post_image_counts = $_pg_cnt->fetchAll(PDO::FETCH_KEY_PAIR);
+    }
+}
 ?>
 
 <?php if (!empty($images)): ?>
@@ -40,6 +53,10 @@
         } else {
             $thumb = '';
         }
+
+        $_pg_img_count = (!empty($img['post_id']) && isset($_pg_post_image_counts[$img['post_id']]))
+            ? (int)$_pg_post_image_counts[$img['post_id']]
+            : 1;
     ?>
     <a href="<?php echo $link; ?>"
        class="pg-grid-cell"
@@ -50,7 +67,15 @@
                  alt=""
                  loading="lazy">
         <?php endif; ?>
-        <!-- Carousel badge — Phase 2 -->
+        <?php if ($_pg_img_count > 1): ?>
+        <span class="pg-carousel-badge" aria-label="<?php echo $_pg_img_count; ?> images">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="2" y="6" width="14" height="14" rx="2"/>
+                <path d="M6 2h14a2 2 0 0 1 2 2v14"/>
+            </svg>
+            <?php echo $_pg_img_count; ?>
+        </span>
+        <?php endif; ?>
     </a>
     <?php endforeach; ?>
 </div>
