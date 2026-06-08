@@ -832,7 +832,6 @@ include 'core/sidebar.php';
                                 <th class="col-center">POSTS</th>
                                 <th class="col-center">PENDING</th>
                                 <th class="col-center">BACKUP</th>
-                                <th class="col-center">MAINT</th>
                                 <th class="col-center">SMACKBACK</th>
                                 <th class="col-center">ACTION</th>
                             </tr>
@@ -955,13 +954,6 @@ include 'core/sidebar.php';
                                     <td class="col-center">
                                         <span class="status-dot status-dot--lg status-dot--<?php echo htmlspecialchars($backup_status); ?>" title="<?php echo htmlspecialchars($backup_status); ?>"></span>
                                     </td>
-                                    <td class="col-center" id="spoke-maint-<?php echo $n['id']; ?>">
-                                        <?php if ($in_maintenance): ?>
-                                            <span class="status-dot status-dot--lg" style="background:var(--warning,#c55400);" title="In maintenance mode"></span>
-                                        <?php else: ?>
-                                            <span class="status-dot status-dot--lg status-dot--active" title="Live"></span>
-                                        <?php endif; ?>
-                                    </td>
                                     <td class="col-center">
                                         <?php
                                             $sb_status = $n['smackback_status'] ?? 'unknown';
@@ -1009,7 +1001,7 @@ include 'core/sidebar.php';
                                                         class="<?php echo $in_maintenance ? 'action-warning' : 'action-view'; ?>"
                                                         title="<?php echo $in_maintenance ? 'Take out of maintenance mode' : 'Put into maintenance mode'; ?>"
                                                         <?php echo $in_maintenance ? '' : 'onclick="return confirm(\'Put this spoke into maintenance mode?\')"'; ?>>
-                                                    <?php echo $in_maintenance ? 'MAINT ON' : 'MAINT OFF'; ?>
+                                                    <?php echo $in_maintenance ? 'DISABLE MAINT' : 'ENABLE MAINT'; ?>
                                                 </button>
                                             </form>
                                         <?php endif; ?>

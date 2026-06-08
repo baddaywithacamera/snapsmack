@@ -12,6 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.224 — "Swirly Boi" (2026-06-08)
+
+### Cleanup — multisite MAINT column removed
+
+- `smack-multisite.php` — dropped the MAINT status-dot column from the spoke table. The column was redundant with the ENABLE/DISABLE MAINT button in the ACTION column, which already reflects current state via its label and colour. Button labels corrected from confusing state labels ("MAINT ON" / "MAINT OFF") to clear action labels ("ENABLE MAINT" / "DISABLE MAINT").
+
+---
+
 ## 0.7.223 — "Phantom Flush" (2026-06-08)
 
 ### Fix — trigram sort_order row-boundary formula
