@@ -13,6 +13,11 @@
 # check prevents redirect loops when the edge already speaks
 # HTTPS to the visitor and plain HTTP to the origin.
 RewriteEngine On
+# ─── API AUTHORIZATION PASSTHROUGH ──────────────────────────────────────────
+# Apache FastCGI/PHP-FPM strips the Authorization header by default.
+# Without this, $_SERVER['HTTP_AUTHORIZATION'] is always empty and all
+# Bearer-token API auth (Unzucker, Oh Snap!, etc.) silently fails.
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 RewriteCond %{HTTP:X-Forwarded-Proto} !=https
 RewriteCond %{HTTPS} !=on
 RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
