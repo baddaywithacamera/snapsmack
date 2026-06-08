@@ -1,13 +1,11 @@
 <?php
 /**
  * SNAPSMACK - The Grid Landing Page
- * Alpha v0.7.9
  *
  * Classic 3-column photo grid with optional profile header.
- * Queries snap_posts joined to snap_post_images (cover only for
- * single/carousel posts) to build the grid tile list.
- * Panorama posts are rendered as a single cover tile until server-side
- * slicing is implemented in a future build.
+ * All published posts are fetched in one query (no pagination) with browser
+ * lazy-loading for performance.  Trigram posts are rendered with slot classes
+ * and phantom padding to ensure row alignment.
  *
  * Variables from index.php: $pdo, $settings, $active_skin, $site_name
  */
@@ -20,10 +18,7 @@
  */
 
 
-$now_local   = date('Y-m-d H:i:s');
-$per_page    = 30;
-$curr_page   = max(1, (int)($_GET['p'] ?? 1));
-$offset      = ($curr_page - 1) * $per_page;
+$now_local = date('Y-m-d H:i:s');
 
 // Read skin settings
 $show_profile    = ($settings['tg_profile_header']     ?? '1') === '1';
@@ -79,18 +74,17 @@ $count_stmt = $pdo->prepare(
 $count_stmt->execute([$now_local]);
 $post_count = (int)$count_stmt->fetchColumn();
 
-// ── Total pages ───────────────────────────────────────────────────────────
-$total_pages = max(1, (int)ceil($post_count / $per_page));
-
-// ── Fetch posts with cover image ──────────────────────────────────────────
-// One row per post: cover image + image count + frame style columns.
+// ── Fetch all published posts with cover image + trigram info ─────────────
+// No LIMIT — all posts, browser lazy-loading handles performance.
 $grid_stmt = $pdo->prepare("
     SELECT
         p.id          AS post_id,
         p.title,
         p.slug        AS post_slug,
         p.post_type,
+        p.trigram_id,
         p.created_at,
+        p.sort_order,
         p.post_img_size_pct,
         p.post_border_px,
         p.post_border_color,
@@ -108,16 +102,23 @@ $grid_stmt = $pdo->prepare("
         (SELECT COUNT(*)
          FROM snap_post_images spi
          WHERE spi.post_id = p.id
-           AND spi.sort_position >= 0)  AS image_count
+           AND spi.sort_position >= 0)  AS image_count,
+        CASE
+            WHEN tg.post_id_1 = p.id THEN 1
+            WHEN tg.post_id_2 = p.id THEN 2
+            WHEN tg.post_id_3 = p.id THEN 3
+            ELSE NULL
+        END AS trigram_slot,
+        tg.orientation AS trigram_orientation
     FROM snap_posts p
     JOIN snap_post_images pi ON pi.post_id = p.id AND pi.is_cover = 1
     JOIN snap_images i       ON i.id = pi.image_id
+    LEFT JOIN snap_trigrams tg ON tg.id = p.trigram_id
     WHERE p.status = 'published'
       AND p.created_at <= ?
     ORDER BY p.sort_order ASC, p.created_at DESC
-    LIMIT ? OFFSET ?
 ");
-$grid_stmt->execute([$now_local, $per_page, $offset]);
+$grid_stmt->execute([$now_local]);
 $grid_posts = $grid_stmt->fetchAll();
 
 include dirname(__DIR__, 2) . '/core/meta.php';
@@ -163,16 +164,50 @@ include __DIR__ . '/skin-header.php';
 <!-- ── 3-Column Grid ───────────────────────────────────────────────────── -->
 <main>
     <div class="tg-grid">
-        <?php foreach ($grid_posts as $post):
+        <?php
+        // Slot labels for horizontal and vertical orientations.
+        $slot_class_h = [1 => 'tg-tile--trigram-L', 2 => 'tg-tile--trigram-M', 3 => 'tg-tile--trigram-R'];
+        $slot_class_v = [1 => 'tg-tile--trigram-T', 2 => 'tg-tile--trigram-M', 3 => 'tg-tile--trigram-B'];
+
+        $col = 0; // track current column position (0, 1, 2)
+
+        foreach ($grid_posts as $post):
+            $tg_slot   = (int)($post['trigram_slot'] ?? 0);
+            $tg_orient = $post['trigram_orientation'] ?? 'h';
+            $tg_id     = (int)($post['trigram_id'] ?? 0);
+
+            // ── Phantom padding ──────────────────────────────────────────
+            // When the L post (slot 1) of a horizontal trigram falls off the
+            // start of a row, emit invisible phantom tiles to complete the
+            // current row first.
+            if ($tg_slot === 1 && $tg_orient !== 'v' && $col !== 0):
+                $phantoms = 3 - $col;
+                for ($ph = 0; $ph < $phantoms; $ph++):
+        ?>
+        <div class="tg-tile tg-tile--phantom" aria-hidden="true"></div>
+        <?php
+                    $col = ($col + 1) % 3;
+                endfor;
+            endif;
+
             $thumb_src   = $post['img_thumb_square'] ?: $post['img_file'];
             $post_url    = BASE_URL . '?id=' . (int)$post['img_id'];
             $image_count = (int)$post['image_count'];
             $is_carousel = $image_count > 1;
             $title_safe  = htmlspecialchars($post['title']);
 
-            // Resolve frame style for this tile
-            $tile_frame   = $tg_resolve_tile_frame($post, $post);
-            $tile_class   = 'tg-tile' . ($tile_frame['is_framed'] ? ' tg-tile--framed' : '');
+            // ── Tile class ───────────────────────────────────────────────
+            $tile_frame = $tg_resolve_tile_frame($post, $post);
+            $tile_class = 'tg-tile';
+
+            if ($tg_id > 0 && $tg_slot > 0) {
+                $sc = ($tg_orient === 'v') ? ($slot_class_v[$tg_slot] ?? '') : ($slot_class_h[$tg_slot] ?? '');
+                if ($sc) $tile_class .= ' ' . $sc;
+                $tile_class .= ' tg-tile--trigram';
+            }
+
+            if ($tile_frame['is_framed']) $tile_class .= ' tg-tile--framed';
+
             $tile_css_vars = '';
             if ($tile_frame['is_framed']) {
                 $tile_css_vars = sprintf(
@@ -186,6 +221,8 @@ include __DIR__ . '/skin-header.php';
             }
         ?>
         <div class="<?php echo $tile_class; ?>"
+             data-trigram-id="<?php echo $tg_id; ?>"
+             data-trigram-slot="<?php echo $tg_slot; ?>"
              <?php if ($tile_css_vars): ?>style="<?php echo $tile_css_vars; ?>"<?php endif; ?>>
             <a href="<?php echo $post_url; ?>" title="<?php echo $title_safe; ?>">
                 <img src="<?php echo htmlspecialchars($thumb_src); ?>"
@@ -215,7 +252,9 @@ include __DIR__ . '/skin-header.php';
                 </div>
             <?php endif; ?>
         </div>
-        <?php endforeach; ?>
+        <?php
+            $col = ($col + 1) % 3;
+        endforeach; ?>
 
         <?php if (empty($grid_posts)): ?>
         <div style="grid-column: 1/-1; padding: 60px 20px; text-align: center; color: var(--text-secondary);">
@@ -223,23 +262,6 @@ include __DIR__ . '/skin-header.php';
         </div>
         <?php endif; ?>
     </div>
-
-    <?php if ($total_pages > 1): ?>
-    <div class="tg-pagination">
-        <?php if ($curr_page > 1): ?>
-            <a href="?p=<?php echo $curr_page - 1; ?>" class="tg-page-btn">← Older</a>
-        <?php endif; ?>
-        <?php for ($pg = max(1, $curr_page - 2); $pg <= min($total_pages, $curr_page + 2); $pg++): ?>
-            <a href="?p=<?php echo $pg; ?>"
-               class="tg-page-btn<?php echo $pg === $curr_page ? ' is-current' : ''; ?>">
-                <?php echo $pg; ?>
-            </a>
-        <?php endfor; ?>
-        <?php if ($curr_page < $total_pages): ?>
-            <a href="?p=<?php echo $curr_page + 1; ?>" class="tg-page-btn">Newer →</a>
-        <?php endif; ?>
-    </div>
-    <?php endif; ?>
 </main>
 
 <?php include __DIR__ . '/skin-footer.php'; ?>

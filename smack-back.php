@@ -227,10 +227,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['save_nalert'] ?? '') === '
     require_once 'core/network-alert.php';
     $hub_owns_netalert = ($settings['hub_controls_netalert'] ?? '0') === '1';
     $na_push_enable = ($_POST['network_alert_push_enabled'] ?? '0') === '1';
-    if (empty($_POST['network_alert_sc_url'])) $_POST['network_alert_sc_url'] = 'https://snapsmack.ca';
-    $na_sc_url = trim($_POST['network_alert_sc_url'] ?? 'https://snapsmack.ca');
-    if (empty($na_sc_url)) $na_sc_url = 'https://snapsmack.ca';
-
     $na_up = $pdo->prepare(
         "INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
          ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
@@ -242,7 +238,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['save_nalert'] ?? '') === '
         $na_receive = ($_POST['network_alert_receive'] ?? '0') === '1' ? '1' : '0';
         $na_up->execute(['network_alert_send',    $na_send]);
         $na_up->execute(['network_alert_receive', $na_receive]);
-        $na_up->execute(['network_alert_sc_url',  $na_sc_url]);
     }
 
     // ── Push subscription ─────────────────────────────────────────────────────
@@ -258,13 +253,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['save_nalert'] ?? '') === '
         // Turning on: save enabled flag, then register with SC
         $na_up->execute(['network_alert_push_enabled', '1']);
         $na_up->execute(['network_alert_push_unregister_pending', '0']);
-        nalert_register_push($na_sc_url);
+        nalert_register_push(NALERT_SC_URL);
     } elseif (!$na_push_enable && $was_push_enabled) {
         // Turning off: mark unregister pending, attempt now, clear if successful
         $na_up->execute(['network_alert_push_enabled',            '0']);
         $na_up->execute(['network_alert_push_unregister_pending', '1']);
         if ($is_push_registered) {
-            nalert_unregister_push($na_sc_url);
+            nalert_unregister_push(NALERT_SC_URL);
         }
     }
     // No change — leave push state alone
@@ -275,8 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['save_nalert'] ?? '') === '
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['nalert_check_now'] ?? '') === '1') {
     require_once 'core/network-alert.php';
-    $na_sc_url = trim($settings['network_alert_sc_url'] ?? 'https://snapsmack.ca');
-    $polled    = nalert_poll_sc($na_sc_url);
+    $polled    = nalert_poll_sc(NALERT_SC_URL);
     $msg       = $polled ? "Checked — status: {$polled}" : 'Check failed (SC unreachable or not opted in to receive).';
     header('Location: smack-back.php?msg=' . urlencode($msg));
     exit;
@@ -664,10 +658,6 @@ include 'core/sidebar.php';
                     <label>RECEIVE YELLOW ALERTS</label>
                     <div class="read-only-display"><?php echo $na['receive'] ? 'YES' : 'NO'; ?></div>
                 </div>
-                <div class="lens-input-wrapper">
-                    <label>SMACK CENTRAL URL</label>
-                    <div class="read-only-display"><?php echo htmlspecialchars($na['sc_url']); ?></div>
-                </div>
             </div>
             <p class="dim" style="font-size:0.85rem;margin-top:8px;">Send and receive settings are controlled by the network hub. Push subscription below is yours to manage.</p>
             <?php else: ?>
@@ -685,10 +675,6 @@ include 'core/sidebar.php';
                         RECEIVE YELLOW ALERTS
                     </label>
                     <span class="dim" style="font-size:0.82rem;">Show SC network alerts in the admin panel. You can receive without sending (courtesy opt-in).</span>
-                </div>
-                <div class="lens-input-wrapper">
-                    <label>SMACK CENTRAL URL <span class="field-tip" data-tip="Only change this if you run a private SC instance.">ⓘ</span></label>
-                    <input type="url" name="network_alert_sc_url" value="<?php echo htmlspecialchars($na['sc_url']); ?>">
                 </div>
             </div>
             <?php endif; // hub_controls_netalert ?>

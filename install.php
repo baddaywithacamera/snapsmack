@@ -1074,11 +1074,13 @@ if ($step === 5 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
     $sec_na_receive = isset($_POST['network_alert_receive'])      ? '1' : '0';
     $sec_na_send    = isset($_POST['network_alert_send'])         ? '1' : '0';
     $sec_na_push    = isset($_POST['network_alert_push_enabled']) ? '1' : '0';
+    $sec_forum      = isset($_POST['forum_enabled'])              ? '1' : '0';
     $sec_consent    = json_encode([
         'smackback_enabled'          => $sec_smackback  === '1',
         'network_alert_receive'      => $sec_na_receive === '1',
         'network_alert_send'         => $sec_na_send    === '1',
         'network_alert_push_enabled' => $sec_na_push    === '1',
+        'forum_enabled'              => $sec_forum      === '1',
     ]);
     $sec_consent_at = gmdate('Y-m-d H:i:s'); // UTC, server clock
 
@@ -1270,7 +1272,7 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'social_dock_enabled'       => '0',
                 'social_dock_position'      => 'left',
                 'social_dock_opacity'       => '50',
-                'forum_enabled'             => '0',
+                'forum_enabled'             => $sec_forum,
                 'search_enabled'            => '1',
                 'homepage_mode'             => 'latest',
                 'sticky_header_enabled'     => '1',
@@ -2347,12 +2349,14 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
     <?php // Non-blocking. Every box pre-checked. Submits step=5 to finish. ?>
     <?php // ============================================================= ?>
     <?php if ($step === 'secopt'): ?>
-        <h2>Step 6 — Security Setup</h2>
-        <p style="color:#aaa;max-width:640px;margin:0 auto 22px;line-height:1.65;">Recommended — leave these on. SnapSmack can protect this install from day one. You can change any of this later in <strong style="color:#ddd;">SmackBack</strong>.</p>
+        <h2>Step 6 — Security &amp; Community</h2>
+        <p style="color:#aaa;max-width:640px;margin:0 auto 8px;line-height:1.65;">Recommended — leave these on. SnapSmack works best as a network, not an island.</p>
+        <p style="color:#777;max-width:640px;margin:0 auto 22px;font-size:.88rem;line-height:1.65;">Everything here can be changed later in <strong style="color:#999;">SmackBack</strong> and <strong style="color:#999;">Settings</strong>.</p>
 
         <form method="post" style="max-width:640px;margin:0 auto;text-align:left;">
             <input type="hidden" name="step" value="5">
 
+            <!-- SmackBack -->
             <div style="background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:22px 26px;margin-bottom:18px;">
                 <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin:0;">
                     <input type="checkbox" name="smackback_enabled" value="1" checked style="margin-top:4px;flex-shrink:0;">
@@ -2363,17 +2367,19 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
                 </label>
             </div>
 
-            <div style="background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:22px 26px;margin-bottom:22px;">
-                <strong style="color:#e0e0e0;display:block;margin-bottom:16px;">SmackAttack &mdash; Network Alerts</strong>
+            <!-- SmackAttack -->
+            <div style="background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:22px 26px;margin-bottom:18px;">
+                <strong style="color:#e0e0e0;display:block;margin-bottom:6px;">SmackAttack &mdash; Network Alerts</strong>
+                <p style="color:#777;font-size:.85rem;line-height:1.6;margin:0 0 16px;"><strong style="color:#999;">We&rsquo;re stronger together.</strong> Every install that shares breach signals makes the whole network harder to hit. When one site spots an attack pattern, every opted-in site gets warned &mdash; including yours.</p>
 
                 <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin:0 0 16px;">
                     <input type="checkbox" name="network_alert_receive" value="1" checked style="margin-top:4px;flex-shrink:0;">
-                    <span><strong style="color:#ddd;">Receive yellow alerts</strong><span style="color:#999;font-size:.9rem;display:block;line-height:1.6;">Show Smack Central network warnings in your admin panel. Poll-only &mdash; sends nothing.</span></span>
+                    <span><strong style="color:#ddd;">Receive network warnings</strong><span style="color:#999;font-size:.9rem;display:block;line-height:1.6;">Show Smack Central alerts in your admin panel when something hits the network. Poll-only &mdash; sends nothing.</span></span>
                 </label>
 
                 <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin:0 0 16px;">
                     <input type="checkbox" name="network_alert_send" value="1" checked style="margin-top:4px;flex-shrink:0;">
-                    <span><strong style="color:#ddd;">Contribute breach reports</strong><span style="color:#999;font-size:.9rem;display:block;line-height:1.6;">Share breach indicators with the network so other installs get protected too.</span></span>
+                    <span><strong style="color:#ddd;">Contribute breach reports</strong><span style="color:#999;font-size:.9rem;display:block;line-height:1.6;">Share breach indicators with the network so other installs get protected too. This is how the network gets smarter &mdash; each install that contributes makes the signal cleaner for everyone.</span></span>
                 </label>
 
                 <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin:0;">
@@ -2385,6 +2391,17 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
                     <strong style="color:#ddd;display:block;margin-bottom:4px;">&#9432; What gets shared</strong>
                     Reports contain site name, server IP, affected file paths, timestamps, and SHA-256 hashes. No visitor data, no post content. Immediate push additionally transmits your site URL and site name and stores a locally-generated push token at Smack Central. You can change or revoke any of this later in SmackBack.
                 </div>
+            </div>
+
+            <!-- Community Forum -->
+            <div style="background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:22px 26px;margin-bottom:22px;">
+                <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin:0;">
+                    <input type="checkbox" name="forum_enabled" value="1" checked style="margin-top:4px;flex-shrink:0;">
+                    <span>
+                        <strong style="color:#e0e0e0;display:block;margin-bottom:4px;">Community Forum &mdash; SnapSmack Hub</strong>
+                        <span style="color:#999;font-size:.9rem;line-height:1.6;">Connects your admin panel to the SnapSmack community forum at Smack Central. This is the primary way we share news, updates, tips, and security notices &mdash; one post reaches every connected install at once, which is far more reliable than email. <strong style="color:#bbb;">We strongly recommend leaving this on</strong> so you don&rsquo;t miss anything important.</span>
+                    </span>
+                </label>
             </div>
 
             <button type="submit" style="background:#4caf50;color:#fff;border:none;padding:12px 32px;font-size:.9rem;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border-radius:4px;">Finish Installation &rarr;</button>

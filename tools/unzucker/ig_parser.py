@@ -143,8 +143,17 @@ def parse(export_folder: str) -> ParseResult:
             if ext in ('.mp4', '.mov', '.avi', '.mkv', '.webm'):
                 skipped_videos += 1
                 continue
-            # Resolve to absolute path
+            # Resolve to absolute path and verify it stays within the export root.
+            # os.path.join with an absolute URI would escape export_root entirely,
+            # and '../..' traversal could reach arbitrary files on the user's machine.
             abs_path = os.path.normpath(os.path.join(export_root, uri))
+            if not abs_path.startswith(os.path.normpath(export_root) + os.sep) \
+                    and abs_path != os.path.normpath(export_root):
+                result.errors.append(
+                    f"Entry {idx}: URI escapes export root (possible path traversal) — skipped: {uri}"
+                )
+                missing_images += 1
+                continue
             if os.path.isfile(abs_path):
                 images.append(abs_path)
             else:
@@ -189,8 +198,10 @@ def parse(export_folder: str) -> ParseResult:
             original_index=idx,
         ))
 
-    # Sort chronologically (oldest first)
-    result.posts.sort(key=lambda p: p.ig_timestamp)
+    # Sort chronologically (oldest first).
+    # Secondary key: -original_index because Instagram JSON is newest-first,
+    # so higher original_index = older post = should sort earlier for ties.
+    result.posts.sort(key=lambda p: (p.ig_timestamp, -p.original_index))
 
     result.stats = {
         'total_posts':    len(result.posts),
