@@ -49,7 +49,14 @@ $pdo->exec("ALTER TABLE snap_ohsnap_keys
 // ---------------------------------------------------------------------------
 
 function unzucker_auth(PDO $pdo): bool {
-    $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    // Apache FastCGI strips Authorization; check all known landing spots.
+    $header = $_SERVER['HTTP_AUTHORIZATION']
+           ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
+           ?? '';
+    if (!$header && function_exists('getallheaders')) {
+        $h = getallheaders();
+        $header = $h['Authorization'] ?? $h['authorization'] ?? '';
+    }
     if (!preg_match('/^Bearer\s+([a-f0-9]{64})$/i', $header, $m)) {
         return false;
     }
