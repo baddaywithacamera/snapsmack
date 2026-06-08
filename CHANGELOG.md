@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.218 — "Splash Zone" (2026-06-08)
+
+### Fix — Apache FastCGI strips Authorization header; Bearer auth now works
+
+- `.htaccess` + `core/htaccess-template` — Added `RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]`. Apache FastCGI/PHP-FPM strips the Authorization header by default, making `$_SERVER['HTTP_AUTHORIZATION']` always empty. Every Bearer-token API auth call (Unzucker, Oh Snap!, etc.) silently failed regardless of key validity. This was the root cause of the 4-day Unzucker blocker.
+- `core/unzucker-api.php` — Auth function now checks `HTTP_AUTHORIZATION`, `REDIRECT_HTTP_AUTHORIZATION`, and `getallheaders()` fallback for resilience across server configs.
+
 ## 0.7.217 — "Splash Zone" (2026-06-07)
 
 ### Fix — key_prefix column guard added to smack-api-keys.php
