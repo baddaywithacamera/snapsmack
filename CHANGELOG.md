@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.219 — "Splash Zone" (2026-06-08)
+
+### Fix — htaccess repair regex now handles any number of leading separator lines
+
+- `smack-maintenance.php` — REPAIR was matching `# ─────\n# SNAPSMACK-HTACCESS-RULES` (exactly one separator line before marker). Old .htaccess files had none; new template has one. Mismatch caused strip to silently fail → template appended as second copy instead of replacing. Regex now matches zero-or-more separator lines before the marker.
+
 ## 0.7.218 — "Splash Zone" (2026-06-08)
 
 ### Fix — Apache FastCGI strips Authorization header; Bearer auth now works

@@ -682,9 +682,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Strip old SnapSmack block if present (everything from marker to end-of-block)
             if (strpos($existing, $htaccess_marker) !== false) {
-                // Remove from the first blank line before the marker block to end of our rules
+                // Strip zero-or-more leading separator lines + marker + everything after.
+                // Handles old format (no leading separator) and new (one or more separators).
                 $existing = preg_replace(
-                    '/\n*# ─+\n' . preg_quote($htaccess_marker, '/') . '.*$/s',
+                    '/\n*(?:# ─+\n)*' . preg_quote($htaccess_marker, '/') . '.*$/s',
                     '',
                     $existing
                 );
