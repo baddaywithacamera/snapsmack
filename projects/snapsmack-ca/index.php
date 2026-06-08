@@ -2106,4 +2106,6 @@ document.getElementById('yr').textContent = new Date().getFullYear();
 
 <link rel="stylesheet" href="assets/css/ss-engine-thomas.css">
 <script src="assets/js/ss-engine-thomas.js"></script>
+
+<?php require_once __DIR__ . '/includes/footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

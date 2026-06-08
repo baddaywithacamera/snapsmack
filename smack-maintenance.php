@@ -682,14 +682,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Strip old SnapSmack block if present (everything from marker to end-of-block)
             if (strpos($existing, $htaccess_marker) !== false) {
-                // Strip zero-or-more leading separator lines + marker + everything after.
-                // Handles old format (no leading separator) and new (one or more separators).
+                // Pass 1: strip from marker to end of file (no separator dependency).
                 $existing = preg_replace(
-                    '/\n*(?:# ─+\n)*' . preg_quote($htaccess_marker, '/') . '.*$/s',
+                    '/' . preg_quote($htaccess_marker, '/') . '.*$/s',
                     '',
                     $existing
                 );
-                $existing = rtrim($existing) . "\n";
+                // Pass 2: strip any trailing separator lines and blank lines left behind.
+                $lines = explode("\n", rtrim($existing));
+                while (!empty($lines) && preg_match('/^(# ─+)?$/', rtrim(end($lines)))) {
+                    array_pop($lines);
+                }
+                $existing = implode("\n", $lines) . "\n";
             }
 
             // Read canonical SnapSmack rules from core/htaccess-template.

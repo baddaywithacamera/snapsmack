@@ -44,4 +44,7 @@ body.admin-body::after {
 @media (prefers-reduced-motion: reduce) {
     body.admin-body::after { animation: none; opacity: 0.34; }
 }
+
+/* Alarm silenced by admin (dismiss button): stop pulse, hold steady red tint. */
+body.admin-body.alarm-silenced::after { animation: none; opacity: 0.34; }
 /* ===== SNAPSMACK EOF ===== */

@@ -1,11 +1,11 @@
-"""
+﻿"""
 Unzucker — main.py
 Instagram export migration tool for SnapSmack (The Grid / Carousel mode).
 
 Desktop app with an Instagram-style 3-column square-thumbnail grid.
 Click a cell to see post details (all carousel images + the single
-shared caption). Transfer & Post pushes everything via FTP then
-creates posts through the SnapSmack admin API.
+shared caption). Transfer & Post uploads images via HTTPS then
+creates posts through the SnapSmack admin API. No FTP required.
 """
 
 # SNAPSMACK_EOF_HEADER
@@ -14,7 +14,7 @@ creates posts through the SnapSmack admin API.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.12"
+BUILD_VERSION = "0.7.15"
 
 import os
 import queue
@@ -28,10 +28,12 @@ from PIL import Image, ImageTk
 
 import config as cfg_module
 import ig_parser
-import ftp_upload
 import poster as poster_module
 from ig_parser import ParsedPost
 from poster import UnzuckerClient, SiteData
+
+# Surface keyring availability for the UI indicator
+_KEYRING_OK = cfg_module.has_keyring()
 
 
 # ---------------------------------------------------------------------------
@@ -73,14 +75,20 @@ class GridCell(tk.Frame):
     """One square thumbnail in the 3-column grid."""
 
     def __init__(self, parent, post: ParsedPost, index: int,
-                 on_click, cell_size: int):
+                 on_click, cell_size: int, on_ctrl_click=None,
+                 on_right_click_cb=None):
         super().__init__(parent, bg=BG_DEEP, width=cell_size, height=cell_size)
         self.pack_propagate(False)
-        self.post      = post
-        self.index     = index
-        self._thumb    = None
-        self._status   = 'pending'  # pending | ok | error | skip | excluded
-        self._cell_size = cell_size
+        self.post               = post
+        self.index              = index
+        self._thumb             = None
+        self._status            = 'pending'  # pending | ok | error | skip | excluded
+        self._cell_size         = cell_size
+        self._on_ctrl_click_cb  = on_ctrl_click
+        self._on_right_click_cb = on_right_click_cb
+        self._trigram_group     = 0   # 0 = none; >0 = group number
+        self._trigram_slot      = 0   # 1=L, 2=M, 3=R
+        self._selecting         = False
 
         # Canvas for the thumbnail + overlays
         self._canvas = tk.Canvas(
@@ -89,13 +97,15 @@ class GridCell(tk.Frame):
         )
         self._canvas.pack(fill="both", expand=True)
         self._canvas.bind("<Button-1>", lambda e: on_click(self.index))
-        self._canvas.bind("<Button-3>", lambda e: self._toggle_excluded())
+        self._canvas.bind("<Control-Button-1>",
+                          lambda e: (on_ctrl_click(self.index) if on_ctrl_click else None))
+        self._canvas.bind("<Button-3>", self._on_right_click)
 
         # Carousel icon overlay (top-right)
         if post.post_type == 'carousel':
             self._canvas.create_text(
                 cell_size - 8, 8,
-                text=f"▣ {len(post.images)}",
+                text=f"▪ {len(post.images)}",
                 anchor="ne", fill="white",
                 font=("Segoe UI", 8, "bold"),
             )
@@ -111,6 +121,28 @@ class GridCell(tk.Frame):
             state='hidden',
         )
 
+        # Trigram ring: gold outline, hidden until group assigned
+        self._tg_ring = self._canvas.create_rectangle(
+            1, 1, cell_size - 1, cell_size - 1,
+            outline='#c8a96e', width=2, state='hidden',
+        )
+        # Trigram slot badge background + text (bottom-right corner)
+        bw = 22
+        self._tg_badge_bg = self._canvas.create_rectangle(
+            cell_size - bw, cell_size - 16, cell_size, cell_size,
+            fill='#c8a96e', outline='', state='hidden',
+        )
+        self._tg_badge_txt = self._canvas.create_text(
+            cell_size - bw // 2, cell_size - 8,
+            text='', anchor='center', fill='#000',
+            font=("Segoe UI", 7, "bold"), state='hidden',
+        )
+        # Selection ring: neon green dashed outline during Ctrl+click selection
+        self._sel_ring = self._canvas.create_rectangle(
+            2, 2, cell_size - 2, cell_size - 2,
+            outline=ACCENT, width=2, dash=(4, 3), state='hidden',
+        )
+
     def set_thumb(self, photo: ImageTk.PhotoImage):
         self._thumb = photo
         self._canvas.create_image(
@@ -121,7 +153,7 @@ class GridCell(tk.Frame):
         if self.post.post_type == 'carousel':
             self._canvas.create_text(
                 self._cell_size - 8, 8,
-                text=f"▣ {len(self.post.images)}",
+                text=f"▪ {len(self.post.images)}",
                 anchor="ne", fill="white",
                 font=("Segoe UI", 8, "bold"),
             )
@@ -152,6 +184,57 @@ class GridCell(tk.Frame):
             self._canvas.itemconfig(self._status_overlay, state='hidden')
             self._canvas.itemconfig(self._status_icon, state='hidden')
 
+    def _on_right_click(self, e):
+        menu = tk.Menu(self, tearoff=0)
+        if self._trigram_group > 0:
+            menu.add_command(
+                label=f"Remove from Trigram T{self._trigram_group}",
+                command=lambda: (self._on_right_click_cb('remove', self.index)
+                                 if self._on_right_click_cb else None),
+            )
+        else:
+            menu.add_command(
+                label="Add to Trigram Group  (or Ctrl+click)",
+                command=lambda: (self._on_right_click_cb('add', self.index)
+                                 if self._on_right_click_cb else None),
+            )
+        menu.add_separator()
+        lbl = "Include" if self.post.excluded else "Exclude"
+        menu.add_command(label=lbl, command=self._toggle_excluded)
+        try:
+            menu.tk_popup(e.x_root, e.y_root)
+        finally:
+            menu.grab_release()
+
+    def set_trigram_state(self, group_num: int, slot: int):
+        """Mark this cell as belonging to trigram group_num at slot (1/2/3)."""
+        self._trigram_group = group_num
+        self._trigram_slot  = slot
+        labels = {1: 'L', 2: 'M', 3: 'R'}
+        lbl = f"T{group_num}{labels.get(slot, str(slot))}"
+        self._canvas.itemconfig(self._tg_ring,      state='normal')
+        self._canvas.itemconfig(self._tg_badge_bg,  state='normal')
+        self._canvas.itemconfig(self._tg_badge_txt, text=lbl, state='normal')
+        self._canvas.tag_raise(self._tg_ring)
+        self._canvas.tag_raise(self._tg_badge_bg)
+        self._canvas.tag_raise(self._tg_badge_txt)
+
+    def clear_trigram_state(self):
+        """Remove trigram ring and badge from this cell."""
+        self._trigram_group = 0
+        self._trigram_slot  = 0
+        self._canvas.itemconfig(self._tg_ring,      state='hidden')
+        self._canvas.itemconfig(self._tg_badge_bg,  state='hidden')
+        self._canvas.itemconfig(self._tg_badge_txt, state='hidden')
+
+    def set_selecting(self, active: bool):
+        """Show/hide the selection ring (used during Ctrl+click group building)."""
+        self._selecting = active
+        self._canvas.itemconfig(self._sel_ring,
+                                state='normal' if active else 'hidden')
+        if active:
+            self._canvas.tag_raise(self._sel_ring)
+
 
 # ---------------------------------------------------------------------------
 # Post grid (Instagram-style 3-column layout)
@@ -160,10 +243,13 @@ class GridCell(tk.Frame):
 class PostGrid(tk.Frame):
     """Scrollable 3-column grid of square cover thumbnails."""
 
-    def __init__(self, parent, on_cell_click, **kwargs):
+    def __init__(self, parent, on_cell_click, on_ctrl_click=None,
+                 on_right_click_cb=None, **kwargs):
         super().__init__(parent, bg=BG_DEEP, **kwargs)
-        self._cells:    List[GridCell] = []
-        self._on_click = on_cell_click
+        self._cells:             List[GridCell] = []
+        self._on_click           = on_cell_click
+        self._on_ctrl_click      = on_ctrl_click
+        self._on_right_click_cb  = on_right_click_cb
 
         self._canvas = tk.Canvas(self, bg=BG_DEEP, highlightthickness=0, bd=0)
         self._scrollbar = ttk.Scrollbar(self, orient="vertical",
@@ -194,7 +280,9 @@ class PostGrid(tk.Frame):
         cell_size = (canvas_w - GRID_GAP * (GRID_COLS - 1)) // GRID_COLS
 
         for idx, post in enumerate(posts):
-            cell = GridCell(self._inner, post, idx, self._on_click, cell_size)
+            cell = GridCell(self._inner, post, idx, self._on_click, cell_size,
+                            on_ctrl_click=self._on_ctrl_click,
+                            on_right_click_cb=self._on_right_click_cb)
             row = idx // GRID_COLS
             col = idx % GRID_COLS
             cell.grid(row=row, column=col, padx=(0, GRID_GAP if col < GRID_COLS - 1 else 0),
@@ -216,6 +304,29 @@ class PostGrid(tk.Frame):
         if 0 <= index < len(self._cells):
             self._cells[index].set_status(status)
 
+    def set_trigram_cells(self, group_num: int, indices: list, slots: list):
+        """Apply trigram state to three cells."""
+        for idx, slot in zip(indices, slots):
+            if 0 <= idx < len(self._cells):
+                self._cells[idx].set_trigram_state(group_num, slot)
+
+    def clear_trigram_cells(self, indices: list):
+        """Remove trigram state from cells."""
+        for idx in indices:
+            if 0 <= idx < len(self._cells):
+                self._cells[idx].clear_trigram_state()
+
+    def set_selecting_cells(self, indices: list, active: bool):
+        """Show/hide the selection ring on the given cells."""
+        for idx in indices:
+            if 0 <= idx < len(self._cells):
+                self._cells[idx].set_selecting(active)
+
+    def clear_all_selecting(self):
+        """Clear selection rings from all cells."""
+        for cell in self._cells:
+            cell.set_selecting(False)
+
     def _load_thumb_async(self, cell: GridCell, img_path: str, size: int):
         def load():
             try:
@@ -229,8 +340,8 @@ class PostGrid(tk.Frame):
                 img = img.resize((size, size), Image.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
                 self.after(0, lambda: cell.set_thumb(photo))
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[thumb] failed to load {img_path!r}: {e}")
         threading.Thread(target=load, daemon=True).start()
 
 
@@ -258,7 +369,7 @@ class PostDetail(tk.Frame):
         nav.pack_propagate(False)
 
         self._back_btn = tk.Button(
-            nav, text="←  BACK TO GRID", command=self._on_back,
+            nav, text="â†  BACK TO GRID", command=self._on_back,
             bg=BG_CARD, fg=ACCENT, activebackground=BG_HOVER,
             activeforeground=ACCENT, relief="flat", font=FONT_BOLD,
             cursor="hand2",
@@ -274,7 +385,7 @@ class PostDetail(tk.Frame):
         self._next_btn.pack(side="right", padx=10)
 
         self._prev_btn = tk.Button(
-            nav, text="← PREV", command=self._on_prev,
+            nav, text="â† PREV", command=self._on_prev,
             bg=BG_CARD, fg=FG_DIM, activebackground=BG_HOVER,
             activeforeground=FG_MAIN, relief="flat", font=FONT_SMALL,
             cursor="hand2",
@@ -461,6 +572,180 @@ class PostDetail(tk.Frame):
 
 
 # ---------------------------------------------------------------------------
+# Trigram slot assignment panel
+# ---------------------------------------------------------------------------
+
+class TrigramPanel(tk.Toplevel):
+    """
+    Modal dialog for assigning L/M/R slots to 3 selected posts.
+
+    Shows three thumbnails side-by-side.  Swap buttons between adjacent
+    positions let the user reorder them.  LOCK commits the group.
+    """
+
+    THUMB = 90  # px per thumbnail
+
+    def __init__(self, parent, posts, indices, on_lock, **kwargs):
+        """
+        posts:    list of ParsedPost — exactly 3 items, in display order
+        indices:  matching list of int — original post indices
+        on_lock:  callback(indices_in_slot_order, slots=[1,2,3])
+        """
+        super().__init__(parent, bg=BG_DEEP, **kwargs)
+        self.title("Assign Trigram Slots")
+        self.resizable(False, False)
+        self.grab_set()
+        self.transient(parent)
+
+        self._on_lock = on_lock
+        # Work with a mutable list of (post, original_index) pairs
+        self._order   = list(zip(posts, indices))  # current L/M/R order
+        self._thumbs  = [None, None, None]         # PhotoImage refs
+
+        self._build()
+        self._load_thumbs()
+        self.after(50, self._center)
+
+    def _center(self):
+        self.update_idletasks()
+        pw, ph = self.winfo_reqwidth(), self.winfo_reqheight()
+        rx = self.master.winfo_rootx() + (self.master.winfo_width()  - pw) // 2
+        ry = self.master.winfo_rooty() + (self.master.winfo_height() - ph) // 2
+        self.geometry(f"+{rx}+{ry}")
+
+    def _build(self):
+        tk.Label(self, text="TRIGRAM SLOT ORDER", bg=BG_DEEP, fg=FG_DIM,
+                 font=FONT_SMALL).pack(padx=14, pady=(12, 4))
+        tk.Label(self, text="Swap adjacent thumbnails to set L / M / R order.",
+                 bg=BG_DEEP, fg=FG_DIM, font=("Segoe UI", 8)).pack(padx=14, pady=(0, 8))
+
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
+
+        # Thumbnail strip
+        self._strip = tk.Frame(self, bg=BG_DEEP)
+        self._strip.pack(padx=14, pady=12)
+
+        self._thumb_labels = []
+        self._slot_labels  = []
+        SLOT_NAMES = ["L", "M", "R"]
+        T = self.THUMB
+
+        for i in range(3):
+            col = tk.Frame(self._strip, bg=BG_DEEP)
+            col.pack(side="left", padx=6)
+
+            # Slot label above thumbnail
+            sl = tk.Label(col, text=SLOT_NAMES[i], bg=BG_DEEP, fg=ACCENT,
+                          font=FONT_BOLD)
+            sl.pack()
+            self._slot_labels.append(sl)
+
+            # Thumbnail canvas
+            c = tk.Canvas(col, width=T, height=T, bg="#0A0A0E",
+                          highlightthickness=1, highlightbackground=BORDER)
+            c.pack()
+            self._thumb_labels.append(c)
+
+            # Swap button between positions (not after the last one)
+            if i < 2:
+                swap_i = i  # capture loop var
+                btn = tk.Button(
+                    self._strip,
+                    text="⇄",
+                    command=lambda si=swap_i: self._swap(si),
+                    bg=BG_MID, fg=FG_MAIN, relief="flat",
+                    font=("Segoe UI", 14), cursor="hand2",
+                    padx=4, pady=0,
+                    activebackground=BG_HOVER, activeforeground=ACCENT,
+                )
+                btn.pack(side="left", padx=2, pady=(T // 2, 0))
+
+        # Post titles under strip
+        self._title_frame = tk.Frame(self, bg=BG_DEEP)
+        self._title_frame.pack(padx=14, pady=(0, 8))
+        self._title_labels = []
+        for i in range(3):
+            lbl = tk.Label(self._title_frame, text="", bg=BG_DEEP, fg=FG_DIM,
+                           font=("Segoe UI", 8), width=12, wraplength=90,
+                           justify="center")
+            lbl.pack(side="left", padx=6)
+            self._title_labels.append(lbl)
+
+        self._update_titles()
+
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
+
+        # Buttons
+        btn_row = tk.Frame(self, bg=BG_CARD, padx=14, pady=10)
+        btn_row.pack(fill="x")
+
+        tk.Button(
+            btn_row, text="CANCEL",
+            command=self.destroy,
+            bg=BG_MID, fg=FG_DIM, relief="flat", font=FONT_SMALL,
+            activebackground=BG_HOVER, activeforeground=FG_MAIN, cursor="hand2",
+        ).pack(side="left")
+
+        tk.Button(
+            btn_row, text="LOCK GROUP",
+            command=self._lock,
+            bg=ACCENT, fg=BG_DEEP, relief="flat", font=FONT_BOLD,
+            activebackground=ACCENT2, activeforeground=BG_DEEP, cursor="hand2",
+            padx=12,
+        ).pack(side="right")
+
+    def _swap(self, i: int):
+        """Swap position i with position i+1."""
+        self._order[i], self._order[i + 1] = self._order[i + 1], self._order[i]
+        self._update_titles()
+        self._load_thumbs()
+
+    def _update_titles(self):
+        for i, (post, _) in enumerate(self._order):
+            title = (post.body or f"Post {i+1}")[:30]
+            self._title_labels[i].configure(text=title)
+
+    def _load_thumbs(self):
+        T = self.THUMB
+        for i, (post, _) in enumerate(self._order):
+            if post.images:
+                self._load_one_thumb(i, post.images[0], T)
+            else:
+                self._thumb_labels[i].delete("all")
+                self._thumb_labels[i].create_text(
+                    T // 2, T // 2, text="?", fill=FG_DIM,
+                    font=FONT_BOLD,
+                )
+
+    def _load_one_thumb(self, slot: int, img_path: str, size: int):
+        canvas = self._thumb_labels[slot]
+
+        def load():
+            try:
+                img = Image.open(img_path)
+                w, h = img.size
+                side = min(w, h)
+                img  = img.crop(((w-side)//2, (h-side)//2,
+                                 (w+side)//2, (h+side)//2))
+                img  = img.resize((size, size), Image.LANCZOS)
+                photo = ImageTk.PhotoImage(img)
+                self._thumbs[slot] = photo
+                self.after(0, lambda c=canvas, p=photo: (
+                    c.delete("all"),
+                    c.create_image(size // 2, size // 2, image=p, anchor="center"),
+                ))
+            except Exception:
+                pass
+        threading.Thread(target=load, daemon=True).start()
+
+    def _lock(self):
+        indices = [idx for _, idx in self._order]
+        slots   = [1, 2, 3]
+        self._on_lock(indices, slots)
+        self.destroy()
+
+
+# ---------------------------------------------------------------------------
 # Main application window
 # ---------------------------------------------------------------------------
 
@@ -483,6 +768,13 @@ class App(tk.Tk):
         self._msg_queue:     queue.Queue               = queue.Queue()
         self._current_view   = 'grid'   # 'grid' or 'detail'
         self._detail_index   = 0
+
+        # Trigram group state
+        # _tg_groups: list of {'indices': [i,j,k], 'slots': [1,2,3], 'orientation': 'h'}
+        # _tg_selection: indices currently being accumulated (max 3)
+        self._tg_groups:     list = []
+        self._tg_selection:  list = []
+        self._tg_group_ctr:  int  = 0  # monotonically incrementing group number
 
         self._apply_ttk_style()
         self._build_ui()
@@ -552,12 +844,18 @@ class App(tk.Tk):
             header, text="UNZUCKER", bg=BG_CARD, fg=ACCENT, font=FONT_TITLE,
         ).pack(side="left", padx=16)
 
-        self._conn_dot = tk.Label(header, text="●", bg=BG_CARD, fg=FG_DIM, font=("Segoe UI", 11))
+        self._conn_dot = tk.Label(header, text="â—", bg=BG_CARD, fg=FG_DIM, font=("Segoe UI", 11))
         self._conn_dot.pack(side="right", padx=(0, 14))
         self._conn_lbl = tk.Label(header, text="Not connected", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
         self._conn_lbl.pack(side="right")
         tk.Label(header, text=f"build {BUILD_VERSION}", bg=BG_CARD, fg=FG_DIM,
                  font=("Segoe UI", 8)).pack(side="right", padx=(0, 20))
+
+        # Keyring indicator
+        kr_text  = "🔒 keyring" if _KEYRING_OK else "âš  no keyring"
+        kr_color = FG_OK       if _KEYRING_OK else FG_WARN
+        tk.Label(header, text=kr_text, bg=BG_CARD, fg=kr_color,
+                 font=("Segoe UI", 8)).pack(side="right", padx=(0, 10))
 
         tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
 
@@ -608,48 +906,6 @@ class App(tk.Tk):
                                         command=self._on_connect)
         self._connect_btn.pack(side="right")
 
-        # ── Box: FTP SETTINGS ────────────────────────────────────────
-        self._ftp_host_var     = tk.StringVar()
-        self._ftp_port_var     = tk.StringVar(value='21')
-        self._ftp_user_var     = tk.StringVar()
-        self._ftp_pass_var     = tk.StringVar()
-        self._ftp_proto_var    = tk.StringVar(value='ftp')
-        self._ftp_base_var     = tk.StringVar(value='/public_html/images')
-
-        ftp_box  = self._box(cfg, "FTP SETTINGS")
-        ftp_box.pack(fill="x", pady=(0, 8))
-        ftp_body = self._box_body(ftp_box)
-
-        ftp_row1 = tk.Frame(ftp_body, bg=BG_CARD)
-        ftp_row1.pack(fill="x", pady=(0, 8))
-        ftp_row1.columnconfigure(0, weight=3)
-        ftp_row1.columnconfigure(1, weight=1)
-        ftp_row1.columnconfigure(2, weight=1)
-        self._field_in(ftp_row1, "HOST", self._ftp_host_var, 0, 0, padx=(0, 6))
-        self._field_in(ftp_row1, "PORT", self._ftp_port_var, 0, 1, padx=(0, 6))
-        # Protocol dropdown
-        proto_cell = tk.Frame(ftp_row1, bg=BG_CARD)
-        proto_cell.grid(row=0, column=2, sticky="ew")
-        tk.Label(proto_cell, text="PROTOCOL", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w")
-        ttk.Combobox(proto_cell, textvariable=self._ftp_proto_var,
-                      values=['ftp', 'sftp'], font=FONT_SMALL, state="readonly",
-                      width=6).pack(fill="x", pady=(2, 0))
-
-        ftp_row2 = tk.Frame(ftp_body, bg=BG_CARD)
-        ftp_row2.pack(fill="x", pady=(0, 8))
-        ftp_row2.columnconfigure(0, weight=1)
-        ftp_row2.columnconfigure(1, weight=1)
-        self._field_in(ftp_row2, "FTP USERNAME", self._ftp_user_var, 0, 0, padx=(0, 6))
-        self._field_in_password(ftp_row2, "FTP PASSWORD", self._ftp_pass_var, 0, 1)
-
-        self._field(ftp_body, "REMOTE BASE PATH", self._ftp_base_var)
-
-        ftp_btn_row = tk.Frame(ftp_body, bg=BG_CARD)
-        ftp_btn_row.pack(fill="x")
-        self._test_ftp_btn = ttk.Button(ftp_btn_row, text="Test FTP", style="Ghost.TButton",
-                                         command=self._on_test_ftp)
-        self._test_ftp_btn.pack(side="right")
-
         # ── Box: IMPORT SETTINGS ─────────────────────────────────────
         self._export_var   = tk.StringVar()
         self._copy_var     = tk.StringVar()
@@ -674,6 +930,11 @@ class App(tk.Tk):
         )
         self._grid_lbl.pack(side="left", padx=14, pady=6)
 
+        self._tg_lbl = tk.Label(
+            g_hdr, text="", bg=BG_DEEP, fg='#c8a96e', font=FONT_SMALL,
+        )
+        self._tg_lbl.pack(side="left", padx=(0, 8), pady=6)
+
         self._parse_btn = ttk.Button(g_hdr, text="Parse Export", style="Ghost.TButton",
                                       command=self._on_parse)
         self._parse_btn.pack(side="right", padx=14, pady=4)
@@ -684,7 +945,12 @@ class App(tk.Tk):
         self._view_container = tk.Frame(self, bg=BG_DEEP)
         self._view_container.pack(fill="both", expand=True)
 
-        self._grid = PostGrid(self._view_container, on_cell_click=self._on_cell_click)
+        self._grid = PostGrid(
+            self._view_container,
+            on_cell_click=self._on_cell_click,
+            on_ctrl_click=self._on_ctrl_click,
+            on_right_click_cb=self._on_right_click_cb,
+        )
         self._grid.pack(fill="both", expand=True)
 
         self._detail = PostDetail(
@@ -782,7 +1048,7 @@ class App(tk.Tk):
         tk.Label(cell, text=label, bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(anchor="w")
         inner = tk.Frame(cell, bg=BG_CARD)
         inner.pack(fill="x", pady=(2, 0))
-        e = self._entry(inner, var, width=0, show="•")
+        e = self._entry(inner, var, width=1, show="•")
         e.pack(side="left", fill="x", expand=True, padx=(0, 2))
         _vis = [False]
         def _toggle():
@@ -838,27 +1104,15 @@ class App(tk.Tk):
         c = self._config
         self._url_var.set(c.get('url', ''))
         self._api_key_var.set(c.get('api_key', ''))
-        self._ftp_host_var.set(c.get('ftp_host', ''))
-        self._ftp_port_var.set(str(c.get('ftp_port', 21)))
-        self._ftp_user_var.set(c.get('ftp_username', ''))
-        self._ftp_pass_var.set(c.get('ftp_password', ''))
-        self._ftp_proto_var.set(c.get('ftp_protocol', 'ftp'))
-        self._ftp_base_var.set(c.get('ftp_remote_base', '/public_html/images'))
         self._export_var.set(c.get('export_folder', ''))
         self._copy_var.set(c.get('copyright_text', ''))
 
     def _save_config(self):
         cfg_module.save({
-            'url':              self._url_var.get().strip(),
-            'api_key':          self._api_key_var.get(),
-            'ftp_host':         self._ftp_host_var.get().strip(),
-            'ftp_port':         int(self._ftp_port_var.get() or 21),
-            'ftp_username':     self._ftp_user_var.get().strip(),
-            'ftp_password':     self._ftp_pass_var.get(),
-            'ftp_protocol':     self._ftp_proto_var.get(),
-            'ftp_remote_base':  self._ftp_base_var.get().strip(),
-            'export_folder':    self._export_var.get().strip(),
-            'copyright_text':   self._copy_var.get().strip(),
+            'url':            self._url_var.get().strip(),
+            'api_key':        self._api_key_var.get(),
+            'export_folder':  self._export_var.get().strip(),
+            'copyright_text': self._copy_var.get().strip(),
         })
 
     # ------------------------------------------------------------------
@@ -923,6 +1177,7 @@ class App(tk.Tk):
             return
 
         self._posts = result.posts
+        self._clear_trigram_state()
         self._grid.load(self._posts)
 
         s = result.stats
@@ -987,33 +1242,6 @@ class App(tk.Tk):
             messagebox.showerror("Connection failed", str(e))
 
     # ------------------------------------------------------------------
-    # Test FTP
-    # ------------------------------------------------------------------
-
-    def _on_test_ftp(self):
-        host = self._ftp_host_var.get().strip()
-        if not host:
-            messagebox.showerror("Missing", "Enter FTP host first.")
-            return
-        self._set_status("Testing FTP…", FG_WARN)
-        self.update_idletasks()
-        try:
-            transport = ftp_upload.create_transport(
-                protocol=self._ftp_proto_var.get(),
-                host=host,
-                port=int(self._ftp_port_var.get() or 21),
-                username=self._ftp_user_var.get().strip(),
-                password=self._ftp_pass_var.get(),
-            )
-            transport.connect()
-            transport.disconnect()
-            self._set_status("FTP connection OK.", FG_OK)
-            messagebox.showinfo("FTP OK", "FTP connection successful.")
-        except Exception as e:
-            self._set_status(f"FTP failed: {e}", FG_ERR)
-            messagebox.showerror("FTP failed", str(e))
-
-    # ------------------------------------------------------------------
     # Validate
     # ------------------------------------------------------------------
 
@@ -1054,32 +1282,33 @@ class App(tk.Tk):
             messagebox.showinfo("Not connected", "Click Connect first.")
             return
 
-        active = [p for p in self._posts if not p.excluded]
-        if not active:
+        # Build active list and an original→active index map
+        active_with_orig = [(i, p) for i, p in enumerate(self._posts) if not p.excluded]
+        if not active_with_orig:
             messagebox.showerror("Nothing to post", "All posts are excluded.")
             return
+        active = [p for _, p in active_with_orig]
+        orig_to_active = {orig: act for act, (orig, _) in enumerate(active_with_orig)}
+
+        # Remap trigram group indices (original → active)
+        remapped_groups = []
+        for grp in self._tg_groups:
+            mapped = [orig_to_active.get(i, -1) for i in grp['indices']]
+            if any(m < 0 for m in mapped):
+                continue  # a post in this group is excluded — skip
+            remapped_groups.append({
+                'indices':     mapped,
+                'slots':       grp['slots'],
+                'orientation': grp['orientation'],
+            })
 
         count = len(active)
+        tg_note = f"\n\n{len(remapped_groups)} trigram group{'s' if len(remapped_groups) != 1 else ''} will be linked." if remapped_groups else ""
         if not messagebox.askyesno(
             "Confirm migration",
             f"Transfer & post {count} post{'s' if count != 1 else ''} to SnapSmack?\n\n"
-            f"Images will be FTP'd to {self._ftp_host_var.get().strip()} "
-            f"and posts created via the API.",
+            f"Images will be uploaded via HTTPS and posts created via the API.{tg_note}",
         ):
-            return
-
-        # Build FTP transport
-        try:
-            self._ftp_transport = ftp_upload.create_transport(
-                protocol=self._ftp_proto_var.get(),
-                host=self._ftp_host_var.get().strip(),
-                port=int(self._ftp_port_var.get() or 21),
-                username=self._ftp_user_var.get().strip(),
-                password=self._ftp_pass_var.get(),
-            )
-            self._ftp_transport.connect()
-        except Exception as e:
-            messagebox.showerror("FTP connection failed", str(e))
             return
 
         self._set_posting(True)
@@ -1097,12 +1326,12 @@ class App(tk.Tk):
 
         thread = threading.Thread(
             target=self._post_thread,
-            args=(active, staging_dir, count),
+            args=(active, staging_dir, count, remapped_groups),
             daemon=True,
         )
         thread.start()
 
-    def _post_thread(self, posts, staging_dir, total):
+    def _post_thread(self, posts, staging_dir, total, trigram_groups=None):
         def on_progress(current, total, result):
             self._msg_queue.put(('progress', current, total, result))
 
@@ -1110,13 +1339,12 @@ class App(tk.Tk):
             client=self._client,
             posts=posts,
             site_data=self._site_data,
-            ftp_transport=self._ftp_transport,
-            ftp_remote_base=self._ftp_base_var.get().strip(),
             staging_dir=staging_dir,
             default_category='',
             default_album='',
             copyright_text=self._copy_var.get().strip(),
             on_progress=on_progress,
+            trigram_groups=trigram_groups or [],
         )
         self._msg_queue.put(('done', total))
 
@@ -1126,13 +1354,6 @@ class App(tk.Tk):
             shutil.rmtree(staging_dir, ignore_errors=True)
         except Exception:
             pass
-
-        # Disconnect FTP
-        if self._ftp_transport:
-            try:
-                self._ftp_transport.disconnect()
-            except Exception:
-                pass
 
     def _poll_queue(self):
         try:
@@ -1165,6 +1386,100 @@ class App(tk.Tk):
         self.after(100, self._poll_queue)
 
     # ------------------------------------------------------------------
+    # Trigram group management
+    # ------------------------------------------------------------------
+
+    def _on_ctrl_click(self, index: int):
+        """Handle Ctrl+click — add or remove from active selection."""
+        if self._posting:
+            return
+
+        # Already locked in a group?  Treat as a remove request.
+        for grp in self._tg_groups:
+            if index in grp['indices']:
+                self._remove_trigram(index)
+                return
+
+        # Toggle selection
+        if index in self._tg_selection:
+            self._tg_selection.remove(index)
+            self._grid.set_selecting_cells([index], False)
+        else:
+            if len(self._tg_selection) >= 3:
+                self._set_status("A trigram needs exactly 3 posts. Deselect one first.", FG_WARN)
+                return
+            self._tg_selection.append(index)
+            self._grid.set_selecting_cells([index], True)
+
+        if len(self._tg_selection) == 3:
+            # Open the slot assignment panel
+            self._open_trigram_panel(list(self._tg_selection))
+
+    def _on_right_click_cb(self, action: str, index: int):
+        """Callback from GridCell right-click context menu."""
+        if action == 'add':
+            self._on_ctrl_click(index)
+        elif action == 'remove':
+            self._remove_trigram(index)
+
+    def _open_trigram_panel(self, indices: list):
+        """Open TrigramPanel for slot assignment."""
+        if not self._posts:
+            return
+        posts = [self._posts[i] for i in indices]
+        panel = TrigramPanel(
+            self,
+            posts=posts,
+            indices=indices,
+            on_lock=self._on_trigram_lock,
+        )
+        # Clear selection rings now — panel takes over
+        self._grid.set_selecting_cells(indices, False)
+        self._tg_selection.clear()
+        self.wait_window(panel)
+
+    def _on_trigram_lock(self, indices: list, slots: list):
+        """Called when user clicks LOCK in TrigramPanel."""
+        self._tg_group_ctr += 1
+        group = {
+            'indices':     indices,
+            'slots':       slots,
+            'orientation': 'h',
+        }
+        self._tg_groups.append(group)
+        self._grid.set_trigram_cells(self._tg_group_ctr, indices, slots)
+        self._update_tg_label()
+        self._set_status(
+            f"Trigram T{self._tg_group_ctr} locked ({indices[0]+1}, {indices[1]+1}, {indices[2]+1}).",
+            FG_OK,
+        )
+
+    def _remove_trigram(self, index: int):
+        """Remove the trigram group containing index."""
+        for grp in list(self._tg_groups):
+            if index in grp['indices']:
+                self._grid.clear_trigram_cells(grp['indices'])
+                self._tg_groups.remove(grp)
+                self._update_tg_label()
+                self._set_status("Trigram group removed.", FG_DIM)
+                return
+
+    def _update_tg_label(self):
+        n = len(self._tg_groups)
+        self._tg_lbl.configure(
+            text=f"  {n} trigram{'s' if n != 1 else ''}" if n > 0 else ""
+        )
+
+    def _clear_trigram_state(self):
+        """Clear all trigram groups and selection (called on new parse)."""
+        for grp in self._tg_groups:
+            self._grid.clear_trigram_cells(grp['indices'])
+        self._tg_groups.clear()
+        self._tg_selection.clear()
+        self._tg_group_ctr = 0
+        self._update_tg_label()
+
+    # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
 
@@ -1191,7 +1506,6 @@ class App(tk.Tk):
         self._validate_btn.configure(state=state)
         self._connect_btn.configure(state=state)
         self._parse_btn.configure(state=state)
-        self._test_ftp_btn.configure(state=state)
 
 
 # ---------------------------------------------------------------------------

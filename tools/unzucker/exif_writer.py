@@ -1,10 +1,12 @@
 """
-ft-batch-poster — exif_writer.py
+Unzucker — exif_writer.py
 Embeds copyright and metadata into a JPEG using piexif (pure Python).
 No external binaries required — bundles cleanly with PyInstaller.
 
 Fields written (EXIF IFD0):
   Copyright, Artist, ImageDescription, UserComment (keywords)
+
+Public API: build_exif_bytes() only. Called from poster.py.
 """
 
 # SNAPSMACK_EOF_HEADER
@@ -13,10 +15,7 @@ Fields written (EXIF IFD0):
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-import os
 import re
-import shutil
-import tempfile
 
 import piexif
 import piexif.helper
@@ -63,32 +62,4 @@ def build_exif_bytes(title: str, tags: str, copyright_text: str) -> bytes:
     return piexif.dump({'0th': zeroth_ifd, 'Exif': exif_ifd})
 
 
-def embed_inplace(path: str, title: str, tags: str, copyright_text: str = '') -> None:
-    """
-    Embed EXIF metadata directly into an existing JPEG.
-    Raises RuntimeError on failure.
-    """
-    try:
-        exif_bytes = build_exif_bytes(title, tags, copyright_text)
-        piexif.insert(exif_bytes, path)
-    except Exception as e:
-        raise RuntimeError(f"piexif error: {e}")
-
-
-def embed(src_path: str, title: str, tags: str, copyright_text: str = '') -> str:
-    """
-    Copy src_path to a temp file, embed EXIF metadata, return the temp path.
-    Caller is responsible for deleting the temp file after use.
-    Raises RuntimeError on failure.
-    """
-    ext = os.path.splitext(src_path)[1] or '.jpg'
-    tmp_fd, tmp_path = tempfile.mkstemp(prefix='ft_', suffix=ext)
-    os.close(tmp_fd)
-    shutil.copy2(src_path, tmp_path)
-    try:
-        embed_inplace(tmp_path, title, tags, copyright_text)
-    except Exception:
-        os.unlink(tmp_path)
-        raise
-    return tmp_path
 # ===== SNAPSMACK EOF =====

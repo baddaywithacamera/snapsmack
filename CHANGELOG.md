@@ -12,11 +12,106 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.222 — "Courtesy Flush" (2026-06-08)
+
+### GramOfSmack trigrams — full soft-import implementation
+
+Soft trigrams (pre-sliced images, e.g. Instagram imports) are now fully supported alongside the existing hard-slice system. Three interconnected parts ship together.
+
+**CMS scaffolding**
+
+- `migrations/migrate-trigram-type.sql` — New `trigram_type ENUM('slice','group')` column on `snap_trigrams`. `slice` = existing GD/Imagick cut in SnapSmack; `group` = pre-sliced external import. `source_path`, `cut_a`, `cut_b` made nullable so group-type rows don't require them.
+- `core/updater.php` — `migrate-trigram-type.sql` registered in `UPDATER_KNOWN_MIGRATIONS`.
+- `database/schema/snapsmack_canonical.sql` — `snap_trigrams` CREATE TABLE updated with `trigram_type` and nullable slice columns.
+- `core/trigram.php` — New helper library. `trigram_check_and_publish(PDO, trigram_id, post_id)`: parks a post as `queued` until all 3 slots are ready, then promotes all 3 atomically and assigns `sort_order` at the next row boundary (≡ 0 mod 3). `trigram_ready_count()` helper.
+
+**The Grid skin**
+
+- `skins/the-grid/landing.php` — Full rewrite. JOINs `snap_trigrams` to compute `trigram_slot` (L/M/R or T/M/B) and `trigram_orientation` per post. Emits phantom padding tiles to preserve 3-column row alignment when a trigram group starts mid-row. Pagination removed — all posts lazy-loaded per spec. Tiles carry `data-trigram-id` and `data-trigram-slot` attributes.
+- `skins/the-grid/style.css` — Trigram stitch CSS: negative margins collapse the inter-tile gap on L/M/R tiles so the three images present as a continuous strip. `.tg-tile--phantom` hides padding tiles visually while preserving grid geometry.
+
+**Lighttable (smack-lt-gram.php)**
+
+- Full rewrite. `core/trigram.php` wired in. Single-post publish routes through `trigram_check_and_publish()`; returns `{promoted, post_ids}` (all 3 promoted simultaneously) or `{queued, ready: N}` (post parked until group is complete). Bulk publish handles per-post trigram routing. `status='queued'` posts appear in the Lighttable with a QUEUED N/3 badge. Sortable.js group-drag moves all 3 trigram tiles as a unit.
+
+**Unzucker API**
+
+- `core/unzucker-api.php` — New route: `POST unzucker/trigram`. Accepts `{post_id_1, post_id_2, post_id_3, orientation}`. Creates a `type='group'` row in `snap_trigrams`, links all 3 posts via UPDATE, assigns `sort_order` at the next row boundary. Defensive schema guard included.
+
+**Unzucker Python app**
+
+- `tools/unzucker/poster.py` — `PostResult` now captures `post_id` from API response. `UnzuckerClient.create_trigram()` added. `run_migration()` accepts optional `trigram_groups` list; after all posts are created, calls `create_trigram()` for each locked group (non-fatal on failure).
+- `tools/unzucker/main.py` — Trigram UI: Ctrl+click enters selection mode (gold ring + badge overlay on tile), right-click context menu. `TrigramPanel` (new `Toplevel` dialog): shows L/M/R thumbnails with swap buttons, LOCK / CANCEL. `App` tracks `_tg_groups` list and shows live group count label. On post, group indices are remapped from original-list positions to active-list positions before passing to the migration thread. `BUILD_VERSION` bumped to `0.7.14`.
+
+---
+
+## 0.7.221 — "Splash Zone" (2026-06-07)
+
+### Fix — HTTP 500 on first login to smack-admin.php
+
+- `smack-admin.php` — On first page load (cold cache), the updater stale-cache branch was making blocking HTTP calls: `updater_fetch_release_info()` at 30s timeout × 3 retries, plus `updater_check_skin_registry()` — up to 90 s total, which exceeds PHP's max_execution_time and produces a 500 with no cache written. On refresh the cached result skips the fetch entirely, which is why a hard refresh always worked. Both calls switched to fast mode (`$fast = true`): 12s timeout, 1 retry, skin registry returns empty immediately. Acceptable tradeoff — skin notifications are cosmetic and stale on the first login anyway.
+
+### Fix — Unzucker carousel cover image ordering
+
+- `tools/unzucker/ig_parser.py` — Removed `images.reverse()` block that was re-ordering carousel images in reverse display order. Instagram export JSON stores carousel images cover-first (forward display order), so reversing buried the cover image at the bottom of the stack. The cover is now index 0 as it appears in the export.
+
+### Fix — Unzucker main.py encoding cleanup (cp1252 mojibake)
+
+- `tools/unzucker/main.py` — File had pervasive double-encoding: original Unicode chars were encoded as UTF-8, bytes were misread as Windows-1252 (cp1252), then re-encoded as UTF-8, producing garbled multi-byte sequences throughout. Fixed 13 character patterns: bullet (`•`), em dash (`—`), box-drawing (`─`), ellipsis (`…`), checkmark (`✓`), X mark (`✗`), empty set (`∅`), small square (`▪`), middle dot (`·`), up/down triangle (`▲`/`▼`), right arrow (`→`), lock emoji (`🔒`). The `show="•"` mask on the API key field was the user-visible symptom — displayed `§` instead of bullet dots.
+
+### Unzucker — FTP removed; HTTP upload endpoint added
+
+All FTP/SFTP infrastructure has been removed from Unzucker. Images are now uploaded directly to the server over HTTPS via a new authenticated multipart endpoint. This eliminates the SFTP host-key dialog that was a support nightmare for users, removes the paramiko dependency, and simplifies the tool significantly.
+
+- `core/unzucker-api.php` — New route: `POST unzucker/upload`. Accepts a multipart JPEG upload (Bearer auth required), validates MIME via `finfo`, caps at 20 MB, sanitises filename, saves to `img_uploads/YYYY/MM/`, creates subdirs and `thumbs/` if missing, returns `{path: "YYYY/MM/filename.jpg"}` for use as `snap_images.img_file`.
+- `core/unzucker-api.php` — Fixed: `snap_posts.title` was hardcoded to `''` in the INSERT — now reads `$body['title']` correctly.
+- `tools/unzucker/poster.py` — Added `upload_image()` to `UnzuckerClient`: POSTs image bytes as multipart (clears session-level `Content-Type: application/json` header per-request so requests can set the multipart boundary), returns server path. `run_migration()` rewritten: step 2 is now HTTP upload per image; FTP transport arg removed throughout.
+- `tools/unzucker/main.py` — Entire FTP settings UI section removed (host, port, protocol dropdown, username, password, remote base path, warning label, Test FTP button). `_on_test_ftp()` deleted. FTP references removed from `_load_config_to_ui()`, `_save_config()`, `_on_post()`, `_post_thread()`, `_set_posting()`. Confirm dialog updated to reference HTTPS upload.
+- `tools/unzucker/config.py` — FTP fields removed (`ftp_host`, `ftp_port`, `ftp_username`, `ftp_password`, `ftp_protocol`, `ftp_remote_base`). `load()` and `save()` now handle only `url`, `api_key`, `export_folder`, `copyright_text`. FTP keyring account helper and migration path removed.
+- `tools/unzucker/ftp_upload.py` — **Deleted.** No replacement.
+- `tools/unzucker/requirements.txt` — `paramiko>=3.0` removed.
+- `tools/unzucker/build.bat` — `--hidden-import=paramiko` removed from PyInstaller args.
+
+### Unzucker — keyring migration fix + version bump
+
+- `tools/unzucker/config.py` — Fixed migration gap: when keyring is available but a secret was never stored there (first run after upgrade), `load()` now falls back to the base64 value from the ini and migrates it into keyring on the spot. Previously keyring availability short-circuited the fallback entirely, leaving the API key blank on upgrade.
+- `tools/unzucker/main.py` — `BUILD_VERSION` bumped to `0.7.13`.
+
+### snapsmack.ca — index.php sticky menu restored
+
+- `projects/snapsmack-ca/index.php` — `footer.php` include was missing, which dropped the sticky mini-header scroll script, the site footer, and `</body></html>`. Restored by adding `require_once __DIR__ . '/includes/footer.php'` at page end.
+
+### Installer — Security &amp; Community opt-in screen (secopt)
+
+- `install.php` — Step 6 secopt screen overhauled: heading changed to "Security &amp; Community", "stronger together" messaging added to SmackAttack card explaining how each contributing install benefits the whole network.
+- `install.php` — New **Community Forum** card added (third card in secopt), pre-checked/opt-in by default. Explains the forum is the primary one-to-many communication channel — one post reaches all connected installs, more reliable than email.
+- `install.php` — Backend wired: `$sec_forum` reads checkbox from POST, flows into `sec_consent` JSON blob and into the `forum_enabled` settings seed. Previously hardcoded to `'0'`; now driven by user choice, defaulting to `'1'`.
+
+### Security — Unzucker attack surface hardening (audit #023)
+
+- `tools/unzucker/ftp_upload.py` — `SFTPTransport` now uses `RejectPolicy` + `load_system_host_keys()` instead of `AutoAddPolicy`. Connecting to an unknown SFTP host now raises a clear error with the exact `ssh-keyscan` command needed to add the host key, rather than silently accepting any key. Eliminates MITM risk on SFTP sessions. (UZ-01)
+- `core/unzucker-api.php` — `img_path` in the POST `unzucker/posts` handler is now validated before writing to `snap_images.img_file`: must be ≤500 chars and end in `.jpg` or `.jpeg`. Arbitrary path strings from a crafted API request can no longer be stored in the image table. (UZ-02)
+- `tools/unzucker/ig_parser.py` — Resolved image paths must now stay within the export root directory. A URI that resolves outside the root (via absolute path or `../..` traversal) is skipped with a logged warning. Prevents a maliciously crafted export from causing Unzucker to upload arbitrary local files to the server. (UZ-03)
+- `tools/unzucker/main.py` — Warning label now appears when plain FTP is selected, recommending SFTP for internet transfers. Protocol dropdown auto-switches port between 21 (FTP) and 22 (SFTP) when at a known default; custom ports are never touched. (UZ-05 + port UX)
+- `tools/unzucker/config.py` — API key and FTP password now stored in the OS credential store via the `keyring` library (Windows Credential Manager / macOS Keychain / libsecret). Falls back to base64 obfuscation in `unzucker.ini` if keyring is unavailable. Non-secret settings (URLs, paths, ports) remain in the ini. `has_keyring()` helper added for UI use. (UZ-06)
+- `tools/unzucker/main.py` — Header now shows `🔒 keyring` or `⚠ no keyring` so the user always knows whether secrets are secured by the OS or falling back to base64.
+- `tools/unzucker/exif_writer.py` — Dead code removed: `embed()` and `embed_inplace()` (leftover from ft-batch-poster fork, never called by Unzucker). Unused imports (`os`, `shutil`, `tempfile`) removed alongside. (UZ-09)
+- `tools/unzucker/requirements.txt` — `keyring>=24.0` added (optional; graceful fallback if absent).
+- Security audit logged: `secaudits/2026-06-07-023-unzucker-attack-surface.pdf`
+
+---
+
+## 0.7.220 — "Splash Zone" (2026-06-08)
+
+### Fix — htaccess repair now correctly strips all trailing separator lines
+
+- `smack-maintenance.php` — Two-pass strip: (1) remove everything from the marker to end of file; (2) walk backwards stripping any trailing separator `# ─────` lines and blank lines left behind. Previous regex approach failed when a blank line separated the junk separators from the marker, leaving accumulated cruft on every REPAIR run.
+
 ## 0.7.219 — "Splash Zone" (2026-06-08)
 
 ### Fix — htaccess repair regex now handles any number of leading separator lines
 
-- `smack-maintenance.php` — REPAIR was matching `# ─────\n# SNAPSMACK-HTACCESS-RULES` (exactly one separator line before marker). Old .htaccess files had none; new template has one. Mismatch caused strip to silently fail → template appended as second copy instead of replacing. Regex now matches zero-or-more separator lines before the marker.
+- `smack-maintenance.php` — Did not work. Superseded by 0.7.220.
 
 ## 0.7.218 — "Splash Zone" (2026-06-08)
 

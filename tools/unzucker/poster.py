@@ -6,9 +6,10 @@ Changes from the batch poster version:
   - Removed ManifestEntry dependency (uses ParsedPost from ig_parser)
   - Bearer token auth via API key — no session scraping, no BeautifulSoup
   - fetch_site_data() hits GET unzucker/site
+  - upload_image() POSTs image bytes to POST unzucker/upload (no FTP required)
   - create_post() calls POST unzucker/posts (handles single + carousel)
-  - Image resize + EXIF pipeline moved to prepare_images() helper
-  - prepare_image() now returns (path, filename, width, height, exif_ok)
+  - Image resize + EXIF pipeline moved to prepare_image() helper
+  - prepare_image() returns (path, filename, width, height, exif_ok)
 """
 
 # SNAPSMACK_EOF_HEADER
@@ -46,6 +47,7 @@ class PostResult:
     message:    str
     post_type:  str  = ''
     exif_ok:    bool = True
+    post_id:    int  = 0    # snap_posts.id returned by create_post; 0 if failed/skipped
 
 
 @dataclass
@@ -113,6 +115,54 @@ class UnzuckerClient:
             site.albums[name.lower()] = aid
             site._album_display[name.lower()] = name
         return site
+
+    def upload_image(self, local_path: str, filename: str) -> str:
+        """
+        Upload a single JPEG to the server via POST unzucker/upload.
+        Returns the server-relative img_file path (e.g. '2024/07/foo.jpg').
+        Raises requests.RequestException on failure.
+        """
+        with open(local_path, 'rb') as fh:
+            file_data = fh.read()
+        resp = self._session.post(
+            f"{self.base_url}/api.php",
+            params={'route': 'unzucker/upload'},
+            files={'image': (filename, file_data, 'image/jpeg')},
+            headers={'Content-Type': None},   # clear session JSON header; let requests set multipart
+            timeout=300,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get('status') != 'ok' or 'path' not in data:
+            raise RuntimeError(f"Upload response error: {data.get('message', data)}")
+        return data['path']
+
+    def create_trigram(
+        self,
+        post_id_1:   int,
+        post_id_2:   int,
+        post_id_3:   int,
+        orientation: str = 'h',
+    ) -> dict:
+        """
+        Create a soft (group) trigram record via POST unzucker/trigram.
+        Call this after all three posts have been created.
+        Returns the parsed JSON response dict.
+        """
+        payload = {
+            'post_id_1':   post_id_1,
+            'post_id_2':   post_id_2,
+            'post_id_3':   post_id_3,
+            'orientation': orientation,
+        }
+        resp = self._session.post(
+            f"{self.base_url}/api.php",
+            params={'route': 'unzucker/trigram'},
+            data=json.dumps(payload),
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()
 
     def create_post(
         self,
@@ -190,22 +240,23 @@ def prepare_image(
 # ---------------------------------------------------------------------------
 
 def run_migration(
-    client:          UnzuckerClient,
-    posts:           list,          # List[ParsedPost] from ig_parser
-    site_data:       SiteData,
-    ftp_transport,                  # from ftp_upload
-    ftp_remote_base: str,
-    staging_dir:     str,           # local temp dir for resized images
+    client:           UnzuckerClient,
+    posts:            list,          # List[ParsedPost] from ig_parser
+    site_data:        SiteData,
+    staging_dir:      str,           # local temp dir for resized images
     default_category: str = '',
     default_album:    str = '',
     copyright_text:   str = '',
-    on_progress:     Optional[Callable[[int, int, PostResult], None]] = None,
+    on_progress:      Optional[Callable[[int, int, PostResult], None]] = None,
+    trigram_groups:   Optional[List[dict]] = None,
+    # trigram_groups: [{'indices': [i,j,k], 'slots': [1,2,3], 'orientation': 'h'}, ...]
+    # indices are into the `posts` list passed here (already filtered to active posts).
 ) -> List[PostResult]:
     """
-    Full migration pipeline: resize → FTP → create post, for each post.
+    Full migration pipeline: resize → HTTP upload → create post, for each post.
+    After all posts are created, creates trigram records for any locked groups.
+    No FTP required — images go directly to the server over HTTPS.
     """
-    from ftp_upload import remote_dir_for_timestamp, upload_images
-
     results = []
     total   = len(posts)
 
@@ -221,19 +272,16 @@ def run_migration(
                 on_progress(idx + 1, total, result)
             continue
 
+        local_files = []
         try:
             tags_list = list(post.hashtags) if post.hashtags else []
             tags_str  = ' '.join(f'#{t}' for t in tags_list)
             post_date = datetime.utcfromtimestamp(post.ig_timestamp).strftime('%Y-%m-%d %H:%M:%S')
             ig_id     = str(post.ig_timestamp)
 
-            # ── 1. Resize + EXIF all images ──────────────────────────
-            local_files  = []
-            remote_files = []
-            image_meta   = []   # [{path, width, height, orientation}]
-            all_exif_ok  = True
-
-            remote_dir = remote_dir_for_timestamp(ftp_remote_base, post.ig_timestamp)
+            # ── 1. Resize + EXIF all images locally ──────────────────
+            image_meta  = []   # [{path, width, height, orientation}]
+            all_exif_ok = True
 
             for seq, img_path in enumerate(post.images):
                 out_path, filename, w, h, exif_ok = prepare_image(
@@ -245,32 +293,22 @@ def run_migration(
                     title=post.body or '',
                     tags=tags_str,
                 )
-                orientation = 'portrait' if h > w else 'landscape'
-                remote_path = f"{remote_dir}/{filename}"
-
                 local_files.append(out_path)
-                remote_files.append(remote_path)
+                if not exif_ok:
+                    all_exif_ok = False
+
+                # ── 2. HTTP upload each image ─────────────────────────
+                server_path = client.upload_image(out_path, filename)
+
+                orientation = 'portrait' if h > w else 'landscape'
                 image_meta.append({
-                    'path':        remote_path,
+                    'path':        server_path,
                     'width':       w,
                     'height':      h,
                     'orientation': orientation,
                 })
-                if not exif_ok:
-                    all_exif_ok = False
 
-            # ── 2. FTP upload all images ─────────────────────────────
-            ftp_results = upload_images(ftp_transport, local_files, remote_files)
-            ftp_failures = [r for r in ftp_results if not r.success]
-            if ftp_failures:
-                msg = f"FTP failed for {len(ftp_failures)}/{len(local_files)} images"
-                result = PostResult(idx, False, msg, post.post_type, all_exif_ok)
-                results.append(result)
-                if on_progress:
-                    on_progress(idx + 1, total, result)
-                continue
-
-            # ── 3. Create post via API ───────────────────────────────
+            # ── 3. Create post record via API ─────────────────────────
             resp = client.create_post(
                 title=post.body or '',
                 body=post.caption or '',
@@ -282,15 +320,16 @@ def run_migration(
                 album_id=album_id,
             )
 
+            returned_id = int(resp.get('post_id', 0))
             if resp.get('duplicate'):
-                msg = f"Skipped (duplicate post_id={resp.get('post_id')})"
-                result = PostResult(idx, True, msg, post.post_type, all_exif_ok)
+                msg = f"Skipped (duplicate post_id={returned_id})"
+                result = PostResult(idx, True, msg, post.post_type, all_exif_ok, returned_id)
             else:
                 n = len(post.images)
                 msg = f"{'Carousel' if n > 1 else 'Single'} — {n} image{'s' if n != 1 else ''}"
                 if not all_exif_ok:
                     msg += " (EXIF partial)"
-                result = PostResult(idx, True, msg, post.post_type, all_exif_ok)
+                result = PostResult(idx, True, msg, post.post_type, all_exif_ok, returned_id)
 
         except Exception as e:
             result = PostResult(idx, False, str(e), post.post_type)
@@ -299,12 +338,43 @@ def run_migration(
         if on_progress:
             on_progress(idx + 1, total, result)
 
-        # Clean up staging files for this post
+        # Clean up local staging files for this post
         for lf in local_files:
             try:
                 os.unlink(lf)
             except OSError:
                 pass
+
+    # ── Trigram second call ────────────────────────────────────────────────
+    # After all posts are created, link trigram groups via the server endpoint.
+    if trigram_groups:
+        # Build index → post_id map from results.
+        idx_to_pid: Dict[int, int] = {}
+        for r in results:
+            if r.success and r.post_id:
+                idx_to_pid[r.post_index] = r.post_id
+
+        for group in trigram_groups:
+            indices     = group.get('indices', [])
+            slots       = group.get('slots',   [1, 2, 3])
+            orientation = group.get('orientation', 'h')
+
+            if len(indices) != 3:
+                continue
+
+            # Map indices → post_ids, ordered by slot assignment.
+            slot_order = sorted(zip(slots, indices), key=lambda x: x[0])
+            pids = [idx_to_pid.get(idx_to_pid_key, 0) for _, idx_to_pid_key in slot_order]
+
+            if any(p == 0 for p in pids):
+                continue  # one or more posts failed; skip trigram
+
+            try:
+                client.create_trigram(pids[0], pids[1], pids[2], orientation)
+            except Exception as e:
+                # Non-fatal: trigram record failed but posts exist.
+                # The user can link them manually in the Lighttable.
+                print(f"[trigram] group {indices} link failed: {e}")
 
     return results
 # ===== SNAPSMACK EOF =====

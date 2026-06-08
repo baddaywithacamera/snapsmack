@@ -3,14 +3,28 @@ REM ─────────────────────────�
 REM  Unzucker — build script
 REM  Requires: Python 3.11+, pip install -r requirements.txt
 REM  Output:   C:\tools\unzucker-{version}.exe
+REM  Auto-increments the patch version in main.py on every build.
 REM ─────────────────────────────────────────────────────────────────────────
 
-REM ── Read BUILD_VERSION from main.py ───────────────────────────────────────
+REM ── Read current BUILD_VERSION from main.py ───────────────────────────────
 for /f "tokens=3 delims= " %%V in ('findstr /C:"BUILD_VERSION = " main.py') do set RAW_VER=%%V
-set BUILD_VER=%RAW_VER:"=%
+set OLD_VER=%RAW_VER:"=%
+
+REM ── Increment patch number ────────────────────────────────────────────────
+for /f "tokens=1,2,3 delims=." %%A in ("%OLD_VER%") do (
+    set MAJOR=%%A
+    set MINOR=%%B
+    set /a PATCH=%%C+1
+)
+set BUILD_VER=%MAJOR%.%MINOR%.%PATCH%
+
+REM ── Write new version back to main.py ────────────────────────────────────
+powershell -Command "(Get-Content main.py) -replace 'BUILD_VERSION = \"%OLD_VER%\"', 'BUILD_VERSION = \"%BUILD_VER%\"' | Set-Content main.py -Encoding UTF8"
+
 set EXE_NAME=unzucker-%BUILD_VER%.exe
-echo Build version: %BUILD_VER%
-echo Output name:   %EXE_NAME%
+echo Previous version: %OLD_VER%
+echo Build version:    %BUILD_VER%
+echo Output name:      %EXE_NAME%
 
 echo Installing dependencies...
 pip install -r requirements.txt
@@ -28,7 +42,6 @@ pyinstaller ^
     --hidden-import=PIL.Image ^
     --hidden-import=PIL.ImageTk ^
     --hidden-import=piexif ^
-    --hidden-import=paramiko ^
     main.py
 
 echo.

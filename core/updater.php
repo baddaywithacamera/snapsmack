@@ -102,6 +102,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-phone-home-spoke-rows.sql',
     'migrate-ohsnap-keys-type.sql',
     'migrate-create-missing-tables.sql',
+    'migrate-trigram-type.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────

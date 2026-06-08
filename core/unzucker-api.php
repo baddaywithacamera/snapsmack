@@ -9,7 +9,8 @@
  * Routes (via api.php?route=unzucker/...):
  *   GET    unzucker/ping    — connection test
  *   GET    unzucker/site    — categories + albums
- *   POST   unzucker/posts   — create post from FTP'd image paths
+ *   POST   unzucker/upload  — upload a single JPEG; returns {path} for img_file
+ *   POST   unzucker/posts   — create post record from already-uploaded image paths
  *
  * SNAPSMACK_EOF_HEADER
  *     <?php // ===== SNAPSMACK EOF =====
@@ -197,6 +198,7 @@ if ($sub === 'site' && $method === 'GET') {
 if ($sub === 'posts' && $method === 'POST') {
     $body = json_decode(file_get_contents('php://input'), true) ?? [];
 
+    $title     = trim($body['title']     ?? '');
     $desc      = trim($body['body']      ?? '');
     $post_date = trim($body['post_date'] ?? '');
     $ig_id     = trim($body['ig_id']     ?? '');
@@ -237,6 +239,17 @@ if ($sub === 'posts' && $method === 'POST') {
         $img_h    = (int)($img_data['height'] ?? 0);
 
         if ($img_path === '') continue;
+
+        // Validate img_path: must be ≤500 chars and end in a JPEG extension.
+        // The path is pre-uploaded by the client via FTP; we're not fetching it —
+        // but storing an arbitrary string in img_file could poison rendering code.
+        if (strlen($img_path) > 500) {
+            uz_error(400, "images[$seq].path exceeds maximum length.");
+        }
+        $ext = strtolower(pathinfo($img_path, PATHINFO_EXTENSION));
+        if (!in_array($ext, ['jpg', 'jpeg'], true)) {
+            uz_error(400, "images[$seq].path must be a .jpg or .jpeg file.");
+        }
 
         // All Instagram imports are square; img_orientation is INT (0=landscape/square)
         $img_ori = 0;
@@ -291,7 +304,7 @@ if ($sub === 'posts' && $method === 'POST') {
             import_source, import_id, created_at, updated_at
         ) VALUES (?, ?, ?, ?, 'published', 'instagram', ?, ?, NOW())
     ")->execute([
-        '', $post_slug, $desc, $post_type_final,
+        $title, $post_slug, $desc, $post_type_final,
         $ig_id ?: null,
         $post_date,
     ]);
@@ -321,6 +334,173 @@ if ($sub === 'posts' && $method === 'POST') {
         'post_slug' => $post_slug,
         'image_ids' => $image_ids,
         'duplicate' => false,
+    ]);
+}
+
+// ---------------------------------------------------------------------------
+// POST unzucker/upload
+// ---------------------------------------------------------------------------
+
+if ($sub === 'upload' && $method === 'POST') {
+    if (empty($_FILES['image'])) {
+        uz_error(400, 'No file uploaded. Expected multipart field: image');
+    }
+
+    $file = $_FILES['image'];
+
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        $err_labels = [
+            1 => 'exceeds upload_max_filesize',
+            2 => 'exceeds MAX_FILE_SIZE',
+            3 => 'partially uploaded',
+            4 => 'no file sent',
+            6 => 'no temp dir',
+            7 => 'write failed',
+            8 => 'extension blocked',
+        ];
+        uz_error(400, 'Upload error: ' . ($err_labels[$file['error']] ?? 'code ' . $file['error']));
+    }
+
+    // Verify real MIME type — don't trust client Content-Type
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime  = $finfo->file($file['tmp_name']);
+    if ($mime !== 'image/jpeg') {
+        uz_error(400, 'Only JPEG images are accepted (detected: ' . $mime . ').');
+    }
+
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    if (!in_array($ext, ['jpg', 'jpeg'], true)) {
+        uz_error(400, 'Only .jpg/.jpeg files are accepted.');
+    }
+
+    // Sanity cap — client resizes before sending, so >20 MB is a bug or attack
+    if ($file['size'] > 20 * 1024 * 1024) {
+        uz_error(400, 'File too large (max 20 MB).');
+    }
+
+    // Sanitise client filename — keep only safe chars
+    $client_name = preg_replace('/[^a-z0-9_.-]/', '', strtolower(basename($file['name'])));
+    if (!preg_match('/\.jpe?g$/', $client_name) || strlen($client_name) > 120) {
+        $client_name = '';
+    }
+    $filename = $client_name ?: (date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.jpg');
+
+    // Build destination — img_uploads/YYYY/MM/ relative to site root
+    $year_month = date('Y/m');
+    $site_root  = dirname(__DIR__);
+    $dest_dir   = $site_root . '/img_uploads/' . $year_month;
+
+    if (!is_dir($dest_dir)) {
+        mkdir($dest_dir, 0755, true);
+    }
+    if (!is_dir($dest_dir . '/thumbs')) {
+        mkdir($dest_dir . '/thumbs', 0755, true);
+    }
+
+    // Avoid collisions
+    $dest_path = $dest_dir . '/' . $filename;
+    if (file_exists($dest_path)) {
+        $filename  = date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.jpg';
+        $dest_path = $dest_dir . '/' . $filename;
+    }
+
+    if (!move_uploaded_file($file['tmp_name'], $dest_path)) {
+        uz_error(500, 'Failed to save uploaded file. Check directory permissions on img_uploads/.');
+    }
+
+    // Return the path relative to img_uploads/ — this is what goes in snap_images.img_file
+    uz_ok(['path' => $year_month . '/' . $filename]);
+}
+
+// ---------------------------------------------------------------------------
+// POST unzucker/trigram
+// ---------------------------------------------------------------------------
+// Second call in the two-call trigram import flow.  Called after all three
+// posts have been created via POST unzucker/posts.
+//
+// Body: {
+//   "post_id_1": <int>,   // L slot
+//   "post_id_2": <int>,   // M slot
+//   "post_id_3": <int>,   // R slot
+//   "orientation": "h"    // optional, default "h"
+// }
+//
+// Creates snap_trigrams row (type='group'), sets trigram_id on all three
+// posts, assigns consecutive sort_order values at the next row-boundary
+// slot (≡ 0 mod 3 after current MAX(sort_order)).
+
+if ($sub === 'trigram' && $method === 'POST') {
+    require_once __DIR__ . '/trigram.php';
+
+    $body = json_decode(file_get_contents('php://input'), true) ?? [];
+
+    $pid1        = (int)($body['post_id_1']   ?? 0);
+    $pid2        = (int)($body['post_id_2']   ?? 0);
+    $pid3        = (int)($body['post_id_3']   ?? 0);
+    $orientation = trim($body['orientation']  ?? 'h');
+
+    if (!$pid1 || !$pid2 || !$pid3) {
+        uz_error(400, 'post_id_1, post_id_2, and post_id_3 are all required.');
+    }
+    if (!in_array($orientation, ['h', 'v'], true)) {
+        $orientation = 'h';
+    }
+
+    // Validate all three posts exist and belong to this install.
+    $ph    = '?,?,?';
+    $check = $pdo->prepare("SELECT id FROM snap_posts WHERE id IN ($ph)");
+    $check->execute([$pid1, $pid2, $pid3]);
+    $found = $check->fetchAll(PDO::FETCH_COLUMN);
+    if (count($found) !== 3) {
+        uz_error(404, 'One or more post IDs not found.');
+    }
+
+    // Defensive schema guard — trigram_type column may not exist yet.
+    $pdo->exec("ALTER TABLE snap_trigrams
+        ADD COLUMN IF NOT EXISTS trigram_type ENUM('slice','group') NOT NULL DEFAULT 'slice'
+        COMMENT 'slice=GD/Imagick cut; group=pre-sliced external import' AFTER id");
+    $pdo->exec("ALTER TABLE snap_trigrams MODIFY source_path VARCHAR(500) NULL");
+    $pdo->exec("ALTER TABLE snap_trigrams MODIFY cut_a SMALLINT UNSIGNED NULL");
+    $pdo->exec("ALTER TABLE snap_trigrams MODIFY cut_b SMALLINT UNSIGNED NULL");
+
+    $pdo->beginTransaction();
+    try {
+        // Create the trigram record (group type — no source_path or cut points).
+        $pdo->prepare("
+            INSERT INTO snap_trigrams
+                (trigram_type, source_path, orientation, cut_a, cut_b, post_id_1, post_id_2, post_id_3)
+            VALUES ('group', NULL, ?, NULL, NULL, ?, ?, ?)
+        ")->execute([$orientation, $pid1, $pid2, $pid3]);
+
+        $trigram_id = (int)$pdo->lastInsertId();
+
+        // Link all three posts to the trigram.
+        $upd = $pdo->prepare("UPDATE snap_posts SET trigram_id = ? WHERE id = ?");
+        $upd->execute([$trigram_id, $pid1]);
+        $upd->execute([$trigram_id, $pid2]);
+        $upd->execute([$trigram_id, $pid3]);
+
+        // Assign consecutive sort_order values at the next row-boundary slot.
+        $max_so = (int)$pdo->query("SELECT COALESCE(MAX(sort_order), 0) FROM snap_posts")->fetchColumn();
+        $start  = $max_so + (3 - ($max_so % 3));
+        if ($max_so === 0) $start = 1;
+
+        $so_stmt = $pdo->prepare("UPDATE snap_posts SET sort_order = ? WHERE id = ?");
+        $so_stmt->execute([$start,     $pid1]);
+        $so_stmt->execute([$start + 1, $pid2]);
+        $so_stmt->execute([$start + 2, $pid3]);
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        uz_error(500, 'Trigram creation failed: ' . $e->getMessage());
+    }
+
+    uz_ok([
+        'trigram_id' => $trigram_id,
+        'post_id_1'  => $pid1,
+        'post_id_2'  => $pid2,
+        'post_id_3'  => $pid3,
     ]);
 }
 

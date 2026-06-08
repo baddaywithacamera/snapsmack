@@ -17,6 +17,9 @@
 // Missing or different = truncated/corrupted. Restore before saving.
 
 
+// Smack Central base URL — hardcoded, not user-configurable.
+define('NALERT_SC_URL', 'https://snapsmack.ca');
+
 // ─── LOCAL STATE ─────────────────────────────────────────────────────────────
 
 /**
@@ -44,8 +47,7 @@ function nalert_get_local(): array {
                  'network_alert_status',
                  'network_alert_message',
                  'network_alert_since',
-                 'network_alert_last_checked',
-                 'network_alert_sc_url'
+                 'network_alert_last_checked'
              )"
         )->fetchAll(PDO::FETCH_KEY_PAIR);
     } catch (PDOException $e) {
@@ -58,7 +60,7 @@ function nalert_get_local(): array {
         'message'      => $rows['network_alert_message']        ?? '',
         'since'        => $rows['network_alert_since']          ?? '',
         'last_checked' => $rows['network_alert_last_checked']   ?? '',
-        'sc_url'       => rtrim($rows['network_alert_sc_url']   ?? 'https://snapsmack.ca', '/'),
+        'sc_url'       => NALERT_SC_URL,
     ];
 }
 
@@ -71,7 +73,7 @@ function _nalert_defaults(): array {
         'message'      => '',
         'since'        => '',
         'last_checked' => '',
-        'sc_url'       => 'https://snapsmack.ca',
+        'sc_url'       => NALERT_SC_URL,
     ];
 }
 
@@ -153,7 +155,6 @@ function nalert_maybe_poll(): void {
              WHERE setting_key IN (
                  'network_alert_receive',
                  'network_alert_last_checked',
-                 'network_alert_sc_url',
                  'network_alert_push_unregister_pending',
                  'network_alert_push_enabled',
                  'network_alert_push_registered'
@@ -163,7 +164,7 @@ function nalert_maybe_poll(): void {
         return;
     }
 
-    $sc_url = rtrim($rows['network_alert_sc_url'] ?? 'https://snapsmack.ca', '/');
+    $sc_url = NALERT_SC_URL;
 
     // Always retry a pending unregister — independent of poll throttle
     nalert_maybe_retry_unregister($sc_url);
@@ -220,7 +221,6 @@ function nalert_send_report(
             "SELECT setting_key, setting_val FROM snap_settings
              WHERE setting_key IN (
                  'network_alert_send',
-                 'network_alert_sc_url',
                  'site_name',
                  'site_url'
              )"
@@ -233,7 +233,7 @@ function nalert_send_report(
         return;
     }
 
-    $sc_url = rtrim($rows['network_alert_sc_url'] ?? 'https://snapsmack.ca', '/');
+    $sc_url = NALERT_SC_URL;
 
     $affected = array_merge(
         array_map(fn($p) => ['path' => $p, 'status' => 'tampered'],  $tampered),

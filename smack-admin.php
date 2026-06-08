@@ -99,8 +99,8 @@ try {
 
     if ($_cache_stale && file_exists('core/updater.php')) {
         require_once 'core/updater.php';
-        $_release = updater_fetch_release_info();
-        $_skin_info = updater_check_skin_registry($pdo);
+        $_release = updater_fetch_release_info(true);
+        $_skin_info = updater_check_skin_registry($pdo, true);
         $_core_status = updater_check_status(SNAPSMACK_VERSION_SHORT ?? '0.0', $_release);
 
         $_core_update = null;

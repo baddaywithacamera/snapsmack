@@ -105,15 +105,17 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
 -- ─── TRIGRAMS ─────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS `snap_trigrams` (
-  `id`          INT UNSIGNED        NOT NULL AUTO_INCREMENT,
-  `source_path` VARCHAR(500)        NOT NULL COMMENT 'Original uploaded source image path',
-  `orientation` ENUM('h','v')       NOT NULL DEFAULT 'h' COMMENT 'h=horizontal L/M/R, v=vertical T/M/B',
-  `cut_a`       SMALLINT UNSIGNED   NOT NULL COMMENT 'First cut point in pixels',
-  `cut_b`       SMALLINT UNSIGNED   NOT NULL COMMENT 'Second cut point in pixels',
-  `post_id_1`   INT UNSIGNED        NOT NULL COMMENT 'Post assigned slice 1 (L or T)',
-  `post_id_2`   INT UNSIGNED        NOT NULL COMMENT 'Post assigned slice 2 (middle)',
-  `post_id_3`   INT UNSIGNED        NOT NULL COMMENT 'Post assigned slice 3 (R or B)',
-  `created_at`  DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `id`           INT UNSIGNED         NOT NULL AUTO_INCREMENT,
+  `trigram_type` ENUM('slice','group') NOT NULL DEFAULT 'slice'
+                 COMMENT 'slice=GD/Imagick cut in SnapSmack; group=pre-sliced external import',
+  `source_path`  VARCHAR(500)         NULL COMMENT 'Original uploaded source image — NULL for group type',
+  `orientation`  ENUM('h','v')        NOT NULL DEFAULT 'h' COMMENT 'h=horizontal L/M/R, v=vertical T/M/B',
+  `cut_a`        SMALLINT UNSIGNED    NULL COMMENT 'First cut point px — NULL for group type',
+  `cut_b`        SMALLINT UNSIGNED    NULL COMMENT 'Second cut point px — NULL for group type',
+  `post_id_1`    INT UNSIGNED         NOT NULL COMMENT 'Post assigned slice 1 (L or T)',
+  `post_id_2`    INT UNSIGNED         NOT NULL COMMENT 'Post assigned slice 2 (middle)',
+  `post_id_3`    INT UNSIGNED         NOT NULL COMMENT 'Post assigned slice 3 (R or B)',
+  `created_at`   DATETIME             NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_post_1` (`post_id_1`),
   KEY `idx_post_2` (`post_id_2`),
