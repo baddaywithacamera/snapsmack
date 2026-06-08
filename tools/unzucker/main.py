@@ -14,7 +14,7 @@ creates posts through the SnapSmack admin API. No FTP required.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.15"
+BUILD_VERSION = "0.7.16"
 
 import os
 import queue

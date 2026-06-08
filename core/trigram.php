@@ -3,8 +3,9 @@
  * SNAPSMACK - Trigram helpers
  *
  * Shared logic for the queued-publish gate that ensures all three posts in a
- * trigram group go live atomically.  Used by smack-lt-gram.php,
- * smack-post-gram.php, and core/unzucker-api.php.
+ * trigram group go live atomically.  Used by smack-lt-gram.php and
+ * core/unzucker-api.php.  Intended for smack-post-gram.php (manual
+ * publish path) — not yet wired.
  *
  * SNAPSMACK_EOF_HEADER
  *     <?php // ===== SNAPSMACK EOF =====
@@ -73,12 +74,11 @@ function trigram_check_and_publish(PDO $pdo, int $trigram_id, int $post_id): boo
     $pdo->beginTransaction();
     try {
         // Find the next row-boundary sort_order slot.
-        // "Row boundary" = next multiple of 3 after MAX(sort_order).
-        $max_so = (int)$pdo->query("SELECT COALESCE(MAX(sort_order), 0) FROM snap_posts WHERE status = 'published'")->fetchColumn();
-
-        // Round up to the next ≡ 0 mod 3 position.
-        $start = $max_so + (3 - ($max_so % 3));
-        if ($max_so === 0) $start = 1; // edge case: first posts ever
+        // sort_order is 1-indexed; row starts are 1, 4, 7, 10... (≡ 1 mod 3).
+        // Find smallest n > max_so where (n-1) % 3 === 0 (column 0 of a new row).
+        $max_so     = (int)$pdo->query("SELECT COALESCE(MAX(sort_order), 0) FROM snap_posts WHERE status = 'published'")->fetchColumn();
+        $col_offset = (1 - ($max_so % 3) + 3) % 3;
+        $start      = $max_so + ($col_offset === 0 ? 3 : $col_offset);
 
         $upd = $pdo->prepare("UPDATE snap_posts SET status = 'published', sort_order = ? WHERE id = ?");
         foreach ($ids as $i => $pid) {

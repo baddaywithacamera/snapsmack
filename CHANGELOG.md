@@ -12,6 +12,23 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.223 — "Phantom Flush" (2026-06-08)
+
+### Fix — trigram sort_order row-boundary formula
+
+- `core/trigram.php` — `trigram_check_and_publish()`: row-boundary formula was computing the next multiple of 3 (`max_so + (3 - max_so%3)`), which places trigram L tiles at column 2 (rightmost) instead of column 0 (leftmost). sort_order is 1-indexed so row starts are 1, 4, 7, 10... (≡ 1 mod 3). Fixed formula: `$col_offset = (1 - ($max_so%3) + 3) % 3; $start = $max_so + ($col_offset === 0 ? 3 : $col_offset)`. The phantom padding in landing.php corrected for this visually, but DB sort_order values were semantically wrong.
+- `core/unzucker-api.php` — same formula fixed in the `POST unzucker/trigram` sort_order assignment block.
+
+### Fix — duplicate trigram guard in unzucker-api.php
+
+- `core/unzucker-api.php` — `POST unzucker/trigram`: added pre-flight check for existing `trigram_id` on any of the three post IDs. Previously a second call with the same posts would create a second snap_trigrams row and orphan the first. Now returns HTTP 409 with a clear error.
+
+### Fix — core/trigram.php docblock correction
+
+- `core/trigram.php` — Removed false claim that the file is "used by smack-post-gram.php". That wiring is intentionally deferred; the docblock now says so.
+
+---
+
 ## 0.7.222 — "Courtesy Flush" (2026-06-08)
 
 ### GramOfSmack trigrams — full soft-import implementation

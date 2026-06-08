@@ -455,6 +455,13 @@ if ($sub === 'trigram' && $method === 'POST') {
         uz_error(404, 'One or more post IDs not found.');
     }
 
+    // Guard: reject if any post already belongs to a trigram (prevents duplicate rows).
+    $dup = $pdo->prepare("SELECT id FROM snap_posts WHERE id IN ($ph) AND trigram_id IS NOT NULL LIMIT 1");
+    $dup->execute([$pid1, $pid2, $pid3]);
+    if ($dup->fetch()) {
+        uz_error(409, 'One or more posts are already part of a trigram.');
+    }
+
     // Defensive schema guard — trigram_type column may not exist yet.
     $pdo->exec("ALTER TABLE snap_trigrams
         ADD COLUMN IF NOT EXISTS trigram_type ENUM('slice','group') NOT NULL DEFAULT 'slice'
@@ -481,9 +488,10 @@ if ($sub === 'trigram' && $method === 'POST') {
         $upd->execute([$trigram_id, $pid3]);
 
         // Assign consecutive sort_order values at the next row-boundary slot.
-        $max_so = (int)$pdo->query("SELECT COALESCE(MAX(sort_order), 0) FROM snap_posts")->fetchColumn();
-        $start  = $max_so + (3 - ($max_so % 3));
-        if ($max_so === 0) $start = 1;
+        // sort_order is 1-indexed; row starts are 1, 4, 7, 10... (≡ 1 mod 3).
+        $max_so     = (int)$pdo->query("SELECT COALESCE(MAX(sort_order), 0) FROM snap_posts")->fetchColumn();
+        $col_offset = (1 - ($max_so % 3) + 3) % 3;
+        $start      = $max_so + ($col_offset === 0 ? 3 : $col_offset);
 
         $so_stmt = $pdo->prepare("UPDATE snap_posts SET sort_order = ? WHERE id = ?");
         $so_stmt->execute([$start,     $pid1]);
