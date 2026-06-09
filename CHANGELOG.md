@@ -12,6 +12,29 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.225 — "Trickle Down" (2026-06-09)
+
+### Fix — core/trigram.php fatal parse error
+
+- `core/trigram.php` — EOF marker was written as `<?php // ===== SNAPSMACK EOF =====` but the file never closes PHP mode with `?>`. PHP parsed the second `<?php` as an unexpected token mid-file, causing a fatal parse error on every include. Result: any endpoint that requires trigram.php (unzucker-api.php, smack-lt-gram.php) returned HTTP 500. This was the root cause of all unzucker import failures. Fixed: marker is now `// ===== SNAPSMACK EOF =====` (plain comment, no opening tag).
+
+### Fix — smack-manage.php collection subquery column mismatch
+
+- `smack-manage.php` — Collection membership subquery used `sci.image_id` which does not exist on `snap_collection_items`. The correct columns are `sci.item_type = 'post' AND sci.item_id = i.id`. Old code was from a pre-schema-migration version that got restored to the server by the system updater. Caused a fatal PDOException on every media manager page load.
+
+### Feature — Photogram v2.0.0 carousel support
+
+- `skins/photogram/archive-layout.php` — Carousel badge added (single query, count per post_id).
+- `skins/photogram/layout.php` — SnapSlider carousel for multi-image posts; post_id-keyed likes and comments. Caption now prefers `snap_posts.caption` over `img_description`.
+- `skins/photogram/manifest.php` — `carousel => true`, smack-slider added to `require_scripts`, version bumped to 2.0.0.
+
+### Maintenance — snapsmack.ca content updates
+
+- `projects/snapsmack-ca/index.php` — THE GRID and UNZUCKER moved to Working Now; Coming Soon updated.
+- `projects/snapsmack-ca/wotcha.php` — UNZUCKER launch article added.
+
+---
+
 ## 0.7.224 — "Swirly Boi" (2026-06-08)
 
 ### Cleanup — multisite MAINT column removed

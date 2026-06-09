@@ -185,7 +185,7 @@ $sql = "SELECT i.*,
         (SELECT GROUP_CONCAT(sc.title ORDER BY sc.title ASC SEPARATOR ', ')
          FROM snap_collections sc
          JOIN snap_collection_items sci ON sc.id = sci.collection_id
-         WHERE sci.image_id = i.id) as collection_list,
+         WHERE sci.item_type = 'post' AND sci.item_id = i.id) as collection_list,
         (SELECT COUNT(*) FROM snap_comments WHERE img_id = i.id) as comment_count,
         (SELECT COUNT(*) FROM snap_likes WHERE post_id = i.id) as like_count
         FROM snap_images i

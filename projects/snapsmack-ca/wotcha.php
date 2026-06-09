@@ -137,6 +137,10 @@ require_once __DIR__ . '/includes/header.php';
             <h3>All Posts</h3>
             <ol>
                 <li>
+                    <span class="idx-date">Jun 8</span>
+                    <a href="#unzucker">Your Instagram Archive, Moved Out</a>
+                </li>
+                <li>
                     <span class="idx-date">May 30</span>
                     <a href="#chaplin">Chaplin Is Live</a>
                 </li>
@@ -222,6 +226,20 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <!-- POST: UNZUCKER -->
+            <article class="post" id="unzucker">
+                <div class="post-meta">
+                    <span class="post-date">June 8, 2026</span>
+                    <span class="post-tag">Tools</span>
+                </div>
+                <h2><a href="#unzucker">Your Instagram Archive, Moved Out</a></h2>
+                <p>Instagram will give you your data if you ask for it. A folder arrives: JSON files, image files, a structure that makes sense to a machine and not immediately to a person. What it does not give you is a way to put that data somewhere you control. That is what UNZUCKER does.</p>
+                <p>UNZUCKER is a Windows desktop application. Point it at your Instagram export folder and it parses the archive: every post, every carousel, every caption, every hashtag extracted and stripped from the body text, timestamps preserved. The result is a three-column square-thumbnail grid — the same layout Instagram uses — showing your posts in chronological order. Click any post to see the full caption and, for carousels, all images in the set. The grid shows a small stacked-squares badge on anything with more than one image so you know what you're looking at before you click.</p>
+                <p>Connect UNZUCKER to a SnapSmack site with an API key and hit Transfer &amp; Post. Each post is uploaded image by image over HTTPS — no FTP, no separate file transfer tool — and created in SnapSmack with its original caption, hashtags converted to tags, and the original posting date preserved. Carousels import as carousel posts. Singles import as singles. The whole export can process in one session, with a progress bar and per-post status so you can see what landed and what didn't.</p>
+                <p>The Photogram mobile skin — the phone-native Instagram-style interface that SnapSmack serves automatically to mobile visitors — now supports carousels fully. Swipe through images with dot indicators, likes and comments keyed to the post rather than individual images, carousel badge in the archive grid. It was always the right skin for this content. Now it handles all of it.</p>
+                <p>SnapSmack is where we eat our own dog food, so that's where UNZUCKER shipped first. If SnapSmack isn't your destination, Pixelfed support is coming — the import side is the same either way, and we'll add Pixelfed as a target when it's confirmed stable. Your archive. Your server. Your call where it lands.</p>
+            </article>
 
             <!-- POST: CHAPLIN -->
             <article class="post" id="chaplin">

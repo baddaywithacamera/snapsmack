@@ -409,7 +409,7 @@ if ($sub === 'upload' && $method === 'POST') {
     }
 
     // Return the path relative to img_uploads/ — this is what goes in snap_images.img_file
-    uz_ok(['path' => $year_month . '/' . $filename]);
+    uz_ok(['path' => 'img_uploads/' . $year_month . '/' . $filename]);
 }
 
 // ---------------------------------------------------------------------------

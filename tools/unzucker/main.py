@@ -14,7 +14,7 @@ creates posts through the SnapSmack admin API. No FTP required.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.20"
+BUILD_VERSION = "0.7.28"
 
 import logging
 import logging.handlers
@@ -89,11 +89,24 @@ GRID_COLS  = 3         # Strictly three across. Always.
 GRID_GAP   = 3         # px between cells
 
 WIN_W, WIN_H = 560, 780
-FONT_UI      = ("Segoe UI", 9)
-FONT_BOLD    = ("Segoe UI", 9, "bold")
-FONT_SMALL   = ("Segoe UI", 8)
-FONT_MONO    = ("Consolas", 9)
-FONT_TITLE   = ("Segoe UI", 13, "bold")
+FONT_UI      = ("Segoe UI", 15)
+FONT_BOLD    = ("Segoe UI", 15, "bold")
+FONT_SMALL   = ("Segoe UI", 13)
+FONT_MONO    = ("Consolas", 13)
+FONT_TITLE   = ("Segoe UI", 19, "bold")
+
+# Server throttle options — (label, delay_seconds_as_str)
+# Shown as radio buttons (2 rows × 4 cols) in IMPORT SETTINGS.
+THROTTLE_OPTIONS = [
+    ("Full Send",       "0.0"),   # no delay — localhost / VPS only
+    ("Fast Lane",       "0.25"),  # 0.25s
+    ("Steady",          "0.5"),   # 0.5s  ← default
+    ("Easy Does It",    "1.0"),   # 1s
+    ("Sunday Driver",   "2.0"),   # 2s
+    ("Pump da Brakes",  "5.0"),   # 5s
+    ("Grandma's Pace",  "10.0"),  # 10s  — very stressed shared host
+    ("Geological Time", "30.0"),  # 30s  — barely-alive host
+]
 
 
 # ---------------------------------------------------------------------------
@@ -136,7 +149,7 @@ class GridCell(tk.Frame):
                 cell_size - 8, 8,
                 text=f"▪ {len(post.images)}",
                 anchor="ne", fill="white",
-                font=("Segoe UI", 8, "bold"),
+                font=("Segoe UI", 11, "bold"),
             )
 
         # Status overlay (hidden initially)
@@ -146,7 +159,7 @@ class GridCell(tk.Frame):
         )
         self._status_icon = self._canvas.create_text(
             cell_size // 2, cell_size // 2,
-            text='', fill='white', font=("Segoe UI", 18, "bold"),
+            text='', fill='white', font=("Segoe UI", 24, "bold"),
             state='hidden',
         )
 
@@ -164,7 +177,7 @@ class GridCell(tk.Frame):
         self._tg_badge_txt = self._canvas.create_text(
             cell_size - bw // 2, cell_size - 8,
             text='', anchor='center', fill='#000',
-            font=("Segoe UI", 7, "bold"), state='hidden',
+            font=("Segoe UI", 9, "bold"), state='hidden',
         )
         # Selection ring: neon green dashed outline during Ctrl+click selection
         self._sel_ring = self._canvas.create_rectangle(
@@ -184,7 +197,7 @@ class GridCell(tk.Frame):
                 self._cell_size - 8, 8,
                 text=f"▪ {len(self.post.images)}",
                 anchor="ne", fill="white",
-                font=("Segoe UI", 8, "bold"),
+                font=("Segoe UI", 11, "bold"),
             )
 
     def set_status(self, status: str):
@@ -313,8 +326,11 @@ class PostGrid(tk.Frame):
     def reflow(self):
         """Reload the grid at the current canvas width — call after window resize."""
         if self._posts_cache:
+            ypos = self._canvas.yview()[0]
             self.clear()
             self.load(self._posts_cache)
+            self._canvas.update_idletasks()
+            self._canvas.yview_moveto(ypos)
 
     def load(self, posts: List[ParsedPost]):
         """Populate the grid with parsed posts."""
@@ -338,7 +354,43 @@ class PostGrid(tk.Frame):
             if post.images:
                 self._load_thumb_async(cell, post.images[0], cell_size)
 
-        self._canvas.yview_moveto(0)
+        # Only reset scroll on a fresh load (no prior content).
+        # reflow() and reorder() restore position themselves.
+        if not self._cells:
+            self._canvas.yview_moveto(0)
+
+    def reorder(self, posts: List[ParsedPost]):
+        """Reposition existing cells to match a new post order without destroying
+        or recreating any widgets. Preserves scroll position. Used by trigram lock."""
+        if not self._posts_cache:
+            return
+
+        # Save scroll position
+        ypos = self._canvas.yview()[0]
+
+        # Map post identity → existing cell
+        old_map = {id(p): cell for p, cell in zip(self._posts_cache, self._cells)}
+
+        # Remove cells from their current grid slots
+        for cell in self._cells:
+            cell.grid_forget()
+
+        # Place them in their new positions
+        self._cells = []
+        for idx, post in enumerate(posts):
+            cell = old_map[id(post)]
+            row = idx // GRID_COLS
+            col = idx % GRID_COLS
+            cell.grid(row=row, column=col,
+                      padx=(0, GRID_GAP if col < GRID_COLS - 1 else 0),
+                      pady=(0, GRID_GAP))
+            self._cells.append(cell)
+
+        self._posts_cache = posts
+
+        # Restore scroll position
+        self._canvas.update_idletasks()
+        self._canvas.yview_moveto(ypos)
 
     def clear(self):
         for cell in self._cells:
@@ -409,7 +461,7 @@ class PostDetail(tk.Frame):
 
     def _build(self):
         # ── Navigation bar ───────────────────────────────────────────
-        nav = tk.Frame(self, bg=BG_CARD, height=36)
+        nav = tk.Frame(self, bg=BG_CARD, height=48)
         nav.pack(fill="x")
         nav.pack_propagate(False)
 
@@ -663,7 +715,7 @@ class TrigramPanel(tk.Toplevel):
         tk.Label(self, text="TRIGRAM SLOT ORDER", bg=BG_DEEP, fg=FG_DIM,
                  font=FONT_SMALL).pack(padx=14, pady=(12, 4))
         tk.Label(self, text="Drag thumbnails to reorder  ·  or use ⇄ to swap adjacent.",
-                 bg=BG_DEEP, fg=FG_DIM, font=("Segoe UI", 8)).pack(padx=14, pady=(0, 8))
+                 bg=BG_DEEP, fg=FG_DIM, font=("Segoe UI", 11)).pack(padx=14, pady=(0, 8))
 
         tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
 
@@ -705,7 +757,7 @@ class TrigramPanel(tk.Toplevel):
                     text="⇄",
                     command=lambda si=swap_i: self._swap(si),
                     bg=BG_MID, fg=FG_MAIN, relief="flat",
-                    font=("Segoe UI", 14), cursor="hand2",
+                    font=("Segoe UI", 19), cursor="hand2",
                     padx=4, pady=0,
                     activebackground=BG_HOVER, activeforeground=ACCENT,
                 )
@@ -717,7 +769,7 @@ class TrigramPanel(tk.Toplevel):
         self._title_labels = []
         for i in range(3):
             lbl = tk.Label(self._title_frame, text="", bg=BG_DEEP, fg=FG_DIM,
-                           font=("Segoe UI", 8), width=12, wraplength=90,
+                           font=("Segoe UI", 11), width=12, wraplength=90,
                            justify="center")
             lbl.pack(side="left", padx=6)
             self._title_labels.append(lbl)
@@ -866,7 +918,7 @@ class App(tk.Tk):
 
         # Restore saved geometry / maximised state
         saved_geo   = self._config.get('window_geometry', '')
-        saved_state = self._config.get('window_state', 'normal')
+        saved_state = self._config.get('window_state', 'zoomed')  # default zoomed on first run
         if saved_geo:
             try:
                 self.geometry(saved_geo)
@@ -955,7 +1007,7 @@ class App(tk.Tk):
 
     def _build_ui(self):
         # ── Header ───────────────────────────────────────────────────
-        header = tk.Frame(self, bg=BG_CARD, height=44)
+        header = tk.Frame(self, bg=BG_CARD, height=59)
         header.pack(fill="x")
         header.pack_propagate(False)
 
@@ -963,24 +1015,24 @@ class App(tk.Tk):
             header, text="UNZUCKER", bg=BG_CARD, fg=ACCENT, font=FONT_TITLE,
         ).pack(side="left", padx=16)
 
-        self._conn_dot = tk.Label(header, text="●", bg=BG_CARD, fg=FG_DIM, font=("Segoe UI", 11))
+        self._conn_dot = tk.Label(header, text="●", bg=BG_CARD, fg=FG_DIM, font=("Segoe UI", 15))
         self._conn_dot.pack(side="right", padx=(0, 14))
         self._conn_lbl = tk.Label(header, text="Not connected", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
         self._conn_lbl.pack(side="right")
         tk.Label(header, text=f"build {BUILD_VERSION}", bg=BG_CARD, fg=FG_DIM,
-                 font=("Segoe UI", 8)).pack(side="right", padx=(0, 20))
+                 font=("Segoe UI", 11)).pack(side="right", padx=(0, 20))
 
         # Keyring indicator
         kr_text  = "🔒 keyring" if _KEYRING_OK else "⚠ no keyring"
         kr_color = FG_OK       if _KEYRING_OK else FG_WARN
         tk.Label(header, text=kr_text, bg=BG_CARD, fg=kr_color,
-                 font=("Segoe UI", 8)).pack(side="right", padx=(0, 10))
+                 font=("Segoe UI", 11)).pack(side="right", padx=(0, 10))
 
         tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
 
         # ── Config collapse toggle ───────────────────────────────────
         self._cfg_visible = True
-        cfg_toggle = tk.Frame(self, bg=BG_DEEP, height=26, cursor="hand2")
+        cfg_toggle = tk.Frame(self, bg=BG_DEEP, height=35, cursor="hand2")
         cfg_toggle.pack(fill="x")
         cfg_toggle.pack_propagate(False)
         self._cfg_arrow = tk.Label(cfg_toggle, text="▲  CONFIGURATION",
@@ -991,20 +1043,10 @@ class App(tk.Tk):
 
         # ── Config area ──────────────────────────────────────────────
         self._cfg_frame = tk.Frame(self, bg=BG_DEEP)
-        self._cfg_frame.pack(fill="x", padx=14, pady=10)
+        self._cfg_frame.pack(fill="both", expand=True, padx=14, pady=10)
 
-        def _toggle_cfg(e=None):
-            if self._cfg_visible:
-                self._cfg_frame.pack_forget()
-                self._cfg_arrow.configure(text="▼  CONFIGURATION")
-            else:
-                self._cfg_frame.pack(fill="x", padx=14, pady=10,
-                                     before=self._grid_rule)
-                self._cfg_arrow.configure(text="▲  CONFIGURATION")
-            self._cfg_visible = not self._cfg_visible
-
-        cfg_toggle.bind("<Button-1>", _toggle_cfg)
-        self._cfg_arrow.bind("<Button-1>", _toggle_cfg)
+        cfg_toggle.bind("<Button-1>", self._toggle_config)
+        self._cfg_arrow.bind("<Button-1>", self._toggle_config)
 
         cfg = self._cfg_frame
 
@@ -1026,21 +1068,75 @@ class App(tk.Tk):
         self._connect_btn.pack(side="right")
 
         # ── Box: IMPORT SETTINGS ─────────────────────────────────────
-        self._export_var   = tk.StringVar()
-        self._copy_var     = tk.StringVar()
+        self._export_var    = tk.StringVar()
+        self._copy_var      = tk.StringVar()
+        self._throttle_var  = tk.StringVar(value="0.5")
+        self._offpeak_var   = tk.BooleanVar(value=False)
+        self._peak_start_var = tk.StringVar(value="9")
+        self._peak_end_var   = tk.StringVar(value="23")
 
         imp_box  = self._box(cfg, "IMPORT SETTINGS")
-        imp_box.pack(fill="x", pady=(0, 8))
-        imp_body = self._box_body(imp_box)
+        imp_box.pack(fill="both", expand=True, pady=(0, 0))
+        imp_body = self._box_body(imp_box, expand=True)
 
         self._field_browse(imp_body, "INSTAGRAM EXPORT FOLDER", self._export_var, self._browse_export)
         self._field(imp_body, "COPYRIGHT STRING", self._copy_var)
 
-        # ── Grid header ──────────────────────────────────────────────
-        self._grid_rule = tk.Frame(self, bg=BORDER, height=1)
-        self._grid_rule.pack(fill="x")
+        # ── Server throttle (2 rows × 4 cols) ───────────────────────
+        tk.Label(imp_body, text="SERVER THROTTLE", bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_SMALL).pack(anchor="w", pady=(4, 2))
+        throttle_grid = tk.Frame(imp_body, bg=BG_CARD)
+        throttle_grid.pack(fill="x", pady=(0, 4))
+        for i, (label, value) in enumerate(THROTTLE_OPTIONS):
+            r, c = divmod(i, 4)
+            tk.Radiobutton(
+                throttle_grid, text=label, variable=self._throttle_var, value=value,
+                bg=BG_CARD, fg=FG_DIM, selectcolor=BG_MID,
+                activebackground=BG_CARD, activeforeground=FG_MAIN,
+                font=FONT_SMALL, indicatoron=True, cursor="hand2",
+            ).grid(row=r, column=c, sticky="w", padx=(0, 10), pady=1)
 
-        g_hdr = tk.Frame(self, bg=BG_DEEP, height=30)
+        # ── Off-peak only ────────────────────────────────────────────
+        offpeak_row = tk.Frame(imp_body, bg=BG_CARD)
+        offpeak_row.pack(fill="x", pady=(2, 4))
+
+        _HOURS = [str(h) for h in range(24)]
+
+        self._offpeak_hours_frame = tk.Frame(offpeak_row, bg=BG_CARD)
+        hours_frame = self._offpeak_hours_frame
+
+        tk.Checkbutton(
+            offpeak_row, text="OFF-PEAK ONLY", variable=self._offpeak_var,
+            command=self._apply_offpeak_toggle,
+            bg=BG_CARD, fg=FG_DIM, selectcolor=BG_MID,
+            activebackground=BG_CARD, activeforeground=FG_MAIN,
+            font=FONT_SMALL, cursor="hand2",
+        ).pack(side="left", padx=(0, 4))
+
+        tk.Label(hours_frame, text="Peak:", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(side="left")
+        _om_cfg = dict(bg=BG_MID, fg=FG_MAIN, activebackground=BG_HOVER,
+                       activeforeground=FG_MAIN, relief="flat",
+                       font=FONT_SMALL, highlightthickness=0, width=2)
+        start_om = tk.OptionMenu(hours_frame, self._peak_start_var, *_HOURS)
+        start_om.config(**_om_cfg)
+        start_om["menu"].config(bg=BG_MID, fg=FG_MAIN, font=FONT_SMALL)
+        start_om.pack(side="left", padx=(4, 2))
+        tk.Label(hours_frame, text="to", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL).pack(side="left")
+        end_om = tk.OptionMenu(hours_frame, self._peak_end_var, *_HOURS)
+        end_om.config(**_om_cfg)
+        end_om["menu"].config(bg=BG_MID, fg=FG_MAIN, font=FONT_SMALL)
+        end_om.pack(side="left", padx=(2, 0))
+        # hours_frame is conditionally shown by _toggle_offpeak
+
+        # ── Grid section — hidden until parse succeeds ───────────────
+        # Wraps the grid header, post grid, and detail view.
+        # Config fills the window until the first successful parse.
+        self._grid_section = tk.Frame(self, bg=BG_DEEP)
+        # NOT packed here — _collapse_config() shows it after parse.
+
+        tk.Frame(self._grid_section, bg=BORDER, height=1).pack(fill="x")
+
+        g_hdr = tk.Frame(self._grid_section, bg=BG_DEEP, height=40)
         g_hdr.pack(fill="x")
         g_hdr.pack_propagate(False)
 
@@ -1054,14 +1150,9 @@ class App(tk.Tk):
         )
         self._tg_lbl.pack(side="left", padx=(0, 8), pady=6)
 
-        self._parse_btn = ttk.Button(g_hdr, text="Parse Export", style="Ghost.TButton",
-                                      command=self._on_parse)
-        self._parse_btn.pack(side="right", padx=14, pady=4)
+        tk.Frame(self._grid_section, bg=BORDER, height=1).pack(fill="x")
 
-        tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
-
-        # ── Grid + Detail container ──────────────────────────────────
-        self._view_container = tk.Frame(self, bg=BG_DEEP)
+        self._view_container = tk.Frame(self._grid_section, bg=BG_DEEP)
         self._view_container.pack(fill="both", expand=True)
 
         self._grid = PostGrid(
@@ -1080,28 +1171,34 @@ class App(tk.Tk):
         )
         # Detail is not packed initially — shown on cell click
 
-        # ── Bottom action bar ────────────────────────────────────────
+        # ── Bottom action bar (always visible) ───────────────────────
         tk.Frame(self, bg=BORDER, height=1).pack(fill="x")
-        bottom = tk.Frame(self, bg=BG_CARD, height=52)
-        bottom.pack(fill="x")
-        bottom.pack_propagate(False)
+        self._bottom_bar = tk.Frame(self, bg=BG_CARD, height=69)
+        self._bottom_bar.pack(fill="x")
+        self._bottom_bar.pack_propagate(False)
+        bottom = self._bottom_bar
+
+        # Parse Export lives here so it's reachable from both config and grid views
+        self._parse_btn = ttk.Button(bottom, text="Parse Export", style="Ghost.TButton",
+                                      command=self._on_parse)
+        self._parse_btn.pack(side="left", padx=(14, 6), pady=10)
 
         self._validate_btn = ttk.Button(bottom, text="Validate", style="Ghost.TButton",
                                          command=self._on_validate)
-        self._validate_btn.pack(side="left", padx=(14, 6), pady=10)
+        self._validate_btn.pack(side="left", padx=(0, 6), pady=10)
 
         # TRANSFER & POST button (Canvas for reliable Windows rendering)
         self._post_canvas = tk.Canvas(
-            bottom, width=180, height=36,
+            bottom, width=240, height=48,
             bg=BG_CARD, highlightthickness=0, cursor="hand2",
         )
-        self._post_canvas.pack(side="left", padx=(10, 0), pady=6)
+        self._post_canvas.pack(side="left", padx=(10, 0), pady=4)
         self._post_rect = self._post_canvas.create_rectangle(
-            0, 0, 180, 36, fill=ACCENT, outline='', width=0,
+            0, 0, 240, 48, fill=ACCENT, outline='', width=0,
         )
         self._post_text = self._post_canvas.create_text(
-            90, 18, text="TRANSFER & POST", fill=BG_DEEP,
-            font=("Segoe UI", 10, "bold"),
+            120, 24, text="TRANSFER & POST", fill=BG_DEEP,
+            font=("Segoe UI", 13, "bold"),
         )
         self._post_canvas.bind("<Button-1>", lambda e: self._on_post())
         self._post_canvas.bind("<Enter>", lambda e: self._post_canvas.itemconfig(
@@ -1147,16 +1244,16 @@ class App(tk.Tk):
 
     def _box(self, parent, title: str) -> tk.Frame:
         outer = tk.Frame(parent, bg=BORDER, padx=1, pady=1)
-        hdr   = tk.Frame(outer, bg=BG_DEEP, height=26)
+        hdr   = tk.Frame(outer, bg=BG_DEEP, height=43)
         hdr.pack(fill="x")
         hdr.pack_propagate(False)
         tk.Label(hdr, text=title, bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL).pack(
-            side="left", padx=10, pady=4)
+            side="left", padx=10, pady=6)
         return outer
 
-    def _box_body(self, box: tk.Frame) -> tk.Frame:
+    def _box_body(self, box: tk.Frame, expand=False) -> tk.Frame:
         body = tk.Frame(box, bg=BG_CARD, padx=12, pady=10)
-        body.pack(fill="both", expand=True)
+        body.pack(fill="both", expand=expand)
         return body
 
     def _field_password(self, parent, label, var):
@@ -1245,6 +1342,11 @@ class App(tk.Tk):
         self._api_key_var.set(c.get('api_key', ''))
         self._export_var.set(c.get('export_folder', ''))
         self._copy_var.set(c.get('copyright_text', ''))
+        self._throttle_var.set(c.get('import_delay', '0.5'))
+        self._offpeak_var.set(c.get('offpeak_only', 'false').lower() == 'true')
+        self._peak_start_var.set(c.get('peak_start', '9'))
+        self._peak_end_var.set(c.get('peak_end', '23'))
+        self._apply_offpeak_toggle()  # show/hide hours frame to match loaded state
 
     def _save_config(self):
         win_state = self.state()
@@ -1253,6 +1355,10 @@ class App(tk.Tk):
             'api_key':         self._api_key_var.get(),
             'export_folder':   self._export_var.get().strip(),
             'copyright_text':  self._copy_var.get().strip(),
+            'import_delay':    self._throttle_var.get(),
+            'offpeak_only':    'true' if self._offpeak_var.get() else 'false',
+            'peak_start':      self._peak_start_var.get(),
+            'peak_end':        self._peak_end_var.get(),
             'window_state':    win_state,
             # Only save normal-mode geometry; zoomed geometry is wrong on restore
             'window_geometry': self.geometry() if win_state != 'zoomed' else '',
@@ -1261,6 +1367,47 @@ class App(tk.Tk):
     # ------------------------------------------------------------------
     # Browse
     # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # Config drawer
+    # ------------------------------------------------------------------
+
+    def _collapse_config(self):
+        """Hide config. If posts are loaded, show the grid section."""
+        if self._cfg_visible:
+            self._cfg_frame.pack_forget()
+            self._cfg_arrow.configure(text="▼  CONFIGURATION")
+            self._cfg_visible = False
+        if self._posts and not self._grid_section.winfo_ismapped():
+            self._grid_section.pack(fill="both", expand=True,
+                                    before=self._bottom_bar)
+
+    def _expand_config(self):
+        """Show config. If posts are loaded, config is a drawer above the grid;
+        otherwise it fills the whole window."""
+        if not self._cfg_visible:
+            if self._posts:
+                # Drawer mode — grid stays visible below
+                self._cfg_frame.pack(fill="x", padx=14, pady=10,
+                                     before=self._grid_section)
+            else:
+                # Full-screen mode — no grid yet
+                self._cfg_frame.pack(fill="both", expand=True,
+                                     before=self._bottom_bar)
+            self._cfg_arrow.configure(text="▲  CONFIGURATION")
+            self._cfg_visible = True
+
+    def _toggle_config(self, e=None):
+        if self._cfg_visible:
+            self._collapse_config()
+        else:
+            self._expand_config()
+
+    def _apply_offpeak_toggle(self):
+        if self._offpeak_var.get():
+            self._offpeak_hours_frame.pack(side="left")
+        else:
+            self._offpeak_hours_frame.pack_forget()
 
     def _browse_export(self):
         p = filedialog.askdirectory(title="Select Instagram export folder")
@@ -1321,6 +1468,13 @@ class App(tk.Tk):
 
         self._posts = result.posts
         self._clear_trigram_state()
+
+        # Collapse config first so the grid canvas is visible and has real
+        # geometry before load() calls winfo_width(). Without this, winfo_width()
+        # returns 0 and cells are sized against the fallback WIN_W constant.
+        self._collapse_config()
+        self.update_idletasks()
+
         self._grid.load(self._posts)
 
         s = result.stats
@@ -1475,16 +1629,36 @@ class App(tk.Tk):
 
         staging_dir = tempfile.mkdtemp(prefix='unzucker_')
 
+        try:
+            post_delay = float(self._throttle_var.get())
+        except (ValueError, TypeError):
+            post_delay = 0.5
+
+        offpeak_only = self._offpeak_var.get()
+        try:
+            peak_start = int(self._peak_start_var.get())
+        except (ValueError, TypeError):
+            peak_start = 9
+        try:
+            peak_end = int(self._peak_end_var.get())
+        except (ValueError, TypeError):
+            peak_end = 23
+
         thread = threading.Thread(
             target=self._post_thread,
-            args=(active, staging_dir, count, remapped_groups),
+            args=(active, staging_dir, count, remapped_groups,
+                  post_delay, offpeak_only, peak_start, peak_end),
             daemon=True,
         )
         thread.start()
 
-    def _post_thread(self, posts, staging_dir, total, trigram_groups=None):
+    def _post_thread(self, posts, staging_dir, total, trigram_groups=None,
+                     post_delay=0.5, offpeak_only=False, peak_start=9, peak_end=23):
         def on_progress(current, total, result):
             self._msg_queue.put(('progress', current, total, result))
+
+        def on_wait(resume_hour):
+            self._msg_queue.put(('waiting', resume_hour))
 
         poster_module.run_migration(
             client=self._client,
@@ -1496,6 +1670,11 @@ class App(tk.Tk):
             copyright_text=self._copy_var.get().strip(),
             on_progress=on_progress,
             trigram_groups=trigram_groups or [],
+            post_delay=post_delay,
+            offpeak_only=offpeak_only,
+            peak_start=peak_start,
+            peak_end=peak_end,
+            on_wait=on_wait,
         )
         self._msg_queue.put(('done', total))
 
@@ -1527,6 +1706,11 @@ class App(tk.Tk):
                         f"{icon}  Post {current}/{total} — {result.message}",
                         color,
                     )
+
+                elif msg[0] == 'waiting':
+                    resume_hour = msg[1]
+                    self._set_status(
+                        f"⏸  Off-peak only — resuming at {resume_hour:02d}:00…", FG_WARN)
 
                 elif msg[0] == 'done':
                     total = msg[1]
@@ -1579,16 +1763,18 @@ class App(tk.Tk):
         if not self._posts:
             return
         posts = [self._posts[i] for i in indices]
-        panel = TrigramPanel(
+        # Clear selection rings before panel opens
+        self._grid.set_selecting_cells(indices, False)
+        self._tg_selection.clear()
+        TrigramPanel(
             self,
             posts=posts,
             indices=indices,
             on_lock=self._on_trigram_lock,
         )
-        # Clear selection rings now — panel takes over
-        self._grid.set_selecting_cells(indices, False)
-        self._tg_selection.clear()
-        self.wait_window(panel)
+        # No wait_window — grab_set() in TrigramPanel makes it modal.
+        # Returning here lets tkinter finish rendering the panel before
+        # the user interacts; the on_lock callback fires when they hit LOCK.
 
     def _on_trigram_lock(self, indices: list, slots: list):
         """Called when user clicks LOCK in TrigramPanel."""
@@ -1600,8 +1786,15 @@ class App(tk.Tk):
             'num':         self._tg_group_ctr,
         }
         self._tg_groups.append(group)
-        # Reorder grid so L/M/R appear left-to-right on the same row, then reload.
-        self._reorder_posts_for_trigram(indices)
+        # Defer the grid reload so it fires after the panel is fully destroyed.
+        # This ensures winfo_width() returns the correct canvas geometry and
+        # avoids doing heavy widget churn inside the panel's event handler.
+        self.after(0, self._finish_trigram_lock)
+
+    def _finish_trigram_lock(self):
+        """Deferred: reorder + reload grid after TrigramPanel is gone."""
+        grp = self._tg_groups[-1]
+        self._reorder_posts_for_trigram(grp['indices'])
         self._update_tg_label()
         new_idx = self._tg_groups[-1]['indices']
         self._set_status(
@@ -1643,7 +1836,7 @@ class App(tk.Tk):
             grp['indices'] = [new_idx_map[id(old_posts[oi])] for oi in grp['indices']]
 
         self._posts = new_posts
-        self._grid.load(self._posts)
+        self._grid.reorder(self._posts)
 
         # Re-apply all trigram badges with updated indices
         for grp in self._tg_groups:

@@ -1457,6 +1457,14 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Desktop app for large archives. Gracefully and reliably handles multi-gigabyte backups that would flatten a shared host if run server side. One-click or scheduled backup of all your SnapSmack sites at once. Differential FTP sync, cloud storage push, three-way file audit, and cold-start recovery without a working install. Always free.</p>
             </div>
             <div class="status-card">
+                <h3>THE GRID</h3>
+                <p>The flagship GRAMOFSMACK skin. Clean columns, tight spacing, single-image punctuation rows for visual impact — the grid format done properly. It's the reference implementation for what GRAMOFSMACK can look like when a skin is built for it from the ground up, and it ships with a few surprises.</p>
+            </div>
+            <div class="status-card">
+                <h3>UNZUCKER</h3>
+                <p>Your years of careful Instagram curation aren't gone. They're just hostage. UNZUCKER takes your Instagram export and migrates it to SnapSmack — images, captions, hashtags, and original post dates all intact. Posts at whatever rate your server can handle, spread across as many days as you need. Phase 1 is shipping now. We eat our own dog food first.</p>
+            </div>
+            <div class="status-card">
                 <h3>Thomas the Bear</h3>
                 <p>He's adorable, he'll make your day, and he lives in every installation of SnapSmack. You can find him and his story if you're clever and determined enough.</p>
             </div>
@@ -1806,13 +1814,19 @@ require_once __DIR__ . '/includes/header.php';
         <div class="coming-grid">
             <div class="coming-item">
                 <span class="tag">Skin</span>
-                <h3>The Grid</h3>
-                <p>The flagship GRAMOFSMACK skin. Clean columns, tight spacing, single-image punctuation rows for visual impact — the grid format done properly. It's the reference implementation for what GRAMOFSMACK can look like when a skin is built for it from the ground up, and it ships with a few surprises. More carousel-native skins are in development.</p>
+                <h3>SLICKR</h3>
+                <p>Your Flickr archive deserves better than an export ZIP sitting on a hard drive. SLICKR is a skin built for the Flickr experience — the way that archive felt to browse before the platform started dying around you. Next skin to ship before beta.</p>
+                <p style="margin-top: 1em;">Note to Flickr: When you treat the wallets of others as your own, don't be surprised when your greed motivates someone to help others snap those wallets back closed and move their art elsewhere.</p>
             </div>
             <div class="coming-item">
-                <span class="tag">Tools</span>
-                <h3>UnZucker</h3>
-                <p>Your years of careful Instagram curation aren't gone. They're just hostage. UnZucker takes your Instagram export and migrates it — to SnapSmack, or to Pixelfed, or both. It posts at whatever rate your server can handle, spread across as many days as you need, preserving your original post dates. Most Pixelfed admins had to disable their built-in importer because it hammers the server in one shot. UnZucker is the tool they wished existed instead.</p>
+                <span class="tag">Skin</span>
+                <h3>LOOKBOOK</h3>
+                <p>A clean image portfolio skin for hobbyist and amateur photographers who want their work presented seriously. High-res first, minimal chrome, built for the work to do the talking. Next skin to ship before beta.</p>
+            </div>
+            <div class="coming-item">
+                <span class="tag">Skin</span>
+                <h3>52 CARD PICKUP</h3>
+                <p>An interactive photo viewer skin. Not a grid, not a feed — something else entirely. Next skin to ship before beta.</p>
             </div>
             <div class="coming-item">
                 <span class="tag">Engine</span>
@@ -1843,6 +1857,11 @@ require_once __DIR__ . '/includes/header.php';
                 <span class="tag">Media</span>
                 <h3>Light Table</h3>
                 <p>Drag-and-drop bulk organisation for your archive. A full-screen workbench — albums, categories, and collections as drop targets on the left, your entire image grid in the centre. Select a handful of images or a hundred, drag them to where they belong, and the assignments stick. Multi-select by range or individual pick. The kind of interface that makes organising a thousand-image back catalog something you might actually do. Desktop only, intentionally — this is not a phone job.</p>
+            </div>
+            <div class="coming-item">
+                <span class="tag">Tools</span>
+                <h3>UNZUCKER — Pixelfed</h3>
+                <p>The UNZUCKER currently supports Instagram imports to SnapSmack only, because that is the priority. We realize that our software is not everyone's first choice and they prefer Pixelfed for their old IG experience. Our tool can push data to Pixelfed and it will, but only after we get our own platform whipped into shape first. Then we're quite happy to revisit Mr. Zuckerberg with some of the kindness he has shown to us photographers over the past few years. Heh.</p>
             </div>
         </div>
     </div>
@@ -1947,15 +1966,6 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </div>
 </section>
-
-<!-- ── FOOTER ──────────────────────────────────────────────────────────────── -->
-<footer id="site-footer">
-    <div class="wrap">
-        <div class="footer-inner">
-            <p class="footer-copy">&copy; 2026 Sean McCormick &middot; Dedicated to Raymond A. Vanderwoning, photographer and friend. <a href="https://www.serenity.ca/obituaries/Raymond-Anthony-Vanderwoning?obId=30943370" target="_blank" rel="noopener noreferrer">He is missed.</a></p>
-        </div>
-    </div>
-</footer>
 
 <script>
 document.getElementById('yr').textContent = new Date().getFullYear();
