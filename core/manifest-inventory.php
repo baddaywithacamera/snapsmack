@@ -784,6 +784,11 @@ return [
             'has_settings' => false,
             'admin_page'   => 'archive',
         ],
+        'smack-alfred-nav' => [
+            'label'        => 'Alfred skin mobile navigation toggle',
+            'path'         => 'skins/alfred/assets/js/alfred-nav.js',
+            'has_settings' => false,
+        ],
         'smack-chaplin-film' => [
             'label'        => 'Chaplin Film Effects Engine (scratches, flicker, grain)',
             'path'         => 'skins/chaplin/assets/js/ss-engine-chaplin-film.js',
