@@ -17,10 +17,13 @@ Forked from tools/unzucker/poster.py. Key differences:
 
 
 import json
+import logging
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional
 
 import requests
+
+log = logging.getLogger('flkrfckr')
 
 
 # ---------------------------------------------------------------------------
@@ -267,6 +270,7 @@ def run_import(
                 on_progress(idx + 1, total, result)
             continue
 
+        local_paths: list = []
         try:
             # ── 1. Determine import status ────────────────────────────────────
             status = private_status if photo.privacy != 'public' else 'published'
@@ -282,6 +286,7 @@ def run_import(
                 date=best_date,
                 geo=photo.geo,
             )
+            local_paths = [prepped.main_path, prepped.thumb_sq_path, prepped.thumb_as_path]
 
             # ── 4. FTP upload (main + sq thumb + aspect thumb) ────────────────
             remote_dir = remote_dir_for_timestamp(
@@ -335,16 +340,32 @@ def run_import(
 
             if result.success:
                 checkpoint.record_imported(photo.flickr_id, result.image_id)
+                if not result.duplicate:
+                    log.info(f"Imported {photo.flickr_id} → image_id={result.image_id}")
+                else:
+                    log.debug(f"Duplicate skipped: {photo.flickr_id}")
             else:
                 checkpoint.record_failed(photo.flickr_id)
+                log.error(f"API error for {photo.flickr_id}: {result.message}")
+
+        except requests.HTTPError as e:
+            body = ''
+            try:
+                body = e.response.json().get('message', '') if e.response is not None else ''
+            except Exception:
+                body = e.response.text[:300] if e.response is not None else ''
+            detail = f"{e} — server says: {body}" if body else str(e)
+            log.error(f"Photo {photo.flickr_id} failed: {detail}", exc_info=True)
+            result = ImportResult(photo.flickr_id, False, detail)
+            checkpoint.record_failed(photo.flickr_id)
 
         except Exception as e:
+            log.error(f"Photo {photo.flickr_id} failed: {e}", exc_info=True)
             result = ImportResult(photo.flickr_id, False, str(e))
             checkpoint.record_failed(photo.flickr_id)
 
         finally:
-            # Clean up staging files
-            for lp in (prepped.main_path, prepped.thumb_sq_path, prepped.thumb_as_path) if 'prepped' in dir() else []:
+            for lp in local_paths:
                 try:
                     os.unlink(lp)
                 except OSError:

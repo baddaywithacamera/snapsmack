@@ -12,6 +12,24 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.227 — "Our Work" (2026-06-09)
+
+### Fix — smack-update.php persistent "CHECKING FOR UPDATES…" hang
+
+- `smack-update.php` — When the server could not reach snapsmack.ca, the `check_ajax` failure branch exited without writing anything to the update cache. On every subsequent page load the auto-check condition (`$core_status = 'checking'`) re-armed, triggering the JS retry loop (4 attempts, delays 0 / 5 / 10 / 20 s = ~83 s total) before giving up. Fixed: `check_ajax` now writes an `error` cache entry to `snap_settings` on failure. Auto-check page-load condition gains a `recently failed` branch: if the cache age is under 5 minutes and `core_status` is `error`, `$core_status` is set to `'error'` directly, skipping the JS spinner entirely and rendering the error badge + RETRY CHECK button immediately. After 5 minutes the spinner re-arms for a fresh attempt.
+
+### Feature — Unzucker 0.7.28: virtual scroll + job state persistence
+
+- `tools/unzucker/main.py` — `PostGrid` class fully rewritten from per-post `tk.Frame` widgets to a single `tk.Canvas` surface. Only visible rows are rendered; rows outside `VISIBLE_BUFFER = 2` above/below the viewport are evicted and redrawn on scroll. `_CellState` dataclass carries logical state (status, trigram group/slot, excluded, thumb) per post independently of render state. Math-based hit testing replaces per-widget event bindings. Scales to 2400+ posts with constant memory.
+- `tools/unzucker/job_state.py` — **new file.** `JobState` class persists per-import state to `%APPDATA%\Unzucker\jobs\{job_name}.ini` via `configparser`. Sections: `[job]`, `[progress]`, `[trigrams]`. `parse_job_name()` extracts a clean name from `instagram-username-YYYY-MM-DD` folder patterns. `find_for_folder()` scans the jobs dir to detect an existing in-progress import for the same export folder. Written on every mutation: `record_uploaded()` per post, `save_trigrams()` on every lock/remove, `set_excluded()` on every right-click toggle. If the app closes mid-import, the next open detects the job and prompts resume.
+- `tools/unzucker/main.py` — `App` gains `self._job: Optional[job_state.JobState]`, `_prompt_job_name()` Toplevel dialog (fired when folder name doesn't parse), and `_on_parse()` job detection/resume/create logic. On resume: trigram groups and excluded posts are restored, progress bar pre-filled to `len(job.uploaded)`. "Unload Job" button added to bottom bar: confirms, deletes the `.ini`, clears the grid, and returns to config view.
+
+### Backport — FLKR FCKR fixes from Unzucker
+
+- `tools/flkr-fckr/main.py` — Per-job file logging (job-named log file alongside `flkrfckr.log`). `requests.HTTPError` handler added to `_post_to_snapsmack()` to preserve PHP error messages from API failures (previously swallowed by generic `Exception`). `local_paths: list = []` pre-declared before the try block so cleanup is always safe even if an exception fires before the list is populated.
+
+---
+
 ## 0.7.226 — "The Hover" (2026-06-09)
 
 ### Fix — Chaplin archive pages dim due to flicker animation fill-mode
