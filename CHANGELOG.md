@@ -12,6 +12,22 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.226 — "The Hover" (2026-06-09)
+
+### Fix — Chaplin archive pages dim due to flicker animation fill-mode
+
+- `skins/chaplin/skin-header.php` — `chap-flicker-in` animation was applied to `#scroll-stage` on all page types including archive. With `animation-fill-mode: both`, the element starts at `opacity: 0.55` (the 0% keyframe) and holds there until the animation fires. On archive pages with lazy-loaded images, and in any browser context that delays or skips animations (background tab, energy saver, `prefers-reduced-motion`), `#scroll-stage` was stuck permanently dim. Fixed: animation selector now excludes `.archive-page` and `.static-transmission` pages. Added `prefers-reduced-motion` override that forces `opacity: 1` on all pages.
+
+### Fix — Chaplin EXIF toggle not wired to setting
+
+- `skins/chaplin/layout.php` — `$exif_display_enabled` was used in the INFO overlay template but never explicitly set, relying on the `?? true` fallback. The setting was always treated as enabled regardless of the admin toggle. Fixed: variable is now set inline from `$settings['exif_display_enabled']`, consistent with how other skins handle it.
+
+### Maintenance — snapsmack.ca copy updates
+
+- `projects/snapsmack-ca/index.php` — SLICKR paragraph tightened; Flickr note moved from SLICKR to FLKR FCKR with updated closing line ("at a price you can handle").
+
+---
+
 ## 0.7.225 — "Trickle Down" (2026-06-09)
 
 ### Fix — core/trigram.php fatal parse error

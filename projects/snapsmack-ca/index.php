@@ -1752,7 +1752,7 @@ require_once __DIR__ . '/includes/header.php';
 <!-- ── TOOLS ───────────────────────────────────────────────────────────────── -->
 <section id="tools">
     <div class="wrap">
-        <p class="section-kicker">Two ready, more coming</p>
+        <p class="section-kicker">Three ready, more coming</p>
         <h2>Companion Tools</h2>
         <p class="lede" style="margin-bottom: 48px;">Desktop apps that do the heavy lifting alongside SnapSmack. Free, same as the CMS.</p>
 
@@ -1803,6 +1803,29 @@ require_once __DIR__ . '/includes/header.php';
             </div>
         </div>
 
+        <hr class="tool-divider">
+
+        <div class="tool-block">
+            <div class="tool-screenshot">
+                <div class="tool-screenshot-duo">
+                    <a href="img/unzucker-config.png" data-lb="img/unzucker-config.png">
+                        <img src="img/unzucker-config.png" alt="UNZUCKER — configuration and connection">
+                    </a>
+                    <a href="img/unzucker-gridsorter.png" data-lb="img/unzucker-gridsorter.png">
+                        <img src="img/unzucker-gridsorter.png" alt="UNZUCKER — post grid and trigram sorter">
+                    </a>
+                </div>
+            </div>
+            <div class="tool-copy">
+                <h3>Windows / Linux</h3>
+                <h2>THE UNZUCKER</h2>
+                <p>Your years of careful Instagram curation aren't gone. They're just hostage. UNZUCKER takes your Instagram data export and migrates it to SnapSmack — images, captions, hashtags, and original post dates all intact. Every carousel, every single shot, every carefully sequenced grid row. Posted at whatever rate your server can handle, spread across as many days as you need. Your archive, back in your hands, on your server.</p>
+                <p>Point it at your Instagram export folder, connect to your site, and sort your posts into the order you want them to land. UNZUCKER's grid view shows your entire archive the way it looked on Instagram — three columns, your photos, your sequence. Lock trigram groups to stitch panoramas and multi-part compositions across the grid exactly as intended. Hit Transfer &amp; Post and walk away. Throttle controls keep shared-host admins from having an aneurysm. Off-peak mode holds fire during business hours and picks back up automatically overnight.</p>
+                <p>Phase 1 is shipping now. We eat our own dog food first — unzucked.ca is running it in production.</p>
+                <p class="dl-note">[ Windows 10/11 · Linux 64-bit · Free download from the admin tools page after install ]</p>
+            </div>
+        </div>
+
     </div>
 </section>
 
@@ -1815,8 +1838,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="coming-item">
                 <span class="tag">Skin</span>
                 <h3>SLICKR</h3>
-                <p>Your Flickr archive deserves better than an export ZIP sitting on a hard drive. SLICKR is a skin built for the Flickr experience — the way that archive felt to browse before the platform started dying around you. Next skin to ship before beta.</p>
-                <p style="margin-top: 1em;">Note to Flickr: When you treat the wallets of others as your own, don't be surprised when your greed motivates someone to help others snap those wallets back closed and move their art elsewhere.</p>
+                <p>Your Flickr archive deserves better than an export ZIP on a hard drive. SLICKR is a skin built for the Flickr experience — the way that archive felt before the platform started dying around you. Next skin to ship before beta.</p>
             </div>
             <div class="coming-item">
                 <span class="tag">Skin</span>
@@ -1851,7 +1873,8 @@ require_once __DIR__ . '/includes/header.php';
             <div class="coming-item">
                 <span class="tag">Tools</span>
                 <h3>FLKR FCKR</h3>
-                <p>Your Flickr archive is not as safe as it feels. FLKR FCKR takes your Flickr export and migrates it to SnapSmack — images, titles, descriptions, tags, dates, all of it. Posts spread across as many days as you need, at a rate your server can handle, preserving your original upload dates so nothing arrives out of order. Your photographs, back in your hands, on your server.</p>
+                <p>Your Flickr archive is not as safe as it feels. FLKR FCKR takes your Flickr export and migrates it to SnapSmack — images, titles, descriptions, tags, dates, all of it. Posts spread across as many days as you need, at a rate your server can handle, preserving your original upload dates so nothing arrives out of order. Your photographs, back in your hands, on your server, at a price you can handle.</p>
+                <p style="margin-top: 1em;">Note to Flickr: When you treat the wallets of others as your own, don't be surprised when your greed motivates someone to help others snap those wallets back closed and move their art elsewhere.</p>
             </div>
             <div class="coming-item">
                 <span class="tag">Media</span>
