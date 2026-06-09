@@ -82,6 +82,15 @@ try {
     $requested_slug = trim($path_info, '/');
     if (empty($requested_slug)) $requested_slug = $_GET['s'] ?? $_GET['name'] ?? null;
 
+    // --- SKIN PRELOAD HOOK ---
+    // Allows a skin to intercept the request before image routing fires.
+    // Alfred uses this to render its SmackTalk feed and single-post views.
+    // The included file may call exit() to short-circuit all remaining logic.
+    $skin_preload = __DIR__ . '/skins/' . $active_skin . '/preload.php';
+    if (file_exists($skin_preload)) {
+        include $skin_preload;
+    }
+
     $homepage_mode    = $settings['homepage_mode'] ?? 'latest_post';
     $homepage_page_id = (int)($settings['homepage_page_id'] ?? 0);
     $blog_slug        = trim($settings['blog_slug'] ?? 'blog', '/');
