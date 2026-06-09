@@ -19,10 +19,12 @@ Changes from the batch poster version:
 
 
 import json
+import logging
 import os
 import secrets
 import shutil
 import tempfile
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Callable, Dict, List, Optional
@@ -31,6 +33,8 @@ import requests
 from PIL import Image as PILImage
 
 import exif_writer
+
+log = logging.getLogger('unzucker')
 
 WEB_MAX_W = 1900
 WEB_MAX_H = 1425
@@ -200,6 +204,19 @@ class UnzuckerClient:
 
 
 # ---------------------------------------------------------------------------
+# Off-peak scheduling
+# ---------------------------------------------------------------------------
+
+def _in_peak(peak_start: int, peak_end: int) -> bool:
+    """True if the current local hour falls within the defined peak window."""
+    h = datetime.now().hour
+    if peak_start < peak_end:
+        return peak_start <= h < peak_end
+    # Wraps midnight (e.g., peak_start=22, peak_end=8)
+    return h >= peak_start or h < peak_end
+
+
+# ---------------------------------------------------------------------------
 # Image processing pipeline
 # ---------------------------------------------------------------------------
 
@@ -251,6 +268,11 @@ def run_migration(
     trigram_groups:   Optional[List[dict]] = None,
     # trigram_groups: [{'indices': [i,j,k], 'slots': [1,2,3], 'orientation': 'h'}, ...]
     # indices are into the `posts` list passed here (already filtered to active posts).
+    post_delay:       float = 0.5,   # seconds to sleep between posts; 0 = no delay
+    offpeak_only:     bool  = False, # if True, pause entirely during peak hours
+    peak_start:       int   = 9,     # peak window start hour (0–23, local time)
+    peak_end:         int   = 23,    # peak window end hour (exclusive)
+    on_wait:          Optional[Callable[[int], None]] = None,  # called with resume_hour while paused
 ) -> List[PostResult]:
     """
     Full migration pipeline: resize → HTTP upload → create post, for each post.
@@ -265,6 +287,13 @@ def run_migration(
     album_id = site_data.albums.get(default_album.lower())        if default_album   else None
 
     for idx, post in enumerate(posts):
+        # Off-peak gate: if enabled and currently in peak hours, pause until off-peak.
+        if offpeak_only:
+            while _in_peak(peak_start, peak_end):
+                if on_wait:
+                    on_wait(peak_end)
+                time.sleep(60)
+
         if post.excluded:
             result = PostResult(idx, True, "Skipped (excluded)", post.post_type)
             results.append(result)
@@ -331,12 +360,30 @@ def run_migration(
                     msg += " (EXIF partial)"
                 result = PostResult(idx, True, msg, post.post_type, all_exif_ok, returned_id)
 
+        except requests.HTTPError as e:
+            # Extract PHP error message from response body if available
+            body = ''
+            try:
+                body = e.response.json().get('message', '') if e.response is not None else ''
+            except Exception:
+                body = (e.response.text[:300] if e.response is not None else '')
+            detail = f"{e} — server says: {body}" if body else str(e)
+            log.error(f"Post {idx+1}/{total} failed: {detail}", exc_info=True)
+            result = PostResult(idx, False, detail, post.post_type)
         except Exception as e:
+            log.error(f"Post {idx+1}/{total} failed: {e}", exc_info=True)
             result = PostResult(idx, False, str(e), post.post_type)
 
         results.append(result)
+        if result.success:
+            log.debug(f"Post {idx+1}/{total} ok — id={result.post_id} {result.message}")
         if on_progress:
             on_progress(idx + 1, total, result)
+
+        # Throttle: pause between posts to avoid hammering shared hosts.
+        # post_delay=0.0 disables the sleep entirely.
+        if post_delay > 0 and idx < total - 1:
+            time.sleep(post_delay)
 
         # Clean up local staging files for this post
         for lf in local_files:
@@ -371,10 +418,11 @@ def run_migration(
 
             try:
                 client.create_trigram(pids[0], pids[1], pids[2], orientation)
+                log.info(f"Trigram created — posts {pids[0]},{pids[1]},{pids[2]}")
             except Exception as e:
                 # Non-fatal: trigram record failed but posts exist.
                 # The user can link them manually in the Lighttable.
-                print(f"[trigram] group {indices} link failed: {e}")
+                log.error(f"Trigram link failed for posts {pids}: {e}", exc_info=True)
 
     return results
 # ===== SNAPSMACK EOF =====

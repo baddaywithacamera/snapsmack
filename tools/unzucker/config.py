@@ -118,10 +118,16 @@ def load() -> dict:
             _kr_set(_api_key_account(url), api_key)  # migrate on first load
 
     return {
-        'url':            url,
-        'api_key':        api_key,
-        'export_folder':  cfg.get('import',   'export_folder',  fallback=''),
-        'copyright_text': cfg.get('defaults',  'copyright_text', fallback=''),
+        'url':             url,
+        'api_key':         api_key,
+        'export_folder':   cfg.get('import',   'export_folder',  fallback=''),
+        'import_delay':    cfg.get('import',   'import_delay',   fallback='0.5'),
+        'offpeak_only':    cfg.get('import',   'offpeak_only',   fallback='false'),
+        'peak_start':      cfg.get('import',   'peak_start',     fallback='9'),
+        'peak_end':        cfg.get('import',   'peak_end',       fallback='23'),
+        'copyright_text':  cfg.get('defaults',  'copyright_text', fallback=''),
+        'window_geometry': cfg.get('window',   'geometry',       fallback=''),
+        'window_state':    cfg.get('window',   'state',          fallback='normal'),
     }
 
 
@@ -146,10 +152,19 @@ def save(data: dict) -> None:
 
     cfg['import'] = {
         'export_folder': data.get('export_folder', '').strip(),
+        'import_delay':  data.get('import_delay',  '0.5').strip(),
+        'offpeak_only':  data.get('offpeak_only',  'false').strip(),
+        'peak_start':    data.get('peak_start',    '9').strip(),
+        'peak_end':      data.get('peak_end',      '23').strip(),
     }
 
     cfg['defaults'] = {
         'copyright_text': data.get('copyright_text', '').strip(),
+    }
+
+    cfg['window'] = {
+        'geometry': data.get('window_geometry', '').strip(),
+        'state':    data.get('window_state', 'normal').strip(),
     }
 
     with open(_config_path(), 'w') as f:

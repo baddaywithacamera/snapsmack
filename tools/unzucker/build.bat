@@ -19,7 +19,8 @@ for /f "tokens=1,2,3 delims=." %%A in ("%OLD_VER%") do (
 set BUILD_VER=%MAJOR%.%MINOR%.%PATCH%
 
 REM ── Write new version back to main.py ────────────────────────────────────
-powershell -Command "(Get-Content main.py) -replace 'BUILD_VERSION = \"%OLD_VER%\"', 'BUILD_VERSION = \"%BUILD_VER%\"' | Set-Content main.py -Encoding UTF8"
+REM    Use explicit UTF-8 (no BOM) to avoid corrupting non-ASCII chars in source.
+powershell -Command "$c = [System.IO.File]::ReadAllText('main.py', [System.Text.Encoding]::UTF8); $c = $c -replace 'BUILD_VERSION = \"%OLD_VER%\"', 'BUILD_VERSION = \"%BUILD_VER%\"'; [System.IO.File]::WriteAllText('main.py', $c, (New-Object System.Text.UTF8Encoding $false))"
 
 set EXE_NAME=unzucker-%BUILD_VER%.exe
 echo Previous version: %OLD_VER%

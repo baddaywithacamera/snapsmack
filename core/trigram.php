@@ -113,4 +113,4 @@ function trigram_ready_count(PDO $pdo, int $trigram_id): int
     return (int)$stmt->fetchColumn();
 }
 
-<?php // ===== SNAPSMACK EOF =====
+// ===== SNAPSMACK EOF =====
