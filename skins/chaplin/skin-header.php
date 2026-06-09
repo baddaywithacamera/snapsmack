@@ -169,7 +169,12 @@ snapsmack_emit_font_tags([
     35%  { opacity: 1.00; }
     100% { opacity: 1.00; }
 }
-#scroll-stage { animation: chap-flicker-in 1.2s ease-out both; }
+body:not(.archive-page):not(.static-transmission) #scroll-stage {
+    animation: chap-flicker-in 1.2s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+    #scroll-stage { animation: none !important; opacity: 1 !important; }
+}
 <?php endif; ?>
 
 <?php if ($card_style === 'hidden'): ?>

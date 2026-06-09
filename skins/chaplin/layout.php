@@ -14,8 +14,9 @@
 
 require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 
-$show_desc   = ($settings['single_show_description'] ?? '1') === '1';
-$title_pos   = $settings['chap_title_position'] ?? 'below_photo';
+$show_desc            = ($settings['single_show_description'] ?? '1') === '1';
+$title_pos            = $settings['chap_title_position'] ?? 'below_photo';
+$exif_display_enabled = (($settings['exif_display_enabled'] ?? '1') === '1');
 
 // EXIF labels
 $exif_labels = [
