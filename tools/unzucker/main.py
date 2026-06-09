@@ -24,13 +24,15 @@ import sys
 import tempfile
 import threading
 import tkinter as tk
+from dataclasses import dataclass, field
 from tkinter import filedialog, messagebox, ttk
-from typing import List, Optional
+from typing import Dict, List, Optional, Set
 
 from PIL import Image, ImageTk
 
 import config as cfg_module
 import ig_parser
+import job_state
 import poster as poster_module
 from ig_parser import ParsedPost
 from poster import UnzuckerClient, SiteData
@@ -110,336 +112,426 @@ THROTTLE_OPTIONS = [
 
 
 # ---------------------------------------------------------------------------
-# Grid cell widget
+# Per-cell logical state (persists across scroll; no widget attached)
 # ---------------------------------------------------------------------------
 
-class GridCell(tk.Frame):
-    """One square thumbnail in the 3-column grid."""
+@dataclass
+class _CellState:
+    post:          ParsedPost
+    status:        str  = 'pending'   # pending | ok | error | skip
+    tg_group:      int  = 0           # 0 = none; >0 = group number
+    tg_slot:       int  = 0           # 1=L, 2=M, 3=R
+    selecting:     bool = False
+    thumb_loading: bool = False
 
-    def __init__(self, parent, post: ParsedPost, index: int,
-                 on_click, cell_size: int, on_ctrl_click=None,
-                 on_right_click_cb=None):
-        super().__init__(parent, bg=BG_DEEP, width=cell_size, height=cell_size)
-        self.pack_propagate(False)
-        self.post               = post
-        self.index              = index
-        self._thumb             = None
-        self._status            = 'pending'  # pending | ok | error | skip | excluded
-        self._cell_size         = cell_size
-        self._on_ctrl_click_cb  = on_ctrl_click
+
+# ---------------------------------------------------------------------------
+# Post grid — virtualised 3-column canvas (only visible rows are rendered)
+# ---------------------------------------------------------------------------
+
+class PostGrid(tk.Frame):
+    """
+    Virtualised 3-column grid.  Only the rows within the visible viewport
+    (plus VISIBLE_BUFFER rows above and below) are drawn as Canvas items.
+    Off-screen rows are evicted to keep the item count and memory flat
+    regardless of how large the import is.
+    """
+
+    VISIBLE_BUFFER = 2   # extra rows rendered above/below viewport edge
+
+    def __init__(self, parent, on_cell_click, on_ctrl_click=None,
+                 on_right_click_cb=None, **kwargs):
+        super().__init__(parent, bg=BG_DEEP, **kwargs)
+        self._on_click          = on_cell_click
+        self._on_ctrl_click     = on_ctrl_click
         self._on_right_click_cb = on_right_click_cb
-        self._trigram_group     = 0   # 0 = none; >0 = group number
-        self._trigram_slot      = 0   # 1=L, 2=M, 3=R
-        self._selecting         = False
 
-        # Canvas for the thumbnail + overlays
-        self._canvas = tk.Canvas(
-            self, width=cell_size, height=cell_size,
-            bg="#0A0A0E", highlightthickness=0, cursor="hand2",
-        )
-        self._canvas.pack(fill="both", expand=True)
-        self._canvas.bind("<Button-1>", lambda e: on_click(self.index))
-        self._canvas.bind("<Control-Button-1>",
-                          lambda e: (on_ctrl_click(self.index) if on_ctrl_click else None))
-        self._canvas.bind("<Button-3>", self._on_right_click)
+        self._posts:       List[ParsedPost]          = []
+        self._cell_size:   int                       = 0
+        self._row_h:       int                       = 0
+        self._total_rows:  int                       = 0
 
-        # Carousel icon overlay (top-right)
-        if post.post_type == 'carousel':
-            self._canvas.create_text(
-                cell_size - 8, 8,
-                text=f"▪ {len(post.images)}",
-                anchor="ne", fill="white",
-                font=("Segoe UI", 11, "bold"),
-            )
+        # Logical state for every post (index → _CellState)
+        self._states:   Dict[int, _CellState]        = {}
+        # Canvas item IDs for rendered cells (index → list[item_id])
+        self._rendered: Dict[int, List[int]]         = {}
+        # PhotoImage refs keyed by index — must stay referenced to avoid GC
+        self._photos:   Dict[int, ImageTk.PhotoImage] = {}
 
-        # Status overlay (hidden initially)
-        self._status_overlay = self._canvas.create_rectangle(
-            0, 0, cell_size, cell_size,
-            fill='', outline='', stipple='', state='hidden',
-        )
-        self._status_icon = self._canvas.create_text(
-            cell_size // 2, cell_size // 2,
-            text='', fill='white', font=("Segoe UI", 24, "bold"),
-            state='hidden',
-        )
+        self._canvas = tk.Canvas(self, bg=BG_DEEP, highlightthickness=0, bd=0)
+        self._scrollbar = ttk.Scrollbar(self, orient="vertical",
+                                         command=self._scroll_cmd)
+        self._canvas.configure(yscrollcommand=self._scrollbar.set)
+        self._scrollbar.pack(side="right", fill="y")
+        self._canvas.pack(side="left", fill="both", expand=True)
 
-        # Trigram ring: gold outline, hidden until group assigned
-        self._tg_ring = self._canvas.create_rectangle(
-            1, 1, cell_size - 1, cell_size - 1,
-            outline='#c8a96e', width=2, state='hidden',
-        )
-        # Trigram slot badge background + text (bottom-right corner)
-        bw = 22
-        self._tg_badge_bg = self._canvas.create_rectangle(
-            cell_size - bw, cell_size - 16, cell_size, cell_size,
-            fill='#c8a96e', outline='', state='hidden',
-        )
-        self._tg_badge_txt = self._canvas.create_text(
-            cell_size - bw // 2, cell_size - 8,
-            text='', anchor='center', fill='#000',
-            font=("Segoe UI", 9, "bold"), state='hidden',
-        )
-        # Selection ring: neon green dashed outline during Ctrl+click selection
-        self._sel_ring = self._canvas.create_rectangle(
-            2, 2, cell_size - 2, cell_size - 2,
-            outline=ACCENT, width=2, dash=(4, 3), state='hidden',
-        )
+        self._canvas.bind("<Configure>",        self._on_canvas_resize)
+        self._canvas.bind("<Button-1>",         self._on_left_click)
+        self._canvas.bind("<Control-Button-1>", self._on_ctrl_left_click)
+        self._canvas.bind("<Button-3>",         self._on_right_click)
+        self._canvas.bind("<Enter>",  lambda e: self.bind_all("<MouseWheel>", self._on_scroll))
+        self._canvas.bind("<Leave>",  lambda e: self.unbind_all("<MouseWheel>"))
 
-    def set_thumb(self, photo: ImageTk.PhotoImage):
-        self._thumb = photo
-        self._canvas.create_image(
-            self._cell_size // 2, self._cell_size // 2,
-            image=photo, anchor="center",
-        )
-        # Re-draw carousel indicator on top
-        if self.post.post_type == 'carousel':
-            self._canvas.create_text(
-                self._cell_size - 8, 8,
-                text=f"▪ {len(self.post.images)}",
-                anchor="ne", fill="white",
-                font=("Segoe UI", 11, "bold"),
-            )
+    # ------------------------------------------------------------------
+    # Scroll
+    # ------------------------------------------------------------------
 
-    def set_status(self, status: str):
-        self._status = status
-        icons  = {'ok': '✓', 'error': '✗', 'skip': '—'}
-        colors = {'ok': FG_OK,    'error': FG_ERR,   'skip': FG_WARN}
+    def _scroll_cmd(self, *args):
+        self._canvas.yview(*args)
+        self._update_viewport()
 
-        if status in icons:
-            self._canvas.itemconfig(self._status_overlay,
-                                    fill=BG_DEEP, stipple='gray50', state='normal')
-            self._canvas.itemconfig(self._status_icon,
-                                    text=icons[status], fill=colors[status], state='normal')
-            self._canvas.tag_raise(self._status_overlay)
-            self._canvas.tag_raise(self._status_icon)
+    def _on_scroll(self, event):
+        self._canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        self._update_viewport()
 
-    def _toggle_excluded(self):
-        self.post.excluded = not self.post.excluded
-        if self.post.excluded:
-            self._canvas.itemconfig(self._status_overlay,
-                                    fill=BG_DEEP, stipple='gray50', state='normal')
-            self._canvas.itemconfig(self._status_icon,
-                                    text='∅', fill=FG_DIM, state='normal')
-            self._canvas.tag_raise(self._status_overlay)
-            self._canvas.tag_raise(self._status_icon)
-        else:
-            self._canvas.itemconfig(self._status_overlay, state='hidden')
-            self._canvas.itemconfig(self._status_icon, state='hidden')
+    # ------------------------------------------------------------------
+    # Canvas resize → re-layout
+    # ------------------------------------------------------------------
+
+    def _on_canvas_resize(self, event):
+        if not self._posts:
+            return
+        new_size = max(60, (event.width - GRID_GAP * (GRID_COLS - 1)) // GRID_COLS)
+        if new_size == self._cell_size:
+            return
+        ypos = self._canvas.yview()[0]
+        self._cell_size = new_size
+        self._row_h     = new_size + GRID_GAP
+        self._drop_all()
+        total_h = self._total_rows * self._row_h
+        self._canvas.configure(scrollregion=(0, 0, event.width, total_h))
+        self._canvas.yview_moveto(ypos)
+        self._update_viewport()
+
+    def _drop_all(self):
+        """Delete all canvas items and clear tracking — no state loss."""
+        for items in self._rendered.values():
+            for item in items:
+                self._canvas.delete(item)
+        self._rendered.clear()
+        self._photos.clear()
+
+    # ------------------------------------------------------------------
+    # Viewport management
+    # ------------------------------------------------------------------
+
+    def _visible_index_range(self):
+        """(first_idx, last_idx) covering visible rows + buffer."""
+        if not self._row_h or not self._posts:
+            return 0, -1
+        y0, y1   = self._canvas.yview()
+        total_h  = self._total_rows * self._row_h
+        first_row = max(0,
+            int(y0 * total_h / self._row_h) - self.VISIBLE_BUFFER)
+        last_row  = min(self._total_rows - 1,
+            int(y1 * total_h / self._row_h) + self.VISIBLE_BUFFER)
+        return first_row * GRID_COLS, min(
+            len(self._posts) - 1, (last_row + 1) * GRID_COLS - 1)
+
+    def _update_viewport(self):
+        if not self._posts:
+            return
+        first, last = self._visible_index_range()
+
+        # Evict cells that are well off-screen
+        margin = self.VISIBLE_BUFFER * GRID_COLS * 3
+        for idx in list(self._rendered):
+            if idx < first - margin or idx > last + margin:
+                for item in self._rendered.pop(idx):
+                    self._canvas.delete(item)
+                self._photos.pop(idx, None)
+
+        # Draw newly visible cells
+        for idx in range(first, last + 1):
+            if idx not in self._rendered:
+                self._draw_cell(idx)
+
+    # ------------------------------------------------------------------
+    # Drawing
+    # ------------------------------------------------------------------
+
+    def _cell_xy(self, idx: int):
+        row = idx // GRID_COLS
+        col = idx % GRID_COLS
+        return col * (self._cell_size + GRID_GAP), row * self._row_h
+
+    def _draw_cell(self, idx: int):
+        """Create canvas items for one cell; store IDs in _rendered[idx]."""
+        if idx >= len(self._posts):
+            return
+        state = self._states[idx]
+        cs    = self._cell_size
+        x, y  = self._cell_xy(idx)
+        items: List[int] = []
+
+        # Background
+        items.append(self._canvas.create_rectangle(
+            x, y, x + cs, y + cs,
+            fill=BG_HOVER if state.post.excluded else BG_DEEP, outline=''))
+
+        # Thumbnail
+        if idx in self._photos:
+            items.append(self._canvas.create_image(
+                x + cs // 2, y + cs // 2, image=self._photos[idx]))
+
+        # Carousel badge (top-right)
+        if state.post.post_type == 'carousel':
+            items.append(self._canvas.create_text(
+                x + cs - 8, y + 8,
+                text=f"▪ {len(state.post.images)}",
+                anchor="ne", fill="white", font=("Segoe UI", 11, "bold")))
+
+        # Status / excluded overlay
+        _ICONS  = {'ok': '✓', 'error': '✗', 'skip': '—'}
+        _COLORS = {'ok': FG_OK, 'error': FG_ERR, 'skip': FG_WARN}
+        if state.post.excluded:
+            items.append(self._canvas.create_rectangle(
+                x, y, x + cs, y + cs,
+                fill=BG_DEEP, stipple='gray50', outline=''))
+            items.append(self._canvas.create_text(
+                x + cs // 2, y + cs // 2, text='∅',
+                fill=FG_DIM, font=("Segoe UI", 24, "bold")))
+        elif state.status in _ICONS:
+            items.append(self._canvas.create_rectangle(
+                x, y, x + cs, y + cs,
+                fill=BG_DEEP, stipple='gray50', outline=''))
+            items.append(self._canvas.create_text(
+                x + cs // 2, y + cs // 2, text=_ICONS[state.status],
+                fill=_COLORS[state.status], font=("Segoe UI", 24, "bold")))
+
+        # Trigram ring + slot badge (bottom-right)
+        if state.tg_group > 0:
+            lbl = f"T{state.tg_group}{('L','M','R')[state.tg_slot - 1] if 1 <= state.tg_slot <= 3 else str(state.tg_slot)}"
+            bw  = 22
+            items.append(self._canvas.create_rectangle(
+                x + 1, y + 1, x + cs - 1, y + cs - 1,
+                outline='#c8a96e', width=2))
+            items.append(self._canvas.create_rectangle(
+                x + cs - bw, y + cs - 16, x + cs, y + cs,
+                fill='#c8a96e', outline=''))
+            items.append(self._canvas.create_text(
+                x + cs - bw // 2, y + cs - 8, text=lbl,
+                anchor='center', fill='#000', font=("Segoe UI", 9, "bold")))
+
+        # Selection ring (dashed, during Ctrl+click group building)
+        if state.selecting:
+            items.append(self._canvas.create_rectangle(
+                x + 2, y + 2, x + cs - 2, y + cs - 2,
+                outline=ACCENT, width=2, dash=(4, 3)))
+
+        self._rendered[idx] = items
+
+        # Kick off async thumb load if not already loaded/loading
+        if (idx not in self._photos and not state.thumb_loading
+                and state.post.images):
+            state.thumb_loading = True
+            self._load_thumb_async(idx, state.post.images[0])
+
+    def _redraw_cell(self, idx: int):
+        """Delete + redraw one cell if it's currently rendered."""
+        if idx not in self._rendered:
+            return
+        for item in self._rendered.pop(idx):
+            self._canvas.delete(item)
+        self._draw_cell(idx)
+
+    def _load_thumb_async(self, idx: int, img_path: str):
+        cs = self._cell_size
+        def _load():
+            try:
+                img  = Image.open(img_path)
+                w, h = img.size
+                side = min(w, h)
+                img  = img.crop(((w - side) // 2, (h - side) // 2,
+                                 (w + side) // 2, (h + side) // 2))
+                img  = img.resize((cs, cs), Image.LANCZOS)
+                photo = ImageTk.PhotoImage(img)
+                self.after(0, lambda: self._on_thumb_ready(idx, photo))
+            except Exception:
+                pass
+            finally:
+                if idx in self._states:
+                    self._states[idx].thumb_loading = False
+        threading.Thread(target=_load, daemon=True).start()
+
+    def _on_thumb_ready(self, idx: int, photo: ImageTk.PhotoImage):
+        if idx not in self._states:
+            return
+        self._photos[idx] = photo
+        self._redraw_cell(idx)
+
+    # ------------------------------------------------------------------
+    # Hit testing + input handlers
+    # ------------------------------------------------------------------
+
+    def _hit(self, ex: int, ey_canvas: int) -> int:
+        """Canvas coordinates → post index.  Returns -1 on miss."""
+        if not self._row_h or not self._cell_size:
+            return -1
+        row = int(ey_canvas // self._row_h)
+        col = int(ex // (self._cell_size + GRID_GAP))
+        if col >= GRID_COLS:
+            return -1
+        # Reject clicks in the gap between cells
+        if (ex - col * (self._cell_size + GRID_GAP) >= self._cell_size or
+                ey_canvas - row * self._row_h >= self._cell_size):
+            return -1
+        idx = row * GRID_COLS + col
+        return idx if 0 <= idx < len(self._posts) else -1
+
+    def _on_left_click(self, e):
+        idx = self._hit(e.x, self._canvas.canvasy(e.y))
+        if idx >= 0:
+            self._on_click(idx)
+
+    def _on_ctrl_left_click(self, e):
+        if not self._on_ctrl_click:
+            return
+        idx = self._hit(e.x, self._canvas.canvasy(e.y))
+        if idx >= 0:
+            self._on_ctrl_click(idx)
 
     def _on_right_click(self, e):
-        menu = tk.Menu(self, tearoff=0)
-        if self._trigram_group > 0:
+        idx = self._hit(e.x, self._canvas.canvasy(e.y))
+        if idx < 0:
+            return
+        state = self._states[idx]
+        menu  = tk.Menu(self, tearoff=0)
+        if state.tg_group > 0:
             menu.add_command(
-                label=f"Remove from Trigram T{self._trigram_group}",
-                command=lambda: (self._on_right_click_cb('remove', self.index)
-                                 if self._on_right_click_cb else None),
-            )
+                label=f"Remove from Trigram T{state.tg_group}",
+                command=lambda i=idx: (self._on_right_click_cb('remove', i)
+                                       if self._on_right_click_cb else None))
         else:
             menu.add_command(
                 label="Add to Trigram Group  (or Ctrl+click)",
-                command=lambda: (self._on_right_click_cb('add', self.index)
-                                 if self._on_right_click_cb else None),
-            )
+                command=lambda i=idx: (self._on_right_click_cb('add', i)
+                                       if self._on_right_click_cb else None))
         menu.add_separator()
-        lbl = "Include" if self.post.excluded else "Exclude"
-        menu.add_command(label=lbl, command=self._toggle_excluded)
+        lbl = "Include" if state.post.excluded else "Exclude"
+        menu.add_command(label=lbl, command=lambda i=idx: self._toggle_excluded(i))
         try:
             menu.tk_popup(e.x_root, e.y_root)
         finally:
             menu.grab_release()
 
-    def set_trigram_state(self, group_num: int, slot: int):
-        """Mark this cell as belonging to trigram group_num at slot (1/2/3)."""
-        self._trigram_group = group_num
-        self._trigram_slot  = slot
-        labels = {1: 'L', 2: 'M', 3: 'R'}
-        lbl = f"T{group_num}{labels.get(slot, str(slot))}"
-        self._canvas.itemconfig(self._tg_ring,      state='normal')
-        self._canvas.itemconfig(self._tg_badge_bg,  state='normal')
-        self._canvas.itemconfig(self._tg_badge_txt, text=lbl, state='normal')
-        self._canvas.tag_raise(self._tg_ring)
-        self._canvas.tag_raise(self._tg_badge_bg)
-        self._canvas.tag_raise(self._tg_badge_txt)
+    def _toggle_excluded(self, idx: int):
+        state = self._states[idx]
+        state.post.excluded = not state.post.excluded
+        self._redraw_cell(idx)
+        if self._on_right_click_cb:
+            self._on_right_click_cb('excluded_changed', idx)
 
-    def clear_trigram_state(self):
-        """Remove trigram ring and badge from this cell."""
-        self._trigram_group = 0
-        self._trigram_slot  = 0
-        self._canvas.itemconfig(self._tg_ring,      state='hidden')
-        self._canvas.itemconfig(self._tg_badge_bg,  state='hidden')
-        self._canvas.itemconfig(self._tg_badge_txt, state='hidden')
-
-    def set_selecting(self, active: bool):
-        """Show/hide the selection ring (used during Ctrl+click group building)."""
-        self._selecting = active
-        self._canvas.itemconfig(self._sel_ring,
-                                state='normal' if active else 'hidden')
-        if active:
-            self._canvas.tag_raise(self._sel_ring)
-
-
-# ---------------------------------------------------------------------------
-# Post grid (Instagram-style 3-column layout)
-# ---------------------------------------------------------------------------
-
-class PostGrid(tk.Frame):
-    """Scrollable 3-column grid of square cover thumbnails."""
-
-    def __init__(self, parent, on_cell_click, on_ctrl_click=None,
-                 on_right_click_cb=None, **kwargs):
-        super().__init__(parent, bg=BG_DEEP, **kwargs)
-        self._cells:             List[GridCell] = []
-        self._posts_cache:       List          = []
-        self._on_click           = on_cell_click
-        self._on_ctrl_click      = on_ctrl_click
-        self._on_right_click_cb  = on_right_click_cb
-
-        self._canvas = tk.Canvas(self, bg=BG_DEEP, highlightthickness=0, bd=0)
-        self._scrollbar = ttk.Scrollbar(self, orient="vertical",
-                                         command=self._canvas.yview)
-        self._canvas.configure(yscrollcommand=self._scrollbar.set)
-
-        self._scrollbar.pack(side="right", fill="y")
-        self._canvas.pack(side="left", fill="both", expand=True)
-
-        self._inner = tk.Frame(self._canvas, bg=BG_DEEP)
-        self._window = self._canvas.create_window((0, 0), window=self._inner, anchor="nw")
-
-        self._inner.bind("<Configure>", lambda e: self._canvas.configure(
-            scrollregion=self._canvas.bbox("all")))
-        self._canvas.bind("<Configure>", self._on_canvas_resize)
-
-        # Scroll: bind_all when pointer is inside the grid so cell widgets
-        # don't steal the event.  Unbound on leave so other scrollable widgets
-        # (e.g. the detail view) aren't affected.
-        self._canvas.bind("<Enter>", lambda e: self.bind_all("<MouseWheel>", self._on_scroll))
-        self._canvas.bind("<Leave>", lambda e: self.unbind_all("<MouseWheel>"))
-        self._inner.bind("<Enter>",  lambda e: self.bind_all("<MouseWheel>", self._on_scroll))
-        self._inner.bind("<Leave>",  lambda e: self.unbind_all("<MouseWheel>"))
-
-    def _on_canvas_resize(self, event):
-        self._canvas.itemconfig(self._window, width=event.width)
-
-    def _on_scroll(self, event):
-        self._canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-
-    def reflow(self):
-        """Reload the grid at the current canvas width — call after window resize."""
-        if self._posts_cache:
-            ypos = self._canvas.yview()[0]
-            self.clear()
-            self.load(self._posts_cache)
-            self._canvas.update_idletasks()
-            self._canvas.yview_moveto(ypos)
+    # ------------------------------------------------------------------
+    # Public API  (interface identical to the old widget-based PostGrid)
+    # ------------------------------------------------------------------
 
     def load(self, posts: List[ParsedPost]):
-        """Populate the grid with parsed posts."""
-        self._posts_cache = posts
-        canvas_w = self._canvas.winfo_width()
-        if canvas_w < 100:
-            canvas_w = WIN_W - 30  # scrollbar allowance
-        cell_size = (canvas_w - GRID_GAP * (GRID_COLS - 1)) // GRID_COLS
-
-        for idx, post in enumerate(posts):
-            cell = GridCell(self._inner, post, idx, self._on_click, cell_size,
-                            on_ctrl_click=self._on_ctrl_click,
-                            on_right_click_cb=self._on_right_click_cb)
-            row = idx // GRID_COLS
-            col = idx % GRID_COLS
-            cell.grid(row=row, column=col, padx=(0, GRID_GAP if col < GRID_COLS - 1 else 0),
-                      pady=(0, GRID_GAP))
-            self._cells.append(cell)
-
-            # Load cover thumbnail async
-            if post.images:
-                self._load_thumb_async(cell, post.images[0], cell_size)
-
-        # Only reset scroll on a fresh load (no prior content).
-        # reflow() and reorder() restore position themselves.
-        if not self._cells:
-            self._canvas.yview_moveto(0)
+        self.clear()
+        self._posts = list(posts)
+        w = self._canvas.winfo_width()
+        if w < 100:
+            w = WIN_W - 30
+        self._cell_size  = max(60, (w - GRID_GAP * (GRID_COLS - 1)) // GRID_COLS)
+        self._row_h      = self._cell_size + GRID_GAP
+        self._total_rows = (len(posts) + GRID_COLS - 1) // GRID_COLS
+        self._states     = {i: _CellState(post=p) for i, p in enumerate(posts)}
+        total_h = self._total_rows * self._row_h
+        self._canvas.configure(scrollregion=(0, 0, w, total_h))
+        self._canvas.yview_moveto(0)
+        self._update_viewport()
 
     def reorder(self, posts: List[ParsedPost]):
-        """Reposition existing cells to match a new post order without destroying
-        or recreating any widgets. Preserves scroll position. Used by trigram lock."""
-        if not self._posts_cache:
+        """Remap states + photos to new post order; re-render visible rows."""
+        if not self._posts:
             return
-
-        # Save scroll position
         ypos = self._canvas.yview()[0]
 
-        # Map post identity → existing cell
-        old_map = {id(p): cell for p, cell in zip(self._posts_cache, self._cells)}
+        old_states = {id(s.post): s for s in self._states.values()}
+        old_photos = {id(self._posts[i]): ph
+                      for i, ph in self._photos.items()
+                      if i < len(self._posts)}
 
-        # Remove cells from their current grid slots
-        for cell in self._cells:
-            cell.grid_forget()
+        self._drop_all()
+        self._posts  = list(posts)
+        self._states = {}
+        self._photos = {}
+        for new_idx, post in enumerate(posts):
+            s = old_states.get(id(post))
+            self._states[new_idx] = s if s else _CellState(post=post)
+            if id(post) in old_photos:
+                self._photos[new_idx] = old_photos[id(post)]
 
-        # Place them in their new positions
-        self._cells = []
-        for idx, post in enumerate(posts):
-            cell = old_map[id(post)]
-            row = idx // GRID_COLS
-            col = idx % GRID_COLS
-            cell.grid(row=row, column=col,
-                      padx=(0, GRID_GAP if col < GRID_COLS - 1 else 0),
-                      pady=(0, GRID_GAP))
-            self._cells.append(cell)
-
-        self._posts_cache = posts
-
-        # Restore scroll position
-        self._canvas.update_idletasks()
+        self._total_rows = (len(posts) + GRID_COLS - 1) // GRID_COLS
+        total_h = self._total_rows * self._row_h
+        self._canvas.configure(
+            scrollregion=(0, 0, self._canvas.winfo_width(), total_h))
         self._canvas.yview_moveto(ypos)
+        self._update_viewport()
 
     def clear(self):
-        for cell in self._cells:
-            cell.destroy()
-        self._cells.clear()
+        self._drop_all()
+        self._states.clear()
+        self._posts.clear()
+        self._cell_size  = 0
+        self._row_h      = 0
+        self._total_rows = 0
+
+    def reflow(self):
+        if self._posts:
+            w = self._canvas.winfo_width()
+            # Simulate a Configure event to trigger re-layout
+            class _E:
+                width = w
+            self._on_canvas_resize(_E())
+
+    def restore_state(self, uploaded: Dict[int, int],
+                      excluded: Set[int], trigram_groups: List[dict]):
+        """Restore persisted job state after a fresh parse."""
+        for idx in excluded:
+            if idx in self._states:
+                self._states[idx].post.excluded = True
+        for idx in uploaded:
+            if idx in self._states:
+                self._states[idx].status = 'ok'
+        for grp in trigram_groups:
+            for idx, slot in zip(grp['indices'], grp['slots']):
+                if idx in self._states:
+                    self._states[idx].tg_group = grp['num']
+                    self._states[idx].tg_slot  = slot
+        self._drop_all()
+        self._update_viewport()
 
     def set_cell_status(self, index: int, status: str):
-        if 0 <= index < len(self._cells):
-            self._cells[index].set_status(status)
+        if index in self._states:
+            self._states[index].status = status
+            self._redraw_cell(index)
 
     def set_trigram_cells(self, group_num: int, indices: list, slots: list):
-        """Apply trigram state to three cells."""
         for idx, slot in zip(indices, slots):
-            if 0 <= idx < len(self._cells):
-                self._cells[idx].set_trigram_state(group_num, slot)
+            if idx in self._states:
+                self._states[idx].tg_group = group_num
+                self._states[idx].tg_slot  = slot
+                self._redraw_cell(idx)
 
     def clear_trigram_cells(self, indices: list):
-        """Remove trigram state from cells."""
         for idx in indices:
-            if 0 <= idx < len(self._cells):
-                self._cells[idx].clear_trigram_state()
+            if idx in self._states:
+                self._states[idx].tg_group = 0
+                self._states[idx].tg_slot  = 0
+                self._redraw_cell(idx)
 
     def set_selecting_cells(self, indices: list, active: bool):
-        """Show/hide the selection ring on the given cells."""
         for idx in indices:
-            if 0 <= idx < len(self._cells):
-                self._cells[idx].set_selecting(active)
+            if idx in self._states:
+                self._states[idx].selecting = active
+                self._redraw_cell(idx)
 
     def clear_all_selecting(self):
-        """Clear selection rings from all cells."""
-        for cell in self._cells:
-            cell.set_selecting(False)
-
-    def _load_thumb_async(self, cell: GridCell, img_path: str, size: int):
-        def load():
-            try:
-                img = Image.open(img_path)
-                # Square center crop
-                w, h = img.size
-                side = min(w, h)
-                left = (w - side) // 2
-                top  = (h - side) // 2
-                img = img.crop((left, top, left + side, top + side))
-                img = img.resize((size, size), Image.LANCZOS)
-                photo = ImageTk.PhotoImage(img)
-                self.after(0, lambda: cell.set_thumb(photo))
-            except Exception as e:
-                print(f"[thumb] failed to load {img_path!r}: {e}")
-        threading.Thread(target=load, daemon=True).start()
+        for idx, state in list(self._states.items()):
+            if state.selecting:
+                state.selecting = False
+                self._redraw_cell(idx)
 
 
 # ---------------------------------------------------------------------------
@@ -947,6 +1039,9 @@ class App(tk.Tk):
         self._tg_selection:  list = []
         self._tg_group_ctr:  int  = 0  # monotonically incrementing group number
 
+        # Job persistence
+        self._job:           Optional[job_state.JobState] = None
+
         self._apply_ttk_style()
         self._build_ui()
         self._load_config_to_ui()
@@ -1186,6 +1281,11 @@ class App(tk.Tk):
         self._validate_btn = ttk.Button(bottom, text="Validate", style="Ghost.TButton",
                                          command=self._on_validate)
         self._validate_btn.pack(side="left", padx=(0, 6), pady=10)
+
+        self._unload_btn = ttk.Button(bottom, text="Unload Job", style="Ghost.TButton",
+                                       command=self._unload_job)
+        self._unload_btn.pack(side="left", padx=(0, 6), pady=10)
+        self._unload_btn.configure(state="disabled")
 
         # TRANSFER & POST button (Canvas for reliable Windows rendering)
         self._post_canvas = tk.Canvas(
@@ -1448,6 +1548,46 @@ class App(tk.Tk):
     # Parse export
     # ------------------------------------------------------------------
 
+    def _prompt_job_name(self, export_folder: str) -> str:
+        """
+        Try to derive a job name from the folder.  If that fails, show a
+        small dialog and ask the user.  Returns a non-empty string.
+        """
+        name = job_state.parse_job_name(export_folder)
+        if name:
+            return name
+        # Fallback — ask
+        dlg = tk.Toplevel(self)
+        dlg.title("Job name")
+        dlg.resizable(False, False)
+        dlg.grab_set()
+        dlg.transient(self)
+        dlg.configure(bg=BG_DEEP)
+        tk.Label(dlg, text="Could not detect account name from folder.\nEnter a job name:",
+                 bg=BG_DEEP, fg=FG_MAIN, font=FONT_SMALL, justify="left").pack(padx=14, pady=(12, 6))
+        var = tk.StringVar()
+        e = tk.Entry(dlg, textvariable=var, bg=BG_MID, fg=FG_MAIN,
+                     insertbackground=ACCENT, relief="flat", font=FONT_UI,
+                     highlightthickness=1, highlightbackground=BORDER)
+        e.pack(fill="x", padx=14, pady=(0, 8))
+        e.focus_set()
+        result: list = [os.path.basename(export_folder.rstrip('/\\')) or 'job']
+        def _ok():
+            v = var.get().strip()
+            if v:
+                result[0] = v
+            dlg.destroy()
+        tk.Button(dlg, text="OK", command=_ok,
+                  bg=ACCENT, fg=BG_DEEP, relief="flat", font=FONT_BOLD,
+                  cursor="hand2").pack(padx=14, pady=(0, 12))
+        e.bind("<Return>", lambda _: _ok())
+        dlg.update_idletasks()
+        rx = self.winfo_rootx() + (self.winfo_width() - dlg.winfo_reqwidth()) // 2
+        ry = self.winfo_rooty() + (self.winfo_height() - dlg.winfo_reqheight()) // 2
+        dlg.geometry(f"+{rx}+{ry}")
+        dlg.wait_window()
+        return result[0]
+
     def _on_parse(self):
         export_folder = self._export_var.get().strip()
         if not export_folder:
@@ -1467,7 +1607,39 @@ class App(tk.Tk):
             return
 
         self._posts = result.posts
+
+        # ── Job state: check for an existing save for this folder ────
+        existing = job_state.JobState.find_for_folder(export_folder)
+        resume   = False
+        if existing and existing.has_progress:
+            resume = messagebox.askyesno(
+                "Resume job?",
+                f"A saved job "{existing.job_name}" exists for this folder "
+                f"with {existing.upload_count} post(s) already uploaded.\n\n"
+                f"Resume from where you left off?"
+            )
+            if not resume:
+                existing.delete()
+                existing = None
+
+        if existing and resume:
+            self._job = existing
+        else:
+            # Create a fresh job
+            job_name     = self._prompt_job_name(export_folder)
+            site_url     = self._url_var.get().strip()
+            self._job    = job_state.JobState(job_name, export_folder, site_url)
+            self._job.save()
+
+        self._unload_btn.configure(state="normal")
+
         self._clear_trigram_state()
+
+        # Restore trigram group counter from persisted groups
+        if self._job.trigrams:
+            self._tg_group_ctr = max(g['num'] for g in self._job.trigrams)
+            for grp in self._job.trigrams:
+                self._tg_groups.append(dict(grp))
 
         # Collapse config first so the grid canvas is visible and has real
         # geometry before load() calls winfo_width(). Without this, winfo_width()
@@ -1477,26 +1649,41 @@ class App(tk.Tk):
 
         self._grid.load(self._posts)
 
+        # Restore persisted cell state (excluded, uploaded status, trigram badges)
+        if resume:
+            self._grid.restore_state(
+                self._job.uploaded,
+                self._job.excluded,
+                self._job.trigrams,
+            )
+            # Re-apply trigram labels with correct group nums
+            for grp in self._tg_groups:
+                self._grid.set_trigram_cells(grp['num'], grp['indices'], grp['slots'])
+
         s = result.stats
         self._grid_lbl.configure(
             text=f"POSTS — {s['total_posts']}  "
                  f"({s['carousel_posts']} carousel, {s['single_posts']} single)  "
                  f"·  {s['total_images']} images"
         )
+        self._update_tg_label()
 
         self._progress['maximum'] = len(self._posts)
-        self._prog_var.set(0)
-        self._prog_lbl.configure(text=f"0 / {len(self._posts)}")
+        uploaded_count = len(self._job.uploaded)
+        self._prog_var.set(uploaded_count)
+        self._prog_lbl.configure(text=f"{uploaded_count} / {len(self._posts)}")
+        resume_note = f"  ({uploaded_count} already uploaded)" if resume else ""
         self._set_status(
-            f"Parsed {s['total_posts']} posts. "
+            f"Parsed {s['total_posts']} posts.{resume_note} "
             f"Right-click a cell to exclude or start a trigram group. "
             f"Ctrl+click 3 posts to group them.",
             FG_MAIN
         )
         log.info(
-            f"Parsed {s['total_posts']} posts "
+            f"[{self._job.job_name}] Parsed {s['total_posts']} posts "
             f"({s['carousel_posts']} carousel, {s['single_posts']} single, "
             f"{s['total_images']} images) from {export_folder}"
+            + (f" — resuming, {uploaded_count} already done" if resume else "")
         )
         self._save_config()
 
@@ -1700,6 +1887,13 @@ class App(tk.Tk):
                         status = 'skip'
                     self._grid.set_cell_status(result.post_index, status)
 
+                    # Persist successful uploads to job state
+                    if (self._job and result.success
+                            and not getattr(result, 'duplicate', False)
+                            and status == 'ok'):
+                        post_id = getattr(result, 'post_id', 0)
+                        self._job.record_uploaded(result.post_index, post_id)
+
                     icon  = '✓' if result.success else '✗'
                     color = FG_OK   if result.success else FG_ERR
                     self._set_status(
@@ -1752,11 +1946,15 @@ class App(tk.Tk):
             self._open_trigram_panel(list(self._tg_selection))
 
     def _on_right_click_cb(self, action: str, index: int):
-        """Callback from GridCell right-click context menu."""
+        """Callback from PostGrid canvas right-click context menu."""
         if action == 'add':
             self._on_ctrl_click(index)
         elif action == 'remove':
             self._remove_trigram(index)
+        elif action == 'excluded_changed':
+            if self._job:
+                excluded = {i for i, p in enumerate(self._posts) if p.excluded}
+                self._job.set_excluded(excluded)
 
     def _open_trigram_panel(self, indices: list):
         """Open TrigramPanel for slot assignment."""
@@ -1796,6 +1994,8 @@ class App(tk.Tk):
         grp = self._tg_groups[-1]
         self._reorder_posts_for_trigram(grp['indices'])
         self._update_tg_label()
+        if self._job:
+            self._job.save_trigrams(self._tg_groups)
         new_idx = self._tg_groups[-1]['indices']
         self._set_status(
             f"Trigram T{self._tg_group_ctr} locked "
@@ -1849,6 +2049,8 @@ class App(tk.Tk):
                 self._grid.clear_trigram_cells(grp['indices'])
                 self._tg_groups.remove(grp)
                 self._update_tg_label()
+                if self._job:
+                    self._job.save_trigrams(self._tg_groups)
                 self._set_status("Trigram group removed.", FG_DIM)
                 return
 
@@ -1870,6 +2072,36 @@ class App(tk.Tk):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _unload_job(self):
+        """Discard the current job state and clear the grid."""
+        if self._posting:
+            messagebox.showwarning("Busy", "Cannot unload while a migration is running.")
+            return
+        if not self._job:
+            return
+        if not messagebox.askyesno(
+            "Unload job",
+            f"Unload job "{self._job.job_name}"?\n\n"
+            f"The saved progress file will be deleted. "
+            f"Uploaded posts on your site are NOT affected.",
+        ):
+            return
+        self._job.delete()
+        self._job = None
+        self._posts.clear()
+        self._clear_trigram_state()
+        self._grid.clear()
+        self._unload_btn.configure(state="disabled")
+        self._grid_lbl.configure(text="POSTS — 0")
+        self._progress['maximum'] = 1
+        self._prog_var.set(0)
+        self._prog_lbl.configure(text="")
+        self._set_status("Job unloaded.", FG_DIM)
+        # Collapse grid section; show config
+        if self._grid_section.winfo_ismapped():
+            self._grid_section.pack_forget()
+        self._expand_config()
 
     def _on_close(self):
         self._save_config()

@@ -14,6 +14,8 @@ Forked from tools/unzucker/main.py — IG-specific logic replaced.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
+import logging
+import logging.handlers
 import os
 import queue
 import sys
@@ -27,6 +29,34 @@ import config as cfg_mod
 import flickr_parser
 from checkpoint import ImportCheckpoint
 from poster import FlkrDckrClient, run_import
+
+# ---------------------------------------------------------------------------
+# Logging — rotating daily, 7-day retention, %APPDATA%\FlkrFckr\flkrfckr.log
+# ---------------------------------------------------------------------------
+
+BUILD_VERSION = "1.0.0"
+
+_LOG_DIR  = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'FlkrFckr')
+_LOG_FILE = os.path.join(_LOG_DIR, 'flkrfckr.log')
+os.makedirs(_LOG_DIR, exist_ok=True)
+
+_log_handler = logging.handlers.TimedRotatingFileHandler(
+    _LOG_FILE, when='D', interval=1, backupCount=7, encoding='utf-8',
+)
+_log_handler.setFormatter(logging.Formatter(
+    '%(asctime)s  %(levelname)-8s  %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+))
+log = logging.getLogger('flkrfckr')
+log.setLevel(logging.DEBUG)
+log.addHandler(_log_handler)
+
+def _excepthook(exc_type, exc_value, exc_tb):
+    if not issubclass(exc_type, KeyboardInterrupt):
+        log.critical('Unhandled exception', exc_info=(exc_type, exc_value, exc_tb))
+    sys.__excepthook__(exc_type, exc_value, exc_tb)
+
+sys.excepthook = _excepthook
 
 # ---------------------------------------------------------------------------
 # Palette — matches Unzucker dark theme
@@ -835,4 +865,28 @@ class FlkrDckrApp(tk.Tk):
             'ftp_password':     self._v_ftp_pass.get().strip(),
             'ftp_remote_base':  self._v_ftp_path.get().strip(),
             'export_folder':    self._v_folder.get().strip(),
-            'throttle_delay':   self._v_thr
+            'throttle_delay':   self._v_throttle.get(),
+            'private_status':   self._v_private.get(),
+            'unalbumed_action': self._v_unalbumed.get(),
+        })
+        cfg_mod.save(data)
+
+    # ------------------------------------------------------------------
+    # Canvas / grid helpers
+    # ------------------------------------------------------------------
+
+    def _on_grid_configure(self, event):
+        self._canvas.configure(scrollregion=self._canvas.bbox('all'))
+
+    def _on_canvas_configure(self, event):
+        self._canvas.itemconfig(self._canvas_window, width=event.width)
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    app = FlkrDckrApp()
+    app.mainloop()
+# ===== SNAPSMACK EOF =====

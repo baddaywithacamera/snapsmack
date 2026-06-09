@@ -459,6 +459,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && !$stage_state && !$action) {
                 'updated_skins'       => $cached_result['updated_skins'] ?? [],
                 'total_notifications' => $cached_result['skin_notifications'] ?? 0,
             ];
+        } elseif (
+            // A check_ajax recently failed — skip the 80-second spinner and
+            // render the error badge directly. The last_update_check timestamp
+            // is written by check_ajax even on failure; if it is within 5 min
+            // and the cache has status 'error', we know the server is unreachable
+            // right now and there is no point retrying immediately.
+            // After 5 minutes the next page load will re-trigger the spinner so
+            // the user gets a fresh attempt if connectivity has recovered.
+            $cache_age_secs < 300
+            && is_array($cached_result)
+            && ($cached_result['core_status'] ?? '') === 'error'
+        ) {
+            $core_status = 'error'; // renders the error badge directly — no JS spinner
         } else {
             // Cache stale or missing — trigger JS auto-check (fast mode, 6 s / 1 attempt).
             $core_status = 'checking';
@@ -514,6 +527,36 @@ if ($action === 'check_ajax') {
             ->execute([date('Y-m-d H:i:s')]);
         echo json_encode(['ok' => true]);
     } else {
+        // Cache the failure so page reloads within the next 5 minutes skip the
+        // auto-check spinner and show the error state directly instead of
+        // triggering another 80-second JS retry loop.
+        // We deliberately DON'T clobber a previously good cache here — the
+        // update_check_result write uses ON DUPLICATE KEY so it only fires when
+        // there is no existing row, or we overwrite an existing error entry.
+        $err_cache_ax = [
+            'checked_at'          => date('c'),
+            'installed_version'   => $installed_version,
+            'core_status'         => 'error',
+            'core_update'         => null,
+            'new_skins'           => [],
+            'updated_skins'       => [],
+            'skin_notifications'  => 0,
+            'total_notifications' => 0,
+        ];
+        // Only write if there is no existing non-error cache (preserve a good
+        // cached result across a transient connectivity blip).
+        if (!is_array($cached_result) || ($cached_result['core_status'] ?? '') === 'error') {
+            try {
+                $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('update_check_result', ?)
+                               ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+                    ->execute([json_encode($err_cache_ax, JSON_UNESCAPED_SLASHES)]);
+            } catch (PDOException $e) {}
+        }
+        try {
+            $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('last_update_check', ?)
+                           ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+                ->execute([date('Y-m-d H:i:s')]);
+        } catch (PDOException $e) {}
         echo json_encode(['ok' => false]);
     }
     exit;
