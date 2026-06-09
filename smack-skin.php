@@ -118,25 +118,32 @@ $global_inventory = (function() { return include 'core/manifest-inventory.php'; 
 
 // --- 2. PUBLIC SKIN DISCOVERY ---
 // Scans the skins directory for valid manifests to populate the selector.
-// Skins are filtered by site_mode: photoblog sites only see solo skins,
-// carousel sites only see carousel/grid skins.
-$site_mode       = $settings['site_mode'] ?? 'photoblog';
-$is_carousel_site = ($site_mode === 'carousel');
+// Skins are filtered by site_mode so only compatible skins appear:
+//   SMACKONEOUT (photoblog)  → skins that are neither carousel nor smacktalk
+//   GRAMOFSMACK (carousel)   → skins with features.carousel = true  (e.g. The Grid)
+//   SMACKTALK                → skins with 'smacktalk' in manifest modes[]  (e.g. Alfred)
+//   Mobile (Photogram)       → excluded entirely; forced automatically on phones
+$site_mode        = $settings['site_mode'] ?? 'photoblog';
+$is_carousel      = ($site_mode === 'carousel');
+$is_smacktalk     = ($site_mode === 'smacktalk');
 
 $skin_dirs       = array_filter(glob('skins/*'), 'is_dir');
 $available_skins = [];
 foreach ($skin_dirs as $dir) {
     $slug = basename($dir);
-    // Pocket Rocket is a mobile-only skin — it is forced automatically on phones
-    // and should never appear in the admin skin selector.
+    // Mobile skin is forced automatically on phones; never in the admin selector.
     if (defined('SNAPSMACK_MOBILE_SKIN') && $slug === SNAPSMACK_MOBILE_SKIN) continue;
     if (file_exists($dir . '/manifest.php')) {
         $temp = include $dir . '/manifest.php';
         // Development skins are not selectable in the admin skin picker
         if (($temp['status'] ?? 'stable') === 'development') continue;
-        // Mode filter: carousel sites see only carousel skins, photoblog sites see only solo skins
-        $skin_is_carousel = !empty($temp['features']['carousel']);
-        if ($skin_is_carousel !== $is_carousel_site) continue;
+        // Mode filter
+        $skin_is_carousel   = !empty($temp['features']['carousel']);
+        $skin_is_smacktalk  = in_array('smacktalk', $temp['modes'] ?? []);
+        if ($is_carousel  && !$skin_is_carousel)                    continue; // GramOfSmack: carousel only
+        if ($is_smacktalk && !$skin_is_smacktalk)                   continue; // SmackTalk: smacktalk only
+        if (!$is_carousel && !$is_smacktalk
+            && ($skin_is_carousel || $skin_is_smacktalk))           continue; // SmackOneOut: exclude both
         $available_skins[$slug] = $temp['name'] ?? ucfirst($slug);
     }
 }
