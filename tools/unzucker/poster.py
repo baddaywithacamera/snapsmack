@@ -52,6 +52,7 @@ class PostResult:
     post_type:  str  = ''
     exif_ok:    bool = True
     post_id:    int  = 0    # snap_posts.id returned by create_post; 0 if failed/skipped
+    duplicate:  bool = False  # True if post already existed on server
 
 
 @dataclass
@@ -167,6 +168,22 @@ class UnzuckerClient:
         )
         resp.raise_for_status()
         return resp.json()
+
+    def check_posts(self, ig_ids: List[str]) -> Dict[str, int]:
+        """
+        Bulk-check which Instagram post IDs already exist on the server.
+        Returns {ig_id: snap_posts.id} for every match found.
+        """
+        if not ig_ids:
+            return {}
+        resp = self._session.post(
+            f"{self.base_url}/api.php",
+            params={'route': 'unzucker/posts/check'},
+            json={'ig_ids': ig_ids},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json().get('existing', {})
 
     def create_post(
         self,
@@ -286,6 +303,17 @@ def run_migration(
     cat_id   = site_data.categories.get(default_category.lower()) if default_category else None
     album_id = site_data.albums.get(default_album.lower())        if default_album   else None
 
+    # ── Pre-run server reconciliation ────────────────────────────────────────
+    # Ask the server which ig_ids already exist so we can skip them without
+    # attempting an upload. This catches posts that were uploaded but whose
+    # record_uploaded() call never fired (e.g. crash mid-run).
+    ig_ids  = [str(p.ig_timestamp) for p in posts]
+    try:
+        server_existing = client.check_posts(ig_ids)  # {ig_id_str: post_id}
+    except Exception as e:
+        log.warning(f"Pre-run server check failed (continuing anyway): {e}")
+        server_existing = {}
+
     for idx, post in enumerate(posts):
         # Off-peak gate: if enabled and currently in peak hours, pause until off-peak.
         if offpeak_only:
@@ -301,12 +329,23 @@ def run_migration(
                 on_progress(idx + 1, total, result)
             continue
 
+        ig_id = str(post.ig_timestamp)
+
+        # Skip posts already confirmed on the server (pre-run check or prior run).
+        if ig_id in server_existing:
+            existing_id = server_existing[ig_id]
+            msg    = f"Skipped (already on server post_id={existing_id})"
+            result = PostResult(idx, True, msg, post.post_type, post_id=existing_id, duplicate=True)
+            results.append(result)
+            if on_progress:
+                on_progress(idx + 1, total, result)
+            continue
+
         local_files = []
         try:
             tags_list = list(post.hashtags) if post.hashtags else []
             tags_str  = ' '.join(f'#{t}' for t in tags_list)
             post_date = datetime.utcfromtimestamp(post.ig_timestamp).strftime('%Y-%m-%d %H:%M:%S')
-            ig_id     = str(post.ig_timestamp)
 
             # ── 1. Resize + EXIF all images locally ──────────────────
             image_meta  = []   # [{path, width, height, orientation}]
@@ -352,7 +391,9 @@ def run_migration(
             returned_id = int(resp.get('post_id', 0))
             if resp.get('duplicate'):
                 msg = f"Skipped (duplicate post_id={returned_id})"
-                result = PostResult(idx, True, msg, post.post_type, all_exif_ok, returned_id)
+                result = PostResult(idx, True, msg, post.post_type, all_exif_ok, returned_id, duplicate=True)
+                # Also add to server_existing so subsequent runs in this session skip it
+                server_existing[ig_id] = returned_id
             else:
                 n = len(post.images)
                 msg = f"{'Carousel' if n > 1 else 'Single'} — {n} image{'s' if n != 1 else ''}"
