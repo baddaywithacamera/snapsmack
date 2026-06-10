@@ -12,6 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.233 — "Fanny Pack" (2026-06-10)
+
+### Fix — Chaplin: grain overlay darken bug
+
+- `skins/chaplin/manifest.php` — removed `selector`/`property` mapping from `chap_grain_intensity`. The manifest was causing `smack-skin.php` to emit `--chap-grain-opacity: <raw_int>` (e.g. `2`) in the dynamic CSS block, which ran after `skin-header.php`'s correct calculation of `raw/100`. The raw value overwrote the fraction, giving `opacity: 2` (browser-clamped to `1`), making the film-grain overlay fully opaque and darkening the entire archive page. `skin-header.php` already handles the `/100` conversion — the manifest must not emit this var independently.
+
+---
+
 ## 0.7.232 — "Fanny Pack" (2026-06-10)
 
 ### The Grid skin — full overhaul

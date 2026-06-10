@@ -16,9 +16,11 @@
  */
 
 
-$inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
-$fonts = $inventory['fonts'] ?? [];
-foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label'];
+$_mf_inv = dirname(__DIR__, 2) . '/core/manifest-inventory.php';
+$inventory = file_exists($_mf_inv) ? (include $_mf_inv) : [];
+$fonts = is_array($inventory) ? ($inventory['fonts'] ?? []) : [];
+foreach (is_array($inventory) ? ($inventory['local_fonts'] ?? []) : [] as $_k => $_f) $fonts[$_k] = $_f['label'];
+unset($_mf_inv);
 
 return [
     'name'        => 'The Grid',
