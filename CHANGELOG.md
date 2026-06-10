@@ -12,6 +12,24 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.229 — "Fanny Pack" (2026-06-10)
+
+### Feature — smack-vax.php: emergency DB migration delivery through SMACKBACK lockdown
+
+- `core/smack-vax.php` — new tool: admin POSTs to `smack-vax.php?pkg=CODE` with a token; fetches a signed payload from `https://snapsmack.ca/releases/vax/{pkg}.vax`, verifies an Ed25519 signature against `SNAPSMACK_RELEASE_PUBKEY`, applies the embedded SQL. 3 failed token attempts → 1-hour lockout in `snap_settings`. Payload marked consumed after first successful apply to prevent replay. Designed for surgical DB fixes on SMACKBACK-locked sites without FTP.
+- `smack-central/sc-vax.php` — SC-side payload generator: create, sign, list, and delete `.vax` payloads hosted at `snapsmack.ca/releases/vax/`.
+- `smack-central/sc-layout-top.php` — VAX Generator added to nav under Security.
+- `_spec/smack-vax-v0_1.md` — spec written before build.
+
+### Fix — Schema sync engine: detect and repair wrong column types across all installs
+
+- `core/schema-sync.php` — section 2 (column sync) now reads `snapsmack_canonical.sql` at runtime and diffs it against `INFORMATION_SCHEMA` including `COLUMN_TYPE` and `IS_NULLABLE`, not just column presence. Missing columns get `ADD COLUMN`; columns with wrong type or nullability get `MODIFY COLUMN`. Replaces the old hardcoded `$column_additions` list which required manual updates on every schema change and caused multiple production breakages. On update, will automatically repair: `snap_posts.title` (`varchar(500)` → `text`) and `snap_trigrams.source_path`, `cut_a`, `cut_b` nullability (`NOT NULL` → `NULL`) across all existing installs.
+- `smack-schema.php` — Admin → Database Schema page now detects wrong-type columns (not just missing ones). Wrong-type columns shown in orange with a tooltip displaying `live: varchar(500) NOT NULL  →  needs: text NOT NULL`. Apply button issues `MODIFY COLUMN` to fix them. Status bar breaks down missing tables, missing columns, and wrong types separately.
+
+### Process change — new column workflow simplified
+
+Adding a column now requires only updating `database/schema/snapsmack_canonical.sql`. The schema sync engine picks it up on next update or Apply Schema click. Migration files are no longer needed for structural changes (ADD/MODIFY). Migration files are still required for data changes (seed rows, value transforms).
+
 ## 0.7.228 — "Sitting Duck" (2026-06-09)
 
 ### Fix — Unzucker freeze after locking trigrams

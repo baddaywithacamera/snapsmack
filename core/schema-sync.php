@@ -118,6 +118,78 @@ function snap_parse_canonical_schema(): array {
 }
 
 /**
+ * Parse per-column type/nullable metadata from the canonical schema file.
+ * Returns [table_name => [col_name => ['def_sql'=>string, 'type'=>string, 'nullable'=>bool]]]
+ * Used by snap_schema_sync() to replace the old hardcoded column-additions list.
+ */
+function snap_canonical_col_meta(): array {
+    $path = __DIR__ . '/../database/schema/snapsmack_canonical.sql';
+    if (!file_exists($path)) return [];
+
+    $sql = file_get_contents($path);
+    if ($sql === false) return [];
+    $sql = str_replace("\r\n", "\n", $sql);
+    $sql = preg_replace('/--[^\n]*/', '', $sql); // strip -- comments, not COMMENT '...'
+
+    $col_pat = '/^`?(\w+)`?\s+((?:INT|BIGINT|TINYINT|SMALLINT|MEDIUMINT|'
+             . 'VARCHAR|CHAR|TEXT|MEDIUMTEXT|LONGTEXT|DECIMAL|FLOAT|DOUBLE|'
+             . 'TIMESTAMP|DATETIME|DATE|TIME|YEAR|ENUM|SET|JSON|'
+             . 'BLOB|MEDIUMBLOB|LONGBLOB)\b.*)/i';
+
+    $result = [];
+    foreach (preg_split('/;\s*\n/', $sql) as $stmt) {
+        $stmt = trim($stmt);
+        if (!preg_match(
+            '/^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?(\w+)`?\s*\((.+)\)\s*ENGINE\s*=/si',
+            $stmt, $m
+        )) continue;
+
+        $table = $m[1];
+        $body  = $m[2];
+        $cols  = [];
+
+        foreach (explode("\n", $body) as $raw) {
+            $line = trim($raw, " \t,");
+            if (!preg_match($col_pat, $line, $cm)) continue;
+            $col_name = $cm[1];
+            $cols[$col_name] = [
+                'def_sql'  => $line,
+                'type'     => snap_sync_col_type($line),
+                'nullable' => !preg_match('/\bNOT\s+NULL\b/i', $line),
+            ];
+        }
+
+        if ($cols) $result[$table] = $cols;
+    }
+    return $result;
+}
+
+/**
+ * Normalize a column type string for comparison in schema-sync.
+ * Accepts a raw COLUMN_TYPE value ('varchar(500)') or a full canonical
+ * column-def line ('`title` text COLLATE ... NOT NULL').
+ * Returns lowercase, whitespace-collapsed type token.
+ * Strips MySQL 5.x integer display widths (e.g. int(11) → int);
+ * preserves tinyint(1).
+ */
+function snap_sync_col_type(string $input): string {
+    $s = preg_replace('/^`\w+`\s+/i', '', trim($input));
+    if (preg_match('/^(\w+(?:\s*\([^)]+\))?(?:\s+UNSIGNED|\s+SIGNED)?)/i', $s, $m)) {
+        $t = strtolower(preg_replace('/\s+/', ' ', trim($m[1])));
+    } else {
+        $t = strtolower(strtok(trim($s), ' ') ?: $s);
+    }
+    if ($t !== 'tinyint(1)') {
+        $t = preg_replace(
+            '/^(bigint|int|mediumint|smallint|tinyint)\(\d+\)(\s+unsigned)?$/',
+            '$1$2', $t
+        );
+        $t = trim($t);
+    }
+    return $t;
+}
+
+/**
  * Apply the canonical schema to the connected database.
  * Returns a report array (see file header).
  */
@@ -171,95 +243,63 @@ function snap_schema_sync(PDO $pdo): array {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 2. COLUMN ADDITIONS — idempotent via INFORMATION_SCHEMA
-    //    Each entry: [table, column, ALTER TABLE ... ADD COLUMN ... DDL]
-    //    Only runs the ALTER if INFORMATION_SCHEMA confirms the column absent.
+    // 2. COLUMN SYNC — canonical diff: ADD missing columns, MODIFY wrong-type
+    //    Reads snapsmack_canonical.sql, extracts per-column type + nullable,
+    //    diffs against INFORMATION_SCHEMA, and applies ADD COLUMN or MODIFY
+    //    COLUMN as needed. Fully replaces the old hardcoded column list.
+    //    Idempotent — safe to run on any install at any version.
     // ─────────────────────────────────────────────────────────────────────────
 
-    $column_additions = [
+    $canonical_cols = snap_canonical_col_meta();
 
-        // 0.7.4 / 0.7.6 — snap_tags
-        ['snap_tags', 'color_family',
-            "ALTER TABLE `snap_tags`
-             ADD COLUMN `color_family` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL AFTER `use_count`"],
-
-        // 0.7.6 — snap_community_comments
-        ['snap_community_comments', 'guest_name',
-            "ALTER TABLE `snap_community_comments`
-             ADD COLUMN `guest_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL AFTER `user_id`"],
-
-        ['snap_community_comments', 'guest_email',
-            "ALTER TABLE `snap_community_comments`
-             ADD COLUMN `guest_email` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL AFTER `guest_name`"],
-
-        ['snap_community_comments', 'edited_at',
-            "ALTER TABLE `snap_community_comments`
-             ADD COLUMN `edited_at` datetime DEFAULT NULL AFTER `created_at`"],
-
-        // 0.7.7 — snap_images
-        ['snap_images', 'img_source_file',
-            "ALTER TABLE `snap_images`
-             ADD COLUMN `img_source_file` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL
-             COMMENT 'Original filename on the posting machine at upload time' AFTER `img_file`"],
-
-        ['snap_images', 'sort_order',
-            "ALTER TABLE `snap_images`
-             ADD COLUMN `sort_order` int NOT NULL DEFAULT 0
-             COMMENT 'Manual display order. Lower = earlier in feed. 0 = unset (falls back to img_date DESC).' AFTER `post_id`"],
-
-        // 0.7.8b — snap_users (recovery code + forced password change)
-        ['snap_users', 'recovery_code_hash',
-            "ALTER TABLE `snap_users`
-             ADD COLUMN `recovery_code_hash` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL AFTER `preferred_skin`"],
-
-        ['snap_users', 'force_password_change',
-            "ALTER TABLE `snap_users`
-             ADD COLUMN `force_password_change` tinyint(1) NOT NULL DEFAULT 0 AFTER `recovery_code_hash`"],
-
-        // 0.7.8 — snap_pages
-        ['snap_pages', 'image_size',
-            "ALTER TABLE `snap_pages`
-             ADD COLUMN `image_size` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'full' AFTER `image_asset`"],
-
-        ['snap_pages', 'image_align',
-            "ALTER TABLE `snap_pages`
-             ADD COLUMN `image_align` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'center' AFTER `image_size`"],
-
-        ['snap_pages', 'image_shadow',
-            "ALTER TABLE `snap_pages`
-             ADD COLUMN `image_shadow` tinyint(1) NOT NULL DEFAULT 0 AFTER `image_align`"],
-
-        // 0.7.9f — snap_categories (archive visibility toggle)
-        ['snap_categories', 'show_in_archive',
-            "ALTER TABLE `snap_categories`
-             ADD COLUMN `show_in_archive` tinyint(1) NOT NULL DEFAULT 1
-             COMMENT '1 = visible in public archive; 0 = hidden'"],
-
-    ];
-
-    $col_check = $pdo->prepare(
-        "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
-         WHERE TABLE_SCHEMA = DATABASE()
-           AND TABLE_NAME   = ?
-           AND COLUMN_NAME  = ?"
-    );
-
-    foreach ($column_additions as [$table, $column, $ddl]) {
+    if (!empty($canonical_cols)) {
         try {
-            $col_check->execute([$table, $column]);
-            $exists = (int) $col_check->fetchColumn();
-
-            if ($exists) {
-                $report['skipped'][] = "{$table}.{$column}";
-                continue;
+            $sync_db   = $pdo->query('SELECT DATABASE()')->fetchColumn();
+            $lcol_stmt = $pdo->prepare("
+                SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = ?
+                ORDER BY TABLE_NAME, ORDINAL_POSITION
+            ");
+            $lcol_stmt->execute([$sync_db]);
+            $live_schema = [];
+            foreach ($lcol_stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $live_schema[$row['TABLE_NAME']][$row['COLUMN_NAME']] = [
+                    'type'     => snap_sync_col_type($row['COLUMN_TYPE']),
+                    'nullable' => ($row['IS_NULLABLE'] === 'YES'),
+                ];
             }
 
-            $ps = $pdo->query($ddl);
-            if ($ps !== false) $ps->closeCursor();
-            $report['columns_added'][] = "{$table}.{$column}";
+            foreach ($canonical_cols as $tbl => $cols) {
+                if (!isset($live_schema[$tbl])) continue; // table just created above — all cols present
 
+                foreach ($cols as $col => $meta) {
+                    try {
+                        $def_sql = preg_replace('/\s+COMMENT\s+\'[^\']*\'/i', '', $meta['def_sql']);
+                        $def_sql = trim(preg_replace('/^`?' . preg_quote($col, '/') . '`?\s+/i', '', $def_sql));
+
+                        if (!isset($live_schema[$tbl][$col])) {
+                            // Column is missing — ADD it
+                            $pdo->exec("ALTER TABLE `{$tbl}` ADD COLUMN `{$col}` {$def_sql}");
+                            $report['columns_added'][] = "{$tbl}.{$col}";
+                        } else {
+                            $live_t = $live_schema[$tbl][$col]['type'];
+                            $live_n = $live_schema[$tbl][$col]['nullable'];
+                            if ($live_t !== $meta['type'] || $live_n !== $meta['nullable']) {
+                                // Column exists but wrong type or nullability — MODIFY it
+                                $pdo->exec("ALTER TABLE `{$tbl}` MODIFY COLUMN `{$col}` {$def_sql}");
+                                $report['columns_added'][] = "{$tbl}.{$col} (corrected: {$live_t} → {$meta['type']})";
+                            } else {
+                                $report['skipped'][] = "{$tbl}.{$col}";
+                            }
+                        }
+                    } catch (\PDOException $e) {
+                        $report['errors'][] = "SYNC {$tbl}.{$col}: " . $e->getMessage();
+                    }
+                }
+            }
         } catch (\PDOException $e) {
-            $report['errors'][] = "ALTER {$table}.{$column}: " . $e->getMessage();
+            $report['errors'][] = "Column sync query failed: " . $e->getMessage();
         }
     }
 
