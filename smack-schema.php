@@ -5,8 +5,9 @@
  * Diffs the live snap_* database against snapsmack_canonical.sql and can
  * apply missing tables and columns via ALTER TABLE / CREATE TABLE.
  *
- * Only ADDS missing structure — never drops columns or modifies existing
- * ones. Existing data is never touched.
+ * Adds missing tables and columns, and corrects wrong column types or
+ * nullability via MODIFY COLUMN. Never drops columns or tables.
+ * Existing row data is never modified.
  *
  * SNAPSMACK_EOF_HEADER
  *     <?php // ===== SNAPSMACK EOF =====
@@ -18,8 +19,47 @@ require_once 'core/auth-smack.php';
 
 $page_title = 'Database Schema';
 
+// ── Type/nullable helpers ─────────────────────────────────────────────────────
+
+/**
+ * Normalize a type string for comparison.
+ * Accepts either a raw COLUMN_TYPE value ('varchar(500)') or a full
+ * canonical column-def line ('`title` text COLLATE ... NOT NULL').
+ * Returns lowercase, whitespace-collapsed type token.
+ * Strips MySQL 5.x integer display widths (e.g. int(11) → int) because
+ * MySQL 8+ omits them in INFORMATION_SCHEMA; preserves tinyint(1).
+ */
+function snap_normalize_col_type(string $input): string {
+    // Strip leading `col_name` if present (full def line passed in)
+    $s = preg_replace('/^`\w+`\s+/i', '', trim($input));
+    if (preg_match('/^(\w+(?:\s*\([^)]+\))?(?:\s+UNSIGNED|\s+SIGNED)?)/i', $s, $m)) {
+        $t = strtolower(preg_replace('/\s+/', ' ', trim($m[1])));
+    } else {
+        $t = strtolower(strtok(trim($s), ' ') ?: $s);
+    }
+    // Strip integer display widths (except tinyint(1) — used as boolean marker)
+    if ($t !== 'tinyint(1)') {
+        $t = preg_replace(
+            '/^(bigint|int|mediumint|smallint|tinyint)\(\d+\)(\s+unsigned)?$/',
+            '$1$2', $t
+        );
+        $t = trim($t);
+    }
+    return $t;
+}
+
+/** Extract type token from a canonical column def line. */
+function snap_col_type(string $col_def): string {
+    return snap_normalize_col_type($col_def);
+}
+
+/** Return true if the column is nullable (no NOT NULL clause). */
+function snap_col_nullable(string $col_def): bool {
+    return !preg_match('/\bNOT\s+NULL\b/i', $col_def);
+}
+
 // ── Schema parser ─────────────────────────────────────────────────────────────
-// Parse canonical SQL into ['table_name' => ['columns' => [...], 'sql' => '...']]
+// Parse canonical SQL into ['table_name' => ['columns' => [...], 'col_meta' => [...], 'sql' => '...']]
 // Mirrors sc-schema.php logic exactly.
 
 function snap_schema_parse(string $path): array|false {
@@ -42,7 +82,8 @@ function snap_schema_parse(string $path): array|false {
         $body = $m[2];
         $full = $stmt . ';';
 
-        $columns = [];
+        $columns  = [];
+        $col_meta = [];
         foreach (explode("\n", $body) as $raw_line) {
             $line = trim($raw_line, " \t,");
             if (preg_match(
@@ -53,11 +94,15 @@ function snap_schema_parse(string $path): array|false {
                 . 'ENUM|SET|JSON|BLOB|MEDIUMBLOB|LONGBLOB)\b.*)/i',
                 $line, $cm
             )) {
-                $columns[$cm[1]] = $line;
+                $columns[$cm[1]]  = $line;
+                $col_meta[$cm[1]] = [
+                    'type'     => snap_col_type($line),
+                    'nullable' => snap_col_nullable($line),
+                ];
             }
         }
 
-        $tables[$name] = ['columns' => $columns, 'sql' => $full];
+        $tables[$name] = ['columns' => $columns, 'col_meta' => $col_meta, 'sql' => $full];
     }
 
     return $tables;
@@ -70,7 +115,7 @@ function snap_schema_live(PDO $pdo): array {
     try {
         $db_name = $pdo->query("SELECT DATABASE()")->fetchColumn();
         $stmt    = $pdo->prepare("
-            SELECT TABLE_NAME, COLUMN_NAME
+            SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = ?
             ORDER BY TABLE_NAME ASC, ORDINAL_POSITION ASC
@@ -78,7 +123,10 @@ function snap_schema_live(PDO $pdo): array {
         $stmt->execute([$db_name]);
         $schema = [];
         foreach ($stmt->fetchAll() as $row) {
-            $schema[$row['TABLE_NAME']][] = $row['COLUMN_NAME'];
+            $schema[$row['TABLE_NAME']][$row['COLUMN_NAME']] = [
+                'type'     => snap_normalize_col_type($row['COLUMN_TYPE']),
+                'nullable' => ($row['IS_NULLABLE'] === 'YES'),
+            ];
         }
         return $schema;
     } catch (Exception $e) {
@@ -91,28 +139,45 @@ function snap_schema_live(PDO $pdo): array {
 function snap_schema_diff(array $canonical, array $live): array {
     $missing_tables  = [];
     $missing_columns = [];
+    $wrong_type      = [];
     $ok_tables       = [];
 
     foreach ($canonical as $table => $def) {
         if (!isset($live[$table])) {
             $missing_tables[$table] = $def['sql'];
         } else {
-            $live_cols        = array_flip($live[$table]);
-            $missing_in_table = [];
-            $ok_cols          = [];
+            $live_cols           = $live[$table];
+            $missing_in_table    = [];
+            $wrong_type_in_table = [];
+            $ok_cols             = [];
             foreach ($def['columns'] as $col => $col_def) {
-                if (isset($live_cols[$col])) {
-                    $ok_cols[] = $col;
-                } else {
+                if (!isset($live_cols[$col])) {
                     $missing_in_table[$col] = $col_def;
+                } else {
+                    $can_type     = $def['col_meta'][$col]['type']     ?? '';
+                    $can_nullable = $def['col_meta'][$col]['nullable']  ?? true;
+                    $live_type    = $live_cols[$col]['type'];
+                    $live_nullable= $live_cols[$col]['nullable'];
+                    if ($live_type !== $can_type || $live_nullable !== $can_nullable) {
+                        $wrong_type_in_table[$col] = [
+                            'def'          => $col_def,
+                            'live_type'    => $live_type,
+                            'live_nullable'=> $live_nullable,
+                            'can_type'     => $can_type,
+                            'can_nullable' => $can_nullable,
+                        ];
+                    } else {
+                        $ok_cols[] = $col;
+                    }
                 }
             }
-            if ($missing_in_table) $missing_columns[$table] = $missing_in_table;
+            if ($missing_in_table)    $missing_columns[$table] = $missing_in_table;
+            if ($wrong_type_in_table) $wrong_type[$table]      = $wrong_type_in_table;
             $ok_tables[$table] = $ok_cols;
         }
     }
 
-    return compact('missing_tables', 'missing_columns', 'ok_tables');
+    return compact('missing_tables', 'missing_columns', 'wrong_type', 'ok_tables');
 }
 
 // ── PHP reference audit ───────────────────────────────────────────────────────
@@ -175,8 +240,16 @@ function snap_schema_build_ddl(array $diff): array {
     foreach ($diff['missing_columns'] as $table => $cols) {
         foreach ($cols as $col => $def) {
             $def_clean = preg_replace('/\s+COMMENT\s+\'[^\']*\'/i', '', $def);
-            $type_part = preg_replace('/^`?' . preg_quote($col, '/') . '`?\s+/i', '', $def_clean);
+            $type_part = trim(preg_replace('/^`?' . preg_quote($col, '/') . '`?\s+/i', '', $def_clean));
             $stmts[]   = "ALTER TABLE `{$table}` ADD COLUMN `{$col}` {$type_part};";
+        }
+    }
+
+    foreach ($diff['wrong_type'] ?? [] as $table => $cols) {
+        foreach ($cols as $col => $info) {
+            $def_clean = preg_replace('/\s+COMMENT\s+\'[^\']*\'/i', '', $info['def']);
+            $type_part = trim(preg_replace('/^`?' . preg_quote($col, '/') . '`?\s+/i', '', $def_clean));
+            $stmts[]   = "ALTER TABLE `{$table}` MODIFY COLUMN `{$col}` {$type_part};";
         }
     }
 
@@ -249,7 +322,8 @@ if ($canonical === false) {
         $live          = snap_schema_live($pdo);
         $diff          = snap_schema_diff($canonical, $live);
         $total_missing = count($diff['missing_tables'])
-                       + array_sum(array_map('count', $diff['missing_columns']));
+                       + array_sum(array_map('count', $diff['missing_columns']))
+                       + array_sum(array_map('count', $diff['wrong_type'] ?? []));
     } catch (Exception $e) {
         $parse_error = 'Could not read live database: ' . $e->getMessage();
     }
@@ -303,6 +377,7 @@ require 'core/sidebar.php';
 .schema-col             { font-size: 0.65rem; font-family: monospace; padding: 2px 7px; border-radius: 3px; }
 .schema-col--ok         { background: rgba(255,255,255,.06); color: #777; }
 .schema-col--missing    { background: rgba(226,183,20,.2); color: #e2b714; font-weight: 700; }
+.schema-col--wrong-type { background: rgba(232,125,53,.2); color: #e87d35; font-weight: 700; }
 .schema-tag             { font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
                           letter-spacing: 0.5px; padding: 2px 8px; border-radius: 3px; justify-self: end; }
 .schema-tag--ok         { background: rgba(78,201,148,.12); color: #4ec994; }
@@ -355,9 +430,16 @@ require 'core/sidebar.php';
         <span class="schema-status-ok">✓ Schema in sync — nothing to apply</span>
     <?php else: ?>
         <span class="schema-status-warn">
-            <?php echo $total_missing; ?> missing
-            item<?php echo $total_missing !== 1 ? 's' : ''; ?>
-            — apply to fix
+            <?php
+            $s_mt = count($diff['missing_tables']);
+            $s_mc = array_sum(array_map('count', $diff['missing_columns']));
+            $s_wt = array_sum(array_map('count', $diff['wrong_type'] ?? []));
+            $parts = [];
+            if ($s_mt) $parts[] = "{$s_mt} missing table" . ($s_mt !== 1 ? 's' : '');
+            if ($s_mc) $parts[] = "{$s_mc} missing column" . ($s_mc !== 1 ? 's' : '');
+            if ($s_wt) $parts[] = "{$s_wt} wrong type" . ($s_wt !== 1 ? 's' : '');
+            echo implode(', ', $parts) . ' — apply to fix';
+            ?>
         </span>
     <?php endif; ?>
 </div>
@@ -417,6 +499,7 @@ require 'core/sidebar.php';
 <?php foreach ($canonical as $table => $tdef):
     $is_missing   = isset($diff['missing_tables'][$table]);
     $missing_cols = $diff['missing_columns'][$table] ?? [];
+    $wrong_cols   = $diff['wrong_type'][$table] ?? [];
     $ok_cols      = $diff['ok_tables'][$table] ?? [];
 ?>
 <div class="schema-table">
@@ -427,10 +510,12 @@ require 'core/sidebar.php';
         <span></span>
         <?php if ($is_missing): ?>
             <span class="schema-tag schema-tag--missing">Missing table</span>
-        <?php elseif ($missing_cols): ?>
+        <?php elseif ($missing_cols || $wrong_cols): ?>
             <span class="schema-tag schema-tag--warn">
-                <?php echo count($missing_cols); ?>
-                missing col<?php echo count($missing_cols) !== 1 ? 's' : ''; ?>
+                <?php
+                $n_issues = count($missing_cols) + count($wrong_cols);
+                echo $n_issues . ' issue' . ($n_issues !== 1 ? 's' : '');
+                ?>
             </span>
         <?php else: ?>
             <span class="schema-tag schema-tag--ok">✓ OK</span>
@@ -452,6 +537,12 @@ require 'core/sidebar.php';
             <?php foreach (array_keys($missing_cols) as $col): ?>
             <span class="schema-col schema-col--missing"
                   title="<?php echo htmlspecialchars($missing_cols[$col]); ?>">
+                <?php echo htmlspecialchars($col); ?>
+            </span>
+            <?php endforeach; ?>
+            <?php foreach ($wrong_cols as $col => $info): ?>
+            <span class="schema-col schema-col--wrong-type"
+                  title="live: <?php echo htmlspecialchars($info['live_type'] . ($info['live_nullable'] ? '' : ' NOT NULL')); ?>  →  needs: <?php echo htmlspecialchars($info['can_type'] . ($info['can_nullable'] ? '' : ' NOT NULL')); ?>">
                 <?php echo htmlspecialchars($col); ?>
             </span>
             <?php endforeach; ?>
