@@ -14,7 +14,7 @@ creates posts through the SnapSmack admin API. No FTP required.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.28"
+BUILD_VERSION = "0.7.35"
 
 import logging
 import logging.handlers
@@ -210,6 +210,9 @@ class PostGrid(tk.Frame):
                 self._canvas.delete(item)
         self._rendered.clear()
         self._photos.clear()
+        # Reset thumb_loading so stale in-flight threads don't block fresh loads
+        for s in self._states.values():
+            s.thumb_loading = False
 
     # ------------------------------------------------------------------
     # Viewport management
@@ -336,7 +339,8 @@ class PostGrid(tk.Frame):
         self._draw_cell(idx)
 
     def _load_thumb_async(self, idx: int, img_path: str):
-        cs = self._cell_size
+        cs   = self._cell_size
+        post = self._posts[idx] if idx < len(self._posts) else None
         def _load():
             try:
                 img  = Image.open(img_path)
@@ -346,15 +350,21 @@ class PostGrid(tk.Frame):
                                  (w + side) // 2, (h + side) // 2))
                 img  = img.resize((cs, cs), Image.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
-                self.after(0, lambda: self._on_thumb_ready(idx, photo))
+                self.after(0, lambda: self._on_thumb_ready(idx, post, photo))
             except Exception:
                 pass
             finally:
-                if idx in self._states:
+                # Only clear flag if this slot still belongs to the same post
+                if (post is not None and idx in self._states
+                        and idx < len(self._posts)
+                        and self._posts[idx] is post):
                     self._states[idx].thumb_loading = False
         threading.Thread(target=_load, daemon=True).start()
 
-    def _on_thumb_ready(self, idx: int, photo: ImageTk.PhotoImage):
+    def _on_thumb_ready(self, idx: int, post, photo: ImageTk.PhotoImage):
+        # Discard if this slot now belongs to a different post (reorder happened)
+        if post is None or idx >= len(self._posts) or self._posts[idx] is not post:
+            return
         if idx not in self._states:
             return
         self._photos[idx] = photo
@@ -991,6 +1001,7 @@ class TrigramPanel(tk.Toplevel):
         indices = [idx for _, idx in self._order]
         slots   = [1, 2, 3]
         self._on_lock(indices, slots)
+        self.grab_release()
         self.destroy()
 
 
@@ -1614,7 +1625,7 @@ class App(tk.Tk):
         if existing and existing.has_progress:
             resume = messagebox.askyesno(
                 "Resume job?",
-                f"A saved job "{existing.job_name}" exists for this folder "
+                f"A saved job \"{existing.job_name}\" exists for this folder "
                 f"with {existing.upload_count} post(s) already uploaded.\n\n"
                 f"Resume from where you left off?"
             )
@@ -1887,11 +1898,11 @@ class App(tk.Tk):
                         status = 'skip'
                     self._grid.set_cell_status(result.post_index, status)
 
-                    # Persist successful uploads to job state
+                    # Persist successful uploads to job state — includes
+                    # server-confirmed duplicates so they don't get retried.
                     if (self._job and result.success
-                            and not getattr(result, 'duplicate', False)
-                            and status == 'ok'):
-                        post_id = getattr(result, 'post_id', 0)
+                            and getattr(result, 'post_id', 0)):
+                        post_id = result.post_id
                         self._job.record_uploaded(result.post_index, post_id)
 
                     icon  = '✓' if result.success else '✗'
@@ -2082,7 +2093,7 @@ class App(tk.Tk):
             return
         if not messagebox.askyesno(
             "Unload job",
-            f"Unload job "{self._job.job_name}"?\n\n"
+            f"Unload job \"{self._job.job_name}\"?\n\n"
             f"The saved progress file will be deleted. "
             f"Uploaded posts on your site are NOT affected.",
         ):

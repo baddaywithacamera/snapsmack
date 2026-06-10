@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
 
 CREATE TABLE IF NOT EXISTS `snap_posts` (
   `id`                int            NOT NULL AUTO_INCREMENT,
-  `title`             varchar(500)   COLLATE utf8mb4_unicode_ci NOT NULL,
+  `title`             text           COLLATE utf8mb4_unicode_ci NOT NULL,
   `slug`              varchar(600)   COLLATE utf8mb4_unicode_ci NOT NULL,
   `description`       text           COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `post_type`         enum('single','carousel','panorama','longform') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'single',

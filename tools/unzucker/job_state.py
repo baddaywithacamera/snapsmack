@@ -20,13 +20,20 @@ Sections:
 import configparser
 import os
 import re
+import sys
 from typing import Dict, List, Optional, Set
 
 
-_JOBS_DIR = os.path.join(
-    os.environ.get('APPDATA', os.path.expanduser('~')),
-    'Unzucker', 'jobs',
-)
+def _jobs_dir() -> str:
+    """Jobs folder sits next to the exe (frozen) or the script (dev)."""
+    if getattr(sys, 'frozen', False):
+        base = os.path.dirname(sys.executable)
+    else:
+        base = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base, 'jobs')
+
+
+_JOBS_DIR = _jobs_dir()
 os.makedirs(_JOBS_DIR, exist_ok=True)
 
 

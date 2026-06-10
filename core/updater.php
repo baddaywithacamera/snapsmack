@@ -103,6 +103,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-ohsnap-keys-type.sql',
     'migrate-create-missing-tables.sql',
     'migrate-trigram-type.sql',
+    'migrate-posts-title-text.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────

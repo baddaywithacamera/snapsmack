@@ -192,6 +192,30 @@ if ($sub === 'site' && $method === 'GET') {
 }
 
 // ---------------------------------------------------------------------------
+// POST unzucker/posts/check  — bulk existence check by ig_id
+// ---------------------------------------------------------------------------
+
+if ($sub === 'posts/check' && $method === 'POST') {
+    $body   = json_decode(file_get_contents('php://input'), true) ?? [];
+    $ig_ids = array_values(array_filter(array_map('strval', $body['ig_ids'] ?? [])));
+    if (empty($ig_ids)) uz_ok(['existing' => (object)[]]);
+
+    $placeholders = implode(',', array_fill(0, count($ig_ids), '?'));
+    $stmt = $pdo->prepare("
+        SELECT import_id, id
+        FROM snap_posts
+        WHERE import_source = 'instagram'
+          AND import_id IN ($placeholders)
+    ");
+    $stmt->execute($ig_ids);
+    $existing = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $existing[$row['import_id']] = (int)$row['id'];
+    }
+    uz_ok(['existing' => $existing ?: (object)[]]);
+}
+
+// ---------------------------------------------------------------------------
 // POST unzucker/posts
 // ---------------------------------------------------------------------------
 
@@ -469,6 +493,8 @@ if ($sub === 'trigram' && $method === 'POST') {
     $pdo->exec("ALTER TABLE snap_trigrams MODIFY source_path VARCHAR(500) NULL");
     $pdo->exec("ALTER TABLE snap_trigrams MODIFY cut_a SMALLINT UNSIGNED NULL");
     $pdo->exec("ALTER TABLE snap_trigrams MODIFY cut_b SMALLINT UNSIGNED NULL");
+    // Defensive schema guard — title column must be TEXT to hold long captions.
+    $pdo->exec("ALTER TABLE snap_posts MODIFY title TEXT COLLATE utf8mb4_unicode_ci NOT NULL");
 
     $pdo->beginTransaction();
     try {

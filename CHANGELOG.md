@@ -12,6 +12,28 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.228 — "Sitting Duck" (2026-06-09)
+
+### Fix — Unzucker freeze after locking trigrams
+
+- `tools/unzucker/main.py` — `TrigramPanel._lock()`: added explicit `grab_release()` before `destroy()`. Without it, a timing edge case could leave the modal grab alive on the (now-destroyed) panel window, making the main window appear frozen to Windows. `PostGrid._drop_all()`: now resets `thumb_loading = False` on all cell states when the canvas is cleared, preventing stale in-flight thumbnail threads from blocking fresh loads after any reorder or resize. `PostGrid._load_thumb_async()` and `_on_thumb_ready()`: now capture and verify post identity (not just index) so thumbnail callbacks that arrive after a reorder discard their result rather than storing a photo at the wrong cell index.
+
+### Fix — Unzucker job state file saved next to exe, not in AppData
+
+- `tools/unzucker/job_state.py` — `_JOBS_DIR` now resolves to `jobs/` alongside the executable (or script in dev), matching `unzucker.ini`. Previously wrote to `%APPDATA%\Unzucker\jobs\` which was invisible to the user.
+
+### Fix — snap_posts.title too narrow for long Instagram captions
+
+- `database/schema/snapsmack_canonical.sql` — `snap_posts.title` widened from `VARCHAR(500)` to `TEXT`. Instagram captions up to 2,200 characters were triggering `SQLSTATE[22001]: String data, right truncation` on import.
+- `migrations/migrate-posts-title-text.sql` — migration added; registered in `UPDATER_KNOWN_MIGRATIONS`.
+- `core/unzucker-api.php` — defensive `ALTER TABLE snap_posts MODIFY title TEXT` added to the trigram endpoint schema guard so existing installs are fixed on first Unzucker import without needing a full updater run.
+
+### Feature — Unzucker pre-run server reconciliation
+
+- `core/unzucker-api.php` — new `POST unzucker/posts/check` endpoint: accepts `{"ig_ids": [...]}`, returns `{"existing": {ig_id: post_id, ...}}` for all Instagram posts already on the server. Single round trip before the run starts.
+- `tools/unzucker/poster.py` — `UnzuckerClient.check_posts()` added. `run_migration()` now calls it at the start of every run to bulk-check which posts already exist on the server. Posts confirmed present are skipped immediately without attempting upload or resize. Per-post server duplicates detected mid-run are now also added to the `server_existing` map and recorded to job state, so they don't get retried on the next run.
+- `tools/unzucker/main.py` — `_poll_queue` progress handler now calls `record_uploaded()` for all successful results with a non-zero `post_id`, including server-confirmed duplicates. Previously only freshly-uploaded posts were recorded, leaving crash-recovered posts invisible to the job state.
+
 ## 0.7.227 — "Our Work" (2026-06-09)
 
 ### Fix — smack-update.php persistent "CHECKING FOR UPDATES…" hang
