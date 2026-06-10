@@ -165,6 +165,18 @@ function snap_canonical_col_meta(): array {
 }
 
 /**
+ * Returns true if two normalised type strings are platform-equivalent.
+ * MariaDB stores JSON columns as LONGTEXT internally and INFORMATION_SCHEMA
+ * reports 'longtext' for them, so ALTER TABLE ... json is a no-op there.
+ * Treating json/longtext as equivalent prevents phantom corrections on MariaDB.
+ */
+function snap_types_equivalent(string $a, string $b): bool {
+    if ($a === $b) return true;
+    static $json_compat = ['json', 'longtext'];
+    return in_array($a, $json_compat, true) && in_array($b, $json_compat, true);
+}
+
+/**
  * Normalize a column type string for comparison in schema-sync.
  * Accepts a raw COLUMN_TYPE value ('varchar(500)') or a full canonical
  * column-def line ('`title` text COLLATE ... NOT NULL').
@@ -285,10 +297,17 @@ function snap_schema_sync(PDO $pdo): array {
                         } else {
                             $live_t = $live_schema[$tbl][$col]['type'];
                             $live_n = $live_schema[$tbl][$col]['nullable'];
-                            if ($live_t !== $meta['type'] || $live_n !== $meta['nullable']) {
+                            if (!snap_types_equivalent($live_t, $meta['type']) || $live_n !== $meta['nullable']) {
                                 // Column exists but wrong type or nullability — MODIFY it
                                 $pdo->exec("ALTER TABLE `{$tbl}` MODIFY COLUMN `{$col}` {$def_sql}");
-                                $report['columns_added'][] = "{$tbl}.{$col} (corrected: {$live_t} → {$meta['type']})";
+                                $why = [];
+                                if ($live_t !== $meta['type']) {
+                                    $why[] = $live_t . ' → ' . $meta['type'];
+                                }
+                                if ($live_n !== $meta['nullable']) {
+                                    $why[] = ($live_n ? 'nullable' : 'NOT NULL') . ' → ' . ($meta['nullable'] ? 'nullable' : 'NOT NULL');
+                                }
+                                $report['columns_added'][] = "[schema-sync] {$tbl}.{$col} (corrected: " . implode(', ', $why) . ")";
                             } else {
                                 $report['skipped'][] = "{$tbl}.{$col}";
                             }

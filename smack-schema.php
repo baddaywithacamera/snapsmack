@@ -58,6 +58,18 @@ function snap_col_nullable(string $col_def): bool {
     return !preg_match('/\bNOT\s+NULL\b/i', $col_def);
 }
 
+/**
+ * Returns true if two normalised type strings are platform-equivalent.
+ * MariaDB stores JSON as LONGTEXT internally; INFORMATION_SCHEMA reports
+ * 'longtext' for JSON columns. Treating them as equivalent prevents phantom
+ * wrong-type alerts on MariaDB installs.
+ */
+function snap_types_equivalent(string $a, string $b): bool {
+    if ($a === $b) return true;
+    static $json_compat = ['json', 'longtext'];
+    return in_array($a, $json_compat, true) && in_array($b, $json_compat, true);
+}
+
 // ── Schema parser ─────────────────────────────────────────────────────────────
 // Parse canonical SQL into ['table_name' => ['columns' => [...], 'col_meta' => [...], 'sql' => '...']]
 // Mirrors sc-schema.php logic exactly.
@@ -158,7 +170,7 @@ function snap_schema_diff(array $canonical, array $live): array {
                     $can_nullable = $def['col_meta'][$col]['nullable']  ?? true;
                     $live_type    = $live_cols[$col]['type'];
                     $live_nullable= $live_cols[$col]['nullable'];
-                    if ($live_type !== $can_type || $live_nullable !== $can_nullable) {
+                    if (!snap_types_equivalent($live_type, $can_type) || $live_nullable !== $can_nullable) {
                         $wrong_type_in_table[$col] = [
                             'def'          => $col_def,
                             'live_type'    => $live_type,

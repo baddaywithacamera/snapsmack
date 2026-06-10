@@ -12,6 +12,23 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.230 — "Fanny Pack" (2026-06-10)
+
+### Fix — Backup tool: hardcoded table list replaced with SHOW TABLES
+
+- `smack-backup.php` — replaced hardcoded `$core_tables` / `$extended_tables` arrays with `SHOW TABLES` dynamic discovery. The hardcoded list was missing ~20 tables added since the backup tool was written (`snap_post_cat_map`, `snap_ban_list`, `snap_comments_semantic`, `snap_skin_presets`, `snap_tags`, `snap_image_tags`, `snap_migrations`, `snap_password_resets`, `snap_rate_limits`, `snap_ip_bans`, `snap_totp_devices`, `snap_community_users`, `snap_community_tokens`, `snap_community_comments`, `snap_likes`, `snap_reactions`, `snap_ste_scores`, `snap_keywords`, `snap_stats`, `snap_stats_daily`, `snap_pimpotron_slideshows`, `snap_pimpotron_slides`, `snap_mosaics`, `snap_file_manifest`, `snap_smackback_log`, `snap_cats`, `snap_backup_log`). Full dump now exports every table that exists on the install.
+
+### Fix — Schema sync + schema page: phantom wrong-type on MariaDB (json vs longtext)
+
+- `core/schema-sync.php` — new `snap_types_equivalent()` helper treats `json` and `longtext` as equivalent. MariaDB stores JSON columns as LONGTEXT internally; INFORMATION_SCHEMA always reports `longtext` for them, making ALTER TABLE ... json a silent no-op that schema-sync was incorrectly reporting as a correction on every update run.
+- `smack-schema.php` — same equivalence check applied to the diff comparison so the schema page no longer shows `tfidf_vector` and `preset_data` as wrong-type issues on MariaDB installs.
+
+### Fix — Schema sync report: nullability-only corrections showed identical type strings
+
+- `core/schema-sync.php` — report line for MODIFY COLUMN now itemises type change and nullability change separately. Previously the message only printed `live_type → canonical_type`, so when the trigger was a nullability mismatch (e.g. `NOT NULL → nullable`) the report showed `varchar(500) → varchar(500)` and looked like a false positive. The MODIFY was always correct; only the output was misleading.
+
+---
+
 ## 0.7.229 — "Fanny Pack" (2026-06-10)
 
 ### Feature — smack-vax.php: emergency DB migration delivery through SMACKBACK lockdown
