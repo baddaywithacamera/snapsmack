@@ -23,10 +23,8 @@ $per_page  = 30;
 $curr_page = max(1, (int)($_GET['p'] ?? 1));
 $offset    = ($curr_page - 1) * $per_page;
 
-// Read skin settings using the correct manifest keys
-$tg_grid_width = (int)($settings['tg_max_width']     ?? 935);
-$carousel_ind  = $settings['tg_carousel_indicator']  ?? 'icon';
-$hover_overlay = $settings['tg_hover_overlay']       ?? 'title';
+$carousel_ind  = $settings['tg_carousel_indicator'] ?? 'icon';
+$hover_overlay = $settings['tg_hover_overlay']      ?? 'dark';
 
 // ── Fetch tag record ──────────────────────────────────────────────────────────
 $tag_stmt = $pdo->prepare("SELECT id, use_count FROM snap_tags WHERE slug = ? LIMIT 1");
@@ -118,7 +116,7 @@ $has_more = ($offset + count($raw_images)) < $total_count;
         <?php if (!empty($tiles)): ?>
             <?php foreach ($tiles as $tile):
                 $thumb_src   = $tile['img_thumb_square'] ?: $tile['img_file'];
-                $post_url    = BASE_URL . '?id=' . (int)$tile['img_id'];
+                $post_url    = BASE_URL . '?s=' . urlencode($tile['img_slug'] ?? '');
                 $image_count = (int)($tile['image_count'] ?? 1);
                 $is_carousel = $image_count > 1;
                 $title_safe  = htmlspecialchars($tile['title'] ?? '');
@@ -142,7 +140,7 @@ $has_more = ($offset + count($raw_images)) < $total_count;
                     </div>
                 <?php endif; ?>
 
-                <?php if ($hover_overlay !== 'none'): ?>
+                <?php if ($hover_overlay === 'title' || $hover_overlay === 'count'): ?>
                     <div class="tg-tile-overlay" aria-hidden="true">
                         <span class="tg-tile-overlay-text">
                             <?php if ($hover_overlay === 'title'): ?>
@@ -152,6 +150,8 @@ $has_more = ($offset + count($raw_images)) < $total_count;
                             <?php endif; ?>
                         </span>
                     </div>
+                <?php elseif ($hover_overlay === 'dark'): ?>
+                    <div class="tg-tile-overlay tg-tile-overlay--dark" aria-hidden="true"></div>
                 <?php endif; ?>
             </div>
             <?php endforeach; ?>
@@ -164,13 +164,60 @@ $has_more = ($offset + count($raw_images)) < $total_count;
     </main>
 
     <?php if ($has_more): ?>
-        <div class="tg-load-more-wrap">
-            <a href="<?php echo BASE_URL . '?tag=' . rawurlencode($tag_slug) . '&p=' . ($curr_page + 1); ?>"
-               class="tg-load-more-btn">Load more</a>
-        </div>
+        <div id="tg-sentinel"
+             data-tag="<?php echo htmlspecialchars($tag_slug); ?>"
+             data-next="<?php echo $curr_page + 1; ?>"
+             data-base="<?php echo htmlspecialchars(BASE_URL); ?>"
+             style="height:1px;"></div>
     <?php endif; ?>
 
 </div><!-- /#tg-app -->
+
+<?php if ($has_more): ?>
+<script>
+(function () {
+    var sentinel = document.getElementById('tg-sentinel');
+    if (!sentinel || !window.IntersectionObserver) return;
+
+    var loading = false;
+    var grid    = document.querySelector('.tg-grid');
+    var nextPg  = parseInt(sentinel.dataset.next, 10);
+    var tag     = sentinel.dataset.tag;
+    var base    = sentinel.dataset.base;
+
+    var obs = new IntersectionObserver(function (entries) {
+        if (!entries[0].isIntersecting || loading) return;
+        loading = true;
+
+        var url = base + '?tag=' + encodeURIComponent(tag) + '&p=' + nextPg;
+        fetch(url)
+            .then(function (r) { return r.text(); })
+            .then(function (html) {
+                var tmp = document.createElement('div');
+                tmp.innerHTML = html;
+
+                // Extract tiles from the fetched page's grid
+                var newTiles = tmp.querySelectorAll('.tg-grid .tg-tile');
+                newTiles.forEach(function (t) { grid.appendChild(t); });
+
+                // Check if there are more pages
+                var newSentinel = tmp.querySelector('#tg-sentinel');
+                if (newSentinel) {
+                    nextPg++;
+                    loading = false;
+                } else {
+                    // No more pages — stop observing
+                    obs.disconnect();
+                    sentinel.remove();
+                }
+            })
+            .catch(function () { loading = false; });
+    }, { rootMargin: '400px' });
+
+    obs.observe(sentinel);
+}());
+</script>
+<?php endif; ?>
 
 <?php include('skin-footer.php'); ?>
 <?php // ===== SNAPSMACK EOF =====

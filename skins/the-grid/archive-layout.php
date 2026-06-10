@@ -92,7 +92,7 @@ include __DIR__ . '/skin-header.php';
     <div class="tg-grid">
         <?php foreach ($tiles as $tile):
             $thumb_src   = $tile['img_thumb_square'] ?: $tile['img_file'];
-            $post_url    = BASE_URL . '?id=' . (int)$tile['img_id'];
+            $post_url    = BASE_URL . '?s=' . urlencode($tile['img_slug'] ?? '');
             $image_count = (int)($tile['image_count'] ?? 1);
             $is_carousel = $image_count > 1;
             $title_safe  = htmlspecialchars($tile['title'] ?? '');
@@ -114,7 +114,7 @@ include __DIR__ . '/skin-header.php';
                 </div>
             <?php endif; ?>
 
-            <?php if ($hover_overlay !== 'none'): ?>
+            <?php if ($hover_overlay === 'title' || $hover_overlay === 'count'): ?>
                 <div class="tg-tile-overlay" aria-hidden="true">
                     <span class="tg-tile-overlay-text">
                         <?php if ($hover_overlay === 'title'): ?>
@@ -124,6 +124,8 @@ include __DIR__ . '/skin-header.php';
                         <?php endif; ?>
                     </span>
                 </div>
+            <?php elseif ($hover_overlay === 'dark'): ?>
+                <div class="tg-tile-overlay tg-tile-overlay--dark" aria-hidden="true"></div>
             <?php endif; ?>
         </div>
         <?php endforeach; ?>
@@ -135,22 +137,6 @@ include __DIR__ . '/skin-header.php';
         <?php endif; ?>
     </div>
 
-    <?php if (!empty($total_pages) && $total_pages > 1): ?>
-    <div class="tg-pagination">
-        <?php if ($curr_page > 1): ?>
-            <a href="?<?php echo $archive_type === 'album' ? 'album' : 'cat'; ?>=<?php echo $archive_id; ?>&p=<?php echo $curr_page - 1; ?>" class="tg-page-btn">← Older</a>
-        <?php endif; ?>
-        <?php for ($pg = max(1, $curr_page - 2); $pg <= min($total_pages, $curr_page + 2); $pg++): ?>
-            <a href="?<?php echo $archive_type === 'album' ? 'album' : 'cat'; ?>=<?php echo $archive_id; ?>&p=<?php echo $pg; ?>"
-               class="tg-page-btn<?php echo $pg === $curr_page ? ' is-current' : ''; ?>">
-                <?php echo $pg; ?>
-            </a>
-        <?php endfor; ?>
-        <?php if ($curr_page < $total_pages): ?>
-            <a href="?<?php echo $archive_type === 'album' ? 'album' : 'cat'; ?>=<?php echo $archive_id; ?>&p=<?php echo $curr_page + 1; ?>" class="tg-page-btn">Newer →</a>
-        <?php endif; ?>
-    </div>
-    <?php endif; ?>
 </main>
 
 <?php include __DIR__ . '/skin-footer.php'; ?>

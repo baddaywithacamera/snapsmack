@@ -22,7 +22,7 @@ foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label
 
 return [
     'name'        => 'The Grid',
-    'version'     => '1.2.2',
+    'version'     => '1.2.3',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Classic Instagram-style 3-column square-thumbnail photo grid. Carousel and panorama post support. Clean, minimal UI keeps the focus on the photographs.',
@@ -112,8 +112,9 @@ return [
             'section'  => 'GRID',
             'type'     => 'select',
             'label'    => 'Hover Overlay',
-            'default'  => 'title',
+            'default'  => 'dark',
             'options'  => [
+                'dark'  => 'Darken only',
                 'title' => 'Show post title',
                 'count' => 'Show image count',
                 'none'  => 'No overlay',
@@ -127,6 +128,14 @@ return [
             'label'    => 'Show Profile Header',
             'default'  => '1',
             'options'  => ['1' => 'Enabled', '0' => 'Disabled'],
+        ],
+        'tg_avatar' => [
+            'section' => 'PROFILE HEADER',
+            'type'    => 'image',
+            'label'   => 'Profile Avatar',
+            'default' => '',
+            'accept'  => 'image/jpeg,image/png,image/webp,image/gif',
+            'hint'    => 'Square image recommended. Displayed as a circle, ~77px.',
         ],
 
         // ---- COLOURS -------------------------------------------------------
@@ -259,18 +268,17 @@ return [
         ],
 
         // ---- LAYOUT --------------------------------------------------------
-        'tg_max_width' => [
+        'tg_gutter' => [
             'section'  => 'LAYOUT',
-            'type'     => 'select',
-            'label'    => 'Content Max Width',
-            'default'  => '935',
-            'options'  => [
-                '735'  => '735px (narrow)',
-                '935'  => '935px (classic Instagram)',
-                '1080' => '1080px (wide)',
-            ],
+            'type'     => 'range',
+            'label'    => 'Side Gutter',
+            'default'  => '0',
+            'min'      => '0',
+            'max'      => '120',
+            'step'     => '4',
+            'unit'     => 'px',
             'selector' => ':root',
-            'property' => '--content-max-width',
+            'property' => '--grid-gutter',
         ],
 
     ],

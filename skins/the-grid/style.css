@@ -36,7 +36,7 @@
     --grid-gap:          2px;
     --grid-bg:           #ffffff;
     --tile-radius:       0px;
-    --content-max-width: 935px;
+    --grid-gutter:       0px;   /* side padding for profile/nav; grid itself always fills viewport */
 
     /* Carousel dot colours — inherit site accent */
     --carousel-dot-color:        rgba(38, 38, 38, 0.2);
@@ -72,10 +72,9 @@ img { display: block; max-width: 100%; }
    LAYOUT SHELL
    ========================================================================== */
 
+/* General constrained wrapper — profile header, topbar, post view, archive */
 .tg-wrap {
-    max-width: var(--content-max-width);
-    margin: 0 auto;
-    padding: 0 16px;
+    padding: 0 var(--grid-gutter);
 }
 
 /* Top nav bar */
@@ -88,9 +87,7 @@ img { display: block; max-width: 100%; }
 }
 
 .tg-topbar-inner {
-    max-width: var(--content-max-width);
-    margin: 0 auto;
-    padding: 0 16px;
+    padding: 0 var(--grid-gutter);
     height: 54px;
     display: flex;
     align-items: center;
@@ -110,9 +107,7 @@ img { display: block; max-width: 100%; }
    ========================================================================== */
 
 .tg-profile {
-    max-width: var(--content-max-width);
-    margin: 0 auto;
-    padding: 30px 16px 24px;
+    padding: 30px var(--grid-gutter) 24px;
     display: flex;
     align-items: center;
     gap: 32px;
@@ -187,12 +182,15 @@ img { display: block; max-width: 100%; }
    3-COLUMN GRID
    ========================================================================== */
 
+/* Grid fills the full viewport — no max-width, no side margin.
+   Side gutter is for the profile/nav only, not the image tiles. */
 .tg-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--grid-gap);
     background: var(--grid-bg);
     margin-top: var(--grid-gap);
+    width: 100%;
 }
 
 /* Individual grid tile */
@@ -266,6 +264,9 @@ img { display: block; max-width: 100%; }
 
 .tg-tile:hover .tg-tile-overlay { opacity: 1; }
 
+/* Dark-only hover: no pointer events, no padding needed */
+.tg-tile-overlay--dark { padding: 0; }
+
 .tg-tile-overlay-text {
     color: #fff;
     font-size: 13px;
@@ -335,8 +336,7 @@ img { display: block; max-width: 100%; }
    ========================================================================== */
 
 .tg-post-wrap {
-    max-width: var(--content-max-width);
-    margin: 0 auto;
+    padding: 0 var(--grid-gutter);
 }
 
 /* Post header: back arrow + title */
@@ -490,9 +490,7 @@ img { display: block; max-width: 100%; }
    ========================================================================== */
 
 .tg-archive-header {
-    max-width: var(--content-max-width);
-    margin: 0 auto;
-    padding: 20px 16px 16px;
+    padding: 20px var(--grid-gutter) 16px;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -598,7 +596,8 @@ img { display: block; max-width: 100%; }
 @media (max-width: 600px) {
     .tg-profile {
         gap: 20px;
-        padding: 20px 16px;
+        padding-top: 20px;
+        padding-bottom: 20px;
     }
     .tg-profile-avatar {
         width: 56px;
@@ -606,8 +605,6 @@ img { display: block; max-width: 100%; }
     }
     .tg-profile-username { font-size: 16px; }
     .tg-profile-stats { gap: 16px; }
-    .tg-wrap { padding: 0 8px; }
-    .tg-topbar-inner { padding: 0 12px; }
 }
 
 /* ── Hashtag links in captions ────────────────────────────────────────────── */

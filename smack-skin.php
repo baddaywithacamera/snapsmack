@@ -195,6 +195,30 @@ if (isset($_POST['save_skin_settings'])) {
         }
     }
 
+    // Handle type:'image' skin options — uploaded files override the hidden input value.
+    if (!empty($_FILES['skin_img_opt']['name'])) {
+        $upload_dir = __DIR__ . '/uploads/skin-avatars/';
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
+        $allowed_exts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+        foreach ($_FILES['skin_img_opt']['name'] as $img_key => $orig_name) {
+            if (empty($orig_name) || $_FILES['skin_img_opt']['error'][$img_key] !== UPLOAD_ERR_OK) continue;
+            $img_key_clean = preg_replace('/[^a-z0-9_\-]/', '', $img_key);
+            if (!$img_key_clean) continue;
+            $ext = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
+            if (!in_array($ext, $allowed_exts)) continue;
+            $filename = $save_skin . '--' . $img_key_clean . '.' . $ext;
+            $target   = $upload_dir . $filename;
+            if (move_uploaded_file($_FILES['skin_img_opt']['tmp_name'][$img_key], $target)) {
+                $rel_path   = 'uploads/skin-avatars/' . $filename;
+                $scoped_key = $save_skin . '__' . $img_key_clean;
+                $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
+                    ->execute([$scoped_key, $rel_path, $rel_path]);
+            }
+        }
+    }
+
     // 4a-ii. Variant persistence (skin palette, if manifest declares variants).
     if (isset($_POST['active_skin_variant'])) {
         $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin_variant', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
@@ -733,7 +757,7 @@ if (!empty($google_families)) {
         <div class="alert alert-success">> SKIN ARCHITECTURE CALIBRATED</div>
     <?php endif; ?>
 
-    <form method="POST">
+    <form method="POST" enctype="multipart/form-data">
         <input type="hidden" name="active_skin_target" value="<?php echo $target_skin; ?>">
 
         <div id="smack-skin-config-wrap">
@@ -866,6 +890,26 @@ if (!empty($google_families)) {
                                         </div>
                                     </div>
                                     <?php endif; ?>
+                                <?php endif; ?>
+                            <?php elseif ($o['type'] === 'image'): ?>
+                                <?php
+                                /* Existing path preserved via hidden input.
+                                   If a file is uploaded the POST handler above overwrites it in DB. */
+                                $img_preview_url = $val ? BASE_URL . ltrim($val, '/') : '';
+                                $img_accept      = $o['accept'] ?? 'image/jpeg,image/png,image/webp,image/gif';
+                                ?>
+                                <input type="hidden" name="skin_opt[<?php echo $k; ?>]" value="<?php echo htmlspecialchars($val); ?>">
+                                <?php if ($img_preview_url): ?>
+                                <div style="margin-bottom:8px;">
+                                    <img src="<?php echo htmlspecialchars($img_preview_url); ?>"
+                                         style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.15);display:block;">
+                                </div>
+                                <?php endif; ?>
+                                <input type="file" name="skin_img_opt[<?php echo $k; ?>]"
+                                       accept="<?php echo htmlspecialchars($img_accept); ?>"
+                                       style="font-size:0.8rem;color:inherit;">
+                                <?php if (!empty($o['hint'])): ?>
+                                <p class="dim field-hint" style="margin-top:4px;"><?php echo htmlspecialchars(strtoupper($o['hint'])); ?></p>
                                 <?php endif; ?>
                             <?php else: ?>
                                 <input type="text" name="skin_opt[<?php echo $k; ?>]" value="<?php echo htmlspecialchars($val); ?>">
