@@ -71,15 +71,18 @@ return [
 
         // ── FILM EFFECTS ──────────────────────────────────────────────────────
         'chap_grain_intensity' => [
-            'section'  => 'FILM EFFECTS',
-            'type'     => 'range',
-            'label'    => 'Static Grain Intensity',
-            'default'  => '4',
-            'min'      => '0',
-            'max'      => '12',
-            'selector' => ':root',
-            'property' => '--chap-grain-opacity',
-            'unit'     => '',
+            'section' => 'FILM EFFECTS',
+            'type'    => 'range',
+            'label'   => 'Static Grain Intensity',
+            'default' => '4',
+            'min'     => '0',
+            'max'     => '12',
+            'unit'    => '',
+            // NOTE: No selector/property. skin-header.php converts raw int (0-12)
+            // to opacity fraction (÷100) before emitting --chap-grain-opacity.
+            // smack-skin.php must NOT emit this var directly — it would output the
+            // raw integer (e.g. "2") which browsers clamp to opacity:1, blocking
+            // everything below the grain overlay.
         ],
         'chap_flicker' => [
             'section' => 'FILM EFFECTS',
