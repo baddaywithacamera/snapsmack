@@ -12,11 +12,20 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.231 — "Fanny Pack" (2026-06-10)
+
+### Fix — Unzucker API: DB collision on retry of posts with zero timestamp
+
+- `core/unzucker-api.php` — per-image duplicate check now joins `snap_post_images` before reusing an existing `snap_images` row. Previously, if a prior successful import had committed an image (with a `snap_post_images` pivot row), a retry would reuse that `image_id` and immediately hit the `UNIQUE KEY uq_image` constraint, returning a 500 collision. Fix: only reuse orphaned snap_images rows (those with no matching snap_post_images entry).
+- `core/unzucker-api.php` — fixed PHP falsy-string bug: `$ig_id ?: null` stored `NULL` for posts with `ig_timestamp = 0` (PHP treats `"0"` as falsy). On retry those posts were never caught by the import_id dedup, hitting the image collision path above. Changed to `$ig_id !== '' ? $ig_id : null`.
+
+---
+
 ## 0.7.230 — "Fanny Pack" (2026-06-10)
 
-### Fix — Backup tool: hardcoded table list replaced with SHOW TABLES
+### Fix — Backup tool: version in dump header; hardcoded table list replaced with SHOW TABLES
 
-- `smack-backup.php` — replaced hardcoded `$core_tables` / `$extended_tables` arrays with `SHOW TABLES` dynamic discovery. The hardcoded list was missing ~20 tables added since the backup tool was written (`snap_post_cat_map`, `snap_ban_list`, `snap_comments_semantic`, `snap_skin_presets`, `snap_tags`, `snap_image_tags`, `snap_migrations`, `snap_password_resets`, `snap_rate_limits`, `snap_ip_bans`, `snap_totp_devices`, `snap_community_users`, `snap_community_tokens`, `snap_community_comments`, `snap_likes`, `snap_reactions`, `snap_ste_scores`, `snap_keywords`, `snap_stats`, `snap_stats_daily`, `snap_pimpotron_slideshows`, `snap_pimpotron_slides`, `snap_mosaics`, `snap_file_manifest`, `snap_smackback_log`, `snap_cats`, `snap_backup_log`). Full dump now exports every table that exists on the install.
+- `smack-backup.php` — dump header now includes `-- Version: X.Y.Z` so the installed version is visible in every backup file. Replaced hardcoded `$core_tables` / `$extended_tables` arrays with `SHOW TABLES` dynamic discovery. The hardcoded list was missing ~20 tables added since the backup tool was written (`snap_post_cat_map`, `snap_ban_list`, `snap_comments_semantic`, `snap_skin_presets`, `snap_tags`, `snap_image_tags`, `snap_migrations`, `snap_password_resets`, `snap_rate_limits`, `snap_ip_bans`, `snap_totp_devices`, `snap_community_users`, `snap_community_tokens`, `snap_community_comments`, `snap_likes`, `snap_reactions`, `snap_ste_scores`, `snap_keywords`, `snap_stats`, `snap_stats_daily`, `snap_pimpotron_slideshows`, `snap_pimpotron_slides`, `snap_mosaics`, `snap_file_manifest`, `snap_smackback_log`, `snap_cats`, `snap_backup_log`). Full dump now exports every table that exists on the install.
 
 ### Fix — Schema sync + schema page: phantom wrong-type on MariaDB (json vs longtext)
 

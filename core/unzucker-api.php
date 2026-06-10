@@ -44,6 +44,9 @@ $pdo->exec("ALTER TABLE snap_ohsnap_keys
 $pdo->exec("ALTER TABLE snap_ohsnap_keys
     ADD COLUMN IF NOT EXISTS key_prefix VARCHAR(8)
     NOT NULL DEFAULT '' AFTER key_hash");
+// Defensive schema guard — title must be TEXT to hold Instagram captions up to 2200 chars.
+// Runs on every API request so it fires before any INSERT, regardless of which endpoint hits first.
+$pdo->exec("ALTER TABLE snap_posts MODIFY title TEXT COLLATE utf8mb4_unicode_ci NOT NULL");
 
 // ---------------------------------------------------------------------------
 // Auth
@@ -280,11 +283,20 @@ if ($sub === 'posts' && $method === 'POST') {
 
         $img_source = $ig_id !== '' ? "instagram:{$ig_id}_{$seq}" : '';
 
-        // Per-image duplicate check
+        // Per-image duplicate check — only reuse if the image isn't already
+        // linked to another post (snap_post_images uq_image would collide).
         if ($img_source !== '') {
-            $dup_img = $pdo->prepare("SELECT id FROM snap_images WHERE img_source_file = ? LIMIT 1");
+            $dup_img = $pdo->prepare("
+                SELECT si.id
+                FROM snap_images si
+                LEFT JOIN snap_post_images spi ON spi.image_id = si.id
+                WHERE si.img_source_file = ?
+                  AND spi.image_id IS NULL
+                LIMIT 1
+            ");
             $dup_img->execute([$img_source]);
             if ($row = $dup_img->fetch(PDO::FETCH_ASSOC)) {
+                // Orphan image exists (no post_images row) — safe to reuse.
                 $image_ids[] = (int)$row['id'];
                 continue;
             }
@@ -329,7 +341,7 @@ if ($sub === 'posts' && $method === 'POST') {
         ) VALUES (?, ?, ?, ?, 'published', 'instagram', ?, ?, NOW())
     ")->execute([
         $title, $post_slug, $desc, $post_type_final,
-        $ig_id ?: null,
+        ($ig_id !== '' ? $ig_id : null),
         $post_date,
     ]);
 
@@ -493,9 +505,6 @@ if ($sub === 'trigram' && $method === 'POST') {
     $pdo->exec("ALTER TABLE snap_trigrams MODIFY source_path VARCHAR(500) NULL");
     $pdo->exec("ALTER TABLE snap_trigrams MODIFY cut_a SMALLINT UNSIGNED NULL");
     $pdo->exec("ALTER TABLE snap_trigrams MODIFY cut_b SMALLINT UNSIGNED NULL");
-    // Defensive schema guard — title column must be TEXT to hold long captions.
-    $pdo->exec("ALTER TABLE snap_posts MODIFY title TEXT COLLATE utf8mb4_unicode_ci NOT NULL");
-
     $pdo->beginTransaction();
     try {
         // Create the trigram record (group type — no source_path or cut points).

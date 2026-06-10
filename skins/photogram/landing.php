@@ -57,10 +57,11 @@ try {
     $comment_count = (int)$comment_total_stmt->fetchColumn();
 } catch (PDOException $e) {}
 
-// ── Fetch images for grid (paginated) ─────────────────────────────────────
+// ── Fetch images for grid (paginated / infinite scroll) ───────────────────
 $per_page   = 30;
 $curr_page  = max(1, (int)($_GET['p'] ?? 1));
 $offset     = ($curr_page - 1) * $per_page;
+$is_json    = ($_GET['format'] ?? '') === 'json';
 
 // Base query — no community joins so it always works regardless of schema state
 $grid_stmt = $pdo->prepare("
@@ -73,34 +74,39 @@ $grid_stmt = $pdo->prepare("
 $grid_stmt->execute([$now_local, $per_page, $offset]);
 $grid_images = $grid_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Augment with per-image like/comment counts — guarded against missing tables
-$_pg_community = [];
-try {
-    if (!empty($grid_images)) {
-        $_pg_ids = array_column($grid_images, 'id');
-        $_pg_ph  = implode(',', array_fill(0, count($_pg_ids), '?'));
-
-        $_lk = $pdo->prepare("SELECT post_id, COUNT(*) AS cnt FROM snap_likes WHERE post_id IN ($_pg_ph) GROUP BY post_id");
-        $_lk->execute($_pg_ids);
-        foreach ($_lk->fetchAll(PDO::FETCH_ASSOC) as $_r) {
-            $_pg_community[$_r['post_id']]['like_count'] = (int)$_r['cnt'];
-        }
-
-        $_cc = $pdo->prepare("SELECT post_id, COUNT(*) AS cnt FROM snap_community_comments WHERE post_id IN ($_pg_ph) AND status = 'visible' GROUP BY post_id");
-        $_cc->execute($_pg_ids);
-        foreach ($_cc->fetchAll(PDO::FETCH_ASSOC) as $_r) {
-            $_pg_community[$_r['post_id']]['comment_count'] = (int)$_r['cnt'];
-        }
-    }
-} catch (PDOException $e) {}
-
-foreach ($grid_images as &$_gi) {
-    $_gi['like_count']    = $_pg_community[$_gi['id']]['like_count']    ?? 0;
-    $_gi['comment_count'] = $_pg_community[$_gi['id']]['comment_count'] ?? 0;
-}
-unset($_gi, $_pg_community, $_pg_ids, $_pg_ph, $_lk, $_cc, $_r);
-
 $has_more = ($offset + count($grid_images)) < $post_count;
+
+// ── Helper: render one grid cell ─────────────────────────────────────────
+function pg_grid_cell(array $gi): string {
+    $link = BASE_URL . htmlspecialchars($gi['img_slug']);
+    if (!empty($gi['img_thumb_square'])) {
+        $thumb = BASE_URL . ltrim($gi['img_thumb_square'], '/');
+    } elseif (!empty($gi['img_file'])) {
+        $fp    = pathinfo(ltrim($gi['img_file'], '/'));
+        $thumb = BASE_URL . $fp['dirname'] . '/thumbs/t_' . $fp['basename'];
+    } else {
+        $thumb = '';
+    }
+    $title = htmlspecialchars($gi['img_title']);
+    $html  = '<a href="' . $link . '" class="pg-grid-cell" title="' . $title . '" aria-label="' . $title . '">';
+    if ($thumb) {
+        $html .= '<img src="' . $thumb . '" alt="' . $title . '" loading="lazy">';
+    }
+    $html .= '</a>';
+    return $html;
+}
+
+// ── JSON response for infinite scroll ────────────────────────────────────
+if ($is_json) {
+    $html = '';
+    foreach ($grid_images as $gi) {
+        $html .= pg_grid_cell($gi);
+    }
+    while (ob_get_level() > 0) ob_end_clean();
+    header('Content-Type: application/json');
+    echo json_encode(['html' => $html, 'has_more' => $has_more]);
+    exit;
+}
 
 // ── Profile data from settings ────────────────────────────────────────────
 $site_title  = $settings['site_title']       ?? $site_name ?? 'Photogram';
@@ -171,68 +177,73 @@ $pg_active_tab = 'home';
     <div class="pg-divider"></div>
 
     <!-- ── Archive Grid ─────────────────────────────────────────────────── -->
-    <main class="pg-grid" aria-label="Photos">
+    <main class="pg-grid" id="pg-grid" aria-label="Photos">
         <?php if (!empty($grid_images)): ?>
-            <?php foreach ($grid_images as $gi):
-                // Tap grid cell → feed view starting at this image
-                $link = BASE_URL . '?pg=feed&from=' . (int)$gi['id'];
-
-                // Prefer square thumbnail; fall back to constructing path from full image
-                if (!empty($gi['img_thumb_square'])) {
-                    $thumb = BASE_URL . ltrim($gi['img_thumb_square'], '/');
-                } elseif (!empty($gi['img_file'])) {
-                    $fp    = pathinfo(ltrim($gi['img_file'], '/'));
-                    $thumb = BASE_URL . $fp['dirname'] . '/thumbs/t_' . $fp['basename'];
-                } else {
-                    $thumb = '';
-                }
-            ?>
-            <a href="<?php echo $link; ?>"
-               class="pg-grid-cell"
-               title="<?php echo htmlspecialchars($gi['img_title']); ?>"
-               aria-label="<?php echo htmlspecialchars($gi['img_title']); ?>">
-                <?php if ($thumb): ?>
-                    <img src="<?php echo $thumb; ?>"
-                         alt="<?php echo htmlspecialchars($gi['img_title']); ?>"
-                         loading="lazy">
-                <?php endif; ?>
-                <?php if ((int)$gi['like_count'] > 0 || (int)$gi['comment_count'] > 0): ?>
-                    <span class="pg-grid-overlay" aria-hidden="true">
-                        <?php if ((int)$gi['like_count'] > 0): ?>
-                        <span class="pg-grid-stat">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                            </svg>
-                            <?php echo (int)$gi['like_count']; ?>
-                        </span>
-                        <?php endif; ?>
-                        <?php if ((int)$gi['comment_count'] > 0): ?>
-                        <span class="pg-grid-stat">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                            </svg>
-                            <?php echo (int)$gi['comment_count']; ?>
-                        </span>
-                        <?php endif; ?>
-                    </span>
-                <?php endif; ?>
-            </a>
+            <?php foreach ($grid_images as $gi): ?>
+                <?php echo pg_grid_cell($gi); ?>
             <?php endforeach; ?>
         <?php else: ?>
             <div class="pg-grid-empty">No photos yet.</div>
         <?php endif; ?>
     </main>
 
-    <!-- ── Load More ────────────────────────────────────────────────────── -->
-    <?php if ($has_more): ?>
-        <div class="pg-load-more-wrap">
-            <a href="<?php echo BASE_URL . '?p=' . ($curr_page + 1); ?>"
-               class="pg-load-more-btn">Load more</a>
-        </div>
-    <?php endif; ?>
+    <!-- ── Infinite scroll sentinel ─────────────────────────────────────── -->
+    <div id="pg-grid-sentinel"
+         class="pg-feed-sentinel<?php echo $has_more ? ' pg-feed-loading' : ' pg-feed-end'; ?>"
+         data-page="<?php echo $curr_page + 1; ?>"
+         data-has-more="<?php echo $has_more ? '1' : '0'; ?>">
+    </div>
 
 </div><!-- /.pg-content -->
 </div><!-- /#pg-app -->
+
+<script>
+(function () {
+    'use strict';
+    var sentinel = document.getElementById('pg-grid-sentinel');
+    var grid     = document.getElementById('pg-grid');
+    if (!sentinel || !grid) return;
+
+    var loading = false;
+
+    function loadNext() {
+        if (loading || sentinel.dataset.hasMore === '0') return;
+        loading = true;
+        sentinel.className = 'pg-feed-sentinel pg-feed-loading';
+
+        var page = parseInt(sentinel.dataset.page, 10) || 2;
+        fetch('?format=json&p=' + page)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.html) {
+                    var tmp = document.createElement('div');
+                    tmp.innerHTML = data.html;
+                    while (tmp.firstChild) grid.appendChild(tmp.firstChild);
+                }
+                sentinel.dataset.page     = page + 1;
+                sentinel.dataset.hasMore  = data.has_more ? '1' : '0';
+                sentinel.className        = data.has_more
+                    ? 'pg-feed-sentinel pg-feed-loading'
+                    : 'pg-feed-sentinel pg-feed-end';
+                loading = false;
+            })
+            .catch(function () {
+                loading = false;
+                sentinel.className = 'pg-feed-sentinel';
+            });
+    }
+
+    if ('IntersectionObserver' in window) {
+        var observer = new IntersectionObserver(function (entries) {
+            if (entries[0].isIntersecting) loadNext();
+        }, { rootMargin: '300px' });
+        observer.observe(sentinel);
+    } else {
+        // Fallback: load all at once for older browsers
+        loadNext();
+    }
+}());
+</script>
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

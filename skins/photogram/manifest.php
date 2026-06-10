@@ -54,19 +54,71 @@ return [
 
     'options' => [
 
+        // ── LAYOUT ───────────────────────────────────────────────────────
+        'pg_column_width' => [
+            'section' => 'LAYOUT',
+            'type'    => 'select',
+            'label'   => 'Desktop Width',
+            'default' => 'phone',
+            'options' => [
+                'phone'     => ['label' => 'Phone Column (480px)', 'css' => ':root { --pg-column-width: 480px; }'],
+                'wide'      => ['label' => 'Wide (900px)',         'css' => ':root { --pg-column-width: 900px; }'],
+                'fullwidth' => ['label' => 'Full Width',          'css' => ':root { --pg-column-width: 100%; }'],
+            ],
+            'selector' => ':root',
+            'property' => 'custom-pg-column-width',
+        ],
+        'pg_grid_gutter' => [
+            'section' => 'LAYOUT',
+            'type'    => 'select',
+            'label'   => 'Side Gutter',
+            'default' => 'none',
+            'options' => [
+                'none'   => ['label' => 'None (edge to edge)', 'css' => ':root { --pg-grid-gutter: 0px; }'],
+                'small'  => ['label' => 'Small (16px)',        'css' => ':root { --pg-grid-gutter: 16px; }'],
+                'medium' => ['label' => 'Medium (32px)',       'css' => ':root { --pg-grid-gutter: 32px; }'],
+                'large'  => ['label' => 'Large (64px)',        'css' => ':root { --pg-grid-gutter: 64px; }'],
+            ],
+            'selector' => ':root',
+            'property' => 'custom-pg-grid-gutter',
+        ],
+
         // ── GRID ─────────────────────────────────────────────────────────
         'pg_grid_gap' => [
             'section' => 'GRID',
             'type'    => 'select',
-            'label'   => 'Grid Gap',
+            'label'   => 'Tile Spacing',
             'default' => 'none',
             'options' => [
-                'none'     => ['label' => 'None (flush)',    'css' => ':root { --pg-grid-gap: 0px; }'],
-                'hairline' => ['label' => 'Hairline (1px)', 'css' => ':root { --pg-grid-gap: 1px; }'],
-                'small'    => ['label' => 'Small (2px)',    'css' => ':root { --pg-grid-gap: 2px; }'],
+                'none'     => ['label' => 'None',   'css' => ':root { --pg-grid-gap: 0px; }'],
+                'hairline' => ['label' => '1px',    'css' => ':root { --pg-grid-gap: 1px; }'],
+                'small'    => ['label' => '2px',    'css' => ':root { --pg-grid-gap: 2px; }'],
+                'medium'   => ['label' => '4px',    'css' => ':root { --pg-grid-gap: 4px; }'],
+                'large'    => ['label' => '8px',    'css' => ':root { --pg-grid-gap: 8px; }'],
             ],
             'selector' => ':root',
             'property' => 'custom-pg-grid-gap',
+        ],
+        'pg_tile_border_width' => [
+            'section' => 'GRID',
+            'type'    => 'select',
+            'label'   => 'Tile Border',
+            'default' => 'none',
+            'options' => [
+                'none'  => ['label' => 'None', 'css' => ':root { --pg-tile-border-width: 0px; }'],
+                'thin'  => ['label' => '1px',  'css' => ':root { --pg-tile-border-width: 1px; }'],
+                'thick' => ['label' => '2px',  'css' => ':root { --pg-tile-border-width: 2px; }'],
+            ],
+            'selector' => ':root',
+            'property' => 'custom-pg-tile-border-width',
+        ],
+        'pg_tile_border_color' => [
+            'section'  => 'GRID',
+            'type'     => 'color',
+            'label'    => 'Tile Border Colour',
+            'default'  => '#000000',
+            'selector' => ':root',
+            'property' => '--pg-tile-border-color',
         ],
 
         // ── PROFILE ───────────────────────────────────────────────────────
@@ -95,10 +147,18 @@ return [
         'pg_bg_color' => [
             'section'  => 'COLOURS',
             'type'     => 'color',
-            'label'    => 'Background',
+            'label'    => 'Column Background',
             'default'  => '#FFFFFF',
             'selector' => ':root',
             'property' => '--pg-bg',
+        ],
+        'pg_outer_bg_color' => [
+            'section'  => 'COLOURS',
+            'type'     => 'color',
+            'label'    => 'Page Background',
+            'default'  => '#EFEFEF',
+            'selector' => ':root',
+            'property' => '--pg-outer-bg',
         ],
 
         // ── COMMENTS ──────────────────────────────────────────────────────
