@@ -38,6 +38,14 @@
     --pg-outer-bg:        #EFEFEF;
     --pg-font:            -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 
+    /* Layout — controllable via admin */
+    --pg-column-width:      480px;   /* set to 100% for full-width, 900px for wide, etc. */
+    --pg-grid-gutter:       0px;     /* left/right padding on the grid container */
+
+    /* Tile decoration */
+    --pg-tile-border-width: 0px;
+    --pg-tile-border-color: #000000;
+
     /* Floating gallery wall */
     --wall-bg:            #000000;
 }
@@ -93,7 +101,7 @@ button {
    APP SHELL — THE PHONE COLUMN
    ═══════════════════════════════════════════════════════════════════════════ */
 #pg-app {
-    max-width: 480px;
+    max-width: var(--pg-column-width, 480px);
     min-height: 100vh;
     margin: 0 auto;
     background: var(--pg-bg);
@@ -174,7 +182,7 @@ button {
     left: 50%;
     transform: translateX(-50%);
     width: 100%;
-    max-width: 480px;
+    max-width: var(--pg-column-width, 480px);
     height: var(--pg-nav-height);
     background: var(--pg-bg);
     border-top: 1px solid var(--pg-border);
@@ -350,7 +358,7 @@ button {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--pg-grid-gap, 0px);
-    /* No padding — grid runs edge to edge within the app column */
+    padding: 0 var(--pg-grid-gutter, 0px);
 }
 
 .pg-grid-cell {
@@ -366,37 +374,23 @@ button {
     height: 100%;
     object-fit: cover;
     display: block;
-    transition: transform 0.2s ease;
 }
 
-.pg-grid-cell:hover img {
-    transform: scale(1.03);
-}
-
-/* Grid cell stat overlay — likes and comments in bottom-left */
-.pg-grid-overlay {
+/* Hover darken + tile border — single ::after handles both */
+.pg-grid-cell::after {
+    content: '';
     position: absolute;
-    bottom: 5px;
-    left: 6px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    inset: 0;
+    /* Tile border: inset box-shadow doesn't affect layout */
+    box-shadow: inset 0 0 0 var(--pg-tile-border-width, 0px) var(--pg-tile-border-color, transparent);
+    background: transparent;
+    transition: background 0.18s ease;
     pointer-events: none;
+    z-index: 1;
 }
-.pg-grid-stat {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    color: #fff;
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 1;
-    text-shadow: 0 1px 3px rgba(0,0,0,.7);
-}
-.pg-grid-stat svg {
-    display: block;
-    flex-shrink: 0;
-    filter: drop-shadow(0 1px 2px rgba(0,0,0,.6));
+
+.pg-grid-cell:hover::after {
+    background: rgba(0, 0, 0, 0.25);
 }
 
 /* Carousel badge (Phase 2 — shown when post has >1 image) */
@@ -699,7 +693,7 @@ button {
     left: 50%;
     transform: translateX(-50%) translateY(100%);
     width: 100%;
-    max-width: 480px;
+    max-width: var(--pg-column-width, 480px);
     height: 85vh;
     background: var(--pg-surface);
     border-radius: var(--pg-sheet-radius, 16px) var(--pg-sheet-radius, 16px) 0 0;
