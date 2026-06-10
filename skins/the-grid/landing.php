@@ -130,7 +130,7 @@ include __DIR__ . '/skin-header.php';
 <section class="tg-profile">
     <div class="tg-profile-avatar">
         <?php
-        $avatar_path = $settings['profile_avatar'] ?? '';
+        $avatar_path = $settings['tg_avatar'] ?? '';
         if ($avatar_path && file_exists(__DIR__ . '/../../' . $avatar_path)):
         ?>
             <img src="<?php echo BASE_URL . htmlspecialchars($avatar_path); ?>" alt="Profile avatar">
@@ -191,7 +191,7 @@ include __DIR__ . '/skin-header.php';
             endif;
 
             $thumb_src   = $post['img_thumb_square'] ?: $post['img_file'];
-            $post_url    = BASE_URL . '?id=' . (int)$post['img_id'];
+            $post_url    = BASE_URL . '?s=' . urlencode($post['img_slug']);
             $image_count = (int)$post['image_count'];
             $is_carousel = $image_count > 1;
             $title_safe  = htmlspecialchars($post['title']);
@@ -240,7 +240,7 @@ include __DIR__ . '/skin-header.php';
                 </div>
             <?php endif; ?>
 
-            <?php if ($hover_overlay !== 'none'): ?>
+            <?php if ($hover_overlay === 'title' || $hover_overlay === 'count'): ?>
                 <div class="tg-tile-overlay" aria-hidden="true">
                     <span class="tg-tile-overlay-text">
                         <?php if ($hover_overlay === 'title'): ?>
@@ -250,6 +250,8 @@ include __DIR__ . '/skin-header.php';
                         <?php endif; ?>
                     </span>
                 </div>
+            <?php elseif ($hover_overlay === 'dark'): ?>
+                <div class="tg-tile-overlay tg-tile-overlay--dark" aria-hidden="true"></div>
             <?php endif; ?>
         </div>
         <?php

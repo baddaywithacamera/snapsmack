@@ -12,6 +12,23 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.232 — "Fanny Pack" (2026-06-10)
+
+### The Grid skin — full overhaul
+
+- **Full-width grid** — tiles now fill the viewport. The profile header and topbar respect a new "Side Gutter" setting (`tg_gutter`, 0–120 px range) instead of the old fixed 3-choice max-width. Default is 0 (edge-to-edge, Pixelfed-style).
+- **Avatar upload** — skin admin now has a `tg_avatar` image-upload option under PROFILE HEADER. Uploads saved to `uploads/skin-avatars/`. Falls back to site-name initials if not set.
+- **Hover = darken only** — new "Darken only" option added to Hover Overlay setting; made the new default. Title/count/none options retained.
+- **Click bug fixed** — tile links were using `?id={img_id}` which index.php never routed. Fixed to `?s={img_slug}` in `landing.php`, `archive-layout.php`, and `hashtag.php`.
+- **Infinite scroll on hashtag pages** — the "Load more" button replaced with an IntersectionObserver sentinel. Tiles are fetched and appended as the user scrolls.
+- **Archive cleanup** — dead pagination block removed from `archive-layout.php` (archive.php never set `$total_pages`).
+
+### Skin admin — type:'image' option support
+
+- `smack-skin.php` — new `image` option type for skin manifests. Renders a file input with current image preview. Uploaded files saved to `uploads/skin-avatars/{skin}--{key}.{ext}`. Form updated to `enctype="multipart/form-data"`. Any skin can declare `'type' => 'image'` in its manifest options going forward.
+
+---
+
 ## 0.7.231 — "Fanny Pack" (2026-06-10)
 
 ### Fix — Unzucker API: DB collision on retry of posts with zero timestamp
