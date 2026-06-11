@@ -102,14 +102,17 @@ img { display: block; max-width: 100%; }
 .tg-sticky-nav-inner {
     display: flex;
     align-items: center;
-    gap: 12px;
+    justify-content: center;
+    position: relative;
     padding: 0 var(--grid-gutter, 0px);
     height: 40px;
     overflow: hidden;
 }
 
-/* Mini avatar — hidden until profile scrolls off screen */
+/* Mini avatar — absolutely positioned left, hidden until profile scrolls off screen */
 .tg-sticky-avatar {
+    position: absolute;
+    left: 12px;
     width: 28px;
     height: 28px;
     border-radius: 50%;
@@ -122,6 +125,8 @@ img { display: block; max-width: 100%; }
 }
 
 .tg-sticky-avatar-initials {
+    position: absolute;
+    left: 12px;
     width: 28px;
     height: 28px;
     border-radius: 50%;
@@ -154,7 +159,6 @@ img { display: block; max-width: 100%; }
     list-style: none;
     margin: 0;
     padding: 0;
-    flex: 1;
 }
 
 .tg-sticky-nav-links a {
@@ -236,12 +240,35 @@ img { display: block; max-width: 100%; }
 
 .tg-profile-info { flex: 1; min-width: 0; }
 
+.tg-profile-nameline {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 10px;
+}
+
 .tg-profile-username {
     font-size:   var(--blog-title-size, 20px);
     font-weight: var(--blog-title-weight, 300);
     font-family: var(--blog-title-font, inherit);
-    margin: 0 0 10px;
+    margin: 0;
     color: var(--text-primary);
+}
+
+.tg-profile-tagline-sep {
+    font-size: var(--blog-title-size, 20px);
+    font-weight: 300;
+    color: var(--text-secondary);
+    line-height: 1;
+}
+
+.tg-profile-tagline {
+    font-size:   var(--tagline-size, 16px);
+    font-weight: var(--tagline-weight, 300);
+    font-family: var(--tagline-font, inherit);
+    color: var(--text-secondary);
+    margin: 0;
 }
 
 .tg-profile-stats {
@@ -267,12 +294,6 @@ img { display: block; max-width: 100%; }
     color: var(--text-secondary);
 }
 
-.tg-profile-bio {
-    font-size: 14px;
-    color: var(--text-primary);
-    margin: 0;
-    white-space: pre-line;
-}
 
 /* ==========================================================================
    3-COLUMN GRID
@@ -830,6 +851,8 @@ img { display: block; max-width: 100%; }
         height: 56px;
     }
     .tg-profile-username { font-size: 16px; }
+    .tg-profile-tagline-sep { font-size: 16px; }
+    .tg-profile-tagline { font-size: 14px; }
     .tg-profile-stats { gap: 16px; }
 }
 

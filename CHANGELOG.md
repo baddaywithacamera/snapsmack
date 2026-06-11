@@ -12,6 +12,20 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.247 — "Fanny Pack" (2026-06-11)
+
+### The Grid 1.3.6 — tagline inline with site name + typography controls
+
+- **`skins/the-grid/landing.php`** — tagline now renders inline with site name as `sitename / tagline` using `.tg-profile-nameline` flex row.
+- **`skins/the-grid/style.css`** — new `.tg-profile-nameline`, `.tg-profile-tagline-sep`, `.tg-profile-tagline` styles; tagline driven by `--tagline-font`, `--tagline-size`, `--tagline-weight` CSS vars; removed old `.tg-profile-bio`.
+- **`skins/the-grid/manifest.php`** — added `tg_tagline_font`, `tg_tagline_size`, `tg_tagline_weight` controls in PROFILE HEADER section.
+
+## 0.7.246 — "Fanny Pack" (2026-06-11)
+
+### The Grid 1.3.5 — nav links centered, avatar left
+
+- **`skins/the-grid/style.css`** — sticky nav inner container is now `justify-content: center; position: relative`; avatar absolutely positioned at `left: 12px` so it stays left while links are truly centered in the nav bar.
+
 ## 0.7.245 — "Fanny Pack" (2026-06-11)
 
 ### The Grid 1.3.4 — styled static pages (About, etc.)

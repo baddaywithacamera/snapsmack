@@ -272,10 +272,9 @@ $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
 
         </div><!-- .tg-post-ig-body -->
 
+        <?php include __DIR__ . '/skin-footer.php'; ?>
+
     </div><!-- .tg-post-ig-info -->
 
 </div><!-- .tg-post-ig -->
-
-
-<?php include __DIR__ . '/skin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
