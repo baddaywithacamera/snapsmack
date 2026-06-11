@@ -14,6 +14,13 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ## 0.7.239 — "Fanny Pack" (2026-06-11)
 
+### The Grid — remove trigram negative margins (1.2.7)
+
+- **`skins/the-grid/style.css`** — removed all special CSS from trigram tile classes (`.tg-tile--trigram-L/M/R`). Negative margins were collapsing the grid gap to fake a seamless panorama seam but caused tile overlap at any non-zero gap and mispositioned carousel indicators. `aspect-ratio: unset` on M was there solely to compensate for negative-margin width expansion — also removed. All trigram tiles are now plain square tiles inheriting `.tg-tile` styles exactly like every other tile in the grid. Tiles are always square, always.
+- **`skins/the-grid/manifest.php`** — bumped to v1.2.7
+
+## 0.7.239 — "Fanny Pack" (2026-06-11)
+
 ### The Grid — image page background color
 
 - **`skins/the-grid/manifest.php`** — bumped to v1.2.6; added `tg_post_bg_color` (color picker, COLOURS section, `--post-bg`, default `#000000`)
