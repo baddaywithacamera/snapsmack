@@ -12,11 +12,27 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.234 — "Fanny Pack" (2026-06-10)
+
+### Fix — Skin gallery blank (all skins filtered out)
+
+- `smack-skin.php` — `$is_carousel_site` was used in three places (lines ~1099, 1171, 1308) but never defined. PHP evaluates it as null, making `$skin_carousel !== null` true for every skin, filtering the entire gallery to nothing. Fixed all three occurrences to use the defined variable `$is_carousel`.
+
+### Fix — Release package size bloat (~700KB)
+
+- `smack-central/sc-release.php` — `skins/alfred/` was added in 0.7.226 but not added to `always_exclude`. Alfred ships bundled fonts (Droid Serif, Montserrat, Font Awesome woff/woff2) and a bg.jpg totalling ~700KB. Added `skins/alfred/` to `always_exclude`. Alfred is distributed via the Skin Packager like all other non-base skins.
+
+---
+
 ## 0.7.233 — "Fanny Pack" (2026-06-10)
 
 ### Fix — Chaplin: grain overlay darken bug
 
 - `skins/chaplin/manifest.php` — removed `selector`/`property` mapping from `chap_grain_intensity`. The manifest was causing `smack-skin.php` to emit `--chap-grain-opacity: <raw_int>` (e.g. `2`) in the dynamic CSS block, which ran after `skin-header.php`'s correct calculation of `raw/100`. The raw value overwrote the fraction, giving `opacity: 2` (browser-clamped to `1`), making the film-grain overlay fully opaque and darkening the entire archive page. `skin-header.php` already handles the `/100` conversion — the manifest must not emit this var independently.
+
+### Fix — SC Dashboard: ACTIVE INSTALLS over-counting
+
+- `smack-central/sc-dashboard.php` — both the primary query (behind `WHERE role = 'hub'`) and the fallback query were using `SUM(1 + spoke_count)` to compute the active installs count. This counted spokes as separate installs: one hub with 7 spokes counted as 8, giving 15 total instead of 8. Correct metric is the count of distinct hub rows. Both queries changed to `COUNT(*)`.
 
 ---
 
