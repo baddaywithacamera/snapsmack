@@ -749,6 +749,11 @@ return [
             'path'         => 'assets/js/ss-engine-carousel-view.js',
             'has_settings' => false,
         ],
+        'smack-grid-nav' => [
+            'label'        => 'Grid Sticky Nav (profile-aware sticky nav for The Grid)',
+            'path'         => 'skins/the-grid/assets/js/tg-nav.js',
+            'has_settings' => false,
+        ],
         'smack-calendar' => [
             'label'        => 'Archive Calendar Sidebar (Sliding date panel)',
             'path'         => 'assets/js/ss-engine-calendar.js',

@@ -116,7 +116,9 @@ $grid_stmt = $pdo->prepare("
     LEFT JOIN snap_trigrams tg ON tg.id = p.trigram_id
     WHERE p.status = 'published'
       AND p.created_at <= ?
-    ORDER BY p.sort_order ASC, p.created_at DESC
+    ORDER BY CASE WHEN p.sort_order > 0 THEN 0 ELSE 1 END ASC,
+             p.sort_order ASC,
+             p.created_at DESC
 ");
 $grid_stmt->execute([$now_local]);
 $grid_posts = $grid_stmt->fetchAll();
@@ -125,19 +127,22 @@ include dirname(__DIR__, 2) . '/core/meta.php';
 include __DIR__ . '/skin-header.php';
 ?>
 
+<?php
+// Avatar path resolved once — used in both profile header and sticky nav mini avatar
+$avatar_path     = $settings['tg_avatar'] ?? '';
+$avatar_exists   = $avatar_path && file_exists(__DIR__ . '/../../' . $avatar_path);
+$avatar_initials = strtoupper(substr($settings['site_name'] ?? 'S', 0, 1));
+?>
+<div class="tg-content-wrap">
+
 <?php if ($show_profile): ?>
 <!-- ── Profile Header ──────────────────────────────────────────────────── -->
 <section class="tg-profile">
     <div class="tg-profile-avatar">
-        <?php
-        $avatar_path = $settings['tg_avatar'] ?? '';
-        if ($avatar_path && file_exists(__DIR__ . '/../../' . $avatar_path)):
-        ?>
+        <?php if ($avatar_exists): ?>
             <img src="<?php echo BASE_URL . htmlspecialchars($avatar_path); ?>" alt="Profile avatar">
-        <?php else:
-            $initials = strtoupper(substr($settings['site_name'] ?? 'S', 0, 1));
-        ?>
-            <span class="tg-profile-avatar-initials"><?php echo htmlspecialchars($initials); ?></span>
+        <?php else: ?>
+            <span class="tg-profile-avatar-initials"><?php echo htmlspecialchars($avatar_initials); ?></span>
         <?php endif; ?>
     </div>
 
@@ -160,6 +165,27 @@ include __DIR__ . '/skin-header.php';
     </div>
 </section>
 <?php endif; ?>
+
+<!-- ── Sticky Nav ──────────────────────────────────────────────────────── -->
+<!-- JS (tg-nav.js) adds .profile-hidden when profile scrolls off screen   -->
+<nav class="tg-sticky-nav" aria-label="Site navigation">
+    <div class="tg-sticky-nav-inner">
+        <!-- Mini avatar: visible only when profile has scrolled off screen -->
+        <?php if ($avatar_exists): ?>
+            <img class="tg-sticky-avatar"
+                 src="<?php echo BASE_URL . htmlspecialchars($avatar_path); ?>"
+                 alt="<?php echo htmlspecialchars($settings['site_name'] ?? ''); ?>"
+                 aria-hidden="true">
+        <?php else: ?>
+            <span class="tg-sticky-avatar-initials" aria-hidden="true"><?php echo htmlspecialchars($avatar_initials); ?></span>
+        <?php endif; ?>
+
+        <!-- Nav links — extend here when menu link system is built -->
+        <ul class="tg-sticky-nav-links">
+            <li><a href="<?php echo BASE_URL; ?>" class="<?php echo (!isset($_GET['s']) && !isset($_GET['page'])) ? 'active' : ''; ?>">Home</a></li>
+        </ul>
+    </div>
+</nav>
 
 <!-- ── 3-Column Grid ───────────────────────────────────────────────────── -->
 <main>
@@ -265,6 +291,8 @@ include __DIR__ . '/skin-header.php';
         <?php endif; ?>
     </div>
 </main>
+
+</div><!-- /.tg-content-wrap -->
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

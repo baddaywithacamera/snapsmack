@@ -12,6 +12,21 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.237 — "Fanny Pack" (2026-06-10)
+
+### The Grid 1.3.0 — full layout redesign
+
+- **`smack-skin.php`** — new `range_numeric` setting type: slider + synced numeric input, emits correct `px`-suffixed CSS custom property values
+- **`skins/the-grid/`** — The Grid 1.3.0:
+  - 935px default max-width constrained layout (`.tg-content-wrap`), admin-configurable via slider
+  - Sticky nav bar between profile and grid — `position: sticky; top: 0` with mini avatar that appears on scroll (JS: `tg-nav.js`, IntersectionObserver on profile section)
+  - Feed ORDER BY fixed: `CASE WHEN sort_order > 0 THEN 0 ELSE 1 END ASC, sort_order ASC, created_at DESC` — pure chronological when sort_order is unset (0)
+  - Font stack updated: removed `-apple-system`, `BlinkMacSystemFont`; uses `'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif`
+  - `tg_gap` and `tg_gutter` settings migrated from select/range to `range_numeric` (slider + numeric input); `tg_gap` now emits correct `2px` (was unitless, gap property was broken)
+  - New `tg_max_width` setting (600–1600px, default 935px)
+- **`skins/the-grid/assets/js/tg-nav.js`** — new sticky nav script (registered via `smack-grid-nav` in manifest-inventory.php)
+- **`core/manifest-inventory.php`** — registered `smack-grid-nav`
+
 ## 0.7.236 — "Fanny Pack" (2026-06-11)
 
 ### Fix — SC "Running" version permanently stuck at 0.7.217D
