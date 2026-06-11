@@ -167,6 +167,7 @@ img { display: block; max-width: 100%; }
     color: var(--text-secondary);
     text-decoration: none;
     letter-spacing: 0.2px;
+    text-transform: var(--nav-text-transform, none);
     transition: color 0.15s;
 }
 
@@ -267,7 +268,7 @@ img { display: block; max-width: 100%; }
     font-size:   var(--tagline-size, 16px);
     font-weight: var(--tagline-weight, 300);
     font-family: var(--tagline-font, inherit);
-    color: var(--text-secondary);
+    color: var(--tagline-color, var(--text-secondary));
     margin: 0;
 }
 

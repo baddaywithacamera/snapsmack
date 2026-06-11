@@ -220,6 +220,28 @@ return [
             'selector' => ':root',
             'property' => '--tagline-weight',
         ],
+        'tg_tagline_color' => [
+            'section'  => 'PROFILE HEADER',
+            'type'     => 'color',
+            'label'    => 'Tagline Colour',
+            'default'  => '#8e8e8e',
+            'selector' => ':root',
+            'property' => '--tagline-color',
+        ],
+        'tg_nav_case' => [
+            'section'  => 'PROFILE HEADER',
+            'type'     => 'select',
+            'label'    => 'Nav Link Case',
+            'default'  => 'none',
+            'options'  => [
+                'none'       => 'As typed',
+                'uppercase'  => 'ALL CAPS',
+                'capitalize' => 'First Letter',
+                'lowercase'  => 'all lowercase',
+            ],
+            'selector' => ':root',
+            'property' => '--nav-text-transform',
+        ],
 
         // ---- COLOURS -------------------------------------------------------
         'tg_post_bg_color' => [
