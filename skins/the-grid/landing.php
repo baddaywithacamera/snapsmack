@@ -20,6 +20,14 @@
 
 $now_local = date('Y-m-d H:i:s');
 
+// ── Static pages for nav ───────────────────────────────────────────────────
+try {
+    $nav_pages_stmt = $pdo->query("SELECT title, slug FROM snap_pages WHERE is_active = 1 ORDER BY menu_order ASC");
+    $nav_pages = $nav_pages_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $nav_pages = [];
+}
+
 // Read skin settings
 $show_profile    = ($settings['tg_profile_header']     ?? '1') === '1';
 $show_tagline    = ($settings['tg_show_tagline']       ?? '1') === '1';
@@ -181,9 +189,14 @@ $avatar_initials = strtoupper(substr($settings['site_name'] ?? 'S', 0, 1));
             <span class="tg-sticky-avatar-initials" aria-hidden="true"><?php echo htmlspecialchars($avatar_initials); ?></span>
         <?php endif; ?>
 
-        <!-- Nav links — extend here when menu link system is built -->
         <ul class="tg-sticky-nav-links">
             <li><a href="<?php echo BASE_URL; ?>" class="<?php echo (!isset($_GET['s']) && !isset($_GET['page'])) ? 'active' : ''; ?>">Home</a></li>
+            <?php if (($settings['blogroll_enabled'] ?? '1') == '1'): ?>
+            <li><a href="<?php echo BASE_URL; ?>blogroll.php">Blogroll</a></li>
+            <?php endif; ?>
+            <?php foreach ($nav_pages as $nav_page): ?>
+            <li><a href="<?php echo BASE_URL . 'page.php?slug=' . htmlspecialchars($nav_page['slug']); ?>"><?php echo htmlspecialchars($nav_page['title']); ?></a></li>
+            <?php endforeach; ?>
         </ul>
     </div>
 </nav>

@@ -24,7 +24,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'The Grid',
-    'version'     => '1.3.0',
+    'version'     => '1.3.3',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Classic Instagram-style 3-column square-thumbnail photo grid. Carousel and panorama post support. Clean, minimal UI keeps the focus on the photographs.',
@@ -138,13 +138,15 @@ return [
             'hint'    => 'Square image recommended. Displayed as a circle, ~77px.',
         ],
         'tg_blog_title_font' => [
-            'section'  => 'PROFILE HEADER',
-            'type'     => 'select',
-            'label'    => 'Blog Title Font',
-            'default'  => 'inherit',
-            'options'  => array_merge(['inherit' => 'Same as Body Font'], $fonts),
-            'selector' => ':root',
-            'property' => '--blog-title-font',
+            'section'       => 'PROFILE HEADER',
+            'type'          => 'select',
+            'label'         => 'Blog Title Font',
+            'default'       => 'inherit',
+            'options'       => array_merge(['inherit' => 'Same as Body Font'], $fonts),
+            'selector'      => ':root',
+            'property'      => '--blog-title-font',
+            'is_font'       => true,   // enables preview block + per-option font-family style
+            'no_size_slider'=> true,   // suppress built-in size slider; tg_blog_title_size handles it
         ],
         'tg_blog_title_size' => [
             'section'  => 'PROFILE HEADER',
