@@ -22,6 +22,7 @@ $now_local = date('Y-m-d H:i:s');
 
 // Read skin settings
 $show_profile    = ($settings['tg_profile_header']     ?? '1') === '1';
+$show_tagline    = ($settings['tg_show_tagline']       ?? '1') === '1';
 $carousel_ind    = $settings['tg_carousel_indicator']  ?? 'icon';
 $hover_overlay   = $settings['tg_hover_overlay']       ?? 'title';
 $customize_level = $settings['tg_customize_level']     ?? 'per_grid';
@@ -158,7 +159,7 @@ $avatar_initials = strtoupper(substr($settings['site_name'] ?? 'S', 0, 1));
 
         <?php
         $bio = trim($settings['site_description'] ?? '');
-        if ($bio):
+        if ($show_tagline && $bio):
         ?>
             <p class="tg-profile-bio"><?php echo nl2br(htmlspecialchars($bio)); ?></p>
         <?php endif; ?>

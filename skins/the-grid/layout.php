@@ -131,132 +131,150 @@ include dirname(__DIR__, 2) . '/core/meta.php';
 include __DIR__ . '/skin-header.php';
 ?>
 
-<div class="tg-post-wrap">
+<?php
+// ── Right panel: avatar + site name ───────────────────────────────────────
+$_avatar_path    = $settings['tg_avatar'] ?? '';
+$_avatar_exists  = $_avatar_path && file_exists(dirname(__DIR__, 2) . '/' . $_avatar_path);
+$_site_name      = $settings['site_name'] ?? 'SnapSmack';
+$_avatar_initial = strtoupper(substr($_site_name, 0, 1));
+?>
+<div class="tg-post-ig">
 
-    <!-- ── Post Header ─────────────────────────────────────────────────── -->
-    <div class="tg-post-header">
-        <button class="tg-back-btn" onclick="history.back()" aria-label="Back to grid">&#8592;</button>
-        <h1 class="tg-post-title-text"><?php echo htmlspecialchars($post['title']); ?></h1>
-    </div>
+    <!-- ── LEFT: image panel (never scrolls) ───────────────────────────── -->
+    <div class="tg-post-ig-image">
 
-    <?php if ($is_carousel): ?>
-    <!-- ── Carousel (multi-image post) ────────────────────────────────── -->
-    <div class="tg-carousel-wrap">
-        <div id="tg-carousel"
-             class="ss-slider"
-             data-slider-mode="carousel"
-             data-exif-map="<?php echo htmlspecialchars(json_encode($exif_map)); ?>">
-            <div class="slider-track">
-                <?php foreach ($post_images as $pimg):
-                    $frame = $tg_resolve_frame($pimg);
-                    if ($frame['is_framed']):
-                        $slide_vars = sprintf(
-                            '--slide-bg:%s; --slide-img-size:%d%%; --slide-border-w:%dpx; --slide-border-c:%s; --slide-shadow:%s;',
-                            htmlspecialchars($frame['bg_color']),
-                            $frame['size_pct'],
-                            $frame['border_px'],
-                            htmlspecialchars($frame['border_color']),
-                            htmlspecialchars($frame['shadow_css'])
-                        );
-                        $slide_class = 'slider-slide tg-slide--framed';
-                        $img_style   = 'max-height:calc(80vh - ' . ($frame['border_px'] * 2 + 20) . 'px); object-fit:contain;';
-                    else:
-                        $slide_vars  = '';
-                        $slide_class = 'slider-slide';
-                        $img_style   = 'width:100%; max-height:80vh; object-fit:contain; background:var(--post-bg,#000);';
-                    endif;
-                ?>
-                <div class="<?php echo $slide_class; ?>"
-                     data-image-id="<?php echo $pimg['id']; ?>"
-                     <?php if ($slide_vars): ?>style="<?php echo $slide_vars; ?>"<?php endif; ?>>
-                    <img src="<?php echo htmlspecialchars($pimg['img_file']); ?>"
-                         alt="<?php echo htmlspecialchars($pimg['img_title']); ?>"
-                         style="<?php echo $img_style; ?>"
-                         loading="lazy">
+        <?php if ($is_carousel): ?>
+        <!-- Carousel -->
+        <div class="tg-carousel-wrap">
+            <div id="tg-carousel"
+                 class="ss-slider"
+                 data-slider-mode="carousel"
+                 data-exif-map="<?php echo htmlspecialchars(json_encode($exif_map)); ?>">
+                <div class="slider-track">
+                    <?php foreach ($post_images as $pimg):
+                        $frame = $tg_resolve_frame($pimg);
+                        if ($frame['is_framed']):
+                            $slide_vars = sprintf(
+                                '--slide-bg:%s; --slide-img-size:%d%%; --slide-border-w:%dpx; --slide-border-c:%s; --slide-shadow:%s;',
+                                htmlspecialchars($frame['bg_color']),
+                                $frame['size_pct'],
+                                $frame['border_px'],
+                                htmlspecialchars($frame['border_color']),
+                                htmlspecialchars($frame['shadow_css'])
+                            );
+                            $slide_class = 'slider-slide tg-slide--framed';
+                            $img_style   = '';
+                        else:
+                            $slide_vars  = '';
+                            $slide_class = 'slider-slide';
+                            $img_style   = '';
+                        endif;
+                    ?>
+                    <div class="<?php echo $slide_class; ?>"
+                         data-image-id="<?php echo $pimg['id']; ?>"
+                         <?php if ($slide_vars): ?>style="<?php echo $slide_vars; ?>"<?php endif; ?>>
+                        <img src="<?php echo htmlspecialchars($pimg['img_file']); ?>"
+                             alt="<?php echo htmlspecialchars($pimg['img_title']); ?>"
+                             <?php if ($img_style): ?>style="<?php echo $img_style; ?>"<?php endif; ?>
+                             loading="lazy">
+                    </div>
+                    <?php endforeach; ?>
                 </div>
-                <?php endforeach; ?>
             </div>
+            <!-- Dots injected here by SnapSlider -->
         </div>
-        <!-- Dots injected here by SnapSlider -->
-    </div>
 
-    <?php else:
-        $frame = $tg_resolve_frame($cover_img);
-        $single_wrap_bg = $frame['is_framed']
-            ? 'background:' . htmlspecialchars($frame['bg_color']) . '; text-align:center; padding:20px;'
-            : 'background:var(--post-bg,#000); text-align:center;';
-        $single_img_style = $frame['is_framed'] ? sprintf(
-            'max-width:%d%%; max-height:80vh; object-fit:contain; border:%dpx solid %s; box-shadow:%s; box-sizing:border-box;',
-            $frame['size_pct'], $frame['border_px'],
-            htmlspecialchars($frame['border_color']), htmlspecialchars($frame['shadow_css'])
-        ) : '';
-    ?>
-    <!-- ── Single image ───────────────────────────────────────────────── -->
-    <div style="<?php echo $single_wrap_bg; ?>">
+        <?php else:
+            $frame = $tg_resolve_frame($cover_img);
+            $single_img_style = $frame['is_framed'] ? sprintf(
+                'max-width:%d%%; border:%dpx solid %s; box-shadow:%s; box-sizing:border-box;',
+                $frame['size_pct'], $frame['border_px'],
+                htmlspecialchars($frame['border_color']), htmlspecialchars($frame['shadow_css'])
+            ) : '';
+        ?>
+        <!-- Single image -->
         <img src="<?php echo htmlspecialchars($cover_img['img_file']); ?>"
              alt="<?php echo htmlspecialchars($cover_img['img_title']); ?>"
              class="tg-single-img"
              <?php if ($single_img_style): ?>style="<?php echo $single_img_style; ?>"<?php endif; ?>>
-    </div>
-    <?php endif; ?>
-
-    <!-- ── Post Body ───────────────────────────────────────────────────── -->
-    <div class="tg-post-body">
-
-        <?php if (!empty($post['description'])): ?>
-        <div class="tg-post-caption">
-            <?php
-            $caption_html = snap_render_caption_html($post['description'], BASE_URL, 'tg-hashtag');
-            if (function_exists('snapsmack_parse_shortcodes')) {
-                echo snapsmack_parse_shortcodes(nl2br($caption_html));
-            } else {
-                echo nl2br($caption_html);
-            }
-            ?>
-        </div>
         <?php endif; ?>
 
-        <!-- EXIF panel — updated by snapslider:slidechange in carousel mode -->
-        <div id="tg-exif-panel" class="tg-exif-panel">
-            <?php
-            $exif_fields = [
-                'camera'   => 'Camera',
-                'lens'     => 'Lens',
-                'focal'    => 'Focal',
-                'film'     => 'Film',
-                'iso'      => 'ISO',
-                'aperture' => 'Aperture',
-                'shutter'  => 'Shutter',
-                'flash'    => 'Flash',
-            ];
-            foreach ($exif_fields as $key => $label):
-                $val = trim($cover_exif[$key] ?? ($key === 'film' ? ($cover_img['img_film'] ?? '') : ''));
-                if (!$val) continue;
-            ?>
-            <div class="tg-exif-item" data-exif-key="<?php echo $key; ?>">
-                <span class="tg-exif-label"><?php echo $label; ?></span>
-                <span class="tg-exif-value"><?php echo htmlspecialchars($val); ?></span>
-            </div>
-            <?php endforeach; ?>
+    </div><!-- .tg-post-ig-image -->
+
+    <!-- ── RIGHT: info panel (scrollable) ──────────────────────────────── -->
+    <div class="tg-post-ig-info">
+
+        <!-- Fixed header -->
+        <div class="tg-post-ig-header">
+            <button class="tg-back-btn" onclick="history.back()" aria-label="Back to grid">&#8592;</button>
+            <?php if ($_avatar_exists): ?>
+                <img class="tg-post-ig-avatar"
+                     src="<?php echo BASE_URL . htmlspecialchars($_avatar_path); ?>"
+                     alt="">
+            <?php else: ?>
+                <span class="tg-post-ig-avatar tg-post-ig-avatar--initials"><?php echo htmlspecialchars($_avatar_initial); ?></span>
+            <?php endif; ?>
+            <span class="tg-post-ig-sitename"><?php echo htmlspecialchars($_site_name); ?></span>
         </div>
 
-        <p class="tg-post-date">
-            <?php echo date('F j, Y', strtotime($post['created_at'])); ?>
-        </p>
-    </div>
+        <!-- Scrollable body -->
+        <div class="tg-post-ig-body">
 
-    <!-- ── Community Component ─────────────────────────────────────────── -->
-    <?php if (!empty($post['allow_comments'])): ?>
-    <div class="tg-community-wrap">
-        <?php
-        // community-component.php expects $img to be in scope
-        $img = $cover_img;
-        include dirname(__DIR__, 2) . '/core/community-component.php';
-        ?>
-    </div>
-    <?php endif; ?>
+            <h2 class="tg-post-ig-title"><?php echo htmlspecialchars($post['title']); ?></h2>
 
-</div><!-- .tg-post-wrap -->
+            <?php if (!empty($post['description'])): ?>
+            <div class="tg-post-caption">
+                <?php
+                $caption_html = snap_render_caption_html($post['description'], BASE_URL, 'tg-hashtag');
+                if (function_exists('snapsmack_parse_shortcodes')) {
+                    echo snapsmack_parse_shortcodes(nl2br($caption_html));
+                } else {
+                    echo nl2br($caption_html);
+                }
+                ?>
+            </div>
+            <?php endif; ?>
+
+            <!-- EXIF panel — updated by snapslider:slidechange in carousel mode -->
+            <div id="tg-exif-panel" class="tg-exif-panel">
+                <?php
+                $exif_fields = [
+                    'camera'   => 'Camera',
+                    'lens'     => 'Lens',
+                    'focal'    => 'Focal',
+                    'film'     => 'Film',
+                    'iso'      => 'ISO',
+                    'aperture' => 'Aperture',
+                    'shutter'  => 'Shutter',
+                    'flash'    => 'Flash',
+                ];
+                foreach ($exif_fields as $key => $label):
+                    $val = trim($cover_exif[$key] ?? ($key === 'film' ? ($cover_img['img_film'] ?? '') : ''));
+                    if (!$val) continue;
+                ?>
+                <div class="tg-exif-item" data-exif-key="<?php echo $key; ?>">
+                    <span class="tg-exif-label"><?php echo $label; ?></span>
+                    <span class="tg-exif-value"><?php echo htmlspecialchars($val); ?></span>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <p class="tg-post-date"><?php echo date('F j, Y', strtotime($post['created_at'])); ?></p>
+
+            <?php if (!empty($post['allow_comments'])): ?>
+            <div class="tg-community-wrap">
+                <?php
+                $img = $cover_img;
+                include dirname(__DIR__, 2) . '/core/community-component.php';
+                ?>
+            </div>
+            <?php endif; ?>
+
+        </div><!-- .tg-post-ig-body -->
+
+    </div><!-- .tg-post-ig-info -->
+
+</div><!-- .tg-post-ig -->
 
 
 <?php include __DIR__ . '/skin-footer.php'; ?>

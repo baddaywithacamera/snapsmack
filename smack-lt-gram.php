@@ -194,6 +194,9 @@ include 'core/sidebar.php';
         <div class="ltg-toolbar">
             <span class="ltg-save-status" id="ltgSaveStatus"></span>
             <button class="btn btn--sm" id="ltgBulkPublishBtn" style="display:none;" onclick="ltgBulkPublish()">PUBLISH SELECTED</button>
+            <label class="ltg-col-label" title="Tile size">
+                🔍 <input type="range" id="ltgZoomSlider" min="240" max="900" value="900" step="30">
+            </label>
             <a href="smack-post-gram.php" class="btn btn--sm">+ NEW POST</a>
         </div>
     </div>
@@ -288,7 +291,7 @@ include 'core/sidebar.php';
     <?php endif; ?>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
 <script>
 (function () {
     const grid     = document.getElementById('ltgGrid');
@@ -296,66 +299,56 @@ include 'core/sidebar.php';
     const bulkBtn  = document.getElementById('ltgBulkPublishBtn');
     if (!grid) return;
 
-    const SEL_CLASS = 'ltg-tile--group-moving';
+    // ── Zoom slider (shrinks grid width, keeps 3 cols) ─────────────────────
+    const zoomSlider = document.getElementById('ltgZoomSlider');
+    function applyZoom(w) {
+        grid.style.setProperty('--ltg-grid-width', w + 'px');
+    }
+    const savedZoom = parseInt(localStorage.getItem('ltg_zoom')) || 900;
+    zoomSlider.value = savedZoom;
+    applyZoom(savedZoom);
+    zoomSlider.addEventListener('input', function () {
+        const w = parseInt(this.value);
+        applyZoom(w);
+        localStorage.setItem('ltg_zoom', w);
+    });
 
-    // ── Sortable init with MultiDrag ───────────────────────────────────────
-    Sortable.mount(new MultiDrag());
-
+    // ── Sortable (core only — no MultiDrag plugin) ─────────────────────────
+    // Drag one tile; onEnd snaps its trigram siblings into position beside it.
     Sortable.create(grid, {
-        animation:     150,
-        multiDrag:     true,
-        multiDragKey:  null,       // no modifier key needed
-        selectedClass: SEL_CLASS,
-        ghostClass:    'ltg-tile--ghost',
-        chosenClass:   'ltg-tile--chosen',
-        dragClass:     'ltg-tile--drag',
-
-        // When a tile is grabbed, auto-select its trigram siblings so all
-        // three tiles physically drag together as one unit.
-        onChoose: function (evt) {
-            // Clear any stale selections first.
-            grid.querySelectorAll('.' + SEL_CLASS).forEach(t => Sortable.utils.deselect(t));
-
-            const tgId = evt.item.dataset.trigramId;
-            if (!tgId || tgId === '0') return;
-
-            // Select siblings in slot order so they land in the right order.
-            [...grid.querySelectorAll(`.ltg-tile[data-trigram-id="${tgId}"]`)]
-                .sort((a, b) => parseInt(a.dataset.trigramSlot) - parseInt(b.dataset.trigramSlot))
-                .forEach(t => { if (t !== evt.item) Sortable.utils.select(t); });
-        },
-
-        onUnchoose: function () {
-            grid.querySelectorAll('.' + SEL_CLASS).forEach(t => Sortable.utils.deselect(t));
-        },
+        animation:       150,
+        ghostClass:      'ltg-tile--ghost',
+        chosenClass:     'ltg-tile--chosen',
+        dragClass:       'ltg-tile--drag',
+        filter:          '.ltg-select-cb, .ltg-btn-publish',
+        preventOnFilter: false,
 
         onEnd: function (evt) {
-            // MultiDrag has already placed all three tiles together.
-            // Ensure they landed in slot order, then save.
-            const movedItems = (evt.items && evt.items.length) ? evt.items : [evt.item];
+            const tile = evt.item;
+            const tgId = tile.dataset.trigramId;
 
-            movedItems.forEach(tile => {
-                const tgId = tile.dataset.trigramId;
-                if (!tgId || tgId === '0') return;
+            if (tgId && tgId !== '0') {
+                // Pull the other two trigram tiles out of the DOM, then
+                // reinsert all three in slot order around the dropped tile.
+                const bySlot = [...grid.querySelectorAll(`.ltg-tile[data-trigram-id="${tgId}"]`)]
+                    .sort((a, b) => parseInt(a.dataset.trigramSlot) - parseInt(b.dataset.trigramSlot));
 
-                const group = [...grid.querySelectorAll(`.ltg-tile[data-trigram-id="${tgId}"]`)];
-                if (group.length !== 3) return;
+                if (bySlot.length === 3) {
+                    const [s1, s2, s3] = bySlot;
+                    // Remove siblings (not the dragged tile — Sortable already placed it)
+                    bySlot.forEach(t => { if (t !== tile) t.remove(); });
 
-                const allTiles = [...grid.children];
-                group.sort((a, b) => allTiles.indexOf(a) - allTiles.indexOf(b));
-                const bySlot  = [...group].sort((a, b) =>
-                    parseInt(a.dataset.trigramSlot) - parseInt(b.dataset.trigramSlot)
-                );
-
-                // Reinsert in slot order if DOM order doesn't match.
-                if (group.some((t, i) => t !== bySlot[i])) {
-                    group[0].before(bySlot[0]);
-                    bySlot[0].after(bySlot[1]);
-                    bySlot[1].after(bySlot[2]);
+                    // Reinsert in slot order relative to the dropped tile
+                    if (tile === s1) {
+                        tile.after(s2);  s2.after(s3);
+                    } else if (tile === s2) {
+                        tile.before(s1); tile.after(s3);
+                    } else {
+                        tile.before(s2); s2.before(s1);
+                    }
                 }
-            });
+            }
 
-            grid.querySelectorAll('.' + SEL_CLASS).forEach(t => Sortable.utils.deselect(t));
             saveOrder();
             checkTrigramAlignment();
         }
@@ -543,7 +536,7 @@ include 'core/sidebar.php';
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 3px;
-    max-width: 900px;
+    max-width: var(--ltg-grid-width, 900px);
     margin: 16px auto;
     padding: 0 16px;
 }
@@ -588,7 +581,6 @@ include 'core/sidebar.php';
 .ltg-tile--warn           { outline: 2px solid #e05a5a !important; outline-offset: -2px; }
 .ltg-tile--ghost          { opacity: 0.35; }
 .ltg-tile--chosen         { outline: 2px solid var(--accent, #c8a96e); }
-.ltg-tile--group-moving   { outline: 2px dashed #fff; outline-offset: -2px; opacity: 0.7; }
 
 /* ── Badges ────────────────────────────────────────────────────────────── */
 .ltg-badge {
@@ -669,6 +661,22 @@ include 'core/sidebar.php';
     margin-left: auto;
 }
 .ltg-select-cb { width: 14px; height: 14px; cursor: pointer; accent-color: var(--accent, #c8a96e); }
+
+/* ── Column slider ─────────────────────────────────────────────────────── */
+.ltg-col-label {
+    display:     flex;
+    align-items: center;
+    gap:         5px;
+    font-size:   0.75rem;
+    color:       var(--text-secondary);
+    cursor:      default;
+    white-space: nowrap;
+}
+.ltg-col-label input[type=range] {
+    width:  70px;
+    cursor: pointer;
+    accent-color: var(--accent, #c8a96e);
+}
 
 /* ── Toolbar + count badges ────────────────────────────────────────────── */
 .ltg-toolbar {

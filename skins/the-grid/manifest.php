@@ -24,7 +24,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'The Grid',
-    'version'     => '1.2.7',
+    'version'     => '1.3.0',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Classic Instagram-style 3-column square-thumbnail photo grid. Carousel and panorama post support. Clean, minimal UI keeps the focus on the photographs.',
@@ -136,6 +136,49 @@ return [
             'default' => '',
             'accept'  => 'image/jpeg,image/png,image/webp,image/gif',
             'hint'    => 'Square image recommended. Displayed as a circle, ~77px.',
+        ],
+        'tg_blog_title_font' => [
+            'section'  => 'PROFILE HEADER',
+            'type'     => 'select',
+            'label'    => 'Blog Title Font',
+            'default'  => 'inherit',
+            'options'  => array_merge(['inherit' => 'Same as Body Font'], $fonts),
+            'selector' => ':root',
+            'property' => '--blog-title-font',
+        ],
+        'tg_blog_title_size' => [
+            'section'  => 'PROFILE HEADER',
+            'type'     => 'range_numeric',
+            'label'    => 'Blog Title Size',
+            'default'  => '20',
+            'min'      => '12',
+            'max'      => '48',
+            'step'     => '1',
+            'unit'     => 'px',
+            'selector' => ':root',
+            'property' => '--blog-title-size',
+        ],
+        'tg_blog_title_weight' => [
+            'section'  => 'PROFILE HEADER',
+            'type'     => 'select',
+            'label'    => 'Blog Title Weight',
+            'default'  => '300',
+            'options'  => [
+                '300' => 'Light',
+                '400' => 'Regular',
+                '500' => 'Medium',
+                '600' => 'Semibold',
+                '700' => 'Bold',
+            ],
+            'selector' => ':root',
+            'property' => '--blog-title-weight',
+        ],
+        'tg_show_tagline' => [
+            'section'  => 'PROFILE HEADER',
+            'type'     => 'select',
+            'label'    => 'Show Tagline (Site Description)',
+            'default'  => '1',
+            'options'  => ['1' => 'Show', '0' => 'Hide'],
         ],
 
         // ---- COLOURS -------------------------------------------------------
