@@ -12,6 +12,15 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.238 — "Fanny Pack" (2026-06-10)
+
+### The Grid — UI cleanup (unzucked.ca)
+
+- **`skins/the-grid/style.css`** — `.tg-tile--trigram-M`: added `aspect-ratio: unset` to fix middle trigram tile extending below L/R tiles (negative margins widened content box, causing `aspect-ratio: 1/1` to make M 4px taller than siblings); added `#system-footer` overrides: centered, max-width constrained, better slot spacing
+- **`skins/the-grid/skin-header.php`** — removed `<header class="tg-topbar">` site-name bar (redundant given profile header and sticky nav)
+- **`skins/the-grid/skin-footer.php`** — removed duplicate `<footer class="tg-footer">` copyright block (copyright is already in `core/footer.php` slot 1)
+- **`core/footer.php`** — removed HELP link from footer slot 5b (F1 keyboard shortcut still works via `ss-engine-public-help.js`; the footer link was noise on a public photo grid)
+
 ## 0.7.237 — "Fanny Pack" (2026-06-10)
 
 ### The Grid 1.3.0 — full layout redesign

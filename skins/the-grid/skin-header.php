@@ -18,12 +18,4 @@
  */
 
 
-?>
-<header class="tg-topbar">
-    <div class="tg-topbar-inner">
-        <a href="<?php echo BASE_URL; ?>" class="tg-site-name">
-            <?php echo htmlspecialchars($settings['site_name'] ?? 'SnapSmack'); ?>
-        </a>
-    </div>
-</header>
-<?php // ===== SNAPSMACK EOF =====
+// ===== SNAPSMACK EOF =====
