@@ -31,12 +31,13 @@
     --text-secondary:    #8e8e8e;
     --accent-color:      #0095f6;
     --border-color:      #dbdbdb;
-    --font-body:         -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --font-body:         'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
     --grid-gap:          2px;
     --grid-bg:           #ffffff;
     --tile-radius:       0px;
-    --grid-gutter:       0px;   /* side padding for profile/nav; grid itself always fills viewport */
+    --grid-gutter:       0px;
+    --grid-max-width:    935px;
 
     /* Carousel dot colours — inherit site accent */
     --carousel-dot-color:        rgba(38, 38, 38, 0.2);
@@ -72,12 +73,106 @@ img { display: block; max-width: 100%; }
    LAYOUT SHELL
    ========================================================================== */
 
+/* Max-width content column — wraps profile, sticky nav, and grid on landing page */
+.tg-content-wrap {
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
+}
+
 /* General constrained wrapper — profile header, topbar, post view, archive */
 .tg-wrap {
     padding: 0 var(--grid-gutter);
 }
 
-/* Top nav bar */
+/* ==========================================================================
+   STICKY NAV
+   Sits between profile header and grid. Sticks to top when profile scrolls off.
+   JS (tg-nav.js) adds .profile-hidden class to reveal the mini avatar.
+   ========================================================================== */
+
+.tg-sticky-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.tg-sticky-nav-inner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 var(--grid-gutter, 0px);
+    height: 40px;
+    overflow: hidden;
+}
+
+/* Mini avatar — hidden until profile scrolls off screen */
+.tg-sticky-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+}
+
+.tg-sticky-avatar-initials {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+}
+
+.tg-sticky-nav.profile-hidden .tg-sticky-avatar,
+.tg-sticky-nav.profile-hidden .tg-sticky-avatar-initials {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+/* Nav links */
+.tg-sticky-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex: 1;
+}
+
+.tg-sticky-nav-links a {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-decoration: none;
+    letter-spacing: 0.2px;
+    transition: color 0.15s;
+}
+
+.tg-sticky-nav-links a:hover,
+.tg-sticky-nav-links a.active {
+    color: var(--text-primary);
+    opacity: 1;
+}
+
+/* Top nav bar (existing) */
 .tg-topbar {
     position: sticky;
     top: 0;
@@ -182,8 +277,8 @@ img { display: block; max-width: 100%; }
    3-COLUMN GRID
    ========================================================================== */
 
-/* Grid fills the full viewport — no max-width, no side margin.
-   Side gutter is for the profile/nav only, not the image tiles. */
+/* 3-column grid — constrained by .tg-content-wrap max-width.
+   Width is 100% of the content column (not full viewport). */
 .tg-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

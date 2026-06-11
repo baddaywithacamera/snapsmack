@@ -290,7 +290,7 @@ if (isset($_POST['save_skin_settings'])) {
                 $sz_val = ($all_settings[$sz_key] ?? '') !== '' ? $all_settings[$sz_key] : ($meta['size']['default'] ?? '1.0');
                 $generated_public .= "{$meta['selector']} { font-size: {$sz_val}rem; }\n";
             }
-        } elseif ($meta['type'] === 'range' || $meta['type'] === 'number') {
+        } elseif ($meta['type'] === 'range' || $meta['type'] === 'number' || $meta['type'] === 'range_numeric') {
             // Use manifest unit if declared; default to px for standard CSS properties,
             // empty for CSS custom properties (unless manifest explicitly sets a unit).
             if (isset($meta['unit'])) {
@@ -848,6 +848,29 @@ if (!empty($google_families)) {
                                         value="<?php echo htmlspecialchars($val); ?>"
                                         oninput="this.nextElementSibling.innerText = this.value + '<?php echo $display_unit; ?>'">
                                     <span class="active-val"><?php echo strtoupper(htmlspecialchars($val)); ?><?php echo $display_unit; ?></span>
+                                </div>
+                            <?php elseif ($o['type'] === 'range_numeric'):
+                                $rn_unit      = $o['unit'] ?? 'px';
+                                $rn_slider_id = 'rns-' . $k;
+                                $rn_num_id    = 'rnn-' . $k;
+                                $rn_val       = (int)$val;
+                            ?>
+                                <div class="range-numeric-wrapper" style="display:flex;align-items:center;gap:8px;">
+                                    <input type="range" id="<?php echo $rn_slider_id; ?>"
+                                        min="<?php echo (int)$o['min']; ?>"
+                                        max="<?php echo (int)$o['max']; ?>"
+                                        step="<?php echo $o['step'] ?? '1'; ?>"
+                                        value="<?php echo $rn_val; ?>"
+                                        style="flex:1"
+                                        oninput="document.getElementById('<?php echo $rn_num_id; ?>').value=this.value">
+                                    <input type="number" id="<?php echo $rn_num_id; ?>" name="skin_opt[<?php echo $k; ?>]"
+                                        min="<?php echo (int)$o['min']; ?>"
+                                        max="<?php echo (int)$o['max']; ?>"
+                                        step="<?php echo $o['step'] ?? '1'; ?>"
+                                        value="<?php echo $rn_val; ?>"
+                                        style="width:5em;text-align:right;"
+                                        oninput="document.getElementById('<?php echo $rn_slider_id; ?>').value=this.value">
+                                    <span style="opacity:0.6;font-size:0.8em;"><?php echo htmlspecialchars($rn_unit); ?></span>
                                 </div>
                             <?php elseif ($o['type'] === 'select'): ?>
                                 <?php $is_font = (($o['property'] ?? '') === 'font-family') || !empty($o['is_font']); ?>

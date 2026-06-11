@@ -24,7 +24,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'The Grid',
-    'version'     => '1.2.3',
+    'version'     => '1.3.0',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Classic Instagram-style 3-column square-thumbnail photo grid. Carousel and panorama post support. Clean, minimal UI keeps the focus on the photographs.',
@@ -52,6 +52,7 @@ return [
         'smack-community',
         'smack-slider',
         'smack-carousel-view',
+        'smack-grid-nav',
     ],
 
     'community_comments'  => true,
@@ -63,16 +64,13 @@ return [
         // ---- GRID APPEARANCE -----------------------------------------------
         'tg_gap' => [
             'section'  => 'GRID',
-            'type'     => 'select',
-            'label'    => 'Grid Gap',
+            'type'     => 'range_numeric',
+            'label'    => 'Image Gap',
             'default'  => '2',
-            'options'  => [
-                '0' => '0px (borderless)',
-                '1' => '1px',
-                '2' => '2px (classic Instagram)',
-                '3' => '3px',
-                '5' => '5px',
-            ],
+            'min'      => '0',
+            'max'      => '20',
+            'step'     => '1',
+            'unit'     => 'px',
             'selector' => ':root',
             'property' => '--grid-gap',
         ],
@@ -187,9 +185,9 @@ return [
             'section'  => 'TYPOGRAPHY',
             'type'     => 'select',
             'label'    => 'Body / UI Font',
-            'default'  => 'system',
+            'default'  => '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
             'options'  => array_merge(
-                ['system' => 'System Default (San Francisco / Segoe UI)'],
+                ['"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' => 'System Default (Segoe UI / Roboto)'],
                 $fonts
             ),
             'selector' => ':root',
@@ -270,13 +268,25 @@ return [
         ],
 
         // ---- LAYOUT --------------------------------------------------------
+        'tg_max_width' => [
+            'section'  => 'LAYOUT',
+            'type'     => 'range_numeric',
+            'label'    => 'Grid Max Width',
+            'default'  => '935',
+            'min'      => '600',
+            'max'      => '1600',
+            'step'     => '5',
+            'unit'     => 'px',
+            'selector' => ':root',
+            'property' => '--grid-max-width',
+        ],
         'tg_gutter' => [
             'section'  => 'LAYOUT',
-            'type'     => 'range',
+            'type'     => 'range_numeric',
             'label'    => 'Side Gutter',
             'default'  => '0',
             'min'      => '0',
-            'max'      => '120',
+            'max'      => '200',
             'step'     => '4',
             'unit'     => 'px',
             'selector' => ':root',
