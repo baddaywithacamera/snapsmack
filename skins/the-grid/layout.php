@@ -163,7 +163,7 @@ include __DIR__ . '/skin-header.php';
                     else:
                         $slide_vars  = '';
                         $slide_class = 'slider-slide';
-                        $img_style   = 'width:100%; max-height:80vh; object-fit:contain; background:#000;';
+                        $img_style   = 'width:100%; max-height:80vh; object-fit:contain; background:var(--post-bg,#000);';
                     endif;
                 ?>
                 <div class="<?php echo $slide_class; ?>"
@@ -184,7 +184,7 @@ include __DIR__ . '/skin-header.php';
         $frame = $tg_resolve_frame($cover_img);
         $single_wrap_bg = $frame['is_framed']
             ? 'background:' . htmlspecialchars($frame['bg_color']) . '; text-align:center; padding:20px;'
-            : 'background:#000; text-align:center;';
+            : 'background:var(--post-bg,#000); text-align:center;';
         $single_img_style = $frame['is_framed'] ? sprintf(
             'max-width:%d%%; max-height:80vh; object-fit:contain; border:%dpx solid %s; box-shadow:%s; box-sizing:border-box;',
             $frame['size_pct'], $frame['border_px'],
