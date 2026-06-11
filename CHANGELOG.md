@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.235 — "Fanny Pack" (2026-06-11)
+
+### Fix — SC pages rendering `// EOF` as visible text
+
+- `smack-central/sc-layout-bottom.php` — EOF marker was outside PHP tags, causing `// EOF` to render as literal text in the bottom-left corner of every Smack Central page.
+
 ## 0.7.234 — "Fanny Pack" (2026-06-10)
 
 ### Fix — Skin gallery blank (all skins filtered out)
