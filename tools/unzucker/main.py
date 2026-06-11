@@ -14,7 +14,7 @@ creates posts through the SnapSmack admin API. No FTP required.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.35"
+BUILD_VERSION = "0.7.38"
 
 import logging
 import logging.handlers
@@ -41,7 +41,12 @@ from poster import UnzuckerClient, SiteData
 # Logging — rotating daily, 7-day retention, %APPDATA%\Unzucker\unzucker.log
 # ---------------------------------------------------------------------------
 
-_LOG_DIR  = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'Unzucker')
+if getattr(sys, 'frozen', False):
+    # Running as compiled exe — log sits next to the exe
+    _LOG_DIR = os.path.dirname(sys.executable)
+else:
+    # Running from source
+    _LOG_DIR = os.path.dirname(os.path.abspath(__file__))
 _LOG_FILE = os.path.join(_LOG_DIR, 'unzucker.log')
 os.makedirs(_LOG_DIR, exist_ok=True)
 
@@ -1635,6 +1640,19 @@ class App(tk.Tk):
 
         if existing and resume:
             self._job = existing
+            # Replay the saved post ordering so grid indices match saved trigrams.
+            # The parser always produces posts in original_index order; we need to
+            # re-sort them into the reordered sequence that was saved at lock time.
+            if self._job.ordering:
+                orig_map = {p.original_index: p for p in self._posts}
+                reordered = [orig_map[oi] for oi in self._job.ordering
+                             if oi in orig_map]
+                # Append any posts absent from saved ordering (shouldn't happen,
+                # but guard against export folder being re-used with new content)
+                seen = set(self._job.ordering)
+                reordered += [p for p in self._posts
+                              if p.original_index not in seen]
+                self._posts = reordered
         else:
             # Create a fresh job
             job_name     = self._prompt_job_name(export_folder)
@@ -2047,6 +2065,8 @@ class App(tk.Tk):
             grp['indices'] = [new_idx_map[id(old_posts[oi])] for oi in grp['indices']]
 
         self._posts = new_posts
+        if self._job:
+            self._job.save_ordering([p.original_index for p in self._posts])
         self._grid.reorder(self._posts)
 
         # Re-apply all trigram badges with updated indices

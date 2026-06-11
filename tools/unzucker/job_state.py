@@ -3,7 +3,7 @@ Unzucker — job_state.py
 Per-import job persistence.
 
 Each import job gets its own .ini file at:
-  %APPDATA%\\Unzucker\\jobs\\{job_name}.ini
+  {exe_dir}\\jobs\\{job_name}.ini   (next to the exe — Unzucker is a portable app, never AppData)
 
 Sections:
   [job]      — identity: job_name, export_folder, site_url
@@ -88,6 +88,7 @@ class JobState:
         self.uploaded: Dict[int, int] = {}   # post_index → post_id
         self.excluded: Set[int]       = set()
         self.trigrams: List[dict]     = []   # [{num, indices, slots, orientation}]
+        self.ordering: List[int]      = []   # original_index values in reordered sequence
 
     # ------------------------------------------------------------------
     # Factory — find existing job
@@ -139,6 +140,12 @@ class JobState:
             if token.isdigit():
                 self.excluded.add(int(token))
 
+        # ordering: post_order = 5,3,7,0,1,...  (original_index sequence)
+        for token in cfg.get('ordering', 'post_order', fallback='').split(','):
+            token = token.strip()
+            if token.isdigit():
+                self.ordering.append(int(token))
+
         # trigrams: t1 = indices:0,1,2 slots:1,2,3 orientation:h
         if cfg.has_section('trigrams'):
             for key, val in cfg['trigrams'].items():
@@ -172,6 +179,9 @@ class JobState:
                 f"{i}:{p}" for i, p in sorted(self.uploaded.items())),
             'excluded': ','.join(str(i) for i in sorted(self.excluded)),
         }
+        cfg['ordering'] = {
+            'post_order': ','.join(str(i) for i in self.ordering),
+        }
         cfg['trigrams'] = {
             f"t{grp['num']}": (
                 f"indices:{','.join(str(i) for i in grp['indices'])} "
@@ -201,6 +211,11 @@ class JobState:
     def save_trigrams(self, groups: list):
         """Replace the full trigram list (after any index remap) and save."""
         self.trigrams = list(groups)
+        self.save()
+
+    def save_ordering(self, orig_indices: List[int]):
+        """Persist the current post order as a sequence of original_index values."""
+        self.ordering = list(orig_indices)
         self.save()
 
     def set_excluded(self, indices: Set[int]):

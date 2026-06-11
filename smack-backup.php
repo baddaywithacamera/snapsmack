@@ -30,7 +30,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'export') {
         header('Content-Type: application/octet-stream');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
 
-        $output = "-- SnapSmack Backup Service\n-- Type: " . strtoupper($type) . "\n-- Date: " . date('Y-m-d H:i:s') . "\n\n";
+        $output = "-- SnapSmack Backup Service\n-- Type: " . strtoupper($type) . "\n-- Version: " . SNAPSMACK_VERSION . "\n-- Date: " . date('Y-m-d H:i:s') . "\n\n";
 
         // Discover all tables dynamically — no hardcoded list that goes stale.
         $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);

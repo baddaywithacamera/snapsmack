@@ -242,28 +242,6 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-multisite.php') ? 'active' : ''; ?>">
                         <a href="smack-multisite.php">Multisite Management</a>
                     </li>
-                    <?php if (!empty($settings['multisite_role']) && strpos($current_page, 'smack-multisite') !== 0 && $current_page !== 'smack-push-it.php') : ?>
-                    <!-- Multisite quick-links. Hidden on multisite pages — top nav covers them there.
-                         Visible from everywhere else so you can jump directly from any admin page. -->
-                    <li class="<?php echo ($current_page == 'smack-multisite-comments.php') ? 'active' : ''; ?>">
-                        <a href="smack-multisite-comments.php">Spoke Signals</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-multisite-posts.php') ? 'active' : ''; ?>">
-                        <a href="smack-multisite-posts.php">Spoke Posts</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-multisite-backup.php') ? 'active' : ''; ?>">
-                        <a href="smack-multisite-backup.php">Backup Dock</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-multisite-stats.php') ? 'active' : ''; ?>">
-                        <a href="smack-multisite-stats.php">Fleet Stats</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-multisite-crosspost.php') ? 'active' : ''; ?>">
-                        <a href="smack-multisite-crosspost.php">Cross-Post</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-multisite-blogroll.php') ? 'active' : ''; ?>">
-                        <a href="smack-multisite-blogroll.php">Blogroll Sync</a>
-                    </li>
-                    <?php endif; // multisite quick-links ?>
                     <?php endif; // pimpmobile ?>
                 </ul>
             </div>
