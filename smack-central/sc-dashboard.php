@@ -26,11 +26,12 @@ $stats = ['installs' => 0, 'threads' => 0, 'replies' => 0, 'releases' => 0,
 $fleet_rows  = [];
 $spoke_by_hub = []; // hub_uid => [ spoke rows ]
 try {
-    // Active installs: only hub/standalone rows; spoke rows are already counted
-    // inside hub's spoke_count. WHERE role='hub' excludes slim spoke pings.
+    // Active installs: count distinct hub rows. WHERE role='hub' excludes spoke
+    // ping rows (added in later schema). spoke_count on each hub row records how
+    // many spokes that hub has, but each hub is one install regardless.
     $db = sc_db();
     $stats['installs'] = (int)$db->query(
-        "SELECT COALESCE(SUM(1 + spoke_count), 0) FROM sc_phone_home
+        "SELECT COUNT(*) FROM sc_phone_home
          WHERE role = 'hub' AND last_seen >= DATE_SUB(NOW(), INTERVAL 90 DAY)"
     )->fetchColumn();
     // Hub/standalone rows for the diagnostics table
@@ -53,7 +54,7 @@ try {
     try {
         $db = sc_db();
         $stats['installs'] = (int)$db->query(
-            "SELECT COALESCE(SUM(1 + spoke_count), 0) FROM sc_phone_home WHERE last_seen >= DATE_SUB(NOW(), INTERVAL 90 DAY)"
+            "SELECT COUNT(*) FROM sc_phone_home WHERE last_seen >= DATE_SUB(NOW(), INTERVAL 90 DAY)"
         )->fetchColumn();
         $fleet_rows = $db->query(
             "SELECT uid, version, track, spoke_count, NULL AS role, NULL AS hub_uid, first_seen, last_seen FROM sc_phone_home ORDER BY last_seen DESC"
