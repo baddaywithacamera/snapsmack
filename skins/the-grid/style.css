@@ -402,18 +402,10 @@ img { display: block; max-width: 100%; }
     transition:   opacity 0.2s;
 }
 
-/* ── Trigram row stitching ─────────────────────────────────────────────────
-   Three trigram tiles forming a panorama must stitch edge-to-edge.
-   Normal tiles have gap: var(--grid-gap) between them (set on .tg-grid).
-   Trigram tiles collapse that gap with negative margins so the panorama
-   seam is invisible.
+/* ── Trigram row ──────────────────────────────────────────────────────────
+   Trigram tiles are plain square tiles. No special CSS needed — L, M, R
+   all inherit .tg-tile's aspect-ratio: 1/1 and sit in the grid normally.
    ──────────────────────────────────────────────────────────────────────── */
-
-.tg-tile--trigram-L { margin-right: calc(-1 * var(--grid-gap, 2px)); }
-.tg-tile--trigram-M { margin-left:  calc(-1 * var(--grid-gap, 2px));
-                       margin-right: calc(-1 * var(--grid-gap, 2px));
-                       aspect-ratio: unset; }
-.tg-tile--trigram-R { margin-left:  calc(-1 * var(--grid-gap, 2px)); }
 
 /* Phantom tile: invisible placeholder to complete a partial row before a
    trigram set, so the L tile always starts at column 0. */
