@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.236 — "Fanny Pack" (2026-06-11)
+
+### Fix — SC "Running" version permanently stuck at 0.7.217D
+
+- `smack-central/sc-update.php` — RE-PULL copies `sc-version.php` from the raw GitHub zip, which is hardcoded to the last manually committed version (0.7.217D) and never updated. Fixed by adding `sc-version.php` to the protected files list and writing it explicitly after the copy loop, deriving the version string from the pulled tag and codename from `latest-dev.json`.
+
 ## 0.7.235 — "Fanny Pack" (2026-06-11)
 
 ### Fix — SC pages rendering `// EOF` as visible text
