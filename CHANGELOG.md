@@ -12,6 +12,27 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.244 — "Fanny Pack" (2026-06-11)
+
+### The Grid 1.3.3 — static pages in nav (About, etc.)
+
+- **`skins/the-grid/landing.php`** — queries `snap_pages` (active, ordered by `menu_order`) and renders each as a nav link in the sticky nav bar, same as other skins. Any page created in admin now appears automatically.
+- **`skins/the-grid/manifest.php`** — bumped skin to 1.3.3.
+
+## 0.7.243 — "Fanny Pack" (2026-06-11)
+
+### The Grid 1.3.2 — blogroll nav link
+
+- **`skins/the-grid/landing.php`** — added Blogroll link to sticky nav, shown when `blogroll_enabled` is on (same condition used by all other skins).
+- **`skins/the-grid/manifest.php`** — bumped skin to 1.3.2.
+
+## 0.7.242 — "Fanny Pack" (2026-06-11)
+
+### The Grid 1.3.1 — post page image breathing room + pinned footer
+
+- **`skins/the-grid/style.css`** — added `padding: 10% 24px` to `.tg-post-ig-image` so image sits at ~80% height with whitespace above and below; CSS for `#system-footer` inside right panel (pinned as flex child at bottom).
+- **`skins/the-grid/layout.php`** — moved `skin-footer.php` include inside `.tg-post-ig-info` so the site footer renders as a pinned bottom bar in the right panel rather than off-screen below the viewport.
+
 ## 0.7.241 — "Fanny Pack" (2026-06-11)
 
 ### The Grid 1.3.0 — Instagram image page + blog title typography
