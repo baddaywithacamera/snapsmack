@@ -442,6 +442,7 @@ img { display: block; max-width: 100%; }
     overflow:        hidden;
     background:      var(--post-bg, #000);
     position:        relative;
+    padding:         10% 24px;   /* ~80% image height, whitespace top + bottom */
 }
 
 .tg-post-ig-image .tg-single-img {
@@ -666,6 +667,22 @@ img { display: block; max-width: 100%; }
     display:    block;
 }
 
+/* ── Footer pinned to bottom of right panel ────────────────────────────── */
+.tg-post-ig-info > #system-footer {
+    flex-shrink:   0;
+    border-top:    1px solid var(--border-color);
+    background:    var(--bg-primary, #fff);
+    padding:       8px 16px;
+    margin:        0;
+}
+
+.tg-post-ig-info > #system-footer .footer-metadata-bar p {
+    font-size:      10px;
+    letter-spacing: 0.3px;
+    color:          var(--text-secondary);
+    margin:         0;
+}
+
 /* ── Mobile: stack vertically ──────────────────────────────────────────── */
 @media (max-width: 768px) {
     .tg-post-ig {
@@ -866,6 +883,47 @@ img { display: block; max-width: 100%; }
 #system-footer .footer-link:hover {
     color: var(--text-primary);
     opacity: 1;
+}
+
+/* ==========================================================================
+   STATIC PAGE (About, etc.)
+   ========================================================================== */
+
+.tg-static-page .tg-sticky-nav {
+    position: sticky;
+    top: 0;
+}
+
+.tg-static-content {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 40px 20px 60px;
+}
+
+.tg-static-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 24px;
+}
+
+.tg-static-body {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.tg-static-body p {
+    margin: 0 0 16px;
+}
+
+.tg-static-body a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.tg-static-body a:hover {
+    text-decoration: underline;
 }
 
 /* ===== SNAPSMACK EOF ===== */
