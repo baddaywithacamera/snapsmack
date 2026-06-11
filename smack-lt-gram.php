@@ -288,7 +288,7 @@ include 'core/sidebar.php';
     <?php endif; ?>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.complete.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.js"></script>
 <script>
 (function () {
     const grid     = document.getElementById('ltgGrid');

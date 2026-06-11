@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.240 — "Fanny Pack" (2026-06-11)
+
+### Fix light table drag broken (Sortable CDN 404)
+
+- **`smack-lt-gram.php`** — wrong CDN filename `Sortable.complete.min.js` doesn't exist in sortablejs@1.15.3 package; changed to `Sortable.js` (full build, includes MultiDrag). Drag silently broken since trigram-locking update.
+
 ## 0.7.239 — "Fanny Pack" (2026-06-11)
 
 ### The Grid — remove trigram negative margins (1.2.7)
