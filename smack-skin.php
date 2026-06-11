@@ -1096,7 +1096,7 @@ if (!empty($google_families)) {
                     if (($skin['status'] ?? 'stable') === 'development') continue;
                     // Mode filter: only show skins matching the site's mode
                     $skin_carousel = !empty($skin['features']['carousel']);
-                    if ($skin_carousel !== $is_carousel_site) continue;
+                    if ($skin_carousel !== $is_carousel) continue;
                 ?>
                     <div class="skin-card" style="cursor:pointer;" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
                         <div class="skin-card-screenshot">
@@ -1168,7 +1168,7 @@ if (!empty($google_families)) {
                 if (($skin['status'] ?? 'stable') === 'development') continue;
                 // Mode filter: only show skins matching the site's mode
                 $skin_carousel = !empty($skin['features']['carousel']);
-                if ($skin_carousel !== $is_carousel_site) continue;
+                if ($skin_carousel !== $is_carousel) continue;
             ?>
                 <div class="skin-card" style="cursor:pointer;" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
                     <!-- Screenshot(s) -->
@@ -1305,7 +1305,7 @@ if (!empty($google_families)) {
                 // Development skins are not shown in the gallery
                 if (($skin['status'] ?? 'stable') === 'development') continue;
                 $skin_carousel = !empty($skin['features']['carousel']);
-                if ($skin_carousel !== $is_carousel_site) continue;
+                if ($skin_carousel !== $is_carousel) continue;
             ?>
                 <div class="skin-card" style="cursor:pointer;" onclick="openSkinModal('<?php echo htmlspecialchars($slug); ?>')">
                     <div class="skin-card-screenshot">

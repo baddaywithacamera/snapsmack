@@ -332,6 +332,7 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         'skins/50-shades-of-noah-grey/',
         'skins/new-horizon/',
         // Skins NOT included in base release package
+        'skins/alfred/',         // SmackTalk skin — Skin Packager only; ships fonts/bg.jpg
         'skins/52-card-pickup/',
         'skins/a-grey-reckoning/',
         'skins/hip-to-be-square/',
