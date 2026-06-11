@@ -12,6 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.239 — "Fanny Pack" (2026-06-11)
+
+### The Grid — image page background color
+
+- **`skins/the-grid/manifest.php`** — bumped to v1.2.6; added `tg_post_bg_color` (color picker, COLOURS section, `--post-bg`, default `#000000`)
+- **`skins/the-grid/style.css`** — `.tg-carousel-wrap` background: `#000` → `var(--post-bg, #000)`
+- **`skins/the-grid/layout.php`** — carousel slide `$img_style` and single-image `$single_wrap_bg` both changed from hardcoded `background:#000` to `background:var(--post-bg,#000)`
+
 ## 0.7.238 — "Fanny Pack" (2026-06-10)
 
 ### The Grid — UI cleanup (unzucked.ca)

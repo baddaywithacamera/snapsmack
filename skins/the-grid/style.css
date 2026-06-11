@@ -469,7 +469,7 @@ img { display: block; max-width: 100%; }
 /* Carousel container for multi-image posts */
 .tg-carousel-wrap {
     position: relative;
-    background: #000;
+    background: var(--post-bg, #000);
     width: 100%;
 }
 
