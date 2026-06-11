@@ -16,6 +16,7 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ### The Grid — UI cleanup (unzucked.ca)
 
+- **`skins/the-grid/manifest.php`** — bumped to v1.2.5
 - **`skins/the-grid/style.css`** — `.tg-tile--trigram-M`: added `aspect-ratio: unset` to fix middle trigram tile extending below L/R tiles (negative margins widened content box, causing `aspect-ratio: 1/1` to make M 4px taller than siblings); added `#system-footer` overrides: centered, max-width constrained, better slot spacing
 - **`skins/the-grid/skin-header.php`** — removed `<header class="tg-topbar">` site-name bar (redundant given profile header and sticky nav)
 - **`skins/the-grid/skin-footer.php`** — removed duplicate `<footer class="tg-footer">` copyright block (copyright is already in `core/footer.php` slot 1)
