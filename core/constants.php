@@ -64,7 +64,7 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
 }
 
 define('SNAPSMACK_VERSION', 'Alpha 0.7.234');
-define('SNAPSMACK_VERSION_SHORT', '0.7.234');
+define('SNAPSMACK_VERSION_SHORT', '0.7.236');
 define('SNAPSMACK_VERSION_CODENAME', 'Fanny Pack');
 
 // --- VERSION COMPARISON ---

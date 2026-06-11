@@ -169,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull'
         // sc-config.php: never touched — live server config.
         // sc-db.php: never touched — DB connection changes require manual deploy
         //   so a bad tag cannot silently drop sc_enemy_db() or sc_forum_db().
-        $protected_files = ['sc-config.php', 'sc-db.php'];
+        $protected_files = ['sc-config.php', 'sc-db.php', 'sc-version.php'];
         $dest_dir        = __DIR__ . '/';
         $copied          = 0;
         $skipped         = 0;
@@ -196,6 +196,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull'
             $copied++;
         }
         $result_log[] = ['ok', "smack-central/: {$copied} files installed" . ($skipped ? ", {$skipped} protected skipped" : '')];
+
+        // 3a. Write sc-version.php from the pulled tag ────────────────────────
+        // sc-version.php in git is never updated (would require a commit per release).
+        // We derive the version string from the tag and write it explicitly so
+        // the Running row in sc-update.php reflects the actual installed version.
+        $tag_version  = ltrim($latest_tag, 'v');   // "0.7.235D"
+        // Fetch the codename from latest-dev.json on disk if available, else blank.
+        $dev_json_path = dirname(__DIR__) . '/releases/latest-dev.json';
+        $tag_codename  = '';
+        if (file_exists($dev_json_path)) {
+            $dev_json = json_decode(file_get_contents($dev_json_path), true);
+            $tag_codename = $dev_json['codename'] ?? '';
+        }
+        $sc_ver_content = "<?php\n"
+            . "// Auto-written by sc-update.php on pull — do not edit by hand.\n"
+            . "define('SC_VERSION',  '" . addslashes($tag_version) . "');\n"
+            . "define('SC_CODENAME', '" . addslashes($tag_codename) . "');\n"
+            . "// ===== SNAPSMACK EOF =====\n";
+        file_put_contents($dest_dir . 'sc-version.php', $sc_ver_content);
+        $result_log[] = ['ok', "sc-version.php updated to {$tag_version}"];
 
         // 3b. Copy projects/snapsmack-ca/ files to web root ───────────────────
         // These are the public-facing SC API endpoints and snapsmack.ca assets.
