@@ -288,7 +288,7 @@ include 'core/sidebar.php';
     <?php endif; ?>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.3/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.complete.min.js"></script>
 <script>
 (function () {
     const grid     = document.getElementById('ltgGrid');
@@ -296,59 +296,66 @@ include 'core/sidebar.php';
     const bulkBtn  = document.getElementById('ltgBulkPublishBtn');
     if (!grid) return;
 
-    // ── Group-move helper ──────────────────────────────────────────────────
-    // Returns all tile elements belonging to the same trigram group as tile.
-    function getTrigramGroup(tile) {
-        const tgId = tile.dataset.trigramId;
-        if (!tgId || tgId === '0') return [tile];
-        return [...grid.querySelectorAll(`.ltg-tile[data-trigram-id="${tgId}"]`)];
-    }
+    const SEL_CLASS = 'ltg-tile--group-moving';
 
-    // ── Sortable init ──────────────────────────────────────────────────────
+    // ── Sortable init with MultiDrag ───────────────────────────────────────
+    Sortable.mount(new MultiDrag());
+
     Sortable.create(grid, {
         animation:     150,
+        multiDrag:     true,
+        multiDragKey:  null,       // no modifier key needed
+        selectedClass: SEL_CLASS,
         ghostClass:    'ltg-tile--ghost',
         chosenClass:   'ltg-tile--chosen',
         dragClass:     'ltg-tile--drag',
 
-        // When drag starts on a trigram tile, also visually mark its siblings.
-        onStart: function (evt) {
-            getTrigramGroup(evt.item).forEach(t => {
-                if (t !== evt.item) t.classList.add('ltg-tile--group-moving');
-            });
+        // When a tile is grabbed, auto-select its trigram siblings so all
+        // three tiles physically drag together as one unit.
+        onChoose: function (evt) {
+            // Clear any stale selections first.
+            grid.querySelectorAll('.' + SEL_CLASS).forEach(t => Sortable.utils.deselect(t));
+
+            const tgId = evt.item.dataset.trigramId;
+            if (!tgId || tgId === '0') return;
+
+            // Select siblings in slot order so they land in the right order.
+            [...grid.querySelectorAll(`.ltg-tile[data-trigram-id="${tgId}"]`)]
+                .sort((a, b) => parseInt(a.dataset.trigramSlot) - parseInt(b.dataset.trigramSlot))
+                .forEach(t => { if (t !== evt.item) Sortable.utils.select(t); });
+        },
+
+        onUnchoose: function () {
+            grid.querySelectorAll('.' + SEL_CLASS).forEach(t => Sortable.utils.deselect(t));
         },
 
         onEnd: function (evt) {
-            // Move the other two trigram tiles to follow the dragged one.
-            const moved = evt.item;
-            const group = getTrigramGroup(moved);
-            if (group.length === 3) {
-                // Sort group by slot so we always place L, M, R in order.
-                group.sort((a, b) => (parseInt(a.dataset.trigramSlot) || 0) - (parseInt(b.dataset.trigramSlot) || 0));
-                const movedSlot  = parseInt(moved.dataset.trigramSlot) || 1;
-                const movedIndex = [...grid.children].indexOf(moved);
+            // MultiDrag has already placed all three tiles together.
+            // Ensure they landed in slot order, then save.
+            const movedItems = (evt.items && evt.items.length) ? evt.items : [evt.item];
 
-                // Place the other two relative to the dragged tile's new position.
-                group.forEach((tile, i) => {
-                    tile.classList.remove('ltg-tile--group-moving');
-                    if (tile === moved) return;
-                    const slotOffset = parseInt(tile.dataset.trigramSlot) - movedSlot;
-                    const targetIdx  = movedIndex + slotOffset;
-                    const tiles      = [...grid.children];
-                    if (targetIdx >= 0 && targetIdx < tiles.length) {
-                        if (slotOffset > 0) {
-                            tiles[targetIdx].after(tile);
-                        } else {
-                            tiles[Math.max(0, targetIdx)].before(tile);
-                        }
-                    } else if (targetIdx < 0) {
-                        grid.prepend(tile);
-                    } else {
-                        grid.append(tile);
-                    }
-                });
-            }
+            movedItems.forEach(tile => {
+                const tgId = tile.dataset.trigramId;
+                if (!tgId || tgId === '0') return;
 
+                const group = [...grid.querySelectorAll(`.ltg-tile[data-trigram-id="${tgId}"]`)];
+                if (group.length !== 3) return;
+
+                const allTiles = [...grid.children];
+                group.sort((a, b) => allTiles.indexOf(a) - allTiles.indexOf(b));
+                const bySlot  = [...group].sort((a, b) =>
+                    parseInt(a.dataset.trigramSlot) - parseInt(b.dataset.trigramSlot)
+                );
+
+                // Reinsert in slot order if DOM order doesn't match.
+                if (group.some((t, i) => t !== bySlot[i])) {
+                    group[0].before(bySlot[0]);
+                    bySlot[0].after(bySlot[1]);
+                    bySlot[1].after(bySlot[2]);
+                }
+            });
+
+            grid.querySelectorAll('.' + SEL_CLASS).forEach(t => Sortable.utils.deselect(t));
             saveOrder();
             checkTrigramAlignment();
         }

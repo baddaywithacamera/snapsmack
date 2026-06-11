@@ -389,17 +389,20 @@ include __DIR__ . '/sc-layout-top.php';
 
     <table class="sc-update-status-table">
         <tr>
-            <th>Running</th>
-            <td>
-                <?php echo htmlspecialchars(SC_VERSION); ?>
-                <span class="sc-muted">(<?php echo htmlspecialchars(SC_CODENAME); ?>)</span>
-            </td>
-        </tr>
-        <tr>
-            <th>Installed</th>
+            <th>Version</th>
             <td>
                 <?php if ($installed_ref): ?>
                     <code><?php echo htmlspecialchars($installed_ref); ?></code>
+                    <?php if (SC_CODENAME): ?>
+                        <span class="sc-muted">(<?php echo htmlspecialchars(SC_CODENAME); ?>)</span>
+                    <?php endif; ?>
+                    <?php
+                    $running_norm  = ltrim(SC_VERSION, 'v');
+                    $installed_norm = ltrim($installed_ref, 'v');
+                    if ($running_norm !== $installed_norm):
+                    ?>
+                        <span class="sc-warn" style="margin-left:8px;">⚠ file reports <?php echo htmlspecialchars(SC_VERSION); ?> — re-pull to sync</span>
+                    <?php endif; ?>
                 <?php else: ?>
                     <span class="sc-muted">Not recorded — run an update to set baseline.</span>
                 <?php endif; ?>

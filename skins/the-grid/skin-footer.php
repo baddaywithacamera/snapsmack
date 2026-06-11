@@ -18,21 +18,6 @@
 
 
 ?>
-
-<footer class="tg-footer">
-    <div class="tg-wrap">
-        <?php
-        $site_name = htmlspecialchars($settings['site_name'] ?? 'SnapSmack');
-        $footer_text = htmlspecialchars($settings['footer_text'] ?? '');
-        ?>
-        <?php if ($footer_text): ?>
-            <p><?php echo $footer_text; ?></p>
-        <?php else: ?>
-            <p>&copy; <?php echo date('Y'); ?> <?php echo $site_name; ?></p>
-        <?php endif; ?>
-    </div>
-</footer>
-
 <?php
 // ── Load required JS engines from manifest ─────────────────────────────────
 $skin_manifest = include __DIR__ . '/manifest.php';

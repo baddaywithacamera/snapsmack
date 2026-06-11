@@ -102,9 +102,6 @@ if (!empty($settings['privacy_policy_enabled']) && $settings['privacy_policy_ena
     $slots[]  = '<a href="' . $pp_url . '" class="footer-link">' . $pp_label . '</a>';
 }
 
-// --- SLOT 5b: HELP (always on; toggles F1 help modal) ---
-$slots[] = '<a href="#" data-snap-help-trigger class="footer-link footer-help" title="Keyboard shortcuts and controls (F1)">HELP</a>';
-
 // --- SLOT 6: RSS (ALWAYS ON) ---
 // RSS feed link is always visible and cannot be disabled
 $rss_url = (defined('BASE_URL') ? BASE_URL : '/') . 'feed';

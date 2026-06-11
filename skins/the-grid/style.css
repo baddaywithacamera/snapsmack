@@ -411,7 +411,8 @@ img { display: block; max-width: 100%; }
 
 .tg-tile--trigram-L { margin-right: calc(-1 * var(--grid-gap, 2px)); }
 .tg-tile--trigram-M { margin-left:  calc(-1 * var(--grid-gap, 2px));
-                       margin-right: calc(-1 * var(--grid-gap, 2px)); }
+                       margin-right: calc(-1 * var(--grid-gap, 2px));
+                       aspect-ratio: unset; }
 .tg-tile--trigram-R { margin-left:  calc(-1 * var(--grid-gap, 2px)); }
 
 /* Phantom tile: invisible placeholder to complete a partial row before a
@@ -712,4 +713,46 @@ img { display: block; max-width: 100%; }
 .tg-hashtag:hover {
     text-decoration: underline;
 }
+/* ==========================================================================
+   SYSTEM FOOTER OVERRIDES (core/footer.php → #system-footer)
+   ========================================================================== */
+
+#system-footer {
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-primary);
+}
+
+#system-footer .inside {
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
+    padding: 20px var(--grid-gutter, 0px);
+}
+
+#system-footer .footer-metadata-bar {
+    text-align: center;
+}
+
+#system-footer .footer-metadata-bar p {
+    margin: 0;
+    font-size: 11px;
+    color: var(--text-secondary);
+    letter-spacing: 0.4px;
+    line-height: 2;
+}
+
+#system-footer .footer-metadata-bar .sep {
+    margin: 0 8px;
+    opacity: 0.4;
+}
+
+#system-footer .footer-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+#system-footer .footer-link:hover {
+    color: var(--text-primary);
+    opacity: 1;
+}
+
 /* ===== SNAPSMACK EOF ===== */
