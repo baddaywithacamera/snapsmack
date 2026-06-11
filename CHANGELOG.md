@@ -12,6 +12,19 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.241 — "Fanny Pack" (2026-06-11)
+
+### The Grid 1.3.0 — Instagram image page + blog title typography
+
+- **`skins/the-grid/layout.php`** — replaced stacked post layout with Instagram two-panel layout: image fixed on the left (never scrolls), right panel contains header (back ← + avatar + site name), then scrollable body (post title, caption, EXIF, date, comments).
+- **`skins/the-grid/style.css`** — new `.tg-post-ig` / `.tg-post-ig-image` / `.tg-post-ig-info` / `.tg-post-ig-header` / `.tg-post-ig-body` CSS; carousel fills image panel height; mobile stacks vertically (image 60vw max, info scrolls below). `.tg-profile-username` now driven by `--blog-title-font`, `--blog-title-size`, `--blog-title-weight` CSS vars.
+- **`skins/the-grid/manifest.php`** — added `tg_blog_title_font`, `tg_blog_title_size`, `tg_blog_title_weight` (PROFILE HEADER section); added `tg_show_tagline` toggle for site description; bumped skin to 1.3.0.
+- **`skins/the-grid/landing.php`** — wired `tg_show_tagline` to conditionally render bio.
+
+### Light table drag + checkbox + zoom slider fixes
+
+- **`smack-lt-gram.php`** — `Sortable.complete.min.js` doesn't exist in sortablejs@1.15.3; changed to `Sortable.js` (full build). Fixed `new MultiDrag()` → `new Sortable.MultiDrag()` (not a global in UMD build). Added `filter: '.ltg-select-cb, .ltg-btn-publish'` + `preventOnFilter: false` so checkboxes and publish buttons receive clicks instead of being swallowed by drag handler. Added zoom slider (shrinks grid width 240–900px, always 3 columns) so tiles can be made smaller to see more rows at once; preference persisted in localStorage.
+
 ## 0.7.240 — "Fanny Pack" (2026-06-11)
 
 ### Fix light table drag broken (Sortable CDN 404)
