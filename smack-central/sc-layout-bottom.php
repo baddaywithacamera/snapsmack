@@ -2,4 +2,4 @@
 </div>
 </body>
 </html>
-// EOF
+<?php // ===== SNAPSMACK EOF =====
