@@ -1,0 +1,98 @@
+<?php
+/**
+ * SNAPSMACK - The Grid Static Page Template
+ *
+ * Used by page.php when active skin is the-grid.
+ * Renders static pages (About, etc.) inside the Grid shell:
+ * full <html><head>, Grid CSS, sticky nav, content, footer.
+ *
+ * Variables from page.php:
+ *   $pdo, $settings, $active_skin, $page_data, $page_title, $snapsmack, $slug
+ */
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     <?php // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+// ── Nav pages ──────────────────────────────────────────────────────────────
+try {
+    $nav_pages_stmt = $pdo->query("SELECT title, slug FROM snap_pages WHERE is_active = 1 ORDER BY menu_order ASC");
+    $nav_pages = $nav_pages_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $nav_pages = [];
+}
+
+// ── Avatar for header ──────────────────────────────────────────────────────
+$_sp_avatar_path   = $settings['tg_avatar'] ?? '';
+$_sp_avatar_exists = $_sp_avatar_path && file_exists(dirname(__DIR__, 2) . '/' . $_sp_avatar_path);
+$_sp_site_name     = $settings['site_name'] ?? 'SnapSmack';
+$_sp_initial       = strtoupper(substr($_sp_site_name, 0, 1));
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<?php include dirname(__DIR__, 2) . '/core/meta.php'; ?>
+</head>
+<body class="tg-static-page">
+
+<div class="tg-content-wrap">
+
+<!-- ── Sticky Nav ──────────────────────────────────────────────────────── -->
+<nav class="tg-sticky-nav tg-sticky-nav--static" aria-label="Site navigation">
+    <div class="tg-sticky-nav-inner">
+        <?php if ($_sp_avatar_exists): ?>
+            <img class="tg-sticky-avatar"
+                 src="<?php echo BASE_URL . htmlspecialchars($_sp_avatar_path); ?>"
+                 alt="<?php echo htmlspecialchars($_sp_site_name); ?>"
+                 aria-hidden="true">
+        <?php else: ?>
+            <span class="tg-sticky-avatar-initials" aria-hidden="true"><?php echo htmlspecialchars($_sp_initial); ?></span>
+        <?php endif; ?>
+
+        <ul class="tg-sticky-nav-links">
+            <li><a href="<?php echo BASE_URL; ?>">Home</a></li>
+            <?php if (($settings['blogroll_enabled'] ?? '1') == '1'): ?>
+            <li><a href="<?php echo BASE_URL; ?>blogroll.php">Blogroll</a></li>
+            <?php endif; ?>
+            <?php foreach ($nav_pages as $nav_page): ?>
+            <li><a href="<?php echo BASE_URL . 'page.php?slug=' . htmlspecialchars($nav_page['slug']); ?>"
+                   class="<?php echo ($nav_page['slug'] === $slug) ? 'active' : ''; ?>"><?php echo htmlspecialchars($nav_page['title']); ?></a></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+</nav>
+
+<!-- ── Page content ─────────────────────────────────────────────────────── -->
+<main class="tg-static-content">
+
+    <?php if (!empty($page_data['image_asset'])):
+        $hero_size  = in_array($page_data['image_size']  ?? '', ['medium','small']) ? $page_data['image_size']  : 'full';
+        $hero_align = in_array($page_data['image_align'] ?? '', ['left','right'])   ? $page_data['image_align'] : 'center';
+        $hero_shadow = !empty($page_data['image_shadow']) ? ' page-hero--shadow' : '';
+    ?>
+    <div class="page-hero page-hero--<?php echo $hero_size; ?> page-hero--<?php echo $hero_align; ?><?php echo $hero_shadow; ?>">
+        <img src="<?php echo BASE_URL . ltrim($page_data['image_asset'], '/'); ?>"
+             alt="<?php echo htmlspecialchars($page_data['title']); ?>">
+    </div>
+    <?php endif; ?>
+
+    <h1 class="tg-static-title"><?php echo htmlspecialchars($page_data['title']); ?></h1>
+
+    <div class="tg-static-body description">
+        <?php
+        if (!empty($page_data['content'])) {
+            echo $snapsmack->parseContent($page_data['content']);
+        }
+        ?>
+    </div>
+
+</main>
+
+</div><!-- /.tg-content-wrap -->
+
+<?php include __DIR__ . '/skin-footer.php'; ?>
+<?php // ===== SNAPSMACK EOF =====

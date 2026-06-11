@@ -12,6 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.245 — "Fanny Pack" (2026-06-11)
+
+### The Grid 1.3.4 — styled static pages (About, etc.)
+
+- **`skins/the-grid/skin-page.php`** *(new)* — full Grid shell for static pages: `<html><head>`, Grid CSS, sticky nav with Home/Blogroll/pages links (active state on current page), page content, footer.
+- **`skins/the-grid/style.css`** — added `.tg-static-content`, `.tg-static-title`, `.tg-static-body` styles for static page layout.
+- **`skins/the-grid/manifest.php`** — bumped skin to 1.3.4.
+
 ## 0.7.244 — "Fanny Pack" (2026-06-11)
 
 ### The Grid 1.3.3 — static pages in nav (About, etc.)
