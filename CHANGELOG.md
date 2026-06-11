@@ -12,41 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.247 — "Fanny Pack" (2026-06-11)
-
-### The Grid 1.3.6 — tagline inline with site name + typography controls
-
-- **`skins/the-grid/landing.php`** — tagline now renders inline with site name as `sitename / tagline` using `.tg-profile-nameline` flex row.
-- **`skins/the-grid/style.css`** — new `.tg-profile-nameline`, `.tg-profile-tagline-sep`, `.tg-profile-tagline` styles; tagline driven by `--tagline-font`, `--tagline-size`, `--tagline-weight` CSS vars; removed old `.tg-profile-bio`.
-- **`skins/the-grid/manifest.php`** — added `tg_tagline_font`, `tg_tagline_size`, `tg_tagline_weight` controls in PROFILE HEADER section.
-
 ## 0.7.246 — "Fanny Pack" (2026-06-11)
 
-### The Grid 1.3.5 — nav links centered, avatar left
+### The Grid 1.3.4 — nav + profile header polish
 
-- **`skins/the-grid/style.css`** — sticky nav inner container is now `justify-content: center; position: relative`; avatar absolutely positioned at `left: 12px` so it stays left while links are truly centered in the nav bar.
-
-## 0.7.245 — "Fanny Pack" (2026-06-11)
-
-### The Grid 1.3.4 — styled static pages (About, etc.)
-
-- **`skins/the-grid/skin-page.php`** *(new)* — full Grid shell for static pages: `<html><head>`, Grid CSS, sticky nav with Home/Blogroll/pages links (active state on current page), page content, footer.
-- **`skins/the-grid/style.css`** — added `.tg-static-content`, `.tg-static-title`, `.tg-static-body` styles for static page layout.
-- **`skins/the-grid/manifest.php`** — bumped skin to 1.3.4.
-
-## 0.7.244 — "Fanny Pack" (2026-06-11)
-
-### The Grid 1.3.3 — static pages in nav (About, etc.)
-
-- **`skins/the-grid/landing.php`** — queries `snap_pages` (active, ordered by `menu_order`) and renders each as a nav link in the sticky nav bar, same as other skins. Any page created in admin now appears automatically.
-- **`skins/the-grid/manifest.php`** — bumped skin to 1.3.3.
-
-## 0.7.243 — "Fanny Pack" (2026-06-11)
-
-### The Grid 1.3.2 — blogroll nav link
-
-- **`skins/the-grid/landing.php`** — added Blogroll link to sticky nav, shown when `blogroll_enabled` is on (same condition used by all other skins).
-- **`skins/the-grid/manifest.php`** — bumped skin to 1.3.2.
+- **`skins/the-grid/landing.php`** — tagline renders inline with site name as `sitename / tagline`; static pages (About etc.) appear in sticky nav automatically from `snap_pages`.
+- **`skins/the-grid/style.css`** — sticky nav links centered (avatar absolutely left); tagline driven by `--tagline-font/size/weight/color` CSS vars; nav links respect `--nav-text-transform`; removed old `.tg-profile-bio`.
+- **`skins/the-grid/manifest.php`** — added: tagline font/size/weight/colour pickers; nav link case selector (as-typed / ALL CAPS / First Letter / lowercase); blogroll nav link.
+- **`skins/the-grid/skin-page.php`** *(new)* — static pages render inside full Grid shell (CSS, nav, footer).
 
 ## 0.7.242 — "Fanny Pack" (2026-06-11)
 
