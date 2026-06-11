@@ -156,12 +156,15 @@ $avatar_initials = strtoupper(substr($settings['site_name'] ?? 'S', 0, 1));
     </div>
 
     <div class="tg-profile-info">
-        <?php $bio = trim($settings['site_description'] ?? ''); ?>
+        <?php
+            $tagline = trim($settings['site_tagline'] ?? '');
+            $bio     = trim($settings['site_description'] ?? '');
+        ?>
         <div class="tg-profile-nameline">
             <h1 class="tg-profile-username"><?php echo htmlspecialchars($settings['site_name'] ?? 'SnapSmack'); ?></h1>
-            <?php if ($show_tagline && $bio): ?>
+            <?php if ($show_tagline && $tagline): ?>
             <span class="tg-profile-tagline-sep">/</span>
-            <p class="tg-profile-tagline"><?php echo htmlspecialchars($bio); ?></p>
+            <p class="tg-profile-tagline"><?php echo htmlspecialchars($tagline); ?></p>
             <?php endif; ?>
         </div>
 
@@ -171,6 +174,10 @@ $avatar_initials = strtoupper(substr($settings['site_name'] ?? 'S', 0, 1));
                 <span class="tg-profile-stat-label">post<?php echo $post_count !== 1 ? 's' : ''; ?></span>
             </div>
         </div>
+
+        <?php if ($bio): ?>
+        <p class="tg-profile-bio"><?php echo nl2br(htmlspecialchars($bio)); ?></p>
+        <?php endif; ?>
     </div>
 </section>
 <?php endif; ?>
