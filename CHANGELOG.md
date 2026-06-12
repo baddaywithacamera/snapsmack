@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.249 — "Fanny Pack" (2026-06-11)
+
+### Fix modal fetch returning full page instead of fragment
+
+- **`index.php`** — added early-exit modal fragment path: when `?modal=1` + a valid slug is requested, skip `skin-meta.php` / `<body>` / `#page-wrapper` entirely and serve only the `layout.php` output, then `exit`. The `$_tg_modal_mode` flag in `layout.php` then strips the skin-header/footer, leaving a clean `.tg-post-ig` fragment for `tg-modal.js` to inject.
+- **`skins/the-grid/manifest.php`** — bumped to 1.3.8.
+
 ## 0.7.248 — "Fanny Pack" (2026-06-11)
 
 ### The Grid 1.3.7 — fix modal script not loading via manifest
