@@ -18,4 +18,8 @@
  */
 
 
+// The Grid's header IS the shared profile + sticky-nav block. Rendering it here
+// means any core page that pulls in the active skin's header (e.g. blogroll.php)
+// gets the identical header without needing skin-specific knowledge.
+include __DIR__ . '/skin-profile.php';
 // ===== SNAPSMACK EOF =====

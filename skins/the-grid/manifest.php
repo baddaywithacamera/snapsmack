@@ -24,7 +24,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'The Grid',
-    'version'     => '1.3.14',
+    'version'     => '1.3.15',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Classic Instagram-style 3-column square-thumbnail photo grid. Carousel and panorama post support. Clean, minimal UI keeps the focus on the photographs.',
@@ -405,6 +405,49 @@ return [
             'unit'     => 'px',
             'selector' => ':root',
             'property' => '--grid-gutter',
+        ],
+
+        // ---- TREATMENT (full-page background behind a centred content card) -
+        'tg_treatment_mode' => [
+            'section' => 'TREATMENT',
+            'type'    => 'select',
+            'label'   => 'Background Treatment',
+            'default' => 'none',
+            'options' => [
+                'none'  => 'None (flat page background)',
+                'image' => 'Background image',
+                'color' => 'Solid colour',
+            ],
+            'hint'    => 'Adds a full-page background behind a centred content card on every page.',
+        ],
+        'tg_treatment_image' => [
+            'section'    => 'TREATMENT',
+            'type'       => 'image',
+            'label'      => 'Treatment Image',
+            'default'    => '',
+            'accept'     => 'image/jpeg,image/png,image/webp',
+            'min_width'  => 1920,
+            'min_height' => 1080,
+            'hint'       => 'Used when Treatment = Background image. Minimum 1920×1080px.',
+        ],
+        'tg_treatment_color' => [
+            'section' => 'TREATMENT',
+            'type'    => 'color',
+            'label'   => 'Treatment Colour',
+            'default' => '#ffffff',
+            'hint'    => 'Used when Treatment = Solid colour.',
+        ],
+        'tg_treatment_overlay' => [
+            'section'  => 'TREATMENT',
+            'type'     => 'range_numeric',
+            'label'    => 'Overlay  (left darkens · right lightens)',
+            'default'  => '0',
+            'min'      => '-100',
+            'max'      => '100',
+            'step'     => '5',
+            'unit'     => '%',
+            'hint'     => 'Centre = none. Drag left to darken the background, right to lighten it.',
+            // No selector/property — handled in skin-profile.php (sign decides dark vs light).
         ],
 
     ],

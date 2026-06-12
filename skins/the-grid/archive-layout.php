@@ -27,8 +27,10 @@ $hover_overlay = $settings['tg_hover_overlay']      ?? 'title';
 $page_title = htmlspecialchars($archive_name ?? 'Archive');
 
 include dirname(__DIR__, 2) . '/core/meta.php';
-include __DIR__ . '/skin-header.php';
 ?>
+<div class="tg-content-wrap">
+
+<?php include __DIR__ . '/skin-profile.php'; ?>
 
 <!-- ── Archive Header ──────────────────────────────────────────────────── -->
 <div class="tg-archive-header">
@@ -138,6 +140,8 @@ include __DIR__ . '/skin-header.php';
     </div>
 
 </main>
+
+</div><!-- /.tg-content-wrap -->
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

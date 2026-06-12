@@ -361,6 +361,14 @@ include 'core/sidebar.php';
                         <?php endforeach; ?>
                     </div>
                 </div>
+
+                <div class="lens-input-wrapper" style="margin-top:14px;">
+                    <label>FOOTER TEXT CASE <span class="field-tip" data-tip="Render the entire footer bar in lowercase. Applies to every theme.">ⓘ</span></label>
+                    <select name="settings[footer_lowercase]">
+                        <option value="0" <?php echo (($settings['footer_lowercase'] ?? '0') === '1') ? '' : 'selected'; ?>>NORMAL (AS WRITTEN)</option>
+                        <option value="1" <?php echo (($settings['footer_lowercase'] ?? '0') === '1') ? 'selected' : ''; ?>>all lowercase</option>
+                    </select>
+                </div>
             </div>
 
             <!-- ── IMAGE ENGINE ───────────────────────────────────────────── -->

@@ -28,6 +28,12 @@
     <div class="tg-modal-backdrop"></div>
     <div id="tg-modal-frame" class="tg-modal-frame"></div>
 </div>
+
+<!-- Avatar lightbox (populated by tg-lightbox.js). Shared by every Grid page. -->
+<div id="tg-lightbox" class="tg-lightbox" hidden>
+    <button type="button" class="tg-lightbox-close" aria-label="Close">&times;</button>
+    <img class="tg-lightbox-img" src="" alt="Profile photo">
+</div>
 <?php
 // ── Load required JS engines from manifest ─────────────────────────────────
 $skin_manifest = include __DIR__ . '/manifest.php';
@@ -47,6 +53,9 @@ if (!empty($requested)) {
 
 // ── tg-modal.js — load directly in case manifest-inventory is stale ────────
 echo '<script src="' . BASE_URL . 'skins/the-grid/assets/js/tg-modal.js?v=' . SNAPSMACK_VERSION_SHORT . '" defer></script>' . "\n";
+
+// ── tg-lightbox.js — avatar lightbox (shared by all Grid pages) ────────────
+echo '<script src="' . BASE_URL . 'skins/the-grid/assets/js/tg-lightbox.js?v=' . SNAPSMACK_VERSION_SHORT . '" defer></script>' . "\n";
 
 // ── Core footer (closes </body></html>) ────────────────────────────────────
 include_once(dirname(__DIR__, 2) . '/core/footer.php');

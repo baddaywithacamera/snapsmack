@@ -96,7 +96,10 @@ $has_more = ($offset + count($raw_images)) < $total_count;
 ?>
 
 <?php include(__DIR__ . '/skin-meta.php'); ?>
-<?php include(__DIR__ . '/skin-header.php'); ?>
+
+<div class="tg-content-wrap">
+
+<?php include __DIR__ . '/skin-profile.php'; ?>
 
 <div id="tg-app">
 
@@ -172,6 +175,8 @@ $has_more = ($offset + count($raw_images)) < $total_count;
     <?php endif; ?>
 
 </div><!-- /#tg-app -->
+
+</div><!-- /.tg-content-wrap -->
 
 <?php if ($has_more): ?>
 <script>
