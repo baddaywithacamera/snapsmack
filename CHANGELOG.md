@@ -12,6 +12,23 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.253 — "Courtesy Flush" (2026-06-12)
+
+### The Grid 1.3.15 — unified page shell, header on every page, background treatment, avatar lightbox, blogroll restyle
+
+- **Identical header on every Grid page.** The profile block (avatar, name/tagline, post count, bio) + sticky nav previously lived inline in `landing.php` only, so About, Blogroll, archive, and hashtag pages rendered bare. Extracted into a new self-contained partial **`skins/the-grid/skin-profile.php`** (computes avatar/post-count/nav from `$pdo`+`$settings`, so it works in any page context). Wired into `landing.php` (inline copy removed), `skin-page.php` (replaced nav-only block), `archive-layout.php` and `hashtag.php` (now wrapped in `.tg-content-wrap` + header), and `skin-header.php` (now `include`s the partial, which is how core `blogroll.php` picks it up). `layout.php` untouched: a direct post visit already delegates to `landing.php`, and the modal fragment stays header-less.
+- **Profile header centered.** `skins/the-grid/style.css` — `.tg-profile` is centered as a unit (`justify-content:center` + `.tg-profile-info{flex:0 1 auto}`); internal avatar-left/text-left alignment unchanged.
+- **Background treatment (skin admin → TREATMENT).** New full-page background behind a centered content card, configurable per site. `manifest.php` adds `tg_treatment_mode` (none / image / colour), `tg_treatment_image` (upload, **min 1920×1080** enforced), `tg_treatment_color`, and `tg_treatment_overlay` (a single bidirectional slider: −100 darkens · 0 none · +100 lightens). Rendered by `skin-profile.php` as fixed `.tg-treatment-bg` + `.tg-treatment-overlay` layers; the card is keyed by `body:has(.tg-treatment-bg) .tg-content-wrap`, so with no treatment the flat layout is completely untouched.
+- **Avatar lightbox.** New **`skins/the-grid/assets/js/tg-lightbox.js`** + a shared `#tg-lightbox` container in `skin-footer.php` + CSS. Clicking/keyboard-activating the profile avatar (`[data-tg-lightbox]`) opens the larger image full-screen; closes on backdrop, ×, or Escape. No inline JS in the skin.
+- **Blogroll restyled to match The Grid.** Grid-scoped CSS under `body.is-blogroll` (this stylesheet only loads when The Grid is active): the raw full-URL line is hidden (the peer name is the link), headings/peers/descriptions adopt Grid type, and the page now carries the shared header. Core `blogroll.php` markup unchanged.
+- **`skins/the-grid/manifest.php`** — `version` → 1.3.15.
+
+### Core — footer lowercase option + skin image minimum-dimension guard
+
+- **Footer lowercase (all themes).** New site-wide toggle in **`smack-globalvibe.php`** (Footer section → `settings[footer_lowercase]`, persisted by the generic settings saver). **`core/footer.php`** adds a `footer-lowercase` class + inline `text-transform:lowercase` to `#system-footer` when enabled, so the whole footer bar renders lowercase on every skin. Visual only — stored data is unchanged.
+- **Skin image minimum dimensions.** **`smack-skin.php`** image-upload handler now honours per-field `min_width`/`min_height` from the active skin manifest (via `getimagesize`), rejecting undersized uploads with a `gallery_flash` message instead of saving them. Used by The Grid treatment image (1920×1080).
+- **`core/constants.php`** — version → 0.7.253 "Courtesy Flush".
+
 ## 0.7.252 — "Fanny Pack" (2026-06-12)
 
 ### The Grid 1.3.14 — modal carousel + deep-link opens modal (no flat page)
