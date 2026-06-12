@@ -127,8 +127,11 @@ foreach ($post_images as $pimg) {
 $cover_img  = $post_images[0];
 $cover_exif = json_decode($cover_img['img_exif'] ?? '{}', true) ?: [];
 
-include dirname(__DIR__, 2) . '/core/meta.php';
-include __DIR__ . '/skin-header.php';
+$_tg_modal_mode = !empty($_GET['modal']);
+
+if (!$_tg_modal_mode) {
+    include __DIR__ . '/skin-header.php';
+}
 ?>
 
 <?php
@@ -220,20 +223,27 @@ $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
         <!-- Scrollable body -->
         <div class="tg-post-ig-body">
 
-            <h2 class="tg-post-ig-title"><?php echo htmlspecialchars($post['title']); ?></h2>
-
-            <?php if (!empty($post['description'])): ?>
-            <div class="tg-post-caption">
-                <?php
-                $caption_html = snap_render_caption_html($post['description'], BASE_URL, 'tg-hashtag');
-                if (function_exists('snapsmack_parse_shortcodes')) {
-                    echo snapsmack_parse_shortcodes(nl2br($caption_html));
-                } else {
-                    echo nl2br($caption_html);
-                }
-                ?>
+            <!-- Caption IG-style: bold sitename inline + caption text -->
+            <div class="tg-post-caption-block">
+                <p class="tg-post-ig-caption">
+                    <span class="tg-post-ig-caption-user"><?php echo htmlspecialchars($_site_name); ?></span>
+                    <?php
+                    $caption_parts = [];
+                    if (!empty($post['title'])) {
+                        $caption_parts[] = htmlspecialchars($post['title']);
+                    }
+                    if (!empty($post['description'])) {
+                        $desc_html = snap_render_caption_html($post['description'], BASE_URL, 'tg-hashtag');
+                        if (function_exists('snapsmack_parse_shortcodes')) {
+                            $caption_parts[] = snapsmack_parse_shortcodes(nl2br($desc_html));
+                        } else {
+                            $caption_parts[] = nl2br($desc_html);
+                        }
+                    }
+                    echo implode('<br>', $caption_parts);
+                    ?>
+                </p>
             </div>
-            <?php endif; ?>
 
             <!-- EXIF panel — updated by snapslider:slidechange in carousel mode -->
             <div id="tg-exif-panel" class="tg-exif-panel">
@@ -259,8 +269,6 @@ $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
                 <?php endforeach; ?>
             </div>
 
-            <p class="tg-post-date"><?php echo date('F j, Y', strtotime($post['created_at'])); ?></p>
-
             <?php if (!empty($post['allow_comments'])): ?>
             <div class="tg-community-wrap">
                 <?php
@@ -272,7 +280,20 @@ $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
 
         </div><!-- .tg-post-ig-body -->
 
-        <?php include __DIR__ . '/skin-footer.php'; ?>
+        <!-- Engagement bar — pinned above footer, IG-style -->
+        <div class="tg-post-ig-actions">
+            <div class="tg-post-ig-action-icons">
+                <button class="tg-action-btn" aria-label="Comment" onclick="document.querySelector('.tg-community-wrap')?.scrollIntoView({behavior:'smooth'})">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </button>
+                <button class="tg-action-btn tg-action-bookmark" aria-label="Save">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                </button>
+            </div>
+            <p class="tg-post-ig-date"><?php echo date('F j, Y', strtotime($post['created_at'])); ?></p>
+        </div>
+
+        <?php if (!$_tg_modal_mode) include __DIR__ . '/skin-footer.php'; ?>
 
     </div><!-- .tg-post-ig-info -->
 
