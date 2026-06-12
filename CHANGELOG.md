@@ -14,6 +14,12 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ## 0.7.252 — "Fanny Pack" (2026-06-12)
 
+### The Grid 1.3.13 — ship the modal CSS (1.3.12 hotfix)
+
+- 1.3.12 shipped the overlay container + `tg-modal.js` but NOT the modal CSS. The `.tg-modal-overlay` / `.tg-modal-backdrop` / `.tg-modal-frame` rules live in `skins/the-grid/style.css`, which was uncommitted on master and got left out of the 0.7.252 push. Result: the overlay rendered unstyled (`position: static`, no `z-index`, no backdrop), so it opened in normal document flow — collapsed and invisible. Symptom: "click, nothing happens," no console error. Verified live: `#tg-modal-overlay` present and `tg-modal.js` loaded (v252), but `modalRulesFound: 0` in the deployed stylesheet.
+- **`skins/the-grid/style.css`** — committed the POST MODAL OVERLAY section (already present in the working tree, never committed to master).
+- **`skins/the-grid/manifest.php`** — `version` → 1.3.13. The `style.css` cache-bust embeds the skin version, so bumping to 1.3.13 forces browsers to refetch the corrected CSS (no core change needed).
+
 ### The Grid 1.3.12 — ship the modal overlay-container fix
 
 - Reissue of 0.7.251 / The Grid 1.3.11, which was never deployed. Bumped to a fresh core version (0.7.252) and skin version (1.3.12) so the release tags are clean and no stale 0.7.251 tag or package can collide on deploy. **No code change from 0.7.251** — the modal fix itself is unchanged; see the 0.7.251 entry below and `_continuity/the-grid-modal-fix-2026-06-11.md` for the full root-cause writeup.

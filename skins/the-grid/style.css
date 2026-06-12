@@ -585,20 +585,21 @@ img { display: block; max-width: 100%; }
     padding:    16px;
 }
 
-.tg-post-ig-title {
-    font-size:     15px;
-    font-weight:   600;
-    color:         var(--text-primary);
-    margin:        0 0 12px;
-    line-height:   1.4;
+/* IG-style caption block: bold username inline then caption text */
+.tg-post-caption-block {
+    margin-bottom: 12px;
 }
 
-/* Post content within scrollable body */
-.tg-post-caption {
-    font-size:     14px;
-    color:         var(--text-primary);
-    line-height:   1.6;
-    margin-bottom: 12px;
+.tg-post-ig-caption {
+    font-size:   14px;
+    color:       var(--text-primary);
+    line-height: 1.6;
+    margin:      0;
+}
+
+.tg-post-ig-caption-user {
+    font-weight:  600;
+    margin-right: 4px;
 }
 
 .description a,
@@ -645,13 +646,41 @@ img { display: block; max-width: 100%; }
     color:     var(--text-primary);
 }
 
-/* Post date */
-.tg-post-date {
+/* Engagement bar — pinned between body and footer */
+.tg-post-ig-actions {
+    flex-shrink:  0;
+    border-top:   1px solid var(--border-color);
+    padding:      10px 16px 8px;
+    background:   var(--bg-primary, #fff);
+}
+
+.tg-post-ig-action-icons {
+    display:       flex;
+    gap:           16px;
+    margin-bottom: 6px;
+}
+
+.tg-action-btn {
+    background:  none;
+    border:      none;
+    padding:     0;
+    cursor:      pointer;
+    color:       var(--text-primary);
+    line-height: 1;
+    display:     flex;
+    align-items: center;
+}
+
+.tg-action-btn:hover { opacity: 0.6; }
+
+.tg-action-bookmark { margin-left: auto; }
+
+.tg-post-ig-date {
     font-size:      10px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color:          var(--text-secondary);
-    margin-bottom:  16px;
+    margin:         0;
 }
 
 /* Community component — flush to body edges */
@@ -736,6 +765,47 @@ img { display: block; max-width: 100%; }
     .tg-post-ig-body {
         overflow: visible;
     }
+}
+
+/* ==========================================================================
+   POST MODAL OVERLAY
+   IG-style popover: grid stays visible, dimmed behind 80% opaque backdrop.
+   tg-modal.js populates #tg-modal-frame by fetching ?modal=1 fragments.
+   ========================================================================== */
+
+.tg-modal-overlay {
+    position:        fixed;
+    inset:           0;
+    z-index:         900;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+}
+
+.tg-modal-overlay[hidden] { display: none; }
+
+/* Prevent grid scroll while modal is open */
+body.tg-modal-open { overflow: hidden; }
+
+.tg-modal-backdrop {
+    position:   absolute;
+    inset:      0;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.tg-modal-frame {
+    position:      relative;
+    z-index:       1;
+    width:         min(92vw, 1300px);
+    height:        min(92vh, 900px);
+    border-radius: 4px;
+    overflow:      hidden;
+    box-shadow:    0 8px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* Force the post layout to fill the frame (overrides 100dvh default) */
+.tg-modal-frame .tg-post-ig {
+    height: 100%;
 }
 
 /* ==========================================================================
