@@ -12,6 +12,18 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.254 — "Hot Seat" (2026-06-12)
+
+### Core — likes/comments now work inside injected modals (The Grid post modal)
+
+- **ROOT CAUSE (heart dead in The Grid modal, no console error):** `assets/js/ss-engine-community.js` wired the `.ss-community` block exactly once, inside `DOMContentLoaded` (`const root = document.querySelector('.ss-community')`). That works for skins that render the post as a full page (e.g. 50-shades-of-noah-grey — the block exists at load), but The Grid injects the post — and its `.ss-community` — into a modal *after* load, so the engine never saw it and never bound the like/comment handlers. No error was thrown because nothing failed; the listeners simply were never attached. Confirmed by fetching the deployed file from a live install: it was the pre-fix version. The repo fix existed but had never shipped in a release.
+- **`assets/js/ss-engine-community.js`** — extracted the in-flow wiring into `wireCommunity(scope)`, called on `DOMContentLoaded` for the initial page **and** on `snapsmack:modal:opened` (dispatched by `tg-modal.js` on the injected fragment) so a modal-injected community block is wired too. Likes, reactions, and comments now respond inside The Grid modal.
+
+### Core — themed file-upload control in the skin admin
+
+- **`smack-skin.php`** — `type:'image'` skin options (profile avatar, treatment image) rendered a raw browser `<input type="file">` that ignored the admin theme. Replaced with the standard `file-upload-wrapper` / `file-custom-btn` / `file-name-display` pattern (a hidden input behind a themed UPLOAD button + filename display), so it now inherits admin geometry like every other control.
+- **`core/constants.php`** — version → 0.7.254 "Hot Seat".
+
 ## 0.7.253 — "Courtesy Flush" (2026-06-12)
 
 ### The Grid 1.3.15 — unified page shell, header on every page, background treatment, avatar lightbox, blogroll restyle

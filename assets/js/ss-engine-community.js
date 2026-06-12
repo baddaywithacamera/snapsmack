@@ -52,8 +52,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // COMMUNITY COMPONENT (in-flow: likes bar + reactions + comments)
     // =========================================================================
 
-    const root = document.querySelector('.ss-community');
-    if (root) {
+    // Wire the in-flow community block. Scoped so it runs against the page at load
+    // AND against a post fragment injected into a modal at runtime (The Grid modal).
+    function wireCommunity(scope) {
+        const root = (scope || document).querySelector('.ss-community');
+        if (!root) return;
+        if (root.dataset.ssWired === '1') return;  // don't double-wire the same node
+        root.dataset.ssWired = '1';
 
         const postId      = root.dataset.postId;
         const authUrl     = root.dataset.authUrl;
@@ -329,7 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-    } // end root (community component)
+    } // end wireCommunity (in-flow community component)
 
 
     // =========================================================================
@@ -530,6 +535,16 @@ document.addEventListener('DOMContentLoaded', () => {
         } // end dock picker
 
     } // end dock
+
+    // Wire any community block already present in the initial page.
+    wireCommunity(document);
+
+    // The Grid (and any skin) injects the post — with its own .ss-community — into a
+    // modal after load. tg-modal.js fires snapsmack:modal:opened on the injected
+    // fragment; wire that block too so likes/comments respond inside the modal.
+    document.addEventListener('snapsmack:modal:opened', function (e) {
+        wireCommunity((e && e.target) || document);
+    });
 
 }); // DOMContentLoaded
 
