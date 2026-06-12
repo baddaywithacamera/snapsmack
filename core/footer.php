@@ -109,7 +109,7 @@ $slots[] = '<a href="' . $rss_url . '" class="footer-link rss-tag" title="RSS Fe
 
 // --- RENDERING ---
 ?>
-<footer id="system-footer">
+<footer id="system-footer"<?php echo (($settings['footer_lowercase'] ?? '0') === '1') ? ' class="footer-lowercase" style="text-transform:lowercase;"' : ''; ?>>
     <div class="inside">
 
         <?php

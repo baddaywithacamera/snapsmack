@@ -52,8 +52,20 @@
 
     // ── Carousel (re)init for the injected fragment ──────────────────────────
     // Mirrors ss-engine-carousel-view.js, which only auto-runs on page load.
-    function initCarouselIn(root) {
-        if (typeof SnapSlider === 'undefined') return;
+    function initCarouselIn(root, _attempt) {
+        if (typeof SnapSlider === 'undefined') {
+            // SnapSlider (smack-slider) may not have finished loading on a cold/slow
+            // page. Retry briefly instead of silently giving up (the silent return was
+            // why an intermittent "dead carousel" left no trace in the console).
+            _attempt = _attempt || 0;
+            if (_attempt < 10) {
+                console.warn('[tg-modal] SnapSlider not ready — retry ' + (_attempt + 1) + '/10');
+                setTimeout(function () { initCarouselIn(root, _attempt + 1); }, 150);
+            } else {
+                console.warn('[tg-modal] SnapSlider never loaded — carousel nav disabled.');
+            }
+            return;
+        }
         var sliders = root.querySelectorAll('.ss-slider');
         for (var i = 0; i < sliders.length; i++) {
             var container = sliders[i];

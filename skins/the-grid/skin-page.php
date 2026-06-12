@@ -41,30 +41,8 @@ $_sp_initial       = strtoupper(substr($_sp_site_name, 0, 1));
 
 <div class="tg-content-wrap">
 
-<!-- ── Sticky Nav ──────────────────────────────────────────────────────── -->
-<nav class="tg-sticky-nav tg-sticky-nav--static" aria-label="Site navigation">
-    <div class="tg-sticky-nav-inner">
-        <?php if ($_sp_avatar_exists): ?>
-            <img class="tg-sticky-avatar"
-                 src="<?php echo BASE_URL . htmlspecialchars($_sp_avatar_path); ?>"
-                 alt="<?php echo htmlspecialchars($_sp_site_name); ?>"
-                 aria-hidden="true">
-        <?php else: ?>
-            <span class="tg-sticky-avatar-initials" aria-hidden="true"><?php echo htmlspecialchars($_sp_initial); ?></span>
-        <?php endif; ?>
-
-        <ul class="tg-sticky-nav-links">
-            <li><a href="<?php echo BASE_URL; ?>">Home</a></li>
-            <?php if (($settings['blogroll_enabled'] ?? '1') == '1'): ?>
-            <li><a href="<?php echo BASE_URL; ?>blogroll.php">Blogroll</a></li>
-            <?php endif; ?>
-            <?php foreach ($nav_pages as $nav_page): ?>
-            <li><a href="<?php echo BASE_URL . 'page.php?slug=' . htmlspecialchars($nav_page['slug']); ?>"
-                   class="<?php echo ($nav_page['slug'] === $slug) ? 'active' : ''; ?>"><?php echo htmlspecialchars($nav_page['title']); ?></a></li>
-            <?php endforeach; ?>
-        </ul>
-    </div>
-</nav>
+<!-- ── Shared profile + sticky nav (identical across all Grid pages) ──────── -->
+<?php include __DIR__ . '/skin-profile.php'; ?>
 
 <!-- ── Page content ─────────────────────────────────────────────────────── -->
 <main class="tg-static-content">

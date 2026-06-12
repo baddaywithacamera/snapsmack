@@ -133,80 +133,10 @@ $grid_stmt->execute([$now_local]);
 $grid_posts = $grid_stmt->fetchAll();
 
 include dirname(__DIR__, 2) . '/core/meta.php';
-include __DIR__ . '/skin-header.php';
-?>
-
-<?php
-// Avatar path resolved once — used in both profile header and sticky nav mini avatar
-$avatar_path     = $settings['tg_avatar'] ?? '';
-$avatar_exists   = $avatar_path && file_exists(__DIR__ . '/../../' . $avatar_path);
-$avatar_initials = strtoupper(substr($settings['site_name'] ?? 'S', 0, 1));
 ?>
 <div class="tg-content-wrap">
 
-<?php if ($show_profile): ?>
-<!-- ── Profile Header ──────────────────────────────────────────────────── -->
-<section class="tg-profile">
-    <div class="tg-profile-avatar">
-        <?php if ($avatar_exists): ?>
-            <img src="<?php echo BASE_URL . htmlspecialchars($avatar_path); ?>" alt="Profile avatar">
-        <?php else: ?>
-            <span class="tg-profile-avatar-initials"><?php echo htmlspecialchars($avatar_initials); ?></span>
-        <?php endif; ?>
-    </div>
-
-    <div class="tg-profile-info">
-        <?php
-            $tagline = trim($settings['site_tagline'] ?? '');
-            $bio     = trim($settings['site_description'] ?? '');
-        ?>
-        <div class="tg-profile-nameline">
-            <h1 class="tg-profile-username"><?php echo htmlspecialchars($settings['site_name'] ?? 'SnapSmack'); ?></h1>
-            <?php if ($show_tagline && $tagline): ?>
-            <span class="tg-profile-tagline-sep">/</span>
-            <p class="tg-profile-tagline"><?php echo htmlspecialchars($tagline); ?></p>
-            <?php endif; ?>
-        </div>
-
-        <div class="tg-profile-stats">
-            <div class="tg-profile-stat">
-                <span class="tg-profile-stat-num"><?php echo number_format($post_count); ?></span>
-                <span class="tg-profile-stat-label">post<?php echo $post_count !== 1 ? 's' : ''; ?></span>
-            </div>
-        </div>
-
-        <?php if ($bio): ?>
-        <p class="tg-profile-bio"><?php echo nl2br(htmlspecialchars($bio)); ?></p>
-        <?php endif; ?>
-    </div>
-</section>
-<?php endif; ?>
-
-<!-- ── Sticky Nav ──────────────────────────────────────────────────────── -->
-<!-- JS (tg-nav.js) adds .profile-hidden when profile scrolls off screen   -->
-<nav class="tg-sticky-nav" aria-label="Site navigation">
-    <div class="tg-sticky-nav-inner">
-        <!-- Mini avatar: visible only when profile has scrolled off screen -->
-        <?php if ($avatar_exists): ?>
-            <img class="tg-sticky-avatar"
-                 src="<?php echo BASE_URL . htmlspecialchars($avatar_path); ?>"
-                 alt="<?php echo htmlspecialchars($settings['site_name'] ?? ''); ?>"
-                 aria-hidden="true">
-        <?php else: ?>
-            <span class="tg-sticky-avatar-initials" aria-hidden="true"><?php echo htmlspecialchars($avatar_initials); ?></span>
-        <?php endif; ?>
-
-        <ul class="tg-sticky-nav-links">
-            <li><a href="<?php echo BASE_URL; ?>" class="<?php echo (!isset($_GET['s']) && !isset($_GET['page'])) ? 'active' : ''; ?>">Home</a></li>
-            <?php if (($settings['blogroll_enabled'] ?? '1') == '1'): ?>
-            <li><a href="<?php echo BASE_URL; ?>blogroll.php">Blogroll</a></li>
-            <?php endif; ?>
-            <?php foreach ($nav_pages as $nav_page): ?>
-            <li><a href="<?php echo BASE_URL . 'page.php?slug=' . htmlspecialchars($nav_page['slug']); ?>"><?php echo htmlspecialchars($nav_page['title']); ?></a></li>
-            <?php endforeach; ?>
-        </ul>
-    </div>
-</nav>
+<?php include __DIR__ . '/skin-profile.php'; ?>
 
 <!-- ── 3-Column Grid ───────────────────────────────────────────────────── -->
 <main>

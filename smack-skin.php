@@ -202,12 +202,37 @@ if (isset($_POST['save_skin_settings'])) {
             mkdir($upload_dir, 0755, true);
         }
         $allowed_exts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+
+        // Pull this skin's option meta so we can honour per-field minimum
+        // dimensions (e.g. The Grid treatment image requires >= 1920x1080).
+        $_img_opts = [];
+        $_mf_path  = __DIR__ . '/skins/' . $save_skin . '/manifest.php';
+        if (is_file($_mf_path)) {
+            $_mf = include $_mf_path;
+            $_img_opts = (is_array($_mf) && isset($_mf['options'])) ? $_mf['options'] : [];
+        }
+        $_img_rejects = [];
+
         foreach ($_FILES['skin_img_opt']['name'] as $img_key => $orig_name) {
             if (empty($orig_name) || $_FILES['skin_img_opt']['error'][$img_key] !== UPLOAD_ERR_OK) continue;
             $img_key_clean = preg_replace('/[^a-z0-9_\-]/', '', $img_key);
             if (!$img_key_clean) continue;
             $ext = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
             if (!in_array($ext, $allowed_exts)) continue;
+
+            // Enforce minimum dimensions when the manifest declares them.
+            $min_w = (int)($_img_opts[$img_key]['min_width']  ?? 0);
+            $min_h = (int)($_img_opts[$img_key]['min_height'] ?? 0);
+            if ($min_w > 0 || $min_h > 0) {
+                $dim = @getimagesize($_FILES['skin_img_opt']['tmp_name'][$img_key]);
+                if (!$dim || $dim[0] < $min_w || $dim[1] < $min_h) {
+                    $_img_rejects[] = ($_img_opts[$img_key]['label'] ?? $img_key)
+                        . ' needs at least ' . $min_w . '×' . $min_h . 'px'
+                        . ($dim ? ' (got ' . (int)$dim[0] . '×' . (int)$dim[1] . 'px)' : '');
+                    continue;
+                }
+            }
+
             $filename = $save_skin . '--' . $img_key_clean . '.' . $ext;
             $target   = $upload_dir . $filename;
             if (move_uploaded_file($_FILES['skin_img_opt']['tmp_name'][$img_key], $target)) {
@@ -216,6 +241,10 @@ if (isset($_POST['save_skin_settings'])) {
                 $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
                     ->execute([$scoped_key, $rel_path, $rel_path]);
             }
+        }
+
+        if (!empty($_img_rejects)) {
+            $_SESSION['gallery_flash'] = 'Image not saved — ' . implode('; ', $_img_rejects) . '.';
         }
     }
 
