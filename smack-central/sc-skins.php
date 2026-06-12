@@ -84,16 +84,7 @@ if (!function_exists('sc_github_get')) {
     }
 }
 
-// ── Fetch branches and tags from GitHub for the ref picker ───────────────────
-
-function sc_skins_get_refs(): array {
-    $branches = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/branches?per_page=30');
-    $tags     = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/tags?per_page=30');
-    $result   = ['branches' => [], 'tags' => []];
-    if (is_array($branches)) $result['branches'] = array_column($branches, 'name');
-    if (is_array($tags))     $result['tags']     = array_column($tags, 'name');
-    return $result;
-}
+// Packaging always uses master. Branch/tag picker removed — dev branch is never used.
 
 // ── Download repo zip and extract skins/ to a temp directory ─────────────────
 
@@ -213,10 +204,7 @@ $build_results = [];
 $build_errors  = [];
 $fetch_error  = '';
 
-$refs = [];
-if ($preflight_ok && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    $refs = sc_skins_get_refs();
-}
+$ref = 'master';
 
 // ── Delete skin from registry (no preflight required) ─────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_skin'])) {
@@ -288,7 +276,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
         if (!$result['ok']) {
             $fetch_error = $result['msg'];
             $phase = 'select_ref';
-            $refs  = sc_skins_get_refs();
         } else {
             $tmp_dir    = $result['tmp_dir'];
             $tmp_key    = $result['tmp_key'];
@@ -296,7 +283,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
             $phase = empty($repo_skins) ? 'select_ref' : 'select_skins';
             if (empty($repo_skins)) {
                 $fetch_error = 'No valid skins found in skins/ for ref: ' . htmlspecialchars($ref);
-                $refs = sc_skins_get_refs();
                 // Clean up empty tmp dir
                 @rmdir($tmp_dir);
             }
@@ -543,52 +529,16 @@ include __DIR__ . '/sc-layout-top.php';
     <?php endif; ?>
 
     <div class="sc-card">
-        <h2 class="sc-card-title">Select Branch or Tag</h2>
+        <h2 class="sc-card-title">Package Skins</h2>
         <p class="sc-dim" style="margin-bottom:20px; font-size:0.875rem;">
-            SnapSmack will download the repo zip from
-            <strong><?php echo htmlspecialchars(SNAPSMACK_GITHUB_REPO); ?></strong>
-            and extract the skins directory for packaging.
+            Downloads <strong><?php echo htmlspecialchars(SNAPSMACK_GITHUB_REPO); ?></strong>
+            from <strong>master</strong> and extracts the skins directory for packaging.
         </p>
         <form method="POST" action="sc-skins.php">
-            <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
-                <div>
-                    <label style="display:block; font-size:0.8rem; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px; color:#aaa;">
-                        Branch or Tag
-                    </label>
-                    <?php if (!empty($refs['branches']) || !empty($refs['tags'])): ?>
-                        <select name="ref" style="min-width:220px; padding:8px 10px; background:#111; border:1px solid #333; color:#ccc; font-size:0.9rem;">
-                            <?php if (!empty($refs['branches'])): ?>
-                                <optgroup label="Branches">
-                                    <?php foreach ($refs['branches'] as $b): ?>
-                                        <option value="<?php echo htmlspecialchars($b); ?>" <?php echo $b === 'master' ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($b); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </optgroup>
-                            <?php endif; ?>
-                            <?php if (!empty($refs['tags'])): ?>
-                                <optgroup label="Tags">
-                                    <?php foreach ($refs['tags'] as $t): ?>
-                                        <option value="<?php echo htmlspecialchars($t); ?>">
-                                            <?php echo htmlspecialchars($t); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </optgroup>
-                            <?php endif; ?>
-                        </select>
-                    <?php else: ?>
-                        <input type="text" name="ref" value="master"
-                               style="min-width:220px; padding:8px 10px; background:#111; border:1px solid #333; color:#ccc; font-size:0.9rem;"
-                               placeholder="branch or tag name">
-                        <div class="sc-dim" style="font-size:0.78rem; margin-top:4px;">
-                            Could not fetch ref list from GitHub — enter manually.
-                        </div>
-                    <?php endif; ?>
-                </div>
-                <button type="submit" name="fetch_skins" value="1" class="sc-btn sc-btn--primary">
-                    Fetch Skins
-                </button>
-            </div>
+            <input type="hidden" name="ref" value="master">
+            <button type="submit" name="fetch_skins" value="1" class="sc-btn sc-btn--primary">
+                Fetch Skins from Master
+            </button>
         </form>
     </div>
 
