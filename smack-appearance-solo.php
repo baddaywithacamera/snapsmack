@@ -145,7 +145,7 @@ include 'core/sidebar.php';
 
         <!-- ── SAVE ───────────────────────────────────────────────────── -->
         <div style="margin-top:4px;">
-            <button type="submit" name="save_solo_appearance" class="btn btn-primary">SAVE SOLO APPEARANCE</button>
+            <button type="submit" name="save_solo_appearance" class="master-update-btn">SAVE SOLO APPEARANCE</button>
         </div>
 
     </div>

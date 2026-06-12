@@ -456,15 +456,20 @@ img { display: block; max-width: 100%; }
 
 /* ── Outer two-panel container ─────────────────────────────────────────── */
 .tg-post-ig {
-    display:    flex;
-    height:     100dvh;
-    overflow:   hidden;
-    background: var(--post-bg, #000);
+    display:         flex;
+    justify-content: center;
+    height:          100dvh;
+    overflow:        hidden;
+    background:      var(--post-bg, #000);
 }
 
 /* ── Left: image panel (fixed, never scrolls) ──────────────────────────── */
 .tg-post-ig-image {
-    flex:            1 1 0;
+    /* The Grid is classic-IG: the image panel is ALWAYS 1:1 square.
+       Sized by container height; width derives from aspect-ratio. */
+    flex:            0 0 auto;
+    height:          100%;
+    aspect-ratio:    1 / 1;
     min-width:       0;
     display:         flex;
     align-items:     center;
@@ -582,7 +587,7 @@ img { display: block; max-width: 100%; }
 .tg-post-ig-body {
     flex:       1 1 0;
     overflow-y: auto;
-    padding:    16px;
+    padding:    20px 22px;
 }
 
 /* IG-style caption block: bold username inline then caption text */
@@ -749,10 +754,11 @@ img { display: block; max-width: 100%; }
     }
 
     .tg-post-ig-image {
-        flex:       0 0 auto;
-        height:     60vw;
-        min-height: 200px;
-        max-height: 60vh;
+        /* Square here too — full width, 1:1. */
+        flex:         0 0 auto;
+        width:        100%;
+        aspect-ratio: 1 / 1;
+        height:       auto;
     }
 
     .tg-post-ig-info {
@@ -796,7 +802,8 @@ body.tg-modal-open { overflow: hidden; }
 .tg-modal-frame {
     position:      relative;
     z-index:       1;
-    width:         min(92vw, 1300px);
+    width:         auto;
+    max-width:     92vw;
     height:        min(92vh, 900px);
     border-radius: 4px;
     overflow:      hidden;
