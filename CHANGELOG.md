@@ -12,6 +12,13 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.250 — "Fanny Pack" (2026-06-11)
+
+### The Grid 1.3.9 — force-rebuild to ship modal registration
+
+- **`core/constants.php`** — bumped to 0.7.250. Forces a new core release package build from current master, ensuring `manifest-inventory.php` (with `smack-grid-modal` registered) ships to the server. Previous 0.7.249 packages were built from a snapshot that predated this registration.
+- **`skins/the-grid/manifest.php`** — bumped to 1.3.9. Forces a new skin package build, ensuring the deployed manifest carries `smack-grid-modal` in `require_scripts` and `tg-modal.js` is served.
+
 ## 0.7.249 — "Fanny Pack" (2026-06-11)
 
 ### Fix modal fetch returning full page instead of fragment
