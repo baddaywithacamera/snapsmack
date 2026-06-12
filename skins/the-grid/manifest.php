@@ -24,7 +24,7 @@ unset($_mf_inv);
 
 return [
     'name'        => 'The Grid',
-    'version'     => '1.3.15',
+    'version'     => '1.3.16',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'Classic Instagram-style 3-column square-thumbnail photo grid. Carousel and panorama post support. Clean, minimal UI keeps the focus on the photographs.',
@@ -395,12 +395,12 @@ return [
             'property' => '--grid-max-width',
         ],
         'tg_gutter' => [
-            'section'  => 'LAYOUT',
+            'section'  => 'TREATMENT',
             'type'     => 'range_numeric',
-            'label'    => 'Side Gutter',
+            'label'    => 'Side Gutter (white margin over background)',
             'default'  => '0',
             'min'      => '0',
-            'max'      => '200',
+            'max'      => '400',
             'step'     => '4',
             'unit'     => 'px',
             'selector' => ':root',
@@ -429,6 +429,18 @@ return [
             'min_width'  => 1920,
             'min_height' => 1080,
             'hint'       => 'Used when Treatment = Background image. Minimum 1920×1080px.',
+        ],
+        'tg_treatment_position' => [
+            'section' => 'TREATMENT',
+            'type'    => 'select',
+            'label'   => 'Image Anchor (when it overshoots)',
+            'default' => 'center',
+            'options' => [
+                'center' => 'Centre',
+                'top'    => 'Snap to top',
+                'bottom' => 'Snap to bottom',
+            ],
+            'hint'    => 'Which edge the background image hugs when it is taller than the screen.',
         ],
         'tg_treatment_color' => [
             'section' => 'TREATMENT',
