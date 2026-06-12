@@ -12,6 +12,12 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.251 — "Fanny Pack" (2026-06-12)
+
+### The Grid 1.3.11 — load tg-modal.js directly from skin-footer
+
+- **`skins/the-grid/skin-footer.php`** — `smack-grid-modal` was never in the deployed core `manifest-inventory.php` (package built from stale snapshot). Added a direct `<script>` tag for `tg-modal.js` after the manifest loop so it loads regardless of inventory state. Once the core package is rebuilt from master, the manifest path will also emit it (harmless duplicate deduped by the browser).
+
 ## 0.7.250 — "Fanny Pack" (2026-06-12)
 
 ### The Grid 1.3.10 — fix blank solo post page + modal registration

@@ -35,6 +35,9 @@ if (!empty($requested)) {
     }
 }
 
+// ── tg-modal.js — load directly in case manifest-inventory is stale ────────
+echo '<script src="' . BASE_URL . 'skins/the-grid/assets/js/tg-modal.js?v=' . SNAPSMACK_VERSION_SHORT . '" defer></script>' . "\n";
+
 // ── Core footer (closes </body></html>) ────────────────────────────────────
 include_once(dirname(__DIR__, 2) . '/core/footer.php');
 // ===== SNAPSMACK EOF =====
