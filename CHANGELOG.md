@@ -12,11 +12,22 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.251 — "Fanny Pack" (2026-06-12)
+## 0.7.252 — "Fanny Pack" (2026-06-12)
 
-### The Grid 1.3.11 — load tg-modal.js directly from skin-footer
+### The Grid 1.3.12 — ship the modal overlay-container fix
 
-- **`skins/the-grid/skin-footer.php`** — `smack-grid-modal` was never in the deployed core `manifest-inventory.php` (package built from stale snapshot). Added a direct `<script>` tag for `tg-modal.js` after the manifest loop so it loads regardless of inventory state. Once the core package is rebuilt from master, the manifest path will also emit it (harmless duplicate deduped by the browser).
+- Reissue of 0.7.251 / The Grid 1.3.11, which was never deployed. Bumped to a fresh core version (0.7.252) and skin version (1.3.12) so the release tags are clean and no stale 0.7.251 tag or package can collide on deploy. **No code change from 0.7.251** — the modal fix itself is unchanged; see the 0.7.251 entry below and `_continuity/the-grid-modal-fix-2026-06-11.md` for the full root-cause writeup.
+- **`core/constants.php`** — `SNAPSMACK_VERSION` / `SNAPSMACK_VERSION_SHORT` → 0.7.252.
+- **`skins/the-grid/manifest.php`** — `version` → 1.3.12.
+
+## 0.7.251 — "Fanny Pack" (2026-06-12) — NEVER DEPLOYED (reissued as 0.7.252)
+
+### The Grid 1.3.11 — fix modal never opening (missing overlay container)
+
+- **ROOT CAUSE (modal never opened, 0.7.247–0.7.251):** `tg-modal.js` bails at `if (!overlay || !frame) return;` when `#tg-modal-overlay` / `#tg-modal-frame` are not in the DOM. The container was emitted only by `landing.php` (uncommitted, never deployed) and was missing entirely from `archive-layout.php` and `hashtag.php`. With no container the script never binds its click handler, so every tile click falls through to its `<a href>` and navigates — visually identical to "the script didn't load," which is why five prior releases chased script-loading and fragment-routing instead. Verified live on unzucked.ca: `tg-modal.js` loads, `?modal=1` returns a clean `.tg-post-ig` fragment (HTTP 200, no `<html>` shell), but `getElementById('tg-modal-overlay')` returned null. Injecting the container and replaying `openModal()` opened the modal correctly — confirming the container was the only missing piece.
+- **`skins/the-grid/skin-footer.php`** — now renders the `#tg-modal-overlay` container (backdrop + `#tg-modal-frame`) so EVERY Grid page that includes the footer (landing, archive, hashtag, skin-page, solo post view) has it. Modal fragments skip skin-footer via the `layout.php` modal-mode guard, so no duplicate container is ever injected into the frame. Direct `<script>` tag for `tg-modal.js` retained from the earlier fix.
+- **`skins/the-grid/landing.php`** — removed the per-page overlay container, now redundant with the shared footer copy (avoids duplicate element IDs).
+- **`skins/the-grid/assets/js/tg-modal.js`** — the missing-container guard now `console.warn`s instead of returning silently, so a missing container surfaces immediately in the console instead of masquerading as a script-load failure.
 
 ## 0.7.250 — "Fanny Pack" (2026-06-12)
 

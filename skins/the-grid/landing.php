@@ -315,5 +315,8 @@ $avatar_initials = strtoupper(substr($settings['site_name'] ?? 'S', 0, 1));
 
 </div><!-- /.tg-content-wrap -->
 
+<?php /* Post modal overlay is now rendered once by skin-footer.php (shared by all
+         Grid pages) so tg-modal.js finds its container on every page, not just
+         the landing page. Do not re-add a per-page copy here. */ ?>
 <?php include __DIR__ . '/skin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

@@ -18,6 +18,15 @@
 
 
 ?>
+<!-- Post modal overlay (populated by tg-modal.js). Rendered in the SHARED
+     footer so every Grid page that includes skin-footer.php (landing, archive,
+     hashtag, skin-page, and the solo post view) has the container the modal
+     script requires. Modal fragments skip skin-footer (layout.php modal-mode
+     guard), so there is never a duplicate inside the fetched fragment. -->
+<div id="tg-modal-overlay" class="tg-modal-overlay" hidden>
+    <div class="tg-modal-backdrop"></div>
+    <div id="tg-modal-frame" class="tg-modal-frame"></div>
+</div>
 <?php
 // ── Load required JS engines from manifest ─────────────────────────────────
 $skin_manifest = include __DIR__ . '/manifest.php';
