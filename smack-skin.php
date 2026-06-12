@@ -957,9 +957,14 @@ if (!empty($google_families)) {
                                          style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.15);display:block;">
                                 </div>
                                 <?php endif; ?>
-                                <input type="file" name="skin_img_opt[<?php echo $k; ?>]"
+                                <div class="file-upload-wrapper" onclick="document.getElementById('skinimg-<?php echo $k; ?>').click()">
+                                    <div class="file-custom-btn">UPLOAD</div>
+                                    <div class="file-name-display" id="skinimg-name-<?php echo $k; ?>"><?php echo $val ? 'CURRENT' : 'SELECT FILE'; ?></div>
+                                </div>
+                                <input type="file" id="skinimg-<?php echo $k; ?>" name="skin_img_opt[<?php echo $k; ?>]"
                                        accept="<?php echo htmlspecialchars($img_accept); ?>"
-                                       style="font-size:0.8rem;color:inherit;">
+                                       style="display:none;"
+                                       onchange="document.getElementById('skinimg-name-<?php echo $k; ?>').innerText = (this.files[0] ? this.files[0].name : 'SELECT FILE')">
                                 <?php if (!empty($o['hint'])): ?>
                                 <p class="dim field-hint" style="margin-top:4px;"><?php echo htmlspecialchars(strtoupper($o['hint'])); ?></p>
                                 <?php endif; ?>
