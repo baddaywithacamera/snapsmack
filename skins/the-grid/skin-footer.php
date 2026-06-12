@@ -23,7 +23,8 @@
      hashtag, skin-page, and the solo post view) has the container the modal
      script requires. Modal fragments skip skin-footer (layout.php modal-mode
      guard), so there is never a duplicate inside the fetched fragment. -->
-<div id="tg-modal-overlay" class="tg-modal-overlay" hidden>
+<div id="tg-modal-overlay" class="tg-modal-overlay" hidden
+     data-grid-url="<?php echo htmlspecialchars(BASE_URL); ?>"<?php echo !empty($tg_autoopen) ? ' data-autoopen="1"' : ''; ?>>
     <div class="tg-modal-backdrop"></div>
     <div id="tg-modal-frame" class="tg-modal-frame"></div>
 </div>

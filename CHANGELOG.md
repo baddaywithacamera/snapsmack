@@ -14,6 +14,15 @@ All notable changes to SnapSmack are documented here. Newest release first.
 
 ## 0.7.252 — "Fanny Pack" (2026-06-12)
 
+### The Grid 1.3.14 — modal carousel + deep-link opens modal (no flat page)
+
+- **Modal carousel now works.** `tg-modal.js` instantiated the slider via `SnapSlider.initAll(frame)` — a method that does not exist (SnapSlider is a class). The guard silently skipped it, so the injected carousel never initialized: it worked on the standalone page (engine auto-inits on `DOMContentLoaded`) but showed one image with no dots/arrows in the modal. Now `tg-modal.js` mirrors `ss-engine-carousel-view.js` — `new SnapSlider({container, speed, loop})` for each `.ss-slider` in the fragment, plus the `snapslider:slidechange` → EXIF-panel wiring. Validated live: dots + arrows render in the modal.
+- **Deep links open the modal over the grid; the flat page is gone.** `skins/the-grid/layout.php` no longer renders a standalone solo post. A direct visit to a post URL (`?s=slug`, no `modal=1`) renders the grid (delegates to `landing.php`) and flags the overlay so `tg-modal.js` auto-opens that post's modal. Shared/bookmarked links still resolve; closing returns to the grid (`replaceState` to BASE_URL, no reload). The `.tg-post-ig` markup is now produced only as a modal fragment.
+- **`skins/the-grid/skin-footer.php`** — overlay container gains `data-grid-url` (always) and `data-autoopen` (deep-link only). Data attributes, not inline JS.
+- **`skins/the-grid/layout.php`** — removed inline `onclick="history.back()"` on `.tg-back-btn`; `tg-modal.js` now delegates `.tg-back-btn` → close (also clears an inline-JS-in-skin violation).
+- **`skins/the-grid/manifest.php`** — `version` → 1.3.14.
+- Not in this release (triaged, separate owners): caption appears twice because the post's *description field* contains the text twice — an Unzucker import bug (fix in Unzucker + a data cleanup of the 84 imported posts). The white image border is the Image Frame setting (1px `#cccccc` + white frame bg), changeable in Grid skin settings. This post carries 6 images, not 9.
+
 ### The Grid 1.3.13 — ship the modal CSS (1.3.12 hotfix)
 
 - 1.3.12 shipped the overlay container + `tg-modal.js` but NOT the modal CSS. The `.tg-modal-overlay` / `.tg-modal-backdrop` / `.tg-modal-frame` rules live in `skins/the-grid/style.css`, which was uncommitted on master and got left out of the 0.7.252 push. Result: the overlay rendered unstyled (`position: static`, no `z-index`, no backdrop), so it opened in normal document flow — collapsed and invisible. Symptom: "click, nothing happens," no console error. Verified live: `#tg-modal-overlay` present and `tg-modal.js` loaded (v252), but `modalRulesFound: 0` in the deployed stylesheet.

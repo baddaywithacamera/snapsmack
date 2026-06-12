@@ -23,6 +23,17 @@
 require_once dirname(__DIR__, 2) . '/core/layout-logic.php';
 require_once dirname(__DIR__, 2) . '/core/snap-tags.php';
 
+// ── Direct visit to a post URL (NOT a modal-fragment fetch) ──────────────────
+// We no longer render a standalone "flat" post page. Render the grid and flag
+// tg-modal.js (via skin-footer's data-autoopen) to open this post's modal over
+// the grid — Instagram-style deep linking. The .tg-post-ig markup below is
+// therefore ONLY ever produced as a modal fragment (?modal=1).
+if (empty($_GET['modal'])) {
+    $tg_autoopen = true;
+    include __DIR__ . '/landing.php';
+    return;
+}
+
 // ── Load the post container for this image ────────────────────────────────
 $post = null;
 $post_images = [];
@@ -209,7 +220,7 @@ $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
 
         <!-- Fixed header -->
         <div class="tg-post-ig-header">
-            <button class="tg-back-btn" onclick="history.back()" aria-label="Back to grid">&#8592;</button>
+            <button class="tg-back-btn" type="button" aria-label="Back to grid">&#8592;</button>
             <?php if ($_avatar_exists): ?>
                 <img class="tg-post-ig-avatar"
                      src="<?php echo BASE_URL . htmlspecialchars($_avatar_path); ?>"
