@@ -62,6 +62,7 @@ $_tg_on_home     = ($_tg_script === 'index.php' && !isset($_GET['s']) && $_tg_ac
 $_tg_treat_mode  = $settings['tg_treatment_mode']     ?? 'none';
 $_tg_treat_img   = trim($settings['tg_treatment_image'] ?? '');
 $_tg_treat_color = trim($settings['tg_treatment_color'] ?? '');
+$_tg_treat_pos   = $settings['tg_treatment_position'] ?? 'center';
 $_tg_treat_ov    = (int)($settings['tg_treatment_overlay'] ?? 0); // -100 dark .. +100 light
 $_tg_has_treat   = ($_tg_treat_mode === 'image' && $_tg_treat_img !== '')
                 || ($_tg_treat_mode === 'color' && $_tg_treat_color !== '');
@@ -70,7 +71,10 @@ $_tg_bg_style = '';
 $_tg_ov_style = '';
 if ($_tg_has_treat) {
     if ($_tg_treat_mode === 'image' && $_tg_treat_img !== '') {
-        $_tg_bg_style = "background-image:url('" . BASE_URL . htmlspecialchars($_tg_treat_img) . "');";
+        $_tg_treat_pos_css = ($_tg_treat_pos === 'top')    ? 'center top'
+                           : (($_tg_treat_pos === 'bottom') ? 'center bottom' : 'center center');
+        $_tg_bg_style = "background-image:url('" . BASE_URL . htmlspecialchars($_tg_treat_img) . "');"
+                      . 'background-position:' . $_tg_treat_pos_css . ';';
     } elseif ($_tg_treat_mode === 'color' && $_tg_treat_color !== '') {
         $_tg_bg_style = 'background-color:' . htmlspecialchars($_tg_treat_color) . ';';
     }

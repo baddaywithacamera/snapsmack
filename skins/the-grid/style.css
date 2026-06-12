@@ -75,8 +75,14 @@ img { display: block; max-width: 100%; }
 
 /* Max-width content column — wraps profile, sticky nav, and grid on landing page */
 .tg-content-wrap {
-    max-width: var(--grid-max-width, 935px);
+    box-sizing: border-box;
+    /* Card = grid width + a white gutter on each side. With box-sizing:border-box
+       the inner content stays at --grid-max-width while the card itself grows by
+       the gutter, so the white extends outward over the background treatment. */
+    max-width: calc(var(--grid-max-width, 935px) + (2 * var(--grid-gutter, 0px)));
     margin: 0 auto;
+    padding-left: var(--grid-gutter, 0px);
+    padding-right: var(--grid-gutter, 0px);
 }
 
 /* General constrained wrapper — profile header, topbar, post view, archive */
@@ -207,7 +213,7 @@ img { display: block; max-width: 100%; }
    ========================================================================== */
 
 .tg-profile {
-    padding: 30px var(--grid-gutter) 24px;
+    padding: 30px 0 24px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -822,7 +828,7 @@ body.tg-modal-open { overflow: hidden; }
    ========================================================================== */
 
 .tg-archive-header {
-    padding: 20px var(--grid-gutter) 16px;
+    padding: 20px 0 16px;
     border-bottom: 1px solid var(--border-color);
 }
 
