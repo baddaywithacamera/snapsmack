@@ -12,6 +12,29 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.248 — "Fanny Pack" (2026-06-11)
+
+### The Grid 1.3.7 — fix modal script not loading via manifest
+
+- **`skins/the-grid/manifest.php`** — reverted inline `<script src>` hack; restored `smack-grid-modal` to `require_scripts`. Skin Packager must be re-run from current source for the entry to land in the deployed manifest. Bumped to 1.3.7.
+
+## 0.7.247 — "Fanny Pack" (2026-06-11)
+
+### The Grid 1.3.6 — IG-style post modal overlay
+
+- **`skins/the-grid/assets/js/tg-modal.js`** *(new)* — intercepts `.tg-tile` link clicks, fetches post content as `?modal=1` fragment, injects into overlay container, pushes URL via `history.pushState`. Closes on backdrop click, ESC, or browser back. Falls back to full page navigation on fetch error.
+- **`skins/the-grid/landing.php`** — added `#tg-modal-overlay` container (backdrop + frame) before footer; populated by `tg-modal.js` at runtime.
+- **`skins/the-grid/layout.php`** — `$_tg_modal_mode` flag: when `?modal=1` is present, skips `meta.php` and `skin-header.php`/`skin-footer.php` and returns only the `.tg-post-ig` HTML fragment.
+- **`skins/the-grid/style.css`** — modal overlay CSS: `position:fixed` full-viewport container, `rgba(0,0,0,0.8)` backdrop, `min(92vw,1300px) × min(92vh,900px)` frame with `border-radius:4px`; `.tg-modal-frame .tg-post-ig` overrides height to fill frame; `body.tg-modal-open` scroll lock.
+- **`core/manifest-inventory.php`** — registered `smack-grid-modal` pointing to `tg-modal.js`.
+- **`skins/the-grid/manifest.php`** — added `smack-grid-modal` to `require_scripts`; bumped to 1.3.6.
+
+### The Grid 1.3.5 — caption + engagement bar + image gutter fixes
+
+- **`skins/the-grid/layout.php`** — right panel caption now renders IG-style: **sitename** bold inline followed by post title + description as one block (no separate `<h2>`). Added engagement bar (`tg-post-ig-actions`) pinned between scrollable body and footer: comment icon, bookmark icon, post date.
+- **`skins/the-grid/landing.php`** — nameline now uses `site_tagline` (short field) for inline `name / tagline` display; `site_description` (long bio) rendered as separate `tg-profile-bio` paragraph below stats.
+- **`skins/the-grid/style.css`** — removed `padding:10% 24px` from `.tg-post-ig-image` (was causing side gutters on square images); image now `width/height:100% object-fit:contain` to fill panel. Added `.tg-post-caption-block`, `.tg-post-ig-caption`, `.tg-post-ig-caption-user`, `.tg-post-ig-actions`, `.tg-action-btn`, `.tg-post-ig-date`, `.tg-profile-bio` rules.
+
 ## 0.7.246 — "Fanny Pack" (2026-06-11)
 
 ### The Grid 1.3.4 — nav + profile header polish
