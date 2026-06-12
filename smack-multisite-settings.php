@@ -237,7 +237,5 @@ require_once 'core/admin-header.php';
 .push-ok   { font-size:0.8rem; padding:3px 10px; border-radius:3px; background:rgba(76,175,80,0.15); color:#4caf50; border:1px solid rgba(76,175,80,0.3); }
 .push-fail { font-size:0.8rem; padding:3px 10px; border-radius:3px; background:rgba(197,84,0,0.15);  color:#c55400; border:1px solid rgba(197,84,0,0.3); }
 </style>
-<?php // ===== SNAPSMACK EOF =====
-
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
