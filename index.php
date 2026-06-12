@@ -340,6 +340,15 @@ if ($img) {
 }
 snapsmack_maybe_rollup($pdo);
 
+// ── Modal fragment request — skip page shell, return only layout fragment ──
+// tg-modal.js fetches ?modal=1 to get a bare .tg-post-ig fragment for the
+// overlay. Skip skin-meta.php, <body>, and page-wrapper entirely.
+if (!empty($_GET['modal']) && $requested_slug && $img
+    && file_exists(__DIR__ . '/' . $skin_path . '/layout.php')) {
+    include __DIR__ . '/' . $skin_path . '/layout.php';
+    exit;
+}
+
 include __DIR__ . '/' . $skin_path . '/skin-meta.php';
 ?>
 <body class="is-photo-page<?php echo $landing_only_active ? ' landing-only' : ''; ?>">
