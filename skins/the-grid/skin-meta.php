@@ -14,11 +14,5 @@
  */
 
 
-?>
-<title><?php
-    if (!empty($page_title)) {
-        echo htmlspecialchars($page_title) . ' &mdash; ';
-    }
-    echo htmlspecialchars($settings['site_name'] ?? 'SnapSmack');
-?></title>
+include dirname(__DIR__, 2) . '/core/meta.php';
 <?php // ===== SNAPSMACK EOF =====

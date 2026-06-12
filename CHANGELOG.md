@@ -12,12 +12,14 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
-## 0.7.250 — "Fanny Pack" (2026-06-11)
+## 0.7.250 — "Fanny Pack" (2026-06-12)
 
-### The Grid 1.3.9 — force-rebuild to ship modal registration
+### The Grid 1.3.10 — fix blank solo post page + modal registration
 
-- **`core/constants.php`** — bumped to 0.7.250. Forces a new core release package build from current master, ensuring `manifest-inventory.php` (with `smack-grid-modal` registered) ships to the server. Previous 0.7.249 packages were built from a snapshot that predated this registration.
-- **`skins/the-grid/manifest.php`** — bumped to 1.3.9. Forces a new skin package build, ensuring the deployed manifest carries `smack-grid-modal` in `require_scripts` and `tg-modal.js` is served.
+- **`skins/the-grid/skin-meta.php`** — was a title-only stub that never called `core/meta.php`. All skin CSS, OG tags, and head scripts were missing on solo post pages. Fixed to call `core/meta.php` like every other skin does.
+- **`skins/the-grid/layout.php`** — removed duplicate `include core/meta.php` (was compensating for the broken skin-meta.php, but ran inside `<div id="page-wrapper">` which put all CSS in the body, causing a blank page). Only `skin-header.php` is included here now.
+- **`core/constants.php`** — bumped to 0.7.250 to force fresh package builds. Previous 0.7.249 packages were built from a snapshot that predated the `smack-grid-modal` registration in `manifest-inventory.php`.
+- **`smack-multisite-settings.php`** — fixed PHP parse error: `admin-footer` include was placed after the EOF marker, leaving an unclosed PHP block on line 242.
 
 ## 0.7.249 — "Fanny Pack" (2026-06-11)
 
