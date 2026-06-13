@@ -280,15 +280,14 @@ function snap_render_caption(string $text, string $base_url, string $css_class =
  * @param string $css_class CSS class on hashtag links
  */
 function snap_render_caption_html(string $text, string $base_url, string $css_class = 'snap-hashtag'): string {
-    // Whitelist safe HTML tags: paragraph, break, emphasis, list, link, blockquote
-    $allowed = '<p><br><strong><em><u><a><ul><ol><li><blockquote>';
-    $safe = strip_tags($text, $allowed);
-
-    // If the text has no block-level HTML tags, convert plain newlines to <br>
-    // so posts written in plain text still display with proper line breaks.
-    if (!preg_match('/<(p|ul|ol|blockquote)[\s>]/i', $safe)) {
-        $safe = nl2br($safe);
-    }
+    // Captions are plain text (Instagram captions / image descriptions). strip_tags()
+    // is NOT safe here: it preserves attributes on whitelisted tags, so a crafted
+    // caption like <a href="javascript:..."> or <p onmouseover=...> survives into the
+    // page as live HTML — a stored-XSS vector (secaudit #024 UZ-11). Escape ALL markup
+    // first, then re-introduce only the formatting WE generate: <br> line breaks here
+    // and safe hashtag anchors in the callback below.
+    $safe = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+    $safe = nl2br($safe);
 
     // Convert #hashtags to anchor links (includes digit-leading hex codes like #007a8b)
     return preg_replace_callback(
