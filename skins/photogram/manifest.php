@@ -19,13 +19,15 @@
  */
 
 
-$inventory = include(dirname(__DIR__, 2) . '/core/manifest-inventory.php');
+$_inventory_path = dirname(__DIR__, 2) . '/core/manifest-inventory.php';
+$inventory = (is_file($_inventory_path)) ? include($_inventory_path) : [];
+if (!is_array($inventory)) $inventory = [];
 $fonts = $inventory['fonts'] ?? [];
 foreach ($inventory['local_fonts'] ?? [] as $_k => $_f) $fonts[$_k] = $_f['label'];
 
 return [
     'name'        => 'Photogram',
-    'version'     => '2.0.0',
+    'version'     => '2.0.1',
     'author'      => 'Sean McCormick',
     'support'     => 'sean@baddaywithacamera.ca',
     'description' => 'A shadow of what a photo-sharing app used to be. Phone-native layout: 3-column archive grid, full-aspect post view, inline likes, bottom-sheet comments. Reproduces the Pixelfed / classic Instagram experience in a self-hosted blog.',
