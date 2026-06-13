@@ -45,11 +45,14 @@ if (!is_file($registry_path)) {
 $registry  = json_decode(file_get_contents($registry_path), true);
 $reg_skins = $registry['skins'] ?? [];
 
-// Filter to skins whose modes[] includes the requested mode
+// Filter to skins whose modes[] includes the requested mode.
+// mobile_only skins (e.g. photogram) are appended unconditionally to every
+// install — they are required infrastructure, not user-selectable skins.
 $result = [];
 foreach ($reg_skins as $slug => $s) {
-    $skin_modes = $s['modes'] ?? [];
-    if (!in_array($mode, $skin_modes, true)) continue;
+    $is_mobile_only = !empty($s['features']['mobile_only']);
+    $skin_modes     = $s['modes'] ?? [];
+    if (!$is_mobile_only && !in_array($mode, $skin_modes, true)) continue;
     $result[] = [
         'slug'         => $slug,
         'download_url' => $s['download_url'] ?? '',

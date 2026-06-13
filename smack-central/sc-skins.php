@@ -163,8 +163,9 @@ function sc_read_manifests(string $skins_dir): array {
             continue;  // skip skins with parse errors or fatal manifest issues
         }
         if (!is_array($manifest)) continue;
-        // Skip mobile-only skins — they are auto-assigned, not user-installable
-        if (!empty($manifest['features']['mobile_only'])) continue;
+        // mobile_only skins (e.g. photogram) ARE included in the registry so the
+        // installer and updater can fetch them. Gallery hiding is enforced by
+        // smack-skin.php at display time, not here.
         $skins[$slug] = [
             'name'               => $manifest['name']               ?? ucfirst($slug),
             'version'            => $manifest['version']            ?? '1.0',
