@@ -57,6 +57,29 @@ if (!function_exists('snap_version_compare')) {
     }
 }
 
+// ── AUTO-REPAIR MISSING MOBILE SKIN ──────────────────────────────────────────
+// If SNAPSMACK_MOBILE_SKIN is configured but the skin directory is absent
+// (e.g. pre-existing installs that ran before Photogram shipped via the
+// registry), silently fetch and install it from the skin registry now.
+// Non-fatal: failure is logged but does not block the update page.
+if (
+    defined('SNAPSMACK_MOBILE_SKIN') && SNAPSMACK_MOBILE_SKIN !== '' &&
+    !is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)
+) {
+    $mobile_slug    = SNAPSMACK_MOBILE_SKIN;
+    $registry_url   = SKIN_REGISTRY_DEFAULT_URL;
+    $mobile_remote  = skin_registry_fetch($registry_url);
+    $mobile_entry   = $mobile_remote['skins'][$mobile_slug] ?? null;
+    if ($mobile_entry && !empty($mobile_entry['download_url'])) {
+        skin_registry_install(
+            $mobile_slug,
+            $mobile_entry['download_url'],
+            $mobile_entry['signature'] ?? '',
+            SNAPSMACK_RELEASE_PUBKEY
+        );
+    }
+}
+
 // --- EARLY CRON DETECTION ---
 if (!isset($cron_supported)) {
     $cron_supported = false;
