@@ -12,6 +12,20 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.255 — "Hot Seat" (2026-06-13)
+
+### Core — stored-XSS fix in caption renderer (security)
+
+- **`core/snap-tags.php` `snap_render_caption_html()`** — was `strip_tags($text, '<a><p>...')` which kept whitelisted tags with their attributes, allowing stored XSS via `<a href="javascript:">` or `onmouseover` etc. Rewritten: `htmlspecialchars(ENT_QUOTES)` first, then `nl2br`, then the existing safe hashtag linkifier. Fixes all three callers site-wide (The Grid `layout.php`, Photogram `feed.php` + `layout.php`). IG captions are plain text; embedded HTML formatting was never used. Documented in `secaudits/2026-06-12-024A-caption-xss-remediation-addendum.pdf`.
+
+### Core — Photogram mobile skin delivery pipeline
+
+- **`smack-update.php`** — auto-repair block added: on every update run, if `SNAPSMACK_MOBILE_SKIN` is defined and its directory is missing, fetches the skin from the registry and installs it automatically. Ensures Photogram is present after any install or update regardless of how skins were originally delivered.
+- **`smack-central/sc-skins.php`** — Skin Packager no longer skips `mobile_only` skins. Photogram now enters `registry.json` so the installer and updater can fetch it.
+- **`projects/snapsmack-ca/install-manifest.php`** (both copies) — `mobile_only` skins are always appended to the install manifest regardless of install mode; they are required infrastructure, not user-selectable skins.
+- **`skins/photogram/manifest.php`** — guarded the `core/manifest-inventory.php` include with `is_file()` so the manifest returns cleanly when packaged in the SC temp extraction context (where `core/` is absent). Version → 2.0.1.
+- **`core/constants.php`** — version → 0.7.255 "Hot Seat".
+
 ## 0.7.254 — "Hot Seat" (2026-06-12)
 
 ### Core — likes/comments now work inside injected modals (The Grid post modal)
