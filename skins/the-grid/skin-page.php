@@ -47,6 +47,8 @@ $_sp_initial       = strtoupper(substr($_sp_site_name, 0, 1));
 <!-- ── Page content ─────────────────────────────────────────────────────── -->
 <main class="tg-static-content">
 
+    <h1 class="tg-static-title"><?php echo htmlspecialchars($page_data['title']); ?></h1>
+
     <?php if (!empty($page_data['image_asset'])):
         $hero_size  = in_array($page_data['image_size']  ?? '', ['medium','small']) ? $page_data['image_size']  : 'full';
         $hero_align = in_array($page_data['image_align'] ?? '', ['left','right'])   ? $page_data['image_align'] : 'center';
@@ -57,8 +59,6 @@ $_sp_initial       = strtoupper(substr($_sp_site_name, 0, 1));
              alt="<?php echo htmlspecialchars($page_data['title']); ?>">
     </div>
     <?php endif; ?>
-
-    <h1 class="tg-static-title"><?php echo htmlspecialchars($page_data['title']); ?></h1>
 
     <div class="tg-static-body description">
         <?php
