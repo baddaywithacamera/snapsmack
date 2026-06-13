@@ -482,22 +482,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && !$stage_state && !$action) {
                 'updated_skins'       => $cached_result['updated_skins'] ?? [],
                 'total_notifications' => $cached_result['skin_notifications'] ?? 0,
             ];
-        } elseif (
-            // A check_ajax recently failed — skip the 80-second spinner and
-            // render the error badge directly. The last_update_check timestamp
-            // is written by check_ajax even on failure; if it is within 5 min
-            // and the cache has status 'error', we know the server is unreachable
-            // right now and there is no point retrying immediately.
-            // After 5 minutes the next page load will re-trigger the spinner so
-            // the user gets a fresh attempt if connectivity has recovered.
-            $cache_age_secs < 300
-            && is_array($cached_result)
-            && ($cached_result['core_status'] ?? '') === 'error'
-        ) {
-            $core_status = 'error'; // renders the error badge directly — no JS spinner
         } else {
-            // Cache stale or missing — trigger JS auto-check (fast mode, 6 s / 1 attempt).
-            $core_status = 'checking';
+            // Cache stale or missing — show current version, no auto-check.
+            // User clicks CHECK NOW or the cron notifies. The spinner was flaky
+            // and caused more confusion than it prevented.
+            if ($cached_ok) {
+                // Reuse stale cache rather than triggering a live check.
+                $core_status = $cached_result['core_status'];
+                $core_update = $cached_result['core_update'] ?? null;
+                $skin_info   = [
+                    'new_skins'           => $cached_result['new_skins']    ?? [],
+                    'updated_skins'       => $cached_result['updated_skins'] ?? [],
+                    'total_notifications' => $cached_result['skin_notifications'] ?? 0,
+                ];
+            } else {
+                $core_status = 'up_to_date'; // no cache at all — safe default
+            }
         }
     }
 }

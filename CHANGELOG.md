@@ -12,6 +12,22 @@
 
 All notable changes to SnapSmack are documented here. Newest release first.
 
+## 0.7.256 — "Hot Seat" (2026-06-13)
+
+### Core — smack-update.php auto-check removed
+
+- **`smack-update.php`** — removed the JS auto-check spinner that fired on every page load. The spinner was flaky (worked ~30% of the time), added confusing UX, and is unnecessary now that cron handles background notifications. Page now shows the last cached result on load; user clicks CHECK NOW to run a live check. Manual button has always been present.
+- **`core/constants.php`** — version → 0.7.256 "Hot Seat".
+
+### Skin — Kiosk deleted
+
+- **`skins/kiosk/`** — 8 files removed. Kiosk was mission creep and is abandoned. Deleted from GitHub and SC skin registry.
+
+### Skin — Slickr manifest and Photogram mobile skin delivery (core/updater.php)
+
+- **`skins/slickr/manifest.php`** — removed accidental `modes` field that would have shipped Slickr to every SMACKONEOUT install. Slickr is gallery-only; it ships from the skin gallery, not with any install mode.
+- **`core/updater.php` `updater_check_skin_registry()`** — added auto-repair block: if SNAPSMACK_MOBILE_SKIN is defined and the skin directory is absent, silently installs the skin from the remote registry on every updater check. Ensures Photogram is present on all SMACKONEOUT + GRAMOFSMACK installs.
+
 ## 0.7.255 — "Hot Seat" (2026-06-13)
 
 ### Core — stored-XSS fix in caption renderer (security)

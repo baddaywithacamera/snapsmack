@@ -24,8 +24,6 @@ return [
     'description'  => 'Flickr, the way it was. Justified masonry archive, classic solo view with EXIF sidebar, albums directory. Built for migrated Flickr archives — includes an optional Flickr provenance badge on imported images.',
     'status'       => 'stable',
 
-    'modes' => ['photoblog'],
-
     'features' => [
         'supports_wall'     => false,
         'supports_slider'   => false,
